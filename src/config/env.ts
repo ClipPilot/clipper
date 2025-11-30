@@ -13,4 +13,5 @@ function getEnv(name: string, fallback?: string): string {
 export const ENV = {
   OPENAI_API_KEY: getEnv("OPENAI_API_KEY"),
   PORT: getEnv("PORT", "3001"),
+  LOCAL_VIDEO_PATH: getEnv("LOCAL_VIDEO_PATH"),
 };
