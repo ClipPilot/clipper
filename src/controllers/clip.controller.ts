@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
-import { generateClipSuggestionsService, transcribeVideoService } from "../services/clip.service";
 import { ENV } from "../config/env";
+import { transcribeVideoService } from "../services/transcription.service";
+import { generateClipSuggestionsService } from "../services/aiSuggestions.service";
+import { createCombinedClipService } from "../services/clip.service";
 
 export const clipVideoController = async (req: Request, res: Response) => {
   try {
@@ -10,7 +12,13 @@ export const clipVideoController = async (req: Request, res: Response) => {
 
     const data = await transcribeVideoService(localVideo);
     const clipSuggestions = await generateClipSuggestionsService(data);
-    res.json(clipSuggestions);
+
+    if (!clipSuggestions) {
+      return res.status(500).json({ error: "Failed to generate clip suggestions" });
+    }
+
+    const combinedClipPath = await createCombinedClipService(localVideo, JSON.parse(clipSuggestions));
+    res.json({ combinedClipPath });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to transcribe" });
