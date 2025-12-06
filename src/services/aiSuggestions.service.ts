@@ -25,11 +25,8 @@ Your Goals:
 
 3. Select the remaining clip (up to 30–45 seconds total) that:
    - Explains the story or product clearly
-   - Flows logically after the hook
    - Removes interruptions, off-camera commentary, and irrelevant tangents
    - Maintains narrative tension or informational clarity
-
-4. Ensure the final TikTok feels like ONE cohesive clip. It does not have to be perfect but should feel natural and engaging.
 
 5. NEVER include:
    - stage directions
