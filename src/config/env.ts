@@ -14,4 +14,5 @@ export const ENV = {
   OPENAI_API_KEY: getEnv("OPENAI_API_KEY"),
   PORT: getEnv("PORT", "3001"),
   LOCAL_VIDEO_PATH: getEnv("LOCAL_VIDEO_PATH"),
+  DEEPGRAM_API_KEY: getEnv("DEEPGRAM_API_KEY"),
 };

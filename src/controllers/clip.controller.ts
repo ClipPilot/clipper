@@ -10,15 +10,20 @@ export const clipVideoController = async (req: Request, res: Response) => {
 
     if (!localVideo) return res.status(400).json({ error: "No video uploaded" });
 
-    const data = await transcribeVideoService(localVideo);
-    const clipSuggestions = await generateClipSuggestionsService(data);
+    const transcriptionData = await transcribeVideoService(localVideo);
+
+    if (!transcriptionData || !transcriptionData.result) {
+      return res.status(500).json({ error: "Transcription failed" });
+    }
+
+    const clipSuggestions = await generateClipSuggestionsService(transcriptionData.result);
 
     if (!clipSuggestions) {
       return res.status(500).json({ error: "Failed to generate clip suggestions" });
     }
 
     const combinedClipPath = await createCombinedClipService(localVideo, JSON.parse(clipSuggestions));
-    res.json({ combinedClipPath });
+    res.json({ clipPath: combinedClipPath });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to transcribe" });

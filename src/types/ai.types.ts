@@ -7,4 +7,5 @@ export interface ClipSegment {
 export interface ClipSuggestions {
   hook: ClipSegment;
   main: ClipSegment;
+  combined_script: string;
 }

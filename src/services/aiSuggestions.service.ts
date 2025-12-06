@@ -1,55 +1,77 @@
 import OpenAI from "openai";
 import { ENV } from "../config/env";
+import { SyncPrerecordedResponse } from "@deepgram/sdk";
 
 const client = new OpenAI({ apiKey: ENV.OPENAI_API_KEY });
-export const generateClipSuggestionsService = async (transcription: {
-  text: string;
-  words: OpenAI.Audio.Transcriptions.TranscriptionWord[] | undefined;
-  segments: OpenAI.Audio.Transcriptions.TranscriptionSegment[] | undefined;
-}) => {
-
+export const generateClipSuggestionsService = async (
+  transcription: SyncPrerecordedResponse
+) => {
   const prompt = `
-You are a short-form video editor AI.
+You are an expert short-form video editor trained to convert long videos into high-retention TikTok clips.
 
-Given the transcript + timestamps, pick:
-1. The BEST hook (3-15 seconds) in the video that grabs attention. 
-2. The BEST main-content segment (45-60 seconds) that represents the core information. Make sure not to include any stage directions or non-verbal cues.
+You will be given:
+- The full transcription text from a video
+- And the transcript object in the following schema:
+  - "paragraphs" → list
+    - each paragraph → "sentences" with "text", "start", "end", "speaker", "num_words"
 
-Return JSON ONLY in this format:
+Your Goals:
+1. Find an emotionally charged or intriguing HOOK (5–12 seconds).
+   - Must instantly grab attention.
+   - No filler, no introductions, no stage directions, no "Speaker 0/1", no camera cues.
+   - Must come directly from transcript text (verbatim unless minor grammar cleaning).
+
+2. Create a smooth, natural transition from the hook into the rest of the content.
+
+3. Select the remaining clip (up to 30–45 seconds total) that:
+   - Explains the story or product clearly
+   - Flows logically after the hook
+   - Removes interruptions, off-camera commentary, and irrelevant tangents
+   - Maintains narrative tension or informational clarity
+
+4. Ensure the final TikTok feels like ONE cohesive clip. It does not have to be perfect but should feel natural and engaging.
+
+5. NEVER include:
+   - stage directions
+   - descriptions of filming or production
+   - meta commentary
+   - anything not spoken in the transcript
+
+Your Output Format:
+Return JSON structured as:
 
 {
   "hook": {
-    "start": <seconds>,
-    "end": <seconds>,
-    "text": "<clip transcript>"
+    "text": "Final edited hook text for TikTok",
+    "start": 0.00,
+    "end": 5.00
   },
   "main": {
-    "start": <seconds>,
-    "end": <seconds>,
-    "text": "<clip transcript>"
-  }
+    "text": "The remaining edited, cleaned clip that explains the story or product clearly while being engaging.",
+    "start": 5.00,
+    "end": 35.00
+  },
+  "combined_script": "Hook + main clip text merged into one TikTok script."
 }
 
-Rules:
-- Hook should be emotionally strong, controversial, surprising, or instantly engaging.
-- Main section should be educational, insightful, or the key point.
-- YOU MUST use timestamps from the segments array.
-- Do NOT fabricate text. Use the real transcript.
-- Make sure the video clips flow together well and makes sense.
-  
----
+Notes:
+- "start" and "end" must correspond to timestamps from the transcript.
+- No clips should have off-camera cues such as "cut", "scene", meta-filming talk, etc.
 
-TRANSCRIPT:
-${transcription.text}
+Your Task:
+Given the transcript, follow all rules above and return:
+- the strongest possible hook,
+- the best main clip,
+- and the combined TikTok script (hook + main).
 
-TIMESTAMPS JSON:
-${JSON.stringify(transcription.segments)}
-  `;
+Here is the full transcript text: ${transcription.results.channels[0].alternatives[0].transcript}
+Here is the transcript object: ${JSON.stringify(transcription.results.channels[0].alternatives[0].paragraphs)}
+`;
 
   const completion = await client.chat.completions.create({
     model: "gpt-5.1",
     response_format: { type: "json_object" },
-    messages: [{ role: "user", content: prompt }]
+    messages: [{ role: "user", content: prompt }],
   });
 
   return completion.choices[0].message.content;
