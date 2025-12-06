@@ -12,11 +12,11 @@ export const clipVideoController = async (req: Request, res: Response) => {
 
     const transcriptionData = await transcribeVideoService(localVideo);
 
-    if (!transcriptionData || !transcriptionData.result) {
+    if (!transcriptionData) {
       return res.status(500).json({ error: "Transcription failed" });
     }
 
-    const clipSuggestions = await generateClipSuggestionsService(transcriptionData.result);
+    const clipSuggestions = await generateClipSuggestionsService(transcriptionData);
 
     if (!clipSuggestions) {
       return res.status(500).json({ error: "Failed to generate clip suggestions" });

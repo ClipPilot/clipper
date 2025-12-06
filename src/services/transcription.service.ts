@@ -11,6 +11,8 @@ export const transcribeVideoService = async (filePath: string) => {
   const audioPath = await extractAudio(filePath);
 
   console.log("Transcribing audio...");
+
+  // Using OpenAI Whisper API:
   // const resp = await client.audio.transcriptions.create({
   //   file: fs.createReadStream(audioPath),
   //   model: "whisper-1",
@@ -29,13 +31,16 @@ export const transcribeVideoService = async (filePath: string) => {
     }
   );
 
+  if (error) {
+    console.error("Deepgram transcription error:", error);
+    throw new Error("Transcription failed");
+  }
+
   console.log("Cleaning up files...");
 
   fs.unlinkSync(audioPath);
 
   console.log("Transcribing completed!");
 
-  return {
-    result
-  };
+  return result;
 };
