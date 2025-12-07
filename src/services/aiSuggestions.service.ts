@@ -16,19 +16,19 @@ You will be given:
     - each paragraph → "sentences" with "text", "start", "end", "speaker", "num_words"
 
 Your Goals:
-1. Find an emotionally charged or intriguing HOOK (5–12 seconds).
+1. Find an emotionally charged or intriguing HOOK (3 seconds max).
    - Must instantly grab attention.
    - No filler, no introductions, no stage directions, no "Speaker 0/1", no camera cues.
    - Must come directly from transcript text (verbatim unless minor grammar cleaning).
 
 2. Create a smooth, natural transition from the hook into the rest of the content.
 
-3. Select the remaining clip (up to 30–45 seconds total) that:
+3. Select the remaining clip (up to 20-30 seconds total) that:
    - Explains the story or product clearly
    - Removes interruptions, off-camera commentary, and irrelevant tangents
    - Maintains narrative tension or informational clarity
 
-5. NEVER include:
+4. NEVER include:
    - stage directions
    - descriptions of filming or production
    - meta commentary
