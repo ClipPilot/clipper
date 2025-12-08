@@ -1,7 +1,5 @@
-import path from "path";
 import ffmpeg from "fluent-ffmpeg";
 import fs from "fs";
-
 
 export const cutClip = (input: string, output: string, start: number, end: number) => {
   return new Promise((resolve, reject) => {
