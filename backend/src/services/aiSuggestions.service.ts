@@ -60,7 +60,6 @@ Given the transcript, follow all rules above and return:
 - the best clips in the middle 
 - Full story flow should be: Engaging Hook - Context/Story to set the scene if necessary - Product Demo/Key Info - Closing. Try to use 3-4 clips max in the whole video, and make sure they make sense together. 
 - When making the Product demo try to make it one clip (two if necessary), same with context (no clips if not needed, one or two max.)
-- and the combined TikTok script (hook + main).
 - The clips do not need to be in order. The hook for example can be later in the video if it makes sense, but the hook needs to be the most
 engaging and eye catching part.
 Here is the full transcript text: ${transcription.results.channels[0].alternatives[0].transcript}
@@ -69,7 +68,7 @@ Here is the transcript object: ${JSON.stringify(transcription.results.channels[0
 
   const response = await client.responses.parse({
     model: "gpt-5.1",
-    reasoning: { effort: "low" },
+    reasoning: { effort: "medium" },
     input: [
       {
         role: "user",

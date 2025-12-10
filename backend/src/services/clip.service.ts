@@ -1,4 +1,4 @@
-import { cutClip, mergeClips, addTextOverlay } from "./videoEditor.service";
+import { cutClip, mergeClips } from "./videoEditor.service";
 import path from "path";
 import fs from "fs";
 import { ClipSuggestions } from "../types/ai.types";
@@ -26,19 +26,13 @@ export const createCombinedClipService = async (
     tempFiles.push(mainPath);
   }
 
-  // Merged clip (no text yet)
-  const mergedPath = path.join(outDir, "merged_temp.mp4");
+  // Final combined clip
+  const finalPath = path.join(outDir, "combined.mp4");
 
   // Merge all clips (hook + all main clips)
-  await mergeClips(tempFiles, mergedPath);
+  await mergeClips(tempFiles, finalPath);
 
-  // Add text overlay with placeholder text and emojis
-  const finalPath = path.join(outDir, "combined.mp4");
-  const overlayText = "🔥 MUST WATCH 🔥";
-  await addTextOverlay(mergedPath, finalPath, overlayText, "top");
-
-  // Clean up temp files (including merged temp)
-  tempFiles.push(mergedPath);
+  // Clean up temp files
   tempFiles.forEach((file) => {
     if (fs.existsSync(file)) {
       fs.unlinkSync(file);
