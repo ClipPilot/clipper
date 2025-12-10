@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { ENV } from "../config/env";
 import { SyncPrerecordedResponse } from "@deepgram/sdk";
 
+// TODO 4 PIECES, SETTING TEH SCENE, ENDING IT. EDIT PROMPT. SENTIMENT ANALYSIS. 
 const client = new OpenAI({ apiKey: ENV.OPENAI_API_KEY });
 export const generateClipSuggestionsService = async (
   transcription: SyncPrerecordedResponse
@@ -16,7 +17,7 @@ You will be given:
     - each paragraph → "sentences" with "text", "start", "end", "speaker", "num_words"
 
 Your Goals:
-1. Find an emotionally charged or intriguing HOOK that is 4 seconds long at maximum.
+1. Find an emotionally charged or intriguing HOOK that is 6 seconds long at maximum.
    - Must instantly grab attention.
    - No filler, no introductions, no stage directions, no "Speaker 0/1", no camera cues.
    - Must come directly from transcript text.

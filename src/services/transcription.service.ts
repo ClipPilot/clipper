@@ -20,6 +20,8 @@ export const transcribeVideoService = async (filePath: string) => {
   //   timestamp_granularities: ["word"]
   // });
 
+  // TODO : use sentiment 
+
   const { result, error } = await deepgram.listen.prerecorded.transcribeFile(
     fs.readFileSync(audioPath),
     {
