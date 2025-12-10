@@ -1,7 +1,39 @@
-import { Router } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import { clipVideoController } from "../controllers/clip.controller";
+import { upload } from "../config/multer";
 
 const router = Router();
+
+// Multer error handling middleware
+const handleMulterError = (
+  err: any,
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  if (err) {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res.status(413).json({
+        error: "File too large",
+        message: "The uploaded video file exceeds the maximum size limit of 10GB",
+        maxSize: "10GB",
+      });
+    }
+    if (err.code === "LIMIT_UNEXPECTED_FILE") {
+      return res.status(400).json({
+        error: "Unexpected file",
+        message: 'Only one video file should be uploaded with field name "video"',
+      });
+    }
+    if (err.message) {
+      return res.status(400).json({
+        error: "Upload error",
+        message: err.message,
+      });
+    }
+  }
+  next(err);
+};
 
 /**
  * @openapi
@@ -9,41 +41,157 @@ const router = Router();
  *   post:
  *     summary: Generate AI-powered short-form video clips
  *     description: |
- *       Takes a video file, transcribes it using Deepgram, analyzes the transcript with AI to identify
- *       engaging clips, and combines them into a high-retention short-form video suitable for TikTok.
+ *       Upload a video file and generate an AI-powered short-form clip suitable for TikTok, YouTube Shorts, or Instagram Reels.
  *
  *       The process:
- *       1. Transcribes the video using Deepgram
- *       2. Uses OpenAI to identify an engaging hook (6 seconds max) and main content clips
- *       3. Creates individual video clips for each segment
- *       4. Merges all clips into a final 30-40 second video
+ *       1. Transcribes the uploaded video using Deepgram
+ *       2. Uses OpenAI with customizable prompts to identify engaging clips
+ *       3. Creates individual video clips for hook and main content
+ *       4. Merges all clips into a final optimized video
  *
- *       The video path is configured via environment variable (LOCAL_VIDEO_PATH).
+ *       **Prompt Types:**
+ *       - `business`: Optimized for product demos and business content with clear explanations
+ *       - `viral`: Optimized for entertaining content, funny moments, and stream highlights
+ *
+ *       **Custom Instructions:**
+ *       You can provide additional instructions to customize the AI's clip selection.
  *     tags:
  *       - Video Clipping
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - video
+ *             properties:
+ *               video:
+ *                 type: string
+ *                 format: binary
+ *                 description: The video file to process (mp4, mov, avi, mkv, webm - max 10GB)
+ *               length:
+ *                 type: integer
+ *                 default: 40
+ *                 minimum: 10
+ *                 maximum: 120
+ *                 description: Desired total length of the final clip in seconds
+ *               hookLength:
+ *                 type: integer
+ *                 default: 6
+ *                 minimum: 2
+ *                 maximum: 15
+ *                 description: Length of the hook/attention-grabbing opening in seconds
+ *               promptType:
+ *                 type: string
+ *                 enum: [business, viral]
+ *                 default: business
+ *                 description: |
+ *                   Type of prompt to use:
+ *                   - business: For product demos, explanations, and professional content
+ *                   - viral: For funny moments, stream highlights, and entertaining clips
+ *               customPrompt:
+ *                 type: string
+ *                 description: Optional custom instructions for the AI (e.g., "Focus on funny moments with the dog" or "Highlight the product features")
+ *               customText:
+ *                 type: string
+ *                 description: Optional text overlay to display on the video (e.g., "🔥 MUST WATCH 🔥", "NEW PRODUCT ALERT", "WAIT FOR IT...")
+ *               textPosition:
+ *                 type: string
+ *                 enum: [top, bottom]
+ *                 default: top
+ *                 description: Position of the text overlay (top or bottom of video)
+ *           examples:
+ *             business_video:
+ *               summary: Business/Product Demo
+ *               value:
+ *                 video: (binary)
+ *                 length: 40
+ *                 hookLength: 6
+ *                 promptType: business
+ *             viral_clip:
+ *               summary: Viral/Stream Highlight
+ *               value:
+ *                 video: (binary)
+ *                 length: 30
+ *                 hookLength: 5
+ *                 promptType: viral
+ *                 customPrompt: Focus on the funniest reactions and most chaotic moments
+ *                 customText: "🔥 WAIT FOR IT 🔥"
+ *                 textPosition: top
+ *             custom_text_example:
+ *               summary: With Custom Text Overlay
+ *               value:
+ *                 video: (binary)
+ *                 promptType: business
+ *                 customText: "NEW PRODUCT ALERT 🚀"
+ *                 textPosition: bottom
  *     responses:
  *       200:
  *         description: Successfully generated video clip
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ClipResponse'
+ *               type: object
+ *               properties:
+ *                 clipPath:
+ *                   type: string
+ *                   description: Local file path to the generated clip
+ *                 clipSuggestions:
+ *                   type: object
+ *                   description: AI-generated clip suggestions with timestamps
+ *                 parameters:
+ *                   type: object
+ *                   properties:
+ *                     length:
+ *                       type: integer
+ *                     hookLength:
+ *                       type: integer
+ *                     promptType:
+ *                       type: string
  *             example:
  *               clipPath: "/output/combined.mp4"
+ *               clipSuggestions:
+ *                 hook:
+ *                   start: 45.2
+ *                   end: 51.2
+ *                   text: "This is the most insane feature I've ever seen!"
+ *                 main:
+ *                   - start: 12.5
+ *                     end: 25.8
+ *                     text: "So here's how it works..."
+ *               parameters:
+ *                 length: 40
+ *                 hookLength: 6
+ *                 promptType: business
  *       400:
- *         description: No video uploaded
+ *         description: Bad request - invalid parameters or missing video
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               error: "No video uploaded"
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *             examples:
+ *               no_video:
+ *                 value:
+ *                   error: "No video file uploaded"
+ *               invalid_length:
+ *                 value:
+ *                   error: "Length must be between 10 and 120 seconds"
+ *               invalid_prompt_type:
+ *                 value:
+ *                   error: 'Prompt type must be either "business" or "viral"'
  *       500:
  *         description: Server error during processing
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
  *             examples:
  *               transcription_failed:
  *                 value:
@@ -51,10 +199,7 @@ const router = Router();
  *               ai_failed:
  *                 value:
  *                   error: "Failed to generate clip suggestions"
- *               general_error:
- *                 value:
- *                   error: "Failed to transcribe"
  */
-router.post("/", clipVideoController);
+router.post("/", upload.single("video"), handleMulterError, clipVideoController);
 
 export default router;

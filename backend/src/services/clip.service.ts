@@ -3,9 +3,15 @@ import path from "path";
 import fs from "fs";
 import { ClipSuggestions } from "../types/ai.types";
 
+export interface ClipServiceOptions {
+  customText?: string;
+  textPosition?: "top" | "bottom";
+}
+
 export const createCombinedClipService = async (
   videoPath: string,
-  clipData: ClipSuggestions
+  clipData: ClipSuggestions,
+  options: ClipServiceOptions = {}
 ) => {
   const outDir = path.join(process.cwd(), "output");
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
@@ -30,9 +36,16 @@ export const createCombinedClipService = async (
   const mergedPath = path.join(outDir, "merged_temp.mp4");
   await mergeClips(tempFiles, mergedPath);
 
-  // Add text overlay with emoji
+  // Add text overlay if provided
   const finalPath = path.join(outDir, "combined.mp4");
-  await addTextOverlay(mergedPath, finalPath, "🔥 MUST WATCH 🔥", "top");
+
+  if (options.customText) {
+    const position = options.textPosition || "top";
+    await addTextOverlay(mergedPath, finalPath, options.customText, position);
+  } else {
+    // No text overlay, just copy the merged file
+    fs.copyFileSync(mergedPath, finalPath);
+  }
 
   // Clean up temp files
   tempFiles.push(mergedPath);

@@ -5,7 +5,9 @@ import { swaggerSpec } from "./config/swagger";
 
 const app = express();
 
-app.use(express.json());
+// Increase payload size limits for large video file uploads
+app.use(express.json({ limit: "10gb" }));
+app.use(express.urlencoded({ limit: "10gb", extended: true }));
 
 // Swagger documentation
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
