@@ -6,9 +6,10 @@ import { createCombinedClipService } from "../services/clip.service";
 
 export const clipVideoController = async (req: Request, res: Response) => {
   try {
-    const localVideo = ENV.LOCAL_VIDEO_PATH; 
+    const localVideo = ENV.LOCAL_VIDEO_PATH;
 
-    if (!localVideo) return res.status(400).json({ error: "No video uploaded" });
+    if (!localVideo)
+      return res.status(400).json({ error: "No video uploaded" });
 
     const transcriptionData = await transcribeVideoService(localVideo);
 
@@ -16,13 +17,19 @@ export const clipVideoController = async (req: Request, res: Response) => {
       return res.status(500).json({ error: "Transcription failed" });
     }
 
-    const clipSuggestions = await generateClipSuggestionsService(transcriptionData);
+    const clipSuggestions =
+      await generateClipSuggestionsService(transcriptionData);
 
     if (!clipSuggestions) {
-      return res.status(500).json({ error: "Failed to generate clip suggestions" });
+      return res
+        .status(500)
+        .json({ error: "Failed to generate clip suggestions" });
     }
 
-    const combinedClipPath = await createCombinedClipService(localVideo, JSON.parse(clipSuggestions));
+    const combinedClipPath = await createCombinedClipService(
+      localVideo,
+      clipSuggestions
+    );
     res.json({ clipPath: combinedClipPath });
   } catch (err) {
     console.error(err);
