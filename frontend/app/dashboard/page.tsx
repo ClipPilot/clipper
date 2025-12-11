@@ -62,14 +62,6 @@ export default function DashboardPage() {
             <h1 className="text-3xl font-bold text-text-primary mb-2">Dashboard</h1>
             <p className="text-text-secondary">Welcome back, {user.email}</p>
           </div>
-          <Button
-            color="danger"
-            variant="flat"
-            startContent={<Icon icon="solar:logout-2-bold-duotone" />}
-            onPress={handleSignOut}
-          >
-            Sign Out
-          </Button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
