@@ -42,7 +42,7 @@ export const generateClipSuggestionsService = async (
 
   const response = await client.responses.parse({
     model: "gpt-5.1",
-    reasoning: { effort: "medium" },
+    reasoning: { effort: "high" },
     input: [
       {
         role: "user",

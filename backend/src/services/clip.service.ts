@@ -15,24 +15,16 @@ export const createCombinedClipService = async (
 ) => {
   const outDir = path.join(process.cwd(), "output");
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
-
-  // Create temp files array to track all clips
   const tempFiles: string[] = [];
-
-  // Cut the hook clip
   const hookPath = path.join(outDir, "hook_temp.mp4");
   await cutClip(videoPath, hookPath, clipData.hook.start, clipData.hook.end);
   tempFiles.push(hookPath);
-
-  // Cut all main clips
   for (let i = 0; i < clipData.main.length; i++) {
     const mainClip = clipData.main[i];
     const mainPath = path.join(outDir, `main_${i}_temp.mp4`);
     await cutClip(videoPath, mainPath, mainClip.start, mainClip.end);
     tempFiles.push(mainPath);
   }
-
-  // Merge all clips first (without text)
   const mergedPath = path.join(outDir, "merged_temp.mp4");
   await mergeClips(tempFiles, mergedPath);
 

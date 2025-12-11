@@ -15,7 +15,72 @@ const options: swaggerJsdoc.Options = {
       },
     ],
     components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
+        },
+      },
       schemas: {
+        User: {
+          type: "object",
+          properties: {
+            id: {
+              type: "string",
+              description: "User ID",
+            },
+            email: {
+              type: "string",
+              format: "email",
+              description: "User email address",
+            },
+            first_name: {
+              type: "string",
+              description: "User's first name",
+            },
+            last_name: {
+              type: "string",
+              description: "User's last name",
+            },
+            role: {
+              type: "string",
+              description: "User role",
+            },
+          },
+        },
+        Session: {
+          type: "object",
+          properties: {
+            access_token: {
+              type: "string",
+              description: "JWT access token",
+            },
+            refresh_token: {
+              type: "string",
+              description: "JWT refresh token",
+            },
+            expires_at: {
+              type: "number",
+              description: "Token expiration timestamp",
+            },
+          },
+        },
+        AuthResponse: {
+          type: "object",
+          properties: {
+            message: {
+              type: "string",
+              description: "Response message",
+            },
+            user: {
+              $ref: "#/components/schemas/User",
+            },
+            session: {
+              $ref: "#/components/schemas/Session",
+            },
+          },
+        },
         ClipSegment: {
           type: "object",
           required: ["text", "start", "end"],

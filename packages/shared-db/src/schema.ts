@@ -19,6 +19,7 @@ export const userRoleEnum = pgEnum("user_role", ["admin", "user"]);
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
+  supabase_uid: uuid("supabase_uid").notNull().unique(),
   email: varchar("email", { length: 255 }).notNull().unique(),
   first_name: varchar("first_name", { length: 100 }).notNull(),
   last_name: varchar("last_name", { length: 100 }).notNull(),
