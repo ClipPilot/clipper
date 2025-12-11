@@ -164,13 +164,7 @@ export default function LoginForm({
           Sign Up
         </button>
       </p>
-      <div>
-        <Input
-          placeholder="Enter your email"
-          type="email"
-          variant="flat"
-          />
-      </div>
+
     </>
   );
 }

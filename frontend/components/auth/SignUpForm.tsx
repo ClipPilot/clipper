@@ -162,7 +162,7 @@ export default function SignUpForm({
             isSelected={agreedToTerms}
             onValueChange={setAgreedToTerms}
           />
-          <span className="text-xs text-text-secondary leading-relaxed ml-3">
+          <span className="text-xs text-text-secondary leading-relaxed">
             I agree to the{" "}
             <button className="text-accent-400 hover:underline" type="button">
               Terms
