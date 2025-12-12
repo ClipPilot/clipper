@@ -15,6 +15,20 @@
       "when": 1765431543678,
       "tag": "0001_red_lockjaw",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1765522758865,
+      "tag": "0002_abnormal_bushwacker",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1765573224462,
+      "tag": "0003_gigantic_charles_xavier",
+      "breakpoints": true
     }
   ]
 }

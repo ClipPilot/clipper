@@ -55,14 +55,26 @@ export function useAuth() {
     setIsLoading(true);
     setError(null);
     try {
+      // Try to sign out from backend
       await authAPI.signOut();
-      setUser(null);
-      router.push("/auth");
     } catch (err: any) {
-      setError(err.message || "Failed to sign out");
-      throw err;
+      // Log error but continue with local cleanup
+      console.error("Backend signout failed:", err);
+      setError(err.message || "Failed to sign out from server");
     } finally {
+      // Always clear local state and redirect, even if backend call fails
+      setUser(null);
+
+      // Clear all localStorage items related to auth
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("user");
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+        localStorage.removeItem("token_expiry");
+      }
+
       setIsLoading(false);
+      router.push("/auth");
     }
   }, [setUser, router]);
 
@@ -108,4 +120,5 @@ export function useAuth() {
     getMe,
   };
 }
+
 

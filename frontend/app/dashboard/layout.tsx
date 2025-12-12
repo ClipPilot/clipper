@@ -17,8 +17,9 @@ import {
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAtom } from "jotai";
-import { userAtom, selectedWorkspaceAtom } from "@/store/auth";
-import { authAPI } from "@/api/auth";
+import { userAtom, selectedTeamAtom } from "@/store/auth";
+import { useAuth } from "@/hooks/useAuth";
+import { useTeams } from "@/hooks/useTeams";
 import WorkspaceSelector from "@/components/workspace-selector";
 import NotificationsCard from "@/components/notifications/notifications-card";
 
@@ -49,12 +50,6 @@ const sidebarItems: SidebarItem[] = [
   },
 ];
 
-const workspaces = [
-  { key: "personal", label: "Personal Workspace", icon: "solar:user-bold-duotone" },
-  { key: "work", label: "Work Workspace", icon: "solar:buildings-2-bold-duotone" },
-  { key: "team", label: "Team Projects", icon: "solar:users-group-two-rounded-bold-duotone" },
-];
-
 export default function DashboardLayout({
   children,
 }: {
@@ -62,10 +57,24 @@ export default function DashboardLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [user, setUser] = useAtom(userAtom);
-  const [selectedWorkspace, setSelectedWorkspace] = useAtom(selectedWorkspaceAtom);
+  const [user] = useAtom(userAtom);
+  const { signOut: handleSignOut } = useAuth();
+  const [selectedTeam] = useAtom(selectedTeamAtom);
+  const { } = useTeams(); // Initialize teams on mount
   const [sidebarWidth, setSidebarWidth] = useState(256);
   const [isResizing, setIsResizing] = useState(false);
+
+  const getTeamIcon = (role?: string) => {
+    switch (role) {
+      case "owner":
+        return "solar:crown-bold-duotone";
+      case "manager":
+        return "solar:user-check-bold-duotone";
+      case "member":
+      default:
+        return "solar:user-bold-duotone";
+    }
+  };
 
   const handleMouseDown = () => {
     setIsResizing(true);
@@ -83,16 +92,6 @@ export default function DashboardLayout({
     setIsResizing(false);
   };
 
-  const handleSignOut = async () => {
-    try {
-      await authAPI.signOut();
-      setUser(null);
-      router.push("/auth");
-    } catch (error) {
-      console.error("Failed to sign out:", error);
-    }
-  };
-
   const getInitials = (firstName?: string, lastName?: string, email?: string) => {
     if (firstName && lastName) {
       return `${firstName[0]}${lastName[0]}`.toUpperCase();
@@ -102,8 +101,6 @@ export default function DashboardLayout({
     }
     return "U";
   };
-
-  const currentWorkspace = workspaces.find(w => w.key === selectedWorkspace);
 
   useEffect(() => {
     if (isResizing) {
@@ -158,10 +155,10 @@ export default function DashboardLayout({
               >
                 <div className="flex items-center gap-3 w-full">
                   <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-accent-400 text-white">
-                    <Icon icon={currentWorkspace?.icon || "solar:buildings-2-bold-duotone"} width={16} />
+                    <Icon icon={getTeamIcon(selectedTeam?.role)} width={16} />
                   </div>
                   <span className="text-sm font-medium text-text-primary flex-1 text-left truncate">
-                    {currentWorkspace?.label || "Select Workspace"}
+                    {selectedTeam?.name || "Select Team"}
                   </span>
                   <Icon icon="solar:alt-arrow-down-bold-duotone" className="text-text-tertiary" width={16} />
                 </div>

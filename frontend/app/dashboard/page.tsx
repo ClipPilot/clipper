@@ -13,15 +13,15 @@ export default function DashboardPage() {
   const [user, setUser] = useAtom(userAtom);
 
   useEffect(() => {
-    // Check if user is authenticated
     if (!user) {
-      const accessToken = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+      const accessToken =
+        typeof window !== "undefined"
+          ? localStorage.getItem("access_token")
+          : null;
       if (!accessToken) {
         router.push("/auth");
         return;
       }
-
-      // Try to fetch user data
       authAPI
         .getMe()
         .then((userData) => {
@@ -47,7 +47,10 @@ export default function DashboardPage() {
     return (
       <div className="flex h-screen items-center justify-center bg-surface-dark">
         <div className="flex flex-col items-center gap-4">
-          <Icon icon="solar:loading-circle-bold" className="text-4xl animate-spin text-accent-400" />
+          <Icon
+            icon="solar:loading-circle-bold"
+            className="text-4xl animate-spin text-accent-400"
+          />
           <p className="text-text-secondary">Loading...</p>
         </div>
       </div>
@@ -59,7 +62,9 @@ export default function DashboardPage() {
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-text-primary mb-2">Dashboard</h1>
+            <h1 className="text-3xl font-bold text-text-primary mb-2">
+              Dashboard
+            </h1>
             <p className="text-text-secondary">Welcome back, {user.email}</p>
           </div>
         </div>
@@ -67,7 +72,10 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card className="bg-surface-base border border-border-accent hover:bg-surface-elevated transition-colors">
             <CardBody className="flex flex-col items-center justify-center p-6">
-              <Icon icon="solar:video-library-bold-duotone" className="text-5xl text-accent-400 mb-3" />
+              <Icon
+                icon="solar:video-library-bold-duotone"
+                className="text-5xl text-accent-400 mb-3"
+              />
               <p className="text-2xl font-bold text-text-primary">0</p>
               <p className="text-text-secondary">Total Clips</p>
             </CardBody>
@@ -75,7 +83,10 @@ export default function DashboardPage() {
 
           <Card className="bg-surface-base border border-border-accent hover:bg-surface-elevated transition-colors">
             <CardBody className="flex flex-col items-center justify-center p-6">
-              <Icon icon="solar:folder-bold-duotone" className="text-5xl text-accent-400 mb-3" />
+              <Icon
+                icon="solar:folder-bold-duotone"
+                className="text-5xl text-accent-400 mb-3"
+              />
               <p className="text-2xl font-bold text-text-primary">0</p>
               <p className="text-text-secondary">Collections</p>
             </CardBody>
@@ -83,7 +94,10 @@ export default function DashboardPage() {
 
           <Card className="bg-surface-base border border-border-accent hover:bg-surface-elevated transition-colors">
             <CardBody className="flex flex-col items-center justify-center p-6">
-              <Icon icon="solar:share-bold-duotone" className="text-5xl text-accent-400 mb-3" />
+              <Icon
+                icon="solar:share-bold-duotone"
+                className="text-5xl text-accent-400 mb-3"
+              />
               <p className="text-2xl font-bold text-text-primary">0</p>
               <p className="text-text-secondary">Shared</p>
             </CardBody>
@@ -93,16 +107,25 @@ export default function DashboardPage() {
         <Card className="bg-surface-base border border-border-base">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <Icon icon="solar:history-bold-duotone" className="text-2xl text-accent-400" />
-              <h2 className="text-xl font-bold text-text-primary">Recent Activity</h2>
+              <Icon
+                icon="solar:history-bold-duotone"
+                className="text-2xl text-accent-400"
+              />
+              <h2 className="text-xl font-bold text-text-primary">
+                Recent Activity
+              </h2>
             </div>
           </CardHeader>
           <Divider className="bg-border-base" />
           <CardBody>
             <div className="flex flex-col items-center justify-center py-12">
-              <Icon icon="solar:inbox-bold-duotone" className="text-6xl text-text-tertiary mb-4" />
+              <Icon
+                icon="solar:inbox-bold-duotone"
+                className="text-6xl text-text-tertiary mb-4"
+              />
               <p className="text-text-secondary text-center">
-                No activity yet. Start clipping to see your recent activity here!
+                No activity yet. Start clipping to see your recent activity
+                here!
               </p>
             </div>
           </CardBody>

@@ -38,7 +38,11 @@ export default function AuthPage() {
       if (type === "recovery" && accessToken) {
         setRecoveryToken(accessToken);
         setIsResetPassword(true);
-        window.history.replaceState({}, document.title, window.location.pathname);
+        window.history.replaceState(
+          {},
+          document.title,
+          window.location.pathname
+        );
       }
     }
   }, []);
@@ -58,7 +62,12 @@ export default function AuthPage() {
     }
   };
 
-  const handleSignUp = async (email: string, password: string, firstName: string, lastName: string) => {
+  const handleSignUp = async (
+    email: string,
+    password: string,
+    firstName: string,
+    lastName: string
+  ) => {
     setError("");
     setIsLoading(true);
 
@@ -88,7 +97,10 @@ export default function AuthPage() {
     }
   };
 
-  const handleResetPassword = async (newPassword: string, confirmPassword: string) => {
+  const handleResetPassword = async (
+    newPassword: string,
+    confirmPassword: string
+  ) => {
     setError("");
 
     if (newPassword !== confirmPassword) {
@@ -203,7 +215,8 @@ export default function AuthPage() {
       <div className="absolute bottom-10 left-10 hidden md:block">
         <p className="max-w-xl text-white/60">
           <span className="font-medium">"</span>
-          The future of content management is here. Clipster makes it seamless to organize and share your digital world.
+          The future of content management is here. Clipster makes it seamless
+          to organize and share your digital world.
           <span className="font-medium">"</span>
         </p>
       </div>

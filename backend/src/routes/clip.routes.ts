@@ -93,6 +93,15 @@ const handleMulterError = (
  *               customPrompt:
  *                 type: string
  *                 description: Optional custom instructions for the AI (e.g., "Focus on funny moments with the dog" or "Highlight the product features")
+ *               textPrompt:
+ *                 type: string
+ *                 description: Optional text prompt specifying what kind of clips to find (e.g., "moments about the new feature" or "funny reactions")
+ *               numberOfVideos:
+ *                 type: integer
+ *                 default: 1
+ *                 minimum: 1
+ *                 maximum: 5
+ *                 description: Number of different video variations to generate (each with unique approaches and styles)
  *               customText:
  *                 type: string
  *                 description: Optional text overlay to display on the video (e.g., "🔥 MUST WATCH 🔥", "NEW PRODUCT ALERT", "WAIT FOR IT...")
@@ -126,6 +135,14 @@ const handleMulterError = (
  *                 promptType: business
  *                 customText: "NEW PRODUCT ALERT 🚀"
  *                 textPosition: bottom
+ *             multiple_videos_example:
+ *               summary: Generate Multiple Video Variations
+ *               value:
+ *                 video: (binary)
+ *                 promptType: viral
+ *                 numberOfVideos: 3
+ *                 textPrompt: "focus on funny moments and epic fails"
+ *                 length: 30
  *     responses:
  *       200:
  *         description: Successfully generated video clip
@@ -134,12 +151,24 @@ const handleMulterError = (
  *             schema:
  *               type: object
  *               properties:
- *                 clipPath:
- *                   type: string
- *                   description: Local file path to the generated clip
- *                 clipSuggestions:
- *                   type: object
- *                   description: AI-generated clip suggestions with timestamps
+ *                 videos:
+ *                   type: array
+ *                   description: Array of generated video clips (one or more based on numberOfVideos parameter)
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       clipPath:
+ *                         type: string
+ *                         description: Local file path to the generated clip
+ *                       clipSuggestions:
+ *                         type: object
+ *                         description: AI-generated clip suggestions with timestamps
+ *                       finalMessage:
+ *                         type: string
+ *                         description: AI-generated message explaining what makes this clip engaging
+ *                       evalScore:
+ *                         type: number
+ *                         description: Score from 0-100 rating the viral potential and quality of this clip
  *                 parameters:
  *                   type: object
  *                   properties:
@@ -149,21 +178,28 @@ const handleMulterError = (
  *                       type: integer
  *                     promptType:
  *                       type: string
+ *                     numberOfVideos:
+ *                       type: integer
  *             example:
- *               clipPath: "/output/combined.mp4"
- *               clipSuggestions:
- *                 hook:
- *                   start: 45.2
- *                   end: 51.2
- *                   text: "This is the most insane feature I've ever seen!"
- *                 main:
- *                   - start: 12.5
- *                     end: 25.8
- *                     text: "So here's how it works..."
+ *               videos:
+ *                 - clipPath: "/output/combined_0.mp4"
+ *                   clipSuggestions:
+ *                     hook:
+ *                       start: 45.2
+ *                       end: 51.2
+ *                       text: "This is the most insane feature I've ever seen!"
+ *                     main:
+ *                       - start: 12.5
+ *                         end: 25.8
+ *                         text: "So here's how it works..."
+ *                     combined_script: "Full script of the combined clip"
+ *                   finalMessage: "This clip features an emotionally charged hook followed by a clear product demonstration that maintains viewer engagement throughout."
+ *                   evalScore: 85
  *               parameters:
  *                 length: 40
  *                 hookLength: 6
  *                 promptType: business
+ *                 numberOfVideos: 1
  *       400:
  *         description: Bad request - invalid parameters or missing video
  *         content:

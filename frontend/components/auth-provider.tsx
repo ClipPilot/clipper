@@ -9,7 +9,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const setUser = useSetAtom(userAtom);
 
   useEffect(() => {
-    // Check if we have a valid session on mount
     const initAuth = async () => {
       const token = authAPI.isAuthenticated();
 
@@ -18,8 +17,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const userData = await authAPI.getMe();
           setUser(userData);
         } catch (error) {
-          // Token is invalid or expired, clear it
           console.error("Failed to restore session:", error);
+
+          if (typeof window !== "undefined") {
+            localStorage.removeItem("access_token");
+            localStorage.removeItem("refresh_token");
+            localStorage.removeItem("token_expiry");
+            localStorage.removeItem("user");
+            localStorage.removeItem("userTeams");
+            localStorage.removeItem("selectedTeam");
+          }
+
           setUser(null);
         }
       }
@@ -27,17 +35,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     initAuth();
 
-    // Set up periodic token refresh check (every 4 minutes)
     const refreshInterval = setInterval(async () => {
       if (authAPI.isAuthenticated()) {
         try {
-          await authAPI.getMe(); // This will automatically refresh if needed
+          await authAPI.getMe();
         } catch (error) {
           console.error("Failed to refresh session:", error);
+
+          if (typeof window !== "undefined") {
+            localStorage.removeItem("access_token");
+            localStorage.removeItem("refresh_token");
+            localStorage.removeItem("token_expiry");
+            localStorage.removeItem("user");
+            localStorage.removeItem("userTeams");
+            localStorage.removeItem("selectedTeam");
+          }
+
           setUser(null);
         }
       }
-    }, 4 * 60 * 1000); // 4 minutes
+    }, 4 * 60 * 1000);
 
     return () => clearInterval(refreshInterval);
   }, [setUser]);

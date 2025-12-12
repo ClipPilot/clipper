@@ -11,25 +11,30 @@ export interface ClipServiceOptions {
 export const createCombinedClipService = async (
   videoPath: string,
   clipData: ClipSuggestions,
-  options: ClipServiceOptions = {}
+  options: ClipServiceOptions = {},
+  videoIndex: number = 0
 ) => {
   const outDir = path.join(process.cwd(), "output");
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
   const tempFiles: string[] = [];
-  const hookPath = path.join(outDir, "hook_temp.mp4");
+
+  // Use videoIndex in filenames for uniqueness when generating multiple videos
+  const hookPath = path.join(outDir, `hook_${videoIndex}_temp.mp4`);
   await cutClip(videoPath, hookPath, clipData.hook.start, clipData.hook.end);
   tempFiles.push(hookPath);
+
   for (let i = 0; i < clipData.main.length; i++) {
     const mainClip = clipData.main[i];
-    const mainPath = path.join(outDir, `main_${i}_temp.mp4`);
+    const mainPath = path.join(outDir, `main_${videoIndex}_${i}_temp.mp4`);
     await cutClip(videoPath, mainPath, mainClip.start, mainClip.end);
     tempFiles.push(mainPath);
   }
-  const mergedPath = path.join(outDir, "merged_temp.mp4");
+
+  const mergedPath = path.join(outDir, `merged_${videoIndex}_temp.mp4`);
   await mergeClips(tempFiles, mergedPath);
 
   // Add text overlay if provided
-  const finalPath = path.join(outDir, "combined.mp4");
+  const finalPath = path.join(outDir, `combined_${videoIndex}.mp4`);
 
   if (options.customText) {
     const position = options.textPosition || "top";
@@ -48,4 +53,20 @@ export const createCombinedClipService = async (
   });
 
   return finalPath;
+};
+
+export const createMultipleCombinedClipsService = async (
+  videoPath: string,
+  clipDataArray: ClipSuggestions[],
+  options: ClipServiceOptions = {}
+): Promise<string[]> => {
+  const clipPaths: string[] = [];
+
+  for (let i = 0; i < clipDataArray.length; i++) {
+    console.log(`Creating clip ${i + 1} of ${clipDataArray.length}...`);
+    const clipPath = await createCombinedClipService(videoPath, clipDataArray[i], options, i);
+    clipPaths.push(clipPath);
+  }
+
+  return clipPaths;
 };

@@ -1,6 +1,6 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { ENV } from "../config/env";
-import { users } from "@clipper/shared-db/src/schema";
+import { users, teams, teamMembers, usageStats } from "@clipper/shared-db/src/schema";
 import { eq } from "drizzle-orm";
 import { db } from "../db";
 
@@ -45,10 +45,41 @@ class AuthService {
       })
       .returning();
 
+    // Create default personal team for the user
+    const teamName = `${firstName}'s Workspace`;
+    const [team] = await db
+      .insert(teams)
+      .values({
+        name: teamName,
+        type: "personal",
+      })
+      .returning();
+
+    // Add user as owner of the team
+    await db.insert(teamMembers).values({
+      team_id: team.id,
+      user_id: user.id,
+      role: "owner",
+    });
+
+    // Create initial usage stats for the team
+    const resetsDate = new Date();
+    resetsDate.setDate(resetsDate.getDate() + 30); // Set reset date to 30 days from now
+
+    await db.insert(usageStats).values({
+      team_id: team.id,
+      date: new Date(),
+      clips_created: 0,
+      limit: 3,
+      resets_date: resetsDate,
+      rollover: false,
+    });
+
     return {
       user: authData.user,
       session: null, // Don't return session until email is confirmed
       dbUser: user,
+      defaultTeam: team,
       emailConfirmationRequired: true,
     };
   }
@@ -75,7 +106,7 @@ class AuthService {
     const [dbUser] = await db
       .select()
       .from(users)
-      .where(eq(users.email, email))
+      .where(eq(users.supabase_uid, data.user.id))
       .limit(1);
 
     return {
@@ -109,7 +140,7 @@ class AuthService {
     const [dbUser] = await db
       .select()
       .from(users)
-      .where(eq(users.email, data.user.email!))
+      .where(eq(users.supabase_uid, data.user.id))
       .limit(1);
 
     return {
@@ -183,7 +214,7 @@ class AuthService {
     const [dbUser] = await db
       .select()
       .from(users)
-      .where(eq(users.email, user.email!))
+      .where(eq(users.supabase_uid, user.id))
       .limit(1);
 
     return {

@@ -5,7 +5,7 @@ import {
   generateClipSuggestionsService,
   ClipGenerationOptions,
 } from "../services/aiSuggestions.service";
-import { createCombinedClipService } from "../services/clip.service";
+import { createMultipleCombinedClipsService } from "../services/clip.service";
 
 export const clipVideoController = async (req: Request, res: Response) => {
   let uploadedFilePath: string | undefined;
@@ -25,6 +25,10 @@ export const clipVideoController = async (req: Request, res: Response) => {
       : undefined;
     const promptType = req.body.promptType as "business" | "viral" | undefined;
     const customPrompt = req.body.customPrompt as string | undefined;
+    const textPrompt = req.body.textPrompt as string | undefined;
+    const numberOfVideos = req.body.numberOfVideos
+      ? parseInt(req.body.numberOfVideos)
+      : undefined;
     const customText = req.body.customText as string | undefined;
     const textPosition = req.body.textPosition as "top" | "bottom" | undefined;
 
@@ -53,6 +57,12 @@ export const clipVideoController = async (req: Request, res: Response) => {
       });
     }
 
+    if (numberOfVideos && (numberOfVideos < 1 || numberOfVideos > 5)) {
+      return res.status(400).json({
+        error: "Number of videos must be between 1 and 5",
+      });
+    }
+
     console.log("Transcribing video...");
     const transcriptionData = await transcribeVideoService(uploadedFilePath);
 
@@ -66,23 +76,25 @@ export const clipVideoController = async (req: Request, res: Response) => {
       hookLength,
       promptType,
       customPrompt,
+      textPrompt,
+      numberOfVideos,
     };
 
-    const clipSuggestions = await generateClipSuggestionsService(
+    const clipSuggestionsArray = await generateClipSuggestionsService(
       transcriptionData,
       options
     );
 
-    if (!clipSuggestions) {
+    if (!clipSuggestionsArray || clipSuggestionsArray.length === 0) {
       return res
         .status(500)
         .json({ error: "Failed to generate clip suggestions" });
     }
 
-    console.log("Creating combined clip...");
-    const combinedClipPath = await createCombinedClipService(
+    console.log(`Creating ${clipSuggestionsArray.length} combined clip(s)...`);
+    const combinedClipPaths = await createMultipleCombinedClipsService(
       uploadedFilePath,
-      clipSuggestions,
+      clipSuggestionsArray,
       {
         customText,
         textPosition,
@@ -94,13 +106,21 @@ export const clipVideoController = async (req: Request, res: Response) => {
       fs.unlinkSync(uploadedFilePath);
     }
 
+    // Build response with multiple videos
+    const videos = clipSuggestionsArray.map((suggestions, index) => ({
+      clipPath: combinedClipPaths[index],
+      clipSuggestions: suggestions,
+      finalMessage: suggestions.finalMessage,
+      evalScore: suggestions.evalScore,
+    }));
+
     res.json({
-      clipPath: combinedClipPath,
-      clipSuggestions,
+      videos,
       parameters: {
         length: options.length || 40,
         hookLength: options.hookLength || 6,
         promptType: options.promptType || "business",
+        numberOfVideos: options.numberOfVideos || 1,
       },
     });
   } catch (err) {

@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import { authService } from "../services/auth.service";
-
 export class AuthController {
   async signUp(req: Request, res: Response) {
     try {
@@ -8,11 +7,17 @@ export class AuthController {
 
       if (!email || !password || !firstName || !lastName) {
         return res.status(400).json({
-          error: "Missing required fields: email, password, firstName, lastName",
+          error:
+            "Missing required fields: email, password, firstName, lastName",
         });
       }
 
-      const result = await authService.signUp(email, password, firstName, lastName);
+      const result = await authService.signUp(
+        email,
+        password,
+        firstName,
+        lastName
+      );
 
       return res.status(201).json({
         message: "User created successfully",
@@ -119,7 +124,8 @@ export class AuthController {
     } catch (error) {
       console.error("Refresh session error:", error);
       return res.status(401).json({
-        error: error instanceof Error ? error.message : "Failed to refresh session",
+        error:
+          error instanceof Error ? error.message : "Failed to refresh session",
       });
     }
   }
@@ -140,7 +146,8 @@ export class AuthController {
     } catch (error) {
       console.error("Reset password error:", error);
       return res.status(400).json({
-        error: error instanceof Error ? error.message : "Failed to send reset email",
+        error:
+          error instanceof Error ? error.message : "Failed to send reset email",
       });
     }
   }
@@ -174,7 +181,8 @@ export class AuthController {
     } catch (error) {
       console.error("Update password error:", error);
       return res.status(400).json({
-        error: error instanceof Error ? error.message : "Failed to update password",
+        error:
+          error instanceof Error ? error.message : "Failed to update password",
       });
     }
   }

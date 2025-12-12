@@ -7,6 +7,8 @@ export interface PromptConfig {
   hookLength: number;
   transcriptText: string;
   transcriptObject: string;
+  numberOfVideos?: number;
+  userTextPrompt?: string;
 }
 
 /**
@@ -14,7 +16,7 @@ export interface PromptConfig {
  * Focuses on clear product explanation with engaging hook and closing
  */
 export const generateBusinessPrompt = (config: PromptConfig): string => {
-  const { length, hookLength, transcriptText, transcriptObject } = config;
+  const { length, hookLength, transcriptText, transcriptObject, numberOfVideos = 1, userTextPrompt } = config;
   const mainLength = length - hookLength;
 
   return `
@@ -22,6 +24,10 @@ You are an expert short-form video editor. You are given the transcript of a raw
 identify and put together and convert this video into a couple clips, and put them together into a high retention
 short form video suitable for Tiktok. As you put these clips together, make sure the flow of events from the
 transcript cut to cut makes some sense.
+
+${userTextPrompt ? `USER SPECIFIC REQUEST: The user wants you to focus on: "${userTextPrompt}". Try to find clips that align with this request while maintaining high engagement and quality.` : ''}
+
+${numberOfVideos > 1 ? `You need to generate ${numberOfVideos} different video variations. Each should have a unique approach, different hooks, or different angles while all maintaining high quality.` : ''}
 
 The final output video should be about ${length} seconds long (can be a bit less and more)
 
@@ -64,6 +70,8 @@ Given the transcript, follow all rules above and return:
 - When making the Product demo try to make it one clip (two if necessary), same with context (no clips if not needed, one or two max.)
 - The clips do not need to be in order. The hook for example can be later in the video if it makes sense, but the hook needs to be the most
 engaging and eye catching part.
+- Include a finalMessage explaining what makes this clip selection compelling and why viewers will watch it
+- Include an evalScore (0-100) rating the overall viral potential, engagement quality, and how well it follows the user's request
 
 Here is the full transcript text: ${transcriptText}
 Here is the transcript object: ${transcriptObject}
@@ -75,13 +83,17 @@ Here is the transcript object: ${transcriptObject}
  * Focuses on funny moments, reactions, and engaging content from streams or creator videos
  */
 export const generateViralPrompt = (config: PromptConfig): string => {
-  const { length, hookLength, transcriptText, transcriptObject } = config;
+  const { length, hookLength, transcriptText, transcriptObject, numberOfVideos = 1, userTextPrompt } = config;
   const mainLength = length - hookLength;
 
   return `
 You are an expert viral short-form video editor specializing in gaming streams, vlogs, and creator content. You are given
 the transcript of a raw long form video. Your goal is to identify the most engaging, funny, or attention-grabbing moments
 and combine them into a viral-worthy clip suitable for TikTok, YouTube Shorts, or Instagram Reels.
+
+${userTextPrompt ? `USER SPECIFIC REQUEST: The user wants you to focus on: "${userTextPrompt}". Try to find clips that align with this request while maintaining high engagement and viral potential.` : ''}
+
+${numberOfVideos > 1 ? `You need to generate ${numberOfVideos} different video variations. Each should have a unique approach, different moments, or different angles while all maintaining viral potential.` : ''}
 
 The final output video should be about ${length} seconds long (can be a bit less or more).
 
@@ -100,12 +112,13 @@ Your Goals:
    - Must come directly from transcript text
    - NO stage directions, camera cues, or meta commentary
 
-2. Select the remaining clips (${mainLength} seconds total) that:
-   - Build on the hook or provide hilarious context
-   - Feature the best reactions, funniest moments, or most engaging dialogue
-   - Focus on the main character/streamer's personality and energy
+2. Select the remaining content (${mainLength} seconds total):
+   - YOU HAVE FLEXIBILITY: You can use just ONE single segment if it's viral-worthy enough on its own
+   - OR combine 2-3 clips if that creates better flow and maintains energy
+   - Use your judgment - if one moment is perfect and self-contained, don't force multiple clips
+   - If combining clips enhances the story or comedic timing, go for it
+   - Content should: build on the hook, feature best reactions, show personality, maintain HIGH energy
    - Can include: epic wins/fails, funny banter, unexpected reactions, chaotic moments
-   - Keep the energy HIGH and pacing FAST
    - End with a strong punchline, reaction, or satisfying conclusion
 
 3. VIRAL CONTENT PRIORITIES:
@@ -128,16 +141,24 @@ Notes:
 - Prioritize moments with high energy and strong emotional reactions
 - The hook should be the MOST viral-worthy moment, even if it comes later in the original video
 - Combined length should be around ${length} seconds (hook ~${hookLength}s, main ~${mainLength}s)
-- Use 2-4 clips maximum to maintain fast pacing
-- Clips don't need to be chronological if rearranging creates better comedic timing
+- CLIP FLEXIBILITY: Use 1-3 clips total for the main content - whatever works best
+  * 1 clip = One perfect, self-contained viral moment
+  * 2-3 clips = When combining creates better storytelling or comedic timing
+  * Don't force multiple clips if one segment is already fire
+- Clips don't need to be chronological if rearranging creates better comedic timing or impact
 
 Your Task:
 Find the most viral-worthy moments and create a clip with:
 - An absolutely killer hook that stops the scroll
-- Follow-up moments that deliver on the hook's promise
+- Main content: Use YOUR BEST JUDGMENT on clip count
+  * If ONE segment after the hook is pure gold and viral on its own → use it!
+  * If combining 2-3 segments creates better pacing/story → do that!
+  * Mix it up between approaches for variety when generating multiple videos
 - Maximum entertainment value and shareability
 - Natural flow that keeps viewers engaged until the end
 - Focus on the creator's personality and what makes them unique
+- Include a finalMessage explaining what makes this clip viral-worthy and why viewers will share it
+- Include an evalScore (0-100) rating the viral potential, entertainment value, and how well it follows the user's request
 
 Here is the full transcript text: ${transcriptText}
 Here is the transcript object: ${transcriptObject}

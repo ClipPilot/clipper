@@ -10,6 +10,16 @@ export interface User {
   lastName?: string;
 }
 
+export interface Team {
+  id: number;
+  name: string;
+  type: "personal" | "business" | "enterprise";
+  role: "owner" | "manager" | "member";
+  teamSubscriptionId?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
@@ -32,5 +42,11 @@ export const authStateAtom = atom<AuthState>((get) => ({
   isLoading: get(isLoadingAtom),
 }));
 
+// Team state
+export const userTeamsAtom = atomWithStorage<Team[]>("userTeams", []);
+export const selectedTeamAtom = atomWithStorage<Team | null>("selectedTeam", null);
+
+// Legacy workspace atom (can be removed later)
 export const selectedWorkspaceAtom = atomWithStorage<string>("selectedWorkspace", "personal");
+
 

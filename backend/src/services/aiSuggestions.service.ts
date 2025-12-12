@@ -2,7 +2,7 @@ import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import { ENV } from "../config/env";
 import { SyncPrerecordedResponse } from "@deepgram/sdk";
-import { ClipSuggestionsSchema } from "../types/ai.types";
+import { ClipSuggestionsSchema, MultipleClipSuggestionsSchema, ClipSuggestions } from "../types/ai.types";
 import { generatePrompt } from "../config/prompts";
 
 const client = new OpenAI({ apiKey: ENV.OPENAI_API_KEY });
@@ -12,16 +12,19 @@ export interface ClipGenerationOptions {
   hookLength?: number;
   promptType?: "business" | "viral";
   customPrompt?: string;
+  textPrompt?: string;
+  numberOfVideos?: number;
 }
 
 export const generateClipSuggestionsService = async (
   transcription: SyncPrerecordedResponse,
   options: ClipGenerationOptions = {}
-) => {
+): Promise<ClipSuggestions[]> => {
   // Default values
   const length = options.length || 40;
   const hookLength = options.hookLength || 6;
   const promptType = options.promptType || "business";
+  const numberOfVideos = options.numberOfVideos || 1;
 
   const transcriptText =
     transcription.results.channels[0].alternatives[0].transcript;
@@ -36,23 +39,45 @@ export const generateClipSuggestionsService = async (
       hookLength,
       transcriptText,
       transcriptObject,
+      numberOfVideos,
+      userTextPrompt: options.textPrompt,
     },
     options.customPrompt
   );
 
-  const response = await client.responses.parse({
-    model: "gpt-5.1",
-    reasoning: { effort: "high" },
-    input: [
-      {
-        role: "user",
-        content: prompt,
+  // If requesting multiple videos, use the MultipleClipSuggestionsSchema
+  if (numberOfVideos > 1) {
+    const response = await client.responses.parse({
+      model: "gpt-5.1",
+      reasoning: { effort: "high" },
+      input: [
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      text: {
+        format: zodTextFormat(MultipleClipSuggestionsSchema, "multiple_clip_suggestions"),
       },
-    ],
-    text: {
-      format: zodTextFormat(ClipSuggestionsSchema, "clip_suggestions"),
-    },
-  });
-  console.log("AI Clip Suggestions Response:", response.output_parsed);
-  return response.output_parsed;
+    });
+    console.log("AI Multiple Clip Suggestions Response:", response.output_parsed);
+    return response.output_parsed?.videos || [];
+  } else {
+    // Single video - use original schema
+    const response = await client.responses.parse({
+      model: "gpt-5.1",
+      reasoning: { effort: "high" },
+      input: [
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      text: {
+        format: zodTextFormat(ClipSuggestionsSchema, "clip_suggestions"),
+      },
+    });
+    console.log("AI Clip Suggestions Response:", response.output_parsed);
+    return response.output_parsed ? [response.output_parsed] : [];
+  }
 };
