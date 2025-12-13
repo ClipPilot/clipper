@@ -1,6 +1,6 @@
 import ffmpeg from "fluent-ffmpeg";
 import fs from "fs";
-import { Canvas } from "skia-canvas";
+import puppeteer from "puppeteer";
 import path from "path";
 
 export const cutClip = (input: string, output: string, start: number, end: number) => {
@@ -95,32 +95,83 @@ export const mergeClips = async (clips: string[], outputPath: string) => {
 };
 
 
-const generateTextImage = async (text: string, outputPath: string): Promise<void> => {
-  const canvas = new Canvas(1920, 250);
-  const ctx = canvas.getContext("2d");
+const generateTextImage = async (
+  text: string,
+  outputPath: string,
+  fillColor: string = "#FFFFFF",
+  strokeColor: string = "#000000"
+): Promise<void> => {
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  });
 
-  ctx.clearRect(0, 0, 1920, 250);
+  try {
+    const page = await browser.newPage();
 
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.font = "bold 100px 'Helvetica Neue', 'Arial'";
+    await page.setViewport({
+      width: 1080,
+      height: 400,
+      deviceScaleFactor: 2
+    });
 
-  const centerX = 1920 / 2;
-  const centerY = 250 / 2;
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <link rel="preconnect" href="https://fonts.googleapis.com">
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+          <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@900&display=swap" rel="stylesheet">
+          <style>
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            body {
+              width: 1080px;
+              height: 400px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              background: transparent;
+              padding: 30px 50px;
+            }
+            .text {
+              font-size: 52px;
+              font-weight: 900;
+              font-family: 'Montserrat', 'The Bold Font', -apple-system, BlinkMacSystemFont, sans-serif;
+              color: ${fillColor};
+              text-align: center;
+              -webkit-text-stroke: 6px ${strokeColor};
+              paint-order: stroke fill;
+              line-height: 1.25;
+              letter-spacing: -0.01em;
+              word-wrap: break-word;
+              overflow-wrap: break-word;
+              max-width: 100%;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="text">${text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+        </body>
+      </html>
+    `;
 
-  ctx.strokeStyle = "#000000";
-  ctx.lineWidth = 12;
-  ctx.lineJoin = "round";
-  ctx.miterLimit = 2;
-  ctx.strokeText(text, centerX, centerY);
+    await page.setContent(htmlContent);
 
-  ctx.fillStyle = "#FFFFFF";
-  ctx.fillText(text, centerX, centerY);
+    await page.screenshot({
+      path: outputPath,
+      type: 'png',
+      omitBackground: true
+    });
 
-  await canvas.toFile(outputPath, { format: "png" });
-
-  if (!fs.existsSync(outputPath)) {
-    throw new Error(`Failed to create text image at ${outputPath}`);
+    if (!fs.existsSync(outputPath)) {
+      throw new Error(`Failed to create text image at ${outputPath}`);
+    }
+  } finally {
+    await browser.close();
   }
 };
 
@@ -128,7 +179,9 @@ export const addTextOverlay = async (
   inputPath: string,
   outputPath: string,
   text: string,
-  position: "top" | "center" | "bottom" = "top"
+  position: "top" | "center" | "bottom" = "top",
+  fillColor: string = "#FFFFFF",
+  strokeColor: string = "#000000"
 ): Promise<string> => {
   const textImagePath = path.join(
     path.dirname(outputPath),
@@ -137,7 +190,7 @@ export const addTextOverlay = async (
 
   try {
     console.log("Generating text image with:", text);
-    await generateTextImage(text, textImagePath);
+    await generateTextImage(text, textImagePath, fillColor, strokeColor);
     console.log("Text image created at:", textImagePath);
 
     if (!fs.existsSync(textImagePath)) {
@@ -146,7 +199,7 @@ export const addTextOverlay = async (
 
     const yPosition =
       position === "top"
-        ? "H*0.1"
+        ? "H*0.05"
         : position === "center"
         ? "(H-h)/2"
         : "H-h-H*0.1";

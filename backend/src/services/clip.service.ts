@@ -37,7 +37,9 @@ export const createCombinedClipService = async (
   if (options.customText) {
     const position = options.textPosition || "top";
     const mappedPosition = position === "middle" ? "center" : position;
-    await addTextOverlay(mergedPath, finalPath, options.customText, mappedPosition);
+    const fillColor = options.textColor || "#FFFFFF";
+    const strokeColor = "#000000";
+    await addTextOverlay(mergedPath, finalPath, options.customText, mappedPosition, fillColor, strokeColor);
   } else {
     fs.copyFileSync(mergedPath, finalPath);
   }
