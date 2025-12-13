@@ -21,7 +21,12 @@ export class AuthController {
 
       return res.status(201).json({
         message: "User created successfully",
-        user: result.dbUser,
+        user: {
+          id: result.dbUser.id.toString(),
+          email: result.dbUser.email,
+          firstName: result.dbUser.first_name,
+          lastName: result.dbUser.last_name,
+        },
         session: result.session,
       });
     } catch (error) {
@@ -46,7 +51,12 @@ export class AuthController {
 
       return res.status(200).json({
         message: "Signed in successfully",
-        user: result.dbUser,
+        user: {
+          id: result.dbUser.id.toString(),
+          email: result.dbUser.email,
+          firstName: result.dbUser.first_name,
+          lastName: result.dbUser.last_name,
+        },
         session: result.session,
       });
     } catch (error) {
@@ -95,7 +105,12 @@ export class AuthController {
       const result = await authService.getUser(token);
 
       return res.status(200).json({
-        user: result.dbUser,
+        user: {
+          id: result.dbUser.id.toString(),
+          email: result.dbUser.email,
+          firstName: result.dbUser.first_name,
+          lastName: result.dbUser.last_name,
+        },
       });
     } catch (error) {
       console.error("Get user error:", error);
@@ -176,7 +191,12 @@ export class AuthController {
       return res.status(200).json({
         message: "Password updated successfully",
         session: result.session,
-        user: result.dbUser,
+        user: {
+          id: result.dbUser.id.toString(),
+          email: result.dbUser.email,
+          firstName: result.dbUser.first_name,
+          lastName: result.dbUser.last_name,
+        },
       });
     } catch (error) {
       console.error("Update password error:", error);

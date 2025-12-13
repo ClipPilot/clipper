@@ -37,10 +37,10 @@ const sidebarItems: SidebarItem[] = [
     href: "/dashboard/clips",
   },
   {
-    key: "upload",
-    title: "Upload",
-    icon: "solar:upload-bold-duotone",
-    href: "/dashboard/upload",
+    key: "create-clip",
+    title: "Create Clip",
+    icon: "solar:scissors-bold-duotone",
+    href: "/dashboard/create-clip",
   },
   {
     key: "settings",

@@ -15,7 +15,11 @@ import {
 // Enums
 export const userRoleEnum = pgEnum("user_role", ["admin", "user"]);
 export const teamRoleEnum = pgEnum("team_role", ["owner", "member", "manager"]);
-export const teamTypeEnum = pgEnum("team_type", ["personal", "business", "enterprise"]);
+export const teamTypeEnum = pgEnum("team_type", [
+  "personal",
+  "business",
+  "enterprise",
+]);
 // Tables
 
 export const users = pgTable("users", {
@@ -95,3 +99,57 @@ export const subscriptions = pgTable("subscriptions", {
   created_at: timestamp("created_at").notNull().defaultNow(),
   updated_at: timestamp("updated_at").notNull().defaultNow(),
 });
+
+export const clips = pgTable(
+  "clips",
+  {
+    id: serial("id").primaryKey(),
+    team_id: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    generated_by_user_id: integer("generated_by_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    folder_id: integer("folder_id").references(() => clipFolders.id, {
+      onDelete: "set null",
+    }),
+    clip_path: text("clip_path").notNull(),
+    clip_score: integer("clip_score"),
+    source_video_path: text("source_video_path").notNull(),
+    clip_metadata: jsonb("clip_metadata").notNull(),
+    input_metadata: jsonb("input_metadata"),
+    prompt: text("prompt"),
+    message: text("message"),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => {
+    return {
+      teamIdx: index("clips_team_id_idx").on(table.team_id),
+      userIdx: index("clips_generated_by_user_id_idx").on(
+        table.generated_by_user_id
+      ),
+      folderIdx: index("clips_folder_id_idx").on(table.folder_id),
+    };
+  }
+);
+
+export const clipFolders = pgTable(
+  "clip_folders",
+  {
+    id: serial("id").primaryKey(),
+    team_id: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 255 }).notNull(),
+    color: varchar("color", { length: 50 }),
+    message: text("message"),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => {
+    return {
+      teamIdx: index("clip_folders_team_id_idx").on(table.team_id),
+    };
+  }
+);

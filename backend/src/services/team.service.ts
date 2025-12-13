@@ -106,6 +106,21 @@ class TeamService {
   }
 
   /**
+   * Increment team usage
+   */
+  async incrementTeamUsage(teamId: number, count: number = 1) {
+    const stats = await this.getTeamUsageStats(teamId);
+
+    await db
+      .update(usageStats)
+      .set({
+        clips_created: stats.clips_created + count,
+        updated_at: new Date(),
+      })
+      .where(eq(usageStats.id, stats.id));
+  }
+
+  /**
    * Create a new team
    */
   async createTeam(name: string, creatorUserId: number, type: "personal" | "business" | "enterprise" = "business") {

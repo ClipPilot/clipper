@@ -1,6 +1,8 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { clipVideoController } from "../controllers/clip.controller";
+import { clipManagerController } from "../controllers/clipManager.controller";
 import { upload } from "../config/multer";
+import { requireAuth } from "../middleware/auth.middleware";
 
 const router = Router();
 
@@ -15,14 +17,16 @@ const handleMulterError = (
     if (err.code === "LIMIT_FILE_SIZE") {
       return res.status(413).json({
         error: "File too large",
-        message: "The uploaded video file exceeds the maximum size limit of 10GB",
+        message:
+          "The uploaded video file exceeds the maximum size limit of 10GB",
         maxSize: "10GB",
       });
     }
     if (err.code === "LIMIT_UNEXPECTED_FILE") {
       return res.status(400).json({
         error: "Unexpected file",
-        message: 'Only one video file should be uploaded with field name "video"',
+        message:
+          'Only one video file should be uploaded with field name "video"',
       });
     }
     if (err.message) {
@@ -42,6 +46,8 @@ const handleMulterError = (
  *     summary: Generate AI-powered short-form video clips
  *     description: |
  *       Upload a video file and generate an AI-powered short-form clip suitable for TikTok, YouTube Shorts, or Instagram Reels.
+ *       
+ *       **Important:** This endpoint checks team usage limits before processing. If the limit is reached, a 403 error is returned.
  *
  *       The process:
  *       1. Transcribes the uploaded video using Deepgram
@@ -57,6 +63,8 @@ const handleMulterError = (
  *       You can provide additional instructions to customize the AI's clip selection.
  *     tags:
  *       - Video Clipping
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -66,6 +74,9 @@ const handleMulterError = (
  *             required:
  *               - video
  *             properties:
+ *               teamId:
+ *                 type: integer
+ *                 description: The team ID for usage tracking (required)
  *               video:
  *                 type: string
  *                 format: binary
@@ -100,16 +111,19 @@ const handleMulterError = (
  *                 type: integer
  *                 default: 1
  *                 minimum: 1
- *                 maximum: 5
+ *                 maximum: 10
  *                 description: Number of different video variations to generate (each with unique approaches and styles)
  *               customText:
  *                 type: string
  *                 description: Optional text overlay to display on the video (e.g., "🔥 MUST WATCH 🔥", "NEW PRODUCT ALERT", "WAIT FOR IT...")
  *               textPosition:
  *                 type: string
- *                 enum: [top, bottom]
+ *                 enum: [top, middle, bottom]
  *                 default: top
- *                 description: Position of the text overlay (top or bottom of video)
+ *                 description: Position of the text overlay (top, middle, or bottom of video)
+ *               textColor:
+ *                 type: string
+ *                 description: Color of the custom text overlay (hex color code)
  *           examples:
  *             business_video:
  *               summary: Business/Product Demo
@@ -200,6 +214,21 @@ const handleMulterError = (
  *                 hookLength: 6
  *                 promptType: business
  *                 numberOfVideos: 1
+ *       401:
+ *         description: Unauthorized - missing or invalid bearer token
+ *       403:
+ *         description: Usage limit reached
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                 message:
+ *                   type: string
+ *                 usage:
+ *                   type: object
  *       400:
  *         description: Bad request - invalid parameters or missing video
  *         content:
@@ -236,6 +265,207 @@ const handleMulterError = (
  *                 value:
  *                   error: "Failed to generate clip suggestions"
  */
-router.post("/", upload.single("video"), handleMulterError, clipVideoController);
+router.post(
+  "/",
+  requireAuth,
+  upload.single("video"),
+  handleMulterError,
+  clipVideoController
+);
+
+/**
+ * @openapi
+ * /clip-video/teams/{teamId}/clips:
+ *   get:
+ *     summary: Get all clips for a team
+ *     description: Retrieves all video clips that have been generated for a specific team
+ *     tags:
+ *       - Clips Management
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The team ID
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved clips
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 clips:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       team_id:
+ *                         type: integer
+ *                       generated_by_user_id:
+ *                         type: integer
+ *                       clip_path:
+ *                         type: string
+ *                       source_video_path:
+ *                         type: string
+ *                       clip_score:
+ *                         type: integer
+ *                       clip_metadata:
+ *                         type: object
+ *                       prompt:
+ *                         type: string
+ *                       message:
+ *                         type: string
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *       400:
+ *         description: Invalid team ID
+ *       500:
+ *         description: Server error
+ */
+router.get("/teams/:teamId/clips", requireAuth, clipManagerController.getClips.bind(clipManagerController));
+
+/**
+ * @openapi
+ * /clip-video/teams/{teamId}/clips/{clipId}:
+ *   get:
+ *     summary: Get a specific clip
+ *     description: Retrieves details of a single clip by ID
+ *     tags:
+ *       - Clips Management
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: clipId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved clip
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 clip:
+ *                   type: object
+ *       404:
+ *         description: Clip not found
+ */
+router.get("/teams/:teamId/clips/:clipId", requireAuth, clipManagerController.getClip.bind(clipManagerController));
+
+/**
+ * @openapi
+ * /clip-video/teams/{teamId}/clips/{clipId}:
+ *   patch:
+ *     summary: Update a clip
+ *     description: Update clip metadata such as message or score
+ *     tags:
+ *       - Clips Management
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: clipId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 description: Optional message/note about the clip
+ *               clipScore:
+ *                 type: integer
+ *                 description: Score rating for the clip
+ *     responses:
+ *       200:
+ *         description: Clip updated successfully
+ *       404:
+ *         description: Clip not found
+ */
+router.patch("/teams/:teamId/clips/:clipId", requireAuth, clipManagerController.updateClip.bind(clipManagerController));
+
+/**
+ * @openapi
+ * /clip-video/teams/{teamId}/clips/{clipId}:
+ *   delete:
+ *     summary: Delete a clip
+ *     description: Permanently delete a clip from the database
+ *     tags:
+ *       - Clips Management
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: clipId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Clip deleted successfully
+ *       404:
+ *         description: Clip not found
+ */
+router.delete("/teams/:teamId/clips/:clipId", requireAuth, clipManagerController.deleteClip.bind(clipManagerController));
+
+/**
+ * @openapi
+ * /clip-video/teams/{teamId}/folders/{folderId}/clips:
+ *   get:
+ *     summary: Get clips in a folder
+ *     description: Retrieves all clips that belong to a specific folder
+ *     tags:
+ *       - Clips Management
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: folderId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved clips
+ *       401:
+ *         description: Unauthorized - missing or invalid bearer token
+ *       500:
+ *         description: Server error
+ */
+router.get("/teams/:teamId/folders/:folderId/clips", requireAuth, clipManagerController.getClipsByFolder.bind(clipManagerController));
 
 export default router;

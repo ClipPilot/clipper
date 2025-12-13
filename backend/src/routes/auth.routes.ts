@@ -119,7 +119,11 @@ router.post("/signin", authController.signIn.bind(authController));
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post("/signout", requireAuth, authController.signOut.bind(authController));
+router.post(
+  "/signout",
+  requireAuth,
+  authController.signOut.bind(authController)
+);
 
 /**
  * @swagger
@@ -188,7 +192,6 @@ router.get("/me", requireAuth, authController.getMe.bind(authController));
  */
 router.post("/refresh", authController.refreshSession.bind(authController));
 
-
 /**
  * @swagger
  * /api/auth/reset-password:
@@ -226,8 +229,10 @@ router.post("/refresh", authController.refreshSession.bind(authController));
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post("/reset-password", authController.resetPassword.bind(authController));
-
+router.post(
+  "/reset-password",
+  authController.resetPassword.bind(authController)
+);
 
 /**
  * @swagger
@@ -272,6 +277,9 @@ router.post("/reset-password", authController.resetPassword.bind(authController)
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post("/update-password", authController.updatePassword.bind(authController));
+router.post(
+  "/update-password",
+  authController.updatePassword.bind(authController)
+);
 
 export default router;

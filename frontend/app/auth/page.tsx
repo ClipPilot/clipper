@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useSetAtom } from "jotai";
+import { useAtom } from "jotai";
 import { userAtom } from "@/store/auth";
 import { authAPI } from "@/api/auth";
 import { BrandLogo } from "@/components/brand-logo";
@@ -12,15 +12,17 @@ import ForgotPasswordForm from "@/components/auth/ForgotPasswordForm";
 import ResetPasswordForm from "@/components/auth/ResetPasswordForm";
 import EmailConfirmation from "@/components/auth/EmailConfirmation";
 import PasswordResetSent from "@/components/auth/PasswordResetSent";
+import { Icon } from "@iconify/react";
 
 export default function AuthPage() {
   const router = useRouter();
-  const setUser = useSetAtom(userAtom);
+  const [user, setUser] = useAtom(userAtom);
 
   const [isSignUp, setIsSignUp] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [isResetPassword, setIsResetPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [error, setError] = useState("");
   const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
   const [showPasswordResetSent, setShowPasswordResetSent] = useState(false);
@@ -28,7 +30,39 @@ export default function AuthPage() {
   const [resetEmail, setResetEmail] = useState("");
   const [recoveryToken, setRecoveryToken] = useState("");
 
-  React.useEffect(() => {
+  // Check if user is already logged in
+  useEffect(() => {
+    const checkAuth = async () => {
+      if (user) {
+        router.push("/dashboard");
+        return;
+      }
+
+      const accessToken =
+        typeof window !== "undefined"
+          ? localStorage.getItem("access_token")
+          : null;
+
+      if (accessToken) {
+        try {
+          const userData = await authAPI.getMe();
+          setUser(userData);
+          router.push("/dashboard");
+        } catch (error) {
+          // Token is invalid, clear it
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("refresh_token");
+          setIsCheckingAuth(false);
+        }
+      } else {
+        setIsCheckingAuth(false);
+      }
+    };
+
+    checkAuth();
+  }, [user, router, setUser]);
+
+  useEffect(() => {
     const hash = window.location.hash;
     if (hash) {
       const params = new URLSearchParams(hash.substring(1));
@@ -192,6 +226,21 @@ export default function AuthPage() {
       />
     );
   };
+
+  // Show loading while checking authentication
+  if (isCheckingAuth) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-surface-dark">
+        <div className="flex flex-col items-center gap-4">
+          <Icon
+            icon="solar:loading-circle-bold"
+            className="text-4xl animate-spin text-accent-400"
+          />
+          <p className="text-text-secondary">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

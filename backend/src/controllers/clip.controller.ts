@@ -6,17 +6,55 @@ import {
   ClipGenerationOptions,
 } from "../services/aiSuggestions.service";
 import { createMultipleCombinedClipsService } from "../services/clip.service";
+import { teamService } from "../services/team.service";
+import { clipManagerService } from "../services/clipManager.service";
+import { AuthRequest } from "../middleware/auth.middleware";
 
-export const clipVideoController = async (req: Request, res: Response) => {
+export const clipVideoController = async (req: AuthRequest, res: Response) => {
   let uploadedFilePath: string | undefined;
 
   try {
+    // Check authentication
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
     // Check if file was uploaded
     if (!req.file) {
       return res.status(400).json({ error: "No video file uploaded" });
     }
 
     uploadedFilePath = req.file.path;
+
+    // Get teamId from request
+    const teamId = req.body.teamId ? parseInt(req.body.teamId) : null;
+    if (!teamId) {
+      return res.status(400).json({ error: "Team ID is required" });
+    }
+
+    // Check usage limits
+    try {
+      const usageStats = await teamService.getTeamUsageStats(teamId);
+      const remaining = usageStats.limit - usageStats.clips_created;
+
+      if (remaining <= 0) {
+        return res.status(403).json({
+          error: "Usage limit reached",
+          message: `You have used all ${usageStats.limit} clips for this period. Resets on ${new Date(
+            usageStats.resets_date
+          ).toLocaleDateString()}.`,
+          usage: {
+            clipsCreated: usageStats.clips_created,
+            limit: usageStats.limit,
+            remaining,
+            resetsDate: usageStats.resets_date,
+          },
+        });
+      }
+    } catch (error) {
+      console.error("Error checking usage:", error);
+      return res.status(500).json({ error: "Failed to check usage limits" });
+    }
 
     // Parse parameters from request body
     const length = req.body.length ? parseInt(req.body.length) : undefined;
@@ -51,9 +89,9 @@ export const clipVideoController = async (req: Request, res: Response) => {
       });
     }
 
-    if (textPosition && !["top", "bottom"].includes(textPosition)) {
+    if (textPosition && !["top", "middle", "bottom"].includes(textPosition)) {
       return res.status(400).json({
-        error: 'Text position must be either "top" or "bottom"',
+        error: 'Text position must be "top", "middle", or "bottom"',
       });
     }
 
@@ -106,12 +144,51 @@ export const clipVideoController = async (req: Request, res: Response) => {
       fs.unlinkSync(uploadedFilePath);
     }
 
+    // Save clips to database and update usage
+    const savedClips: any[] = [];
+    const userId = req.user!.dbUserId;
+
+    for (let i = 0; i < clipSuggestionsArray.length; i++) {
+      const suggestions = clipSuggestionsArray[i];
+      const clipPath = combinedClipPaths[i];
+
+      const savedClip = await clipManagerService.createClip({
+        teamId,
+        userId,
+        clipPath,
+        sourceVideoPath: uploadedFilePath,
+        clipMetadata: {
+          clipSuggestions: suggestions,
+          parameters: {
+            length: options.length || 40,
+            hookLength: options.hookLength || 6,
+            promptType: options.promptType || "business",
+            customText,
+            textPosition,
+          },
+        },
+        inputMetadata: {
+          originalFileName: req.file?.originalname,
+          fileSize: req.file?.size,
+        },
+        prompt: textPrompt || customPrompt,
+        message: suggestions.finalMessage,
+        clipScore: suggestions.evalScore,
+      });
+
+      savedClips.push(savedClip);
+    }
+
+    // Update usage stats - increment by number of clips created
+    await teamService.incrementTeamUsage(teamId, clipSuggestionsArray.length);
+
     // Build response with multiple videos
-    const videos = clipSuggestionsArray.map((suggestions, index) => ({
+    const videos = savedClips.map((clip: any, index: number) => ({
+      id: clip.id,
       clipPath: combinedClipPaths[index],
-      clipSuggestions: suggestions,
-      finalMessage: suggestions.finalMessage,
-      evalScore: suggestions.evalScore,
+      clipSuggestions: clipSuggestionsArray[index],
+      finalMessage: clipSuggestionsArray[index].finalMessage,
+      evalScore: clipSuggestionsArray[index].evalScore,
     }));
 
     res.json({
@@ -122,6 +199,7 @@ export const clipVideoController = async (req: Request, res: Response) => {
         promptType: options.promptType || "business",
         numberOfVideos: options.numberOfVideos || 1,
       },
+      message: `Successfully created ${videos.length} clip(s)`,
     });
   } catch (err) {
     console.error("Error in clipVideoController:", err);

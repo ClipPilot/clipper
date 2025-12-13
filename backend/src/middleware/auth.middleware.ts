@@ -1,9 +1,14 @@
 import { Request, Response, NextFunction } from "express";
 import { authService } from "../services/auth.service";
+import { db } from "../db";
+import { users } from "@clipper/shared-db/src/schema";
+import { eq } from "drizzle-orm";
+
 export interface AuthRequest extends Request {
   user?: {
     id: string;
     email: string;
+    dbUserId: number;
   };
 }
 
@@ -30,9 +35,23 @@ export async function requireAuth(
       });
     }
 
+    // Get database user ID
+    const [dbUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.supabase_uid, user.id))
+      .limit(1);
+
+    if (!dbUser) {
+      return res.status(401).json({
+        error: "User not found in database",
+      });
+    }
+
     req.user = {
       id: user.id,
       email: user.email!,
+      dbUserId: dbUser.id,
     };
 
     next();
