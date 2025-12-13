@@ -9,6 +9,7 @@ import { Icon } from "@iconify/react";
 import { authAPI } from "@/api/auth";
 import { videoAPI } from "@/api/video";
 import { useUsageStats } from "@/hooks/useUsageStats";
+import { useUsageStatsRefresh } from "@/contexts/UsageStatsContext";
 import {
   UploadSection,
   SettingsPanel,
@@ -41,7 +42,8 @@ export default function CreateClipPage() {
   const [generatedClips, setGeneratedClips] = useState<any[]>([]);
   const [showResults, setShowResults] = useState(false);
 
-  const { usageStats, isLoading: isLoadingUsage } = useUsageStats(selectedTeam?.id);
+  const { usageStats, isLoading: isLoadingUsage, refetch: refetchUsageStats } = useUsageStats(selectedTeam?.id);
+  const { triggerRefresh, refreshTrigger } = useUsageStatsRefresh();
 
   useEffect(() => {
     if (!user) {
@@ -63,6 +65,12 @@ export default function CreateClipPage() {
         });
     }
   }, [user, router, setUser]);
+
+  useEffect(() => {
+    if (refreshTrigger > 0) {
+      refetchUsageStats();
+    }
+  }, [refreshTrigger, refetchUsageStats]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -127,6 +135,9 @@ export default function CreateClipPage() {
       setSuccess(`Successfully created ${response.videos.length} clip(s)!`);
       setGeneratedClips(response.videos);
       setShowResults(true);
+
+      // Trigger usage stats refresh
+      triggerRefresh();
     } catch (err: any) {
       console.error("Clip creation error:", err);
       setError(err.message || "Failed to create clip");

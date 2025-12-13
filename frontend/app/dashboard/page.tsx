@@ -50,7 +50,7 @@ export default function DashboardPage() {
     if (selectedTeam?.id) {
       loadRecentClips();
     }
-  }, [selectedTeam]);
+  }, [selectedTeam?.id]);
 
   const loadRecentClips = async () => {
     if (!selectedTeam?.id) return;
@@ -144,7 +144,7 @@ export default function DashboardPage() {
 
         <Card className="bg-surface-base border border-border-base">
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center ">
               <div className="flex items-center gap-2">
                 <Icon
                   icon="solar:history-bold-duotone"
@@ -154,15 +154,7 @@ export default function DashboardPage() {
                   Recent Clips
                 </h2>
               </div>
-              {recentClips.length > 0 && (
-                <Button
-                  onClick={() => router.push("/dashboard/clips")}
-                  variant="bordered"
-                  className="text-sm text-text-secondary hover:text-accent-400"
-                >
-                  View All
-                </Button>
-              )}
+            
             </div>
           </CardHeader>
           <Divider className="bg-border-base" />

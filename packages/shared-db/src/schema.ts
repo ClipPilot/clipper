@@ -119,6 +119,9 @@ export const clips = pgTable(
     clip_metadata: jsonb("clip_metadata").notNull(),
     input_metadata: jsonb("input_metadata"),
     prompt: text("prompt"),
+    raw_video_id: integer("raw_video_id").references(() => uploadedRawVideos.id, {
+      onDelete: "set null",
+    }),
     message: text("message"),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
@@ -153,3 +156,17 @@ export const clipFolders = pgTable(
     };
   }
 );
+
+export const uploadedRawVideos = pgTable("uploaded_raw_videos", {
+  id: serial("id").primaryKey(),
+  team_id: integer("team_id")
+    .notNull()
+    .references(() => teams.id, { onDelete: "cascade" }),
+  video_path: text("video_path").notNull(),
+  created_at: timestamp("created_at").notNull().defaultNow(),
+  updated_at: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => {
+  return {
+    teamIdx: index("uploaded_raw_videos_team_id_idx").on(table.team_id),
+  };
+});

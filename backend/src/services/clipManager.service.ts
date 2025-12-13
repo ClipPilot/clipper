@@ -1,8 +1,24 @@
 import { db } from "../db";
-import { clips, clipFolders } from "@clipper/shared-db/src/schema";
+import { clips, clipFolders, uploadedRawVideos } from "@clipper/shared-db/src/schema";
 import { eq, and, desc, isNull } from "drizzle-orm";
 
 export class ClipManagerService {
+  // Create a raw video record
+  async createRawVideo(data: {
+    teamId: number;
+    videoPath: string;
+  }) {
+    const [rawVideo] = await db
+      .insert(uploadedRawVideos)
+      .values({
+        team_id: data.teamId,
+        video_path: data.videoPath,
+      })
+      .returning();
+
+    return rawVideo;
+  }
+
   // Get all clips for a team
   async getClipsByTeam(teamId: number) {
     return await db
@@ -38,6 +54,7 @@ export class ClipManagerService {
     prompt?: string;
     message?: string;
     clipScore?: number;
+    rawVideoId?: number;
   }) {
     const [clip] = await db
       .insert(clips)
@@ -51,6 +68,7 @@ export class ClipManagerService {
         prompt: data.prompt,
         message: data.message,
         clip_score: data.clipScore,
+        raw_video_id: data.rawVideoId,
       })
       .returning();
 

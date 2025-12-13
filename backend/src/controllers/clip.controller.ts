@@ -14,12 +14,10 @@ export const clipVideoController = async (req: AuthRequest, res: Response) => {
   let uploadedFilePath: string | undefined;
 
   try {
-    // Check authentication
     if (!req.user) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    // Check if file was uploaded
     if (!req.file) {
       return res.status(400).json({ error: "No video file uploaded" });
     }
@@ -35,7 +33,7 @@ export const clipVideoController = async (req: AuthRequest, res: Response) => {
     // Check usage limits
     try {
       const usageStats = await teamService.getTeamUsageStats(teamId);
-      const remaining = usageStats.limit - usageStats.clips_created;
+      const remaining = usageStats.limit - usageStats.clips_created + req.body.numberOfVideos;
 
       if (remaining <= 0) {
         return res.status(403).json({
@@ -139,6 +137,12 @@ export const clipVideoController = async (req: AuthRequest, res: Response) => {
       }
     );
 
+    // Create raw video record BEFORE cleaning up the file
+    const rawVideo = await clipManagerService.createRawVideo({
+      teamId,
+      videoPath: uploadedFilePath,
+    });
+
     // Clean up uploaded file
     if (fs.existsSync(uploadedFilePath)) {
       fs.unlinkSync(uploadedFilePath);
@@ -174,6 +178,7 @@ export const clipVideoController = async (req: AuthRequest, res: Response) => {
         prompt: textPrompt || customPrompt,
         message: suggestions.finalMessage,
         clipScore: suggestions.evalScore,
+        rawVideoId: rawVideo.id,
       });
 
       savedClips.push(savedClip);

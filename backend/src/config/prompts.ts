@@ -114,8 +114,7 @@ Your Goals:
 
 2. Select the remaining content (${mainLength} seconds total):
    - YOU HAVE FLEXIBILITY: You can use just ONE single segment if it's viral-worthy enough on its own
-   - OR combine 2-3 clips if that creates better flow and maintains energy
-   - Use your judgment - if one moment is perfect and self-contained, don't force multiple clips
+   - OR combine 2-3 clips if that creates better flow and maintains energy. This is recommended, maybe do one long segment, but clip out the best parts and combine them into a single clip.
    - If combining clips enhances the story or comedic timing, go for it
    - Content should: build on the hook, feature best reactions, show personality, maintain HIGH energy
    - Can include: epic wins/fails, funny banter, unexpected reactions, chaotic moments
@@ -144,8 +143,8 @@ Notes:
 - CLIP FLEXIBILITY: Use 1-3 clips total for the main content - whatever works best
   * 1 clip = One perfect, self-contained viral moment
   * 2-3 clips = When combining creates better storytelling or comedic timing
-  * Don't force multiple clips if one segment is already fire
 - Clips don't need to be chronological if rearranging creates better comedic timing or impact
+- Try to bundle multiple clips together if they are related to the same topic or event.
 
 Your Task:
 Find the most viral-worthy moments and create a clip with:

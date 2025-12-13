@@ -22,6 +22,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTeams } from "@/hooks/useTeams";
 import WorkspaceSelector from "@/components/workspace-selector";
 import NotificationsCard from "@/components/notifications/notifications-card";
+import { UsageStatsProvider } from "@/contexts/UsageStatsContext";
 
 const sidebarItems: SidebarItem[] = [
   {
@@ -120,6 +121,7 @@ export default function DashboardLayout({
   const currentKey = sidebarItems.find(item => item.href === pathname)?.key || "home";
 
   return (
+    <UsageStatsProvider>
     <div className="flex h-screen bg-surface-dark">
       <aside
         className="relative bg-surface-base border-r border-border-base flex-shrink-0 flex flex-col"
@@ -265,5 +267,6 @@ export default function DashboardLayout({
         {children}
       </main>
     </div>
+    </UsageStatsProvider>
   );
 }

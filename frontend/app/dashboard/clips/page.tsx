@@ -11,6 +11,7 @@ import { clipsAPI, Clip, Folder } from "@/api/clips";
 import { ClipCard } from "@/components/clips/ClipCard";
 import { ExpandableFolder } from "@/components/clips/ExpandableFolder";
 import { CreateFolderModal } from "@/components/clips/CreateFolderModal";
+import { useUsageStatsRefresh } from "@/contexts/UsageStatsContext";
 
 export default function MyClipsPage() {
   const router = useRouter();
@@ -23,6 +24,7 @@ export default function MyClipsPage() {
   const [isLoadingFolders, setIsLoadingFolders] = useState(false);
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
   const [draggedClipId, setDraggedClipId] = useState<number | null>(null);
+  const { triggerRefresh } = useUsageStatsRefresh();
 
   useEffect(() => {
     if (!user) {
@@ -50,7 +52,7 @@ export default function MyClipsPage() {
       loadClips();
       loadFolders();
     }
-  }, [selectedTeam]);
+  }, [selectedTeam?.id]);
 
   const loadClips = async () => {
     if (!selectedTeam?.id) return;
@@ -59,6 +61,18 @@ export default function MyClipsPage() {
     try {
       const fetchedClips = await clipsAPI.getClips(selectedTeam.id);
       setClips(fetchedClips);
+
+      // Group clips by folder_id
+      const groupedClips: Record<number, Clip[]> = {};
+      fetchedClips.forEach(clip => {
+        if (clip.folder_id) {
+          if (!groupedClips[clip.folder_id]) {
+            groupedClips[clip.folder_id] = [];
+          }
+          groupedClips[clip.folder_id].push(clip);
+        }
+      });
+      setFolderClips(groupedClips);
     } catch (error) {
       console.error("Failed to load clips:", error);
     } finally {
@@ -115,6 +129,8 @@ export default function MyClipsPage() {
     try {
       await clipsAPI.deleteClip(selectedTeam.id, clipId);
       await loadClips();
+      // Trigger usage stats refresh after deleting clip
+      triggerRefresh();
     } catch (error) {
       console.error("Failed to delete clip:", error);
     }
@@ -132,7 +148,6 @@ export default function MyClipsPage() {
     try {
       await clipsAPI.updateClip(selectedTeam.id, clipId, { folderId });
       await loadClips();
-      await loadFolderClips(folderId);
     } catch (error) {
       console.error("Failed to move clip to folder:", error);
     } finally {
@@ -140,15 +155,25 @@ export default function MyClipsPage() {
     }
   };
 
-  const loadFolderClips = async (folderId: number) => {
-    if (!selectedTeam?.id) return;
+  const handleDropToUnorganized = async (e: React.DragEvent) => {
+    e.preventDefault();
+    const clipId = e.dataTransfer.getData("clipId");
+
+    if (!clipId || !selectedTeam?.id) return;
 
     try {
-      const clips = await clipsAPI.getClipsByFolder(selectedTeam.id, folderId);
-      setFolderClips(prev => ({ ...prev, [folderId]: clips }));
+      await clipsAPI.updateClip(selectedTeam.id, parseInt(clipId), { folderId: null });
+      await loadClips();
     } catch (error) {
-      console.error("Failed to load folder clips:", error);
+      console.error("Failed to move clip to unorganized:", error);
+    } finally {
+      setDraggedClipId(null);
     }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
   };
 
   const unorganizedClips = clips.filter(clip => !clip.folder_id);
@@ -212,7 +237,6 @@ export default function MyClipsPage() {
                   onDelete={handleDeleteFolder}
                   onDrop={handleDrop}
                   onClipDelete={handleDeleteClip}
-                  onLoadClips={loadFolderClips}
                   draggedClipId={draggedClipId}
                   onClipDragStart={handleDragStart}
                   onClipDragEnd={() => setDraggedClipId(null)}
@@ -223,7 +247,11 @@ export default function MyClipsPage() {
         ) : null}
 
         {/* Unorganized Clips */}
-        <div>
+        <div
+          onDrop={handleDropToUnorganized}
+          onDragOver={handleDragOver}
+          className="min-h-[200px]"
+        >
           <h2 className="text-xl font-bold text-text-primary mb-4 flex items-center gap-2">
             <Icon icon="solar:video-library-bold-duotone" className="text-2xl text-accent-400" />
             Unorganized Clips {unorganizedClips.length > 0 && `(${unorganizedClips.length})`}

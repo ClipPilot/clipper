@@ -43,6 +43,13 @@
       "when": 1765584195345,
       "tag": "0005_low_tarantula",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1765605133866,
+      "tag": "0006_wealthy_gunslinger",
+      "breakpoints": true
     }
   ]
 }

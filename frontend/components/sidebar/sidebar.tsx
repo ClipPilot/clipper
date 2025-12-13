@@ -1,11 +1,12 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { Listbox, ListboxItem, ListboxSection, type Selection, Progress } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useUsageStats } from "@/hooks/useUsageStats";
 import { useAtom } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
+import { useUsageStatsRefresh } from "@/contexts/UsageStatsContext";
 
 export type SidebarItem = {
   key: string;
@@ -24,7 +25,14 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
   ({ items, defaultSelectedKey, onSelect }, ref) => {
     const [selected, setSelected] = React.useState<React.Key>(defaultSelectedKey);
     const [selectedTeam] = useAtom(selectedTeamAtom);
-    const { usageStats, isLoading, error } = useUsageStats(selectedTeam?.id);
+    const { refreshTrigger } = useUsageStatsRefresh();
+    const { usageStats, isLoading, error, refetch } = useUsageStats(selectedTeam?.id);
+
+    useEffect(() => {
+      if (refreshTrigger > 0) {
+        refetch();
+      }
+    }, [refreshTrigger, refetch]);
 
     const usagePercentage = usageStats
       ? (usageStats.clipsCreated / usageStats.limit) * 100
