@@ -5,7 +5,8 @@ import { ClipSuggestions } from "../types/ai.types";
 
 export interface ClipServiceOptions {
   customText?: string;
-  textPosition?: "top" | "bottom";
+  textPosition?: "top" | "bottom" | "middle";
+  textColor?: string;
 }
 
 export const createCombinedClipService = async (
@@ -17,8 +18,6 @@ export const createCombinedClipService = async (
   const outDir = path.join(process.cwd(), "output");
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
   const tempFiles: string[] = [];
-
-  // Use videoIndex in filenames for uniqueness when generating multiple videos
   const hookPath = path.join(outDir, `hook_${videoIndex}_temp.mp4`);
   await cutClip(videoPath, hookPath, clipData.hook.start, clipData.hook.end);
   tempFiles.push(hookPath);
@@ -33,18 +32,15 @@ export const createCombinedClipService = async (
   const mergedPath = path.join(outDir, `merged_${videoIndex}_temp.mp4`);
   await mergeClips(tempFiles, mergedPath);
 
-  // Add text overlay if provided
   const finalPath = path.join(outDir, `combined_${videoIndex}.mp4`);
 
   if (options.customText) {
     const position = options.textPosition || "top";
-    await addTextOverlay(mergedPath, finalPath, options.customText, position);
+    const mappedPosition = position === "middle" ? "center" : position;
+    await addTextOverlay(mergedPath, finalPath, options.customText, mappedPosition);
   } else {
-    // No text overlay, just copy the merged file
     fs.copyFileSync(mergedPath, finalPath);
   }
-
-  // Clean up temp files
   tempFiles.push(mergedPath);
   tempFiles.forEach((file) => {
     if (fs.existsSync(file)) {

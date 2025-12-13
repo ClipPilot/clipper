@@ -20,6 +20,8 @@ export const teamTypeEnum = pgEnum("team_type", [
   "business",
   "enterprise",
 ]);
+
+export const clipStatusEnum = pgEnum("clip_status", ["pending", "completed", "failed"]);
 // Tables
 
 export const users = pgTable("users", {
@@ -113,16 +115,18 @@ export const clips = pgTable(
     folder_id: integer("folder_id").references(() => clipFolders.id, {
       onDelete: "set null",
     }),
-    clip_path: text("clip_path").notNull(),
+    clip_path: text("clip_path"),
     clip_score: integer("clip_score"),
-    source_video_path: text("source_video_path").notNull(),
-    clip_metadata: jsonb("clip_metadata").notNull(),
+    source_video_path: text("source_video_path"),
+    clip_metadata: jsonb("clip_metadata"),
     input_metadata: jsonb("input_metadata"),
     prompt: text("prompt"),
     raw_video_id: integer("raw_video_id").references(() => uploadedRawVideos.id, {
       onDelete: "set null",
     }),
     message: text("message"),
+    status: clipStatusEnum("status").notNull().default("pending"),
+    error_message: text("error_message"),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },

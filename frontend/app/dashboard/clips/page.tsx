@@ -12,6 +12,9 @@ import { ClipCard } from "@/components/clips/ClipCard";
 import { ExpandableFolder } from "@/components/clips/ExpandableFolder";
 import { CreateFolderModal } from "@/components/clips/CreateFolderModal";
 import { useUsageStatsRefresh } from "@/contexts/UsageStatsContext";
+import PendingClipsSection from "@/components/clips/PendingClipsSection";
+import NewClipsSection from "@/components/clips/NewClipsSection";
+import ClipViewModal from "@/components/clips/ClipViewModal";
 
 export default function MyClipsPage() {
   const router = useRouter();
@@ -23,7 +26,10 @@ export default function MyClipsPage() {
   const [isLoadingClips, setIsLoadingClips] = useState(false);
   const [isLoadingFolders, setIsLoadingFolders] = useState(false);
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [selectedClip, setSelectedClip] = useState<Clip | null>(null);
   const [draggedClipId, setDraggedClipId] = useState<number | null>(null);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const { triggerRefresh } = useUsageStatsRefresh();
 
   useEffect(() => {
@@ -54,15 +60,33 @@ export default function MyClipsPage() {
     }
   }, [selectedTeam?.id]);
 
+  useEffect(() => {
+    if (!selectedTeam?.id) return;
+
+    const hasPendingClips = clips.some(clip =>
+      clip.status === "pending" || clip.status === "processing"
+    );
+
+    if (!hasPendingClips) return;
+
+    const interval = setInterval(() => {
+      loadClips();
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [clips, selectedTeam?.id]);
+
   const loadClips = async () => {
     if (!selectedTeam?.id) return;
 
-    setIsLoadingClips(true);
+    if (!hasLoadedOnce) {
+      setIsLoadingClips(true);
+    }
+
     try {
       const fetchedClips = await clipsAPI.getClips(selectedTeam.id);
       setClips(fetchedClips);
 
-      // Group clips by folder_id
       const groupedClips: Record<number, Clip[]> = {};
       fetchedClips.forEach(clip => {
         if (clip.folder_id) {
@@ -73,10 +97,13 @@ export default function MyClipsPage() {
         }
       });
       setFolderClips(groupedClips);
+      setHasLoadedOnce(true);
     } catch (error) {
       console.error("Failed to load clips:", error);
     } finally {
-      setIsLoadingClips(false);
+      if (!hasLoadedOnce) {
+        setIsLoadingClips(false);
+      }
     }
   };
 
@@ -176,7 +203,28 @@ export default function MyClipsPage() {
     e.dataTransfer.dropEffect = "move";
   };
 
-  const unorganizedClips = clips.filter(clip => !clip.folder_id);
+  const handleViewClip = (clip: Clip) => {
+    setSelectedClip(clip);
+    setIsViewModalOpen(true);
+  };
+
+  const twentyMinutesAgo = new Date(Date.now() - 20 * 60 * 1000);
+
+  const pendingClips = clips.filter(clip =>
+    (clip.status === "pending" || clip.status === "processing") && !clip.folder_id
+  );
+
+  const newClips = clips.filter(clip =>
+    clip.status === "completed" &&
+    !clip.folder_id &&
+    new Date(clip.created_at) > twentyMinutesAgo
+  );
+
+  const unorganizedClips = clips.filter(clip =>
+    !clip.folder_id &&
+    clip.status === "completed" &&
+    new Date(clip.created_at) <= twentyMinutesAgo
+  );
 
   if (!user) {
     return (
@@ -214,7 +262,7 @@ export default function MyClipsPage() {
           </Button>
         </div>
 
-        {/* Folders */}
+
         {isLoadingFolders ? (
           <div className="flex items-center justify-center py-12">
             <Icon
@@ -245,6 +293,20 @@ export default function MyClipsPage() {
             </div>
           </div>
         ) : null}
+        <PendingClipsSection
+          clips={pendingClips}
+          onClipClick={(clip: any) => handleViewClip(clip)}
+        />
+
+        <NewClipsSection
+          clips={newClips}
+          onDelete={handleDeleteClip}
+          onClipClick={(clip: any) => handleViewClip(clip)}
+          draggedClipId={draggedClipId}
+          onDragStart={handleDragStart}
+          onDragEnd={() => setDraggedClipId(null)}
+        />
+
 
         {/* Unorganized Clips */}
         <div
@@ -275,6 +337,7 @@ export default function MyClipsPage() {
                   <ClipCard
                     clip={clip}
                     onDelete={handleDeleteClip}
+                    onView={() => handleViewClip(clip)}
                     isDragging={draggedClipId === clip.id}
                   />
                 </div>
@@ -299,12 +362,22 @@ export default function MyClipsPage() {
         </div>
       </div>
 
-      {/* Create Folder Modal */}
       <CreateFolderModal
         isOpen={isCreateFolderOpen}
         onClose={() => setIsCreateFolderOpen(false)}
         onCreate={handleCreateFolder}
       />
+
+      {selectedClip && (
+        <ClipViewModal
+          isOpen={isViewModalOpen}
+          onClose={() => {
+            setIsViewModalOpen(false);
+            setSelectedClip(null);
+          }}
+          clip={selectedClip}
+        />
+      )}
     </div>
   );
 }

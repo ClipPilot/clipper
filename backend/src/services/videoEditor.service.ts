@@ -10,10 +10,10 @@ export const cutClip = (input: string, output: string, start: number, end: numbe
       .setDuration(end - start)
       .outputOptions([
         "-c:v libx264",
-        "-preset ultrafast",  // Much faster encoding
+        "-preset ultrafast",
         "-crf 23",
         "-c:a aac",
-        "-b:a 128k"  // Lower bitrate for speed
+        "-b:a 128k"  
       ])
       .save(output)
       .on("end", () => resolve(output))
@@ -21,38 +21,86 @@ export const cutClip = (input: string, output: string, start: number, end: numbe
       .run();
   });
 };
-
 export const mergeClips = async (clips: string[], outputPath: string) => {
   return new Promise((resolve, reject) => {
     const listPath = outputPath + ".txt";
+    const content = clips
+      .map(c => `file '${c.replace(/'/g, "'\\''")}'`)
+      .join("\n");
 
-    // Create concat file: file 'clip1.mp4'
-    const content = clips.map(c => `file '${c.replace(/'/g, "'\\''")}'`).join("\n");
     fs.writeFileSync(listPath, content);
 
     ffmpeg()
       .input(listPath)
       .inputOptions(["-f concat", "-safe 0"])
-      .outputOptions(["-c copy"])   // <-- no re-encode
+      .complexFilter([
+        {
+          filter: "scale",
+          options: {
+            w: 1080,
+            h: 1920,
+            force_original_aspect_ratio: "increase",
+          },
+          inputs: "0:v",
+          outputs: "bg1",
+        },
+        {
+          filter: "crop",
+          options: { w: 1080, h: 1920 },
+          inputs: "bg1",
+          outputs: "bg2",
+        },
+        {
+          filter: "gblur",
+          options: { sigma: 15 },
+          inputs: "bg2",
+          outputs: "bg",
+        },
+        {
+          filter: "scale",
+          options: {
+            w: "min(iw,1080)",
+            h: "min(ih,1920)",
+            force_original_aspect_ratio: "decrease",
+          },
+          inputs: "0:v",
+          outputs: "fg",
+        },
+
+        {
+          filter: "overlay",
+          options: {
+            x: "(W-w)/2",
+            y: "(H-h)/2",
+          },
+          inputs: ["bg", "fg"],
+          outputs: "v",
+        },
+      ])
+      .outputOptions([
+        "-map [v]",
+        "-map 0:a?",
+        "-c:v libx264",
+        "-preset veryfast",
+        "-pix_fmt yuv420p",
+        "-movflags +faststart",
+      ])
       .save(outputPath)
       .on("end", () => {
-        fs.unlinkSync(listPath);    // cleanup
+        fs.unlinkSync(listPath);
         resolve(outputPath);
       })
       .on("error", err => reject(err));
   });
 };
 
-// Generate text image with emojis using skia-canvas (better emoji support)
+
 const generateTextImage = async (text: string, outputPath: string): Promise<void> => {
-  // Create canvas with transparent background
   const canvas = new Canvas(1920, 250);
   const ctx = canvas.getContext("2d");
 
-  // Clear to transparent
   ctx.clearRect(0, 0, 1920, 250);
 
-  // Configure text styling
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.font = "bold 100px 'Helvetica Neue', 'Arial'";
@@ -60,21 +108,17 @@ const generateTextImage = async (text: string, outputPath: string): Promise<void
   const centerX = 1920 / 2;
   const centerY = 250 / 2;
 
-  // Draw text with black stroke (outline)
   ctx.strokeStyle = "#000000";
   ctx.lineWidth = 12;
   ctx.lineJoin = "round";
   ctx.miterLimit = 2;
   ctx.strokeText(text, centerX, centerY);
 
-  // Draw white text fill
   ctx.fillStyle = "#FFFFFF";
   ctx.fillText(text, centerX, centerY);
 
-  // Save as PNG with transparency (using toFile instead of deprecated saveAs)
   await canvas.toFile(outputPath, { format: "png" });
 
-  // Verify file was created
   if (!fs.existsSync(outputPath)) {
     throw new Error(`Failed to create text image at ${outputPath}`);
   }
@@ -92,17 +136,14 @@ export const addTextOverlay = async (
   );
 
   try {
-    // Generate the text image with emojis
     console.log("Generating text image with:", text);
     await generateTextImage(text, textImagePath);
     console.log("Text image created at:", textImagePath);
 
-    // Verify the file exists before proceeding
     if (!fs.existsSync(textImagePath)) {
       throw new Error(`Text image was not created at ${textImagePath}`);
     }
 
-    // Position calculations
     const yPosition =
       position === "top"
         ? "H*0.1"
@@ -110,7 +151,6 @@ export const addTextOverlay = async (
         ? "(H-h)/2"
         : "H-h-H*0.1";
 
-    // Overlay the image on the video using Promise wrapper
     return new Promise<string>((resolve, reject) => {
       ffmpeg(inputPath)
         .input(textImagePath)
@@ -118,7 +158,6 @@ export const addTextOverlay = async (
         .outputOptions(["-c:v libx264", "-preset ultrafast", "-crf 23", "-c:a copy"])
         .save(outputPath)
         .on("end", () => {
-          // Clean up temp image
           if (fs.existsSync(textImagePath)) {
             fs.unlinkSync(textImagePath);
           }
@@ -126,7 +165,6 @@ export const addTextOverlay = async (
           resolve(outputPath);
         })
         .on("error", (err) => {
-          // Clean up temp image on error
           if (fs.existsSync(textImagePath)) {
             fs.unlinkSync(textImagePath);
           }
@@ -135,7 +173,6 @@ export const addTextOverlay = async (
         });
     });
   } catch (err) {
-    // Clean up temp image on error
     if (fs.existsSync(textImagePath)) {
       fs.unlinkSync(textImagePath);
     }

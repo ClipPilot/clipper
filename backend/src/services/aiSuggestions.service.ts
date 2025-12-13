@@ -66,7 +66,7 @@ export const generateClipSuggestionsService = async (
     // Single video - use original schema
     const response = await client.responses.parse({
       model: "gpt-5.1",
-      reasoning: { effort: "high" },
+      reasoning: { effort: "medium" },
       input: [
         {
           role: "user",

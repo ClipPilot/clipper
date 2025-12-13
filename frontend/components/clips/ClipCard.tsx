@@ -8,12 +8,13 @@ import { Clip } from "@/api/clips";
 interface ClipCardProps {
   clip: Clip;
   onDelete?: (clipId: number) => void;
+  onView?: () => void;
   isDragging?: boolean;
   onDragStart?: (e: React.DragEvent, clipId: number) => void;
   onDragEnd?: () => void;
 }
 
-export const ClipCard: React.FC<ClipCardProps> = ({ clip, onDelete, isDragging, onDragStart, onDragEnd }) => {
+export const ClipCard: React.FC<ClipCardProps> = ({ clip, onDelete, onView, isDragging, onDragStart, onDragEnd }) => {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return new Intl.DateTimeFormat("en-US", {
@@ -79,14 +80,17 @@ export const ClipCard: React.FC<ClipCardProps> = ({ clip, onDelete, isDragging, 
       </CardBody>
       
       <CardFooter className="px-4 py-2 border-t border-border-base flex justify-between gap-2">
-        <Button
-          size="sm"
-          variant="light"
-          className="text-xs text-text-secondary hover:text-accent-400"
-          startContent={<Icon icon="solar:eye-outline" className="text-base" />}
-        >
-          View
-        </Button>
+        {onView && (
+          <Button
+            size="sm"
+            variant="light"
+            className="text-xs text-text-secondary hover:text-accent-400"
+            startContent={<Icon icon="solar:eye-outline" className="text-base" />}
+            onPress={onView}
+          >
+            View
+          </Button>
+        )}
         
         <Button
           size="sm"

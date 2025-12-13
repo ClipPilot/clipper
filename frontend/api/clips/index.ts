@@ -5,13 +5,15 @@ export interface Clip {
   team_id: number;
   generated_by_user_id: number;
   folder_id?: number | null;
-  clip_path: string;
-  source_video_path: string;
+  clip_path?: string;
+  source_video_path?: string;
   clip_score?: number;
-  clip_metadata: any;
+  clip_metadata?: any;
   input_metadata?: any;
   prompt?: string;
   message?: string;
+  status: string;
+  error_message?: string;
   created_at: string;
   updated_at: string;
 }

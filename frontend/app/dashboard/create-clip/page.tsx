@@ -104,7 +104,6 @@ export default function CreateClipPage() {
       return;
     }
 
-    // Check usage
     if (usageStats && usageStats.remaining <= 0) {
       setError(`Usage limit reached. You have ${usageStats.clipsCreated}/${usageStats.limit} clips used. Resets on ${new Date(usageStats.resetsDate).toLocaleDateString()}`);
       return;
@@ -112,13 +111,10 @@ export default function CreateClipPage() {
 
     setIsProcessing(true);
     setError("");
-    setSuccess("");
     setProgress(10);
 
     try {
-      setProgress(30);
-      
-      const response = await videoAPI.clipVideo({
+      await videoAPI.clipVideo({
         teamId: selectedTeam.id,
         video: selectedFile,
         length,
@@ -131,18 +127,12 @@ export default function CreateClipPage() {
         textColor,
       });
 
-      setProgress(100);
-      setSuccess(`Successfully created ${response.videos.length} clip(s)!`);
-      setGeneratedClips(response.videos);
-      setShowResults(true);
-
-      // Trigger usage stats refresh
       triggerRefresh();
+      router.push("/dashboard/clips");
     } catch (err: any) {
       console.error("Clip creation error:", err);
       setError(err.message || "Failed to create clip");
       setProgress(0);
-    } finally {
       setIsProcessing(false);
     }
   };

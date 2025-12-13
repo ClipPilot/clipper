@@ -133,6 +133,84 @@ export class ClipManagerService {
 
     return deletedClip;
   }
+
+  async createPendingClip(data: {
+    teamId: number;
+    userId: number;
+  }) {
+    const [clip] = await db
+      .insert(clips)
+      .values({
+        team_id: data.teamId,
+        generated_by_user_id: data.userId,
+        status: "pending",
+      })
+      .returning();
+
+    return clip;
+  }
+
+  async updateClipStatus(
+    clipId: number,
+    teamId: number,
+    status: string,
+    errorMessage?: string
+  ) {
+    const updateData: any = {
+      status,
+      updated_at: new Date(),
+    };
+
+    if (errorMessage) {
+      updateData.error_message = errorMessage;
+    }
+
+    const [updatedClip] = await db
+      .update(clips)
+      .set(updateData)
+      .where(and(eq(clips.id, clipId), eq(clips.team_id, teamId)))
+      .returning();
+
+    if (!updatedClip) {
+      throw new Error("Clip not found");
+    }
+
+    return updatedClip;
+  }
+
+  async updateClipComplete(clipId: number, teamId: number, data: {
+    clipPath: string;
+    sourceVideoPath: string;
+    clipMetadata: any;
+    inputMetadata?: any;
+    prompt?: string;
+    message?: string;
+    clipScore?: number;
+    rawVideoId?: number;
+  }) {
+    const [updatedClip] = await db
+      .update(clips)
+      .set({
+        clip_path: data.clipPath,
+        source_video_path: data.sourceVideoPath,
+        clip_metadata: data.clipMetadata,
+        input_metadata: data.inputMetadata,
+        prompt: data.prompt,
+        message: data.message,
+        clip_score: data.clipScore,
+        raw_video_id: data.rawVideoId,
+        status: "completed",
+        updated_at: new Date(),
+      })
+      .where(and(eq(clips.id, clipId), eq(clips.team_id, teamId)))
+      .returning();
+
+    if (!updatedClip) {
+      throw new Error("Clip not found");
+    }
+
+    return updatedClip;
+  }
 }
 
 export const clipManagerService = new ClipManagerService();
