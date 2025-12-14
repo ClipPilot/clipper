@@ -8,31 +8,28 @@ resource "aws_amplify_app" "frontend" {
   # Build settings
   build_spec = <<-EOT
 version: 1
-applications:
-  - appRoot: frontend
-    frontend:
-      phases:
-        preBuild:
-          commands:
-            - npm install -g pnpm
-            - cd .. && pnpm install
-        build:
-          commands:
-            - cd .. && pnpm build:frontend
-      artifacts:
-        baseDirectory: .next
-        files:
-          - '**/*'
-      cache:
-        paths:
-          - ../node_modules/**/*
-          - node_modules/**/*
-          - .next/cache/**/*
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm install -g pnpm
+        - pnpm install
+    build:
+      commands:
+        - pnpm build:frontend
+  artifacts:
+    baseDirectory: frontend/.next
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
+      - frontend/node_modules/**/*
+      - frontend/.next/cache/**/*
   EOT
 
   # Environment variables for frontend
   environment_variables = {
-    AMPLIFY_MONOREPO_APP_ROOT = "frontend"
     NEXT_PUBLIC_API_URL       = "http://${aws_lb.backend.dns_name}/api"
     NODE_ENV                  = "production"
     _LIVE_UPDATES = jsonencode([{

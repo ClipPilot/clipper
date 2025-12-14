@@ -1,21 +1,19 @@
 version: 1
-applications:
-  - appRoot: frontend
-    frontend:
-      phases:
-        preBuild:
-          commands:
-            - npm install -g pnpm
-            - cd .. && pnpm install
-        build:
-          commands:
-            - cd .. && pnpm build:frontend
-      artifacts:
-        baseDirectory: .next
-        files:
-          - '**/*'
-      cache:
-        paths:
-          - ../node_modules/**/*
-          - node_modules/**/*
-          - .next/cache/**/*
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm install -g pnpm
+        - pnpm install
+    build:
+      commands:
+        - pnpm build:frontend
+  artifacts:
+    baseDirectory: frontend/.next
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
+      - frontend/node_modules/**/*
+      - frontend/.next/cache/**/*
