@@ -23,6 +23,7 @@ interface ClipOptions {
   customText?: string;
   textPosition?: "top" | "bottom" | "middle";
   textColor?: string;
+  captions?: boolean;
 }
 
 const processClipsAsync = async (
@@ -63,10 +64,12 @@ const processClipsAsync = async (
     const combinedClipPaths = await createMultipleCombinedClipsService(
       uploadedFilePath,
       clipSuggestionsArray,
+      transcriptionData.results.channels[0].alternatives[0].words,
       {
         customText: options.customText,
         textPosition: options.textPosition,
         textColor: options.textColor,
+        captions: options.captions,
       }
     );
 
@@ -74,7 +77,10 @@ const processClipsAsync = async (
     console.log("Extracting thumbnail from source video...");
 
     const thumbnailPath = await extractThumbnail(uploadedFilePath);
-    const thumbnailS3Key = await s3Service.uploadThumbnail(thumbnailPath, teamId);
+    const thumbnailS3Key = await s3Service.uploadThumbnail(
+      thumbnailPath,
+      teamId
+    );
 
     console.log("Thumbnail uploaded to S3:", thumbnailS3Key);
 
@@ -86,9 +92,15 @@ const processClipsAsync = async (
       const suggestions = clipSuggestionsArray[i];
       const localClipPath = combinedClipPaths[i];
 
-      console.log(`Uploading clip ${i + 1}/${clipSuggestionsArray.length} to S3...`);
+      console.log(
+        `Uploading clip ${i + 1}/${clipSuggestionsArray.length} to S3...`
+      );
 
-      const clipS3Key = await s3Service.uploadGeneratedClip(localClipPath, teamId, clipIds[i]);
+      const clipS3Key = await s3Service.uploadGeneratedClip(
+        localClipPath,
+        teamId,
+        clipIds[i]
+      );
 
       console.log(`Clip uploaded to S3 with key: ${clipS3Key}`);
 
@@ -104,6 +116,7 @@ const processClipsAsync = async (
             customText: options.customText,
             textPosition: options.textPosition,
             textColor: options.textColor,
+            captions: options.captions || false,
           },
         },
         inputMetadata: {
@@ -130,7 +143,10 @@ const processClipsAsync = async (
     emitClipsRefresh(teamId);
   } catch (error) {
     console.error("Error processing clips:", error);
-    console.error("Error stack:", error instanceof Error ? error.stack : "No stack trace");
+    console.error(
+      "Error stack:",
+      error instanceof Error ? error.stack : "No stack trace"
+    );
 
     for (const clipId of clipIds) {
       await clipManagerService.updateClipStatus(
@@ -191,39 +207,59 @@ export const clipVideoController = async (req: AuthRequest, res: Response) => {
     }
 
     const length = req.body.length ? parseInt(req.body.length) : undefined;
-    const hookLength = req.body.hookLength ? parseInt(req.body.hookLength) : undefined;
+    const hookLength = req.body.hookLength
+      ? parseInt(req.body.hookLength)
+      : undefined;
     const promptType = req.body.promptType as "business" | "viral" | undefined;
     const customPrompt = req.body.customPrompt as string | undefined;
     const textPrompt = req.body.textPrompt as string | undefined;
     const customText = req.body.customText as string | undefined;
-    const textPosition = req.body.textPosition as "top" | "bottom" | "middle" | undefined;
+    const textPosition = req.body.textPosition as
+      | "top"
+      | "bottom"
+      | "middle"
+      | undefined;
     const textColor = req.body.textColor as string | undefined;
+    const captions = req.body.captions === "true" || req.body.captions === true;
 
     if (length && (length < 10 || length > 120)) {
-      return res.status(400).json({ error: "Length must be between 10 and 120 seconds" });
+      return res
+        .status(400)
+        .json({ error: "Length must be between 10 and 120 seconds" });
     }
 
     if (hookLength && (hookLength < 2 || hookLength > 15)) {
-      return res.status(400).json({ error: "Hook length must be between 2 and 15 seconds" });
+      return res
+        .status(400)
+        .json({ error: "Hook length must be between 2 and 15 seconds" });
     }
 
     if (promptType && !["business", "viral"].includes(promptType)) {
-      return res.status(400).json({ error: 'Prompt type must be either "business" or "viral"' });
+      return res
+        .status(400)
+        .json({ error: 'Prompt type must be either "business" or "viral"' });
     }
 
     if (textPosition && !["top", "middle", "bottom"].includes(textPosition)) {
-      return res.status(400).json({ error: 'Text position must be "top", "middle", or "bottom"' });
+      return res
+        .status(400)
+        .json({ error: 'Text position must be "top", "middle", or "bottom"' });
     }
 
     if (numberOfVideos && (numberOfVideos < 1 || numberOfVideos > 5)) {
-      return res.status(400).json({ error: "Number of videos must be between 1 and 5" });
+      return res
+        .status(400)
+        .json({ error: "Number of videos must be between 1 and 5" });
     }
 
     const userId = req.user!.dbUserId;
     const pendingClips: any[] = [];
 
     for (let i = 0; i < numberOfVideos; i++) {
-      const clip = await clipManagerService.createPendingClip({ teamId, userId });
+      const clip = await clipManagerService.createPendingClip({
+        teamId,
+        userId,
+      });
       pendingClips.push(clip);
     }
 
@@ -246,6 +282,7 @@ export const clipVideoController = async (req: AuthRequest, res: Response) => {
         customText,
         textPosition,
         textColor,
+        captions,
       },
       req.file?.originalname,
       req.file?.size

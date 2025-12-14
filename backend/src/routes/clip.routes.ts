@@ -124,6 +124,9 @@ const handleMulterError = (
  *               textColor:
  *                 type: string
  *                 description: Color of the custom text overlay (hex color code)
+ *              captions:
+ *                type: boolean
+ *                description: Whether to add captions overlay based on transcription
  *           examples:
  *             business_video:
  *               summary: Business/Product Demo
