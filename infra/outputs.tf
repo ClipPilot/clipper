@@ -35,20 +35,6 @@ output "ecs_service_name" {
   value       = aws_ecs_service.backend.name
 }
 
-output "amplify_app_id" {
-  description = "ID of the Amplify app"
-  value       = aws_amplify_app.frontend.id
-}
-
-output "amplify_default_domain" {
-  description = "Default domain of the Amplify app"
-  value       = aws_amplify_app.frontend.default_domain
-}
-
-output "amplify_app_url" {
-  description = "URL of the Amplify app"
-  value       = "https://${var.amplify_branch}.${aws_amplify_app.frontend.default_domain}"
-}
 
 output "backend_api_url" {
   description = "Backend API URL (HTTP - add HTTPS later with custom domain)"

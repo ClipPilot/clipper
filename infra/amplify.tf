@@ -1,89 +1,27 @@
-# AWS Amplify App for Frontend
-resource "aws_amplify_app" "frontend" {
-  name       = "${var.project_name}-frontend-${var.environment}"
-  repository = "https://github.com/${var.github_repository}"
+# Amplify configuration removed - configure manually in AWS Console
+# Keep IAM role for manual Amplify setup
 
-  access_token = var.github_access_token
+# Amplify Service Role
+resource "aws_iam_role" "amplify" {
+  name = "${var.project_name}-amplify-role-${var.environment}"
 
-  # Build settings
-  build_spec = <<-EOT
-version: 1
-frontend:
-  phases:
-    preBuild:
-      commands:
-        - npm install -g pnpm
-        - pnpm install
-    build:
-      commands:
-        - pnpm build:frontend
-  artifacts:
-    baseDirectory: frontend/.next
-    files:
-      - '**/*'
-  cache:
-    paths:
-      - node_modules/**/*
-      - frontend/node_modules/**/*
-      - frontend/.next/cache/**/*
-  EOT
-
-  # Environment variables for frontend
-  environment_variables = {
-    NEXT_PUBLIC_API_URL       = "http://${aws_lb.backend.dns_name}/api"
-    NODE_ENV                  = "production"
-    _LIVE_UPDATES = jsonencode([{
-      pkg     = "next"
-      type    = "internal"
-      version = "latest"
-    }])
-  }
-
-  # Custom rules
-  custom_rule {
-    source = "/<*>"
-    status = "404"
-    target = "/index.html"
-  }
-
-  # Enable auto branch creation for pull requests
-  enable_auto_branch_creation = false
-  enable_branch_auto_build    = true
-  enable_branch_auto_deletion = false
-
-  # Platform settings
-  platform = "WEB_COMPUTE"
-
-  # IAM service role
-  iam_service_role_arn = aws_iam_role.amplify.arn
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "amplify.amazonaws.com"
+      }
+    }]
+  })
 
   tags = {
-    Name = "${var.project_name}-frontend-${var.environment}"
+    Name = "${var.project_name}-amplify-role-${var.environment}"
   }
 }
 
-# Amplify Branch
-resource "aws_amplify_branch" "main" {
-  app_id      = aws_amplify_app.frontend.id
-  branch_name = var.amplify_branch
-
-  enable_auto_build = true
-
-  framework = "Next.js - SSR"
-  stage     = var.environment == "prod" ? "PRODUCTION" : "DEVELOPMENT"
-
-  tags = {
-    Name = "${var.project_name}-${var.amplify_branch}-${var.environment}"
-  }
+resource "aws_iam_role_policy_attachment" "amplify_backend_deployment" {
+  role       = aws_iam_role.amplify.name
+  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess-Amplify"
 }
-
-# Amplify Domain Association (optional - add your custom domain)
-# resource "aws_amplify_domain_association" "frontend" {
-#   app_id      = aws_amplify_app.frontend.id
-#   domain_name = "yourdomain.com"
-#
-#   sub_domain {
-#     branch_name = aws_amplify_branch.main.branch_name
-#     prefix      = var.environment == "prod" ? "" : var.environment
-#   }
-# }
