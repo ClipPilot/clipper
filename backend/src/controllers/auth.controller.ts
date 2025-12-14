@@ -39,7 +39,7 @@ export class AuthController {
 
   async signIn(req: Request, res: Response) {
     try {
-      const { email, password } = req.body;
+      const { email, password, rememberMe = false } = req.body;
 
       if (!email || !password) {
         return res.status(400).json({
@@ -47,7 +47,7 @@ export class AuthController {
         });
       }
 
-      const result = await authService.signIn(email, password);
+      const result = await authService.signIn(email, password, rememberMe);
 
       return res.status(200).json({
         message: "Signed in successfully",
@@ -58,6 +58,7 @@ export class AuthController {
           lastName: result.dbUser.last_name,
         },
         session: result.session,
+        rememberMe: result.rememberMe,
       });
     } catch (error) {
       console.error("Signin error:", error);

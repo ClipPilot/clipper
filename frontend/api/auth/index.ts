@@ -9,6 +9,7 @@ export interface SignUpData {
 export interface SignInData {
   email: string;
   password: string;
+  rememberMe?: boolean;
 }
 
 export interface Session {
@@ -67,13 +68,16 @@ class AuthAPI {
     return expiry ? parseInt(expiry) : null;
   }
 
-  private setTokens(accessToken: string, refreshToken: string, expiresIn: number): void {
+  private setTokens(accessToken: string, refreshToken: string, expiresIn: number, rememberMe?: boolean): void {
     if (typeof window !== "undefined") {
       localStorage.setItem("access_token", accessToken);
       localStorage.setItem("refresh_token", refreshToken);
-      // Store expiry time as timestamp (current time + expiresIn seconds)
       const expiryTime = Date.now() + expiresIn * 1000;
       localStorage.setItem("token_expiry", expiryTime.toString());
+
+      if (rememberMe !== undefined) {
+        localStorage.setItem("remember_me", rememberMe.toString());
+      }
     }
   }
 
@@ -82,19 +86,21 @@ class AuthAPI {
       localStorage.removeItem("access_token");
       localStorage.removeItem("refresh_token");
       localStorage.removeItem("token_expiry");
+      localStorage.removeItem("remember_me");
     }
   }
 
   private isTokenExpiringSoon(): boolean {
     const expiry = this.getTokenExpiry();
-    if (!expiry) return true;
+    if (!expiry) {
+      return !!this.getRefreshToken();
+    }
 
-    // Refresh if token expires in less than 5 minutes
     const fiveMinutes = 5 * 60 * 1000;
     return (expiry - Date.now()) < fiveMinutes;
   }
 
-  private async ensureValidToken(): Promise<void> {
+  private async ensureValidToken(retries: number = 3): Promise<void> {
     const refreshToken = this.getRefreshToken();
 
     if (!refreshToken) {
@@ -102,7 +108,26 @@ class AuthAPI {
     }
 
     if (this.isTokenExpiringSoon()) {
-      await this.refreshSession(refreshToken);
+      let lastError: Error | null = null;
+
+      for (let i = 0; i < retries; i++) {
+        try {
+          await this.refreshSession(refreshToken);
+          return;
+        } catch (error) {
+          lastError = error as Error;
+
+          if (error instanceof Error && error.message.includes("401")) {
+            throw error;
+          }
+
+          if (i < retries - 1) {
+            await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+          }
+        }
+      }
+
+      throw lastError || new Error("Failed to refresh token");
     }
   }
 
@@ -148,7 +173,8 @@ class AuthAPI {
       this.setTokens(
         (result.session as any).access_token,
         (result.session as any).refresh_token,
-        (result.session as any).expires_in || 3600
+        (result.session as any).expires_in || 3600,
+        data.rememberMe
       );
     }
     return result;
@@ -170,13 +196,14 @@ class AuthAPI {
   }
 
   async getMe(): Promise<User> {
-    // Ensure token is valid before making the request
     try {
       await this.ensureValidToken();
     } catch (error) {
-      // If refresh fails, clear tokens and throw
-      this.clearTokens();
-      throw new Error("Session expired. Please log in again.");
+      if (error instanceof Error && (error.message.includes("401") || error.message.includes("No refresh token"))) {
+        this.clearTokens();
+        throw new Error("Session expired. Please log in again.");
+      }
+      throw new Error("Network error. Please check your connection and try again.");
     }
 
     const response = await fetch(`${API_URL}/auth/me`, {
@@ -186,6 +213,9 @@ class AuthAPI {
     });
 
     if (!response.ok) {
+      if (response.status === 401) {
+        this.clearTokens();
+      }
       const error: ErrorResponse = await response.json();
       throw new Error(error.message || "Failed to get user");
     }

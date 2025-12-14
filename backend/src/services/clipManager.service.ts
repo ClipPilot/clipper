@@ -28,6 +28,24 @@ export class ClipManagerService {
       .orderBy(desc(clips.created_at));
   }
 
+  async getPendingClipsByTeam(teamId: number) {
+    return await db
+      .select()
+      .from(clips)
+      .where(and(eq(clips.team_id, teamId), eq(clips.status, "pending")))
+      .orderBy(desc(clips.created_at));
+  }
+
+  async getCompletedClipsByTeam(teamId: number, limit: number = 20, offset: number = 0) {
+    return await db
+      .select()
+      .from(clips)
+      .where(and(eq(clips.team_id, teamId), eq(clips.status, "completed")))
+      .orderBy(desc(clips.created_at))
+      .limit(limit)
+      .offset(offset);
+  }
+
   // Get a single clip by ID
   async getClipById(clipId: number, teamId: number) {
     const [clip] = await db
@@ -186,7 +204,6 @@ export class ClipManagerService {
     prompt?: string;
     message?: string;
     clipScore?: number;
-    rawVideoId?: number;
   }) {
     const [updatedClip] = await db
       .update(clips)
@@ -198,7 +215,6 @@ export class ClipManagerService {
         prompt: data.prompt,
         message: data.message,
         clip_score: data.clipScore,
-        raw_video_id: data.rawVideoId,
         status: "completed",
         updated_at: new Date(),
       })

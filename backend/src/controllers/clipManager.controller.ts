@@ -12,15 +12,21 @@ export class ClipManagerController {
 
       const clips = await clipManagerService.getClipsByTeam(teamId);
 
-      const s3Keys = clips
+      const clipKeys = clips
         .filter(clip => clip.clip_path)
         .map(clip => clip.clip_path!);
 
-      const presignedUrls = await s3Service.getMultiplePresignedUrls(s3Keys);
+      const thumbnailKeys = clips
+        .filter(clip => clip.source_video_path)
+        .map(clip => clip.source_video_path!);
+
+      const allKeys = [...new Set([...clipKeys, ...thumbnailKeys])];
+      const presignedUrls = await s3Service.getMultiplePresignedUrls(allKeys);
 
       const clipsWithUrls = clips.map(clip => ({
         ...clip,
         clipUrl: clip.clip_path ? presignedUrls[clip.clip_path] : null,
+        sourceVideoUrl: clip.source_video_path ? presignedUrls[clip.source_video_path] : null,
       }));
 
       return res.status(200).json({ clips: clipsWithUrls });
@@ -28,6 +34,73 @@ export class ClipManagerController {
       console.error("Get clips error:", error);
       return res.status(500).json({
         error: error instanceof Error ? error.message : "Failed to get clips",
+      });
+    }
+  }
+
+  async getPendingClips(req: Request, res: Response) {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      if (isNaN(teamId)) {
+        return res.status(400).json({ error: "Invalid team ID" });
+      }
+
+      const clips = await clipManagerService.getPendingClipsByTeam(teamId);
+
+      return res.status(200).json({ clips });
+    } catch (error) {
+      console.error("Get pending clips error:", error);
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to get pending clips",
+      });
+    }
+  }
+
+  async getCompletedClips(req: Request, res: Response) {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      if (isNaN(teamId)) {
+        return res.status(400).json({ error: "Invalid team ID" });
+      }
+
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
+      const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
+
+      if (limit > 100) {
+        return res.status(400).json({ error: "Limit cannot exceed 100" });
+      }
+
+      const clips = await clipManagerService.getCompletedClipsByTeam(teamId, limit, offset);
+
+      const clipKeys = clips
+        .filter(clip => clip.clip_path)
+        .map(clip => clip.clip_path!);
+
+      const thumbnailKeys = clips
+        .filter(clip => clip.source_video_path)
+        .map(clip => clip.source_video_path!);
+
+      const allKeys = [...new Set([...clipKeys, ...thumbnailKeys])];
+      const presignedUrls = await s3Service.getMultiplePresignedUrls(allKeys);
+
+      const clipsWithUrls = clips.map(clip => ({
+        ...clip,
+        clipUrl: clip.clip_path ? presignedUrls[clip.clip_path] : null,
+        sourceVideoUrl: clip.source_video_path ? presignedUrls[clip.source_video_path] : null,
+      }));
+
+      return res.status(200).json({
+        clips: clipsWithUrls,
+        pagination: {
+          limit,
+          offset,
+          hasMore: clips.length === limit,
+        },
+      });
+    } catch (error) {
+      console.error("Get completed clips error:", error);
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to get completed clips",
       });
     }
   }
@@ -43,8 +116,8 @@ export class ClipManagerController {
 
       const clip = await clipManagerService.getClipById(clipId, teamId);
 
-      let clipUrl = null;
-      let sourceVideoUrl = null;
+      let clipUrl: string | null = null;
+      let sourceVideoUrl: string | null = null;
 
       if (clip.clip_path) {
         clipUrl = await s3Service.getPresignedUrl(clip.clip_path);
@@ -109,15 +182,21 @@ export class ClipManagerController {
 
       const clips = await clipManagerService.getClipsByFolder(teamId, folderId);
 
-      const s3Keys = clips
+      const clipKeys = clips
         .filter(clip => clip.clip_path)
         .map(clip => clip.clip_path!);
 
-      const presignedUrls = await s3Service.getMultiplePresignedUrls(s3Keys);
+      const thumbnailKeys = clips
+        .filter(clip => clip.source_video_path)
+        .map(clip => clip.source_video_path!);
+
+      const allKeys = [...new Set([...clipKeys, ...thumbnailKeys])];
+      const presignedUrls = await s3Service.getMultiplePresignedUrls(allKeys);
 
       const clipsWithUrls = clips.map(clip => ({
         ...clip,
         clipUrl: clip.clip_path ? presignedUrls[clip.clip_path] : null,
+        sourceVideoUrl: clip.source_video_path ? presignedUrls[clip.source_video_path] : null,
       }));
 
       return res.status(200).json({ clips: clipsWithUrls });

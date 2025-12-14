@@ -84,7 +84,7 @@ class AuthService {
     };
   }
 
-  async signIn(email: string, password: string) {
+  async signIn(email: string, password: string, rememberMe: boolean = false) {
     const { data, error } = await this.supabase.auth.signInWithPassword({
       email,
       password,
@@ -98,7 +98,6 @@ class AuthService {
       throw new Error("Invalid credentials");
     }
 
-    // Check if email is confirmed
     if (!data.user.email_confirmed_at) {
       throw new Error("Please confirm your email before signing in. Check your inbox for the confirmation link.");
     }
@@ -113,6 +112,7 @@ class AuthService {
       user: data.user,
       session: data.session,
       dbUser,
+      rememberMe,
     };
   }
 

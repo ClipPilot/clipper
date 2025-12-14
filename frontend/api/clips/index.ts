@@ -16,6 +16,8 @@ export interface Clip {
   error_message?: string;
   created_at: string;
   updated_at: string;
+  clipUrl?: string;
+  sourceVideoUrl?: string;
 }
 
 export interface Folder {
@@ -101,6 +103,19 @@ class ClipsAPI {
     if (!response.ok) {
       throw new Error("Failed to delete clip");
     }
+  }
+
+  async getPendingClips(teamId: number): Promise<Clip[]> {
+    const response = await fetch(`${API_URL}/clip-video/teams/${teamId}/clips/pending`, {
+      headers: this.getHeaders(),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch pending clips");
+    }
+
+    const data = await response.json();
+    return data.clips;
   }
 
   // Folders

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAtom } from "jotai";
 import { userAtom, selectedTeamAtom } from "@/store/auth";
@@ -15,6 +15,7 @@ import { useUsageStatsRefresh } from "@/contexts/UsageStatsContext";
 import PendingClipsSection from "@/components/clips/PendingClipsSection";
 import NewClipsSection from "@/components/clips/NewClipsSection";
 import ClipViewModal from "@/components/clips/ClipViewModal";
+import { useSocket } from "@/hooks/useSocket";
 
 export default function MyClipsPage() {
   const router = useRouter();
@@ -32,51 +33,7 @@ export default function MyClipsPage() {
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const { triggerRefresh } = useUsageStatsRefresh();
 
-  useEffect(() => {
-    if (!user) {
-      const accessToken =
-        typeof window !== "undefined"
-          ? localStorage.getItem("access_token")
-          : null;
-      if (!accessToken) {
-        router.push("/auth");
-        return;
-      }
-      authAPI
-        .getMe()
-        .then((userData) => {
-          setUser(userData);
-        })
-        .catch(() => {
-          router.push("/auth");
-        });
-    }
-  }, [user, router, setUser]);
-
-  useEffect(() => {
-    if (selectedTeam?.id) {
-      loadClips();
-      loadFolders();
-    }
-  }, [selectedTeam?.id]);
-
-  useEffect(() => {
-    if (!selectedTeam?.id) return;
-
-    const hasPendingClips = clips.some(clip =>
-      clip.status === "pending" || clip.status === "processing"
-    );
-
-    if (!hasPendingClips) return;
-
-    const interval = setInterval(() => {
-      loadClips();
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [clips, selectedTeam?.id]);
-
-  const loadClips = async () => {
+  const loadClips = useCallback(async () => {
     if (!selectedTeam?.id) return;
 
     if (!hasLoadedOnce) {
@@ -105,7 +62,37 @@ export default function MyClipsPage() {
         setIsLoadingClips(false);
       }
     }
-  };
+  }, [selectedTeam?.id, hasLoadedOnce]);
+
+  useSocket(selectedTeam?.id, loadClips);
+
+  useEffect(() => {
+    if (!user) {
+      const accessToken =
+        typeof window !== "undefined"
+          ? localStorage.getItem("access_token")
+          : null;
+      if (!accessToken) {
+        router.push("/auth");
+        return;
+      }
+      authAPI
+        .getMe()
+        .then((userData) => {
+          setUser(userData);
+        })
+        .catch(() => {
+          router.push("/auth");
+        });
+    }
+  }, [user, router, setUser]);
+
+  useEffect(() => {
+    if (selectedTeam?.id) {
+      loadClips();
+      loadFolders();
+    }
+  }, [selectedTeam?.id, loadClips]);
 
   const loadFolders = async () => {
     if (!selectedTeam?.id) return;
@@ -211,7 +198,7 @@ export default function MyClipsPage() {
   const twentyMinutesAgo = new Date(Date.now() - 20 * 60 * 1000);
 
   const pendingClips = clips.filter(clip =>
-    (clip.status === "pending" || clip.status === "processing") && !clip.folder_id
+    clip.status === "pending" && !clip.folder_id
   );
 
   const newClips = clips.filter(clip =>

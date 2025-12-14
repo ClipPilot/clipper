@@ -4,45 +4,59 @@ import fs from "fs";
 import path from "path";
 import { config } from "../config/env";
 
+// AWS SDK v3 automatically uses credentials from the default credential provider chain
+// (AWS CLI config, ~/.aws/credentials, environment variables, IAM roles, etc.)
 const s3Client = new S3Client({
   region: config.aws.region,
 });
 
 const BUCKET_NAME = config.aws.s3Bucket;
 const GENERATED_CLIPS_FOLDER = "generated-clips";
-const RAW_VIDEOS_FOLDER = "raw-videos";
+const THUMBNAILS_FOLDER = "thumbnails";
 
 class S3Service {
-  async uploadRawVideo(filePath: string, teamId: number): Promise<string> {
-    const fileName = `${teamId}/${Date.now()}_${path.basename(filePath)}`;
-    const key = `${RAW_VIDEOS_FOLDER}/${fileName}`;
+  async uploadThumbnail(filePath: string, teamId: number): Promise<string> {
+    try {
+      const fileName = `${teamId}/${Date.now()}_${path.basename(filePath)}`;
+      const key = `${THUMBNAILS_FOLDER}/${fileName}`;
 
-    const fileStream = fs.createReadStream(filePath);
-    const uploadParams = {
-      Bucket: BUCKET_NAME,
-      Key: key,
-      Body: fileStream,
-      ContentType: "video/mp4",
-    };
+      const fileStream = fs.createReadStream(filePath);
+      const uploadParams = {
+        Bucket: BUCKET_NAME,
+        Key: key,
+        Body: fileStream,
+        ContentType: "image/jpeg",
+      };
 
-    await s3Client.send(new PutObjectCommand(uploadParams));
-    return key;
+      await s3Client.send(new PutObjectCommand(uploadParams));
+      console.log(`Thumbnail uploaded to S3 successfully: ${key}`);
+      return key;
+    } catch (error) {
+      console.error("Error uploading thumbnail to S3:", error);
+      throw new Error(`Failed to upload thumbnail to S3: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
   }
 
   async uploadGeneratedClip(filePath: string, teamId: number, clipId: number): Promise<string> {
-    const fileName = `${teamId}/${clipId}_${Date.now()}.mp4`;
-    const key = `${GENERATED_CLIPS_FOLDER}/${fileName}`;
+    try {
+      const fileName = `${teamId}/${clipId}_${Date.now()}.mp4`;
+      const key = `${GENERATED_CLIPS_FOLDER}/${fileName}`;
 
-    const fileStream = fs.createReadStream(filePath);
-    const uploadParams = {
-      Bucket: BUCKET_NAME,
-      Key: key,
-      Body: fileStream,
-      ContentType: "video/mp4",
-    };
+      const fileStream = fs.createReadStream(filePath);
+      const uploadParams = {
+        Bucket: BUCKET_NAME,
+        Key: key,
+        Body: fileStream,
+        ContentType: "video/mp4",
+      };
 
-    await s3Client.send(new PutObjectCommand(uploadParams));
-    return key;
+      await s3Client.send(new PutObjectCommand(uploadParams));
+      console.log(`Generated clip uploaded to S3 successfully: ${key}`);
+      return key;
+    } catch (error) {
+      console.error("Error uploading generated clip to S3:", error);
+      throw new Error(`Failed to upload generated clip to S3: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
   }
 
   async getPresignedUrl(key: string, expiresIn: number = 3600): Promise<string> {

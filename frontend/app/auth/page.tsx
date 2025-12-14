@@ -81,12 +81,12 @@ export default function AuthPage() {
     }
   }, []);
 
-  const handleLogin = async (email: string, password: string) => {
+  const handleLogin = async (email: string, password: string, rememberMe: boolean) => {
     setError("");
     setIsLoading(true);
 
     try {
-      const response = await authAPI.signIn({ email, password });
+      const response = await authAPI.signIn({ email, password, rememberMe });
       setUser(response.user);
       router.push("/dashboard");
     } catch (err: any) {

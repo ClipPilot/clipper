@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
-import { Button, Input, Divider } from "@heroui/react";
+import { Button, Input, Divider, Checkbox } from "@heroui/react";
 import { Icon } from "@iconify/react";
 
 interface LoginFormProps {
   onSignUp: () => void;
   onForgotPassword: () => void;
-  onSubmit: (email: string, password: string) => Promise<void>;
+  onSubmit: (email: string, password: string, rememberMe: boolean) => Promise<void>;
   error: string;
   isLoading: boolean;
 }
@@ -22,10 +22,11 @@ export default function LoginForm({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isVisible, setIsVisible] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await onSubmit(email, password);
+    await onSubmit(email, password, rememberMe);
   };
 
   return (
@@ -100,7 +101,18 @@ export default function LoginForm({
           />
         </div>
 
-        <div className="flex justify-end -mt-2">
+        <div className="flex items-center justify-between -mt-2">
+          <Checkbox
+            isSelected={rememberMe}
+            onValueChange={setRememberMe}
+            size="sm"
+            classNames={{
+              base: "gap-2",
+              label: "text-sm text-text-secondary",
+            }}
+          >
+            Remember me
+          </Checkbox>
           <button
             type="button"
             className="text-sm text-accent-400 font-medium hover:underline"

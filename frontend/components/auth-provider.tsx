@@ -19,16 +19,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch (error) {
           console.error("Failed to restore session:", error);
 
-          if (typeof window !== "undefined") {
-            localStorage.removeItem("access_token");
-            localStorage.removeItem("refresh_token");
-            localStorage.removeItem("token_expiry");
-            localStorage.removeItem("user");
-            localStorage.removeItem("userTeams");
-            localStorage.removeItem("selectedTeam");
+          if (error instanceof Error && error.message.includes("Session expired")) {
+            if (typeof window !== "undefined") {
+              localStorage.removeItem("access_token");
+              localStorage.removeItem("refresh_token");
+              localStorage.removeItem("token_expiry");
+              localStorage.removeItem("remember_me");
+              localStorage.removeItem("user");
+              localStorage.removeItem("userTeams");
+              localStorage.removeItem("selectedTeam");
+            }
+            setUser(null);
           }
-
-          setUser(null);
         }
       }
     };
@@ -42,16 +44,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch (error) {
           console.error("Failed to refresh session:", error);
 
-          if (typeof window !== "undefined") {
-            localStorage.removeItem("access_token");
-            localStorage.removeItem("refresh_token");
-            localStorage.removeItem("token_expiry");
-            localStorage.removeItem("user");
-            localStorage.removeItem("userTeams");
-            localStorage.removeItem("selectedTeam");
+          if (error instanceof Error && error.message.includes("Session expired")) {
+            if (typeof window !== "undefined") {
+              localStorage.removeItem("access_token");
+              localStorage.removeItem("refresh_token");
+              localStorage.removeItem("token_expiry");
+              localStorage.removeItem("remember_me");
+              localStorage.removeItem("user");
+              localStorage.removeItem("userTeams");
+              localStorage.removeItem("selectedTeam");
+            }
+            setUser(null);
           }
-
-          setUser(null);
         }
       }
     }, 4 * 60 * 1000);
