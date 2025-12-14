@@ -1,0 +1,22 @@
+# AWS Configuration
+aws_region  = "us-west-2"
+environment = "prod"
+project_name = "clipster"
+
+# Backend Configuration
+backend_container_port = 3001
+backend_cpu            = 2048  # 2 vCPU
+backend_memory         = 4096  # 4 GB
+backend_desired_count  = 2
+
+# Sensitive Variables (DO NOT COMMIT - Use terraform.tfvars)
+openai_api_key     = "sk-proj-..."
+deepgram_api_key   = "..."
+database_url       = "postgresql://..."
+supabase_url       = "https://....supabase.co"
+supabase_anon_key  = "..."
+
+# GitHub Configuration
+github_repository   = "your-username/your-repo"
+github_access_token = "ghp_..."
+amplify_branch      = "main"

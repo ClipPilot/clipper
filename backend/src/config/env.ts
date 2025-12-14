@@ -13,7 +13,6 @@ function getEnv(name: string, fallback?: string): string {
 export const ENV = {
   OPENAI_API_KEY: getEnv("OPENAI_API_KEY"),
   PORT: getEnv("PORT", "3001"),
-  LOCAL_VIDEO_PATH: getEnv("LOCAL_VIDEO_PATH"),
   DEEPGRAM_API_KEY: getEnv("DEEPGRAM_API_KEY"),
   SUPABASE_URL: getEnv("SUPABASE_URL"),
   SUPABASE_ANON_KEY: getEnv("SUPABASE_ANON_KEY"),

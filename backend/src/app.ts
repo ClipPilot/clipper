@@ -21,6 +21,15 @@ app.use(express.urlencoded({ limit: "10gb", extended: true }));
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
+// Health check endpoint for AWS ECS/ALB
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "healthy",
+    timestamp: new Date().toISOString(),
+    service: "clipster-backend"
+  });
+});
+
 app.use("/api/auth", authRoutes);
 app.use("/api/teams", teamRoutes);
 app.use("/api/clip-video", transcribeRoutes);
