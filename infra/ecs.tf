@@ -133,6 +133,8 @@ resource "aws_ecs_task_definition" "backend" {
       retries     = 3
       startPeriod = 60
     }
+
+    essential = true
   }])
 
   tags = {

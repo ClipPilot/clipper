@@ -51,8 +51,8 @@ output "amplify_app_url" {
 }
 
 output "backend_api_url" {
-  description = "Backend API URL"
-  value       = "https://${aws_lb.backend.dns_name}/api"
+  description = "Backend API URL (HTTP - add HTTPS later with custom domain)"
+  value       = "http://${aws_lb.backend.dns_name}/api"
 }
 
 output "cloudwatch_log_group" {

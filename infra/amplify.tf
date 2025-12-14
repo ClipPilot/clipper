@@ -32,7 +32,7 @@ resource "aws_amplify_app" "frontend" {
 
   # Environment variables for frontend
   environment_variables = {
-    NEXT_PUBLIC_API_URL = "https://${aws_lb.backend.dns_name}/api"
+    NEXT_PUBLIC_API_URL = "http://${aws_lb.backend.dns_name}/api"  # Using HTTP for now - update to HTTPS when custom domain is configured
     NODE_ENV            = "production"
     _LIVE_UPDATES       = jsonencode([{
       pkg     = "next"
