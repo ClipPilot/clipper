@@ -9,7 +9,14 @@ export interface TranscriptionWord {
   punctuated_word?: string | undefined;
 }
 
-const WORDS_PER_GROUP = 4; // Show 3-5 words at once (4 is a good middle ground)
+export interface CaptionEntry {
+  index: number;
+  startTime: number;
+  endTime: number;
+  text: string;
+}
+
+const WORDS_PER_GROUP = 4;
 
 const formatTime = (t: number) => {
   const h = Math.floor(t / 3600);
@@ -111,6 +118,71 @@ Format: Layer,Start,End,Style,Text
     }
 
     offset += segment.end - segment.start;
+  }
+
+  fs.writeFileSync(assPath, ass);
+
+  return new Promise((resolve, reject) => {
+    ffmpeg(inputPath)
+      .videoFilters(`ass=${assPath}:fontsdir=${path.resolve("src/assets")}`)
+      .outputOptions(["-c:a copy"])
+      .save(outputPath)
+      .on("end", () => {
+        fs.unlinkSync(assPath);
+        resolve();
+      })
+      .on("error", err => {
+        fs.unlinkSync(assPath);
+        reject(err);
+      });
+  });
+};
+
+export const addCaptionsFromData = async (
+  inputPath: string,
+  outputPath: string,
+  captionsData: CaptionEntry[],
+  captionColor: string = "#FFD600"
+): Promise<void> => {
+  const assPath = path.join(
+    path.dirname(outputPath),
+    `captions_${Date.now()}.ass`
+  );
+
+  const highlightColor = hexToAssBgr(captionColor);
+  const defaultColor = "&H00FFFFFF";
+
+  let ass = `
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: 1920
+
+[V4+ Styles]
+Format: Name,Fontname,Fontsize,PrimaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding
+Style: Default,Comic Neue,100,${defaultColor},&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,5,0,2,60,60,180,1
+
+[Events]
+Format: Layer,Start,End,Style,Text
+`;
+
+  for (const entry of captionsData) {
+    const words = entry.text.split(" ");
+    const wordDuration = (entry.endTime - entry.startTime) / words.length;
+
+    for (let i = 0; i < words.length; i++) {
+      const wordStart = entry.startTime + i * wordDuration;
+      const wordEnd = entry.startTime + (i + 1) * wordDuration;
+
+      const text = words
+        .map((w, idx) => {
+          const color = idx === i ? highlightColor : defaultColor;
+          return `{\\c${color}}${w}`;
+        })
+        .join(" ");
+
+      ass += `Dialogue: 0,${formatTime(wordStart)},${formatTime(wordEnd)},Default,${text}\n`;
+    }
   }
 
   fs.writeFileSync(assPath, ass);

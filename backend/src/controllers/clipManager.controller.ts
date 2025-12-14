@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
 import { clipManagerService } from "../services/clipManager.service";
 import { s3Service } from "../services/s3.service";
+import { regenerateClipWithCaptions, regenerateClipWithTextOverlay } from "../services/clip.service";
+import fs from "fs";
+import path from "path";
 
 export class ClipManagerController {
   async getClips(req: Request, res: Response) {
@@ -118,6 +121,7 @@ export class ClipManagerController {
 
       let clipUrl: string | null = null;
       let sourceVideoUrl: string | null = null;
+      let blankVideoUrl: string | null = null;
 
       if (clip.clip_path) {
         clipUrl = await s3Service.getPresignedUrl(clip.clip_path);
@@ -127,11 +131,16 @@ export class ClipManagerController {
         sourceVideoUrl = await s3Service.getPresignedUrl(clip.source_video_path);
       }
 
+      if (clip.blank_video_path) {
+        blankVideoUrl = await s3Service.getPresignedUrl(clip.blank_video_path);
+      }
+
       return res.status(200).json({
         clip: {
           ...clip,
           clipUrl,
           sourceVideoUrl,
+          blankVideoUrl,
         },
       });
     } catch (error) {
@@ -232,6 +241,125 @@ export class ClipManagerController {
       console.error("Delete clip error:", error);
       return res.status(404).json({
         error: error instanceof Error ? error.message : "Failed to delete clip",
+      });
+    }
+  }
+
+  async updateCaptions(req: Request, res: Response) {
+    try {
+      const clipId = parseInt(req.params.clipId);
+      const teamId = parseInt(req.params.teamId);
+      const { captionsData, captionColor } = req.body;
+
+      if (isNaN(clipId) || isNaN(teamId)) {
+        return res.status(400).json({ error: "Invalid clip ID or team ID" });
+      }
+
+      if (!captionsData || !Array.isArray(captionsData)) {
+        return res.status(400).json({ error: "Invalid captions data" });
+      }
+
+      const clip = await clipManagerService.getClipById(clipId, teamId);
+
+      if (!clip.blank_video_path) {
+        return res.status(400).json({ error: "No blank video available for this clip" });
+      }
+
+      const outDir = path.join(process.cwd(), "output");
+      if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
+
+      const localBlankPath = path.join(outDir, `blank_${clipId}_${Date.now()}.mp4`);
+      await s3Service.downloadFile(clip.blank_video_path, localBlankPath);
+
+      const metadata = clip.clip_metadata as any;
+      const color = captionColor || metadata?.parameters?.captionColor || "#FFD600";
+
+      const newClipPath = await regenerateClipWithCaptions(localBlankPath, captionsData, color);
+
+      if (clip.clip_path) {
+        await s3Service.deleteObject(clip.clip_path);
+      }
+
+      const newClipS3Key = await s3Service.uploadGeneratedClip(newClipPath, teamId, clipId);
+
+      await clipManagerService.updateClipCaptions(clipId, teamId, {
+        clipPath: newClipS3Key,
+        captionsData,
+      });
+
+      if (fs.existsSync(localBlankPath)) fs.unlinkSync(localBlankPath);
+      if (fs.existsSync(newClipPath)) fs.unlinkSync(newClipPath);
+
+      const newClipUrl = await s3Service.getPresignedUrl(newClipS3Key);
+
+      return res.status(200).json({
+        message: "Captions updated successfully",
+        clipUrl: newClipUrl,
+        captionsData,
+      });
+    } catch (error) {
+      console.error("Update captions error:", error);
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to update captions",
+      });
+    }
+  }
+
+  async updateTextOverlay(req: Request, res: Response) {
+    try {
+      const clipId = parseInt(req.params.clipId);
+      const teamId = parseInt(req.params.teamId);
+      const { text, color, x, y, fontSize } = req.body;
+
+      if (isNaN(clipId) || isNaN(teamId)) {
+        return res.status(400).json({ error: "Invalid clip ID or team ID" });
+      }
+
+      if (!text || typeof text !== "string") {
+        return res.status(400).json({ error: "Text is required" });
+      }
+
+      const clip = await clipManagerService.getClipById(clipId, teamId);
+
+      if (!clip.blank_video_path) {
+        return res.status(400).json({ error: "No blank video available for this clip" });
+      }
+
+      const outDir = path.join(process.cwd(), "output");
+      if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
+
+      const localBlankPath = path.join(outDir, `blank_${clipId}_${Date.now()}.mp4`);
+      await s3Service.downloadFile(clip.blank_video_path, localBlankPath);
+
+      const newClipPath = await regenerateClipWithTextOverlay(localBlankPath, {
+        text,
+        color: color || "#FFFFFF",
+        x: x ?? 50,
+        y: y ?? 10,
+        fontSize: fontSize ?? 48,
+      });
+
+      if (clip.clip_path) {
+        await s3Service.deleteObject(clip.clip_path);
+      }
+
+      const newClipS3Key = await s3Service.uploadGeneratedClip(newClipPath, teamId, clipId);
+
+      await clipManagerService.updateClip(clipId, teamId, { clipPath: newClipS3Key });
+
+      if (fs.existsSync(localBlankPath)) fs.unlinkSync(localBlankPath);
+      if (fs.existsSync(newClipPath)) fs.unlinkSync(newClipPath);
+
+      const newClipUrl = await s3Service.getPresignedUrl(newClipS3Key);
+
+      return res.status(200).json({
+        message: "Text overlay applied successfully",
+        clipUrl: newClipUrl,
+      });
+    } catch (error) {
+      console.error("Update text overlay error:", error);
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to apply text overlay",
       });
     }
   }

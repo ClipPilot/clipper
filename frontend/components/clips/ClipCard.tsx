@@ -9,12 +9,13 @@ interface ClipCardProps {
   clip: Clip;
   onDelete?: (clipId: number) => void;
   onView?: () => void;
+  onEdit?: () => void;
   isDragging?: boolean;
   onDragStart?: (e: React.DragEvent, clipId: number) => void;
   onDragEnd?: () => void;
 }
 
-export const ClipCard: React.FC<ClipCardProps> = ({ clip, onDelete, onView, isDragging, onDragStart, onDragEnd }) => {
+export const ClipCard: React.FC<ClipCardProps> = ({ clip, onDelete, onView, onEdit, isDragging, onDragStart, onDragEnd }) => {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return new Intl.DateTimeFormat("en-US", {
@@ -106,7 +107,19 @@ export const ClipCard: React.FC<ClipCardProps> = ({ clip, onDelete, onView, isDr
             View
           </Button>
         )}
-        
+
+        {onEdit && clip.captions_data && (
+          <Button
+            size="sm"
+            variant="light"
+            className="text-xs text-text-secondary hover:text-accent-400"
+            startContent={<Icon icon="solar:pen-outline" className="text-base" />}
+            onPress={onEdit}
+          >
+            Edit
+          </Button>
+        )}
+
         <Button
           size="sm"
           variant="light"
@@ -115,7 +128,7 @@ export const ClipCard: React.FC<ClipCardProps> = ({ clip, onDelete, onView, isDr
         >
           Download
         </Button>
-        
+
         {onDelete && (
           <Button
             size="sm"

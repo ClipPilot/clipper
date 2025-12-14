@@ -195,6 +195,10 @@ export default function MyClipsPage() {
     setIsViewModalOpen(true);
   };
 
+  const handleEditClip = (clip: Clip) => {
+    router.push(`/dashboard/clips/${clip.id}/edit`);
+  };
+
   const twentyMinutesAgo = new Date(Date.now() - 20 * 60 * 1000);
 
   const pendingClips = clips.filter(clip =>
@@ -272,6 +276,7 @@ export default function MyClipsPage() {
                   onDelete={handleDeleteFolder}
                   onDrop={handleDrop}
                   onClipDelete={handleDeleteClip}
+                  onClipEdit={handleEditClip}
                   draggedClipId={draggedClipId}
                   onClipDragStart={handleDragStart}
                   onClipDragEnd={() => setDraggedClipId(null)}
@@ -289,6 +294,7 @@ export default function MyClipsPage() {
           clips={newClips}
           onDelete={handleDeleteClip}
           onClipClick={(clip: any) => handleViewClip(clip)}
+          onEditClick={(clip: any) => handleEditClip(clip)}
           draggedClipId={draggedClipId}
           onDragStart={handleDragStart}
           onDragEnd={() => setDraggedClipId(null)}
@@ -325,6 +331,7 @@ export default function MyClipsPage() {
                     clip={clip}
                     onDelete={handleDeleteClip}
                     onView={() => handleViewClip(clip)}
+                    onEdit={() => handleEditClip(clip)}
                     isDragging={draggedClipId === clip.id}
                   />
                 </div>

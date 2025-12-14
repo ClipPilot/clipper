@@ -1,12 +1,22 @@
 import API_URL from "@/config/constants";
 import { apiFetch } from "@/lib/apiClient";
 
+export interface CaptionEntry {
+  index: number;
+  startTime: number;
+  endTime: number;
+  text: string;
+}
+
 export interface Clip {
   id: number;
   team_id: number;
   generated_by_user_id: number;
   folder_id?: number | null;
   clip_path?: string;
+  blank_video_path?: string;
+  srt_path?: string;
+  captions_data?: CaptionEntry[];
   source_video_path?: string;
   clip_score?: number;
   clip_metadata?: any;
@@ -19,6 +29,7 @@ export interface Clip {
   updated_at: string;
   clipUrl?: string;
   sourceVideoUrl?: string;
+  blankVideoUrl?: string;
   title?: string;
 }
 
@@ -35,9 +46,12 @@ export interface Folder {
 class ClipsAPI {
   // Clips
   async getClips(teamId: number): Promise<Clip[]> {
-    const response = await apiFetch(`${API_URL}/clip-video/teams/${teamId}/clips`, {
-      headers: { "Content-Type": "application/json" },
-    });
+    const response = await apiFetch(
+      `${API_URL}/clip-video/teams/${teamId}/clips`,
+      {
+        headers: { "Content-Type": "application/json" },
+      }
+    );
 
     if (!response.ok) {
       throw new Error("Failed to fetch clips");
@@ -48,9 +62,12 @@ class ClipsAPI {
   }
 
   async getClip(teamId: number, clipId: number): Promise<Clip> {
-    const response = await apiFetch(`${API_URL}/clip-video/teams/${teamId}/clips/${clipId}`, {
-      headers: { "Content-Type": "application/json" },
-    });
+    const response = await apiFetch(
+      `${API_URL}/clip-video/teams/${teamId}/clips/${clipId}`,
+      {
+        headers: { "Content-Type": "application/json" },
+      }
+    );
 
     if (!response.ok) {
       throw new Error("Failed to fetch clip");
@@ -60,12 +77,19 @@ class ClipsAPI {
     return data.clip;
   }
 
-  async updateClip(teamId: number, clipId: number, updates: { message?: string; clipScore?: number; folderId?: number | null }): Promise<Clip> {
-    const response = await apiFetch(`${API_URL}/clip-video/teams/${teamId}/clips/${clipId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updates),
-    });
+  async updateClip(
+    teamId: number,
+    clipId: number,
+    updates: { message?: string; clipScore?: number; folderId?: number | null }
+  ): Promise<Clip> {
+    const response = await apiFetch(
+      `${API_URL}/clip-video/teams/${teamId}/clips/${clipId}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      }
+    );
 
     if (!response.ok) {
       throw new Error("Failed to update clip");
@@ -76,9 +100,12 @@ class ClipsAPI {
   }
 
   async getClipsByFolder(teamId: number, folderId: number): Promise<Clip[]> {
-    const response = await apiFetch(`${API_URL}/clip-video/teams/${teamId}/folders/${folderId}/clips`, {
-      headers: { "Content-Type": "application/json" },
-    });
+    const response = await apiFetch(
+      `${API_URL}/clip-video/teams/${teamId}/folders/${folderId}/clips`,
+      {
+        headers: { "Content-Type": "application/json" },
+      }
+    );
 
     if (!response.ok) {
       throw new Error("Failed to fetch folder clips");
@@ -89,10 +116,13 @@ class ClipsAPI {
   }
 
   async deleteClip(teamId: number, clipId: number): Promise<void> {
-    const response = await apiFetch(`${API_URL}/clip-video/teams/${teamId}/clips/${clipId}`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-    });
+    const response = await apiFetch(
+      `${API_URL}/clip-video/teams/${teamId}/clips/${clipId}`,
+      {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      }
+    );
 
     if (!response.ok) {
       throw new Error("Failed to delete clip");
@@ -100,9 +130,12 @@ class ClipsAPI {
   }
 
   async getPendingClips(teamId: number): Promise<Clip[]> {
-    const response = await apiFetch(`${API_URL}/clip-video/teams/${teamId}/clips/pending`, {
-      headers: { "Content-Type": "application/json" },
-    });
+    const response = await apiFetch(
+      `${API_URL}/clip-video/teams/${teamId}/clips/pending`,
+      {
+        headers: { "Content-Type": "application/json" },
+      }
+    );
 
     if (!response.ok) {
       throw new Error("Failed to fetch pending clips");
@@ -114,9 +147,12 @@ class ClipsAPI {
 
   // Folders
   async getFolders(teamId: number): Promise<Folder[]> {
-    const response = await apiFetch(`${API_URL}/folders/teams/${teamId}/folders`, {
-      headers: { "Content-Type": "application/json" },
-    });
+    const response = await apiFetch(
+      `${API_URL}/folders/teams/${teamId}/folders`,
+      {
+        headers: { "Content-Type": "application/json" },
+      }
+    );
 
     if (!response.ok) {
       throw new Error("Failed to fetch folders");
@@ -127,9 +163,12 @@ class ClipsAPI {
   }
 
   async getFolder(teamId: number, folderId: number): Promise<Folder> {
-    const response = await apiFetch(`${API_URL}/folders/teams/${teamId}/folders/${folderId}`, {
-      headers: { "Content-Type": "application/json" },
-    });
+    const response = await apiFetch(
+      `${API_URL}/folders/teams/${teamId}/folders/${folderId}`,
+      {
+        headers: { "Content-Type": "application/json" },
+      }
+    );
 
     if (!response.ok) {
       throw new Error("Failed to fetch folder");
@@ -139,12 +178,18 @@ class ClipsAPI {
     return data.folder;
   }
 
-  async createFolder(teamId: number, data: { name: string; color?: string; message?: string }): Promise<Folder> {
-    const response = await apiFetch(`${API_URL}/folders/teams/${teamId}/folders`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
+  async createFolder(
+    teamId: number,
+    data: { name: string; color?: string; message?: string }
+  ): Promise<Folder> {
+    const response = await apiFetch(
+      `${API_URL}/folders/teams/${teamId}/folders`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }
+    );
 
     if (!response.ok) {
       throw new Error("Failed to create folder");
@@ -154,12 +199,19 @@ class ClipsAPI {
     return result.folder;
   }
 
-  async updateFolder(teamId: number, folderId: number, updates: { name?: string; color?: string; message?: string }): Promise<Folder> {
-    const response = await apiFetch(`${API_URL}/folders/teams/${teamId}/folders/${folderId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updates),
-    });
+  async updateFolder(
+    teamId: number,
+    folderId: number,
+    updates: { name?: string; color?: string; message?: string }
+  ): Promise<Folder> {
+    const response = await apiFetch(
+      `${API_URL}/folders/teams/${teamId}/folders/${folderId}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      }
+    );
 
     if (!response.ok) {
       throw new Error("Failed to update folder");
@@ -170,14 +222,60 @@ class ClipsAPI {
   }
 
   async deleteFolder(teamId: number, folderId: number): Promise<void> {
-    const response = await apiFetch(`${API_URL}/folders/teams/${teamId}/folders/${folderId}`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-    });
+    const response = await apiFetch(
+      `${API_URL}/folders/teams/${teamId}/folders/${folderId}`,
+      {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      }
+    );
 
     if (!response.ok) {
       throw new Error("Failed to delete folder");
     }
+  }
+
+  async updateCaptions(
+    teamId: number,
+    clipId: number,
+    captionsData: CaptionEntry[],
+    captionColor?: string
+  ): Promise<{ clipUrl: string; captionsData: CaptionEntry[] }> {
+    const response = await apiFetch(
+      `${API_URL}/clip-video/teams/${teamId}/clips/${clipId}/captions`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ captionsData, captionColor }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to update captions");
+    }
+
+    return response.json();
+  }
+
+  async updateTextOverlay(
+    teamId: number,
+    clipId: number,
+    overlay: { text: string; color: string; x: number; y: number; fontSize: number }
+  ): Promise<{ clipUrl: string }> {
+    const response = await apiFetch(
+      `${API_URL}/clip-video/teams/${teamId}/clips/${clipId}/text-overlay`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(overlay),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to update text overlay");
+    }
+
+    return response.json();
   }
 }
 

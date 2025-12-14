@@ -106,6 +106,7 @@ export class ClipManagerService {
       message?: string;
       clipScore?: number;
       folderId?: number | null;
+      clipPath?: string;
     }
   ) {
     const updateData: any = {
@@ -116,6 +117,7 @@ export class ClipManagerService {
     if (updates.clipScore !== undefined)
       updateData.clip_score = updates.clipScore;
     if (updates.folderId !== undefined) updateData.folder_id = updates.folderId;
+    if (updates.clipPath !== undefined) updateData.clip_path = updates.clipPath;
 
     const [updatedClip] = await db
       .update(clips)
@@ -208,6 +210,9 @@ export class ClipManagerService {
     teamId: number,
     data: {
       clipPath: string;
+      blankVideoPath?: string;
+      srtPath?: string;
+      captionsData?: any;
       sourceVideoPath: string;
       clipMetadata: any;
       inputMetadata?: any;
@@ -221,6 +226,9 @@ export class ClipManagerService {
       .update(clips)
       .set({
         clip_path: data.clipPath,
+        blank_video_path: data.blankVideoPath,
+        srt_path: data.srtPath,
+        captions_data: data.captionsData,
         source_video_path: data.sourceVideoPath,
         clip_metadata: data.clipMetadata,
         input_metadata: data.inputMetadata,
@@ -230,6 +238,31 @@ export class ClipManagerService {
         status: "completed",
         updated_at: new Date(),
         title: data.title,
+      })
+      .where(and(eq(clips.id, clipId), eq(clips.team_id, teamId)))
+      .returning();
+
+    if (!updatedClip) {
+      throw new Error("Clip not found");
+    }
+
+    return updatedClip;
+  }
+
+  async updateClipCaptions(
+    clipId: number,
+    teamId: number,
+    data: {
+      clipPath: string;
+      captionsData: any;
+    }
+  ) {
+    const [updatedClip] = await db
+      .update(clips)
+      .set({
+        clip_path: data.clipPath,
+        captions_data: data.captionsData,
+        updated_at: new Date(),
       })
       .where(and(eq(clips.id, clipId), eq(clips.team_id, teamId)))
       .returning();

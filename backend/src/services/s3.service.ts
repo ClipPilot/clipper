@@ -12,6 +12,8 @@ const s3Client = new S3Client({
 
 const BUCKET_NAME = config.aws.s3Bucket;
 const GENERATED_CLIPS_FOLDER = "generated-clips";
+const BLANK_CLIPS_FOLDER = "blank-clips";
+const SRT_FOLDER = "srt-files";
 const THUMBNAILS_FOLDER = "thumbnails";
 
 class S3Service {
@@ -56,6 +58,74 @@ class S3Service {
     } catch (error) {
       console.error("Error uploading generated clip to S3:", error);
       throw new Error(`Failed to upload generated clip to S3: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+  }
+
+  async uploadBlankClip(filePath: string, teamId: number, clipId: number): Promise<string> {
+    try {
+      const fileName = `${teamId}/${clipId}_${Date.now()}.mp4`;
+      const key = `${BLANK_CLIPS_FOLDER}/${fileName}`;
+
+      const fileStream = fs.createReadStream(filePath);
+      const uploadParams = {
+        Bucket: BUCKET_NAME,
+        Key: key,
+        Body: fileStream,
+        ContentType: "video/mp4",
+      };
+
+      await s3Client.send(new PutObjectCommand(uploadParams));
+      console.log(`Blank clip uploaded to S3 successfully: ${key}`);
+      return key;
+    } catch (error) {
+      console.error("Error uploading blank clip to S3:", error);
+      throw new Error(`Failed to upload blank clip to S3: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+  }
+
+  async uploadSrtFile(filePath: string, teamId: number, clipId: number): Promise<string> {
+    try {
+      const fileName = `${teamId}/${clipId}_${Date.now()}.srt`;
+      const key = `${SRT_FOLDER}/${fileName}`;
+
+      const fileStream = fs.createReadStream(filePath);
+      const uploadParams = {
+        Bucket: BUCKET_NAME,
+        Key: key,
+        Body: fileStream,
+        ContentType: "text/plain",
+      };
+
+      await s3Client.send(new PutObjectCommand(uploadParams));
+      console.log(`SRT file uploaded to S3 successfully: ${key}`);
+      return key;
+    } catch (error) {
+      console.error("Error uploading SRT file to S3:", error);
+      throw new Error(`Failed to upload SRT file to S3: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+  }
+
+  async downloadFile(key: string, localPath: string): Promise<void> {
+    try {
+      const command = new GetObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: key,
+      });
+
+      const response = await s3Client.send(command);
+      const writeStream = fs.createWriteStream(localPath);
+
+      if (response.Body) {
+        const bodyStream = response.Body as NodeJS.ReadableStream;
+        await new Promise<void>((resolve, reject) => {
+          bodyStream.pipe(writeStream);
+          writeStream.on("finish", resolve);
+          writeStream.on("error", reject);
+        });
+      }
+    } catch (error) {
+      console.error("Error downloading file from S3:", error);
+      throw new Error(`Failed to download file from S3: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
   }
 

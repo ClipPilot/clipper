@@ -10,6 +10,7 @@ interface NewClipsSectionProps {
   clips: Clip[];
   onDelete: (clipId: number) => void;
   onClipClick: (clip: Clip) => void;
+  onEditClick?: (clip: Clip) => void;
   draggedClipId: number | null;
   onDragStart: (e: React.DragEvent, clipId: number) => void;
   onDragEnd: () => void;
@@ -19,6 +20,7 @@ export default function NewClipsSection({
   clips,
   onDelete,
   onClipClick,
+  onEditClick,
   draggedClipId,
   onDragStart,
   onDragEnd,
@@ -51,6 +53,7 @@ export default function NewClipsSection({
                 clip={clip}
                 onDelete={onDelete}
                 onView={() => onClipClick(clip)}
+                onEdit={onEditClick ? () => onEditClick(clip) : undefined}
                 isDragging={draggedClipId === clip.id}
               />
             </div>

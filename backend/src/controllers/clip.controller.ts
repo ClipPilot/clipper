@@ -63,7 +63,7 @@ const processClipsAsync = async (
       throw new Error("Failed to generate clip suggestions");
     }
 
-    const combinedClipPaths = await createMultipleCombinedClipsService(
+    const clipResults = await createMultipleCombinedClipsService(
       uploadedFilePath,
       clipSuggestionsArray,
       transcriptionData.results.channels[0].alternatives[0].words,
@@ -76,7 +76,7 @@ const processClipsAsync = async (
       }
     );
 
-    console.log("Created combined clip paths:", combinedClipPaths);
+    console.log("Created clip results:", clipResults.length);
     console.log("Extracting thumbnail from source video...");
 
     const thumbnailPath = await extractThumbnail(uploadedFilePath);
@@ -93,25 +93,38 @@ const processClipsAsync = async (
 
     for (let i = 0; i < clipSuggestionsArray.length; i++) {
       const suggestions = clipSuggestionsArray[i];
-      const localClipPath = combinedClipPaths[i];
+      const result = clipResults[i];
 
       console.log(
         `Uploading clip ${i + 1}/${clipSuggestionsArray.length} to S3...`
       );
 
       const clipS3Key = await s3Service.uploadGeneratedClip(
-        localClipPath,
+        result.finalPath,
         teamId,
         clipIds[i]
       );
+
+      const blankS3Key = await s3Service.uploadBlankClip(
+        result.blankPath,
+        teamId,
+        clipIds[i]
+      );
+
+      const srtPath = `./output/captions_${clipIds[i]}.srt`;
+      fs.writeFileSync(srtPath, result.srtContent);
+      const srtS3Key = await s3Service.uploadSrtFile(srtPath, teamId, clipIds[i]);
+      fs.unlinkSync(srtPath);
 
       console.log(`Clip uploaded to S3 with key: ${clipS3Key}`);
 
       await clipManagerService.updateClipComplete(clipIds[i], teamId, {
         clipPath: clipS3Key,
+        blankVideoPath: blankS3Key,
+        srtPath: srtS3Key,
+        captionsData: result.captionsData,
         sourceVideoPath: thumbnailS3Key,
         title: suggestions.clipTitle,
-
         clipMetadata: {
           clipSuggestions: suggestions,
           parameters: {
@@ -122,6 +135,7 @@ const processClipsAsync = async (
             textPosition: options.textPosition,
             textColor: options.textColor,
             captions: options.captions || false,
+            captionColor: options.captionColor,
           },
         },
         inputMetadata: {
@@ -133,10 +147,13 @@ const processClipsAsync = async (
         clipScore: suggestions.evalScore,
       });
 
-      if (fs.existsSync(localClipPath)) {
-        fs.unlinkSync(localClipPath);
-        console.log(`Cleaned up local clip file: ${localClipPath}`);
+      if (fs.existsSync(result.finalPath)) {
+        fs.unlinkSync(result.finalPath);
       }
+      if (fs.existsSync(result.blankPath)) {
+        fs.unlinkSync(result.blankPath);
+      }
+      console.log(`Cleaned up local clip files for clip ${clipIds[i]}`);
     }
 
     if (fs.existsSync(uploadedFilePath)) {

@@ -568,4 +568,160 @@ router.delete("/teams/:teamId/clips/:clipId", requireAuth, clipManagerController
  */
 router.get("/teams/:teamId/folders/:folderId/clips", requireAuth, clipManagerController.getClipsByFolder.bind(clipManagerController));
 
+/**
+ * @openapi
+ * /clip-video/teams/{teamId}/clips/{clipId}/captions:
+ *   post:
+ *     summary: Update clip captions
+ *     description: Regenerate the clip video with updated caption text. Downloads the blank video, applies new captions, and uploads the result.
+ *     tags:
+ *       - Clips Management
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The team ID
+ *       - in: path
+ *         name: clipId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The clip ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - captionsData
+ *             properties:
+ *               captionsData:
+ *                 type: array
+ *                 description: Array of caption entries with timing and text
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     index:
+ *                       type: integer
+ *                     startTime:
+ *                       type: number
+ *                       description: Start time in seconds
+ *                     endTime:
+ *                       type: number
+ *                       description: End time in seconds
+ *                     text:
+ *                       type: string
+ *                       description: Caption text
+ *               captionColor:
+ *                 type: string
+ *                 description: Hex color for caption highlight (e.g., "#FFD600")
+ *     responses:
+ *       200:
+ *         description: Captions updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 clipUrl:
+ *                   type: string
+ *                   description: Presigned URL to the updated clip
+ *                 captionsData:
+ *                   type: array
+ *                   description: The updated captions data
+ *       400:
+ *         description: Invalid request - missing captions data or no blank video available
+ *       404:
+ *         description: Clip not found
+ *       500:
+ *         description: Server error
+ */
+router.post("/teams/:teamId/clips/:clipId/captions", requireAuth, clipManagerController.updateCaptions.bind(clipManagerController));
+
+/**
+ * @openapi
+ * /clip-video/teams/{teamId}/clips/{clipId}/text-overlay:
+ *   post:
+ *     summary: Apply text overlay to clip
+ *     description: Add a text overlay to the clip at a specific position. Downloads the blank video, applies the text overlay, and uploads the result.
+ *     tags:
+ *       - Clips Management
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The team ID
+ *       - in: path
+ *         name: clipId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The clip ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - text
+ *             properties:
+ *               text:
+ *                 type: string
+ *                 description: The text to overlay on the video
+ *               color:
+ *                 type: string
+ *                 default: "#FFFFFF"
+ *                 description: Hex color for the text (e.g., "#FFFFFF" for white)
+ *               x:
+ *                 type: number
+ *                 default: 50
+ *                 minimum: 0
+ *                 maximum: 100
+ *                 description: Horizontal position as percentage (0-100, 50 = center)
+ *               y:
+ *                 type: number
+ *                 default: 10
+ *                 minimum: 0
+ *                 maximum: 100
+ *                 description: Vertical position as percentage (0-100, 0 = top)
+ *               fontSize:
+ *                 type: number
+ *                 default: 48
+ *                 minimum: 16
+ *                 maximum: 120
+ *                 description: Font size in pixels
+ *     responses:
+ *       200:
+ *         description: Text overlay applied successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 clipUrl:
+ *                   type: string
+ *                   description: Presigned URL to the updated clip
+ *       400:
+ *         description: Invalid request - missing text or no blank video available
+ *       404:
+ *         description: Clip not found
+ *       500:
+ *         description: Server error
+ */
+router.post("/teams/:teamId/clips/:clipId/text-overlay", requireAuth, clipManagerController.updateTextOverlay.bind(clipManagerController));
+
 export default router;

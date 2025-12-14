@@ -10,8 +10,10 @@ applications:
         build:
           commands:
             - pnpm run build
+            - cp -r .next/static .next/standalone/.next/static
+            - cp -r public .next/standalone/public || true
       artifacts:
-        baseDirectory: .next
+        baseDirectory: .next/standalone
         files:
           - '**/*'
       cache:

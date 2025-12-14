@@ -212,6 +212,93 @@ const generateTextImage = async (
   }
 };
 
+export const addTextOverlayAtPosition = async (
+  inputPath: string,
+  outputPath: string,
+  text: string,
+  xPercent: number,
+  yPercent: number,
+  fontSize: number,
+  fillColor: string = "#FFFFFF",
+  strokeColor: string = "#000000"
+): Promise<string> => {
+  const textImagePath = path.join(
+    path.dirname(outputPath),
+    `text_pos_${Date.now()}.png`
+  );
+
+  try {
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1080, height: 400, deviceScaleFactor: 2 });
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@900&display=swap" rel="stylesheet">
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body {
+              width: 1080px;
+              height: 400px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              background: transparent;
+              padding: 20px;
+            }
+            .text {
+              font-size: ${fontSize}px;
+              font-weight: 900;
+              font-family: 'Montserrat', sans-serif;
+              color: ${fillColor};
+              text-align: center;
+              -webkit-text-stroke: 4px ${strokeColor};
+              paint-order: stroke fill;
+              line-height: 1.2;
+              max-width: 100%;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="text">${text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+        </body>
+      </html>
+    `;
+
+    await page.setContent(htmlContent);
+    await page.screenshot({ path: textImagePath, type: 'png', omitBackground: true });
+    await browser.close();
+
+    const xPos = `(W*${xPercent / 100})-(w/2)`;
+    const yPos = `(H*${yPercent / 100})-(h/2)`;
+
+    return new Promise<string>((resolve, reject) => {
+      ffmpeg(inputPath)
+        .input(textImagePath)
+        .complexFilter([`overlay=${xPos}:${yPos}`])
+        .outputOptions(["-c:v libx264", "-preset ultrafast", "-crf 23", "-c:a copy"])
+        .save(outputPath)
+        .on("end", () => {
+          if (fs.existsSync(textImagePath)) fs.unlinkSync(textImagePath);
+          resolve(outputPath);
+        })
+        .on("error", (err) => {
+          if (fs.existsSync(textImagePath)) fs.unlinkSync(textImagePath);
+          reject(err);
+        });
+    });
+  } catch (err) {
+    if (fs.existsSync(textImagePath)) fs.unlinkSync(textImagePath);
+    throw err;
+  }
+};
+
 export const addTextOverlay = async (
   inputPath: string,
   outputPath: string,
