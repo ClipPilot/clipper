@@ -81,8 +81,10 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY backend/package.json ./backend/
 COPY packages/shared-db/package.json ./packages/shared-db/
 
-# Install production dependencies only
-RUN pnpm install --frozen-lockfile --prod
+# Copy node_modules from builder (includes all dependencies)
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/backend/node_modules ./backend/node_modules
+COPY --from=builder /app/packages/shared-db/node_modules ./packages/shared-db/node_modules
 
 # Copy built files from builder
 COPY --from=builder /app/backend/dist ./backend/dist
