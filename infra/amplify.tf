@@ -16,7 +16,7 @@ frontend:
         - cd $CODEBUILD_SRC_DIR && pnpm install
     build:
       commands:
-        - pnpm build
+        - cd $CODEBUILD_SRC_DIR/frontend && pnpm build
   artifacts:
     baseDirectory: .next
     files:
@@ -24,7 +24,7 @@ frontend:
   cache:
     paths:
       - $CODEBUILD_SRC_DIR/node_modules/**/*
-      - node_modules/**/*
+      - $CODEBUILD_SRC_DIR/frontend/node_modules/**/*
       - .next/cache/**/*
   EOT
 
