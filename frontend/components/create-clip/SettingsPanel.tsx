@@ -35,9 +35,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 }) => {
   return (
     <div className="space-y-6">
-      <h3 className="text-lg font-bold text-text-primary">
-        Clip Settings
-      </h3>
+      <h3 className="text-lg font-bold text-text-primary">Clip Settings</h3>
 
       {/* Prompt Type */}
       <Select
@@ -92,12 +90,11 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
         size="sm"
         step={1}
         minValue={1}
-        maxValue={5}
+        maxValue={15}
         value={numberOfVideos}
         onChange={(value) => setNumberOfVideos(value as number)}
-        getValue={(value) => `${value} clip${value !== 1 ? 's' : ''}`}
+        getValue={(value) => `${value} clip${value !== 1 ? "s" : ""}`}
       />
     </div>
   );
 };
-

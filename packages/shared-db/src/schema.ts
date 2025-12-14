@@ -21,7 +21,11 @@ export const teamTypeEnum = pgEnum("team_type", [
   "enterprise",
 ]);
 
-export const clipStatusEnum = pgEnum("clip_status", ["pending", "completed", "failed"]);
+export const clipStatusEnum = pgEnum("clip_status", [
+  "pending",
+  "completed",
+  "failed",
+]);
 // Tables
 
 export const users = pgTable("users", {
@@ -121,9 +125,13 @@ export const clips = pgTable(
     clip_metadata: jsonb("clip_metadata"),
     input_metadata: jsonb("input_metadata"),
     prompt: text("prompt"),
-    raw_video_id: integer("raw_video_id").references(() => uploadedRawVideos.id, {
-      onDelete: "set null",
-    }),
+    raw_video_id: integer("raw_video_id").references(
+      () => uploadedRawVideos.id,
+      {
+        onDelete: "set null",
+      }
+    ),
+    title: varchar("title", { length: 255 }),
     message: text("message"),
     status: clipStatusEnum("status").notNull().default("pending"),
     error_message: text("error_message"),
@@ -161,16 +169,20 @@ export const clipFolders = pgTable(
   }
 );
 
-export const uploadedRawVideos = pgTable("uploaded_raw_videos", {
-  id: serial("id").primaryKey(),
-  team_id: integer("team_id")
-    .notNull()
-    .references(() => teams.id, { onDelete: "cascade" }),
-  video_path: text("video_path").notNull(),
-  created_at: timestamp("created_at").notNull().defaultNow(),
-  updated_at: timestamp("updated_at").notNull().defaultNow(),
-}, (table) => {
-  return {
-    teamIdx: index("uploaded_raw_videos_team_id_idx").on(table.team_id),
-  };
-});
+export const uploadedRawVideos = pgTable(
+  "uploaded_raw_videos",
+  {
+    id: serial("id").primaryKey(),
+    team_id: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    video_path: text("video_path").notNull(),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => {
+    return {
+      teamIdx: index("uploaded_raw_videos_team_id_idx").on(table.team_id),
+    };
+  }
+);

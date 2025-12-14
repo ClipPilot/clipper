@@ -1,13 +1,14 @@
 import { db } from "../db";
-import { clips, clipFolders, uploadedRawVideos } from "@clipper/shared-db/src/schema";
+import {
+  clips,
+  clipFolders,
+  uploadedRawVideos,
+} from "@clipper/shared-db/src/schema";
 import { eq, and, desc, isNull } from "drizzle-orm";
 
 export class ClipManagerService {
   // Create a raw video record
-  async createRawVideo(data: {
-    teamId: number;
-    videoPath: string;
-  }) {
+  async createRawVideo(data: { teamId: number; videoPath: string }) {
     const [rawVideo] = await db
       .insert(uploadedRawVideos)
       .values({
@@ -36,7 +37,11 @@ export class ClipManagerService {
       .orderBy(desc(clips.created_at));
   }
 
-  async getCompletedClipsByTeam(teamId: number, limit: number = 20, offset: number = 0) {
+  async getCompletedClipsByTeam(
+    teamId: number,
+    limit: number = 20,
+    offset: number = 0
+  ) {
     return await db
       .select()
       .from(clips)
@@ -94,17 +99,22 @@ export class ClipManagerService {
   }
 
   // Update clip metadata
-  async updateClip(clipId: number, teamId: number, updates: {
-    message?: string;
-    clipScore?: number;
-    folderId?: number | null;
-  }) {
+  async updateClip(
+    clipId: number,
+    teamId: number,
+    updates: {
+      message?: string;
+      clipScore?: number;
+      folderId?: number | null;
+    }
+  ) {
     const updateData: any = {
       updated_at: new Date(),
     };
-    
+
     if (updates.message !== undefined) updateData.message = updates.message;
-    if (updates.clipScore !== undefined) updateData.clip_score = updates.clipScore;
+    if (updates.clipScore !== undefined)
+      updateData.clip_score = updates.clipScore;
     if (updates.folderId !== undefined) updateData.folder_id = updates.folderId;
 
     const [updatedClip] = await db
@@ -152,10 +162,7 @@ export class ClipManagerService {
     return deletedClip;
   }
 
-  async createPendingClip(data: {
-    teamId: number;
-    userId: number;
-  }) {
+  async createPendingClip(data: { teamId: number; userId: number }) {
     const [clip] = await db
       .insert(clips)
       .values({
@@ -196,15 +203,20 @@ export class ClipManagerService {
     return updatedClip;
   }
 
-  async updateClipComplete(clipId: number, teamId: number, data: {
-    clipPath: string;
-    sourceVideoPath: string;
-    clipMetadata: any;
-    inputMetadata?: any;
-    prompt?: string;
-    message?: string;
-    clipScore?: number;
-  }) {
+  async updateClipComplete(
+    clipId: number,
+    teamId: number,
+    data: {
+      clipPath: string;
+      sourceVideoPath: string;
+      clipMetadata: any;
+      inputMetadata?: any;
+      prompt?: string;
+      message?: string;
+      clipScore?: number;
+      title?: string;
+    }
+  ) {
     const [updatedClip] = await db
       .update(clips)
       .set({
@@ -217,6 +229,7 @@ export class ClipManagerService {
         clip_score: data.clipScore,
         status: "completed",
         updated_at: new Date(),
+        title: data.title,
       })
       .where(and(eq(clips.id, clipId), eq(clips.team_id, teamId)))
       .returning();
@@ -230,4 +243,3 @@ export class ClipManagerService {
 }
 
 export const clipManagerService = new ClipManagerService();
-

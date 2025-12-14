@@ -12,6 +12,7 @@ export interface ClipSuggestions {
   combined_script: string;
   finalMessage: string;
   evalScore: number;
+  clipTitle?: string;
 }
 
 // Zod schemas
@@ -25,12 +26,29 @@ export const ClipSuggestionsSchema = z.object({
   hook: ClipSegmentSchema,
   main: z.array(ClipSegmentSchema),
   combined_script: z.string(),
-  finalMessage: z.string().describe("A brief message describing what makes this clip engaging and why it was selected"),
-  evalScore: z.number().min(0).max(100).describe("A score from 0-100 rating the viral potential and quality of this clip selection"),
+  finalMessage: z
+    .string()
+    .describe(
+      "A brief message describing what makes this clip engaging and why it was selected"
+    ),
+  evalScore: z
+    .number()
+    .min(0)
+    .max(100)
+    .describe(
+      "A score from 0-100 rating the viral potential and quality of this clip selection"
+    ),
+  clipTitle: z
+    .string()
+    .describe("An optional title for the clip that captures its essence"),
 });
 
 export const MultipleClipSuggestionsSchema = z.object({
-  videos: z.array(ClipSuggestionsSchema).describe("Array of different video clip suggestions, each with unique approaches and styles"),
+  videos: z
+    .array(ClipSuggestionsSchema)
+    .describe(
+      "Array of different video clip suggestions, each with unique approaches and styles"
+    ),
 });
 
 export interface MultipleClipSuggestions {

@@ -19,6 +19,7 @@ export interface Clip {
   updated_at: string;
   clipUrl?: string;
   sourceVideoUrl?: string;
+  title?: string;
 }
 
 export interface Folder {

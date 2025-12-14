@@ -12,6 +12,7 @@ import { AuthRequest } from "../middleware/auth.middleware";
 import { s3Service } from "../services/s3.service";
 import { extractThumbnail } from "../utils/extractThumbnail";
 import { emitClipsRefresh } from "../services/socket.service";
+import { title } from "process";
 
 interface ClipOptions {
   length?: number;
@@ -109,6 +110,8 @@ const processClipsAsync = async (
       await clipManagerService.updateClipComplete(clipIds[i], teamId, {
         clipPath: clipS3Key,
         sourceVideoPath: thumbnailS3Key,
+        title: suggestions.clipTitle,
+
         clipMetadata: {
           clipSuggestions: suggestions,
           parameters: {

@@ -25,6 +25,13 @@ export const ClipCard: React.FC<ClipCardProps> = ({ clip, onDelete, onView, isDr
     }).format(date);
   };
 
+  const getScoreClasses = (score?: number) => {
+    if (!score && score !== 0) return "text-accent-400 bg-accent-400/10";
+    if (score >= 80) return "text-success-600 bg-success-600/10";
+    if (score >= 60) return "text-warning-600 bg-warning-600/10";
+    return "text-text-tertiary bg-surface-elevated";
+  };
+
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData("clipId", clip.id.toString());
     e.dataTransfer.effectAllowed = "move";
@@ -45,20 +52,28 @@ export const ClipCard: React.FC<ClipCardProps> = ({ clip, onDelete, onView, isDr
       <CardBody className="p-4">
         <div className="flex items-start gap-3">
           <div className="flex-shrink-0">
-            <div className="w-16 h-16 bg-surface-elevated rounded-lg flex items-center justify-center border border-border-base">
-              <Icon icon="solar:video-frame-play-vertical-bold-duotone" className="text-3xl text-accent-400" />
+            <div className="w-20 sm:w-24 h-36 sm:h-44 rounded-lg overflow-hidden border border-border-base bg-surface-elevated flex items-center justify-center">
+              {clip.sourceVideoUrl ? (
+                // thumbnail image
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={clip.sourceVideoUrl} alt={clip.title || `Clip ${clip.id}`} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-surface-dark">
+                  <Icon icon="solar:video-frame-play-vertical-bold-duotone" className="text-3xl text-accent-400" />
+                </div>
+              )}
             </div>
           </div>
-          
+
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between mb-1">
               <h3 className="text-sm font-semibold text-text-primary truncate">
-                Clip #{clip.id}
+                {clip.title ? clip.title : `Clip #${clip.id}`}
               </h3>
-              {clip.clip_score && (
-                <div className="flex items-center gap-1 px-2 py-0.5 bg-accent-400/10 rounded-full">
-                  <Icon icon="solar:star-bold" className="text-xs text-accent-400" />
-                  <span className="text-xs font-medium text-accent-400">{clip.clip_score}</span>
+              {clip.clip_score !== undefined && clip.clip_score !== null && (
+                <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full ${getScoreClasses(clip.clip_score)}`}>
+                  <Icon icon="solar:star-bold" className="text-xs" />
+                  <span className="text-xs font-medium">{clip.clip_score}</span>
                 </div>
               )}
             </div>
