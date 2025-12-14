@@ -25,6 +25,7 @@ const processClipsAsync = async (
     customText?: string;
     textPosition?: "top" | "bottom" | "middle";
     textColor?: string;
+    captions?: boolean;
   },
   originalFileName?: string,
   fileSize?: number
@@ -60,10 +61,12 @@ const processClipsAsync = async (
     const combinedClipPaths = await createMultipleCombinedClipsService(
       uploadedFilePath,
       clipSuggestionsArray,
+      transcriptionData.results.channels[0].alternatives[0].words,
       {
         customText: options.customText,
         textPosition: options.textPosition,
         textColor: options.textColor,
+        captions: options.captions,
       }
     );
 
@@ -88,6 +91,7 @@ const processClipsAsync = async (
             customText: options.customText,
             textPosition: options.textPosition,
             textColor: options.textColor,
+            captions: options.captions || false,
           },
         },
         inputMetadata: {
@@ -172,6 +176,7 @@ export const clipVideoController = async (req: AuthRequest, res: Response) => {
     const customText = req.body.customText as string | undefined;
     const textPosition = req.body.textPosition as "top" | "bottom" | "middle" | undefined;
     const textColor = req.body.textColor as string | undefined;
+    const captions = req.body.captions === "true" || req.body.captions === true;
 
     if (length && (length < 10 || length > 120)) {
       return res.status(400).json({
@@ -233,6 +238,7 @@ export const clipVideoController = async (req: AuthRequest, res: Response) => {
         customText,
         textPosition,
         textColor,
+        captions,
       },
       req.file?.originalname,
       req.file?.size

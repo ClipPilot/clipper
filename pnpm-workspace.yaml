@@ -1,4 +1,16 @@
 packages:
-  - 'packages/*'
-  - 'backend'
-  - 'frontend'
+  - packages/*
+  - backend
+  - frontend
+
+ignoredBuiltDependencies:
+  - puppeteer
+
+onlyBuiltDependencies:
+  - '@heroui/shared-utils'
+  - '@scarf/scarf'
+  - '@tailwindcss/oxide'
+  - esbuild
+  - ffmpeg-static
+  - sharp
+  - unrs-resolver
