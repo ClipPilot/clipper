@@ -85,8 +85,8 @@ COPY --from=builder /app/packages/shared-db/drizzle ./packages/shared-db/drizzle
 # Create output directory for video processing
 RUN mkdir -p /app/backend/output && chmod 777 /app/backend/output
 
-# Set working directory to backend
-WORKDIR /app/backend
+# Keep working directory as /app (where node_modules is)
+WORKDIR /app
 
 # Expose port
 EXPOSE 3001
@@ -101,5 +101,5 @@ ENV NODE_ENV=production \
     PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=false \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
 
-# Run the application
-CMD ["node", "dist/server.js"]
+# Run the application from the monorepo root
+CMD ["node", "backend/dist/server.js"]
