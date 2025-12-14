@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import fs from "fs";
 import { transcribeVideoService } from "../services/transcription.service";
 import {
@@ -9,35 +9,33 @@ import { createMultipleCombinedClipsService } from "../services/clip.service";
 import { teamService } from "../services/team.service";
 import { clipManagerService } from "../services/clipManager.service";
 import { AuthRequest } from "../middleware/auth.middleware";
+import { s3Service } from "../services/s3.service";
+
+interface ClipOptions {
+  length?: number;
+  hookLength?: number;
+  promptType?: "business" | "viral";
+  customPrompt?: string;
+  textPrompt?: string;
+  numberOfVideos?: number;
+  customText?: string;
+  textPosition?: "top" | "bottom" | "middle";
+  textColor?: string;
+}
 
 const processClipsAsync = async (
   uploadedFilePath: string,
   clipIds: number[],
   teamId: number,
   userId: number,
-  options: {
-    length?: number;
-    hookLength?: number;
-    promptType?: "business" | "viral";
-    customPrompt?: string;
-    textPrompt?: string;
-    numberOfVideos?: number;
-    customText?: string;
-    textPosition?: "top" | "bottom" | "middle";
-    textColor?: string;
-  },
+  options: ClipOptions,
   originalFileName?: string,
   fileSize?: number
 ) => {
   try {
-    console.log("Transcribing video...");
     const transcriptionData = await transcribeVideoService(uploadedFilePath);
+    if (!transcriptionData) throw new Error("Transcription failed");
 
-    if (!transcriptionData) {
-      throw new Error("Transcription failed");
-    }
-
-    console.log("Generating clip suggestions...");
     const clipOptions: ClipGenerationOptions = {
       length: options.length,
       hookLength: options.hookLength,
@@ -56,7 +54,6 @@ const processClipsAsync = async (
       throw new Error("Failed to generate clip suggestions");
     }
 
-    console.log(`Creating ${clipSuggestionsArray.length} combined clip(s)...`);
     const combinedClipPaths = await createMultipleCombinedClipsService(
       uploadedFilePath,
       clipSuggestionsArray,
@@ -67,18 +64,22 @@ const processClipsAsync = async (
       }
     );
 
+    const rawVideoS3Key = await s3Service.uploadRawVideo(uploadedFilePath, teamId);
+
     const rawVideo = await clipManagerService.createRawVideo({
       teamId,
-      videoPath: uploadedFilePath,
+      videoPath: rawVideoS3Key,
     });
 
     for (let i = 0; i < clipSuggestionsArray.length; i++) {
       const suggestions = clipSuggestionsArray[i];
-      const clipPath = combinedClipPaths[i];
+      const localClipPath = combinedClipPaths[i];
+
+      const clipS3Key = await s3Service.uploadGeneratedClip(localClipPath, teamId, clipIds[i]);
 
       await clipManagerService.updateClipComplete(clipIds[i], teamId, {
-        clipPath,
-        sourceVideoPath: uploadedFilePath,
+        clipPath: clipS3Key,
+        sourceVideoPath: rawVideoS3Key,
         clipMetadata: {
           clipSuggestions: suggestions,
           parameters: {
@@ -99,9 +100,15 @@ const processClipsAsync = async (
         clipScore: suggestions.evalScore,
         rawVideoId: rawVideo.id,
       });
+
+      if (fs.existsSync(localClipPath)) {
+        fs.unlinkSync(localClipPath);
+      }
     }
 
-    console.log("Clips processed successfully");
+    if (fs.existsSync(uploadedFilePath)) {
+      fs.unlinkSync(uploadedFilePath);
+    }
   } catch (error) {
     console.error("Error processing clips:", error);
 
@@ -112,6 +119,10 @@ const processClipsAsync = async (
         "failed",
         error instanceof Error ? error.message : "Unknown error"
       );
+    }
+
+    if (fs.existsSync(uploadedFilePath)) {
+      fs.unlinkSync(uploadedFilePath);
     }
   }
 };
@@ -139,33 +150,26 @@ export const clipVideoController = async (req: AuthRequest, res: Response) => {
       ? parseInt(req.body.numberOfVideos)
       : 1;
 
-    try {
-      const usageStats = await teamService.getTeamUsageStats(teamId);
-      const remaining = usageStats.limit - usageStats.clips_created;
+    const usageStats = await teamService.getTeamUsageStats(teamId);
+    const remaining = usageStats.limit - usageStats.clips_created;
 
-      if (remaining < numberOfVideos) {
-        return res.status(403).json({
-          error: "Usage limit reached",
-          message: `You have used all ${usageStats.limit} clips for this period. Resets on ${new Date(
-            usageStats.resets_date
-          ).toLocaleDateString()}.`,
-          usage: {
-            clipsCreated: usageStats.clips_created,
-            limit: usageStats.limit,
-            remaining,
-            resetsDate: usageStats.resets_date,
-          },
-        });
-      }
-    } catch (error) {
-      console.error("Error checking usage:", error);
-      return res.status(500).json({ error: "Failed to check usage limits" });
+    if (remaining < numberOfVideos) {
+      return res.status(403).json({
+        error: "Usage limit reached",
+        message: `You have used all ${usageStats.limit} clips for this period. Resets on ${new Date(
+          usageStats.resets_date
+        ).toLocaleDateString()}.`,
+        usage: {
+          clipsCreated: usageStats.clips_created,
+          limit: usageStats.limit,
+          remaining,
+          resetsDate: usageStats.resets_date,
+        },
+      });
     }
 
     const length = req.body.length ? parseInt(req.body.length) : undefined;
-    const hookLength = req.body.hookLength
-      ? parseInt(req.body.hookLength)
-      : undefined;
+    const hookLength = req.body.hookLength ? parseInt(req.body.hookLength) : undefined;
     const promptType = req.body.promptType as "business" | "viral" | undefined;
     const customPrompt = req.body.customPrompt as string | undefined;
     const textPrompt = req.body.textPrompt as string | undefined;
@@ -174,43 +178,30 @@ export const clipVideoController = async (req: AuthRequest, res: Response) => {
     const textColor = req.body.textColor as string | undefined;
 
     if (length && (length < 10 || length > 120)) {
-      return res.status(400).json({
-        error: "Length must be between 10 and 120 seconds",
-      });
+      return res.status(400).json({ error: "Length must be between 10 and 120 seconds" });
     }
 
     if (hookLength && (hookLength < 2 || hookLength > 15)) {
-      return res.status(400).json({
-        error: "Hook length must be between 2 and 15 seconds",
-      });
+      return res.status(400).json({ error: "Hook length must be between 2 and 15 seconds" });
     }
 
     if (promptType && !["business", "viral"].includes(promptType)) {
-      return res.status(400).json({
-        error: 'Prompt type must be either "business" or "viral"',
-      });
+      return res.status(400).json({ error: 'Prompt type must be either "business" or "viral"' });
     }
 
     if (textPosition && !["top", "middle", "bottom"].includes(textPosition)) {
-      return res.status(400).json({
-        error: 'Text position must be "top", "middle", or "bottom"',
-      });
+      return res.status(400).json({ error: 'Text position must be "top", "middle", or "bottom"' });
     }
 
     if (numberOfVideos && (numberOfVideos < 1 || numberOfVideos > 5)) {
-      return res.status(400).json({
-        error: "Number of videos must be between 1 and 5",
-      });
+      return res.status(400).json({ error: "Number of videos must be between 1 and 5" });
     }
 
     const userId = req.user!.dbUserId;
     const pendingClips: any[] = [];
 
     for (let i = 0; i < numberOfVideos; i++) {
-      const clip = await clipManagerService.createPendingClip({
-        teamId,
-        userId,
-      });
+      const clip = await clipManagerService.createPendingClip({ teamId, userId });
       pendingClips.push(clip);
     }
 

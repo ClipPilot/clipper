@@ -10,11 +10,32 @@ function getEnv(name: string, fallback?: string): string {
   return value;
 }
 
+export const config = {
+  openai: {
+    apiKey: getEnv("OPENAI_API_KEY"),
+  },
+  deepgram: {
+    apiKey: getEnv("DEEPGRAM_API_KEY"),
+  },
+  supabase: {
+    url: getEnv("SUPABASE_URL"),
+    anonKey: getEnv("SUPABASE_ANON_KEY"),
+  },
+  database: {
+    url: getEnv("DATABASE_URL"),
+  },
+  aws: {
+    region: getEnv("AWS_REGION", "us-west-2"),
+    s3Bucket: getEnv("AWS_S3_BUCKET"),
+  },
+  port: getEnv("PORT", "3001"),
+};
+
 export const ENV = {
-  OPENAI_API_KEY: getEnv("OPENAI_API_KEY"),
-  PORT: getEnv("PORT", "3001"),
-  DEEPGRAM_API_KEY: getEnv("DEEPGRAM_API_KEY"),
-  SUPABASE_URL: getEnv("SUPABASE_URL"),
-  SUPABASE_ANON_KEY: getEnv("SUPABASE_ANON_KEY"),
-  DATABASE_URL: getEnv("DATABASE_URL"),
+  OPENAI_API_KEY: config.openai.apiKey,
+  PORT: config.port,
+  DEEPGRAM_API_KEY: config.deepgram.apiKey,
+  SUPABASE_URL: config.supabase.url,
+  SUPABASE_ANON_KEY: config.supabase.anonKey,
+  DATABASE_URL: config.database.url,
 };

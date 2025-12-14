@@ -37,29 +37,29 @@ resource "aws_s3_bucket_public_access_block" "videos" {
   restrict_public_buckets = true
 }
 
-# S3 Bucket Lifecycle Policy (clean up temporary files)
+# S3 Bucket Lifecycle Policy
 resource "aws_s3_bucket_lifecycle_configuration" "videos" {
   bucket = aws_s3_bucket.videos.id
 
   rule {
-    id     = "delete-temp-files"
+    id     = "delete-raw-videos-after-2-months"
     status = "Enabled"
 
     filter {
-      prefix = "temp/"
+      prefix = "raw-videos/"
     }
 
     expiration {
-      days = 1
+      days = 60
     }
   }
 
   rule {
-    id     = "transition-old-videos"
+    id     = "transition-generated-clips"
     status = "Enabled"
 
     filter {
-      prefix = "output/"
+      prefix = "generated-clips/"
     }
 
     transition {
