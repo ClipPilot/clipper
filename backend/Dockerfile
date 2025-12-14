@@ -13,7 +13,7 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY backend/package.json ./backend/
 COPY packages/shared-db/package.json ./packages/shared-db/
 
-# Install dependencies
+# Install ALL dependencies (including dev dependencies for build)
 RUN pnpm install --frozen-lockfile
 
 # Copy source code
@@ -76,26 +76,11 @@ RUN npm install -g pnpm
 
 WORKDIR /app
 
-# Copy package files
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
-COPY backend/package.json ./backend/
-COPY packages/shared-db/package.json ./packages/shared-db/
-
-# Copy node_modules from builder (includes all dependencies)
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/backend/node_modules ./backend/node_modules
-COPY --from=builder /app/packages/shared-db/node_modules ./packages/shared-db/node_modules
-
-# Copy built files from builder
-COPY --from=builder /app/backend/dist ./backend/dist
-COPY --from=builder /app/packages/shared-db/dist ./packages/shared-db/dist
-COPY --from=builder /app/packages/shared-db/drizzle ./packages/shared-db/drizzle
+# Copy entire workspace from builder (this preserves pnpm's symlink structure)
+COPY --from=builder /app ./
 
 # Create output directory for video processing
 RUN mkdir -p /app/backend/output && chmod 777 /app/backend/output
-
-# Keep working directory as /app (where node_modules is)
-WORKDIR /app
 
 # Expose port
 EXPOSE 3001
