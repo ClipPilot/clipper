@@ -18,7 +18,7 @@ applications:
             - cd .. && pnpm install
         build:
           commands:
-            - pnpm build
+            - cd .. && pnpm build:frontend
       artifacts:
         baseDirectory: .next
         files:
