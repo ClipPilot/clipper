@@ -7,34 +7,34 @@ resource "aws_amplify_app" "frontend" {
 
   # Build settings
   build_spec = <<-EOT
-    version: 1
-    applications:
-      - frontend:
-          phases:
-            preBuild:
-              commands:
-                - cd frontend
-                - npm install -g pnpm
-                - pnpm install
-            build:
-              commands:
-                - pnpm run build
-          artifacts:
-            baseDirectory: frontend/.next
-            files:
-              - '**/*'
-          cache:
-            paths:
-              - frontend/node_modules/**/*
-              - frontend/.next/cache/**/*
-        appRoot: frontend
+  version: 1
+  applications:
+    - appRoot: frontend
+      frontend:
+        phases:
+          preBuild:
+            commands:
+              - npm install -g pnpm
+              - pnpm install
+          build:
+            commands:
+              - pnpm run build
+        artifacts:
+          baseDirectory: .next
+          files:
+            - '**/*'
+        cache:
+          paths:
+            - node_modules/**/*
+            - .next/cache/**/*
+
   EOT
 
   # Environment variables for frontend
   environment_variables = {
-    NEXT_PUBLIC_API_URL = "http://${aws_lb.backend.dns_name}/api"  # Using HTTP for now - update to HTTPS when custom domain is configured
+    NEXT_PUBLIC_API_URL = "http://${aws_lb.backend.dns_name}/api" # Using HTTP for now - update to HTTPS when custom domain is configured
     NODE_ENV            = "production"
-    _LIVE_UPDATES       = jsonencode([{
+    _LIVE_UPDATES = jsonencode([{
       pkg     = "next"
       type    = "internal"
       version = "latest"
