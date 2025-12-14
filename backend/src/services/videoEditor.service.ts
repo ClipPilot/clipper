@@ -3,6 +3,24 @@ import fs from "fs";
 import puppeteer from "puppeteer";
 import path from "path";
 
+interface VideoMetadata {
+  width: number;
+  height: number;
+}
+
+const getVideoMetadata = (videoPath: string): Promise<VideoMetadata> => {
+  return new Promise((resolve, reject) => {
+    ffmpeg.ffprobe(videoPath, (err, metadata) => {
+      if (err) return reject(err);
+      const videoStream = metadata.streams.find(s => s.codec_type === "video");
+      if (!videoStream || !videoStream.width || !videoStream.height) {
+        return reject(new Error("Could not get video dimensions"));
+      }
+      resolve({ width: videoStream.width, height: videoStream.height });
+    });
+  });
+};
+
 export const cutClip = (input: string, output: string, start: number, end: number) => {
   return new Promise((resolve, reject) => {
     ffmpeg(input)
@@ -22,6 +40,10 @@ export const cutClip = (input: string, output: string, start: number, end: numbe
   });
 };
 export const mergeClips = async (clips: string[], outputPath: string) => {
+  const firstClip = clips[0];
+  const metadata = await getVideoMetadata(firstClip);
+  const isHorizontal = metadata.width > metadata.height;
+
   return new Promise((resolve, reject) => {
     const listPath = outputPath + ".txt";
     const content = clips
@@ -30,61 +52,76 @@ export const mergeClips = async (clips: string[], outputPath: string) => {
 
     fs.writeFileSync(listPath, content);
 
-    ffmpeg()
+    const ffmpegCmd = ffmpeg()
       .input(listPath)
-      .inputOptions(["-f concat", "-safe 0"])
-      .complexFilter([
-        {
-          filter: "scale",
-          options: {
-            w: 1080,
-            h: 1920,
-            force_original_aspect_ratio: "increase",
-          },
-          inputs: "0:v",
-          outputs: "bg1",
-        },
-        {
-          filter: "crop",
-          options: { w: 1080, h: 1920 },
-          inputs: "bg1",
-          outputs: "bg2",
-        },
-        {
-          filter: "gblur",
-          options: { sigma: 15 },
-          inputs: "bg2",
-          outputs: "bg",
-        },
-        {
-          filter: "scale",
-          options: {
-            w: "min(iw,1080)",
-            h: "min(ih,1920)",
-            force_original_aspect_ratio: "decrease",
-          },
-          inputs: "0:v",
-          outputs: "fg",
-        },
+      .inputOptions(["-f concat", "-safe 0"]);
 
-        {
-          filter: "overlay",
-          options: {
-            x: "(W-w)/2",
-            y: "(H-h)/2",
+    if (isHorizontal) {
+      ffmpegCmd
+        .complexFilter([
+          {
+            filter: "scale",
+            options: {
+              w: 1080,
+              h: 1920,
+              force_original_aspect_ratio: "increase",
+            },
+            inputs: "0:v",
+            outputs: "bg1",
           },
-          inputs: ["bg", "fg"],
-          outputs: "v",
-        },
-      ])
-      .outputOptions([
-        "-map [v]",
-        "-map 0:a?",
-        "-c:v libx264",
-        "-preset veryfast",
-        "-pix_fmt yuv420p",
-        "-movflags +faststart",
-      ])
+          {
+            filter: "crop",
+            options: { w: 1080, h: 1920 },
+            inputs: "bg1",
+            outputs: "bg2",
+          },
+          {
+            filter: "gblur",
+            options: { sigma: 15 },
+            inputs: "bg2",
+            outputs: "bg",
+          },
+          {
+            filter: "scale",
+            options: {
+              w: "min(iw,1080)",
+              h: "min(ih,1920)",
+              force_original_aspect_ratio: "decrease",
+            },
+            inputs: "0:v",
+            outputs: "fg",
+          },
+          {
+            filter: "overlay",
+            options: {
+              x: "(W-w)/2",
+              y: "(H-h)/2",
+            },
+            inputs: ["bg", "fg"],
+            outputs: "v",
+          },
+        ])
+        .outputOptions([
+          "-map [v]",
+          "-map 0:a?",
+          "-c:v libx264",
+          "-preset veryfast",
+          "-pix_fmt yuv420p",
+          "-movflags +faststart",
+        ]);
+    } else {
+      ffmpegCmd
+        .outputOptions([
+          "-c:v libx264",
+          "-preset veryfast",
+          "-pix_fmt yuv420p",
+          "-movflags +faststart",
+          "-c:a aac",
+          "-b:a 128k",
+        ]);
+    }
+
+    ffmpegCmd
       .save(outputPath)
       .on("end", () => {
         fs.unlinkSync(listPath);

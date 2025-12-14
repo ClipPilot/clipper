@@ -11,6 +11,8 @@ export interface ClipVideoParams {
   customText?: string;
   textPosition?: "top" | "middle" | "bottom";
   textColor?: string;
+  captions?: boolean;
+  captionColor?: string;
 }
 
 export interface ClipVideoResponse {
@@ -66,6 +68,10 @@ class VideoAPI {
     if (params.textPosition)
       formData.append("textPosition", params.textPosition);
     if (params.textColor) formData.append("textColor", params.textColor);
+    if (params.captions !== undefined)
+      formData.append("captions", params.captions.toString());
+    if (params.captionColor)
+      formData.append("captionColor", params.captionColor);
 
     const response = await fetch(`${API_URL}/clip-video`, {
       method: "POST",

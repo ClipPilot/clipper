@@ -24,6 +24,7 @@ interface ClipOptions {
   textPosition?: "top" | "bottom" | "middle";
   textColor?: string;
   captions?: boolean;
+  captionColor?: string;
 }
 
 const processClipsAsync = async (
@@ -70,6 +71,7 @@ const processClipsAsync = async (
         textPosition: options.textPosition,
         textColor: options.textColor,
         captions: options.captions,
+        captionColor: options.captionColor,
       }
     );
 
@@ -221,6 +223,7 @@ export const clipVideoController = async (req: AuthRequest, res: Response) => {
       | undefined;
     const textColor = req.body.textColor as string | undefined;
     const captions = req.body.captions === "true" || req.body.captions === true;
+    const captionColor = req.body.captionColor as string | undefined;
 
     if (length && (length < 10 || length > 120)) {
       return res
@@ -283,6 +286,7 @@ export const clipVideoController = async (req: AuthRequest, res: Response) => {
         textPosition,
         textColor,
         captions,
+        captionColor,
       },
       req.file?.originalname,
       req.file?.size

@@ -34,7 +34,9 @@ export default function CreateClipPage() {
   const [customText, setCustomText] = useState("");
   const [textPosition, setTextPosition] = useState<"top" | "middle" | "bottom">("top");
   const [textColor, setTextColor] = useState("#FFFFFF");
-  
+  const [captions, setCaptions] = useState(false);
+  const [captionColor, setCaptionColor] = useState("#FFFFFF");
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState("");
@@ -125,6 +127,8 @@ export default function CreateClipPage() {
         customText: customText || undefined,
         textPosition,
         textColor,
+        captions,
+        captionColor,
       });
 
       triggerRefresh();
@@ -292,6 +296,10 @@ export default function CreateClipPage() {
                         setTextPosition={setTextPosition}
                         textColor={textColor}
                         setTextColor={setTextColor}
+                        captions={captions}
+                        setCaptions={setCaptions}
+                        captionColor={captionColor}
+                        setCaptionColor={setCaptionColor}
                       />
 
                       {/* Progress */}

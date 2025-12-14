@@ -16,16 +16,27 @@ const formatTime = (t: number) => {
   return `${h}:${String(m).padStart(2, "0")}:${s.padStart(5, "0")}`;
 };
 
+const hexToAssBgr = (hex: string): string => {
+  const cleanHex = hex.replace("#", "");
+  const r = cleanHex.substring(0, 2);
+  const g = cleanHex.substring(2, 4);
+  const b = cleanHex.substring(4, 6);
+  return `&H00${b}${g}${r}`.toUpperCase();
+};
+
 export const addCaptionsOverlay = async (
   inputPath: string,
   outputPath: string,
   clipData: ClipSuggestions,
-  words: TranscriptionWord[]
+  words: TranscriptionWord[],
+  captionColor: string = "#FFFFFF"
 ): Promise<void> => {
   const assPath = path.join(
     path.dirname(outputPath),
     `captions_${Date.now()}.ass`
   );
+
+  const assColor = hexToAssBgr(captionColor);
 
   let ass = `
 [Script Info]
@@ -35,7 +46,7 @@ PlayResY: 1920
 
 [V4+ Styles]
 Format: Name,Fontname,Fontsize,PrimaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding
-Style: Default,Comic Neue,80,&H00FFFFFF,&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,4,0,2,60,60,180,1
+Style: Default,Comic Neue,80,${assColor},&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,4,0,2,60,60,180,1
 
 [Events]
 Format: Layer,Start,End,Style,Text

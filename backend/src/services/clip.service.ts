@@ -9,6 +9,7 @@ export interface ClipServiceOptions {
   textPosition?: "top" | "bottom" | "middle";
   textColor?: string;
   captions?: boolean;
+  captionColor?: string;
 }
 
 export const createCombinedClipService = async (
@@ -42,7 +43,8 @@ export const createCombinedClipService = async (
       mergedPath,
       finalPath,
       clipData,
-      transcriptionWords
+      transcriptionWords,
+      options.captionColor
     );
   } else if (options.customText) {
     const position = options.textPosition || "top";
