@@ -8,24 +8,26 @@ resource "aws_amplify_app" "frontend" {
   # Build settings
   build_spec = <<-EOT
 version: 1
-frontend:
-  phases:
-    preBuild:
-      commands:
-        - npm install -g pnpm
-        - cd $CODEBUILD_SRC_DIR && pnpm install
-    build:
-      commands:
-        - cd $CODEBUILD_SRC_DIR/frontend && pnpm build
-  artifacts:
-    baseDirectory: .next
-    files:
-      - '**/*'
-  cache:
-    paths:
-      - $CODEBUILD_SRC_DIR/node_modules/**/*
-      - $CODEBUILD_SRC_DIR/frontend/node_modules/**/*
-      - .next/cache/**/*
+applications:
+  - appRoot: frontend
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - npm install -g pnpm
+            - cd $CODEBUILD_SRC_DIR && pnpm install
+        build:
+          commands:
+            - pnpm build
+      artifacts:
+        baseDirectory: .next
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - $CODEBUILD_SRC_DIR/node_modules/**/*
+          - node_modules/**/*
+          - .next/cache/**/*
   EOT
 
   # Environment variables for frontend
