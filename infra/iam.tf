@@ -89,30 +89,28 @@ resource "aws_iam_role_policy" "ecs_task_s3" {
   })
 }
 
-# Amplify Service Role - Commented out until Amplify is configured
-# Uncomment when you enable Amplify in amplify.tf
+# Amplify Service Role
+resource "aws_iam_role" "amplify" {
+  name = "${var.project_name}-amplify-role-${var.environment}"
 
-# resource "aws_iam_role" "amplify" {
-#   name = "${var.project_name}-amplify-role-${var.environment}"
-#
-#   assume_role_policy = jsonencode({
-#     Version = "2012-10-17"
-#     Statement = [{
-#       Action = "sts:AssumeRole"
-#       Effect = "Allow"
-#       Principal = {
-#         Service = "amplify.amazonaws.com"
-#       }
-#     }]
-#   })
-#
-#   tags = {
-#     Name = "${var.project_name}-amplify-role-${var.environment}"
-#   }
-# }
-#
-# # Attach managed policy for Amplify
-# resource "aws_iam_role_policy_attachment" "amplify_backend_deployment" {
-#   role       = aws_iam_role.amplify.name
-#   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess-Amplify"
-# }
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "amplify.amazonaws.com"
+      }
+    }]
+  })
+
+  tags = {
+    Name = "${var.project_name}-amplify-role-${var.environment}"
+  }
+}
+
+# Attach managed policy for Amplify
+resource "aws_iam_role_policy_attachment" "amplify_backend_deployment" {
+  role       = aws_iam_role.amplify.name
+  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess-Amplify"
+}
