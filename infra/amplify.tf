@@ -15,7 +15,7 @@ applications:
         preBuild:
           commands:
             - npm install -g pnpm
-            - cd $CODEBUILD_SRC_DIR && pnpm install
+            - cd .. && pnpm install
         build:
           commands:
             - pnpm build
@@ -25,7 +25,7 @@ applications:
           - '**/*'
       cache:
         paths:
-          - $CODEBUILD_SRC_DIR/node_modules/**/*
+          - ../node_modules/**/*
           - node_modules/**/*
           - .next/cache/**/*
   EOT
