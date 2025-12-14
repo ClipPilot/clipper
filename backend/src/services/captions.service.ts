@@ -9,6 +9,8 @@ export interface TranscriptionWord {
   punctuated_word?: string | undefined;
 }
 
+const WORDS_PER_GROUP = 4; // Show 3-5 words at once (4 is a good middle ground)
+
 const formatTime = (t: number) => {
   const h = Math.floor(t / 3600);
   const m = Math.floor((t % 3600) / 60);
@@ -24,20 +26,42 @@ const hexToAssBgr = (hex: string): string => {
   return `&H00${b}${g}${r}`.toUpperCase();
 };
 
+interface TimedWord {
+  word: string;
+  start: number;
+  end: number;
+}
+
+const buildHighlightedText = (
+  words: TimedWord[],
+  activeIndex: number,
+  highlightColor: string,
+  defaultColor: string
+): string => {
+  return words
+    .map((w, i) => {
+      const color = i === activeIndex ? highlightColor : defaultColor;
+      return `{\\c${color}}${w.word}`;
+    })
+    .join(" ");
+};
+
 export const addCaptionsOverlay = async (
   inputPath: string,
   outputPath: string,
   clipData: ClipSuggestions,
   words: TranscriptionWord[],
-  captionColor: string = "#FFFFFF"
+  captionColor: string = "#FFD600" // Default to yellow for highlight
 ): Promise<void> => {
   const assPath = path.join(
     path.dirname(outputPath),
     `captions_${Date.now()}.ass`
   );
 
-  const assColor = hexToAssBgr(captionColor);
+  const highlightColor = hexToAssBgr(captionColor);
+  const defaultColor = "&H00FFFFFF"; // White in ASS BGR format
 
+  // Style uses white as default, we'll override with inline tags for highlighting
   let ass = `
 [Script Info]
 ScriptType: v4.00+
@@ -46,7 +70,7 @@ PlayResY: 1920
 
 [V4+ Styles]
 Format: Name,Fontname,Fontsize,PrimaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding
-Style: Default,Comic Neue,80,${assColor},&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,4,0,2,60,60,180,1
+Style: Default,Comic Neue,100,${defaultColor},&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,5,0,2,60,60,180,1
 
 [Events]
 Format: Layer,Start,End,Style,Text
@@ -61,11 +85,29 @@ Format: Layer,Start,End,Style,Text
       w => w.start >= segment.start && w.end <= segment.end
     );
 
-    for (const word of segmentWords) {
-      const start = offset + (word.start - segment.start);
-      const end = offset + (word.end - segment.start);
+    // Group words into chunks
+    for (let i = 0; i < segmentWords.length; i += WORDS_PER_GROUP) {
+      const group = segmentWords.slice(i, i + WORDS_PER_GROUP);
 
-      ass += `Dialogue: 0,${formatTime(start)},${formatTime(end)},Default,${word.punctuated_word}\n`;
+      // Convert to timed words with offset applied
+      const timedGroup: TimedWord[] = group.map(w => ({
+        word: w.punctuated_word || "",
+        start: offset + (w.start - segment.start),
+        end: offset + (w.end - segment.start),
+      }));
+
+      // For each word in the group, create a dialogue event highlighting that word
+      for (let j = 0; j < timedGroup.length; j++) {
+        const currentWord = timedGroup[j];
+        const text = buildHighlightedText(
+          timedGroup,
+          j,
+          highlightColor,
+          defaultColor
+        );
+
+        ass += `Dialogue: 0,${formatTime(currentWord.start)},${formatTime(currentWord.end)},Default,${text}\n`;
+      }
     }
 
     offset += segment.end - segment.start;

@@ -65,7 +65,7 @@ export const TextOverlayPanel: React.FC<TextOverlayPanelProps> = ({
         <div className="flex items-center justify-between mb-4">
           <div>
             <p className="font-medium text-text-primary">Auto Captions</p>
-            <p className="text-sm text-text-secondary">Add word-by-word captions from transcription</p>
+            <p className="text-sm text-text-secondary">Show captions with highlighted current word</p>
           </div>
           <Switch
             isSelected={captions}
@@ -77,7 +77,7 @@ export const TextOverlayPanel: React.FC<TextOverlayPanelProps> = ({
         {captions && (
           <div>
             <label className="text-sm font-medium text-text-primary mb-3 block">
-              Caption Color
+              Highlight Color
             </label>
             <div className="grid grid-cols-8 gap-2">
               {COLORS.map((c) => (

@@ -113,10 +113,7 @@ export const ExpandableFolder: React.FC<ExpandableFolderProps> = ({
               size="sm"
               variant="light"
               color="danger"
-              onPress={(e) => {
-                e.stopPropagation();
-                onDelete(folder.id);
-              }}
+              onPress={() => onDelete(folder.id)}
               onClick={(e) => e.stopPropagation()}
             >
               <Icon icon="solar:trash-bin-outline" className="text-lg" />

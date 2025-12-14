@@ -35,7 +35,7 @@ export default function CreateClipPage() {
   const [textPosition, setTextPosition] = useState<"top" | "middle" | "bottom">("top");
   const [textColor, setTextColor] = useState("#FFFFFF");
   const [captions, setCaptions] = useState(false);
-  const [captionColor, setCaptionColor] = useState("#FFFFFF");
+  const [captionColor, setCaptionColor] = useState("#FFD600");
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);

@@ -1,4 +1,6 @@
 import API_URL from "@/config/constants";
+import { tokenManager, apiFetch } from "@/lib/apiClient";
+
 export interface SignUpData {
   email: string;
   password: string;
@@ -37,104 +39,10 @@ export interface ErrorResponse {
 }
 
 class AuthAPI {
-  private getHeaders(includeAuth: boolean = false): HeadersInit {
-    const headers: HeadersInit = {
-      "Content-Type": "application/json",
-    };
-
-    if (includeAuth) {
-      const token = this.getToken();
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-    }
-
-    return headers;
-  }
-
-  private getToken(): string | null {
-    if (typeof window === "undefined") return null;
-    return localStorage.getItem("access_token");
-  }
-
-  private getRefreshToken(): string | null {
-    if (typeof window === "undefined") return null;
-    return localStorage.getItem("refresh_token");
-  }
-
-  private getTokenExpiry(): number | null {
-    if (typeof window === "undefined") return null;
-    const expiry = localStorage.getItem("token_expiry");
-    return expiry ? parseInt(expiry) : null;
-  }
-
-  private setTokens(accessToken: string, refreshToken: string, expiresIn: number, rememberMe?: boolean): void {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("access_token", accessToken);
-      localStorage.setItem("refresh_token", refreshToken);
-      const expiryTime = Date.now() + expiresIn * 1000;
-      localStorage.setItem("token_expiry", expiryTime.toString());
-
-      if (rememberMe !== undefined) {
-        localStorage.setItem("remember_me", rememberMe.toString());
-      }
-    }
-  }
-
-  private clearTokens(): void {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("refresh_token");
-      localStorage.removeItem("token_expiry");
-      localStorage.removeItem("remember_me");
-    }
-  }
-
-  private isTokenExpiringSoon(): boolean {
-    const expiry = this.getTokenExpiry();
-    if (!expiry) {
-      return !!this.getRefreshToken();
-    }
-
-    const fiveMinutes = 5 * 60 * 1000;
-    return (expiry - Date.now()) < fiveMinutes;
-  }
-
-  private async ensureValidToken(retries: number = 3): Promise<void> {
-    const refreshToken = this.getRefreshToken();
-
-    if (!refreshToken) {
-      throw new Error("No refresh token available");
-    }
-
-    if (this.isTokenExpiringSoon()) {
-      let lastError: Error | null = null;
-
-      for (let i = 0; i < retries; i++) {
-        try {
-          await this.refreshSession(refreshToken);
-          return;
-        } catch (error) {
-          lastError = error as Error;
-
-          if (error instanceof Error && error.message.includes("401")) {
-            throw error;
-          }
-
-          if (i < retries - 1) {
-            await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
-          }
-        }
-      }
-
-      throw lastError || new Error("Failed to refresh token");
-    }
-  }
-
   async signUp(data: SignUpData): Promise<AuthResponse> {
     const response = await fetch(`${API_URL}/auth/signup`, {
       method: "POST",
-      headers: this.getHeaders(),
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
       credentials: "include",
     });
@@ -146,7 +54,7 @@ class AuthAPI {
 
     const result: AuthResponse = await response.json();
     if (result.session && (result.session as any).access_token) {
-      this.setTokens(
+      tokenManager.setTokens(
         (result.session as any).access_token,
         (result.session as any).refresh_token,
         (result.session as any).expires_in || 3600
@@ -158,7 +66,7 @@ class AuthAPI {
   async signIn(data: SignInData): Promise<AuthResponse> {
     const response = await fetch(`${API_URL}/auth/signin`, {
       method: "POST",
-      headers: this.getHeaders(),
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
       credentials: "include",
     });
@@ -170,52 +78,38 @@ class AuthAPI {
 
     const result: AuthResponse = await response.json();
     if (result.session && (result.session as any).access_token) {
-      this.setTokens(
+      tokenManager.setTokens(
         (result.session as any).access_token,
         (result.session as any).refresh_token,
-        (result.session as any).expires_in || 3600,
-        data.rememberMe
+        (result.session as any).expires_in || 3600
       );
+      if (data.rememberMe !== undefined && typeof window !== "undefined") {
+        localStorage.setItem("remember_me", data.rememberMe.toString());
+      }
     }
     return result;
   }
 
   async signOut(): Promise<void> {
-    const response = await fetch(`${API_URL}/auth/signout`, {
-      method: "POST",
-      headers: this.getHeaders(true),
-      credentials: "include",
-    });
-
-    if (!response.ok) {
-      const error: ErrorResponse = await response.json();
-      throw new Error(error.message || "Failed to sign out");
+    try {
+      await apiFetch(`${API_URL}/auth/signout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+    } finally {
+      tokenManager.clearTokens();
     }
-
-    this.clearTokens();
   }
 
   async getMe(): Promise<User> {
-    try {
-      await this.ensureValidToken();
-    } catch (error) {
-      if (error instanceof Error && (error.message.includes("401") || error.message.includes("No refresh token"))) {
-        this.clearTokens();
-        throw new Error("Session expired. Please log in again.");
-      }
-      throw new Error("Network error. Please check your connection and try again.");
-    }
-
-    const response = await fetch(`${API_URL}/auth/me`, {
+    const response = await apiFetch(`${API_URL}/auth/me`, {
       method: "GET",
-      headers: this.getHeaders(true),
+      headers: { "Content-Type": "application/json" },
       credentials: "include",
     });
 
     if (!response.ok) {
-      if (response.status === 401) {
-        this.clearTokens();
-      }
       const error: ErrorResponse = await response.json();
       throw new Error(error.message || "Failed to get user");
     }
@@ -224,34 +118,10 @@ class AuthAPI {
     return data.user;
   }
 
-  async refreshSession(refreshToken: string): Promise<AuthResponse> {
-    const response = await fetch(`${API_URL}/auth/refresh`, {
-      method: "POST",
-      headers: this.getHeaders(),
-      body: JSON.stringify({ refreshToken }),
-      credentials: "include",
-    });
-
-    if (!response.ok) {
-      const error: ErrorResponse = await response.json();
-      throw new Error(error.message || "Failed to refresh session");
-    }
-
-    const result: AuthResponse = await response.json();
-    if (result.session && (result.session as any).access_token) {
-      this.setTokens(
-        (result.session as any).access_token,
-        (result.session as any).refresh_token,
-        (result.session as any).expires_in || 3600
-      );
-    }
-    return result;
-  }
-
   async resetPassword(email: string): Promise<void> {
     const response = await fetch(`${API_URL}/auth/reset-password`, {
       method: "POST",
-      headers: this.getHeaders(),
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email }),
       credentials: "include",
     });
@@ -280,7 +150,7 @@ class AuthAPI {
 
     const result = await response.json();
     if (result.session && (result.session as any).access_token) {
-      this.setTokens(
+      tokenManager.setTokens(
         (result.session as any).access_token,
         (result.session as any).refresh_token,
         (result.session as any).expires_in || 3600
@@ -290,12 +160,17 @@ class AuthAPI {
   }
 
   isAuthenticated(): boolean {
-    return !!this.getToken();
+    return !!tokenManager.getAccessToken();
+  }
+
+  async ensureValidTokenPublic(): Promise<void> {
+    if (tokenManager.isTokenExpiringSoon()) {
+      const refreshed = await tokenManager.refreshTokens();
+      if (!refreshed) {
+        throw new Error("Session expired");
+      }
+    }
   }
 }
 
 export const authAPI = new AuthAPI();
-
-
-
-

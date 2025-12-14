@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAtom } from "jotai";
 import { userAtom } from "@/store/auth";
 import { authAPI } from "@/api/auth";
+import { tokenManager } from "@/lib/apiClient";
 import { BrandLogo } from "@/components/brand-logo";
 import LoginForm from "@/components/auth/LoginForm";
 import SignUpForm from "@/components/auth/SignUpForm";
@@ -33,15 +34,23 @@ export default function AuthPage() {
   // Check if user is already logged in
   useEffect(() => {
     const checkAuth = async () => {
+      // Check for session_expired param (set when redirect from invalid token)
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get("session_expired") === "true") {
+        tokenManager.clearTokens();
+        setUser(null);
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+        setIsCheckingAuth(false);
+        return;
+      }
+
       if (user) {
         router.push("/dashboard");
         return;
       }
 
-      const accessToken =
-        typeof window !== "undefined"
-          ? localStorage.getItem("access_token")
-          : null;
+      const accessToken = tokenManager.getAccessToken();
 
       if (accessToken) {
         try {
@@ -49,12 +58,13 @@ export default function AuthPage() {
           setUser(userData);
           router.push("/dashboard");
         } catch (error) {
-          // Token is invalid, clear it
-          localStorage.removeItem("access_token");
-          localStorage.removeItem("refresh_token");
+          // Token is invalid, clear everything
+          tokenManager.clearTokens();
           setIsCheckingAuth(false);
         }
       } else {
+        // No access token - clear any stale data
+        tokenManager.clearTokens();
         setIsCheckingAuth(false);
       }
     };

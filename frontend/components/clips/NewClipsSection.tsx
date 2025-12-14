@@ -4,15 +4,7 @@ import React from "react";
 import { Icon } from "@iconify/react";
 import { Chip } from "@heroui/react";
 import { ClipCard } from "./ClipCard";
-
-interface Clip {
-  id: number;
-  clip_path?: string;
-  message?: string;
-  clip_score?: number;
-  status: string;
-  created_at: string;
-}
+import { Clip } from "@/api/clips";
 
 interface NewClipsSectionProps {
   clips: Clip[];

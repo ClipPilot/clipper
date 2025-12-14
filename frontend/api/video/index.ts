@@ -1,4 +1,5 @@
 import API_URL from "@/config/constants";
+import { apiFetch } from "@/lib/apiClient";
 
 export interface ClipVideoParams {
   teamId: number;
@@ -33,24 +34,6 @@ export interface ClipVideoResponse {
 }
 
 class VideoAPI {
-  private getHeaders(includeContentType = false): HeadersInit {
-    const token =
-      typeof window !== "undefined"
-        ? localStorage.getItem("access_token")
-        : null;
-    const headers: HeadersInit = {};
-
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-
-    if (includeContentType) {
-      headers["Content-Type"] = "application/json";
-    }
-
-    return headers;
-  }
-
   async clipVideo(params: ClipVideoParams): Promise<ClipVideoResponse> {
     const formData = new FormData();
     formData.append("video", params.video);
@@ -73,9 +56,8 @@ class VideoAPI {
     if (params.captionColor)
       formData.append("captionColor", params.captionColor);
 
-    const response = await fetch(`${API_URL}/clip-video`, {
+    const response = await apiFetch(`${API_URL}/clip-video`, {
       method: "POST",
-      headers: this.getHeaders(),
       body: formData,
     });
 

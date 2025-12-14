@@ -1,4 +1,5 @@
 import API_URL from "@/config/constants";
+import { apiFetch } from "@/lib/apiClient";
 
 export interface Team {
   id: number;
@@ -31,30 +32,10 @@ export interface TeamMember {
 }
 
 class TeamAPI {
-  private getHeaders(includeAuth: boolean = false): HeadersInit {
-    const headers: HeadersInit = {
-      "Content-Type": "application/json",
-    };
-
-    if (includeAuth) {
-      const token = this.getToken();
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-    }
-
-    return headers;
-  }
-
-  private getToken(): string | null {
-    if (typeof window === "undefined") return null;
-    return localStorage.getItem("access_token");
-  }
-
   async getUserTeams(): Promise<Team[]> {
-    const response = await fetch(`${API_URL}/teams`, {
+    const response = await apiFetch(`${API_URL}/teams`, {
       method: "GET",
-      headers: this.getHeaders(true),
+      headers: { "Content-Type": "application/json" },
       credentials: "include",
     });
 
@@ -68,9 +49,9 @@ class TeamAPI {
   }
 
   async getDefaultTeam(): Promise<Team> {
-    const response = await fetch(`${API_URL}/teams/default`, {
+    const response = await apiFetch(`${API_URL}/teams/default`, {
       method: "GET",
-      headers: this.getHeaders(true),
+      headers: { "Content-Type": "application/json" },
       credentials: "include",
     });
 
@@ -83,9 +64,9 @@ class TeamAPI {
   }
 
   async getTeamUsageStats(teamId: number): Promise<TeamUsageStats> {
-    const response = await fetch(`${API_URL}/teams/${teamId}/usage-stats`, {
+    const response = await apiFetch(`${API_URL}/teams/${teamId}/usage-stats`, {
       method: "GET",
-      headers: this.getHeaders(true),
+      headers: { "Content-Type": "application/json" },
       credentials: "include",
     });
 
@@ -98,9 +79,9 @@ class TeamAPI {
   }
 
   async getTeamMembers(teamId: number): Promise<TeamMember[]> {
-    const response = await fetch(`${API_URL}/teams/${teamId}/members`, {
+    const response = await apiFetch(`${API_URL}/teams/${teamId}/members`, {
       method: "GET",
-      headers: this.getHeaders(true),
+      headers: { "Content-Type": "application/json" },
       credentials: "include",
     });
 
@@ -114,9 +95,9 @@ class TeamAPI {
   }
 
   async addTeamMember(teamId: number, email: string, role: "manager" | "member" = "member"): Promise<void> {
-    const response = await fetch(`${API_URL}/teams/${teamId}/members`, {
+    const response = await apiFetch(`${API_URL}/teams/${teamId}/members`, {
       method: "POST",
-      headers: this.getHeaders(true),
+      headers: { "Content-Type": "application/json" },
       credentials: "include",
       body: JSON.stringify({ email, role }),
     });
@@ -128,9 +109,9 @@ class TeamAPI {
   }
 
   async removeTeamMember(teamId: number, memberId: number): Promise<void> {
-    const response = await fetch(`${API_URL}/teams/${teamId}/members/${memberId}`, {
+    const response = await apiFetch(`${API_URL}/teams/${teamId}/members/${memberId}`, {
       method: "DELETE",
-      headers: this.getHeaders(true),
+      headers: { "Content-Type": "application/json" },
       credentials: "include",
     });
 
@@ -141,9 +122,9 @@ class TeamAPI {
   }
 
   async updateTeamMemberRole(teamId: number, memberId: number, role: "owner" | "manager" | "member"): Promise<void> {
-    const response = await fetch(`${API_URL}/teams/${teamId}/members/${memberId}/role`, {
+    const response = await apiFetch(`${API_URL}/teams/${teamId}/members/${memberId}/role`, {
       method: "PATCH",
-      headers: this.getHeaders(true),
+      headers: { "Content-Type": "application/json" },
       credentials: "include",
       body: JSON.stringify({ role }),
     });
@@ -155,9 +136,9 @@ class TeamAPI {
   }
 
   async leaveTeam(teamId: number): Promise<void> {
-    const response = await fetch(`${API_URL}/teams/${teamId}/leave`, {
+    const response = await apiFetch(`${API_URL}/teams/${teamId}/leave`, {
       method: "POST",
-      headers: this.getHeaders(true),
+      headers: { "Content-Type": "application/json" },
       credentials: "include",
     });
 
@@ -168,9 +149,9 @@ class TeamAPI {
   }
 
   async updateTeamName(teamId: number, name: string): Promise<Team> {
-    const response = await fetch(`${API_URL}/teams/${teamId}`, {
+    const response = await apiFetch(`${API_URL}/teams/${teamId}`, {
       method: "PATCH",
-      headers: this.getHeaders(true),
+      headers: { "Content-Type": "application/json" },
       credentials: "include",
       body: JSON.stringify({ name }),
     });
@@ -185,9 +166,9 @@ class TeamAPI {
   }
 
   async deleteTeam(teamId: number): Promise<void> {
-    const response = await fetch(`${API_URL}/teams/${teamId}`, {
+    const response = await apiFetch(`${API_URL}/teams/${teamId}`, {
       method: "DELETE",
-      headers: this.getHeaders(true),
+      headers: { "Content-Type": "application/json" },
       credentials: "include",
     });
 
@@ -198,9 +179,9 @@ class TeamAPI {
   }
 
   async createTeam(name: string): Promise<Team> {
-    const response = await fetch(`${API_URL}/teams`, {
+    const response = await apiFetch(`${API_URL}/teams`, {
       method: "POST",
-      headers: this.getHeaders(true),
+      headers: { "Content-Type": "application/json" },
       credentials: "include",
       body: JSON.stringify({ name }),
     });

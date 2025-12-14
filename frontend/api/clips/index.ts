@@ -1,4 +1,5 @@
 import API_URL from "@/config/constants";
+import { apiFetch } from "@/lib/apiClient";
 
 export interface Clip {
   id: number;
@@ -31,18 +32,10 @@ export interface Folder {
 }
 
 class ClipsAPI {
-  private getHeaders(): HeadersInit {
-    const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-    return {
-      "Content-Type": "application/json",
-      ...(token && { Authorization: `Bearer ${token}` }),
-    };
-  }
-
   // Clips
   async getClips(teamId: number): Promise<Clip[]> {
-    const response = await fetch(`${API_URL}/clip-video/teams/${teamId}/clips`, {
-      headers: this.getHeaders(),
+    const response = await apiFetch(`${API_URL}/clip-video/teams/${teamId}/clips`, {
+      headers: { "Content-Type": "application/json" },
     });
 
     if (!response.ok) {
@@ -54,8 +47,8 @@ class ClipsAPI {
   }
 
   async getClip(teamId: number, clipId: number): Promise<Clip> {
-    const response = await fetch(`${API_URL}/clip-video/teams/${teamId}/clips/${clipId}`, {
-      headers: this.getHeaders(),
+    const response = await apiFetch(`${API_URL}/clip-video/teams/${teamId}/clips/${clipId}`, {
+      headers: { "Content-Type": "application/json" },
     });
 
     if (!response.ok) {
@@ -67,9 +60,9 @@ class ClipsAPI {
   }
 
   async updateClip(teamId: number, clipId: number, updates: { message?: string; clipScore?: number; folderId?: number | null }): Promise<Clip> {
-    const response = await fetch(`${API_URL}/clip-video/teams/${teamId}/clips/${clipId}`, {
+    const response = await apiFetch(`${API_URL}/clip-video/teams/${teamId}/clips/${clipId}`, {
       method: "PATCH",
-      headers: this.getHeaders(),
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updates),
     });
 
@@ -82,8 +75,8 @@ class ClipsAPI {
   }
 
   async getClipsByFolder(teamId: number, folderId: number): Promise<Clip[]> {
-    const response = await fetch(`${API_URL}/clip-video/teams/${teamId}/folders/${folderId}/clips`, {
-      headers: this.getHeaders(),
+    const response = await apiFetch(`${API_URL}/clip-video/teams/${teamId}/folders/${folderId}/clips`, {
+      headers: { "Content-Type": "application/json" },
     });
 
     if (!response.ok) {
@@ -95,9 +88,9 @@ class ClipsAPI {
   }
 
   async deleteClip(teamId: number, clipId: number): Promise<void> {
-    const response = await fetch(`${API_URL}/clip-video/teams/${teamId}/clips/${clipId}`, {
+    const response = await apiFetch(`${API_URL}/clip-video/teams/${teamId}/clips/${clipId}`, {
       method: "DELETE",
-      headers: this.getHeaders(),
+      headers: { "Content-Type": "application/json" },
     });
 
     if (!response.ok) {
@@ -106,8 +99,8 @@ class ClipsAPI {
   }
 
   async getPendingClips(teamId: number): Promise<Clip[]> {
-    const response = await fetch(`${API_URL}/clip-video/teams/${teamId}/clips/pending`, {
-      headers: this.getHeaders(),
+    const response = await apiFetch(`${API_URL}/clip-video/teams/${teamId}/clips/pending`, {
+      headers: { "Content-Type": "application/json" },
     });
 
     if (!response.ok) {
@@ -120,8 +113,8 @@ class ClipsAPI {
 
   // Folders
   async getFolders(teamId: number): Promise<Folder[]> {
-    const response = await fetch(`${API_URL}/folders/teams/${teamId}/folders`, {
-      headers: this.getHeaders(),
+    const response = await apiFetch(`${API_URL}/folders/teams/${teamId}/folders`, {
+      headers: { "Content-Type": "application/json" },
     });
 
     if (!response.ok) {
@@ -133,8 +126,8 @@ class ClipsAPI {
   }
 
   async getFolder(teamId: number, folderId: number): Promise<Folder> {
-    const response = await fetch(`${API_URL}/folders/teams/${teamId}/folders/${folderId}`, {
-      headers: this.getHeaders(),
+    const response = await apiFetch(`${API_URL}/folders/teams/${teamId}/folders/${folderId}`, {
+      headers: { "Content-Type": "application/json" },
     });
 
     if (!response.ok) {
@@ -146,9 +139,9 @@ class ClipsAPI {
   }
 
   async createFolder(teamId: number, data: { name: string; color?: string; message?: string }): Promise<Folder> {
-    const response = await fetch(`${API_URL}/folders/teams/${teamId}/folders`, {
+    const response = await apiFetch(`${API_URL}/folders/teams/${teamId}/folders`, {
       method: "POST",
-      headers: this.getHeaders(),
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
 
@@ -161,9 +154,9 @@ class ClipsAPI {
   }
 
   async updateFolder(teamId: number, folderId: number, updates: { name?: string; color?: string; message?: string }): Promise<Folder> {
-    const response = await fetch(`${API_URL}/folders/teams/${teamId}/folders/${folderId}`, {
+    const response = await apiFetch(`${API_URL}/folders/teams/${teamId}/folders/${folderId}`, {
       method: "PATCH",
-      headers: this.getHeaders(),
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updates),
     });
 
@@ -176,9 +169,9 @@ class ClipsAPI {
   }
 
   async deleteFolder(teamId: number, folderId: number): Promise<void> {
-    const response = await fetch(`${API_URL}/folders/teams/${teamId}/folders/${folderId}`, {
+    const response = await apiFetch(`${API_URL}/folders/teams/${teamId}/folders/${folderId}`, {
       method: "DELETE",
-      headers: this.getHeaders(),
+      headers: { "Content-Type": "application/json" },
     });
 
     if (!response.ok) {
@@ -188,4 +181,3 @@ class ClipsAPI {
 }
 
 export const clipsAPI = new ClipsAPI();
-

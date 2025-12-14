@@ -3,6 +3,7 @@
 import { useAtom } from "jotai";
 import { userAtom, isAuthenticatedAtom } from "@/store/auth";
 import { authAPI, SignUpData, SignInData } from "@/api/auth";
+import { tokenManager } from "@/lib/apiClient";
 import { useRouter } from "next/navigation";
 import { useState, useCallback } from "react";
 
@@ -78,13 +79,18 @@ export function useAuth() {
     }
   }, [setUser, router]);
 
-  const refreshSession = useCallback(async (refreshToken: string) => {
+  const refreshSession = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await authAPI.refreshSession(refreshToken);
-      setUser(response.user);
-      return response;
+      const success = await tokenManager.refreshTokens();
+      if (!success) {
+        throw new Error("Failed to refresh session");
+      }
+      // Fetch updated user data after refresh
+      const userData = await authAPI.getMe();
+      setUser(userData);
+      return userData;
     } catch (err: any) {
       setError(err.message || "Failed to refresh session");
       throw err;
