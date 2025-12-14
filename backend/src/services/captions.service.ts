@@ -35,7 +35,7 @@ PlayResY: 1920
 
 [V4+ Styles]
 Format: Name,Fontname,Fontsize,PrimaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding
-Style: Default,Montserrat,64,&H00FFFFFF,&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,4,0,2,60,60,140,1
+Style: Default,Comic Neue,80,&H00FFFFFF,&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,4,0,2,60,60,180,1
 
 [Events]
 Format: Layer,Start,End,Style,Text
@@ -64,7 +64,7 @@ Format: Layer,Start,End,Style,Text
 
   return new Promise((resolve, reject) => {
     ffmpeg(inputPath)
-      .videoFilters(`ass=${assPath}`)
+      .videoFilters(`ass=${assPath}:fontsdir=${path.resolve("src/assets")}`)
       .outputOptions(["-c:a copy"])
       .save(outputPath)
       .on("end", () => {
