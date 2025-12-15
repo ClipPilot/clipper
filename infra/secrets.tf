@@ -59,3 +59,17 @@ resource "aws_secretsmanager_secret_version" "supabase_anon_key" {
   secret_id     = aws_secretsmanager_secret.supabase_anon_key.id
   secret_string = var.supabase_anon_key
 }
+
+resource "aws_secretsmanager_secret" "internal_api_key" {
+  name                    = "${var.project_name}/internal-api-key-${var.environment}"
+  recovery_window_in_days = 7
+
+  tags = {
+    Name = "${var.project_name}-internal-api-key-${var.environment}"
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "internal_api_key" {
+  secret_id     = aws_secretsmanager_secret.internal_api_key.id
+  secret_string = var.internal_api_key
+}

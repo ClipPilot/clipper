@@ -26,13 +26,13 @@ variable "backend_container_port" {
 variable "backend_cpu" {
   description = "CPU units for backend container (1024 = 1 vCPU)"
   type        = number
-  default     = 2048  # 2 vCPU - needed for video processing
+  default     = 2048 # 2 vCPU - needed for video processing
 }
 
 variable "backend_memory" {
   description = "Memory for backend container in MB"
   type        = number
-  default     = 4096  # 4 GB - needed for ffmpeg + puppeteer
+  default     = 4096 # 4 GB - needed for ffmpeg + puppeteer
 }
 
 variable "backend_desired_count" {
@@ -87,4 +87,42 @@ variable "amplify_branch" {
   description = "Git branch to deploy from Amplify"
   type        = string
   default     = "main"
+}
+
+# Worker Configuration
+variable "worker_cpu" {
+  description = "CPU units for worker container (1024 = 1 vCPU)"
+  type        = number
+  default     = 8192 # 8 vCPU - for parallel FFmpeg processing
+}
+
+variable "worker_memory" {
+  description = "Memory for worker container in MB"
+  type        = number
+  default     = 16384 # 16 GB - FFmpeg needs memory for parallel video processing
+}
+
+variable "worker_min_capacity" {
+  description = "Minimum number of worker tasks"
+  type        = number
+  default     = 1
+}
+
+variable "worker_max_capacity" {
+  description = "Maximum number of worker tasks"
+  type        = number
+  default     = 250
+}
+
+variable "worker_messages_per_task" {
+  description = "Target number of SQS messages per worker task for scaling"
+  type        = number
+  default     = 1
+}
+
+variable "internal_api_key" {
+  description = "Internal API key for worker to API communication"
+  type        = string
+  sensitive   = true
+  default     = "a95f431eadf06dc59cbd188a72a797cc71396fdb2a92dc44721f704844cc725e"
 }

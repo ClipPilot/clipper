@@ -58,7 +58,8 @@ export const addCaptionsOverlay = async (
   outputPath: string,
   clipData: ClipSuggestions,
   words: TranscriptionWord[],
-  captionColor: string = "#FFD600" // Default to yellow for highlight
+  captionColor: string = "#FFD600", // Default to yellow for highlight
+  captionFont: string = "Montserrat",
 ): Promise<void> => {
   const assPath = path.join(
     path.dirname(outputPath),
@@ -77,7 +78,7 @@ PlayResY: 1920
 
 [V4+ Styles]
 Format: Name,Fontname,Fontsize,PrimaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding
-Style: Default,Comic Neue,100,${defaultColor},&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,5,0,2,60,60,180,1
+Style: Default,${captionFont},100,${defaultColor},&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,5,0,2,60,60,180,1
 
 [Events]
 Format: Layer,Start,End,Style,Text
@@ -124,7 +125,7 @@ Format: Layer,Start,End,Style,Text
 
   return new Promise((resolve, reject) => {
     ffmpeg(inputPath)
-      .videoFilters(`ass=${assPath}:fontsdir=${path.resolve("src/assets")}`)
+      .videoFilters(`ass=${assPath}:fontsdir=${path.resolve("src/fonts")}`)
       .outputOptions(["-c:a copy"])
       .save(outputPath)
       .on("end", () => {
@@ -142,7 +143,8 @@ export const addCaptionsFromData = async (
   inputPath: string,
   outputPath: string,
   captionsData: CaptionEntry[],
-  captionColor: string = "#FFD600"
+  captionColor: string = "#FFD600",
+  captionFont: string = "Montserrat",
 ): Promise<void> => {
   const assPath = path.join(
     path.dirname(outputPath),
@@ -160,7 +162,7 @@ PlayResY: 1920
 
 [V4+ Styles]
 Format: Name,Fontname,Fontsize,PrimaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding
-Style: Default,Comic Neue,100,${defaultColor},&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,5,0,2,60,60,180,1
+Style: Default,${captionFont},100,${defaultColor},&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,5,0,2,60,60,180,1
 
 [Events]
 Format: Layer,Start,End,Style,Text
@@ -189,7 +191,7 @@ Format: Layer,Start,End,Style,Text
 
   return new Promise((resolve, reject) => {
     ffmpeg(inputPath)
-      .videoFilters(`ass=${assPath}:fontsdir=${path.resolve("src/assets")}`)
+      .videoFilters(`ass=${assPath}:fontsdir=${path.resolve("src/fonts")}`)
       .outputOptions(["-c:a copy"])
       .save(outputPath)
       .on("end", () => {

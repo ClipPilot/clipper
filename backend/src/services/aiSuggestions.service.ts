@@ -2,10 +2,18 @@ import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import { ENV } from "../config/env";
 import { SyncPrerecordedResponse } from "@deepgram/sdk";
-import { ClipSuggestionsSchema, MultipleClipSuggestionsSchema, ClipSuggestions } from "../types/ai.types";
+import {
+  ClipSuggestionsSchema,
+  MultipleClipSuggestionsSchema,
+  ClipSuggestions,
+} from "../types/ai.types";
 import { generatePrompt } from "../config/prompts";
 
-const client = new OpenAI({ apiKey: ENV.OPENAI_API_KEY });
+const client = new OpenAI({
+  apiKey: ENV.OPENAI_API_KEY,
+  timeout: 10 * 60 * 1000,
+  maxRetries: 3,
+});
 
 export interface ClipGenerationOptions {
   length?: number;
@@ -48,8 +56,8 @@ export const generateClipSuggestionsService = async (
   // If requesting multiple videos, use the MultipleClipSuggestionsSchema
   if (numberOfVideos > 1) {
     const response = await client.responses.parse({
-      model: "gpt-5.1",
-      reasoning: { effort: "high" },
+      model: "gpt-5-mini",
+      reasoning: { effort: "medium" },
       input: [
         {
           role: "user",
@@ -57,15 +65,21 @@ export const generateClipSuggestionsService = async (
         },
       ],
       text: {
-        format: zodTextFormat(MultipleClipSuggestionsSchema, "multiple_clip_suggestions"),
+        format: zodTextFormat(
+          MultipleClipSuggestionsSchema,
+          "multiple_clip_suggestions"
+        ),
       },
     });
-    console.log("AI Multiple Clip Suggestions Response:", response.output_parsed);
+    console.log(
+      "AI Multiple Clip Suggestions Response:",
+      response.output_parsed
+    );
     return response.output_parsed?.videos || [];
   } else {
     // Single video - use original schema
     const response = await client.responses.parse({
-      model: "gpt-5.1",
+      model: "gpt-5-mini",
       reasoning: { effort: "medium" },
       input: [
         {

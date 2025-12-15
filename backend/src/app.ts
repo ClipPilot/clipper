@@ -5,6 +5,7 @@ import transcribeRoutes from "./routes/clip.routes";
 import authRoutes from "./routes/auth.routes";
 import teamRoutes from "./routes/team.routes";
 import folderRoutes from "./routes/folder.routes";
+import internalRoutes from "./routes/internal.routes";
 import { swaggerSpec } from "./config/swagger";
 
 const app = express();
@@ -21,7 +22,6 @@ app.use(express.urlencoded({ limit: "10gb", extended: true }));
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// Health check endpoint for AWS ECS/ALB
 app.get("/health", (req, res) => {
   res.status(200).json({
     status: "healthy",
@@ -30,6 +30,7 @@ app.get("/health", (req, res) => {
   });
 });
 
+app.use("/internal", internalRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/teams", teamRoutes);
 app.use("/api/clip-video", transcribeRoutes);

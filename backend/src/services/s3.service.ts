@@ -1,11 +1,10 @@
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, GetObjectCommand, DeleteObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import { Upload } from "@aws-sdk/lib-storage";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import fs from "fs";
 import path from "path";
 import { config } from "../config/env";
 
-// AWS SDK v3 automatically uses credentials from the default credential provider chain
-// (AWS CLI config, ~/.aws/credentials, environment variables, IAM roles, etc.)
 const s3Client = new S3Client({
   region: config.aws.region,
 });
@@ -15,24 +14,73 @@ const GENERATED_CLIPS_FOLDER = "generated-clips";
 const BLANK_CLIPS_FOLDER = "blank-clips";
 const SRT_FOLDER = "srt-files";
 const THUMBNAILS_FOLDER = "thumbnails";
+const RAW_VIDEOS_FOLDER = "raw-videos";
+
+const MULTIPART_THRESHOLD = 50 * 1024 * 1024;
+const PART_SIZE = 10 * 1024 * 1024;
+const QUEUE_SIZE = 4;
 
 class S3Service {
+  private async multipartUpload(
+    filePath: string,
+    key: string,
+    contentType: string
+  ): Promise<string> {
+    const fileSize = fs.statSync(filePath).size;
+    const fileStream = fs.createReadStream(filePath);
+
+    const upload = new Upload({
+      client: s3Client,
+      params: {
+        Bucket: BUCKET_NAME,
+        Key: key,
+        Body: fileStream,
+        ContentType: contentType,
+      },
+      queueSize: QUEUE_SIZE,
+      partSize: PART_SIZE,
+      leavePartsOnError: false,
+    });
+
+    upload.on("httpUploadProgress", (progress) => {
+      if (progress.loaded && progress.total) {
+        const percent = Math.round((progress.loaded / progress.total) * 100);
+        if (percent % 20 === 0) {
+          console.log(`[S3] Upload progress: ${percent}% (${Math.round(progress.loaded / 1024 / 1024)}MB / ${Math.round(progress.total / 1024 / 1024)}MB)`);
+        }
+      }
+    });
+
+    await upload.done();
+    console.log(`[S3] Multipart upload complete: ${key} (${Math.round(fileSize / 1024 / 1024)}MB)`);
+    return key;
+  }
+
+  async uploadRawVideo(filePath: string, teamId: number): Promise<string> {
+    try {
+      const fileName = `${teamId}/${Date.now()}_${path.basename(filePath)}`;
+      const key = `${RAW_VIDEOS_FOLDER}/${fileName}`;
+      const fileSize = fs.statSync(filePath).size;
+
+      console.log(`[S3] Uploading raw video: ${Math.round(fileSize / 1024 / 1024)}MB`);
+
+      if (fileSize > MULTIPART_THRESHOLD) {
+        return await this.multipartUpload(filePath, key, "video/mp4");
+      }
+
+      return await this.multipartUpload(filePath, key, "video/mp4");
+    } catch (error) {
+      console.error("Error uploading raw video to S3:", error);
+      throw new Error(`Failed to upload raw video to S3: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+  }
+
   async uploadThumbnail(filePath: string, teamId: number): Promise<string> {
     try {
       const fileName = `${teamId}/${Date.now()}_${path.basename(filePath)}`;
       const key = `${THUMBNAILS_FOLDER}/${fileName}`;
 
-      const fileStream = fs.createReadStream(filePath);
-      const uploadParams = {
-        Bucket: BUCKET_NAME,
-        Key: key,
-        Body: fileStream,
-        ContentType: "image/jpeg",
-      };
-
-      await s3Client.send(new PutObjectCommand(uploadParams));
-      console.log(`Thumbnail uploaded to S3 successfully: ${key}`);
-      return key;
+      return await this.multipartUpload(filePath, key, "image/jpeg");
     } catch (error) {
       console.error("Error uploading thumbnail to S3:", error);
       throw new Error(`Failed to upload thumbnail to S3: ${error instanceof Error ? error.message : "Unknown error"}`);
@@ -44,17 +92,7 @@ class S3Service {
       const fileName = `${teamId}/${clipId}_${Date.now()}.mp4`;
       const key = `${GENERATED_CLIPS_FOLDER}/${fileName}`;
 
-      const fileStream = fs.createReadStream(filePath);
-      const uploadParams = {
-        Bucket: BUCKET_NAME,
-        Key: key,
-        Body: fileStream,
-        ContentType: "video/mp4",
-      };
-
-      await s3Client.send(new PutObjectCommand(uploadParams));
-      console.log(`Generated clip uploaded to S3 successfully: ${key}`);
-      return key;
+      return await this.multipartUpload(filePath, key, "video/mp4");
     } catch (error) {
       console.error("Error uploading generated clip to S3:", error);
       throw new Error(`Failed to upload generated clip to S3: ${error instanceof Error ? error.message : "Unknown error"}`);
@@ -66,17 +104,7 @@ class S3Service {
       const fileName = `${teamId}/${clipId}_${Date.now()}.mp4`;
       const key = `${BLANK_CLIPS_FOLDER}/${fileName}`;
 
-      const fileStream = fs.createReadStream(filePath);
-      const uploadParams = {
-        Bucket: BUCKET_NAME,
-        Key: key,
-        Body: fileStream,
-        ContentType: "video/mp4",
-      };
-
-      await s3Client.send(new PutObjectCommand(uploadParams));
-      console.log(`Blank clip uploaded to S3 successfully: ${key}`);
-      return key;
+      return await this.multipartUpload(filePath, key, "video/mp4");
     } catch (error) {
       console.error("Error uploading blank clip to S3:", error);
       throw new Error(`Failed to upload blank clip to S3: ${error instanceof Error ? error.message : "Unknown error"}`);
@@ -88,17 +116,7 @@ class S3Service {
       const fileName = `${teamId}/${clipId}_${Date.now()}.srt`;
       const key = `${SRT_FOLDER}/${fileName}`;
 
-      const fileStream = fs.createReadStream(filePath);
-      const uploadParams = {
-        Bucket: BUCKET_NAME,
-        Key: key,
-        Body: fileStream,
-        ContentType: "text/plain",
-      };
-
-      await s3Client.send(new PutObjectCommand(uploadParams));
-      console.log(`SRT file uploaded to S3 successfully: ${key}`);
-      return key;
+      return await this.multipartUpload(filePath, key, "text/plain");
     } catch (error) {
       console.error("Error uploading SRT file to S3:", error);
       throw new Error(`Failed to upload SRT file to S3: ${error instanceof Error ? error.message : "Unknown error"}`);
@@ -136,6 +154,26 @@ class S3Service {
     });
 
     return await getSignedUrl(s3Client, command, { expiresIn });
+  }
+
+  async getPresignedUploadUrl(
+    teamId: number,
+    fileName: string,
+    contentType: string,
+    expiresIn: number = 3600
+  ): Promise<{ uploadUrl: string; s3Key: string }> {
+    const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const s3Key = `${RAW_VIDEOS_FOLDER}/${teamId}/${Date.now()}_${sanitizedFileName}`;
+
+    const command = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: s3Key,
+      ContentType: contentType,
+    });
+
+    const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn });
+
+    return { uploadUrl, s3Key };
   }
 
   async deleteObject(key: string): Promise<void> {

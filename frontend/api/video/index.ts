@@ -1,9 +1,23 @@
 import API_URL from "@/config/constants";
 import { apiFetch } from "@/lib/apiClient";
 
-export interface ClipVideoParams {
+export interface PresignedUploadResponse {
+  uploadUrl: string;
+  s3Key: string;
+}
+
+export interface UploadProgress {
+  loaded: number;
+  total: number;
+  percentage: number;
+  remainingTime: number | null;
+}
+
+export interface SubmitClipParams {
   teamId: number;
-  video: File;
+  s3Key: string;
+  originalFileName?: string;
+  fileSize?: number;
   length?: number;
   hookLength?: number;
   promptType?: "business" | "viral";
@@ -14,56 +28,93 @@ export interface ClipVideoParams {
   textColor?: string;
   captions?: boolean;
   captionColor?: string;
+  captionFont?: string;
 }
 
-export interface ClipVideoResponse {
-  videos: Array<{
-    id: number;
-    clipPath: string;
-    clipSuggestions: any;
-    finalMessage: string;
-    evalScore: number;
-  }>;
-  parameters: {
-    length: number;
-    hookLength: number;
-    promptType: string;
-    numberOfVideos: number;
-  };
+export interface SubmitClipResponse {
+  clipIds: number[];
   message: string;
+  status: string;
 }
 
 class VideoAPI {
-  async clipVideo(params: ClipVideoParams): Promise<ClipVideoResponse> {
-    const formData = new FormData();
-    formData.append("video", params.video);
-    formData.append("teamId", params.teamId.toString());
-
-    if (params.length) formData.append("length", params.length.toString());
-    if (params.hookLength)
-      formData.append("hookLength", params.hookLength.toString());
-    if (params.promptType) formData.append("promptType", params.promptType);
-    if (params.customPrompt)
-      formData.append("textPrompt", params.customPrompt);
-    if (params.numberOfVideos)
-      formData.append("numberOfVideos", params.numberOfVideos.toString());
-    if (params.customText) formData.append("customText", params.customText);
-    if (params.textPosition)
-      formData.append("textPosition", params.textPosition);
-    if (params.textColor) formData.append("textColor", params.textColor);
-    if (params.captions !== undefined)
-      formData.append("captions", params.captions.toString());
-    if (params.captionColor)
-      formData.append("captionColor", params.captionColor);
-
-    const response = await apiFetch(`${API_URL}/clip-video`, {
+  async getPresignedUploadUrl(
+    teamId: number,
+    fileName: string,
+    contentType: string,
+    fileSize: number
+  ): Promise<PresignedUploadResponse> {
+    const response = await apiFetch(`${API_URL}/clip-video/presigned-upload`, {
       method: "POST",
-      body: formData,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ teamId, fileName, contentType, fileSize }),
     });
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.message || error.error || "Failed to clip video");
+      throw new Error(error.message || error.error || "Failed to get upload URL");
+    }
+
+    return await response.json();
+  }
+
+  async uploadToS3(
+    uploadUrl: string,
+    file: File,
+    onProgress?: (progress: UploadProgress) => void
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      const startTime = Date.now();
+
+      xhr.upload.addEventListener("progress", (event) => {
+        if (event.lengthComputable && onProgress) {
+          const elapsed = (Date.now() - startTime) / 1000;
+          const speed = event.loaded / elapsed;
+          const remaining = event.total - event.loaded;
+          const remainingTime = speed > 0 ? remaining / speed : null;
+
+          onProgress({
+            loaded: event.loaded,
+            total: event.total,
+            percentage: Math.round((event.loaded / event.total) * 100),
+            remainingTime,
+          });
+        }
+      });
+
+      xhr.addEventListener("load", () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve();
+        } else {
+          reject(new Error(`Upload failed with status ${xhr.status}`));
+        }
+      });
+
+      xhr.addEventListener("error", () => {
+        reject(new Error("Upload failed"));
+      });
+
+      xhr.addEventListener("abort", () => {
+        reject(new Error("Upload aborted"));
+      });
+
+      xhr.open("PUT", uploadUrl);
+      xhr.setRequestHeader("Content-Type", file.type);
+      xhr.send(file);
+    });
+  }
+
+  async submitClipJob(params: SubmitClipParams): Promise<SubmitClipResponse> {
+    const response = await apiFetch(`${API_URL}/clip-video/submit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || error.error || "Failed to submit job");
     }
 
     return await response.json();
@@ -71,4 +122,3 @@ class VideoAPI {
 }
 
 export const videoAPI = new VideoAPI();
-

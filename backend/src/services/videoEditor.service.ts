@@ -6,6 +6,8 @@ import path from "path";
 interface VideoMetadata {
   width: number;
   height: number;
+  duration?: number;
+  bitrate?: number;
 }
 
 const getVideoMetadata = (videoPath: string): Promise<VideoMetadata> => {
@@ -16,9 +18,72 @@ const getVideoMetadata = (videoPath: string): Promise<VideoMetadata> => {
       if (!videoStream || !videoStream.width || !videoStream.height) {
         return reject(new Error("Could not get video dimensions"));
       }
-      resolve({ width: videoStream.width, height: videoStream.height });
+      resolve({
+        width: videoStream.width,
+        height: videoStream.height,
+        duration: metadata.format.duration,
+        bitrate: metadata.format.bit_rate ? parseInt(String(metadata.format.bit_rate)) : undefined,
+      });
     });
   });
+};
+
+const COMPRESSION_THRESHOLD = 100 * 1024 * 1024;
+const TARGET_BITRATE = 4000;
+
+export const compressVideoForUpload = async (
+  inputPath: string,
+  outputPath: string
+): Promise<{ path: string; compressed: boolean; originalSize: number; newSize: number }> => {
+  const originalSize = fs.statSync(inputPath).size;
+
+  if (originalSize < COMPRESSION_THRESHOLD) {
+    console.log(`[COMPRESS] File ${Math.round(originalSize / 1024 / 1024)}MB below threshold, skipping compression`);
+    return { path: inputPath, compressed: false, originalSize, newSize: originalSize };
+  }
+
+  console.log(`[COMPRESS] Compressing ${Math.round(originalSize / 1024 / 1024)}MB video...`);
+
+  try {
+    const metadata = await getVideoMetadata(inputPath);
+    const currentBitrate = metadata.bitrate ? metadata.bitrate / 1000 : 10000;
+
+    if (currentBitrate <= TARGET_BITRATE * 1.2) {
+      console.log(`[COMPRESS] Bitrate ${Math.round(currentBitrate)}kbps already optimal, skipping`);
+      return { path: inputPath, compressed: false, originalSize, newSize: originalSize };
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      ffmpeg(inputPath)
+        .outputOptions([
+          "-c:v libx264",
+          "-preset fast",
+          `-b:v ${TARGET_BITRATE}k`,
+          `-maxrate ${TARGET_BITRATE * 1.5}k`,
+          `-bufsize ${TARGET_BITRATE * 2}k`,
+          "-c:a aac",
+          "-b:a 128k",
+          "-movflags +faststart",
+        ])
+        .save(outputPath)
+        .on("progress", (progress) => {
+          if (progress.percent && Math.round(progress.percent) % 25 === 0) {
+            console.log(`[COMPRESS] Progress: ${Math.round(progress.percent)}%`);
+          }
+        })
+        .on("end", () => resolve())
+        .on("error", reject);
+    });
+
+    const newSize = fs.statSync(outputPath).size;
+    const savings = Math.round(((originalSize - newSize) / originalSize) * 100);
+    console.log(`[COMPRESS] Done: ${Math.round(originalSize / 1024 / 1024)}MB -> ${Math.round(newSize / 1024 / 1024)}MB (${savings}% smaller)`);
+
+    return { path: outputPath, compressed: true, originalSize, newSize };
+  } catch (error) {
+    console.error("[COMPRESS] Failed, using original:", error);
+    return { path: inputPath, compressed: false, originalSize, newSize: originalSize };
+  }
 };
 
 export const cutClip = (input: string, output: string, start: number, end: number) => {

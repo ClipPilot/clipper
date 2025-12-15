@@ -4,7 +4,7 @@ import clsx from "clsx";
 
 import { Providers } from "./providers";
 
-import { fontSans } from "@/config/fonts";
+import { fontLuckiestGuy, fontMontserrat, fontSans, fontEverlasting, fontKomika, fontBurbank } from "@/config/fonts";
 
 export const metadata: Metadata = {
   title: {
@@ -30,7 +30,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html suppressHydrationWarning lang="en" className="dark">
+    <html suppressHydrationWarning lang="en" className={`dark ${fontMontserrat.variable} ${fontLuckiestGuy.variable} ${fontEverlasting.variable} ${fontKomika.variable} ${fontBurbank.variable}`}>
       <head />
       <body
         className={clsx(

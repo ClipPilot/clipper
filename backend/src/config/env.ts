@@ -27,6 +27,7 @@ export const config = {
   aws: {
     region: getEnv("AWS_REGION", "us-west-2"),
     s3Bucket: getEnv("AWS_S3_BUCKET"),
+    sqsQueueUrl: getEnv("SQS_QUEUE_URL", ""),
   },
   port: getEnv("PORT", "3001"),
 };

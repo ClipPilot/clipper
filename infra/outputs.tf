@@ -45,4 +45,35 @@ output "cloudwatch_log_group" {
   description = "CloudWatch log group for backend"
   value       = aws_cloudwatch_log_group.backend.name
 }
-# Trigger deployment
+
+# Worker outputs
+output "worker_ecr_repository_url" {
+  description = "URL of the ECR repository for worker"
+  value       = aws_ecr_repository.worker.repository_url
+}
+
+output "worker_service_name" {
+  description = "Name of the worker ECS service"
+  value       = aws_ecs_service.worker.name
+}
+
+output "worker_log_group" {
+  description = "CloudWatch log group for worker"
+  value       = aws_cloudwatch_log_group.worker.name
+}
+
+# SQS outputs
+output "sqs_queue_url" {
+  description = "URL of the video processing SQS queue"
+  value       = aws_sqs_queue.video_processing.url
+}
+
+output "sqs_queue_arn" {
+  description = "ARN of the video processing SQS queue"
+  value       = aws_sqs_queue.video_processing.arn
+}
+
+output "sqs_dlq_url" {
+  description = "URL of the dead letter queue"
+  value       = aws_sqs_queue.video_processing_dlq.url
+}

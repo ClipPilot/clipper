@@ -15,15 +15,25 @@ interface PendingClipsSectionProps {
   onClipClick: (clip: Clip) => void;
 }
 
-export default function PendingClipsSection({ clips, onClipClick }: PendingClipsSectionProps) {
+export default function PendingClipsSection({
+  clips,
+  onClipClick,
+}: PendingClipsSectionProps) {
   if (clips.length === 0) return null;
 
   return (
     <div className="mb-8">
       <h2 className="text-xl font-bold text-text-primary mb-4 flex items-center gap-2">
-        <Icon icon="solar:clock-circle-bold-duotone" className="text-2xl text-warning-400" />
+        <Icon
+          icon="solar:clock-circle-bold-duotone"
+          className="text-2xl text-warning-400"
+        />
         Processing ({clips.length})
       </h2>
+      <p className="text-sm text-text-tertiary mb-4">
+        Processing may take anywhere from 5 to 30 minutes; we'll email you when
+        it's complete.
+      </p>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {clips.map((clip) => (
           <Card
@@ -39,7 +49,7 @@ export default function PendingClipsSection({ clips, onClipClick }: PendingClips
               />
               <div className="text-center">
                 <p className="text-sm font-medium text-text-primary mb-1">
-                  {clip.status === "pending" ? "Waiting to process..." : "Processing..."}
+                  {clip.status === "pending" ? "Processing" : "Processing..."}
                 </p>
                 <p className="text-xs text-text-tertiary">
                   Started {new Date(clip.created_at).toLocaleTimeString()}

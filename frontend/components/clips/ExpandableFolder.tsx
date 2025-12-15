@@ -12,6 +12,7 @@ interface ExpandableFolderProps {
   onDelete?: (folderId: number) => void;
   onDrop?: (folderId: number, clipId: number) => void;
   onClipDelete?: (clipId: number) => void;
+  onClipView?: (clip: Clip) => void;
   onClipEdit?: (clip: Clip) => void;
   draggedClipId?: number | null;
   onClipDragStart?: (e: React.DragEvent, clipId: number) => void;
@@ -24,6 +25,7 @@ export const ExpandableFolder: React.FC<ExpandableFolderProps> = ({
   onDelete,
   onDrop,
   onClipDelete,
+  onClipView,
   onClipEdit,
   draggedClipId,
   onClipDragStart,
@@ -140,6 +142,7 @@ export const ExpandableFolder: React.FC<ExpandableFolderProps> = ({
                   key={clip.id}
                   clip={clip}
                   onDelete={onClipDelete}
+                  onView={onClipView ? () => onClipView(clip) : undefined}
                   onEdit={onClipEdit ? () => onClipEdit(clip) : undefined}
                   isDragging={draggedClipId === clip.id}
                   onDragStart={onClipDragStart}
