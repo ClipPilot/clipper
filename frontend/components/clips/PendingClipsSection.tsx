@@ -30,6 +30,10 @@ export default function PendingClipsSection({
         />
         Processing ({clips.length})
       </h2>
+      <p className="text-sm text-text-tertiary mb-4">
+        Processing may take anywhere from 5 to 30 minutes; we'll email you when
+        it's complete.
+      </p>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {clips.map((clip) => (
           <Card

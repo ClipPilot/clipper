@@ -276,6 +276,7 @@ export default function MyClipsPage() {
                   onDelete={handleDeleteFolder}
                   onDrop={handleDrop}
                   onClipDelete={handleDeleteClip}
+                  onClipView={handleViewClip}
                   onClipEdit={handleEditClip}
                   draggedClipId={draggedClipId}
                   onClipDragStart={handleDragStart}
@@ -321,20 +322,16 @@ export default function MyClipsPage() {
           ) : unorganizedClips.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {unorganizedClips.map((clip) => (
-                <div
+                <ClipCard
                   key={clip.id}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, clip.id)}
+                  clip={clip}
+                  onDelete={handleDeleteClip}
+                  onView={() => handleViewClip(clip)}
+                  onEdit={() => handleEditClip(clip)}
+                  isDragging={draggedClipId === clip.id}
+                  onDragStart={handleDragStart}
                   onDragEnd={() => setDraggedClipId(null)}
-                >
-                  <ClipCard
-                    clip={clip}
-                    onDelete={handleDeleteClip}
-                    onView={() => handleViewClip(clip)}
-                    onEdit={() => handleEditClip(clip)}
-                    isDragging={draggedClipId === clip.id}
-                  />
-                </div>
+                />
               ))}
             </div>
           ) : (

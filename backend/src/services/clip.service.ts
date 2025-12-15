@@ -146,27 +146,44 @@ export const createCombinedClipService = async (
   return { finalPath, blankPath, captionsData, srtContent };
 };
 
+const processWithConcurrency = async <T, R>(
+  items: T[],
+  concurrency: number,
+  processor: (item: T, index: number) => Promise<R>
+): Promise<R[]> => {
+  const results: R[] = new Array(items.length);
+  const pending = items.map((item, index) => ({ item, index }));
+
+  const runWorker = async () => {
+    while (pending.length > 0) {
+      const task = pending.shift();
+      if (!task) break;
+      results[task.index] = await processor(task.item, task.index);
+    }
+  };
+
+  const workers = Array.from(
+    { length: Math.min(concurrency, items.length) },
+    () => runWorker()
+  );
+
+  await Promise.all(workers);
+  return results;
+};
+
 export const createMultipleCombinedClipsService = async (
   videoPath: string,
   clipDataArray: ClipSuggestions[],
   transcriptionWords: TranscriptionWord[],
   options: ClipServiceOptions = {}
 ): Promise<ClipResult[]> => {
-  const results: ClipResult[] = [];
+  const CONCURRENCY = 4;
+  console.log(`Creating ${clipDataArray.length} clips with concurrency of ${CONCURRENCY}...`);
 
-  for (let i = 0; i < clipDataArray.length; i++) {
+  return processWithConcurrency(clipDataArray, CONCURRENCY, async (clipData, i) => {
     console.log(`Creating clip ${i + 1} of ${clipDataArray.length}...`);
-    const result = await createCombinedClipService(
-      videoPath,
-      clipDataArray[i],
-      transcriptionWords,
-      options,
-      i
-    );
-    results.push(result);
-  }
-
-  return results;
+    return createCombinedClipService(videoPath, clipData, transcriptionWords, options, i);
+  });
 };
 
 export const regenerateClipWithCaptions = async (

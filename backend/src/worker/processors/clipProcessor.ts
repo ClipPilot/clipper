@@ -82,64 +82,58 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
       fs.unlinkSync(thumbnailPath);
     }
 
-    for (let i = 0; i < clipSuggestionsArray.length; i++) {
-      const suggestions = clipSuggestionsArray[i];
-      const result = clipResults[i];
+    console.log(`Uploading ${clipSuggestionsArray.length} clips to S3 in parallel...`);
 
-      console.log(`Uploading clip ${i + 1}/${clipSuggestionsArray.length} to S3...`);
+    await Promise.all(
+      clipSuggestionsArray.map(async (suggestions, i) => {
+        const result = clipResults[i];
 
-      const clipS3Key = await s3Service.uploadGeneratedClip(
-        result.finalPath,
-        teamId,
-        clipIds[i]
-      );
+        const [clipS3Key, blankS3Key] = await Promise.all([
+          s3Service.uploadGeneratedClip(result.finalPath, teamId, clipIds[i]),
+          s3Service.uploadBlankClip(result.blankPath, teamId, clipIds[i]),
+        ]);
 
-      const blankS3Key = await s3Service.uploadBlankClip(
-        result.blankPath,
-        teamId,
-        clipIds[i]
-      );
+        const srtPath = path.join(outDir, `captions_${clipIds[i]}.srt`);
+        fs.writeFileSync(srtPath, result.srtContent);
+        const srtS3Key = await s3Service.uploadSrtFile(srtPath, teamId, clipIds[i]);
+        fs.unlinkSync(srtPath);
 
-      const srtPath = path.join(outDir, `captions_${clipIds[i]}.srt`);
-      fs.writeFileSync(srtPath, result.srtContent);
-      const srtS3Key = await s3Service.uploadSrtFile(srtPath, teamId, clipIds[i]);
-      fs.unlinkSync(srtPath);
+        console.log(`Clip ${i + 1}/${clipSuggestionsArray.length} uploaded to S3`);
 
-      console.log(`Clip uploaded to S3 with key: ${clipS3Key}`);
-
-      await clipManagerService.updateClipComplete(clipIds[i], teamId, {
-        clipPath: clipS3Key,
-        blankVideoPath: blankS3Key,
-        srtPath: srtS3Key,
-        captionsData: result.captionsData,
-        sourceVideoPath: thumbnailS3Key,
-        title: suggestions.clipTitle,
-        clipMetadata: {
-          clipSuggestions: suggestions,
-          parameters: {
-            length: options.length || 40,
-            hookLength: options.hookLength || 6,
-            promptType: options.promptType || "business",
-            customText: options.customText,
-            textPosition: options.textPosition,
-            textColor: options.textColor,
-            captions: options.captions || false,
-            captionColor: options.captionColor,
-            captionFont: options.captionFont,
+        await clipManagerService.updateClipComplete(clipIds[i], teamId, {
+          clipPath: clipS3Key,
+          blankVideoPath: blankS3Key,
+          srtPath: srtS3Key,
+          captionsData: result.captionsData,
+          sourceVideoPath: thumbnailS3Key,
+          title: suggestions.clipTitle,
+          clipMetadata: {
+            clipSuggestions: suggestions,
+            parameters: {
+              length: options.length || 40,
+              hookLength: options.hookLength || 6,
+              promptType: options.promptType || "business",
+              customText: options.customText,
+              textPosition: options.textPosition,
+              textColor: options.textColor,
+              captions: options.captions || false,
+              captionColor: options.captionColor,
+              captionFont: options.captionFont,
+            },
           },
-        },
-        inputMetadata: {
-          originalFileName,
-          fileSize,
-        },
-        prompt: options.textPrompt || options.customPrompt,
-        message: suggestions.finalMessage,
-        clipScore: suggestions.evalScore,
-      });
+          inputMetadata: {
+            originalFileName,
+            fileSize,
+          },
+          prompt: options.textPrompt || options.customPrompt,
+          message: suggestions.finalMessage,
+          clipScore: suggestions.evalScore,
+        });
 
-      if (fs.existsSync(result.finalPath)) fs.unlinkSync(result.finalPath);
-      if (fs.existsSync(result.blankPath)) fs.unlinkSync(result.blankPath);
-    }
+        if (fs.existsSync(result.finalPath)) fs.unlinkSync(result.finalPath);
+        if (fs.existsSync(result.blankPath)) fs.unlinkSync(result.blankPath);
+      })
+    );
 
     try {
       await s3Service.deleteObject(s3Key);
