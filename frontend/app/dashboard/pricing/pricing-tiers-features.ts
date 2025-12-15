@@ -10,20 +10,20 @@ const features: PricingFeatures = [
         tiers: {
           [TiersEnum.Free]: "3 total",
           [TiersEnum.ProStudio]: "Unlimited",
+          [TiersEnum.Enterprise]: "Unlimited",
+        },
+        helpText:
+          "Generate AI-powered clips from your videos. Generated clips have watermarks until saved.",
+      },
+      {
+        title: "Saved clips included",
+        tiers: {
+          [TiersEnum.Free]: "3 included",
+          [TiersEnum.ProStudio]: "500/month",
           [TiersEnum.Enterprise]: "1,000/month",
         },
         helpText:
-          "Generate AI-powered clips from your videos. Generations let you preview clips before saving.",
-      },
-      {
-        title: "Saved clips pricing",
-        tiers: {
-          [TiersEnum.Free]: "3 included",
-          [TiersEnum.ProStudio]: "$16.99/clip",
-          [TiersEnum.Enterprise]: "$8.99/clip",
-        },
-        helpText:
-          "Save your favorite generated clips for export and sharing.",
+          "Save and download your favorite clips without watermarks.",
       },
       {
         title: "Clip storage duration",
