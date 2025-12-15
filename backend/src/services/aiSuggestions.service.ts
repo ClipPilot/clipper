@@ -5,7 +5,11 @@ import { SyncPrerecordedResponse } from "@deepgram/sdk";
 import { ClipSuggestionsSchema, MultipleClipSuggestionsSchema, ClipSuggestions } from "../types/ai.types";
 import { generatePrompt } from "../config/prompts";
 
-const client = new OpenAI({ apiKey: ENV.OPENAI_API_KEY });
+const client = new OpenAI({
+  apiKey: ENV.OPENAI_API_KEY,
+  timeout: 10 * 60 * 1000,
+  maxRetries: 3,
+});
 
 export interface ClipGenerationOptions {
   length?: number;
@@ -48,7 +52,7 @@ export const generateClipSuggestionsService = async (
   // If requesting multiple videos, use the MultipleClipSuggestionsSchema
   if (numberOfVideos > 1) {
     const response = await client.responses.parse({
-      model: "gpt-5.1",
+      model: "gpt-5-mini",
       reasoning: { effort: "high" },
       input: [
         {
@@ -65,7 +69,7 @@ export const generateClipSuggestionsService = async (
   } else {
     // Single video - use original schema
     const response = await client.responses.parse({
-      model: "gpt-5.1",
+      model: "gpt-5-mini",
       reasoning: { effort: "medium" },
       input: [
         {

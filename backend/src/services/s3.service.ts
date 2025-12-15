@@ -1,4 +1,4 @@
-import { S3Client, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, GetObjectCommand, DeleteObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import fs from "fs";
@@ -154,6 +154,26 @@ class S3Service {
     });
 
     return await getSignedUrl(s3Client, command, { expiresIn });
+  }
+
+  async getPresignedUploadUrl(
+    teamId: number,
+    fileName: string,
+    contentType: string,
+    expiresIn: number = 3600
+  ): Promise<{ uploadUrl: string; s3Key: string }> {
+    const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const s3Key = `${RAW_VIDEOS_FOLDER}/${teamId}/${Date.now()}_${sanitizedFileName}`;
+
+    const command = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: s3Key,
+      ContentType: contentType,
+    });
+
+    const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn });
+
+    return { uploadUrl, s3Key };
   }
 
   async deleteObject(key: string): Promise<void> {
