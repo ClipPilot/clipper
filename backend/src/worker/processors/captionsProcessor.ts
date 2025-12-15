@@ -7,7 +7,7 @@ import { s3Service } from "../../services/s3.service";
 import { notifyClipsRefresh } from "../notify";
 
 export async function processCaptionsJob(job: UpdateCaptionsJob): Promise<void> {
-  const { clipId, teamId, captionsData, captionColor } = job;
+  const { clipId, teamId, captionsData, captionColor, captionFont } = job;
 
   const outDir = path.join(process.cwd(), "output");
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
@@ -29,13 +29,14 @@ export async function processCaptionsJob(job: UpdateCaptionsJob): Promise<void> 
     console.log(`Downloading blank video from S3: ${clip.blank_video_path}`);
     await s3Service.downloadFile(clip.blank_video_path, localBlankPath);
 
-    // Get caption color from job or existing metadata
+    // Get caption color and font from job or existing metadata
     const metadata = clip.clip_metadata as any;
     const color = captionColor || metadata?.parameters?.captionColor || "#FFD600";
+    const font = captionFont || metadata?.parameters?.captionFont || "Montserrat";
 
     // Regenerate clip with new captions
     console.log("Regenerating clip with updated captions...");
-    newClipPath = await regenerateClipWithCaptions(localBlankPath, captionsData, color);
+    newClipPath = await regenerateClipWithCaptions(localBlankPath, captionsData, color, font);
 
     // Delete old clip from S3
     if (clip.clip_path) {

@@ -64,6 +64,7 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
         textColor: options.textColor,
         captions: options.captions,
         captionColor: options.captionColor,
+        captionFont: options.captionFont,
       }
     );
 
@@ -127,6 +128,7 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
             textColor: options.textColor,
             captions: options.captions || false,
             captionColor: options.captionColor,
+            captionFont: options.captionFont,
           },
         },
         inputMetadata: {

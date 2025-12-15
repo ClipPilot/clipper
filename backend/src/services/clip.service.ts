@@ -172,13 +172,14 @@ export const createMultipleCombinedClipsService = async (
 export const regenerateClipWithCaptions = async (
   blankVideoPath: string,
   captionsData: CaptionEntry[],
-  captionColor: string = "#FFD600"
+  captionColor: string = "#FFD600",
+  captionFont: string = "Montserrat"
 ): Promise<string> => {
   const outDir = path.join(process.cwd(), "output");
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
 
   const outputPath = path.join(outDir, `regenerated_${Date.now()}.mp4`);
-  await addCaptionsFromData(blankVideoPath, outputPath, captionsData, captionColor);
+  await addCaptionsFromData(blankVideoPath, outputPath, captionsData, captionColor, captionFont);
 
   return outputPath;
 };

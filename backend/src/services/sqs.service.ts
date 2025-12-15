@@ -35,6 +35,7 @@ export interface ClipVideoJob extends BaseJob {
     textColor?: string;
     captions?: boolean;
     captionColor?: string;
+    captionFont?: string;
   };
   originalFileName?: string;
   fileSize?: number;
@@ -51,6 +52,7 @@ export interface UpdateCaptionsJob extends BaseJob {
     text: string;
   }>;
   captionColor?: string;
+  captionFont?: string;
 }
 
 // Text overlay job payload
