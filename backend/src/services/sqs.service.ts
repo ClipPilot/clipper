@@ -1,0 +1,172 @@
+import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
+import { config } from "../config/env";
+
+const sqsClient = new SQSClient({
+  region: config.aws.region,
+});
+
+// Job types for video processing
+export type JobType = "clip-video" | "update-captions" | "text-overlay";
+
+// Base job interface
+interface BaseJob {
+  type: JobType;
+  teamId: number;
+  clipId?: number;
+  clipIds?: number[];
+  userId: number;
+  createdAt: string;
+}
+
+// Clip video job payload
+export interface ClipVideoJob extends BaseJob {
+  type: "clip-video";
+  clipIds: number[];
+  s3Key: string; // S3 key where the uploaded video is stored
+  options: {
+    length?: number;
+    hookLength?: number;
+    promptType?: "business" | "viral";
+    customPrompt?: string;
+    textPrompt?: string;
+    numberOfVideos?: number;
+    customText?: string;
+    textPosition?: "top" | "bottom" | "middle";
+    textColor?: string;
+    captions?: boolean;
+    captionColor?: string;
+  };
+  originalFileName?: string;
+  fileSize?: number;
+}
+
+// Update captions job payload
+export interface UpdateCaptionsJob extends BaseJob {
+  type: "update-captions";
+  clipId: number;
+  captionsData: Array<{
+    index: number;
+    startTime: number;
+    endTime: number;
+    text: string;
+  }>;
+  captionColor?: string;
+}
+
+// Text overlay job payload
+export interface TextOverlayJob extends BaseJob {
+  type: "text-overlay";
+  clipId: number;
+  text: string;
+  color?: string;
+  x?: number;
+  y?: number;
+  fontSize?: number;
+}
+
+export type VideoProcessingJob = ClipVideoJob | UpdateCaptionsJob | TextOverlayJob;
+
+class SQSService {
+  private queueUrl: string;
+
+  constructor() {
+    this.queueUrl = config.aws.sqsQueueUrl;
+  }
+
+  async sendJob(job: VideoProcessingJob): Promise<string> {
+    if (!this.queueUrl) {
+      throw new Error("SQS_QUEUE_URL is not configured");
+    }
+
+    const command = new SendMessageCommand({
+      QueueUrl: this.queueUrl,
+      MessageBody: JSON.stringify(job),
+      MessageAttributes: {
+        JobType: {
+          DataType: "String",
+          StringValue: job.type,
+        },
+        TeamId: {
+          DataType: "Number",
+          StringValue: job.teamId.toString(),
+        },
+      },
+    });
+
+    const response = await sqsClient.send(command);
+    console.log(`SQS message sent: ${response.MessageId} for job type: ${job.type}`);
+    return response.MessageId || "";
+  }
+
+  async sendClipVideoJob(params: {
+    clipIds: number[];
+    teamId: number;
+    userId: number;
+    s3Key: string;
+    options: ClipVideoJob["options"];
+    originalFileName?: string;
+    fileSize?: number;
+  }): Promise<string> {
+    const job: ClipVideoJob = {
+      type: "clip-video",
+      clipIds: params.clipIds,
+      teamId: params.teamId,
+      userId: params.userId,
+      s3Key: params.s3Key,
+      options: params.options,
+      originalFileName: params.originalFileName,
+      fileSize: params.fileSize,
+      createdAt: new Date().toISOString(),
+    };
+
+    return this.sendJob(job);
+  }
+
+  async sendUpdateCaptionsJob(params: {
+    clipId: number;
+    teamId: number;
+    userId: number;
+    captionsData: UpdateCaptionsJob["captionsData"];
+    captionColor?: string;
+  }): Promise<string> {
+    const job: UpdateCaptionsJob = {
+      type: "update-captions",
+      clipId: params.clipId,
+      teamId: params.teamId,
+      userId: params.userId,
+      captionsData: params.captionsData,
+      captionColor: params.captionColor,
+      createdAt: new Date().toISOString(),
+    };
+
+    return this.sendJob(job);
+  }
+
+  async sendTextOverlayJob(params: {
+    clipId: number;
+    teamId: number;
+    userId: number;
+    text: string;
+    color?: string;
+    x?: number;
+    y?: number;
+    fontSize?: number;
+  }): Promise<string> {
+    const job: TextOverlayJob = {
+      type: "text-overlay",
+      clipId: params.clipId,
+      teamId: params.teamId,
+      userId: params.userId,
+      text: params.text,
+      color: params.color,
+      x: params.x,
+      y: params.y,
+      fontSize: params.fontSize,
+      createdAt: new Date().toISOString(),
+    };
+
+    return this.sendJob(job);
+  }
+}
+
+export const sqsService = new SQSService();

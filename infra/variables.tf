@@ -88,3 +88,34 @@ variable "amplify_branch" {
   type        = string
   default     = "main"
 }
+
+# Worker Configuration
+variable "worker_cpu" {
+  description = "CPU units for worker container (1024 = 1 vCPU)"
+  type        = number
+  default     = 2048 # 2 vCPU - needed for FFmpeg processing
+}
+
+variable "worker_memory" {
+  description = "Memory for worker container in MB"
+  type        = number
+  default     = 8192 # 8 GB - FFmpeg needs more memory for video processing
+}
+
+variable "worker_min_capacity" {
+  description = "Minimum number of worker tasks (can scale to 0)"
+  type        = number
+  default     = 0
+}
+
+variable "worker_max_capacity" {
+  description = "Maximum number of worker tasks"
+  type        = number
+  default     = 20
+}
+
+variable "worker_messages_per_task" {
+  description = "Target number of SQS messages per worker task for scaling"
+  type        = number
+  default     = 5
+}

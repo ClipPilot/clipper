@@ -15,8 +15,31 @@ const GENERATED_CLIPS_FOLDER = "generated-clips";
 const BLANK_CLIPS_FOLDER = "blank-clips";
 const SRT_FOLDER = "srt-files";
 const THUMBNAILS_FOLDER = "thumbnails";
+const RAW_VIDEOS_FOLDER = "raw-videos";
 
 class S3Service {
+  async uploadRawVideo(filePath: string, teamId: number): Promise<string> {
+    try {
+      const fileName = `${teamId}/${Date.now()}_${path.basename(filePath)}`;
+      const key = `${RAW_VIDEOS_FOLDER}/${fileName}`;
+
+      const fileStream = fs.createReadStream(filePath);
+      const uploadParams = {
+        Bucket: BUCKET_NAME,
+        Key: key,
+        Body: fileStream,
+        ContentType: "video/mp4",
+      };
+
+      await s3Client.send(new PutObjectCommand(uploadParams));
+      console.log(`Raw video uploaded to S3 successfully: ${key}`);
+      return key;
+    } catch (error) {
+      console.error("Error uploading raw video to S3:", error);
+      throw new Error(`Failed to upload raw video to S3: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+  }
+
   async uploadThumbnail(filePath: string, teamId: number): Promise<string> {
     try {
       const fileName = `${teamId}/${Date.now()}_${path.basename(filePath)}`;

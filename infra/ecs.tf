@@ -95,6 +95,10 @@ resource "aws_ecs_task_definition" "backend" {
       {
         name  = "AWS_REGION"
         value = var.aws_region
+      },
+      {
+        name  = "SQS_QUEUE_URL"
+        value = aws_sqs_queue.video_processing.url
       }
     ]
 

@@ -89,3 +89,90 @@ resource "aws_iam_role_policy" "ecs_task_s3" {
   })
 }
 
+# Policy for SQS access (API - send messages only)
+resource "aws_iam_role_policy" "ecs_task_sqs" {
+  name = "${var.project_name}-ecs-task-sqs-${var.environment}"
+  role = aws_iam_role.ecs_task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "sqs:SendMessage",
+        "sqs:GetQueueUrl",
+        "sqs:GetQueueAttributes"
+      ]
+      Resource = [
+        aws_sqs_queue.video_processing.arn
+      ]
+    }]
+  })
+}
+
+# Worker ECS Task Role (needs full SQS access + S3)
+resource "aws_iam_role" "ecs_worker_task" {
+  name = "${var.project_name}-ecs-worker-task-role-${var.environment}"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "ecs-tasks.amazonaws.com"
+      }
+    }]
+  })
+
+  tags = {
+    Name = "${var.project_name}-ecs-worker-task-role-${var.environment}"
+  }
+}
+
+# Worker S3 access policy
+resource "aws_iam_role_policy" "ecs_worker_s3" {
+  name = "${var.project_name}-ecs-worker-s3-${var.environment}"
+  role = aws_iam_role.ecs_worker_task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:ListBucket"
+      ]
+      Resource = [
+        aws_s3_bucket.videos.arn,
+        "${aws_s3_bucket.videos.arn}/*"
+      ]
+    }]
+  })
+}
+
+# Worker SQS access policy (receive, delete, change visibility)
+resource "aws_iam_role_policy" "ecs_worker_sqs" {
+  name = "${var.project_name}-ecs-worker-sqs-${var.environment}"
+  role = aws_iam_role.ecs_worker_task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "sqs:ReceiveMessage",
+        "sqs:DeleteMessage",
+        "sqs:GetQueueUrl",
+        "sqs:GetQueueAttributes",
+        "sqs:ChangeMessageVisibility"
+      ]
+      Resource = [
+        aws_sqs_queue.video_processing.arn
+      ]
+    }]
+  })
+}
+

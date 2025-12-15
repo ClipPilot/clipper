@@ -1,191 +1,10 @@
 import { Response } from "express";
 import fs from "fs";
-import { transcribeVideoService } from "../services/transcription.service";
-import {
-  generateClipSuggestionsService,
-  ClipGenerationOptions,
-} from "../services/aiSuggestions.service";
-import { createMultipleCombinedClipsService } from "../services/clip.service";
 import { teamService } from "../services/team.service";
 import { clipManagerService } from "../services/clipManager.service";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { s3Service } from "../services/s3.service";
-import { extractThumbnail } from "../utils/extractThumbnail";
-import { emitClipsRefresh } from "../services/socket.service";
-import { title } from "process";
-
-interface ClipOptions {
-  length?: number;
-  hookLength?: number;
-  promptType?: "business" | "viral";
-  customPrompt?: string;
-  textPrompt?: string;
-  numberOfVideos?: number;
-  customText?: string;
-  textPosition?: "top" | "bottom" | "middle";
-  textColor?: string;
-  captions?: boolean;
-  captionColor?: string;
-}
-
-const processClipsAsync = async (
-  uploadedFilePath: string,
-  clipIds: number[],
-  teamId: number,
-  userId: number,
-  options: ClipOptions,
-  originalFileName?: string,
-  fileSize?: number
-) => {
-  try {
-    console.log(`Starting clip processing for clips: ${clipIds.join(", ")}`);
-
-    const transcriptionData = await transcribeVideoService(uploadedFilePath);
-    if (!transcriptionData) throw new Error("Transcription failed");
-
-    console.log("Transcription completed successfully");
-
-    const clipOptions: ClipGenerationOptions = {
-      length: options.length,
-      hookLength: options.hookLength,
-      promptType: options.promptType,
-      customPrompt: options.customPrompt,
-      textPrompt: options.textPrompt,
-      numberOfVideos: options.numberOfVideos,
-    };
-
-    const clipSuggestionsArray = await generateClipSuggestionsService(
-      transcriptionData,
-      clipOptions
-    );
-
-    if (!clipSuggestionsArray || clipSuggestionsArray.length === 0) {
-      throw new Error("Failed to generate clip suggestions");
-    }
-
-    const clipResults = await createMultipleCombinedClipsService(
-      uploadedFilePath,
-      clipSuggestionsArray,
-      transcriptionData.results.channels[0].alternatives[0].words,
-      {
-        customText: options.customText,
-        textPosition: options.textPosition,
-        textColor: options.textColor,
-        captions: options.captions,
-        captionColor: options.captionColor,
-      }
-    );
-
-    console.log("Created clip results:", clipResults.length);
-    console.log("Extracting thumbnail from source video...");
-
-    const thumbnailPath = await extractThumbnail(uploadedFilePath);
-    const thumbnailS3Key = await s3Service.uploadThumbnail(
-      thumbnailPath,
-      teamId
-    );
-
-    console.log("Thumbnail uploaded to S3:", thumbnailS3Key);
-
-    if (fs.existsSync(thumbnailPath)) {
-      fs.unlinkSync(thumbnailPath);
-    }
-
-    for (let i = 0; i < clipSuggestionsArray.length; i++) {
-      const suggestions = clipSuggestionsArray[i];
-      const result = clipResults[i];
-
-      console.log(
-        `Uploading clip ${i + 1}/${clipSuggestionsArray.length} to S3...`
-      );
-
-      const clipS3Key = await s3Service.uploadGeneratedClip(
-        result.finalPath,
-        teamId,
-        clipIds[i]
-      );
-
-      const blankS3Key = await s3Service.uploadBlankClip(
-        result.blankPath,
-        teamId,
-        clipIds[i]
-      );
-
-      const srtPath = `./output/captions_${clipIds[i]}.srt`;
-      fs.writeFileSync(srtPath, result.srtContent);
-      const srtS3Key = await s3Service.uploadSrtFile(srtPath, teamId, clipIds[i]);
-      fs.unlinkSync(srtPath);
-
-      console.log(`Clip uploaded to S3 with key: ${clipS3Key}`);
-
-      await clipManagerService.updateClipComplete(clipIds[i], teamId, {
-        clipPath: clipS3Key,
-        blankVideoPath: blankS3Key,
-        srtPath: srtS3Key,
-        captionsData: result.captionsData,
-        sourceVideoPath: thumbnailS3Key,
-        title: suggestions.clipTitle,
-        clipMetadata: {
-          clipSuggestions: suggestions,
-          parameters: {
-            length: options.length || 40,
-            hookLength: options.hookLength || 6,
-            promptType: options.promptType || "business",
-            customText: options.customText,
-            textPosition: options.textPosition,
-            textColor: options.textColor,
-            captions: options.captions || false,
-            captionColor: options.captionColor,
-          },
-        },
-        inputMetadata: {
-          originalFileName,
-          fileSize,
-        },
-        prompt: options.textPrompt || options.customPrompt,
-        message: suggestions.finalMessage,
-        clipScore: suggestions.evalScore,
-      });
-
-      if (fs.existsSync(result.finalPath)) {
-        fs.unlinkSync(result.finalPath);
-      }
-      if (fs.existsSync(result.blankPath)) {
-        fs.unlinkSync(result.blankPath);
-      }
-      console.log(`Cleaned up local clip files for clip ${clipIds[i]}`);
-    }
-
-    if (fs.existsSync(uploadedFilePath)) {
-      fs.unlinkSync(uploadedFilePath);
-      console.log(`Cleaned up uploaded file: ${uploadedFilePath}`);
-    }
-
-    console.log(`Successfully processed all ${clipIds.length} clips`);
-    emitClipsRefresh(teamId);
-  } catch (error) {
-    console.error("Error processing clips:", error);
-    console.error(
-      "Error stack:",
-      error instanceof Error ? error.stack : "No stack trace"
-    );
-
-    for (const clipId of clipIds) {
-      await clipManagerService.updateClipStatus(
-        clipId,
-        teamId,
-        "failed",
-        error instanceof Error ? error.message : "Unknown error"
-      );
-    }
-
-    emitClipsRefresh(teamId);
-
-    if (fs.existsSync(uploadedFilePath)) {
-      fs.unlinkSync(uploadedFilePath);
-    }
-  }
-};
+import { sqsService } from "../services/sqs.service";
 
 export const clipVideoController = async (req: AuthRequest, res: Response) => {
   let uploadedFilePath: string | undefined;
@@ -278,6 +97,7 @@ export const clipVideoController = async (req: AuthRequest, res: Response) => {
     const userId = req.user!.dbUserId;
     const pendingClips: any[] = [];
 
+    // Create pending clip records in database
     for (let i = 0; i < numberOfVideos; i++) {
       const clip = await clipManagerService.createPendingClip({
         teamId,
@@ -290,12 +110,18 @@ export const clipVideoController = async (req: AuthRequest, res: Response) => {
 
     const clipIds = pendingClips.map((c) => c.id);
 
-    processClipsAsync(
-      uploadedFilePath,
+    // Upload raw video to S3 for worker to process
+    console.log("Uploading raw video to S3 for worker processing...");
+    const s3Key = await s3Service.uploadRawVideo(uploadedFilePath, teamId);
+    console.log(`Raw video uploaded to S3: ${s3Key}`);
+
+    // Send job to SQS for async processing by worker
+    const messageId = await sqsService.sendClipVideoJob({
       clipIds,
       teamId,
       userId,
-      {
+      s3Key,
+      options: {
         length,
         hookLength,
         promptType,
@@ -308,13 +134,21 @@ export const clipVideoController = async (req: AuthRequest, res: Response) => {
         captions,
         captionColor,
       },
-      req.file?.originalname,
-      req.file?.size
-    );
+      originalFileName: req.file?.originalname,
+      fileSize: req.file?.size,
+    });
+
+    console.log(`Job sent to SQS with messageId: ${messageId}`);
+
+    // Clean up local file after uploading to S3
+    if (fs.existsSync(uploadedFilePath)) {
+      fs.unlinkSync(uploadedFilePath);
+    }
 
     res.json({
       clipIds,
       message: `Processing ${numberOfVideos} clip(s)`,
+      jobId: messageId,
     });
   } catch (err) {
     console.error("Error in clipVideoController:", err);
