@@ -2,7 +2,11 @@ import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import { ENV } from "../config/env";
 import { SyncPrerecordedResponse } from "@deepgram/sdk";
-import { ClipSuggestionsSchema, MultipleClipSuggestionsSchema, ClipSuggestions } from "../types/ai.types";
+import {
+  ClipSuggestionsSchema,
+  MultipleClipSuggestionsSchema,
+  ClipSuggestions,
+} from "../types/ai.types";
 import { generatePrompt } from "../config/prompts";
 
 const client = new OpenAI({
@@ -53,7 +57,7 @@ export const generateClipSuggestionsService = async (
   if (numberOfVideos > 1) {
     const response = await client.responses.parse({
       model: "gpt-5-mini",
-      reasoning: { effort: "high" },
+      reasoning: { effort: "medium" },
       input: [
         {
           role: "user",
@@ -61,10 +65,16 @@ export const generateClipSuggestionsService = async (
         },
       ],
       text: {
-        format: zodTextFormat(MultipleClipSuggestionsSchema, "multiple_clip_suggestions"),
+        format: zodTextFormat(
+          MultipleClipSuggestionsSchema,
+          "multiple_clip_suggestions"
+        ),
       },
     });
-    console.log("AI Multiple Clip Suggestions Response:", response.output_parsed);
+    console.log(
+      "AI Multiple Clip Suggestions Response:",
+      response.output_parsed
+    );
     return response.output_parsed?.videos || [];
   } else {
     // Single video - use original schema

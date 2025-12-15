@@ -33,14 +33,14 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
   const [progress, setProgress] = useState<UploadProgress | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  const MAX_FILE_SIZE = 1.5 * 1024 * 1024 * 1024;
+  const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024;
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (file.size > MAX_FILE_SIZE) {
-      onError(`File size must be less than 1.5GB. Your file is ${formatBytes(file.size)}`);
+      onError(`File size must be less than 2GB. Your file is ${formatBytes(file.size)}`);
       return;
     }
 
@@ -154,7 +154,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
               <div className="flex items-start gap-2 text-xs text-text-tertiary">
                 <Icon icon="solar:info-circle-outline" className="text-base mt-0.5" />
                 <div>
-                  <p>Max size: 1.5GB</p>
+                  <p>Max size: 2GB</p>
                   <p>Max duration: 3 hours</p>
                   <p>Formats: MP4, MOV, AVI, MKV, WebM</p>
                 </div>

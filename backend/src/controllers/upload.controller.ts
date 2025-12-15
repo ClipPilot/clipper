@@ -17,9 +17,9 @@ export const getPresignedUploadUrl = async (req: AuthRequest, res: Response) => 
       return res.status(400).json({ error: "Missing required fields: teamId, fileName, contentType" });
     }
 
-    const MAX_FILE_SIZE = 1.5 * 1024 * 1024 * 1024;
+    const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024;
     if (fileSize && fileSize > MAX_FILE_SIZE) {
-      return res.status(400).json({ error: "File size exceeds maximum limit of 1.5GB" });
+      return res.status(400).json({ error: "File size exceeds maximum limit of 2GB" });
     }
 
     const validTypes = ["video/mp4", "video/quicktime", "video/x-msvideo", "video/x-matroska", "video/webm"];
@@ -73,8 +73,8 @@ export const submitClipJob = async (req: AuthRequest, res: Response) => {
     const parsedTeamId = parseInt(teamId);
     const parsedNumberOfVideos = parseInt(numberOfVideos) || 1;
 
-    if (parsedNumberOfVideos < 1 || parsedNumberOfVideos > 5) {
-      return res.status(400).json({ error: "Number of videos must be between 1 and 5" });
+    if (parsedNumberOfVideos < 1 || parsedNumberOfVideos > 25) {
+      return res.status(400).json({ error: "Number of videos must be between 1 and 25" });
     }
 
     const usageStats = await teamService.getTeamUsageStats(parsedTeamId);

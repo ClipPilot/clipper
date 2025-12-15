@@ -37,7 +37,7 @@ const router = Router();
  *                 description: MIME type (video/mp4, video/quicktime, etc.)
  *               fileSize:
  *                 type: integer
- *                 description: File size in bytes (max 1.5GB)
+ *                 description: File size in bytes (max 2GB)
  *     responses:
  *       200:
  *         description: Presigned URL generated successfully
@@ -109,7 +109,7 @@ router.post("/presigned-upload", requireAuth, getPresignedUploadUrl);
  *               numberOfVideos:
  *                 type: integer
  *                 minimum: 1
- *                 maximum: 5
+ *                 maximum: 25
  *               customText:
  *                 type: string
  *               textPosition:
