@@ -1,10 +1,12 @@
 import { Response } from "express";
 import fs from "fs";
+import path from "path";
 import { teamService } from "../services/team.service";
 import { clipManagerService } from "../services/clipManager.service";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { s3Service } from "../services/s3.service";
 import { sqsService } from "../services/sqs.service";
+import { compressVideoForUpload } from "../services/videoEditor.service";
 
 export const clipVideoController = async (req: AuthRequest, res: Response) => {
   let uploadedFilePath: string | undefined;
@@ -120,9 +122,20 @@ export const clipVideoController = async (req: AuthRequest, res: Response) => {
     const fileSize = req.file?.size;
 
     setImmediate(async () => {
+      let compressedPath: string | undefined;
+
       try {
+        const compressedOutputPath = path.join(
+          path.dirname(filePath),
+          `compressed_${Date.now()}_${path.basename(filePath)}`
+        );
+
+        const compression = await compressVideoForUpload(filePath, compressedOutputPath);
+        const uploadPath = compression.path;
+        compressedPath = compression.compressed ? compressedOutputPath : undefined;
+
         console.log("Uploading raw video to S3 for worker processing...");
-        const s3Key = await s3Service.uploadRawVideo(filePath, teamId);
+        const s3Key = await s3Service.uploadRawVideo(uploadPath, teamId);
         console.log(`Raw video uploaded to S3: ${s3Key}`);
 
         const messageId = await sqsService.sendClipVideoJob({
@@ -152,6 +165,9 @@ export const clipVideoController = async (req: AuthRequest, res: Response) => {
         if (fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);
         }
+        if (compressedPath && fs.existsSync(compressedPath)) {
+          fs.unlinkSync(compressedPath);
+        }
       } catch (error) {
         console.error("Error uploading to S3 or sending to SQS:", error);
 
@@ -166,6 +182,9 @@ export const clipVideoController = async (req: AuthRequest, res: Response) => {
 
         if (fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);
+        }
+        if (compressedPath && fs.existsSync(compressedPath)) {
+          fs.unlinkSync(compressedPath);
         }
       }
     });

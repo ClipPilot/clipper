@@ -22,7 +22,6 @@ app.use(express.urlencoded({ limit: "10gb", extended: true }));
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// Health check endpoint for AWS ECS/ALB
 app.get("/health", (req, res) => {
   res.status(200).json({
     status: "healthy",
