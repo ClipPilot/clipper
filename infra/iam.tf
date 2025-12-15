@@ -40,7 +40,8 @@ resource "aws_iam_role_policy" "ecs_execution_secrets" {
         aws_secretsmanager_secret.openai_api_key.arn,
         aws_secretsmanager_secret.deepgram_api_key.arn,
         aws_secretsmanager_secret.database_url.arn,
-        aws_secretsmanager_secret.supabase_anon_key.arn
+        aws_secretsmanager_secret.supabase_anon_key.arn,
+        aws_secretsmanager_secret.internal_api_key.arn
       ]
     }]
   })
