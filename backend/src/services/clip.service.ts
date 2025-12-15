@@ -10,6 +10,7 @@ export interface ClipServiceOptions {
   textColor?: string;
   captions?: boolean;
   captionColor?: string;
+  captionFont?: string;
 }
 
 export interface CaptionEntry {
@@ -115,7 +116,8 @@ export const createCombinedClipService = async (
       finalPath,
       clipData,
       transcriptionWords,
-      options.captionColor
+      options.captionColor,
+      options.captionFont
     );
   } else if (options.customText) {
     const position = options.textPosition || "top";
