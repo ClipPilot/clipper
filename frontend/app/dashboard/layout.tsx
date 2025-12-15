@@ -241,22 +241,6 @@ export default function DashboardLayout({
                 }}
               >
                 <DropdownItem
-                  key="profile"
-                  startContent={
-                    <Icon
-                      icon="solar:user-bold-duotone"
-                      width={20}
-                      className="text-text-secondary"
-                    />
-                  }
-                  classNames={{
-                    base: "rounded-lg hover:bg-surface-elevated",
-                    title: "text-text-primary font-medium",
-                  }}
-                >
-                  Profile
-                </DropdownItem>
-                <DropdownItem
                   key="settings"
                   startContent={
                     <Icon
@@ -265,6 +249,7 @@ export default function DashboardLayout({
                       className="text-text-secondary"
                     />
                   }
+                  onPress={() => router.push("/dashboard/settings")}
                   classNames={{
                     base: "rounded-lg hover:bg-surface-elevated",
                     title: "text-text-primary font-medium",

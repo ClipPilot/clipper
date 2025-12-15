@@ -8,6 +8,7 @@ import {
   CardHeader,
   ScrollShadow,
   Avatar,
+  Chip,
   cn,
   type CardProps,
 } from "@heroui/react";
@@ -15,14 +16,18 @@ import { Icon } from "@iconify/react";
 import { useAtom } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
 import { useTeams } from "@/hooks/useTeams";
+import { useUsageStats } from "@/hooks/useUsageStats";
+import { useRouter } from "next/navigation";
 import CreateTeamModal from "./teams/CreateTeamModal";
 import TeamManagementModal from "./teams/TeamManagementModal";
 
 export default function WorkspaceSelector(props: CardProps) {
+  const router = useRouter();
   const { teams, isLoading, fetchTeams } = useTeams();
   const [selectedTeam, setSelectedTeam] = useAtom(selectedTeamAtom);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
+  const { usageStats } = useUsageStats(selectedTeam?.id);
 
   const getRoleIcon = (role: string) => {
     switch (role) {
@@ -33,6 +38,28 @@ export default function WorkspaceSelector(props: CardProps) {
       case "member":
       default:
         return "solar:user-bold-duotone";
+    }
+  };
+
+  const getPlanName = (type?: string) => {
+    switch (type) {
+      case "enterprise":
+        return "Enterprise";
+      case "business":
+        return "Pro Studio";
+      default:
+        return "Free";
+    }
+  };
+
+  const getPlanColor = (type?: string) => {
+    switch (type) {
+      case "enterprise":
+        return "bg-purple-500/10 text-purple-500";
+      case "business":
+        return "bg-accent-400/10 text-accent-400";
+      default:
+        return "bg-blue-500/10 text-blue-500";
     }
   };
 
@@ -53,12 +80,21 @@ export default function WorkspaceSelector(props: CardProps) {
     }
   };
 
+  const isFree = !selectedTeam || selectedTeam.type === "personal";
+
   return (
     <>
     <Card className="w-full max-w-[320px] bg-surface-base border border-border-base" {...props}>
       <CardHeader className="flex flex-col px-0 pb-0">
         <div className="flex w-full items-center justify-between px-5 py-3 border-b border-border-base">
-          <h4 className="text-medium font-semibold text-text-primary">Switch Team</h4>
+          <div>
+            <h4 className="text-medium font-semibold text-text-primary">Current Workspace</h4>
+            <div className="flex items-center gap-2 mt-1">
+              <span className={cn("text-xs px-1.5 py-0.5 rounded font-medium", getPlanColor(selectedTeam?.type))}>
+                {getPlanName(selectedTeam?.type)}
+              </span>
+            </div>
+          </div>
         </div>
       </CardHeader>
       <CardBody className="w-full gap-0 p-0">
@@ -97,11 +133,9 @@ export default function WorkspaceSelector(props: CardProps) {
                     )}>
                       {team.name}
                     </span>
-                    {team.type === "personal" && (
-                      <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500 font-medium">
-                        Free
-                      </span>
-                    )}
+                    <span className={cn("text-xs px-1.5 py-0.5 rounded font-medium", getPlanColor(team.type))}>
+                      {getPlanName(team.type)}
+                    </span>
                   </div>
                   <span className="text-xs text-text-tertiary capitalize">
                     {team.role}
@@ -115,6 +149,48 @@ export default function WorkspaceSelector(props: CardProps) {
           </ScrollShadow>
         )}
       </CardBody>
+      {/* Upgrade prompt for free plan */}
+      {isFree && (
+        <div className="px-4 py-3 border-t border-border-base">
+          <button
+            onClick={() => router.push("/dashboard/pricing")}
+            className="w-full flex items-center gap-3 p-3 rounded-lg bg-accent-400/10 border border-accent-400/20 hover:bg-accent-400/20 transition-colors"
+          >
+            <Icon icon="solar:rocket-bold-duotone" className="text-accent-400 flex-shrink-0" width={20} />
+            <div className="flex-1 text-left">
+              <p className="text-sm font-medium text-accent-400">Upgrade to Pro</p>
+              <p className="text-xs text-text-tertiary">Unlimited generations</p>
+            </div>
+            <Icon icon="solar:arrow-right-bold" className="text-accent-400" width={16} />
+          </button>
+        </div>
+      )}
+
+      {/* Usage stats */}
+      {usageStats && (
+        <div className="px-4 py-3 border-t border-border-base">
+          <div className="flex items-center justify-between text-xs mb-2">
+            <span className="text-text-secondary font-medium">Usage</span>
+            <span className="text-text-tertiary">
+              {usageStats.clipsCreated} / {usageStats.limit} clips
+            </span>
+          </div>
+          <div className="w-full bg-surface-elevated rounded-full h-1.5">
+            <div
+              className={cn(
+                "h-1.5 rounded-full transition-all",
+                usageStats.clipsCreated >= usageStats.limit
+                  ? "bg-red-500"
+                  : usageStats.clipsCreated >= usageStats.limit * 0.75
+                  ? "bg-yellow-500"
+                  : "bg-accent-400"
+              )}
+              style={{ width: `${Math.min((usageStats.clipsCreated / usageStats.limit) * 100, 100)}%` }}
+            />
+          </div>
+        </div>
+      )}
+
       <div className="px-4 py-3 border-t border-border-base space-y-2">
         <Button
           variant="flat"
