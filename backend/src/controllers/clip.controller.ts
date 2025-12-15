@@ -97,7 +97,6 @@ export const clipVideoController = async (req: AuthRequest, res: Response) => {
     const userId = req.user!.dbUserId;
     const pendingClips: any[] = [];
 
-    // Create pending clip records in database
     for (let i = 0; i < numberOfVideos; i++) {
       const clip = await clipManagerService.createPendingClip({
         teamId,
@@ -110,46 +109,68 @@ export const clipVideoController = async (req: AuthRequest, res: Response) => {
 
     const clipIds = pendingClips.map((c) => c.id);
 
-    // Upload raw video to S3 for worker to process
-    console.log("Uploading raw video to S3 for worker processing...");
-    const s3Key = await s3Service.uploadRawVideo(uploadedFilePath, teamId);
-    console.log(`Raw video uploaded to S3: ${s3Key}`);
-
-    // Send job to SQS for async processing by worker
-    const messageId = await sqsService.sendClipVideoJob({
-      clipIds,
-      teamId,
-      userId,
-      s3Key,
-      options: {
-        length,
-        hookLength,
-        promptType,
-        customPrompt,
-        textPrompt,
-        numberOfVideos,
-        customText,
-        textPosition,
-        textColor,
-        captions,
-        captionColor,
-      },
-      originalFileName: req.file?.originalname,
-      fileSize: req.file?.size,
-    });
-
-    console.log(`Job sent to SQS with messageId: ${messageId}`);
-
-    // Clean up local file after uploading to S3
-    if (fs.existsSync(uploadedFilePath)) {
-      fs.unlinkSync(uploadedFilePath);
-    }
-
     res.json({
       clipIds,
       message: `Processing ${numberOfVideos} clip(s)`,
-      jobId: messageId,
+      status: "queued",
     });
+
+    const filePath = uploadedFilePath;
+    const originalFileName = req.file?.originalname;
+    const fileSize = req.file?.size;
+
+    setImmediate(async () => {
+      try {
+        console.log("Uploading raw video to S3 for worker processing...");
+        const s3Key = await s3Service.uploadRawVideo(filePath, teamId);
+        console.log(`Raw video uploaded to S3: ${s3Key}`);
+
+        const messageId = await sqsService.sendClipVideoJob({
+          clipIds,
+          teamId,
+          userId,
+          s3Key,
+          options: {
+            length,
+            hookLength,
+            promptType,
+            customPrompt,
+            textPrompt,
+            numberOfVideos,
+            customText,
+            textPosition,
+            textColor,
+            captions,
+            captionColor,
+          },
+          originalFileName,
+          fileSize,
+        });
+
+        console.log(`Job sent to SQS with messageId: ${messageId}`);
+
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      } catch (error) {
+        console.error("Error uploading to S3 or sending to SQS:", error);
+
+        for (const clipId of clipIds) {
+          await clipManagerService.updateClipStatus(
+            clipId,
+            teamId,
+            "failed",
+            error instanceof Error ? error.message : "Failed to queue job"
+          );
+        }
+
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      }
+    });
+
+    return;
   } catch (err) {
     console.error("Error in clipVideoController:", err);
 

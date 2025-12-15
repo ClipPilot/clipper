@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAtom } from "jotai";
 import { userAtom, selectedTeamAtom } from "@/store/auth";
-import { Button, Card, CardBody, Progress } from "@heroui/react";
+import { Button, Card, CardBody, Progress, addToast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { authAPI } from "@/api/auth";
 import { videoAPI } from "@/api/video";
@@ -38,7 +38,6 @@ export default function CreateClipPage() {
   const [captionColor, setCaptionColor] = useState("#FFD600");
 
   const [isProcessing, setIsProcessing] = useState(false);
-  const [progress, setProgress] = useState(0);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [generatedClips, setGeneratedClips] = useState<any[]>([]);
@@ -113,7 +112,6 @@ export default function CreateClipPage() {
 
     setIsProcessing(true);
     setError("");
-    setProgress(10);
 
     try {
       await videoAPI.clipVideo({
@@ -132,12 +130,24 @@ export default function CreateClipPage() {
       });
 
       triggerRefresh();
+
+      addToast({
+        title: "Clips queued for processing",
+        description: `${numberOfVideos} clip${numberOfVideos > 1 ? "s" : ""} will be ready soon. We'll notify you when done.`,
+        type: "success",
+      });
+
       router.push("/dashboard/clips");
     } catch (err: any) {
       console.error("Clip creation error:", err);
       setError(err.message || "Failed to create clip");
-      setProgress(0);
       setIsProcessing(false);
+
+      addToast({
+        title: "Failed to create clip",
+        description: err.message || "Something went wrong",
+        type: "error",
+      });
     }
   };
 
@@ -306,15 +316,12 @@ export default function CreateClipPage() {
                       {isProcessing && (
                         <div className="mt-8">
                           <Progress
-                            value={progress}
+                            isIndeterminate
                             color="primary"
                             className="mb-2"
                           />
                           <p className="text-sm text-text-secondary text-center">
-                            {progress < 30 ? "Uploading video..." :
-                             progress < 60 ? "Transcribing audio..." :
-                             progress < 90 ? "Generating clips..." :
-                             "Almost done..."}
+                            Uploading video...
                           </p>
                         </div>
                       )}

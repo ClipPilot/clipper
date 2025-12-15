@@ -5,6 +5,7 @@ import transcribeRoutes from "./routes/clip.routes";
 import authRoutes from "./routes/auth.routes";
 import teamRoutes from "./routes/team.routes";
 import folderRoutes from "./routes/folder.routes";
+import internalRoutes from "./routes/internal.routes";
 import { swaggerSpec } from "./config/swagger";
 
 const app = express();
@@ -30,6 +31,7 @@ app.get("/health", (req, res) => {
   });
 });
 
+app.use("/internal", internalRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/teams", teamRoutes);
 app.use("/api/clip-video", transcribeRoutes);

@@ -79,6 +79,10 @@ resource "aws_ecs_task_definition" "worker" {
       {
         name  = "SUPABASE_URL"
         value = var.supabase_url
+      },
+      {
+        name  = "API_INTERNAL_URL"
+        value = "http://${aws_lb.backend.dns_name}"
       }
     ]
 
@@ -98,6 +102,10 @@ resource "aws_ecs_task_definition" "worker" {
       {
         name      = "SUPABASE_ANON_KEY"
         valueFrom = aws_secretsmanager_secret.supabase_anon_key.arn
+      },
+      {
+        name      = "INTERNAL_API_KEY"
+        valueFrom = aws_secretsmanager_secret.internal_api_key.arn
       }
     ]
 

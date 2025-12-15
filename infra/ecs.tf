@@ -118,6 +118,10 @@ resource "aws_ecs_task_definition" "backend" {
       {
         name      = "SUPABASE_ANON_KEY"
         valueFrom = aws_secretsmanager_secret.supabase_anon_key.arn
+      },
+      {
+        name      = "INTERNAL_API_KEY"
+        valueFrom = aws_secretsmanager_secret.internal_api_key.arn
       }
     ]
 

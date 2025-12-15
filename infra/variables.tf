@@ -26,13 +26,13 @@ variable "backend_container_port" {
 variable "backend_cpu" {
   description = "CPU units for backend container (1024 = 1 vCPU)"
   type        = number
-  default     = 2048  # 2 vCPU - needed for video processing
+  default     = 2048 # 2 vCPU - needed for video processing
 }
 
 variable "backend_memory" {
   description = "Memory for backend container in MB"
   type        = number
-  default     = 4096  # 4 GB - needed for ffmpeg + puppeteer
+  default     = 4096 # 4 GB - needed for ffmpeg + puppeteer
 }
 
 variable "backend_desired_count" {
@@ -118,4 +118,11 @@ variable "worker_messages_per_task" {
   description = "Target number of SQS messages per worker task for scaling"
   type        = number
   default     = 5
+}
+
+variable "internal_api_key" {
+  description = "Internal API key for worker to API communication"
+  type        = string
+  sensitive   = true
+  default     = "a95f431eadf06dc59cbd188a72a797cc71396fdb2a92dc44721f704844cc725e"
 }
