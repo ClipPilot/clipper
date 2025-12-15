@@ -93,7 +93,7 @@ variable "amplify_branch" {
 variable "worker_cpu" {
   description = "CPU units for worker container (1024 = 1 vCPU)"
   type        = number
-  default     = 2048 # 2 vCPU - needed for FFmpeg processing
+  default     = 4096 # 4 vCPU - needed for FFmpeg processing
 }
 
 variable "worker_memory" {
