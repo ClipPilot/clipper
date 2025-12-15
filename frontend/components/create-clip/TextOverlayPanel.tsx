@@ -15,8 +15,8 @@ interface TextOverlayPanelProps {
   setCaptions: (value: boolean) => void;
   captionColor: string;
   setCaptionColor: (value: string) => void;
-  captionsFont: string;
-  setCaptionsFont: (value: string) => void;
+  captionFont: string;
+  setCaptionFont: (value: string) => void;
 }
 
 const TEXT_POSITIONS = [
@@ -63,8 +63,8 @@ export const TextOverlayPanel: React.FC<TextOverlayPanelProps> = ({
   setCaptions,
   captionColor,
   setCaptionColor,
-  captionsFont,
-  setCaptionsFont,
+  captionFont,
+  setCaptionFont,
 }) => {
   return (
     <div className="space-y-6">
@@ -119,11 +119,11 @@ export const TextOverlayPanel: React.FC<TextOverlayPanelProps> = ({
                 {CAPTION_FONTS.map((font) => (
                   <button
                     key={font.id}
-                    onClick={() => setCaptionsFont(font.id)}
+                    onClick={() => setCaptionFont(font.name)}
                     className={`
             h-14 w-14 rounded-xl border transition-all flex items-center justify-center
             ${
-              captionsFont === font.id
+              captionFont === font.name
                 ? "bg-white text-black border-white scale-105"
                 : "bg-surface-elevated text-white border-border-base hover:scale-105"
             }

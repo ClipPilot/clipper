@@ -26,6 +26,7 @@ interface ClipOptions {
   textColor?: string;
   captions?: boolean;
   captionColor?: string;
+  captionFont?: string;
 }
 
 const processClipsAsync = async (
@@ -73,6 +74,7 @@ const processClipsAsync = async (
         textColor: options.textColor,
         captions: options.captions,
         captionColor: options.captionColor,
+        captionFont: options.captionFont,
       }
     );
 
@@ -244,6 +246,7 @@ export const clipVideoController = async (req: AuthRequest, res: Response) => {
     const textColor = req.body.textColor as string | undefined;
     const captions = req.body.captions === "true" || req.body.captions === true;
     const captionColor = req.body.captionColor as string | undefined;
+    const captionFont = req.body.captionFont as string | undefined;
 
     if (length && (length < 10 || length > 120)) {
       return res
@@ -307,6 +310,7 @@ export const clipVideoController = async (req: AuthRequest, res: Response) => {
         textColor,
         captions,
         captionColor,
+        captionFont,
       },
       req.file?.originalname,
       req.file?.size

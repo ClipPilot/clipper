@@ -14,7 +14,7 @@ export interface ClipVideoParams {
   textColor?: string;
   captions?: boolean;
   captionColor?: string;
-  captionsFont?: string;
+  captionFont?: string;
 }
 
 export interface ClipVideoResponse {
@@ -56,8 +56,8 @@ class VideoAPI {
       formData.append("captions", params.captions.toString());
     if (params.captionColor)
       formData.append("captionColor", params.captionColor);
-    if (params.captionsFont)
-      formData.append("captionsFont", params.captionsFont);
+    if (params.captionFont)
+      formData.append("captionFont", params.captionFont);
 
     const response = await apiFetch(`${API_URL}/clip-video`, {
       method: "POST",
