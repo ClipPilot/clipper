@@ -5,8 +5,7 @@
   "description": "AI Clipping monorepo - Backend, Frontend, and Shared Packages",
   "workspaces": [
     "packages/*",
-    "backend",
-    "frontend"
+    "backend"
   ],
   "scripts": {
     "build:shared": "cd packages/shared-db && pnpm build",
