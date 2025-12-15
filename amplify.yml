@@ -10,8 +10,11 @@ applications:
         build:
           commands:
             - pnpm run build
+            - cd .. && pnpm deploy --filter=frontend --prod deploy
+            - cp -r .next ../deploy/.next
+            - cp -r public ../deploy/public || true
       artifacts:
-        baseDirectory: .next
+        baseDirectory: ../deploy
         files:
           - '**/*'
       cache:
