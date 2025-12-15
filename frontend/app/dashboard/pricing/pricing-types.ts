@@ -3,7 +3,7 @@ import type { ButtonProps } from "@heroui/react";
 export enum TiersEnum {
   Free = "free",
   ProStudio = "pro_studio",
-  Enterprise = "enterprise",
+  Scale = "scale",
 }
 
 export type Tier = {

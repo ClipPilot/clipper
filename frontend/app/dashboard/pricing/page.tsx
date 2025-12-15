@@ -330,7 +330,7 @@ export default function PricingPage() {
                                   />
                                 ) : (
                                   <Icon
-                                    className="mx-auto text-text-muted"
+                                    className="mx-auto text-text-tertiary/60"
                                     icon="solar:close-circle-bold"
                                     width={22}
                                   />

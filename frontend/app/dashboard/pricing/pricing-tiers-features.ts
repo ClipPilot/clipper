@@ -10,7 +10,7 @@ const features: PricingFeatures = [
         tiers: {
           [TiersEnum.Free]: "3 total",
           [TiersEnum.ProStudio]: "Unlimited",
-          [TiersEnum.Enterprise]: "Unlimited",
+          [TiersEnum.Scale]: "Unlimited",
         },
         helpText:
           "Generate AI-powered clips from your videos. Generated clips have watermarks until saved.",
@@ -20,7 +20,7 @@ const features: PricingFeatures = [
         tiers: {
           [TiersEnum.Free]: "3 included",
           [TiersEnum.ProStudio]: "500/month",
-          [TiersEnum.Enterprise]: "1,000/month",
+          [TiersEnum.Scale]: "1,000/month",
         },
         helpText:
           "Save and download your favorite clips without watermarks.",
@@ -30,7 +30,7 @@ const features: PricingFeatures = [
         tiers: {
           [TiersEnum.Free]: "30 days",
           [TiersEnum.ProStudio]: "1 year",
-          [TiersEnum.Enterprise]: "Unlimited",
+          [TiersEnum.Scale]: "Unlimited",
         },
         helpText: "How long your saved clips are stored in your account.",
       },
@@ -44,7 +44,7 @@ const features: PricingFeatures = [
         tiers: {
           [TiersEnum.Free]: false,
           [TiersEnum.ProStudio]: true,
-          [TiersEnum.Enterprise]: true,
+          [TiersEnum.Scale]: true,
         },
         helpText: "Export clips without any watermarks or branding.",
       },
@@ -53,7 +53,7 @@ const features: PricingFeatures = [
         tiers: {
           [TiersEnum.Free]: "MP4 only",
           [TiersEnum.ProStudio]: "MP4, MOV, WebM",
-          [TiersEnum.Enterprise]: "All formats",
+          [TiersEnum.Scale]: "All formats",
         },
         helpText: "Available file formats for exporting your clips.",
       },
@@ -62,7 +62,7 @@ const features: PricingFeatures = [
         tiers: {
           [TiersEnum.Free]: false,
           [TiersEnum.ProStudio]: true,
-          [TiersEnum.Enterprise]: true,
+          [TiersEnum.Scale]: true,
         },
         helpText: "Export multiple clips at once to save time.",
       },
@@ -76,7 +76,7 @@ const features: PricingFeatures = [
         tiers: {
           [TiersEnum.Free]: "Basic",
           [TiersEnum.ProStudio]: "Advanced",
-          [TiersEnum.Enterprise]: "Advanced",
+          [TiersEnum.Scale]: "Advanced",
         },
         helpText: "Add text, titles, and auto-generated captions to your clips.",
       },
@@ -90,19 +90,19 @@ const features: PricingFeatures = [
         tiers: {
           [TiersEnum.Free]: false,
           [TiersEnum.ProStudio]: false,
-          [TiersEnum.Enterprise]: "Unlimited",
+          [TiersEnum.Scale]: "Unlimited",
         },
         helpText: "Organize your clips into folders for easy management.",
       },
       {
-        title: "Platform publishing links",
+        title: "Custom link sharing",
         tiers: {
           [TiersEnum.Free]: false,
           [TiersEnum.ProStudio]: false,
-          [TiersEnum.Enterprise]: true,
+          [TiersEnum.Scale]: true,
         },
         helpText:
-          "Direct links to publish clips to social media platforms.",
+          "Create custom shareable links for your clips.",
       },
     ],
   },
@@ -114,25 +114,16 @@ const features: PricingFeatures = [
         tiers: {
           [TiersEnum.Free]: "Just you",
           [TiersEnum.ProStudio]: "Just you",
-          [TiersEnum.Enterprise]: "Unlimited",
+          [TiersEnum.Scale]: "Unlimited",
         },
         helpText: "Add team members to collaborate on clips.",
-      },
-      {
-        title: "Team sharing",
-        tiers: {
-          [TiersEnum.Free]: false,
-          [TiersEnum.ProStudio]: false,
-          [TiersEnum.Enterprise]: true,
-        },
-        helpText: "Share clips and folders with your team.",
       },
       {
         title: "Role-based permissions",
         tiers: {
           [TiersEnum.Free]: false,
           [TiersEnum.ProStudio]: false,
-          [TiersEnum.Enterprise]: true,
+          [TiersEnum.Scale]: true,
         },
         helpText: "Control who can view, edit, or manage clips.",
       },
@@ -146,7 +137,7 @@ const features: PricingFeatures = [
         tiers: {
           [TiersEnum.Free]: true,
           [TiersEnum.ProStudio]: true,
-          [TiersEnum.Enterprise]: true,
+          [TiersEnum.Scale]: true,
         },
         helpText: "Access to documentation and self-help resources.",
       },
@@ -155,7 +146,7 @@ const features: PricingFeatures = [
         tiers: {
           [TiersEnum.Free]: "Standard",
           [TiersEnum.ProStudio]: "Priority",
-          [TiersEnum.Enterprise]: "Priority",
+          [TiersEnum.Scale]: "Priority",
         },
         helpText: "Get help via email from our support team.",
       },
