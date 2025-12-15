@@ -132,7 +132,19 @@ resource "aws_ecs_service" "worker" {
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.worker.arn
   desired_count   = var.worker_min_capacity
-  launch_type     = "FARGATE"
+
+  # Use Fargate Spot for cost savings (70% cheaper)
+  # Base worker uses regular Fargate, scaled workers use Spot
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE"
+    weight            = 1
+    base              = 1  # Always keep 1 regular Fargate task (reliable)
+  }
+
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE_SPOT"
+    weight            = 4  # Prefer Spot for additional tasks (4:1 ratio)
+  }
 
   network_configuration {
     subnets          = aws_subnet.private[*].id
@@ -169,8 +181,8 @@ resource "aws_appautoscaling_policy" "worker_sqs_scaling" {
 
   target_tracking_scaling_policy_configuration {
     target_value       = var.worker_messages_per_task
-    scale_in_cooldown  = 300  # 5 minutes before scaling down
-    scale_out_cooldown = 60   # 1 minute before scaling up (fast response)
+    scale_in_cooldown  = 420  # 7 minutes before scaling down
+    scale_out_cooldown = 30   # 30 seconds before scaling up (fast response)
 
     customized_metric_specification {
       metric_name = "ApproximateNumberOfMessagesVisible"
@@ -229,8 +241,8 @@ resource "aws_cloudwatch_metric_alarm" "worker_queue_high" {
   namespace           = "AWS/SQS"
   period              = 60
   statistic           = "Sum"
-  threshold           = 10
-  alarm_description   = "Trigger step scaling when queue depth exceeds 10"
+  threshold           = 1
+  alarm_description   = "Trigger step scaling when queue has messages"
   treat_missing_data  = "notBreaching"
 
   dimensions = {

@@ -103,9 +103,9 @@ variable "worker_memory" {
 }
 
 variable "worker_min_capacity" {
-  description = "Minimum number of worker tasks (can scale to 0)"
+  description = "Minimum number of worker tasks"
   type        = number
-  default     = 0
+  default     = 1
 }
 
 variable "worker_max_capacity" {
@@ -117,7 +117,7 @@ variable "worker_max_capacity" {
 variable "worker_messages_per_task" {
   description = "Target number of SQS messages per worker task for scaling"
   type        = number
-  default     = 5
+  default     = 1
 }
 
 variable "internal_api_key" {
