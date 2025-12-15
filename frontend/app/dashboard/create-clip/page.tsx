@@ -36,6 +36,7 @@ export default function CreateClipPage() {
   const [textColor, setTextColor] = useState("#FFFFFF");
   const [captions, setCaptions] = useState(false);
   const [captionColor, setCaptionColor] = useState("#FFD600");
+  const [captionsFont, setCaptionsFont] = useState("Luckiest Guy");
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -129,6 +130,7 @@ export default function CreateClipPage() {
         textColor,
         captions,
         captionColor,
+        captionsFont,
       });
 
       triggerRefresh();
@@ -300,6 +302,8 @@ export default function CreateClipPage() {
                         setCaptions={setCaptions}
                         captionColor={captionColor}
                         setCaptionColor={setCaptionColor}
+                        captionsFont={captionsFont}
+                        setCaptionsFont={setCaptionsFont}
                       />
 
                       {/* Progress */}

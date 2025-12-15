@@ -1,3 +1,11 @@
 @import "tailwindcss";
 
-@config "../tailwind.config.js"
+@theme inline {
+  --font-luckiest-guy: var(--font-luckiest-guy);
+  --font-montserrat: var(--font-montserrat);
+  --font-everlasting: var(--font-everlasting);
+  --font-komika: var(--font-komika);
+  --font-burbank: var(--font-burbank);
+}
+
+@config "../tailwind.config.js";

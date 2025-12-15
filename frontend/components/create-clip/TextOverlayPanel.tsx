@@ -15,6 +15,8 @@ interface TextOverlayPanelProps {
   setCaptions: (value: boolean) => void;
   captionColor: string;
   setCaptionColor: (value: string) => void;
+  captionsFont: string;
+  setCaptionsFont: (value: string) => void;
 }
 
 const TEXT_POSITIONS = [
@@ -42,6 +44,14 @@ const COLORS = [
   { color: "#E5FFE5", name: "Light Green" },
 ];
 
+const CAPTION_FONTS = [
+  { id: "luckiest-guy", name: "Luckiest Guy" },
+  { id: "montserrat", name: "Montserrat" },
+  { id: "everlasting", name: "Everlasting" },
+  { id: "komika", name: "Komika" },
+  { id: "burbank", name: "Burbank" },
+];
+
 export const TextOverlayPanel: React.FC<TextOverlayPanelProps> = ({
   customText,
   setCustomText,
@@ -53,6 +63,8 @@ export const TextOverlayPanel: React.FC<TextOverlayPanelProps> = ({
   setCaptions,
   captionColor,
   setCaptionColor,
+  captionsFont,
+  setCaptionsFont,
 }) => {
   return (
     <div className="space-y-6">
@@ -65,7 +77,9 @@ export const TextOverlayPanel: React.FC<TextOverlayPanelProps> = ({
         <div className="flex items-center justify-between mb-4">
           <div>
             <p className="font-medium text-text-primary">Auto Captions</p>
-            <p className="text-sm text-text-secondary">Show captions with highlighted current word</p>
+            <p className="text-sm text-text-secondary">
+              Show captions with highlighted current word
+            </p>
           </div>
           <Switch
             isSelected={captions}
@@ -75,32 +89,66 @@ export const TextOverlayPanel: React.FC<TextOverlayPanelProps> = ({
         </div>
 
         {captions && (
-          <div>
-            <label className="text-sm font-medium text-text-primary mb-3 block">
-              Highlight Color
-            </label>
-            <div className="grid grid-cols-8 gap-2">
-              {COLORS.map((c) => (
-                <button
-                  key={`caption-${c.color}`}
-                  onClick={() => setCaptionColor(c.color)}
-                  className={`h-8 w-8 rounded border-2 transition-all ${
-                    captionColor === c.color
-                      ? "border-accent-400 ring-2 ring-accent-400 ring-offset-2 ring-offset-surface-elevated scale-110"
-                      : "border-border-base hover:scale-105"
-                  }`}
-                  style={{ backgroundColor: c.color }}
-                  title={c.name}
-                />
-              ))}
+          <>
+            <div>
+              <label className="text-sm font-medium text-text-primary mb-3 block">
+                Highlight Color
+              </label>
+              <div className="grid grid-cols-8 gap-2">
+                {COLORS.map((c) => (
+                  <button
+                    key={`caption-${c.color}`}
+                    onClick={() => setCaptionColor(c.color)}
+                    className={`h-8 w-8 rounded border-2 transition-all ${
+                      captionColor === c.color
+                        ? "border-accent-400 ring-2 ring-accent-400 ring-offset-2 ring-offset-surface-elevated scale-110"
+                        : "border-border-base hover:scale-105"
+                    }`}
+                    style={{ backgroundColor: c.color }}
+                    title={c.name}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
+            <div className="mt-6">
+              <label className="text-sm font-medium text-text-primary mb-3 block">
+                Caption Font
+              </label>
+
+              <div className="flex gap-3 overflow-x-auto py-2 px-1">
+                {CAPTION_FONTS.map((font) => (
+                  <button
+                    key={font.id}
+                    onClick={() => setCaptionsFont(font.id)}
+                    className={`
+            h-14 w-14 rounded-xl border transition-all flex items-center justify-center
+            ${
+              captionsFont === font.id
+                ? "bg-white text-black border-white scale-105"
+                : "bg-surface-elevated text-white border-border-base hover:scale-105"
+            }
+          `}
+                    title={font.name}
+                  >
+                    <span
+                      className="text-lg"
+                      style={{ fontFamily: `var(--font-${font.id})` }}
+                    >
+                      Ag
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
         )}
       </div>
 
       {/* Custom Text Overlay */}
       <div className="p-4 rounded-lg bg-surface-elevated border border-border-base">
-        <p className="font-medium text-text-primary mb-4">Text Overlay (Optional)</p>
+        <p className="font-medium text-text-primary mb-4">
+          Text Overlay (Optional)
+        </p>
 
         <Input
           label="Custom Text"
