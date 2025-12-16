@@ -2,7 +2,7 @@ import type { ButtonProps } from "@heroui/react";
 
 export enum TiersEnum {
   Free = "free",
-  ProStudio = "pro_studio",
+  Studio = "studio",
   Scale = "scale",
 }
 
@@ -11,6 +11,7 @@ export type Tier = {
   title: string;
   price: string;
   priceSuffix?: string;
+  billedAmount?: string;
   href: string;
   description?: string;
   mostPopular?: boolean;
@@ -21,4 +22,6 @@ export type Tier = {
   buttonVariant: ButtonProps["variant"];
   generations?: string;
   savedClips?: string;
+  priceId?: string;
+  addonPriceId?: string;
 };

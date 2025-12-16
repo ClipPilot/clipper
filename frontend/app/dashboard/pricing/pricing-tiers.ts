@@ -1,5 +1,6 @@
 import type { Tier } from "./pricing-types";
 import { TiersEnum } from "./pricing-types";
+import { STRIPE_PRICES } from "@/api/stripe";
 
 export const tiers: Array<Tier> = [
   {
@@ -19,7 +20,7 @@ export const tiers: Array<Tier> = [
       "720p export quality",
       "Community support",
     ],
-    buttonText: "Get Started",
+    buttonText: "Current Plan",
     buttonColor: "default",
     buttonVariant: "flat",
   },
@@ -32,6 +33,7 @@ export const tiers: Array<Tier> = [
     description: "For teams and businesses at scale.",
     price: "$8.99",
     priceSuffix: "per saved clip",
+    billedAmount: "$8,990 billed monthly",
     generations: "Unlimited AI generations",
     savedClips: "1,000 saved clips per month",
     features: [
@@ -46,15 +48,18 @@ export const tiers: Array<Tier> = [
     buttonText: "Start Scale Plan",
     buttonColor: "secondary",
     buttonVariant: "solid",
+    priceId: STRIPE_PRICES.SCALE,
+    addonPriceId: STRIPE_PRICES.SCALE_ADDON,
   },
   {
-    key: TiersEnum.ProStudio,
+    key: TiersEnum.Studio,
     title: "Studio",
     description: "For creators who need unlimited generation power.",
     href: "#",
     mostPopular: false,
     price: "$16.99",
     priceSuffix: "per saved clip",
+    billedAmount: "$8,495 billed monthly",
     featured: false,
     generations: "Unlimited AI generations",
     savedClips: "500 saved clips per month",
@@ -65,8 +70,10 @@ export const tiers: Array<Tier> = [
       "4K export quality",
       "Priority support",
     ],
-    buttonText: "Get Started",
+    buttonText: "Get Studio",
     buttonColor: "default",
     buttonVariant: "flat",
+    priceId: STRIPE_PRICES.STUDIO,
+    addonPriceId: STRIPE_PRICES.STUDIO_ADDON,
   },
 ];

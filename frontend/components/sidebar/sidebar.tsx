@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { Listbox, ListboxItem, ListboxSection, type Selection, Progress, cn } from "@heroui/react";
+import { Listbox, ListboxItem, type Selection, Progress, cn } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useUsageStats } from "@/hooks/useUsageStats";
 import { useAtom } from "jotai";
@@ -40,26 +40,25 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
       ? (usageStats.clipsCreated / usageStats.limit) * 100
       : 0;
 
-    const isFree = !selectedTeam || selectedTeam.type === "personal";
+    const plan = selectedTeam?.plan || "free";
+    const isPaidPlan = plan === "studio" || plan === "scale";
 
     const getPlanName = () => {
-      if (!selectedTeam) return "Free";
-      switch (selectedTeam.type) {
-        case "enterprise":
-          return "Enterprise";
-        case "business":
-          return "Pro Studio";
+      switch (plan) {
+        case "scale":
+          return "Scale";
+        case "studio":
+          return "Studio";
         default:
           return "Free";
       }
     };
 
     const getPlanColor = () => {
-      if (!selectedTeam) return "bg-blue-500/10 text-blue-500";
-      switch (selectedTeam.type) {
-        case "enterprise":
+      switch (plan) {
+        case "scale":
           return "bg-purple-500/10 text-purple-500";
-        case "business":
+        case "studio":
           return "bg-accent-400/10 text-accent-400";
         default:
           return "bg-blue-500/10 text-blue-500";
@@ -108,8 +107,7 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
           </Listbox>
         </div>
 
-        {/* Upgrade Prompt for Free Plan */}
-        {!isLoading && !error && selectedTeam && isFree && (
+        {!isLoading && !error && selectedTeam && !isPaidPlan && (
           <div className="mt-auto p-4 border-t border-border-base">
             <button
               onClick={() => router.push("/dashboard/pricing")}
@@ -125,9 +123,39 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
           </div>
         )}
 
-        {/* Usage Stats Bar */}
+        {!isLoading && !error && selectedTeam && isPaidPlan && (
+          <div className="mt-auto p-4 border-t border-border-base">
+            <button
+              onClick={() => router.push("/dashboard/pricing")}
+              className={cn(
+                "w-full flex items-center gap-3 p-3 rounded-lg border transition-colors",
+                plan === "scale"
+                  ? "bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20"
+                  : "bg-accent-400/10 border-accent-400/20 hover:bg-accent-400/20"
+              )}
+            >
+              <Icon
+                icon="solar:verified-check-bold"
+                className={plan === "scale" ? "text-purple-500" : "text-accent-400"}
+                width={18}
+              />
+              <div className="flex-1 text-left">
+                <p className={cn("text-xs font-medium", plan === "scale" ? "text-purple-500" : "text-accent-400")}>
+                  {getPlanName()} Plan
+                </p>
+                <p className="text-[10px] text-text-tertiary">Manage subscription</p>
+              </div>
+              <Icon
+                icon="solar:arrow-right-bold"
+                className={plan === "scale" ? "text-purple-500" : "text-accent-400"}
+                width={14}
+              />
+            </button>
+          </div>
+        )}
+
         {!isLoading && !error && usageStats && selectedTeam && (
-          <div className={cn("p-4 border-t border-border-base", { "mt-auto": !isFree })}>
+          <div className="p-4 border-t border-border-base">
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2 min-w-0">

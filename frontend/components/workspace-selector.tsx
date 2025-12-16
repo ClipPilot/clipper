@@ -7,8 +7,6 @@ import {
   CardBody,
   CardHeader,
   ScrollShadow,
-  Avatar,
-  Chip,
   cn,
   type CardProps,
 } from "@heroui/react";
@@ -41,22 +39,22 @@ export default function WorkspaceSelector(props: CardProps) {
     }
   };
 
-  const getPlanName = (type?: string) => {
-    switch (type) {
-      case "enterprise":
-        return "Enterprise";
-      case "business":
-        return "Pro Studio";
+  const getPlanName = (plan?: string) => {
+    switch (plan) {
+      case "scale":
+        return "Scale";
+      case "studio":
+        return "Studio";
       default:
         return "Free";
     }
   };
 
-  const getPlanColor = (type?: string) => {
-    switch (type) {
-      case "enterprise":
+  const getPlanColor = (plan?: string) => {
+    switch (plan) {
+      case "scale":
         return "bg-purple-500/10 text-purple-500";
-      case "business":
+      case "studio":
         return "bg-accent-400/10 text-accent-400";
       default:
         return "bg-blue-500/10 text-blue-500";
@@ -80,7 +78,8 @@ export default function WorkspaceSelector(props: CardProps) {
     }
   };
 
-  const isFree = !selectedTeam || selectedTeam.type === "personal";
+  const currentPlan = selectedTeam?.plan || "free";
+  const isPaidPlan = currentPlan === "studio" || currentPlan === "scale";
 
   return (
     <>
@@ -90,8 +89,8 @@ export default function WorkspaceSelector(props: CardProps) {
           <div>
             <h4 className="text-medium font-semibold text-text-primary">Current Workspace</h4>
             <div className="flex items-center gap-2 mt-1">
-              <span className={cn("text-xs px-1.5 py-0.5 rounded font-medium", getPlanColor(selectedTeam?.type))}>
-                {getPlanName(selectedTeam?.type)}
+              <span className={cn("text-xs px-1.5 py-0.5 rounded font-medium", getPlanColor(currentPlan))}>
+                {getPlanName(currentPlan)}
               </span>
             </div>
           </div>
@@ -108,49 +107,52 @@ export default function WorkspaceSelector(props: CardProps) {
           </div>
         ) : (
           <ScrollShadow className="max-h-[300px] w-full">
-            {teams.map((team) => (
-              <button
-                key={team.id}
-                onClick={() => setSelectedTeam(team)}
-                className={cn(
-                  "w-full flex items-center gap-3 px-5 py-3 border-b border-border-base transition-colors hover:bg-surface-elevated",
-                  {
-                    "bg-accent-400/10": selectedTeam?.id === team.id,
-                  }
-                )}
-              >
-                <div className={cn(
-                  "flex items-center justify-center w-10 h-10 rounded-lg",
-                  selectedTeam?.id === team.id ? "bg-accent-400 text-white" : "bg-surface-elevated text-text-tertiary"
-                )}>
-                  <Icon icon={getRoleIcon(team.role)} width={20} />
-                </div>
-                <div className="flex-1 flex flex-col items-start">
-                  <div className="flex items-center gap-2">
-                    <span className={cn(
-                      "text-sm font-medium truncate max-w-[130px]",
-                      selectedTeam?.id === team.id ? "text-accent-400" : "text-text-primary"
-                    )}>
-                      {team.name}
-                    </span>
-                    <span className={cn("text-xs px-1.5 py-0.5 rounded font-medium", getPlanColor(team.type))}>
-                      {getPlanName(team.type)}
+            {teams.map((team) => {
+              const teamPlan = team.plan || "free";
+              return (
+                <button
+                  key={team.id}
+                  onClick={() => setSelectedTeam(team)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-5 py-3 border-b border-border-base transition-colors hover:bg-surface-elevated",
+                    {
+                      "bg-accent-400/10": selectedTeam?.id === team.id,
+                    }
+                  )}
+                >
+                  <div className={cn(
+                    "flex items-center justify-center w-10 h-10 rounded-lg",
+                    selectedTeam?.id === team.id ? "bg-accent-400 text-white" : "bg-surface-elevated text-text-tertiary"
+                  )}>
+                    <Icon icon={getRoleIcon(team.role)} width={20} />
+                  </div>
+                  <div className="flex-1 flex flex-col items-start">
+                    <div className="flex items-center gap-2">
+                      <span className={cn(
+                        "text-sm font-medium truncate max-w-[130px]",
+                        selectedTeam?.id === team.id ? "text-accent-400" : "text-text-primary"
+                      )}>
+                        {team.name}
+                      </span>
+                      <span className={cn("text-xs px-1.5 py-0.5 rounded font-medium", getPlanColor(teamPlan))}>
+                        {getPlanName(teamPlan)}
+                      </span>
+                    </div>
+                    <span className="text-xs text-text-tertiary capitalize">
+                      {team.role}
                     </span>
                   </div>
-                  <span className="text-xs text-text-tertiary capitalize">
-                    {team.role}
-                  </span>
-                </div>
-                {selectedTeam?.id === team.id && (
-                  <Icon icon="solar:check-circle-bold" className="text-accent-400" width={20} />
-                )}
-              </button>
-            ))}
+                  {selectedTeam?.id === team.id && (
+                    <Icon icon="solar:check-circle-bold" className="text-accent-400" width={20} />
+                  )}
+                </button>
+              );
+            })}
           </ScrollShadow>
         )}
       </CardBody>
-      {/* Upgrade prompt for free plan */}
-      {isFree && (
+
+      {!isPaidPlan && (
         <div className="px-4 py-3 border-t border-border-base">
           <button
             onClick={() => router.push("/dashboard/pricing")}
@@ -166,7 +168,37 @@ export default function WorkspaceSelector(props: CardProps) {
         </div>
       )}
 
-      {/* Usage stats */}
+      {isPaidPlan && (
+        <div className="px-4 py-3 border-t border-border-base">
+          <button
+            onClick={() => router.push("/dashboard/pricing")}
+            className={cn(
+              "w-full flex items-center gap-3 p-3 rounded-lg border transition-colors",
+              currentPlan === "scale"
+                ? "bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20"
+                : "bg-accent-400/10 border-accent-400/20 hover:bg-accent-400/20"
+            )}
+          >
+            <Icon
+              icon="solar:verified-check-bold"
+              className={currentPlan === "scale" ? "text-purple-500" : "text-accent-400"}
+              width={20}
+            />
+            <div className="flex-1 text-left">
+              <p className={cn("text-sm font-medium", currentPlan === "scale" ? "text-purple-500" : "text-accent-400")}>
+                {getPlanName(currentPlan)} Plan
+              </p>
+              <p className="text-xs text-text-tertiary">Manage subscription</p>
+            </div>
+            <Icon
+              icon="solar:arrow-right-bold"
+              className={currentPlan === "scale" ? "text-purple-500" : "text-accent-400"}
+              width={16}
+            />
+          </button>
+        </div>
+      )}
+
       {usageStats && (
         <div className="px-4 py-3 border-t border-border-base">
           <div className="flex items-center justify-between text-xs mb-2">

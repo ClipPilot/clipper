@@ -69,6 +69,8 @@ export const teams = pgTable("teams", {
   name: varchar("name", { length: 255 }).notNull(),
   type: teamTypeEnum("type").notNull().default("personal"),
   teamSubscrptionId: varchar("team_subscription_id", { length: 255 }),
+  stripe_customer_id: varchar("stripe_customer_id", { length: 255 }),
+  plan: varchar("plan", { length: 50 }).notNull().default("free"),
   created_at: timestamp("created_at").notNull().defaultNow(),
   updated_at: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -96,6 +98,7 @@ export const subscriptions = pgTable("subscriptions", {
     length: 255,
   }).notNull(),
   status: varchar("status", { length: 50 }).notNull(),
+  plan: varchar("plan", { length: 50 }).notNull(),
   price_id: varchar("price_id", { length: 255 }).notNull(),
   current_period_start: timestamp("current_period_start").notNull(),
   current_period_end: timestamp("current_period_end").notNull(),

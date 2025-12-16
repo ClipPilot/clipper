@@ -9,6 +9,8 @@ interface UploadSectionProps {
   teamId: number;
   onUploadComplete: (s3Key: string, fileName: string, fileSize: number) => void;
   onError: (error: string) => void;
+  isDisabled?: boolean;
+  disabledReason?: string;
 }
 
 const formatTime = (seconds: number): string => {
@@ -28,6 +30,8 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
   teamId,
   onUploadComplete,
   onError,
+  isDisabled = false,
+  disabledReason,
 }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState<UploadProgress | null>(null);
@@ -116,6 +120,31 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                   </span>
                 </div>
               </div>
+            </>
+          ) : isDisabled ? (
+            <>
+              <div className="w-20 h-20 bg-surface-elevated rounded-full flex items-center justify-center">
+                <Icon icon="solar:lock-bold-duotone" className="text-4xl text-text-tertiary" />
+              </div>
+
+              <div className="text-center">
+                <h3 className="text-lg font-bold text-text-tertiary mb-2">
+                  Upload Disabled
+                </h3>
+                <p className="text-sm text-text-tertiary">
+                  {disabledReason || "You cannot upload videos at this time"}
+                </p>
+              </div>
+
+              <Button
+                size="lg"
+                color="primary"
+                isDisabled
+                startContent={<Icon icon="solar:upload-bold" className="text-xl" />}
+                className="px-8 opacity-50"
+              >
+                Choose Video File
+              </Button>
             </>
           ) : (
             <>

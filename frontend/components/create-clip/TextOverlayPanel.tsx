@@ -146,9 +146,7 @@ export const TextOverlayPanel: React.FC<TextOverlayPanelProps> = ({
 
       {/* Custom Text Overlay */}
       <div className="p-4 rounded-lg bg-surface-elevated border border-border-base">
-        <p className="font-medium text-text-primary mb-4">
-          Text Overlay (Optional)
-        </p>
+        <p className="font-medium text-text-primary mb-4">Heading (Optional)</p>
 
         <Input
           label="Custom Text"

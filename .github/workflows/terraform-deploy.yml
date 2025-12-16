@@ -73,6 +73,10 @@ jobs:
           supabase_url       = "${{ secrets.SUPABASE_URL }}"
           supabase_anon_key  = "${{ secrets.SUPABASE_ANON_KEY }}"
 
+          # Stripe
+          stripe_secret_key     = "${{ secrets.STRIPE_SECRET_KEY }}"
+          stripe_webhook_secret = "${{ secrets.STRIPE_WEBHOOK_SECRET }}"
+
           # GitHub
           github_repository   = "${{ github.repository }}"
           github_access_token = "${{ secrets.GH_PAT }}"
@@ -167,6 +171,10 @@ jobs:
           database_url       = "${{ secrets.DATABASE_URL }}"
           supabase_url       = "${{ secrets.SUPABASE_URL }}"
           supabase_anon_key  = "${{ secrets.SUPABASE_ANON_KEY }}"
+
+          # Stripe
+          stripe_secret_key     = "${{ secrets.STRIPE_SECRET_KEY }}"
+          stripe_webhook_secret = "${{ secrets.STRIPE_WEBHOOK_SECRET }}"
 
           # GitHub
           github_repository   = "${{ github.repository }}"

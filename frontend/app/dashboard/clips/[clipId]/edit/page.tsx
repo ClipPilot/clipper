@@ -4,7 +4,16 @@ import React, { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAtom } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
-import { Button, Input, Tabs, Tab, Spinner, Slider, Textarea, addToast } from "@heroui/react";
+import {
+  Button,
+  Input,
+  Tabs,
+  Tab,
+  Spinner,
+  Slider,
+  Textarea,
+  addToast,
+} from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { clipsAPI, Clip, CaptionEntry } from "@/api/clips";
 
@@ -89,7 +98,13 @@ export default function EditClipPage() {
         captionColor
       );
       setClip((prev) =>
-        prev ? { ...prev, clipUrl: result.clipUrl, captions_data: result.captionsData } : null
+        prev
+          ? {
+              ...prev,
+              clipUrl: result.clipUrl,
+              captions_data: result.captionsData,
+            }
+          : null
       );
       addToast({
         title: "Captions saved",
@@ -112,21 +127,25 @@ export default function EditClipPage() {
     if (!selectedTeam?.id || !clip || !textOverlay.trim()) return;
     setSaving(true);
     try {
-      const result = await clipsAPI.updateTextOverlay(selectedTeam.id, clip.id, {
-        text: textOverlay,
-        color: textColor,
-        x: textX,
-        y: textY,
-        fontSize,
-      });
+      const result = await clipsAPI.updateTextOverlay(
+        selectedTeam.id,
+        clip.id,
+        {
+          text: textOverlay,
+          color: textColor,
+          x: textX,
+          y: textY,
+          fontSize,
+        }
+      );
       setClip((prev) => (prev ? { ...prev, clipUrl: result.clipUrl } : null));
       addToast({
-        title: "Text overlay applied",
-        description: "Your text overlay has been added to the video.",
+        title: "Heading applied",
+        description: "Your heading has been added to the video.",
         color: "success",
       });
     } catch (error) {
-      console.error("Failed to save text overlay:", error);
+      console.error("Failed to save heading:", error);
       addToast({
         title: "Failed to apply",
         description: "Something went wrong. Please try again.",
@@ -258,7 +277,11 @@ export default function EditClipPage() {
                       onPress={handleSaveCaptions}
                       isDisabled={saving || captions.length === 0}
                       startContent={
-                        saving ? <Spinner size="sm" /> : <Icon icon="solar:diskette-bold" />
+                        saving ? (
+                          <Spinner size="sm" />
+                        ) : (
+                          <Icon icon="solar:diskette-bold" />
+                        )
                       }
                     >
                       {saving ? "Saving..." : "Save Captions"}
@@ -277,17 +300,24 @@ export default function EditClipPage() {
                       >
                         <div className="flex items-center justify-between mb-2">
                           <button
-                            onClick={() => handleJumpToCaption(caption.startTime)}
+                            onClick={() =>
+                              handleJumpToCaption(caption.startTime)
+                            }
                             className="flex items-center gap-2 text-xs text-text-tertiary hover:text-accent-400"
                           >
                             <Icon icon="solar:play-circle-outline" />
-                            {formatTime(caption.startTime)} - {formatTime(caption.endTime)}
+                            {formatTime(caption.startTime)} -{" "}
+                            {formatTime(caption.endTime)}
                           </button>
-                          <span className="text-xs text-text-tertiary">#{caption.index}</span>
+                          <span className="text-xs text-text-tertiary">
+                            #{caption.index}
+                          </span>
                         </div>
                         <Input
                           value={caption.text}
-                          onChange={(e) => handleCaptionTextChange(index, e.target.value)}
+                          onChange={(e) =>
+                            handleCaptionTextChange(index, e.target.value)
+                          }
                           variant="bordered"
                           size="sm"
                           classNames={{
@@ -303,7 +333,9 @@ export default function EditClipPage() {
                           icon="solar:subtitles-outline"
                           className="text-4xl text-text-tertiary mb-2 mx-auto"
                         />
-                        <p className="text-text-secondary">No captions available</p>
+                        <p className="text-text-secondary">
+                          No captions available
+                        </p>
                       </div>
                     )}
                   </div>
@@ -315,17 +347,19 @@ export default function EditClipPage() {
                 title={
                   <div className="flex items-center gap-2">
                     <Icon icon="solar:text-bold" />
-                    <span>Text Overlay</span>
+                    <span>Heading</span>
                   </div>
                 }
               >
                 <div className="mt-4 space-y-4">
                   <div>
-                    <label className="text-sm text-text-secondary mb-2 block">Text</label>
+                    <label className="text-sm text-text-secondary mb-2 block">
+                      Text
+                    </label>
                     <Textarea
                       value={textOverlay}
                       onChange={(e) => setTextOverlay(e.target.value)}
-                      placeholder="Enter text overlay..."
+                      placeholder="Enter Heading..."
                       variant="bordered"
                       minRows={2}
                       maxRows={4}
@@ -337,7 +371,9 @@ export default function EditClipPage() {
                   </div>
 
                   <div>
-                    <label className="text-sm text-text-secondary mb-2 block">Color</label>
+                    <label className="text-sm text-text-secondary mb-2 block">
+                      Color
+                    </label>
                     <div className="flex flex-wrap gap-2">
                       {[
                         { color: "#FFFFFF", name: "White" },
@@ -372,11 +408,16 @@ export default function EditClipPage() {
                           className="w-10 h-10 rounded-lg border-2 border-border-base flex items-center justify-center bg-surface-elevated hover:border-accent-400/50 transition-all"
                           title="Custom color"
                         >
-                          <Icon icon="solar:palette-bold" className="text-text-secondary" />
+                          <Icon
+                            icon="solar:palette-bold"
+                            className="text-text-secondary"
+                          />
                         </div>
                       </div>
                     </div>
-                    <p className="text-xs text-text-tertiary mt-2">Selected: {textColor}</p>
+                    <p className="text-xs text-text-tertiary mt-2">
+                      Selected: {textColor}
+                    </p>
                   </div>
 
                   <div>
@@ -436,10 +477,14 @@ export default function EditClipPage() {
                     onPress={handleSaveTextOverlay}
                     isDisabled={saving || !textOverlay.trim()}
                     startContent={
-                      saving ? <Spinner size="sm" /> : <Icon icon="solar:diskette-bold" />
+                      saving ? (
+                        <Spinner size="sm" />
+                      ) : (
+                        <Icon icon="solar:diskette-bold" />
+                      )
                     }
                   >
-                    {saving ? "Saving..." : "Apply Text Overlay"}
+                    {saving ? "Saving..." : "Apply Heading"}
                   </Button>
                 </div>
               </Tab>

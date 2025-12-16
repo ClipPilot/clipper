@@ -135,7 +135,7 @@ export default function DashboardLayout({
         >
           <div className="p-4 border-b border-border-base">
             <div className="flex items-center justify-between mb-4">
-              <h1 className="text-lg font-bold text-text-primary">Clipster</h1>
+              <h1 className="text-lg font-bold text-text-primary">Cuttr</h1>
               <Popover placement="bottom-end">
                 <PopoverTrigger>
                   <Button

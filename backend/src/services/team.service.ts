@@ -7,12 +7,12 @@ class TeamService {
    * Get all teams for a user by user ID
    */
   async getUserTeams(userId: number) {
-    // Get all teams the user is a member of
     const userTeams = await db
       .select({
         id: teams.id,
         name: teams.name,
         type: teams.type,
+        plan: teams.plan,
         teamSubscriptionId: teams.teamSubscrptionId,
         role: teamMembers.role,
         created_at: teams.created_at,
@@ -35,6 +35,7 @@ class TeamService {
         id: teams.id,
         name: teams.name,
         type: teams.type,
+        plan: teams.plan,
         teamSubscriptionId: teams.teamSubscrptionId,
         role: teamMembers.role,
         created_at: teams.created_at,
@@ -122,8 +123,18 @@ class TeamService {
 
   /**
    * Create a new team
+   * First team gets 3 free clips, additional teams get 0 (must subscribe)
    */
   async createTeam(name: string, creatorUserId: number, type: "personal" | "business" | "enterprise" = "business") {
+    // Check if user already owns any teams
+    const existingTeams = await db
+      .select({ id: teams.id })
+      .from(teamMembers)
+      .innerJoin(teams, eq(teamMembers.team_id, teams.id))
+      .where(and(eq(teamMembers.user_id, creatorUserId), eq(teamMembers.role, "owner")));
+
+    const isFirstTeam = existingTeams.length === 0;
+
     const [team] = await db
       .insert(teams)
       .values({
@@ -140,6 +151,7 @@ class TeamService {
     });
 
     // Create initial usage stats
+    // First team: 3 free clips, Additional teams: 0 clips (must subscribe)
     const resetsDate = new Date();
     resetsDate.setDate(resetsDate.getDate() + 30);
 
@@ -147,7 +159,7 @@ class TeamService {
       team_id: team.id,
       date: new Date(),
       clips_created: 0,
-      limit: 3,
+      limit: isFirstTeam ? 3 : 0,
       resets_date: resetsDate,
       rollover: false,
     });
@@ -338,27 +350,10 @@ class TeamService {
 
   /**
    * Check if user can create a new team
+   * Users can create unlimited teams - each team starts on free plan
    */
   async canUserCreateTeam(userId: number): Promise<{ canCreate: boolean; reason?: string }> {
-    const userTeamsData = await db
-      .select({
-        id: teams.id,
-        type: teams.type,
-      })
-      .from(teamMembers)
-      .innerJoin(teams, eq(teamMembers.team_id, teams.id))
-      .where(and(eq(teamMembers.user_id, userId), eq(teamMembers.role, "owner")));
-
-    const personalTeam = userTeamsData.find(t => t.type === "personal");
-
-    if (!personalTeam) {
-      return { canCreate: true };
-    }
-
-    return {
-      canCreate: false,
-      reason: "You already have a personal team. To create additional teams, you need an active subscription.",
-    };
+    return { canCreate: true };
   }
 
   /**
