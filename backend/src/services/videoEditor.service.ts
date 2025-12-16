@@ -242,7 +242,7 @@ const generateTextImage = async (
             .text {
               font-size: 52px;
               font-weight: 900;
-              font-family: 'Montserrat', 'The Bold Font', -apple-system, BlinkMacSystemFont, sans-serif;
+              font-family: 'Montserrat', 'Apple Color Emoji', sans-serif;
               color: ${fillColor};
               text-align: center;
               -webkit-text-stroke: 6px ${strokeColor};
@@ -320,7 +320,7 @@ export const addTextOverlayAtPosition = async (
             .text {
               font-size: ${fontSize}px;
               font-weight: 900;
-              font-family: 'Montserrat', sans-serif;
+              font-family: 'Montserrat', 'Apple Color Emoji', sans-serif;
               color: ${fillColor};
               text-align: center;
               -webkit-text-stroke: 4px ${strokeColor};

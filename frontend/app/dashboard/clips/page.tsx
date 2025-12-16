@@ -244,6 +244,17 @@ export default function MyClipsPage() {
     loadSavedClips(true);
   };
 
+  const handleRejectClip = async (clipId: number) => {
+    if (!selectedTeam?.id) return;
+
+    try {
+      await clipsAPI.deleteClip(selectedTeam.id, clipId);
+      setUnsavedClips(prev => prev.filter(c => c.id !== clipId));
+    } catch (error) {
+      console.error("Failed to reject clip:", error);
+    }
+  };
+
   const handleDragStart = (e: React.DragEvent, clipId: number) => {
     isDraggingRef.current = true;
     e.dataTransfer.setData("clipId", clipId.toString());
@@ -408,7 +419,7 @@ export default function MyClipsPage() {
           clips={unsavedClips}
           teamId={selectedTeam!.id}
           onClipSaved={handleClipSaved}
-          onClipDeleted={handleDeleteClip}
+          onClipRejected={handleRejectClip}
           onUsageUpdated={triggerRefresh}
         />
 

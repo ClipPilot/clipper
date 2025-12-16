@@ -10,7 +10,7 @@ interface ClipsToSaveSectionProps {
   clips: Clip[];
   teamId: number;
   onClipSaved: (clipId: number) => void;
-  onClipDeleted?: (clipId: number) => void;
+  onClipRejected?: (clipId: number) => void;
   onUsageUpdated?: () => void;
 }
 
@@ -18,13 +18,14 @@ export const ClipsToSaveSection: React.FC<ClipsToSaveSectionProps> = ({
   clips,
   teamId,
   onClipSaved,
-  onClipDeleted,
+  onClipRejected,
   onUsageUpdated,
 }) => {
   const [savingClipIds, setSavingClipIds] = useState<Set<number>>(new Set());
 
-  const clipsByRawVideo = clips.reduce((acc, clip) => {
-    const key = clip.raw_video_id || `standalone-${clip.id}`;
+  const clipsBySourceVideo = clips.reduce((acc, clip) => {
+    // Group by source_video_path (thumbnail), raw_video_id, or treat as standalone
+    const key = clip.source_video_path || clip.raw_video_id || `standalone-${clip.id}`;
     if (!acc[key]) {
       acc[key] = [];
     }
@@ -104,9 +105,9 @@ export const ClipsToSaveSection: React.FC<ClipsToSaveSectionProps> = ({
       </Card>
 
       <div className="space-y-6">
-        {Object.entries(clipsByRawVideo).map(([rawVideoId, groupClips]) => (
+        {Object.entries(clipsBySourceVideo).map(([sourceKey, groupClips]) => (
           <div
-            key={rawVideoId}
+            key={sourceKey}
             className="bg-surface-elevated rounded-lg p-4 border border-border-base"
           >
             <div className="flex items-center gap-2 mb-4">
@@ -126,7 +127,7 @@ export const ClipsToSaveSection: React.FC<ClipsToSaveSectionProps> = ({
                   key={clip.id}
                   clip={clip}
                   onSave={handleSaveClip}
-                  onDelete={onClipDeleted}
+                  onReject={onClipRejected}
                   isSaving={savingClipIds.has(clip.id)}
                 />
               ))}

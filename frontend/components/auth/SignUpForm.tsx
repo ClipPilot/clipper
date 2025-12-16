@@ -179,6 +179,7 @@ export default function SignUpForm({
         </Button>
       </form>
 
+      {/* Social login - temporarily disabled
       <div className="flex items-center gap-4">
         <Divider className="flex-1 bg-border-base" />
         <span className="text-xs text-text-tertiary">OR</span>
@@ -197,6 +198,7 @@ export default function SignUpForm({
           </Button>
         </div>
       </div>
+      */}
 
       <p className="text-sm text-center text-text-secondary">
         Already have an account?{" "}

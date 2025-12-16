@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Card, CardBody, CardFooter, Button } from "@heroui/react";
+import { Card, CardBody, CardFooter, Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { Clip } from "@/api/clips";
 import { SecureVideoPlayer } from "./SecureVideoPlayer";
@@ -9,17 +9,18 @@ import { SecureVideoPlayer } from "./SecureVideoPlayer";
 interface UnsavedClipCardProps {
   clip: Clip;
   onSave: (clipId: number) => Promise<void>;
-  onDelete?: (clipId: number) => void;
+  onReject?: (clipId: number) => void;
   isSaving?: boolean;
 }
 
 export const UnsavedClipCard: React.FC<UnsavedClipCardProps> = ({
   clip,
   onSave,
-  onDelete,
+  onReject,
   isSaving = false,
 }) => {
   const [isLocalSaving, setIsLocalSaving] = useState(false);
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -111,22 +112,61 @@ export const UnsavedClipCard: React.FC<UnsavedClipCardProps> = ({
           isDisabled={saving}
           startContent={!saving && <Icon icon="solar:diskette-bold" />}
         >
-          {saving ? "Saving..." : "Save Clip"}
+          {saving ? "Saving..." : "Save"}
         </Button>
 
-        {onDelete && (
+        {onReject && (
           <Button
+            fullWidth
             size="sm"
-            variant="light"
+            variant="flat"
             color="danger"
-            isIconOnly
-            onPress={() => onDelete(clip.id)}
+            onPress={() => setIsRejectModalOpen(true)}
             isDisabled={saving}
+            startContent={<Icon icon="solar:close-circle-bold" />}
           >
-            <Icon icon="solar:trash-bin-outline" className="text-lg" />
+            Reject
           </Button>
         )}
       </CardFooter>
+
+      <Modal
+        isOpen={isRejectModalOpen}
+        onClose={() => setIsRejectModalOpen(false)}
+        size="sm"
+      >
+        <ModalContent>
+          <ModalHeader className="flex flex-col gap-1">
+            <div className="flex items-center gap-2 text-danger">
+              <Icon icon="solar:danger-triangle-bold" className="text-xl" />
+              Reject Clip
+            </div>
+          </ModalHeader>
+          <ModalBody>
+            <p className="text-text-secondary">
+              Are you sure you want to reject this clip? This action cannot be undone and the clip will be permanently deleted.
+            </p>
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              variant="light"
+              onPress={() => setIsRejectModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              color="danger"
+              onPress={() => {
+                onReject?.(clip.id);
+                setIsRejectModalOpen(false);
+              }}
+              startContent={<Icon icon="solar:trash-bin-bold" />}
+            >
+              Reject & Delete
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </Card>
   );
 };

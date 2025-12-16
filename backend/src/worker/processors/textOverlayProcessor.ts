@@ -59,10 +59,11 @@ export async function processTextOverlayJob(
       clipId
     );
 
-    // Update database with new clip path
+    // Update database with new clip path and set status back to completed
     await clipManagerService.updateClip(clipId, teamId, {
       clipPath: newClipS3Key,
     });
+    await clipManagerService.updateClipStatus(clipId, teamId, "completed");
 
     console.log(`Successfully applied heading to clip ${clipId}`);
 

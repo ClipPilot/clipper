@@ -196,18 +196,21 @@ export default function DashboardPage() {
             </CardBody>
           </Card>
 
-          <Card className="bg-surface-base border border-border-base">
+          <Card
+            className="bg-surface-base border border-border-base hover:border-green-500/30 transition-colors cursor-pointer"
+            isPressable
+            onPress={() => router.push("/dashboard/clips")}
+          >
             <CardBody className="p-5">
               <div className="flex items-center justify-between mb-4">
                 <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center">
                   <Icon icon="solar:video-library-bold-duotone" className="text-green-500" width={22} />
                 </div>
+                <Icon icon="solar:arrow-right-bold" className="text-text-tertiary" width={18} />
               </div>
               <div className="space-y-1">
-                <span className="text-2xl font-bold text-text-primary">
-                  {recentClips.length}
-                </span>
-                <p className="text-sm text-text-secondary">Total Clips</p>
+                <p className="text-sm font-medium text-text-primary">View Library</p>
+                <p className="text-xs text-text-tertiary">Manage all your clips</p>
               </div>
             </CardBody>
           </Card>

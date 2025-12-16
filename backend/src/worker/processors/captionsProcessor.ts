@@ -58,6 +58,9 @@ export async function processCaptionsJob(job: UpdateCaptionsJob): Promise<void> 
       captionsData,
     });
 
+    // Set status back to completed
+    await clipManagerService.updateClipStatus(clipId, teamId, "completed");
+
     console.log(`Successfully updated captions for clip ${clipId}`);
 
     // Notify frontend to refresh clips

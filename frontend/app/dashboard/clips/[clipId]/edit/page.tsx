@@ -107,8 +107,8 @@ export default function EditClipPage() {
           : null
       );
       addToast({
-        title: "Captions saved",
-        description: "Your caption changes have been applied to the video.",
+        title: "Processing",
+        description: "Your caption changes are being applied. The updated video will be available shortly.",
         color: "success",
       });
     } catch (error) {
@@ -140,8 +140,8 @@ export default function EditClipPage() {
       );
       setClip((prev) => (prev ? { ...prev, clipUrl: result.clipUrl } : null));
       addToast({
-        title: "Heading applied",
-        description: "Your heading has been added to the video.",
+        title: "Processing",
+        description: "Your heading is being applied. The updated video will be available shortly.",
         color: "success",
       });
     } catch (error) {
