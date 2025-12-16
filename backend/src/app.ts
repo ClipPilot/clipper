@@ -17,6 +17,10 @@ app.use(
       "http://localhost:3000",
       "https://platform.cuttr.com",
       "https://www.platform.cuttr.com",
+      "https://beta.cuttr.com",
+      "https://www.beta.cuttr.com",
+      "https://cuttr.com",
+      "https://www.cuttr.com",
     ],
     credentials: true,
   })
