@@ -13,7 +13,11 @@ const app = express();
 
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: [
+      "http://localhost:3000",
+      "https://platform.cuttr.com",
+      "https://www.platform.cuttr.com",
+    ],
     credentials: true,
   })
 );
@@ -29,7 +33,7 @@ app.get("/health", (req, res) => {
   res.status(200).json({
     status: "healthy",
     timestamp: new Date().toISOString(),
-    service: "clipster-backend"
+    service: "clipster-backend",
   });
 });
 

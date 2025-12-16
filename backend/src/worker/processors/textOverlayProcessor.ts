@@ -5,6 +5,7 @@ import { regenerateClipWithTextOverlay } from "../../services/clip.service";
 import { clipManagerService } from "../../services/clipManager.service";
 import { s3Service } from "../../services/s3.service";
 import { notifyClipsRefresh } from "../notify";
+import { addCaptionsFromData, CaptionEntry } from "../../services/captions.service";
 
 export async function processTextOverlayJob(
   job: TextOverlayJob
@@ -16,6 +17,7 @@ export async function processTextOverlayJob(
 
   const localBlankPath = path.join(outDir, `blank_${clipId}_${Date.now()}.mp4`);
   let newClipPath: string | null = null;
+  let textOverlayPath: string | null = null;
 
   try {
     console.log(`Processing heading for clip ${clipId}, team ${teamId}`);
@@ -33,13 +35,37 @@ export async function processTextOverlayJob(
 
     // Regenerate clip with heading
     console.log("Regenerating clip with heading...");
-    newClipPath = await regenerateClipWithTextOverlay(localBlankPath, {
+    textOverlayPath = await regenerateClipWithTextOverlay(localBlankPath, {
       text,
       color: color || "#FFFFFF",
       x: x ?? 50,
       y: y ?? 10,
       fontSize: fontSize ?? 48,
     });
+
+    // Check if clip has captions - if so, apply them on top of the text overlay
+    const captionsData = clip.captions_data as CaptionEntry[] | null;
+    const clipMetadata = clip.clip_metadata as { parameters?: { captionColor?: string; captionFont?: string; captions?: boolean } } | null;
+
+    if (captionsData && captionsData.length > 0) {
+      console.log("Clip has captions, applying captions on top of text overlay...");
+      const captionColor = clipMetadata?.parameters?.captionColor || "#FFD600";
+      const captionFont = clipMetadata?.parameters?.captionFont || "Montserrat";
+
+      const withCaptionsPath = path.join(outDir, `with_captions_${clipId}_${Date.now()}.mp4`);
+      await addCaptionsFromData(textOverlayPath, withCaptionsPath, captionsData, captionColor, captionFont);
+
+      // Clean up the intermediate text overlay file
+      if (fs.existsSync(textOverlayPath)) {
+        fs.unlinkSync(textOverlayPath);
+      }
+
+      newClipPath = withCaptionsPath;
+      console.log("Captions applied successfully");
+    } else {
+      newClipPath = textOverlayPath;
+      textOverlayPath = null; // Prevent cleanup since newClipPath points to same file
+    }
 
     // Delete old clip from S3
     if (clip.clip_path) {
@@ -88,6 +114,9 @@ export async function processTextOverlayJob(
     // Clean up local files
     if (fs.existsSync(localBlankPath)) {
       fs.unlinkSync(localBlankPath);
+    }
+    if (textOverlayPath && fs.existsSync(textOverlayPath)) {
+      fs.unlinkSync(textOverlayPath);
     }
     if (newClipPath && fs.existsSync(newClipPath)) {
       fs.unlinkSync(newClipPath);
