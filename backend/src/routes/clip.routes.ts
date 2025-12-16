@@ -1,6 +1,12 @@
 import { Router } from "express";
 import { clipManagerController } from "../controllers/clipManager.controller";
-import { getPresignedUploadUrl, submitClipJob } from "../controllers/upload.controller";
+import {
+  getPresignedUploadUrl,
+  submitClipJob,
+  initiateMultipartUpload,
+  completeMultipartUpload,
+  abortMultipartUpload,
+} from "../controllers/upload.controller";
 import { requireAuth } from "../middleware/auth.middleware";
 
 const router = Router();
@@ -58,6 +64,177 @@ const router = Router();
  *         description: Unauthorized
  */
 router.post("/presigned-upload", requireAuth, getPresignedUploadUrl);
+
+/**
+ * @openapi
+ * /clip-video/multipart/initiate:
+ *   post:
+ *     summary: Initiate multipart upload
+ *     description: Initiates a multipart upload for large files (>50MB). Returns presigned URLs for each chunk.
+ *     tags:
+ *       - Video Upload
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - teamId
+ *               - fileName
+ *               - contentType
+ *               - fileSize
+ *             properties:
+ *               teamId:
+ *                 type: integer
+ *                 description: The team ID
+ *               fileName:
+ *                 type: string
+ *                 description: Original file name
+ *               contentType:
+ *                 type: string
+ *                 description: MIME type (video/mp4, video/quicktime, etc.)
+ *               fileSize:
+ *                 type: integer
+ *                 description: File size in bytes (max 2GB)
+ *     responses:
+ *       200:
+ *         description: Multipart upload initiated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 uploadId:
+ *                   type: string
+ *                   description: AWS S3 upload ID for this multipart upload
+ *                 s3Key:
+ *                   type: string
+ *                   description: S3 key where the file will be stored
+ *                 chunkSize:
+ *                   type: integer
+ *                   description: Size of each chunk in bytes (10MB)
+ *                 totalParts:
+ *                   type: integer
+ *                   description: Total number of parts to upload
+ *                 partUrls:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       partNumber:
+ *                         type: integer
+ *                       uploadUrl:
+ *                         type: string
+ *       400:
+ *         description: Invalid request
+ *       401:
+ *         description: Unauthorized
+ */
+router.post("/multipart/initiate", requireAuth, initiateMultipartUpload);
+
+/**
+ * @openapi
+ * /clip-video/multipart/complete:
+ *   post:
+ *     summary: Complete multipart upload
+ *     description: Completes a multipart upload after all parts have been uploaded. Assembles the file in S3.
+ *     tags:
+ *       - Video Upload
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - s3Key
+ *               - uploadId
+ *               - parts
+ *             properties:
+ *               s3Key:
+ *                 type: string
+ *                 description: S3 key from initiate response
+ *               uploadId:
+ *                 type: string
+ *                 description: Upload ID from initiate response
+ *               parts:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     partNumber:
+ *                       type: integer
+ *                     etag:
+ *                       type: string
+ *                       description: ETag returned from S3 after uploading each part
+ *     responses:
+ *       200:
+ *         description: Multipart upload completed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 s3Key:
+ *                   type: string
+ *       400:
+ *         description: Invalid request
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Failed to complete upload
+ */
+router.post("/multipart/complete", requireAuth, completeMultipartUpload);
+
+/**
+ * @openapi
+ * /clip-video/multipart/abort:
+ *   post:
+ *     summary: Abort multipart upload
+ *     description: Aborts an in-progress multipart upload. Use this if an upload fails or is cancelled.
+ *     tags:
+ *       - Video Upload
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - s3Key
+ *               - uploadId
+ *             properties:
+ *               s3Key:
+ *                 type: string
+ *                 description: S3 key from initiate response
+ *               uploadId:
+ *                 type: string
+ *                 description: Upload ID from initiate response
+ *     responses:
+ *       200:
+ *         description: Multipart upload aborted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *       400:
+ *         description: Invalid request
+ *       401:
+ *         description: Unauthorized
+ */
+router.post("/multipart/abort", requireAuth, abortMultipartUpload);
 
 /**
  * @openapi
@@ -299,6 +476,131 @@ router.get("/teams/:teamId/clips/pending", requireAuth, clipManagerController.ge
  *         description: Server error
  */
 router.get("/teams/:teamId/clips/completed", requireAuth, clipManagerController.getCompletedClips.bind(clipManagerController));
+
+/**
+ * @openapi
+ * /clip-video/teams/{teamId}/clips/unsaved:
+ *   get:
+ *     summary: Get unsaved clips for a team
+ *     description: Retrieves all completed clips that have not been saved yet. These clips have watermarks and don't count toward usage until saved.
+ *     tags:
+ *       - Clips Management
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The team ID
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved unsaved clips
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 clips:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       team_id:
+ *                         type: integer
+ *                       clip_path:
+ *                         type: string
+ *                       is_saved:
+ *                         type: boolean
+ *                       status:
+ *                         type: string
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *       400:
+ *         description: Invalid team ID
+ *       500:
+ *         description: Server error
+ */
+router.get("/teams/:teamId/clips/unsaved", requireAuth, clipManagerController.getUnsavedClips.bind(clipManagerController));
+
+/**
+ * @openapi
+ * /clip-video/teams/{teamId}/clips/saved:
+ *   get:
+ *     summary: Get saved clips for a team with pagination
+ *     description: Retrieves all saved clips for a specific team with pagination support. These are clips that have been explicitly saved by the user.
+ *     tags:
+ *       - Clips Management
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The team ID
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 12
+ *           maximum: 100
+ *         description: Number of clips to return (max 100)
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: Number of clips to skip for pagination
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved saved clips
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 clips:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       team_id:
+ *                         type: integer
+ *                       clip_path:
+ *                         type: string
+ *                       is_saved:
+ *                         type: boolean
+ *                       saved_at:
+ *                         type: string
+ *                         format: date-time
+ *                       status:
+ *                         type: string
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     limit:
+ *                       type: integer
+ *                     offset:
+ *                       type: integer
+ *                     hasMore:
+ *                       type: boolean
+ *       400:
+ *         description: Invalid parameters
+ *       500:
+ *         description: Server error
+ */
+router.get("/teams/:teamId/clips/saved", requireAuth, clipManagerController.getSavedClips.bind(clipManagerController));
 
 /**
  * @openapi
@@ -592,5 +894,52 @@ router.post("/teams/:teamId/clips/:clipId/captions", requireAuth, clipManagerCon
  *         description: Server error
  */
 router.post("/teams/:teamId/clips/:clipId/text-overlay", requireAuth, clipManagerController.updateTextOverlay.bind(clipManagerController));
+
+/**
+ * @openapi
+ * /clip-video/teams/{teamId}/clips/{clipId}/save:
+ *   post:
+ *     summary: Save a clip
+ *     description: Saves an unsaved clip. This removes the watermark, increments usage for the team, and moves the clip to the saved state.
+ *     tags:
+ *       - Clips Management
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The team ID
+ *       - in: path
+ *         name: clipId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The clip ID
+ *     responses:
+ *       200:
+ *         description: Clip saved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 clip:
+ *                   type: object
+ *                   description: The updated clip object
+ *       400:
+ *         description: Clip already saved
+ *       403:
+ *         description: Usage limit reached (free plan only)
+ *       404:
+ *         description: Clip not found
+ *       500:
+ *         description: Server error
+ */
+router.post("/teams/:teamId/clips/:clipId/save", requireAuth, clipManagerController.saveClip.bind(clipManagerController));
 
 export default router;

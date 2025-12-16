@@ -89,7 +89,7 @@ export default function CreateClipPage() {
       return;
     }
 
-    if (usageStats && usageStats.remaining <= 0) {
+    if (selectedTeam.plan === "free" && usageStats && usageStats.remaining <= 0) {
       setError(`Usage limit reached. You have ${usageStats.clipsCreated}/${usageStats.limit} clips used.`);
       return;
     }
@@ -225,12 +225,10 @@ export default function CreateClipPage() {
                   teamId={selectedTeam.id}
                   onUploadComplete={handleUploadComplete}
                   onError={handleUploadError}
-                  isDisabled={(usageStats?.remaining ?? 0) <= 0}
+                  isDisabled={selectedTeam.plan === "free" && (usageStats?.remaining ?? 0) <= 0}
                   disabledReason={
-                    (usageStats?.remaining ?? 0) <= 0
-                      ? selectedTeam.plan === "free"
-                        ? "Subscribe to a plan to start creating clips."
-                        : "You've reached your clip limit. Upgrade your plan or buy additional clips."
+                    selectedTeam.plan === "free" && (usageStats?.remaining ?? 0) <= 0
+                      ? "You've used all your free clips. Subscribe to a plan to continue."
                       : undefined
                   }
                 />
@@ -315,7 +313,7 @@ export default function CreateClipPage() {
                           size="lg"
                           color="primary"
                           onPress={handleSubmit}
-                          isDisabled={!uploadedVideo || isProcessing || (usageStats?.remaining ?? 0) <= 0}
+                          isDisabled={!uploadedVideo || isProcessing || (selectedTeam.plan === "free" && (usageStats?.remaining ?? 0) <= 0)}
                           isLoading={isProcessing}
                           startContent={!isProcessing && <Icon icon="solar:scissors-bold" />}
                         >

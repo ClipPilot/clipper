@@ -21,7 +21,7 @@ import TeamManagementModal from "./teams/TeamManagementModal";
 
 export default function WorkspaceSelector(props: CardProps) {
   const router = useRouter();
-  const { teams, isLoading, fetchTeams } = useTeams();
+  const { teams, isLoading, fetchTeams, defaultTeamId, setAsDefaultTeam } = useTeams();
   const [selectedTeam, setSelectedTeam] = useAtom(selectedTeamAtom);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
@@ -109,10 +109,10 @@ export default function WorkspaceSelector(props: CardProps) {
           <ScrollShadow className="max-h-[300px] w-full">
             {teams.map((team) => {
               const teamPlan = team.plan || "free";
+              const isDefault = defaultTeamId === team.id;
               return (
-                <button
+                <div
                   key={team.id}
-                  onClick={() => setSelectedTeam(team)}
                   className={cn(
                     "w-full flex items-center gap-3 px-5 py-3 border-b border-border-base transition-colors hover:bg-surface-elevated",
                     {
@@ -120,36 +120,65 @@ export default function WorkspaceSelector(props: CardProps) {
                     }
                   )}
                 >
-                  <div className={cn(
-                    "flex items-center justify-center w-10 h-10 rounded-lg",
-                    teamPlan === "scale"
-                      ? "bg-purple-500 text-white"
-                      : teamPlan === "studio"
-                      ? "bg-accent-400 text-white"
-                      : "bg-blue-500 text-white"
-                  )}>
-                    <Icon icon={getRoleIcon(team.role)} width={20} />
-                  </div>
-                  <div className="flex-1 flex flex-col items-start">
-                    <div className="flex items-center gap-2">
-                      <span className={cn(
-                        "text-sm font-medium truncate max-w-[130px]",
-                        selectedTeam?.id === team.id ? "text-accent-400" : "text-text-primary"
-                      )}>
-                        {team.name}
-                      </span>
-                      <span className={cn("text-xs px-1.5 py-0.5 rounded font-medium", getPlanColor(teamPlan))}>
-                        {getPlanName(teamPlan)}
+                  <button
+                    onClick={() => setSelectedTeam(team)}
+                    className="flex items-center gap-3 flex-1"
+                  >
+                    <div className={cn(
+                      "flex items-center justify-center w-10 h-10 rounded-lg",
+                      teamPlan === "scale"
+                        ? "bg-purple-500 text-white"
+                        : teamPlan === "studio"
+                        ? "bg-accent-400 text-white"
+                        : "bg-blue-500 text-white"
+                    )}>
+                      <Icon icon={getRoleIcon(team.role)} width={20} />
+                    </div>
+                    <div className="flex-1 flex flex-col items-start">
+                      <div className="flex items-center gap-2">
+                        <span className={cn(
+                          "text-sm font-medium truncate max-w-[100px]",
+                          selectedTeam?.id === team.id ? "text-accent-400" : "text-text-primary"
+                        )}>
+                          {team.name}
+                        </span>
+                        <span className={cn("text-xs px-1.5 py-0.5 rounded font-medium", getPlanColor(teamPlan))}>
+                          {getPlanName(teamPlan)}
+                        </span>
+                        {isDefault && (
+                          <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-green-500/10 text-green-500">
+                            Default
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs text-text-tertiary capitalize">
+                        {team.role}
                       </span>
                     </div>
-                    <span className="text-xs text-text-tertiary capitalize">
-                      {team.role}
-                    </span>
+                  </button>
+                  <div className="flex items-center gap-1">
+                    {isDefault ? (
+                      <button
+                        onClick={() => setAsDefaultTeam(null)}
+                        className="p-1.5 rounded-lg hover:bg-surface-elevated transition-colors"
+                        title="Remove as default"
+                      >
+                        <Icon icon="solar:star-bold" className="text-green-500" width={18} />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => setAsDefaultTeam(team.id)}
+                        className="p-1.5 rounded-lg hover:bg-surface-elevated transition-colors"
+                        title="Set as default"
+                      >
+                        <Icon icon="solar:star-outline" className="text-text-tertiary hover:text-accent-400" width={18} />
+                      </button>
+                    )}
+                    {selectedTeam?.id === team.id && (
+                      <Icon icon="solar:check-circle-bold" className="text-accent-400" width={20} />
+                    )}
                   </div>
-                  {selectedTeam?.id === team.id && (
-                    <Icon icon="solar:check-circle-bold" className="text-accent-400" width={20} />
-                  )}
-                </button>
+                </div>
               );
             })}
           </ScrollShadow>

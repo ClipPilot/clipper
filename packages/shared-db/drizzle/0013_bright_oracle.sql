@@ -1,0 +1,1 @@
+UPDATE "clips" SET "saved" = true WHERE "status" = 'completed';

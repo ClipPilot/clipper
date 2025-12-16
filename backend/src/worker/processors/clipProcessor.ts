@@ -88,9 +88,10 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
       clipSuggestionsArray.map(async (suggestions, i) => {
         const result = clipResults[i];
 
-        const [clipS3Key, blankS3Key] = await Promise.all([
+        const [clipS3Key, blankS3Key, watermarkedS3Key] = await Promise.all([
           s3Service.uploadGeneratedClip(result.finalPath, teamId, clipIds[i]),
           s3Service.uploadBlankClip(result.blankPath, teamId, clipIds[i]),
+          s3Service.uploadWatermarkedClip(result.watermarkedPath, teamId, clipIds[i]),
         ]);
 
         const srtPath = path.join(outDir, `captions_${clipIds[i]}.srt`);
@@ -103,6 +104,7 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
         await clipManagerService.updateClipComplete(clipIds[i], teamId, {
           clipPath: clipS3Key,
           blankVideoPath: blankS3Key,
+          watermarkedClipPath: watermarkedS3Key,
           srtPath: srtS3Key,
           captionsData: result.captionsData,
           sourceVideoPath: thumbnailS3Key,
@@ -132,6 +134,7 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
 
         if (fs.existsSync(result.finalPath)) fs.unlinkSync(result.finalPath);
         if (fs.existsSync(result.blankPath)) fs.unlinkSync(result.blankPath);
+        if (fs.existsSync(result.watermarkedPath)) fs.unlinkSync(result.watermarkedPath);
       })
     );
 

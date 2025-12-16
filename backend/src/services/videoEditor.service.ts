@@ -57,7 +57,7 @@ export const compressVideoForUpload = async (
       ffmpeg(inputPath)
         .outputOptions([
           "-c:v libx264",
-          "-preset fast",
+          "-preset ultrafast",
           `-b:v ${TARGET_BITRATE}k`,
           `-maxrate ${TARGET_BITRATE * 1.5}k`,
           `-bufsize ${TARGET_BITRATE * 2}k`,
@@ -360,6 +360,132 @@ export const addTextOverlayAtPosition = async (
     });
   } catch (err) {
     if (fs.existsSync(textImagePath)) fs.unlinkSync(textImagePath);
+    throw err;
+  }
+};
+
+export const addPreviewWatermark = async (
+  inputPath: string,
+  outputPath: string
+): Promise<string> => {
+  const watermarkImagePath = path.join(
+    path.dirname(outputPath),
+    `watermark_${Date.now()}.png`
+  );
+
+  try {
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1080, height: 1920, deviceScaleFactor: 1 });
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@900&display=swap" rel="stylesheet">
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body {
+              width: 1080px;
+              height: 1920px;
+              background: transparent;
+              overflow: hidden;
+              position: relative;
+            }
+            .watermark-container {
+              position: absolute;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%) rotate(-30deg);
+              display: flex;
+              flex-direction: column;
+              gap: 120px;
+              align-items: center;
+            }
+            .watermark-row {
+              display: flex;
+              gap: 100px;
+              white-space: nowrap;
+            }
+            .watermark-text {
+              font-size: 72px;
+              font-weight: 900;
+              font-family: 'Montserrat', sans-serif;
+              color: rgba(255, 255, 255, 0.35);
+              text-transform: uppercase;
+              letter-spacing: 8px;
+              -webkit-text-stroke: 2px rgba(0, 0, 0, 0.2);
+              paint-order: stroke fill;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="watermark-container">
+            <div class="watermark-row">
+              <span class="watermark-text">PREVIEW</span>
+              <span class="watermark-text">PREVIEW</span>
+              <span class="watermark-text">PREVIEW</span>
+            </div>
+            <div class="watermark-row">
+              <span class="watermark-text">PREVIEW</span>
+              <span class="watermark-text">PREVIEW</span>
+              <span class="watermark-text">PREVIEW</span>
+            </div>
+            <div class="watermark-row">
+              <span class="watermark-text">PREVIEW</span>
+              <span class="watermark-text">PREVIEW</span>
+              <span class="watermark-text">PREVIEW</span>
+            </div>
+            <div class="watermark-row">
+              <span class="watermark-text">PREVIEW</span>
+              <span class="watermark-text">PREVIEW</span>
+              <span class="watermark-text">PREVIEW</span>
+            </div>
+            <div class="watermark-row">
+              <span class="watermark-text">PREVIEW</span>
+              <span class="watermark-text">PREVIEW</span>
+              <span class="watermark-text">PREVIEW</span>
+            </div>
+            <div class="watermark-row">
+              <span class="watermark-text">PREVIEW</span>
+              <span class="watermark-text">PREVIEW</span>
+              <span class="watermark-text">PREVIEW</span>
+            </div>
+            <div class="watermark-row">
+              <span class="watermark-text">PREVIEW</span>
+              <span class="watermark-text">PREVIEW</span>
+              <span class="watermark-text">PREVIEW</span>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    await page.setContent(htmlContent);
+    await page.screenshot({ path: watermarkImagePath, type: 'png', omitBackground: true });
+    await browser.close();
+
+    return new Promise<string>((resolve, reject) => {
+      ffmpeg(inputPath)
+        .input(watermarkImagePath)
+        .complexFilter([`overlay=0:0`])
+        .outputOptions(["-c:v libx264", "-preset ultrafast", "-crf 23", "-c:a copy"])
+        .save(outputPath)
+        .on("end", () => {
+          if (fs.existsSync(watermarkImagePath)) fs.unlinkSync(watermarkImagePath);
+          resolve(outputPath);
+        })
+        .on("error", (err) => {
+          if (fs.existsSync(watermarkImagePath)) fs.unlinkSync(watermarkImagePath);
+          reject(err);
+        });
+    });
+  } catch (err) {
+    if (fs.existsSync(watermarkImagePath)) fs.unlinkSync(watermarkImagePath);
     throw err;
   }
 };

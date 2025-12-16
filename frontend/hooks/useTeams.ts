@@ -1,15 +1,17 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAtom } from "jotai";
-import { userTeamsAtom, selectedTeamAtom } from "@/store/auth";
+import { userTeamsAtom, selectedTeamAtom, defaultTeamIdAtom } from "@/store/auth";
 import { teamAPI, Team } from "@/api/team";
 
 export function useTeams() {
   const [teams, setTeams] = useAtom(userTeamsAtom);
   const [selectedTeam, setSelectedTeam] = useAtom(selectedTeamAtom);
-  const [isLoading, setIsLoading] = useState(false);
+  const [defaultTeamId, setDefaultTeamId] = useAtom(defaultTeamIdAtom);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const hasAppliedDefault = useRef(false);
 
   const fetchTeams = useCallback(async () => {
     if (typeof window === "undefined") return;
@@ -31,16 +33,33 @@ export function useTeams() {
         return;
       }
 
-      if (selectedTeam) {
-        const teamStillExists = fetchedTeams.find(t => t.id === selectedTeam.id);
+      // Read defaultTeamId directly from localStorage for immediate access
+      const storedDefaultId = localStorage.getItem("defaultTeamId");
+      const parsedDefaultId = storedDefaultId ? JSON.parse(storedDefaultId) : null;
+
+      if (parsedDefaultId) {
+        const defaultTeam = fetchedTeams.find(t => t.id === parsedDefaultId);
+        if (defaultTeam) {
+          setSelectedTeam(defaultTeam);
+          hasAppliedDefault.current = true;
+          return;
+        }
+      }
+
+      // Check if current selectedTeam still exists
+      const storedSelectedTeam = localStorage.getItem("selectedTeam");
+      const parsedSelectedTeam = storedSelectedTeam ? JSON.parse(storedSelectedTeam) : null;
+
+      if (parsedSelectedTeam) {
+        const teamStillExists = fetchedTeams.find(t => t.id === parsedSelectedTeam.id);
         if (teamStillExists) {
           setSelectedTeam(teamStillExists);
-        } else {
-          setSelectedTeam(fetchedTeams[fetchedTeams.length - 1]);
+          return;
         }
-      } else {
-        setSelectedTeam(fetchedTeams[fetchedTeams.length - 1]);
       }
+
+      // Fallback to last team
+      setSelectedTeam(fetchedTeams[fetchedTeams.length - 1]);
     } catch (err: any) {
       setError(err.message || "Failed to fetch teams");
       console.error("Error fetching teams:", err);
@@ -64,33 +83,34 @@ export function useTeams() {
     [setSelectedTeam]
   );
 
-  const fetchDefaultTeam = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const defaultTeam = await teamAPI.getDefaultTeam();
-      setSelectedTeam(defaultTeam);
-      return defaultTeam;
-    } catch (err: any) {
-      setError(err.message || "Failed to fetch default team");
-      console.error("Error fetching default team:", err);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [setSelectedTeam]);
+  const setAsDefaultTeam = useCallback((teamId: number | null) => {
+    setDefaultTeamId(teamId);
+  }, [setDefaultTeamId]);
 
   useEffect(() => {
     fetchTeams();
   }, []);
 
+  // Handle default team changes after initial load
+  useEffect(() => {
+    if (hasAppliedDefault.current) return;
+    if (!defaultTeamId || teams.length === 0) return;
+
+    const defaultTeam = teams.find(t => t.id === defaultTeamId);
+    if (defaultTeam && (!selectedTeam || selectedTeam.id !== defaultTeamId)) {
+      setSelectedTeam(defaultTeam);
+      hasAppliedDefault.current = true;
+    }
+  }, [defaultTeamId, teams, selectedTeam, setSelectedTeam]);
+
   return {
     teams,
     selectedTeam,
+    defaultTeamId,
     isLoading,
     error,
     fetchTeams,
     selectTeam,
-    fetchDefaultTeam,
+    setAsDefaultTeam,
   };
 }

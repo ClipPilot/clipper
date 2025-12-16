@@ -15,6 +15,7 @@ export interface Clip {
   folder_id?: number | null;
   clip_path?: string;
   blank_video_path?: string;
+  watermarked_clip_path?: string;
   srt_path?: string;
   captions_data?: CaptionEntry[];
   source_video_path?: string;
@@ -24,6 +25,7 @@ export interface Clip {
   prompt?: string;
   message?: string;
   status: string;
+  saved: boolean;
   error_message?: string;
   created_at: string;
   updated_at: string;
@@ -31,6 +33,7 @@ export interface Clip {
   sourceVideoUrl?: string;
   blankVideoUrl?: string;
   title?: string;
+  raw_video_id?: number | null;
 }
 
 export interface Folder {
@@ -299,6 +302,62 @@ class ClipsAPI {
     }
 
     return response.json();
+  }
+
+  async saveClip(teamId: number, clipId: number): Promise<{ clip: Clip; usage: any }> {
+    const response = await apiFetch(
+      `${API_URL}/clip-video/teams/${teamId}/clips/${clipId}/save`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to save clip");
+    }
+
+    return response.json();
+  }
+
+  async getUnsavedClips(teamId: number): Promise<Clip[]> {
+    const response = await apiFetch(
+      `${API_URL}/clip-video/teams/${teamId}/clips/unsaved`,
+      {
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch unsaved clips");
+    }
+
+    const data = await response.json();
+    return data.clips;
+  }
+
+  async getSavedClips(
+    teamId: number,
+    limit: number = 20,
+    offset: number = 0
+  ): Promise<{ clips: Clip[]; hasMore: boolean }> {
+    const response = await apiFetch(
+      `${API_URL}/clip-video/teams/${teamId}/clips/saved?limit=${limit}&offset=${offset}`,
+      {
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch saved clips");
+    }
+
+    const data = await response.json();
+    return {
+      clips: data.clips,
+      hasMore: data.pagination?.hasMore ?? data.clips.length === limit,
+    };
   }
 }
 

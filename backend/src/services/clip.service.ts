@@ -1,4 +1,4 @@
-import { cutClip, mergeClips, addTextOverlay, addTextOverlayAtPosition } from "./videoEditor.service";
+import { cutClip, mergeClips, addTextOverlay, addTextOverlayAtPosition, addPreviewWatermark } from "./videoEditor.service";
 import path from "path";
 import fs from "fs";
 import { ClipSuggestions } from "../types/ai.types";
@@ -23,6 +23,7 @@ export interface CaptionEntry {
 export interface ClipResult {
   finalPath: string;
   blankPath: string;
+  watermarkedPath: string;
   captionsData: CaptionEntry[];
   srtContent: string;
 }
@@ -136,6 +137,9 @@ export const createCombinedClipService = async (
     fs.copyFileSync(mergedPath, finalPath);
   }
 
+  const watermarkedPath = path.join(outDir, `watermarked_${videoIndex}.mp4`);
+  await addPreviewWatermark(finalPath, watermarkedPath);
+
   tempFiles.push(mergedPath);
   tempFiles.forEach((file) => {
     if (fs.existsSync(file)) {
@@ -143,7 +147,7 @@ export const createCombinedClipService = async (
     }
   });
 
-  return { finalPath, blankPath, captionsData, srtContent };
+  return { finalPath, blankPath, watermarkedPath, captionsData, srtContent };
 };
 
 const processWithConcurrency = async <T, R>(

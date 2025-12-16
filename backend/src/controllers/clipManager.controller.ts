@@ -2,7 +2,9 @@ import { Request, Response } from "express";
 import { clipManagerService } from "../services/clipManager.service";
 import { s3Service } from "../services/s3.service";
 import { sqsService } from "../services/sqs.service";
+import { teamService } from "../services/team.service";
 import { AuthRequest } from "../middleware/auth.middleware";
+import { getTeamUsage } from "../middleware/subscription.middleware";
 
 export class ClipManagerController {
   async getClips(req: Request, res: Response) {
@@ -312,10 +314,8 @@ export class ClipManagerController {
         return res.status(400).json({ error: "No blank video available for this clip" });
       }
 
-      // Mark clip as processing
       await clipManagerService.updateClipStatus(clipId, teamId, "pending");
 
-      // Send job to SQS for async processing
       const userId = req.user?.dbUserId || 0;
       const messageId = await sqsService.sendTextOverlayJob({
         clipId,
@@ -339,6 +339,155 @@ export class ClipManagerController {
       console.error("Update text overlay error:", error);
       return res.status(500).json({
         error: error instanceof Error ? error.message : "Failed to queue text overlay",
+      });
+    }
+  }
+
+  async saveClip(req: AuthRequest, res: Response) {
+    try {
+      const clipId = parseInt(req.params.clipId);
+      const teamId = parseInt(req.params.teamId);
+
+      if (isNaN(clipId) || isNaN(teamId)) {
+        return res.status(400).json({ error: "Invalid clip ID or team ID" });
+      }
+
+      const clip = await clipManagerService.getClipById(clipId, teamId);
+
+      if (clip.saved) {
+        return res.status(400).json({ error: "Clip is already saved" });
+      }
+
+      if (clip.status !== "completed") {
+        return res.status(400).json({ error: "Can only save completed clips" });
+      }
+
+      const usage = await getTeamUsage(teamId);
+      if (!usage) {
+        return res.status(404).json({ error: "Team or usage stats not found" });
+      }
+
+      if (usage.remaining <= 0) {
+        return res.status(403).json({
+          error: "Clip limit reached",
+          code: "CLIP_LIMIT_REACHED",
+          usage: {
+            clipsCreated: usage.clipsCreated,
+            limit: usage.limit,
+            remaining: 0,
+            resetsDate: usage.resetsDate,
+            plan: usage.plan,
+          },
+        });
+      }
+
+      await clipManagerService.saveClip(clipId, teamId);
+      await teamService.incrementTeamUsage(teamId, 1);
+
+      const updatedUsage = await getTeamUsage(teamId);
+
+      let clipUrl: string | null = null;
+      if (clip.clip_path) {
+        clipUrl = await s3Service.getPresignedUrl(clip.clip_path);
+      }
+
+      return res.status(200).json({
+        message: "Clip saved successfully",
+        clip: {
+          ...clip,
+          saved: true,
+          clipUrl,
+        },
+        usage: updatedUsage,
+      });
+    } catch (error) {
+      console.error("Save clip error:", error);
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to save clip",
+      });
+    }
+  }
+
+  async getUnsavedClips(req: Request, res: Response) {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      if (isNaN(teamId)) {
+        return res.status(400).json({ error: "Invalid team ID" });
+      }
+
+      const clips = await clipManagerService.getUnsavedClipsByTeam(teamId);
+
+      const watermarkedKeys = clips
+        .filter(clip => clip.watermarked_clip_path)
+        .map(clip => clip.watermarked_clip_path!);
+
+      const thumbnailKeys = clips
+        .filter(clip => clip.source_video_path)
+        .map(clip => clip.source_video_path!);
+
+      const allKeys = [...new Set([...watermarkedKeys, ...thumbnailKeys])];
+      const presignedUrls = await s3Service.getMultiplePresignedUrls(allKeys);
+
+      const clipsWithUrls = clips.map(clip => ({
+        ...clip,
+        clipUrl: clip.watermarked_clip_path ? presignedUrls[clip.watermarked_clip_path] : null,
+        sourceVideoUrl: clip.source_video_path ? presignedUrls[clip.source_video_path] : null,
+      }));
+
+      return res.status(200).json({ clips: clipsWithUrls });
+    } catch (error) {
+      console.error("Get unsaved clips error:", error);
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to get unsaved clips",
+      });
+    }
+  }
+
+  async getSavedClips(req: Request, res: Response) {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      if (isNaN(teamId)) {
+        return res.status(400).json({ error: "Invalid team ID" });
+      }
+
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
+      const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
+
+      if (limit > 100) {
+        return res.status(400).json({ error: "Limit cannot exceed 100" });
+      }
+
+      const clips = await clipManagerService.getSavedUnorganizedClips(teamId, limit, offset);
+
+      const clipKeys = clips
+        .filter(clip => clip.clip_path)
+        .map(clip => clip.clip_path!);
+
+      const thumbnailKeys = clips
+        .filter(clip => clip.source_video_path)
+        .map(clip => clip.source_video_path!);
+
+      const allKeys = [...new Set([...clipKeys, ...thumbnailKeys])];
+      const presignedUrls = await s3Service.getMultiplePresignedUrls(allKeys);
+
+      const clipsWithUrls = clips.map(clip => ({
+        ...clip,
+        clipUrl: clip.clip_path ? presignedUrls[clip.clip_path] : null,
+        sourceVideoUrl: clip.source_video_path ? presignedUrls[clip.source_video_path] : null,
+      }));
+
+      return res.status(200).json({
+        clips: clipsWithUrls,
+        pagination: {
+          limit,
+          offset,
+          hasMore: clips.length === limit,
+        },
+      });
+    } catch (error) {
+      console.error("Get saved clips error:", error);
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to get saved clips",
       });
     }
   }

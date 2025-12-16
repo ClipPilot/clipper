@@ -1,4 +1,13 @@
-import { S3Client, GetObjectCommand, DeleteObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  GetObjectCommand,
+  DeleteObjectCommand,
+  PutObjectCommand,
+  CreateMultipartUploadCommand,
+  UploadPartCommand,
+  CompleteMultipartUploadCommand,
+  AbortMultipartUploadCommand,
+} from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import fs from "fs";
@@ -111,6 +120,18 @@ class S3Service {
     }
   }
 
+  async uploadWatermarkedClip(filePath: string, teamId: number, clipId: number): Promise<string> {
+    try {
+      const fileName = `${teamId}/${clipId}_watermarked_${Date.now()}.mp4`;
+      const key = `watermarked-clips/${fileName}`;
+
+      return await this.multipartUpload(filePath, key, "video/mp4");
+    } catch (error) {
+      console.error("Error uploading watermarked clip to S3:", error);
+      throw new Error(`Failed to upload watermarked clip to S3: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+  }
+
   async uploadSrtFile(filePath: string, teamId: number, clipId: number): Promise<string> {
     try {
       const fileName = `${teamId}/${clipId}_${Date.now()}.srt`;
@@ -195,6 +216,84 @@ class S3Service {
     }
 
     return urls;
+  }
+
+  async initiateMultipartUpload(
+    teamId: number,
+    fileName: string,
+    contentType: string
+  ): Promise<{ uploadId: string; s3Key: string }> {
+    const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const s3Key = `${RAW_VIDEOS_FOLDER}/${teamId}/${Date.now()}_${sanitizedFileName}`;
+
+    const command = new CreateMultipartUploadCommand({
+      Bucket: BUCKET_NAME,
+      Key: s3Key,
+      ContentType: contentType,
+    });
+
+    const response = await s3Client.send(command);
+
+    if (!response.UploadId) {
+      throw new Error("Failed to initiate multipart upload");
+    }
+
+    return { uploadId: response.UploadId, s3Key };
+  }
+
+  async getPresignedPartUrls(
+    s3Key: string,
+    uploadId: string,
+    partNumbers: number[],
+    expiresIn: number = 3600
+  ): Promise<{ partNumber: number; uploadUrl: string }[]> {
+    const urls = await Promise.all(
+      partNumbers.map(async (partNumber) => {
+        const command = new UploadPartCommand({
+          Bucket: BUCKET_NAME,
+          Key: s3Key,
+          UploadId: uploadId,
+          PartNumber: partNumber,
+        });
+
+        const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn });
+        return { partNumber, uploadUrl };
+      })
+    );
+
+    return urls;
+  }
+
+  async completeMultipartUpload(
+    s3Key: string,
+    uploadId: string,
+    parts: { partNumber: number; etag: string }[]
+  ): Promise<void> {
+    const command = new CompleteMultipartUploadCommand({
+      Bucket: BUCKET_NAME,
+      Key: s3Key,
+      UploadId: uploadId,
+      MultipartUpload: {
+        Parts: parts
+          .sort((a, b) => a.partNumber - b.partNumber)
+          .map((part) => ({
+            PartNumber: part.partNumber,
+            ETag: part.etag,
+          })),
+      },
+    });
+
+    await s3Client.send(command);
+  }
+
+  async abortMultipartUpload(s3Key: string, uploadId: string): Promise<void> {
+    const command = new AbortMultipartUploadCommand({
+      Bucket: BUCKET_NAME,
+      Key: s3Key,
+      UploadId: uploadId,
+    });
+
+    await s3Client.send(command);
   }
 }
 

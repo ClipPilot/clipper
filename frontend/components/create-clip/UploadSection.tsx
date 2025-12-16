@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Button, Card, CardBody, Progress } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { videoAPI, UploadProgress } from "@/api/video";
+import { videoAPI, UploadProgress, MultipartUploadResponse } from "@/api/video";
 
 interface UploadSectionProps {
   teamId: number;
@@ -13,17 +13,27 @@ interface UploadSectionProps {
   disabledReason?: string;
 }
 
+const MULTIPART_THRESHOLD = 50 * 1024 * 1024; // 50MB
+
 const formatTime = (seconds: number): string => {
   if (seconds < 60) return `${Math.round(seconds)}s`;
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`;
+  if (seconds < 3600)
+    return `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`;
   return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
 };
 
 const formatBytes = (bytes: number): string => {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes < 1024 * 1024 * 1024)
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+};
+
+const formatSpeed = (bytesPerSecond: number): string => {
+  if (bytesPerSecond < 1024 * 1024)
+    return `${(bytesPerSecond / 1024).toFixed(1)} KB/s`;
+  return `${(bytesPerSecond / (1024 * 1024)).toFixed(1)} MB/s`;
 };
 
 export const UploadSection: React.FC<UploadSectionProps> = ({
@@ -36,6 +46,10 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState<UploadProgress | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadType, setUploadType] = useState<"single" | "multipart">(
+    "single"
+  );
+  const multipartDataRef = useRef<MultipartUploadResponse | null>(null);
 
   const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024;
 
@@ -57,11 +71,19 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
     if (!file) return;
 
     if (file.size > MAX_FILE_SIZE) {
-      onError(`File size must be less than 2GB. Your file is ${formatBytes(file.size)}`);
+      onError(
+        `File size must be less than 2GB. Your file is ${formatBytes(file.size)}`
+      );
       return;
     }
 
-    const validTypes = ["video/mp4", "video/quicktime", "video/x-msvideo", "video/x-matroska", "video/webm"];
+    const validTypes = [
+      "video/mp4",
+      "video/quicktime",
+      "video/x-msvideo",
+      "video/x-matroska",
+      "video/webm",
+    ];
     if (!validTypes.includes(file.type)) {
       onError("Please upload a valid video file (MP4, MOV, AVI, MKV, WebM)");
       return;
@@ -71,21 +93,65 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
     setIsUploading(true);
     setProgress(null);
 
-    try {
-      const { uploadUrl, s3Key } = await videoAPI.getPresignedUploadUrl(
-        teamId,
-        file.name,
-        file.type,
-        file.size
-      );
+    const useMultipart = file.size > MULTIPART_THRESHOLD;
+    setUploadType(useMultipart ? "multipart" : "single");
 
-      await videoAPI.uploadToS3(uploadUrl, file, (uploadProgress) => {
-        setProgress(uploadProgress);
-      });
+    try {
+      let s3Key: string;
+
+      if (useMultipart) {
+        const multipartData = await videoAPI.initiateMultipartUpload(
+          teamId,
+          file.name,
+          file.type,
+          file.size
+        );
+        multipartDataRef.current = multipartData;
+        s3Key = multipartData.s3Key;
+
+        const parts = await videoAPI.uploadMultipart(
+          file,
+          multipartData,
+          (uploadProgress) => setProgress(uploadProgress),
+          4
+        );
+
+        await videoAPI.completeMultipartUpload(
+          s3Key,
+          multipartData.uploadId,
+          parts
+        );
+        multipartDataRef.current = null;
+      } else {
+        const { uploadUrl, s3Key: key } = await videoAPI.getPresignedUploadUrl(
+          teamId,
+          file.name,
+          file.type,
+          file.size
+        );
+        s3Key = key;
+
+        await videoAPI.uploadToS3(uploadUrl, file, (uploadProgress) => {
+          setProgress(uploadProgress);
+        });
+      }
 
       onUploadComplete(s3Key, file.name, file.size);
     } catch (err: any) {
       console.error("Upload error:", err);
+
+      if (multipartDataRef.current) {
+        try {
+          await videoAPI.abortMultipartUpload(
+            multipartDataRef.current.s3Key,
+            multipartDataRef.current.uploadId
+          );
+        } catch (abortErr) {
+          console.error("Failed to abort multipart upload:", abortErr);
+        }
+        multipartDataRef.current = null;
+      }
+
       onError(err.message || "Failed to upload video");
       setIsUploading(false);
       setSelectedFile(null);
@@ -100,14 +166,21 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
           {isUploading ? (
             <>
               <div className="w-full mb-4 p-3 rounded-lg bg-warning-500/10 border border-warning-500/20 flex items-center gap-2">
-                <Icon icon="solar:danger-triangle-bold" className="text-warning-500 flex-shrink-0" width={20} />
+                <Icon
+                  icon="solar:danger-triangle-bold"
+                  className="text-warning-500 flex-shrink-0"
+                  width={20}
+                />
                 <p className="text-sm text-warning-500">
                   Do not leave this page while uploading
                 </p>
               </div>
 
               <div className="w-20 h-20 bg-accent-400/10 rounded-full flex items-center justify-center">
-                <Icon icon="solar:cloud-upload-bold-duotone" className="text-4xl text-accent-400 animate-pulse" />
+                <Icon
+                  icon="solar:cloud-upload-bold-duotone"
+                  className="text-4xl text-accent-400 animate-pulse"
+                />
               </div>
 
               <div className="text-center">
@@ -131,10 +204,23 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
 
                 <div className="flex justify-between text-sm text-text-secondary">
                   <span>
-                    {progress ? `${formatBytes(progress.loaded)} / ${formatBytes(progress.total)}` : "Starting..."}
+                    {progress
+                      ? `${formatBytes(progress.loaded)} / ${formatBytes(progress.total)}`
+                      : "Starting..."}
                   </span>
                   <span>
-                    {progress?.remainingTime !== null && progress?.remainingTime !== undefined
+                    {progress?.speed ? formatSpeed(progress.speed) : ""}
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs text-text-tertiary mt-1">
+                  <span>
+                    {uploadType === "multipart"
+                      ? "Fast Upload"
+                      : "Standard upload"}
+                  </span>
+                  <span>
+                    {progress?.remainingTime !== null &&
+                    progress?.remainingTime !== undefined
                       ? `${formatTime(progress.remainingTime)} remaining`
                       : "Calculating..."}
                   </span>
@@ -144,7 +230,10 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
           ) : isDisabled ? (
             <>
               <div className="w-20 h-20 bg-surface-elevated rounded-full flex items-center justify-center">
-                <Icon icon="solar:lock-bold-duotone" className="text-4xl text-text-tertiary" />
+                <Icon
+                  icon="solar:lock-bold-duotone"
+                  className="text-4xl text-text-tertiary"
+                />
               </div>
 
               <div className="text-center">
@@ -160,7 +249,9 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                 size="lg"
                 color="primary"
                 isDisabled
-                startContent={<Icon icon="solar:upload-bold" className="text-xl" />}
+                startContent={
+                  <Icon icon="solar:upload-bold" className="text-xl" />
+                }
                 className="px-8 opacity-50"
               >
                 Choose Video File
@@ -169,7 +260,10 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
           ) : (
             <>
               <div className="w-20 h-20 bg-accent-400/10 rounded-full flex items-center justify-center">
-                <Icon icon="solar:videocamera-record-bold-duotone" className="text-4xl text-accent-400" />
+                <Icon
+                  icon="solar:videocamera-record-bold-duotone"
+                  className="text-4xl text-accent-400"
+                />
               </div>
 
               <div className="text-center">
@@ -194,14 +288,19 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                 htmlFor="video-upload"
                 size="lg"
                 color="primary"
-                startContent={<Icon icon="solar:upload-bold" className="text-xl" />}
+                startContent={
+                  <Icon icon="solar:upload-bold" className="text-xl" />
+                }
                 className="cursor-pointer px-8"
               >
                 Choose Video File
               </Button>
 
               <div className="flex items-start gap-2 text-xs text-text-tertiary">
-                <Icon icon="solar:info-circle-outline" className="text-base mt-0.5" />
+                <Icon
+                  icon="solar:info-circle-outline"
+                  className="text-base mt-0.5"
+                />
                 <div>
                   <p>Max size: 2GB</p>
                   <p>Max duration: 3 hours</p>

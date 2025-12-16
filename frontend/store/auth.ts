@@ -46,9 +46,7 @@ export const authStateAtom = atom<AuthState>((get) => ({
 // Team state
 export const userTeamsAtom = atomWithStorage<Team[]>("userTeams", []);
 export const selectedTeamAtom = atomWithStorage<Team | null>("selectedTeam", null);
-
-// Legacy workspace atom (can be removed later)
-export const selectedWorkspaceAtom = atomWithStorage<string>("selectedWorkspace", "personal");
+export const defaultTeamIdAtom = atomWithStorage<number | null>("defaultTeamId", null);
 
 
 

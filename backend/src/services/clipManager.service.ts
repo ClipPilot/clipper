@@ -211,6 +211,7 @@ export class ClipManagerService {
     data: {
       clipPath: string;
       blankVideoPath?: string;
+      watermarkedClipPath?: string;
       srtPath?: string;
       captionsData?: any;
       sourceVideoPath: string;
@@ -227,6 +228,7 @@ export class ClipManagerService {
       .set({
         clip_path: data.clipPath,
         blank_video_path: data.blankVideoPath,
+        watermarked_clip_path: data.watermarkedClipPath,
         srt_path: data.srtPath,
         captions_data: data.captionsData,
         source_video_path: data.sourceVideoPath,
@@ -247,6 +249,58 @@ export class ClipManagerService {
     }
 
     return updatedClip;
+  }
+
+  async saveClip(clipId: number, teamId: number) {
+    const [updatedClip] = await db
+      .update(clips)
+      .set({
+        saved: true,
+        updated_at: new Date(),
+      })
+      .where(and(eq(clips.id, clipId), eq(clips.team_id, teamId)))
+      .returning();
+
+    if (!updatedClip) {
+      throw new Error("Clip not found");
+    }
+
+    return updatedClip;
+  }
+
+  async getUnsavedClipsByTeam(teamId: number) {
+    return await db
+      .select()
+      .from(clips)
+      .where(
+        and(
+          eq(clips.team_id, teamId),
+          eq(clips.status, "completed"),
+          eq(clips.saved, false)
+        )
+      )
+      .orderBy(desc(clips.created_at));
+  }
+
+  async getSavedUnorganizedClips(
+    teamId: number,
+    limit: number = 20,
+    offset: number = 0
+  ) {
+    return await db
+      .select()
+      .from(clips)
+      .where(
+        and(
+          eq(clips.team_id, teamId),
+          eq(clips.status, "completed"),
+          eq(clips.saved, true),
+          isNull(clips.folder_id)
+        )
+      )
+      .orderBy(desc(clips.created_at))
+      .limit(limit)
+      .offset(offset);
   }
 
   async updateClipCaptions(
