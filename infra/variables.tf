@@ -139,3 +139,10 @@ variable "stripe_webhook_secret" {
   type        = string
   sensitive   = true
 }
+
+# Domain Configuration
+variable "api_domain" {
+  description = "Custom domain for API (e.g., api.cuttr.com for prod, api-staging.cuttr.com for staging)"
+  type        = string
+  default     = ""
+}

@@ -9,9 +9,9 @@ terraform {
   }
 
   backend "s3" {
-    bucket = "clipster-terraform-state"
-    key    = "clipster/terraform.tfstate"
-    region = "us-west-2"
+    bucket  = "clipster-terraform-state"
+    key     = "clipster/terraform.tfstate"
+    region  = "us-west-2"
     encrypt = true
   }
 }

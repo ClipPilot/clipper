@@ -20,3 +20,12 @@ supabase_anon_key  = "..."
 github_repository   = "your-username/your-repo"
 github_access_token = "ghp_..."
 amplify_branch      = "main"
+
+# Stripe Configuration
+stripe_secret_key     = "sk_live_..."
+stripe_webhook_secret = "whsec_..."
+
+# Custom Domain (optional - leave empty to use ALB DNS)
+# For prod: api.cuttr.com
+# For staging: api-staging.cuttr.com
+api_domain = ""

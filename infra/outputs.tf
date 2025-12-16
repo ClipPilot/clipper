@@ -37,8 +37,29 @@ output "ecs_service_name" {
 
 
 output "backend_api_url" {
-  description = "Backend API URL (HTTP - add HTTPS later with custom domain)"
-  value       = "http://${aws_lb.backend.dns_name}/api"
+  description = "Backend API URL"
+  value       = var.api_domain != "" ? "https://${var.api_domain}/api" : "http://${aws_lb.backend.dns_name}/api"
+}
+
+# Certificate validation DNS records - add these to GoDaddy
+output "certificate_validation_records" {
+  description = "DNS records to add to GoDaddy for certificate validation"
+  value = var.api_domain != "" ? {
+    for dvo in aws_acm_certificate.backend[0].domain_validation_options : dvo.domain_name => {
+      name  = dvo.resource_record_name
+      type  = dvo.resource_record_type
+      value = dvo.resource_record_value
+    }
+  } : {}
+}
+
+output "api_domain_cname" {
+  description = "CNAME record to add to GoDaddy pointing your domain to the ALB"
+  value = var.api_domain != "" ? {
+    name  = var.api_domain
+    type  = "CNAME"
+    value = aws_lb.backend.dns_name
+  } : null
 }
 
 output "cloudwatch_log_group" {

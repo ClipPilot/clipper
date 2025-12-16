@@ -38,61 +38,68 @@ resource "aws_lb_target_group" "backend" {
   }
 }
 
-# HTTP Listener (no HTTPS for now - add custom domain later)
+# HTTP Listener - redirects to HTTPS when custom domain is configured
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.backend.arn
   port              = "80"
   protocol          = "HTTP"
 
   default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.backend.arn
+    type = var.api_domain != "" ? "redirect" : "forward"
+
+    dynamic "redirect" {
+      for_each = var.api_domain != "" ? [1] : []
+      content {
+        port        = "443"
+        protocol    = "HTTPS"
+        status_code = "HTTP_301"
+      }
+    }
+
+    target_group_arn = var.api_domain == "" ? aws_lb_target_group.backend.arn : null
   }
 }
 
-# HTTPS Listener - Commented out until custom domain is configured
-# Uncomment and configure when you have a domain in GoDaddy
-#
-# resource "aws_lb_listener" "https" {
-#   load_balancer_arn = aws_lb.backend.arn
-#   port              = "443"
-#   protocol          = "HTTPS"
-#   ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
-#   certificate_arn   = aws_acm_certificate.backend.arn
-#
-#   default_action {
-#     type             = "forward"
-#     target_group_arn = aws_lb_target_group.backend.arn
-#   }
-#
-#   depends_on = [aws_acm_certificate_validation.backend]
-# }
+# HTTPS Listener - enabled when custom domain is configured
+resource "aws_lb_listener" "https" {
+  count = var.api_domain != "" ? 1 : 0
 
-# ACM Certificate - Commented out until custom domain is configured
-# To enable:
-# 1. Uncomment this section
-# 2. Update domain_name with your actual domain (e.g., api.yourdomain.com)
-# 3. Run terraform apply
-# 4. Add the DNS validation CNAME records to GoDaddy
-# 5. Wait for validation to complete
-#
-# resource "aws_acm_certificate" "backend" {
-#   domain_name       = "api.${var.project_name}.com"  # Update with your domain
-#   validation_method = "DNS"
-#
-#   lifecycle {
-#     create_before_destroy = true
-#   }
-#
-#   tags = {
-#     Name = "${var.project_name}-cert-${var.environment}"
-#   }
-# }
-#
-# resource "aws_acm_certificate_validation" "backend" {
-#   certificate_arn = aws_acm_certificate.backend.arn
-#
-#   timeouts {
-#     create = "5m"
-#   }
-# }
+  load_balancer_arn = aws_lb.backend.arn
+  port              = "443"
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+  certificate_arn   = aws_acm_certificate.backend[0].arn
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.backend.arn
+  }
+
+  depends_on = [aws_acm_certificate_validation.backend]
+}
+
+# ACM Certificate - created when custom domain is configured
+resource "aws_acm_certificate" "backend" {
+  count = var.api_domain != "" ? 1 : 0
+
+  domain_name       = var.api_domain
+  validation_method = "DNS"
+
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  tags = {
+    Name = "${var.project_name}-cert-${var.environment}"
+  }
+}
+
+resource "aws_acm_certificate_validation" "backend" {
+  count = var.api_domain != "" ? 1 : 0
+
+  certificate_arn = aws_acm_certificate.backend[0].arn
+
+  timeouts {
+    create = "30m"
+  }
+}

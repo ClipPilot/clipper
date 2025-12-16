@@ -14,9 +14,9 @@ resource "aws_sqs_queue" "video_processing_dlq" {
 # Main Video Processing Queue
 resource "aws_sqs_queue" "video_processing" {
   name                       = "${var.project_name}-video-processing-${var.environment}"
-  visibility_timeout_seconds = 900  # 15 minutes - should be longer than max processing time
+  visibility_timeout_seconds = 900   # 15 minutes - should be longer than max processing time
   message_retention_seconds  = 86400 # 1 day
-  receive_wait_time_seconds  = 20   # Long polling
+  receive_wait_time_seconds  = 20    # Long polling
 
   redrive_policy = jsonencode({
     deadLetterTargetArn = aws_sqs_queue.video_processing_dlq.arn

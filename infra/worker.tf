@@ -138,12 +138,12 @@ resource "aws_ecs_service" "worker" {
   capacity_provider_strategy {
     capacity_provider = "FARGATE"
     weight            = 1
-    base              = 1  # Always keep 1 regular Fargate task (reliable)
+    base              = 1 # Always keep 1 regular Fargate task (reliable)
   }
 
   capacity_provider_strategy {
     capacity_provider = "FARGATE_SPOT"
-    weight            = 4  # Prefer Spot for additional tasks (4:1 ratio)
+    weight            = 4 # Prefer Spot for additional tasks (4:1 ratio)
   }
 
   network_configuration {
@@ -181,8 +181,8 @@ resource "aws_appautoscaling_policy" "worker_sqs_scaling" {
 
   target_tracking_scaling_policy_configuration {
     target_value       = var.worker_messages_per_task
-    scale_in_cooldown  = 180  # 3 minutes before scaling down
-    scale_out_cooldown = 30   # 30 seconds before scaling up (fast response)
+    scale_in_cooldown  = 180 # 3 minutes before scaling down
+    scale_out_cooldown = 30  # 30 seconds before scaling up (fast response)
 
     customized_metric_specification {
       metric_name = "ApproximateNumberOfMessagesVisible"

@@ -81,6 +81,9 @@ jobs:
           github_repository   = "${{ github.repository }}"
           github_access_token = "${{ secrets.GH_PAT }}"
           amplify_branch      = "main"
+
+          # Custom Domain
+          api_domain          = "api.cuttr.com"
           EOF
 
       - name: Terraform Plan
@@ -180,6 +183,9 @@ jobs:
           github_repository   = "${{ github.repository }}"
           github_access_token = "${{ secrets.GH_PAT }}"
           amplify_branch      = "main"
+
+          # Custom Domain
+          api_domain          = "api.cuttr.com"
           EOF
 
       - name: Download Terraform Plan
@@ -198,12 +204,30 @@ jobs:
           echo "alb_dns=$(terraform output -raw alb_dns_name)" >> $GITHUB_OUTPUT
           echo "amplify_url=$(terraform output -raw amplify_app_url)" >> $GITHUB_OUTPUT
           echo "s3_bucket=$(terraform output -raw s3_bucket_name)" >> $GITHUB_OUTPUT
+          echo "backend_api_url=$(terraform output -raw backend_api_url)" >> $GITHUB_OUTPUT
 
       - name: Display Deployment Info
         run: |
           echo "🎉 Infrastructure deployed successfully!"
           echo "================================"
-          echo "Backend API: https://${{ steps.outputs.outputs.alb_dns }}/api"
+          echo "Backend API: ${{ steps.outputs.outputs.backend_api_url }}"
           echo "Frontend URL: ${{ steps.outputs.outputs.amplify_url }}"
           echo "S3 Bucket: ${{ steps.outputs.outputs.s3_bucket }}"
+          echo "================================"
+
+      - name: Display DNS Configuration (First time setup)
+        run: |
+          echo ""
+          echo "🌐 DNS CONFIGURATION FOR GODADDY"
+          echo "================================"
+          echo ""
+          echo "📋 Certificate Validation Record (add this FIRST):"
+          terraform output -json certificate_validation_records
+          echo ""
+          echo "📋 Domain CNAME Record (add after certificate validates):"
+          terraform output -json api_domain_cname
+          echo ""
+          echo "================================"
+          echo "After adding DNS records, wait 5-10 mins for validation."
+          echo "Then test: curl https://api.cuttr.com/health"
           echo "================================"

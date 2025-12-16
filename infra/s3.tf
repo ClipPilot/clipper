@@ -81,7 +81,7 @@ resource "aws_s3_bucket_cors_configuration" "videos" {
   cors_rule {
     allowed_headers = ["*"]
     allowed_methods = ["GET", "PUT", "POST", "DELETE", "HEAD"]
-    allowed_origins = ["*"]  # Update with your Amplify domain
+    allowed_origins = ["*"] # Update with your Amplify domain
     expose_headers  = ["ETag"]
     max_age_seconds = 3000
   }

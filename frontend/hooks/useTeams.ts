@@ -33,7 +33,20 @@ export function useTeams() {
         return;
       }
 
-      // Read defaultTeamId directly from localStorage for immediate access
+      // Check if current selectedTeam still exists first - don't override user's active selection
+      const storedSelectedTeam = localStorage.getItem("selectedTeam");
+      const parsedSelectedTeam = storedSelectedTeam ? JSON.parse(storedSelectedTeam) : null;
+
+      if (parsedSelectedTeam) {
+        const teamStillExists = fetchedTeams.find(t => t.id === parsedSelectedTeam.id);
+        if (teamStillExists) {
+          setSelectedTeam(teamStillExists);
+          hasAppliedDefault.current = true;
+          return;
+        }
+      }
+
+      // No stored selection - use default team if set
       const storedDefaultId = localStorage.getItem("defaultTeamId");
       const parsedDefaultId = storedDefaultId ? JSON.parse(storedDefaultId) : null;
 
@@ -46,20 +59,9 @@ export function useTeams() {
         }
       }
 
-      // Check if current selectedTeam still exists
-      const storedSelectedTeam = localStorage.getItem("selectedTeam");
-      const parsedSelectedTeam = storedSelectedTeam ? JSON.parse(storedSelectedTeam) : null;
-
-      if (parsedSelectedTeam) {
-        const teamStillExists = fetchedTeams.find(t => t.id === parsedSelectedTeam.id);
-        if (teamStillExists) {
-          setSelectedTeam(teamStillExists);
-          return;
-        }
-      }
-
       // Fallback to last team
       setSelectedTeam(fetchedTeams[fetchedTeams.length - 1]);
+      hasAppliedDefault.current = true;
     } catch (err: any) {
       setError(err.message || "Failed to fetch teams");
       console.error("Error fetching teams:", err);
@@ -91,13 +93,21 @@ export function useTeams() {
     fetchTeams();
   }, []);
 
-  // Handle default team changes after initial load
+  // Handle default team changes - only apply if no team is currently selected
+  // Don't override user's active selection when they've chosen a different team
   useEffect(() => {
     if (hasAppliedDefault.current) return;
     if (!defaultTeamId || teams.length === 0) return;
 
+    // Only apply default if there's no selected team at all
+    // Don't switch if user has already selected a valid team
+    if (selectedTeam) {
+      hasAppliedDefault.current = true;
+      return;
+    }
+
     const defaultTeam = teams.find(t => t.id === defaultTeamId);
-    if (defaultTeam && (!selectedTeam || selectedTeam.id !== defaultTeamId)) {
+    if (defaultTeam) {
       setSelectedTeam(defaultTeam);
       hasAppliedDefault.current = true;
     }
