@@ -122,7 +122,11 @@ export default function WorkspaceSelector(props: CardProps) {
                 >
                   <div className={cn(
                     "flex items-center justify-center w-10 h-10 rounded-lg",
-                    selectedTeam?.id === team.id ? "bg-accent-400 text-white" : "bg-surface-elevated text-text-tertiary"
+                    teamPlan === "scale"
+                      ? "bg-purple-500 text-white"
+                      : teamPlan === "studio"
+                      ? "bg-accent-400 text-white"
+                      : "bg-blue-500 text-white"
                   )}>
                     <Icon icon={getRoleIcon(team.role)} width={20} />
                   </div>

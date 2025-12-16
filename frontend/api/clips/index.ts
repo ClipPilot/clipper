@@ -61,6 +61,29 @@ class ClipsAPI {
     return data.clips;
   }
 
+  async getCompletedClips(
+    teamId: number,
+    limit: number = 20,
+    offset: number = 0
+  ): Promise<{ clips: Clip[]; hasMore: boolean }> {
+    const response = await apiFetch(
+      `${API_URL}/clip-video/teams/${teamId}/clips/completed?limit=${limit}&offset=${offset}`,
+      {
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch clips");
+    }
+
+    const data = await response.json();
+    return {
+      clips: data.clips,
+      hasMore: data.pagination?.hasMore ?? data.clips.length === limit,
+    };
+  }
+
   async getClip(teamId: number, clipId: number): Promise<Clip> {
     const response = await apiFetch(
       `${API_URL}/clip-video/teams/${teamId}/clips/${clipId}`,

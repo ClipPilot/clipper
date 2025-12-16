@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Link, Spacer, addToast } from "@heroui/react";
+import { Icon } from "@iconify/react";
 
 import { tiers } from "./pricing-tiers";
 import features from "./pricing-tiers-features";
@@ -14,7 +15,7 @@ import { useTeams } from "@/hooks/useTeams";
 import { useUsageStats } from "@/hooks/useUsageStats";
 import { stripeAPI, STRIPE_PRICES } from "@/api/stripe";
 
-export default function PricingPage() {
+function PricingContent() {
   const searchParams = useSearchParams();
   const { selectedTeam, fetchTeams } = useTeams();
   const { usageStats, refetch: refetchUsage } = useUsageStats(selectedTeam?.id);
@@ -141,7 +142,7 @@ export default function PricingPage() {
       <PaidPlanView
         currentPlan={currentPlan as "studio" | "scale"}
         teamName={selectedTeam?.name}
-        usageStats={usageStats}
+        usageStats={usageStats ?? undefined}
         loadingPortal={loadingPortal}
         loadingAddon={loadingTier === currentPlan}
         onManageSubscription={handleManageSubscription}
@@ -181,7 +182,6 @@ export default function PricingPage() {
 
       <Spacer y={12} />
 
-      {/* Mobile/Tablet View */}
       <div className="relative z-10 grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:hidden">
         {tiers.map((tier) => (
           <PricingTierCard
@@ -195,7 +195,6 @@ export default function PricingPage() {
         ))}
       </div>
 
-      {/* Desktop View */}
       <PricingTable
         tiers={tiers}
         features={features}
@@ -220,5 +219,24 @@ export default function PricingPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+function PricingFallback() {
+  return (
+    <div className="flex h-[60vh] items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <Icon icon="solar:loading-circle-bold" className="text-4xl animate-spin text-accent-400" />
+        <p className="text-text-secondary">Loading pricing...</p>
+      </div>
+    </div>
+  );
+}
+
+export default function PricingPage() {
+  return (
+    <Suspense fallback={<PricingFallback />}>
+      <PricingContent />
+    </Suspense>
   );
 }

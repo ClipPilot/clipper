@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button, Card, CardBody, Progress } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { videoAPI, UploadProgress } from "@/api/video";
@@ -38,6 +38,19 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024;
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isUploading) {
+        e.preventDefault();
+        e.returnValue = "Upload in progress. Are you sure you want to leave?";
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isUploading]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -86,6 +99,13 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
         <div className="flex flex-col items-center justify-center space-y-4">
           {isUploading ? (
             <>
+              <div className="w-full mb-4 p-3 rounded-lg bg-warning-500/10 border border-warning-500/20 flex items-center gap-2">
+                <Icon icon="solar:danger-triangle-bold" className="text-warning-500 flex-shrink-0" width={20} />
+                <p className="text-sm text-warning-500">
+                  Do not leave this page while uploading
+                </p>
+              </div>
+
               <div className="w-20 h-20 bg-accent-400/10 rounded-full flex items-center justify-center">
                 <Icon icon="solar:cloud-upload-bold-duotone" className="text-4xl text-accent-400 animate-pulse" />
               </div>

@@ -8,7 +8,6 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    // Check if user has access token
     const accessToken = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
 
     if (accessToken) {

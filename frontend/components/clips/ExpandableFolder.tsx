@@ -1,14 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { Folder, Clip } from "@/api/clips";
+import { Folder, Clip, clipsAPI } from "@/api/clips";
 import { ClipCard } from "./ClipCard";
 
 interface ExpandableFolderProps {
   folder: Folder;
-  clips: Clip[];
+  teamId: number;
+  movedClipIds?: number[];
   onDelete?: (folderId: number) => void;
   onDrop?: (folderId: number, clipId: number) => void;
   onClipDelete?: (clipId: number) => void;
@@ -21,7 +22,8 @@ interface ExpandableFolderProps {
 
 export const ExpandableFolder: React.FC<ExpandableFolderProps> = ({
   folder,
-  clips,
+  teamId,
+  movedClipIds = [],
   onDelete,
   onDrop,
   onClipDelete,
@@ -29,12 +31,48 @@ export const ExpandableFolder: React.FC<ExpandableFolderProps> = ({
   onClipEdit,
   draggedClipId,
   onClipDragStart,
-  onClipDragEnd
+  onClipDragEnd,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [clips, setClips] = useState<Clip[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
+
+  const displayedClips = clips.filter(c => !movedClipIds.includes(c.id));
+  const clipCount = hasLoaded ? displayedClips.length : null;
+
+  const loadClips = useCallback(async () => {
+    if (hasLoaded || isLoading) return;
+
+    setIsLoading(true);
+    try {
+      const folderClips = await clipsAPI.getClipsByFolder(teamId, folder.id);
+      setClips(folderClips);
+      setHasLoaded(true);
+    } catch (error) {
+      console.error("Failed to load folder clips:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [teamId, folder.id, hasLoaded, isLoading]);
+
+  const reloadClips = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const folderClips = await clipsAPI.getClipsByFolder(teamId, folder.id);
+      setClips(folderClips);
+    } catch (error) {
+      console.error("Failed to reload folder clips:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [teamId, folder.id]);
 
   const handleToggle = () => {
+    if (!isExpanded && !hasLoaded) {
+      loadClips();
+    }
     setIsExpanded(!isExpanded);
   };
 
@@ -50,24 +88,28 @@ export const ExpandableFolder: React.FC<ExpandableFolderProps> = ({
     setIsDragOver(false);
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(false);
-    
+
     const clipId = e.dataTransfer.getData("clipId");
+    const sourceFolderId = e.dataTransfer.getData("sourceFolderId");
+
     if (clipId && onDrop) {
-      onDrop(folder.id, parseInt(clipId));
+      const clipIdNum = parseInt(clipId);
+      if (sourceFolderId === String(folder.id)) return;
+      await onDrop(folder.id, clipIdNum);
+      reloadClips();
     }
   };
 
   return (
     <div className="mb-2">
-      {/* Folder Row */}
       <div
         className={`flex items-center gap-3 p-3 rounded-lg transition-all cursor-pointer group ${
-          isDragOver 
-            ? "bg-accent-400/20 border-2 border-accent-400" 
+          isDragOver
+            ? "bg-accent-400/20 border-2 border-accent-400"
             : "hover:bg-surface-elevated border-2 border-transparent"
         }`}
         onClick={handleToggle}
@@ -75,41 +117,35 @@ export const ExpandableFolder: React.FC<ExpandableFolderProps> = ({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        {/* Expand/Collapse Arrow */}
         <div className="flex-shrink-0">
-          <Icon 
+          <Icon
             icon={isExpanded ? "solar:alt-arrow-down-bold" : "solar:alt-arrow-right-bold"}
             className="text-lg text-text-secondary transition-transform"
           />
         </div>
 
-        {/* Folder Icon */}
         <div className="flex-shrink-0">
-          <Icon 
+          <Icon
             icon={isExpanded ? "solar:folder-open-bold-duotone" : "solar:folder-bold-duotone"}
             className="text-3xl transition-colors"
             style={{ color: folder.color || "#3B82F6" }}
           />
         </div>
 
-        {/* Folder Name & Count */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-semibold text-text-primary truncate">
               {folder.name}
             </h3>
-            <span className="text-xs text-text-tertiary">
-              ({clips.length})
-            </span>
+            {clipCount !== null && (
+              <span className="text-xs text-text-tertiary">({clipCount})</span>
+            )}
           </div>
           {folder.message && !isExpanded && (
-            <p className="text-xs text-text-secondary truncate">
-              {folder.message}
-            </p>
+            <p className="text-xs text-text-secondary truncate">{folder.message}</p>
           )}
         </div>
 
-        {/* Actions */}
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           {onDelete && (
             <Button
@@ -126,22 +162,29 @@ export const ExpandableFolder: React.FC<ExpandableFolderProps> = ({
         </div>
       </div>
 
-      {/* Expanded Content */}
       {isExpanded && (
         <div className="ml-12 mt-2 space-y-2">
           {folder.message && (
-            <p className="text-sm text-text-secondary mb-3 px-3">
-              {folder.message}
-            </p>
+            <p className="text-sm text-text-secondary mb-3 px-3">{folder.message}</p>
           )}
-          
-          {clips.length > 0 ? (
+
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Icon
+                icon="solar:loading-circle-bold"
+                className="text-3xl animate-spin text-accent-400"
+              />
+            </div>
+          ) : displayedClips.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {clips.map((clip) => (
+              {displayedClips.map((clip) => (
                 <ClipCard
                   key={clip.id}
                   clip={clip}
-                  onDelete={onClipDelete}
+                  onDelete={onClipDelete ? (clipId) => {
+                    setClips(prev => prev.filter(c => c.id !== clipId));
+                    onClipDelete(clipId);
+                  } : undefined}
                   onView={onClipView ? () => onClipView(clip) : undefined}
                   onEdit={onClipEdit ? () => onClipEdit(clip) : undefined}
                   isDragging={draggedClipId === clip.id}
@@ -163,4 +206,3 @@ export const ExpandableFolder: React.FC<ExpandableFolderProps> = ({
     </div>
   );
 };
-

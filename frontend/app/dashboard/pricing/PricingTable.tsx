@@ -209,13 +209,13 @@ export function PricingTable({
                             <>
                               {value === true ? (
                                 <Icon
-                                  className="mx-auto text-accent-400"
+                                  className="mx-auto text-green-500"
                                   icon="solar:check-circle-bold"
                                   width={22}
                                 />
                               ) : (
                                 <Icon
-                                  className="mx-auto text-text-tertiary/60"
+                                  className="mx-auto text-red-500/70"
                                   icon="solar:close-circle-bold"
                                   width={22}
                                 />

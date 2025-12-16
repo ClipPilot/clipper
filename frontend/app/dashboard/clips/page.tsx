@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAtom } from "jotai";
 import { userAtom, selectedTeamAtom } from "@/store/auth";
@@ -17,54 +17,131 @@ import NewClipsSection from "@/components/clips/NewClipsSection";
 import ClipViewModal from "@/components/clips/ClipViewModal";
 import { useSocket } from "@/hooks/useSocket";
 
+const CLIPS_PER_PAGE = 12;
+
 export default function MyClipsPage() {
   const router = useRouter();
   const [user, setUser] = useAtom(userAtom);
   const [selectedTeam] = useAtom(selectedTeamAtom);
-  const [clips, setClips] = useState<Clip[]>([]);
+  const [pendingClips, setPendingClips] = useState<Clip[]>([]);
+  const [unorganizedClips, setUnorganizedClips] = useState<Clip[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
-  const [folderClips, setFolderClips] = useState<Record<number, Clip[]>>({});
   const [isLoadingClips, setIsLoadingClips] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isLoadingFolders, setIsLoadingFolders] = useState(false);
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedClip, setSelectedClip] = useState<Clip | null>(null);
   const [draggedClipId, setDraggedClipId] = useState<number | null>(null);
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [offset, setOffset] = useState(0);
   const { triggerRefresh } = useUsageStatsRefresh();
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const isDraggingRef = useRef(false);
+  const [movedClipIds, setMovedClipIds] = useState<number[]>([]);
 
-  const loadClips = useCallback(async () => {
+  const loadPendingClips = useCallback(async () => {
+    if (!selectedTeam?.id) return;
+    try {
+      const clips = await clipsAPI.getPendingClips(selectedTeam.id);
+      setPendingClips(clips);
+    } catch (error) {
+      console.error("Failed to load pending clips:", error);
+    }
+  }, [selectedTeam?.id]);
+
+  const loadUnorganizedClips = useCallback(async (reset: boolean = false) => {
     if (!selectedTeam?.id) return;
 
-    if (!hasLoadedOnce) {
+    const currentOffset = reset ? 0 : offset;
+
+    if (reset) {
       setIsLoadingClips(true);
+      setOffset(0);
     }
 
     try {
-      const fetchedClips = await clipsAPI.getClips(selectedTeam.id);
-      setClips(fetchedClips);
+      const { clips, hasMore: moreAvailable } = await clipsAPI.getCompletedClips(
+        selectedTeam.id,
+        CLIPS_PER_PAGE,
+        currentOffset
+      );
 
-      const groupedClips: Record<number, Clip[]> = {};
-      fetchedClips.forEach(clip => {
-        if (clip.folder_id) {
-          if (!groupedClips[clip.folder_id]) {
-            groupedClips[clip.folder_id] = [];
-          }
-          groupedClips[clip.folder_id].push(clip);
-        }
-      });
-      setFolderClips(groupedClips);
-      setHasLoadedOnce(true);
-    } catch (error) {
-      console.error("Failed to load clips:", error);
-    } finally {
-      if (!hasLoadedOnce) {
-        setIsLoadingClips(false);
+      const unorganized = clips.filter(clip => !clip.folder_id);
+
+      if (reset || currentOffset === 0) {
+        setUnorganizedClips(unorganized);
+      } else {
+        setUnorganizedClips(prev => {
+          const existingIds = new Set(prev.map(c => c.id));
+          const newClips = unorganized.filter(c => !existingIds.has(c.id));
+          return [...prev, ...newClips];
+        });
       }
-    }
-  }, [selectedTeam?.id, hasLoadedOnce]);
 
-  useSocket(selectedTeam?.id, loadClips);
+      setHasMore(moreAvailable);
+    } catch (error) {
+      console.error("Failed to load unorganized clips:", error);
+    } finally {
+      setIsLoadingClips(false);
+    }
+  }, [selectedTeam?.id, offset]);
+
+  const loadMoreClips = useCallback(async () => {
+    if (!selectedTeam?.id || isLoadingMore || !hasMore || isDraggingRef.current) return;
+
+    setIsLoadingMore(true);
+    const newOffset = offset + CLIPS_PER_PAGE;
+
+    try {
+      const { clips, hasMore: moreAvailable } = await clipsAPI.getCompletedClips(
+        selectedTeam.id,
+        CLIPS_PER_PAGE,
+        newOffset
+      );
+
+      const unorganized = clips.filter(clip => !clip.folder_id);
+
+      setUnorganizedClips(prev => {
+        const existingIds = new Set(prev.map(c => c.id));
+        const newClips = unorganized.filter(c => !existingIds.has(c.id));
+        return [...prev, ...newClips];
+      });
+
+      setOffset(newOffset);
+      setHasMore(moreAvailable);
+    } catch (error) {
+      console.error("Failed to load more clips:", error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [selectedTeam?.id, isLoadingMore, hasMore, offset]);
+
+  useEffect(() => {
+    const currentRef = loadMoreRef.current;
+    if (!currentRef) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isLoadingMore && !isLoadingClips && !isDraggingRef.current) {
+          loadMoreClips();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(currentRef);
+
+    return () => observer.disconnect();
+  }, [hasMore, isLoadingMore, isLoadingClips, loadMoreClips]);
+
+  const handleSocketUpdate = useCallback(() => {
+    if (isDraggingRef.current) return;
+    loadPendingClips();
+    loadUnorganizedClips(true);
+  }, [loadPendingClips, loadUnorganizedClips]);
+
+  useSocket(selectedTeam?.id, handleSocketUpdate);
 
   useEffect(() => {
     if (!user) {
@@ -89,10 +166,11 @@ export default function MyClipsPage() {
 
   useEffect(() => {
     if (selectedTeam?.id) {
-      loadClips();
+      loadPendingClips();
+      loadUnorganizedClips(true);
       loadFolders();
     }
-  }, [selectedTeam?.id, loadClips]);
+  }, [selectedTeam?.id]);
 
   const loadFolders = async () => {
     if (!selectedTeam?.id) return;
@@ -142,8 +220,8 @@ export default function MyClipsPage() {
 
     try {
       await clipsAPI.deleteClip(selectedTeam.id, clipId);
-      await loadClips();
-      // Trigger usage stats refresh after deleting clip
+      setPendingClips(prev => prev.filter(c => c.id !== clipId));
+      setUnorganizedClips(prev => prev.filter(c => c.id !== clipId));
       triggerRefresh();
     } catch (error) {
       console.error("Failed to delete clip:", error);
@@ -151,9 +229,15 @@ export default function MyClipsPage() {
   };
 
   const handleDragStart = (e: React.DragEvent, clipId: number) => {
+    isDraggingRef.current = true;
     e.dataTransfer.setData("clipId", clipId.toString());
     e.dataTransfer.effectAllowed = "move";
     setDraggedClipId(clipId);
+  };
+
+  const handleDragEnd = () => {
+    isDraggingRef.current = false;
+    setDraggedClipId(null);
   };
 
   const handleDrop = async (folderId: number, clipId: number) => {
@@ -161,27 +245,29 @@ export default function MyClipsPage() {
 
     try {
       await clipsAPI.updateClip(selectedTeam.id, clipId, { folderId });
-      await loadClips();
+      setUnorganizedClips(prev => prev.filter(c => c.id !== clipId));
+      setMovedClipIds(prev => [...prev, clipId]);
     } catch (error) {
       console.error("Failed to move clip to folder:", error);
-    } finally {
-      setDraggedClipId(null);
     }
   };
 
   const handleDropToUnorganized = async (e: React.DragEvent) => {
     e.preventDefault();
-    const clipId = e.dataTransfer.getData("clipId");
+    const clipIdStr = e.dataTransfer.getData("clipId");
 
-    if (!clipId || !selectedTeam?.id) return;
+    if (!clipIdStr || !selectedTeam?.id) return;
+
+    const clipId = parseInt(clipIdStr);
 
     try {
-      await clipsAPI.updateClip(selectedTeam.id, parseInt(clipId), { folderId: null });
-      await loadClips();
+      const updatedClip = await clipsAPI.updateClip(selectedTeam.id, clipId, { folderId: null });
+      setUnorganizedClips(prev => {
+        if (prev.some(c => c.id === clipId)) return prev;
+        return [updatedClip, ...prev];
+      });
     } catch (error) {
       console.error("Failed to move clip to unorganized:", error);
-    } finally {
-      setDraggedClipId(null);
     }
   };
 
@@ -199,21 +285,36 @@ export default function MyClipsPage() {
     router.push(`/dashboard/clips/${clip.id}/edit`);
   };
 
+  const handleMoveClip = async (clipId: number, folderId: number | null) => {
+    if (!selectedTeam?.id) return;
+
+    try {
+      const updatedClip = await clipsAPI.updateClip(selectedTeam.id, clipId, { folderId });
+
+      if (folderId === null) {
+        setUnorganizedClips(prev => {
+          if (prev.some(c => c.id === clipId)) return prev;
+          return [updatedClip, ...prev];
+        });
+      } else {
+        setUnorganizedClips(prev => prev.filter(c => c.id !== clipId));
+        setMovedClipIds(prev => [...prev, clipId]);
+      }
+
+      setIsViewModalOpen(false);
+      setSelectedClip(null);
+    } catch (error) {
+      console.error("Failed to move clip:", error);
+    }
+  };
+
   const twentyMinutesAgo = new Date(Date.now() - 20 * 60 * 1000);
 
-  const pendingClips = clips.filter(clip =>
-    clip.status === "pending" && !clip.folder_id
-  );
-
-  const newClips = clips.filter(clip =>
-    clip.status === "completed" &&
-    !clip.folder_id &&
+  const newClips = unorganizedClips.filter(clip =>
     new Date(clip.created_at) > twentyMinutesAgo
   );
 
-  const unorganizedClips = clips.filter(clip =>
-    !clip.folder_id &&
-    clip.status === "completed" &&
+  const olderUnorganizedClips = unorganizedClips.filter(clip =>
     new Date(clip.created_at) <= twentyMinutesAgo
   );
 
@@ -234,7 +335,6 @@ export default function MyClipsPage() {
   return (
     <div className="min-h-screen bg-surface-dark p-8">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold text-text-primary mb-2">
@@ -252,7 +352,6 @@ export default function MyClipsPage() {
             <span>New Folder</span>
           </Button>
         </div>
-
 
         {isLoadingFolders ? (
           <div className="flex items-center justify-center py-12">
@@ -272,7 +371,8 @@ export default function MyClipsPage() {
                 <ExpandableFolder
                   key={folder.id}
                   folder={folder}
-                  clips={folderClips[folder.id] || []}
+                  teamId={selectedTeam!.id}
+                  movedClipIds={movedClipIds}
                   onDelete={handleDeleteFolder}
                   onDrop={handleDrop}
                   onClipDelete={handleDeleteClip}
@@ -280,12 +380,13 @@ export default function MyClipsPage() {
                   onClipEdit={handleEditClip}
                   draggedClipId={draggedClipId}
                   onClipDragStart={handleDragStart}
-                  onClipDragEnd={() => setDraggedClipId(null)}
+                  onClipDragEnd={handleDragEnd}
                 />
               ))}
             </div>
           </div>
         ) : null}
+
         <PendingClipsSection
           clips={pendingClips}
           onClipClick={(clip: any) => handleViewClip(clip)}
@@ -298,11 +399,9 @@ export default function MyClipsPage() {
           onEditClick={(clip: any) => handleEditClip(clip)}
           draggedClipId={draggedClipId}
           onDragStart={handleDragStart}
-          onDragEnd={() => setDraggedClipId(null)}
+          onDragEnd={handleDragEnd}
         />
 
-
-        {/* Unorganized Clips */}
         <div
           onDrop={handleDropToUnorganized}
           onDragOver={handleDragOver}
@@ -310,7 +409,7 @@ export default function MyClipsPage() {
         >
           <h2 className="text-xl font-bold text-text-primary mb-4 flex items-center gap-2">
             <Icon icon="solar:video-library-bold-duotone" className="text-2xl text-accent-400" />
-            Unorganized Clips {unorganizedClips.length > 0 && `(${unorganizedClips.length})`}
+            Unorganized Clips
           </h2>
           {isLoadingClips ? (
             <div className="flex items-center justify-center py-12">
@@ -319,21 +418,35 @@ export default function MyClipsPage() {
                 className="text-4xl animate-spin text-accent-400"
               />
             </div>
-          ) : unorganizedClips.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {unorganizedClips.map((clip) => (
-                <ClipCard
-                  key={clip.id}
-                  clip={clip}
-                  onDelete={handleDeleteClip}
-                  onView={() => handleViewClip(clip)}
-                  onEdit={() => handleEditClip(clip)}
-                  isDragging={draggedClipId === clip.id}
-                  onDragStart={handleDragStart}
-                  onDragEnd={() => setDraggedClipId(null)}
-                />
-              ))}
-            </div>
+          ) : olderUnorganizedClips.length > 0 ? (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {olderUnorganizedClips.map((clip) => (
+                  <ClipCard
+                    key={clip.id}
+                    clip={clip}
+                    onDelete={handleDeleteClip}
+                    onView={() => handleViewClip(clip)}
+                    onEdit={() => handleEditClip(clip)}
+                    isDragging={draggedClipId === clip.id}
+                    onDragStart={handleDragStart}
+                    onDragEnd={handleDragEnd}
+                  />
+                ))}
+              </div>
+
+              <div ref={loadMoreRef} className="flex justify-center py-8">
+                {isLoadingMore && (
+                  <div className="flex items-center gap-2 text-text-secondary">
+                    <Icon
+                      icon="solar:loading-circle-bold"
+                      className="text-2xl animate-spin text-accent-400"
+                    />
+                    <span>Loading more clips...</span>
+                  </div>
+                )}
+              </div>
+            </>
           ) : (
             <Card className="bg-surface-base border border-border-base">
               <CardBody className="flex flex-col items-center justify-center py-16">
@@ -367,9 +480,10 @@ export default function MyClipsPage() {
             setSelectedClip(null);
           }}
           clip={selectedClip}
+          folders={folders}
+          onMoveToFolder={handleMoveClip}
         />
       )}
     </div>
   );
 }
-

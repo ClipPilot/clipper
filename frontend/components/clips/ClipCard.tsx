@@ -54,10 +54,14 @@ export const ClipCard: React.FC<ClipCardProps> = ({ clip, onDelete, onView, onEd
         <div className="flex items-start gap-3">
           <div className="flex-shrink-0">
             <div className="w-20 sm:w-24 h-36 sm:h-44 rounded-lg overflow-hidden border border-border-base bg-surface-elevated flex items-center justify-center">
-              {clip.sourceVideoUrl ? (
-                // thumbnail image
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={clip.sourceVideoUrl} alt={clip.title || `Clip ${clip.id}`} className="w-full h-full object-cover" />
+              {clip.clipUrl ? (
+                <video
+                  src={clip.clipUrl}
+                  className="w-full h-full object-cover"
+                  muted
+                  playsInline
+                  preload="metadata"
+                />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-surface-dark">
                   <Icon icon="solar:video-frame-play-vertical-bold-duotone" className="text-3xl text-accent-400" />

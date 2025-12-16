@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
   Modal,
   ModalContent,
@@ -10,11 +10,22 @@ import {
   Button,
   Chip,
   Progress,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 
+interface Folder {
+  id: number;
+  name: string;
+  color?: string;
+}
+
 interface Clip {
   id: number;
+  folder_id?: number | null;
   message?: string;
   clip_score?: number;
   clip_metadata?: any;
@@ -32,9 +43,19 @@ interface ClipViewModalProps {
   isOpen: boolean;
   onClose: () => void;
   clip: Clip;
+  folders?: Folder[];
+  onMoveToFolder?: (clipId: number, folderId: number | null) => void;
 }
 
-export default function ClipViewModal({ isOpen, onClose, clip }: ClipViewModalProps) {
+export default function ClipViewModal({
+  isOpen,
+  onClose,
+  clip,
+  folders = [],
+  onMoveToFolder,
+}: ClipViewModalProps) {
+  const [isMoving, setIsMoving] = useState(false);
+
   const getStatusColor = () => {
     switch (clip.status) {
       case "completed":
@@ -72,6 +93,18 @@ export default function ClipViewModal({ isOpen, onClose, clip }: ClipViewModalPr
       console.error("Download failed:", error);
     }
   };
+
+  const handleMove = async (folderId: number | null) => {
+    if (!onMoveToFolder) return;
+    setIsMoving(true);
+    try {
+      await onMoveToFolder(clip.id, folderId);
+    } finally {
+      setIsMoving(false);
+    }
+  };
+
+  const currentFolder = folders.find((f) => f.id === clip.folder_id);
 
   return (
     <Modal
@@ -114,7 +147,6 @@ export default function ClipViewModal({ isOpen, onClose, clip }: ClipViewModalPr
                     src={clip.clipUrl}
                     controls
                     className="max-w-full max-h-[600px] object-contain"
-                    poster={clip.sourceVideoUrl}
                     autoPlay
                   />
                 </div>
@@ -129,6 +161,80 @@ export default function ClipViewModal({ isOpen, onClose, clip }: ClipViewModalPr
             </div>
 
             <div className="space-y-4 overflow-y-auto max-h-[600px]">
+              {onMoveToFolder && folders.length > 0 && (
+                <div className="p-4 rounded-lg bg-surface-elevated">
+                  <h3 className="text-sm font-semibold text-text-secondary mb-3 flex items-center gap-2">
+                    <Icon icon="solar:folder-bold-duotone" className="text-accent-400" />
+                    Organization
+                  </h3>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-text-primary">
+                      {currentFolder ? (
+                        <span className="flex items-center gap-2">
+                          <Icon
+                            icon="solar:folder-bold-duotone"
+                            style={{ color: currentFolder.color || "#3B82F6" }}
+                          />
+                          {currentFolder.name}
+                        </span>
+                      ) : (
+                        "Unorganized"
+                      )}
+                    </span>
+                    <Dropdown>
+                      <DropdownTrigger>
+                        <Button
+                          size="sm"
+                          variant="flat"
+                          isLoading={isMoving}
+                          startContent={!isMoving && <Icon icon="solar:folder-send-bold" />}
+                        >
+                          Move to...
+                        </Button>
+                      </DropdownTrigger>
+                      <DropdownMenu
+                        aria-label="Move to folder"
+                        items={[
+                          ...(clip.folder_id !== null
+                            ? [{ id: "unorganized", name: "Unorganized", color: undefined }]
+                            : []),
+                          ...folders.filter((f) => f.id !== clip.folder_id).map((f) => ({
+                            id: String(f.id),
+                            name: f.name,
+                            color: f.color,
+                          })),
+                        ]}
+                        onAction={(key) => {
+                          if (key === "unorganized") {
+                            handleMove(null);
+                          } else {
+                            handleMove(Number(key));
+                          }
+                        }}
+                      >
+                        {(item) => (
+                          <DropdownItem
+                            key={item.id}
+                            startContent={
+                              item.id === "unorganized" ? (
+                                <Icon icon="solar:inbox-bold-duotone" className="text-text-tertiary" />
+                              ) : (
+                                <Icon
+                                  icon="solar:folder-bold-duotone"
+                                  style={{ color: item.color || "#3B82F6" }}
+                                />
+                              )
+                            }
+                          >
+                            {item.name}
+                          </DropdownItem>
+                        )}
+                      </DropdownMenu>
+                    </Dropdown>
+                  </div>
+                </div>
+              )}
+
               {clip.clip_score !== null && clip.clip_score !== undefined && (
                 <div className="p-4 rounded-lg bg-surface-elevated">
                   <h3 className="text-sm font-semibold text-text-secondary mb-3">Clip Score</h3>
