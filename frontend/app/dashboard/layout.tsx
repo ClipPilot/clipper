@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Sidebar, { SidebarItem } from "@/components/sidebar/sidebar";
 import { useRouter, usePathname } from "next/navigation";
 import {
@@ -26,7 +26,7 @@ import Image from "next/image";
 // import NotificationsCard from "@/components/notifications/notifications-card"; // TODO: Re-enable
 import { UsageStatsProvider } from "@/contexts/UsageStatsContext";
 
-const sidebarItems: SidebarItem[] = [
+const baseSidebarItems: SidebarItem[] = [
   {
     key: "home",
     title: "Home",
@@ -45,13 +45,14 @@ const sidebarItems: SidebarItem[] = [
     icon: "solar:scissors-bold-duotone",
     href: "/dashboard/create-clip",
   },
-  {
-    key: "pricing",
-    title: "Pricing",
-    icon: "solar:wallet-bold-duotone",
-    href: "/dashboard/pricing",
-  },
 ];
+
+const pricingItem: SidebarItem = {
+  key: "pricing",
+  title: "Pricing",
+  icon: "solar:wallet-bold-duotone",
+  href: "/dashboard/pricing",
+};
 
 export default function DashboardLayout({
   children,
@@ -66,6 +67,15 @@ export default function DashboardLayout({
   const {} = useTeams(); // Initialize teams on mount
   const [sidebarWidth, setSidebarWidth] = useState(256);
   const [isResizing, setIsResizing] = useState(false);
+
+  // Only show pricing to owners and managers
+  const canViewPricing = selectedTeam?.role === "owner" || selectedTeam?.role === "manager";
+  const sidebarItems = useMemo(() => {
+    if (canViewPricing) {
+      return [...baseSidebarItems, pricingItem];
+    }
+    return baseSidebarItems;
+  }, [canViewPricing]);
 
   const getTeamIcon = (role?: string) => {
     switch (role) {
@@ -195,6 +205,7 @@ export default function DashboardLayout({
             <Sidebar
               items={sidebarItems}
               defaultSelectedKey={currentKey}
+              canViewPricing={canViewPricing}
               onSelect={(key) => {
                 const item = sidebarItems.find((item) => item.key === key);
                 if (item?.href) {

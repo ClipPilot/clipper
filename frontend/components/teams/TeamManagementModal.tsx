@@ -15,6 +15,7 @@ import {
 import { Icon } from "@iconify/react";
 import { Team, teamAPI } from "@/api/team";
 import TeamMembersList from "./TeamMembersList";
+import TeamInvitesList from "./TeamInvitesList";
 import TeamSettingsCard from "./TeamSettingsCard";
 import InviteMemberModal from "./InviteMemberModal";
 
@@ -134,6 +135,13 @@ export default function TeamManagementModal({
                         </p>
                       )}
                     </div>
+                  )}
+                  {canManage && (
+                    <TeamInvitesList
+                      teamId={team.id}
+                      userRole={team.role}
+                      onInviteUpdated={handleMemberUpdated}
+                    />
                   )}
                   <TeamMembersList
                     teamId={team.id}

@@ -180,7 +180,7 @@ class AuthService {
 
   async resetPassword(email: string) {
     const { error } = await this.supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth`,
+      redirectTo: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/callback`,
     });
 
     if (error) {

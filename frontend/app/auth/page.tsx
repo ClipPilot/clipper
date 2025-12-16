@@ -10,7 +10,6 @@ import Image from "next/image";
 import LoginForm from "@/components/auth/LoginForm";
 import SignUpForm from "@/components/auth/SignUpForm";
 import ForgotPasswordForm from "@/components/auth/ForgotPasswordForm";
-import ResetPasswordForm from "@/components/auth/ResetPasswordForm";
 import EmailConfirmation from "@/components/auth/EmailConfirmation";
 import PasswordResetSent from "@/components/auth/PasswordResetSent";
 import { Icon } from "@iconify/react";
@@ -21,7 +20,6 @@ export default function AuthPage() {
 
   const [isSignUp, setIsSignUp] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
-  const [isResetPassword, setIsResetPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [error, setError] = useState("");
@@ -29,7 +27,21 @@ export default function AuthPage() {
   const [showPasswordResetSent, setShowPasswordResetSent] = useState(false);
   const [signupEmail, setSignupEmail] = useState("");
   const [resetEmail, setResetEmail] = useState("");
-  const [recoveryToken, setRecoveryToken] = useState("");
+  // Check for recovery token in hash and redirect to dedicated page
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash) {
+      const params = new URLSearchParams(hash.substring(1));
+      const type = params.get("type");
+      const accessToken = params.get("access_token");
+
+      if (type === "recovery" && accessToken) {
+        // Redirect to dedicated reset password page with token
+        router.push(`/reset-password#${hash.substring(1)}`);
+        return;
+      }
+    }
+  }, [router]);
 
   // Check if user is already logged in
   useEffect(() => {
@@ -81,25 +93,6 @@ export default function AuthPage() {
 
     checkAuth();
   }, [user, router, setUser]);
-
-  useEffect(() => {
-    const hash = window.location.hash;
-    if (hash) {
-      const params = new URLSearchParams(hash.substring(1));
-      const type = params.get("type");
-      const accessToken = params.get("access_token");
-
-      if (type === "recovery" && accessToken) {
-        setRecoveryToken(accessToken);
-        setIsResetPassword(true);
-        window.history.replaceState(
-          {},
-          document.title,
-          window.location.pathname
-        );
-      }
-    }
-  }, []);
 
   const handleLogin = async (
     email: string,
@@ -162,34 +155,6 @@ export default function AuthPage() {
     }
   };
 
-  const handleResetPassword = async (
-    newPassword: string,
-    confirmPassword: string
-  ) => {
-    setError("");
-
-    if (newPassword !== confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      await authAPI.updatePassword(recoveryToken, newPassword);
-      const response = await authAPI.signIn({
-        email: resetEmail,
-        password: newPassword,
-      });
-      setUser(response.user);
-      router.push("/dashboard");
-    } catch (err: any) {
-      setError(err.message || "Failed to reset password");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const renderForm = () => {
     if (showEmailConfirmation) {
       return (
@@ -211,16 +176,6 @@ export default function AuthPage() {
             setShowPasswordResetSent(false);
             setIsForgotPassword(false);
           }}
-        />
-      );
-    }
-
-    if (isResetPassword) {
-      return (
-        <ResetPasswordForm
-          onSubmit={handleResetPassword}
-          error={error}
-          isLoading={isLoading}
         />
       );
     }

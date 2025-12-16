@@ -17,7 +17,7 @@ import {
 import { eq, and } from "drizzle-orm";
 import { emailNotiService } from "./emailNoti.service";
 
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://platform.cuttr.com";
 
 class StripeService {
   private async getTeamOwner(teamId: number) {
@@ -30,7 +30,9 @@ class StripeService {
       })
       .from(teamMembers)
       .innerJoin(users, eq(teamMembers.user_id, users.id))
-      .where(and(eq(teamMembers.team_id, teamId), eq(teamMembers.role, "owner")))
+      .where(
+        and(eq(teamMembers.team_id, teamId), eq(teamMembers.role, "owner"))
+      )
       .limit(1);
     return owner;
   }
@@ -131,7 +133,10 @@ class StripeService {
   }
 
   async handleSubscriptionCreated(subscription: any): Promise<void> {
-    console.log("handleSubscriptionCreated called with:", JSON.stringify(subscription, null, 2));
+    console.log(
+      "handleSubscriptionCreated called with:",
+      JSON.stringify(subscription, null, 2)
+    );
 
     // Try to get teamId from metadata, or fall back to looking up by customer
     let teamId = parseInt(subscription.metadata?.teamId);
@@ -163,10 +168,15 @@ class StripeService {
 
     // Get dates from subscription items (Stripe puts them there, not at root level)
     const subscriptionItem = subscription.items?.data?.[0];
-    const periodStartTs = subscriptionItem?.current_period_start || subscription.start_date || subscription.billing_cycle_anchor;
+    const periodStartTs =
+      subscriptionItem?.current_period_start ||
+      subscription.start_date ||
+      subscription.billing_cycle_anchor;
     const periodEndTs = subscriptionItem?.current_period_end;
 
-    console.log(`Period timestamps - start: ${periodStartTs} (type: ${typeof periodStartTs}), end: ${periodEndTs} (type: ${typeof periodEndTs})`);
+    console.log(
+      `Period timestamps - start: ${periodStartTs} (type: ${typeof periodStartTs}), end: ${periodEndTs} (type: ${typeof periodEndTs})`
+    );
 
     if (!periodStartTs || !periodEndTs) {
       console.error(`Missing period dates in subscription ${subscription.id}`);
@@ -189,7 +199,9 @@ class StripeService {
 
     // Validate parsed dates
     if (isNaN(periodStart.getTime()) || isNaN(periodEnd.getTime())) {
-      console.error(`Invalid period dates in subscription ${subscription.id}: start=${periodStart}, end=${periodEnd}`);
+      console.error(
+        `Invalid period dates in subscription ${subscription.id}: start=${periodStart}, end=${periodEnd}`
+      );
       return;
     }
 
@@ -291,11 +303,16 @@ class StripeService {
     }
 
     // Get dates from subscription items (Stripe puts them there, not at root level)
-    const periodStartTs = subscriptionItem?.current_period_start || subscription.start_date || subscription.billing_cycle_anchor;
+    const periodStartTs =
+      subscriptionItem?.current_period_start ||
+      subscription.start_date ||
+      subscription.billing_cycle_anchor;
     const periodEndTs = subscriptionItem?.current_period_end;
 
     if (!periodStartTs || !periodEndTs) {
-      console.error(`Missing period dates in subscription update ${subscription.id}`);
+      console.error(
+        `Missing period dates in subscription update ${subscription.id}`
+      );
       return;
     }
 
@@ -317,7 +334,9 @@ class StripeService {
 
     // Validate parsed dates
     if (isNaN(newPeriodStart.getTime()) || isNaN(newPeriodEnd.getTime())) {
-      console.error(`Invalid period dates in subscription update ${subscription.id}`);
+      console.error(
+        `Invalid period dates in subscription update ${subscription.id}`
+      );
       return;
     }
 
@@ -366,7 +385,9 @@ class StripeService {
         .where(eq(usageStats.team_id, existingSub.team_id));
     }
 
-    console.log(`Subscription ${subscription.id} updated for team ${existingSub.team_id}`);
+    console.log(
+      `Subscription ${subscription.id} updated for team ${existingSub.team_id}`
+    );
   }
 
   async handleSubscriptionDeleted(subscription: any): Promise<void> {
@@ -407,11 +428,14 @@ class StripeService {
 
       if (owner && team) {
         const endDate = existingSub.current_period_end
-          ? new Date(existingSub.current_period_end).toLocaleDateString("en-US", {
-              month: "long",
-              day: "numeric",
-              year: "numeric",
-            })
+          ? new Date(existingSub.current_period_end).toLocaleDateString(
+              "en-US",
+              {
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+              }
+            )
           : "soon";
 
         await emailNotiService.sendSubscriptionCancelled(owner.email, {
@@ -516,17 +540,22 @@ class StripeService {
           ? `$${(invoice.amount_paid / 100).toFixed(2)}`
           : "N/A";
         const renewalDate = existingSub.current_period_end
-          ? new Date(existingSub.current_period_end).toLocaleDateString("en-US", {
-              month: "long",
-              day: "numeric",
-              year: "numeric",
-            })
+          ? new Date(existingSub.current_period_end).toLocaleDateString(
+              "en-US",
+              {
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+              }
+            )
           : "N/A";
 
         await emailNotiService.sendSubscriptionRenewal(owner.email, {
           userName: owner.firstName,
           teamName: team.name,
-          planName: existingSub.plan.charAt(0).toUpperCase() + existingSub.plan.slice(1),
+          planName:
+            existingSub.plan.charAt(0).toUpperCase() +
+            existingSub.plan.slice(1),
           amount,
           renewalDate,
           manageUrl: `${FRONTEND_URL}/dashboard/settings`,
@@ -561,11 +590,14 @@ class StripeService {
           ? `$${(invoice.amount_due / 100).toFixed(2)}`
           : "N/A";
         const retryDate = invoice.next_payment_attempt
-          ? new Date(invoice.next_payment_attempt * 1000).toLocaleDateString("en-US", {
-              month: "long",
-              day: "numeric",
-              year: "numeric",
-            })
+          ? new Date(invoice.next_payment_attempt * 1000).toLocaleDateString(
+              "en-US",
+              {
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+              }
+            )
           : "soon";
 
         await emailNotiService.sendPaymentFailed(owner.email, {

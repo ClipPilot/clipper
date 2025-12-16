@@ -147,6 +147,12 @@ variable "api_domain" {
   default     = ""
 }
 
+variable "frontend_url" {
+  description = "Frontend URL (e.g., https://cuttr.com for prod, https://staging.cuttr.com for staging)"
+  type        = string
+  default     = "https://platform.cuttr.com"
+}
+
 variable "resend_api_key" {
   description = "Resend API Key for sending emails"
   type        = string
