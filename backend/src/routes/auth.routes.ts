@@ -282,4 +282,10 @@ router.post(
   authController.updatePassword.bind(authController)
 );
 
+router.patch(
+  "/profile",
+  requireAuth,
+  authController.updateProfile.bind(authController)
+);
+
 export default router;

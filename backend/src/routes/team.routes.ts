@@ -12,6 +12,14 @@ import {
   deleteTeamController,
   createTeamController,
 } from "../controllers/team.controller";
+import {
+  createInviteController,
+  getTeamInvitesController,
+  getInviteByTokenController,
+  acceptInviteController,
+  revokeInviteController,
+  resendInviteController,
+} from "../controllers/teamInvite.controller";
 import { requireAuth } from "../middleware/auth.middleware";
 import { requireActiveSubscription } from "../middleware/subscription.middleware";
 
@@ -379,5 +387,13 @@ router.patch("/:teamId", requireAuth, updateTeamNameController);
  *         description: Only owners can delete team
  */
 router.delete("/:teamId", requireAuth, deleteTeamController);
+
+// Invite routes
+router.get("/invites/:token", getInviteByTokenController);
+router.post("/invites/:token/accept", requireAuth, acceptInviteController);
+router.get("/:teamId/invites", requireAuth, getTeamInvitesController);
+router.post("/:teamId/invites", requireAuth, requireActiveSubscription, createInviteController);
+router.delete("/:teamId/invites/:inviteId", requireAuth, revokeInviteController);
+router.post("/:teamId/invites/:inviteId/resend", requireAuth, resendInviteController);
 
 export default router;

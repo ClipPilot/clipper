@@ -99,6 +99,13 @@
       "when": 1765856000000,
       "tag": "0013_bright_oracle",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1765912000219,
+      "tag": "0014_large_namorita",
+      "breakpoints": true
     }
   ]
 }

@@ -32,6 +32,39 @@ export interface TeamMember {
   joinedAt: string;
 }
 
+export interface TeamInvite {
+  id: number;
+  email: string;
+  role: "owner" | "manager" | "member";
+  status: "pending" | "accepted" | "expired" | "revoked";
+  expiresAt: string;
+  createdAt: string;
+  invitedBy: {
+    id: number;
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
+}
+
+export interface InviteDetails {
+  id: number;
+  email: string;
+  role: "owner" | "manager" | "member";
+  status: "pending" | "accepted" | "expired" | "revoked";
+  expiresAt: string;
+  team: {
+    id: number;
+    name: string;
+    type: string;
+    plan: string;
+  };
+  invitedBy: {
+    firstName: string;
+    lastName: string;
+  };
+}
+
 class TeamAPI {
   async getUserTeams(): Promise<Team[]> {
     const response = await apiFetch(`${API_URL}/teams`, {
@@ -194,6 +227,93 @@ class TeamAPI {
 
     const data = await response.json();
     return data.team;
+  }
+
+  async getTeamInvites(teamId: number): Promise<TeamInvite[]> {
+    const response = await apiFetch(`${API_URL}/teams/${teamId}/invites`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Failed to get invites");
+    }
+
+    const data = await response.json();
+    return data.invites;
+  }
+
+  async createInvite(teamId: number, email: string, role: "manager" | "member" = "member"): Promise<void> {
+    const response = await apiFetch(`${API_URL}/teams/${teamId}/invites`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ email, role }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Failed to send invite");
+    }
+  }
+
+  async revokeInvite(teamId: number, inviteId: number): Promise<void> {
+    const response = await apiFetch(`${API_URL}/teams/${teamId}/invites/${inviteId}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Failed to revoke invite");
+    }
+  }
+
+  async resendInvite(teamId: number, inviteId: number): Promise<void> {
+    const response = await apiFetch(`${API_URL}/teams/${teamId}/invites/${inviteId}/resend`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Failed to resend invite");
+    }
+  }
+
+  async getInviteByToken(token: string): Promise<InviteDetails> {
+    const response = await apiFetch(`${API_URL}/teams/invites/${token}`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Failed to get invite");
+    }
+
+    const data = await response.json();
+    return data.invite;
+  }
+
+  async acceptInvite(token: string): Promise<{ team: Team; role: string }> {
+    const response = await apiFetch(`${API_URL}/teams/invites/${token}/accept`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Failed to accept invite");
+    }
+
+    return await response.json();
   }
 }
 

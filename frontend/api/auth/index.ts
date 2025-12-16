@@ -171,6 +171,23 @@ class AuthAPI {
       }
     }
   }
+
+  async updateProfile(data: { firstName?: string; lastName?: string }): Promise<User> {
+    const response = await apiFetch(`${API_URL}/auth/profile`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error: ErrorResponse = await response.json();
+      throw new Error(error.message || "Failed to update profile");
+    }
+
+    const result = await response.json();
+    return result.user;
+  }
 }
 
 export const authAPI = new AuthAPI();

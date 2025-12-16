@@ -142,6 +142,10 @@ resource "aws_ecs_task_definition" "backend" {
       {
         name      = "STRIPE_WEBHOOK_SECRET"
         valueFrom = aws_secretsmanager_secret.stripe_webhook_secret.arn
+      },
+      {
+        name      = "RESEND_API_KEY"
+        valueFrom = aws_secretsmanager_secret.resend_api_key.arn
       }
     ]
 

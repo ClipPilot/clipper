@@ -11,10 +11,30 @@ import {
   teams,
   subscriptions,
   usageStats,
+  teamMembers,
+  users,
 } from "@clipper/shared-db/src/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
+import { emailNotiService } from "./emailNoti.service";
+
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 
 class StripeService {
+  private async getTeamOwner(teamId: number) {
+    const [owner] = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        firstName: users.first_name,
+        lastName: users.last_name,
+      })
+      .from(teamMembers)
+      .innerJoin(users, eq(teamMembers.user_id, users.id))
+      .where(and(eq(teamMembers.team_id, teamId), eq(teamMembers.role, "owner")))
+      .limit(1);
+    return owner;
+  }
+
   async getOrCreateCustomer(teamId: number, email: string): Promise<string> {
     const [team] = await db
       .select()
@@ -229,6 +249,27 @@ class StripeService {
     console.log(
       `Subscription ${subscription.id} created/updated for team ${teamId}, plan: ${plan}`
     );
+
+    try {
+      const [team] = await db
+        .select()
+        .from(teams)
+        .where(eq(teams.id, teamId))
+        .limit(1);
+      const owner = await this.getTeamOwner(teamId);
+
+      if (owner && team) {
+        await emailNotiService.sendSubscriptionWelcome(owner.email, {
+          userName: owner.firstName,
+          planName: plan.charAt(0).toUpperCase() + plan.slice(1),
+          teamName: team.name,
+          clipsLimit: clipsLimit,
+          dashboardUrl: `${FRONTEND_URL}/dashboard`,
+        });
+      }
+    } catch (emailError) {
+      console.error("Failed to send subscription welcome email:", emailError);
+    }
   }
 
   async handleSubscriptionUpdated(subscription: any): Promise<void> {
@@ -347,8 +388,6 @@ class StripeService {
       .set({ plan: "free", updated_at: new Date() })
       .where(eq(teams.id, existingSub.team_id));
 
-    // Reset to free tier: limit 3, clips_created set to 3 (exhausted)
-    // This means they can't save more clips until they resubscribe
     await db
       .update(usageStats)
       .set({
@@ -357,6 +396,34 @@ class StripeService {
         updated_at: new Date(),
       })
       .where(eq(usageStats.team_id, existingSub.team_id));
+
+    try {
+      const [team] = await db
+        .select()
+        .from(teams)
+        .where(eq(teams.id, existingSub.team_id))
+        .limit(1);
+      const owner = await this.getTeamOwner(existingSub.team_id);
+
+      if (owner && team) {
+        const endDate = existingSub.current_period_end
+          ? new Date(existingSub.current_period_end).toLocaleDateString("en-US", {
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+            })
+          : "soon";
+
+        await emailNotiService.sendSubscriptionCancelled(owner.email, {
+          userName: owner.firstName,
+          teamName: team.name,
+          endDate,
+          reactivateUrl: `${FRONTEND_URL}/dashboard/pricing`,
+        });
+      }
+    } catch (emailError) {
+      console.error("Failed to send subscription cancelled email:", emailError);
+    }
   }
 
   async handleCheckoutCompleted(session: any): Promise<void> {
@@ -423,6 +490,95 @@ class StripeService {
       .where(eq(teams.id, teamId))
       .limit(1);
     return team?.plan || "free";
+  }
+
+  async handleInvoicePaymentSucceeded(invoice: any): Promise<void> {
+    if (!invoice.subscription) return;
+
+    const [existingSub] = await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.stripe_subscription_id, invoice.subscription))
+      .limit(1);
+
+    if (!existingSub) return;
+
+    try {
+      const [team] = await db
+        .select()
+        .from(teams)
+        .where(eq(teams.id, existingSub.team_id))
+        .limit(1);
+      const owner = await this.getTeamOwner(existingSub.team_id);
+
+      if (owner && team) {
+        const amount = invoice.amount_paid
+          ? `$${(invoice.amount_paid / 100).toFixed(2)}`
+          : "N/A";
+        const renewalDate = existingSub.current_period_end
+          ? new Date(existingSub.current_period_end).toLocaleDateString("en-US", {
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+            })
+          : "N/A";
+
+        await emailNotiService.sendSubscriptionRenewal(owner.email, {
+          userName: owner.firstName,
+          teamName: team.name,
+          planName: existingSub.plan.charAt(0).toUpperCase() + existingSub.plan.slice(1),
+          amount,
+          renewalDate,
+          manageUrl: `${FRONTEND_URL}/dashboard/settings`,
+        });
+      }
+    } catch (emailError) {
+      console.error("Failed to send renewal email:", emailError);
+    }
+  }
+
+  async handleInvoicePaymentFailed(invoice: any): Promise<void> {
+    if (!invoice.subscription) return;
+
+    const [existingSub] = await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.stripe_subscription_id, invoice.subscription))
+      .limit(1);
+
+    if (!existingSub) return;
+
+    try {
+      const [team] = await db
+        .select()
+        .from(teams)
+        .where(eq(teams.id, existingSub.team_id))
+        .limit(1);
+      const owner = await this.getTeamOwner(existingSub.team_id);
+
+      if (owner && team) {
+        const amount = invoice.amount_due
+          ? `$${(invoice.amount_due / 100).toFixed(2)}`
+          : "N/A";
+        const retryDate = invoice.next_payment_attempt
+          ? new Date(invoice.next_payment_attempt * 1000).toLocaleDateString("en-US", {
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+            })
+          : "soon";
+
+        await emailNotiService.sendPaymentFailed(owner.email, {
+          userName: owner.firstName,
+          teamName: team.name,
+          amount,
+          retryDate,
+          updatePaymentUrl: `${FRONTEND_URL}/dashboard/settings`,
+        });
+      }
+    } catch (emailError) {
+      console.error("Failed to send payment failed email:", emailError);
+    }
   }
 }
 

@@ -1,0 +1,22 @@
+<h1 style="margin: 0 0 16px 0; color: #ffffff; font-size: 24px; font-weight: 600;">
+  Payment failed for your subscription
+</h1>
+<p style="margin: 0 0 24px 0; color: #a1a1aa; font-size: 16px; line-height: 1.6;">
+  Hey {{USER_NAME}}, we couldn't process the payment of <strong style="color: #ffffff;">{{AMOUNT}}</strong> for <strong style="color: #ffffff;">{{TEAM_NAME}}</strong>.
+</p>
+
+<div style="background-color: rgba(239, 68, 68, 0.1); border-radius: 8px; padding: 20px; margin-bottom: 24px; border: 1px solid #ef4444;">
+  <p style="margin: 0; color: #a1a1aa; font-size: 14px;">
+    <strong style="color: #ef4444;">Action required:</strong> Please update your payment method to avoid service interruption. We'll automatically retry on <strong style="color: #ffffff;">{{RETRY_DATE}}</strong>.
+  </p>
+</div>
+
+<div style="text-align: center; margin-bottom: 24px;">
+  <a href="{{UPDATE_PAYMENT_URL}}" style="display: inline-block; padding: 14px 32px; background-color: #4F47E6; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px;">
+    Update Payment Method
+  </a>
+</div>
+
+<p style="margin: 0; color: #71717a; font-size: 13px; text-align: center;">
+  If you believe this is an error, please contact your bank or reach out to us.
+</p>

@@ -32,6 +32,7 @@ export default function InviteMemberModal({
   const [role, setRole] = useState<"manager" | "member">("member");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
 
   const handleInvite = async () => {
     if (!email.trim()) {
@@ -39,17 +40,27 @@ export default function InviteMemberModal({
       return;
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      setError("Please enter a valid email address");
+      return;
+    }
+
     setIsLoading(true);
     setError("");
 
     try {
-      await teamAPI.addTeamMember(teamId, email.trim(), role);
-      setEmail("");
-      setRole("member");
-      onMemberAdded();
-      onClose();
+      await teamAPI.createInvite(teamId, email.trim(), role);
+      setSuccess(true);
+      setTimeout(() => {
+        setEmail("");
+        setRole("member");
+        setSuccess(false);
+        onMemberAdded();
+        onClose();
+      }, 1500);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to add member";
+      const errorMessage = err instanceof Error ? err.message : "Failed to send invite";
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -60,6 +71,7 @@ export default function InviteMemberModal({
     setEmail("");
     setRole("member");
     setError("");
+    setSuccess(false);
     onClose();
   };
 
@@ -80,55 +92,74 @@ export default function InviteMemberModal({
           <span>Invite Team Member</span>
         </ModalHeader>
         <ModalBody className="gap-4">
-          <Input
-            type="email"
-            label="Email Address"
-            placeholder="member@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            isInvalid={!!error}
-            errorMessage={error}
-            classNames={{
-              input: "text-text-primary",
-              label: "text-text-secondary",
-            }}
-            autoFocus
-          />
-          <Select
-            label="Role"
-            selectedKeys={[role]}
-            onChange={(e) => setRole(e.target.value as "manager" | "member")}
-            classNames={{
-              trigger: "bg-surface-elevated",
-              label: "text-text-secondary",
-              value: "text-text-primary",
-            }}
-          >
-            <SelectItem key="member">
-              Member
-            </SelectItem>
-            <SelectItem key="manager">
-              Manager
-            </SelectItem>
-          </Select>
+          {success ? (
+            <div className="flex flex-col items-center gap-3 py-4">
+              <div className="w-12 h-12 rounded-full bg-status-success/20 flex items-center justify-center">
+                <Icon icon="solar:check-circle-bold" width={32} className="text-status-success" />
+              </div>
+              <p className="text-text-primary font-medium">Invitation sent!</p>
+              <p className="text-text-secondary text-sm text-center">
+                We've sent an email invitation to {email}
+              </p>
+            </div>
+          ) : (
+            <>
+              <p className="text-text-secondary text-sm">
+                Enter the email address of the person you'd like to invite. They'll receive an email with a link to join your workspace.
+              </p>
+              <Input
+                type="email"
+                label="Email Address"
+                placeholder="colleague@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                isInvalid={!!error}
+                errorMessage={error}
+                classNames={{
+                  input: "text-text-primary",
+                  label: "text-text-secondary",
+                }}
+                autoFocus
+              />
+              <Select
+                label="Role"
+                selectedKeys={[role]}
+                onChange={(e) => setRole(e.target.value as "manager" | "member")}
+                classNames={{
+                  trigger: "bg-surface-elevated",
+                  label: "text-text-secondary",
+                  value: "text-text-primary",
+                }}
+              >
+                <SelectItem key="member" description="Can view and create clips">
+                  Member
+                </SelectItem>
+                <SelectItem key="manager" description="Can manage members and settings">
+                  Manager
+                </SelectItem>
+              </Select>
+            </>
+          )}
         </ModalBody>
-        <ModalFooter>
-          <Button
-            variant="light"
-            onPress={handleClose}
-            className="text-text-secondary"
-          >
-            Cancel
-          </Button>
-          <Button
-            color="primary"
-            onPress={handleInvite}
-            isLoading={isLoading}
-            className="bg-accent-400 text-white"
-          >
-            Send Invite
-          </Button>
-        </ModalFooter>
+        {!success && (
+          <ModalFooter>
+            <Button
+              variant="light"
+              onPress={handleClose}
+              className="text-text-secondary"
+            >
+              Cancel
+            </Button>
+            <Button
+              color="primary"
+              onPress={handleInvite}
+              isLoading={isLoading}
+              className="bg-accent-400 text-white"
+            >
+              Send Invite
+            </Button>
+          </ModalFooter>
+        )}
       </ModalContent>
     </Modal>
   );

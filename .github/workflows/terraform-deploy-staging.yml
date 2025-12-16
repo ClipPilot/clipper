@@ -5,13 +5,13 @@ on:
     branches:
       - staging
     paths:
-      - 'infra/**'
-      - '.github/workflows/terraform-deploy-staging.yml'
+      - "infra/**"
+      - ".github/workflows/terraform-deploy-staging.yml"
   pull_request:
     branches:
       - staging
     paths:
-      - 'infra/**'
+      - "infra/**"
   workflow_dispatch:
 
 env:
@@ -72,6 +72,7 @@ jobs:
           database_url       = "${{ secrets.STAGING_DATABASE_URL }}"
           supabase_url       = "${{ secrets.STAGING_SUPABASE_URL }}"
           supabase_anon_key  = "${{ secrets.STAGING_SUPABASE_ANON_KEY }}"
+          resend_api_key     = "${{ secrets.RESEND_API_KEY }}"
 
           # Stripe
           stripe_secret_key     = "${{ secrets.STAGING_STRIPE_SECRET_KEY }}"
@@ -174,6 +175,7 @@ jobs:
           database_url       = "${{ secrets.STAGING_DATABASE_URL }}"
           supabase_url       = "${{ secrets.STAGING_SUPABASE_URL }}"
           supabase_anon_key  = "${{ secrets.STAGING_SUPABASE_ANON_KEY }}"
+          resend_api_key    = "${{ secrets.RESEND_API_KEY }}"
 
           # Stripe
           stripe_secret_key     = "${{ secrets.STAGING_STRIPE_SECRET_KEY }}"

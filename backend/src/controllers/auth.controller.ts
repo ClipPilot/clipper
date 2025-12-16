@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
 import { authService } from "../services/auth.service";
+import { userService } from "../services/user.service";
+import { AuthRequest } from "../middleware/auth.middleware";
 export class AuthController {
   async signUp(req: Request, res: Response) {
     try {
@@ -204,6 +206,33 @@ export class AuthController {
       return res.status(400).json({
         error:
           error instanceof Error ? error.message : "Failed to update password",
+      });
+    }
+  }
+  async updateProfile(req: AuthRequest, res: Response) {
+    try {
+      if (!req.user?.id) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const { firstName, lastName } = req.body;
+
+      const dbUser = await userService.getUserBySupabaseUid(req.user.id);
+      const updated = await userService.updateUser(dbUser.id, { firstName, lastName });
+
+      return res.status(200).json({
+        message: "Profile updated successfully",
+        user: {
+          id: updated.id.toString(),
+          email: updated.email,
+          firstName: updated.first_name,
+          lastName: updated.last_name,
+        },
+      });
+    } catch (error) {
+      console.error("Update profile error:", error);
+      return res.status(400).json({
+        error: error instanceof Error ? error.message : "Failed to update profile",
       });
     }
   }

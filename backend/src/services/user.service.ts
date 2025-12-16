@@ -45,9 +45,25 @@ class UserService {
     return user;
   }
 
-  /**
-   * Check if user has a default team, create one if not (migration helper)
-   */
+  async updateUser(userId: number, data: { firstName?: string; lastName?: string }) {
+    const updateData: Record<string, unknown> = { updated_at: new Date() };
+
+    if (data.firstName !== undefined) {
+      updateData.first_name = data.firstName;
+    }
+    if (data.lastName !== undefined) {
+      updateData.last_name = data.lastName;
+    }
+
+    const [updated] = await db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.id, userId))
+      .returning();
+
+    return updated;
+  }
+
   async ensureUserHasTeam(userId: number) {
     const user = await this.getUserById(userId);
 

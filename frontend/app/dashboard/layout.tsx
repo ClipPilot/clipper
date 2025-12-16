@@ -13,7 +13,7 @@ import {
   PopoverTrigger,
   PopoverContent,
   Button,
-  Badge,
+  // Badge, // TODO: Re-enable with notifications
   ToastProvider,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
@@ -22,7 +22,8 @@ import { userAtom, selectedTeamAtom } from "@/store/auth";
 import { useAuth } from "@/hooks/useAuth";
 import { useTeams } from "@/hooks/useTeams";
 import WorkspaceSelector from "@/components/workspace-selector";
-import NotificationsCard from "@/components/notifications/notifications-card";
+import Image from "next/image";
+// import NotificationsCard from "@/components/notifications/notifications-card"; // TODO: Re-enable
 import { UsageStatsProvider } from "@/contexts/UsageStatsContext";
 
 const sidebarItems: SidebarItem[] = [
@@ -135,7 +136,14 @@ export default function DashboardLayout({
         >
           <div className="p-4 border-b border-border-base">
             <div className="flex items-center justify-between mb-4">
-              <h1 className="text-lg font-bold text-text-primary">Cuttr</h1>
+              <Image
+                src="/branding/cuttr_logo.png"
+                alt="Cuttr"
+                width={100}
+                height={28}
+                className="object-contain"
+              />
+              {/* TODO: Re-enable notifications
               <Popover placement="bottom-end">
                 <PopoverTrigger>
                   <Button
@@ -153,6 +161,7 @@ export default function DashboardLayout({
                   <NotificationsCard />
                 </PopoverContent>
               </Popover>
+              */}
             </div>
 
             <Popover placement="bottom-start">

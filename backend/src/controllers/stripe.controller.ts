@@ -115,11 +115,11 @@ export const handleWebhook = async (req: Request, res: Response) => {
         break;
 
       case "invoice.payment_succeeded":
-        console.log("Payment succeeded:", event.data.object);
+        await stripeService.handleInvoicePaymentSucceeded(event.data.object);
         break;
 
       case "invoice.payment_failed":
-        console.log("Payment failed:", event.data.object);
+        await stripeService.handleInvoicePaymentFailed(event.data.object);
         break;
 
       default:

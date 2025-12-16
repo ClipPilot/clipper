@@ -5,13 +5,13 @@ on:
     branches:
       - main
     paths:
-      - 'infra/**'
-      - '.github/workflows/terraform-deploy.yml'
+      - "infra/**"
+      - ".github/workflows/terraform-deploy.yml"
   pull_request:
     branches:
       - main
     paths:
-      - 'infra/**'
+      - "infra/**"
   workflow_dispatch:
 
 env:
@@ -72,6 +72,7 @@ jobs:
           database_url       = "${{ secrets.DATABASE_URL }}"
           supabase_url       = "${{ secrets.SUPABASE_URL }}"
           supabase_anon_key  = "${{ secrets.SUPABASE_ANON_KEY }}"
+          resend_api_key    = "${{ secrets.RESEND_API_KEY }}"
 
           # Stripe
           stripe_secret_key     = "${{ secrets.STRIPE_SECRET_KEY }}"
@@ -174,6 +175,7 @@ jobs:
           database_url       = "${{ secrets.DATABASE_URL }}"
           supabase_url       = "${{ secrets.SUPABASE_URL }}"
           supabase_anon_key  = "${{ secrets.SUPABASE_ANON_KEY }}"
+          resend_api_key     = "${{ secrets.RESEND_API_KEY }}"
 
           # Stripe
           stripe_secret_key     = "${{ secrets.STRIPE_SECRET_KEY }}"

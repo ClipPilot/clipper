@@ -26,6 +26,13 @@ export const clipStatusEnum = pgEnum("clip_status", [
   "completed",
   "failed",
 ]);
+
+export const inviteStatusEnum = pgEnum("invite_status", [
+  "pending",
+  "accepted",
+  "expired",
+  "revoked",
+]);
 // Tables
 
 export const users = pgTable("users", {
@@ -87,6 +94,34 @@ export const teamMembers = pgTable("team_members", {
   created_at: timestamp("created_at").notNull().defaultNow(),
   updated_at: timestamp("updated_at").notNull().defaultNow(),
 });
+
+export const teamInvites = pgTable(
+  "team_invites",
+  {
+    id: serial("id").primaryKey(),
+    team_id: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    invited_by_user_id: integer("invited_by_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    email: varchar("email", { length: 255 }).notNull(),
+    role: teamRoleEnum("role").notNull().default("member"),
+    token: varchar("token", { length: 255 }).notNull().unique(),
+    status: inviteStatusEnum("status").notNull().default("pending"),
+    expires_at: timestamp("expires_at").notNull(),
+    accepted_at: timestamp("accepted_at"),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => {
+    return {
+      emailIdx: index("team_invites_email_idx").on(table.email),
+      tokenIdx: index("team_invites_token_idx").on(table.token),
+      teamIdx: index("team_invites_team_id_idx").on(table.team_id),
+    };
+  }
+);
 
 export const subscriptions = pgTable("subscriptions", {
   id: serial("id").primaryKey(),

@@ -3,6 +3,7 @@ import { ENV } from "../config/env";
 import { users, teams, teamMembers, usageStats } from "@clipper/shared-db/src/schema";
 import { eq } from "drizzle-orm";
 import { db } from "../db";
+import { teamInviteService } from "./teamInvite.service";
 
 class AuthService {
   private supabase: SupabaseClient;
@@ -75,12 +76,15 @@ class AuthService {
       rollover: false,
     });
 
+    const acceptedTeams = await teamInviteService.acceptAllPendingInvitesForUser(user.id, email);
+
     return {
       user: authData.user,
-      session: null, // Don't return session until email is confirmed
+      session: null,
       dbUser: user,
       defaultTeam: team,
       emailConfirmationRequired: true,
+      acceptedInvites: acceptedTeams,
     };
   }
 

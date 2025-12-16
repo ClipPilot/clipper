@@ -146,3 +146,9 @@ variable "api_domain" {
   type        = string
   default     = ""
 }
+
+variable "resend_api_key" {
+  description = "Resend API Key for sending emails"
+  type        = string
+  sensitive   = true
+}

@@ -103,3 +103,18 @@ resource "aws_secretsmanager_secret_version" "stripe_webhook_secret" {
   secret_id     = aws_secretsmanager_secret.stripe_webhook_secret.id
   secret_string = var.stripe_webhook_secret
 }
+
+# Resend API Key
+resource "aws_secretsmanager_secret" "resend_api_key" {
+  name                    = "${var.project_name}/resend-api-key-${var.environment}"
+  recovery_window_in_days = 7
+
+  tags = {
+    Name = "${var.project_name}-resend-api-key-${var.environment}"
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "resend_api_key" {
+  secret_id     = aws_secretsmanager_secret.resend_api_key.id
+  secret_string = var.resend_api_key
+}

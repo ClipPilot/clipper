@@ -10,19 +10,22 @@ import {
   Divider,
   Switch,
   Avatar,
+  addToast,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAtom } from "jotai";
 import { userAtom } from "@/store/auth";
+import { authAPI } from "@/api/auth";
 
 export default function SettingsPage() {
-  const [user] = useAtom(userAtom);
+  const [user, setUser] = useAtom(userAtom);
 
   const [firstName, setFirstName] = useState(user?.firstName || "");
   const [lastName, setLastName] = useState(user?.lastName || "");
   const [email] = useState(user?.email || "");
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [marketingEmails, setMarketingEmails] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const getInitials = (
     firstName?: string,
@@ -36,6 +39,27 @@ export default function SettingsPage() {
       return email.substring(0, 2).toUpperCase();
     }
     return "U";
+  };
+
+  const handleSaveProfile = async () => {
+    setIsSaving(true);
+    try {
+      const updatedUser = await authAPI.updateProfile({ firstName, lastName });
+      setUser(updatedUser);
+      addToast({
+        title: "Profile updated",
+        description: "Your changes have been saved successfully.",
+        color: "success",
+      });
+    } catch (error) {
+      addToast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update profile",
+        color: "danger",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -134,8 +158,10 @@ export default function SettingsPage() {
               <Button
                 className="bg-accent-400 text-white font-medium"
                 startContent={
-                  <Icon icon="solar:diskette-bold-duotone" width={18} />
+                  !isSaving && <Icon icon="solar:diskette-bold-duotone" width={18} />
                 }
+                isLoading={isSaving}
+                onPress={handleSaveProfile}
               >
                 Save Changes
               </Button>

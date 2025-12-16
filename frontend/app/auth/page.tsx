@@ -6,7 +6,7 @@ import { useAtom } from "jotai";
 import { userAtom } from "@/store/auth";
 import { authAPI } from "@/api/auth";
 import { tokenManager } from "@/lib/apiClient";
-import { BrandLogo } from "@/components/brand-logo";
+import Image from "next/image";
 import LoginForm from "@/components/auth/LoginForm";
 import SignUpForm from "@/components/auth/SignUpForm";
 import ForgotPasswordForm from "@/components/auth/ForgotPasswordForm";
@@ -60,9 +60,15 @@ export default function AuthPage() {
         try {
           const userData = await authAPI.getMe();
           setUser(userData);
-          router.push("/dashboard");
+
+          const pendingInviteToken = localStorage.getItem("pendingInviteToken");
+          if (pendingInviteToken) {
+            localStorage.removeItem("pendingInviteToken");
+            router.push(`/invite/${pendingInviteToken}`);
+          } else {
+            router.push("/dashboard");
+          }
         } catch (error) {
-          // Token is invalid, clear everything
           tokenManager.clearTokens();
           setIsCheckingAuth(false);
         }
@@ -106,7 +112,14 @@ export default function AuthPage() {
     try {
       const response = await authAPI.signIn({ email, password, rememberMe });
       setUser(response.user);
-      router.push("/dashboard");
+
+      const pendingInviteToken = localStorage.getItem("pendingInviteToken");
+      if (pendingInviteToken) {
+        localStorage.removeItem("pendingInviteToken");
+        router.push(`/invite/${pendingInviteToken}`);
+      } else {
+        router.push("/dashboard");
+      }
     } catch (err: any) {
       setError(err.message || "An error occurred");
     } finally {
@@ -264,18 +277,20 @@ export default function AuthPage() {
     <div
       className="flex h-screen w-full items-center justify-end overflow-hidden p-2 sm:p-4 lg:p-8"
       style={{
-        backgroundImage:
-          "url(https://nextuipro.nyc3.cdn.digitaloceanspaces.com/components-images/black-background-texture.jpeg)",
+        backgroundImage: "url('/images/image4.jpg')",
         backgroundSize: "cover",
         backgroundPosition: "center",
       }}
     >
       {/* Brand Logo */}
       <div className="absolute top-10 left-10">
-        <div className="flex items-center gap-2">
-          <BrandLogo className="text-white" size={40} />
-          <p className="font-medium text-white text-xl">Cuttr</p>
-        </div>
+        <Image
+          src="/branding/cuttr_logo.png"
+          alt="Cuttr"
+          width={140}
+          height={40}
+          className="object-contain"
+        />
       </div>
 
       {/* Testimonial */}
