@@ -68,7 +68,7 @@ export function PricingTierCard({
             )}
           </div>
           {tier.billedAmount && (
-            <p className="text-xs text-text-tertiary mt-1">{tier.billedAmount}</p>
+            <p className="text-sm font-medium text-text-secondary mt-1">{tier.billedAmount}</p>
           )}
         </div>
 

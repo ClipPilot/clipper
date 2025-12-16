@@ -97,7 +97,7 @@ export function PricingTable({
                     )}
                   </div>
                   {tier.billedAmount && (
-                    <p className="text-xs text-text-tertiary mt-1">{tier.billedAmount}</p>
+                    <p className="text-sm font-medium text-text-secondary mt-1">{tier.billedAmount}</p>
                   )}
 
                   <div className="mt-3 flex flex-col gap-1 text-sm">
