@@ -120,7 +120,7 @@ export default function TeamManagementModal({
                       <Button
                         color="primary"
                         onPress={onInviteOpen}
-                        isDisabled={team.type === "personal"}
+                        isDisabled={team.plan !== "scale"}
                         startContent={
                           <Icon icon="solar:user-plus-bold-duotone" width={18} />
                         }
@@ -128,9 +128,9 @@ export default function TeamManagementModal({
                       >
                         Invite Member
                       </Button>
-                      {team.type === "personal" && (
+                      {team.plan !== "scale" && (
                         <p className="text-xs text-text-tertiary">
-                          Upgrade to Business to invite team members
+                          Upgrade to Scale to invite team members
                         </p>
                       )}
                     </div>

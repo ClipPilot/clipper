@@ -126,3 +126,16 @@ variable "internal_api_key" {
   sensitive   = true
   default     = "a95f431eadf06dc59cbd188a72a797cc71396fdb2a92dc44721f704844cc725e"
 }
+
+# Stripe Configuration
+variable "stripe_secret_key" {
+  description = "Stripe Secret API Key"
+  type        = string
+  sensitive   = true
+}
+
+variable "stripe_webhook_secret" {
+  description = "Stripe Webhook Signing Secret"
+  type        = string
+  sensitive   = true
+}

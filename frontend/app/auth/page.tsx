@@ -40,7 +40,11 @@ export default function AuthPage() {
         tokenManager.clearTokens();
         setUser(null);
         // Clean up URL
-        window.history.replaceState({}, document.title, window.location.pathname);
+        window.history.replaceState(
+          {},
+          document.title,
+          window.location.pathname
+        );
         setIsCheckingAuth(false);
         return;
       }
@@ -91,7 +95,11 @@ export default function AuthPage() {
     }
   }, []);
 
-  const handleLogin = async (email: string, password: string, rememberMe: boolean) => {
+  const handleLogin = async (
+    email: string,
+    password: string,
+    rememberMe: boolean
+  ) => {
     setError("");
     setIsLoading(true);
 
@@ -266,7 +274,7 @@ export default function AuthPage() {
       <div className="absolute top-10 left-10">
         <div className="flex items-center gap-2">
           <BrandLogo className="text-white" size={40} />
-          <p className="font-medium text-white text-xl">Clipster</p>
+          <p className="font-medium text-white text-xl">Cuttr</p>
         </div>
       </div>
 
@@ -274,8 +282,8 @@ export default function AuthPage() {
       <div className="absolute bottom-10 left-10 hidden md:block">
         <p className="max-w-xl text-white/60">
           <span className="font-medium">"</span>
-          The future of content management is here. Clipster makes it seamless
-          to organize and share your digital world.
+          The future of content management is here. Cuttr makes it seamless to
+          organize and share your digital world.
           <span className="font-medium">"</span>
         </p>
       </div>

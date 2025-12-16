@@ -39,4 +39,6 @@ export const ENV = {
   SUPABASE_URL: config.supabase.url,
   SUPABASE_ANON_KEY: config.supabase.anonKey,
   DATABASE_URL: config.database.url,
+  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY || "",
+  STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET || "",
 };

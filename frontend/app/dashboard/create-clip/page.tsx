@@ -225,6 +225,14 @@ export default function CreateClipPage() {
                   teamId={selectedTeam.id}
                   onUploadComplete={handleUploadComplete}
                   onError={handleUploadError}
+                  isDisabled={(usageStats?.remaining ?? 0) <= 0}
+                  disabledReason={
+                    (usageStats?.remaining ?? 0) <= 0
+                      ? selectedTeam.plan === "free"
+                        ? "Subscribe to a plan to start creating clips."
+                        : "You've reached your clip limit. Upgrade your plan or buy additional clips."
+                      : undefined
+                  }
                 />
               </div>
             ) : (

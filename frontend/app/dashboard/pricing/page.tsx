@@ -1,15 +1,222 @@
 "use client";
 
-import React from "react";
-import { Icon } from "@iconify/react";
+import React, { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import { Link, Spacer, addToast } from "@heroui/react";
+
+import { tiers } from "./pricing-tiers";
+import features from "./pricing-tiers-features";
+import { TiersEnum, Tier } from "./pricing-types";
+import { PaidPlanView } from "./PaidPlanView";
+import { PricingTierCard } from "./PricingTierCard";
+import { PricingTable } from "./PricingTable";
+import { useTeams } from "@/hooks/useTeams";
+import { useUsageStats } from "@/hooks/useUsageStats";
+import { stripeAPI, STRIPE_PRICES } from "@/api/stripe";
 
 export default function PricingPage() {
+  const searchParams = useSearchParams();
+  const { selectedTeam, fetchTeams } = useTeams();
+  const { usageStats, refetch: refetchUsage } = useUsageStats(selectedTeam?.id);
+  const [loadingTier, setLoadingTier] = useState<string | null>(null);
+  const [loadingPortal, setLoadingPortal] = useState(false);
+
+  const currentPlan = selectedTeam?.plan || "free";
+  const isPaidPlan = currentPlan === "studio" || currentPlan === "scale";
+
+  useEffect(() => {
+    if (searchParams.get("success") === "true") {
+      addToast({
+        title: "Payment successful!",
+        description: isPaidPlan
+          ? "Your clips have been added."
+          : "Your plan has been upgraded.",
+        color: "success",
+      });
+      fetchTeams();
+      refetchUsage();
+    }
+    if (searchParams.get("canceled") === "true") {
+      addToast({
+        title: "Checkout canceled",
+        description: "Your subscription was not changed.",
+        color: "warning",
+      });
+    }
+  }, [searchParams, fetchTeams, refetchUsage, isPaidPlan]);
+
+  const handleUpgrade = async (tier: Tier) => {
+    if (!selectedTeam) {
+      addToast({
+        title: "No workspace selected",
+        description: "Please select a workspace to upgrade.",
+        color: "danger",
+      });
+      return;
+    }
+
+    if (tier.key === TiersEnum.Free) return;
+
+    const priceId = tier.priceId;
+    if (!priceId) return;
+
+    try {
+      setLoadingTier(tier.key);
+      const { url } = await stripeAPI.createCheckoutSession(
+        selectedTeam.id,
+        priceId
+      );
+      window.open(url, "_blank");
+    } catch (error: any) {
+      addToast({
+        title: "Checkout failed",
+        description: error.message || "Failed to start checkout",
+        color: "danger",
+      });
+    } finally {
+      setLoadingTier(null);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    if (!selectedTeam) return;
+
+    try {
+      setLoadingPortal(true);
+      const { url } = await stripeAPI.createPortalSession(selectedTeam.id);
+      window.open(url, "_blank");
+    } catch (error: any) {
+      addToast({
+        title: "Portal failed",
+        description: error.message || "Failed to open billing portal",
+        color: "danger",
+      });
+    } finally {
+      setLoadingPortal(false);
+    }
+  };
+
+  const handleBuyAddon = async () => {
+    if (!selectedTeam) return;
+
+    const priceId =
+      currentPlan === "studio"
+        ? STRIPE_PRICES.STUDIO_ADDON
+        : STRIPE_PRICES.SCALE_ADDON;
+
+    try {
+      setLoadingTier(currentPlan);
+      const { url } = await stripeAPI.createCheckoutSession(
+        selectedTeam.id,
+        priceId
+      );
+      window.open(url, "_blank");
+    } catch (error: any) {
+      addToast({
+        title: "Checkout failed",
+        description: error.message || "Failed to start checkout",
+        color: "danger",
+      });
+    } finally {
+      setLoadingTier(null);
+    }
+  };
+
+  const getButtonText = (tier: Tier) => {
+    if (tier.key === TiersEnum.Free) {
+      return currentPlan === "free" ? "Current Plan" : "Free";
+    }
+    if (tier.key === currentPlan) {
+      return "Current Plan";
+    }
+    return tier.buttonText;
+  };
+
+  const isButtonDisabled = (tier: Tier) => {
+    return tier.key === TiersEnum.Free || tier.key === currentPlan;
+  };
+
+  if (isPaidPlan) {
+    return (
+      <PaidPlanView
+        currentPlan={currentPlan as "studio" | "scale"}
+        teamName={selectedTeam?.name}
+        usageStats={usageStats}
+        loadingPortal={loadingPortal}
+        loadingAddon={loadingTier === currentPlan}
+        onManageSubscription={handleManageSubscription}
+        onBuyAddon={handleBuyAddon}
+      />
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-surface-dark p-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-text-primary mb-4">Pricing</h1>
-        <p className="text-text-secondary">
-          Pricing plans coming soon.
+    <div className="relative mx-auto flex max-w-7xl flex-col items-center px-4 py-12 lg:py-24">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-x-0 top-0 z-0 h-full w-full transform-gpu overflow-hidden blur-3xl"
+      >
+        <div
+          className="mx-auto aspect-[1155/678] w-[72rem] bg-gradient-to-tr from-accent-400/30 to-purple-500/20 opacity-30"
+          style={{
+            clipPath:
+              "polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)",
+          }}
+        />
+      </div>
+
+      <div className="relative z-10 flex max-w-xl flex-col text-center">
+        <h2 className="text-accent-400 text-sm font-medium uppercase tracking-wider">
+          Pricing
+        </h2>
+        <Spacer y={2} />
+        <h1 className="text-3xl font-bold tracking-tight text-text-primary sm:text-4xl">
+          Choose your plan
+        </h1>
+        <Spacer y={4} />
+        <p className="text-lg text-text-secondary">
+          Generate unlimited clips. Only pay for what you save.
+        </p>
+      </div>
+
+      <Spacer y={12} />
+
+      {/* Mobile/Tablet View */}
+      <div className="relative z-10 grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:hidden">
+        {tiers.map((tier) => (
+          <PricingTierCard
+            key={tier.key}
+            tier={tier}
+            isDisabled={isButtonDisabled(tier)}
+            isLoading={loadingTier === tier.key}
+            buttonText={getButtonText(tier)}
+            onUpgrade={() => handleUpgrade(tier)}
+          />
+        ))}
+      </div>
+
+      {/* Desktop View */}
+      <PricingTable
+        tiers={tiers}
+        features={features}
+        loadingTier={loadingTier}
+        isButtonDisabled={isButtonDisabled}
+        getButtonText={getButtonText}
+        onUpgrade={handleUpgrade}
+      />
+
+      <Spacer y={12} />
+
+      <div className="relative z-10 flex py-2">
+        <p className="text-text-tertiary">
+          Questions about pricing?{" "}
+          <Link
+            className="text-accent-400 hover:text-accent-300"
+            href="#"
+            underline="always"
+          >
+            Contact us
+          </Link>
         </p>
       </div>
     </div>

@@ -6,7 +6,9 @@ import { clipManagerService } from "../../services/clipManager.service";
 import { s3Service } from "../../services/s3.service";
 import { notifyClipsRefresh } from "../notify";
 
-export async function processTextOverlayJob(job: TextOverlayJob): Promise<void> {
+export async function processTextOverlayJob(
+  job: TextOverlayJob
+): Promise<void> {
   const { clipId, teamId, text, color, x, y, fontSize } = job;
 
   const outDir = path.join(process.cwd(), "output");
@@ -16,7 +18,7 @@ export async function processTextOverlayJob(job: TextOverlayJob): Promise<void> 
   let newClipPath: string | null = null;
 
   try {
-    console.log(`Processing text overlay for clip ${clipId}, team ${teamId}`);
+    console.log(`Processing heading for clip ${clipId}, team ${teamId}`);
 
     // Get the clip from the database
     const clip = await clipManagerService.getClipById(clipId, teamId);
@@ -29,8 +31,8 @@ export async function processTextOverlayJob(job: TextOverlayJob): Promise<void> 
     console.log(`Downloading blank video from S3: ${clip.blank_video_path}`);
     await s3Service.downloadFile(clip.blank_video_path, localBlankPath);
 
-    // Regenerate clip with text overlay
-    console.log("Regenerating clip with text overlay...");
+    // Regenerate clip with heading
+    console.log("Regenerating clip with heading...");
     newClipPath = await regenerateClipWithTextOverlay(localBlankPath, {
       text,
       color: color || "#FFFFFF",
@@ -51,24 +53,30 @@ export async function processTextOverlayJob(job: TextOverlayJob): Promise<void> 
 
     // Upload new clip to S3
     console.log("Uploading new clip to S3...");
-    const newClipS3Key = await s3Service.uploadGeneratedClip(newClipPath, teamId, clipId);
+    const newClipS3Key = await s3Service.uploadGeneratedClip(
+      newClipPath,
+      teamId,
+      clipId
+    );
 
     // Update database with new clip path
-    await clipManagerService.updateClip(clipId, teamId, { clipPath: newClipS3Key });
+    await clipManagerService.updateClip(clipId, teamId, {
+      clipPath: newClipS3Key,
+    });
 
-    console.log(`Successfully applied text overlay to clip ${clipId}`);
+    console.log(`Successfully applied heading to clip ${clipId}`);
 
     // Notify frontend to refresh clips
     await notifyClipsRefresh(teamId);
   } catch (error) {
-    console.error("Error applying text overlay:", error);
+    console.error("Error applying heading:", error);
 
     // Update clip status to reflect the error
     await clipManagerService.updateClipStatus(
       clipId,
       teamId,
       "failed",
-      `Text overlay failed: ${error instanceof Error ? error.message : "Unknown error"}`
+      `Applying heading failed: ${error instanceof Error ? error.message : "Unknown error"}`
     );
 
     // Notify frontend

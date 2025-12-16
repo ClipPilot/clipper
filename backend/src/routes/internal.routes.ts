@@ -19,6 +19,47 @@ const validateInternalKey = (req: Request, res: Response, next: Function) => {
   next();
 };
 
+/**
+ * @openapi
+ * /internal/notify/clips-refresh:
+ *   post:
+ *     summary: Trigger clips refresh notification
+ *     description: |
+ *       Internal endpoint used by the worker to notify clients that new clips
+ *       are available. Emits a WebSocket event to all connected clients for the team.
+ *     tags:
+ *       - Internal
+ *     security:
+ *       - internalApiKey: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - teamId
+ *             properties:
+ *               teamId:
+ *                 type: integer
+ *                 description: The team ID to notify
+ *                 example: 1
+ *     responses:
+ *       200:
+ *         description: Notification sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *       400:
+ *         description: Missing teamId
+ *       401:
+ *         description: Invalid internal API key
+ */
 router.post("/notify/clips-refresh", validateInternalKey, (req: Request, res: Response) => {
   const { teamId } = req.body;
 
@@ -32,6 +73,54 @@ router.post("/notify/clips-refresh", validateInternalKey, (req: Request, res: Re
   return res.status(200).json({ success: true });
 });
 
+/**
+ * @openapi
+ * /internal/notify/clip-update:
+ *   post:
+ *     summary: Trigger single clip update notification
+ *     description: |
+ *       Internal endpoint used by the worker to notify clients that a specific
+ *       clip has been updated. Emits a WebSocket event with the clip data.
+ *     tags:
+ *       - Internal
+ *     security:
+ *       - internalApiKey: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - teamId
+ *             properties:
+ *               teamId:
+ *                 type: integer
+ *                 description: The team ID to notify
+ *                 example: 1
+ *               clipId:
+ *                 type: integer
+ *                 description: The clip ID that was updated
+ *                 example: 123
+ *               clip:
+ *                 type: object
+ *                 description: Full clip object to send to clients
+ *     responses:
+ *       200:
+ *         description: Notification sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *       400:
+ *         description: Missing teamId
+ *       401:
+ *         description: Invalid internal API key
+ */
 router.post("/notify/clip-update", validateInternalKey, (req: Request, res: Response) => {
   const { teamId, clipId, clip } = req.body;
 

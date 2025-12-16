@@ -15,6 +15,7 @@ export interface Team {
   name: string;
   type: "personal" | "business" | "enterprise";
   role: "owner" | "manager" | "member";
+  plan: "free" | "studio" | "scale";
   teamSubscriptionId?: string;
   created_at: string;
   updated_at: string;

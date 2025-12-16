@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { Listbox, ListboxItem, ListboxSection, type Selection, Progress } from "@heroui/react";
+import { Listbox, ListboxItem, type Selection, Progress, cn } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useUsageStats } from "@/hooks/useUsageStats";
 import { useAtom } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
 import { useUsageStatsRefresh } from "@/contexts/UsageStatsContext";
+import { useRouter } from "next/navigation";
 
 export type SidebarItem = {
   key: string;
@@ -23,6 +24,7 @@ export type SidebarProps = {
 
 const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
   ({ items, defaultSelectedKey, onSelect }, ref) => {
+    const router = useRouter();
     const [selected, setSelected] = React.useState<React.Key>(defaultSelectedKey);
     const [selectedTeam] = useAtom(selectedTeamAtom);
     const { refreshTrigger } = useUsageStatsRefresh();
@@ -37,6 +39,31 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
     const usagePercentage = usageStats
       ? (usageStats.clipsCreated / usageStats.limit) * 100
       : 0;
+
+    const plan = selectedTeam?.plan || "free";
+    const isPaidPlan = plan === "studio" || plan === "scale";
+
+    const getPlanName = () => {
+      switch (plan) {
+        case "scale":
+          return "Scale";
+        case "studio":
+          return "Studio";
+        default:
+          return "Free";
+      }
+    };
+
+    const getPlanColor = () => {
+      switch (plan) {
+        case "scale":
+          return "bg-purple-500/10 text-purple-500";
+        case "studio":
+          return "bg-accent-400/10 text-accent-400";
+        default:
+          return "bg-blue-500/10 text-blue-500";
+      }
+    };
 
     return (
       <div className="flex flex-col h-full">
@@ -80,14 +107,65 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
           </Listbox>
         </div>
 
-        {/* Usage Stats Bar */}
+        {!isLoading && !error && selectedTeam && !isPaidPlan && (
+          <div className="mt-auto p-4 border-t border-border-base">
+            <button
+              onClick={() => router.push("/dashboard/pricing")}
+              className="w-full flex items-center gap-3 p-3 rounded-lg bg-accent-400/10 border border-accent-400/20 hover:bg-accent-400/20 transition-colors"
+            >
+              <Icon icon="solar:rocket-bold-duotone" className="text-accent-400 flex-shrink-0" width={18} />
+              <div className="flex-1 text-left">
+                <p className="text-xs font-medium text-accent-400">Upgrade to Pro</p>
+                <p className="text-[10px] text-text-tertiary">Unlimited generations</p>
+              </div>
+              <Icon icon="solar:arrow-right-bold" className="text-accent-400" width={14} />
+            </button>
+          </div>
+        )}
+
+        {!isLoading && !error && selectedTeam && isPaidPlan && (
+          <div className="mt-auto p-4 border-t border-border-base">
+            <button
+              onClick={() => router.push("/dashboard/pricing")}
+              className={cn(
+                "w-full flex items-center gap-3 p-3 rounded-lg border transition-colors",
+                plan === "scale"
+                  ? "bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20"
+                  : "bg-accent-400/10 border-accent-400/20 hover:bg-accent-400/20"
+              )}
+            >
+              <Icon
+                icon="solar:verified-check-bold"
+                className={plan === "scale" ? "text-purple-500" : "text-accent-400"}
+                width={18}
+              />
+              <div className="flex-1 text-left">
+                <p className={cn("text-xs font-medium", plan === "scale" ? "text-purple-500" : "text-accent-400")}>
+                  {getPlanName()} Plan
+                </p>
+                <p className="text-[10px] text-text-tertiary">Manage subscription</p>
+              </div>
+              <Icon
+                icon="solar:arrow-right-bold"
+                className={plan === "scale" ? "text-purple-500" : "text-accent-400"}
+                width={14}
+              />
+            </button>
+          </div>
+        )}
+
         {!isLoading && !error && usageStats && selectedTeam && (
-          <div className="mt-auto p-4 border-t border-surface-border">
+          <div className="p-4 border-t border-border-base">
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-text-secondary font-medium truncate" title={selectedTeam.name}>
-                  {selectedTeam.name}
-                </span>
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-text-secondary font-medium truncate" title={selectedTeam.name}>
+                    {selectedTeam.name}
+                  </span>
+                  <span className={cn("text-[10px] px-1.5 py-0.5 rounded font-medium flex-shrink-0", getPlanColor())}>
+                    {getPlanName()}
+                  </span>
+                </div>
                 <span className="text-text-tertiary flex-shrink-0 ml-2">
                   {usageStats.clipsCreated} / {usageStats.limit}
                 </span>
