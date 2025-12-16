@@ -48,7 +48,7 @@ jobs:
         continue-on-error: true
 
       - name: Terraform Init
-        run: terraform init
+        run: terraform init -backend-config="key=prod/terraform.tfstate"
 
       - name: Terraform Validate
         run: terraform validate
@@ -154,7 +154,7 @@ jobs:
           terraform_wrapper: false
 
       - name: Terraform Init
-        run: terraform init
+        run: terraform init -backend-config="key=prod/terraform.tfstate"
 
       - name: Create terraform.tfvars from secrets
         run: |
