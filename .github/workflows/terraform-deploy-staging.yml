@@ -85,6 +85,7 @@ jobs:
 
           # Custom Domain
           api_domain          = "api-staging.cuttr.com"
+          frontend_url        = "https://beta.cuttr.com"
           EOF
 
       - name: Terraform Plan
@@ -188,6 +189,7 @@ jobs:
 
           # Custom Domain
           api_domain          = "api-staging.cuttr.com"
+          frontend_url        = "https://beta.cuttr.com"
           EOF
 
       - name: Download Terraform Plan

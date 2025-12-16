@@ -15,9 +15,11 @@ const paymentFailedTemplate = loadTemplate("payment-failed.html");
 const subscriptionRenewalTemplate = loadTemplate("subscription-renewal.html");
 
 const wrapInBase = (content: string): string => {
+  const frontendUrl = process.env.FRONTEND_URL || "https://platform.cuttr.com";
   return baseTemplate
     .replace("{{CONTENT}}", content)
-    .replace("{{YEAR}}", new Date().getFullYear().toString());
+    .replace("{{YEAR}}", new Date().getFullYear().toString())
+    .replace(/{{FRONTEND_URL}}/g, frontendUrl);
 };
 
 export interface TeamInviteEmailData {

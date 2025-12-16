@@ -194,6 +194,19 @@ class TeamService {
   }
 
   /**
+   * Get member role by member ID
+   */
+  async getMemberRoleById(teamId: number, memberId: number): Promise<"owner" | "manager" | "member" | null> {
+    const [member] = await db
+      .select()
+      .from(teamMembers)
+      .where(and(eq(teamMembers.team_id, teamId), eq(teamMembers.id, memberId)))
+      .limit(1);
+
+    return member ? member.role : null;
+  }
+
+  /**
    * Add member to team
    */
   async addTeamMember(teamId: number, userEmail: string, role: "manager" | "member" = "member") {

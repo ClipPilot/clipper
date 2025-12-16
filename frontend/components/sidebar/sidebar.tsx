@@ -20,10 +20,11 @@ export type SidebarProps = {
   items: SidebarItem[];
   defaultSelectedKey: string;
   onSelect?: (key: string) => void;
+  canViewPricing?: boolean;
 };
 
 const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
-  ({ items, defaultSelectedKey, onSelect }, ref) => {
+  ({ items, defaultSelectedKey, onSelect, canViewPricing = true }, ref) => {
     const router = useRouter();
     const [selected, setSelected] = React.useState<React.Key>(defaultSelectedKey);
     const [selectedTeam] = useAtom(selectedTeamAtom);
@@ -107,7 +108,7 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
           </Listbox>
         </div>
 
-        {!isLoading && !error && selectedTeam && !isPaidPlan && (
+        {canViewPricing && !isLoading && !error && selectedTeam && !isPaidPlan && (
           <div className="mt-auto p-4 border-t border-border-base">
             <button
               onClick={() => router.push("/dashboard/pricing")}
@@ -123,7 +124,7 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
           </div>
         )}
 
-        {!isLoading && !error && selectedTeam && isPaidPlan && (
+        {canViewPricing && !isLoading && !error && selectedTeam && isPaidPlan && (
           <div className="mt-auto p-4 border-t border-border-base">
             <button
               onClick={() => router.push("/dashboard/pricing")}

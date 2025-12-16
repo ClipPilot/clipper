@@ -174,6 +174,14 @@ export const removeTeamMemberController = async (req: AuthRequest, res: Response
       return res.status(403).json({ error: "Only owners and managers can remove members" });
     }
 
+    // Check if manager is trying to remove an owner
+    if (userRole === "manager") {
+      const memberRole = await teamService.getMemberRoleById(teamId, memberId);
+      if (memberRole === "owner") {
+        return res.status(403).json({ error: "Managers cannot remove owners" });
+      }
+    }
+
     await teamService.removeTeamMember(teamId, memberId);
 
     res.json({ message: "Member removed successfully" });

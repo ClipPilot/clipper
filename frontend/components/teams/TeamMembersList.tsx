@@ -154,18 +154,22 @@ export default function TeamMembersList({
       }
     }
 
-    items.push(
-      <DropdownItem
-        key="remove"
-        color="danger"
-        startContent={
-          <Icon icon="solar:trash-bin-trash-bold-duotone" width={18} />
-        }
-        onPress={() => handleRemoveMember(member.id)}
-      >
-        Remove from Team
-      </DropdownItem>
-    );
+    // Only allow removing if: user is owner, OR (user is manager AND member is not owner)
+    const canRemove = isOwner || (userRole === "manager" && member.role !== "owner");
+    if (canRemove) {
+      items.push(
+        <DropdownItem
+          key="remove"
+          color="danger"
+          startContent={
+            <Icon icon="solar:trash-bin-trash-bold-duotone" width={18} />
+          }
+          onPress={() => handleRemoveMember(member.id)}
+        >
+          Remove from Team
+        </DropdownItem>
+      );
+    }
 
     return items;
   };

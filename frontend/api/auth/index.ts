@@ -49,7 +49,7 @@ class AuthAPI {
 
     if (!response.ok) {
       const error: ErrorResponse = await response.json();
-      throw new Error(error.message || "Failed to sign up");
+      throw new Error(error.error || error.message || "Failed to sign up");
     }
 
     const result: AuthResponse = await response.json();
@@ -73,7 +73,7 @@ class AuthAPI {
 
     if (!response.ok) {
       const error: ErrorResponse = await response.json();
-      throw new Error(error.message || "Failed to sign in");
+      throw new Error(error.error || error.message || "Failed to sign in");
     }
 
     const result: AuthResponse = await response.json();
@@ -111,7 +111,7 @@ class AuthAPI {
 
     if (!response.ok) {
       const error: ErrorResponse = await response.json();
-      throw new Error(error.message || "Failed to get user");
+      throw new Error(error.error || error.message || "Failed to get user");
     }
 
     const data = await response.json();
@@ -128,7 +128,7 @@ class AuthAPI {
 
     if (!response.ok) {
       const error: ErrorResponse = await response.json();
-      throw new Error(error.message || "Failed to send reset email");
+      throw new Error(error.error || error.message || "Failed to send reset email");
     }
   }
 
@@ -145,7 +145,7 @@ class AuthAPI {
 
     if (!response.ok) {
       const error: ErrorResponse = await response.json();
-      throw new Error(error.message || "Failed to update password");
+      throw new Error(error.error || error.message || "Failed to update password");
     }
 
     const result = await response.json();
@@ -182,7 +182,7 @@ class AuthAPI {
 
     if (!response.ok) {
       const error: ErrorResponse = await response.json();
-      throw new Error(error.message || "Failed to update profile");
+      throw new Error(error.error || error.message || "Failed to update profile");
     }
 
     const result = await response.json();

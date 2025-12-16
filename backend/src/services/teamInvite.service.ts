@@ -34,8 +34,8 @@ class TeamInviteService {
       throw new Error("Team not found");
     }
 
-    if (team.type === "personal") {
-      throw new Error("Cannot invite members to personal workspaces");
+    if (team.type === "personal" && team.plan !== "scale") {
+      throw new Error("Cannot invite members to personal workspaces. Upgrade to Scale plan to invite team members.");
     }
 
     const [existingUser] = await db
