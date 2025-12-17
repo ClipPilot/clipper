@@ -5,12 +5,16 @@ import { useRouter } from "next/navigation";
 import { useAtom } from "jotai";
 import { userAtom, userTeamsAtom } from "@/store/auth";
 import { teamAPI, InviteDetails } from "@/api/team";
-import { tokenManager } from "@/lib/apiClient";
 import Image from "next/image";
 import { Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import CuttrLogo from "@/public/branding/cuttr_logo.png";
 
-export default function InvitePage({ params }: { params: Promise<{ token: string }> }) {
+export default function InvitePage({
+  params,
+}: {
+  params: Promise<{ token: string }>;
+}) {
   const { token } = use(params);
   const router = useRouter();
   const [user] = useAtom(userAtom);
@@ -28,7 +32,9 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
         const inviteData = await teamAPI.getInviteByToken(token);
         setInvite(inviteData);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Invalid or expired invite");
+        setError(
+          err instanceof Error ? err.message : "Invalid or expired invite"
+        );
       } finally {
         setIsLoading(false);
       }
@@ -86,7 +92,11 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
       <div className="flex h-screen w-full items-center justify-center bg-surface-dark p-4">
         <div className="flex flex-col items-center gap-6 max-w-md text-center">
           <div className="w-16 h-16 rounded-full bg-status-error/20 flex items-center justify-center">
-            <Icon icon="solar:close-circle-bold" width={40} className="text-status-error" />
+            <Icon
+              icon="solar:close-circle-bold"
+              width={40}
+              className="text-status-error"
+            />
           </div>
           <div>
             <h1 className="text-2xl font-semibold text-text-primary mb-2">
@@ -111,14 +121,19 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
       <div className="flex h-screen w-full items-center justify-center bg-surface-dark p-4">
         <div className="flex flex-col items-center gap-6 max-w-md text-center">
           <div className="w-16 h-16 rounded-full bg-status-success/20 flex items-center justify-center">
-            <Icon icon="solar:check-circle-bold" width={40} className="text-status-success" />
+            <Icon
+              icon="solar:check-circle-bold"
+              width={40}
+              className="text-status-success"
+            />
           </div>
           <div>
             <h1 className="text-2xl font-semibold text-text-primary mb-2">
               Welcome to {invite?.team.name}!
             </h1>
             <p className="text-text-secondary">
-              You've successfully joined the workspace. Redirecting to dashboard...
+              You've successfully joined the workspace. Redirecting to
+              dashboard...
             </p>
           </div>
         </div>
@@ -130,7 +145,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
     <div className="flex h-screen w-full items-center justify-center bg-surface-dark p-4">
       <div className="flex flex-col items-center gap-8 max-w-md w-full">
         <Image
-          src="/branding/cuttr_logo.png"
+          src={CuttrLogo}
           alt="Cuttr"
           width={120}
           height={34}
@@ -140,7 +155,11 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
         <div className="w-full bg-surface-base border border-border-base rounded-2xl p-8">
           <div className="flex flex-col items-center gap-6 text-center">
             <div className="w-14 h-14 rounded-full bg-accent-400/20 flex items-center justify-center">
-              <Icon icon="solar:users-group-rounded-bold-duotone" width={32} className="text-accent-400" />
+              <Icon
+                icon="solar:users-group-rounded-bold-duotone"
+                width={32}
+                className="text-accent-400"
+              />
             </div>
 
             <div>
@@ -166,7 +185,9 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-text-secondary text-sm">Workspace plan</span>
+                <span className="text-text-secondary text-sm">
+                  Workspace plan
+                </span>
                 <span className="text-text-primary text-sm font-medium capitalize">
                   {invite?.team.plan}
                 </span>
@@ -182,7 +203,10 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
             {user ? (
               <div className="w-full space-y-3">
                 <p className="text-text-secondary text-sm">
-                  Signed in as <span className="text-text-primary font-medium">{user.email}</span>
+                  Signed in as{" "}
+                  <span className="text-text-primary font-medium">
+                    {user.email}
+                  </span>
                 </p>
                 <Button
                   color="primary"

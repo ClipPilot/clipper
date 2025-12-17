@@ -25,6 +25,7 @@ import WorkspaceSelector from "@/components/workspace-selector";
 import Image from "next/image";
 // import NotificationsCard from "@/components/notifications/notifications-card"; // TODO: Re-enable
 import { UsageStatsProvider } from "@/contexts/UsageStatsContext";
+import CuttrLogo from "@/public/branding/cuttr_logo.png";
 
 const baseSidebarItems: SidebarItem[] = [
   {
@@ -69,7 +70,8 @@ export default function DashboardLayout({
   const [isResizing, setIsResizing] = useState(false);
 
   // Only show pricing to owners and managers
-  const canViewPricing = selectedTeam?.role === "owner" || selectedTeam?.role === "manager";
+  const canViewPricing =
+    selectedTeam?.role === "owner" || selectedTeam?.role === "manager";
   const sidebarItems = useMemo(() => {
     if (canViewPricing) {
       return [...baseSidebarItems, pricingItem];
@@ -147,7 +149,7 @@ export default function DashboardLayout({
           <div className="p-4 border-b border-border-base">
             <div className="flex items-center justify-between mb-4">
               <Image
-                src="/branding/cuttr_logo.png"
+                src={CuttrLogo}
                 alt="Cuttr"
                 width={100}
                 height={28}

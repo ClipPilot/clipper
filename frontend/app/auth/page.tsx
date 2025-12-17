@@ -13,6 +13,7 @@ import ForgotPasswordForm from "@/components/auth/ForgotPasswordForm";
 import EmailConfirmation from "@/components/auth/EmailConfirmation";
 import PasswordResetSent from "@/components/auth/PasswordResetSent";
 import { Icon } from "@iconify/react";
+import CuttrLogo from "@/public/branding/cuttr_logo.png";
 
 export default function AuthPage() {
   const router = useRouter();
@@ -240,7 +241,7 @@ export default function AuthPage() {
       {/* Brand Logo */}
       <div className="absolute top-10 left-10">
         <Image
-          src="/branding/cuttr_logo.png"
+          src={CuttrLogo}
           alt="Cuttr"
           width={140}
           height={40}

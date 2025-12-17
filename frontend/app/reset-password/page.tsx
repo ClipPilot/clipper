@@ -10,6 +10,7 @@ import { supabase } from "@/lib/supabase";
 import Image from "next/image";
 import ResetPasswordForm from "@/components/auth/ResetPasswordForm";
 import { Icon } from "@iconify/react";
+import CuttrLogo from "@/public/branding/cuttr_logo.png";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -23,7 +24,9 @@ export default function ResetPasswordPage() {
   useEffect(() => {
     const checkAuth = async () => {
       // Check if user has a valid Supabase session (from the recovery link)
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
       if (session) {
         setIsAuthenticated(true);
@@ -120,7 +123,7 @@ export default function ResetPasswordPage() {
       >
         <div className="absolute top-10 left-10">
           <Image
-            src="/branding/cuttr_logo.png"
+            src={CuttrLogo}
             alt="Cuttr"
             width={140}
             height={40}
@@ -136,9 +139,12 @@ export default function ResetPasswordPage() {
                 className="text-4xl text-red-500"
               />
             </div>
-            <h2 className="text-2xl font-bold text-text-primary">Invalid Reset Link</h2>
+            <h2 className="text-2xl font-bold text-text-primary">
+              Invalid Reset Link
+            </h2>
             <p className="text-text-secondary">
-              This password reset link is invalid or has expired. Please request a new one.
+              This password reset link is invalid or has expired. Please request
+              a new one.
             </p>
             <button
               onClick={() => router.push("/auth")}
@@ -163,7 +169,7 @@ export default function ResetPasswordPage() {
     >
       <div className="absolute top-10 left-10">
         <Image
-          src="/branding/cuttr_logo.png"
+          src={CuttrLogo}
           alt="Cuttr"
           width={140}
           height={40}
