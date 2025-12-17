@@ -111,6 +111,10 @@ resource "aws_ecs_task_definition" "backend" {
       {
         name  = "SQS_QUEUE_URL"
         value = aws_sqs_queue.video_processing.url
+      },
+      {
+        name  = "FRONTEND_URL"
+        value = var.frontend_url
       }
     ]
 
@@ -146,10 +150,6 @@ resource "aws_ecs_task_definition" "backend" {
       {
         name      = "RESEND_API_KEY"
         valueFrom = aws_secretsmanager_secret.resend_api_key.arn
-      },
-      {
-        name      = "FRONTEND_URL"
-        valueFrom = aws_secretsmanager_secret.frontend_url.arn
       }
     ]
 
