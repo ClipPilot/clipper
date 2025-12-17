@@ -83,7 +83,7 @@ export default function WorkspaceSelector(props: CardProps) {
 
   return (
     <>
-    <Card className="w-full max-w-[320px] bg-surface-base border border-border-base" {...props}>
+    <Card className="w-full max-w-[380px] bg-surface-base border border-border-base" {...props}>
       <CardHeader className="flex flex-col px-0 pb-0">
         <div className="flex w-full items-center justify-between px-5 py-3 border-b border-border-base">
           <div>
@@ -137,7 +137,7 @@ export default function WorkspaceSelector(props: CardProps) {
                     <div className="flex-1 flex flex-col items-start">
                       <div className="flex items-center gap-2">
                         <span className={cn(
-                          "text-sm font-medium truncate max-w-[100px]",
+                          "text-sm font-medium truncate max-w-[120px]",
                           selectedTeam?.id === team.id ? "text-accent-400" : "text-text-primary"
                         )}>
                           {team.name}
@@ -156,7 +156,7 @@ export default function WorkspaceSelector(props: CardProps) {
                       </span>
                     </div>
                   </button>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 flex-shrink-0">
                     {isDefault ? (
                       <button
                         onClick={() => setAsDefaultTeam(null)}
