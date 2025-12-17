@@ -19,7 +19,7 @@ const features: PricingFeatures = [
         title: "Saved clips included",
         tiers: {
           [TiersEnum.Free]: "3 included",
-          [TiersEnum.Studio]: "500/month",
+          [TiersEnum.Studio]: "400/month",
           [TiersEnum.Scale]: "1,000/month",
         },
         helpText: "Save and download your favorite clips without watermarks.",

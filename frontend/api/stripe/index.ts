@@ -1,19 +1,7 @@
 import API_URL from "@/config/constants";
 import { apiFetch } from "@/lib/apiClient";
 
-//Change per environment TODO
-export const STRIPE_PRICES = {
-  STUDIO: "price_1SeiLyGu9cYiGgY365Gs60AW",
-  SCALE: "price_1SeiLyGu9cYiGgY320k4zUWp",
-  STUDIO_ADDON: "price_1SeiLzGu9cYiGgY3c734FM7S",
-  SCALE_ADDON: "price_1SeiLzGu9cYiGgY3KT3zya5Z",
-} as const;
-
-export const PLAN_DETAILS = {
-  free: { name: "Free", clips: 3, price: 0 },
-  studio: { name: "Studio", clips: 500, price: 8495 },
-  scale: { name: "Scale", clips: 1000, price: 8990 },
-} as const;
+export { STRIPE_PRICES, PLAN_DETAILS } from "@/config/stripe.constants";
 
 export interface Subscription {
   id: number;

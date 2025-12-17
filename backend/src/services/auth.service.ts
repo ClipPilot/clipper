@@ -23,6 +23,17 @@ class AuthService {
     firstName: string,
     lastName: string
   ) {
+    // Check if email already exists in our database
+    const [existingUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+
+    if (existingUser) {
+      throw new Error("An account with this email already exists");
+    }
+
     const { data: authData, error: authError } =
       await this.supabase.auth.signUp({
         email,
@@ -38,6 +49,11 @@ class AuthService {
 
     if (!authData.user) {
       throw new Error("Failed to create user");
+    }
+
+    // Supabase returns empty identities array if email already exists (but unconfirmed)
+    if (authData.user.identities && authData.user.identities.length === 0) {
+      throw new Error("An account with this email already exists");
     }
 
     const [user] = await db

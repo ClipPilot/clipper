@@ -7,6 +7,7 @@ import { Icon } from "@iconify/react";
 interface SignUpFormProps {
   onLogin: () => void;
   onSubmit: (email: string, password: string, firstName: string, lastName: string) => Promise<void>;
+  onClearError: () => void;
   error: string;
   isLoading: boolean;
 }
@@ -14,6 +15,7 @@ interface SignUpFormProps {
 export default function SignUpForm({
   onLogin,
   onSubmit,
+  onClearError,
   error,
   isLoading,
 }: SignUpFormProps) {
@@ -26,9 +28,14 @@ export default function SignUpForm({
   const [isVisible, setIsVisible] = useState(false);
   const [isConfirmVisible, setIsConfirmVisible] = useState(false);
 
+  const [localError, setLocalError] = useState("");
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    onClearError();
+    setLocalError("");
     if (password !== confirmPassword) {
+      setLocalError("Passwords do not match");
       return;
     }
     await onSubmit(email, password, firstName, lastName);
@@ -41,9 +48,9 @@ export default function SignUpForm({
         <p className="text-sm text-text-secondary mt-1">Sign up to get started</p>
       </div>
 
-      {error && (
+      {(error || localError) && (
         <div className="text-red-500 text-sm bg-red-500/10 p-3 rounded-lg border border-red-500/20">
-          {error}
+          {error || localError}
         </div>
       )}
 

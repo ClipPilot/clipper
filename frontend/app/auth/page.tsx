@@ -197,6 +197,7 @@ export default function AuthPage() {
         <SignUpForm
           onLogin={() => setIsSignUp(false)}
           onSubmit={handleSignUp}
+          onClearError={() => setError("")}
           error={error}
           isLoading={isLoading}
         />

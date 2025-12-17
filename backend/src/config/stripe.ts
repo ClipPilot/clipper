@@ -94,7 +94,7 @@ async function main() {
   const studioAddon = await crateOneOffPrice({
     name: "Studio Add-On: +50 Saved Clips",
     description: "Adds 50 saved clips per month.",
-    amountCents: 50 * 1149, // $849.50
+    amountCents: 50 * 1149, // 574.50
     nickname: "Studio +50 clips",
     metadata: {
       addon_for: "studio",

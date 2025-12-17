@@ -214,12 +214,12 @@ export function PaidPlanView({
               <div>
                 <div className="flex items-baseline gap-1">
                   <span className="text-3xl font-bold text-text-primary">
-                    ${isScale ? "8.99" : "16.99"}
+                    ${isScale ? "5.99" : "11.49"}
                   </span>
                   <span className="text-sm text-text-tertiary">/per clip</span>
                 </div>
                 <p className="text-xs text-text-tertiary mt-1">
-                  ${isScale ? "899" : "849.50"} one time purchase
+                  ${isScale ? "599" : "574.50"} one time purchase
                 </p>
               </div>
               <div className="flex items-center gap-2 p-2 rounded-lg bg-warning-500/10 border border-warning-500/20">

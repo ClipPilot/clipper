@@ -3,16 +3,25 @@ import { ENV } from "./env";
 
 export const stripe = new Stripe(ENV.STRIPE_SECRET_KEY!);
 
-export const STRIPE_PRICES = {
-  STUDIO: "price_1SeiLyGu9cYiGgY365Gs60AW",
-  SCALE: "price_1SeiLyGu9cYiGgY320k4zUWp",
-  STUDIO_ADDON: "price_1SeiLzGu9cYiGgY3c734FM7S",
-  SCALE_ADDON: "price_1SeiLzGu9cYiGgY3KT3zya5Z",
-} as const;
+const isProduction = process.env.NODE_ENV === "production";
+
+export const STRIPE_PRICES = isProduction
+  ? {
+      STUDIO: "price_1SfSwWKIbKD6ydHMQNyyZ6mc",
+      SCALE: "price_1SfSwWKIbKD6ydHMVRieRr2n",
+      STUDIO_ADDON: "price_1SfSwXKIbKD6ydHMrRGsHTdk",
+      SCALE_ADDON: "price_1SfSwXKIbKD6ydHMF5piBhSZ",
+    }
+  : {
+      STUDIO: "price_1SfT5qGu9cYiGgY3Ji42KTKB",
+      SCALE: "price_1SfT5BGu9cYiGgY33x2pCcPc",
+      STUDIO_ADDON: "price_1SfTC1Gu9cYiGgY3O1P2rGc1",
+      SCALE_ADDON: "price_1SfTAzGu9cYiGgY3SHUjgUf0",
+    };
 
 export const PLAN_LIMITS = {
   FREE: { clips: 3, seats: 1 },
-  STUDIO: { clips: 500, seats: 3 },
+  STUDIO: { clips: 400, seats: 1 },
   SCALE: { clips: 1000, seats: -1 },
   STUDIO_ADDON: { clips: 50 },
   SCALE_ADDON: { clips: 100 },
