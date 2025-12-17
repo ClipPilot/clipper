@@ -111,6 +111,10 @@ resource "aws_ecs_task_definition" "backend" {
       {
         name  = "SQS_QUEUE_URL"
         value = aws_sqs_queue.video_processing.url
+      },
+      {
+        name  = "FRONTEND_URL"
+        value = var.frontend_url
       }
     ]
 
