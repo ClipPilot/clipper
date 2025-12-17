@@ -113,7 +113,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
           file,
           multipartData,
           (uploadProgress) => setProgress(uploadProgress),
-          4
+          2 // Reduced concurrency for better reliability on slower connections
         );
 
         await videoAPI.completeMultipartUpload(

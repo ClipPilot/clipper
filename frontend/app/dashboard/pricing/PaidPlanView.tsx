@@ -219,11 +219,15 @@ export function PaidPlanView({
                   <span className="text-sm text-text-tertiary">/per clip</span>
                 </div>
                 <p className="text-xs text-text-tertiary mt-1">
-                  ${isScale ? "899" : "849.50"} total for this month
+                  ${isScale ? "899" : "849.50"} one time purchase
                 </p>
               </div>
               <div className="flex items-center gap-2 p-2 rounded-lg bg-warning-500/10 border border-warning-500/20">
-                <Icon icon="solar:clock-circle-bold" className="text-warning-500" width={16} />
+                <Icon
+                  icon="solar:clock-circle-bold"
+                  className="text-warning-500"
+                  width={16}
+                />
                 <p className="text-xs text-warning-500">
                   Clips expire at end of billing period
                 </p>

@@ -1,6 +1,7 @@
 import API_URL from "@/config/constants";
 import { apiFetch } from "@/lib/apiClient";
 
+//Change per environment TODO
 export const STRIPE_PRICES = {
   STUDIO: "price_1SeiLyGu9cYiGgY365Gs60AW",
   SCALE: "price_1SeiLyGu9cYiGgY320k4zUWp",

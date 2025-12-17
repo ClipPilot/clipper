@@ -115,6 +115,103 @@ class VideoAPI {
     });
   }
 
+  private uploadSinglePart(
+    file: File,
+    partInfo: { partNumber: number; uploadUrl: string },
+    chunkSize: number,
+    partProgress: Record<number, number>,
+    totalSize: number,
+    startTime: number,
+    onProgress?: (progress: UploadProgress) => void
+  ): Promise<{ partNumber: number; etag: string }> {
+    const start = (partInfo.partNumber - 1) * chunkSize;
+    const end = Math.min(start + chunkSize, file.size);
+    const chunk = file.slice(start, end);
+    const chunkSizeBytes = end - start;
+
+    // Calculate timeout: minimum 60s, or 30s per MB (for slow connections)
+    const timeoutMs = Math.max(60000, Math.ceil(chunkSizeBytes / (1024 * 1024)) * 30000);
+
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      let timeoutId: ReturnType<typeof setTimeout>;
+
+      const cleanup = () => {
+        if (timeoutId) clearTimeout(timeoutId);
+      };
+
+      xhr.upload.addEventListener("progress", (event) => {
+        if (event.lengthComputable) {
+          // Reset timeout on progress
+          if (timeoutId) clearTimeout(timeoutId);
+          timeoutId = setTimeout(() => {
+            xhr.abort();
+            reject(new Error("Upload stalled - no progress for 30 seconds"));
+          }, 30000);
+
+          partProgress[partInfo.partNumber] = event.loaded;
+          const totalLoaded = Object.values(partProgress).reduce((a, b) => a + b, 0);
+
+          if (onProgress) {
+            const elapsed = (Date.now() - startTime) / 1000;
+            const speed = elapsed > 0 ? totalLoaded / elapsed : 0;
+            const remaining = totalSize - totalLoaded;
+            const remainingTime = speed > 0 ? remaining / speed : null;
+
+            onProgress({
+              loaded: totalLoaded,
+              total: totalSize,
+              percentage: Math.round((totalLoaded / totalSize) * 100),
+              remainingTime,
+              speed,
+            });
+          }
+        }
+      });
+
+      xhr.addEventListener("load", () => {
+        cleanup();
+        if (xhr.status >= 200 && xhr.status < 300) {
+          const etag = xhr.getResponseHeader("ETag");
+          if (etag) {
+            partProgress[partInfo.partNumber] = chunkSizeBytes;
+            resolve({ partNumber: partInfo.partNumber, etag: etag.replace(/"/g, "") });
+          } else {
+            reject(new Error("No ETag received"));
+          }
+        } else {
+          reject(new Error(`Part upload failed with status ${xhr.status}`));
+        }
+      });
+
+      xhr.addEventListener("error", () => {
+        cleanup();
+        reject(new Error("Part upload failed - connection error"));
+      });
+
+      xhr.addEventListener("abort", () => {
+        cleanup();
+        reject(new Error("Part upload aborted"));
+      });
+
+      xhr.addEventListener("timeout", () => {
+        cleanup();
+        reject(new Error("Part upload timed out"));
+      });
+
+      xhr.open("PUT", partInfo.uploadUrl);
+      xhr.timeout = timeoutMs;
+
+      // Start initial timeout
+      timeoutId = setTimeout(() => {
+        xhr.abort();
+        reject(new Error("Upload stalled - no progress"));
+      }, 30000);
+
+      xhr.send(chunk);
+    });
+  }
+
   async initiateMultipartUpload(
     teamId: number,
     fileName: string,
@@ -147,58 +244,41 @@ class VideoAPI {
     const startTime = Date.now();
     const partProgress: Record<number, number> = {};
 
+    const uploadPartWithRetry = async (
+      partInfo: { partNumber: number; uploadUrl: string },
+      maxRetries: number = 3
+    ): Promise<{ partNumber: number; etag: string }> => {
+      let lastError: Error | null = null;
+
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          return await this.uploadSinglePart(
+            file,
+            partInfo,
+            chunkSize,
+            partProgress,
+            totalSize,
+            startTime,
+            onProgress
+          );
+        } catch (error) {
+          lastError = error as Error;
+          console.warn(`Part ${partInfo.partNumber} failed (attempt ${attempt + 1}/${maxRetries}):`, error);
+
+          if (attempt < maxRetries - 1) {
+            // Wait before retry with exponential backoff
+            await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
+          }
+        }
+      }
+
+      throw lastError || new Error(`Part ${partInfo.partNumber} failed after ${maxRetries} attempts`);
+    };
+
     const uploadPart = async (
       partInfo: { partNumber: number; uploadUrl: string }
     ): Promise<{ partNumber: number; etag: string }> => {
-      const start = (partInfo.partNumber - 1) * chunkSize;
-      const end = Math.min(start + chunkSize, file.size);
-      const chunk = file.slice(start, end);
-
-      return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-
-        xhr.upload.addEventListener("progress", (event) => {
-          if (event.lengthComputable) {
-            partProgress[partInfo.partNumber] = event.loaded;
-            const totalLoaded = Object.values(partProgress).reduce((a, b) => a + b, 0);
-
-            if (onProgress) {
-              const elapsed = (Date.now() - startTime) / 1000;
-              const speed = elapsed > 0 ? totalLoaded / elapsed : 0;
-              const remaining = totalSize - totalLoaded;
-              const remainingTime = speed > 0 ? remaining / speed : null;
-
-              onProgress({
-                loaded: totalLoaded,
-                total: totalSize,
-                percentage: Math.round((totalLoaded / totalSize) * 100),
-                remainingTime,
-                speed,
-              });
-            }
-          }
-        });
-
-        xhr.addEventListener("load", () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            const etag = xhr.getResponseHeader("ETag");
-            if (etag) {
-              partProgress[partInfo.partNumber] = end - start;
-              resolve({ partNumber: partInfo.partNumber, etag: etag.replace(/"/g, "") });
-            } else {
-              reject(new Error("No ETag received"));
-            }
-          } else {
-            reject(new Error(`Part upload failed with status ${xhr.status}`));
-          }
-        });
-
-        xhr.addEventListener("error", () => reject(new Error("Part upload failed")));
-        xhr.addEventListener("abort", () => reject(new Error("Part upload aborted")));
-
-        xhr.open("PUT", partInfo.uploadUrl);
-        xhr.send(chunk);
-      });
+      return uploadPartWithRetry(partInfo, 3);
     };
 
     const executeWithConcurrency = async <T>(
