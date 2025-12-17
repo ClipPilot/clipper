@@ -8,6 +8,9 @@ resource "aws_lb" "backend" {
 
   enable_deletion_protection = var.environment == "prod" ? true : false
 
+  # Increase idle timeout for WebSocket support
+  idle_timeout = 3600
+
   tags = {
     Name = "${var.project_name}-alb-${var.environment}"
   }
@@ -29,6 +32,13 @@ resource "aws_lb_target_group" "backend" {
     interval            = 30
     path                = "/health"
     matcher             = "200"
+  }
+
+  # Enable sticky sessions for WebSocket/Socket.io support
+  stickiness {
+    type            = "lb_cookie"
+    cookie_duration = 86400 # 24 hours
+    enabled         = true
   }
 
   deregistration_delay = 30

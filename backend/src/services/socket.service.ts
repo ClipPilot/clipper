@@ -1,9 +1,11 @@
 import { Server as SocketServer } from "socket.io";
 import { Server as HttpServer } from "http";
+import { createAdapter } from "@socket.io/redis-adapter";
+import { Redis } from "ioredis";
 
 let io: SocketServer | null = null;
 
-export const initializeSocket = (httpServer: HttpServer) => {
+export const initializeSocket = async (httpServer: HttpServer) => {
   io = new SocketServer(httpServer, {
     cors: {
       origin: process.env.FRONTEND_URL || "http://localhost:3000",
@@ -11,6 +13,28 @@ export const initializeSocket = (httpServer: HttpServer) => {
       credentials: true,
     },
   });
+
+  // Set up Redis adapter if REDIS_URL is configured
+  const redisUrl = process.env.REDIS_URL;
+  if (redisUrl) {
+    try {
+      const pubClient = new Redis(redisUrl);
+      const subClient = pubClient.duplicate();
+
+      await Promise.all([
+        new Promise<void>((resolve) => pubClient.once("connect", resolve)),
+        new Promise<void>((resolve) => subClient.once("connect", resolve)),
+      ]);
+
+      io.adapter(createAdapter(pubClient, subClient));
+      console.log("Socket.io Redis adapter connected successfully");
+    } catch (error) {
+      console.error("Failed to connect Socket.io Redis adapter:", error);
+      console.log("Falling back to in-memory adapter");
+    }
+  } else {
+    console.log("REDIS_URL not set, using in-memory Socket.io adapter");
+  }
 
   io.on("connection", (socket) => {
     console.log(`Client connected: ${socket.id}`);

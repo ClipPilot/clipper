@@ -98,3 +98,14 @@ output "sqs_dlq_url" {
   description = "URL of the dead letter queue"
   value       = aws_sqs_queue.video_processing_dlq.url
 }
+
+# Redis outputs
+output "redis_endpoint" {
+  description = "Redis ElastiCache endpoint"
+  value       = aws_elasticache_cluster.redis.cache_nodes[0].address
+}
+
+output "redis_port" {
+  description = "Redis ElastiCache port"
+  value       = aws_elasticache_cluster.redis.cache_nodes[0].port
+}
