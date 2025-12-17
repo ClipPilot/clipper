@@ -150,6 +150,7 @@ export default function InvitePage({
           width={120}
           height={34}
           className="object-contain"
+          unoptimized
         />
 
         <div className="w-full bg-surface-base border border-border-base rounded-2xl p-8">

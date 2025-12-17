@@ -7,7 +7,7 @@ import { userAtom, selectedTeamAtom } from "@/store/auth";
 import { Button, Card, CardBody } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { authAPI } from "@/api/auth";
-import { clipsAPI, Clip, Folder } from "@/api/clips";
+import { clipsAPI, Clip, Folder, Tag } from "@/api/clips";
 import { ClipCard } from "@/components/clips/ClipCard";
 import { ExpandableFolder } from "@/components/clips/ExpandableFolder";
 import { CreateFolderModal } from "@/components/clips/CreateFolderModal";
@@ -28,6 +28,7 @@ export default function MyClipsPage() {
   const [unsavedClips, setUnsavedClips] = useState<Clip[]>([]);
   const [savedClips, setSavedClips] = useState<Clip[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [isLoadingClips, setIsLoadingClips] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isLoadingFolders, setIsLoadingFolders] = useState(false);
@@ -62,43 +63,47 @@ export default function MyClipsPage() {
     }
   }, [selectedTeam?.id]);
 
-  const loadSavedClips = useCallback(async (reset: boolean = false) => {
-    if (!selectedTeam?.id) return;
+  const loadSavedClips = useCallback(
+    async (reset: boolean = false) => {
+      if (!selectedTeam?.id) return;
 
-    const currentOffset = reset ? 0 : offset;
+      const currentOffset = reset ? 0 : offset;
 
-    if (reset) {
-      setIsLoadingClips(true);
-      setOffset(0);
-    }
-
-    try {
-      const { clips, hasMore: moreAvailable } = await clipsAPI.getSavedClips(
-        selectedTeam.id,
-        CLIPS_PER_PAGE,
-        currentOffset
-      );
-
-      if (reset || currentOffset === 0) {
-        setSavedClips(clips);
-      } else {
-        setSavedClips(prev => {
-          const existingIds = new Set(prev.map(c => c.id));
-          const newClips = clips.filter(c => !existingIds.has(c.id));
-          return [...prev, ...newClips];
-        });
+      if (reset) {
+        setIsLoadingClips(true);
+        setOffset(0);
       }
 
-      setHasMore(moreAvailable);
-    } catch (error) {
-      console.error("Failed to load saved clips:", error);
-    } finally {
-      setIsLoadingClips(false);
-    }
-  }, [selectedTeam?.id, offset]);
+      try {
+        const { clips, hasMore: moreAvailable } = await clipsAPI.getSavedClips(
+          selectedTeam.id,
+          CLIPS_PER_PAGE,
+          currentOffset
+        );
+
+        if (reset || currentOffset === 0) {
+          setSavedClips(clips);
+        } else {
+          setSavedClips((prev) => {
+            const existingIds = new Set(prev.map((c) => c.id));
+            const newClips = clips.filter((c) => !existingIds.has(c.id));
+            return [...prev, ...newClips];
+          });
+        }
+
+        setHasMore(moreAvailable);
+      } catch (error) {
+        console.error("Failed to load saved clips:", error);
+      } finally {
+        setIsLoadingClips(false);
+      }
+    },
+    [selectedTeam?.id, offset]
+  );
 
   const loadMoreClips = useCallback(async () => {
-    if (!selectedTeam?.id || isLoadingMore || !hasMore || isDraggingRef.current) return;
+    if (!selectedTeam?.id || isLoadingMore || !hasMore || isDraggingRef.current)
+      return;
 
     setIsLoadingMore(true);
     const newOffset = offset + CLIPS_PER_PAGE;
@@ -110,9 +115,9 @@ export default function MyClipsPage() {
         newOffset
       );
 
-      setSavedClips(prev => {
-        const existingIds = new Set(prev.map(c => c.id));
-        const newClips = clips.filter(c => !existingIds.has(c.id));
+      setSavedClips((prev) => {
+        const existingIds = new Set(prev.map((c) => c.id));
+        const newClips = clips.filter((c) => !existingIds.has(c.id));
         return [...prev, ...newClips];
       });
 
@@ -131,7 +136,13 @@ export default function MyClipsPage() {
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isLoadingMore && !isLoadingClips && !isDraggingRef.current) {
+        if (
+          entries[0].isIntersecting &&
+          hasMore &&
+          !isLoadingMore &&
+          !isLoadingClips &&
+          !isDraggingRef.current
+        ) {
           loadMoreClips();
         }
       },
@@ -179,6 +190,7 @@ export default function MyClipsPage() {
       loadUnsavedClips();
       loadSavedClips(true);
       loadFolders();
+      loadTags();
     }
   }, [selectedTeam?.id]);
 
@@ -193,6 +205,17 @@ export default function MyClipsPage() {
       console.error("Failed to load folders:", error);
     } finally {
       setIsLoadingFolders(false);
+    }
+  };
+
+  const loadTags = async () => {
+    if (!selectedTeam?.id) return;
+
+    try {
+      const fetchedTags = await clipsAPI.getTags(selectedTeam.id);
+      setTags(fetchedTags);
+    } catch (error) {
+      console.error("Failed to load tags:", error);
     }
   };
 
@@ -230,9 +253,9 @@ export default function MyClipsPage() {
 
     try {
       await clipsAPI.deleteClip(selectedTeam.id, clipId);
-      setPendingClips(prev => prev.filter(c => c.id !== clipId));
-      setUnsavedClips(prev => prev.filter(c => c.id !== clipId));
-      setSavedClips(prev => prev.filter(c => c.id !== clipId));
+      setPendingClips((prev) => prev.filter((c) => c.id !== clipId));
+      setUnsavedClips((prev) => prev.filter((c) => c.id !== clipId));
+      setSavedClips((prev) => prev.filter((c) => c.id !== clipId));
       triggerRefresh();
     } catch (error) {
       console.error("Failed to delete clip:", error);
@@ -240,7 +263,7 @@ export default function MyClipsPage() {
   };
 
   const handleClipSaved = (clipId: number) => {
-    setUnsavedClips(prev => prev.filter(c => c.id !== clipId));
+    setUnsavedClips((prev) => prev.filter((c) => c.id !== clipId));
     loadSavedClips(true);
   };
 
@@ -249,7 +272,7 @@ export default function MyClipsPage() {
 
     try {
       await clipsAPI.deleteClip(selectedTeam.id, clipId);
-      setUnsavedClips(prev => prev.filter(c => c.id !== clipId));
+      setUnsavedClips((prev) => prev.filter((c) => c.id !== clipId));
     } catch (error) {
       console.error("Failed to reject clip:", error);
     }
@@ -272,8 +295,8 @@ export default function MyClipsPage() {
 
     try {
       await clipsAPI.updateClip(selectedTeam.id, clipId, { folderId });
-      setSavedClips(prev => prev.filter(c => c.id !== clipId));
-      setMovedClipIds(prev => [...prev, clipId]);
+      setSavedClips((prev) => prev.filter((c) => c.id !== clipId));
+      setMovedClipIds((prev) => [...prev, clipId]);
     } catch (error) {
       console.error("Failed to move clip to folder:", error);
     }
@@ -288,9 +311,11 @@ export default function MyClipsPage() {
     const clipId = parseInt(clipIdStr);
 
     try {
-      const updatedClip = await clipsAPI.updateClip(selectedTeam.id, clipId, { folderId: null });
-      setSavedClips(prev => {
-        if (prev.some(c => c.id === clipId)) return prev;
+      const updatedClip = await clipsAPI.updateClip(selectedTeam.id, clipId, {
+        folderId: null,
+      });
+      setSavedClips((prev) => {
+        if (prev.some((c) => c.id === clipId)) return prev;
         return [updatedClip, ...prev];
       });
     } catch (error) {
@@ -316,16 +341,18 @@ export default function MyClipsPage() {
     if (!selectedTeam?.id) return;
 
     try {
-      const updatedClip = await clipsAPI.updateClip(selectedTeam.id, clipId, { folderId });
+      const updatedClip = await clipsAPI.updateClip(selectedTeam.id, clipId, {
+        folderId,
+      });
 
       if (folderId === null) {
-        setSavedClips(prev => {
-          if (prev.some(c => c.id === clipId)) return prev;
+        setSavedClips((prev) => {
+          if (prev.some((c) => c.id === clipId)) return prev;
           return [updatedClip, ...prev];
         });
       } else {
-        setSavedClips(prev => prev.filter(c => c.id !== clipId));
-        setMovedClipIds(prev => [...prev, clipId]);
+        setSavedClips((prev) => prev.filter((c) => c.id !== clipId));
+        setMovedClipIds((prev) => [...prev, clipId]);
       }
 
       setIsViewModalOpen(false);
@@ -335,10 +362,52 @@ export default function MyClipsPage() {
     }
   };
 
+  const handleTagsChange = async (clipId: number, tagIds: number[]) => {
+    try {
+      const updatedTags = await clipsAPI.setClipTags(clipId, tagIds);
+
+      setSavedClips((prev) =>
+        prev.map((c) =>
+          c.id === clipId ? { ...c, tags: updatedTags } : c
+        )
+      );
+
+      if (selectedClip?.id === clipId) {
+        setSelectedClip((prev) =>
+          prev ? { ...prev, tags: updatedTags } : prev
+        );
+      }
+    } catch (error) {
+      console.error("Failed to update clip tags:", error);
+    }
+  };
+
+  const handleCreateTag = async (name: string, color: string) => {
+    if (!selectedTeam?.id) throw new Error("No team selected");
+
+    const newTag = await clipsAPI.createTag(selectedTeam.id, { name, color });
+    setTags((prev) => [newTag, ...prev]);
+    return newTag;
+  };
+
+  const handleDeleteTag = async (tagId: number) => {
+    if (!selectedTeam?.id) throw new Error("No team selected");
+
+    await clipsAPI.deleteTag(selectedTeam.id, tagId);
+    setTags((prev) => prev.filter((t) => t.id !== tagId));
+
+    setSavedClips((prev) =>
+      prev.map((c) => ({
+        ...c,
+        tags: c.tags?.filter((t) => t.id !== tagId),
+      }))
+    );
+  };
+
   const twentyMinutesAgo = new Date(Date.now() - 20 * 60 * 1000);
 
-  const newClips = savedClips.filter(clip =>
-    new Date(clip.created_at) > twentyMinutesAgo
+  const newClips = savedClips.filter(
+    (clip) => new Date(clip.created_at) > twentyMinutesAgo
   );
 
   if (!user) {
@@ -358,37 +427,49 @@ export default function MyClipsPage() {
   return (
     <div className="min-h-screen bg-surface-dark p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-text-primary mb-2">
-              My Clips
-            </h1>
-            <p className="text-text-secondary">
-              Organize your video clips into folders
-            </p>
-          </div>
-          <Button
-            onClick={() => setIsCreateFolderOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-accent-400 text-white rounded-lg hover:bg-accent-500 transition-colors"
-          >
-            <Icon icon="solar:add-circle-bold" className="text-xl" />
-            <span>New Folder</span>
-          </Button>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-text-primary">My Clips</h1>
         </div>
 
-        {isLoadingFolders ? (
-          <div className="flex items-center justify-center py-12">
-            <Icon
-              icon="solar:loading-circle-bold"
-              className="text-4xl animate-spin text-accent-400"
-            />
-          </div>
-        ) : folders.length > 0 ? (
-          <div className="mb-8">
-            <h2 className="text-xl font-bold text-text-primary mb-4 flex items-center gap-2">
-              <Icon icon="solar:folder-bold-duotone" className="text-2xl text-accent-400" />
+        <PendingClipsSection
+          clips={pendingClips}
+          onClipClick={(clip: any) => handleViewClip(clip)}
+        />
+
+        <ClipsToSaveSection
+          clips={unsavedClips}
+          teamId={selectedTeam!.id}
+          onClipSaved={handleClipSaved}
+          onClipRejected={handleRejectClip}
+          onUsageUpdated={triggerRefresh}
+        />
+
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
+              <Icon
+                icon="solar:folder-bold-duotone"
+                className="text-2xl text-accent-400"
+              />
               Folders
             </h2>
+            <Button
+              onClick={() => setIsCreateFolderOpen(true)}
+              size="sm"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-accent-400 text-white rounded-lg hover:bg-accent-500 transition-colors"
+            >
+              <Icon icon="solar:add-circle-bold" className="text-lg" />
+              <span>New Folder</span>
+            </Button>
+          </div>
+          {isLoadingFolders ? (
+            <div className="flex items-center justify-center py-12">
+              <Icon
+                icon="solar:loading-circle-bold"
+                className="text-4xl animate-spin text-accent-400"
+              />
+            </div>
+          ) : folders.length > 0 ? (
             <div className="bg-surface-base border border-border-base rounded-lg p-2">
               {folders.map((folder) => (
                 <ExpandableFolder
@@ -407,21 +488,16 @@ export default function MyClipsPage() {
                 />
               ))}
             </div>
-          </div>
-        ) : null}
-
-        <PendingClipsSection
-          clips={pendingClips}
-          onClipClick={(clip: any) => handleViewClip(clip)}
-        />
-
-        <ClipsToSaveSection
-          clips={unsavedClips}
-          teamId={selectedTeam!.id}
-          onClipSaved={handleClipSaved}
-          onClipRejected={handleRejectClip}
-          onUsageUpdated={triggerRefresh}
-        />
+          ) : (
+            <div className="bg-surface-base border border-border-base border-dashed rounded-lg p-8 flex flex-col items-center justify-center">
+              <Icon
+                icon="solar:folder-add-bold-duotone"
+                className="text-4xl text-text-tertiary mb-2"
+              />
+              <p className="text-text-secondary text-sm">No folders yet</p>
+            </div>
+          )}
+        </div>
 
         <NewClipsSection
           clips={newClips}
@@ -439,7 +515,10 @@ export default function MyClipsPage() {
           className="min-h-[200px]"
         >
           <h2 className="text-xl font-bold text-text-primary mb-4 flex items-center gap-2">
-            <Icon icon="solar:video-library-bold-duotone" className="text-2xl text-accent-400" />
+            <Icon
+              icon="solar:video-library-bold-duotone"
+              className="text-2xl text-accent-400"
+            />
             Saved Clips
           </h2>
           {isLoadingClips ? (
@@ -512,7 +591,11 @@ export default function MyClipsPage() {
           }}
           clip={selectedClip}
           folders={folders}
+          availableTags={tags}
           onMoveToFolder={handleMoveClip}
+          onTagsChange={handleTagsChange}
+          onCreateTag={handleCreateTag}
+          onDeleteTag={handleDeleteTag}
         />
       )}
     </div>

@@ -23,6 +23,12 @@ interface Folder {
   color?: string;
 }
 
+interface Tag {
+  id: number;
+  name: string;
+  color: string;
+}
+
 interface Clip {
   id: number;
   folder_id?: number | null;
@@ -37,6 +43,7 @@ interface Clip {
   updated_at: string;
   clipUrl?: string;
   sourceVideoUrl?: string;
+  tags?: Tag[];
 }
 
 interface ClipViewModalProps {
@@ -44,17 +51,50 @@ interface ClipViewModalProps {
   onClose: () => void;
   clip: Clip;
   folders?: Folder[];
+  availableTags?: Tag[];
   onMoveToFolder?: (clipId: number, folderId: number | null) => void;
+  onTagsChange?: (clipId: number, tagIds: number[]) => void;
+  onCreateTag?: (name: string, color: string) => Promise<Tag>;
+  onDeleteTag?: (tagId: number) => Promise<void>;
 }
+
+const TAG_COLORS = [
+  "#6366f1",
+  "#8b5cf6",
+  "#ec4899",
+  "#ef4444",
+  "#f97316",
+  "#eab308",
+  "#22c55e",
+  "#14b8a6",
+  "#06b6d4",
+  "#3b82f6",
+];
 
 export default function ClipViewModal({
   isOpen,
   onClose,
   clip,
   folders = [],
+  availableTags = [],
   onMoveToFolder,
+  onTagsChange,
+  onCreateTag,
+  onDeleteTag,
 }: ClipViewModalProps) {
   const [isMoving, setIsMoving] = useState(false);
+  const [isUpdatingTags, setIsUpdatingTags] = useState(false);
+  const [selectedTagIds, setSelectedTagIds] = useState<number[]>(
+    clip.tags?.map((t) => t.id) || []
+  );
+  const [isCreatingTag, setIsCreatingTag] = useState(false);
+  const [newTagName, setNewTagName] = useState("");
+  const [newTagColor, setNewTagColor] = useState(TAG_COLORS[0]);
+  const [deletingTagId, setDeletingTagId] = useState<number | null>(null);
+
+  React.useEffect(() => {
+    setSelectedTagIds(clip.tags?.map((t) => t.id) || []);
+  }, [clip.tags]);
 
   const getStatusColor = () => {
     switch (clip.status) {
@@ -101,6 +141,50 @@ export default function ClipViewModal({
       await onMoveToFolder(clip.id, folderId);
     } finally {
       setIsMoving(false);
+    }
+  };
+
+  const handleTagToggle = async (tagId: number) => {
+    if (!onTagsChange) return;
+    setIsUpdatingTags(true);
+    try {
+      const newTagIds = selectedTagIds.includes(tagId)
+        ? selectedTagIds.filter((id) => id !== tagId)
+        : [...selectedTagIds, tagId];
+      setSelectedTagIds(newTagIds);
+      await onTagsChange(clip.id, newTagIds);
+    } finally {
+      setIsUpdatingTags(false);
+    }
+  };
+
+  const handleCreateTag = async () => {
+    if (!onCreateTag || !newTagName.trim()) return;
+    setIsCreatingTag(true);
+    try {
+      const newTag = await onCreateTag(newTagName.trim(), newTagColor);
+      setNewTagName("");
+      setNewTagColor(TAG_COLORS[Math.floor(Math.random() * TAG_COLORS.length)]);
+      if (onTagsChange) {
+        const newTagIds = [...selectedTagIds, newTag.id];
+        setSelectedTagIds(newTagIds);
+        await onTagsChange(clip.id, newTagIds);
+      }
+    } finally {
+      setIsCreatingTag(false);
+    }
+  };
+
+  const handleDeleteTag = async (tagId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!onDeleteTag) return;
+    if (!confirm("Delete this tag? It will be removed from all clips.")) return;
+    setDeletingTagId(tagId);
+    try {
+      await onDeleteTag(tagId);
+      setSelectedTagIds((prev) => prev.filter((id) => id !== tagId));
+    } finally {
+      setDeletingTagId(null);
     }
   };
 
@@ -232,6 +316,113 @@ export default function ClipViewModal({
                       </DropdownMenu>
                     </Dropdown>
                   </div>
+                </div>
+              )}
+
+              {onTagsChange && (
+                <div className="p-4 rounded-lg bg-surface-elevated">
+                  <h3 className="text-sm font-semibold text-text-secondary mb-3 flex items-center gap-2">
+                    <Icon icon="solar:tag-bold-duotone" className="text-accent-400" />
+                    Tags
+                  </h3>
+
+                  {availableTags.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {availableTags.map((tag) => {
+                        const isSelected = selectedTagIds.includes(tag.id);
+                        const isDeleting = deletingTagId === tag.id;
+                        return (
+                          <div
+                            key={tag.id}
+                            className={`group inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
+                              isSelected
+                                ? "ring-2 ring-offset-1 ring-offset-surface-elevated"
+                                : "opacity-60 hover:opacity-100"
+                            }`}
+                            style={{
+                              backgroundColor: `${tag.color}20`,
+                              color: tag.color,
+                            }}
+                          >
+                            <button
+                              onClick={() => handleTagToggle(tag.id)}
+                              disabled={isUpdatingTags || isDeleting}
+                              className="inline-flex items-center gap-1.5"
+                            >
+                              <span
+                                className="w-2 h-2 rounded-full"
+                                style={{ backgroundColor: tag.color }}
+                              />
+                              {tag.name}
+                              {isSelected && (
+                                <Icon icon="solar:check-circle-bold" className="text-sm" />
+                              )}
+                            </button>
+                            {onDeleteTag && (
+                              <button
+                                onClick={(e) => handleDeleteTag(tag.id, e)}
+                                disabled={isDeleting}
+                                className="opacity-0 group-hover:opacity-100 hover:scale-110 transition-all ml-0.5"
+                                title="Delete tag"
+                              >
+                                {isDeleting ? (
+                                  <Icon icon="solar:spinner-bold" className="text-sm animate-spin" />
+                                ) : (
+                                  <Icon icon="solar:close-circle-bold" className="text-sm" />
+                                )}
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {onCreateTag && (
+                    <div className="border-t border-border-base pt-3 mt-3">
+                      <p className="text-xs text-text-tertiary mb-2">Create new tag</p>
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        {TAG_COLORS.map((color) => (
+                          <button
+                            key={color}
+                            onClick={() => setNewTagColor(color)}
+                            className={`w-5 h-5 rounded-full transition-all ${
+                              newTagColor === color
+                                ? "ring-2 ring-offset-1 ring-offset-surface-elevated scale-110"
+                                : "opacity-60 hover:opacity-100"
+                            }`}
+                            style={{
+                              backgroundColor: color,
+                              outlineColor: newTagColor === color ? color : undefined,
+                            }}
+                          />
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={newTagName}
+                          onChange={(e) => setNewTagName(e.target.value)}
+                          onKeyDown={(e) => e.key === "Enter" && handleCreateTag()}
+                          placeholder="Tag name..."
+                          className="flex-1 min-w-0 px-2 py-1 text-sm bg-surface-dark border border-border-base rounded text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-1 focus:ring-accent-400"
+                        />
+                        <Button
+                          size="sm"
+                          isDisabled={!newTagName.trim() || isCreatingTag}
+                          isLoading={isCreatingTag}
+                          onPress={handleCreateTag}
+                          className="bg-accent-400 text-white shrink-0"
+                        >
+                          Add
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {availableTags.length === 0 && !onCreateTag && (
+                    <p className="text-xs text-text-tertiary">No tags available</p>
+                  )}
                 </div>
               )}
 

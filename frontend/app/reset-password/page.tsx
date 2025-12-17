@@ -128,6 +128,7 @@ export default function ResetPasswordPage() {
             width={140}
             height={40}
             className="object-contain"
+            unoptimized
           />
         </div>
 
@@ -174,6 +175,7 @@ export default function ResetPasswordPage() {
           width={140}
           height={40}
           className="object-contain"
+          unoptimized
         />
       </div>
 

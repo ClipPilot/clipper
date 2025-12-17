@@ -35,16 +35,16 @@ const baseSidebarItems: SidebarItem[] = [
     href: "/dashboard",
   },
   {
-    key: "clips",
-    title: "My Clips",
-    icon: "solar:video-library-bold-duotone",
-    href: "/dashboard/clips",
-  },
-  {
     key: "create-clip",
     title: "Create Clip",
     icon: "solar:scissors-bold-duotone",
     href: "/dashboard/create-clip",
+  },
+  {
+    key: "clips",
+    title: "My Clips",
+    icon: "solar:video-library-bold-duotone",
+    href: "/dashboard/clips",
   },
 ];
 
@@ -154,6 +154,7 @@ export default function DashboardLayout({
                 width={100}
                 height={28}
                 className="object-contain"
+                unoptimized
               />
               {/* TODO: Re-enable notifications
               <Popover placement="bottom-end">

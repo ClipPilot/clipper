@@ -23,15 +23,19 @@ export const ClipsToSaveSection: React.FC<ClipsToSaveSectionProps> = ({
 }) => {
   const [savingClipIds, setSavingClipIds] = useState<Set<number>>(new Set());
 
-  const clipsBySourceVideo = clips.reduce((acc, clip) => {
-    // Group by source_video_path (thumbnail), raw_video_id, or treat as standalone
-    const key = clip.source_video_path || clip.raw_video_id || `standalone-${clip.id}`;
-    if (!acc[key]) {
-      acc[key] = [];
-    }
-    acc[key].push(clip);
-    return acc;
-  }, {} as Record<string | number, Clip[]>);
+  const clipsBySourceVideo = clips.reduce(
+    (acc, clip) => {
+      // Group by source_video_path (thumbnail), raw_video_id, or treat as standalone
+      const key =
+        clip.source_video_path || clip.raw_video_id || `standalone-${clip.id}`;
+      if (!acc[key]) {
+        acc[key] = [];
+      }
+      acc[key].push(clip);
+      return acc;
+    },
+    {} as Record<string | number, Clip[]>
+  );
 
   const handleSaveClip = async (clipId: number) => {
     setSavingClipIds((prev) => new Set(prev).add(clipId));
@@ -98,8 +102,8 @@ export const ClipsToSaveSection: React.FC<ClipsToSaveSectionProps> = ({
           />
           <p className="text-sm text-text-secondary">
             These clips have a preview watermark. Save the clips you want to
-            keep - they will be added to your library without the watermark.
-            Saving a clip counts toward your usage quota.
+            keep and download. They will be added to your library without the
+            watermark. Saving a clip counts toward your usage quota.
           </p>
         </CardBody>
       </Card>

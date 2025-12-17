@@ -246,6 +246,7 @@ export default function AuthPage() {
           width={140}
           height={40}
           className="object-contain"
+          unoptimized
         />
       </div>
 

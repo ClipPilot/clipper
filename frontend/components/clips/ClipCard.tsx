@@ -88,7 +88,33 @@ export const ClipCard: React.FC<ClipCardProps> = ({ clip, onDelete, onView, onEd
                 {clip.message}
               </p>
             )}
-            
+
+            {clip.tags && clip.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1 mb-2">
+                {clip.tags.slice(0, 3).map((tag) => (
+                  <span
+                    key={tag.id}
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium"
+                    style={{
+                      backgroundColor: `${tag.color}20`,
+                      color: tag.color,
+                    }}
+                  >
+                    <span
+                      className="w-1.5 h-1.5 rounded-full"
+                      style={{ backgroundColor: tag.color }}
+                    />
+                    {tag.name}
+                  </span>
+                ))}
+                {clip.tags.length > 3 && (
+                  <span className="text-xs text-text-tertiary">
+                    +{clip.tags.length - 3}
+                  </span>
+                )}
+              </div>
+            )}
+
             <div className="flex items-center gap-3 text-xs text-text-tertiary">
               <div className="flex items-center gap-1">
                 <Icon icon="solar:clock-circle-outline" className="text-sm" />

@@ -229,3 +229,47 @@ export const uploadedRawVideos = pgTable(
     };
   }
 ).enableRLS();
+
+export const tags = pgTable(
+  "tags",
+  {
+    id: serial("id").primaryKey(),
+    team_id: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 100 }).notNull(),
+    color: varchar("color", { length: 50 }).notNull().default("#6366f1"),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => {
+    return {
+      teamIdx: index("tags_team_id_idx").on(table.team_id),
+      teamNameIdx: index("tags_team_id_name_idx").on(table.team_id, table.name),
+    };
+  }
+).enableRLS();
+
+export const clipTags = pgTable(
+  "clip_tags",
+  {
+    id: serial("id").primaryKey(),
+    clip_id: integer("clip_id")
+      .notNull()
+      .references(() => clips.id, { onDelete: "cascade" }),
+    tag_id: integer("tag_id")
+      .notNull()
+      .references(() => tags.id, { onDelete: "cascade" }),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => {
+    return {
+      clipIdx: index("clip_tags_clip_id_idx").on(table.clip_id),
+      tagIdx: index("clip_tags_tag_id_idx").on(table.tag_id),
+      uniqueClipTag: index("clip_tags_clip_id_tag_id_idx").on(
+        table.clip_id,
+        table.tag_id
+      ),
+    };
+  }
+).enableRLS();

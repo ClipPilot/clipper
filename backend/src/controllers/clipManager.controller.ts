@@ -3,6 +3,7 @@ import { clipManagerService } from "../services/clipManager.service";
 import { s3Service } from "../services/s3.service";
 import { sqsService } from "../services/sqs.service";
 import { teamService } from "../services/team.service";
+import { tagService } from "../services/tag.service";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { getTeamUsage } from "../middleware/subscription.middleware";
 
@@ -141,12 +142,15 @@ export class ClipManagerController {
         blankVideoUrl = await s3Service.getPresignedUrl(clip.blank_video_path);
       }
 
+      const tags = await tagService.getTagsForClip(clipId);
+
       return res.status(200).json({
         clip: {
           ...clip,
           clipUrl,
           sourceVideoUrl,
           blankVideoUrl,
+          tags,
         },
       });
     } catch (error) {
@@ -173,10 +177,11 @@ export class ClipManagerController {
       if (folderId !== undefined) updates.folderId = folderId;
 
       const updatedClip = await clipManagerService.updateClip(clipId, teamId, updates);
+      const tags = await tagService.getTagsForClip(clipId);
 
       return res.status(200).json({
         message: "Clip updated successfully",
-        clip: updatedClip,
+        clip: { ...updatedClip, tags },
       });
     } catch (error) {
       console.error("Update clip error:", error);
@@ -208,10 +213,14 @@ export class ClipManagerController {
       const allKeys = [...new Set([...clipKeys, ...thumbnailKeys])];
       const presignedUrls = await s3Service.getMultiplePresignedUrls(allKeys);
 
+      const clipIds = clips.map(clip => clip.id);
+      const tagsByClip = await tagService.getTagsForClips(clipIds);
+
       const clipsWithUrls = clips.map(clip => ({
         ...clip,
         clipUrl: clip.clip_path ? presignedUrls[clip.clip_path] : null,
         sourceVideoUrl: clip.source_video_path ? presignedUrls[clip.source_video_path] : null,
+        tags: tagsByClip[clip.id] || [],
       }));
 
       return res.status(200).json({ clips: clipsWithUrls });
@@ -483,10 +492,14 @@ export class ClipManagerController {
       const allKeys = [...new Set([...clipKeys, ...thumbnailKeys])];
       const presignedUrls = await s3Service.getMultiplePresignedUrls(allKeys);
 
+      const clipIds = clips.map(clip => clip.id);
+      const tagsByClip = await tagService.getTagsForClips(clipIds);
+
       const clipsWithUrls = clips.map(clip => ({
         ...clip,
         clipUrl: clip.clip_path ? presignedUrls[clip.clip_path] : null,
         sourceVideoUrl: clip.source_video_path ? presignedUrls[clip.source_video_path] : null,
+        tags: tagsByClip[clip.id] || [],
       }));
 
       return res.status(200).json({

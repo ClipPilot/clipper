@@ -34,6 +34,7 @@ export interface Clip {
   blankVideoUrl?: string;
   title?: string;
   raw_video_id?: number | null;
+  tags?: Tag[];
 }
 
 export interface Folder {
@@ -42,6 +43,15 @@ export interface Folder {
   name: string;
   color?: string;
   message?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Tag {
+  id: number;
+  team_id: number;
+  name: string;
+  color: string;
   created_at: string;
   updated_at: string;
 }
@@ -358,6 +368,147 @@ class ClipsAPI {
       clips: data.clips,
       hasMore: data.pagination?.hasMore ?? data.clips.length === limit,
     };
+  }
+
+  async getTags(teamId: number): Promise<Tag[]> {
+    const response = await apiFetch(
+      `${API_URL}/tags/teams/${teamId}/tags`,
+      {
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch tags");
+    }
+
+    const data = await response.json();
+    return data.tags;
+  }
+
+  async createTag(
+    teamId: number,
+    data: { name: string; color?: string }
+  ): Promise<Tag> {
+    const response = await apiFetch(
+      `${API_URL}/tags/teams/${teamId}/tags`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to create tag");
+    }
+
+    const result = await response.json();
+    return result.tag;
+  }
+
+  async updateTag(
+    teamId: number,
+    tagId: number,
+    updates: { name?: string; color?: string }
+  ): Promise<Tag> {
+    const response = await apiFetch(
+      `${API_URL}/tags/teams/${teamId}/tags/${tagId}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to update tag");
+    }
+
+    const data = await response.json();
+    return data.tag;
+  }
+
+  async deleteTag(teamId: number, tagId: number): Promise<void> {
+    const response = await apiFetch(
+      `${API_URL}/tags/teams/${teamId}/tags/${tagId}`,
+      {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to delete tag");
+    }
+  }
+
+  async getClipTags(clipId: number): Promise<Tag[]> {
+    const response = await apiFetch(
+      `${API_URL}/tags/clips/${clipId}/tags`,
+      {
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch clip tags");
+    }
+
+    const data = await response.json();
+    return data.tags;
+  }
+
+  async setClipTags(clipId: number, tagIds: number[]): Promise<Tag[]> {
+    const response = await apiFetch(
+      `${API_URL}/tags/clips/${clipId}/tags`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tagIds }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to set clip tags");
+    }
+
+    const data = await response.json();
+    return data.tags;
+  }
+
+  async addTagToClip(clipId: number, tagId: number): Promise<Tag[]> {
+    const response = await apiFetch(
+      `${API_URL}/tags/clips/${clipId}/tags/${tagId}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to add tag to clip");
+    }
+
+    const data = await response.json();
+    return data.tags;
+  }
+
+  async removeTagFromClip(clipId: number, tagId: number): Promise<Tag[]> {
+    const response = await apiFetch(
+      `${API_URL}/tags/clips/${clipId}/tags/${tagId}`,
+      {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to remove tag from clip");
+    }
+
+    const data = await response.json();
+    return data.tags;
   }
 }
 
