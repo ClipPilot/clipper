@@ -83,7 +83,7 @@ export default function WorkspaceSelector(props: CardProps) {
 
   return (
     <>
-    <Card className="w-full max-w-[380px] bg-surface-base border border-border-base" {...props}>
+    <Card className="w-full min-w-[320px] bg-surface-base border border-border-base" {...props}>
       <CardHeader className="flex flex-col px-0 pb-0">
         <div className="flex w-full items-center justify-between px-5 py-3 border-b border-border-base">
           <div>
@@ -134,19 +134,19 @@ export default function WorkspaceSelector(props: CardProps) {
                     )}>
                       <Icon icon={getRoleIcon(team.role)} width={20} />
                     </div>
-                    <div className="flex-1 flex flex-col items-start">
-                      <div className="flex items-center gap-2">
+                    <div className="flex-1 flex flex-col items-start min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className={cn(
-                          "text-sm font-medium truncate max-w-[120px]",
+                          "text-sm font-medium truncate",
                           selectedTeam?.id === team.id ? "text-accent-400" : "text-text-primary"
                         )}>
                           {team.name}
                         </span>
-                        <span className={cn("text-xs px-1.5 py-0.5 rounded font-medium", getPlanColor(teamPlan))}>
+                        <span className={cn("text-xs px-1.5 py-0.5 rounded font-medium whitespace-nowrap", getPlanColor(teamPlan))}>
                           {getPlanName(teamPlan)}
                         </span>
                         {isDefault && (
-                          <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-green-500/10 text-green-500">
+                          <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-green-500/10 text-green-500 whitespace-nowrap">
                             Default
                           </span>
                         )}
