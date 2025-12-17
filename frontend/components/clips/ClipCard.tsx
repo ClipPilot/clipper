@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardBody, CardFooter, Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { Clip } from "@/api/clips";
@@ -16,6 +16,30 @@ interface ClipCardProps {
 }
 
 export const ClipCard: React.FC<ClipCardProps> = ({ clip, onDelete, onView, onEdit, isDragging, onDragStart, onDragEnd }) => {
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    if (!clip.clipUrl || isDownloading) return;
+
+    setIsDownloading(true);
+    try {
+      const response = await fetch(clip.clipUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${clip.title || `clip-${clip.id}`}.mp4`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Failed to download clip:", error);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return new Intl.DateTimeFormat("en-US", {
@@ -154,9 +178,11 @@ export const ClipCard: React.FC<ClipCardProps> = ({ clip, onDelete, onView, onEd
           size="sm"
           variant="light"
           className="text-xs text-text-secondary hover:text-accent-400"
-          startContent={<Icon icon="solar:download-outline" className="text-base" />}
+          startContent={<Icon icon={isDownloading ? "solar:loading-circle-bold" : "solar:download-outline"} className={`text-base ${isDownloading ? "animate-spin" : ""}`} />}
+          onPress={handleDownload}
+          isDisabled={!clip.clipUrl || isDownloading}
         >
-          Download
+          {isDownloading ? "Downloading..." : "Download"}
         </Button>
 
         {onDelete && (
