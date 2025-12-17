@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { folderController } from "../controllers/folder.controller";
-import { requireAuth } from "../middleware/auth.middleware";
+import { requireAuth, requireSeatAccess } from "../middleware/auth.middleware";
 
 const router = Router();
 
@@ -133,7 +133,7 @@ router.get("/teams/:teamId/folders/:folderId", requireAuth, folderController.get
  *       400:
  *         description: Invalid input
  */
-router.post("/teams/:teamId/folders", requireAuth, folderController.createFolder.bind(folderController));
+router.post("/teams/:teamId/folders", requireAuth, requireSeatAccess, folderController.createFolder.bind(folderController));
 
 /**
  * @openapi
@@ -174,7 +174,7 @@ router.post("/teams/:teamId/folders", requireAuth, folderController.createFolder
  *       404:
  *         description: Folder not found
  */
-router.patch("/teams/:teamId/folders/:folderId", requireAuth, folderController.updateFolder.bind(folderController));
+router.patch("/teams/:teamId/folders/:folderId", requireAuth, requireSeatAccess, folderController.updateFolder.bind(folderController));
 
 /**
  * @openapi
@@ -203,7 +203,7 @@ router.patch("/teams/:teamId/folders/:folderId", requireAuth, folderController.u
  *       404:
  *         description: Folder not found
  */
-router.delete("/teams/:teamId/folders/:folderId", requireAuth, folderController.deleteFolder.bind(folderController));
+router.delete("/teams/:teamId/folders/:folderId", requireAuth, requireSeatAccess, folderController.deleteFolder.bind(folderController));
 
 export default router;
 

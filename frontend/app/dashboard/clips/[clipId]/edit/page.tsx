@@ -467,10 +467,7 @@ export default function EditClipPage() {
                       minValue={0}
                       maxValue={100}
                       step={1}
-                      classNames={{
-                        track: "bg-surface-elevated",
-                        filler: "bg-accent-400",
-                      }}
+                      color="secondary"
                     />
                   </div>
 
@@ -484,10 +481,7 @@ export default function EditClipPage() {
                       minValue={0}
                       maxValue={100}
                       step={1}
-                      classNames={{
-                        track: "bg-surface-elevated",
-                        filler: "bg-accent-400",
-                      }}
+                      color="secondary"
                     />
                   </div>
 
@@ -501,10 +495,7 @@ export default function EditClipPage() {
                       minValue={16}
                       maxValue={120}
                       step={2}
-                      classNames={{
-                        track: "bg-surface-elevated",
-                        filler: "bg-accent-400",
-                      }}
+                      color="secondary"
                     />
                   </div>
 

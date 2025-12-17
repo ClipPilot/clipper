@@ -1,6 +1,7 @@
 import { db } from "../db";
 import { teams, teamMembers, users, usageStats } from "@clipper/shared-db/src/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, count } from "drizzle-orm";
+import { PLAN_LIMITS } from "../config/stripe.config";
 
 class TeamService {
   /**
@@ -281,26 +282,24 @@ class TeamService {
 
   /**
    * Update team member role
+   * Note: Ownership cannot be transferred. If trying to make someone an owner,
+   * they will be made a manager instead.
    */
   async updateTeamMemberRole(teamId: number, memberId: number, newRole: "owner" | "manager" | "member") {
-    // Check if trying to remove last owner
-    if (newRole !== "owner") {
-      const [currentMember] = await db
-        .select()
-        .from(teamMembers)
-        .where(eq(teamMembers.id, memberId))
-        .limit(1);
+    // Ownership cannot be transferred - make them manager instead
+    if (newRole === "owner") {
+      newRole = "manager";
+    }
 
-      if (currentMember?.role === "owner") {
-        const owners = await db
-          .select()
-          .from(teamMembers)
-          .where(and(eq(teamMembers.team_id, teamId), eq(teamMembers.role, "owner")));
+    // Check if trying to demote last owner
+    const [currentMember] = await db
+      .select()
+      .from(teamMembers)
+      .where(eq(teamMembers.id, memberId))
+      .limit(1);
 
-        if (owners.length === 1) {
-          throw new Error("Cannot change role of the last owner");
-        }
-      }
+    if (currentMember?.role === "owner") {
+      throw new Error("Cannot change the owner's role. Ownership is permanent.");
     }
 
     const [updated] = await db
@@ -380,6 +379,88 @@ class TeamService {
       .limit(1);
 
     return team;
+  }
+
+  /**
+   * Get seat limit for a plan
+   */
+  getSeatLimitForPlan(plan: string): number {
+    switch (plan) {
+      case "scale":
+        return PLAN_LIMITS.SCALE.seats;
+      case "studio":
+        return PLAN_LIMITS.STUDIO.seats;
+      default:
+        return PLAN_LIMITS.FREE.seats;
+    }
+  }
+
+  /**
+   * Check if a member can perform actions based on seat limits.
+   * When a team is over their seat limit (e.g., downgraded from Scale to Free),
+   * only the owner can perform actions.
+   */
+  async canMemberPerformActions(
+    teamId: number,
+    userId: number
+  ): Promise<{ allowed: boolean; reason?: string }> {
+    const [team] = await db
+      .select()
+      .from(teams)
+      .where(eq(teams.id, teamId))
+      .limit(1);
+
+    if (!team) {
+      return { allowed: false, reason: "Team not found" };
+    }
+
+    const userRole = await this.getUserTeamRole(teamId, userId);
+    if (!userRole) {
+      return { allowed: false, reason: "Not a member of this team" };
+    }
+
+    // Owners can always perform actions
+    if (userRole === "owner") {
+      return { allowed: true };
+    }
+
+    // Get seat limit for the plan
+    const seatLimit = this.getSeatLimitForPlan(team.plan || "free");
+
+    // Unlimited seats (-1) means everyone can perform actions
+    if (seatLimit === -1) {
+      return { allowed: true };
+    }
+
+    // Count current members
+    const [memberCount] = await db
+      .select({ count: count() })
+      .from(teamMembers)
+      .where(eq(teamMembers.team_id, teamId));
+
+    const totalMembers = memberCount?.count || 0;
+
+    // If over seat limit, only owner can perform actions
+    if (totalMembers > seatLimit) {
+      return {
+        allowed: false,
+        reason: `Your workspace has ${totalMembers} members but your ${team.plan || "free"} plan only allows ${seatLimit}. Only the workspace owner can perform actions until the plan is upgraded or members are removed.`,
+      };
+    }
+
+    return { allowed: true };
+  }
+
+  /**
+   * Get team member count
+   */
+  async getTeamMemberCount(teamId: number): Promise<number> {
+    const [result] = await db
+      .select({ count: count() })
+      .from(teamMembers)
+      .where(eq(teamMembers.team_id, teamId));
+
+    return result?.count || 0;
   }
 }
 

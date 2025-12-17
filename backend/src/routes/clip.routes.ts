@@ -7,7 +7,7 @@ import {
   completeMultipartUpload,
   abortMultipartUpload,
 } from "../controllers/upload.controller";
-import { requireAuth } from "../middleware/auth.middleware";
+import { requireAuth, requireSeatAccess } from "../middleware/auth.middleware";
 
 const router = Router();
 
@@ -677,7 +677,7 @@ router.get("/teams/:teamId/clips/:clipId", requireAuth, clipManagerController.ge
  *       404:
  *         description: Clip not found
  */
-router.patch("/teams/:teamId/clips/:clipId", requireAuth, clipManagerController.updateClip.bind(clipManagerController));
+router.patch("/teams/:teamId/clips/:clipId", requireAuth, requireSeatAccess, clipManagerController.updateClip.bind(clipManagerController));
 
 /**
  * @openapi
@@ -706,7 +706,7 @@ router.patch("/teams/:teamId/clips/:clipId", requireAuth, clipManagerController.
  *       404:
  *         description: Clip not found
  */
-router.delete("/teams/:teamId/clips/:clipId", requireAuth, clipManagerController.deleteClip.bind(clipManagerController));
+router.delete("/teams/:teamId/clips/:clipId", requireAuth, requireSeatAccess, clipManagerController.deleteClip.bind(clipManagerController));
 
 /**
  * @openapi
@@ -814,7 +814,7 @@ router.get("/teams/:teamId/folders/:folderId/clips", requireAuth, clipManagerCon
  *       500:
  *         description: Server error
  */
-router.post("/teams/:teamId/clips/:clipId/captions", requireAuth, clipManagerController.updateCaptions.bind(clipManagerController));
+router.post("/teams/:teamId/clips/:clipId/captions", requireAuth, requireSeatAccess, clipManagerController.updateCaptions.bind(clipManagerController));
 
 /**
  * @openapi
@@ -893,7 +893,7 @@ router.post("/teams/:teamId/clips/:clipId/captions", requireAuth, clipManagerCon
  *       500:
  *         description: Server error
  */
-router.post("/teams/:teamId/clips/:clipId/text-overlay", requireAuth, clipManagerController.updateTextOverlay.bind(clipManagerController));
+router.post("/teams/:teamId/clips/:clipId/text-overlay", requireAuth, requireSeatAccess, clipManagerController.updateTextOverlay.bind(clipManagerController));
 
 /**
  * @openapi
@@ -940,6 +940,6 @@ router.post("/teams/:teamId/clips/:clipId/text-overlay", requireAuth, clipManage
  *       500:
  *         description: Server error
  */
-router.post("/teams/:teamId/clips/:clipId/save", requireAuth, clipManagerController.saveClip.bind(clipManagerController));
+router.post("/teams/:teamId/clips/:clipId/save", requireAuth, requireSeatAccess, clipManagerController.saveClip.bind(clipManagerController));
 
 export default router;

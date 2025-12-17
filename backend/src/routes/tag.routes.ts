@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { tagController } from "../controllers/tag.controller";
-import { requireAuth } from "../middleware/auth.middleware";
+import { requireAuth, requireSeatAccess } from "../middleware/auth.middleware";
 
 const router = Router();
 
@@ -103,6 +103,7 @@ router.get(
 router.post(
   "/teams/:teamId/tags",
   requireAuth,
+  requireSeatAccess,
   tagController.createTag.bind(tagController)
 );
 
@@ -197,6 +198,7 @@ router.get(
 router.patch(
   "/teams/:teamId/tags/:tagId",
   requireAuth,
+  requireSeatAccess,
   tagController.updateTag.bind(tagController)
 );
 
@@ -230,6 +232,7 @@ router.patch(
 router.delete(
   "/teams/:teamId/tags/:tagId",
   requireAuth,
+  requireSeatAccess,
   tagController.deleteTag.bind(tagController)
 );
 

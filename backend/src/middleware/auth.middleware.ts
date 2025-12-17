@@ -3,6 +3,7 @@ import { authService } from "../services/auth.service";
 import { db } from "../db";
 import { users } from "@clipper/shared-db/src/schema";
 import { eq } from "drizzle-orm";
+import { teamService } from "../services/team.service";
 
 export interface AuthRequest extends Request {
   user?: {
@@ -10,6 +11,7 @@ export interface AuthRequest extends Request {
     email: string;
     dbUserId: number;
   };
+  seatCheckPassed?: boolean;
 }
 
 export async function requireAuth(
@@ -59,6 +61,50 @@ export async function requireAuth(
     console.error("Auth middleware error:", error);
     return res.status(401).json({
       error: "Authentication failed",
+    });
+  }
+}
+
+/**
+ * Middleware to check if user can perform actions based on seat limits.
+ * When a team is over their seat limit (e.g., downgraded from Scale to Free),
+ * only the owner can perform actions.
+ *
+ * This middleware should be used after requireAuth and expects teamId in params.
+ */
+export async function requireSeatAccess(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const teamId = parseInt(req.params.teamId);
+    const userId = req.user?.dbUserId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+
+    if (isNaN(teamId)) {
+      return res.status(400).json({ error: "Invalid team ID" });
+    }
+
+    const { allowed, reason } = await teamService.canMemberPerformActions(teamId, userId);
+
+    if (!allowed) {
+      return res.status(403).json({
+        error: "Action not allowed",
+        code: "SEAT_LIMIT_EXCEEDED",
+        message: reason,
+      });
+    }
+
+    req.seatCheckPassed = true;
+    next();
+  } catch (error) {
+    console.error("Seat access middleware error:", error);
+    return res.status(500).json({
+      error: "Failed to verify seat access",
     });
   }
 }
