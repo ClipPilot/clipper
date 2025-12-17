@@ -44,7 +44,7 @@ export const users = pgTable("users", {
   role: userRoleEnum("role").notNull().default("user"),
   created_at: timestamp("created_at").notNull().defaultNow(),
   updated_at: timestamp("updated_at").notNull().defaultNow(),
-});
+}).enableRLS();
 
 export const usageStats = pgTable(
   "usage_stats",
@@ -69,7 +69,7 @@ export const usageStats = pgTable(
       ),
     };
   }
-);
+).enableRLS();
 
 export const teams = pgTable("teams", {
   id: serial("id").primaryKey(),
@@ -80,7 +80,7 @@ export const teams = pgTable("teams", {
   plan: varchar("plan", { length: 50 }).notNull().default("free"),
   created_at: timestamp("created_at").notNull().defaultNow(),
   updated_at: timestamp("updated_at").notNull().defaultNow(),
-});
+}).enableRLS();
 
 export const teamMembers = pgTable("team_members", {
   id: serial("id").primaryKey(),
@@ -93,7 +93,7 @@ export const teamMembers = pgTable("team_members", {
   role: teamRoleEnum("role").notNull().default("member"),
   created_at: timestamp("created_at").notNull().defaultNow(),
   updated_at: timestamp("updated_at").notNull().defaultNow(),
-});
+}).enableRLS();
 
 export const teamInvites = pgTable(
   "team_invites",
@@ -121,7 +121,7 @@ export const teamInvites = pgTable(
       teamIdx: index("team_invites_team_id_idx").on(table.team_id),
     };
   }
-);
+).enableRLS();
 
 export const subscriptions = pgTable("subscriptions", {
   id: serial("id").primaryKey(),
@@ -142,7 +142,7 @@ export const subscriptions = pgTable("subscriptions", {
     .default(false),
   created_at: timestamp("created_at").notNull().defaultNow(),
   updated_at: timestamp("updated_at").notNull().defaultNow(),
-});
+}).enableRLS();
 
 export const clips = pgTable(
   "clips",
@@ -190,7 +190,7 @@ export const clips = pgTable(
       folderIdx: index("clips_folder_id_idx").on(table.folder_id),
     };
   }
-);
+).enableRLS();
 
 export const clipFolders = pgTable(
   "clip_folders",
@@ -210,7 +210,7 @@ export const clipFolders = pgTable(
       teamIdx: index("clip_folders_team_id_idx").on(table.team_id),
     };
   }
-);
+).enableRLS();
 
 export const uploadedRawVideos = pgTable(
   "uploaded_raw_videos",
@@ -228,4 +228,4 @@ export const uploadedRawVideos = pgTable(
       teamIdx: index("uploaded_raw_videos_team_id_idx").on(table.team_id),
     };
   }
-);
+).enableRLS();
