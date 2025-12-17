@@ -26,6 +26,7 @@ export default function EditClipPage() {
   const [clip, setClip] = useState<Clip | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [accessDenied, setAccessDenied] = useState(false);
   const [activeTab, setActiveTab] = useState("captions");
 
   const [captions, setCaptions] = useState<CaptionEntry[]>([]);
@@ -51,12 +52,21 @@ export default function EditClipPage() {
     setLoading(true);
     try {
       const data = await clipsAPI.getClip(selectedTeam.id, clipId);
+
+      // Security check: Block access if clip is not saved or doesn't belong to user's team
+      if (!data.saved || data.team_id !== selectedTeam.id) {
+        setAccessDenied(true);
+        setLoading(false);
+        return;
+      }
+
       setClip(data);
       if (data.captions_data) {
         setCaptions(JSON.parse(JSON.stringify(data.captions_data)));
       }
     } catch (error) {
       console.error("Failed to load clip:", error);
+      setAccessDenied(true);
     } finally {
       setLoading(false);
     }
@@ -166,6 +176,33 @@ export default function EditClipPage() {
     return (
       <div className="min-h-screen bg-surface-dark flex items-center justify-center">
         <Spinner size="lg" color="primary" />
+      </div>
+    );
+  }
+
+  if (accessDenied) {
+    return (
+      <div className="min-h-screen bg-surface-dark flex flex-col items-center justify-center">
+        <div className="w-16 h-16 rounded-2xl bg-red-500/10 flex items-center justify-center mb-4">
+          <Icon
+            icon="solar:lock-keyhole-bold-duotone"
+            className="text-red-500"
+            width={32}
+          />
+        </div>
+        <h2 className="text-xl font-semibold text-text-primary mb-2">
+          Access Denied
+        </h2>
+        <p className="text-text-secondary mb-6">
+          You don&apos;t have permission to edit this clip.
+        </p>
+        <Button
+          color="primary"
+          onPress={() => router.push("/dashboard/clips")}
+          startContent={<Icon icon="solar:arrow-left-outline" />}
+        >
+          Back to Clips
+        </Button>
       </div>
     );
   }

@@ -50,14 +50,8 @@ export default function DashboardPage() {
 
     setIsLoadingClips(true);
     try {
-      const clips = await clipsAPI.getClips(selectedTeam.id);
-      const sorted = clips
-        .sort(
-          (a, b) =>
-            new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-        )
-        .slice(0, 6);
-      setRecentClips(sorted);
+      const { clips } = await clipsAPI.getSavedClips(selectedTeam.id, 6, 0);
+      setRecentClips(clips);
     } catch (error) {
       console.error("Failed to load clips:", error);
     } finally {

@@ -120,6 +120,11 @@ export class ClipManagerController {
 
       const clip = await clipManagerService.getClipById(clipId, teamId);
 
+      // Block access to unsaved clips
+      if (!clip.saved) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
       let clipUrl: string | null = null;
       let sourceVideoUrl: string | null = null;
       let blankVideoUrl: string | null = null;
@@ -262,6 +267,10 @@ export class ClipManagerController {
 
       const clip = await clipManagerService.getClipById(clipId, teamId);
 
+      if (!clip.saved) {
+        return res.status(403).json({ error: "Cannot edit unsaved clips" });
+      }
+
       if (!clip.blank_video_path) {
         return res.status(400).json({ error: "No blank video available for this clip" });
       }
@@ -309,6 +318,10 @@ export class ClipManagerController {
       }
 
       const clip = await clipManagerService.getClipById(clipId, teamId);
+
+      if (!clip.saved) {
+        return res.status(403).json({ error: "Cannot edit unsaved clips" });
+      }
 
       if (!clip.blank_video_path) {
         return res.status(400).json({ error: "No blank video available for this clip" });
