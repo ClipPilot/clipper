@@ -1,6 +1,11 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { ENV } from "../config/env";
-import { users, teams, teamMembers, usageStats } from "@clipper/shared-db/src/schema";
+import {
+  users,
+  teams,
+  teamMembers,
+  usageStats,
+} from "@clipper/shared-db/src/schema";
 import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { teamInviteService } from "./teamInvite.service";
@@ -23,7 +28,7 @@ class AuthService {
         email,
         password,
         options: {
-          emailRedirectTo: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth`,
+          emailRedirectTo: `${process.env.FRONTEND_URL || "http://localhost:3000"}/auth`,
         },
       });
 
@@ -76,7 +81,8 @@ class AuthService {
       rollover: false,
     });
 
-    const acceptedTeams = await teamInviteService.acceptAllPendingInvitesForUser(user.id, email);
+    const acceptedTeams =
+      await teamInviteService.acceptAllPendingInvitesForUser(user.id, email);
 
     return {
       user: authData.user,
@@ -103,7 +109,9 @@ class AuthService {
     }
 
     if (!data.user.email_confirmed_at) {
-      throw new Error("Please confirm your email before signing in. Check your inbox for the confirmation link.");
+      throw new Error(
+        "Please confirm your email before signing in. Check your inbox for the confirmation link."
+      );
     }
 
     const [dbUser] = await db
@@ -180,7 +188,7 @@ class AuthService {
 
   async resetPassword(email: string) {
     const { error } = await this.supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/callback`,
+      redirectTo: `${process.env.FRONTEND_URL || "https://platform.cuttr.com"}/auth/callback`,
     });
 
     if (error) {
@@ -191,7 +199,10 @@ class AuthService {
   }
 
   async updatePassword(accessToken: string, newPassword: string) {
-    const { data: { user }, error: userError } = await this.supabase.auth.getUser(accessToken);
+    const {
+      data: { user },
+      error: userError,
+    } = await this.supabase.auth.getUser(accessToken);
 
     if (userError || !user) {
       throw new Error("Invalid or expired token");
@@ -206,10 +217,11 @@ class AuthService {
       throw new Error(error.message);
     }
 
-    const { data: sessionData, error: sessionError } = await this.supabase.auth.signInWithPassword({
-      email: user.email!,
-      password: newPassword,
-    });
+    const { data: sessionData, error: sessionError } =
+      await this.supabase.auth.signInWithPassword({
+        email: user.email!,
+        password: newPassword,
+      });
 
     if (sessionError) {
       throw new Error(sessionError.message);

@@ -146,6 +146,10 @@ resource "aws_ecs_task_definition" "backend" {
       {
         name      = "RESEND_API_KEY"
         valueFrom = aws_secretsmanager_secret.resend_api_key.arn
+      },
+      {
+        name      = "FRONTEND_URL"
+        valueFrom = aws_secretsmanager_secret.frontend_url.arn
       }
     ]
 
