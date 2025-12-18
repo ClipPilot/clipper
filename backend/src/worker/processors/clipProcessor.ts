@@ -138,13 +138,6 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
       })
     );
 
-    try {
-      await s3Service.deleteObject(s3Key);
-      console.log(`Deleted raw video from S3: ${s3Key}`);
-    } catch (error) {
-      console.warn("Failed to delete raw video from S3:", error);
-    }
-
     console.log(`Successfully processed all ${clipIds.length} clips`);
     await notifyClipsRefresh(teamId);
   } catch (error) {

@@ -119,6 +119,14 @@ resource "aws_ecs_task_definition" "backend" {
       {
         name  = "REDIS_URL"
         value = "redis://${aws_elasticache_cluster.redis.cache_nodes[0].address}:6379"
+      },
+      {
+        name  = "YOUTUBE_LAMBDA_URL"
+        value = aws_lambda_function_url.youtube_downloader.function_url
+      },
+      {
+        name  = "APP_ENVIRONMENT"
+        value = var.environment
       }
     ]
 

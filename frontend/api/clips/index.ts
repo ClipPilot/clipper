@@ -34,6 +34,8 @@ export interface Clip {
   blankVideoUrl?: string;
   title?: string;
   raw_video_id?: number | null;
+  raw_video_path?: string;
+  rawVideoUrl?: string;
   tags?: Tag[];
 }
 

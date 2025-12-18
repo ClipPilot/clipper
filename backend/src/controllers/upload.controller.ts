@@ -207,10 +207,17 @@ export const submitClipJob = async (req: AuthRequest, res: Response) => {
     const userId = req.user.dbUserId;
     const pendingClips: any[] = [];
 
+    // Create raw video record to track the uploaded video
+    const rawVideo = await clipManagerService.createRawVideo({
+      teamId: parsedTeamId,
+      videoPath: s3Key,
+    });
+
     for (let i = 0; i < parsedNumberOfVideos; i++) {
       const clip = await clipManagerService.createPendingClip({
         teamId: parsedTeamId,
         userId,
+        rawVideoId: rawVideo.id,
       });
       pendingClips.push(clip);
     }

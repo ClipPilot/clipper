@@ -109,3 +109,19 @@ output "redis_port" {
   description = "Redis ElastiCache port"
   value       = aws_elasticache_cluster.redis.cache_nodes[0].port
 }
+
+# YouTube Lambda outputs
+output "youtube_lambda_ecr_url" {
+  description = "ECR repository URL for YouTube Lambda"
+  value       = aws_ecr_repository.youtube_lambda.repository_url
+}
+
+output "youtube_lambda_function_url" {
+  description = "YouTube Lambda function URL"
+  value       = aws_lambda_function_url.youtube_downloader.function_url
+}
+
+output "youtube_lambda_function_name" {
+  description = "YouTube Lambda function name"
+  value       = aws_lambda_function.youtube_downloader.function_name
+}

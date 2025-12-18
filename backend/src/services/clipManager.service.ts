@@ -30,11 +30,20 @@ export class ClipManagerService {
   }
 
   async getPendingClipsByTeam(teamId: number) {
-    return await db
-      .select()
+    const results = await db
+      .select({
+        clip: clips,
+        rawVideoPath: uploadedRawVideos.video_path,
+      })
       .from(clips)
+      .leftJoin(uploadedRawVideos, eq(clips.raw_video_id, uploadedRawVideos.id))
       .where(and(eq(clips.team_id, teamId), eq(clips.status, "pending")))
       .orderBy(desc(clips.created_at));
+
+    return results.map((r) => ({
+      ...r.clip,
+      raw_video_path: r.rawVideoPath,
+    }));
   }
 
   async getCompletedClipsByTeam(
@@ -164,13 +173,18 @@ export class ClipManagerService {
     return deletedClip;
   }
 
-  async createPendingClip(data: { teamId: number; userId: number }) {
+  async createPendingClip(data: {
+    teamId: number;
+    userId: number;
+    rawVideoId?: number;
+  }) {
     const [clip] = await db
       .insert(clips)
       .values({
         team_id: data.teamId,
         generated_by_user_id: data.userId,
         status: "pending",
+        raw_video_id: data.rawVideoId,
       })
       .returning();
 
