@@ -110,6 +110,14 @@ resource "aws_ecs_task_definition" "worker" {
       {
         name      = "RESEND_API_KEY"
         valueFrom = aws_secretsmanager_secret.resend_api_key.arn
+      },
+      {
+        name      = "STRIPE_SECRET_KEY"
+        valueFrom = aws_secretsmanager_secret.stripe_secret_key.arn
+      },
+      {
+        name      = "STRIPE_WEBHOOK_SECRET"
+        valueFrom = aws_secretsmanager_secret.stripe_webhook_secret.arn
       }
     ]
 
