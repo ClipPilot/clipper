@@ -10,6 +10,12 @@ variable "environment" {
   default     = "prod"
 }
 
+variable "node_env" {
+  description = "NODE_ENV value (staging or production)"
+  type        = string
+  default     = "production"
+}
+
 variable "project_name" {
   description = "Project name"
   type        = string

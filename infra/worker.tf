@@ -62,7 +62,7 @@ resource "aws_ecs_task_definition" "worker" {
     environment = [
       {
         name  = "NODE_ENV"
-        value = var.environment
+        value = var.node_env
       },
       {
         name  = "AWS_S3_BUCKET"

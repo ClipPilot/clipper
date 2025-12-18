@@ -94,7 +94,7 @@ resource "aws_ecs_task_definition" "backend" {
       },
       {
         name  = "NODE_ENV"
-        value = var.environment
+        value = var.node_env
       },
       {
         name  = "SUPABASE_URL"

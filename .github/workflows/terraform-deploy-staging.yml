@@ -63,6 +63,7 @@ jobs:
           cat > terraform.tfvars <<EOF
           aws_region          = "${{ env.AWS_REGION }}"
           environment         = "staging"
+          node_env            = "staging"
           project_name        = "clipster"
 
           # Backend Configuration
@@ -169,6 +170,7 @@ jobs:
           cat > terraform.tfvars <<EOF
           aws_region          = "${{ env.AWS_REGION }}"
           environment         = "staging"
+          node_env            = "staging"
           project_name        = "clipster"
 
           # Backend Configuration
