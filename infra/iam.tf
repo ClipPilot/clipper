@@ -86,8 +86,8 @@ resource "aws_iam_role_policy" "ecs_task_s3" {
         "s3:ListBucket"
       ]
       Resource = [
-        aws_s3_bucket.videos.arn,
-        "${aws_s3_bucket.videos.arn}/*"
+        local.s3_bucket_arn,
+        "${local.s3_bucket_arn}/*"
       ]
     }]
   })
@@ -150,8 +150,8 @@ resource "aws_iam_role_policy" "ecs_worker_s3" {
         "s3:ListBucket"
       ]
       Resource = [
-        aws_s3_bucket.videos.arn,
-        "${aws_s3_bucket.videos.arn}/*"
+        local.s3_bucket_arn,
+        "${local.s3_bucket_arn}/*"
       ]
     }]
   })

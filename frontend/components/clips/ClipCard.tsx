@@ -77,6 +77,20 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({ clip, onDelete, onView, on
     return "text-text-tertiary bg-surface-elevated";
   };
 
+  const getSourceVideoName = () => {
+    if (clip.input_metadata?.originalFileName) {
+      return clip.input_metadata.originalFileName;
+    }
+    if (clip.raw_video_path) {
+      const parts = clip.raw_video_path.split("/");
+      const filename = parts[parts.length - 1];
+      return filename.replace(/^\d+_/, "");
+    }
+    return null;
+  };
+
+  const sourceVideoName = getSourceVideoName();
+
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData("clipId", clip.id.toString());
     e.dataTransfer.effectAllowed = "move";
@@ -166,6 +180,13 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({ clip, onDelete, onView, on
               </div>
             )}
 
+            {sourceVideoName && (
+              <div className="flex items-center gap-1.5 text-xs text-text-tertiary mb-1">
+                <Icon icon="solar:video-library-bold" className="text-sm text-accent-400 flex-shrink-0" />
+                <span className="truncate">From: {sourceVideoName}</span>
+              </div>
+            )}
+
             <div className="flex items-center gap-2 sm:gap-3 text-xs text-text-tertiary">
               <div className="flex items-center gap-1">
                 <Icon icon="solar:clock-circle-outline" className="text-sm" />
@@ -243,6 +264,7 @@ export const ClipCard = memo(ClipCardComponent, (prevProps, nextProps) => {
     prevProps.clip.id === nextProps.clip.id &&
     prevProps.clip.updated_at === nextProps.clip.updated_at &&
     prevProps.clip.clipUrl === nextProps.clip.clipUrl &&
+    prevProps.clip.raw_video_path === nextProps.clip.raw_video_path &&
     prevProps.isDragging === nextProps.isDragging
   );
 });

@@ -1,5 +1,7 @@
 # S3 Bucket for Video Processing
+# Only create if not using a shared bucket
 resource "aws_s3_bucket" "videos" {
+  count  = var.shared_s3_bucket == "" ? 1 : 0
   bucket = "${var.project_name}-videos-${var.environment}-${data.aws_caller_identity.current.account_id}"
 
   tags = {
@@ -7,18 +9,25 @@ resource "aws_s3_bucket" "videos" {
   }
 }
 
-# S3 Bucket Versioning
+locals {
+  s3_bucket_id  = var.shared_s3_bucket != "" ? var.shared_s3_bucket : aws_s3_bucket.videos[0].id
+  s3_bucket_arn = var.shared_s3_bucket != "" ? "arn:aws:s3:::${var.shared_s3_bucket}" : aws_s3_bucket.videos[0].arn
+}
+
+# S3 Bucket Versioning (only when creating new bucket)
 resource "aws_s3_bucket_versioning" "videos" {
-  bucket = aws_s3_bucket.videos.id
+  count  = var.shared_s3_bucket == "" ? 1 : 0
+  bucket = aws_s3_bucket.videos[0].id
 
   versioning_configuration {
     status = "Enabled"
   }
 }
 
-# S3 Bucket Encryption
+# S3 Bucket Encryption (only when creating new bucket)
 resource "aws_s3_bucket_server_side_encryption_configuration" "videos" {
-  bucket = aws_s3_bucket.videos.id
+  count  = var.shared_s3_bucket == "" ? 1 : 0
+  bucket = aws_s3_bucket.videos[0].id
 
   rule {
     apply_server_side_encryption_by_default {
@@ -27,9 +36,10 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "videos" {
   }
 }
 
-# S3 Bucket Public Access Block
+# S3 Bucket Public Access Block (only when creating new bucket)
 resource "aws_s3_bucket_public_access_block" "videos" {
-  bucket = aws_s3_bucket.videos.id
+  count  = var.shared_s3_bucket == "" ? 1 : 0
+  bucket = aws_s3_bucket.videos[0].id
 
   block_public_acls       = true
   block_public_policy     = true
@@ -37,9 +47,10 @@ resource "aws_s3_bucket_public_access_block" "videos" {
   restrict_public_buckets = true
 }
 
-# S3 Bucket Lifecycle Policy
+# S3 Bucket Lifecycle Policy (only when creating new bucket)
 resource "aws_s3_bucket_lifecycle_configuration" "videos" {
-  bucket = aws_s3_bucket.videos.id
+  count  = var.shared_s3_bucket == "" ? 1 : 0
+  bucket = aws_s3_bucket.videos[0].id
 
   rule {
     id     = "delete-raw-videos-after-2-months"
@@ -74,14 +85,15 @@ resource "aws_s3_bucket_lifecycle_configuration" "videos" {
   }
 }
 
-# CORS Configuration for S3 (if frontend needs direct upload)
+# CORS Configuration for S3 (only when creating new bucket)
 resource "aws_s3_bucket_cors_configuration" "videos" {
-  bucket = aws_s3_bucket.videos.id
+  count  = var.shared_s3_bucket == "" ? 1 : 0
+  bucket = aws_s3_bucket.videos[0].id
 
   cors_rule {
     allowed_headers = ["*"]
     allowed_methods = ["GET", "PUT", "POST", "DELETE", "HEAD"]
-    allowed_origins = ["*"] # Update with your Amplify domain
+    allowed_origins = ["*"]
     expose_headers  = ["ETag"]
     max_age_seconds = 3000
   }

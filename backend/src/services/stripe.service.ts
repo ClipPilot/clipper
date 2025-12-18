@@ -92,7 +92,6 @@ class StripeService {
     const isAddon = isAddonPrice(priceId);
 
     if (isAddon) {
-      // One-time payment for addon clips
       const session = await stripe.checkout.sessions.create({
         customer: customerId,
         payment_method_types: ["card"],
@@ -100,6 +99,7 @@ class StripeService {
         mode: "payment",
         success_url: successUrl,
         cancel_url: cancelUrl,
+        allow_promotion_codes: true,
         metadata: {
           teamId: teamId.toString(),
           priceId: priceId,
@@ -110,7 +110,6 @@ class StripeService {
       return session.url!;
     }
 
-    // Subscription for regular plans
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ["card"],
@@ -118,8 +117,8 @@ class StripeService {
       mode: "subscription",
       success_url: successUrl,
       cancel_url: cancelUrl,
+      allow_promotion_codes: true,
       metadata: { teamId: teamId.toString() },
-
       subscription_data: {
         metadata: { teamId: teamId.toString() },
       },

@@ -164,3 +164,9 @@ variable "resend_api_key" {
   type        = string
   sensitive   = true
 }
+
+variable "shared_s3_bucket" {
+  description = "Use a shared S3 bucket name across environments (e.g., prod bucket name). Leave empty to create environment-specific bucket."
+  type        = string
+  default     = ""
+}

@@ -102,7 +102,7 @@ resource "aws_ecs_task_definition" "backend" {
       },
       {
         name  = "AWS_S3_BUCKET"
-        value = aws_s3_bucket.videos.id
+        value = local.s3_bucket_id
       },
       {
         name  = "AWS_REGION"

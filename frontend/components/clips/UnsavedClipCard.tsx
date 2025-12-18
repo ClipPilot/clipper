@@ -35,6 +35,20 @@ export const UnsavedClipCard: React.FC<UnsavedClipCardProps> = ({
     }).format(date);
   };
 
+  const getSourceVideoName = () => {
+    if (clip.input_metadata?.originalFileName) {
+      return clip.input_metadata.originalFileName;
+    }
+    if (clip.raw_video_path) {
+      const parts = clip.raw_video_path.split("/");
+      const filename = parts[parts.length - 1];
+      return filename.replace(/^\d+_/, "");
+    }
+    return null;
+  };
+
+  const sourceVideoName = getSourceVideoName();
+
   const getScoreClasses = (score?: number) => {
     if (!score && score !== 0) return "text-accent-400 bg-accent-400/10";
     if (score >= 80) return "text-success-600 bg-success-600/10";
@@ -103,6 +117,13 @@ export const UnsavedClipCard: React.FC<UnsavedClipCardProps> = ({
             <p className="text-xs text-text-secondary line-clamp-2 mb-2">
               {clip.message}
             </p>
+          )}
+
+          {sourceVideoName && (
+            <div className="flex items-center gap-1.5 text-xs text-text-tertiary mb-2">
+              <Icon icon="solar:video-library-bold" className="text-sm text-accent-400" />
+              <span className="truncate">From: {sourceVideoName}</span>
+            </div>
           )}
 
           <div className="flex items-center gap-3 text-xs text-text-tertiary">

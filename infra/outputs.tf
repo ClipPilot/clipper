@@ -17,12 +17,12 @@ output "alb_zone_id" {
 
 output "s3_bucket_name" {
   description = "Name of the S3 bucket for videos"
-  value       = aws_s3_bucket.videos.id
+  value       = local.s3_bucket_id
 }
 
 output "s3_bucket_arn" {
   description = "ARN of the S3 bucket for videos"
-  value       = aws_s3_bucket.videos.arn
+  value       = local.s3_bucket_arn
 }
 
 output "ecs_cluster_name" {
