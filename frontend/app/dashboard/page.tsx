@@ -141,22 +141,38 @@ export default function DashboardPage() {
           <Card className="bg-surface-base border border-border-base">
             <CardBody className="p-5">
               <div className="flex items-center justify-between mb-4">
-                <div className={cn(
-                  "w-10 h-10 rounded-xl flex items-center justify-center",
-                  currentPlan === "scale" ? "bg-purple-500/20" : currentPlan === "studio" ? "bg-accent-400/20" : "bg-blue-500/20"
-                )}>
+                <div
+                  className={cn(
+                    "w-10 h-10 rounded-xl flex items-center justify-center",
+                    currentPlan === "scale"
+                      ? "bg-purple-500/20"
+                      : currentPlan === "studio"
+                        ? "bg-accent-400/20"
+                        : "bg-blue-500/20"
+                  )}
+                >
                   <Icon
                     icon="solar:bookmark-bold-duotone"
                     className={cn(
-                      currentPlan === "scale" ? "text-purple-500" : currentPlan === "studio" ? "text-accent-400" : "text-blue-500"
+                      currentPlan === "scale"
+                        ? "text-purple-500"
+                        : currentPlan === "studio"
+                          ? "text-accent-400"
+                          : "text-blue-500"
                     )}
                     width={22}
                   />
                 </div>
-                <span className={cn(
-                  "text-xs font-medium px-2 py-1 rounded-full",
-                  currentPlan === "scale" ? "bg-purple-500/10 text-purple-500" : currentPlan === "studio" ? "bg-accent-400/10 text-accent-400" : "bg-blue-500/10 text-blue-500"
-                )}>
+                <span
+                  className={cn(
+                    "text-xs font-medium px-2 py-1 rounded-full",
+                    currentPlan === "scale"
+                      ? "bg-purple-500/10 text-purple-500"
+                      : currentPlan === "studio"
+                        ? "bg-accent-400/10 text-accent-400"
+                        : "bg-blue-500/10 text-blue-500"
+                  )}
+                >
                   {getPlanName(currentPlan)}
                 </span>
               </div>
@@ -198,13 +214,25 @@ export default function DashboardPage() {
             <CardBody className="p-5">
               <div className="flex items-center justify-between mb-4">
                 <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center">
-                  <Icon icon="solar:video-library-bold-duotone" className="text-green-500" width={22} />
+                  <Icon
+                    icon="solar:video-library-bold-duotone"
+                    className="text-green-500"
+                    width={22}
+                  />
                 </div>
-                <Icon icon="solar:arrow-right-bold" className="text-text-tertiary" width={18} />
+                <Icon
+                  icon="solar:arrow-right-bold"
+                  className="text-text-tertiary"
+                  width={18}
+                />
               </div>
               <div className="space-y-1">
-                <p className="text-sm font-medium text-text-primary">View Library</p>
-                <p className="text-xs text-text-tertiary">Manage all your clips</p>
+                <p className="text-sm font-medium text-text-primary">
+                  View Library
+                </p>
+                <p className="text-xs text-text-tertiary">
+                  Manage all your clips
+                </p>
               </div>
             </CardBody>
           </Card>
@@ -216,9 +244,15 @@ export default function DashboardPage() {
           >
             <CardBody className="p-5 flex flex-col items-center justify-center text-center">
               <div className="w-12 h-12 rounded-xl bg-accent-400/10 flex items-center justify-center mb-3">
-                <Icon icon="solar:scissors-bold-duotone" className="text-accent-400" width={26} />
+                <Icon
+                  icon="solar:scissors-bold-duotone"
+                  className="text-accent-400"
+                  width={26}
+                />
               </div>
-              <p className="text-sm font-medium text-text-primary">Create New Clip</p>
+              <p className="text-sm font-medium text-text-primary">
+                Create New Clip
+              </p>
               <p className="text-xs text-text-tertiary mt-1">
                 Upload a video to get started
               </p>
@@ -228,7 +262,9 @@ export default function DashboardPage() {
 
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-text-primary">Recent Clips</h2>
+            <h2 className="text-lg font-semibold text-text-primary">
+              Recent Clips
+            </h2>
             {recentClips.length > 0 && (
               <Button
                 variant="light"
@@ -244,7 +280,10 @@ export default function DashboardPage() {
 
           {isLoadingClips ? (
             <div className="flex items-center justify-center py-16">
-              <Icon icon="solar:loading-circle-bold" className="text-4xl animate-spin text-accent-400" />
+              <Icon
+                icon="solar:loading-circle-bold"
+                className="text-4xl animate-spin text-accent-400"
+              />
             </div>
           ) : recentClips.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -253,7 +292,9 @@ export default function DashboardPage() {
                   key={clip.id}
                   className="bg-surface-base border border-border-base hover:border-accent-400/30 transition-all cursor-pointer group"
                   isPressable
-                  onPress={() => router.push(`/dashboard/clips/${clip.id}/edit`)}
+                  onPress={() =>
+                    router.push(`/dashboard/clips/${clip.id}/edit`)
+                  }
                 >
                   <CardBody className="p-0">
                     <div className="aspect-[9/16] max-h-48 bg-surface-elevated rounded-t-xl overflow-hidden flex items-center justify-center">
@@ -266,7 +307,10 @@ export default function DashboardPage() {
                           preload="metadata"
                         />
                       ) : (
-                        <Icon icon="solar:video-frame-play-vertical-bold-duotone" className="text-4xl text-text-tertiary" />
+                        <Icon
+                          icon="solar:video-frame-play-vertical-bold-duotone"
+                          className="text-4xl text-text-tertiary"
+                        />
                       )}
                     </div>
                     <div className="p-4">
@@ -279,19 +323,22 @@ export default function DashboardPage() {
                             {formatDate(clip.updated_at)}
                           </p>
                         </div>
-                        {clip.clip_score !== undefined && clip.clip_score !== null && (
-                          <div className={cn(
-                            "flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium",
-                            clip.clip_score >= 80
-                              ? "bg-green-500/10 text-green-500"
-                              : clip.clip_score >= 60
-                                ? "bg-yellow-500/10 text-yellow-500"
-                                : "bg-surface-elevated text-text-tertiary"
-                          )}>
-                            <Icon icon="solar:star-bold" width={12} />
-                            {clip.clip_score}
-                          </div>
-                        )}
+                        {clip.clip_score !== undefined &&
+                          clip.clip_score !== null && (
+                            <div
+                              className={cn(
+                                "flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium",
+                                clip.clip_score >= 80
+                                  ? "bg-green-500/10 text-green-500"
+                                  : clip.clip_score >= 60
+                                    ? "bg-yellow-500/10 text-yellow-500"
+                                    : "bg-surface-elevated text-text-tertiary"
+                              )}
+                            >
+                              <Icon icon="solar:star-bold" width={12} />
+                              {clip.clip_score}
+                            </div>
+                          )}
                       </div>
                     </div>
                   </CardBody>
@@ -302,17 +349,24 @@ export default function DashboardPage() {
             <Card className="bg-surface-base border border-border-base">
               <CardBody className="flex flex-col items-center justify-center py-16">
                 <div className="w-16 h-16 rounded-2xl bg-accent-400/10 flex items-center justify-center mb-4">
-                  <Icon icon="solar:video-frame-play-vertical-bold-duotone" className="text-accent-400" width={32} />
+                  <Icon
+                    icon="solar:video-frame-play-vertical-bold-duotone"
+                    className="text-accent-400"
+                    width={32}
+                  />
                 </div>
                 <h3 className="text-lg font-semibold text-text-primary mb-2">
                   No clips yet
                 </h3>
                 <p className="text-sm text-text-secondary text-center max-w-sm mb-6">
-                  Upload a long-form video and let AI automatically find the best moments for social media
+                  Upload a long-form video and let AI automatically find the
+                  best moments for social media
                 </p>
                 <Button
                   className="bg-accent-400 text-white font-semibold"
-                  startContent={<Icon icon="solar:add-circle-bold" width={20} />}
+                  startContent={
+                    <Icon icon="solar:add-circle-bold" width={20} />
+                  }
                   onPress={() => router.push("/dashboard/create-clip")}
                 >
                   Create Your First Clip
@@ -328,7 +382,11 @@ export default function DashboardPage() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-xl bg-accent-400/20 flex items-center justify-center">
-                    <Icon icon="solar:rocket-bold-duotone" className="text-accent-400" width={26} />
+                    <Icon
+                      icon="solar:rocket-bold-duotone"
+                      className="text-accent-400"
+                      width={26}
+                    />
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-text-primary">

@@ -441,6 +441,7 @@ export default function MyClipsPage() {
           teamId={selectedTeam!.id}
           onClipSaved={handleClipSaved}
           onClipRejected={handleRejectClip}
+          onClipView={handleViewClip}
           onUsageUpdated={triggerRefresh}
         />
 

@@ -65,6 +65,13 @@ export const ClipCard: React.FC<ClipCardProps> = ({ clip, onDelete, onView, onEd
     }
   };
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Only trigger view if not dragging and onView exists
+    if (onView && !isDragging) {
+      onView();
+    }
+  };
+
   return (
     <Card
       className={`bg-surface-base border border-border-accent hover:bg-surface-elevated transition-all cursor-grab active:cursor-grabbing ${
@@ -74,7 +81,7 @@ export const ClipCard: React.FC<ClipCardProps> = ({ clip, onDelete, onView, onEd
       onDragStart={handleDragStart}
       onDragEnd={onDragEnd}
     >
-      <CardBody className="p-4">
+      <CardBody className="p-4 cursor-pointer" onClick={handleCardClick}>
         <div className="flex items-start gap-3">
           <div className="flex-shrink-0">
             <div className="w-20 sm:w-24 h-36 sm:h-44 rounded-lg overflow-hidden border border-border-base bg-surface-elevated flex items-center justify-center">

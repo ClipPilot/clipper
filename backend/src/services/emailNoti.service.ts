@@ -10,6 +10,8 @@ import {
   PaymentFailedEmailData,
   subscriptionRenewalEmail,
   SubscriptionRenewalEmailData,
+  clipsReadyEmail,
+  ClipsReadyEmailData,
 } from "../templates/emailTemplates";
 
 export class EmailNotiService {
@@ -74,6 +76,14 @@ export class EmailNotiService {
       `Your Cuttr subscription has been renewed`,
       html
     );
+  }
+
+  async sendClipsReady(to: string, data: ClipsReadyEmailData) {
+    const html = clipsReadyEmail(data);
+    const subject = data.clipCount > 1
+      ? `Your ${data.clipCount} clips are ready!`
+      : `Your clip is ready!`;
+    return this.sendEmailNotification(to, subject, html);
   }
 }
 

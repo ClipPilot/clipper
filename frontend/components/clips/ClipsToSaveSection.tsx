@@ -11,6 +11,7 @@ interface ClipsToSaveSectionProps {
   teamId: number;
   onClipSaved: (clipId: number) => void;
   onClipRejected?: (clipId: number) => void;
+  onClipView?: (clip: Clip) => void;
   onUsageUpdated?: () => void;
 }
 
@@ -19,6 +20,7 @@ export const ClipsToSaveSection: React.FC<ClipsToSaveSectionProps> = ({
   teamId,
   onClipSaved,
   onClipRejected,
+  onClipView,
   onUsageUpdated,
 }) => {
   const [savingClipIds, setSavingClipIds] = useState<Set<number>>(new Set());
@@ -126,15 +128,18 @@ export const ClipsToSaveSection: React.FC<ClipsToSaveSectionProps> = ({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {groupClips.map((clip) => (
-                <UnsavedClipCard
-                  key={clip.id}
-                  clip={clip}
-                  onSave={handleSaveClip}
-                  onReject={onClipRejected}
-                  isSaving={savingClipIds.has(clip.id)}
-                />
-              ))}
+              {[...groupClips]
+                .sort((a, b) => (b.clip_score ?? 0) - (a.clip_score ?? 0))
+                .map((clip) => (
+                  <UnsavedClipCard
+                    key={clip.id}
+                    clip={clip}
+                    onSave={handleSaveClip}
+                    onReject={onClipRejected}
+                    onView={onClipView ? () => onClipView(clip) : undefined}
+                    isSaving={savingClipIds.has(clip.id)}
+                  />
+                ))}
             </div>
           </div>
         ))}

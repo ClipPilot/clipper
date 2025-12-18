@@ -13,6 +13,7 @@ const subscriptionWelcomeTemplate = loadTemplate("subscription-welcome.html");
 const subscriptionCancelledTemplate = loadTemplate("subscription-cancelled.html");
 const paymentFailedTemplate = loadTemplate("payment-failed.html");
 const subscriptionRenewalTemplate = loadTemplate("subscription-renewal.html");
+const clipsReadyTemplate = loadTemplate("clips-ready.html");
 
 const wrapInBase = (content: string): string => {
   const frontendUrl = process.env.FRONTEND_URL || "https://platform.cuttr.com";
@@ -110,5 +111,27 @@ export const subscriptionRenewalEmail = (data: SubscriptionRenewalEmailData): st
     .replace(/{{AMOUNT}}/g, data.amount)
     .replace(/{{RENEWAL_DATE}}/g, data.renewalDate)
     .replace(/{{MANAGE_URL}}/g, data.manageUrl);
+  return wrapInBase(content);
+};
+
+export interface ClipsReadyEmailData {
+  userName: string;
+  clipCount: number;
+  sourceFileName: string;
+  clipsUrl: string;
+}
+
+export const clipsReadyEmail = (data: ClipsReadyEmailData): string => {
+  const plural = data.clipCount > 1 ? "s" : "";
+  const have = data.clipCount > 1 ? "have" : "has";
+  const are = data.clipCount > 1 ? "are" : "is";
+  const content = clipsReadyTemplate
+    .replace(/{{USER_NAME}}/g, data.userName)
+    .replace(/{{CLIP_COUNT}}/g, data.clipCount.toString())
+    .replace(/{{CLIP_PLURAL}}/g, plural)
+    .replace(/{{CLIP_HAVE}}/g, have)
+    .replace(/{{CLIP_ARE}}/g, are)
+    .replace(/{{SOURCE_FILE}}/g, data.sourceFileName)
+    .replace(/{{CLIPS_URL}}/g, data.clipsUrl);
   return wrapInBase(content);
 };

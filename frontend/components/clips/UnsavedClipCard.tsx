@@ -10,6 +10,7 @@ interface UnsavedClipCardProps {
   clip: Clip;
   onSave: (clipId: number) => Promise<void>;
   onReject?: (clipId: number) => void;
+  onView?: () => void;
   isSaving?: boolean;
 }
 
@@ -17,6 +18,7 @@ export const UnsavedClipCard: React.FC<UnsavedClipCardProps> = ({
   clip,
   onSave,
   onReject,
+  onView,
   isSaving = false,
 }) => {
   const [isLocalSaving, setIsLocalSaving] = useState(false);
@@ -50,9 +52,15 @@ export const UnsavedClipCard: React.FC<UnsavedClipCardProps> = ({
 
   const saving = isSaving || isLocalSaving;
 
+  const handleCardClick = () => {
+    if (onView) {
+      onView();
+    }
+  };
+
   return (
     <Card className="bg-surface-base border border-border-accent overflow-hidden">
-      <CardBody className="p-0">
+      <CardBody className="p-0 cursor-pointer" onClick={handleCardClick}>
         <div className="aspect-[9/16] max-h-[400px]">
           {clip.clipUrl ? (
             <SecureVideoPlayer

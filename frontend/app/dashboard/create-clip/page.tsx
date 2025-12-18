@@ -69,6 +69,15 @@ export default function CreateClipPage() {
     }
   }, [refreshTrigger, refetchUsageStats]);
 
+  useEffect(() => {
+    if (selectedTeam?.plan === "free" && usageStats?.remaining !== undefined) {
+      const maxAllowed = Math.min(usageStats.remaining, 15);
+      if (numberOfVideos > maxAllowed && maxAllowed >= 1) {
+        setNumberOfVideos(maxAllowed);
+      }
+    }
+  }, [selectedTeam?.plan, usageStats?.remaining]);
+
   const handleUploadComplete = (s3Key: string, fileName: string, fileSize: number) => {
     setUploadedVideo({ s3Key, fileName, fileSize });
     setError("");
@@ -275,6 +284,7 @@ export default function CreateClipPage() {
                         setHookLength={setHookLength}
                         numberOfVideos={numberOfVideos}
                         setNumberOfVideos={setNumberOfVideos}
+                        maxClips={selectedTeam.plan === "free" ? usageStats?.remaining : undefined}
                       />
                     </CardBody>
                   </Card>

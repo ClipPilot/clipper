@@ -14,6 +14,7 @@ interface SettingsPanelProps {
   setHookLength: (value: number) => void;
   numberOfVideos: number;
   setNumberOfVideos: (value: number) => void;
+  maxClips?: number;
 }
 
 const PROMPT_TYPES = [
@@ -32,6 +33,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   setHookLength,
   numberOfVideos,
   setNumberOfVideos,
+  maxClips,
 }) => {
   return (
     <div className="space-y-6">
@@ -90,10 +92,11 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
         size="sm"
         step={1}
         minValue={1}
-        maxValue={15}
+        maxValue={maxClips !== undefined ? Math.min(maxClips, 15) : 15}
         value={numberOfVideos}
         onChange={(value) => setNumberOfVideos(value as number)}
         getValue={(value) => `${value} clip${value !== 1 ? "s" : ""}`}
+        isDisabled={maxClips !== undefined && maxClips < 1}
       />
     </div>
   );

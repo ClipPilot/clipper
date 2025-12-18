@@ -232,7 +232,7 @@ export default function AuthPage() {
 
   return (
     <div
-      className="flex h-screen w-full items-center justify-end overflow-hidden p-2 sm:p-4 lg:p-8"
+      className="flex h-screen w-full items-center justify-center overflow-hidden p-2 sm:p-4 lg:p-8"
       style={{
         backgroundImage: "url('/images/image4.jpg')",
         backgroundSize: "cover",
@@ -249,16 +249,6 @@ export default function AuthPage() {
           className="object-contain"
           unoptimized
         />
-      </div>
-
-      {/* Testimonial */}
-      <div className="absolute bottom-10 left-10 hidden md:block">
-        <p className="max-w-xl text-white/60">
-          <span className="font-medium">"</span>
-          The future of content management is here. Cuttr makes it seamless to
-          organize and share your digital world.
-          <span className="font-medium">"</span>
-        </p>
       </div>
 
       {/* Auth Form */}
