@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useImperativeHandle, forwardRef } from "react";
 import { Icon } from "@iconify/react";
 
 interface SecureVideoPlayerProps {
@@ -9,15 +9,35 @@ interface SecureVideoPlayerProps {
   className?: string;
 }
 
-export const SecureVideoPlayer: React.FC<SecureVideoPlayerProps> = ({
+export interface SecureVideoPlayerRef {
+  pause: () => void;
+  play: () => void;
+}
+
+export const SecureVideoPlayer = forwardRef<SecureVideoPlayerRef, SecureVideoPlayerProps>(({
   src,
   poster,
   className = "",
-}) => {
+}, ref) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+
+  useImperativeHandle(ref, () => ({
+    pause: () => {
+      if (videoRef.current) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+      }
+    },
+    play: () => {
+      if (videoRef.current) {
+        videoRef.current.play();
+        setIsPlaying(true);
+      }
+    },
+  }));
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -120,4 +140,6 @@ export const SecureVideoPlayer: React.FC<SecureVideoPlayerProps> = ({
       </div>
     </div>
   );
-};
+});
+
+SecureVideoPlayer.displayName = "SecureVideoPlayer";

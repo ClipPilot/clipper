@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Card, CardBody, CardFooter, Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { Clip } from "@/api/clips";
-import { SecureVideoPlayer } from "./SecureVideoPlayer";
+import { SecureVideoPlayer, SecureVideoPlayerRef } from "./SecureVideoPlayer";
 
 interface UnsavedClipCardProps {
   clip: Clip;
@@ -23,6 +23,7 @@ export const UnsavedClipCard: React.FC<UnsavedClipCardProps> = ({
 }) => {
   const [isLocalSaving, setIsLocalSaving] = useState(false);
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const videoRef = useRef<SecureVideoPlayerRef>(null);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -54,6 +55,8 @@ export const UnsavedClipCard: React.FC<UnsavedClipCardProps> = ({
 
   const handleCardClick = () => {
     if (onView) {
+      // Pause the video before opening modal
+      videoRef.current?.pause();
       onView();
     }
   };
@@ -64,6 +67,7 @@ export const UnsavedClipCard: React.FC<UnsavedClipCardProps> = ({
         <div className="aspect-[9/16] max-h-[400px]">
           {clip.clipUrl ? (
             <SecureVideoPlayer
+              ref={videoRef}
               src={clip.clipUrl}
               poster={clip.sourceVideoUrl}
               className="w-full h-full"

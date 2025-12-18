@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAtom } from "jotai";
 import { userAtom, selectedTeamAtom } from "@/store/auth";
-import { Button, Card, CardBody } from "@heroui/react";
+import { Button, Card, CardBody, Tabs, Tab } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { authAPI } from "@/api/auth";
 import { clipsAPI, Clip, Folder, Tag } from "@/api/clips";
@@ -16,6 +16,7 @@ import { useUsageStatsRefresh } from "@/contexts/UsageStatsContext";
 import PendingClipsSection from "@/components/clips/PendingClipsSection";
 import NewClipsSection from "@/components/clips/NewClipsSection";
 import ClipViewModal from "@/components/clips/ClipViewModal";
+import PreviewClipViewModal from "@/components/clips/PreviewClipViewModal";
 import { useSocket } from "@/hooks/useSocket";
 
 const CLIPS_PER_PAGE = 12;
@@ -35,12 +36,18 @@ export default function MyClipsPage() {
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedClip, setSelectedClip] = useState<Clip | null>(null);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [selectedPreviewClip, setSelectedPreviewClip] = useState<Clip | null>(null);
+  const [isSavingPreviewClip, setIsSavingPreviewClip] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>("library");
   const [draggedClipId, setDraggedClipId] = useState<number | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [offset, setOffset] = useState(0);
   const { triggerRefresh } = useUsageStatsRefresh();
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
+
+  const [folderAddedClips, setFolderAddedClips] = useState<Record<number, Clip[]>>({});
   const [movedClipIds, setMovedClipIds] = useState<number[]>([]);
 
   const loadPendingClips = useCallback(async () => {
@@ -154,14 +161,37 @@ export default function MyClipsPage() {
     return () => observer.disconnect();
   }, [hasMore, isLoadingMore, isLoadingClips, loadMoreClips]);
 
+  const lastSocketUpdateRef = useRef<number>(0);
+  const socketUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const handleSocketUpdate = useCallback(() => {
     if (isDraggingRef.current) return;
-    loadPendingClips();
-    loadUnsavedClips();
-    loadSavedClips(true);
-  }, [loadPendingClips, loadUnsavedClips, loadSavedClips]);
+
+    const now = Date.now();
+    if (now - lastSocketUpdateRef.current < 2000) {
+      return;
+    }
+
+    if (socketUpdateTimeoutRef.current) {
+      clearTimeout(socketUpdateTimeoutRef.current);
+    }
+
+    socketUpdateTimeoutRef.current = setTimeout(() => {
+      lastSocketUpdateRef.current = Date.now();
+      loadPendingClips();
+      loadUnsavedClips();
+    }, 500);
+  }, [loadPendingClips, loadUnsavedClips]);
 
   useSocket(selectedTeam?.id, handleSocketUpdate);
+
+  useEffect(() => {
+    return () => {
+      if (socketUpdateTimeoutRef.current) {
+        clearTimeout(socketUpdateTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -186,6 +216,8 @@ export default function MyClipsPage() {
 
   useEffect(() => {
     if (selectedTeam?.id) {
+      setFolderAddedClips({});
+      setMovedClipIds([]);
       loadPendingClips();
       loadUnsavedClips();
       loadSavedClips(true);
@@ -290,15 +322,26 @@ export default function MyClipsPage() {
     setDraggedClipId(null);
   };
 
-  const handleDrop = async (folderId: number, clipId: number) => {
-    if (!selectedTeam?.id) return;
+  const handleDrop = async (folderId: number, clipId: number): Promise<Clip | null> => {
+    if (!selectedTeam?.id) return null;
 
     try {
+      const clipToMove = savedClips.find((c) => c.id === clipId);
       await clipsAPI.updateClip(selectedTeam.id, clipId, { folderId });
       setSavedClips((prev) => prev.filter((c) => c.id !== clipId));
       setMovedClipIds((prev) => [...prev, clipId]);
+      if (clipToMove) {
+        const clipWithNewFolder = { ...clipToMove, folder_id: folderId };
+        setFolderAddedClips((prev) => ({
+          ...prev,
+          [folderId]: [...(prev[folderId] || []), clipWithNewFolder],
+        }));
+        return clipWithNewFolder;
+      }
+      return null;
     } catch (error) {
       console.error("Failed to move clip to folder:", error);
+      return null;
     }
   };
 
@@ -333,26 +376,62 @@ export default function MyClipsPage() {
     setIsViewModalOpen(true);
   };
 
+  const handleViewPreviewClip = (clip: Clip) => {
+    setSelectedPreviewClip(clip);
+    setIsPreviewModalOpen(true);
+  };
+
+  const handleSavePreviewClip = async (clipId: number) => {
+    if (!selectedTeam?.id) return;
+    setIsSavingPreviewClip(true);
+
+    try {
+      await clipsAPI.saveClip(selectedTeam.id, clipId);
+      setUnsavedClips((prev) => prev.filter((c) => c.id !== clipId));
+      loadSavedClips(true);
+      triggerRefresh();
+    } catch (error) {
+      console.error("Failed to save clip:", error);
+    } finally {
+      setIsSavingPreviewClip(false);
+    }
+  };
+
+  const handleRejectPreviewClip = async (clipId: number) => {
+    if (!selectedTeam?.id) return;
+
+    try {
+      await clipsAPI.deleteClip(selectedTeam.id, clipId);
+      setUnsavedClips((prev) => prev.filter((c) => c.id !== clipId));
+    } catch (error) {
+      console.error("Failed to reject clip:", error);
+    }
+  };
+
   const handleEditClip = (clip: Clip) => {
     router.push(`/dashboard/clips/${clip.id}/edit`);
   };
 
   const handleMoveClip = async (clipId: number, folderId: number | null) => {
-    if (!selectedTeam?.id) return;
+    if (!selectedTeam?.id || !selectedClip) return;
 
     try {
-      const updatedClip = await clipsAPI.updateClip(selectedTeam.id, clipId, {
-        folderId,
-      });
+      await clipsAPI.updateClip(selectedTeam.id, clipId, { folderId });
 
       if (folderId === null) {
+        const clipWithNoFolder = { ...selectedClip, folder_id: null };
         setSavedClips((prev) => {
           if (prev.some((c) => c.id === clipId)) return prev;
-          return [updatedClip, ...prev];
+          return [clipWithNoFolder, ...prev];
         });
       } else {
         setSavedClips((prev) => prev.filter((c) => c.id !== clipId));
         setMovedClipIds((prev) => [...prev, clipId]);
+        const clipWithNewFolder = { ...selectedClip, folder_id: folderId };
+        setFolderAddedClips((prev) => ({
+          ...prev,
+          [folderId]: [...(prev[folderId] || []), clipWithNewFolder],
+        }));
       }
 
       setIsViewModalOpen(false);
@@ -424,157 +503,221 @@ export default function MyClipsPage() {
     );
   }
 
+  const processingCount = pendingClips.length + unsavedClips.length;
+
   return (
     <div className="min-h-screen bg-surface-dark p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
+        <div className="mb-6">
           <h1 className="text-3xl font-bold text-text-primary">My Clips</h1>
         </div>
 
-        <PendingClipsSection
-          clips={pendingClips}
-          onClipClick={(clip: any) => handleViewClip(clip)}
-        />
-
-        <ClipsToSaveSection
-          clips={unsavedClips}
-          teamId={selectedTeam!.id}
-          onClipSaved={handleClipSaved}
-          onClipRejected={handleRejectClip}
-          onClipView={handleViewClip}
-          onUsageUpdated={triggerRefresh}
-        />
-
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
-              <Icon
-                icon="solar:folder-bold-duotone"
-                className="text-2xl text-accent-400"
-              />
-              Folders
-            </h2>
-            <Button
-              onClick={() => setIsCreateFolderOpen(true)}
-              size="sm"
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-accent-400 text-white rounded-lg hover:bg-accent-500 transition-colors"
-            >
-              <Icon icon="solar:add-circle-bold" className="text-lg" />
-              <span>New Folder</span>
-            </Button>
-          </div>
-          {isLoadingFolders ? (
-            <div className="flex items-center justify-center py-12">
-              <Icon
-                icon="solar:loading-circle-bold"
-                className="text-4xl animate-spin text-accent-400"
-              />
-            </div>
-          ) : folders.length > 0 ? (
-            <div className="bg-surface-base border border-border-base rounded-lg p-2">
-              {folders.map((folder) => (
-                <ExpandableFolder
-                  key={folder.id}
-                  folder={folder}
-                  teamId={selectedTeam!.id}
-                  movedClipIds={movedClipIds}
-                  onDelete={handleDeleteFolder}
-                  onDrop={handleDrop}
-                  onClipDelete={handleDeleteClip}
-                  onClipView={handleViewClip}
-                  onClipEdit={handleEditClip}
-                  draggedClipId={draggedClipId}
-                  onClipDragStart={handleDragStart}
-                  onClipDragEnd={handleDragEnd}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="bg-surface-base border border-border-base border-dashed rounded-lg p-8 flex flex-col items-center justify-center">
-              <Icon
-                icon="solar:folder-add-bold-duotone"
-                className="text-4xl text-text-tertiary mb-2"
-              />
-              <p className="text-text-secondary text-sm">No folders yet</p>
-            </div>
-          )}
-        </div>
-
-        <NewClipsSection
-          clips={newClips}
-          onDelete={handleDeleteClip}
-          onClipClick={(clip: any) => handleViewClip(clip)}
-          onEditClick={(clip: any) => handleEditClip(clip)}
-          draggedClipId={draggedClipId}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-        />
-
-        <div
-          onDrop={handleDropToSaved}
-          onDragOver={handleDragOver}
-          className="min-h-[200px]"
+        <Tabs
+          selectedKey={activeTab}
+          onSelectionChange={(key) => setActiveTab(key as string)}
+          classNames={{
+            tabList: "bg-surface-base border border-border-base rounded-lg p-1 gap-1",
+            cursor: "bg-accent-400",
+            tab: "px-4 py-2 data-[selected=true]:text-white",
+            tabContent: "group-data-[selected=true]:text-white",
+          }}
+          className="mb-6"
         >
-          <h2 className="text-xl font-bold text-text-primary mb-4 flex items-center gap-2">
-            <Icon
-              icon="solar:video-library-bold-duotone"
-              className="text-2xl text-accent-400"
-            />
-            Saved Clips
-          </h2>
-          {isLoadingClips ? (
-            <div className="flex items-center justify-center py-12">
-              <Icon
-                icon="solar:loading-circle-bold"
-                className="text-4xl animate-spin text-accent-400"
-              />
-            </div>
-          ) : savedClips.length > 0 ? (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {savedClips.map((clip) => (
-                  <ClipCard
-                    key={clip.id}
-                    clip={clip}
-                    onDelete={handleDeleteClip}
-                    onView={() => handleViewClip(clip)}
-                    onEdit={() => handleEditClip(clip)}
-                    isDragging={draggedClipId === clip.id}
-                    onDragStart={handleDragStart}
-                    onDragEnd={handleDragEnd}
-                  />
-                ))}
-              </div>
-
-              <div ref={loadMoreRef} className="flex justify-center py-8">
-                {isLoadingMore && (
-                  <div className="flex items-center gap-2 text-text-secondary">
-                    <Icon
-                      icon="solar:loading-circle-bold"
-                      className="text-2xl animate-spin text-accent-400"
-                    />
-                    <span>Loading more clips...</span>
-                  </div>
+          <Tab
+            key="processing"
+            title={
+              <div className="flex items-center gap-2">
+                <Icon icon="solar:hourglass-bold-duotone" className="text-lg" />
+                <span>Processing</span>
+                {processingCount > 0 && (
+                  <span className="px-1.5 py-0.5 text-xs rounded-full bg-warning-500/20 text-warning-500">
+                    {processingCount}
+                  </span>
                 )}
               </div>
-            </>
-          ) : (
-            <Card className="bg-surface-base border border-border-base">
-              <CardBody className="flex flex-col items-center justify-center py-16">
+            }
+          />
+          <Tab
+            key="library"
+            title={
+              <div className="flex items-center gap-2">
+                <Icon icon="solar:library-bold-duotone" className="text-lg" />
+                <span>Library</span>
+              </div>
+            }
+          />
+        </Tabs>
+
+        {activeTab === "processing" && (
+          <div className="space-y-6">
+            <PendingClipsSection
+              clips={pendingClips}
+              onClipClick={(clip: any) => handleViewClip(clip)}
+            />
+
+            <ClipsToSaveSection
+              clips={unsavedClips}
+              teamId={selectedTeam!.id}
+              onClipSaved={handleClipSaved}
+              onClipRejected={handleRejectClip}
+              onClipView={handleViewPreviewClip}
+              onUsageUpdated={triggerRefresh}
+            />
+
+            {pendingClips.length === 0 && unsavedClips.length === 0 && (
+              <Card className="bg-surface-base border border-border-base">
+                <CardBody className="flex flex-col items-center justify-center py-16">
+                  <Icon
+                    icon="solar:check-circle-bold-duotone"
+                    className="text-6xl text-success-500 mb-4"
+                  />
+                  <p className="text-text-secondary text-center mb-2 text-lg">
+                    All caught up!
+                  </p>
+                  <p className="text-text-tertiary text-center text-sm max-w-md">
+                    No clips are currently processing. Upload a video to generate new clips.
+                  </p>
+                </CardBody>
+              </Card>
+            )}
+          </div>
+        )}
+
+        {activeTab === "library" && (
+          <>
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
+                  <Icon
+                    icon="solar:folder-bold-duotone"
+                    className="text-2xl text-accent-400"
+                  />
+                  Folders
+                </h2>
+                <Button
+                  onClick={() => setIsCreateFolderOpen(true)}
+                  size="sm"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-accent-400 text-white rounded-lg hover:bg-accent-500 transition-colors"
+                >
+                  <Icon icon="solar:add-circle-bold" className="text-lg" />
+                  <span>New Folder</span>
+                </Button>
+              </div>
+              {isLoadingFolders ? (
+                <div className="flex items-center justify-center py-12">
+                  <Icon
+                    icon="solar:loading-circle-bold"
+                    className="text-4xl animate-spin text-accent-400"
+                  />
+                </div>
+              ) : folders.length > 0 ? (
+                <div className="bg-surface-base border border-border-base rounded-lg p-2">
+                  {folders.map((folder) => (
+                    <ExpandableFolder
+                      key={folder.id}
+                      folder={folder}
+                      teamId={selectedTeam!.id}
+                      addedClips={folderAddedClips[folder.id] || []}
+                      movedClipIds={movedClipIds}
+                      onDelete={handleDeleteFolder}
+                      onDrop={handleDrop}
+                      onClipDelete={handleDeleteClip}
+                      onClipView={handleViewClip}
+                      onClipEdit={handleEditClip}
+                      draggedClipId={draggedClipId}
+                      onClipDragStart={handleDragStart}
+                      onClipDragEnd={handleDragEnd}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-surface-base border border-border-base border-dashed rounded-lg p-8 flex flex-col items-center justify-center">
+                  <Icon
+                    icon="solar:folder-add-bold-duotone"
+                    className="text-4xl text-text-tertiary mb-2"
+                  />
+                  <p className="text-text-secondary text-sm">No folders yet</p>
+                </div>
+              )}
+            </div>
+
+            <NewClipsSection
+              clips={newClips}
+              onDelete={handleDeleteClip}
+              onClipClick={(clip: any) => handleViewClip(clip)}
+              onEditClick={(clip: any) => handleEditClip(clip)}
+              draggedClipId={draggedClipId}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            />
+
+            <div
+              onDrop={handleDropToSaved}
+              onDragOver={handleDragOver}
+              className="min-h-[200px]"
+            >
+              <h2 className="text-xl font-bold text-text-primary mb-4 flex items-center gap-2">
                 <Icon
-                  icon="solar:video-frame-play-vertical-bold-duotone"
-                  className="text-6xl text-text-tertiary mb-4"
+                  icon="solar:video-library-bold-duotone"
+                  className="text-2xl text-accent-400"
                 />
-                <p className="text-text-secondary text-center mb-2 text-lg">
-                  No saved clips yet
-                </p>
-                <p className="text-text-tertiary text-center text-sm max-w-md">
-                  Generate clips and save the ones you like to see them here
-                </p>
-              </CardBody>
-            </Card>
-          )}
-        </div>
+                Saved Clips
+              </h2>
+              {isLoadingClips ? (
+                <div className="flex items-center justify-center py-12">
+                  <Icon
+                    icon="solar:loading-circle-bold"
+                    className="text-4xl animate-spin text-accent-400"
+                  />
+                </div>
+              ) : savedClips.length > 0 ? (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {savedClips.map((clip) => (
+                      <ClipCard
+                        key={clip.id}
+                        clip={clip}
+                        onDelete={handleDeleteClip}
+                        onView={() => handleViewClip(clip)}
+                        onEdit={() => handleEditClip(clip)}
+                        isDragging={draggedClipId === clip.id}
+                        onDragStart={handleDragStart}
+                        onDragEnd={handleDragEnd}
+                      />
+                    ))}
+                  </div>
+
+                  <div ref={loadMoreRef} className="flex justify-center py-8">
+                    {isLoadingMore && (
+                      <div className="flex items-center gap-2 text-text-secondary">
+                        <Icon
+                          icon="solar:loading-circle-bold"
+                          className="text-2xl animate-spin text-accent-400"
+                        />
+                        <span>Loading more clips...</span>
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <Card className="bg-surface-base border border-border-base">
+                  <CardBody className="flex flex-col items-center justify-center py-16">
+                    <Icon
+                      icon="solar:video-frame-play-vertical-bold-duotone"
+                      className="text-6xl text-text-tertiary mb-4"
+                    />
+                    <p className="text-text-secondary text-center mb-2 text-lg">
+                      No saved clips yet
+                    </p>
+                    <p className="text-text-tertiary text-center text-sm max-w-md">
+                      Generate clips and save the ones you like to see them here
+                    </p>
+                  </CardBody>
+                </Card>
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       <CreateFolderModal
@@ -597,6 +740,20 @@ export default function MyClipsPage() {
           onTagsChange={handleTagsChange}
           onCreateTag={handleCreateTag}
           onDeleteTag={handleDeleteTag}
+        />
+      )}
+
+      {selectedPreviewClip && (
+        <PreviewClipViewModal
+          isOpen={isPreviewModalOpen}
+          onClose={() => {
+            setIsPreviewModalOpen(false);
+            setSelectedPreviewClip(null);
+          }}
+          clip={selectedPreviewClip}
+          onSave={handleSavePreviewClip}
+          onReject={handleRejectPreviewClip}
+          isSaving={isSavingPreviewClip}
         />
       )}
     </div>

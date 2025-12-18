@@ -9,9 +9,10 @@ import { ClipCard } from "./ClipCard";
 interface ExpandableFolderProps {
   folder: Folder;
   teamId: number;
+  addedClips?: Clip[];
   movedClipIds?: number[];
   onDelete?: (folderId: number) => void;
-  onDrop?: (folderId: number, clipId: number) => void;
+  onDrop?: (folderId: number, clipId: number) => Promise<Clip | null>;
   onClipDelete?: (clipId: number) => void;
   onClipView?: (clip: Clip) => void;
   onClipEdit?: (clip: Clip) => void;
@@ -23,6 +24,7 @@ interface ExpandableFolderProps {
 export const ExpandableFolder: React.FC<ExpandableFolderProps> = ({
   folder,
   teamId,
+  addedClips = [],
   movedClipIds = [],
   onDelete,
   onDrop,
@@ -35,12 +37,9 @@ export const ExpandableFolder: React.FC<ExpandableFolderProps> = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [clips, setClips] = useState<Clip[]>([]);
+  const [loadedClips, setLoadedClips] = useState<Clip[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
-
-  const displayedClips = clips.filter(c => !movedClipIds.includes(c.id));
-  const clipCount = hasLoaded ? displayedClips.length : null;
 
   const loadClips = useCallback(async () => {
     if (hasLoaded || isLoading) return;
@@ -48,7 +47,7 @@ export const ExpandableFolder: React.FC<ExpandableFolderProps> = ({
     setIsLoading(true);
     try {
       const folderClips = await clipsAPI.getClipsByFolder(teamId, folder.id);
-      setClips(folderClips);
+      setLoadedClips(folderClips);
       setHasLoaded(true);
     } catch (error) {
       console.error("Failed to load folder clips:", error);
@@ -57,17 +56,30 @@ export const ExpandableFolder: React.FC<ExpandableFolderProps> = ({
     }
   }, [teamId, folder.id, hasLoaded, isLoading]);
 
-  const reloadClips = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const folderClips = await clipsAPI.getClipsByFolder(teamId, folder.id);
-      setClips(folderClips);
-    } catch (error) {
-      console.error("Failed to reload folder clips:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [teamId, folder.id]);
+  const displayedClips = React.useMemo(() => {
+    const allClipIds = new Set<number>();
+    const result: Clip[] = [];
+
+    // addedClips are clips just moved TO this folder - always show them
+    addedClips.forEach((clip) => {
+      if (!allClipIds.has(clip.id)) {
+        allClipIds.add(clip.id);
+        result.push(clip);
+      }
+    });
+
+    // loadedClips are from API - filter out clips that were moved OUT
+    loadedClips.forEach((clip) => {
+      if (!movedClipIds.includes(clip.id) && !allClipIds.has(clip.id)) {
+        allClipIds.add(clip.id);
+        result.push(clip);
+      }
+    });
+
+    return result;
+  }, [addedClips, loadedClips, movedClipIds]);
+
+  const clipCount = (hasLoaded || addedClips.length > 0) ? displayedClips.length : null;
 
   const handleToggle = () => {
     if (!isExpanded && !hasLoaded) {
@@ -100,7 +112,6 @@ export const ExpandableFolder: React.FC<ExpandableFolderProps> = ({
       const clipIdNum = parseInt(clipId);
       if (sourceFolderId === String(folder.id)) return;
       await onDrop(folder.id, clipIdNum);
-      reloadClips();
     }
   };
 
@@ -182,7 +193,7 @@ export const ExpandableFolder: React.FC<ExpandableFolderProps> = ({
                   key={clip.id}
                   clip={clip}
                   onDelete={onClipDelete ? (clipId) => {
-                    setClips(prev => prev.filter(c => c.id !== clipId));
+                    setLoadedClips(prev => prev.filter(c => c.id !== clipId));
                     onClipDelete(clipId);
                   } : undefined}
                   onView={onClipView ? () => onClipView(clip) : undefined}

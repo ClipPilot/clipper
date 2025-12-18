@@ -83,7 +83,9 @@ class VideoAPI {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.message || error.error || "Failed to get upload URL");
+      throw new Error(
+        error.message || error.error || "Failed to get upload URL"
+      );
     }
 
     return await response.json();
@@ -151,28 +153,21 @@ class VideoAPI {
     const chunk = file.slice(start, end);
     const chunkSizeBytes = end - start;
 
-    // Calculate timeout: minimum 60s, or 30s per MB (for slow connections)
-    const timeoutMs = Math.max(60000, Math.ceil(chunkSizeBytes / (1024 * 1024)) * 30000);
+    const timeoutMs = Math.max(
+      10 * 60 * 1000,
+      Math.ceil(chunkSizeBytes / (1024 * 1024)) * 60 * 1000 // +60s per MB
+    );
 
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
-      let timeoutId: ReturnType<typeof setTimeout>;
-
-      const cleanup = () => {
-        if (timeoutId) clearTimeout(timeoutId);
-      };
 
       xhr.upload.addEventListener("progress", (event) => {
         if (event.lengthComputable) {
-          // Reset timeout on progress
-          if (timeoutId) clearTimeout(timeoutId);
-          timeoutId = setTimeout(() => {
-            xhr.abort();
-            reject(new Error("Upload stalled - no progress for 30 seconds"));
-          }, 30000);
-
           partProgress[partInfo.partNumber] = event.loaded;
-          const totalLoaded = Object.values(partProgress).reduce((a, b) => a + b, 0);
+          const totalLoaded = Object.values(partProgress).reduce(
+            (a, b) => a + b,
+            0
+          );
 
           if (onProgress) {
             const elapsed = (Date.now() - startTime) / 1000;
@@ -192,12 +187,21 @@ class VideoAPI {
       });
 
       xhr.addEventListener("load", () => {
-        cleanup();
+        // IMPORTANT: treat 404 as fatal (uploadId invalid / aborted / expired)
+        if (xhr.status === 404) {
+          reject(new Error("FATAL_UPLOAD_INVALIDATED"));
+          return;
+        }
+
         if (xhr.status >= 200 && xhr.status < 300) {
           const etag = xhr.getResponseHeader("ETag");
           if (etag) {
+            // mark full part complete
             partProgress[partInfo.partNumber] = chunkSizeBytes;
-            resolve({ partNumber: partInfo.partNumber, etag: etag.replace(/"/g, "") });
+            resolve({
+              partNumber: partInfo.partNumber,
+              etag: etag.replace(/"/g, ""),
+            });
           } else {
             reject(new Error("No ETag received"));
           }
@@ -207,28 +211,28 @@ class VideoAPI {
       });
 
       xhr.addEventListener("error", () => {
-        cleanup();
+        // Network reset / connection issues land here in many browsers
         reject(new Error("Part upload failed - connection error"));
       });
 
       xhr.addEventListener("abort", () => {
-        cleanup();
         reject(new Error("Part upload aborted"));
       });
 
       xhr.addEventListener("timeout", () => {
-        cleanup();
         reject(new Error("Part upload timed out"));
       });
 
       xhr.open("PUT", partInfo.uploadUrl);
       xhr.timeout = timeoutMs;
 
-      // Start initial timeout
-      timeoutId = setTimeout(() => {
-        xhr.abort();
-        reject(new Error("Upload stalled - no progress"));
-      }, 30000);
+      // Safer with many presign configs; does NOT hurt when not signed.
+      // If your presign signs Content-Type, this is required.
+      try {
+        xhr.setRequestHeader("Content-Type", "application/octet-stream");
+      } catch {
+        // ignore if browser disallows (rare)
+      }
 
       xhr.send(chunk);
     });
@@ -240,38 +244,43 @@ class VideoAPI {
     contentType: string,
     fileSize: number
   ): Promise<MultipartUploadResponse> {
-    const response = await apiFetch(`${API_URL}/clip-video/multipart/initiate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ teamId, fileName, contentType, fileSize }),
-    });
+    const response = await apiFetch(
+      `${API_URL}/clip-video/multipart/initiate`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ teamId, fileName, contentType, fileSize }),
+      }
+    );
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.message || error.error || "Failed to initiate upload");
+      throw new Error(
+        error.message || error.error || "Failed to initiate upload"
+      );
     }
 
     return await response.json();
   }
-
   async uploadMultipart(
     file: File,
     multipartData: MultipartUploadResponse,
     onProgress?: (progress: UploadProgress) => void,
     concurrency: number | "auto" = "auto"
   ): Promise<{ partNumber: number; etag: string }[]> {
-    const { chunkSize, partUrls } = multipartData;
+    const { chunkSize, partUrls, s3Key, uploadId } = multipartData;
     const parts: { partNumber: number; etag: string }[] = [];
     const totalSize = file.size;
     const startTime = Date.now();
     const partProgress: Record<number, number> = {};
 
+    // Track retry counts per part to avoid infinite loops on flaky networks
+    const retryCount = new Map<number, number>();
+
     const uploadPartWithRetry = async (
       partInfo: { partNumber: number; uploadUrl: string },
       maxRetries: number = 3
     ): Promise<{ partNumber: number; etag: string }> => {
-      let lastError: Error | null = null;
-
       for (let attempt = 0; attempt < maxRetries; attempt++) {
         try {
           return await this.uploadSinglePart(
@@ -283,24 +292,26 @@ class VideoAPI {
             startTime,
             onProgress
           );
-        } catch (error) {
-          lastError = error as Error;
-          console.warn(`Part ${partInfo.partNumber} failed (attempt ${attempt + 1}/${maxRetries}):`, error);
+        } catch (error: any) {
+          // If uploadId is dead, stop everything immediately
+          if (error?.message === "FATAL_UPLOAD_INVALIDATED") {
+            throw error;
+          }
 
+          const prev = retryCount.get(partInfo.partNumber) ?? 0;
+          retryCount.set(partInfo.partNumber, prev + 1);
+
+          // Exponential backoff, a bit longer helps Comcast resets recover
           if (attempt < maxRetries - 1) {
-            // Wait before retry with exponential backoff
-            await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
+            const delay = 1500 * Math.pow(2, attempt); // 1.5s, 3s, 6s
+            await new Promise((r) => setTimeout(r, delay));
           }
         }
       }
 
-      throw lastError || new Error(`Part ${partInfo.partNumber} failed after ${maxRetries} attempts`);
-    };
-
-    const uploadPart = async (
-      partInfo: { partNumber: number; uploadUrl: string }
-    ): Promise<{ partNumber: number; etag: string }> => {
-      return uploadPartWithRetry(partInfo, 3);
+      throw new Error(
+        `Part ${partInfo.partNumber} failed after ${maxRetries} attempts`
+      );
     };
 
     const executeWithConcurrency = async <T>(
@@ -311,11 +322,11 @@ class VideoAPI {
       const executing: Promise<void>[] = [];
 
       for (const item of items) {
-        const promise = fn(item).then((result) => {
+        const p = fn(item).then((result) => {
           parts.push(result);
-          executing.splice(executing.indexOf(promise), 1);
+          executing.splice(executing.indexOf(p), 1);
         });
-        executing.push(promise);
+        executing.push(p);
 
         if (executing.length >= limit) {
           await Promise.race(executing);
@@ -325,48 +336,63 @@ class VideoAPI {
       await Promise.all(executing);
     };
 
-    // Determine concurrency based on connection speed
+    // Determine concurrency (be conservative on unstable networks)
     let effectiveConcurrency: number;
 
-    if (concurrency === "auto") {
-      // Upload first chunk to measure speed
-      const firstPart = partUrls[0];
-      const measureStart = Date.now();
-      const firstResult = await uploadPartWithRetry(firstPart, 3);
-      parts.push(firstResult);
-      const measureTime = (Date.now() - measureStart) / 1000;
-      const firstChunkSize = Math.min(chunkSize, file.size);
-      const measuredSpeed = firstChunkSize / measureTime; // bytes per second
+    try {
+      if (concurrency === "auto") {
+        // Probe first part; if it retries or is slow, use low concurrency
+        const firstPart = partUrls[0];
+        const measureStart = Date.now();
 
-      // Determine concurrency based on speed
-      // < 5 MB/s: 2 concurrent (slow connection)
-      // 5-20 MB/s: 3 concurrent (moderate)
-      // 20-50 MB/s: 4 concurrent (good)
-      // 50-100 MB/s: 6 concurrent (fast)
-      // > 100 MB/s: 8 concurrent (very fast)
-      const speedMBps = measuredSpeed / (1024 * 1024);
-      if (speedMBps < 5) {
-        effectiveConcurrency = 2;
-      } else if (speedMBps < 20) {
-        effectiveConcurrency = 3;
-      } else if (speedMBps < 50) {
-        effectiveConcurrency = 4;
-      } else if (speedMBps < 100) {
-        effectiveConcurrency = 6;
+        // Probe with 3 retries
+        const firstResult = await uploadPartWithRetry(firstPart, 3);
+        parts.push(firstResult);
+
+        const measureTime = (Date.now() - measureStart) / 1000;
+        const firstChunkSize = Math.min(chunkSize, file.size);
+        const speedMBps = firstChunkSize / measureTime / (1024 * 1024);
+
+        const firstPartRetries = retryCount.get(firstPart.partNumber) ?? 0;
+        const unstable = firstPartRetries > 0 || speedMBps < 5;
+
+        // Comcast/Xfinity tends to behave better with lower concurrency when unstable
+        effectiveConcurrency = unstable
+          ? 2
+          : speedMBps < 20
+            ? 3
+            : speedMBps < 50
+              ? 4
+              : 6;
+
+        // Upload the rest
+        const remainingParts = partUrls.slice(1);
+        if (remainingParts.length > 0) {
+          await executeWithConcurrency(
+            remainingParts,
+            (p) => uploadPartWithRetry(p as any, 3),
+            effectiveConcurrency
+          );
+        }
       } else {
-        effectiveConcurrency = 8;
+        effectiveConcurrency = Math.max(1, concurrency);
+        await executeWithConcurrency(
+          partUrls,
+          (p) => uploadPartWithRetry(p as any, 3),
+          effectiveConcurrency
+        );
       }
-
-      console.log(`Upload speed: ${speedMBps.toFixed(1)} MB/s → using ${effectiveConcurrency} concurrent uploads`);
-
-      // Upload remaining parts with determined concurrency
-      const remainingParts = partUrls.slice(1);
-      if (remainingParts.length > 0) {
-        await executeWithConcurrency(remainingParts, uploadPart, effectiveConcurrency);
+    } catch (err: any) {
+      // If we ever hit fatal invalidation, abort the multipart upload server-side
+      if (err?.message === "FATAL_UPLOAD_INVALIDATED") {
+        await this.abortMultipartUpload(s3Key, uploadId);
+        throw new Error(
+          "Multipart upload invalidated (uploadId expired/aborted). Please retry."
+        );
       }
-    } else {
-      effectiveConcurrency = concurrency;
-      await executeWithConcurrency(partUrls, uploadPart, effectiveConcurrency);
+      // For other hard failures, also abort to prevent stuck multipart uploads
+      await this.abortMultipartUpload(s3Key, uploadId);
+      throw err;
     }
 
     return parts.sort((a, b) => a.partNumber - b.partNumber);
@@ -377,15 +403,20 @@ class VideoAPI {
     uploadId: string,
     parts: { partNumber: number; etag: string }[]
   ): Promise<void> {
-    const response = await apiFetch(`${API_URL}/clip-video/multipart/complete`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ s3Key, uploadId, parts }),
-    });
+    const response = await apiFetch(
+      `${API_URL}/clip-video/multipart/complete`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ s3Key, uploadId, parts }),
+      }
+    );
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.message || error.error || "Failed to complete upload");
+      throw new Error(
+        error.message || error.error || "Failed to complete upload"
+      );
     }
   }
 
@@ -421,7 +452,9 @@ class VideoAPI {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.message || error.error || "Failed to get video info");
+      throw new Error(
+        error.message || error.error || "Failed to get video info"
+      );
     }
 
     return await response.json();
@@ -444,14 +477,17 @@ class VideoAPI {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.message || error.error || "Failed to download video");
+      throw new Error(
+        error.message || error.error || "Failed to download video"
+      );
     }
 
     const reader = response.body?.getReader();
     if (!reader) throw new Error("No response body");
 
     const decoder = new TextDecoder();
-    let result: { s3Key: string; fileName: string; fileSize: number } | null = null;
+    let result: { s3Key: string; fileName: string; fileSize: number } | null =
+      null;
 
     while (true) {
       const { done, value } = await reader.read();

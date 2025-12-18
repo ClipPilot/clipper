@@ -367,102 +367,39 @@ export const addPreviewWatermark = async (
   inputPath: string,
   outputPath: string
 ): Promise<string> => {
-  const watermarkImagePath = path.join(
-    path.dirname(outputPath),
-    `watermark_${Date.now()}.png`
-  );
+  // Use the Cuttr logo from assets
+  const logoPath = path.join(__dirname, '../templates/assets/cuttr-logo.png');
 
-  try {
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
-    });
-
-    const page = await browser.newPage();
-    await page.setViewport({ width: 1080, height: 1920, deviceScaleFactor: 1 });
-
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@900&display=swap" rel="stylesheet">
-          <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body {
-              width: 1080px;
-              height: 1920px;
-              background: transparent;
-              overflow: hidden;
-              position: relative;
-            }
-            .watermark-container {
-              position: absolute;
-              top: 50%;
-              left: 50%;
-              transform: translate(-50%, -50%) rotate(-30deg);
-              display: flex;
-              flex-direction: column;
-              gap: 80px;
-              align-items: center;
-              width: 300%;
-              height: 300%;
-            }
-            .watermark-row {
-              display: flex;
-              gap: 60px;
-              white-space: nowrap;
-            }
-            .watermark-text {
-              font-size: 64px;
-              font-weight: 900;
-              font-family: 'Montserrat', sans-serif;
-              color: rgba(255, 255, 255, 0.4);
-              text-transform: uppercase;
-              letter-spacing: 6px;
-              -webkit-text-stroke: 2px rgba(0, 0, 0, 0.25);
-              paint-order: stroke fill;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="watermark-container">
-            ${Array(15).fill(0).map(() => `
-              <div class="watermark-row">
-                <span class="watermark-text">PREVIEW</span>
-                <span class="watermark-text">PREVIEW</span>
-                <span class="watermark-text">PREVIEW</span>
-                <span class="watermark-text">PREVIEW</span>
-                <span class="watermark-text">PREVIEW</span>
-              </div>
-            `).join('')}
-          </div>
-        </body>
-      </html>
-    `;
-
-    await page.setContent(htmlContent);
-    await page.screenshot({ path: watermarkImagePath, type: 'png', omitBackground: true });
-    await browser.close();
-
-    return new Promise<string>((resolve, reject) => {
-      ffmpeg(inputPath)
-        .input(watermarkImagePath)
-        .complexFilter([`overlay=0:0`])
-        .outputOptions(["-c:v libx264", "-preset ultrafast", "-crf 23", "-c:a copy"])
-        .save(outputPath)
-        .on("end", () => {
-          if (fs.existsSync(watermarkImagePath)) fs.unlinkSync(watermarkImagePath);
-          resolve(outputPath);
-        })
-        .on("error", (err) => {
-          if (fs.existsSync(watermarkImagePath)) fs.unlinkSync(watermarkImagePath);
-          reject(err);
-        });
-    });
-  } catch (err) {
-    if (fs.existsSync(watermarkImagePath)) fs.unlinkSync(watermarkImagePath);
-    throw err;
+  if (!fs.existsSync(logoPath)) {
+    throw new Error(`Cuttr logo not found at ${logoPath}`);
   }
+
+  // Get video dimensions to scale logo appropriately
+  const metadata = await getVideoMetadata(inputPath);
+
+  // Logo size: ~15% of the smaller dimension
+  const logoSize = Math.round(Math.min(metadata.width, metadata.height) * 0.15);
+  // Margin from edges: ~3% of the smaller dimension
+  const margin = Math.round(Math.min(metadata.width, metadata.height) * 0.03);
+
+  return new Promise<string>((resolve, reject) => {
+    ffmpeg(inputPath)
+      .input(logoPath)
+      .complexFilter([
+        // Scale logo and add transparency (0.5 opacity)
+        `[1:v]scale=${logoSize}:-1,format=rgba,colorchannelmixer=aa=0.5[logo]`,
+        // Overlay logo in bottom-right corner with margin
+        `[0:v][logo]overlay=W-w-${margin}:H-h-${margin}:format=auto`
+      ])
+      .outputOptions(["-c:v libx264", "-preset ultrafast", "-crf 23", "-c:a copy"])
+      .save(outputPath)
+      .on("end", () => {
+        resolve(outputPath);
+      })
+      .on("error", (err) => {
+        reject(err);
+      });
+  });
 };
 
 export const addTextOverlay = async (
