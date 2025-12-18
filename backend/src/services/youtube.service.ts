@@ -57,10 +57,10 @@ class YouTubeService {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || "Failed to get video info");
+      throw new Error("Error getting video info.");
     }
 
-    return await response.json();
+    return (await response.json()) as VideoInfo;
   }
 
   async downloadAndUploadToS3(
@@ -99,10 +99,11 @@ class YouTubeService {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || "Failed to download video");
+      throw new Error("Error downloading video.");
     }
 
-    const result: LambdaDownloadResult = await response.json();
+    const result: LambdaDownloadResult =
+      (await response.json()) as LambdaDownloadResult;
 
     if (onProgress) {
       onProgress({
