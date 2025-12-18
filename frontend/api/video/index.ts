@@ -46,6 +46,28 @@ export interface SubmitClipResponse {
   status: string;
 }
 
+export interface YouTubeVideoInfo {
+  title: string;
+  duration: number;
+  filesize: number;
+  thumbnail: string;
+  uploader: string;
+}
+
+export interface YouTubeDownloadProgress {
+  type: "start" | "progress" | "uploading" | "complete" | "error";
+  message?: string;
+  percent?: number;
+  speed?: string;
+  eta?: string;
+  downloaded?: number;
+  total?: number;
+  s3Key?: string;
+  fileName?: string;
+  fileSize?: number;
+  error?: string;
+}
+
 class VideoAPI {
   async getPresignedUploadUrl(
     teamId: number,
@@ -236,7 +258,7 @@ class VideoAPI {
     file: File,
     multipartData: MultipartUploadResponse,
     onProgress?: (progress: UploadProgress) => void,
-    concurrency: number = 4
+    concurrency: number | "auto" = "auto"
   ): Promise<{ partNumber: number; etag: string }[]> {
     const { chunkSize, partUrls } = multipartData;
     const parts: { partNumber: number; etag: string }[] = [];
@@ -303,7 +325,49 @@ class VideoAPI {
       await Promise.all(executing);
     };
 
-    await executeWithConcurrency(partUrls, uploadPart, concurrency);
+    // Determine concurrency based on connection speed
+    let effectiveConcurrency: number;
+
+    if (concurrency === "auto") {
+      // Upload first chunk to measure speed
+      const firstPart = partUrls[0];
+      const measureStart = Date.now();
+      const firstResult = await uploadPartWithRetry(firstPart, 3);
+      parts.push(firstResult);
+      const measureTime = (Date.now() - measureStart) / 1000;
+      const firstChunkSize = Math.min(chunkSize, file.size);
+      const measuredSpeed = firstChunkSize / measureTime; // bytes per second
+
+      // Determine concurrency based on speed
+      // < 5 MB/s: 2 concurrent (slow connection)
+      // 5-20 MB/s: 3 concurrent (moderate)
+      // 20-50 MB/s: 4 concurrent (good)
+      // 50-100 MB/s: 6 concurrent (fast)
+      // > 100 MB/s: 8 concurrent (very fast)
+      const speedMBps = measuredSpeed / (1024 * 1024);
+      if (speedMBps < 5) {
+        effectiveConcurrency = 2;
+      } else if (speedMBps < 20) {
+        effectiveConcurrency = 3;
+      } else if (speedMBps < 50) {
+        effectiveConcurrency = 4;
+      } else if (speedMBps < 100) {
+        effectiveConcurrency = 6;
+      } else {
+        effectiveConcurrency = 8;
+      }
+
+      console.log(`Upload speed: ${speedMBps.toFixed(1)} MB/s → using ${effectiveConcurrency} concurrent uploads`);
+
+      // Upload remaining parts with determined concurrency
+      const remainingParts = partUrls.slice(1);
+      if (remainingParts.length > 0) {
+        await executeWithConcurrency(remainingParts, uploadPart, effectiveConcurrency);
+      }
+    } else {
+      effectiveConcurrency = concurrency;
+      await executeWithConcurrency(partUrls, uploadPart, effectiveConcurrency);
+    }
 
     return parts.sort((a, b) => a.partNumber - b.partNumber);
   }
@@ -346,6 +410,83 @@ class VideoAPI {
     }
 
     return await response.json();
+  }
+
+  async getYouTubeVideoInfo(url: string): Promise<YouTubeVideoInfo> {
+    const response = await apiFetch(`${API_URL}/clip-video/youtube/info`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || error.error || "Failed to get video info");
+    }
+
+    return await response.json();
+  }
+
+  async downloadYouTubeVideo(
+    url: string,
+    teamId: number,
+    onProgress?: (progress: YouTubeDownloadProgress) => void
+  ): Promise<{ s3Key: string; fileName: string; fileSize: number }> {
+    const token = localStorage.getItem("access_token");
+    const response = await fetch(`${API_URL}/clip-video/youtube/download`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ url, teamId }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || error.error || "Failed to download video");
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error("No response body");
+
+    const decoder = new TextDecoder();
+    let result: { s3Key: string; fileName: string; fileSize: number } | null = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value);
+      const lines = chunk.split("\n");
+
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          try {
+            const data = JSON.parse(line.slice(6)) as YouTubeDownloadProgress;
+            if (onProgress) onProgress(data);
+
+            if (data.type === "complete" && data.s3Key) {
+              result = {
+                s3Key: data.s3Key,
+                fileName: data.fileName || "youtube_video.mp4",
+                fileSize: data.fileSize || 0,
+              };
+            }
+
+            if (data.type === "error") {
+              throw new Error(data.error || "Download failed");
+            }
+          } catch (e) {
+            if (e instanceof SyntaxError) continue;
+            throw e;
+          }
+        }
+      }
+    }
+
+    if (!result) throw new Error("Download completed but no result received");
+    return result;
   }
 }
 

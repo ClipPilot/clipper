@@ -52,7 +52,22 @@ export class ClipManagerController {
 
       const clips = await clipManagerService.getPendingClipsByTeam(teamId);
 
-      return res.status(200).json({ clips });
+      // Generate signed URLs for raw videos
+      const rawVideoKeys = clips
+        .filter((clip: any) => clip.raw_video_path)
+        .map((clip: any) => clip.raw_video_path!);
+
+      const uniqueKeys = [...new Set(rawVideoKeys)];
+      const presignedUrls = await s3Service.getMultiplePresignedUrls(uniqueKeys);
+
+      const clipsWithUrls = clips.map((clip: any) => ({
+        ...clip,
+        rawVideoUrl: clip.raw_video_path
+          ? presignedUrls[clip.raw_video_path]
+          : null,
+      }));
+
+      return res.status(200).json({ clips: clipsWithUrls });
     } catch (error) {
       console.error("Get pending clips error:", error);
       return res.status(500).json({

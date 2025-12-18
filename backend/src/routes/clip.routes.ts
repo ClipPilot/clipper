@@ -7,6 +7,11 @@ import {
   completeMultipartUpload,
   abortMultipartUpload,
 } from "../controllers/upload.controller";
+import {
+  getVideoInfo,
+  downloadVideo,
+  downloadVideoSync,
+} from "../controllers/youtube.controller";
 import { requireAuth, requireSeatAccess } from "../middleware/auth.middleware";
 
 const router = Router();
@@ -235,6 +240,10 @@ router.post("/multipart/complete", requireAuth, completeMultipartUpload);
  *         description: Unauthorized
  */
 router.post("/multipart/abort", requireAuth, abortMultipartUpload);
+
+router.post("/youtube/info", requireAuth, getVideoInfo);
+router.post("/youtube/download", requireAuth, downloadVideo);
+router.post("/youtube/download-sync", requireAuth, downloadVideoSync);
 
 /**
  * @openapi
