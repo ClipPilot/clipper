@@ -210,24 +210,17 @@ resource "aws_appautoscaling_policy" "worker_step_scaling" {
     cooldown                = 60
     metric_aggregation_type = "Average"
 
-    # When queue has 10+ messages and few workers, add more workers
+    # When queue has messages, add 1 worker
     step_adjustment {
       metric_interval_lower_bound = 0
-      metric_interval_upper_bound = 50
+      metric_interval_upper_bound = 10
+      scaling_adjustment          = 1
+    }
+
+    # When queue has 10+ messages, add 2 workers
+    step_adjustment {
+      metric_interval_lower_bound = 10
       scaling_adjustment          = 2
-    }
-
-    # When queue has 50+ messages, scale aggressively
-    step_adjustment {
-      metric_interval_lower_bound = 50
-      metric_interval_upper_bound = 200
-      scaling_adjustment          = 5
-    }
-
-    # When queue has 200+ messages, scale very aggressively
-    step_adjustment {
-      metric_interval_lower_bound = 200
-      scaling_adjustment          = 10
     }
   }
 }
