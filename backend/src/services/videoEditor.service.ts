@@ -377,19 +377,15 @@ export const addPreviewWatermark = async (
   // Get video dimensions to scale logo appropriately
   const metadata = await getVideoMetadata(inputPath);
 
-  // Logo size: ~15% of the smaller dimension
-  const logoSize = Math.round(Math.min(metadata.width, metadata.height) * 0.15);
-  // Margin from edges: ~3% of the smaller dimension
+  const logoSize = Math.round(Math.min(metadata.width, metadata.height) * 0.22);
   const margin = Math.round(Math.min(metadata.width, metadata.height) * 0.03);
 
   return new Promise<string>((resolve, reject) => {
     ffmpeg(inputPath)
       .input(logoPath)
       .complexFilter([
-        // Scale logo and add transparency (0.5 opacity)
         `[1:v]scale=${logoSize}:-1,format=rgba,colorchannelmixer=aa=0.5[logo]`,
-        // Overlay logo in bottom-right corner with margin
-        `[0:v][logo]overlay=W-w-${margin}:H-h-${margin}:format=auto`
+        `[0:v][logo]overlay=W-w-${margin}:(H-h)/2:format=auto`
       ])
       .outputOptions(["-c:v libx264", "-preset ultrafast", "-crf 23", "-c:a copy"])
       .save(outputPath)
