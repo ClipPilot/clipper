@@ -44,8 +44,26 @@ class StripeService {
       .where(eq(teams.id, teamId))
       .limit(1);
 
+    // If we have a stored customer ID, verify it exists in Stripe
     if (team?.stripe_customer_id) {
-      return team.stripe_customer_id;
+      try {
+        await stripe.customers.retrieve(team.stripe_customer_id);
+        return team.stripe_customer_id;
+      } catch (error: any) {
+        // Customer doesn't exist (likely test/prod environment mismatch)
+        if (error.code === "resource_missing") {
+          console.log(
+            `Stripe customer ${team.stripe_customer_id} not found, creating new customer for team ${teamId}`
+          );
+          // Clear the invalid customer ID and fall through to create a new one
+          await db
+            .update(teams)
+            .set({ stripe_customer_id: null, updated_at: new Date() })
+            .where(eq(teams.id, teamId));
+        } else {
+          throw error;
+        }
+      }
     }
 
     const customer = await stripe.customers.create({
@@ -122,6 +140,23 @@ class StripeService {
 
     if (!team?.stripe_customer_id) {
       throw new Error("No Stripe customer found for this team");
+    }
+
+    // Verify customer exists in Stripe before creating portal session
+    try {
+      await stripe.customers.retrieve(team.stripe_customer_id);
+    } catch (error: any) {
+      if (error.code === "resource_missing") {
+        // Clear invalid customer ID
+        await db
+          .update(teams)
+          .set({ stripe_customer_id: null, updated_at: new Date() })
+          .where(eq(teams.id, teamId));
+        throw new Error(
+          "Your billing profile was reset. Please subscribe again from the pricing page."
+        );
+      }
+      throw error;
     }
 
     const session = await stripe.billingPortal.sessions.create({

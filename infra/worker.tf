@@ -82,7 +82,7 @@ resource "aws_ecs_task_definition" "worker" {
       },
       {
         name  = "API_INTERNAL_URL"
-        value = "http://${aws_lb.backend.dns_name}"
+        value = var.api_domain != "" ? "https://${var.api_domain}" : "http://${aws_lb.backend.dns_name}"
       }
     ]
 
