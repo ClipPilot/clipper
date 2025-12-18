@@ -17,21 +17,35 @@ YOUTUBE_PATTERNS = [
     r'^(https?://)?(www\.)?youtube\.com/embed/[\w-]+'
 ]
 
-YT_DLP_COMMON_ARGS = [
-    '--extractor-args', 'youtube:player_client=tv_embedded',
-    '--no-check-certificates',
-    '--geo-bypass',
-    '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-]
+COOKIES_FILE = '/var/task/cookies.txt'
+
+def get_yt_dlp_args():
+    args = [
+        '--extractor-args', 'youtube:player_client=tv,default',
+        '--no-check-certificates',
+        '--geo-bypass',
+        '--no-warnings',
+        '--quiet',
+        '--no-progress',
+    ]
+    if os.path.exists(COOKIES_FILE):
+        args.extend(['--cookies', COOKIES_FILE])
+    return args
 
 def is_valid_youtube_url(url):
     return any(re.match(pattern, url) for pattern in YOUTUBE_PATTERNS)
 
 def get_video_info(url):
+    cmd = [
+        'yt-dlp',
+        '--dump-json',
+        '--no-download',
+        *get_yt_dlp_args(),
+        url
+    ]
+
     result = subprocess.run(
-        ['yt-dlp', '--dump-json', '--no-download', '-f',
-         'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
-         *YT_DLP_COMMON_ARGS, url],
+        cmd,
         capture_output=True,
         text=True,
         timeout=120
@@ -50,13 +64,18 @@ def get_video_info(url):
     }
 
 def download_video(url, output_path):
+    cmd = [
+        'yt-dlp',
+        '-f', 'bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4][height<=1080]/best[height<=1080]',
+        '--merge-output-format', 'mp4',
+        '-o', output_path,
+        '--no-playlist',
+        *get_yt_dlp_args(),
+        url
+    ]
+
     result = subprocess.run(
-        ['yt-dlp', '-f',
-         'bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4][height<=1080]/best[height<=1080]',
-         '--merge-output-format', 'mp4',
-         '-o', output_path,
-         '--no-playlist',
-         *YT_DLP_COMMON_ARGS, url],
+        cmd,
         capture_output=True,
         text=True,
         timeout=600

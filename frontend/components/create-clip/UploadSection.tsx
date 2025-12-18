@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Button, Card, CardBody, Progress, Input, Tabs, Tab } from "@heroui/react";
+import { Button, Card, CardBody, Progress } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { videoAPI, UploadProgress, MultipartUploadResponse, YouTubeDownloadProgress } from "@/api/video";
+import { videoAPI, UploadProgress, MultipartUploadResponse } from "@/api/video";
 
 interface UploadSectionProps {
   teamId: number;
@@ -36,14 +36,6 @@ const formatSpeed = (bytesPerSecond: number): string => {
   return `${(bytesPerSecond / (1024 * 1024)).toFixed(1)} MB/s`;
 };
 
-const formatDuration = (seconds: number): string => {
-  const hrs = Math.floor(seconds / 3600);
-  const mins = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
-  if (hrs > 0) return `${hrs}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
-};
-
 export const UploadSection: React.FC<UploadSectionProps> = ({
   teamId,
   onUploadComplete,
@@ -51,24 +43,17 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
   isDisabled = false,
   disabledReason,
 }) => {
-  const [activeTab, setActiveTab] = useState<string>("file");
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState<UploadProgress | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadType, setUploadType] = useState<"single" | "multipart">("single");
   const multipartDataRef = useRef<MultipartUploadResponse | null>(null);
 
-  const [youtubeUrl, setYoutubeUrl] = useState("");
-  const [isLoadingInfo, setIsLoadingInfo] = useState(false);
-  const [videoInfo, setVideoInfo] = useState<{ title: string; duration: number; thumbnail: string; uploader: string } | null>(null);
-  const [ytProgress, setYtProgress] = useState<YouTubeDownloadProgress | null>(null);
-  const [isDownloading, setIsDownloading] = useState(false);
-
   const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024;
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isUploading || isDownloading) {
+      if (isUploading) {
         e.preventDefault();
         e.returnValue = "Upload in progress. Are you sure you want to leave?";
         return e.returnValue;
@@ -77,7 +62,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
 
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [isUploading, isDownloading]);
+  }, [isUploading]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -136,50 +121,6 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
       setIsUploading(false);
       setSelectedFile(null);
       setProgress(null);
-    }
-  };
-
-  const handleYoutubeUrlChange = (url: string) => {
-    setYoutubeUrl(url);
-    setVideoInfo(null);
-  };
-
-  const handleFetchVideoInfo = async () => {
-    if (!youtubeUrl.trim()) {
-      onError("Please enter a YouTube URL");
-      return;
-    }
-
-    setIsLoadingInfo(true);
-    try {
-      const info = await videoAPI.getYouTubeVideoInfo(youtubeUrl);
-      setVideoInfo(info);
-    } catch (err: any) {
-      onError(err.message || "Failed to fetch video info");
-    } finally {
-      setIsLoadingInfo(false);
-    }
-  };
-
-  const handleYoutubeDownload = async () => {
-    if (!youtubeUrl.trim()) {
-      onError("Please enter a YouTube URL");
-      return;
-    }
-
-    setIsDownloading(true);
-    setYtProgress(null);
-
-    try {
-      const result = await videoAPI.downloadYouTubeVideo(youtubeUrl, teamId, (progress) => {
-        setYtProgress(progress);
-      });
-
-      onUploadComplete(result.s3Key, result.fileName, result.fileSize);
-    } catch (err: any) {
-      onError(err.message || "Failed to download video");
-      setIsDownloading(false);
-      setYtProgress(null);
     }
   };
 
@@ -242,113 +183,6 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
     </div>
   );
 
-  const renderYoutubeUpload = () => (
-    <div className="flex flex-col items-center justify-center space-y-4">
-      {isDownloading ? (
-        <>
-          <div className="w-full mb-4 p-3 rounded-lg bg-warning-500/10 border border-warning-500/20 flex items-center gap-2">
-            <Icon icon="solar:danger-triangle-bold" className="text-warning-500 flex-shrink-0" width={20} />
-            <p className="text-sm text-warning-500">Do not leave this page while downloading</p>
-          </div>
-
-          <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center">
-            <Icon icon="mdi:youtube" className="text-4xl text-red-500 animate-pulse" />
-          </div>
-
-          <div className="text-center">
-            <h3 className="text-lg font-bold text-text-primary mb-2">
-              {ytProgress?.type === "uploading" ? "Uploading to Cloud" : "Downloading from YouTube"}
-            </h3>
-            {videoInfo && <p className="text-sm text-text-secondary mb-4 max-w-md truncate">{videoInfo.title}</p>}
-          </div>
-
-          <div className="w-full max-w-md">
-            <Progress
-              value={ytProgress?.type === "uploading" ? 100 : ytProgress?.percent || 0}
-              color="danger"
-              className="mb-3"
-              isIndeterminate={ytProgress?.type === "uploading" || ytProgress?.type === "start"}
-              showValueLabel={ytProgress?.type !== "uploading" && ytProgress?.type !== "start"}
-            />
-            <div className="flex justify-between text-sm text-text-secondary">
-              <span>
-                {ytProgress?.type === "progress" && ytProgress.downloaded && ytProgress.total
-                  ? `${formatBytes(ytProgress.downloaded)} / ${formatBytes(ytProgress.total)}`
-                  : ytProgress?.message || "Processing..."}
-              </span>
-              <span>{ytProgress?.speed || ""}</span>
-            </div>
-            {ytProgress?.eta && (
-              <div className="text-right text-xs text-text-tertiary mt-1">
-                ETA: {ytProgress.eta}
-              </div>
-            )}
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center">
-            <Icon icon="mdi:youtube" className="text-4xl text-red-500" />
-          </div>
-
-          <div className="text-center">
-            <h3 className="text-lg font-bold text-text-primary mb-2">Import from YouTube</h3>
-            <p className="text-sm text-text-secondary">Paste a YouTube video URL to import</p>
-          </div>
-
-          <div className="w-full max-w-lg space-y-4">
-            <div className="flex gap-2">
-              <Input
-                placeholder="https://youtube.com/watch?v=..."
-                value={youtubeUrl}
-                onChange={(e) => handleYoutubeUrlChange(e.target.value)}
-                startContent={<Icon icon="mdi:link" className="text-text-tertiary" />}
-                classNames={{ inputWrapper: "bg-surface-elevated border-border-base" }}
-              />
-              <Button color="default" variant="flat" onPress={handleFetchVideoInfo} isLoading={isLoadingInfo} isIconOnly>
-                <Icon icon="solar:magnifer-bold" className="text-xl" />
-              </Button>
-            </div>
-
-            {videoInfo && (
-              <div className="p-4 rounded-lg bg-surface-elevated border border-border-base">
-                <div className="flex gap-4">
-                  {videoInfo.thumbnail && (
-                    <img src={videoInfo.thumbnail} alt={videoInfo.title} className="w-32 h-20 object-cover rounded" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-text-primary truncate">{videoInfo.title}</p>
-                    <p className="text-sm text-text-secondary">{videoInfo.uploader}</p>
-                    <p className="text-xs text-text-tertiary mt-1">Duration: {formatDuration(videoInfo.duration)}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <Button
-              fullWidth
-              size="lg"
-              color="danger"
-              onPress={handleYoutubeDownload}
-              isDisabled={!youtubeUrl.trim()}
-              startContent={<Icon icon="solar:download-bold" className="text-xl" />}
-            >
-              Download & Import
-            </Button>
-          </div>
-
-          <div className="flex items-start gap-2 text-xs text-text-tertiary">
-            <Icon icon="solar:info-circle-outline" className="text-base mt-0.5" />
-            <div>
-              <p>Supports YouTube videos and Shorts</p>
-              <p>Downloads in best available quality (up to 1080p)</p>
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  );
-
   if (isDisabled) {
     return (
       <Card className="bg-surface-base border border-border-base">
@@ -373,38 +207,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
   return (
     <Card className="bg-surface-base border border-border-base">
       <CardBody className="p-8">
-        {!isUploading && !isDownloading && (
-          <div className="flex justify-center mb-6">
-            <Tabs
-              selectedKey={activeTab}
-              onSelectionChange={(key) => setActiveTab(key as string)}
-              color="primary"
-              variant="bordered"
-              classNames={{ tabList: "bg-surface-elevated border-border-base" }}
-            >
-              <Tab
-                key="file"
-                title={
-                  <div className="flex items-center gap-2">
-                    <Icon icon="solar:upload-bold" />
-                    <span>File Upload</span>
-                  </div>
-                }
-              />
-              <Tab
-                key="youtube"
-                title={
-                  <div className="flex items-center gap-2">
-                    <Icon icon="mdi:youtube" />
-                    <span>YouTube</span>
-                  </div>
-                }
-              />
-            </Tabs>
-          </div>
-        )}
-
-        {activeTab === "file" || isUploading ? renderFileUpload() : renderYoutubeUpload()}
+        {renderFileUpload()}
       </CardBody>
     </Card>
   );
