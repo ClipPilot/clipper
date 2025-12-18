@@ -1,3 +1,19 @@
+# Import existing resources (remove after successful apply)
+import {
+  to = aws_ecr_repository.youtube_lambda
+  id = "clipster-youtube-lambda"
+}
+
+import {
+  to = aws_iam_role.youtube_lambda
+  id = "clipster-youtube-lambda-role"
+}
+
+import {
+  to = aws_cloudwatch_log_group.youtube_lambda
+  id = "/aws/lambda/clipster-youtube-downloader"
+}
+
 # ECR Repository for YouTube Lambda
 resource "aws_ecr_repository" "youtube_lambda" {
   name                 = "${var.project_name}-youtube-lambda"
