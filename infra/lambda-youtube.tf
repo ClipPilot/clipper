@@ -126,8 +126,8 @@ resource "aws_lambda_function_url" "youtube_downloader" {
 
   cors {
     allow_origins  = ["*"]
-    allow_methods  = ["POST", "OPTIONS"]
-    allow_headers  = ["Content-Type", "Authorization", "X-Api-Key"]
+    allow_methods  = ["*"]
+    allow_headers  = ["*"]
     expose_headers = ["*"]
     max_age        = 3600
   }
