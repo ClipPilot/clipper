@@ -142,16 +142,15 @@ export const mergeClips = async (clips: string[], outputPath: string) => {
           },
           {
             filter: "gblur",
-            options: { sigma: 15 },
+            options: { sigma: 20 },
             inputs: "bg2",
             outputs: "bg",
           },
           {
             filter: "scale",
             options: {
-              w: "min(iw,1080)",
-              h: "min(ih,1920)",
-              force_original_aspect_ratio: "decrease",
+              w: 1080,
+              h: -2,
             },
             inputs: "0:v",
             outputs: "fg",
