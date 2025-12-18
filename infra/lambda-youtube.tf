@@ -14,6 +14,31 @@ import {
   id = "/aws/lambda/clipster-youtube-downloader"
 }
 
+import {
+  to = aws_lambda_function.youtube_downloader
+  id = "clipster-youtube-downloader"
+}
+
+import {
+  to = aws_lambda_function_url.youtube_downloader
+  id = "clipster-youtube-downloader"
+}
+
+import {
+  to = aws_iam_role_policy_attachment.youtube_lambda_basic
+  id = "clipster-youtube-lambda-role/arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+import {
+  to = aws_iam_role_policy.youtube_lambda_s3
+  id = "clipster-youtube-lambda-role:clipster-youtube-lambda-s3-policy"
+}
+
+import {
+  to = aws_ecr_lifecycle_policy.youtube_lambda
+  id = "clipster-youtube-lambda"
+}
+
 # ECR Repository for YouTube Lambda
 resource "aws_ecr_repository" "youtube_lambda" {
   name                 = "${var.project_name}-youtube-lambda"
