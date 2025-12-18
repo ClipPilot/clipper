@@ -73,8 +73,8 @@ jobs:
           backend_desired_count  = 2
 
           # Worker Configuration
-          worker_cpu             = 4096
-          worker_memory          = 8192
+          worker_cpu             = 8192
+          worker_memory          = 16384
 
           # Secrets
           openai_api_key     = "${{ secrets.OPENAI_API_KEY }}"
@@ -184,8 +184,8 @@ jobs:
           backend_desired_count  = 2
 
           # Worker Configuration
-          worker_cpu             = 4096
-          worker_memory          = 8192
+          worker_cpu             = 8192
+          worker_memory          = 16384
 
           # Secrets
           openai_api_key     = "${{ secrets.OPENAI_API_KEY }}"
