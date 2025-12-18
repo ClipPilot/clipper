@@ -106,6 +106,10 @@ resource "aws_ecs_task_definition" "worker" {
       {
         name      = "INTERNAL_API_KEY"
         valueFrom = aws_secretsmanager_secret.internal_api_key.arn
+      },
+      {
+        name      = "RESEND_API_KEY"
+        valueFrom = aws_secretsmanager_secret.resend_api_key.arn
       }
     ]
 
