@@ -402,63 +402,39 @@ export const addPreviewWatermark = async (
               transform: translate(-50%, -50%) rotate(-30deg);
               display: flex;
               flex-direction: column;
-              gap: 120px;
+              gap: 80px;
               align-items: center;
+              width: 300%;
+              height: 300%;
             }
             .watermark-row {
               display: flex;
-              gap: 100px;
+              gap: 60px;
               white-space: nowrap;
             }
             .watermark-text {
-              font-size: 72px;
+              font-size: 64px;
               font-weight: 900;
               font-family: 'Montserrat', sans-serif;
-              color: rgba(255, 255, 255, 0.35);
+              color: rgba(255, 255, 255, 0.4);
               text-transform: uppercase;
-              letter-spacing: 8px;
-              -webkit-text-stroke: 2px rgba(0, 0, 0, 0.2);
+              letter-spacing: 6px;
+              -webkit-text-stroke: 2px rgba(0, 0, 0, 0.25);
               paint-order: stroke fill;
             }
           </style>
         </head>
         <body>
           <div class="watermark-container">
-            <div class="watermark-row">
-              <span class="watermark-text">PREVIEW</span>
-              <span class="watermark-text">PREVIEW</span>
-              <span class="watermark-text">PREVIEW</span>
-            </div>
-            <div class="watermark-row">
-              <span class="watermark-text">PREVIEW</span>
-              <span class="watermark-text">PREVIEW</span>
-              <span class="watermark-text">PREVIEW</span>
-            </div>
-            <div class="watermark-row">
-              <span class="watermark-text">PREVIEW</span>
-              <span class="watermark-text">PREVIEW</span>
-              <span class="watermark-text">PREVIEW</span>
-            </div>
-            <div class="watermark-row">
-              <span class="watermark-text">PREVIEW</span>
-              <span class="watermark-text">PREVIEW</span>
-              <span class="watermark-text">PREVIEW</span>
-            </div>
-            <div class="watermark-row">
-              <span class="watermark-text">PREVIEW</span>
-              <span class="watermark-text">PREVIEW</span>
-              <span class="watermark-text">PREVIEW</span>
-            </div>
-            <div class="watermark-row">
-              <span class="watermark-text">PREVIEW</span>
-              <span class="watermark-text">PREVIEW</span>
-              <span class="watermark-text">PREVIEW</span>
-            </div>
-            <div class="watermark-row">
-              <span class="watermark-text">PREVIEW</span>
-              <span class="watermark-text">PREVIEW</span>
-              <span class="watermark-text">PREVIEW</span>
-            </div>
+            ${Array(15).fill(0).map(() => `
+              <div class="watermark-row">
+                <span class="watermark-text">PREVIEW</span>
+                <span class="watermark-text">PREVIEW</span>
+                <span class="watermark-text">PREVIEW</span>
+                <span class="watermark-text">PREVIEW</span>
+                <span class="watermark-text">PREVIEW</span>
+              </div>
+            `).join('')}
           </div>
         </body>
       </html>
