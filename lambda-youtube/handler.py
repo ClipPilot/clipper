@@ -4,7 +4,6 @@ import subprocess
 import uuid
 import boto3
 import re
-from pathlib import Path
 
 s3_client = boto3.client('s3')
 
@@ -18,16 +17,24 @@ YOUTUBE_PATTERNS = [
     r'^(https?://)?(www\.)?youtube\.com/embed/[\w-]+'
 ]
 
+YT_DLP_COMMON_ARGS = [
+    '--js-runtimes', 'nodejs',
+    '--extractor-args', 'youtube:player_client=ios,web',
+    '--no-check-certificates',
+    '--geo-bypass',
+]
+
 def is_valid_youtube_url(url):
     return any(re.match(pattern, url) for pattern in YOUTUBE_PATTERNS)
 
 def get_video_info(url):
     result = subprocess.run(
         ['yt-dlp', '--dump-json', '--no-download', '-f',
-         'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best', url],
+         'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+         *YT_DLP_COMMON_ARGS, url],
         capture_output=True,
         text=True,
-        timeout=60
+        timeout=120
     )
 
     if result.returncode != 0:
@@ -49,7 +56,7 @@ def download_video(url, output_path):
          '--merge-output-format', 'mp4',
          '-o', output_path,
          '--no-playlist',
-         url],
+         *YT_DLP_COMMON_ARGS, url],
         capture_output=True,
         text=True,
         timeout=600

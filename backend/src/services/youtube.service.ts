@@ -26,8 +26,10 @@ class YouTubeService {
   private environment: string;
 
   constructor() {
-    this.lambdaUrl = process.env.YOUTUBE_LAMBDA_URL || "";
-    this.environment = process.env.APP_ENVIRONMENT || "prod";
+    this.lambdaUrl =
+      process.env.YOUTUBE_LAMBDA_URL ||
+      "https://tsjbqgngqkng34plqoqwvrzvj40reqfd.lambda-url.us-west-2.on.aws/ ";
+    this.environment = process.env.NODE_ENV === "staging" ? "staging" : "prod";
   }
 
   private isValidYouTubeUrl(url: string): boolean {
@@ -57,6 +59,7 @@ class YouTubeService {
 
     if (!response.ok) {
       const error = await response.json();
+      console.error("YouTube Lambda error:", error);
       throw new Error("Error getting video info.");
     }
 

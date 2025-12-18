@@ -123,10 +123,6 @@ resource "aws_ecs_task_definition" "backend" {
       {
         name  = "YOUTUBE_LAMBDA_URL"
         value = aws_lambda_function_url.youtube_downloader.function_url
-      },
-      {
-        name  = "APP_ENVIRONMENT"
-        value = var.environment
       }
     ]
 
