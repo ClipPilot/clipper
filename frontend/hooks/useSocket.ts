@@ -1,7 +1,19 @@
 import { useEffect, useRef, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") || "http://localhost:3001";
+const getSocketUrl = (): string => {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl) return "http://localhost:3001";
+
+  try {
+    const url = new URL(apiUrl);
+    return url.origin;
+  } catch {
+    return apiUrl.replace(/\/api\/?$/, "");
+  }
+};
+
+const SOCKET_URL = getSocketUrl();
 const POLLING_INTERVAL = 30000; // Poll every 30 seconds as fallback (Redis handles real-time)
 
 export const useSocket = (teamId: number | undefined, onClipsRefresh: () => void) => {
