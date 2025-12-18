@@ -1,6 +1,6 @@
 FROM public.ecr.aws/lambda/python:3.11
 
-RUN yum install -y wget tar xz nodejs npm && \
+RUN yum install -y wget tar xz && \
     wget https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -O /usr/local/bin/yt-dlp && \
     chmod a+rx /usr/local/bin/yt-dlp && \
     wget https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz && \

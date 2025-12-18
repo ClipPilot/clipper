@@ -18,10 +18,10 @@ YOUTUBE_PATTERNS = [
 ]
 
 YT_DLP_COMMON_ARGS = [
-    '--js-runtimes', 'nodejs',
-    '--extractor-args', 'youtube:player_client=ios,web',
+    '--extractor-args', 'youtube:player_client=tv_embedded',
     '--no-check-certificates',
     '--geo-bypass',
+    '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
 ]
 
 def is_valid_youtube_url(url):
