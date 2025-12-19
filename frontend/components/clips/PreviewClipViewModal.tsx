@@ -166,6 +166,7 @@ export default function PreviewClipViewModal({
                     src={clip.clipUrl}
                     className="w-full max-h-[500px] object-contain"
                     playsInline
+                    crossOrigin="anonymous"
                     onTimeUpdate={handleTimeUpdate}
                     onLoadedMetadata={handleLoadedMetadata}
                     onPlay={() => setIsPlaying(true)}

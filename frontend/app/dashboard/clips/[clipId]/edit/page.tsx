@@ -246,6 +246,7 @@ export default function EditClipPage() {
                     src={videoUrl}
                     controls
                     className="w-full h-full object-contain"
+                    crossOrigin="anonymous"
                     onTimeUpdate={handleTimeUpdate}
                   />
                   {activeTab === "text" && textOverlay && (

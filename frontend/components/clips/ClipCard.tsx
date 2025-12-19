@@ -151,6 +151,7 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
               muted
               playsInline
               preload="metadata"
+              crossOrigin="anonymous"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
@@ -256,6 +257,7 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
               muted
               playsInline
               preload="metadata"
+              crossOrigin="anonymous"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
