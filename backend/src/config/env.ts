@@ -26,7 +26,7 @@ export const config = {
   },
   aws: {
     region: getEnv("AWS_REGION", "us-west-2"),
-    s3Bucket: "clipster-videos-prod-850317988005"
+    s3Bucket: "clipster-videos-prod-850317988005",
     sqsQueueUrl: getEnv("SQS_QUEUE_URL", ""),
   },
   port: getEnv("PORT", "3001"),
