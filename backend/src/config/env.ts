@@ -29,6 +29,9 @@ export const config = {
     s3Bucket: "clipster-videos-prod-850317988005",
     sqsQueueUrl: getEnv("SQS_QUEUE_URL", ""),
   },
+  gemini: {
+    apiKey: getEnv("GEMINI_API_KEY"),
+  },
   port: getEnv("PORT", "3001"),
 };
 
@@ -41,4 +44,5 @@ export const ENV = {
   DATABASE_URL: config.database.url,
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY || "",
   STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET || "",
+  GEMINI_API_KEY: config.gemini.apiKey,
 };

@@ -118,3 +118,17 @@ resource "aws_secretsmanager_secret_version" "resend_api_key" {
   secret_id     = aws_secretsmanager_secret.resend_api_key.id
   secret_string = var.resend_api_key
 }
+
+# Gemini API Key
+resource "aws_secretsmanager_secret" "gemini_api_key" {
+  name                    = "${var.project_name}-${var.environment}/gemini-api-key"
+  recovery_window_in_days = 0
+
+  tags = {
+    Name = "${var.project_name}-gemini-api-key-${var.environment}"
+  }
+}
+resource "aws_secretsmanager_secret_version" "gemini_api_key" {
+  secret_id     = aws_secretsmanager_secret.gemini_api_key.id
+  secret_string = var.gemini_api_key
+}

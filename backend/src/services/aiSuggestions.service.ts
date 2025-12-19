@@ -18,7 +18,7 @@ const client = new OpenAI({
 export interface ClipGenerationOptions {
   length?: number;
   hookLength?: number;
-  promptType?: "business" | "viral";
+  promptType?: "business" | "viral" | "gaming";
   customPrompt?: string;
   textPrompt?: string;
   numberOfVideos?: number;
@@ -53,7 +53,8 @@ export const generateClipSuggestionsService = async (
     options.customPrompt
   );
 
-  // If requesting multiple videos, use the MultipleClipSuggestionsSchema
+  //TODO DEC 19: If gaming, use gemini
+
   if (numberOfVideos > 1) {
     const response = await client.responses.parse({
       model: "gpt-5-mini",
@@ -77,7 +78,6 @@ export const generateClipSuggestionsService = async (
     );
     return response.output_parsed?.videos || [];
   } else {
-    // Single video - use original schema
     const response = await client.responses.parse({
       model: "gpt-5-mini",
       reasoning: { effort: "medium" },

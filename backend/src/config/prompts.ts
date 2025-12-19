@@ -16,7 +16,14 @@ export interface PromptConfig {
  * Focuses on clear product explanation with engaging hook and closing
  */
 export const generateBusinessPrompt = (config: PromptConfig): string => {
-  const { length, hookLength, transcriptText, transcriptObject, numberOfVideos = 1, userTextPrompt } = config;
+  const {
+    length,
+    hookLength,
+    transcriptText,
+    transcriptObject,
+    numberOfVideos = 1,
+    userTextPrompt,
+  } = config;
   const mainLength = length - hookLength;
 
   return `
@@ -25,9 +32,9 @@ identify and put together and convert this video into a couple clips, and put th
 short form video suitable for Tiktok. As you put these clips together, make sure the flow of events from the
 transcript cut to cut makes some sense.
 
-${userTextPrompt ? `USER SPECIFIC REQUEST: The user wants you to focus on: "${userTextPrompt}". Try to find clips that align with this request while maintaining high engagement and quality.` : ''}
+${userTextPrompt ? `USER SPECIFIC REQUEST: The user wants you to focus on: "${userTextPrompt}". Try to find clips that align with this request while maintaining high engagement and quality.` : ""}
 
-${numberOfVideos > 1 ? `You need to generate ${numberOfVideos} different video variations. Each should have a unique approach, different hooks, or different angles while all maintaining high quality.` : ''}
+${numberOfVideos > 1 ? `You need to generate ${numberOfVideos} different video variations. Each should have a unique approach, different hooks, or different angles while all maintaining high quality.` : ""}
 
 The final output video should be about ${length} seconds long (can be a bit less and more)
 
@@ -83,7 +90,14 @@ Here is the transcript object: ${transcriptObject}
  * Focuses on funny moments, reactions, and engaging content from streams or creator videos
  */
 export const generateViralPrompt = (config: PromptConfig): string => {
-  const { length, hookLength, transcriptText, transcriptObject, numberOfVideos = 1, userTextPrompt } = config;
+  const {
+    length,
+    hookLength,
+    transcriptText,
+    transcriptObject,
+    numberOfVideos = 1,
+    userTextPrompt,
+  } = config;
   const mainLength = length - hookLength;
 
   return `
@@ -91,9 +105,9 @@ You are an expert viral short-form video editor specializing in gaming streams, 
 the transcript of a raw long form video. Your goal is to identify the most engaging, funny, or attention-grabbing moments
 and combine them into a viral-worthy clip suitable for TikTok, YouTube Shorts, or Instagram Reels.
 
-${userTextPrompt ? `USER SPECIFIC REQUEST: The user wants you to focus on: "${userTextPrompt}". Try to find clips that align with this request while maintaining high engagement and viral potential.` : ''}
+${userTextPrompt ? `USER SPECIFIC REQUEST: The user wants you to focus on: "${userTextPrompt}". Try to find clips that align with this request while maintaining high engagement and viral potential.` : ""}
 
-${numberOfVideos > 1 ? `You need to generate ${numberOfVideos} different video variations. Each should have a unique approach, different moments, or different angles while all maintaining viral potential.` : ''}
+${numberOfVideos > 1 ? `You need to generate ${numberOfVideos} different video variations. Each should have a unique approach, different moments, or different angles while all maintaining viral potential.` : ""}
 
 The final output video should be about ${length} seconds long (can be a bit less or more).
 
@@ -164,11 +178,30 @@ Here is the transcript object: ${transcriptObject}
 `;
 };
 
+//TODO DEC 19: If gaming, use gemini implement prompt
+export const generateGamingPrompt = (config: PromptConfig): string => {
+  const {
+    length,
+    hookLength,
+    transcriptText,
+    transcriptObject,
+    numberOfVideos = 1,
+    userTextPrompt,
+  } = config;
+  const mainLength = length - hookLength;
+
+  return `
+You are an expert short-form video editor specializing in gaming content. You are given the transcript of a raw long form video.
+Your goal is to identify the most engaging, funny, or exciting moments and combine them into a viral-worthy clip suitable for TikTok,
+YouTube Shorts, or Instagram Reels.
+`;
+};
+
 /**
  * Generate prompt based on type with optional custom instructions
  */
 export const generatePrompt = (
-  type: "business" | "viral",
+  type: "business" | "viral" | "gaming",
   config: PromptConfig,
   customInstructions?: string
 ): string => {
@@ -176,6 +209,8 @@ export const generatePrompt = (
 
   if (type === "business") {
     basePrompt = generateBusinessPrompt(config);
+  } else if (type === "gaming") {
+    basePrompt = generateGamingPrompt(config);
   } else {
     basePrompt = generateViralPrompt(config);
   }
