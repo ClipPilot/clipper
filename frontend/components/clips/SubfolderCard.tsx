@@ -10,6 +10,7 @@ interface SubfolderCardProps {
   viewMode?: "grid" | "list";
   onOpen: (folderId: number) => void;
   onDelete?: (folderId: number) => void;
+  onDropClip?: (clipId: number, folderId: number) => void;
 }
 
 const SubfolderCardComponent: React.FC<SubfolderCardProps> = ({
@@ -17,8 +18,10 @@ const SubfolderCardComponent: React.FC<SubfolderCardProps> = ({
   viewMode = "grid",
   onOpen,
   onDelete,
+  onDropClip,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -67,15 +70,52 @@ const SubfolderCardComponent: React.FC<SubfolderCardProps> = ({
     onOpen(folder.id);
   };
 
+  const handleFolderDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only show drop target for clips, not when dragging folders
+    const type = e.dataTransfer.types.includes("clipid") ||
+                 (e.dataTransfer.types.includes("text/plain") && !e.dataTransfer.types.includes("folderid"));
+    if (onDropClip) {
+      e.dataTransfer.dropEffect = "move";
+      setIsDragOver(true);
+    }
+  };
+
+  const handleFolderDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  };
+
+  const handleFolderDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    const clipIdStr = e.dataTransfer.getData("clipId");
+    if (clipIdStr && onDropClip) {
+      const clipId = parseInt(clipIdStr);
+      onDropClip(clipId, folder.id);
+    }
+  };
+
   if (viewMode === "list") {
     return (
       <div
-        className={`flex items-center gap-4 p-3 bg-surface-base border border-border-accent rounded-lg hover:bg-surface-elevated transition-all cursor-pointer ${
+        className={`flex items-center gap-4 p-3 bg-surface-base rounded-lg transition-all cursor-pointer ${
           isDragging ? "opacity-50" : ""
+        } ${
+          isDragOver
+            ? "bg-accent-400/20 border-2 border-accent-400 border-dashed shadow-[0_0_12px_rgba(147,51,234,0.4)]"
+            : "border border-border-accent hover:bg-surface-elevated"
         }`}
         draggable
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
+        onDragOver={handleFolderDragOver}
+        onDragLeave={handleFolderDragLeave}
+        onDrop={handleFolderDrop}
         onClick={handleCardClick}
       >
         <div className="w-16 h-10 flex-shrink-0 flex items-center justify-center">
@@ -117,13 +157,21 @@ const SubfolderCardComponent: React.FC<SubfolderCardProps> = ({
 
   return (
     <Card
-      className={`bg-surface-base border border-border-accent hover:bg-surface-elevated transition-all cursor-pointer h-[180px] ${
+      isPressable
+      className={`bg-surface-base transition-all cursor-pointer h-[180px] ${
         isDragging ? "opacity-50 scale-95" : ""
+      } ${
+        isDragOver
+          ? "bg-accent-400/20 border-2 border-accent-400 border-dashed shadow-[0_0_12px_rgba(147,51,234,0.4)]"
+          : "border border-border-accent hover:bg-surface-elevated"
       }`}
       draggable
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      onClick={handleCardClick}
+      onDragOver={handleFolderDragOver}
+      onDragLeave={handleFolderDragLeave}
+      onDrop={handleFolderDrop}
+      onPress={() => onOpen(folder.id)}
     >
       <div className="flex flex-col h-full p-4">
         <div className="flex-1 flex items-center justify-center">
@@ -170,6 +218,7 @@ export const SubfolderCard = memo(SubfolderCardComponent, (prevProps, nextProps)
   return (
     prevProps.folder.id === nextProps.folder.id &&
     prevProps.folder.updated_at === nextProps.folder.updated_at &&
-    prevProps.viewMode === nextProps.viewMode
+    prevProps.viewMode === nextProps.viewMode &&
+    prevProps.onDropClip === nextProps.onDropClip
   );
 });

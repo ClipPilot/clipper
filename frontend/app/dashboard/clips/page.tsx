@@ -436,6 +436,7 @@ export default function MyClipsPage() {
                           viewMode={viewMode}
                           onOpen={handleSelectFolder}
                           onDelete={deleteFolder}
+                          onDropClip={moveClipToFolder}
                         />
                       ))}
                       {savedClips.map((clip) => (
