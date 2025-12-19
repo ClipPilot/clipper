@@ -199,6 +199,7 @@ export const clipFolders = pgTable(
     team_id: integer("team_id")
       .notNull()
       .references(() => teams.id, { onDelete: "cascade" }),
+    parent_folder_id: integer("parent_folder_id"),
     name: varchar("name", { length: 255 }).notNull(),
     color: varchar("color", { length: 50 }),
     message: text("message"),
@@ -208,6 +209,7 @@ export const clipFolders = pgTable(
   (table) => {
     return {
       teamIdx: index("clip_folders_team_id_idx").on(table.team_id),
+      parentIdx: index("clip_folders_parent_folder_id_idx").on(table.parent_folder_id),
     };
   }
 ).enableRLS();

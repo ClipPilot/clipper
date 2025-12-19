@@ -42,11 +42,16 @@ export interface Clip {
 export interface Folder {
   id: number;
   team_id: number;
+  parent_folder_id?: number | null;
   name: string;
   color?: string;
   message?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface FolderTreeNode extends Folder {
+  children: FolderTreeNode[];
 }
 
 export interface Tag {
@@ -218,7 +223,7 @@ class ClipsAPI {
 
   async createFolder(
     teamId: number,
-    data: { name: string; color?: string; message?: string }
+    data: { name: string; color?: string; message?: string; parentFolderId?: number | null }
   ): Promise<Folder> {
     const response = await apiFetch(
       `${API_URL}/folders/teams/${teamId}/folders`,
@@ -235,6 +240,60 @@ class ClipsAPI {
 
     const result = await response.json();
     return result.folder;
+  }
+
+  async getFolderTree(teamId: number): Promise<FolderTreeNode[]> {
+    const response = await apiFetch(
+      `${API_URL}/folders/teams/${teamId}/folders/tree`,
+      {
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch folder tree");
+    }
+
+    const data = await response.json();
+    return data.tree;
+  }
+
+  async moveFolder(
+    teamId: number,
+    folderId: number,
+    parentFolderId: number | null
+  ): Promise<Folder> {
+    const response = await apiFetch(
+      `${API_URL}/folders/teams/${teamId}/folders/${folderId}/move`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ parentFolderId }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to move folder");
+    }
+
+    const data = await response.json();
+    return data.folder;
+  }
+
+  async getFolderPath(teamId: number, folderId: number): Promise<Folder[]> {
+    const response = await apiFetch(
+      `${API_URL}/folders/teams/${teamId}/folders/${folderId}/path`,
+      {
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch folder path");
+    }
+
+    const data = await response.json();
+    return data.path;
   }
 
   async updateFolder(
