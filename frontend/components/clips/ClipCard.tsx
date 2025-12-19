@@ -43,8 +43,7 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
     return () => observer.disconnect();
   }, []);
 
-  const handleDownload = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDownload = async () => {
     if (!clip.clipUrl || isDownloading) return;
 
     setIsDownloading(true);
@@ -108,27 +107,30 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
     setIsDragging(false);
   };
 
-  const handleCardClick = (e: React.MouseEvent) => {
-    const target = e.target as HTMLElement;
-    if (target.closest('button')) return;
+  const handleCardPress = () => {
     if (onView && !isDragging) {
       onView();
     }
   };
 
-  const handleDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDelete = () => {
     if (onDelete) onDelete(clip.id);
   };
 
-  const handleEdit = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleEdit = () => {
     if (onEdit) onEdit();
   };
 
-  const handleView = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleView = () => {
     if (onView) onView();
+  };
+
+  const handleListClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('button')) return;
+    if (onView && !isDragging) {
+      onView();
+    }
   };
 
   if (viewMode === "list") {
@@ -141,7 +143,7 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
         draggable
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
-        onClick={handleCardClick}
+        onClick={handleListClick}
       >
         <div className="w-16 h-10 flex-shrink-0 bg-surface-dark rounded overflow-hidden">
           {clip.clipUrl && isVisible ? (
@@ -196,14 +198,14 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
 
         <div className="flex items-center gap-1">
           <Tooltip content="View">
-            <Button isIconOnly size="sm" variant="light" className="w-8 h-8 min-w-8" onPress={handleView as any}>
+            <Button isIconOnly size="sm" variant="light" className="w-8 h-8 min-w-8" onPress={handleView}>
               <Icon icon="solar:eye-bold" className="text-lg text-text-secondary" />
             </Button>
           </Tooltip>
 
           {onEdit && clip.captions_data && (
             <Tooltip content="Edit">
-              <Button isIconOnly size="sm" variant="light" className="w-8 h-8 min-w-8" onPress={handleEdit as any}>
+              <Button isIconOnly size="sm" variant="light" className="w-8 h-8 min-w-8" onPress={handleEdit}>
                 <Icon icon="solar:pen-bold" className="text-lg text-text-secondary" />
               </Button>
             </Tooltip>
@@ -215,7 +217,7 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
               size="sm"
               variant="light"
               className="w-8 h-8 min-w-8"
-              onPress={handleDownload as any}
+              onPress={handleDownload}
               isDisabled={!clip.clipUrl || isDownloading}
             >
               <Icon
@@ -227,7 +229,7 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
 
           {onDelete && (
             <Tooltip content="Delete">
-              <Button isIconOnly size="sm" variant="light" color="danger" className="w-8 h-8 min-w-8" onPress={handleDelete as any}>
+              <Button isIconOnly size="sm" variant="light" color="danger" className="w-8 h-8 min-w-8" onPress={handleDelete}>
                 <Icon icon="mdi:delete-outline" className="text-lg" />
               </Button>
             </Tooltip>
@@ -240,13 +242,14 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
   return (
     <Card
       ref={cardRef}
+      isPressable
       className={`bg-surface-base border border-border-accent hover:bg-surface-elevated transition-all cursor-pointer h-[180px] ${
         isDragging ? "opacity-50 scale-95" : ""
       }`}
       draggable
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      onClick={handleCardClick}
+      onPress={handleCardPress}
     >
       <div className="flex h-full">
         <div className="w-24 flex-shrink-0 bg-surface-dark">
@@ -312,14 +315,14 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
 
           <div className="mt-auto flex items-center gap-1">
             <Tooltip content="View">
-              <Button isIconOnly size="sm" variant="light" className="w-8 h-8 min-w-8" onPress={handleView as any}>
+              <Button isIconOnly size="sm" variant="light" className="w-8 h-8 min-w-8" onPress={handleView}>
                 <Icon icon="solar:eye-bold" className="text-lg text-text-secondary" />
               </Button>
             </Tooltip>
 
             {onEdit && clip.captions_data && (
               <Tooltip content="Edit">
-                <Button isIconOnly size="sm" variant="light" className="w-8 h-8 min-w-8" onPress={handleEdit as any}>
+                <Button isIconOnly size="sm" variant="light" className="w-8 h-8 min-w-8" onPress={handleEdit}>
                   <Icon icon="solar:pen-bold" className="text-lg text-text-secondary" />
                 </Button>
               </Tooltip>
@@ -331,7 +334,7 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
                 size="sm"
                 variant="light"
                 className="w-8 h-8 min-w-8"
-                onPress={handleDownload as any}
+                onPress={handleDownload}
                 isDisabled={!clip.clipUrl || isDownloading}
               >
                 <Icon
@@ -343,7 +346,7 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
 
             {onDelete && (
               <Tooltip content="Delete">
-                <Button isIconOnly size="sm" variant="light" color="danger" className="w-8 h-8 min-w-8" onPress={handleDelete as any}>
+                <Button isIconOnly size="sm" variant="light" color="danger" className="w-8 h-8 min-w-8" onPress={handleDelete}>
                   <Icon icon="mdi:delete-outline" className="text-lg" />
                 </Button>
               </Tooltip>
