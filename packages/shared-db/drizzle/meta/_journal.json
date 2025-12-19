@@ -113,6 +113,13 @@
       "when": 1765940116917,
       "tag": "0015_sturdy_rhino",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1766125043172,
+      "tag": "0016_outstanding_shockwave",
+      "breakpoints": true
     }
   ]
 }

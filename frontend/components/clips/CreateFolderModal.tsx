@@ -16,7 +16,9 @@ import { Icon } from "@iconify/react";
 interface CreateFolderModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreate: (data: { name: string; color?: string; message?: string }) => Promise<void>;
+  onCreate: (data: { name: string; color?: string; message?: string; parentFolderId?: number | null }) => Promise<void>;
+  parentFolderId?: number | null;
+  parentFolderName?: string;
 }
 
 const FOLDER_COLORS = [
@@ -34,6 +36,8 @@ export const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
   isOpen,
   onClose,
   onCreate,
+  parentFolderId,
+  parentFolderName,
 }) => {
   const [name, setName] = useState("");
   const [color, setColor] = useState(FOLDER_COLORS[0]);
@@ -42,12 +46,17 @@ export const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!name.trim()) return;
 
     setIsLoading(true);
     try {
-      await onCreate({ name, color, message: message || undefined });
+      await onCreate({
+        name,
+        color,
+        message: message || undefined,
+        parentFolderId: parentFolderId || null,
+      });
       setName("");
       setColor(FOLDER_COLORS[0]);
       setMessage("");
@@ -64,11 +73,18 @@ export const CreateFolderModal: React.FC<CreateFolderModalProps> = ({
       <ModalContent className="bg-surface-base border border-border-accent">
         {(onClose) => (
           <form onSubmit={handleSubmit}>
-            <ModalHeader className="flex gap-2 items-center border-b border-border-base">
-              <Icon icon="solar:folder-bold-duotone" className="text-2xl text-accent-400" />
-              <h3 className="text-xl font-bold text-text-primary">
-                Create New Folder
-              </h3>
+            <ModalHeader className="flex flex-col items-start border-b border-border-base">
+              <div className="flex gap-2 items-center">
+                <Icon icon="solar:folder-bold-duotone" className="text-2xl text-accent-400" />
+                <h3 className="text-xl font-bold text-text-primary">
+                  Create New Folder
+                </h3>
+              </div>
+              {parentFolderName && (
+                <p className="text-sm text-text-secondary mt-1">
+                  Creating inside: <span className="text-accent-400">{parentFolderName}</span>
+                </p>
+              )}
             </ModalHeader>
             
             <ModalBody className="py-6 space-y-4">

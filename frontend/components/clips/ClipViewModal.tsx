@@ -234,6 +234,7 @@ export default function ClipViewModal({
                     controls
                     className="max-w-full max-h-[600px] object-contain"
                     autoPlay
+                    crossOrigin="anonymous"
                   />
                 </div>
               ) : (

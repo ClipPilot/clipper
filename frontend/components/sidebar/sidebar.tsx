@@ -40,6 +40,11 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
       selectedTeam?.id
     );
 
+    // Sync selected state when pathname changes (e.g., navigating via links)
+    useEffect(() => {
+      setSelected(defaultSelectedKey);
+    }, [defaultSelectedKey]);
+
     useEffect(() => {
       if (refreshTrigger > 0) {
         refetch();

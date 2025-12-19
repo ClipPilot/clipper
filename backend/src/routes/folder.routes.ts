@@ -56,6 +56,30 @@ router.get("/teams/:teamId/folders", requireAuth, folderController.getFolders.bi
 
 /**
  * @openapi
+ * /folders/teams/{teamId}/folders/tree:
+ *   get:
+ *     summary: Get folder tree for a team
+ *     description: Retrieves hierarchical tree structure of all folders
+ *     tags:
+ *       - Folders Management
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved folder tree
+ *       400:
+ *         description: Invalid team ID
+ */
+router.get("/teams/:teamId/folders/tree", requireAuth, folderController.getFolderTree.bind(folderController));
+
+/**
+ * @openapi
  * /folders/teams/{teamId}/folders/{folderId}:
  *   get:
  *     summary: Get a specific folder
@@ -89,6 +113,35 @@ router.get("/teams/:teamId/folders", requireAuth, folderController.getFolders.bi
  *         description: Folder not found
  */
 router.get("/teams/:teamId/folders/:folderId", requireAuth, folderController.getFolder.bind(folderController));
+
+/**
+ * @openapi
+ * /folders/teams/{teamId}/folders/{folderId}/path:
+ *   get:
+ *     summary: Get folder path (breadcrumb)
+ *     description: Returns array of folders from root to specified folder
+ *     tags:
+ *       - Folders Management
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: folderId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved folder path
+ *       404:
+ *         description: Folder not found
+ */
+router.get("/teams/:teamId/folders/:folderId/path", requireAuth, folderController.getFolderPath.bind(folderController));
 
 /**
  * @openapi
@@ -175,6 +228,47 @@ router.post("/teams/:teamId/folders", requireAuth, requireSeatAccess, folderCont
  *         description: Folder not found
  */
 router.patch("/teams/:teamId/folders/:folderId", requireAuth, requireSeatAccess, folderController.updateFolder.bind(folderController));
+
+/**
+ * @openapi
+ * /folders/teams/{teamId}/folders/{folderId}/move:
+ *   patch:
+ *     summary: Move a folder to a new parent
+ *     description: Moves folder to a new parent folder or to root level
+ *     tags:
+ *       - Folders Management
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: folderId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               parentFolderId:
+ *                 type: integer
+ *                 nullable: true
+ *                 description: New parent folder ID, or null to move to root
+ *     responses:
+ *       200:
+ *         description: Folder moved successfully
+ *       400:
+ *         description: Cannot move folder into itself or descendant
+ *       404:
+ *         description: Folder not found
+ */
+router.patch("/teams/:teamId/folders/:folderId/move", requireAuth, requireSeatAccess, folderController.moveFolder.bind(folderController));
 
 /**
  * @openapi
