@@ -85,10 +85,14 @@ resource "aws_iam_role_policy" "ecs_task_s3" {
         "s3:DeleteObject",
         "s3:ListBucket"
       ]
-      Resource = [
-        local.s3_bucket_arn,
-        "${local.s3_bucket_arn}/*"
-      ]
+      Resource = concat(
+        [local.s3_bucket_arn, "${local.s3_bucket_arn}/*"],
+        # Always include prod bucket for staging to access shared clips
+        var.environment == "staging" ? [
+          "arn:aws:s3:::${var.project_name}-videos-prod-${data.aws_caller_identity.current.account_id}",
+          "arn:aws:s3:::${var.project_name}-videos-prod-${data.aws_caller_identity.current.account_id}/*"
+        ] : []
+      )
     }]
   })
 }
@@ -149,10 +153,14 @@ resource "aws_iam_role_policy" "ecs_worker_s3" {
         "s3:DeleteObject",
         "s3:ListBucket"
       ]
-      Resource = [
-        local.s3_bucket_arn,
-        "${local.s3_bucket_arn}/*"
-      ]
+      Resource = concat(
+        [local.s3_bucket_arn, "${local.s3_bucket_arn}/*"],
+        # Always include prod bucket for staging to access shared clips
+        var.environment == "staging" ? [
+          "arn:aws:s3:::${var.project_name}-videos-prod-${data.aws_caller_identity.current.account_id}",
+          "arn:aws:s3:::${var.project_name}-videos-prod-${data.aws_caller_identity.current.account_id}/*"
+        ] : []
+      )
     }]
   })
 }
