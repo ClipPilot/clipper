@@ -74,7 +74,7 @@ export const getTeamUsageStatsController = async (req: AuthRequest, res: Respons
     const plan = team.plan || "free";
 
     const clipsGenerated = await clipManagerService.getTeamClipsCount(teamId);
-    const generationLimit = plan === "free" ? PLAN_LIMITS.FREE.generations : -1;
+    const generationLimit = plan === "free" ? (stats.limit === 0 ? 0 : PLAN_LIMITS.FREE.generations) : -1;
     const generationsRemaining = generationLimit === -1 ? -1 : Math.max(0, generationLimit - clipsGenerated);
 
     res.json({
