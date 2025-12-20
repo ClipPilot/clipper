@@ -4,6 +4,7 @@ import { s3Service } from "../services/s3.service";
 import { sqsService } from "../services/sqs.service";
 import { teamService } from "../services/team.service";
 import { clipManagerService } from "../services/clipManager.service";
+import { PLAN_LIMITS } from "../config/stripe.config";
 
 const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB chunks
 
@@ -171,18 +172,33 @@ export const submitClipJob = async (req: AuthRequest, res: Response) => {
     const plan = team.plan || "free";
 
     if (plan === "free") {
-      const usageStats = await teamService.getTeamUsageStats(parsedTeamId);
-      const remaining = usageStats.limit - usageStats.clips_created;
+      const stats = await teamService.getTeamUsageStats(parsedTeamId);
+      const currentClipCount = await clipManagerService.getTeamClipsCount(parsedTeamId);
+      const generationLimit = stats.limit === 0 ? 0 : PLAN_LIMITS.FREE.generations;
+      const generationsRemaining = generationLimit - currentClipCount;
 
-      if (remaining <= 0) {
+      if (generationsRemaining <= 0) {
         return res.status(403).json({
-          error: "Usage limit reached",
-          message: `You have used all ${usageStats.limit} clips for this period.`,
+          error: "Generation limit reached",
+          message: generationLimit === 0
+            ? "This team has no generation allowance. Upgrade to generate clips."
+            : `You have generated all ${generationLimit} clips allowed on the free plan. Upgrade to generate unlimited clips.`,
           usage: {
-            clipsCreated: usageStats.clips_created,
-            limit: usageStats.limit,
-            remaining,
-            resetsDate: usageStats.resets_date,
+            clipsGenerated: currentClipCount,
+            generationLimit,
+            generationsRemaining: 0,
+          },
+        });
+      }
+
+      if (parsedNumberOfVideos > generationsRemaining) {
+        return res.status(403).json({
+          error: "Generation limit exceeded",
+          message: `You can only generate ${generationsRemaining} more clip(s). You requested ${parsedNumberOfVideos}.`,
+          usage: {
+            clipsGenerated: currentClipCount,
+            generationLimit,
+            generationsRemaining,
           },
         });
       }

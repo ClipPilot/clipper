@@ -4,9 +4,18 @@ import {
   clipFolders,
   uploadedRawVideos,
 } from "@clipper/shared-db/src/schema";
-import { eq, and, desc, isNull } from "drizzle-orm";
+import { eq, and, desc, isNull, count } from "drizzle-orm";
 
 export class ClipManagerService {
+  async getTeamClipsCount(teamId: number): Promise<number> {
+    const [result] = await db
+      .select({ count: count() })
+      .from(clips)
+      .where(eq(clips.team_id, teamId));
+
+    return result?.count || 0;
+  }
+
   // Create a raw video record
   async createRawVideo(data: { teamId: number; videoPath: string }) {
     const [rawVideo] = await db

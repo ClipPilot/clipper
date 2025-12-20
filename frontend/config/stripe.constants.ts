@@ -15,7 +15,7 @@ export const STRIPE_PRICES = isProduction
     };
 
 export const PLAN_DETAILS = {
-  free: { name: "Free", clips: 3, price: 0 },
-  studio: { name: "Studio", clips: 400, price: 4596 },
-  scale: { name: "Scale", clips: 1000, price: 5990 },
+  free: { name: "Free", clips: 3, generations: 10, price: 0 },
+  studio: { name: "Studio", clips: 400, generations: -1, price: 4596 },
+  scale: { name: "Scale", clips: 1000, generations: -1, price: 5990 },
 } as const;

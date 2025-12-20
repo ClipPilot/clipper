@@ -18,6 +18,9 @@ export interface TeamUsageStats {
   clipsCreated: number;
   limit: number;
   remaining: number;
+  clipsGenerated: number;
+  generationLimit: number;
+  generationsRemaining: number;
   resetsDate: string;
   rollover: boolean;
 }
