@@ -2,6 +2,8 @@ import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { teamService } from "../services/team.service";
 import { userService } from "../services/user.service";
+import { clipManagerService } from "../services/clipManager.service";
+import { PLAN_LIMITS } from "../config/stripe.config";
 
 export const getUserTeamsController = async (req: AuthRequest, res: Response) => {
   try {
@@ -69,13 +71,21 @@ export const getTeamUsageStatsController = async (req: AuthRequest, res: Respons
 
     const stats = await teamService.getTeamUsageStats(teamId);
     const team = await teamService.getTeamById(teamId);
+    const plan = team.plan || "free";
+
+    const clipsGenerated = await clipManagerService.getTeamClipsCount(teamId);
+    const generationLimit = plan === "free" ? PLAN_LIMITS.FREE.generations : -1;
+    const generationsRemaining = generationLimit === -1 ? -1 : Math.max(0, generationLimit - clipsGenerated);
 
     res.json({
       teamId: team.id,
       teamName: team.name,
       clipsCreated: stats.clips_created,
       limit: stats.limit,
-      remaining: stats.limit - stats.clips_created,
+      remaining: Math.max(0, stats.limit - stats.clips_created),
+      clipsGenerated,
+      generationLimit,
+      generationsRemaining,
       resetsDate: stats.resets_date,
       rollover: stats.rollover,
     });
