@@ -43,8 +43,7 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
     return () => observer.disconnect();
   }, []);
 
-  const handleDownload = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDownload = async (e: any) => {
     if (!clip.clipUrl || isDownloading) return;
 
     setIsDownloading(true);
