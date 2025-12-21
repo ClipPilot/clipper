@@ -8,7 +8,7 @@ const features: PricingFeatures = [
       {
         title: "AI clip generations",
         tiers: {
-          [TiersEnum.Free]: "3 total",
+          [TiersEnum.Free]: "10 total",
           [TiersEnum.Studio]: "Unlimited",
           [TiersEnum.Scale]: "Unlimited",
         },

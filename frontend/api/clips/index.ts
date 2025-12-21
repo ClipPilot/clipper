@@ -172,6 +172,20 @@ class ClipsAPI {
     }
   }
 
+  async rejectClip(teamId: number, clipId: number): Promise<void> {
+    const response = await apiFetch(
+      `${API_URL}/clip-video/teams/${teamId}/clips/${clipId}/reject`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to reject clip");
+    }
+  }
+
   async getPendingClips(teamId: number): Promise<Clip[]> {
     const response = await apiFetch(
       `${API_URL}/clip-video/teams/${teamId}/clips/pending`,
@@ -336,14 +350,15 @@ class ClipsAPI {
     teamId: number,
     clipId: number,
     captionsData: CaptionEntry[],
-    captionColor?: string
+    captionColor?: string,
+    captionFont?: string
   ): Promise<{ clipUrl: string; captionsData: CaptionEntry[] }> {
     const response = await apiFetch(
       `${API_URL}/clip-video/teams/${teamId}/clips/${clipId}/captions`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ captionsData, captionColor }),
+        body: JSON.stringify({ captionsData, captionColor, captionFont }),
       }
     );
 

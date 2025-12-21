@@ -279,7 +279,7 @@ export class ClipManagerController {
     try {
       const clipId = parseInt(req.params.clipId);
       const teamId = parseInt(req.params.teamId);
-      const { captionsData, captionColor } = req.body;
+      const { captionsData, captionColor, captionFont } = req.body;
 
       if (isNaN(clipId) || isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid clip ID or team ID" });
@@ -310,6 +310,7 @@ export class ClipManagerController {
         userId,
         captionsData,
         captionColor,
+        captionFont,
       });
 
       console.log(`Captions update job sent to SQS with messageId: ${messageId}`);
@@ -462,13 +463,16 @@ export class ClipManagerController {
         .filter(clip => clip.source_video_path)
         .map(clip => clip.source_video_path!);
 
-      const allKeys = [...new Set([...watermarkedKeys, ...thumbnailKeys])];
-      const presignedUrls = await s3Service.getMultiplePresignedUrls(allKeys);
+      // Use short expiration (5 minutes) for watermarked preview URLs
+      // This makes it harder to share/download the watermarked video URL
+      const SHORT_EXPIRY = 300; // 5 minutes
+      const watermarkedUrls = await s3Service.getMultiplePresignedUrls(watermarkedKeys, SHORT_EXPIRY);
+      const thumbnailUrls = await s3Service.getMultiplePresignedUrls(thumbnailKeys, SHORT_EXPIRY);
 
       const clipsWithUrls = clips.map(clip => ({
         ...clip,
-        clipUrl: clip.watermarked_clip_path ? presignedUrls[clip.watermarked_clip_path] : null,
-        sourceVideoUrl: clip.source_video_path ? presignedUrls[clip.source_video_path] : null,
+        clipUrl: clip.watermarked_clip_path ? watermarkedUrls[clip.watermarked_clip_path] : null,
+        sourceVideoUrl: clip.source_video_path ? thumbnailUrls[clip.source_video_path] : null,
       }));
 
       return res.status(200).json({ clips: clipsWithUrls });
@@ -529,6 +533,38 @@ export class ClipManagerController {
       console.error("Get saved clips error:", error);
       return res.status(500).json({
         error: error instanceof Error ? error.message : "Failed to get saved clips",
+      });
+    }
+  }
+
+  async rejectClip(req: Request, res: Response) {
+    try {
+      const clipId = parseInt(req.params.clipId);
+      const teamId = parseInt(req.params.teamId);
+
+      if (isNaN(clipId) || isNaN(teamId)) {
+        return res.status(400).json({ error: "Invalid clip ID or team ID" });
+      }
+
+      const clip = await clipManagerService.getClipById(clipId, teamId);
+
+      if (clip.saved) {
+        return res.status(400).json({ error: "Cannot reject a saved clip" });
+      }
+
+      if (clip.status === "rejected") {
+        return res.status(400).json({ error: "Clip is already rejected" });
+      }
+
+      await clipManagerService.rejectClip(clipId, teamId);
+
+      return res.status(200).json({
+        message: "Clip rejected successfully",
+      });
+    } catch (error) {
+      console.error("Reject clip error:", error);
+      return res.status(404).json({
+        error: error instanceof Error ? error.message : "Failed to reject clip",
       });
     }
   }

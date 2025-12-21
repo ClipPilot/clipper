@@ -70,13 +70,13 @@ export default function CreateClipPage() {
   }, [refreshTrigger, refetchUsageStats]);
 
   useEffect(() => {
-    if (selectedTeam?.plan === "free" && usageStats?.remaining !== undefined) {
-      const maxAllowed = Math.min(usageStats.remaining, 15);
+    if (selectedTeam?.plan === "free" && usageStats?.generationsRemaining !== undefined && usageStats.generationsRemaining !== -1) {
+      const maxAllowed = Math.min(usageStats.generationsRemaining, 15);
       if (numberOfVideos > maxAllowed && maxAllowed >= 1) {
         setNumberOfVideos(maxAllowed);
       }
     }
-  }, [selectedTeam?.plan, usageStats?.remaining]);
+  }, [selectedTeam?.plan, usageStats?.generationsRemaining]);
 
   const handleUploadComplete = (s3Key: string, fileName: string, fileSize: number) => {
     setUploadedVideo({ s3Key, fileName, fileSize });
@@ -98,8 +98,8 @@ export default function CreateClipPage() {
       return;
     }
 
-    if (selectedTeam.plan === "free" && usageStats && usageStats.remaining <= 0) {
-      setError(`Usage limit reached. You have ${usageStats.clipsCreated}/${usageStats.limit} clips used.`);
+    if (selectedTeam.plan === "free" && usageStats && usageStats.generationsRemaining !== -1 && usageStats.generationsRemaining <= 0) {
+      setError(`Generation limit reached. You have generated ${usageStats.clipsGenerated}/${usageStats.generationLimit} clips. Upgrade to generate more.`);
       return;
     }
 
@@ -180,13 +180,27 @@ export default function CreateClipPage() {
           {usageStats && (
             <Card className="bg-surface-base border border-border-accent">
               <CardBody className="p-4">
-                <p className="text-sm text-text-secondary mb-1">Usage This Period</p>
-                <p className="text-2xl font-bold text-text-primary">
-                  {usageStats.clipsCreated} / {usageStats.limit}
-                </p>
-                <p className="text-xs text-text-tertiary mt-1">
-                  {usageStats.remaining} clips remaining
-                </p>
+                {selectedTeam?.plan === "free" ? (
+                  <>
+                    <p className="text-sm text-text-secondary mb-1">Generations</p>
+                    <p className="text-2xl font-bold text-text-primary">
+                      {usageStats.clipsGenerated} / {usageStats.generationLimit}
+                    </p>
+                    <p className="text-xs text-text-tertiary mt-1">
+                      {usageStats.generationsRemaining} generations remaining
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-text-secondary mb-1">Saved Clips</p>
+                    <p className="text-2xl font-bold text-text-primary">
+                      {usageStats.clipsCreated} / {usageStats.limit}
+                    </p>
+                    <p className="text-xs text-text-tertiary mt-1">
+                      {usageStats.remaining} saves remaining
+                    </p>
+                  </>
+                )}
               </CardBody>
             </Card>
           )}
@@ -234,10 +248,10 @@ export default function CreateClipPage() {
                   teamId={selectedTeam.id}
                   onUploadComplete={handleUploadComplete}
                   onError={handleUploadError}
-                  isDisabled={selectedTeam.plan === "free" && (usageStats?.remaining ?? 0) <= 0}
+                  isDisabled={selectedTeam.plan === "free" && usageStats?.generationsRemaining !== -1 && (usageStats?.generationsRemaining ?? 0) <= 0}
                   disabledReason={
-                    selectedTeam.plan === "free" && (usageStats?.remaining ?? 0) <= 0
-                      ? "You've used all your free clips. Subscribe to a plan to continue."
+                    selectedTeam.plan === "free" && usageStats?.generationsRemaining !== -1 && (usageStats?.generationsRemaining ?? 0) <= 0
+                      ? "You've used all your free generations. Subscribe to a plan to continue."
                       : undefined
                   }
                 />
@@ -284,7 +298,7 @@ export default function CreateClipPage() {
                         setHookLength={setHookLength}
                         numberOfVideos={numberOfVideos}
                         setNumberOfVideos={setNumberOfVideos}
-                        maxClips={selectedTeam.plan === "free" ? usageStats?.remaining : undefined}
+                        maxClips={selectedTeam.plan === "free" && usageStats?.generationsRemaining !== -1 ? usageStats?.generationsRemaining : undefined}
                       />
                     </CardBody>
                   </Card>
@@ -323,7 +337,7 @@ export default function CreateClipPage() {
                           size="lg"
                           color="primary"
                           onPress={handleSubmit}
-                          isDisabled={!uploadedVideo || isProcessing || (selectedTeam.plan === "free" && (usageStats?.remaining ?? 0) <= 0)}
+                          isDisabled={!uploadedVideo || isProcessing || (selectedTeam.plan === "free" && usageStats?.generationsRemaining !== -1 && (usageStats?.generationsRemaining ?? 0) <= 0)}
                           isLoading={isProcessing}
                           startContent={!isProcessing && <Icon icon="solar:scissors-bold" />}
                         >

@@ -118,7 +118,6 @@ export default function CaptionEditorModal({
                     src={blankVideoUrl}
                     controls
                     className="w-full max-h-[50vh] object-contain"
-                    crossOrigin="anonymous"
                     onTimeUpdate={handleTimeUpdate}
                   />
                 </div>

@@ -165,7 +165,7 @@ export function useClipsData() {
       if (!selectedTeam?.id) return;
 
       try {
-        await clipsAPI.deleteClip(selectedTeam.id, clipId);
+        await clipsAPI.rejectClip(selectedTeam.id, clipId);
         setUnsavedClips((prev) => prev.filter((c) => c.id !== clipId));
       } catch (error) {
         console.error("Failed to reject clip:", error);

@@ -951,4 +951,46 @@ router.post("/teams/:teamId/clips/:clipId/text-overlay", requireAuth, requireSea
  */
 router.post("/teams/:teamId/clips/:clipId/save", requireAuth, requireSeatAccess, clipManagerController.saveClip.bind(clipManagerController));
 
+/**
+ * @openapi
+ * /clip-video/teams/{teamId}/clips/{clipId}/reject:
+ *   post:
+ *     summary: Reject a clip
+ *     description: Rejects an unsaved clip. The clip status is set to "rejected" and it will no longer appear in unsaved clips. The clip still counts toward usage limits.
+ *     tags:
+ *       - Clips Management
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The team ID
+ *       - in: path
+ *         name: clipId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The clip ID
+ *     responses:
+ *       200:
+ *         description: Clip rejected successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: Clip already saved or already rejected
+ *       404:
+ *         description: Clip not found
+ *       500:
+ *         description: Server error
+ */
+router.post("/teams/:teamId/clips/:clipId/reject", requireAuth, requireSeatAccess, clipManagerController.rejectClip.bind(clipManagerController));
+
 export default router;

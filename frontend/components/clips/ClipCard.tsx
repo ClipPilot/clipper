@@ -43,22 +43,20 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
     return () => observer.disconnect();
   }, []);
 
-  const handleDownload = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDownload = async (e: any) => {
     if (!clip.clipUrl || isDownloading) return;
 
     setIsDownloading(true);
     try {
-      const response = await fetch(clip.clipUrl);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      // Use direct link download to avoid CORS issues with S3
       const link = document.createElement("a");
-      link.href = url;
+      link.href = clip.clipUrl;
       link.download = `${clip.title || `clip-${clip.id}`}.mp4`;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Failed to download clip:", error);
     } finally {
@@ -87,7 +85,8 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
     setIsDragging(true);
 
     const dragPreview = document.createElement("div");
-    dragPreview.style.cssText = "display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #1A1A1A; border: 1px solid #9333EA; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);";
+    dragPreview.style.cssText =
+      "display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #1A1A1A; border: 1px solid #9333EA; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);";
     dragPreview.innerHTML = `
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M21 7V17C21 20 19.5 22 16 22H8C4.5 22 3 20 3 17V7C3 4 4.5 2 8 2H16C19.5 2 21 4 21 7Z" stroke="#9333EA" stroke-width="1.5"/>
@@ -108,27 +107,30 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
     setIsDragging(false);
   };
 
-  const handleCardClick = (e: React.MouseEvent) => {
-    const target = e.target as HTMLElement;
-    if (target.closest('button')) return;
+  const handleCardPress = () => {
     if (onView && !isDragging) {
       onView();
     }
   };
 
-  const handleDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDelete = () => {
     if (onDelete) onDelete(clip.id);
   };
 
-  const handleEdit = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleEdit = () => {
     if (onEdit) onEdit();
   };
 
-  const handleView = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleView = () => {
     if (onView) onView();
+  };
+
+  const handleListClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest("button")) return;
+    if (onView && !isDragging) {
+      onView();
+    }
   };
 
   if (viewMode === "list") {
@@ -141,7 +143,7 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
         draggable
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
-        onClick={handleCardClick}
+        onClick={handleListClick}
       >
         <div className="w-16 h-10 flex-shrink-0 bg-surface-dark rounded overflow-hidden">
           {clip.clipUrl && isVisible ? (
@@ -151,11 +153,13 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
               muted
               playsInline
               preload="metadata"
-              crossOrigin="anonymous"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <Icon icon="solar:video-frame-play-vertical-bold-duotone" className="text-lg text-accent-400" />
+              <Icon
+                icon="solar:video-frame-play-vertical-bold-duotone"
+                className="text-lg text-accent-400"
+              />
             </div>
           )}
         </div>
@@ -167,7 +171,9 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
         </div>
 
         {clip.clip_score !== undefined && clip.clip_score !== null && (
-          <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full ${getScoreClasses(clip.clip_score)}`}>
+          <div
+            className={`flex items-center gap-1 px-2 py-0.5 rounded-full ${getScoreClasses(clip.clip_score)}`}
+          >
             <Icon icon="solar:star-bold" className="text-xs" />
             <span className="text-xs font-medium">{clip.clip_score}</span>
           </div>
@@ -196,15 +202,33 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
 
         <div className="flex items-center gap-1">
           <Tooltip content="View">
-            <Button isIconOnly size="sm" variant="light" className="w-8 h-8 min-w-8" onPress={handleView as any}>
-              <Icon icon="solar:eye-bold" className="text-lg text-text-secondary" />
+            <Button
+              isIconOnly
+              size="sm"
+              variant="light"
+              className="w-8 h-8 min-w-8"
+              onPress={handleView}
+            >
+              <Icon
+                icon="solar:eye-bold"
+                className="text-lg text-text-secondary"
+              />
             </Button>
           </Tooltip>
 
           {onEdit && clip.captions_data && (
             <Tooltip content="Edit">
-              <Button isIconOnly size="sm" variant="light" className="w-8 h-8 min-w-8" onPress={handleEdit as any}>
-                <Icon icon="solar:pen-bold" className="text-lg text-text-secondary" />
+              <Button
+                isIconOnly
+                size="sm"
+                variant="light"
+                className="w-8 h-8 min-w-8"
+                onPress={handleEdit}
+              >
+                <Icon
+                  icon="solar:pen-bold"
+                  className="text-lg text-text-secondary"
+                />
               </Button>
             </Tooltip>
           )}
@@ -215,11 +239,15 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
               size="sm"
               variant="light"
               className="w-8 h-8 min-w-8"
-              onPress={handleDownload as any}
+              onPress={handleDownload}
               isDisabled={!clip.clipUrl || isDownloading}
             >
               <Icon
-                icon={isDownloading ? "svg-spinners:ring-resize" : "solar:download-bold"}
+                icon={
+                  isDownloading
+                    ? "svg-spinners:ring-resize"
+                    : "solar:download-bold"
+                }
                 className="text-lg text-text-secondary"
               />
             </Button>
@@ -227,7 +255,14 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
 
           {onDelete && (
             <Tooltip content="Delete">
-              <Button isIconOnly size="sm" variant="light" color="danger" className="w-8 h-8 min-w-8" onPress={handleDelete as any}>
+              <Button
+                isIconOnly
+                size="sm"
+                variant="light"
+                color="danger"
+                className="w-8 h-8 min-w-8"
+                onPress={handleDelete}
+              >
                 <Icon icon="mdi:delete-outline" className="text-lg" />
               </Button>
             </Tooltip>
@@ -236,6 +271,13 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
       </div>
     );
   }
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Don't trigger card click if clicking on a button
+    const target = e.target as HTMLElement;
+    if (target.closest("button")) return;
+    handleCardPress();
+  };
 
   return (
     <Card
@@ -246,9 +288,8 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
       draggable
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      onClick={handleCardClick}
     >
-      <div className="flex h-full">
+      <div className="flex h-full" onClick={handleCardClick}>
         <div className="w-24 flex-shrink-0 bg-surface-dark">
           {clip.clipUrl && isVisible ? (
             <video
@@ -257,11 +298,13 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
               muted
               playsInline
               preload="metadata"
-              crossOrigin="anonymous"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <Icon icon="solar:video-frame-play-vertical-bold-duotone" className="text-3xl text-accent-400" />
+              <Icon
+                icon="solar:video-frame-play-vertical-bold-duotone"
+                className="text-3xl text-accent-400"
+              />
             </div>
           )}
         </div>
@@ -272,7 +315,9 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
               {clip.title || `Clip #${clip.id}`}
             </h3>
             {clip.clip_score !== undefined && clip.clip_score !== null && (
-              <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full flex-shrink-0 ${getScoreClasses(clip.clip_score)}`}>
+              <div
+                className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full flex-shrink-0 ${getScoreClasses(clip.clip_score)}`}
+              >
                 <Icon icon="solar:star-bold" className="text-xs" />
                 <span className="text-xs font-medium">{clip.clip_score}</span>
               </div>
@@ -300,7 +345,9 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
                 </span>
               ))}
               {clip.tags.length > 2 && (
-                <span className="text-xs text-text-tertiary">+{clip.tags.length - 2}</span>
+                <span className="text-xs text-text-tertiary">
+                  +{clip.tags.length - 2}
+                </span>
               )}
             </div>
           )}
@@ -312,15 +359,33 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
 
           <div className="mt-auto flex items-center gap-1">
             <Tooltip content="View">
-              <Button isIconOnly size="sm" variant="light" className="w-8 h-8 min-w-8" onPress={handleView as any}>
-                <Icon icon="solar:eye-bold" className="text-lg text-text-secondary" />
+              <Button
+                isIconOnly
+                size="sm"
+                variant="light"
+                className="w-8 h-8 min-w-8"
+                onPress={handleView}
+              >
+                <Icon
+                  icon="solar:eye-bold"
+                  className="text-lg text-text-secondary"
+                />
               </Button>
             </Tooltip>
 
             {onEdit && clip.captions_data && (
               <Tooltip content="Edit">
-                <Button isIconOnly size="sm" variant="light" className="w-8 h-8 min-w-8" onPress={handleEdit as any}>
-                  <Icon icon="solar:pen-bold" className="text-lg text-text-secondary" />
+                <Button
+                  isIconOnly
+                  size="sm"
+                  variant="light"
+                  className="w-8 h-8 min-w-8"
+                  onPress={handleEdit}
+                >
+                  <Icon
+                    icon="solar:pen-bold"
+                    className="text-lg text-text-secondary"
+                  />
                 </Button>
               </Tooltip>
             )}
@@ -331,11 +396,15 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
                 size="sm"
                 variant="light"
                 className="w-8 h-8 min-w-8"
-                onPress={handleDownload as any}
+                onPress={handleDownload}
                 isDisabled={!clip.clipUrl || isDownloading}
               >
                 <Icon
-                  icon={isDownloading ? "svg-spinners:ring-resize" : "solar:download-bold"}
+                  icon={
+                    isDownloading
+                      ? "svg-spinners:ring-resize"
+                      : "solar:download-bold"
+                  }
                   className="text-lg text-text-secondary"
                 />
               </Button>
@@ -343,7 +412,14 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
 
             {onDelete && (
               <Tooltip content="Delete">
-                <Button isIconOnly size="sm" variant="light" color="danger" className="w-8 h-8 min-w-8" onPress={handleDelete as any}>
+                <Button
+                  isIconOnly
+                  size="sm"
+                  variant="light"
+                  color="danger"
+                  className="w-8 h-8 min-w-8"
+                  onPress={handleDelete}
+                >
                   <Icon icon="mdi:delete-outline" className="text-lg" />
                 </Button>
               </Tooltip>

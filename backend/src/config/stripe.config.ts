@@ -20,9 +20,9 @@ export const STRIPE_PRICES = isProduction
     };
 
 export const PLAN_LIMITS = {
-  FREE: { clips: 3, seats: 1 },
-  STUDIO: { clips: 400, seats: 1 },
-  SCALE: { clips: 1000, seats: -1 },
+  FREE: { clips: 3, generations: 10, seats: 1 },
+  STUDIO: { clips: 400, generations: -1, seats: 1 },
+  SCALE: { clips: 1000, generations: -1, seats: -1 },
   STUDIO_ADDON: { clips: 50 },
   SCALE_ADDON: { clips: 100 },
 } as const;

@@ -4,9 +4,18 @@ import {
   clipFolders,
   uploadedRawVideos,
 } from "@clipper/shared-db/src/schema";
-import { eq, and, desc, isNull } from "drizzle-orm";
+import { eq, and, desc, isNull, count } from "drizzle-orm";
 
 export class ClipManagerService {
+  async getTeamClipsCount(teamId: number): Promise<number> {
+    const [result] = await db
+      .select({ count: count() })
+      .from(clips)
+      .where(eq(clips.team_id, teamId));
+
+    return result?.count || 0;
+  }
+
   // Create a raw video record
   async createRawVideo(data: { teamId: number; videoPath: string }) {
     const [rawVideo] = await db
@@ -330,6 +339,23 @@ export class ClipManagerService {
       .set({
         clip_path: data.clipPath,
         captions_data: data.captionsData,
+        updated_at: new Date(),
+      })
+      .where(and(eq(clips.id, clipId), eq(clips.team_id, teamId)))
+      .returning();
+
+    if (!updatedClip) {
+      throw new Error("Clip not found");
+    }
+
+    return updatedClip;
+  }
+
+  async rejectClip(clipId: number, teamId: number) {
+    const [updatedClip] = await db
+      .update(clips)
+      .set({
+        status: "rejected",
         updated_at: new Date(),
       })
       .where(and(eq(clips.id, clipId), eq(clips.team_id, teamId)))
