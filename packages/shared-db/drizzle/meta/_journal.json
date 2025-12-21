@@ -120,6 +120,13 @@
       "when": 1766125043172,
       "tag": "0016_outstanding_shockwave",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1766278004591,
+      "tag": "0017_odd_lucky_pierre",
+      "breakpoints": true
     }
   ]
 }

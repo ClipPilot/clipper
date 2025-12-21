@@ -130,6 +130,7 @@ class SQSService {
     userId: number;
     captionsData: UpdateCaptionsJob["captionsData"];
     captionColor?: string;
+    captionFont?: string;
   }): Promise<string> {
     const job: UpdateCaptionsJob = {
       type: "update-captions",
@@ -138,6 +139,7 @@ class SQSService {
       userId: params.userId,
       captionsData: params.captionsData,
       captionColor: params.captionColor,
+      captionFont: params.captionFont,
       createdAt: new Date().toISOString(),
     };
 

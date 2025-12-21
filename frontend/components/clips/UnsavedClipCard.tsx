@@ -156,7 +156,7 @@ export const UnsavedClipCard: React.FC<UnsavedClipCardProps> = ({
           </ModalHeader>
           <ModalBody>
             <p className="text-text-secondary">
-              Are you sure you want to reject this clip? This action cannot be undone and the clip will be permanently deleted.
+              Are you sure you want to reject this clip? The clip will be marked as rejected and won't count towards your saved clips.
             </p>
           </ModalBody>
           <ModalFooter>
@@ -172,9 +172,9 @@ export const UnsavedClipCard: React.FC<UnsavedClipCardProps> = ({
                 onReject?.(clip.id);
                 setIsRejectModalOpen(false);
               }}
-              startContent={<Icon icon="solar:trash-bin-bold" />}
+              startContent={<Icon icon="solar:close-circle-bold" />}
             >
-              Reject & Delete
+              Reject
             </Button>
           </ModalFooter>
         </ModalContent>

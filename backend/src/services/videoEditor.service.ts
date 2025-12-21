@@ -374,18 +374,29 @@ export const addPreviewWatermark = async (
     throw new Error(`Cuttr logo not found at ${logoPath}`);
   }
 
-  // Get video dimensions to scale logo appropriately
+  // Get video dimensions and duration
   const metadata = await getVideoMetadata(inputPath);
+  const duration = metadata.duration || 10;
+  const halfDuration = duration / 2;
 
-  const logoSize = Math.round(Math.min(metadata.width, metadata.height) * 0.22);
-  const margin = Math.round(Math.min(metadata.width, metadata.height) * 0.03);
+  // Bigger watermark (35% instead of 22%) and more visible (65% opacity)
+  const logoSize = Math.round(Math.min(metadata.width, metadata.height) * 0.35);
+  const margin = Math.round(Math.min(metadata.width, metadata.height) * 0.04);
 
+  // Watermark moves halfway through the video:
+  // First half: bottom-right corner
+  // Second half: top-left corner
+  // This makes it harder to crop out or remove with simple editing
   return new Promise<string>((resolve, reject) => {
     ffmpeg(inputPath)
       .input(logoPath)
       .complexFilter([
-        `[1:v]scale=${logoSize}:-1,format=rgba,colorchannelmixer=aa=0.5[logo]`,
-        `[0:v][logo]overlay=W-w-${margin}:(H-h)/2:format=auto`
+        // Scale logo and set opacity to 65%
+        `[1:v]scale=${logoSize}:-1,format=rgba,colorchannelmixer=aa=0.65[logo]`,
+        // First half: bottom-right position
+        `[0:v][logo]overlay=W-w-${margin}:H-h-${margin}:format=auto:enable='lt(t,${halfDuration})'[v1]`,
+        // Second half: top-left position
+        `[v1][logo]overlay=${margin}:${margin}:format=auto:enable='gte(t,${halfDuration})'`
       ])
       .outputOptions(["-c:v libx264", "-preset ultrafast", "-crf 23", "-c:a copy"])
       .save(outputPath)

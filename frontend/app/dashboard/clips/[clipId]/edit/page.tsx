@@ -17,6 +17,29 @@ import {
 import { Icon } from "@iconify/react";
 import { clipsAPI, Clip, CaptionEntry } from "@/api/clips";
 
+const CAPTION_COLORS = [
+  { color: "#FFFFFF", name: "White" },
+  { color: "#000000", name: "Black" },
+  { color: "#FF0000", name: "Red" },
+  { color: "#FF6B00", name: "Orange" },
+  { color: "#FFD600", name: "Yellow" },
+  { color: "#00FF00", name: "Lime" },
+  { color: "#00D4AA", name: "Teal" },
+  { color: "#0084FF", name: "Blue" },
+  { color: "#7B2CBF", name: "Purple" },
+  { color: "#FF006E", name: "Pink" },
+  { color: "#8B4513", name: "Brown" },
+  { color: "#808080", name: "Gray" },
+];
+
+const CAPTION_FONTS = [
+  { id: "luckiest-guy", name: "Luckiest Guy" },
+  { id: "montserrat", name: "Montserrat" },
+  { id: "everlasting", name: "Everlasting" },
+  { id: "komika", name: "Komika" },
+  { id: "burbank", name: "Burbank" },
+];
+
 export default function EditClipPage() {
   const params = useParams();
   const router = useRouter();
@@ -31,6 +54,8 @@ export default function EditClipPage() {
 
   const [captions, setCaptions] = useState<CaptionEntry[]>([]);
   const [currentTime, setCurrentTime] = useState(0);
+  const [captionColor, setCaptionColor] = useState("#FFD600");
+  const [captionFont, setCaptionFont] = useState("Luckiest Guy");
 
   const [textOverlay, setTextOverlay] = useState("");
   const [textColor, setTextColor] = useState("#FFFFFF");
@@ -63,6 +88,14 @@ export default function EditClipPage() {
       setClip(data);
       if (data.captions_data) {
         setCaptions(JSON.parse(JSON.stringify(data.captions_data)));
+      }
+      // Load caption color and font from metadata
+      const metadata = data.clip_metadata as any;
+      if (metadata?.parameters?.captionColor) {
+        setCaptionColor(metadata.parameters.captionColor);
+      }
+      if (metadata?.parameters?.captionFont) {
+        setCaptionFont(metadata.parameters.captionFont);
       }
     } catch (error) {
       console.error("Failed to load clip:", error);
@@ -99,13 +132,12 @@ export default function EditClipPage() {
     if (!selectedTeam?.id || !clip) return;
     setSaving(true);
     try {
-      const metadata = clip.clip_metadata as any;
-      const captionColor = metadata?.parameters?.captionColor;
       const result = await clipsAPI.updateCaptions(
         selectedTeam.id,
         clip.id,
         captions,
-        captionColor
+        captionColor,
+        captionFont
       );
       setClip((prev) =>
         prev
@@ -305,6 +337,63 @@ export default function EditClipPage() {
                 }
               >
                 <div className="mt-4">
+                  {/* Caption Style Section */}
+                  {captions.length > 0 && (
+                    <div className="mb-6 p-4 rounded-lg bg-surface-elevated border border-border-base">
+                      <p className="text-sm font-medium text-text-primary mb-3">Caption Style</p>
+
+                      {/* Color Picker */}
+                      <div className="mb-4">
+                        <label className="text-xs text-text-secondary mb-2 block">
+                          Highlight Color
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          {CAPTION_COLORS.map((c) => (
+                            <button
+                              key={c.color}
+                              onClick={() => setCaptionColor(c.color)}
+                              className={`h-8 w-8 rounded border-2 transition-all ${
+                                captionColor === c.color
+                                  ? "border-accent-400 ring-2 ring-accent-400 ring-offset-2 ring-offset-surface-elevated scale-110"
+                                  : "border-border-base hover:scale-105"
+                              }`}
+                              style={{ backgroundColor: c.color }}
+                              title={c.name}
+                            />
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Font Picker */}
+                      <div>
+                        <label className="text-xs text-text-secondary mb-2 block">
+                          Caption Font
+                        </label>
+                        <div className="flex gap-2 overflow-x-auto py-1">
+                          {CAPTION_FONTS.map((font) => (
+                            <button
+                              key={font.id}
+                              onClick={() => setCaptionFont(font.name)}
+                              className={`h-12 w-12 rounded-lg border transition-all flex items-center justify-center flex-shrink-0 ${
+                                captionFont === font.name
+                                  ? "bg-white text-black border-white scale-105"
+                                  : "bg-surface-base text-white border-border-base hover:scale-105"
+                              }`}
+                              title={font.name}
+                            >
+                              <span
+                                className="text-base font-bold"
+                                style={{ fontFamily: `var(--font-${font.id})` }}
+                              >
+                                Ag
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-sm text-text-secondary">
                       {captions.length} caption segments
@@ -326,7 +415,7 @@ export default function EditClipPage() {
                     </Button>
                   </div>
 
-                  <div className="h-[50vh] overflow-y-auto space-y-2 pr-2">
+                  <div className="h-[40vh] overflow-y-auto space-y-2 pr-2">
                     {captions.map((caption, index) => (
                       <div
                         key={caption.index}

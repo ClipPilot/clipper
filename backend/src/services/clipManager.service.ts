@@ -350,6 +350,23 @@ export class ClipManagerService {
 
     return updatedClip;
   }
+
+  async rejectClip(clipId: number, teamId: number) {
+    const [updatedClip] = await db
+      .update(clips)
+      .set({
+        status: "rejected",
+        updated_at: new Date(),
+      })
+      .where(and(eq(clips.id, clipId), eq(clips.team_id, teamId)))
+      .returning();
+
+    if (!updatedClip) {
+      throw new Error("Clip not found");
+    }
+
+    return updatedClip;
+  }
 }
 
 export const clipManagerService = new ClipManagerService();

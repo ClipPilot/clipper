@@ -97,7 +97,6 @@ export const SecureVideoPlayer = forwardRef<SecureVideoPlayerRef, SecureVideoPla
         poster={poster}
         className="w-full h-full object-contain"
         playsInline
-        crossOrigin="anonymous"
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onEnded={handleEnded}
