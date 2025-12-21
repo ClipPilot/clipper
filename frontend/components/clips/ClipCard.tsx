@@ -288,9 +288,8 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
       draggable
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      onClick={handleCardClick}
     >
-      <div className="flex h-full">
+      <div className="flex h-full" onClick={handleCardClick}>
         <div className="w-24 flex-shrink-0 bg-surface-dark">
           {clip.clipUrl && isVisible ? (
             <video
