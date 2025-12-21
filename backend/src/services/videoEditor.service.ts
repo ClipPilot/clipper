@@ -387,16 +387,18 @@ export const addPreviewWatermark = async (
   // First half: bottom-right corner
   // Second half: top-left corner
   // This makes it harder to crop out or remove with simple editing
+  // Using dynamic x/y expressions that change based on time
+  const xExpr = `if(lt(t,${halfDuration}),W-w-${margin},${margin})`;
+  const yExpr = `if(lt(t,${halfDuration}),H-h-${margin},${margin})`;
+
   return new Promise<string>((resolve, reject) => {
     ffmpeg(inputPath)
       .input(logoPath)
       .complexFilter([
         // Scale logo and set opacity to 65%
         `[1:v]scale=${logoSize}:-1,format=rgba,colorchannelmixer=aa=0.65[logo]`,
-        // First half: bottom-right position
-        `[0:v][logo]overlay=W-w-${margin}:H-h-${margin}:format=auto:enable='lt(t,${halfDuration})'[v1]`,
-        // Second half: top-left position
-        `[v1][logo]overlay=${margin}:${margin}:format=auto:enable='gte(t,${halfDuration})'`
+        // Single overlay with dynamic position based on time
+        `[0:v][logo]overlay=x='${xExpr}':y='${yExpr}':format=auto`
       ])
       .outputOptions(["-c:v libx264", "-preset ultrafast", "-crf 23", "-c:a copy"])
       .save(outputPath)
