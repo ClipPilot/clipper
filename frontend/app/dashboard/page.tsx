@@ -305,7 +305,6 @@ export default function DashboardPage() {
                           muted
                           playsInline
                           preload="metadata"
-                          crossOrigin="anonymous"
                         />
                       ) : (
                         <Icon

@@ -38,7 +38,6 @@ function VideoThumbnail({ videoUrl }: { videoUrl: string }) {
         muted
         playsInline
         preload="metadata"
-        crossOrigin="anonymous"
         onLoadedData={() => setIsLoaded(true)}
       />
       {!isLoaded && (

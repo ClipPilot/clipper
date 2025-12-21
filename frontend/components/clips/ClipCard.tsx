@@ -48,16 +48,15 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
 
     setIsDownloading(true);
     try {
-      const response = await fetch(clip.clipUrl);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      // Use direct link download to avoid CORS issues with S3
       const link = document.createElement("a");
-      link.href = url;
+      link.href = clip.clipUrl;
       link.download = `${clip.title || `clip-${clip.id}`}.mp4`;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Failed to download clip:", error);
     } finally {
@@ -154,7 +153,6 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
               muted
               playsInline
               preload="metadata"
-              crossOrigin="anonymous"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
@@ -274,17 +272,23 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
     );
   }
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Don't trigger card click if clicking on a button
+    const target = e.target as HTMLElement;
+    if (target.closest("button")) return;
+    handleCardPress();
+  };
+
   return (
     <Card
       ref={cardRef}
-      isPressable
       className={`bg-surface-base border border-border-accent hover:bg-surface-elevated transition-all cursor-pointer h-[180px] ${
         isDragging ? "opacity-50 scale-95" : ""
       }`}
       draggable
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      onPress={handleCardPress}
+      onClick={handleCardClick}
     >
       <div className="flex h-full">
         <div className="w-24 flex-shrink-0 bg-surface-dark">
@@ -295,7 +299,6 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
               muted
               playsInline
               preload="metadata"
-              crossOrigin="anonymous"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
