@@ -382,6 +382,7 @@ export default function MyClipsPage() {
                   onDelete={(clipId) => deleteClip(clipId, triggerRefresh)}
                   onClipClick={(clip: any) => openViewModal(clip)}
                   onEditClick={(clip: any) => handleEditClip(clip)}
+                  selectedClipId={isViewModalOpen ? selectedClip?.id : null}
                 />
               )}
 
@@ -447,6 +448,7 @@ export default function MyClipsPage() {
                           onDelete={(clipId) => deleteClip(clipId, triggerRefresh)}
                           onView={() => openViewModal(clip)}
                           onEdit={() => handleEditClip(clip)}
+                          isSelected={isViewModalOpen && selectedClip?.id === clip.id}
                         />
                       ))}
                     </div>

@@ -127,7 +127,9 @@ export default function PreviewClipViewModal({
       size="4xl"
       scrollBehavior="inside"
       classNames={{
-        base: "bg-surface-base border border-border-base",
+        wrapper: "z-[9999] isolate",
+        backdrop: "z-[9998]",
+        base: "bg-surface-base border border-border-base z-[9999]",
         header: "border-b border-border-base",
         body: "py-6",
         footer: "border-t border-border-base",
@@ -157,14 +159,14 @@ export default function PreviewClipViewModal({
             <div className="lg:col-span-3 flex items-center justify-center">
               {clip.clipUrl ? (
                 <div
-                  className="relative bg-black rounded-lg overflow-hidden w-full group"
+                  className="relative bg-black rounded-lg overflow-hidden w-full group z-10"
                   onContextMenu={handleContextMenu}
                   style={{ userSelect: "none" }}
                 >
                   <video
                     ref={videoRef}
                     src={clip.clipUrl}
-                    className="w-full max-h-[500px] object-contain"
+                    className="w-full max-h-[500px] object-contain relative z-10"
                     playsInline
                     onTimeUpdate={handleTimeUpdate}
                     onLoadedMetadata={handleLoadedMetadata}

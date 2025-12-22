@@ -197,7 +197,9 @@ export default function ClipViewModal({
       size="5xl"
       scrollBehavior="inside"
       classNames={{
-        base: "bg-surface-base border border-border-base",
+        wrapper: "z-[9999] isolate",
+        backdrop: "z-[9998]",
+        base: "bg-surface-base border border-border-base z-[9999]",
         header: "border-b border-border-base",
         body: "py-6",
         footer: "border-t border-border-base",
@@ -228,11 +230,11 @@ export default function ClipViewModal({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-[600px]">
             <div className="flex items-center justify-center">
               {clip.clipUrl ? (
-                <div className="rounded-lg overflow-hidden bg-black w-full h-full flex items-center justify-center">
+                <div className="rounded-lg overflow-hidden bg-black w-full h-full flex items-center justify-center relative z-10">
                   <video
                     src={clip.clipUrl}
                     controls
-                    className="max-w-full max-h-[600px] object-contain"
+                    className="max-w-full max-h-[600px] object-contain relative z-10"
                     autoPlay
                   />
                 </div>

@@ -11,6 +11,7 @@ interface ClipCardProps {
   onDelete?: (clipId: number) => void;
   onView?: () => void;
   onEdit?: () => void;
+  isSelected?: boolean;
 }
 
 const ClipCardComponent: React.FC<ClipCardProps> = ({
@@ -19,6 +20,7 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
   onDelete,
   onView,
   onEdit,
+  isSelected = false,
 }) => {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
@@ -145,11 +147,11 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
         onDragEnd={handleDragEnd}
         onClick={handleListClick}
       >
-        <div className="w-16 h-10 flex-shrink-0 bg-surface-dark rounded overflow-hidden">
-          {clip.clipUrl && isVisible ? (
+        <div className="w-16 h-10 flex-shrink-0 bg-surface-dark rounded overflow-hidden relative z-0">
+          {clip.clipUrl && isVisible && !isSelected ? (
             <video
               src={clip.clipUrl}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover relative z-0"
               muted
               playsInline
               preload="metadata"
@@ -282,7 +284,7 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
   return (
     <Card
       ref={cardRef}
-      className={`bg-surface-base border border-border-accent hover:bg-surface-elevated transition-all cursor-pointer h-[180px] ${
+      className={`bg-surface-base border border-border-accent hover:bg-surface-elevated transition-all cursor-pointer h-[180px] relative z-0 ${
         isDragging ? "opacity-50 scale-95" : ""
       }`}
       draggable
@@ -290,11 +292,11 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
       onDragEnd={handleDragEnd}
     >
       <div className="flex h-full" onClick={handleCardClick}>
-        <div className="w-24 flex-shrink-0 bg-surface-dark">
-          {clip.clipUrl && isVisible ? (
+        <div className="w-24 flex-shrink-0 bg-surface-dark relative z-0">
+          {clip.clipUrl && isVisible && !isSelected ? (
             <video
               src={clip.clipUrl}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover relative z-0"
               muted
               playsInline
               preload="metadata"
@@ -437,6 +439,7 @@ export const ClipCard = memo(ClipCardComponent, (prevProps, nextProps) => {
     prevProps.clip.updated_at === nextProps.clip.updated_at &&
     prevProps.clip.clipUrl === nextProps.clip.clipUrl &&
     prevProps.clip.raw_video_path === nextProps.clip.raw_video_path &&
-    prevProps.viewMode === nextProps.viewMode
+    prevProps.viewMode === nextProps.viewMode &&
+    prevProps.isSelected === nextProps.isSelected
   );
 });

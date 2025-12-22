@@ -211,7 +211,7 @@ function PricingContent() {
           Questions about pricing?{" "}
           <Link
             className="text-accent-400 hover:text-accent-300"
-            href="#"
+            href="mailto:support@cuttr.com"
             underline="always"
           >
             Contact us

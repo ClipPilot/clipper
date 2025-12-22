@@ -16,6 +16,7 @@ interface ExpandableFolderProps {
   onClipDelete?: (clipId: number) => void;
   onClipView?: (clip: Clip) => void;
   onClipEdit?: (clip: Clip) => void;
+  selectedClipId?: number | null;
 }
 
 export const ExpandableFolder: React.FC<ExpandableFolderProps> = ({
@@ -28,6 +29,7 @@ export const ExpandableFolder: React.FC<ExpandableFolderProps> = ({
   onClipDelete,
   onClipView,
   onClipEdit,
+  selectedClipId,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -192,6 +194,7 @@ export const ExpandableFolder: React.FC<ExpandableFolderProps> = ({
                   } : undefined}
                   onView={onClipView ? () => onClipView(clip) : undefined}
                   onEdit={onClipEdit ? () => onClipEdit(clip) : undefined}
+                  isSelected={selectedClipId === clip.id}
                 />
               ))}
             </div>

@@ -28,8 +28,9 @@ const getVideoMetadata = (videoPath: string): Promise<VideoMetadata> => {
   });
 };
 
-const COMPRESSION_THRESHOLD = 100 * 1024 * 1024;
-const TARGET_BITRATE = 4000;
+const COMPRESSION_THRESHOLD = 200 * 1024 * 1024; // Only compress files > 200MB
+const TARGET_CRF = 23; // Quality level (18-28, lower = better quality, 23 is default/good)
+const MAX_BITRATE = 12000; // 12 Mbps max bitrate cap
 
 export const compressVideoForUpload = async (
   inputPath: string,
@@ -42,14 +43,15 @@ export const compressVideoForUpload = async (
     return { path: inputPath, compressed: false, originalSize, newSize: originalSize };
   }
 
-  console.log(`[COMPRESS] Compressing ${Math.round(originalSize / 1024 / 1024)}MB video...`);
+  console.log(`[COMPRESS] Compressing ${Math.round(originalSize / 1024 / 1024)}MB video with high quality settings...`);
 
   try {
     const metadata = await getVideoMetadata(inputPath);
-    const currentBitrate = metadata.bitrate ? metadata.bitrate / 1000 : 10000;
+    const currentBitrate = metadata.bitrate ? metadata.bitrate / 1000 : 15000;
 
-    if (currentBitrate <= TARGET_BITRATE * 1.2) {
-      console.log(`[COMPRESS] Bitrate ${Math.round(currentBitrate)}kbps already optimal, skipping`);
+    // Skip if already reasonably sized
+    if (currentBitrate <= MAX_BITRATE) {
+      console.log(`[COMPRESS] Bitrate ${Math.round(currentBitrate)}kbps already good, skipping`);
       return { path: inputPath, compressed: false, originalSize, newSize: originalSize };
     }
 
@@ -57,12 +59,12 @@ export const compressVideoForUpload = async (
       ffmpeg(inputPath)
         .outputOptions([
           "-c:v libx264",
-          "-preset ultrafast",
-          `-b:v ${TARGET_BITRATE}k`,
-          `-maxrate ${TARGET_BITRATE * 1.5}k`,
-          `-bufsize ${TARGET_BITRATE * 2}k`,
+          "-preset fast", // Good balance of speed and quality
+          `-crf ${TARGET_CRF}`, // Quality-based encoding
+          `-maxrate ${MAX_BITRATE}k`,
+          `-bufsize ${MAX_BITRATE * 2}k`,
           "-c:a aac",
-          "-b:a 128k",
+          "-b:a 192k", // Higher audio quality
           "-movflags +faststart",
         ])
         .save(outputPath)
