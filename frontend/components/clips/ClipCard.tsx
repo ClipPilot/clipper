@@ -50,15 +50,18 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
 
     setIsDownloading(true);
     try {
-      // Use direct link download to avoid CORS issues with S3
+      const response = await fetch(clip.clipUrl);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+
       const link = document.createElement("a");
-      link.href = clip.clipUrl;
+      link.href = blobUrl;
       link.download = `${clip.title || `clip-${clip.id}`}.mp4`;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+
+      URL.revokeObjectURL(blobUrl);
     } catch (error) {
       console.error("Failed to download clip:", error);
     } finally {

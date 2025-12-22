@@ -91,6 +91,7 @@ jobs:
           # GitHub
           github_repository   = "${{ github.repository }}"
           github_access_token = "${{ secrets.GH_PAT }}"
+          gemini_api_key      = "${{ secrets.GEMINI_API_KEY }}"
           amplify_branch      = "staging"
 
           # Custom Domain
@@ -197,6 +198,7 @@ jobs:
           supabase_url       = "${{ secrets.STAGING_SUPABASE_URL }}"
           supabase_anon_key  = "${{ secrets.STAGING_SUPABASE_ANON_KEY }}"
           resend_api_key    = "${{ secrets.RESEND_API_KEY }}"
+          gemini_api_key    = "${{ secrets.GEMINI_API_KEY }}"
 
           # Stripe
           stripe_secret_key     = "${{ secrets.STAGING_STRIPE_SECRET_KEY }}"

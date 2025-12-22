@@ -1,7 +1,27 @@
 import API_URL from "@/config/constants";
 
+const REFRESH_LOCK_KEY = "token_refresh_lock";
+const REFRESH_LOCK_TIMEOUT = 10000;
+const TOKEN_UPDATE_CHANNEL = "token_update";
+
 class TokenManager {
   private refreshPromise: Promise<boolean> | null = null;
+  private broadcastChannel: BroadcastChannel | null = null;
+  private tokenVersion: number = 0;
+
+  constructor() {
+    if (typeof window !== "undefined" && typeof BroadcastChannel !== "undefined") {
+      this.broadcastChannel = new BroadcastChannel(TOKEN_UPDATE_CHANNEL);
+      this.broadcastChannel.onmessage = (event) => {
+        if (event.data.type === "tokens_updated") {
+          this.tokenVersion = event.data.version;
+        } else if (event.data.type === "tokens_cleared") {
+          this.clearTokens(false);
+        }
+      };
+      this.tokenVersion = Date.now();
+    }
+  }
 
   getAccessToken(): string | null {
     if (typeof window === "undefined") return null;
@@ -19,21 +39,36 @@ class TokenManager {
     return expiry ? parseInt(expiry) : null;
   }
 
-  setTokens(accessToken: string, refreshToken: string, expiresIn: number): void {
+  setTokens(accessToken: string, refreshToken: string, expiresIn: number, broadcast = true): void {
     if (typeof window !== "undefined") {
+      this.tokenVersion = Date.now();
       localStorage.setItem("access_token", accessToken);
       localStorage.setItem("refresh_token", refreshToken);
       const expiryTime = Date.now() + expiresIn * 1000;
       localStorage.setItem("token_expiry", expiryTime.toString());
+      localStorage.setItem("token_version", this.tokenVersion.toString());
+
+      if (broadcast && this.broadcastChannel) {
+        this.broadcastChannel.postMessage({
+          type: "tokens_updated",
+          version: this.tokenVersion,
+        });
+      }
     }
   }
 
-  clearTokens(): void {
+  clearTokens(broadcast = true): void {
     if (typeof window !== "undefined") {
       localStorage.removeItem("access_token");
       localStorage.removeItem("refresh_token");
       localStorage.removeItem("token_expiry");
       localStorage.removeItem("remember_me");
+      localStorage.removeItem("token_version");
+      localStorage.removeItem(REFRESH_LOCK_KEY);
+
+      if (broadcast && this.broadcastChannel) {
+        this.broadcastChannel.postMessage({ type: "tokens_cleared" });
+      }
     }
   }
 
@@ -46,8 +81,46 @@ class TokenManager {
     return (expiry - Date.now()) < fiveMinutes;
   }
 
+  private acquireLock(): boolean {
+    const now = Date.now();
+    const lockData = localStorage.getItem(REFRESH_LOCK_KEY);
+
+    if (lockData) {
+      const { timestamp } = JSON.parse(lockData);
+      if (now - timestamp < REFRESH_LOCK_TIMEOUT) {
+        return false;
+      }
+    }
+
+    localStorage.setItem(REFRESH_LOCK_KEY, JSON.stringify({ timestamp: now }));
+    return true;
+  }
+
+  private releaseLock(): void {
+    localStorage.removeItem(REFRESH_LOCK_KEY);
+  }
+
+  private async waitForRefresh(maxWait = 5000): Promise<boolean> {
+    const startTime = Date.now();
+    const initialVersion = localStorage.getItem("token_version");
+
+    while (Date.now() - startTime < maxWait) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      const lockData = localStorage.getItem(REFRESH_LOCK_KEY);
+      if (!lockData) {
+        const newVersion = localStorage.getItem("token_version");
+        if (newVersion && newVersion !== initialVersion) {
+          return true;
+        }
+        return false;
+      }
+    }
+
+    return false;
+  }
+
   async refreshTokens(): Promise<boolean> {
-    // If already refreshing, wait for that promise
     if (this.refreshPromise) {
       return this.refreshPromise;
     }
@@ -57,13 +130,21 @@ class TokenManager {
       return false;
     }
 
-    // Create a new refresh promise
+    if (!this.acquireLock()) {
+      const result = await this.waitForRefresh();
+      if (result) {
+        return true;
+      }
+      return !!this.getAccessToken();
+    }
+
     this.refreshPromise = this.doRefresh(refreshToken);
 
     try {
       const result = await this.refreshPromise;
       return result;
     } finally {
+      this.releaseLock();
       this.refreshPromise = null;
     }
   }
@@ -80,18 +161,21 @@ class TokenManager {
         const errorData = await response.json().catch(() => ({}));
         const errorMessage = errorData.error || "";
 
-        // If token is already used or invalid, clear everything and force re-login
         if (
           errorMessage.includes("Already Used") ||
           errorMessage.includes("Invalid Refresh Token") ||
           errorMessage.includes("expired") ||
           response.status === 401
         ) {
-          console.warn("Refresh token invalid, clearing session");
-          this.clearTokens();
-          // Redirect to login with session_expired flag
-          if (typeof window !== "undefined") {
-            window.location.href = "/auth?session_expired=true";
+          const currentToken = this.getRefreshToken();
+          if (currentToken === refreshToken) {
+            console.warn("Refresh token invalid, clearing session");
+            this.clearTokens();
+            if (typeof window !== "undefined") {
+              window.location.href = "/auth?session_expired=true";
+            }
+          } else {
+            return !!this.getAccessToken();
           }
         }
         return false;

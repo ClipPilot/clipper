@@ -170,3 +170,10 @@ variable "shared_s3_bucket" {
   type        = string
   default     = ""
 }
+
+variable "gemini_api_key" {
+  description = "Gemini API Key"
+  type        = string
+  sensitive   = true
+}
+

@@ -993,4 +993,124 @@ router.post("/teams/:teamId/clips/:clipId/save", requireAuth, requireSeatAccess,
  */
 router.post("/teams/:teamId/clips/:clipId/reject", requireAuth, requireSeatAccess, clipManagerController.rejectClip.bind(clipManagerController));
 
+/**
+ * @openapi
+ * /clip-video/teams/{teamId}/clips/{clipId}/share:
+ *   post:
+ *     summary: Generate a share link for a clip
+ *     description: Generates a unique share token that can be used to share the clip publicly. Only saved clips can be shared.
+ *     tags:
+ *       - Clip Sharing
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The team ID
+ *       - in: path
+ *         name: clipId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The clip ID
+ *     responses:
+ *       200:
+ *         description: Share link generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 shareToken:
+ *                   type: string
+ *                   description: The unique token for sharing this clip
+ *       400:
+ *         description: Clip is not saved or invalid IDs
+ *       404:
+ *         description: Clip not found
+ *       500:
+ *         description: Server error
+ */
+router.post("/teams/:teamId/clips/:clipId/share", requireAuth, requireSeatAccess, clipManagerController.generateShareLink.bind(clipManagerController));
+
+/**
+ * @openapi
+ * /clip-video/teams/{teamId}/clips/{clipId}/share:
+ *   delete:
+ *     summary: Remove share link from a clip
+ *     description: Removes the share token from a clip, disabling public access.
+ *     tags:
+ *       - Clip Sharing
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The team ID
+ *       - in: path
+ *         name: clipId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The clip ID
+ *     responses:
+ *       200:
+ *         description: Share link removed successfully
+ *       404:
+ *         description: Clip not found
+ *       500:
+ *         description: Server error
+ */
+router.delete("/teams/:teamId/clips/:clipId/share", requireAuth, requireSeatAccess, clipManagerController.removeShareLink.bind(clipManagerController));
+
+/**
+ * @openapi
+ * /clip-video/shared/{shareToken}:
+ *   get:
+ *     summary: Get a publicly shared clip
+ *     description: Retrieves a clip using its share token. No authentication required.
+ *     tags:
+ *       - Clip Sharing
+ *     parameters:
+ *       - in: path
+ *         name: shareToken
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The share token for the clip
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved shared clip
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 clip:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     title:
+ *                       type: string
+ *                     message:
+ *                       type: string
+ *                     clipUrl:
+ *                       type: string
+ *                     created_at:
+ *                       type: string
+ *                       format: date-time
+ *       404:
+ *         description: Shared clip not found
+ */
+router.get("/shared/:shareToken", clipManagerController.getSharedClip.bind(clipManagerController));
+
 export default router;

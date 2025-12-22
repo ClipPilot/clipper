@@ -118,6 +118,10 @@ resource "aws_ecs_task_definition" "worker" {
       {
         name      = "STRIPE_WEBHOOK_SECRET"
         valueFrom = aws_secretsmanager_secret.stripe_webhook_secret.arn
+      },
+      {
+        name      = "GEMINI_API_KEY"
+        valueFrom = aws_secretsmanager_secret.gemini_api_key.arn
       }
     ]
 

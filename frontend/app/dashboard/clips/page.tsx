@@ -20,7 +20,7 @@ import {
 import { Button, Card, CardBody, Tabs, Tab } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { authAPI } from "@/api/auth";
-import { Clip } from "@/api/clips";
+import { Clip, clipsAPI } from "@/api/clips";
 import { ClipCard } from "@/components/clips/ClipCard";
 import { SubfolderCard } from "@/components/clips/SubfolderCard";
 import { CreateFolderModal } from "@/components/clips/CreateFolderModal";
@@ -235,6 +235,16 @@ export default function MyClipsPage() {
 
   const handleEditClip = (clip: Clip) => {
     router.push(`/dashboard/clips/${clip.id}/edit`);
+  };
+
+  const handleGenerateShareLink = async (clipId: number) => {
+    if (!selectedTeam?.id) throw new Error("No team selected");
+    return await clipsAPI.generateShareLink(selectedTeam.id, clipId);
+  };
+
+  const handleRemoveShareLink = async (clipId: number) => {
+    if (!selectedTeam?.id) throw new Error("No team selected");
+    await clipsAPI.removeShareLink(selectedTeam.id, clipId);
   };
 
   // Get subfolders for the currently selected folder
@@ -513,6 +523,8 @@ export default function MyClipsPage() {
           onTagsChange={updateClipTags}
           onCreateTag={createTag}
           onDeleteTag={deleteTag}
+          onGenerateShareLink={handleGenerateShareLink}
+          onRemoveShareLink={handleRemoveShareLink}
         />
       )}
 

@@ -2,6 +2,8 @@
  * AI Prompts for different clip generation styles
  */
 
+import { PromptType } from "../constants/promptTypes";
+
 export interface PromptConfig {
   length: number;
   hookLength: number;
@@ -16,7 +18,14 @@ export interface PromptConfig {
  * Focuses on clear product explanation with engaging hook and closing
  */
 export const generateBusinessPrompt = (config: PromptConfig): string => {
-  const { length, hookLength, transcriptText, transcriptObject, numberOfVideos = 1, userTextPrompt } = config;
+  const {
+    length,
+    hookLength,
+    transcriptText,
+    transcriptObject,
+    numberOfVideos = 1,
+    userTextPrompt,
+  } = config;
   const mainLength = length - hookLength;
 
   return `
@@ -25,9 +34,9 @@ identify and put together and convert this video into a couple clips, and put th
 short form video suitable for Tiktok. As you put these clips together, make sure the flow of events from the
 transcript cut to cut makes some sense.
 
-${userTextPrompt ? `USER SPECIFIC REQUEST: The user wants you to focus on: "${userTextPrompt}". Try to find clips that align with this request while maintaining high engagement and quality.` : ''}
+${userTextPrompt ? `USER SPECIFIC REQUEST: The user wants you to focus on: "${userTextPrompt}". Try to find clips that align with this request while maintaining high engagement and quality.` : ""}
 
-${numberOfVideos > 1 ? `You need to generate ${numberOfVideos} different video variations. Each should have a unique approach, different hooks, or different angles while all maintaining high quality.` : ''}
+${numberOfVideos > 1 ? `You need to generate ${numberOfVideos} different video variations. Each should have a unique approach, different hooks, or different angles while all maintaining high quality.` : ""}
 
 The final output video should be about ${length} seconds long (can be a bit less and more)
 
@@ -83,7 +92,14 @@ Here is the transcript object: ${transcriptObject}
  * Focuses on funny moments, reactions, and engaging content from streams or creator videos
  */
 export const generateViralPrompt = (config: PromptConfig): string => {
-  const { length, hookLength, transcriptText, transcriptObject, numberOfVideos = 1, userTextPrompt } = config;
+  const {
+    length,
+    hookLength,
+    transcriptText,
+    transcriptObject,
+    numberOfVideos = 1,
+    userTextPrompt,
+  } = config;
   const mainLength = length - hookLength;
 
   return `
@@ -91,9 +107,9 @@ You are an expert viral short-form video editor specializing in gaming streams, 
 the transcript of a raw long form video. Your goal is to identify the most engaging, funny, or attention-grabbing moments
 and combine them into a viral-worthy clip suitable for TikTok, YouTube Shorts, or Instagram Reels.
 
-${userTextPrompt ? `USER SPECIFIC REQUEST: The user wants you to focus on: "${userTextPrompt}". Try to find clips that align with this request while maintaining high engagement and viral potential.` : ''}
+${userTextPrompt ? `USER SPECIFIC REQUEST: The user wants you to focus on: "${userTextPrompt}". Try to find clips that align with this request while maintaining high engagement and viral potential.` : ""}
 
-${numberOfVideos > 1 ? `You need to generate ${numberOfVideos} different video variations. Each should have a unique approach, different moments, or different angles while all maintaining viral potential.` : ''}
+${numberOfVideos > 1 ? `You need to generate ${numberOfVideos} different video variations. Each should have a unique approach, different moments, or different angles while all maintaining viral potential.` : ""}
 
 The final output video should be about ${length} seconds long (can be a bit less or more).
 
@@ -165,10 +181,78 @@ Here is the transcript object: ${transcriptObject}
 };
 
 /**
+ * Gaming Content Prompt
+ * Focuses on visual moments and epic gameplay rather than just transcript
+ */
+export const generateGamingPrompt = (config: PromptConfig): string => {
+  const {
+    length,
+    hookLength,
+    transcriptText,
+    transcriptObject,
+    numberOfVideos = 1,
+    userTextPrompt,
+  } = config;
+  const mainLength = length - hookLength;
+
+  return `
+You are an expert gaming/streaming content editor who creates viral clips. You have access to both the VIDEO and the transcript.
+
+IMPORTANT: Focus on finding EPIC VISUAL MOMENTS in the video, not just interesting dialogue. The transcript is a reference for timing, but your priority is identifying:
+- Clutch plays, insane kills, 1v5 moments, ace rounds
+- Epic fails, rage moments, jump scares
+- Unexpected plot twists or shocking moments
+- High-energy reactions (screaming, celebrating, malding)
+- Funny interactions between players
+- Near-death escapes, clutch saves
+- Victory/defeat emotional moments
+
+${userTextPrompt ? `USER CONTEXT: "${userTextPrompt}" - Use this to understand what game/content type this is and what kind of moments to look for.` : ""}
+
+TARGET LENGTH: ${length} seconds total
+- Hook: ~${hookLength}s (the most SHOCKING or HYPE moment to grab attention)
+- Main content: ~${mainLength}s (build context or show the full play)
+
+VARIATIONS NEEDED: ${numberOfVideos}
+OUTPUT FORMAT - Return this EXACT JSON:
+{
+  "videos": [
+    {
+      "hook": {
+        "text": "Brief description of what's happening visually",
+        "start": 125.5,
+        "end": 131.0
+      },
+      "main": [
+        {
+          "text": "What's happening in this segment",
+          "start": 100.0,
+          "end": 115.0
+        }
+      ],
+      "combined_script": "Full narrative of the clip",
+      "finalMessage": "Why this clip will go viral",
+      "evalScore": 85,
+      "clipTitle": "Short catchy title"
+    }
+  ]
+}
+
+RULES:
+- "start" and "end" are timestamps in SECONDS
+- The hook should be the PEAK moment - even if it's from later in the video
+- Main segments provide context leading to or following the hook
+- You can clip many engaging exciting moments together for the main part if needed
+- Prioritize ENERGY and VISUALS over dialogue
+- Return exactly ${numberOfVideos} video(s)
+`;
+};
+
+/**
  * Generate prompt based on type with optional custom instructions
  */
 export const generatePrompt = (
-  type: "business" | "viral",
+  type: PromptType,
   config: PromptConfig,
   customInstructions?: string
 ): string => {
@@ -176,6 +260,8 @@ export const generatePrompt = (
 
   if (type === "business") {
     basePrompt = generateBusinessPrompt(config);
+  } else if (type === "gaming") {
+    basePrompt = generateGamingPrompt(config);
   } else {
     basePrompt = generateViralPrompt(config);
   }

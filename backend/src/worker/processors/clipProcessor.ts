@@ -40,6 +40,7 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
       customPrompt: options.customPrompt,
       textPrompt: options.textPrompt,
       numberOfVideos: options.numberOfVideos,
+      videoPath: options.promptType === "gaming" ? videoPathToProcess : undefined,
     };
 
     const clipSuggestionsArray = await generateClipSuggestionsService(

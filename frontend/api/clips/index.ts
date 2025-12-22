@@ -26,6 +26,7 @@ export interface Clip {
   message?: string;
   status: string;
   saved: boolean;
+  share_token?: string | null;
   error_message?: string;
   created_at: string;
   updated_at: string;
@@ -585,6 +586,60 @@ class ClipsAPI {
 
     const data = await response.json();
     return data.tags;
+  }
+
+  // Sharing
+  async generateShareLink(teamId: number, clipId: number): Promise<string> {
+    const response = await apiFetch(
+      `${API_URL}/clip-video/teams/${teamId}/clips/${clipId}/share`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to generate share link");
+    }
+
+    const data = await response.json();
+    return data.shareToken;
+  }
+
+  async removeShareLink(teamId: number, clipId: number): Promise<void> {
+    const response = await apiFetch(
+      `${API_URL}/clip-video/teams/${teamId}/clips/${clipId}/share`,
+      {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to remove share link");
+    }
+  }
+
+  async getSharedClip(shareToken: string): Promise<{
+    id: number;
+    title?: string;
+    message?: string;
+    clipUrl: string;
+    created_at: string;
+  }> {
+    const response = await fetch(
+      `${API_URL}/clip-video/shared/${shareToken}`,
+      {
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Shared clip not found");
+    }
+
+    const data = await response.json();
+    return data.clip;
   }
 }
 

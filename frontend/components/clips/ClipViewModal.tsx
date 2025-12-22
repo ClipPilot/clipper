@@ -44,6 +44,7 @@ interface Clip {
   clipUrl?: string;
   sourceVideoUrl?: string;
   tags?: Tag[];
+  share_token?: string | null;
 }
 
 interface ClipViewModalProps {
@@ -56,6 +57,8 @@ interface ClipViewModalProps {
   onTagsChange?: (clipId: number, tagIds: number[]) => void;
   onCreateTag?: (name: string, color: string) => Promise<Tag>;
   onDeleteTag?: (tagId: number) => Promise<void>;
+  onGenerateShareLink?: (clipId: number) => Promise<string>;
+  onRemoveShareLink?: (clipId: number) => Promise<void>;
 }
 
 const TAG_COLORS = [
@@ -81,6 +84,8 @@ export default function ClipViewModal({
   onTagsChange,
   onCreateTag,
   onDeleteTag,
+  onGenerateShareLink,
+  onRemoveShareLink,
 }: ClipViewModalProps) {
   const [isMoving, setIsMoving] = useState(false);
   const [isUpdatingTags, setIsUpdatingTags] = useState(false);
@@ -91,10 +96,17 @@ export default function ClipViewModal({
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState(TAG_COLORS[0]);
   const [deletingTagId, setDeletingTagId] = useState<number | null>(null);
+  const [isSharing, setIsSharing] = useState(false);
+  const [shareToken, setShareToken] = useState<string | null>(clip.share_token || null);
+  const [showShareTooltip, setShowShareTooltip] = useState(false);
 
   React.useEffect(() => {
     setSelectedTagIds(clip.tags?.map((t) => t.id) || []);
   }, [clip.tags]);
+
+  React.useEffect(() => {
+    setShareToken(clip.share_token || null);
+  }, [clip.share_token]);
 
   const getStatusColor = () => {
     switch (clip.status) {
@@ -186,6 +198,40 @@ export default function ClipViewModal({
     } finally {
       setDeletingTagId(null);
     }
+  };
+
+  const handleShare = async () => {
+    if (!onGenerateShareLink) return;
+    setIsSharing(true);
+    try {
+      const token = await onGenerateShareLink(clip.id);
+      setShareToken(token);
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  const handleRemoveShare = async () => {
+    if (!onRemoveShareLink) return;
+    setIsSharing(true);
+    try {
+      await onRemoveShareLink(clip.id);
+      setShareToken(null);
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  const getShareUrl = () => {
+    if (!shareToken) return "";
+    return `${window.location.origin}/shared/${shareToken}`;
+  };
+
+  const handleCopyShareLink = async () => {
+    const url = getShareUrl();
+    await navigator.clipboard.writeText(url);
+    setShowShareTooltip(true);
+    setTimeout(() => setShowShareTooltip(false), 2000);
   };
 
   const currentFolder = folders.find((f) => f.id === clip.folder_id);
@@ -597,15 +643,59 @@ export default function ClipViewModal({
           <Button variant="flat" onPress={onClose}>
             Close
           </Button>
-          {clip.clipUrl && (
-            <Button
-              color="primary"
-              startContent={<Icon icon="solar:download-bold" />}
-              onPress={handleDownload}
-            >
-              Download
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {onGenerateShareLink && clip.clipUrl && (
+              <>
+                {shareToken ? (
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <Button
+                        variant="flat"
+                        color="success"
+                        startContent={<Icon icon="solar:copy-bold" />}
+                        onPress={handleCopyShareLink}
+                      >
+                        Copy Link
+                      </Button>
+                      {showShareTooltip && (
+                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-success-500 text-white text-xs rounded whitespace-nowrap">
+                          Copied!
+                        </div>
+                      )}
+                    </div>
+                    <Button
+                      variant="flat"
+                      color="danger"
+                      isIconOnly
+                      isLoading={isSharing}
+                      onPress={handleRemoveShare}
+                      title="Disable sharing"
+                    >
+                      <Icon icon="solar:link-broken-bold" />
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="flat"
+                    startContent={!isSharing && <Icon icon="solar:share-bold" />}
+                    isLoading={isSharing}
+                    onPress={handleShare}
+                  >
+                    Share
+                  </Button>
+                )}
+              </>
+            )}
+            {clip.clipUrl && (
+              <Button
+                color="primary"
+                startContent={<Icon icon="solar:download-bold" />}
+                onPress={handleDownload}
+              >
+                Download
+              </Button>
+            )}
+          </div>
         </ModalFooter>
       </ModalContent>
     </Modal>

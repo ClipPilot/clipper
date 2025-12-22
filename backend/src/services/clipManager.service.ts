@@ -4,14 +4,20 @@ import {
   clipFolders,
   uploadedRawVideos,
 } from "@clipper/shared-db/src/schema";
-import { eq, and, desc, isNull, count } from "drizzle-orm";
+import { eq, and, desc, isNull, count, notInArray } from "drizzle-orm";
+import crypto from "crypto";
 
 export class ClipManagerService {
   async getTeamClipsCount(teamId: number): Promise<number> {
     const [result] = await db
       .select({ count: count() })
       .from(clips)
-      .where(eq(clips.team_id, teamId));
+      .where(
+        and(
+          eq(clips.team_id, teamId),
+          notInArray(clips.status, ["failed", "rejected"])
+        )
+      );
 
     return result?.count || 0;
   }
@@ -366,6 +372,59 @@ export class ClipManagerService {
     }
 
     return updatedClip;
+  }
+
+  // Generate a share token for a clip
+  async generateShareToken(clipId: number, teamId: number) {
+    const shareToken = crypto.randomBytes(32).toString("hex");
+
+    const [updatedClip] = await db
+      .update(clips)
+      .set({
+        share_token: shareToken,
+        updated_at: new Date(),
+      })
+      .where(and(eq(clips.id, clipId), eq(clips.team_id, teamId)))
+      .returning();
+
+    if (!updatedClip) {
+      throw new Error("Clip not found");
+    }
+
+    return updatedClip;
+  }
+
+  // Remove share token from a clip (disable sharing)
+  async removeShareToken(clipId: number, teamId: number) {
+    const [updatedClip] = await db
+      .update(clips)
+      .set({
+        share_token: null,
+        updated_at: new Date(),
+      })
+      .where(and(eq(clips.id, clipId), eq(clips.team_id, teamId)))
+      .returning();
+
+    if (!updatedClip) {
+      throw new Error("Clip not found");
+    }
+
+    return updatedClip;
+  }
+
+  // Get a clip by its share token (public access, no team validation)
+  async getClipByShareToken(shareToken: string) {
+    const [clip] = await db
+      .select()
+      .from(clips)
+      .where(eq(clips.share_token, shareToken))
+      .limit(1);
+
+    if (!clip) {
+      throw new Error("Shared clip not found");
+    }
+
+    return clip;
   }
 }
 

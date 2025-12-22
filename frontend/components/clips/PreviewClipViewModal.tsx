@@ -159,14 +159,14 @@ export default function PreviewClipViewModal({
             <div className="lg:col-span-3 flex items-center justify-center">
               {clip.clipUrl ? (
                 <div
-                  className="relative bg-black rounded-lg overflow-hidden w-full group z-10"
+                  className="relative bg-black rounded-lg overflow-hidden w-full group"
                   onContextMenu={handleContextMenu}
                   style={{ userSelect: "none" }}
                 >
                   <video
                     ref={videoRef}
                     src={clip.clipUrl}
-                    className="w-full max-h-[500px] object-contain relative z-10"
+                    className="w-full max-h-[500px] object-contain"
                     playsInline
                     onTimeUpdate={handleTimeUpdate}
                     onLoadedMetadata={handleLoadedMetadata}
@@ -178,7 +178,7 @@ export default function PreviewClipViewModal({
                   />
 
                   {/* Play/Pause overlay */}
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                     <button
                       onClick={togglePlay}
                       className="w-16 h-16 rounded-full bg-white/90 hover:bg-white flex items-center justify-center transition-colors"
@@ -191,7 +191,7 @@ export default function PreviewClipViewModal({
                   </div>
 
                   {/* Progress bar */}
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                     <div
                       className="w-full h-1 bg-white/30 rounded-full cursor-pointer mb-2"
                       onClick={handleSeek}
@@ -208,7 +208,7 @@ export default function PreviewClipViewModal({
                   </div>
 
                   {/* Preview badge */}
-                  <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
+                  <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded flex items-center gap-1 z-10">
                     <Icon icon="solar:eye-bold" className="text-sm" />
                     <span>Preview</span>
                   </div>

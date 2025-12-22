@@ -1,5 +1,6 @@
 import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import { config } from "../config/env";
+import { PromptType } from "../constants/promptTypes";
 
 const sqsClient = new SQSClient({
   region: config.aws.region,
@@ -26,7 +27,7 @@ export interface ClipVideoJob extends BaseJob {
   options: {
     length?: number;
     hookLength?: number;
-    promptType?: "business" | "viral";
+    promptType?: PromptType;
     customPrompt?: string;
     textPrompt?: string;
     numberOfVideos?: number;

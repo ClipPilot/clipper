@@ -1,5 +1,6 @@
 import API_URL from "@/config/constants";
 import { apiFetch } from "@/lib/apiClient";
+import { PromptType } from "@/constants/promptTypes";
 
 export interface PresignedUploadResponse {
   uploadUrl: string;
@@ -29,7 +30,7 @@ export interface SubmitClipParams {
   fileSize?: number;
   length?: number;
   hookLength?: number;
-  promptType?: "business" | "viral";
+  promptType?: PromptType;
   customPrompt?: string;
   numberOfVideos?: number;
   customText?: string;

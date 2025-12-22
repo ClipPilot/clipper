@@ -158,6 +158,10 @@ resource "aws_ecs_task_definition" "backend" {
       {
         name      = "RESEND_API_KEY"
         valueFrom = aws_secretsmanager_secret.resend_api_key.arn
+      },
+      {
+        name      = "GEMINI_API_KEY"
+        valueFrom = aws_secretsmanager_secret.gemini_api_key.arn
       }
     ]
 
