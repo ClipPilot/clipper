@@ -2,6 +2,8 @@
  * AI Prompts for different clip generation styles
  */
 
+import { PromptType } from "../constants/promptTypes";
+
 export interface PromptConfig {
   length: number;
   hookLength: number;
@@ -178,7 +180,10 @@ Here is the transcript object: ${transcriptObject}
 `;
 };
 
-//TODO DEC 19: If gaming, use gemini implement prompt
+/**
+ * Gaming Content Prompt
+ * Focuses on visual moments and epic gameplay rather than just transcript
+ */
 export const generateGamingPrompt = (config: PromptConfig): string => {
   const {
     length,
@@ -191,9 +196,63 @@ export const generateGamingPrompt = (config: PromptConfig): string => {
   const mainLength = length - hookLength;
 
   return `
-You are an expert short-form video editor specializing in gaming content. You are given the transcript of a raw long form video.
-Your goal is to identify the most engaging, funny, or exciting moments and combine them into a viral-worthy clip suitable for TikTok,
-YouTube Shorts, or Instagram Reels.
+You are an expert gaming/streaming content editor who creates viral clips. You have access to both the VIDEO and the transcript.
+
+IMPORTANT: Focus on finding EPIC VISUAL MOMENTS in the video, not just interesting dialogue. The transcript is a reference for timing, but your priority is identifying:
+- Clutch plays, insane kills, 1v5 moments, ace rounds
+- Epic fails, rage moments, jump scares
+- Unexpected plot twists or shocking moments
+- High-energy reactions (screaming, celebrating, malding)
+- Funny interactions between players
+- Near-death escapes, clutch saves
+- Victory/defeat emotional moments
+
+${userTextPrompt ? `USER CONTEXT: "${userTextPrompt}" - Use this to understand what game/content type this is and what kind of moments to look for.` : ""}
+
+TARGET LENGTH: ${length} seconds total
+- Hook: ~${hookLength}s (the most SHOCKING or HYPE moment to grab attention)
+- Main content: ~${mainLength}s (build context or show the full play)
+
+VARIATIONS NEEDED: ${numberOfVideos}
+
+The transcript below helps you identify timestamps, but DON'T just pick moments with interesting dialogue - pick moments with EPIC VISUALS and PEAK ENERGY:
+
+TRANSCRIPT:
+${transcriptText}
+
+TIMESTAMPS:
+${transcriptObject}
+
+OUTPUT FORMAT - Return this EXACT JSON:
+{
+  "videos": [
+    {
+      "hook": {
+        "text": "Brief description of what's happening visually",
+        "start": 125.5,
+        "end": 131.0
+      },
+      "main": [
+        {
+          "text": "What's happening in this segment",
+          "start": 100.0,
+          "end": 115.0
+        }
+      ],
+      "combined_script": "Full narrative of the clip",
+      "finalMessage": "Why this clip will go viral",
+      "evalScore": 85,
+      "clipTitle": "Short catchy title"
+    }
+  ]
+}
+
+RULES:
+- "start" and "end" are timestamps in SECONDS
+- The hook should be the PEAK moment - even if it's from later in the video
+- Main segments provide context leading to or following the hook
+- Prioritize ENERGY and VISUALS over dialogue
+- Return exactly ${numberOfVideos} video(s)
 `;
 };
 
@@ -201,7 +260,7 @@ YouTube Shorts, or Instagram Reels.
  * Generate prompt based on type with optional custom instructions
  */
 export const generatePrompt = (
-  type: "business" | "viral" | "gaming",
+  type: PromptType,
   config: PromptConfig,
   customInstructions?: string
 ): string => {

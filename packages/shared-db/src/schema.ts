@@ -178,6 +178,7 @@ export const clips = pgTable(
     message: text("message"),
     status: clipStatusEnum("status").notNull().default("pending"),
     saved: boolean("saved").notNull().default(false),
+    share_token: varchar("share_token", { length: 64 }).unique(),
     error_message: text("error_message"),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
@@ -189,6 +190,7 @@ export const clips = pgTable(
         table.generated_by_user_id
       ),
       folderIdx: index("clips_folder_id_idx").on(table.folder_id),
+      shareTokenIdx: index("clips_share_token_idx").on(table.share_token),
     };
   }
 ).enableRLS();

@@ -16,6 +16,7 @@ import {
   TextOverlayPanel,
   GeneratedClipCard,
 } from "@/components/create-clip";
+import { PromptType } from "@/constants/promptTypes";
 
 interface UploadedVideo {
   s3Key: string;
@@ -31,7 +32,7 @@ export default function CreateClipPage() {
   const [uploadedVideo, setUploadedVideo] = useState<UploadedVideo | null>(null);
   const [length, setLength] = useState(40);
   const [hookLength, setHookLength] = useState(6);
-  const [promptType, setPromptType] = useState<"business" | "viral">("business");
+  const [promptType, setPromptType] = useState<PromptType>("business");
   const [customPrompt, setCustomPrompt] = useState("");
   const [numberOfVideos, setNumberOfVideos] = useState(1);
   const [customText, setCustomText] = useState("");

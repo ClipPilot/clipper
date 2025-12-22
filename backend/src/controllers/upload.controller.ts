@@ -5,6 +5,7 @@ import { sqsService } from "../services/sqs.service";
 import { teamService } from "../services/team.service";
 import { clipManagerService } from "../services/clipManager.service";
 import { PLAN_LIMITS } from "../config/stripe.config";
+import { PROMPT_TYPES, isValidPromptType } from "../constants/promptTypes";
 
 const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB chunks
 
@@ -212,8 +213,8 @@ export const submitClipJob = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: "Hook length must be between 2 and 15 seconds" });
     }
 
-    if (promptType && !["business", "viral"].includes(promptType)) {
-      return res.status(400).json({ error: 'Prompt type must be either "business" or "viral"' });
+    if (promptType && !isValidPromptType(promptType)) {
+      return res.status(400).json({ error: `Prompt type must be one of: ${PROMPT_TYPES.join(", ")}` });
     }
 
     if (textPosition && !["top", "middle", "bottom"].includes(textPosition)) {

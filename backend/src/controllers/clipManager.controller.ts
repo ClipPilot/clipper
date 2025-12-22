@@ -568,6 +568,89 @@ export class ClipManagerController {
       });
     }
   }
+
+  async generateShareLink(req: Request, res: Response) {
+    try {
+      const clipId = parseInt(req.params.clipId);
+      const teamId = parseInt(req.params.teamId);
+
+      if (isNaN(clipId) || isNaN(teamId)) {
+        return res.status(400).json({ error: "Invalid clip ID or team ID" });
+      }
+
+      const clip = await clipManagerService.getClipById(clipId, teamId);
+
+      if (!clip.saved) {
+        return res.status(400).json({ error: "Can only share saved clips" });
+      }
+
+      const updatedClip = await clipManagerService.generateShareToken(clipId, teamId);
+
+      return res.status(200).json({
+        message: "Share link generated successfully",
+        shareToken: updatedClip.share_token,
+      });
+    } catch (error) {
+      console.error("Generate share link error:", error);
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to generate share link",
+      });
+    }
+  }
+
+  async removeShareLink(req: Request, res: Response) {
+    try {
+      const clipId = parseInt(req.params.clipId);
+      const teamId = parseInt(req.params.teamId);
+
+      if (isNaN(clipId) || isNaN(teamId)) {
+        return res.status(400).json({ error: "Invalid clip ID or team ID" });
+      }
+
+      await clipManagerService.removeShareToken(clipId, teamId);
+
+      return res.status(200).json({
+        message: "Share link removed successfully",
+      });
+    } catch (error) {
+      console.error("Remove share link error:", error);
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to remove share link",
+      });
+    }
+  }
+
+  async getSharedClip(req: Request, res: Response) {
+    try {
+      const { shareToken } = req.params;
+
+      if (!shareToken) {
+        return res.status(400).json({ error: "Share token is required" });
+      }
+
+      const clip = await clipManagerService.getClipByShareToken(shareToken);
+
+      let clipUrl: string | null = null;
+      if (clip.clip_path) {
+        clipUrl = await s3Service.getPresignedUrl(clip.clip_path);
+      }
+
+      return res.status(200).json({
+        clip: {
+          id: clip.id,
+          title: clip.title,
+          message: clip.message,
+          clipUrl,
+          created_at: clip.created_at,
+        },
+      });
+    } catch (error) {
+      console.error("Get shared clip error:", error);
+      return res.status(404).json({
+        error: "Shared clip not found",
+      });
+    }
+  }
 }
 
 export const clipManagerController = new ClipManagerController();

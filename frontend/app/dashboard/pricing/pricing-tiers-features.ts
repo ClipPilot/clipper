@@ -95,13 +95,13 @@ const features: PricingFeatures = [
         helpText: "Organize your clips into folders for easy management.",
       },
       {
-        title: "Custom link sharing",
+        title: "Clip sharing",
         tiers: {
-          [TiersEnum.Free]: false,
-          [TiersEnum.Studio]: false,
+          [TiersEnum.Free]: true,
+          [TiersEnum.Studio]: true,
           [TiersEnum.Scale]: true,
         },
-        helpText: "Create custom shareable links for your clips.",
+        helpText: "Share your clips with anyone using shareable links.",
       },
     ],
   },
