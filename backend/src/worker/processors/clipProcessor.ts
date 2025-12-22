@@ -11,7 +11,6 @@ import { clipManagerService } from "../../services/clipManager.service";
 import { s3Service } from "../../services/s3.service";
 import { extractThumbnail } from "../../utils/extractThumbnail";
 import { notifyClipsRefresh } from "../notify";
-import { compressVideoForUpload } from "../../services/videoEditor.service";
 import { emailNotiService } from "../../services/emailNoti.service";
 import { userService } from "../../services/user.service";
 
@@ -22,8 +21,6 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
 
   const localVideoPath = path.join(outDir, `raw_${Date.now()}.mp4`);
-  let compressedPath: string | undefined;
-  let videoPathToProcess: string;
 
   try {
     console.log(`Starting clip processing for clips: ${clipIds.join(", ")}`);
@@ -32,12 +29,7 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
     await s3Service.downloadFile(s3Key, localVideoPath);
     console.log("Video downloaded successfully");
 
-    const compressedOutputPath = path.join(outDir, `compressed_${Date.now()}.mp4`);
-    const compression = await compressVideoForUpload(localVideoPath, compressedOutputPath);
-    videoPathToProcess = compression.path;
-    compressedPath = compression.compressed ? compressedOutputPath : undefined;
-
-    const transcriptionData = await transcribeVideoService(videoPathToProcess);
+    const transcriptionData = await transcribeVideoService(localVideoPath);
     if (!transcriptionData) throw new Error("Transcription failed");
     console.log("Transcription completed successfully");
 
@@ -60,7 +52,7 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
     }
 
     const clipResults = await createMultipleCombinedClipsService(
-      videoPathToProcess,
+      localVideoPath,
       clipSuggestionsArray,
       transcriptionData.results.channels[0].alternatives[0].words,
       {
@@ -76,7 +68,7 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
     console.log("Created clip results:", clipResults.length);
 
     console.log("Extracting thumbnail from source video...");
-    const thumbnailPath = await extractThumbnail(videoPathToProcess);
+    const thumbnailPath = await extractThumbnail(localVideoPath);
     const thumbnailS3Key = await s3Service.uploadThumbnail(thumbnailPath, teamId);
     console.log("Thumbnail uploaded to S3:", thumbnailS3Key);
 
@@ -174,9 +166,6 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
   } finally {
     if (fs.existsSync(localVideoPath)) {
       fs.unlinkSync(localVideoPath);
-    }
-    if (compressedPath && fs.existsSync(compressedPath)) {
-      fs.unlinkSync(compressedPath);
     }
   }
 }
