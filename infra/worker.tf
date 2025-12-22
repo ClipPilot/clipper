@@ -255,7 +255,7 @@ resource "aws_cloudwatch_metric_alarm" "worker_queue_high" {
   evaluation_periods  = 1
   metric_name         = "ApproximateNumberOfMessagesVisible"
   namespace           = "AWS/SQS"
-  period              = 15
+  period              = 10
   statistic           = "Average"
   threshold           = 1
   alarm_description   = "Trigger step scaling when messages are waiting (workers busy)"
