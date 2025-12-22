@@ -181,7 +181,7 @@ export const createMultipleCombinedClipsService = async (
   transcriptionWords: TranscriptionWord[],
   options: ClipServiceOptions = {}
 ): Promise<ClipResult[]> => {
-  const CONCURRENCY = 4;
+  const CONCURRENCY = 2;
   console.log(`Creating ${clipDataArray.length} clips with concurrency of ${CONCURRENCY}...`);
 
   return processWithConcurrency(clipDataArray, CONCURRENCY, async (clipData, i) => {
