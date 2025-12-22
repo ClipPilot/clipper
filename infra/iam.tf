@@ -189,3 +189,26 @@ resource "aws_iam_role_policy" "ecs_worker_sqs" {
   })
 }
 
+# Worker ECS task protection policy (prevent scale-in during job processing)
+resource "aws_iam_role_policy" "ecs_worker_task_protection" {
+  name = "${var.project_name}-ecs-worker-task-protection-${var.environment}"
+  role = aws_iam_role.ecs_worker_task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "ecs:UpdateTaskProtection",
+        "ecs:GetTaskProtection"
+      ]
+      Resource = "*"
+      Condition = {
+        ArnEquals = {
+          "ecs:cluster" = aws_ecs_cluster.main.arn
+        }
+      }
+    }]
+  })
+}
+

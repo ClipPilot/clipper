@@ -4,6 +4,10 @@ import {
   DeleteMessageCommand,
   ChangeMessageVisibilityCommand,
 } from "@aws-sdk/client-sqs";
+import {
+  ECSClient,
+  UpdateTaskProtectionCommand,
+} from "@aws-sdk/client-ecs";
 import { config } from "../config/env";
 import { processClipVideoJob } from "./processors/clipProcessor";
 import { processCaptionsJob } from "./processors/captionsProcessor";
@@ -19,14 +23,63 @@ const sqsClient = new SQSClient({
   region: config.aws.region,
 });
 
+const ecsClient = new ECSClient({
+  region: config.aws.region,
+});
+
 const QUEUE_URL = config.aws.sqsQueueUrl;
 const VISIBILITY_TIMEOUT = 900; // 15 minutes
 const HEARTBEAT_INTERVAL = 300000; // 5 minutes - extend visibility before it expires
+const TASK_PROTECTION_MINUTES = 120; // Protect task for up to 2 hours
 
 let isShuttingDown = false;
 
+// Get ECS task metadata (available in Fargate)
+async function getTaskInfo(): Promise<{ cluster: string; taskArn: string } | null> {
+  const metadataUri = process.env.ECS_CONTAINER_METADATA_URI_V4;
+  if (!metadataUri) {
+    console.log("Not running in ECS, skipping task protection");
+    return null;
+  }
+
+  try {
+    const response = await fetch(`${metadataUri}/task`);
+    const data = await response.json();
+    return {
+      cluster: data.Cluster,
+      taskArn: data.TaskARN,
+    };
+  } catch (error) {
+    console.error("Failed to get ECS task metadata:", error);
+    return null;
+  }
+}
+
+// Enable/disable task protection to prevent scale-in during job processing
+async function setTaskProtection(enabled: boolean): Promise<void> {
+  const taskInfo = await getTaskInfo();
+  if (!taskInfo) return;
+
+  try {
+    await ecsClient.send(
+      new UpdateTaskProtectionCommand({
+        cluster: taskInfo.cluster,
+        tasks: [taskInfo.taskArn],
+        protectionEnabled: enabled,
+        expiresInMinutes: enabled ? TASK_PROTECTION_MINUTES : undefined,
+      })
+    );
+    console.log(`Task protection ${enabled ? "enabled" : "disabled"}`);
+  } catch (error) {
+    console.error(`Failed to ${enabled ? "enable" : "disable"} task protection:`, error);
+  }
+}
+
 async function processMessage(job: VideoProcessingJob, receiptHandle: string): Promise<void> {
   console.log(`Processing job type: ${job.type}, teamId: ${job.teamId}`);
+
+  // Enable task protection to prevent scale-in during processing
+  await setTaskProtection(true);
 
   // Set up heartbeat to extend visibility timeout for long-running jobs
   const heartbeat = setInterval(async () => {
@@ -60,6 +113,8 @@ async function processMessage(job: VideoProcessingJob, receiptHandle: string): P
     }
   } finally {
     clearInterval(heartbeat);
+    // Disable task protection after job completes (or fails)
+    await setTaskProtection(false);
   }
 }
 

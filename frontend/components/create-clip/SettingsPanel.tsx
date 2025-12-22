@@ -89,7 +89,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
         size="sm"
         step={1}
         minValue={1}
-        maxValue={maxClips !== undefined ? Math.min(maxClips, 15) : 15}
+        maxValue={maxClips !== undefined ? Math.min(maxClips, 10) : 10}
         value={numberOfVideos}
         onChange={(value) => setNumberOfVideos(value as number)}
         getValue={(value) => `${value} clip${value !== 1 ? "s" : ""}`}
