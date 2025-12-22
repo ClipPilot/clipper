@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { userAtom, selectedTeamAtom } from "@/store/auth";
 import {
@@ -44,11 +44,20 @@ import {
 
 export default function MyClipsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [user, setUser] = useAtom(userAtom);
   const selectedTeam = useAtomValue(selectedTeamAtom);
   const { triggerRefresh } = useUsageStatsRefresh();
 
   const [activeTab, setActiveTab] = useAtom(activeTabAtom);
+
+  // Handle tab query param
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam === "processing" || tabParam === "library") {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams, setActiveTab]);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useAtom(isSidebarCollapsedAtom);
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useAtom(isCreateFolderOpenAtom);
   const [createFolderParentId, setCreateFolderParentId] = useAtom(createFolderParentIdAtom);

@@ -134,7 +134,7 @@ export default function CreateClipPage() {
         color: "success",
       });
 
-      router.push("/dashboard/clips");
+      router.push("/dashboard/clips?tab=processing");
     } catch (err: any) {
       console.error("Submit error:", err);
       setError(err.message || "Failed to create clip");

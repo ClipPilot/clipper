@@ -94,8 +94,10 @@ export const cutClip = (input: string, output: string, start: number, end: numbe
       .setStartTime(start)
       .setDuration(end - start)
       .outputOptions([
-        "-c copy", // Stream copy - no re-encoding, very fast
-        "-avoid_negative_ts make_zero",
+        "-c:v libx264",
+        "-preset ultrafast",
+        "-crf 28", // Higher CRF for faster encoding (intermediate file)
+        "-c:a copy", // Stream copy audio (no keyframe issues)
       ])
       .save(output)
       .on("end", () => resolve(output))
