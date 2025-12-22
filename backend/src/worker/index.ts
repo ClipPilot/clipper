@@ -44,7 +44,7 @@ async function getTaskInfo(): Promise<{ cluster: string; taskArn: string } | nul
 
   try {
     const response = await fetch(`${metadataUri}/task`);
-    const data = await response.json();
+    const data = await response.json() as { Cluster: string; TaskARN: string };
     return {
       cluster: data.Cluster,
       taskArn: data.TaskARN,
