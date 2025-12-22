@@ -138,7 +138,9 @@ export const createCombinedClipService = async (
   }
 
   const watermarkedPath = path.join(outDir, `watermarked_${videoIndex}.mp4`);
-  await addPreviewWatermark(finalPath, watermarkedPath);
+  // WATERMARK DISABLED - just copy the file
+  // await addPreviewWatermark(finalPath, watermarkedPath);
+  fs.copyFileSync(finalPath, watermarkedPath);
 
   tempFiles.push(mergedPath);
   tempFiles.forEach((file) => {

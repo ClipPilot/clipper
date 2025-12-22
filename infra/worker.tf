@@ -223,20 +223,27 @@ resource "aws_appautoscaling_policy" "worker_step_scaling" {
 
   step_scaling_policy_configuration {
     adjustment_type         = "ChangeInCapacity"
-    cooldown                = 60
+    cooldown                = 30
     metric_aggregation_type = "Average"
 
-    # When queue has messages, add 1 worker
+    # 1 visible message → add 1 worker
     step_adjustment {
       metric_interval_lower_bound = 0
-      metric_interval_upper_bound = 10
+      metric_interval_upper_bound = 2
       scaling_adjustment          = 1
     }
 
-    # When queue has 10+ messages, add 2 workers
+    # 2-3 visible messages → add 2 workers
     step_adjustment {
-      metric_interval_lower_bound = 10
+      metric_interval_lower_bound = 2
+      metric_interval_upper_bound = 4
       scaling_adjustment          = 2
+    }
+
+    # 4+ visible messages → add 3 workers
+    step_adjustment {
+      metric_interval_lower_bound = 4
+      scaling_adjustment          = 3
     }
   }
 }
@@ -244,14 +251,14 @@ resource "aws_appautoscaling_policy" "worker_step_scaling" {
 # CloudWatch alarm to trigger step scaling
 resource "aws_cloudwatch_metric_alarm" "worker_queue_high" {
   alarm_name          = "${var.project_name}-worker-queue-high-${var.environment}"
-  comparison_operator = "GreaterThanThreshold"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   metric_name         = "ApproximateNumberOfMessagesVisible"
   namespace           = "AWS/SQS"
-  period              = 60
-  statistic           = "Sum"
+  period              = 15
+  statistic           = "Average"
   threshold           = 1
-  alarm_description   = "Trigger step scaling when queue has messages"
+  alarm_description   = "Trigger step scaling when messages are waiting (workers busy)"
   treat_missing_data  = "notBreaching"
 
   dimensions = {
