@@ -678,6 +678,22 @@ class ClipsAPI {
     const data = await response.json();
     return data.clip;
   }
+
+  async getSharedClipDownloadUrl(shareToken: string): Promise<string> {
+    const response = await fetch(
+      `${API_URL}/clip-video/shared/${shareToken}/download`,
+      {
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to get download URL");
+    }
+
+    const data = await response.json();
+    return data.downloadUrl;
+  }
 }
 
 export const clipsAPI = new ClipsAPI();

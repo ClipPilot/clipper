@@ -1183,4 +1183,34 @@ router.delete("/teams/:teamId/clips/:clipId/share", requireAuth, requireSeatAcce
  */
 router.get("/shared/:shareToken", clipManagerController.getSharedClip.bind(clipManagerController));
 
+/**
+ * @swagger
+ * /clip-video/shared/{shareToken}/download:
+ *   get:
+ *     summary: Get download URL for a shared clip
+ *     description: Generates a presigned download URL for a shared clip. No authentication required.
+ *     tags:
+ *       - Clips
+ *     parameters:
+ *       - in: path
+ *         name: shareToken
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The share token for the clip
+ *     responses:
+ *       200:
+ *         description: Download URL generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 downloadUrl:
+ *                   type: string
+ *       404:
+ *         description: Shared clip not found
+ */
+router.get("/shared/:shareToken/download", clipManagerController.downloadSharedClip.bind(clipManagerController));
+
 export default router;

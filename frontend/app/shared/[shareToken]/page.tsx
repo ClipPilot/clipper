@@ -41,19 +41,11 @@ export default function SharedClipPage() {
   }, [shareToken]);
 
   const handleDownload = async () => {
-    if (!clip?.clipUrl) return;
+    if (!shareToken) return;
 
     try {
-      const response = await fetch(clip.clipUrl);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `clip_${clip.id}.mp4`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      const downloadUrl = await clipsAPI.getSharedClipDownloadUrl(shareToken);
+      window.location.href = downloadUrl;
     } catch (error) {
       console.error("Download failed:", error);
     }

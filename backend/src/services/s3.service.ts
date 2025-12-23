@@ -177,6 +177,16 @@ class S3Service {
     return await getSignedUrl(s3Client, command, { expiresIn });
   }
 
+  async getPresignedDownloadUrl(key: string, filename: string, expiresIn: number = 3600): Promise<string> {
+    const command = new GetObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: key,
+      ResponseContentDisposition: `attachment; filename="${filename}"`,
+    });
+
+    return await getSignedUrl(s3Client, command, { expiresIn });
+  }
+
   async getPresignedUploadUrl(
     teamId: number,
     fileName: string,

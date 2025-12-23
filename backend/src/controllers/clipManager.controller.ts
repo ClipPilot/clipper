@@ -702,6 +702,32 @@ export class ClipManagerController {
       });
     }
   }
+
+  async downloadSharedClip(req: Request, res: Response) {
+    try {
+      const { shareToken } = req.params;
+
+      if (!shareToken) {
+        return res.status(400).json({ error: "Share token is required" });
+      }
+
+      const clip = await clipManagerService.getClipByShareToken(shareToken);
+
+      if (!clip.clip_path) {
+        return res.status(404).json({ error: "Clip file not found" });
+      }
+
+      const filename = `${clip.title || `clip_${clip.id}`}.mp4`.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const downloadUrl = await s3Service.getPresignedDownloadUrl(clip.clip_path, filename);
+
+      return res.status(200).json({ downloadUrl });
+    } catch (error) {
+      console.error("Download shared clip error:", error);
+      return res.status(404).json({
+        error: "Shared clip not found",
+      });
+    }
+  }
 }
 
 export const clipManagerController = new ClipManagerController();
