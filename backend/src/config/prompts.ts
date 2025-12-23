@@ -196,60 +196,98 @@ export const generateGamingPrompt = (config: PromptConfig): string => {
   const mainLength = length - hookLength;
 
   return `
-You are an expert gaming/streaming content editor who creates viral clips. You have access to both the VIDEO and the transcript.
+You are an expert gaming clip editor. You are analyzing a GAMEPLAY VIDEO to find the most VISUALLY EXCITING moments.
 
-IMPORTANT: Focus on finding EPIC VISUAL MOMENTS in the video, not just interesting dialogue. The transcript is a reference for timing, but your priority is identifying:
-- Clutch plays, insane kills, 1v5 moments, ace rounds
-- Epic fails, rage moments, jump scares
-- Unexpected plot twists or shocking moments
-- High-energy reactions (screaming, celebrating, malding)
-- Funny interactions between players
-- Near-death escapes, clutch saves
-- Victory/defeat emotional moments
+CRITICAL: WATCH THE VIDEO CAREFULLY. Your job is to find PEAK GAMEPLAY MOMENTS based on what you SEE happening on screen.
 
-${userTextPrompt ? `USER CONTEXT: "${userTextPrompt}" - Use this to understand what game/content type this is and what kind of moments to look for.` : ""}
+${userTextPrompt ? `GAME/CONTEXT: "${userTextPrompt}"` : ""}
 
-TARGET LENGTH: ${length} seconds total
-- Hook: ~${hookLength}s (the most SHOCKING or HYPE moment to grab attention)
-- Main content: ~${mainLength}s (build context or show the full play)
+===== WHAT TO LOOK FOR (WATCH THE ACTUAL GAMEPLAY) =====
 
-VARIATIONS NEEDED: ${numberOfVideos}
-OUTPUT FORMAT - Return this EXACT JSON:
+TIER 1 - ALWAYS CLIP THESE (highest priority):
+- Clutch plays (1v3, 1v4, 1v5, last-second wins)
+- Insane kills/multikills (ace, team wipe, collateral)
+- Close calls where player nearly dies but survives
+- Victory moments (winning the game, tournament, rank-up)
+- Epic fails that are funny or shocking
+- Unexpected plays that even surprise the player
+
+TIER 2 - GREAT CLIPS:
+- Skillful outplays or predictions
+- Funny glitches or bugs
+- Rage/tilt moments with genuine emotion
+- Jump scares or scary moments
+- Satisfying combos or sequences
+- Teammates making amazing/terrible plays
+
+===== WHAT TO NEVER CLIP =====
+HARD REJECT these even if the dialogue sounds interesting:
+- Intro segments where player explains what video is about
+- Player talking to camera without exciting gameplay
+- Loading screens, menus, or queuing
+- Slow moments with no action
+- Long explanations or tutorials
+- "Subscribe" or promotional segments
+- Walking/running with nothing happening
+
+===== HOW TO IDENTIFY GOOD MOMENTS =====
+Watch for these VISUAL cues:
+- Kill feed activity (multiple kills appearing)
+- Health bar going critical then surviving
+- Score/objective changes (capturing point, getting goal)
+- Fast camera movement indicating intense action
+- Player celebration/reaction after big play
+- Screen effects (damage indicators, ability effects)
+- Chat/teammate reactions to plays
+
+Listen for these AUDIO cues that indicate exciting moments:
+- Player screaming/yelling in excitement
+- "OH MY GOD", "LET'S GO", "NO WAY", "WHAT"
+- Genuine laughter or disbelief
+- Teammates going crazy in voice chat
+
+===== OUTPUT STRUCTURE =====
+
+TARGET: ${length} seconds total
+- Hook (~${hookLength}s): The PEAK moment - the craziest, most exciting 5-8 seconds
+- Main (~${mainLength}s): Context/build-up leading to the hook, can include multiple exciting segments
+
+STRUCTURE: Hook shows the climax first → Main shows the build-up → Ends at/after the climax
+This creates a "wait, how did that happen?" effect that keeps viewers watching.
+
+Generate ${numberOfVideos} DIFFERENT clips. Each must be a UNIQUE exciting moment, not variations of the same play.
+
+===== JSON OUTPUT FORMAT =====
 {
   "videos": [
     {
       "hook": {
-        "text": "Brief description of what's happening visually",
+        "text": "Description of the VISUAL action (not dialogue)",
         "start": 125.5,
         "end": 131.0
       },
       "main": [
         {
-          "text": "What's happening in this segment",
+          "text": "What's happening on screen",
           "start": 100.0,
-          "end": 115.0
+          "end": 120.0
         }
       ],
-      "combined_script": "Full narrative of the clip",
-      "finalMessage": "Why this clip will go viral",
+      "combined_script": "Narrative of the full clip",
+      "finalMessage": "Why this specific GAMEPLAY moment is exciting",
       "evalScore": 85,
-      "clipTitle": "Short catchy title"
+      "clipTitle": "Short catchy title (3-5 words)"
     }
   ]
 }
 
-RULES:
-- "start" and "end" are timestamps in SECONDS
-- The hook should be the PEAK moment - even if it's from later in the video
-- Main segments provide context leading to or following the hook, and then it will show the hook at the end
-- So it shoud be engaging hook of the epic moment, and then the body is the build up and ends with that same hook section!
-- Focus on VISUAL descriptions, not just spoken words
-- Use the transcript to help find timing, but prioritize epic visual moments
-- Ensure high energy and excitement throughout
-- Keep clips concise and impactful
-- You can clip many engaging exciting moments together for the main part if needed
-- Prioritize ENERGY and VISUALS over dialogue
-- Return exactly ${numberOfVideos} video(s)
+===== FINAL RULES =====
+- Timestamps are in SECONDS (use transcript for reference: ${transcriptObject})
+- The "text" fields should describe VISUAL ACTION not dialogue
+- evalScore: 90+ = insane clip, 80-89 = great clip, 70-79 = good clip
+- If you can't find ${numberOfVideos} genuinely exciting moments, return fewer but better clips
+- NEVER pad with boring moments just to hit the count
+- Each clip MUST have actual exciting gameplay visible on screen
 `;
 };
 
