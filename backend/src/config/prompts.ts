@@ -241,7 +241,12 @@ OUTPUT FORMAT - Return this EXACT JSON:
 RULES:
 - "start" and "end" are timestamps in SECONDS
 - The hook should be the PEAK moment - even if it's from later in the video
-- Main segments provide context leading to or following the hook
+- Main segments provide context leading to or following the hook, and then it will show the hook at the end
+- So it shoud be engaging hook of the epic moment, and then the body is the build up and ends with that same hook section!
+- Focus on VISUAL descriptions, not just spoken words
+- Use the transcript to help find timing, but prioritize epic visual moments
+- Ensure high energy and excitement throughout
+- Keep clips concise and impactful
 - You can clip many engaging exciting moments together for the main part if needed
 - Prioritize ENERGY and VISUALS over dialogue
 - Return exactly ${numberOfVideos} video(s)
