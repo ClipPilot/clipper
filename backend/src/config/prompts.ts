@@ -248,46 +248,68 @@ Listen for these AUDIO cues that indicate exciting moments:
 
 ===== OUTPUT STRUCTURE =====
 
-TARGET: ${length} seconds total
-- Hook (~${hookLength}s): The PEAK moment - the craziest, most exciting 5-8 seconds
-- Main (~${mainLength}s): Context/build-up leading to the hook, can include multiple exciting segments
+TARGET: ${length} seconds total (MUST hit this length!)
+- Hook (~${hookLength}s): The PEAK/CLIMAX moment
+- Main (~${mainLength}s): Multiple segments that build up to AND include the climax
 
-STRUCTURE: Hook shows the climax first → Main shows the build-up → Ends at/after the climax
-This creates a "wait, how did that happen?" effect that keeps viewers watching.
+CRITICAL STRUCTURE:
+1. Video STARTS with hook (climax teaser to grab attention)
+2. Main segments play (build-up, context, can be from different parts of video)
+3. Main ENDS with the climax moment (same timestamps as hook for satisfying payoff)
 
-Generate ${numberOfVideos} DIFFERENT clips. Each must be a UNIQUE exciting moment, not variations of the same play.
+EXAMPLE: If climax is at 1904-1909s:
+- hook: { start: 1904, end: 1909 }  ← climax shown first
+- main: [
+    { start: 1850, end: 1865 },    ← earlier context/setup
+    { start: 1890, end: 1904 },    ← build-up right before climax
+    { start: 1904, end: 1910 }     ← climax AGAIN as the payoff ending
+  ]
 
-===== JSON OUTPUT FORMAT =====
+This way viewers see: CLIMAX → "wait what?" → build-up → CLIMAX AGAIN → satisfied!
+
+MAIN CAN BE A MONTAGE: You can pull clips from DIFFERENT parts of the video to tell a story or show multiple related moments leading to the climax. Be creative!
+
+Generate ${numberOfVideos} DIFFERENT clips. Each must be a UNIQUE exciting moment.
+
+===== JSON OUTPUT FORMAT (can have multiple segments in main) =====
 {
   "videos": [
     {
       "hook": {
-        "text": "Description of the VISUAL action (not dialogue)",
-        "start": 125.5,
-        "end": 131.0
+        "text": "Evo Cannon snipes the Archers to secure the win",
+        "start": 1904,
+        "end": 1909.5
       },
       "main": [
         {
-          "text": "What's happening on screen",
-          "start": 100.0,
-          "end": 120.0
+          "text": "Earlier in match - setting up the push with Drill placement",
+          "start": 1850,
+          "end": 1865
+        },
+        {
+          "text": "Final seconds - frantically spamming troops to break defense",
+          "start": 1890,
+          "end": 1904
+        },
+        {
+          "text": "The Evo Cannon snipe connects and tower falls",
+          "start": 1904,
+          "end": 1910
         }
       ],
-      "combined_script": "Narrative of the full clip",
-      "finalMessage": "Why this specific GAMEPLAY moment is exciting",
-      "evalScore": 85,
-      "clipTitle": "Short catchy title (3-5 words)"
-    }
   ]
 }
+
+LENGTH CHECK: Hook (5.5s) + Main (15s + 14s + 6s = 35s) = 40.5s total ✓
 
 ===== FINAL RULES =====
 - Timestamps are in SECONDS (use transcript for reference: ${transcriptObject})
 - The "text" fields should describe VISUAL ACTION not dialogue
+- MAIN MUST have 2-3 segments minimum, and the LAST segment should include/overlap with hook timestamps
+- Main segments can be from DIFFERENT parts of the video (montage style) to tell a better story
 - evalScore: 90+ = insane clip, 80-89 = great clip, 70-79 = good clip
+- Each video MUST be approximately ${length} seconds total - ADD MORE SEGMENTS if too short!
 - If you can't find ${numberOfVideos} genuinely exciting moments, return fewer but better clips
-- NEVER pad with boring moments just to hit the count
-- Each clip MUST have actual exciting gameplay visible on screen
 `;
 };
 
