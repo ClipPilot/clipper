@@ -112,32 +112,42 @@ export const createCombinedClipService = async (
 
   const finalPath = path.join(outDir, `combined_${videoIndex}.mp4`);
 
-  if (options.captions) {
-    await addCaptionsOverlay(
-      mergedPath,
-      finalPath,
-      clipData,
-      transcriptionWords,
-      options.captionColor,
-      options.captionFont
-    );
-  } else if (options.customText) {
+  let currentVideoPath = mergedPath;
+
+  // Step 1: Apply heading (customText) if provided
+  if (options.customText) {
+    const headingPath = path.join(outDir, `heading_${videoIndex}_temp.mp4`);
     const position = options.textPosition || "top";
     const mappedPosition = position === "middle" ? "center" : position;
     const fillColor = options.textColor || "#FFFFFF";
     const strokeColor = "#000000";
     const fontName = options.textFont || "Montserrat";
     await addTextOverlay(
-      mergedPath,
-      finalPath,
+      currentVideoPath,
+      headingPath,
       options.customText,
       mappedPosition,
       fillColor,
       strokeColor,
       fontName
     );
+    currentVideoPath = headingPath;
+    tempFiles.push(headingPath);
+  }
+
+  // Step 2: Apply captions on top if enabled
+  if (options.captions) {
+    await addCaptionsOverlay(
+      currentVideoPath,
+      finalPath,
+      clipData,
+      transcriptionWords,
+      options.captionColor,
+      options.captionFont
+    );
   } else {
-    fs.copyFileSync(mergedPath, finalPath);
+    // No captions - copy current video to final path
+    fs.copyFileSync(currentVideoPath, finalPath);
   }
 
   const watermarkedPath = path.join(outDir, `watermarked_${videoIndex}.mp4`);
