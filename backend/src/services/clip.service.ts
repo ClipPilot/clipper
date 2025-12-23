@@ -8,6 +8,7 @@ export interface ClipServiceOptions {
   customText?: string;
   textPosition?: "top" | "bottom" | "middle";
   textColor?: string;
+  textFont?: string;
   captions?: boolean;
   captionColor?: string;
   captionFont?: string;
@@ -125,13 +126,15 @@ export const createCombinedClipService = async (
     const mappedPosition = position === "middle" ? "center" : position;
     const fillColor = options.textColor || "#FFFFFF";
     const strokeColor = "#000000";
+    const fontName = options.textFont || "Montserrat";
     await addTextOverlay(
       mergedPath,
       finalPath,
       options.customText,
       mappedPosition,
       fillColor,
-      strokeColor
+      strokeColor,
+      fontName
     );
   } else {
     fs.copyFileSync(mergedPath, finalPath);
@@ -210,6 +213,7 @@ export const regenerateClipWithCaptions = async (
 export interface TextOverlayOptions {
   text: string;
   color: string;
+  font: string;
   x: number;
   y: number;
   fontSize: number;
@@ -231,7 +235,8 @@ export const regenerateClipWithTextOverlay = async (
     overlay.y,
     overlay.fontSize,
     overlay.color,
-    "#000000"
+    "#000000",
+    overlay.font
   );
 
   return outputPath;

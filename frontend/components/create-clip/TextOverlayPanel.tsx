@@ -11,6 +11,8 @@ interface TextOverlayPanelProps {
   setTextPosition: (value: "top" | "middle" | "bottom") => void;
   textColor: string;
   setTextColor: (value: string) => void;
+  textFont: string;
+  setTextFont: (value: string) => void;
   captions: boolean;
   setCaptions: (value: boolean) => void;
   captionColor: string;
@@ -50,6 +52,16 @@ const CAPTION_FONTS = [
   { id: "everlasting", name: "Everlasting" },
   { id: "komika", name: "Komika" },
   { id: "burbank", name: "Burbank" },
+  { id: "bebas-neue", name: "Bebas Neue" },
+  { id: "anton", name: "Anton" },
+];
+
+// Fonts available for heading (Google Fonts only for puppeteer rendering)
+const HEADING_FONTS = [
+  { id: "luckiest-guy", name: "Luckiest Guy" },
+  { id: "montserrat", name: "Montserrat" },
+  { id: "bebas-neue", name: "Bebas Neue" },
+  { id: "anton", name: "Anton" },
 ];
 
 export const TextOverlayPanel: React.FC<TextOverlayPanelProps> = ({
@@ -59,6 +71,8 @@ export const TextOverlayPanel: React.FC<TextOverlayPanelProps> = ({
   setTextPosition,
   textColor,
   setTextColor,
+  textFont,
+  setTextFont,
   captions,
   setCaptions,
   captionColor,
@@ -199,6 +213,37 @@ export const TextOverlayPanel: React.FC<TextOverlayPanelProps> = ({
                     style={{ backgroundColor: c.color }}
                     title={c.name}
                   />
+                ))}
+              </div>
+            </div>
+
+            {/* Text Font */}
+            <div className="mt-4">
+              <label className="text-sm font-medium text-text-primary mb-3 block">
+                Text Font
+              </label>
+              <div className="flex gap-3 overflow-x-auto py-2 px-1">
+                {HEADING_FONTS.map((font) => (
+                  <button
+                    key={font.id}
+                    onClick={() => setTextFont(font.name)}
+                    className={`
+                      h-14 w-14 rounded-xl border transition-all flex items-center justify-center
+                      ${
+                        textFont === font.name
+                          ? "bg-white text-black border-white scale-105"
+                          : "bg-surface-elevated text-white border-border-base hover:scale-105"
+                      }
+                    `}
+                    title={font.name}
+                  >
+                    <span
+                      className="text-lg"
+                      style={{ fontFamily: `var(--font-${font.id})` }}
+                    >
+                      Ag
+                    </span>
+                  </button>
                 ))}
               </div>
             </div>

@@ -24,6 +24,8 @@ const FONT_NAME_MAP: Record<string, string> = {
   "Everlasting": "Everlasting",
   "Komika": "Komika Hand",
   "Burbank": "Burbank Big Regular",
+  "Bebas Neue": "Bebas Neue",
+  "Anton": "Anton",
 };
 
 const resolveFontName = (fontName: string): string => {
@@ -82,15 +84,19 @@ export const addCaptionsOverlay = async (
   const highlightColor = hexToAssBgr(captionColor);
   const defaultColor = "&H00FFFFFF";
 
+  // Caption styling optimized for 9:16 vertical video (1080x1920)
+  // Font size 120 is readable on mobile, outline 6px for visibility
+  // MarginV 280 positions captions in lower third but above safe zone
   let ass = `
 [Script Info]
 ScriptType: v4.00+
 PlayResX: 1080
 PlayResY: 1920
+WrapStyle: 0
 
 [V4+ Styles]
 Format: Name,Fontname,Fontsize,PrimaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding
-Style: Default,${resolvedFont},100,${defaultColor},&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,5,0,2,60,60,180,1
+Style: Default,${resolvedFont},120,${defaultColor},&H00000000,&H80000000,1,0,0,0,100,100,2,0,1,6,2,2,80,80,280,1
 
 [Events]
 Format: Layer,Start,End,Style,Text
@@ -169,15 +175,19 @@ export const addCaptionsFromData = async (
   const highlightColor = hexToAssBgr(captionColor);
   const defaultColor = "&H00FFFFFF";
 
+  // Caption styling optimized for 9:16 vertical video (1080x1920)
+  // Font size 120 is readable on mobile, outline 6px for visibility
+  // MarginV 280 positions captions in lower third but above safe zone
   let ass = `
 [Script Info]
 ScriptType: v4.00+
 PlayResX: 1080
 PlayResY: 1920
+WrapStyle: 0
 
 [V4+ Styles]
 Format: Name,Fontname,Fontsize,PrimaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding
-Style: Default,${resolvedFont},100,${defaultColor},&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,5,0,2,60,60,180,1
+Style: Default,${resolvedFont},120,${defaultColor},&H00000000,&H80000000,1,0,0,0,100,100,2,0,1,6,2,2,80,80,280,1
 
 [Events]
 Format: Layer,Start,End,Style,Text

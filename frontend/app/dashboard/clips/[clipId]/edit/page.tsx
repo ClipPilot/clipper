@@ -7,11 +7,10 @@ import { selectedTeamAtom } from "@/store/auth";
 import {
   Button,
   Input,
-  Tabs,
-  Tab,
   Spinner,
   Slider,
   Textarea,
+  Switch,
   addToast,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
@@ -38,6 +37,16 @@ const CAPTION_FONTS = [
   { id: "everlasting", name: "Everlasting" },
   { id: "komika", name: "Komika" },
   { id: "burbank", name: "Burbank" },
+  { id: "bebas-neue", name: "Bebas Neue" },
+  { id: "anton", name: "Anton" },
+];
+
+// Heading fonts - only Google Fonts that work with Puppeteer rendering
+const HEADING_FONTS = [
+  { id: "luckiest-guy", name: "Luckiest Guy" },
+  { id: "montserrat", name: "Montserrat" },
+  { id: "bebas-neue", name: "Bebas Neue" },
+  { id: "anton", name: "Anton" },
 ];
 
 export default function EditClipPage() {
@@ -50,27 +59,41 @@ export default function EditClipPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [accessDenied, setAccessDenied] = useState(false);
-  const [activeTab, setActiveTab] = useState("captions");
 
   const [captions, setCaptions] = useState<CaptionEntry[]>([]);
   const [currentTime, setCurrentTime] = useState(0);
+  const [captionsEnabled, setCaptionsEnabled] = useState(true);
   const [captionColor, setCaptionColor] = useState("#FFD600");
   const [captionFont, setCaptionFont] = useState("Luckiest Guy");
 
   const [textOverlay, setTextOverlay] = useState("");
   const [textColor, setTextColor] = useState("#FFFFFF");
+  const [textFont, setTextFont] = useState("Montserrat");
   const [textX, setTextX] = useState(50);
   const [textY, setTextY] = useState(10);
   const [fontSize, setFontSize] = useState(48);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [containerHeight, setContainerHeight] = useState(0);
 
   useEffect(() => {
     if (selectedTeam?.id && clipId) {
       loadClip();
     }
   }, [selectedTeam?.id, clipId]);
+
+  // Measure container for accurate caption preview sizing
+  useEffect(() => {
+    const updateSize = () => {
+      if (containerRef.current) {
+        setContainerHeight(containerRef.current.offsetHeight);
+      }
+    };
+    updateSize();
+    window.addEventListener("resize", updateSize);
+    return () => window.removeEventListener("resize", updateSize);
+  }, [clip]);
 
   const loadClip = async () => {
     if (!selectedTeam?.id) return;
@@ -89,13 +112,19 @@ export default function EditClipPage() {
       if (data.captions_data) {
         setCaptions(JSON.parse(JSON.stringify(data.captions_data)));
       }
-      // Load caption color and font from metadata
+      // Load caption settings from metadata
       const metadata = data.clip_metadata as any;
       if (metadata?.parameters?.captionColor) {
         setCaptionColor(metadata.parameters.captionColor);
       }
       if (metadata?.parameters?.captionFont) {
         setCaptionFont(metadata.parameters.captionFont);
+      }
+      // Default to true if captions exist, can be overridden by saved setting
+      if (metadata?.parameters?.captionsEnabled !== undefined) {
+        setCaptionsEnabled(metadata.parameters.captionsEnabled);
+      } else {
+        setCaptionsEnabled(metadata?.parameters?.captions !== false);
       }
     } catch (error) {
       console.error("Failed to load clip:", error);
@@ -128,66 +157,36 @@ export default function EditClipPage() {
     return currentTime >= caption.startTime && currentTime < caption.endTime;
   };
 
-  const handleSaveCaptions = async () => {
+  const handleApplyChanges = async () => {
     if (!selectedTeam?.id || !clip) return;
     setSaving(true);
     try {
-      const result = await clipsAPI.updateCaptions(
-        selectedTeam.id,
-        clip.id,
-        captions,
-        captionColor,
-        captionFont
-      );
-      setClip((prev) =>
-        prev
-          ? {
-              ...prev,
-              clipUrl: result.clipUrl,
-              captions_data: result.captionsData,
-            }
-          : null
-      );
-      addToast({
-        title: "Processing",
-        description: "Your caption changes are being applied. The updated video will be available shortly.",
-        color: "success",
-      });
-    } catch (error) {
-      console.error("Failed to save captions:", error);
-      addToast({
-        title: "Failed to save",
-        description: "Something went wrong. Please try again.",
-        color: "danger",
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleSaveTextOverlay = async () => {
-    if (!selectedTeam?.id || !clip || !textOverlay.trim()) return;
-    setSaving(true);
-    try {
-      const result = await clipsAPI.updateTextOverlay(
+      const result = await clipsAPI.updateClipOverlays(
         selectedTeam.id,
         clip.id,
         {
-          text: textOverlay,
-          color: textColor,
-          x: textX,
-          y: textY,
-          fontSize,
+          captionsEnabled,
+          captionsData: captions,
+          captionColor,
+          captionFont,
+          heading: textOverlay.trim() ? {
+            text: textOverlay,
+            color: textColor,
+            font: textFont,
+            x: textX,
+            y: textY,
+            fontSize,
+          } : undefined,
         }
       );
       setClip((prev) => (prev ? { ...prev, clipUrl: result.clipUrl } : null));
       addToast({
         title: "Processing",
-        description: "Your heading is being applied. The updated video will be available shortly.",
+        description: "Your changes are being applied. The updated video will be available shortly.",
         color: "success",
       });
     } catch (error) {
-      console.error("Failed to save heading:", error);
+      console.error("Failed to apply changes:", error);
       addToast({
         title: "Failed to apply",
         description: "Something went wrong. Please try again.",
@@ -280,25 +279,87 @@ export default function EditClipPage() {
                     className="w-full h-full object-contain"
                     onTimeUpdate={handleTimeUpdate}
                   />
-                  {activeTab === "text" && textOverlay && (
-                    <div
-                      className="absolute pointer-events-none px-3 py-1 rounded whitespace-nowrap"
-                      style={{
-                        left: `${textX}%`,
-                        top: `${textY}%`,
-                        transform: "translate(-50%, -50%)",
-                        color: textColor,
-                        fontSize: `${fontSize * 0.4}px`,
-                        fontWeight: 900,
-                        WebkitTextStroke: `${Math.max(1, fontSize * 0.03)}px #000000`,
-                        paintOrder: "stroke fill",
-                        fontFamily: "Montserrat, sans-serif",
-                        textAlign: "center",
-                        lineHeight: 1.2,
-                      }}
-                    >
-                      {textOverlay}
-                    </div>
+                  {/* Caption Preview Overlay - matches backend ASS styling */}
+                  {captionsEnabled && captions.length > 0 && containerHeight > 0 && (
+                    (() => {
+                      const activeCaption = captions.find(c => isActiveCaption(c));
+                      if (!activeCaption) return null;
+
+                      // Backend: 1080x1920, FontSize=120, MarginV=280, Outline=6
+                      // Scale factor: containerHeight / 1920
+                      const scale = containerHeight / 1920;
+                      const scaledFontSize = Math.round(120 * scale);
+                      const scaledMarginBottom = Math.round(280 * scale);
+                      const scaledOutline = Math.max(1, Math.round(6 * scale));
+                      const fontId = CAPTION_FONTS.find(f => f.name === captionFont)?.id || "montserrat";
+
+                      return (
+                        <div
+                          className="absolute left-0 right-0 pointer-events-none flex justify-center"
+                          style={{
+                            bottom: `${scaledMarginBottom}px`,
+                            padding: `0 ${Math.round(80 * scale)}px`,
+                          }}
+                        >
+                          <p
+                            style={{
+                              fontFamily: `var(--font-${fontId}), sans-serif`,
+                              fontSize: `${scaledFontSize}px`,
+                              fontWeight: 700,
+                              color: "#FFFFFF",
+                              textAlign: "center",
+                              lineHeight: 1.2,
+                              letterSpacing: `${Math.round(2 * scale)}px`,
+                              WebkitTextStroke: `${scaledOutline}px black`,
+                              paintOrder: "stroke fill",
+                              textShadow: `${Math.round(2 * scale)}px ${Math.round(2 * scale)}px ${Math.round(4 * scale)}px rgba(0,0,0,0.5)`,
+                              maxWidth: "100%",
+                              wordWrap: "break-word",
+                            }}
+                          >
+                            {activeCaption.text.split(" ").map((word, idx) => (
+                              <span
+                                key={idx}
+                                style={{
+                                  color: idx === Math.floor(
+                                    ((currentTime - activeCaption.startTime) /
+                                    (activeCaption.endTime - activeCaption.startTime)) *
+                                    activeCaption.text.split(" ").length
+                                  ) ? captionColor : "#FFFFFF",
+                                }}
+                              >
+                                {word}{" "}
+                              </span>
+                            ))}
+                          </p>
+                        </div>
+                      );
+                    })()
+                  )}
+                  {textOverlay && (
+                    (() => {
+                      const fontId = HEADING_FONTS.find(f => f.name === textFont)?.id || "montserrat";
+                      return (
+                        <div
+                          className="absolute pointer-events-none px-3 py-1 rounded whitespace-nowrap"
+                          style={{
+                            left: `${textX}%`,
+                            top: `${textY}%`,
+                            transform: "translate(-50%, -50%)",
+                            color: textColor,
+                            fontSize: `${fontSize * 0.4}px`,
+                            fontWeight: 900,
+                            WebkitTextStroke: `${Math.max(1, fontSize * 0.03)}px #000000`,
+                            paintOrder: "stroke fill",
+                            fontFamily: `var(--font-${fontId}), sans-serif`,
+                            textAlign: "center",
+                            lineHeight: 1.2,
+                          }}
+                        >
+                          {textOverlay}
+                        </div>
+                      );
+                    })()
                   )}
                 </>
               ) : (
@@ -315,297 +376,239 @@ export default function EditClipPage() {
             </p>
           </div>
 
-          <div className="bg-surface-base border border-border-base rounded-xl p-4">
-            <Tabs
-              selectedKey={activeTab}
-              onSelectionChange={(key) => setActiveTab(key as string)}
-              classNames={{
-                tabList: "bg-surface-elevated",
-                cursor: "bg-accent-400",
-                tab: "text-text-secondary",
-                tabContent: "group-data-[selected=true]:text-white",
-              }}
-            >
-              <Tab
-                key="captions"
-                title={
-                  <div className="flex items-center gap-2">
-                    <Icon icon="solar:subtitles-outline" />
-                    <span>Captions</span>
-                  </div>
-                }
-              >
-                <div className="mt-4">
-                  {/* Caption Style Section */}
-                  {captions.length > 0 && (
-                    <div className="mb-6 p-4 rounded-lg bg-surface-elevated border border-border-base">
-                      <p className="text-sm font-medium text-text-primary mb-3">Caption Style</p>
+          <div className="bg-surface-base border border-border-base rounded-xl p-4 overflow-y-auto max-h-[85vh]">
+            <div className="space-y-6">
+              {/* Captions Section */}
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <Icon icon="solar:subtitles-outline" className="text-accent-400" />
+                  <h3 className="text-lg font-semibold text-text-primary">Captions</h3>
+                </div>
 
-                      {/* Color Picker */}
-                      <div className="mb-4">
-                        <label className="text-xs text-text-secondary mb-2 block">
-                          Highlight Color
-                        </label>
+                {captions.length > 0 && (
+                  <div className="mb-4 p-4 rounded-lg bg-surface-elevated border border-border-base">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Icon
+                          icon={captionsEnabled ? "solar:subtitles-bold" : "solar:subtitles-outline"}
+                          className={captionsEnabled ? "text-accent-400" : "text-text-tertiary"}
+                          width={24}
+                        />
+                        <div>
+                          <p className="text-sm font-medium text-text-primary">Show Captions</p>
+                          <p className="text-xs text-text-tertiary">
+                            {captionsEnabled ? "Captions will appear on the video" : "Video will have no captions"}
+                          </p>
+                        </div>
+                      </div>
+                      <Switch
+                        isSelected={captionsEnabled}
+                        onValueChange={setCaptionsEnabled}
+                        color="success"
+                        size="lg"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {captions.length > 0 && captionsEnabled && (
+                  <div className="mb-4 p-4 rounded-lg bg-surface-elevated border border-border-base">
+                    <p className="text-sm font-medium text-text-primary mb-3">Caption Style</p>
+                    <div className="mb-4">
+                      <label className="text-xs text-text-secondary mb-2 block">Highlight Color</label>
+                      <div className="flex flex-wrap gap-2">
+                        {CAPTION_COLORS.map((c) => (
+                          <button
+                            key={c.color}
+                            onClick={() => setCaptionColor(c.color)}
+                            className={`h-8 w-8 rounded border-2 transition-all ${
+                              captionColor === c.color
+                                ? "border-accent-400 ring-2 ring-accent-400 ring-offset-2 ring-offset-surface-elevated scale-110"
+                                : "border-border-base hover:scale-105"
+                            }`}
+                            style={{ backgroundColor: c.color }}
+                            title={c.name}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs text-text-secondary mb-2 block">Caption Font</label>
+                      <div className="flex gap-2 overflow-x-auto py-1">
+                        {CAPTION_FONTS.map((font) => (
+                          <button
+                            key={font.id}
+                            onClick={() => setCaptionFont(font.name)}
+                            className={`h-12 w-12 rounded-lg border transition-all flex items-center justify-center flex-shrink-0 ${
+                              captionFont === font.name
+                                ? "bg-white text-black border-white scale-105"
+                                : "bg-surface-base text-white border-border-base hover:scale-105"
+                            }`}
+                            title={font.name}
+                          >
+                            <span className="text-base font-bold" style={{ fontFamily: `var(--font-${font.id})` }}>Ag</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <p className="text-sm text-text-secondary mb-2">{captions.length} caption segments</p>
+                <div className="h-[25vh] overflow-y-auto space-y-2 pr-2">
+                  {captions.map((caption, index) => (
+                    <div
+                      key={caption.index}
+                      className={`p-3 rounded-lg border transition-all ${
+                        isActiveCaption(caption) ? "bg-accent-400/10 border-accent-400" : "bg-surface-elevated border-border-base"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <button
+                          onClick={() => handleJumpToCaption(caption.startTime)}
+                          className="flex items-center gap-2 text-xs text-text-tertiary hover:text-accent-400"
+                        >
+                          <Icon icon="solar:play-circle-outline" />
+                          {formatTime(caption.startTime)} - {formatTime(caption.endTime)}
+                        </button>
+                        <span className="text-xs text-text-tertiary">#{caption.index}</span>
+                      </div>
+                      <Input
+                        value={caption.text}
+                        onChange={(e) => handleCaptionTextChange(index, e.target.value)}
+                        variant="bordered"
+                        size="sm"
+                        classNames={{ inputWrapper: "bg-surface-base border-border-base" }}
+                      />
+                    </div>
+                  ))}
+                  {captions.length === 0 && (
+                    <div className="text-center py-8">
+                      <Icon icon="solar:subtitles-outline" className="text-4xl text-text-tertiary mb-2 mx-auto" />
+                      <p className="text-text-secondary">No captions available</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="border-t border-border-base" />
+
+              {/* Heading Section */}
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <Icon icon="solar:text-bold" className="text-accent-400" />
+                  <h3 className="text-lg font-semibold text-text-primary">Heading</h3>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm text-text-secondary mb-2 block">Text</label>
+                    <Textarea
+                      value={textOverlay}
+                      onChange={(e) => setTextOverlay(e.target.value)}
+                      placeholder="Enter Heading (optional)..."
+                      variant="bordered"
+                      minRows={2}
+                      maxRows={3}
+                      classNames={{ inputWrapper: "bg-surface-base border-border-base", input: "text-base" }}
+                    />
+                  </div>
+
+                  {textOverlay.trim() && (
+                    <>
+                      <div>
+                        <label className="text-sm text-text-secondary mb-2 block">Color</label>
                         <div className="flex flex-wrap gap-2">
-                          {CAPTION_COLORS.map((c) => (
+                          {[
+                            { color: "#FFFFFF", name: "White" },
+                            { color: "#FFD600", name: "Yellow" },
+                            { color: "#FF0000", name: "Red" },
+                            { color: "#00FF00", name: "Green" },
+                            { color: "#00BFFF", name: "Blue" },
+                            { color: "#FF69B4", name: "Pink" },
+                            { color: "#FFA500", name: "Orange" },
+                            { color: "#9B59B6", name: "Purple" },
+                          ].map((preset) => (
                             <button
-                              key={c.color}
-                              onClick={() => setCaptionColor(c.color)}
-                              className={`h-8 w-8 rounded border-2 transition-all ${
-                                captionColor === c.color
-                                  ? "border-accent-400 ring-2 ring-accent-400 ring-offset-2 ring-offset-surface-elevated scale-110"
-                                  : "border-border-base hover:scale-105"
+                              key={preset.color}
+                              onClick={() => setTextColor(preset.color)}
+                              className={`w-8 h-8 rounded-lg border-2 transition-all ${
+                                textColor === preset.color ? "border-accent-400 scale-110" : "border-border-base hover:border-accent-400/50"
                               }`}
-                              style={{ backgroundColor: c.color }}
-                              title={c.name}
+                              style={{ backgroundColor: preset.color }}
+                              title={preset.name}
                             />
                           ))}
+                          <div className="relative">
+                            <input
+                              type="color"
+                              value={textColor}
+                              onChange={(e) => setTextColor(e.target.value)}
+                              className="absolute inset-0 w-8 h-8 opacity-0 cursor-pointer"
+                            />
+                            <div className="w-8 h-8 rounded-lg border-2 border-border-base flex items-center justify-center bg-surface-elevated" title="Custom color">
+                              <Icon icon="solar:palette-bold" className="text-text-secondary text-sm" />
+                            </div>
+                          </div>
                         </div>
                       </div>
 
-                      {/* Font Picker */}
                       <div>
-                        <label className="text-xs text-text-secondary mb-2 block">
-                          Caption Font
-                        </label>
+                        <label className="text-sm text-text-secondary mb-2 block">Font</label>
                         <div className="flex gap-2 overflow-x-auto py-1">
-                          {CAPTION_FONTS.map((font) => (
+                          {HEADING_FONTS.map((font) => (
                             <button
                               key={font.id}
-                              onClick={() => setCaptionFont(font.name)}
-                              className={`h-12 w-12 rounded-lg border transition-all flex items-center justify-center flex-shrink-0 ${
-                                captionFont === font.name
-                                  ? "bg-white text-black border-white scale-105"
-                                  : "bg-surface-base text-white border-border-base hover:scale-105"
+                              onClick={() => setTextFont(font.name)}
+                              className={`h-10 w-10 rounded-lg border transition-all flex items-center justify-center flex-shrink-0 ${
+                                textFont === font.name ? "bg-white text-black border-white scale-105" : "bg-surface-base text-white border-border-base hover:scale-105"
                               }`}
                               title={font.name}
                             >
-                              <span
-                                className="text-base font-bold"
-                                style={{ fontFamily: `var(--font-${font.id})` }}
-                              >
-                                Ag
-                              </span>
+                              <span className="text-sm font-bold" style={{ fontFamily: `var(--font-${font.id})` }}>Ag</span>
                             </button>
                           ))}
                         </div>
                       </div>
-                    </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-xs text-text-secondary mb-1 block">X Position: {textX}%</label>
+                          <Slider value={textX} onChange={(val) => setTextX(val as number)} minValue={0} maxValue={100} step={1} color="secondary" size="sm" />
+                        </div>
+                        <div>
+                          <label className="text-xs text-text-secondary mb-1 block">Y Position: {textY}%</label>
+                          <Slider value={textY} onChange={(val) => setTextY(val as number)} minValue={0} maxValue={100} step={1} color="secondary" size="sm" />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-xs text-text-secondary mb-1 block">Font Size: {fontSize}px</label>
+                        <Slider value={fontSize} onChange={(val) => setFontSize(val as number)} minValue={16} maxValue={120} step={2} color="secondary" size="sm" />
+                      </div>
+                    </>
                   )}
-
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-sm text-text-secondary">
-                      {captions.length} caption segments
-                    </p>
-                    <Button
-                      color="primary"
-                      size="sm"
-                      onPress={handleSaveCaptions}
-                      isDisabled={saving || captions.length === 0}
-                      startContent={
-                        saving ? (
-                          <Spinner size="sm" />
-                        ) : (
-                          <Icon icon="solar:diskette-bold" />
-                        )
-                      }
-                    >
-                      {saving ? "Saving..." : "Save Captions"}
-                    </Button>
-                  </div>
-
-                  <div className="h-[40vh] overflow-y-auto space-y-2 pr-2">
-                    {captions.map((caption, index) => (
-                      <div
-                        key={caption.index}
-                        className={`p-3 rounded-lg border transition-all ${
-                          isActiveCaption(caption)
-                            ? "bg-accent-400/10 border-accent-400"
-                            : "bg-surface-elevated border-border-base"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <button
-                            onClick={() =>
-                              handleJumpToCaption(caption.startTime)
-                            }
-                            className="flex items-center gap-2 text-xs text-text-tertiary hover:text-accent-400"
-                          >
-                            <Icon icon="solar:play-circle-outline" />
-                            {formatTime(caption.startTime)} -{" "}
-                            {formatTime(caption.endTime)}
-                          </button>
-                          <span className="text-xs text-text-tertiary">
-                            #{caption.index}
-                          </span>
-                        </div>
-                        <Input
-                          value={caption.text}
-                          onChange={(e) =>
-                            handleCaptionTextChange(index, e.target.value)
-                          }
-                          variant="bordered"
-                          size="sm"
-                          classNames={{
-                            inputWrapper: "bg-surface-base border-border-base",
-                          }}
-                        />
-                      </div>
-                    ))}
-
-                    {captions.length === 0 && (
-                      <div className="text-center py-12">
-                        <Icon
-                          icon="solar:subtitles-outline"
-                          className="text-4xl text-text-tertiary mb-2 mx-auto"
-                        />
-                        <p className="text-text-secondary">
-                          No captions available
-                        </p>
-                      </div>
-                    )}
-                  </div>
                 </div>
-              </Tab>
+              </div>
 
-              <Tab
-                key="text"
-                title={
-                  <div className="flex items-center gap-2">
-                    <Icon icon="solar:text-bold" />
-                    <span>Heading</span>
-                  </div>
-                }
-              >
-                <div className="mt-4 space-y-4">
-                  <div>
-                    <label className="text-sm text-text-secondary mb-2 block">
-                      Text
-                    </label>
-                    <Textarea
-                      value={textOverlay}
-                      onChange={(e) => setTextOverlay(e.target.value)}
-                      placeholder="Enter Heading..."
-                      variant="bordered"
-                      minRows={2}
-                      maxRows={4}
-                      classNames={{
-                        inputWrapper: "bg-surface-base border-border-base",
-                        input: "text-base",
-                      }}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-sm text-text-secondary mb-2 block">
-                      Color
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      {[
-                        { color: "#FFFFFF", name: "White" },
-                        { color: "#FFD600", name: "Yellow" },
-                        { color: "#FF0000", name: "Red" },
-                        { color: "#00FF00", name: "Green" },
-                        { color: "#00BFFF", name: "Blue" },
-                        { color: "#FF69B4", name: "Pink" },
-                        { color: "#FFA500", name: "Orange" },
-                        { color: "#9B59B6", name: "Purple" },
-                      ].map((preset) => (
-                        <button
-                          key={preset.color}
-                          onClick={() => setTextColor(preset.color)}
-                          className={`w-10 h-10 rounded-lg border-2 transition-all ${
-                            textColor === preset.color
-                              ? "border-accent-400 scale-110"
-                              : "border-border-base hover:border-accent-400/50"
-                          }`}
-                          style={{ backgroundColor: preset.color }}
-                          title={preset.name}
-                        />
-                      ))}
-                      <div className="relative">
-                        <input
-                          type="color"
-                          value={textColor}
-                          onChange={(e) => setTextColor(e.target.value)}
-                          className="absolute inset-0 w-10 h-10 opacity-0 cursor-pointer"
-                        />
-                        <div
-                          className="w-10 h-10 rounded-lg border-2 border-border-base flex items-center justify-center bg-surface-elevated hover:border-accent-400/50 transition-all"
-                          title="Custom color"
-                        >
-                          <Icon
-                            icon="solar:palette-bold"
-                            className="text-text-secondary"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                    <p className="text-xs text-text-tertiary mt-2">
-                      Selected: {textColor}
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="text-sm text-text-secondary mb-2 block">
-                      Horizontal Position: {textX}%
-                    </label>
-                    <Slider
-                      value={textX}
-                      onChange={(val) => setTextX(val as number)}
-                      minValue={0}
-                      maxValue={100}
-                      step={1}
-                      color="secondary"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-sm text-text-secondary mb-2 block">
-                      Vertical Position: {textY}%
-                    </label>
-                    <Slider
-                      value={textY}
-                      onChange={(val) => setTextY(val as number)}
-                      minValue={0}
-                      maxValue={100}
-                      step={1}
-                      color="secondary"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-sm text-text-secondary mb-2 block">
-                      Font Size: {fontSize}px
-                    </label>
-                    <Slider
-                      value={fontSize}
-                      onChange={(val) => setFontSize(val as number)}
-                      minValue={16}
-                      maxValue={120}
-                      step={2}
-                      color="secondary"
-                    />
-                  </div>
-
-                  <Button
-                    color="primary"
-                    className="w-full"
-                    onPress={handleSaveTextOverlay}
-                    isDisabled={saving || !textOverlay.trim()}
-                    startContent={
-                      saving ? (
-                        <Spinner size="sm" />
-                      ) : (
-                        <Icon icon="solar:diskette-bold" />
-                      )
-                    }
-                  >
-                    {saving ? "Saving..." : "Apply Heading"}
-                  </Button>
-                </div>
-              </Tab>
-            </Tabs>
+              {/* Apply All Changes Button */}
+              <div className="pt-4 border-t border-border-base">
+                <Button
+                  color="primary"
+                  className="w-full"
+                  size="lg"
+                  onPress={handleApplyChanges}
+                  isDisabled={saving}
+                  startContent={saving ? <Spinner size="sm" /> : <Icon icon="solar:diskette-bold" />}
+                >
+                  {saving ? "Applying..." : "Apply All Changes"}
+                </Button>
+                <p className="text-xs text-text-tertiary text-center mt-2">
+                  This will apply both captions and heading settings
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -36,6 +36,7 @@ export interface SubmitClipParams {
   customText?: string;
   textPosition?: "top" | "middle" | "bottom";
   textColor?: string;
+  textFont?: string;
   captions?: boolean;
   captionColor?: string;
   captionFont?: string;

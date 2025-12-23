@@ -7,7 +7,7 @@ import { s3Service } from "../../services/s3.service";
 import { notifyClipsRefresh } from "../notify";
 
 export async function processCaptionsJob(job: UpdateCaptionsJob): Promise<void> {
-  const { clipId, teamId, captionsData, captionColor, captionFont } = job;
+  const { clipId, teamId, captionsData, captionColor, captionFont, captionsEnabled = true } = job;
 
   const outDir = path.join(process.cwd(), "output");
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
@@ -16,7 +16,7 @@ export async function processCaptionsJob(job: UpdateCaptionsJob): Promise<void> 
   let newClipPath: string | null = null;
 
   try {
-    console.log(`Processing captions update for clip ${clipId}, team ${teamId}`);
+    console.log(`Processing captions update for clip ${clipId}, team ${teamId}, captionsEnabled: ${captionsEnabled}`);
 
     // Get the clip from the database
     const clip = await clipManagerService.getClipById(clipId, teamId);
@@ -29,14 +29,21 @@ export async function processCaptionsJob(job: UpdateCaptionsJob): Promise<void> 
     console.log(`Downloading blank video from S3: ${clip.blank_video_path}`);
     await s3Service.downloadFile(clip.blank_video_path, localBlankPath);
 
-    // Get caption color and font from job or existing metadata
-    const metadata = clip.clip_metadata as any;
-    const color = captionColor || metadata?.parameters?.captionColor || "#FFD600";
-    const font = captionFont || metadata?.parameters?.captionFont || "Montserrat";
+    if (captionsEnabled) {
+      // Get caption color and font from job or existing metadata
+      const metadata = clip.clip_metadata as any;
+      const color = captionColor || metadata?.parameters?.captionColor || "#FFD600";
+      const font = captionFont || metadata?.parameters?.captionFont || "Montserrat";
 
-    // Regenerate clip with new captions
-    console.log("Regenerating clip with updated captions...");
-    newClipPath = await regenerateClipWithCaptions(localBlankPath, captionsData, color, font);
+      // Regenerate clip with new captions
+      console.log("Regenerating clip with updated captions...");
+      newClipPath = await regenerateClipWithCaptions(localBlankPath, captionsData, color, font);
+    } else {
+      // No captions - just use the blank video as the output
+      console.log("Captions disabled - using blank video without captions");
+      newClipPath = path.join(outDir, `no_captions_${clipId}_${Date.now()}.mp4`);
+      fs.copyFileSync(localBlankPath, newClipPath);
+    }
 
     // Delete old clip from S3
     if (clip.clip_path) {

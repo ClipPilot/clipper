@@ -279,7 +279,7 @@ export class ClipManagerController {
     try {
       const clipId = parseInt(req.params.clipId);
       const teamId = parseInt(req.params.teamId);
-      const { captionsData, captionColor, captionFont } = req.body;
+      const { captionsData, captionColor, captionFont, captionsEnabled } = req.body;
 
       if (isNaN(clipId) || isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid clip ID or team ID" });
@@ -311,6 +311,7 @@ export class ClipManagerController {
         captionsData,
         captionColor,
         captionFont,
+        captionsEnabled: captionsEnabled !== false, // default to true
       });
 
       console.log(`Captions update job sent to SQS with messageId: ${messageId}`);
@@ -332,7 +333,7 @@ export class ClipManagerController {
     try {
       const clipId = parseInt(req.params.clipId);
       const teamId = parseInt(req.params.teamId);
-      const { text, color, x, y, fontSize } = req.body;
+      const { text, color, font, x, y, fontSize } = req.body;
 
       if (isNaN(clipId) || isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid clip ID or team ID" });
@@ -361,6 +362,7 @@ export class ClipManagerController {
         userId,
         text,
         color,
+        font,
         x,
         y,
         fontSize,
@@ -377,6 +379,55 @@ export class ClipManagerController {
       console.error("Update text overlay error:", error);
       return res.status(500).json({
         error: error instanceof Error ? error.message : "Failed to queue text overlay",
+      });
+    }
+  }
+
+  async updateClipOverlays(req: AuthRequest, res: Response) {
+    try {
+      const clipId = parseInt(req.params.clipId);
+      const teamId = parseInt(req.params.teamId);
+      const { captionsEnabled, captionsData, captionColor, captionFont, heading } = req.body;
+
+      if (isNaN(clipId) || isNaN(teamId)) {
+        return res.status(400).json({ error: "Invalid clip ID or team ID" });
+      }
+
+      const clip = await clipManagerService.getClipById(clipId, teamId);
+
+      if (!clip.saved) {
+        return res.status(403).json({ error: "Cannot edit unsaved clips" });
+      }
+
+      if (!clip.blank_video_path) {
+        return res.status(400).json({ error: "No blank video available for this clip" });
+      }
+
+      await clipManagerService.updateClipStatus(clipId, teamId, "pending");
+
+      const userId = req.user?.dbUserId || 0;
+      const messageId = await sqsService.sendUpdateOverlaysJob({
+        clipId,
+        teamId,
+        userId,
+        captionsEnabled: captionsEnabled ?? true,
+        captionsData,
+        captionColor,
+        captionFont,
+        heading,
+      });
+
+      console.log(`Update overlays job sent to SQS with messageId: ${messageId}`);
+
+      return res.status(200).json({
+        message: "Overlays update queued for processing",
+        jobId: messageId,
+        clipId,
+      });
+    } catch (error) {
+      console.error("Update overlays error:", error);
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to queue overlays update",
       });
     }
   }

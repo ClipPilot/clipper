@@ -38,6 +38,7 @@ export default function CreateClipPage() {
   const [customText, setCustomText] = useState("");
   const [textPosition, setTextPosition] = useState<"top" | "middle" | "bottom">("top");
   const [textColor, setTextColor] = useState("#FFFFFF");
+  const [textFont, setTextFont] = useState("Montserrat");
   const [captions, setCaptions] = useState(false);
   const [captionColor, setCaptionColor] = useState("#FFD600");
   const [captionFont, setCaptionFont] = useState("Luckiest Guy");
@@ -121,6 +122,7 @@ export default function CreateClipPage() {
         customText: customText || undefined,
         textPosition,
         textColor,
+        textFont,
         captions,
         captionColor,
         captionFont,
@@ -315,6 +317,8 @@ export default function CreateClipPage() {
                         setTextPosition={setTextPosition}
                         textColor={textColor}
                         setTextColor={setTextColor}
+                        textFont={textFont}
+                        setTextFont={setTextFont}
                         captions={captions}
                         setCaptions={setCaptions}
                         captionColor={captionColor}

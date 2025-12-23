@@ -11,6 +11,8 @@ import {
   fontEverlasting,
   fontKomika,
   fontBurbank,
+  fontBebasNeue,
+  fontAnton,
 } from "@/config/fonts";
 
 export const metadata: Metadata = {
@@ -40,7 +42,7 @@ export default function RootLayout({
     <html
       suppressHydrationWarning
       lang="en"
-      className={`dark ${fontMontserrat.variable} ${fontLuckiestGuy.variable} ${fontEverlasting.variable} ${fontKomika.variable} ${fontBurbank.variable}`}
+      className={`dark ${fontMontserrat.variable} ${fontLuckiestGuy.variable} ${fontEverlasting.variable} ${fontKomika.variable} ${fontBurbank.variable} ${fontBebasNeue.variable} ${fontAnton.variable}`}
     >
       <head />
       <body
