@@ -548,6 +548,21 @@ export default function ClipViewModal({
                 </div>
               )}
 
+              {clip.prompt && (
+                <div className="p-4 rounded-lg bg-surface-elevated">
+                  <h3 className="text-sm font-semibold text-text-secondary mb-2 flex items-center gap-2">
+                    <Icon
+                      icon="solar:pen-bold-duotone"
+                      className="text-accent-400"
+                    />
+                    Prompt Used
+                  </h3>
+                  <p className="text-sm text-text-primary leading-relaxed italic">
+                    "{clip.prompt}"
+                  </p>
+                </div>
+              )}
+
               {clip.input_metadata && (
                 <div className="p-4 rounded-lg bg-surface-elevated">
                   <h3 className="text-sm font-semibold text-text-secondary mb-3 flex items-center gap-2">

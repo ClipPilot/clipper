@@ -6,7 +6,7 @@ import {
   generateClipSuggestionsService,
   ClipGenerationOptions,
 } from "../../services/aiSuggestions.service";
-import { createMultipleCombinedClipsService } from "../../services/clip.service";
+import { createCombinedClipService } from "../../services/clip.service";
 import { clipManagerService } from "../../services/clipManager.service";
 import { s3Service } from "../../services/s3.service";
 import { extractThumbnail } from "../../utils/extractThumbnail";
@@ -52,22 +52,7 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
       throw new Error("Failed to generate clip suggestions");
     }
 
-    const clipResults = await createMultipleCombinedClipsService(
-      localVideoPath,
-      clipSuggestionsArray,
-      transcriptionData.results.channels[0].alternatives[0].words,
-      {
-        customText: options.customText,
-        textPosition: options.textPosition,
-        textColor: options.textColor,
-        captions: options.captions,
-        captionColor: options.captionColor,
-        captionFont: options.captionFont,
-      }
-    );
-
-    console.log("Created clip results:", clipResults.length);
-
+    // Extract thumbnail once (used for all clips)
     console.log("Extracting thumbnail from source video...");
     const thumbnailPath = await extractThumbnail(localVideoPath);
     const thumbnailS3Key = await s3Service.uploadThumbnail(thumbnailPath, teamId);
@@ -77,65 +62,97 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
       fs.unlinkSync(thumbnailPath);
     }
 
-    console.log(`Uploading ${clipSuggestionsArray.length} clips to S3 in parallel...`);
+    const transcriptionWords = transcriptionData.results.channels[0].alternatives[0].words;
+    const clipServiceOptions = {
+      customText: options.customText,
+      textPosition: options.textPosition,
+      textColor: options.textColor,
+      captions: options.captions,
+      captionColor: options.captionColor,
+      captionFont: options.captionFont,
+    };
 
-    await Promise.all(
-      clipSuggestionsArray.map(async (suggestions, i) => {
-        const result = clipResults[i];
+    // Process clips ONE AT A TIME with immediate upload after each
+    console.log(`Processing ${clipSuggestionsArray.length} clips sequentially (1 at a time)...`);
 
-        const [clipS3Key, blankS3Key, watermarkedS3Key] = await Promise.all([
-          s3Service.uploadGeneratedClip(result.finalPath, teamId, clipIds[i]),
-          s3Service.uploadBlankClip(result.blankPath, teamId, clipIds[i]),
-          s3Service.uploadWatermarkedClip(result.watermarkedPath, teamId, clipIds[i]),
-        ]);
+    for (let i = 0; i < clipSuggestionsArray.length; i++) {
+      const suggestions = clipSuggestionsArray[i];
+      const clipId = clipIds[i];
 
-        const srtPath = path.join(outDir, `captions_${clipIds[i]}.srt`);
-        fs.writeFileSync(srtPath, result.srtContent);
-        const srtS3Key = await s3Service.uploadSrtFile(srtPath, teamId, clipIds[i]);
-        fs.unlinkSync(srtPath);
+      console.log(`\n=== Creating clip ${i + 1}/${clipSuggestionsArray.length} ===`);
 
-        console.log(`Clip ${i + 1}/${clipSuggestionsArray.length} uploaded to S3`);
+      // Create the clip
+      const result = await createCombinedClipService(
+        localVideoPath,
+        suggestions,
+        transcriptionWords,
+        clipServiceOptions,
+        i
+      );
 
-        await clipManagerService.updateClipComplete(clipIds[i], teamId, {
-          clipPath: clipS3Key,
-          blankVideoPath: blankS3Key,
-          watermarkedClipPath: watermarkedS3Key,
-          srtPath: srtS3Key,
-          captionsData: result.captionsData,
-          sourceVideoPath: thumbnailS3Key,
-          title: suggestions.clipTitle,
-          clipMetadata: {
-            clipSuggestions: suggestions,
-            parameters: {
-              length: options.length || 40,
-              hookLength: options.hookLength || 6,
-              promptType: options.promptType || "business",
-              customText: options.customText,
-              textPosition: options.textPosition,
-              textColor: options.textColor,
-              captions: options.captions || false,
-              captionColor: options.captionColor,
-              captionFont: options.captionFont,
-            },
+      console.log(`Clip ${i + 1} created, uploading to S3...`);
+
+      // Immediately upload to S3
+      const [clipS3Key, blankS3Key, watermarkedS3Key] = await Promise.all([
+        s3Service.uploadGeneratedClip(result.finalPath, teamId, clipId),
+        s3Service.uploadBlankClip(result.blankPath, teamId, clipId),
+        s3Service.uploadWatermarkedClip(result.watermarkedPath, teamId, clipId),
+      ]);
+
+      // Upload SRT file
+      const srtPath = path.join(outDir, `captions_${clipId}.srt`);
+      fs.writeFileSync(srtPath, result.srtContent);
+      const srtS3Key = await s3Service.uploadSrtFile(srtPath, teamId, clipId);
+      fs.unlinkSync(srtPath);
+
+      console.log(`Clip ${i + 1} uploaded, updating database...`);
+
+      // Immediately update database
+      await clipManagerService.updateClipComplete(clipId, teamId, {
+        clipPath: clipS3Key,
+        blankVideoPath: blankS3Key,
+        watermarkedClipPath: watermarkedS3Key,
+        srtPath: srtS3Key,
+        captionsData: result.captionsData,
+        sourceVideoPath: thumbnailS3Key,
+        title: suggestions.clipTitle,
+        clipMetadata: {
+          clipSuggestions: suggestions,
+          parameters: {
+            length: options.length || 40,
+            hookLength: options.hookLength || 6,
+            promptType: options.promptType || "business",
+            customText: options.customText,
+            textPosition: options.textPosition,
+            textColor: options.textColor,
+            captions: options.captions || false,
+            captionColor: options.captionColor,
+            captionFont: options.captionFont,
           },
-          inputMetadata: {
-            originalFileName,
-            fileSize,
-          },
-          prompt: options.textPrompt || options.customPrompt,
-          message: suggestions.finalMessage,
-          clipScore: suggestions.evalScore,
-        });
+        },
+        inputMetadata: {
+          originalFileName,
+          fileSize,
+        },
+        prompt: options.textPrompt || options.customPrompt,
+        message: suggestions.finalMessage,
+        clipScore: suggestions.evalScore,
+      });
 
-        if (fs.existsSync(result.finalPath)) fs.unlinkSync(result.finalPath);
-        if (fs.existsSync(result.blankPath)) fs.unlinkSync(result.blankPath);
-        if (fs.existsSync(result.watermarkedPath)) fs.unlinkSync(result.watermarkedPath);
-      })
-    );
+      // Clean up local files for this clip immediately
+      if (fs.existsSync(result.finalPath)) fs.unlinkSync(result.finalPath);
+      if (fs.existsSync(result.blankPath)) fs.unlinkSync(result.blankPath);
+      if (fs.existsSync(result.watermarkedPath)) fs.unlinkSync(result.watermarkedPath);
 
-    console.log(`Successfully processed all ${clipIds.length} clips`);
-    await notifyClipsRefresh(teamId);
+      // Notify frontend after each clip so user sees progress
+      await notifyClipsRefresh(teamId);
 
+      console.log(`Clip ${i + 1}/${clipSuggestionsArray.length} complete and visible to user!`);
+    }
+
+    console.log(`\nSuccessfully processed all ${clipIds.length} clips`);
+
+    // Send email only after ALL clips are complete
     try {
       const user = await userService.getUserById(userId);
       const frontendUrl = process.env.FRONTEND_URL || "https://platform.cuttr.com";
