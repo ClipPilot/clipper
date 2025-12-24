@@ -144,6 +144,91 @@ class AuthService {
     };
   }
 
+  async signInWithSupabase(accessToken: string, refreshToken: string) {
+    // 1️⃣ Verify Supabase token
+    const { data, error } = await this.supabase.auth.getUser(accessToken);
+
+    if (error || !data.user || !data.user.email) {
+      throw new Error("Invalid Supabase token");
+    }
+
+    const supabaseUser = data.user;
+
+    // 2️⃣ Find user in your DB
+    let [dbUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.supabase_uid, supabaseUser.id))
+      .limit(1);
+
+    // 3️⃣ If first-time Google user → create DB user
+    if (!dbUser) {
+      const fullName = supabaseUser.user_metadata?.full_name ?? "";
+      const [firstName, ...rest] = fullName.split(" ");
+      const lastName = rest.join(" ");
+
+      if (!supabaseUser.email) {
+        throw new Error("Supabase user email is required");
+      }
+
+      [dbUser] = await db
+        .insert(users)
+        .values({
+          supabase_uid: supabaseUser.id,
+          email: supabaseUser.email,
+          first_name: firstName || "",
+          last_name: lastName || "",
+          role: "user",
+        })
+        .returning();
+
+      // ⬇ optional but recommended (matches signUp)
+      const teamName = `${firstName || "My"}'s Workspace`;
+      const [team] = await db
+        .insert(teams)
+        .values({
+          name: teamName,
+          type: "personal",
+        })
+        .returning();
+
+      await db.insert(teamMembers).values({
+        team_id: team.id,
+        user_id: dbUser.id,
+        role: "owner",
+      });
+
+      const resetsDate = new Date();
+      resetsDate.setDate(resetsDate.getDate() + 30);
+
+      await db.insert(usageStats).values({
+        team_id: team.id,
+        date: new Date(),
+        clips_created: 0,
+        limit: 3,
+        resets_date: resetsDate,
+        rollover: false,
+      });
+
+      await teamInviteService.acceptAllPendingInvitesForUser(
+        dbUser.id,
+        supabaseUser.email
+      );
+    }
+
+    // 4️⃣ Create Supabase session for frontend
+    // IMPORTANT: You do NOT refresh here — frontend already has tokens
+    return {
+      user: data.user,
+      session: {
+        access_token: accessToken,
+        refresh_token: refreshToken,
+        expires_in: 3600,
+      },
+      dbUser,
+    };
+  }
+
   async signOut(accessToken: string) {
     const { error } = await this.supabase.auth.admin.signOut(accessToken);
 
