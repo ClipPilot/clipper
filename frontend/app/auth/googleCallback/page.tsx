@@ -4,10 +4,11 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { authAPI } from "../../../api/auth";
+import { Card, CardBody, Spinner } from "@heroui/react";
+import { Icon } from "@iconify/react";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
-  console.log("Handling auth callback...");
 
   useEffect(() => {
     const handleCallback = async () => {
@@ -18,7 +19,6 @@ export default function AuthCallbackPage() {
         return;
       }
 
-      // 🔁 Exchange Supabase → YOUR backend tokens
       await authAPI.signInWithSupabase(
         data.session.access_token,
         data.session.refresh_token
@@ -30,5 +30,33 @@ export default function AuthCallbackPage() {
     handleCallback();
   }, [router]);
 
-  return <p>Signing you in…</p>;
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-surface-dark">
+      <Card className="bg-surface-base border border-border-base max-w-sm w-full">
+        <CardBody className="flex flex-col items-center gap-4 py-10">
+          {/* Brand icon */}
+          <div className="w-14 h-14 rounded-2xl bg-accent-400/10 flex items-center justify-center">
+            <Icon
+              icon="solar:lock-keyhole-bold-duotone"
+              className="text-accent-400"
+              width={32}
+            />
+          </div>
+
+          {/* Spinner */}
+          <Spinner size="lg" color="primary" />
+
+          {/* Text */}
+          <div className="text-center space-y-1">
+            <p className="text-lg font-semibold text-text-primary">
+              Signing you in
+            </p>
+            <p className="text-sm text-text-secondary animate-pulse">
+              Finishing Google authentication…
+            </p>
+          </div>
+        </CardBody>
+      </Card>
+    </div>
+  );
 }
