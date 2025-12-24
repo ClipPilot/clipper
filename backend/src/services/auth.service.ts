@@ -145,7 +145,7 @@ class AuthService {
   }
 
   async signInWithSupabase(accessToken: string, refreshToken: string) {
-    // 1️⃣ Verify Supabase token
+    // Verify Supabase token
     const { data, error } = await this.supabase.auth.getUser(accessToken);
 
     if (error || !data.user || !data.user.email) {
@@ -154,14 +154,14 @@ class AuthService {
 
     const supabaseUser = data.user;
 
-    // 2️⃣ Find user in your DB
+    // Find user in your DB
     let [dbUser] = await db
       .select()
       .from(users)
       .where(eq(users.supabase_uid, supabaseUser.id))
       .limit(1);
 
-    // 3️⃣ If first-time Google user → create DB user
+    // If first-time Google user → create DB user
     if (!dbUser) {
       const fullName = supabaseUser.user_metadata?.full_name ?? "";
       const [firstName, ...rest] = fullName.split(" ");
@@ -182,7 +182,7 @@ class AuthService {
         })
         .returning();
 
-      // ⬇ optional but recommended (matches signUp)
+      // * optional but recommended (matches signUp)
       const teamName = `${firstName || "My"}'s Workspace`;
       const [team] = await db
         .insert(teams)
@@ -216,8 +216,8 @@ class AuthService {
       );
     }
 
-    // 4️⃣ Create Supabase session for frontend
-    // IMPORTANT: You do NOT refresh here — frontend already has tokens
+    // Create Supabase session for frontend
+    // ! IMPORTANT: You do NOT refresh here — frontend already has tokens
     return {
       user: data.user,
       session: {
