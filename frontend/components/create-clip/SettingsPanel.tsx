@@ -21,6 +21,7 @@ interface SettingsPanelProps {
   numberOfVideos: number;
   setNumberOfVideos: (value: number) => void;
   maxClips?: number;
+  batchMode?: boolean;
 }
 
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({
@@ -35,7 +36,13 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   numberOfVideos,
   setNumberOfVideos,
   maxClips,
+  batchMode = false,
 }) => {
+  // Filter out gaming in batch mode
+  const availablePromptTypes = batchMode
+    ? PROMPT_TYPES.filter((type) => type !== "gaming")
+    : PROMPT_TYPES;
+
   return (
     <div className="space-y-6">
       <h3 className="text-lg font-bold text-text-primary">Clip Settings</h3>
@@ -48,7 +55,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           if (key) setPromptType(key);
         }}
       >
-        {PROMPT_TYPES.map((type) => (
+        {availablePromptTypes.map((type) => (
           <SelectItem key={type}>{PROMPT_TYPE_LABELS[type]}</SelectItem>
         ))}
       </Select>

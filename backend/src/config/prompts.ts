@@ -11,7 +11,63 @@ export interface PromptConfig {
   transcriptObject: string;
   numberOfVideos?: number;
   userTextPrompt?: string;
+  // Batch processing fields
+  isBatch?: boolean;
+  batchTranscripts?: Array<{
+    videoIndex: number;
+    transcriptText: string;
+    transcriptObject: string;
+    fileName?: string;
+  }>;
 }
+
+// Batch prompt addon template
+export const BATCH_ADDON_TEMPLATE = `
+===== BATCH VIDEO MODE =====
+You have access to MULTIPLE SOURCE VIDEOS. Each video has been transcribed separately.
+
+SOURCE VIDEOS:
+{{VIDEO_LIST}}
+
+CRITICAL BATCH INSTRUCTIONS:
+1. You can select the HOOK from ANY of the source videos - choose the most engaging moment across all videos
+2. You can MIX segments from DIFFERENT source videos in the main content
+3. Each segment MUST include a "sourceVideoIndex" field (0, 1, 2, etc.) to identify which video it comes from
+4. Create cohesive clips that combine the BEST moments from all available videos
+5. The narrative should flow naturally even when combining multiple sources
+6. Label your selections clearly so we know which video each segment originates from
+
+EXAMPLE OUTPUT FORMAT FOR BATCH:
+{
+  "hook": {
+    "text": "This is the hook text",
+    "start": 45.5,
+    "end": 51.2,
+    "sourceVideoIndex": 0
+  },
+  "main": [
+    {
+      "text": "First main segment",
+      "start": 12.0,
+      "end": 25.5,
+      "sourceVideoIndex": 1
+    },
+    {
+      "text": "Second main segment",
+      "start": 88.3,
+      "end": 102.1,
+      "sourceVideoIndex": 0
+    }
+  ],
+  "combined_script": "...",
+  "finalMessage": "...",
+  "evalScore": 85,
+  "clipTitle": "..."
+}
+
+Think of yourself as a curator selecting the best moments from a collection of related footage.
+===== END BATCH MODE =====
+`;
 
 /**
  * Business/Product Demo Prompt
@@ -334,6 +390,44 @@ export const generatePrompt = (
   // If custom instructions provided, append them
   if (customInstructions && customInstructions.trim()) {
     basePrompt += `\n\n---ADDITIONAL CUSTOM INSTRUCTIONS FROM USER---\n${customInstructions}\n---END CUSTOM INSTRUCTIONS---\n`;
+  }
+
+  return basePrompt;
+};
+
+/**
+ * Generate batch-aware prompt that instructs AI to select from multiple source videos
+ */
+export const generateBatchPrompt = (
+  type: PromptType,
+  config: PromptConfig,
+  customInstructions?: string
+): string => {
+  // Generate base prompt first
+  let basePrompt = generatePrompt(type, config, customInstructions);
+
+  // If batch mode with multiple transcripts, append batch addon
+  if (config.isBatch && config.batchTranscripts && config.batchTranscripts.length > 1) {
+    // Format the video list with all transcripts
+    const videoList = config.batchTranscripts
+      .map((bt) => {
+        const fileName = bt.fileName ? ` (${bt.fileName})` : "";
+        return `
+---
+VIDEO ${bt.videoIndex + 1}${fileName} (sourceVideoIndex: ${bt.videoIndex}):
+
+Transcript Text:
+${bt.transcriptText}
+
+Full Transcript Object:
+${bt.transcriptObject}
+---`;
+      })
+      .join("\n");
+
+    // Replace placeholder and append batch addon
+    const batchAddon = BATCH_ADDON_TEMPLATE.replace("{{VIDEO_LIST}}", videoList);
+    basePrompt = basePrompt + "\n\n" + batchAddon;
   }
 
   return basePrompt;

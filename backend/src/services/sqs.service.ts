@@ -7,7 +7,7 @@ const sqsClient = new SQSClient({
 });
 
 // Job types for video processing
-export type JobType = "clip-video" | "update-captions" | "text-overlay" | "update-overlays";
+export type JobType = "clip-video" | "batch-clip-video" | "update-captions" | "text-overlay" | "update-overlays";
 
 // Base job interface
 interface BaseJob {
@@ -41,6 +41,19 @@ export interface ClipVideoJob extends BaseJob {
   };
   originalFileName?: string;
   fileSize?: number;
+}
+
+// Batch clip video job payload (multiple source videos)
+export interface BatchClipVideoJob extends BaseJob {
+  type: "batch-clip-video";
+  clipIds: number[];
+  videos: Array<{
+    s3Key: string;
+    videoIndex: number; // 0-4, identifies the source video
+    originalFileName?: string;
+    fileSize?: number;
+  }>;
+  options: ClipVideoJob["options"]; // Reuse same options as single clip
 }
 
 // Update captions job payload
@@ -95,7 +108,7 @@ export interface UpdateOverlaysJob extends BaseJob {
   };
 }
 
-export type VideoProcessingJob = ClipVideoJob | UpdateCaptionsJob | TextOverlayJob | UpdateOverlaysJob;
+export type VideoProcessingJob = ClipVideoJob | BatchClipVideoJob | UpdateCaptionsJob | TextOverlayJob | UpdateOverlaysJob;
 
 class SQSService {
   private queueUrl: string;
@@ -147,6 +160,26 @@ class SQSService {
       options: params.options,
       originalFileName: params.originalFileName,
       fileSize: params.fileSize,
+      createdAt: new Date().toISOString(),
+    };
+
+    return this.sendJob(job);
+  }
+
+  async sendBatchClipVideoJob(params: {
+    clipIds: number[];
+    teamId: number;
+    userId: number;
+    videos: BatchClipVideoJob["videos"];
+    options: BatchClipVideoJob["options"];
+  }): Promise<string> {
+    const job: BatchClipVideoJob = {
+      type: "batch-clip-video",
+      clipIds: params.clipIds,
+      teamId: params.teamId,
+      userId: params.userId,
+      videos: params.videos,
+      options: params.options,
       createdAt: new Date().toISOString(),
     };
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Button, Card, CardBody, Progress } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { videoAPI, UploadProgress, MultipartUploadResponse } from "@/api/video";
@@ -47,9 +47,11 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
   const [progress, setProgress] = useState<UploadProgress | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadType, setUploadType] = useState<"single" | "multipart">("single");
+  const [isDragging, setIsDragging] = useState(false);
   const multipartDataRef = useRef<MultipartUploadResponse | null>(null);
 
   const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024;
+  const validTypes = ["video/mp4", "video/quicktime", "video/x-msvideo", "video/x-matroska", "video/webm"];
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -64,16 +66,12 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [isUploading]);
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const processFile = async (file: File) => {
     if (file.size > MAX_FILE_SIZE) {
       onError(`File size must be less than 2GB. Your file is ${formatBytes(file.size)}`);
       return;
     }
 
-    const validTypes = ["video/mp4", "video/quicktime", "video/x-msvideo", "video/x-matroska", "video/webm"];
     if (!validTypes.includes(file.type)) {
       onError("Please upload a valid video file (MP4, MOV, AVI, MKV, WebM)");
       return;
@@ -124,6 +122,40 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
     }
   };
 
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await processFile(file);
+    }
+    e.target.value = "";
+  };
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    async (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragging(false);
+
+      const file = e.dataTransfer.files[0];
+      if (file) {
+        await processFile(file);
+      }
+    },
+    [processFile]
+  );
+
   const renderFileUpload = () => (
     <div className="flex flex-col items-center justify-center space-y-4">
       {isUploading ? (
@@ -155,30 +187,55 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
           </div>
         </>
       ) : (
-        <>
-          <div className="w-20 h-20 bg-accent-400/10 rounded-full flex items-center justify-center">
-            <Icon icon="solar:videocamera-record-bold-duotone" className="text-4xl text-accent-400" />
-          </div>
+        <div
+          className={`w-full border-2 border-dashed rounded-xl p-8 transition-colors ${
+            isDragging
+              ? "border-accent-400 bg-accent-400/10"
+              : "border-border-base hover:border-accent-400/50"
+          }`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          <div className="flex flex-col items-center justify-center space-y-4">
+            <div className="w-16 h-16 bg-accent-400/10 rounded-full flex items-center justify-center">
+              <Icon
+                icon="solar:upload-bold-duotone"
+                className="text-3xl text-accent-400"
+              />
+            </div>
 
-          <div className="text-center">
-            <h3 className="text-lg font-bold text-text-primary mb-2">Upload Your Video</h3>
-            <p className="text-sm text-text-secondary">Choose a video file to create AI-powered clips</p>
-          </div>
+            <div className="text-center">
+              <h3 className="text-lg font-bold text-text-primary mb-1">
+                Drag & Drop Video
+              </h3>
+              <p className="text-sm text-text-secondary">
+                or click to browse
+              </p>
+            </div>
 
-          <input type="file" accept="video/*" onChange={handleFileSelect} className="hidden" id="video-upload" />
+            <input type="file" accept="video/*" onChange={handleFileSelect} className="hidden" id="video-upload" />
 
-          <Button as="label" htmlFor="video-upload" size="lg" color="primary" startContent={<Icon icon="solar:upload-bold" className="text-xl" />} className="cursor-pointer px-8">
-            Choose Video File
-          </Button>
+            <Button
+              as="label"
+              htmlFor="video-upload"
+              size="md"
+              color="primary"
+              variant="flat"
+              startContent={<Icon icon="solar:folder-open-bold" />}
+              className="cursor-pointer"
+            >
+              Browse Files
+            </Button>
 
-          <div className="flex items-start gap-2 text-xs text-text-tertiary">
-            <Icon icon="solar:info-circle-outline" className="text-base mt-0.5" />
-            <div>
-              <p>Max size: 2GB | Max duration: 3 hours</p>
-              <p>Formats: MP4, MOV, AVI, MKV, WebM</p>
+            <div className="flex items-start gap-2 text-xs text-text-tertiary">
+              <Icon icon="solar:info-circle-outline" className="text-base mt-0.5" />
+              <div>
+                <p>Max size: 2GB | Formats: MP4, MOV, AVI, MKV, WebM</p>
+              </div>
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );
