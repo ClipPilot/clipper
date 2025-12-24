@@ -95,6 +95,38 @@ router.post("/signin", authController.signIn.bind(authController));
 
 /**
  * @swagger
+ * /api/auth/supabase:
+ *   post:
+ *     summary: Sign in using Supabase OAuth (Google)
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - accessToken
+ *               - refreshToken
+ *             properties:
+ *               accessToken:
+ *                 type: string
+ *               refreshToken:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Signed in successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthResponse'
+ *       401:
+ *         description: Unauthorized
+ */
+router.post("/supabase", authController.signInWithSupabase.bind(authController));
+
+/**
+ * @swagger
  * /api/auth/signout:
  *   post:
  *     summary: Sign out from the current session
