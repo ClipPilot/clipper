@@ -137,8 +137,10 @@ function MyClipsPageContent() {
       lastSocketUpdateRef.current = Date.now();
       loadPendingClips();
       loadUnsavedClips();
+      // Also refresh saved clips to pick up completed edits
+      loadSavedClips(true);
     }, 500);
-  }, [loadPendingClips, loadUnsavedClips, isDraggingRef]);
+  }, [loadPendingClips, loadUnsavedClips, loadSavedClips, isDraggingRef]);
 
   useSocket(selectedTeam?.id, handleSocketUpdate);
 

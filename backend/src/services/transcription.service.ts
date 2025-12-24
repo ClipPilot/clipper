@@ -11,17 +11,6 @@ export const transcribeVideoService = async (filePath: string) => {
   const audioPath = await extractAudio(filePath);
 
   console.log("Transcribing audio...");
-
-  // Using OpenAI Whisper API:
-  // const resp = await client.audio.transcriptions.create({
-  //   file: fs.createReadStream(audioPath),
-  //   model: "whisper-1",
-  //   response_format: "verbose_json",
-  //   timestamp_granularities: ["word"]
-  // });
-
-  // TODO : use sentiment 
-
   const { result, error } = await deepgram.listen.prerecorded.transcribeFile(
     fs.readFileSync(audioPath),
     {
@@ -30,8 +19,10 @@ export const transcribeVideoService = async (filePath: string) => {
       punctuate: true,
       diarize: true,
       paragraphs: true,
+      detect_language: true,
     }
   );
+  console.log("Transcription result:", result);
 
   if (error) {
     console.error("Deepgram transcription error:", error);
