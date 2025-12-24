@@ -9,6 +9,7 @@ interface Clip {
   status: string;
   created_at: string;
   rawVideoUrl?: string;
+  saved?: boolean;
 }
 
 interface PendingClipsSectionProps {
@@ -16,7 +17,7 @@ interface PendingClipsSectionProps {
   onClipClick: (clip: Clip) => void;
 }
 
-function VideoThumbnail({ videoUrl }: { videoUrl: string }) {
+function VideoThumbnail({ videoUrl, isEdit }: { videoUrl: string; isEdit?: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -50,27 +51,27 @@ function VideoThumbnail({ videoUrl }: { videoUrl: string }) {
         {/* Animated processing indicator */}
         <div className="relative mb-4">
           {/* Outer ring */}
-          <div className="w-16 h-16 rounded-full border-4 border-warning-500/20 animate-pulse" />
+          <div className={`w-16 h-16 rounded-full border-4 ${isEdit ? "border-primary-500/20" : "border-warning-500/20"} animate-pulse`} />
           {/* Spinning ring */}
-          <div className="absolute inset-0 w-16 h-16 rounded-full border-4 border-transparent border-t-warning-400 animate-spin" />
+          <div className={`absolute inset-0 w-16 h-16 rounded-full border-4 border-transparent ${isEdit ? "border-t-primary-400" : "border-t-warning-400"} animate-spin`} />
           {/* Inner icon */}
           <div className="absolute inset-0 flex items-center justify-center">
             <Icon
-              icon="solar:video-frame-play-horizontal-bold"
-              className="text-2xl text-warning-400"
+              icon={isEdit ? "solar:pen-bold" : "solar:video-frame-play-horizontal-bold"}
+              className={`text-2xl ${isEdit ? "text-primary-400" : "text-warning-400"}`}
             />
           </div>
         </div>
-        <span className="text-sm font-medium text-white">Processing</span>
+        <span className="text-sm font-medium text-white">{isEdit ? "Applying Changes" : "Processing"}</span>
         {/* Animated progress bar */}
         <div className="w-24 mt-2">
           <Progress
             size="sm"
             isIndeterminate
-            color="warning"
+            color={isEdit ? "primary" : "warning"}
             classNames={{
               track: "bg-white/20",
-              indicator: "bg-gradient-to-r from-warning-400 to-warning-500",
+              indicator: isEdit ? "bg-gradient-to-r from-primary-400 to-primary-500" : "bg-gradient-to-r from-warning-400 to-warning-500",
             }}
           />
         </div>
@@ -79,7 +80,7 @@ function VideoThumbnail({ videoUrl }: { videoUrl: string }) {
   );
 }
 
-function PlaceholderThumbnail() {
+function PlaceholderThumbnail({ isEdit }: { isEdit?: boolean }) {
   return (
     <div className="relative w-full aspect-[9/16] bg-gradient-to-br from-surface-elevated to-surface-base rounded-lg overflow-hidden">
       {/* Shimmer effect */}
@@ -89,27 +90,27 @@ function PlaceholderThumbnail() {
         {/* Animated processing indicator */}
         <div className="relative mb-4">
           {/* Outer ring */}
-          <div className="w-16 h-16 rounded-full border-4 border-warning-500/20 animate-pulse" />
+          <div className={`w-16 h-16 rounded-full border-4 ${isEdit ? "border-primary-500/20" : "border-warning-500/20"} animate-pulse`} />
           {/* Spinning ring */}
-          <div className="absolute inset-0 w-16 h-16 rounded-full border-4 border-transparent border-t-warning-400 animate-spin" />
+          <div className={`absolute inset-0 w-16 h-16 rounded-full border-4 border-transparent ${isEdit ? "border-t-primary-400" : "border-t-warning-400"} animate-spin`} />
           {/* Inner icon */}
           <div className="absolute inset-0 flex items-center justify-center">
             <Icon
-              icon="solar:video-frame-play-horizontal-bold"
-              className="text-2xl text-warning-400"
+              icon={isEdit ? "solar:pen-bold" : "solar:video-frame-play-horizontal-bold"}
+              className={`text-2xl ${isEdit ? "text-primary-400" : "text-warning-400"}`}
             />
           </div>
         </div>
-        <span className="text-sm font-medium text-text-primary">Processing</span>
+        <span className="text-sm font-medium text-text-primary">{isEdit ? "Applying Changes" : "Processing"}</span>
         {/* Animated progress bar */}
         <div className="w-24 mt-2">
           <Progress
             size="sm"
             isIndeterminate
-            color="warning"
+            color={isEdit ? "primary" : "warning"}
             classNames={{
               track: "bg-surface-base",
-              indicator: "bg-gradient-to-r from-warning-400 to-warning-500",
+              indicator: isEdit ? "bg-gradient-to-r from-primary-400 to-primary-500" : "bg-gradient-to-r from-warning-400 to-warning-500",
             }}
           />
         </div>
@@ -124,42 +125,89 @@ export default function PendingClipsSection({
 }: PendingClipsSectionProps) {
   if (clips.length === 0) return null;
 
+  const newClips = clips.filter((c) => !c.saved);
+  const editingClips = clips.filter((c) => c.saved);
+
   return (
-    <div className="mb-8">
-      <h2 className="text-xl font-bold text-text-primary mb-4 flex items-center gap-2">
-        <Icon
-          icon="solar:clock-circle-bold-duotone"
-          className="text-2xl text-warning-400"
-        />
-        Processing ({clips.length})
-      </h2>
-      <p className="text-sm text-text-tertiary mb-4">
-        Processing may take anywhere from 5 to 30 minutes; we&apos;ll email you when
-        it&apos;s complete.
-      </p>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-        {clips.map((clip) => (
-          <Card
-            key={clip.id}
-            isPressable
-            onPress={() => onClipClick(clip)}
-            className="bg-surface-base border border-warning-500/30 hover:border-warning-500/50 hover:scale-[1.02] transition-all duration-200"
-          >
-            <CardBody className="p-2">
-              {clip.rawVideoUrl ? (
-                <VideoThumbnail videoUrl={clip.rawVideoUrl} />
-              ) : (
-                <PlaceholderThumbnail />
-              )}
-              <div className="mt-2 text-center">
-                <p className="text-xs text-text-tertiary">
-                  Started {new Date(clip.created_at).toLocaleTimeString()}
-                </p>
-              </div>
-            </CardBody>
-          </Card>
-        ))}
-      </div>
+    <div className="mb-8 space-y-6">
+      {/* New clips being processed */}
+      {newClips.length > 0 && (
+        <div>
+          <h2 className="text-xl font-bold text-text-primary mb-4 flex items-center gap-2">
+            <Icon
+              icon="solar:clock-circle-bold-duotone"
+              className="text-2xl text-warning-400"
+            />
+            Processing ({newClips.length})
+          </h2>
+          <p className="text-sm text-text-tertiary mb-4">
+            Processing may take anywhere from 5 to 30 minutes; we&apos;ll email you when
+            it&apos;s complete.
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+            {newClips.map((clip) => (
+              <Card
+                key={clip.id}
+                isPressable
+                onPress={() => onClipClick(clip)}
+                className="bg-surface-base border border-warning-500/30 hover:border-warning-500/50 hover:scale-[1.02] transition-all duration-200"
+              >
+                <CardBody className="p-2">
+                  {clip.rawVideoUrl ? (
+                    <VideoThumbnail videoUrl={clip.rawVideoUrl} isEdit={false} />
+                  ) : (
+                    <PlaceholderThumbnail isEdit={false} />
+                  )}
+                  <div className="mt-2 text-center">
+                    <p className="text-xs text-text-tertiary">
+                      Started {new Date(clip.created_at).toLocaleTimeString()}
+                    </p>
+                  </div>
+                </CardBody>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Edited clips being processed */}
+      {editingClips.length > 0 && (
+        <div>
+          <h2 className="text-xl font-bold text-text-primary mb-4 flex items-center gap-2">
+            <Icon
+              icon="solar:pen-bold-duotone"
+              className="text-2xl text-primary-400"
+            />
+            Applying Changes ({editingClips.length})
+          </h2>
+          <p className="text-sm text-text-tertiary mb-4">
+            Your edits are being applied. This usually takes 1-2 minutes.
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+            {editingClips.map((clip) => (
+              <Card
+                key={clip.id}
+                isPressable
+                onPress={() => onClipClick(clip)}
+                className="bg-surface-base border border-primary-500/30 hover:border-primary-500/50 hover:scale-[1.02] transition-all duration-200"
+              >
+                <CardBody className="p-2">
+                  {clip.rawVideoUrl ? (
+                    <VideoThumbnail videoUrl={clip.rawVideoUrl} isEdit={true} />
+                  ) : (
+                    <PlaceholderThumbnail isEdit={true} />
+                  )}
+                  <div className="mt-2 text-center">
+                    <p className="text-xs text-text-tertiary">
+                      Editing since {new Date(clip.created_at).toLocaleTimeString()}
+                    </p>
+                  </div>
+                </CardBody>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
