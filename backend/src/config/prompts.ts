@@ -378,8 +378,6 @@ export const generateGeneralPrompt = (config: PromptConfig): string => {
   const {
     length,
     hookLength,
-    transcriptText,
-    transcriptObject,
     numberOfVideos = 1,
     userTextPrompt,
   } = config;
@@ -388,9 +386,7 @@ export const generateGeneralPrompt = (config: PromptConfig): string => {
   return `
 You are an expert short-form video editor. You are analyzing a VIDEO to find the most VISUALLY and EMOTIONALLY engaging moments.
 
-CRITICAL: YOU MUST WATCH THE VIDEO FRAME BY FRAME. Do NOT rely only on the transcript. Your primary job is to WATCH what is happening visually and find moments where the VISUAL content is compelling.
-
-The transcript is provided as a REFERENCE for timing, but you must base your selections on what you SEE in the video.
+CRITICAL: WATCH THE ENTIRE VIDEO FRAME BY FRAME. You must analyze both what you SEE visually and what you HEAR being said. Base your clip selections on the actual video content.
 
 ${userTextPrompt ? `USER SPECIFIC REQUEST: "${userTextPrompt}". Prioritize moments that align with this while watching the video.` : ""}
 
@@ -500,10 +496,7 @@ LENGTH CHECK: Hook + Main segments must total approximately ${length} seconds.
 - evalScore 70-79: Decent visuals but could be stronger
 - Below 70: Mostly talking head, limited visual appeal
 
-TRANSCRIPT FOR TIMING REFERENCE: ${transcriptText}
-TRANSCRIPT OBJECT: ${transcriptObject}
-
-REMEMBER: WATCH THE VIDEO. Base your selections on what you SEE, not just what you read in the transcript. The transcript is only for timing reference.
+WATCH THE ENTIRE VIDEO. Find the most compelling visual and audio moments. Create clips people will share.
 `;
 };
 
