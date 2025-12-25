@@ -57,6 +57,7 @@ export interface BatchClipVideoJob extends BaseJob {
     videoIndex: number; // 0-4, identifies the source video
     originalFileName?: string;
     fileSize?: number;
+    duration?: number; // Duration in seconds
   }>;
   options: ClipVideoJob["options"]; // Reuse same options as single clip
 }

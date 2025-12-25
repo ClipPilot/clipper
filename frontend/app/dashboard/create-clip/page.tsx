@@ -160,6 +160,7 @@ export default function CreateClipPage() {
             videoIndex: v.videoIndex,
             originalFileName: v.fileName,
             fileSize: v.fileSize,
+            duration: v.duration,
           })),
           length,
           hookLength,

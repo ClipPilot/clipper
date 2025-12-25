@@ -54,6 +54,7 @@ export interface BatchUploadedVideo {
   fileName: string;
   fileSize: number;
   videoIndex: number; // 0-4
+  duration: number; // Duration in seconds
 }
 
 export interface SubmitBatchClipParams {
@@ -63,6 +64,7 @@ export interface SubmitBatchClipParams {
     videoIndex: number;
     originalFileName?: string;
     fileSize?: number;
+    duration: number; // Duration in seconds
   }>;
   length?: number;
   hookLength?: number;

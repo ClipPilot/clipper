@@ -281,6 +281,8 @@ export const submitClipJob = async (req: AuthRequest, res: Response) => {
 
 // Maximum videos allowed in a batch
 const MAX_BATCH_VIDEOS = 5;
+// Maximum duration per video in seconds (30 minutes)
+const MAX_VIDEO_DURATION_SECONDS = 30 * 60;
 
 export const submitBatchClipJob = async (req: AuthRequest, res: Response) => {
   try {
@@ -331,6 +333,17 @@ export const submitBatchClipJob = async (req: AuthRequest, res: Response) => {
       if (video.videoIndex === undefined || video.videoIndex < 0 || video.videoIndex > 4) {
         return res.status(400).json({
           error: `Video at index ${i} has invalid videoIndex (must be 0-4)`,
+        });
+      }
+      // Validate video duration is provided and within limits (max 30 minutes)
+      if (!video.duration || typeof video.duration !== "number") {
+        return res.status(400).json({
+          error: `Video at index ${i} missing required field: duration`,
+        });
+      }
+      if (video.duration > MAX_VIDEO_DURATION_SECONDS) {
+        return res.status(400).json({
+          error: `Video "${video.originalFileName || `at index ${i}`}" exceeds maximum duration of 30 minutes`,
         });
       }
     }
@@ -425,6 +438,7 @@ export const submitBatchClipJob = async (req: AuthRequest, res: Response) => {
       videoIndex: v.videoIndex,
       originalFileName: v.originalFileName,
       fileSize: v.fileSize ? parseInt(v.fileSize) : undefined,
+      duration: v.duration,
     }));
 
     const messageId = await sqsService.sendBatchClipVideoJob({

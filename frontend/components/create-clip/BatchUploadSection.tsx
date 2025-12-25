@@ -26,10 +26,12 @@ interface FileUploadState {
   progress: UploadProgress | null;
   s3Key: string | null;
   error: string | null;
+  duration: number; // Duration in seconds
 }
 
 const MULTIPART_THRESHOLD = 50 * 1024 * 1024;
 const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024;
+const MAX_VIDEO_DURATION_SECONDS = 30 * 60; // 30 minutes
 
 const formatTime = (seconds: number): string => {
   if (seconds < 60) return `${Math.round(seconds)}s`;
@@ -50,6 +52,25 @@ const formatSpeed = (bytesPerSecond: number): string => {
   if (bytesPerSecond < 1024 * 1024)
     return `${(bytesPerSecond / 1024).toFixed(1)} KB/s`;
   return `${(bytesPerSecond / (1024 * 1024)).toFixed(1)} MB/s`;
+};
+
+const getVideoDuration = (file: File): Promise<number> => {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement("video");
+    video.preload = "metadata";
+
+    video.onloadedmetadata = () => {
+      URL.revokeObjectURL(video.src);
+      resolve(video.duration);
+    };
+
+    video.onerror = () => {
+      URL.revokeObjectURL(video.src);
+      reject(new Error("Failed to load video metadata"));
+    };
+
+    video.src = URL.createObjectURL(file);
+  });
 };
 
 export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
@@ -92,6 +113,7 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
         fileName: f.file.name,
         fileSize: f.file.size,
         videoIndex: f.videoIndex,
+        duration: f.duration,
       }));
       onUploadComplete(uploadedVideos);
     }
@@ -183,7 +205,7 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
     }
   };
 
-  const validateAndAddFiles = (newFiles: File[]) => {
+  const validateAndAddFiles = async (newFiles: File[]) => {
     const validTypes = [
       "video/mp4",
       "video/quicktime",
@@ -192,7 +214,7 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
       "video/webm",
     ];
     const errors: string[] = [];
-    const validFiles: File[] = [];
+    const validFiles: { file: File; duration: number }[] = [];
 
     const currentCount = files.length;
     const remainingSlots = maxVideos - currentCount;
@@ -213,7 +235,20 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
         errors.push(`${file.name}: Invalid video format`);
         continue;
       }
-      validFiles.push(file);
+
+      // Check video duration
+      try {
+        const duration = await getVideoDuration(file);
+        if (duration > MAX_VIDEO_DURATION_SECONDS) {
+          const durationMins = Math.ceil(duration / 60);
+          errors.push(`${file.name}: Video is ${durationMins} minutes (max 30 minutes)`);
+          continue;
+        }
+        validFiles.push({ file, duration });
+      } catch (err) {
+        errors.push(`${file.name}: Could not read video duration`);
+        continue;
+      }
     }
 
     if (errors.length > 0) {
@@ -221,13 +256,14 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
     }
 
     if (validFiles.length > 0) {
-      const newFileStates: FileUploadState[] = validFiles.map((file, idx) => ({
+      const newFileStates: FileUploadState[] = validFiles.map(({ file, duration }, idx) => ({
         file,
         videoIndex: currentCount + idx,
         status: "uploading" as const,
         progress: null,
         s3Key: null,
         error: null,
+        duration,
       }));
 
       setFiles((prev) => [...prev, ...newFileStates]);
@@ -454,7 +490,7 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
         <div className="flex items-start gap-2 text-xs text-text-tertiary">
           <Icon icon="solar:info-circle-outline" className="text-base mt-0.5" />
           <div>
-            <p>Max size per video: 2GB | Formats: MP4, MOV, AVI, MKV, WebM</p>
+            <p>Max 30 min per video | Max size: 2GB | Formats: MP4, MOV, AVI, MKV, WebM</p>
           </div>
         </div>
       </div>
