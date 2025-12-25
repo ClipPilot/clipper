@@ -8,6 +8,7 @@ interface Clip {
   id: number;
   status: string;
   created_at: string;
+  updated_at: string;
   rawVideoUrl?: string;
   saved?: boolean;
 }
@@ -199,7 +200,7 @@ export default function PendingClipsSection({
                   )}
                   <div className="mt-2 text-center">
                     <p className="text-xs text-text-tertiary">
-                      Editing since {new Date(clip.created_at).toLocaleTimeString()}
+                      Editing since {new Date(clip.updated_at).toLocaleTimeString()}
                     </p>
                   </div>
                 </CardBody>

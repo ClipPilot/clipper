@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { Select, SelectItem, Slider, Textarea } from "@heroui/react";
+import { Select, SelectItem, Slider, Textarea, Card, CardBody } from "@heroui/react";
+import { Icon } from "@iconify/react";
 import {
   PromptType,
   PROMPT_TYPES,
@@ -59,6 +60,17 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           <SelectItem key={type}>{PROMPT_TYPE_LABELS[type]}</SelectItem>
         ))}
       </Select>
+
+      {(promptType === "viral" || promptType === "business") && (
+        <Card className="bg-primary-500/10 border border-primary-500/30">
+          <CardBody className="p-3 flex flex-row items-start gap-3">
+            <Icon icon="solar:info-circle-bold" className="text-primary-400 text-lg flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-primary-300">
+              This mode works best with videos that contain speech or dialogue. The AI uses spoken content to identify the most engaging moments.
+            </p>
+          </CardBody>
+        </Card>
+      )}
 
       <Textarea
         label={promptType === "gaming" ? "Describe the Clip" : "Custom Instructions (Optional)"}

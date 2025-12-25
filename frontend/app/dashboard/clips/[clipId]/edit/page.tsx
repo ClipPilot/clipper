@@ -12,6 +12,11 @@ import {
   Textarea,
   Switch,
   addToast,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { clipsAPI, Clip, CaptionEntry } from "@/api/clips";
@@ -59,6 +64,7 @@ export default function EditClipPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [accessDenied, setAccessDenied] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const [captions, setCaptions] = useState<CaptionEntry[]>([]);
   const [currentTime, setCurrentTime] = useState(0);
@@ -180,11 +186,7 @@ export default function EditClipPage() {
         }
       );
       setClip((prev) => (prev ? { ...prev, clipUrl: result.clipUrl } : null));
-      addToast({
-        title: "Processing",
-        description: "Your changes are being applied. The updated video will be available shortly.",
-        color: "success",
-      });
+      setShowSuccessModal(true);
     } catch (error) {
       console.error("Failed to apply changes:", error);
       addToast({
@@ -195,6 +197,11 @@ export default function EditClipPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleSuccessModalClose = () => {
+    setShowSuccessModal(false);
+    router.push("/dashboard/clips?tab=processing");
   };
 
   const formatTime = (seconds: number): string => {
@@ -336,24 +343,30 @@ export default function EditClipPage() {
                       );
                     })()
                   )}
-                  {textOverlay && (
+                  {textOverlay && containerHeight > 0 && (
                     (() => {
                       const fontId = HEADING_FONTS.find(f => f.name === textFont)?.id || "montserrat";
+                      // Backend uses deviceScaleFactor: 2 in Puppeteer, so actual rendered size is fontSize * 2
+                      // Scale to match preview container size (containerHeight corresponds to 1920px video height)
+                      const scale = containerHeight / 1920;
+                      const scaledFontSize = Math.round(fontSize * 2 * scale);
+                      const scaledStroke = Math.max(1, Math.round(4 * 2 * scale));
                       return (
                         <div
-                          className="absolute pointer-events-none px-3 py-1 rounded whitespace-nowrap"
+                          className="absolute pointer-events-none px-3 py-1 rounded"
                           style={{
                             left: `${textX}%`,
                             top: `${textY}%`,
                             transform: "translate(-50%, -50%)",
                             color: textColor,
-                            fontSize: `${fontSize * 0.4}px`,
+                            fontSize: `${scaledFontSize}px`,
                             fontWeight: 900,
-                            WebkitTextStroke: `${Math.max(1, fontSize * 0.03)}px #000000`,
+                            WebkitTextStroke: `${scaledStroke}px #000000`,
                             paintOrder: "stroke fill",
                             fontFamily: `var(--font-${fontId}), sans-serif`,
                             textAlign: "center",
                             lineHeight: 1.2,
+                            maxWidth: "90%",
                           }}
                         >
                           {textOverlay}
@@ -612,6 +625,46 @@ export default function EditClipPage() {
           </div>
         </div>
       </div>
+
+      {/* Success Modal */}
+      <Modal
+        isOpen={showSuccessModal}
+        onClose={handleSuccessModalClose}
+        classNames={{
+          base: "bg-surface-base border border-border-base",
+          header: "border-b border-border-base",
+          body: "py-6",
+          footer: "border-t border-border-base",
+        }}
+      >
+        <ModalContent>
+          <ModalHeader className="flex flex-col gap-1">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary-500/20 flex items-center justify-center">
+                <Icon icon="solar:check-circle-bold" className="text-primary-400 text-xl" />
+              </div>
+              <span className="text-text-primary">Changes Submitted</span>
+            </div>
+          </ModalHeader>
+          <ModalBody>
+            <p className="text-text-secondary">
+              Your changes are being applied to the video. This usually takes 1-2 minutes.
+            </p>
+            <p className="text-text-tertiary text-sm mt-2">
+              You&apos;ll be redirected to view your clips where you can track the progress.
+            </p>
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              color="primary"
+              onPress={handleSuccessModalClose}
+              startContent={<Icon icon="solar:arrow-right-outline" />}
+            >
+              View My Clips
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </div>
   );
 }
