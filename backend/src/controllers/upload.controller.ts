@@ -278,3 +278,186 @@ export const submitClipJob = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({ error: "Failed to submit job" });
   }
 };
+
+// Maximum videos allowed in a batch
+const MAX_BATCH_VIDEOS = 5;
+
+export const submitBatchClipJob = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const {
+      teamId,
+      videos,
+      length,
+      hookLength,
+      promptType,
+      customPrompt,
+      textPrompt,
+      numberOfVideos = 1,
+      customText,
+      textPosition,
+      textColor,
+      textFont,
+      captions,
+      captionColor,
+      captionFont,
+    } = req.body;
+
+    if (!teamId || !videos) {
+      return res.status(400).json({ error: "Missing required fields: teamId, videos" });
+    }
+
+    if (!Array.isArray(videos) || videos.length === 0) {
+      return res.status(400).json({ error: "Videos must be a non-empty array" });
+    }
+
+    if (videos.length > MAX_BATCH_VIDEOS) {
+      return res.status(400).json({
+        error: `Maximum ${MAX_BATCH_VIDEOS} videos allowed per batch`,
+      });
+    }
+
+    // Validate each video entry
+    for (let i = 0; i < videos.length; i++) {
+      const video = videos[i];
+      if (!video.s3Key) {
+        return res.status(400).json({
+          error: `Video at index ${i} missing required field: s3Key`,
+        });
+      }
+      if (video.videoIndex === undefined || video.videoIndex < 0 || video.videoIndex > 4) {
+        return res.status(400).json({
+          error: `Video at index ${i} has invalid videoIndex (must be 0-4)`,
+        });
+      }
+    }
+
+    const parsedTeamId = parseInt(teamId);
+    const parsedNumberOfVideos = parseInt(numberOfVideos) || 1;
+
+    if (parsedNumberOfVideos < 1 || parsedNumberOfVideos > 25) {
+      return res.status(400).json({ error: "Number of videos must be between 1 and 25" });
+    }
+
+    const team = await teamService.getTeamById(parsedTeamId);
+    const plan = team.plan || "free";
+
+    if (plan === "free") {
+      const stats = await teamService.getTeamUsageStats(parsedTeamId);
+      const currentClipCount = await clipManagerService.getTeamClipsCount(parsedTeamId);
+      const generationLimit = stats.limit === 0 ? 0 : PLAN_LIMITS.FREE.generations;
+      const generationsRemaining = generationLimit - currentClipCount;
+
+      if (generationsRemaining <= 0) {
+        return res.status(403).json({
+          error: "Generation limit reached",
+          message: generationLimit === 0
+            ? "This team has no generation allowance. Upgrade to generate clips."
+            : `You have generated all ${generationLimit} clips allowed on the free plan. Upgrade to generate unlimited clips.`,
+          usage: {
+            clipsGenerated: currentClipCount,
+            generationLimit,
+            generationsRemaining: 0,
+          },
+        });
+      }
+
+      if (parsedNumberOfVideos > generationsRemaining) {
+        return res.status(403).json({
+          error: "Generation limit exceeded",
+          message: `You can only generate ${generationsRemaining} more clip(s). You requested ${parsedNumberOfVideos}.`,
+          usage: {
+            clipsGenerated: currentClipCount,
+            generationLimit,
+            generationsRemaining,
+          },
+        });
+      }
+    }
+
+    if (length && (length < 10 || length > 120)) {
+      return res.status(400).json({ error: "Length must be between 10 and 120 seconds" });
+    }
+
+    if (hookLength && (hookLength < 2 || hookLength > 15)) {
+      return res.status(400).json({ error: "Hook length must be between 2 and 15 seconds" });
+    }
+
+    if (promptType && !isValidPromptType(promptType)) {
+      return res.status(400).json({ error: `Prompt type must be one of: ${PROMPT_TYPES.join(", ")}` });
+    }
+
+    if (textPosition && !["top", "middle", "bottom"].includes(textPosition)) {
+      return res.status(400).json({ error: 'Text position must be "top", "middle", or "bottom"' });
+    }
+
+    const userId = req.user.dbUserId;
+    const pendingClips: any[] = [];
+
+    // Create raw video records for each uploaded video
+    const rawVideoIds: number[] = [];
+    for (const video of videos) {
+      const rawVideo = await clipManagerService.createRawVideo({
+        teamId: parsedTeamId,
+        videoPath: video.s3Key,
+      });
+      rawVideoIds.push(rawVideo.id);
+    }
+
+    // Create pending clips (use first raw video as reference)
+    for (let i = 0; i < parsedNumberOfVideos; i++) {
+      const clip = await clipManagerService.createPendingClip({
+        teamId: parsedTeamId,
+        userId,
+        rawVideoId: rawVideoIds[0], // Reference the first video
+      });
+      pendingClips.push(clip);
+    }
+
+    const clipIds = pendingClips.map((c) => c.id);
+
+    // Format videos for SQS job
+    const formattedVideos = videos.map((v: any) => ({
+      s3Key: v.s3Key,
+      videoIndex: v.videoIndex,
+      originalFileName: v.originalFileName,
+      fileSize: v.fileSize ? parseInt(v.fileSize) : undefined,
+    }));
+
+    const messageId = await sqsService.sendBatchClipVideoJob({
+      clipIds,
+      teamId: parsedTeamId,
+      userId,
+      videos: formattedVideos,
+      options: {
+        length: length ? parseInt(length) : undefined,
+        hookLength: hookLength ? parseInt(hookLength) : undefined,
+        promptType,
+        customPrompt,
+        textPrompt,
+        numberOfVideos: parsedNumberOfVideos,
+        customText,
+        textPosition,
+        textColor,
+        textFont,
+        captions: captions === true || captions === "true",
+        captionColor,
+        captionFont,
+      },
+    });
+
+    console.log(`Batch job sent to SQS with messageId: ${messageId}`);
+
+    return res.json({
+      clipIds,
+      message: `Processing ${parsedNumberOfVideos} clip(s) from ${videos.length} source videos`,
+      status: "queued",
+    });
+  } catch (err) {
+    console.error("Error submitting batch clip job:", err);
+    return res.status(500).json({ error: "Failed to submit batch job" });
+  }
+};

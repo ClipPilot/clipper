@@ -6,9 +6,11 @@ import {
   ClipSuggestionsSchema,
   MultipleClipSuggestionsSchema,
   ClipSuggestions,
+  BatchClipSuggestions,
+  MultipleBatchClipSuggestionsSchema,
 } from "../types/ai.types";
 import z from "zod";
-import { generatePrompt } from "../config/prompts";
+import { generatePrompt, generateBatchPrompt } from "../config/prompts";
 import fs from "fs";
 import { PromptType } from "../constants/promptTypes";
 
@@ -216,4 +218,94 @@ export const generateClipSuggestionsService = async (
     console.log("AI Clip Suggestions Response:", response.output_parsed);
     return response.output_parsed ? [response.output_parsed] : [];
   }
+};
+
+// Batch clip generation options
+export interface BatchClipGenerationOptions extends ClipGenerationOptions {
+  batchTranscripts: Array<{
+    videoIndex: number;
+    transcription: SyncPrerecordedResponse;
+    fileName?: string;
+  }>;
+}
+
+/**
+ * Generate clip suggestions from multiple source videos
+ * AI can select the best hook from any video and mix segments from all videos
+ */
+export const generateBatchClipSuggestionsService = async (
+  options: BatchClipGenerationOptions
+): Promise<BatchClipSuggestions[]> => {
+  const length = options.length || 40;
+  const hookLength = options.hookLength || 6;
+  const promptType = options.promptType || "business";
+  const numberOfVideos = options.numberOfVideos || 1;
+
+  // Prepare batch transcript data with video indexes
+  const batchTranscriptData = options.batchTranscripts.map((bt) => ({
+    videoIndex: bt.videoIndex,
+    transcriptText:
+      bt.transcription.results.channels[0].alternatives[0].transcript,
+    transcriptObject: JSON.stringify(
+      bt.transcription.results.channels[0].alternatives[0].paragraphs
+    ),
+    fileName: bt.fileName,
+  }));
+
+  // Create combined transcript text for context (used in base prompt)
+  const combinedTranscriptText = batchTranscriptData
+    .map((bt) => `[VIDEO ${bt.videoIndex + 1}]: ${bt.transcriptText}`)
+    .join("\n\n---\n\n");
+
+  const combinedTranscriptObject = JSON.stringify(
+    batchTranscriptData.map((bt) => ({
+      videoIndex: bt.videoIndex,
+      paragraphs: JSON.parse(bt.transcriptObject),
+    }))
+  );
+
+  // Generate batch-aware prompt
+  const prompt = generateBatchPrompt(
+    promptType,
+    {
+      length,
+      hookLength,
+      transcriptText: combinedTranscriptText,
+      transcriptObject: combinedTranscriptObject,
+      numberOfVideos,
+      userTextPrompt: options.textPrompt,
+      isBatch: true,
+      batchTranscripts: batchTranscriptData,
+    },
+    options.customPrompt
+  );
+
+  console.log("Generating batch clip suggestions for", options.batchTranscripts.length, "videos");
+
+  // For gaming prompt type with video analysis, we'd need to handle multiple videos
+  // For now, batch mode uses transcript-only analysis for all prompt types
+  if (promptType === "gaming") {
+    console.log("Note: Batch mode for gaming uses transcript analysis only (no video upload)");
+  }
+
+  // Always use multiple suggestions schema for batch since we want sourceVideoIndex
+  const response = await client.responses.parse({
+    model: "gpt-5-mini",
+    reasoning: { effort: "medium" },
+    input: [
+      {
+        role: "user",
+        content: prompt,
+      },
+    ],
+    text: {
+      format: zodTextFormat(
+        MultipleBatchClipSuggestionsSchema,
+        "batch_clip_suggestions"
+      ),
+    },
+  });
+
+  console.log("AI Batch Clip Suggestions Response:", response.output_parsed);
+  return response.output_parsed?.videos || [];
 };

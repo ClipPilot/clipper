@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { Select, SelectItem, Slider, Textarea } from "@heroui/react";
+import { Select, SelectItem, Slider, Textarea, Card, CardBody } from "@heroui/react";
+import { Icon } from "@iconify/react";
 import {
   PromptType,
   PROMPT_TYPES,
@@ -21,6 +22,7 @@ interface SettingsPanelProps {
   numberOfVideos: number;
   setNumberOfVideos: (value: number) => void;
   maxClips?: number;
+  batchMode?: boolean;
 }
 
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({
@@ -35,7 +37,13 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   numberOfVideos,
   setNumberOfVideos,
   maxClips,
+  batchMode = false,
 }) => {
+  // Filter out gaming in batch mode
+  const availablePromptTypes = batchMode
+    ? PROMPT_TYPES.filter((type) => type !== "gaming")
+    : PROMPT_TYPES;
+
   return (
     <div className="space-y-6">
       <h3 className="text-lg font-bold text-text-primary">Clip Settings</h3>
@@ -48,10 +56,21 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           if (key) setPromptType(key);
         }}
       >
-        {PROMPT_TYPES.map((type) => (
+        {availablePromptTypes.map((type) => (
           <SelectItem key={type}>{PROMPT_TYPE_LABELS[type]}</SelectItem>
         ))}
       </Select>
+
+      {(promptType === "viral" || promptType === "business") && (
+        <Card className="bg-primary-500/10 border border-primary-500/30">
+          <CardBody className="p-3 flex flex-row items-start gap-3">
+            <Icon icon="solar:info-circle-bold" className="text-primary-400 text-lg flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-primary-300">
+              This mode works best with videos that contain speech or dialogue. The AI uses spoken content to identify the most engaging moments.
+            </p>
+          </CardBody>
+        </Card>
+      )}
 
       <Textarea
         label={promptType === "gaming" ? "Describe the Clip" : "Custom Instructions (Optional)"}

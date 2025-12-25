@@ -3,8 +3,16 @@ import OpenAI from "openai";
 import { ENV } from "../config/env";
 import { extractAudio } from "../utils/extractAudio";
 import { deepgram } from "../config/deepgram";
+import { SyncPrerecordedResponse } from "@deepgram/sdk";
 
 const client = new OpenAI({ apiKey: ENV.OPENAI_API_KEY });
+
+// Batch transcription result interface
+export interface BatchTranscriptionResult {
+  videoIndex: number;
+  transcription: SyncPrerecordedResponse;
+  filePath: string;
+}
 
 export const transcribeVideoService = async (filePath: string) => {
   console.log("Extracting audio from video...");
@@ -36,4 +44,28 @@ export const transcribeVideoService = async (filePath: string) => {
   console.log("Transcribing completed!");
 
   return result;
+};
+
+// Transcribe multiple videos in parallel for batch processing
+export const transcribeMultipleVideosService = async (
+  videoPaths: Array<{ path: string; videoIndex: number }>
+): Promise<BatchTranscriptionResult[]> => {
+  console.log(
+    `Starting batch transcription for ${videoPaths.length} videos...`
+  );
+
+  const results = await Promise.all(
+    videoPaths.map(async ({ path, videoIndex }) => {
+      console.log(`Transcribing video ${videoIndex + 1}...`);
+      const transcription = await transcribeVideoService(path);
+      return {
+        videoIndex,
+        transcription,
+        filePath: path,
+      };
+    })
+  );
+
+  console.log(`Batch transcription completed for ${results.length} videos`);
+  return results;
 };

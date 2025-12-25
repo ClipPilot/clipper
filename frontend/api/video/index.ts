@@ -48,6 +48,37 @@ export interface SubmitClipResponse {
   status: string;
 }
 
+// Batch upload types
+export interface BatchUploadedVideo {
+  s3Key: string;
+  fileName: string;
+  fileSize: number;
+  videoIndex: number; // 0-4
+}
+
+export interface SubmitBatchClipParams {
+  teamId: number;
+  videos: Array<{
+    s3Key: string;
+    videoIndex: number;
+    originalFileName?: string;
+    fileSize?: number;
+  }>;
+  length?: number;
+  hookLength?: number;
+  promptType?: PromptType;
+  customPrompt?: string;
+  textPrompt?: string;
+  numberOfVideos?: number;
+  customText?: string;
+  textPosition?: "top" | "middle" | "bottom";
+  textColor?: string;
+  textFont?: string;
+  captions?: boolean;
+  captionColor?: string;
+  captionFont?: string;
+}
+
 export interface YouTubeVideoInfo {
   title: string;
   duration: number;
@@ -440,6 +471,25 @@ class VideoAPI {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.message || error.error || "Failed to submit job");
+    }
+
+    return await response.json();
+  }
+
+  async submitBatchClipJob(
+    params: SubmitBatchClipParams
+  ): Promise<SubmitClipResponse> {
+    const response = await apiFetch(`${API_URL}/clip-video/batch-submit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(
+        error.message || error.error || "Failed to submit batch job"
+      );
     }
 
     return await response.json();

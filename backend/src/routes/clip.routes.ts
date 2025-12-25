@@ -3,6 +3,7 @@ import { clipManagerController } from "../controllers/clipManager.controller";
 import {
   getPresignedUploadUrl,
   submitClipJob,
+  submitBatchClipJob,
   initiateMultipartUpload,
   completeMultipartUpload,
   abortMultipartUpload,
@@ -333,6 +334,109 @@ router.post("/youtube/download-sync", requireAuth, downloadVideoSync);
  *         description: Usage limit reached
  */
 router.post("/submit", requireAuth, submitClipJob);
+
+/**
+ * @openapi
+ * /clip-video/batch-submit:
+ *   post:
+ *     summary: Submit a batch clip generation job
+ *     description: After uploading multiple videos to S3, submit this to queue a batch clip generation job. Supports up to 5 videos. The AI will analyze all videos and create clips that can mix segments from different source videos.
+ *     tags:
+ *       - Video Upload
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - teamId
+ *               - videos
+ *             properties:
+ *               teamId:
+ *                 type: integer
+ *                 description: The team ID
+ *               videos:
+ *                 type: array
+ *                 maxItems: 5
+ *                 items:
+ *                   type: object
+ *                   required:
+ *                     - s3Key
+ *                     - videoIndex
+ *                   properties:
+ *                     s3Key:
+ *                       type: string
+ *                       description: S3 key from presigned-upload response
+ *                     videoIndex:
+ *                       type: integer
+ *                       minimum: 0
+ *                       maximum: 4
+ *                       description: Index of this video (0-4)
+ *                     originalFileName:
+ *                       type: string
+ *                     fileSize:
+ *                       type: integer
+ *               length:
+ *                 type: integer
+ *                 minimum: 10
+ *                 maximum: 120
+ *                 description: Desired clip length in seconds
+ *               hookLength:
+ *                 type: integer
+ *                 minimum: 2
+ *                 maximum: 15
+ *                 description: Hook length in seconds
+ *               promptType:
+ *                 type: string
+ *                 enum: [business, viral, gaming]
+ *               customPrompt:
+ *                 type: string
+ *               textPrompt:
+ *                 type: string
+ *               numberOfVideos:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 25
+ *               customText:
+ *                 type: string
+ *               textPosition:
+ *                 type: string
+ *                 enum: [top, middle, bottom]
+ *               textColor:
+ *                 type: string
+ *               captions:
+ *                 type: boolean
+ *               captionColor:
+ *                 type: string
+ *               captionFont:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Batch job submitted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 clipIds:
+ *                   type: array
+ *                   items:
+ *                     type: integer
+ *                 message:
+ *                   type: string
+ *                 status:
+ *                   type: string
+ *       400:
+ *         description: Invalid request (max 5 videos, or validation errors)
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Usage limit reached
+ */
+router.post("/batch-submit", requireAuth, submitBatchClipJob);
 
 /**
  * @openapi

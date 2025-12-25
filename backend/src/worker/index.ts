@@ -10,12 +10,14 @@ import {
 } from "@aws-sdk/client-ecs";
 import { config } from "../config/env";
 import { processClipVideoJob } from "./processors/clipProcessor";
+import { processBatchClipVideoJob } from "./processors/batchClipProcessor";
 import { processCaptionsJob } from "./processors/captionsProcessor";
 import { processTextOverlayJob } from "./processors/textOverlayProcessor";
 import { processOverlaysJob } from "./processors/overlaysProcessor";
 import {
   VideoProcessingJob,
   ClipVideoJob,
+  BatchClipVideoJob,
   UpdateCaptionsJob,
   TextOverlayJob,
   UpdateOverlaysJob,
@@ -103,6 +105,9 @@ async function processMessage(job: VideoProcessingJob, receiptHandle: string): P
     switch (job.type) {
       case "clip-video":
         await processClipVideoJob(job as ClipVideoJob);
+        break;
+      case "batch-clip-video":
+        await processBatchClipVideoJob(job as BatchClipVideoJob);
         break;
       case "update-captions":
         await processCaptionsJob(job as UpdateCaptionsJob);
