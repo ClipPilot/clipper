@@ -85,6 +85,22 @@ const generateCaptionsData = (
   return { captionsData, srtContent };
 };
 
+const validateSegment = (segment: { start: number; end: number; text: string }, name: string) => {
+  if (typeof segment.start !== 'number' || typeof segment.end !== 'number') {
+    throw new Error(`${name}: Invalid timestamp types - start: ${typeof segment.start}, end: ${typeof segment.end}`);
+  }
+  if (segment.start < 0) {
+    throw new Error(`${name}: Start timestamp cannot be negative (${segment.start})`);
+  }
+  if (segment.end <= segment.start) {
+    throw new Error(`${name}: End (${segment.end}) must be greater than start (${segment.start})`);
+  }
+  const duration = segment.end - segment.start;
+  if (duration < 0.5) {
+    throw new Error(`${name}: Segment too short (${duration}s) - minimum is 0.5s`);
+  }
+};
+
 export const createCombinedClipService = async (
   videoPath: string,
   clipData: ClipSuggestions,
@@ -95,6 +111,17 @@ export const createCombinedClipService = async (
   const outDir = path.join(process.cwd(), "output");
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
   const tempFiles: string[] = [];
+
+  // Log and validate all segments
+  console.log(`[Clip ${videoIndex}] Hook: ${clipData.hook.start}s - ${clipData.hook.end}s (${(clipData.hook.end - clipData.hook.start).toFixed(1)}s)`);
+  validateSegment(clipData.hook, 'Hook');
+
+  for (let i = 0; i < clipData.main.length; i++) {
+    const seg = clipData.main[i];
+    console.log(`[Clip ${videoIndex}] Main[${i}]: ${seg.start}s - ${seg.end}s (${(seg.end - seg.start).toFixed(1)}s)`);
+    validateSegment(seg, `Main[${i}]`);
+  }
+
   const hookPath = path.join(outDir, `hook_${videoIndex}_temp.mp4`);
   await cutClip(videoPath, hookPath, clipData.hook.start, clipData.hook.end);
   tempFiles.push(hookPath);

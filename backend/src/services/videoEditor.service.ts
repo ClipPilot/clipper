@@ -89,25 +89,61 @@ export const compressVideoForUpload = async (
 };
 
 export const cutClip = (input: string, output: string, start: number, end: number) => {
+  const duration = end - start;
+  console.log(`[CUT] Cutting ${start}s-${end}s (${duration.toFixed(1)}s) from ${input}`);
+
   return new Promise((resolve, reject) => {
     ffmpeg(input)
       .setStartTime(start)
-      .setDuration(end - start)
+      .setDuration(duration)
       .outputOptions([
         "-c:v libx264",
         "-preset ultrafast",
         "-crf 28", // Higher CRF for faster encoding (intermediate file)
-        "-c:a copy", // Stream copy audio (no keyframe issues)
+        "-c:a aac", // Re-encode audio to avoid potential issues
+        "-b:a 128k",
       ])
       .save(output)
-      .on("end", () => resolve(output))
-      .on("error", reject)
+      .on("end", () => {
+        // Verify the output file exists and has content
+        if (!fs.existsSync(output)) {
+          return reject(new Error(`Cut clip failed: output file not created at ${output}`));
+        }
+        const stats = fs.statSync(output);
+        if (stats.size < 1000) { // Less than 1KB is likely invalid
+          return reject(new Error(`Cut clip failed: output file too small (${stats.size} bytes)`));
+        }
+        console.log(`[CUT] Success: ${output} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`);
+        resolve(output);
+      })
+      .on("error", (err) => {
+        console.error(`[CUT] Failed: ${err.message}`);
+        reject(err);
+      })
       .run();
   });
 };
 export const mergeClips = async (clips: string[], outputPath: string) => {
+  console.log(`[MERGE] Merging ${clips.length} clips...`);
+
+  // Verify all input clips exist
+  for (const clip of clips) {
+    if (!fs.existsSync(clip)) {
+      throw new Error(`[MERGE] Input clip not found: ${clip}`);
+    }
+    const stats = fs.statSync(clip);
+    console.log(`[MERGE] Input: ${clip} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`);
+  }
+
   const firstClip = clips[0];
-  const metadata = await getVideoMetadata(firstClip);
+  let metadata;
+  try {
+    metadata = await getVideoMetadata(firstClip);
+    console.log(`[MERGE] First clip dimensions: ${metadata.width}x${metadata.height}`);
+  } catch (err) {
+    console.error(`[MERGE] Failed to get metadata for ${firstClip}:`, err);
+    throw err;
+  }
   const isHorizontal = metadata.width > metadata.height;
 
   return new Promise((resolve, reject) => {

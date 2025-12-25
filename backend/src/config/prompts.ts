@@ -456,6 +456,23 @@ MAIN CONTENT:
 2. Keep visual interest throughout - no boring talking head sections
 3. End with satisfaction or another visual hook
 
+===== CRITICAL TIMESTAMP RULES =====
+
+YOU MUST FOLLOW THESE RULES FOR EVERY SEGMENT:
+
+1. TIMESTAMPS ARE IN SECONDS (e.g., 145.5 means 2 minutes 25.5 seconds into the video)
+2. "end" MUST BE GREATER THAN "start" - ALWAYS (end > start)
+3. MINIMUM SEGMENT LENGTH: Each segment must be AT LEAST 3 seconds long (end - start >= 3)
+4. Hook should be ${hookLength}-${hookLength + 2} seconds long
+5. Each main segment should be 5-15 seconds long
+6. DO NOT use timestamps beyond the video length
+7. Round timestamps to 1 decimal place (e.g., 145.5, not 145.523)
+
+VERIFY BEFORE SUBMITTING:
+- Hook: end - start >= ${hookLength} seconds
+- Each Main segment: end - start >= 3 seconds
+- Total duration (hook + all main segments) ≈ ${length} seconds
+
 ===== OUTPUT FORMAT =====
 
 Generate ${numberOfVideos} DIFFERENT clips based on DIFFERENT visual moments you observed.
@@ -466,18 +483,18 @@ Generate ${numberOfVideos} DIFFERENT clips based on DIFFERENT visual moments you
       "hook": {
         "text": "Describe what you SEE happening visually in this moment",
         "start": 145.5,
-        "end": 151.2
+        "end": 151.5
       },
       "main": [
         {
           "text": "Describe the visual action/context in this segment",
           "start": 120.0,
-          "end": 145.0
+          "end": 140.0
         },
         {
           "text": "Describe what happens visually here",
-          "start": 151.2,
-          "end": 165.0
+          "start": 155.0,
+          "end": 170.0
         }
       ],
       "combined_script": "Full text of what is said in the final clip",
@@ -488,7 +505,7 @@ Generate ${numberOfVideos} DIFFERENT clips based on DIFFERENT visual moments you
   ]
 }
 
-LENGTH CHECK: Hook + Main segments must total approximately ${length} seconds.
+DOUBLE-CHECK: For EACH segment, verify end > start and duration >= 3 seconds!
 
 ===== EVALUATION CRITERIA =====
 - evalScore 90+: Visually stunning, impossible to scroll past
