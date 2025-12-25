@@ -358,14 +358,32 @@ Generate ${numberOfVideos} DIFFERENT clips. Each must be a UNIQUE exciting momen
 
 LENGTH CHECK: Hook (5.5s) + Main (15s + 14s + 6s = 35s) = 40.5s total ✓
 
+===== CRITICAL TIMESTAMP RULES =====
+
+YOU MUST FOLLOW THESE RULES FOR EVERY SEGMENT:
+
+1. TIMESTAMPS ARE IN SECONDS (e.g., 1904.5 means 31 minutes 44.5 seconds into the video)
+2. "end" MUST BE GREATER THAN "start" - ALWAYS (end > start)
+3. MINIMUM SEGMENT LENGTH: Each segment must be AT LEAST 3 seconds long (end - start >= 3)
+4. Hook should be ${hookLength}-${hookLength + 2} seconds long
+5. Each main segment should be 5-20 seconds long
+6. DO NOT use timestamps beyond the video length
+7. Round timestamps to 1 decimal place (e.g., 1904.5, not 1904.523)
+
+VERIFY BEFORE SUBMITTING:
+- Hook: end - start >= ${hookLength} seconds
+- Each Main segment: end - start >= 3 seconds
+- Total duration (hook + all main segments) ≈ ${length} seconds
+
 ===== FINAL RULES =====
-- Timestamps are in SECONDS (use transcript for reference: ${transcriptObject})
 - The "text" fields should describe VISUAL ACTION not dialogue
 - MAIN MUST have 2-3 segments minimum, and the LAST segment should include/overlap with hook timestamps
 - Main segments can be from DIFFERENT parts of the video (montage style) to tell a better story
 - evalScore: 90+ = insane clip, 80-89 = great clip, 70-79 = good clip
 - Each video MUST be approximately ${length} seconds total - ADD MORE SEGMENTS if too short!
 - If you can't find ${numberOfVideos} genuinely exciting moments, return fewer but better clips
+
+DOUBLE-CHECK: For EACH segment, verify end > start and duration >= 3 seconds!
 `;
 };
 
