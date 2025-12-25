@@ -7,7 +7,12 @@ const sqsClient = new SQSClient({
 });
 
 // Job types for video processing
-export type JobType = "clip-video" | "batch-clip-video" | "update-captions" | "text-overlay" | "update-overlays";
+export type JobType =
+  | "clip-video"
+  | "batch-clip-video"
+  | "update-captions"
+  | "text-overlay"
+  | "update-overlays";
 
 // Base job interface
 interface BaseJob {
@@ -108,7 +113,12 @@ export interface UpdateOverlaysJob extends BaseJob {
   };
 }
 
-export type VideoProcessingJob = ClipVideoJob | BatchClipVideoJob | UpdateCaptionsJob | TextOverlayJob | UpdateOverlaysJob;
+export type VideoProcessingJob =
+  | ClipVideoJob
+  | BatchClipVideoJob
+  | UpdateCaptionsJob
+  | TextOverlayJob
+  | UpdateOverlaysJob;
 
 class SQSService {
   private queueUrl: string;
@@ -138,7 +148,9 @@ class SQSService {
     });
 
     const response = await sqsClient.send(command);
-    console.log(`SQS message sent: ${response.MessageId} for job type: ${job.type}`);
+    console.log(
+      `SQS message sent: ${response.MessageId} for job type: ${job.type}`
+    );
     return response.MessageId || "";
   }
 

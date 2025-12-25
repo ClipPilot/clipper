@@ -175,14 +175,16 @@ export default function EditClipPage() {
           captionsData: captions,
           captionColor,
           captionFont,
-          heading: textOverlay.trim() ? {
-            text: textOverlay,
-            color: textColor,
-            font: textFont,
-            x: textX,
-            y: textY,
-            fontSize,
-          } : undefined,
+          heading: textOverlay.trim()
+            ? {
+                text: textOverlay,
+                color: textColor,
+                font: textFont,
+                x: textX,
+                y: textY,
+                fontSize,
+              }
+            : undefined,
         }
       );
       setClip((prev) => (prev ? { ...prev, clipUrl: result.clipUrl } : null));
@@ -287,9 +289,13 @@ export default function EditClipPage() {
                     onTimeUpdate={handleTimeUpdate}
                   />
                   {/* Caption Preview Overlay - matches backend ASS styling */}
-                  {captionsEnabled && captions.length > 0 && containerHeight > 0 && (
+                  {captionsEnabled &&
+                    captions.length > 0 &&
+                    containerHeight > 0 &&
                     (() => {
-                      const activeCaption = captions.find(c => isActiveCaption(c));
+                      const activeCaption = captions.find((c) =>
+                        isActiveCaption(c)
+                      );
                       if (!activeCaption) return null;
 
                       // Backend: 1080x1920, FontSize=120, MarginV=280, Outline=6
@@ -298,7 +304,9 @@ export default function EditClipPage() {
                       const scaledFontSize = Math.round(120 * scale);
                       const scaledMarginBottom = Math.round(280 * scale);
                       const scaledOutline = Math.max(1, Math.round(6 * scale));
-                      const fontId = CAPTION_FONTS.find(f => f.name === captionFont)?.id || "montserrat";
+                      const fontId =
+                        CAPTION_FONTS.find((f) => f.name === captionFont)?.id ||
+                        "montserrat";
 
                       return (
                         <div
@@ -328,11 +336,16 @@ export default function EditClipPage() {
                               <span
                                 key={idx}
                                 style={{
-                                  color: idx === Math.floor(
-                                    ((currentTime - activeCaption.startTime) /
-                                    (activeCaption.endTime - activeCaption.startTime)) *
-                                    activeCaption.text.split(" ").length
-                                  ) ? captionColor : "#FFFFFF",
+                                  color:
+                                    idx ===
+                                    Math.floor(
+                                      ((currentTime - activeCaption.startTime) /
+                                        (activeCaption.endTime -
+                                          activeCaption.startTime)) *
+                                        activeCaption.text.split(" ").length
+                                    )
+                                      ? captionColor
+                                      : "#FFFFFF",
                                 }}
                               >
                                 {word}{" "}
@@ -341,16 +354,21 @@ export default function EditClipPage() {
                           </p>
                         </div>
                       );
-                    })()
-                  )}
-                  {textOverlay && containerHeight > 0 && (
+                    })()}
+                  {textOverlay &&
+                    containerHeight > 0 &&
                     (() => {
-                      const fontId = HEADING_FONTS.find(f => f.name === textFont)?.id || "montserrat";
+                      const fontId =
+                        HEADING_FONTS.find((f) => f.name === textFont)?.id ||
+                        "montserrat";
                       // Backend uses deviceScaleFactor: 2 in Puppeteer, so actual rendered size is fontSize * 2
                       // Scale to match preview container size (containerHeight corresponds to 1920px video height)
                       const scale = containerHeight / 1920;
                       const scaledFontSize = Math.round(fontSize * 2 * scale);
-                      const scaledStroke = Math.max(1, Math.round(4 * 2 * scale));
+                      const scaledStroke = Math.max(
+                        1,
+                        Math.round(4 * 2 * scale)
+                      );
                       return (
                         <div
                           className="absolute pointer-events-none px-3 py-1 rounded"
@@ -372,8 +390,7 @@ export default function EditClipPage() {
                           {textOverlay}
                         </div>
                       );
-                    })()
-                  )}
+                    })()}
                 </>
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
@@ -394,8 +411,13 @@ export default function EditClipPage() {
               {/* Captions Section */}
               <div>
                 <div className="flex items-center gap-2 mb-4">
-                  <Icon icon="solar:subtitles-outline" className="text-accent-400" />
-                  <h3 className="text-lg font-semibold text-text-primary">Captions</h3>
+                  <Icon
+                    icon="solar:subtitles-outline"
+                    className="text-accent-400"
+                  />
+                  <h3 className="text-lg font-semibold text-text-primary">
+                    Captions
+                  </h3>
                 </div>
 
                 {captions.length > 0 && (
@@ -403,14 +425,26 @@ export default function EditClipPage() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <Icon
-                          icon={captionsEnabled ? "solar:subtitles-bold" : "solar:subtitles-outline"}
-                          className={captionsEnabled ? "text-accent-400" : "text-text-tertiary"}
+                          icon={
+                            captionsEnabled
+                              ? "solar:subtitles-bold"
+                              : "solar:subtitles-outline"
+                          }
+                          className={
+                            captionsEnabled
+                              ? "text-accent-400"
+                              : "text-text-tertiary"
+                          }
                           width={24}
                         />
                         <div>
-                          <p className="text-sm font-medium text-text-primary">Show Captions</p>
+                          <p className="text-sm font-medium text-text-primary">
+                            Show Captions
+                          </p>
                           <p className="text-xs text-text-tertiary">
-                            {captionsEnabled ? "Captions will appear on the video" : "Video will have no captions"}
+                            {captionsEnabled
+                              ? "Captions will appear on the video"
+                              : "Video will have no captions"}
                           </p>
                         </div>
                       </div>
@@ -426,9 +460,13 @@ export default function EditClipPage() {
 
                 {captions.length > 0 && captionsEnabled && (
                   <div className="mb-4 p-4 rounded-lg bg-surface-elevated border border-border-base">
-                    <p className="text-sm font-medium text-text-primary mb-3">Caption Style</p>
+                    <p className="text-sm font-medium text-text-primary mb-3">
+                      Caption Style
+                    </p>
                     <div className="mb-4">
-                      <label className="text-xs text-text-secondary mb-2 block">Highlight Color</label>
+                      <label className="text-xs text-text-secondary mb-2 block">
+                        Highlight Color
+                      </label>
                       <div className="flex flex-wrap gap-2">
                         {CAPTION_COLORS.map((c) => (
                           <button
@@ -446,7 +484,9 @@ export default function EditClipPage() {
                       </div>
                     </div>
                     <div>
-                      <label className="text-xs text-text-secondary mb-2 block">Caption Font</label>
+                      <label className="text-xs text-text-secondary mb-2 block">
+                        Caption Font
+                      </label>
                       <div className="flex gap-2 overflow-x-auto py-1">
                         {CAPTION_FONTS.map((font) => (
                           <button
@@ -459,7 +499,12 @@ export default function EditClipPage() {
                             }`}
                             title={font.name}
                           >
-                            <span className="text-base font-bold" style={{ fontFamily: `var(--font-${font.id})` }}>Ag</span>
+                            <span
+                              className="text-base font-bold"
+                              style={{ fontFamily: `var(--font-${font.id})` }}
+                            >
+                              Ag
+                            </span>
                           </button>
                         ))}
                       </div>
@@ -467,13 +512,17 @@ export default function EditClipPage() {
                   </div>
                 )}
 
-                <p className="text-sm text-text-secondary mb-2">{captions.length} caption segments</p>
+                <p className="text-sm text-text-secondary mb-2">
+                  {captions.length} caption segments
+                </p>
                 <div className="h-[25vh] overflow-y-auto space-y-2 pr-2">
                   {captions.map((caption, index) => (
                     <div
                       key={caption.index}
                       className={`p-3 rounded-lg border transition-all ${
-                        isActiveCaption(caption) ? "bg-accent-400/10 border-accent-400" : "bg-surface-elevated border-border-base"
+                        isActiveCaption(caption)
+                          ? "bg-accent-400/10 border-accent-400"
+                          : "bg-surface-elevated border-border-base"
                       }`}
                     >
                       <div className="flex items-center justify-between mb-2">
@@ -482,23 +531,35 @@ export default function EditClipPage() {
                           className="flex items-center gap-2 text-xs text-text-tertiary hover:text-accent-400"
                         >
                           <Icon icon="solar:play-circle-outline" />
-                          {formatTime(caption.startTime)} - {formatTime(caption.endTime)}
+                          {formatTime(caption.startTime)} -{" "}
+                          {formatTime(caption.endTime)}
                         </button>
-                        <span className="text-xs text-text-tertiary">#{caption.index}</span>
+                        <span className="text-xs text-text-tertiary">
+                          #{caption.index}
+                        </span>
                       </div>
                       <Input
                         value={caption.text}
-                        onChange={(e) => handleCaptionTextChange(index, e.target.value)}
+                        onChange={(e) =>
+                          handleCaptionTextChange(index, e.target.value)
+                        }
                         variant="bordered"
                         size="sm"
-                        classNames={{ inputWrapper: "bg-surface-base border-border-base" }}
+                        classNames={{
+                          inputWrapper: "bg-surface-base border-border-base",
+                        }}
                       />
                     </div>
                   ))}
                   {captions.length === 0 && (
                     <div className="text-center py-8">
-                      <Icon icon="solar:subtitles-outline" className="text-4xl text-text-tertiary mb-2 mx-auto" />
-                      <p className="text-text-secondary">No captions available</p>
+                      <Icon
+                        icon="solar:subtitles-outline"
+                        className="text-4xl text-text-tertiary mb-2 mx-auto"
+                      />
+                      <p className="text-text-secondary">
+                        No captions available
+                      </p>
                     </div>
                   )}
                 </div>
@@ -511,12 +572,16 @@ export default function EditClipPage() {
               <div>
                 <div className="flex items-center gap-2 mb-4">
                   <Icon icon="solar:text-bold" className="text-accent-400" />
-                  <h3 className="text-lg font-semibold text-text-primary">Heading</h3>
+                  <h3 className="text-lg font-semibold text-text-primary">
+                    Heading
+                  </h3>
                 </div>
 
                 <div className="space-y-4">
                   <div>
-                    <label className="text-sm text-text-secondary mb-2 block">Text</label>
+                    <label className="text-sm text-text-secondary mb-2 block">
+                      Text
+                    </label>
                     <Textarea
                       value={textOverlay}
                       onChange={(e) => setTextOverlay(e.target.value)}
@@ -524,14 +589,19 @@ export default function EditClipPage() {
                       variant="bordered"
                       minRows={2}
                       maxRows={3}
-                      classNames={{ inputWrapper: "bg-surface-base border-border-base", input: "text-base" }}
+                      classNames={{
+                        inputWrapper: "bg-surface-base border-border-base",
+                        input: "text-base",
+                      }}
                     />
                   </div>
 
                   {textOverlay.trim() && (
                     <>
                       <div>
-                        <label className="text-sm text-text-secondary mb-2 block">Color</label>
+                        <label className="text-sm text-text-secondary mb-2 block">
+                          Color
+                        </label>
                         <div className="flex flex-wrap gap-2">
                           {[
                             { color: "#FFFFFF", name: "White" },
@@ -547,7 +617,9 @@ export default function EditClipPage() {
                               key={preset.color}
                               onClick={() => setTextColor(preset.color)}
                               className={`w-8 h-8 rounded-lg border-2 transition-all ${
-                                textColor === preset.color ? "border-accent-400 scale-110" : "border-border-base hover:border-accent-400/50"
+                                textColor === preset.color
+                                  ? "border-accent-400 scale-110"
+                                  : "border-border-base hover:border-accent-400/50"
                               }`}
                               style={{ backgroundColor: preset.color }}
                               title={preset.name}
@@ -560,26 +632,41 @@ export default function EditClipPage() {
                               onChange={(e) => setTextColor(e.target.value)}
                               className="absolute inset-0 w-8 h-8 opacity-0 cursor-pointer"
                             />
-                            <div className="w-8 h-8 rounded-lg border-2 border-border-base flex items-center justify-center bg-surface-elevated" title="Custom color">
-                              <Icon icon="solar:palette-bold" className="text-text-secondary text-sm" />
+                            <div
+                              className="w-8 h-8 rounded-lg border-2 border-border-base flex items-center justify-center bg-surface-elevated"
+                              title="Custom color"
+                            >
+                              <Icon
+                                icon="solar:palette-bold"
+                                className="text-text-secondary text-sm"
+                              />
                             </div>
                           </div>
                         </div>
                       </div>
 
                       <div>
-                        <label className="text-sm text-text-secondary mb-2 block">Font</label>
+                        <label className="text-sm text-text-secondary mb-2 block">
+                          Font
+                        </label>
                         <div className="flex gap-2 overflow-x-auto py-1">
                           {HEADING_FONTS.map((font) => (
                             <button
                               key={font.id}
                               onClick={() => setTextFont(font.name)}
                               className={`h-10 w-10 rounded-lg border transition-all flex items-center justify-center flex-shrink-0 ${
-                                textFont === font.name ? "bg-white text-black border-white scale-105" : "bg-surface-base text-white border-border-base hover:scale-105"
+                                textFont === font.name
+                                  ? "bg-white text-black border-white scale-105"
+                                  : "bg-surface-base text-white border-border-base hover:scale-105"
                               }`}
                               title={font.name}
                             >
-                              <span className="text-sm font-bold" style={{ fontFamily: `var(--font-${font.id})` }}>Ag</span>
+                              <span
+                                className="text-sm font-bold"
+                                style={{ fontFamily: `var(--font-${font.id})` }}
+                              >
+                                Ag
+                              </span>
                             </button>
                           ))}
                         </div>
@@ -587,18 +674,48 @@ export default function EditClipPage() {
 
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="text-xs text-text-secondary mb-1 block">X Position: {textX}%</label>
-                          <Slider value={textX} onChange={(val) => setTextX(val as number)} minValue={0} maxValue={100} step={1} color="secondary" size="sm" />
+                          <label className="text-xs text-text-secondary mb-1 block">
+                            X Position: {textX}%
+                          </label>
+                          <Slider
+                            value={textX}
+                            onChange={(val) => setTextX(val as number)}
+                            minValue={0}
+                            maxValue={100}
+                            step={1}
+                            color="secondary"
+                            size="sm"
+                          />
                         </div>
                         <div>
-                          <label className="text-xs text-text-secondary mb-1 block">Y Position: {textY}%</label>
-                          <Slider value={textY} onChange={(val) => setTextY(val as number)} minValue={0} maxValue={100} step={1} color="secondary" size="sm" />
+                          <label className="text-xs text-text-secondary mb-1 block">
+                            Y Position: {textY}%
+                          </label>
+                          <Slider
+                            value={textY}
+                            onChange={(val) => setTextY(val as number)}
+                            minValue={0}
+                            maxValue={100}
+                            step={1}
+                            color="secondary"
+                            size="sm"
+                          />
                         </div>
                       </div>
 
                       <div>
-                        <label className="text-xs text-text-secondary mb-1 block">Font Size: {fontSize}px</label>
-                        <Slider value={fontSize} onChange={(val) => setFontSize(val as number)} minValue={16} maxValue={120} step={2} color="secondary" size="sm" />
+                        <label className="text-xs text-text-secondary mb-1 block">
+                          Font Size: {fontSize}px
+                        </label>
+                        <Slider
+                          value={fontSize}
+                          onChange={(val) => setFontSize(val as number)}
+                          minValue={16}
+                          maxValue={120}
+                          step={2}
+                          color="secondary"
+                          size="sm"
+                        />
                       </div>
                     </>
                   )}
@@ -613,7 +730,13 @@ export default function EditClipPage() {
                   size="lg"
                   onPress={handleApplyChanges}
                   isDisabled={saving}
-                  startContent={saving ? <Spinner size="sm" /> : <Icon icon="solar:diskette-bold" />}
+                  startContent={
+                    saving ? (
+                      <Spinner size="sm" />
+                    ) : (
+                      <Icon icon="solar:diskette-bold" />
+                    )
+                  }
                 >
                   {saving ? "Applying..." : "Apply All Changes"}
                 </Button>
@@ -641,17 +764,22 @@ export default function EditClipPage() {
           <ModalHeader className="flex flex-col gap-1">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-primary-500/20 flex items-center justify-center">
-                <Icon icon="solar:check-circle-bold" className="text-primary-400 text-xl" />
+                <Icon
+                  icon="solar:check-circle-bold"
+                  className="text-primary-400 text-xl"
+                />
               </div>
               <span className="text-text-primary">Changes Submitted</span>
             </div>
           </ModalHeader>
           <ModalBody>
             <p className="text-text-secondary">
-              Your changes are being applied to the video. This usually takes 1-2 minutes.
+              Your changes are being applied to the video. This usually takes
+              1-2 minutes.
             </p>
             <p className="text-text-tertiary text-sm mt-2">
-              You&apos;ll be redirected to view your clips where you can track the progress.
+              You&apos;ll be redirected to view your clips where you can track
+              the progress.
             </p>
           </ModalBody>
           <ModalFooter>

@@ -31,7 +31,9 @@ export default function CreateClipPage() {
   const [user, setUser] = useAtom(userAtom);
   const [selectedTeam] = useAtom(selectedTeamAtom);
 
-  const [uploadedVideo, setUploadedVideo] = useState<UploadedVideo | null>(null);
+  const [uploadedVideo, setUploadedVideo] = useState<UploadedVideo | null>(
+    null
+  );
   const [batchMode, setBatchMode] = useState(false);
   const [batchVideos, setBatchVideos] = useState<BatchUploadedVideo[]>([]);
   const [length, setLength] = useState(40);
@@ -40,7 +42,9 @@ export default function CreateClipPage() {
   const [customPrompt, setCustomPrompt] = useState("");
   const [numberOfVideos, setNumberOfVideos] = useState(1);
   const [customText, setCustomText] = useState("");
-  const [textPosition, setTextPosition] = useState<"top" | "middle" | "bottom">("top");
+  const [textPosition, setTextPosition] = useState<"top" | "middle" | "bottom">(
+    "top"
+  );
   const [textColor, setTextColor] = useState("#FFFFFF");
   const [textFont, setTextFont] = useState("Montserrat");
   const [captions, setCaptions] = useState(false);
@@ -52,12 +56,19 @@ export default function CreateClipPage() {
   const [generatedClips, setGeneratedClips] = useState<any[]>([]);
   const [showResults, setShowResults] = useState(false);
 
-  const { usageStats, isLoading: isLoadingUsage, refetch: refetchUsageStats } = useUsageStats(selectedTeam?.id);
+  const {
+    usageStats,
+    isLoading: isLoadingUsage,
+    refetch: refetchUsageStats,
+  } = useUsageStats(selectedTeam?.id);
   const { triggerRefresh, refreshTrigger } = useUsageStatsRefresh();
 
   useEffect(() => {
     if (!user) {
-      const accessToken = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+      const accessToken =
+        typeof window !== "undefined"
+          ? localStorage.getItem("access_token")
+          : null;
       if (!accessToken) {
         router.push("/auth");
         return;
@@ -76,7 +87,11 @@ export default function CreateClipPage() {
   }, [refreshTrigger, refetchUsageStats]);
 
   useEffect(() => {
-    if (selectedTeam?.plan === "free" && usageStats?.generationsRemaining !== undefined && usageStats.generationsRemaining !== -1) {
+    if (
+      selectedTeam?.plan === "free" &&
+      usageStats?.generationsRemaining !== undefined &&
+      usageStats.generationsRemaining !== -1
+    ) {
       const maxAllowed = Math.min(usageStats.generationsRemaining, 15);
       if (numberOfVideos > maxAllowed && maxAllowed >= 1) {
         setNumberOfVideos(maxAllowed);
@@ -84,7 +99,11 @@ export default function CreateClipPage() {
     }
   }, [selectedTeam?.plan, usageStats?.generationsRemaining]);
 
-  const handleUploadComplete = (s3Key: string, fileName: string, fileSize: number) => {
+  const handleUploadComplete = (
+    s3Key: string,
+    fileName: string,
+    fileSize: number
+  ) => {
     setUploadedVideo({ s3Key, fileName, fileSize });
     setError("");
   };
@@ -116,8 +135,15 @@ export default function CreateClipPage() {
       return;
     }
 
-    if (selectedTeam.plan === "free" && usageStats && usageStats.generationsRemaining !== -1 && usageStats.generationsRemaining <= 0) {
-      setError(`Generation limit reached. You have generated ${usageStats.clipsGenerated}/${usageStats.generationLimit} clips. Upgrade to generate more.`);
+    if (
+      selectedTeam.plan === "free" &&
+      usageStats &&
+      usageStats.generationsRemaining !== -1 &&
+      usageStats.generationsRemaining <= 0
+    ) {
+      setError(
+        `Generation limit reached. You have generated ${usageStats.clipsGenerated}/${usageStats.generationLimit} clips. Upgrade to generate more.`
+      );
       return;
     }
 
@@ -209,13 +235,18 @@ export default function CreateClipPage() {
   };
 
   // Check if we have videos ready (either single or batch)
-  const hasVideosReady = batchMode ? batchVideos.length > 0 : uploadedVideo !== null;
+  const hasVideosReady = batchMode
+    ? batchVideos.length > 0
+    : uploadedVideo !== null;
 
   if (!user || !selectedTeam) {
     return (
       <div className="flex h-screen items-center justify-center bg-surface-dark">
         <div className="flex flex-col items-center gap-4">
-          <Icon icon="solar:loading-circle-bold" className="text-4xl animate-spin text-accent-400" />
+          <Icon
+            icon="solar:loading-circle-bold"
+            className="text-4xl animate-spin text-accent-400"
+          />
           <p className="text-text-secondary">Loading...</p>
         </div>
       </div>
@@ -227,7 +258,9 @@ export default function CreateClipPage() {
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-text-primary mb-2">Create Clip</h1>
+            <h1 className="text-3xl font-bold text-text-primary mb-2">
+              Create Clip
+            </h1>
             <p className="text-text-secondary">
               Upload a video and let AI create viral clips for social media
             </p>
@@ -237,7 +270,9 @@ export default function CreateClipPage() {
               <CardBody className="p-4">
                 {selectedTeam?.plan === "free" ? (
                   <>
-                    <p className="text-sm text-text-secondary mb-1">Generations</p>
+                    <p className="text-sm text-text-secondary mb-1">
+                      Generations
+                    </p>
                     <p className="text-2xl font-bold text-text-primary">
                       {usageStats.clipsGenerated} / {usageStats.generationLimit}
                     </p>
@@ -247,7 +282,9 @@ export default function CreateClipPage() {
                   </>
                 ) : (
                   <>
-                    <p className="text-sm text-text-secondary mb-1">Saved Clips</p>
+                    <p className="text-sm text-text-secondary mb-1">
+                      Saved Clips
+                    </p>
                     <p className="text-2xl font-bold text-text-primary">
                       {usageStats.clipsCreated} / {usageStats.limit}
                     </p>
@@ -264,7 +301,10 @@ export default function CreateClipPage() {
         {error && (
           <Card className="mb-6 bg-red-500/10 border border-red-500">
             <CardBody className="p-4 flex items-center gap-3">
-              <Icon icon="solar:danger-circle-bold" className="text-2xl text-red-500" />
+              <Icon
+                icon="solar:danger-circle-bold"
+                className="text-2xl text-red-500"
+              />
               <p className="text-red-500">{error}</p>
             </CardBody>
           </Card>
@@ -274,16 +314,27 @@ export default function CreateClipPage() {
           <div>
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="text-2xl font-bold text-text-primary mb-2">Your Generated Clips</h2>
+                <h2 className="text-2xl font-bold text-text-primary mb-2">
+                  Your Generated Clips
+                </h2>
                 <p className="text-text-secondary">
-                  {generatedClips.length} clip{generatedClips.length > 1 ? "s" : ""} created successfully
+                  {generatedClips.length} clip
+                  {generatedClips.length > 1 ? "s" : ""} created successfully
                 </p>
               </div>
               <div className="flex gap-3">
-                <Button variant="bordered" onPress={handleCreateAnother} startContent={<Icon icon="solar:add-circle-bold" />}>
+                <Button
+                  variant="bordered"
+                  onPress={handleCreateAnother}
+                  startContent={<Icon icon="solar:add-circle-bold" />}
+                >
                   Create Another
                 </Button>
-                <Button color="primary" onPress={() => router.push("/dashboard/clips")} startContent={<Icon icon="solar:folder-bold" />}>
+                <Button
+                  color="primary"
+                  onPress={() => router.push("/dashboard/clips")}
+                  startContent={<Icon icon="solar:folder-bold" />}
+                >
                   View All Clips
                 </Button>
               </div>
@@ -305,12 +356,18 @@ export default function CreateClipPage() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <Icon
-                          icon={batchMode ? "solar:layers-bold-duotone" : "solar:videocamera-record-bold-duotone"}
+                          icon={
+                            batchMode
+                              ? "solar:layers-bold-duotone"
+                              : "solar:videocamera-record-bold-duotone"
+                          }
                           className="text-2xl text-accent-400"
                         />
                         <div>
                           <p className="font-medium text-text-primary">
-                            {batchMode ? "Batch Upload Mode" : "Single Video Mode"}
+                            {batchMode
+                              ? "Batch Upload Mode"
+                              : "Single Video Mode"}
                           </p>
                           <p className="text-sm text-text-secondary">
                             {batchMode
@@ -319,7 +376,13 @@ export default function CreateClipPage() {
                           </p>
                         </div>
                       </div>
-                      <Tooltip content={batchMode ? "Switch to single video" : "Switch to batch mode (up to 5 videos)"}>
+                      <Tooltip
+                        content={
+                          batchMode
+                            ? "Switch to single video"
+                            : "Switch to batch mode (up to 5 videos)"
+                        }
+                      >
                         <Switch
                           isSelected={batchMode}
                           onValueChange={(value) => {
@@ -345,9 +408,15 @@ export default function CreateClipPage() {
                     onUploadComplete={handleBatchUploadComplete}
                     onError={handleUploadError}
                     maxVideos={5}
-                    isDisabled={selectedTeam.plan === "free" && usageStats?.generationsRemaining !== -1 && (usageStats?.generationsRemaining ?? 0) <= 0}
+                    isDisabled={
+                      selectedTeam.plan === "free" &&
+                      usageStats?.generationsRemaining !== -1 &&
+                      (usageStats?.generationsRemaining ?? 0) <= 0
+                    }
                     disabledReason={
-                      selectedTeam.plan === "free" && usageStats?.generationsRemaining !== -1 && (usageStats?.generationsRemaining ?? 0) <= 0
+                      selectedTeam.plan === "free" &&
+                      usageStats?.generationsRemaining !== -1 &&
+                      (usageStats?.generationsRemaining ?? 0) <= 0
                         ? "You've used all your free generations. Subscribe to a plan to continue."
                         : undefined
                     }
@@ -357,9 +426,15 @@ export default function CreateClipPage() {
                     teamId={selectedTeam.id}
                     onUploadComplete={handleUploadComplete}
                     onError={handleUploadError}
-                    isDisabled={selectedTeam.plan === "free" && usageStats?.generationsRemaining !== -1 && (usageStats?.generationsRemaining ?? 0) <= 0}
+                    isDisabled={
+                      selectedTeam.plan === "free" &&
+                      usageStats?.generationsRemaining !== -1 &&
+                      (usageStats?.generationsRemaining ?? 0) <= 0
+                    }
                     disabledReason={
-                      selectedTeam.plan === "free" && usageStats?.generationsRemaining !== -1 && (usageStats?.generationsRemaining ?? 0) <= 0
+                      selectedTeam.plan === "free" &&
+                      usageStats?.generationsRemaining !== -1 &&
+                      (usageStats?.generationsRemaining ?? 0) <= 0
                         ? "You've used all your free generations. Subscribe to a plan to continue."
                         : undefined
                     }
@@ -375,7 +450,10 @@ export default function CreateClipPage() {
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <Icon icon="solar:layers-bold-duotone" className="text-xl text-accent-400" />
+                              <Icon
+                                icon="solar:layers-bold-duotone"
+                                className="text-xl text-accent-400"
+                              />
                               <span className="font-medium text-text-primary">
                                 {batchVideos.length} Videos Uploaded
                               </span>
@@ -390,11 +468,16 @@ export default function CreateClipPage() {
                           </div>
                           <div className="space-y-2 max-h-32 overflow-y-auto">
                             {batchVideos.map((video, idx) => (
-                              <div key={video.videoIndex} className="flex items-center gap-2 text-sm">
+                              <div
+                                key={video.videoIndex}
+                                className="flex items-center gap-2 text-sm"
+                              >
                                 <span className="w-5 h-5 bg-accent-400/20 rounded text-xs flex items-center justify-center">
                                   {idx + 1}
                                 </span>
-                                <span className="truncate text-text-secondary">{video.fileName}</span>
+                                <span className="truncate text-text-secondary">
+                                  {video.fileName}
+                                </span>
                               </div>
                             ))}
                           </div>
@@ -402,7 +485,10 @@ export default function CreateClipPage() {
                       ) : (
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-green-500/10 rounded-full flex items-center justify-center">
-                            <Icon icon="solar:check-circle-bold" className="text-xl text-green-500" />
+                            <Icon
+                              icon="solar:check-circle-bold"
+                              className="text-xl text-green-500"
+                            />
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-text-primary truncate">
@@ -418,7 +504,10 @@ export default function CreateClipPage() {
                             isIconOnly
                             onPress={handleCreateAnother}
                           >
-                            <Icon icon="solar:close-circle-bold" className="text-lg" />
+                            <Icon
+                              icon="solar:close-circle-bold"
+                              className="text-lg"
+                            />
                           </Button>
                         </div>
                       )}
@@ -438,7 +527,12 @@ export default function CreateClipPage() {
                         setHookLength={setHookLength}
                         numberOfVideos={numberOfVideos}
                         setNumberOfVideos={setNumberOfVideos}
-                        maxClips={selectedTeam.plan === "free" && usageStats?.generationsRemaining !== -1 ? usageStats?.generationsRemaining : undefined}
+                        maxClips={
+                          selectedTeam.plan === "free" &&
+                          usageStats?.generationsRemaining !== -1
+                            ? usageStats?.generationsRemaining
+                            : undefined
+                        }
                         batchMode={batchMode}
                       />
                     </CardBody>
@@ -467,7 +561,11 @@ export default function CreateClipPage() {
 
                       {isProcessing && (
                         <div className="mt-8">
-                          <Progress isIndeterminate color="primary" className="mb-2" />
+                          <Progress
+                            isIndeterminate
+                            color="primary"
+                            className="mb-2"
+                          />
                           <p className="text-sm text-text-secondary text-center">
                             Submitting job...
                           </p>
@@ -480,15 +578,23 @@ export default function CreateClipPage() {
                           size="lg"
                           color="primary"
                           onPress={handleSubmit}
-                          isDisabled={!hasVideosReady || isProcessing || (selectedTeam.plan === "free" && usageStats?.generationsRemaining !== -1 && (usageStats?.generationsRemaining ?? 0) <= 0)}
+                          isDisabled={
+                            !hasVideosReady ||
+                            isProcessing ||
+                            (selectedTeam.plan === "free" &&
+                              usageStats?.generationsRemaining !== -1 &&
+                              (usageStats?.generationsRemaining ?? 0) <= 0)
+                          }
                           isLoading={isProcessing}
-                          startContent={!isProcessing && <Icon icon="solar:scissors-bold" />}
+                          startContent={
+                            !isProcessing && <Icon icon="solar:scissors-bold" />
+                          }
                         >
                           {isProcessing
                             ? "Creating Clips..."
                             : batchMode
-                            ? `Create Clips from ${batchVideos.length} Videos`
-                            : "Create Clips"}
+                              ? `Create Clips from ${batchVideos.length} Videos`
+                              : "Create Clips"}
                         </Button>
                       </div>
                     </CardBody>
