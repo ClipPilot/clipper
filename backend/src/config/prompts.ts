@@ -370,6 +370,126 @@ LENGTH CHECK: Hook (5.5s) + Main (15s + 14s + 6s = 35s) = 40.5s total ✓
 };
 
 /**
+ * General Long-Form Content Prompt
+ * Focuses on finding the most engaging hooks and viral-worthy moments from any video
+ * Uses Gemini with video upload for visual + audio analysis
+ */
+export const generateGeneralPrompt = (config: PromptConfig): string => {
+  const {
+    length,
+    hookLength,
+    transcriptText,
+    transcriptObject,
+    numberOfVideos = 1,
+    userTextPrompt,
+  } = config;
+  const mainLength = length - hookLength;
+
+  return `
+You are an expert short-form video editor specializing in turning long-form content into viral clips.
+You are analyzing BOTH the video visuals AND the transcript to find the most engaging moments.
+
+CRITICAL: WATCH THE VIDEO CAREFULLY. Look for moments where visuals, energy, and content align perfectly.
+
+${userTextPrompt ? `USER SPECIFIC REQUEST: The user wants you to focus on: "${userTextPrompt}". Prioritize moments that align with this request.` : ""}
+
+${numberOfVideos > 1 ? `You need to generate ${numberOfVideos} different video variations. Each should highlight a DIFFERENT compelling moment or angle.` : ""}
+
+===== WHAT MAKES A VIRAL CLIP =====
+
+TIER 1 HOOKS (prioritize these):
+- Surprising statements or revelations ("Here's what nobody tells you...")
+- Contrarian or controversial takes that spark curiosity
+- Emotional peaks - genuine excitement, shock, or vulnerability
+- Visual moments that demand explanation
+- Cliffhangers or open loops that viewers MUST see resolved
+- Numbers or claims that seem unbelievable
+- Before/after or transformation moments
+
+TIER 2 - STRONG CONTENT:
+- Expert insights delivered with confidence
+- Relatable moments that viewers connect with
+- Humor - genuine laughs, witty observations
+- Conflict or tension between people
+- Demonstrations or reveals
+- Storytelling with clear narrative arc
+
+===== WHAT TO AVOID =====
+NEVER include:
+- Intro segments ("Hey guys, welcome back...")
+- Sponsors or promotional segments
+- Administrative talk ("Don't forget to like and subscribe")
+- Low-energy explanations without visual interest
+- Rambling without clear point
+- Repetitive content
+- Meta commentary about the video itself
+
+===== STRUCTURE =====
+
+TARGET: ${length} seconds total
+- Hook (~${hookLength}s): The MOST scroll-stopping moment. This appears FIRST.
+- Main (~${mainLength}s): 2-4 segments that deliver value and maintain engagement
+
+HOOK STRATEGY:
+1. Find the single most compelling 5-7 second moment in the entire video
+2. This could be from ANYWHERE in the video - beginning, middle, or end
+3. It should create an instant "wait, what?" reaction
+4. Consider: visual impact + audio energy + content value
+
+MAIN CONTENT STRATEGY:
+1. Build context if the hook needs explanation
+2. Deliver the core value/insight/entertainment
+3. Maintain energy throughout - no dead spots
+4. End with satisfaction OR a second hook for retention
+
+===== OUTPUT FORMAT =====
+
+Generate ${numberOfVideos} DIFFERENT clips. Each must focus on a UNIQUE moment.
+
+{
+  "videos": [
+    {
+      "hook": {
+        "text": "Description of what happens in this hook moment",
+        "start": 145.5,
+        "end": 151.2
+      },
+      "main": [
+        {
+          "text": "Context or setup for the hook",
+          "start": 120.0,
+          "end": 145.0
+        },
+        {
+          "text": "Payoff or continuation",
+          "start": 151.2,
+          "end": 165.0
+        }
+      ],
+      "combined_script": "Full text of what is said in the final clip",
+      "finalMessage": "Why this clip will go viral - what makes it compelling",
+      "evalScore": 85,
+      "clipTitle": "Catchy title for this clip"
+    }
+  ]
+}
+
+LENGTH CHECK: Hook + Main segments must total approximately ${length} seconds.
+
+===== EVALUATION CRITERIA =====
+- evalScore 90+: Genuinely viral potential, stops scrolling immediately
+- evalScore 80-89: Strong engagement, viewers will watch to end
+- evalScore 70-79: Good content but may not break through
+- Below 70: Consider if there's better content in the video
+
+Here is the transcript for reference: ${transcriptText}
+Here is the transcript object: ${transcriptObject}
+
+WATCH THE VIDEO. Find the magic moments. Create clips people will share.
+`;
+};
+
+/**
  * Generate prompt based on type with optional custom instructions
  */
 export const generatePrompt = (
@@ -383,6 +503,8 @@ export const generatePrompt = (
     basePrompt = generateBusinessPrompt(config);
   } else if (type === "gaming") {
     basePrompt = generateGamingPrompt(config);
+  } else if (type === "general") {
+    basePrompt = generateGeneralPrompt(config);
   } else {
     basePrompt = generateViralPrompt(config);
   }

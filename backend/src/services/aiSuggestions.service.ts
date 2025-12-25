@@ -71,7 +71,7 @@ export const generateClipSuggestionsService = async (
     options.customPrompt
   );
 
-  if (promptType === "gaming") {
+  if (promptType === "gaming" || promptType === "general") {
     const googleClient = await getGoogleClient();
 
     let contents: any;
@@ -284,8 +284,8 @@ export const generateBatchClipSuggestionsService = async (
 
   // For gaming prompt type with video analysis, we'd need to handle multiple videos
   // For now, batch mode uses transcript-only analysis for all prompt types
-  if (promptType === "gaming") {
-    console.log("Note: Batch mode for gaming uses transcript analysis only (no video upload)");
+  if (promptType === "gaming" || promptType === "general") {
+    console.log("Note: Batch mode for gaming/general uses transcript analysis only (no video upload)");
   }
 
   // Always use multiple suggestions schema for batch since we want sourceVideoIndex
