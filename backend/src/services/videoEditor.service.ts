@@ -196,13 +196,36 @@ export const mergeClips = async (clips: string[], outputPath: string) => {
   });
 };
 
+// Map font names to Google Fonts URLs and CSS font-family values
+const FONT_CONFIG: Record<string, { url: string; family: string }> = {
+  "Luckiest Guy": {
+    url: "https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap",
+    family: "'Luckiest Guy', cursive",
+  },
+  "Montserrat": {
+    url: "https://fonts.googleapis.com/css2?family=Montserrat:wght@900&display=swap",
+    family: "'Montserrat', sans-serif",
+  },
+  "Bebas Neue": {
+    url: "https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap",
+    family: "'Bebas Neue', sans-serif",
+  },
+  "Anton": {
+    url: "https://fonts.googleapis.com/css2?family=Anton&display=swap",
+    family: "'Anton', sans-serif",
+  },
+};
 
 const generateTextImage = async (
   text: string,
   outputPath: string,
   fillColor: string = "#FFFFFF",
-  strokeColor: string = "#000000"
+  strokeColor: string = "#000000",
+  fontName: string = "Montserrat"
 ): Promise<void> => {
+  // Get font config or fallback to Montserrat
+  const fontConfig = FONT_CONFIG[fontName] || FONT_CONFIG["Montserrat"];
+
   const browser = await puppeteer.launch({
     headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox']
@@ -223,7 +246,7 @@ const generateTextImage = async (
         <head>
           <link rel="preconnect" href="https://fonts.googleapis.com">
           <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-          <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@900&display=swap" rel="stylesheet">
+          <link href="${fontConfig.url}" rel="stylesheet">
           <style>
             * {
               margin: 0;
@@ -242,7 +265,7 @@ const generateTextImage = async (
             .text {
               font-size: 52px;
               font-weight: 900;
-              font-family: 'Montserrat', 'Apple Color Emoji', sans-serif;
+              font-family: ${fontConfig.family}, 'Apple Color Emoji', sans-serif;
               color: ${fillColor};
               text-align: center;
               -webkit-text-stroke: 6px ${strokeColor};
@@ -285,12 +308,16 @@ export const addTextOverlayAtPosition = async (
   yPercent: number,
   fontSize: number,
   fillColor: string = "#FFFFFF",
-  strokeColor: string = "#000000"
+  strokeColor: string = "#000000",
+  fontName: string = "Montserrat"
 ): Promise<string> => {
   const textImagePath = path.join(
     path.dirname(outputPath),
     `text_pos_${Date.now()}.png`
   );
+
+  // Get font config or fallback to Montserrat
+  const fontConfig = FONT_CONFIG[fontName] || FONT_CONFIG["Montserrat"];
 
   try {
     const browser = await puppeteer.launch({
@@ -305,7 +332,7 @@ export const addTextOverlayAtPosition = async (
       <!DOCTYPE html>
       <html>
         <head>
-          <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@900&display=swap" rel="stylesheet">
+          <link href="${fontConfig.url}" rel="stylesheet">
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body {
@@ -320,7 +347,7 @@ export const addTextOverlayAtPosition = async (
             .text {
               font-size: ${fontSize}px;
               font-weight: 900;
-              font-family: 'Montserrat', 'Apple Color Emoji', sans-serif;
+              font-family: ${fontConfig.family}, 'Apple Color Emoji', sans-serif;
               color: ${fillColor};
               text-align: center;
               -webkit-text-stroke: 4px ${strokeColor};
@@ -418,7 +445,8 @@ export const addTextOverlay = async (
   text: string,
   position: "top" | "center" | "bottom" = "top",
   fillColor: string = "#FFFFFF",
-  strokeColor: string = "#000000"
+  strokeColor: string = "#000000",
+  fontName: string = "Montserrat"
 ): Promise<string> => {
   const textImagePath = path.join(
     path.dirname(outputPath),
@@ -427,7 +455,7 @@ export const addTextOverlay = async (
 
   try {
     console.log("Generating text image with:", text);
-    await generateTextImage(text, textImagePath, fillColor, strokeColor);
+    await generateTextImage(text, textImagePath, fillColor, strokeColor, fontName);
     console.log("Text image created at:", textImagePath);
 
     if (!fs.existsSync(textImagePath)) {

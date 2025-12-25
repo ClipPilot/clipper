@@ -10,7 +10,7 @@ import { addCaptionsFromData, CaptionEntry } from "../../services/captions.servi
 export async function processTextOverlayJob(
   job: TextOverlayJob
 ): Promise<void> {
-  const { clipId, teamId, text, color, x, y, fontSize } = job;
+  const { clipId, teamId, text, color, font, x, y, fontSize } = job;
 
   const outDir = path.join(process.cwd(), "output");
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
@@ -38,6 +38,7 @@ export async function processTextOverlayJob(
     textOverlayPath = await regenerateClipWithTextOverlay(localBlankPath, {
       text,
       color: color || "#FFFFFF",
+      font: font || "Montserrat",
       x: x ?? 50,
       y: y ?? 10,
       fontSize: fontSize ?? 48,

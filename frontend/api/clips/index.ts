@@ -352,14 +352,15 @@ class ClipsAPI {
     clipId: number,
     captionsData: CaptionEntry[],
     captionColor?: string,
-    captionFont?: string
+    captionFont?: string,
+    captionsEnabled?: boolean
   ): Promise<{ clipUrl: string; captionsData: CaptionEntry[] }> {
     const response = await apiFetch(
       `${API_URL}/clip-video/teams/${teamId}/clips/${clipId}/captions`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ captionsData, captionColor, captionFont }),
+        body: JSON.stringify({ captionsData, captionColor, captionFont, captionsEnabled }),
       }
     );
 
@@ -373,7 +374,7 @@ class ClipsAPI {
   async updateTextOverlay(
     teamId: number,
     clipId: number,
-    overlay: { text: string; color: string; x: number; y: number; fontSize: number }
+    overlay: { text: string; color: string; font?: string; x: number; y: number; fontSize: number }
   ): Promise<{ clipUrl: string }> {
     const response = await apiFetch(
       `${API_URL}/clip-video/teams/${teamId}/clips/${clipId}/text-overlay`,
@@ -386,6 +387,42 @@ class ClipsAPI {
 
     if (!response.ok) {
       throw new Error("Failed to update text overlay");
+    }
+
+    return response.json();
+  }
+
+  async updateClipOverlays(
+    teamId: number,
+    clipId: number,
+    options: {
+      // Caption options
+      captionsEnabled: boolean;
+      captionsData?: CaptionEntry[];
+      captionColor?: string;
+      captionFont?: string;
+      // Heading options
+      heading?: {
+        text: string;
+        color: string;
+        font: string;
+        x: number;
+        y: number;
+        fontSize: number;
+      };
+    }
+  ): Promise<{ clipUrl: string }> {
+    const response = await apiFetch(
+      `${API_URL}/clip-video/teams/${teamId}/clips/${clipId}/overlays`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(options),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to update clip overlays");
     }
 
     return response.json();
@@ -640,6 +677,22 @@ class ClipsAPI {
 
     const data = await response.json();
     return data.clip;
+  }
+
+  async getSharedClipDownloadUrl(shareToken: string): Promise<string> {
+    const response = await fetch(
+      `${API_URL}/clip-video/shared/${shareToken}/download`,
+      {
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to get download URL");
+    }
+
+    const data = await response.json();
+    return data.downloadUrl;
   }
 }
 

@@ -8,6 +8,7 @@ export interface ClipServiceOptions {
   customText?: string;
   textPosition?: "top" | "bottom" | "middle";
   textColor?: string;
+  textFont?: string;
   captions?: boolean;
   captionColor?: string;
   captionFont?: string;
@@ -111,30 +112,42 @@ export const createCombinedClipService = async (
 
   const finalPath = path.join(outDir, `combined_${videoIndex}.mp4`);
 
+  let currentVideoPath = mergedPath;
+
+  // Step 1: Apply heading (customText) if provided
+  if (options.customText) {
+    const headingPath = path.join(outDir, `heading_${videoIndex}_temp.mp4`);
+    const position = options.textPosition || "top";
+    const mappedPosition = position === "middle" ? "center" : position;
+    const fillColor = options.textColor || "#FFFFFF";
+    const strokeColor = "#000000";
+    const fontName = options.textFont || "Montserrat";
+    await addTextOverlay(
+      currentVideoPath,
+      headingPath,
+      options.customText,
+      mappedPosition,
+      fillColor,
+      strokeColor,
+      fontName
+    );
+    currentVideoPath = headingPath;
+    tempFiles.push(headingPath);
+  }
+
+  // Step 2: Apply captions on top if enabled
   if (options.captions) {
     await addCaptionsOverlay(
-      mergedPath,
+      currentVideoPath,
       finalPath,
       clipData,
       transcriptionWords,
       options.captionColor,
       options.captionFont
     );
-  } else if (options.customText) {
-    const position = options.textPosition || "top";
-    const mappedPosition = position === "middle" ? "center" : position;
-    const fillColor = options.textColor || "#FFFFFF";
-    const strokeColor = "#000000";
-    await addTextOverlay(
-      mergedPath,
-      finalPath,
-      options.customText,
-      mappedPosition,
-      fillColor,
-      strokeColor
-    );
   } else {
-    fs.copyFileSync(mergedPath, finalPath);
+    // No captions - copy current video to final path
+    fs.copyFileSync(currentVideoPath, finalPath);
   }
 
   const watermarkedPath = path.join(outDir, `watermarked_${videoIndex}.mp4`);
@@ -210,6 +223,7 @@ export const regenerateClipWithCaptions = async (
 export interface TextOverlayOptions {
   text: string;
   color: string;
+  font: string;
   x: number;
   y: number;
   fontSize: number;
@@ -231,7 +245,8 @@ export const regenerateClipWithTextOverlay = async (
     overlay.y,
     overlay.fontSize,
     overlay.color,
-    "#000000"
+    "#000000",
+    overlay.font
   );
 
   return outputPath;

@@ -7,7 +7,7 @@ const sqsClient = new SQSClient({
 });
 
 // Job types for video processing
-export type JobType = "clip-video" | "update-captions" | "text-overlay";
+export type JobType = "clip-video" | "update-captions" | "text-overlay" | "update-overlays";
 
 // Base job interface
 interface BaseJob {
@@ -34,6 +34,7 @@ export interface ClipVideoJob extends BaseJob {
     customText?: string;
     textPosition?: "top" | "bottom" | "middle";
     textColor?: string;
+    textFont?: string;
     captions?: boolean;
     captionColor?: string;
     captionFont?: string;
@@ -54,6 +55,7 @@ export interface UpdateCaptionsJob extends BaseJob {
   }>;
   captionColor?: string;
   captionFont?: string;
+  captionsEnabled?: boolean;
 }
 
 // Text overlay job payload
@@ -62,12 +64,38 @@ export interface TextOverlayJob extends BaseJob {
   clipId: number;
   text: string;
   color?: string;
+  font?: string;
   x?: number;
   y?: number;
   fontSize?: number;
 }
 
-export type VideoProcessingJob = ClipVideoJob | UpdateCaptionsJob | TextOverlayJob;
+// Combined overlays job payload (heading + captions)
+export interface UpdateOverlaysJob extends BaseJob {
+  type: "update-overlays";
+  clipId: number;
+  // Caption options
+  captionsEnabled: boolean;
+  captionsData?: Array<{
+    index: number;
+    startTime: number;
+    endTime: number;
+    text: string;
+  }>;
+  captionColor?: string;
+  captionFont?: string;
+  // Heading options
+  heading?: {
+    text: string;
+    color: string;
+    font: string;
+    x: number;
+    y: number;
+    fontSize: number;
+  };
+}
+
+export type VideoProcessingJob = ClipVideoJob | UpdateCaptionsJob | TextOverlayJob | UpdateOverlaysJob;
 
 class SQSService {
   private queueUrl: string;
@@ -132,6 +160,7 @@ class SQSService {
     captionsData: UpdateCaptionsJob["captionsData"];
     captionColor?: string;
     captionFont?: string;
+    captionsEnabled?: boolean;
   }): Promise<string> {
     const job: UpdateCaptionsJob = {
       type: "update-captions",
@@ -141,6 +170,7 @@ class SQSService {
       captionsData: params.captionsData,
       captionColor: params.captionColor,
       captionFont: params.captionFont,
+      captionsEnabled: params.captionsEnabled,
       createdAt: new Date().toISOString(),
     };
 
@@ -153,6 +183,7 @@ class SQSService {
     userId: number;
     text: string;
     color?: string;
+    font?: string;
     x?: number;
     y?: number;
     fontSize?: number;
@@ -164,9 +195,36 @@ class SQSService {
       userId: params.userId,
       text: params.text,
       color: params.color,
+      font: params.font,
       x: params.x,
       y: params.y,
       fontSize: params.fontSize,
+      createdAt: new Date().toISOString(),
+    };
+
+    return this.sendJob(job);
+  }
+
+  async sendUpdateOverlaysJob(params: {
+    clipId: number;
+    teamId: number;
+    userId: number;
+    captionsEnabled: boolean;
+    captionsData?: UpdateOverlaysJob["captionsData"];
+    captionColor?: string;
+    captionFont?: string;
+    heading?: UpdateOverlaysJob["heading"];
+  }): Promise<string> {
+    const job: UpdateOverlaysJob = {
+      type: "update-overlays",
+      clipId: params.clipId,
+      teamId: params.teamId,
+      userId: params.userId,
+      captionsEnabled: params.captionsEnabled,
+      captionsData: params.captionsData,
+      captionColor: params.captionColor,
+      captionFont: params.captionFont,
+      heading: params.heading,
       createdAt: new Date().toISOString(),
     };
 

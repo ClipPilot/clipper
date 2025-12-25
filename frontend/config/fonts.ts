@@ -1,4 +1,4 @@
-import { Space_Mono, JetBrains_Mono, Luckiest_Guy, Montserrat } from "next/font/google";
+import { Space_Mono, JetBrains_Mono, Luckiest_Guy, Montserrat, Bebas_Neue, Anton } from "next/font/google";
 import localFont from 'next/font/local'
 
 export const fontSans = JetBrains_Mono({
@@ -22,19 +22,28 @@ export const fontMontserrat = Montserrat({
 export const fontEverlasting = localFont({
   src: '../public/fonts/Everlasting.ttf',
   variable: '--font-everlasting',
-  weight: '700',
 });
 
 export const fontKomika = localFont({
   src: '../public/fonts/KOMIKAHB.ttf',
   variable: '--font-komika',
-  weight: '400',
 });
 
 export const fontBurbank = localFont({
   src: '../public/fonts/Burbank Big Regular Bold.otf',
   variable: '--font-burbank',
-  weight: '700',
+});
+
+export const fontBebasNeue = Bebas_Neue({
+  subsets: ["latin"],
+  variable: "--font-bebas-neue",
+  weight: ["400"],
+});
+
+export const fontAnton = Anton({
+  subsets: ["latin"],
+  variable: "--font-anton",
+  weight: ["400"],
 });
 
 export const fontMono = Space_Mono({

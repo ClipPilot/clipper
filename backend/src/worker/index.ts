@@ -12,11 +12,13 @@ import { config } from "../config/env";
 import { processClipVideoJob } from "./processors/clipProcessor";
 import { processCaptionsJob } from "./processors/captionsProcessor";
 import { processTextOverlayJob } from "./processors/textOverlayProcessor";
+import { processOverlaysJob } from "./processors/overlaysProcessor";
 import {
   VideoProcessingJob,
   ClipVideoJob,
   UpdateCaptionsJob,
   TextOverlayJob,
+  UpdateOverlaysJob,
 } from "../services/sqs.service";
 
 const sqsClient = new SQSClient({
@@ -107,6 +109,9 @@ async function processMessage(job: VideoProcessingJob, receiptHandle: string): P
         break;
       case "text-overlay":
         await processTextOverlayJob(job as TextOverlayJob);
+        break;
+      case "update-overlays":
+        await processOverlaysJob(job as UpdateOverlaysJob);
         break;
       default:
         console.error(`Unknown job type: ${(job as any).type}`);

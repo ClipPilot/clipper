@@ -906,6 +906,76 @@ router.post("/teams/:teamId/clips/:clipId/text-overlay", requireAuth, requireSea
 
 /**
  * @openapi
+ * /clip-video/teams/{teamId}/clips/{clipId}/overlays:
+ *   post:
+ *     summary: Apply combined overlays to clip
+ *     description: Apply both heading and captions to a clip in a single operation. Starts from blank video, applies heading if provided, then applies captions on top.
+ *     tags:
+ *       - Clips Management
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The team ID
+ *       - in: path
+ *         name: clipId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The clip ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               captionsEnabled:
+ *                 type: boolean
+ *                 description: Whether to show captions
+ *               captionsData:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *               captionColor:
+ *                 type: string
+ *               captionFont:
+ *                 type: string
+ *               heading:
+ *                 type: object
+ *                 properties:
+ *                   text:
+ *                     type: string
+ *                   color:
+ *                     type: string
+ *                   font:
+ *                     type: string
+ *                   x:
+ *                     type: number
+ *                   y:
+ *                     type: number
+ *                   fontSize:
+ *                     type: number
+ *     responses:
+ *       200:
+ *         description: Overlays update queued
+ *       400:
+ *         description: Invalid request
+ *       403:
+ *         description: Cannot edit unsaved clips
+ *       404:
+ *         description: Clip not found
+ *       500:
+ *         description: Server error
+ */
+router.post("/teams/:teamId/clips/:clipId/overlays", requireAuth, requireSeatAccess, clipManagerController.updateClipOverlays.bind(clipManagerController));
+
+/**
+ * @openapi
  * /clip-video/teams/{teamId}/clips/{clipId}/save:
  *   post:
  *     summary: Save a clip
@@ -1112,5 +1182,35 @@ router.delete("/teams/:teamId/clips/:clipId/share", requireAuth, requireSeatAcce
  *         description: Shared clip not found
  */
 router.get("/shared/:shareToken", clipManagerController.getSharedClip.bind(clipManagerController));
+
+/**
+ * @swagger
+ * /clip-video/shared/{shareToken}/download:
+ *   get:
+ *     summary: Get download URL for a shared clip
+ *     description: Generates a presigned download URL for a shared clip. No authentication required.
+ *     tags:
+ *       - Clips
+ *     parameters:
+ *       - in: path
+ *         name: shareToken
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The share token for the clip
+ *     responses:
+ *       200:
+ *         description: Download URL generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 downloadUrl:
+ *                   type: string
+ *       404:
+ *         description: Shared clip not found
+ */
+router.get("/shared/:shareToken/download", clipManagerController.downloadSharedClip.bind(clipManagerController));
 
 export default router;
