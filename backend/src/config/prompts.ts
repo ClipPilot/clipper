@@ -386,88 +386,106 @@ export const generateGeneralPrompt = (config: PromptConfig): string => {
   const mainLength = length - hookLength;
 
   return `
-You are an expert short-form video editor specializing in turning long-form content into viral clips.
-You are analyzing BOTH the video visuals AND the transcript to find the most engaging moments.
+You are an expert short-form video editor. You are analyzing a VIDEO to find the most VISUALLY and EMOTIONALLY engaging moments.
 
-CRITICAL: WATCH THE VIDEO CAREFULLY. Look for moments where visuals, energy, and content align perfectly.
+CRITICAL: YOU MUST WATCH THE VIDEO FRAME BY FRAME. Do NOT rely only on the transcript. Your primary job is to WATCH what is happening visually and find moments where the VISUAL content is compelling.
 
-${userTextPrompt ? `USER SPECIFIC REQUEST: The user wants you to focus on: "${userTextPrompt}". Prioritize moments that align with this request.` : ""}
+The transcript is provided as a REFERENCE for timing, but you must base your selections on what you SEE in the video.
 
-${numberOfVideos > 1 ? `You need to generate ${numberOfVideos} different video variations. Each should highlight a DIFFERENT compelling moment or angle.` : ""}
+${userTextPrompt ? `USER SPECIFIC REQUEST: "${userTextPrompt}". Prioritize moments that align with this while watching the video.` : ""}
 
-===== WHAT MAKES A VIRAL CLIP =====
+${numberOfVideos > 1 ? `Generate ${numberOfVideos} different video variations. Each should highlight a DIFFERENT compelling moment.` : ""}
 
-TIER 1 HOOKS (prioritize these):
-- Surprising statements or revelations ("Here's what nobody tells you...")
-- Contrarian or controversial takes that spark curiosity
-- Emotional peaks - genuine excitement, shock, or vulnerability
-- Visual moments that demand explanation
-- Cliffhangers or open loops that viewers MUST see resolved
-- Numbers or claims that seem unbelievable
-- Before/after or transformation moments
+===== HOW TO WATCH THE VIDEO =====
 
-TIER 2 - STRONG CONTENT:
-- Expert insights delivered with confidence
-- Relatable moments that viewers connect with
-- Humor - genuine laughs, witty observations
-- Conflict or tension between people
-- Demonstrations or reveals
-- Storytelling with clear narrative arc
+VISUAL CUES TO LOOK FOR:
+- Facial expressions: Shock, surprise, laughter, excitement, emotional reactions
+- Body language: Leaning in, gesturing emphatically, standing up, physical reactions
+- Eye contact: Moments of intense connection with camera or another person
+- Movement: Quick actions, demonstrations, reveals, transformations
+- Scene changes: Before/after, product reveals, unexpected cuts
+- Props/objects: Items being shown, demonstrations, physical evidence
+- Environment: Interesting locations, setups, visual backdrops
+- On-screen graphics: Text, charts, images that add impact
+- Multiple people: Reactions between people, tension, agreement, conflict
 
-===== WHAT TO AVOID =====
-NEVER include:
-- Intro segments ("Hey guys, welcome back...")
+AUDIO/ENERGY CUES:
+- Voice tone changes: Excitement, emphasis, passion, whispers, shouts
+- Laughter: Genuine laughs, audience reactions
+- Pauses: Dramatic pauses before reveals
+- Music/sound: Background changes that signal important moments
+- Reactions: "Oh my god", "Wait what", gasps, exclamations
+
+===== WHAT MAKES A VIRAL HOOK (VISUAL-FIRST) =====
+
+TIER 1 - ALWAYS CLIP THESE:
+- VISUAL: Person's face showing genuine shock/excitement/emotion
+- VISUAL: A reveal or transformation happening on screen
+- VISUAL: Something unexpected or unusual being shown
+- VISUAL: Intense eye contact with camera during key statement
+- VISUAL: Physical demonstration of something impressive
+- VISUAL + AUDIO: Emotional peak with visible reaction
+
+TIER 2 - STRONG CLIPS:
+- VISUAL: Confident delivery with strong body language
+- VISUAL: Multiple people reacting together
+- VISUAL: Before/after comparison shown visually
+- VISUAL: Product or object being demonstrated
+- VISUAL: Person in an interesting/unusual setting
+
+===== WHAT TO NEVER CLIP =====
+- Static talking head with no energy or movement
+- Looking away from camera during key points
+- Poor lighting or visually uninteresting frames
+- Reading from notes or teleprompter obviously
+- Intros: "Hey guys welcome back"
+- Outros: "Like and subscribe"
 - Sponsors or promotional segments
-- Administrative talk ("Don't forget to like and subscribe")
-- Low-energy explanations without visual interest
-- Rambling without clear point
-- Repetitive content
-- Meta commentary about the video itself
+- Long pauses with no visual interest
 
 ===== STRUCTURE =====
 
 TARGET: ${length} seconds total
-- Hook (~${hookLength}s): The MOST scroll-stopping moment. This appears FIRST.
-- Main (~${mainLength}s): 2-4 segments that deliver value and maintain engagement
+- Hook (~${hookLength}s): The MOST visually compelling moment. This plays FIRST.
+- Main (~${mainLength}s): 2-4 segments that build the story with visual interest throughout
 
-HOOK STRATEGY:
-1. Find the single most compelling 5-7 second moment in the entire video
-2. This could be from ANYWHERE in the video - beginning, middle, or end
-3. It should create an instant "wait, what?" reaction
-4. Consider: visual impact + audio energy + content value
+HOOK SELECTION (watch the video!):
+1. Scan the ENTIRE video visually for peak moments
+2. Find where the speaker is MOST animated/expressive
+3. Find where something VISUALLY interesting happens
+4. The hook should make viewers think "I need to see more"
 
-MAIN CONTENT STRATEGY:
-1. Build context if the hook needs explanation
-2. Deliver the core value/insight/entertainment
-3. Maintain energy throughout - no dead spots
-4. End with satisfaction OR a second hook for retention
+MAIN CONTENT:
+1. Provide context for the hook (can be from earlier in video)
+2. Keep visual interest throughout - no boring talking head sections
+3. End with satisfaction or another visual hook
 
 ===== OUTPUT FORMAT =====
 
-Generate ${numberOfVideos} DIFFERENT clips. Each must focus on a UNIQUE moment.
+Generate ${numberOfVideos} DIFFERENT clips based on DIFFERENT visual moments you observed.
 
 {
   "videos": [
     {
       "hook": {
-        "text": "Description of what happens in this hook moment",
+        "text": "Describe what you SEE happening visually in this moment",
         "start": 145.5,
         "end": 151.2
       },
       "main": [
         {
-          "text": "Context or setup for the hook",
+          "text": "Describe the visual action/context in this segment",
           "start": 120.0,
           "end": 145.0
         },
         {
-          "text": "Payoff or continuation",
+          "text": "Describe what happens visually here",
           "start": 151.2,
           "end": 165.0
         }
       ],
       "combined_script": "Full text of what is said in the final clip",
-      "finalMessage": "Why this clip will go viral - what makes it compelling",
+      "finalMessage": "Explain what VISUAL elements make this clip compelling",
       "evalScore": 85,
       "clipTitle": "Catchy title for this clip"
     }
@@ -477,15 +495,15 @@ Generate ${numberOfVideos} DIFFERENT clips. Each must focus on a UNIQUE moment.
 LENGTH CHECK: Hook + Main segments must total approximately ${length} seconds.
 
 ===== EVALUATION CRITERIA =====
-- evalScore 90+: Genuinely viral potential, stops scrolling immediately
-- evalScore 80-89: Strong engagement, viewers will watch to end
-- evalScore 70-79: Good content but may not break through
-- Below 70: Consider if there's better content in the video
+- evalScore 90+: Visually stunning, impossible to scroll past
+- evalScore 80-89: Strong visual interest, viewers will watch to end
+- evalScore 70-79: Decent visuals but could be stronger
+- Below 70: Mostly talking head, limited visual appeal
 
-Here is the transcript for reference: ${transcriptText}
-Here is the transcript object: ${transcriptObject}
+TRANSCRIPT FOR TIMING REFERENCE: ${transcriptText}
+TRANSCRIPT OBJECT: ${transcriptObject}
 
-WATCH THE VIDEO. Find the magic moments. Create clips people will share.
+REMEMBER: WATCH THE VIDEO. Base your selections on what you SEE, not just what you read in the transcript. The transcript is only for timing reference.
 `;
 };
 
