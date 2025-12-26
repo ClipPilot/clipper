@@ -68,7 +68,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "videos" {
     }
   }
 
-  # Blank clips (clean videos for editing) → One Zone-IA immediately
+  # Blank clips (clean videos for editing) → One Zone-IA after 30 days
   # These are accessed occasionally for re-editing but don't need multi-AZ redundancy
   rule {
     id     = "transition-blank-clips-to-one-zone"
@@ -79,7 +79,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "videos" {
     }
 
     transition {
-      days          = 1
+      days          = 30
       storage_class = "ONEZONE_IA"
     }
   }
@@ -105,7 +105,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "videos" {
     }
   }
 
-  # Watermarked clips (preview versions) → One Zone-IA after 7 days
+  # Watermarked clips (preview versions) → One Zone-IA after 30 days
   rule {
     id     = "transition-watermarked-clips"
     status = "Enabled"
@@ -115,7 +115,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "videos" {
     }
 
     transition {
-      days          = 7
+      days          = 30
       storage_class = "ONEZONE_IA"
     }
 
@@ -125,7 +125,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "videos" {
     }
   }
 
-  # SRT files → One Zone-IA after 7 days (small files, rarely accessed)
+  # SRT files → One Zone-IA after 30 days (small files, rarely accessed)
   rule {
     id     = "transition-srt-files"
     status = "Enabled"
@@ -135,7 +135,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "videos" {
     }
 
     transition {
-      days          = 7
+      days          = 30
       storage_class = "ONEZONE_IA"
     }
   }
