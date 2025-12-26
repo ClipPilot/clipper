@@ -1,7 +1,14 @@
 "use client";
 
 import React from "react";
-import { Select, SelectItem, Slider, Textarea, Card, CardBody } from "@heroui/react";
+import {
+  Select,
+  SelectItem,
+  Slider,
+  Textarea,
+  Card,
+  CardBody,
+} from "@heroui/react";
 import { Icon } from "@iconify/react";
 import {
   PromptType,
@@ -61,46 +68,21 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
         ))}
       </Select>
 
-      {promptType === "general" && !batchMode && (
-        <Card className="bg-accent-500/10 border border-accent-500/30">
-          <CardBody className="p-3 flex flex-row items-start gap-3">
-            <Icon icon="solar:videocamera-record-bold" className="text-accent-400 text-lg flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-accent-300">
-              AI will analyze both the video visuals and audio to find the most viral-worthy moments from your content.
-            </p>
-          </CardBody>
-        </Card>
-      )}
-
-      {promptType === "general" && batchMode && (
-        <Card className="bg-primary-500/10 border border-primary-500/30">
-          <CardBody className="p-3 flex flex-row items-start gap-3">
-            <Icon icon="solar:info-circle-bold" className="text-primary-400 text-lg flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-primary-300">
-              In batch mode, the AI uses transcripts to find engaging moments across all videos. Upload individual videos for full video analysis.
-            </p>
-          </CardBody>
-        </Card>
-      )}
-
-      {(promptType === "viral" || promptType === "business") && (
-        <Card className="bg-primary-500/10 border border-primary-500/30">
-          <CardBody className="p-3 flex flex-row items-start gap-3">
-            <Icon icon="solar:info-circle-bold" className="text-primary-400 text-lg flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-primary-300">
-              This mode works best with videos that contain speech or dialogue. The AI uses spoken content to identify the most engaging moments.
-            </p>
-          </CardBody>
-        </Card>
-      )}
-
       <Textarea
-        label={promptType === "gaming" ? "Describe the Clip" : "Custom Instructions (Optional)"}
+        label={
+          promptType === "gaming"
+            ? "Describe the Clip"
+            : "Custom Instructions (Optional)"
+        }
         placeholder={PROMPT_TYPE_PLACEHOLDERS[promptType]}
         value={customPrompt}
         onValueChange={setCustomPrompt}
         minRows={3}
-        description={promptType === "gaming" ? "Help the AI understand what game and moments to look for" : undefined}
+        description={
+          promptType === "gaming"
+            ? "Help the AI understand what game and moments to look for"
+            : undefined
+        }
       />
 
       <Slider
