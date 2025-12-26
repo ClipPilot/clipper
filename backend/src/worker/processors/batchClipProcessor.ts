@@ -237,15 +237,6 @@ export async function processBatchClipVideoJob(
         fs.unlinkSync(videoPath);
       }
     }
-
-    // Delete all raw videos from S3 to save storage (no longer needed after processing)
-    for (const video of videos) {
-      try {
-        await s3Service.deleteObject(video.s3Key);
-        console.log(`Deleted raw video from S3: ${video.s3Key}`);
-      } catch (deleteError) {
-        console.error(`Failed to delete raw video from S3: ${video.s3Key}`, deleteError);
-      }
-    }
+    // Note: Raw videos in S3 are archived to Glacier via lifecycle policy (not deleted)
   }
 }

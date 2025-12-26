@@ -184,16 +184,10 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
 
     throw error;
   } finally {
+    // Clean up local file
     if (fs.existsSync(localVideoPath)) {
       fs.unlinkSync(localVideoPath);
     }
-
-    // Delete raw video from S3 to save storage (no longer needed after processing)
-    try {
-      await s3Service.deleteObject(s3Key);
-      console.log(`Deleted raw video from S3: ${s3Key}`);
-    } catch (deleteError) {
-      console.error(`Failed to delete raw video from S3: ${s3Key}`, deleteError);
-    }
+    // Note: Raw video in S3 is archived to Glacier via lifecycle policy (not deleted)
   }
 }
