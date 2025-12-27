@@ -16,6 +16,11 @@ import {
 
 interface UsageStats {
   clipsCreated: number;
+  baseLimit: number;
+  baseRemaining: number;
+  addonRemaining: number;
+  totalRemaining: number;
+  // Legacy fields
   limit: number;
   remaining: number;
 }
@@ -40,7 +45,7 @@ export function PaidPlanView({
   onBuyAddon,
 }: PaidPlanViewProps) {
   const usagePercentage = usageStats
-    ? (usageStats.clipsCreated / usageStats.limit) * 100
+    ? (usageStats.clipsCreated / usageStats.baseLimit) * 100
     : 0;
 
   const isScale = currentPlan === "scale";
@@ -103,7 +108,7 @@ export function PaidPlanView({
           </CardHeader>
           <Divider className="my-4" />
           <CardBody className="gap-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="flex flex-col gap-1 p-4 rounded-xl bg-surface-dark/50">
                 <span className="text-xs text-text-tertiary uppercase tracking-wider">
                   Plan
@@ -117,24 +122,32 @@ export function PaidPlanView({
                   Monthly Limit
                 </span>
                 <span className="text-lg font-semibold text-text-primary">
-                  {usageStats?.limit || 0} clips
+                  {usageStats?.baseLimit || 0} clips
                 </span>
               </div>
               <div className="flex flex-col gap-1 p-4 rounded-xl bg-surface-dark/50">
                 <span className="text-xs text-text-tertiary uppercase tracking-wider">
-                  Remaining
+                  Bonus Clips
+                </span>
+                <span className="text-lg font-semibold text-green-500">
+                  +{usageStats?.addonRemaining || 0}
+                </span>
+              </div>
+              <div className="flex flex-col gap-1 p-4 rounded-xl bg-surface-dark/50">
+                <span className="text-xs text-text-tertiary uppercase tracking-wider">
+                  Total Remaining
                 </span>
                 <span className="text-lg font-semibold text-text-primary">
-                  {usageStats?.remaining || 0} clips
+                  {usageStats?.totalRemaining || 0} clips
                 </span>
               </div>
             </div>
 
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-text-secondary">Usage this period</span>
+                <span className="text-text-secondary">Plan usage this period</span>
                 <span className="text-text-primary font-medium">
-                  {usageStats?.clipsCreated || 0} / {usageStats?.limit || 0}
+                  {usageStats?.clipsCreated || 0} / {usageStats?.baseLimit || 0}
                 </span>
               </div>
               <Progress
@@ -222,14 +235,14 @@ export function PaidPlanView({
                   ${isScale ? "599" : "574.50"} one time purchase
                 </p>
               </div>
-              <div className="flex items-center gap-2 p-2 rounded-lg bg-warning-500/10 border border-warning-500/20">
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-green-500/10 border border-green-500/20">
                 <Icon
-                  icon="solar:clock-circle-bold"
-                  className="text-warning-500"
+                  icon="solar:check-circle-bold"
+                  className="text-green-500"
                   width={16}
                 />
-                <p className="text-xs text-warning-500">
-                  Clips expire at end of billing period
+                <p className="text-xs text-green-500">
+                  Bonus clips never expire
                 </p>
               </div>
             </CardBody>

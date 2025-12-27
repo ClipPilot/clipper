@@ -77,17 +77,26 @@ export const getTeamUsageStatsController = async (req: AuthRequest, res: Respons
     const generationLimit = plan === "free" ? (stats.limit === 0 ? 0 : PLAN_LIMITS.FREE.generations) : -1;
     const generationsRemaining = generationLimit === -1 ? -1 : Math.max(0, generationLimit - clipsGenerated);
 
+    const baseRemaining = Math.max(0, stats.limit - stats.clips_created);
+    const addonRemaining = team.addon_clips_remaining || 0;
+    const totalRemaining = baseRemaining + addonRemaining;
+
     res.json({
       teamId: team.id,
       teamName: team.name,
       clipsCreated: stats.clips_created,
-      limit: stats.limit,
-      remaining: Math.max(0, stats.limit - stats.clips_created),
+      baseLimit: stats.limit,
+      baseRemaining,
+      addonRemaining,
+      totalRemaining,
       clipsGenerated,
       generationLimit,
       generationsRemaining,
       resetsDate: stats.resets_date,
       rollover: stats.rollover,
+      // Legacy fields for backward compatibility
+      limit: stats.limit,
+      remaining: totalRemaining,
     });
   } catch (err) {
     console.error("Error in getTeamUsageStatsController:", err);

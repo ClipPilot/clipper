@@ -123,6 +123,53 @@ class TeamService {
   }
 
   /**
+   * Consume one clip from the team's quota.
+   * Order: Base plan clips first, then addon clips.
+   * Returns info about whether successful and which pool was used.
+   */
+  async consumeClip(
+    teamId: number
+  ): Promise<{ success: boolean; source: "base" | "addon" | null }> {
+    const stats = await this.getTeamUsageStats(teamId);
+    const [team] = await db
+      .select()
+      .from(teams)
+      .where(eq(teams.id, teamId))
+      .limit(1);
+
+    if (!team) {
+      return { success: false, source: null };
+    }
+
+    const baseRemaining = Math.max(0, stats.limit - stats.clips_created);
+    const addonRemaining = team.addon_clips_remaining || 0;
+
+    if (baseRemaining > 0) {
+      // Consume from base plan
+      await db
+        .update(usageStats)
+        .set({
+          clips_created: stats.clips_created + 1,
+          updated_at: new Date(),
+        })
+        .where(eq(usageStats.id, stats.id));
+      return { success: true, source: "base" };
+    } else if (addonRemaining > 0) {
+      // Consume from addon pool
+      await db
+        .update(teams)
+        .set({
+          addon_clips_remaining: addonRemaining - 1,
+          updated_at: new Date(),
+        })
+        .where(eq(teams.id, teamId));
+      return { success: true, source: "addon" };
+    }
+
+    return { success: false, source: null };
+  }
+
+  /**
    * Create a new team
    * First team gets 3 free clips, additional teams get 0 (must subscribe)
    */

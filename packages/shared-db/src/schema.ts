@@ -79,6 +79,7 @@ export const teams = pgTable("teams", {
   teamSubscrptionId: varchar("team_subscription_id", { length: 255 }),
   stripe_customer_id: varchar("stripe_customer_id", { length: 255 }),
   plan: varchar("plan", { length: 50 }).notNull().default("free"),
+  addon_clips_remaining: integer("addon_clips_remaining").notNull().default(0),
   created_at: timestamp("created_at").notNull().defaultNow(),
   updated_at: timestamp("updated_at").notNull().defaultNow(),
 }).enableRLS();

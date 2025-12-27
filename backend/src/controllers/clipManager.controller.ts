@@ -462,16 +462,29 @@ export class ClipManagerController {
           code: "CLIP_LIMIT_REACHED",
           usage: {
             clipsCreated: usage.clipsCreated,
-            limit: usage.limit,
-            remaining: 0,
+            baseLimit: usage.baseLimit,
+            baseRemaining: usage.baseRemaining,
+            addonRemaining: usage.addonRemaining,
+            totalRemaining: usage.totalRemaining,
             resetsDate: usage.resetsDate,
             plan: usage.plan,
+            // Legacy
+            limit: usage.limit,
+            remaining: 0,
           },
         });
       }
 
       await clipManagerService.saveClip(clipId, teamId);
-      await teamService.incrementTeamUsage(teamId, 1);
+
+      // Consume clip from base plan first, then addon
+      const consumeResult = await teamService.consumeClip(teamId);
+      if (!consumeResult.success) {
+        return res.status(403).json({
+          error: "Failed to consume clip quota",
+          code: "CLIP_CONSUME_FAILED",
+        });
+      }
 
       const updatedUsage = await getTeamUsage(teamId);
 
