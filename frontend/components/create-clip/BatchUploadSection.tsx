@@ -9,6 +9,7 @@ import {
   MultipartUploadResponse,
   BatchUploadedVideo,
 } from "@/api/video";
+import { DrivePicker } from "./DrivePicker";
 
 interface BatchUploadSectionProps {
   teamId: number;
@@ -83,6 +84,7 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
 }) => {
   const [files, setFiles] = useState<FileUploadState[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const multipartDataRefs = useRef<Map<number, MultipartUploadResponse>>(
     new Map()
   );
@@ -174,9 +176,7 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
 
       setFiles((prev) =>
         prev.map((f) =>
-          f.videoIndex === videoIndex
-            ? { ...f, status: "completed", s3Key }
-            : f
+          f.videoIndex === videoIndex ? { ...f, status: "completed", s3Key } : f
         )
       );
     } catch (err: any) {
@@ -206,6 +206,8 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
   };
 
   const validateAndAddFiles = async (newFiles: File[]) => {
+    console.log("Validating files:", newFiles);
+    setDownloading(true);
     const validTypes = [
       "video/mp4",
       "video/quicktime",
@@ -241,7 +243,9 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
         const duration = await getVideoDuration(file);
         if (duration > MAX_VIDEO_DURATION_SECONDS) {
           const durationMins = Math.ceil(duration / 60);
-          errors.push(`${file.name}: Video is ${durationMins} minutes (max 30 minutes)`);
+          errors.push(
+            `${file.name}: Video is ${durationMins} minutes (max 30 minutes)`
+          );
           continue;
         }
         validFiles.push({ file, duration });
@@ -256,15 +260,17 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
     }
 
     if (validFiles.length > 0) {
-      const newFileStates: FileUploadState[] = validFiles.map(({ file, duration }, idx) => ({
-        file,
-        videoIndex: currentCount + idx,
-        status: "uploading" as const,
-        progress: null,
-        s3Key: null,
-        error: null,
-        duration,
-      }));
+      const newFileStates: FileUploadState[] = validFiles.map(
+        ({ file, duration }, idx) => ({
+          file,
+          videoIndex: currentCount + idx,
+          status: "uploading" as const,
+          progress: null,
+          s3Key: null,
+          error: null,
+          duration,
+        })
+      );
 
       setFiles((prev) => [...prev, ...newFileStates]);
 
@@ -273,6 +279,7 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
         uploadFile(fileState);
       });
     }
+    setDownloading(false);
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -328,7 +335,12 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
             : f
         )
       );
-      uploadFile({ ...fileState, status: "uploading", progress: null, error: null });
+      uploadFile({
+        ...fileState,
+        status: "uploading",
+        progress: null,
+        error: null,
+      });
     }
   };
 
@@ -345,8 +357,8 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
             fileState.status === "failed"
               ? "border-danger-500/50 bg-danger-500/10"
               : fileState.status === "completed"
-              ? "border-success-500/50 bg-success-500/10"
-              : "border-border-base bg-surface-elevated"
+                ? "border-success-500/50 bg-success-500/10"
+                : "border-border-base bg-surface-elevated"
           }`}
         >
           <div className="flex items-center gap-3">
@@ -355,8 +367,8 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
                 fileState.status === "failed"
                   ? "bg-danger-500/20"
                   : fileState.status === "completed"
-                  ? "bg-success-500/20"
-                  : "bg-accent-400/20"
+                    ? "bg-success-500/20"
+                    : "bg-accent-400/20"
               }`}
             >
               <span className="font-bold text-sm">
@@ -475,22 +487,34 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
           id="batch-video-upload"
         />
 
-        <Button
-          as="label"
-          htmlFor="batch-video-upload"
-          size="md"
-          color="primary"
-          variant="flat"
-          startContent={<Icon icon="solar:folder-open-bold" />}
-          className="cursor-pointer"
-        >
-          Browse Files
-        </Button>
+        <div className="flex gap-3">
+          <Button
+            as="label"
+            htmlFor="batch-video-upload"
+            size="md"
+            isDisabled={downloading}
+            color="primary"
+            variant="flat"
+            startContent={<Icon icon="solar:folder-open-bold" />}
+            className="cursor-pointer"
+          >
+            Browse Files
+          </Button>
+
+          <DrivePicker
+            processFiles={validateAndAddFiles}
+            setDownloading={setDownloading}
+            downloading={downloading}
+          />
+        </div>
 
         <div className="flex items-start gap-2 text-xs text-text-tertiary">
           <Icon icon="solar:info-circle-outline" className="text-base mt-0.5" />
           <div>
-            <p>Max 30 min per video | Max size: 2GB | Formats: MP4, MOV, AVI, MKV, WebM</p>
+            <p>
+              Max 30 min per video | Max size: 2GB | Formats: MP4, MOV, AVI,
+              MKV, WebM
+            </p>
           </div>
         </div>
       </div>
