@@ -186,6 +186,16 @@ export class ClipManagerController {
         return res.status(400).json({ error: "Invalid clip ID or team ID" });
       }
 
+      // Check if moving clip to a folder requires Scale plan
+      if (folderId !== undefined && folderId !== null) {
+        const team = await teamService.getTeamById(teamId);
+        if (team.plan !== "scale") {
+          return res.status(403).json({
+            error: "Moving clips to folders requires a Scale plan. Please upgrade to organize clips into folders.",
+          });
+        }
+      }
+
       const updates: any = {};
       if (message !== undefined) updates.message = message;
       if (clipScore !== undefined) updates.clipScore = clipScore;

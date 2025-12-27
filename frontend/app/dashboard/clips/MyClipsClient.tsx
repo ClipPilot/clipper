@@ -221,6 +221,10 @@ function MyClipsPageContent() {
   };
 
   const handleOpenCreateFolder = (parentFolderId?: number | null) => {
+    // Only Scale plan has folder management
+    if (selectedTeam?.plan !== "scale") {
+      return;
+    }
     setCreateFolderParentId(parentFolderId || null);
     setIsCreateFolderOpen(true);
   };
@@ -373,17 +377,21 @@ function MyClipsPageContent() {
 
         {activeTab === "library" && (
           <div className="flex gap-6">
-            <FolderTree
-              folders={folderTree}
-              selectedFolderId={selectedFolderId}
-              isCollapsed={isSidebarCollapsed}
-              onSelectFolder={handleSelectFolder}
-              onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-              onMoveClip={moveClipToFolder}
-              onMoveFolder={moveFolder}
-              onCreateFolder={handleOpenCreateFolder}
-              onDeleteFolder={deleteFolder}
-            />
+            {/* Show folders for all plans - read-only for non-Scale (allows viewing existing folders after downgrade) */}
+            {(selectedTeam?.plan === "scale" || folderTree.length > 0) && (
+              <FolderTree
+                folders={folderTree}
+                selectedFolderId={selectedFolderId}
+                isCollapsed={isSidebarCollapsed}
+                isReadOnly={selectedTeam?.plan !== "scale"}
+                onSelectFolder={handleSelectFolder}
+                onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                onMoveClip={moveClipToFolder}
+                onMoveFolder={moveFolder}
+                onCreateFolder={handleOpenCreateFolder}
+                onDeleteFolder={deleteFolder}
+              />
+            )}
 
             <div className="flex-1 min-w-0">
               {selectedFolderId !== null && (
@@ -457,8 +465,8 @@ function MyClipsPageContent() {
                           folder={subfolder}
                           viewMode={viewMode}
                           onOpen={handleSelectFolder}
-                          onDelete={deleteFolder}
-                          onDropClip={moveClipToFolder}
+                          onDelete={selectedTeam?.plan === "scale" ? deleteFolder : undefined}
+                          onDropClip={selectedTeam?.plan === "scale" ? moveClipToFolder : undefined}
                         />
                       ))}
                       {savedClips.map((clip) => (

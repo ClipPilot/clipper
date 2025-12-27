@@ -12,6 +12,7 @@ interface FolderTreeItemProps {
   expandedFolderIds: Set<number>;
   dragOverFolderId: number | null;
   draggingFolderId: number | null;
+  isReadOnly?: boolean;
   onSelect: (folderId: number) => void;
   onToggle: (folderId: number) => void;
   onDragOver: (e: React.DragEvent, folderId: number) => void;
@@ -30,6 +31,7 @@ export const FolderTreeItem: React.FC<FolderTreeItemProps> = ({
   expandedFolderIds,
   dragOverFolderId,
   draggingFolderId,
+  isReadOnly = false,
   onSelect,
   onToggle,
   onDragOver,
@@ -110,19 +112,19 @@ export const FolderTreeItem: React.FC<FolderTreeItemProps> = ({
   return (
     <div className={isDragging ? "opacity-50" : ""}>
       <div
-        draggable
-        onDragStart={handleDragStart}
-        onDragEnd={onFolderDragEnd}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
+        draggable={!isReadOnly}
+        onDragStart={isReadOnly ? undefined : handleDragStart}
+        onDragEnd={isReadOnly ? undefined : onFolderDragEnd}
+        onDragOver={isReadOnly ? undefined : handleDragOver}
+        onDragLeave={isReadOnly ? undefined : handleDragLeave}
+        onDrop={isReadOnly ? undefined : handleDrop}
         onClick={handleClick}
         style={{ paddingLeft: `${level * 12 + 8}px` }}
         className={`
           flex items-center gap-2 py-1.5 pr-2 rounded-lg cursor-pointer group transition-all relative
           ${isSelected && !isDragOver ? "bg-accent-400/20 border border-accent-400/50" : ""}
           ${!isSelected && !isDragOver ? "hover:bg-surface-elevated border border-transparent" : ""}
-          ${isDragOver ? "bg-accent-400/40 border-2 border-accent-400 border-dashed shadow-[0_0_12px_rgba(147,51,234,0.4)]" : ""}
+          ${isDragOver && !isReadOnly ? "bg-accent-400/40 border-2 border-accent-400 border-dashed shadow-[0_0_12px_rgba(147,51,234,0.4)]" : ""}
         `}
       >
         <button
@@ -143,31 +145,33 @@ export const FolderTreeItem: React.FC<FolderTreeItemProps> = ({
 
         <span className="flex-1 text-sm text-text-primary truncate">{folder.name}</span>
 
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          {onCreateSubfolder && (
-            <Button
-              isIconOnly
-              size="sm"
-              variant="light"
-              className="w-6 h-6 min-w-6"
-              onPress={handleCreateSubfolder}
-            >
-              <Icon icon="solar:add-circle-outline" className="text-sm text-text-secondary" />
-            </Button>
-          )}
-          {onDelete && (
-            <Button
-              isIconOnly
-              size="sm"
-              variant="light"
-              color="danger"
-              className="w-6 h-6 min-w-6"
-              onPress={handleDelete}
-            >
-              <Icon icon="mdi:delete-outline" className="text-base" />
-            </Button>
-          )}
-        </div>
+        {!isReadOnly && (
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {onCreateSubfolder && (
+              <Button
+                isIconOnly
+                size="sm"
+                variant="light"
+                className="w-6 h-6 min-w-6"
+                onPress={handleCreateSubfolder}
+              >
+                <Icon icon="solar:add-circle-outline" className="text-sm text-text-secondary" />
+              </Button>
+            )}
+            {onDelete && (
+              <Button
+                isIconOnly
+                size="sm"
+                variant="light"
+                color="danger"
+                className="w-6 h-6 min-w-6"
+                onPress={handleDelete}
+              >
+                <Icon icon="mdi:delete-outline" className="text-base" />
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
       {isExpanded && hasChildren && (
@@ -181,6 +185,7 @@ export const FolderTreeItem: React.FC<FolderTreeItemProps> = ({
               expandedFolderIds={expandedFolderIds}
               dragOverFolderId={dragOverFolderId}
               draggingFolderId={draggingFolderId}
+              isReadOnly={isReadOnly}
               onSelect={onSelect}
               onToggle={onToggle}
               onDragOver={onDragOver}
