@@ -14,20 +14,27 @@ export default function DriveCallbackPage() {
       const { data, error } = await supabase.auth.getSession();
 
       if (error || !data.session?.provider_token) {
-        router.replace("/dashboard/create-clip?error=drive_failed");
+        if (window.opener) {
+          window.close();
+        } else {
+          router.replace("/dashboard/create-clip?error=drive_failed");
+        }
         return;
       }
 
-      // Store the Google Drive token in localStorage
-      // This keeps the Drive token available without creating a new session
+      // Store a flag indicating Drive is connected
+      localStorage.setItem("google_drive_connected", "true");
+
+      // Signal to the parent window that we're done (for popup to close)
       localStorage.setItem("google_drive_token", data.session.provider_token);
 
-      // Sign out from the temporary Google OAuth session
-      // This prevents the user from being switched to a Google account
-      await supabase.auth.signOut();
-
-      // Redirect back to create clip page
-      router.replace("/dashboard/create-clip?drive_connected=true");
+      // If opened in a popup, close it
+      if (window.opener) {
+        window.close();
+      } else {
+        // Otherwise redirect back
+        router.replace("/dashboard/create-clip?drive_connected=true");
+      }
     };
 
     handleCallback();

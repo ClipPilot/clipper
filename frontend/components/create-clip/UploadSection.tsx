@@ -299,7 +299,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                 Browse Files
               </Button>
 
-              <DrivePicker />
+              <DrivePicker processFile={processFile} />
             </div>
 
             <div className="flex items-start gap-2 text-xs text-text-tertiary">
