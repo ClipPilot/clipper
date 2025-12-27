@@ -51,6 +51,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
     "single"
   );
   const [isDragging, setIsDragging] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const multipartDataRef = useRef<MultipartUploadResponse | null>(null);
 
   const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024;
@@ -292,6 +293,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                 htmlFor="video-upload"
                 size="md"
                 color="primary"
+                isDisabled={downloading}
                 variant="flat"
                 startContent={<Icon icon="solar:folder-open-bold" />}
                 className="cursor-pointer"
@@ -299,7 +301,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                 Browse Files
               </Button>
 
-              <DrivePicker processFile={processFile} />
+              <DrivePicker setDownloading={setDownloading} downloading={downloading} processFile={processFile} />
             </div>
 
             <div className="flex items-start gap-2 text-xs text-text-tertiary">
@@ -347,7 +349,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                 Browse Files
               </Button>
 
-              <DrivePicker disabled />
+              <DrivePicker setDownloading={setDownloading} disabled />
             </div>
           </div>
         </CardBody>

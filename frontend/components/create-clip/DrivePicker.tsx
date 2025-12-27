@@ -4,15 +4,14 @@ import { supabase } from "@/lib/supabase";
 import { Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 
-type Props =
-  | {
-      disabled: true;
-      processFile?: never;
-    }
-  | {
-      disabled?: false;
-      processFile: (file: File) => Promise<void>;
-    };
+interface Props {
+  disabled?: boolean;
+  processFile?: (file: File) => Promise<void>;
+  multiple?: boolean;
+  processFiles?: (files: File[]) => Promise<void>;
+  setDownloading: (loading: boolean) => void;
+  downloading?: boolean;
+}
 
 export function DrivePicker(props: Props) {
   const loadGooglePicker = () =>
@@ -69,35 +68,75 @@ export function DrivePicker(props: Props) {
 
   const openPicker = async (token: string) => {
     await loadGooglePicker();
+    let picker;
 
-    const picker = new window.google.picker.PickerBuilder()
-      .addView(window.google.picker.ViewId.DOCS_VIDEOS)
-      .setOAuthToken(token)
-      .setDeveloperKey(process.env.NEXT_PUBLIC_GOOGLE_API_KEY!)
-      .setCallback(async (data: any) => {
-        if (!props.processFile) return;
+    if (!props.processFiles) {
+      picker = new window.google.picker.PickerBuilder()
+        .addView(window.google.picker.ViewId.DOCS_VIDEOS)
+        .setOAuthToken(token)
+        .setDeveloperKey(process.env.NEXT_PUBLIC_GOOGLE_API_KEY!)
+        .setCallback(async (data: any) => {
+          if (data.action === window.google.picker.Action.PICKED) {
+            const pickedFile = data.docs[0];
 
-        if (data.action === window.google.picker.Action.PICKED) {
-          const pickedFile = data.docs[0];
+            props.setDownloading(true);
 
-          const response = await fetch(
-            `https://www.googleapis.com/drive/v3/files/${pickedFile.id}?alt=media`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
+            const response = await fetch(
+              `https://www.googleapis.com/drive/v3/files/${pickedFile.id}?alt=media`,
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              }
+            );
+
+            const blob = await response.blob();
+            const file = new File([blob], pickedFile.name, {
+              type: pickedFile.mimeType,
+            });
+
+            props.setDownloading(false);
+
+            if (props.processFile) await props.processFile(file);
+          }
+        })
+        .build();
+    } else {
+      picker = new window.google.picker.PickerBuilder()
+        .enableFeature(window.google.picker.Feature.MULTISELECT_ENABLED)
+        .addView(window.google.picker.ViewId.DOCS_VIDEOS)
+        .setOAuthToken(token)
+        .setDeveloperKey(process.env.NEXT_PUBLIC_GOOGLE_API_KEY!)
+        .setCallback(async (data: any) => {
+          if (data.action !== window.google.picker.Action.PICKED) return;
+
+          props.setDownloading(true);
+          // Download ALL selected files
+          const files: File[] = await Promise.all(
+            data.docs.map(async (pickedFile: any) => {
+              const response = await fetch(
+                `https://www.googleapis.com/drive/v3/files/${pickedFile.id}?alt=media`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                  },
+                }
+              );
+
+              const blob = await response.blob();
+              return new File([blob], pickedFile.name, {
+                type: pickedFile.mimeType,
+              });
+            })
           );
+          props.setDownloading(false);
 
-          const blob = await response.blob();
-          const file = new File([blob], pickedFile.name, {
-            type: pickedFile.mimeType,
-          });
-
-          await props.processFile(file);
-        }
-      })
-      .build();
+          if (props.processFiles) {
+            await props.processFiles(files);
+          }
+        })
+        .build();
+    }
 
     picker.setVisible(true);
   };
@@ -127,7 +166,6 @@ export function DrivePicker(props: Props) {
       <Button
         size="md"
         color="secondary"
-        isDisabled
         startContent={<Icon icon="logos:google-drive" />}
       >
         Upload from Google Drive
@@ -140,6 +178,7 @@ export function DrivePicker(props: Props) {
       size="md"
       variant="flat"
       color="secondary"
+      isDisabled={props.downloading}
       startContent={<Icon icon="logos:google-drive" />}
       onPress={handleGDrive}
     >
