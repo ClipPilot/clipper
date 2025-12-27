@@ -1,7 +1,7 @@
 import { db } from "../db";
-import { teams, teamMembers, users, usageStats } from "@clipper/shared-db/src/schema";
+import { teams, teamMembers, users, usageStats, subscriptions } from "@clipper/shared-db/src/schema";
 import { eq, and, desc, count } from "drizzle-orm";
-import { PLAN_LIMITS } from "../config/stripe.config";
+import { PLAN_LIMITS, stripe } from "../config/stripe.config";
 
 class TeamService {
   /**
@@ -402,8 +402,33 @@ class TeamService {
 
   /**
    * Delete team (owner only)
+   * Automatically cancels any active Stripe subscription
    */
   async deleteTeam(teamId: number) {
+    // Check for active subscription and cancel it in Stripe
+    const [subscription] = await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.team_id, teamId))
+      .limit(1);
+
+    if (subscription && subscription.stripe_subscription_id) {
+      try {
+        // Cancel the subscription immediately in Stripe
+        await stripe.subscriptions.cancel(subscription.stripe_subscription_id);
+        console.log(
+          `Cancelled Stripe subscription ${subscription.stripe_subscription_id} for team ${teamId}`
+        );
+      } catch (stripeError) {
+        // Log but don't block deletion - subscription might already be cancelled
+        console.error(
+          `Failed to cancel Stripe subscription for team ${teamId}:`,
+          stripeError
+        );
+      }
+    }
+
+    // Delete the team (cascades to team_members, usage_stats, subscriptions, clips, etc.)
     await db.delete(teams).where(eq(teams.id, teamId));
   }
 

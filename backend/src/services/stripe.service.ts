@@ -361,7 +361,22 @@ class StripeService {
       return new Date(val);
     };
 
-    const plan = getPlanFromPriceId(priceId);
+    let plan = getPlanFromPriceId(priceId);
+    if (plan === "free") {
+      const [team] = await db
+        .select()
+        .from(teams)
+        .where(eq(teams.id, existingSub.team_id))
+        .limit(1);
+
+      if (team && team.plan !== "free") {
+        console.log(
+          `Unrecognized price ID ${priceId}, preserving existing plan: ${team.plan}`
+        );
+        plan = team.plan;
+      }
+    }
+
     const clipsLimit = getClipsLimitForPlan(plan);
     const newPeriodStart = parseDate(periodStartTs);
     const newPeriodEnd = parseDate(periodEndTs);
