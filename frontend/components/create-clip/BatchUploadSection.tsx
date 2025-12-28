@@ -9,7 +9,7 @@ import {
   MultipartUploadResponse,
   BatchUploadedVideo,
 } from "@/api/video";
-import { DrivePicker } from "./DrivePicker";
+import { DrivePicker } from "./DrivePickerOld";
 
 interface BatchUploadSectionProps {
   teamId: number;
