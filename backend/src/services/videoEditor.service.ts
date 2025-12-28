@@ -209,6 +209,8 @@ export const mergeClips = async (clips: string[], outputPath: string) => {
           "-preset veryfast",
           "-pix_fmt yuv420p",
           "-movflags +faststart",
+          "-c:a aac",
+          "-b:a 128k",
         ]);
     } else {
       ffmpegCmd
