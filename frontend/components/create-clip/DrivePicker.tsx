@@ -1,5 +1,5 @@
 "use client";
-// MANAS'S CODE
+
 import { supabase } from "@/lib/supabase";
 import { Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
