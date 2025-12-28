@@ -194,7 +194,25 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
 
   const renderFileUpload = () => (
     <div className="flex flex-col items-center justify-center space-y-4">
-      {isUploading ? (
+      {downloading ? (
+        <>
+          <div className="w-20 h-20 bg-accent-400/10 rounded-full flex items-center justify-center">
+            <Icon
+              icon="logos:google-drive"
+              className="text-4xl animate-pulse"
+            />
+          </div>
+          <div className="text-center">
+            <h3 className="text-lg font-bold text-text-primary mb-2">
+              Downloading from Google Drive
+            </h3>
+            <p className="text-sm text-text-secondary">
+              Please wait while we fetch your file...
+            </p>
+          </div>
+          <Progress isIndeterminate color="primary" className="w-full max-w-md" />
+        </>
+      ) : isUploading ? (
         <>
           <div className="w-full mb-4 p-3 rounded-lg bg-warning-500/10 border border-warning-500/20 flex items-center gap-2">
             <Icon

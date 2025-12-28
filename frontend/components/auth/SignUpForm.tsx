@@ -144,8 +144,8 @@ export default function SignUpForm({
           <Checkbox isRequired size="sm" isSelected={agreedToTerms} onValueChange={setAgreedToTerms} />
           <span className="text-xs text-text-secondary leading-relaxed">
             I agree to the{" "}
-            <button className="text-accent-400 hover:underline">Terms</button> and{" "}
-            <button className="text-accent-400 hover:underline">Privacy Policy</button>
+            <a href="https://cuttr.com/terms" target="_blank" rel="noopener noreferrer" className="text-accent-400 hover:underline">Terms</a> and{" "}
+            <a href="https://cuttr.com/privacy" target="_blank" rel="noopener noreferrer" className="text-accent-400 hover:underline">Privacy Policy</a>
           </span>
         </div>
 

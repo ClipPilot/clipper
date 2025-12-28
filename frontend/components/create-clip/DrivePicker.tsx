@@ -1,8 +1,8 @@
 "use client";
 
-import { supabase } from "@/lib/supabase";
 import { Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import { useCallback, useEffect, useState } from "react";
 
 interface Props {
   disabled?: boolean;
@@ -13,174 +13,128 @@ interface Props {
   downloading?: boolean;
 }
 
+const CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!;
+const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY!;
+const APP_ID = process.env.NEXT_PUBLIC_GOOGLE_APP_ID!;
+const SCOPES = "https://www.googleapis.com/auth/drive.file";
+
+declare const google: any;
+declare const gapi: any;
+
 export function DrivePicker(props: Props) {
-  const loadGooglePicker = () =>
-    new Promise<void>((resolve, reject) => {
-      if (window.google?.picker) return resolve();
+  const [gapiLoaded, setGapiLoaded] = useState(false);
+  const [gisLoaded, setGisLoaded] = useState(false);
+  const [tokenClient, setTokenClient] = useState<any>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
 
-      const script = document.createElement("script");
-      script.src = "https://apis.google.com/js/api.js";
-      script.async = true;
-      script.onload = () => window.gapi.load("picker", resolve);
-      script.onerror = reject;
-      document.body.appendChild(script);
-    });
+  useEffect(() => {
+    const script1 = document.createElement("script");
+    script1.src = "https://apis.google.com/js/api.js";
+    script1.async = true;
+    script1.defer = true;
+    script1.onload = () => {
+      gapi.load("picker", () => setGapiLoaded(true));
+    };
+    document.body.appendChild(script1);
 
-  const connectGoogleWithDrive = async () => {
-    const width = 500;
-    const height = 600;
-    const left = window.screen.width / 2 - width / 2;
-    const top = window.screen.height / 2 - height / 2;
+    const script2 = document.createElement("script");
+    script2.src = "https://accounts.google.com/gsi/client";
+    script2.async = true;
+    script2.defer = true;
+    script2.onload = () => setGisLoaded(true);
+    document.body.appendChild(script2);
+  }, []);
 
-    const { data } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${location.origin}/auth/drive-callback`,
-        scopes: "https://www.googleapis.com/auth/drive.readonly",
-        queryParams: {
-          prompt: "consent",
-          access_type: "offline",
-        },
-        skipBrowserRedirect: true,
-      },
-    });
-
-    if (data?.url) {
-      window.open(
-        data.url,
-        "Google Drive Authorization",
-        `width=${width},height=${height},left=${left},top=${top}`
-      );
+  useEffect(() => {
+    if (gisLoaded && !tokenClient) {
+      const client = google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPES,
+        callback: "",
+      });
+      setTokenClient(client);
     }
+  }, [gisLoaded, tokenClient]);
+
+  const downloadFile = async (fileId: string, fileName: string, mimeType: string, token: string): Promise<File> => {
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+    const blob = await res.blob();
+    return new File([blob], fileName, { type: mimeType });
   };
 
-  const hasDriveAccess = async (token: string) => {
-    const res = await fetch(
-      "https://www.googleapis.com/drive/v3/files?pageSize=1",
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-    return res.ok;
-  };
+  const createPicker = useCallback((token: string) => {
+    const view = new google.picker.DocsView(google.picker.ViewId.DOCS_VIDEOS);
+    view.setMode(google.picker.DocsViewMode.LIST);
 
-  const openPicker = async (token: string) => {
-    await loadGooglePicker();
-    let picker;
+    const builder = new google.picker.PickerBuilder()
+      .setDeveloperKey(API_KEY)
+      .setAppId(APP_ID)
+      .setOAuthToken(token)
+      .addView(view)
+      .setCallback(async (data: any) => {
+        if (data.action !== google.picker.Action.PICKED) return;
 
-    if (!props.processFiles) {
-      picker = new window.google.picker.PickerBuilder()
-        .addView(window.google.picker.ViewId.DOCS_VIDEOS)
-        .setOAuthToken(token)
-        .setDeveloperKey(process.env.NEXT_PUBLIC_GOOGLE_API_KEY!)
-        .setCallback(async (data: any) => {
-          if (data.action === window.google.picker.Action.PICKED) {
-            const pickedFile = data.docs[0];
-
-            props.setDownloading(true);
-
-            const response = await fetch(
-              `https://www.googleapis.com/drive/v3/files/${pickedFile.id}?alt=media`,
-              {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                },
-              }
-            );
-
-            const blob = await response.blob();
-            const file = new File([blob], pickedFile.name, {
-              type: pickedFile.mimeType,
-            });
-
-            props.setDownloading(false);
-
-            if (props.processFile) await props.processFile(file);
-          }
-        })
-        .build();
-    } else {
-      picker = new window.google.picker.PickerBuilder()
-        .enableFeature(window.google.picker.Feature.MULTISELECT_ENABLED)
-        .addView(window.google.picker.ViewId.DOCS_VIDEOS)
-        .setOAuthToken(token)
-        .setDeveloperKey(process.env.NEXT_PUBLIC_GOOGLE_API_KEY!)
-        .setCallback(async (data: any) => {
-          if (data.action !== window.google.picker.Action.PICKED) return;
-
-          props.setDownloading(true);
-          // Download ALL selected files
-          const files: File[] = await Promise.all(
-            data.docs.map(async (pickedFile: any) => {
-              const response = await fetch(
-                `https://www.googleapis.com/drive/v3/files/${pickedFile.id}?alt=media`,
-                {
-                  headers: {
-                    Authorization: `Bearer ${token}`,
-                  },
-                }
-              );
-
-              const blob = await response.blob();
-              return new File([blob], pickedFile.name, {
-                type: pickedFile.mimeType,
-              });
-            })
-          );
-          props.setDownloading(false);
+        props.setDownloading(true);
+        try {
+          const docs = data.docs || data[google.picker.Response.DOCUMENTS];
 
           if (props.processFiles) {
+            const files = await Promise.all(
+              docs.map((doc: any) => downloadFile(doc.id, doc.name, doc.mimeType, token))
+            );
             await props.processFiles(files);
+          } else if (props.processFile && docs.length > 0) {
+            const doc = docs[0];
+            const file = await downloadFile(doc.id, doc.name, doc.mimeType, token);
+            await props.processFile(file);
           }
-        })
-        .build();
+        } catch (err) {
+          console.error("Error processing files:", err);
+        } finally {
+          props.setDownloading(false);
+        }
+      });
+
+    if (props.multiple || props.processFiles) {
+      builder.enableFeature(google.picker.Feature.MULTISELECT_ENABLED);
     }
 
-    picker.setVisible(true);
-  };
+    builder.build().setVisible(true);
+  }, [props]);
 
-  const handleGDrive = async () => {
-    await loadGooglePicker();
+  const handleClick = () => {
+    if (!tokenClient) return;
 
-    const { data } = await supabase.auth.getSession();
-    const token = data.session?.provider_token;
-
-    if (!token) {
-      await connectGoogleWithDrive();
+    if (accessToken) {
+      createPicker(accessToken);
       return;
     }
 
-    const hasDrive = await hasDriveAccess(token);
-    if (!hasDrive) {
-      await connectGoogleWithDrive();
-      return;
-    }
+    tokenClient.callback = (response: any) => {
+      if (response.error) {
+        console.error("OAuth error:", response);
+        return;
+      }
+      setAccessToken(response.access_token);
+      createPicker(response.access_token);
+    };
 
-    await openPicker(token);
+    tokenClient.requestAccessToken({ prompt: "consent" });
   };
 
-  if (props.disabled) {
-    return (
-      <Button
-        size="md"
-        color="secondary"
-        startContent={<Icon icon="logos:google-drive" />}
-      >
-        Upload from Google Drive
-      </Button>
-    );
-  }
+  const isReady = gapiLoaded && gisLoaded && tokenClient;
 
   return (
     <Button
       size="md"
       variant="flat"
       color="secondary"
-      isDisabled={props.downloading}
+      isDisabled={props.disabled || props.downloading || !isReady}
       startContent={<Icon icon="logos:google-drive" />}
-      onPress={handleGDrive}
+      onPress={handleClick}
     >
       Upload from Google Drive
     </Button>
