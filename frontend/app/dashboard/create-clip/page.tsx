@@ -38,7 +38,7 @@ export default function CreateClipPage() {
   const [batchVideos, setBatchVideos] = useState<BatchUploadedVideo[]>([]);
   const [length, setLength] = useState(40);
   const [hookLength, setHookLength] = useState(6);
-  const [promptType, setPromptType] = useState<PromptType>("general");
+  const [promptType, setPromptType] = useState<PromptType>("business");
   const [customPrompt, setCustomPrompt] = useState("");
   const [numberOfVideos, setNumberOfVideos] = useState(1);
   const [customText, setCustomText] = useState("");
@@ -390,10 +390,6 @@ export default function CreateClipPage() {
                             setBatchMode(value);
                             setUploadedVideo(null);
                             setBatchVideos([]);
-                            // Reset prompt type if switching to batch mode and gaming was selected
-                            if (value && promptType === "gaming") {
-                              setPromptType("general");
-                            }
                           }}
                           size="lg"
                           color="primary"

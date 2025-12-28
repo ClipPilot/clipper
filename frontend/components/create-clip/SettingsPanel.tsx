@@ -46,10 +46,10 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   maxClips,
   batchMode = false,
 }) => {
-  // Filter out gaming in batch mode
-  const availablePromptTypes = batchMode
-    ? PROMPT_TYPES.filter((type) => type !== "gaming")
-    : PROMPT_TYPES;
+  // Filter out general and gaming prompt types (temporarily hidden)
+  const availablePromptTypes = PROMPT_TYPES.filter(
+    (type) => type !== "general" && type !== "gaming"
+  );
 
   return (
     <div className="space-y-6">
@@ -69,20 +69,11 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
       </Select>
 
       <Textarea
-        label={
-          promptType === "gaming"
-            ? "Describe the Clip"
-            : "Custom Instructions (Optional)"
-        }
+        label="Custom Instructions (Optional)"
         placeholder={PROMPT_TYPE_PLACEHOLDERS[promptType]}
         value={customPrompt}
         onValueChange={setCustomPrompt}
         minRows={3}
-        description={
-          promptType === "gaming"
-            ? "Help the AI understand what game and moments to look for"
-            : undefined
-        }
       />
 
       <Slider
