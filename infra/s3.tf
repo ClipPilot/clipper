@@ -45,6 +45,8 @@ resource "aws_s3_bucket_public_access_block" "videos" {
 }
 
 # S3 Bucket Lifecycle Policy
+# Note: IA storage classes have 30-day minimum billing, but transitioning at 15 days
+# is still cheaper than staying in Standard for 30 days ($0.0215 vs $0.023 per GB)
 resource "aws_s3_bucket_lifecycle_configuration" "videos" {
   bucket = aws_s3_bucket.videos.id
 
@@ -68,7 +70,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "videos" {
     }
   }
 
-  # Blank clips (clean videos for editing) → One Zone-IA after 30 days
+  # Blank clips (clean videos for editing) → One Zone-IA after 15 days
   # These are accessed occasionally for re-editing but don't need multi-AZ redundancy
   rule {
     id     = "transition-blank-clips-to-one-zone"
@@ -79,13 +81,13 @@ resource "aws_s3_bucket_lifecycle_configuration" "videos" {
     }
 
     transition {
-      days          = 30
+      days          = 15
       storage_class = "ONEZONE_IA"
     }
   }
 
   # Generated clips stay in Standard (frequently accessed by users)
-  # Transition to Standard-IA after 30 days, Glacier after 90 days
+  # Transition to One Zone-IA after 15 days, stay there indefinitely
   rule {
     id     = "transition-generated-clips"
     status = "Enabled"
@@ -95,17 +97,12 @@ resource "aws_s3_bucket_lifecycle_configuration" "videos" {
     }
 
     transition {
-      days          = 30
-      storage_class = "STANDARD_IA"
-    }
-
-    transition {
-      days          = 90
-      storage_class = "GLACIER"
+      days          = 15
+      storage_class = "ONEZONE_IA"
     }
   }
 
-  # Watermarked clips (preview versions) → One Zone-IA after 30 days
+  # Watermarked clips (preview versions) → One Zone-IA after 15 days
   rule {
     id     = "transition-watermarked-clips"
     status = "Enabled"
@@ -115,17 +112,17 @@ resource "aws_s3_bucket_lifecycle_configuration" "videos" {
     }
 
     transition {
-      days          = 30
+      days          = 15
       storage_class = "ONEZONE_IA"
     }
 
-    # Delete watermarked clips after 90 days (users should have downloaded by then)
+    # Delete watermarked clips after 60 days (users should have downloaded by then)
     expiration {
-      days = 90
+      days = 60
     }
   }
 
-  # SRT files → One Zone-IA after 30 days (small files, rarely accessed)
+  # SRT files → One Zone-IA after 15 days (small files, rarely accessed)
   rule {
     id     = "transition-srt-files"
     status = "Enabled"
@@ -135,12 +132,12 @@ resource "aws_s3_bucket_lifecycle_configuration" "videos" {
     }
 
     transition {
-      days          = 30
+      days          = 15
       storage_class = "ONEZONE_IA"
     }
   }
 
-  # Thumbnails → One Zone-IA after 30 days
+  # Thumbnails → One Zone-IA after 15 days
   rule {
     id     = "transition-thumbnails"
     status = "Enabled"
@@ -150,7 +147,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "videos" {
     }
 
     transition {
-      days          = 30
+      days          = 15
       storage_class = "ONEZONE_IA"
     }
   }
