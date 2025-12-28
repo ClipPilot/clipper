@@ -45,8 +45,7 @@ resource "aws_s3_bucket_public_access_block" "videos" {
 }
 
 # S3 Bucket Lifecycle Policy
-# Note: IA storage classes have 30-day minimum billing, but transitioning at 15 days
-# is still cheaper than staying in Standard for 30 days ($0.0215 vs $0.023 per GB)
+# Note: IA storage classes require minimum 30 days for transition
 resource "aws_s3_bucket_lifecycle_configuration" "videos" {
   bucket = aws_s3_bucket.videos.id
 
@@ -70,7 +69,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "videos" {
     }
   }
 
-  # Blank clips (clean videos for editing) → One Zone-IA after 15 days
+  # Blank clips (clean videos for editing) → One Zone-IA after 30 days
   # These are accessed occasionally for re-editing but don't need multi-AZ redundancy
   rule {
     id     = "transition-blank-clips-to-one-zone"
@@ -81,13 +80,13 @@ resource "aws_s3_bucket_lifecycle_configuration" "videos" {
     }
 
     transition {
-      days          = 15
+      days          = 30
       storage_class = "ONEZONE_IA"
     }
   }
 
   # Generated clips stay in Standard (frequently accessed by users)
-  # Transition to One Zone-IA after 15 days, stay there indefinitely
+  # Transition to One Zone-IA after 30 days, stay there indefinitely
   rule {
     id     = "transition-generated-clips"
     status = "Enabled"
@@ -97,12 +96,12 @@ resource "aws_s3_bucket_lifecycle_configuration" "videos" {
     }
 
     transition {
-      days          = 15
+      days          = 30
       storage_class = "ONEZONE_IA"
     }
   }
 
-  # Watermarked clips (preview versions) → One Zone-IA after 15 days
+  # Watermarked clips (preview versions) → One Zone-IA after 30 days
   rule {
     id     = "transition-watermarked-clips"
     status = "Enabled"
@@ -112,7 +111,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "videos" {
     }
 
     transition {
-      days          = 15
+      days          = 30
       storage_class = "ONEZONE_IA"
     }
 
@@ -122,7 +121,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "videos" {
     }
   }
 
-  # SRT files → One Zone-IA after 15 days (small files, rarely accessed)
+  # SRT files → One Zone-IA after 30 days (small files, rarely accessed)
   rule {
     id     = "transition-srt-files"
     status = "Enabled"
@@ -132,12 +131,12 @@ resource "aws_s3_bucket_lifecycle_configuration" "videos" {
     }
 
     transition {
-      days          = 15
+      days          = 30
       storage_class = "ONEZONE_IA"
     }
   }
 
-  # Thumbnails → One Zone-IA after 15 days
+  # Thumbnails → One Zone-IA after 30 days
   rule {
     id     = "transition-thumbnails"
     status = "Enabled"
@@ -147,7 +146,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "videos" {
     }
 
     transition {
-      days          = 15
+      days          = 30
       storage_class = "ONEZONE_IA"
     }
   }
