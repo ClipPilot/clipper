@@ -46,9 +46,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   maxClips,
   batchMode = false,
 }) => {
-  // Filter out gaming prompt type (temporarily hidden)
+  // Filter out gaming and general prompt types (temporarily hidden - Gemini issues)
   const availablePromptTypes = PROMPT_TYPES.filter(
-    (type) => type !== "gaming"
+    (type) => type !== "gaming" && type !== "general"
   );
 
   return (
