@@ -49,7 +49,4 @@ RUN pnpm install --prod
 COPY --from=builder /app/lambda-expire-clips/dist ./lambda-expire-clips/dist
 COPY --from=builder /app/packages/shared-db/dist ./packages/shared-db/dist
 
-# Set working directory to lambda folder
-WORKDIR ${LAMBDA_TASK_ROOT}/lambda-expire-clips
-
-CMD [ "dist/handler.handler" ]
+CMD [ "lambda-expire-clips/dist/handler.handler" ]
