@@ -1,9 +1,10 @@
 # Lambda function to expire unsaved clips older than 7 days
 # Runs daily at 3 AM UTC via EventBridge
+# Single Lambda for all environments (shares S3 bucket)
 
 # ECR Repository for Expire Clips Lambda
 resource "aws_ecr_repository" "expire_clips_lambda" {
-  name                 = "${var.project_name}-expire-clips-lambda-${var.environment}"
+  name                 = "${var.project_name}-expire-clips-lambda"
   image_tag_mutability = "MUTABLE"
   force_delete         = true
 
@@ -12,7 +13,7 @@ resource "aws_ecr_repository" "expire_clips_lambda" {
   }
 
   tags = {
-    Name = "${var.project_name}-expire-clips-lambda-${var.environment}"
+    Name = "${var.project_name}-expire-clips-lambda"
   }
 }
 
@@ -39,7 +40,7 @@ resource "aws_ecr_lifecycle_policy" "expire_clips_lambda" {
 
 # IAM Role for Expire Clips Lambda
 resource "aws_iam_role" "expire_clips_lambda" {
-  name = "${var.project_name}-expire-clips-lambda-role-${var.environment}"
+  name = "${var.project_name}-expire-clips-lambda-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -55,7 +56,7 @@ resource "aws_iam_role" "expire_clips_lambda" {
   })
 
   tags = {
-    Name = "${var.project_name}-expire-clips-lambda-role-${var.environment}"
+    Name = "${var.project_name}-expire-clips-lambda-role"
   }
 }
 
@@ -65,9 +66,9 @@ resource "aws_iam_role_policy_attachment" "expire_clips_lambda_basic" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
-# S3 access policy for Expire Clips Lambda (environment-specific bucket)
+# S3 access policy for Expire Clips Lambda (both staging and prod buckets)
 resource "aws_iam_role_policy" "expire_clips_lambda_s3" {
-  name = "${var.project_name}-expire-clips-lambda-s3-policy-${var.environment}"
+  name = "${var.project_name}-expire-clips-lambda-s3-policy"
   role = aws_iam_role.expire_clips_lambda.id
 
   policy = jsonencode({
@@ -82,7 +83,8 @@ resource "aws_iam_role_policy" "expire_clips_lambda_s3" {
           "s3:CopyObject"
         ]
         Resource = [
-          "arn:aws:s3:::${var.project_name}-videos-${var.environment}-${data.aws_caller_identity.current.account_id}/*"
+          "arn:aws:s3:::${var.project_name}-videos-staging-${data.aws_caller_identity.current.account_id}/*",
+          "arn:aws:s3:::${var.project_name}-videos-prod-${data.aws_caller_identity.current.account_id}/*"
         ]
       },
       {
@@ -91,28 +93,8 @@ resource "aws_iam_role_policy" "expire_clips_lambda_s3" {
           "s3:ListBucket"
         ]
         Resource = [
-          "arn:aws:s3:::${var.project_name}-videos-${var.environment}-${data.aws_caller_identity.current.account_id}"
-        ]
-      }
-    ]
-  })
-}
-
-# Secrets Manager access for DATABASE_URL
-resource "aws_iam_role_policy" "expire_clips_lambda_secrets" {
-  name = "${var.project_name}-expire-clips-lambda-secrets-policy-${var.environment}"
-  role = aws_iam_role.expire_clips_lambda.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "secretsmanager:GetSecretValue"
-        ]
-        Resource = [
-          aws_secretsmanager_secret.database_url.arn
+          "arn:aws:s3:::${var.project_name}-videos-staging-${data.aws_caller_identity.current.account_id}",
+          "arn:aws:s3:::${var.project_name}-videos-prod-${data.aws_caller_identity.current.account_id}"
         ]
       }
     ]
@@ -121,24 +103,23 @@ resource "aws_iam_role_policy" "expire_clips_lambda_secrets" {
 
 # Expire Clips Lambda Function
 resource "aws_lambda_function" "expire_clips" {
-  function_name = "${var.project_name}-expire-clips-${var.environment}"
+  function_name = "${var.project_name}-expire-clips"
   role          = aws_iam_role.expire_clips_lambda.arn
   package_type  = "Image"
   image_uri     = "${aws_ecr_repository.expire_clips_lambda.repository_url}:latest"
-  timeout       = 300 # 5 minutes
+  timeout       = 300
   memory_size   = 512
 
   environment {
     variables = {
-      S3_BUCKET    = "${var.project_name}-videos-${var.environment}-${data.aws_caller_identity.current.account_id}"
+      S3_BUCKET    = "${var.project_name}-videos-prod-${data.aws_caller_identity.current.account_id}"
       DATABASE_URL = var.database_url
     }
   }
 
   depends_on = [
     aws_iam_role_policy_attachment.expire_clips_lambda_basic,
-    aws_iam_role_policy.expire_clips_lambda_s3,
-    aws_iam_role_policy.expire_clips_lambda_secrets
+    aws_iam_role_policy.expire_clips_lambda_s3
   ]
 
   lifecycle {
@@ -146,41 +127,41 @@ resource "aws_lambda_function" "expire_clips" {
   }
 
   tags = {
-    Name = "${var.project_name}-expire-clips-${var.environment}"
+    Name = "${var.project_name}-expire-clips"
   }
 }
 
 # CloudWatch Log Group for Expire Clips Lambda
 resource "aws_cloudwatch_log_group" "expire_clips_lambda" {
-  name              = "/aws/lambda/${var.project_name}-expire-clips-${var.environment}"
+  name              = "/aws/lambda/${var.project_name}-expire-clips"
   retention_in_days = 14
 
   tags = {
-    Name = "${var.project_name}-expire-clips-logs-${var.environment}"
+    Name = "${var.project_name}-expire-clips-logs"
   }
 }
 
 # EventBridge Rule - Run daily at 3 AM UTC
 resource "aws_cloudwatch_event_rule" "expire_clips_schedule" {
-  name                = "${var.project_name}-expire-clips-schedule-${var.environment}"
-  description         = "Trigger expire-clips Lambda daily at 3 AM UTC (${var.environment})"
+  name                = "${var.project_name}-expire-clips-schedule"
+  description         = "Trigger expire-clips Lambda daily at 3 AM UTC"
   schedule_expression = "cron(0 3 * * ? *)"
 
   tags = {
-    Name = "${var.project_name}-expire-clips-schedule-${var.environment}"
+    Name = "${var.project_name}-expire-clips-schedule"
   }
 }
 
 # EventBridge Target - Connect rule to Lambda
 resource "aws_cloudwatch_event_target" "expire_clips_target" {
   rule      = aws_cloudwatch_event_rule.expire_clips_schedule.name
-  target_id = "expire-clips-lambda-${var.environment}"
+  target_id = "expire-clips-lambda"
   arn       = aws_lambda_function.expire_clips.arn
 }
 
 # Permission for EventBridge to invoke Lambda
 resource "aws_lambda_permission" "allow_eventbridge_expire_clips" {
-  statement_id  = "AllowEventBridgeInvoke-${var.environment}"
+  statement_id  = "AllowEventBridgeInvoke"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.expire_clips.function_name
   principal     = "events.amazonaws.com"

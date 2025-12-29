@@ -1,4 +1,4 @@
-name: Deploy Expire Clips Lambda (Production)
+name: Deploy Expire Clips Lambda
 
 on:
   push:
@@ -12,12 +12,12 @@ on:
 
 env:
   AWS_REGION: us-west-2
-  ECR_REPOSITORY: clipster-expire-clips-lambda-prod
-  LAMBDA_FUNCTION: clipster-expire-clips-prod
+  ECR_REPOSITORY: clipster-expire-clips-lambda
+  LAMBDA_FUNCTION: clipster-expire-clips
 
 jobs:
   deploy:
-    name: Deploy Expire Clips Lambda (Production)
+    name: Deploy Expire Clips Lambda
     runs-on: ubuntu-latest
     environment: production
 
@@ -42,7 +42,6 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          # Build from repo root with Dockerfile path
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f lambda-expire-clips/Dockerfile .
           docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
@@ -62,6 +61,6 @@ jobs:
 
       - name: Verify deployment
         run: |
-          echo "Expire Clips Lambda (Production) deployment completed!"
+          echo "Expire Clips Lambda deployment completed!"
           echo "Function: ${{ env.LAMBDA_FUNCTION }}"
           echo "Image: ${{ steps.build-image.outputs.image }}"
