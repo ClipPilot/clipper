@@ -16,6 +16,7 @@ interface Clip {
   id: number;
   clip_score?: number;
   message?: string;
+  prompt?: string;
   created_at: string;
   clipUrl?: string;
   title?: string;
@@ -261,6 +262,22 @@ export default function PreviewClipViewModal({
                   </h3>
                   <p className="text-sm text-text-primary leading-relaxed">
                     {clip.message}
+                  </p>
+                </div>
+              )}
+
+              {/* Prompt Used */}
+              {clip.prompt && (
+                <div className="p-4 rounded-lg bg-surface-elevated">
+                  <h3 className="text-sm font-semibold text-text-secondary mb-2 flex items-center gap-2">
+                    <Icon
+                      icon="solar:pen-bold-duotone"
+                      className="text-accent-400"
+                    />
+                    Prompt Used
+                  </h3>
+                  <p className="text-sm text-text-primary leading-relaxed italic">
+                    &quot;{clip.prompt}&quot;
                   </p>
                 </div>
               )}
