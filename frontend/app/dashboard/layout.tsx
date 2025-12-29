@@ -46,12 +46,6 @@ const baseSidebarItems: SidebarItem[] = [
     icon: "solar:video-library-bold-duotone",
     href: "/dashboard/clips",
   },
-  {
-    key: "coming-soon",
-    title: "Coming Soon",
-    icon: "solar:stars-bold-duotone",
-    href: "/dashboard/coming-soon",
-  },
 ];
 
 const pricingItem: SidebarItem = {

@@ -13,7 +13,7 @@ import { useUsageStats } from "@/hooks/useUsageStats";
 import { useAtom } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
 import { useUsageStatsRefresh } from "@/contexts/UsageStatsContext";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 export type SidebarItem = {
   key: string;
@@ -32,8 +32,10 @@ export type SidebarProps = {
 const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
   ({ items, defaultSelectedKey, onSelect, canViewPricing = true }, ref) => {
     const router = useRouter();
+    const pathname = usePathname();
+    const isComingSoonSelected = pathname === "/dashboard/coming-soon";
     const [selected, setSelected] =
-      React.useState<React.Key>(defaultSelectedKey);
+      React.useState<React.Key>(isComingSoonSelected ? "" : defaultSelectedKey);
     const [selectedTeam] = useAtom(selectedTeamAtom);
     const { refreshTrigger } = useUsageStatsRefresh();
     const { usageStats, isLoading, error, refetch } = useUsageStats(
@@ -42,8 +44,12 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
 
     // Sync selected state when pathname changes (e.g., navigating via links)
     useEffect(() => {
-      setSelected(defaultSelectedKey);
-    }, [defaultSelectedKey]);
+      if (isComingSoonSelected) {
+        setSelected("");
+      } else {
+        setSelected(defaultSelectedKey);
+      }
+    }, [defaultSelectedKey, isComingSoonSelected]);
 
     useEffect(() => {
       if (refreshTrigger > 0) {
@@ -123,12 +129,37 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
           </Listbox>
         </div>
 
+        {/* Coming Soon */}
+        <div className="mt-auto px-4 pb-2">
+          <button
+            onClick={() => router.push("/dashboard/coming-soon")}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors cursor-pointer",
+              isComingSoonSelected
+                ? "bg-accent-400/10"
+                : "hover:bg-surface-elevated"
+            )}
+          >
+            <Icon
+              icon="solar:stars-bold-duotone"
+              className={isComingSoonSelected ? "text-accent-400" : "text-text-tertiary"}
+              width={20}
+            />
+            <span className={cn(
+              "text-sm font-medium",
+              isComingSoonSelected ? "text-accent-400" : "text-text-secondary"
+            )}>
+              Coming Soon
+            </span>
+          </button>
+        </div>
+
         {canViewPricing &&
           !isLoading &&
           !error &&
           selectedTeam &&
           !isPaidPlan && (
-            <div className="mt-auto p-4 border-t border-border-base">
+            <div className="p-4 border-t border-border-base">
               <button
                 onClick={() => router.push("/dashboard/pricing")}
                 className="w-full flex items-center gap-3 p-3 rounded-lg bg-accent-400/10 border border-accent-400/20 hover:bg-accent-400/20 transition-colors"
