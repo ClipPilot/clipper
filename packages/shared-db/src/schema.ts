@@ -26,6 +26,7 @@ export const clipStatusEnum = pgEnum("clip_status", [
   "completed",
   "failed",
   "rejected",
+  "expired",
 ]);
 
 export const inviteStatusEnum = pgEnum("invite_status", [

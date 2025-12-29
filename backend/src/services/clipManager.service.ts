@@ -15,7 +15,7 @@ export class ClipManagerService {
       .where(
         and(
           eq(clips.team_id, teamId),
-          notInArray(clips.status, ["failed", "rejected"])
+          notInArray(clips.status, ["failed", "rejected", "expired"])
         )
       );
 

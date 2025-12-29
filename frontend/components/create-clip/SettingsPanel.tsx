@@ -46,9 +46,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   maxClips,
   batchMode = false,
 }) => {
-  // Filter out general and gaming prompt types (temporarily hidden)
+  // Filter out gaming prompt type (temporarily hidden)
   const availablePromptTypes = PROMPT_TYPES.filter(
-    (type) => type !== "general" && type !== "gaming"
+    (type) => type !== "gaming"
   );
 
   return (

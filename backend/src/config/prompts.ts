@@ -396,6 +396,8 @@ export const generateGeneralPrompt = (config: PromptConfig): string => {
   const {
     length,
     hookLength,
+    transcriptText,
+    transcriptObject,
     numberOfVideos = 1,
     userTextPrompt,
   } = config;
@@ -532,6 +534,16 @@ DOUBLE-CHECK: For EACH segment, verify end > start and duration >= 3 seconds!
 - Below 70: Mostly talking head, limited visual appeal
 
 WATCH THE ENTIRE VIDEO. Find the most compelling visual and audio moments. Create clips people will share.
+
+===== TRANSCRIPT REFERENCE =====
+Use this transcript to help identify timestamps and understand what is being said. Cross-reference with what you SEE in the video.
+
+Transcript object schema:
+- "paragraphs" → list
+  - each paragraph → "sentences" with "text", "start", "end", "speaker", "num_words"
+
+Here is the full transcript text: ${transcriptText}
+Here is the transcript object: ${transcriptObject}
 `;
 };
 

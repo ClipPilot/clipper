@@ -148,6 +148,13 @@
       "when": 1766802760972,
       "tag": "0020_rapid_vermin",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1766985519007,
+      "tag": "0021_keen_diamondback",
+      "breakpoints": true
     }
   ]
 }
