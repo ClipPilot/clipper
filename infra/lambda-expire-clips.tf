@@ -24,6 +24,21 @@ import {
   id = "clipster-expire-clips"
 }
 
+import {
+  to = aws_cloudwatch_event_rule.expire_clips_schedule
+  id = "clipster-expire-clips-schedule"
+}
+
+import {
+  to = aws_cloudwatch_event_target.expire_clips_target
+  id = "clipster-expire-clips-schedule/expire-clips-lambda"
+}
+
+import {
+  to = aws_lambda_permission.allow_eventbridge_expire_clips
+  id = "clipster-expire-clips/AllowEventBridgeInvoke"
+}
+
 # ECR Repository for Expire Clips Lambda
 resource "aws_ecr_repository" "expire_clips_lambda" {
   name                 = "${var.project_name}-expire-clips-lambda"
