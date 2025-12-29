@@ -2,6 +2,23 @@
 # Runs daily at 3 AM UTC via EventBridge
 # Single Lambda for all environments (shares S3 bucket)
 
+# TEMPORARY: Import existing resources into Terraform state
+# Remove these import blocks after successful apply
+import {
+  to = aws_ecr_repository.expire_clips_lambda
+  id = "clipster-expire-clips-lambda"
+}
+
+import {
+  to = aws_iam_role.expire_clips_lambda
+  id = "clipster-expire-clips-lambda-role"
+}
+
+import {
+  to = aws_cloudwatch_log_group.expire_clips_lambda
+  id = "/aws/lambda/clipster-expire-clips"
+}
+
 # ECR Repository for Expire Clips Lambda
 resource "aws_ecr_repository" "expire_clips_lambda" {
   name                 = "${var.project_name}-expire-clips-lambda"
