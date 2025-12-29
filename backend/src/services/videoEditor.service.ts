@@ -99,9 +99,14 @@ export const cutClip = (input: string, output: string, start: number, end: numbe
       .outputOptions([
         "-c:v libx264",
         "-preset ultrafast",
-        "-crf 28", // Higher CRF for faster encoding (intermediate file)
-        "-c:a aac", // Re-encode audio to avoid potential issues
+        "-crf 28",
+        "-r 30",           // Normalize frame rate to 30fps
+        "-ar 48000",       // Normalize audio sample rate to 48kHz
+        "-ac 2",           // Normalize to stereo audio
+        "-c:a aac",
         "-b:a 128k",
+        "-vsync cfr",      // Constant frame rate for consistent timing
+        "-async 1",        // Sync audio to video timestamps
       ])
       .save(output)
       .on("end", () => {
@@ -208,9 +213,12 @@ export const mergeClips = async (clips: string[], outputPath: string) => {
           "-c:v libx264",
           "-preset veryfast",
           "-pix_fmt yuv420p",
+          "-r 30",
           "-movflags +faststart",
           "-c:a aac",
           "-b:a 128k",
+          "-ar 48000",
+          "-ac 2",
         ]);
     } else {
       ffmpegCmd
@@ -218,9 +226,12 @@ export const mergeClips = async (clips: string[], outputPath: string) => {
           "-c:v libx264",
           "-preset veryfast",
           "-pix_fmt yuv420p",
+          "-r 30",
           "-movflags +faststart",
           "-c:a aac",
           "-b:a 128k",
+          "-ar 48000",
+          "-ac 2",
         ]);
     }
 
