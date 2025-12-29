@@ -9,7 +9,8 @@ import {
   MultipartUploadResponse,
   BatchUploadedVideo,
 } from "@/api/video";
-import { DrivePicker } from "./DrivePicker";
+// TODO: Re-enable when Google Drive integration is complete
+// import { DrivePicker } from "./DrivePicker";
 
 interface BatchUploadSectionProps {
   teamId: number;
@@ -501,11 +502,13 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
             Browse Files
           </Button>
 
+          {/* TODO: Re-enable when Google Drive integration is complete
           <DrivePicker
             processFiles={validateAndAddFiles}
             setDownloading={setDownloading}
             downloading={downloading}
           />
+          */}
         </div>
 
         <div className="flex items-start gap-2 text-xs text-text-tertiary">
