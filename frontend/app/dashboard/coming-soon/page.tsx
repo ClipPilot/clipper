@@ -28,7 +28,7 @@ const comingSoonFeatures: ComingSoonFeature[] = [
     title: "UGC Studio",
     subtitle: "AI-Powered Content Creation",
     description:
-      "Create authentic user-generated content at scale. Our AI handles face generation, lip-syncing, and voice cloning—no actors or shoots required. Professional UGC, accessible to every creator and brand.",
+      "Create authentic user-generated content at scale. Cuttr will handle face generation, lip-syncing, and voice cloning. No large UGC team required.",
     icon: "solar:users-group-rounded-bold",
     features: [
       {
@@ -63,14 +63,14 @@ const comingSoonFeatures: ComingSoonFeature[] = [
     title: "Autopilot Distribution",
     subtitle: "Automated Multi-Platform Posting",
     description:
-      "End manual posting across platforms. Cuttr Autopilot schedules and distributes your clips to all connected accounts. AI-optimized posting times and platform-specific formatting maximize your reach.",
+      "End manual posting across platforms. Cuttr Autopilot schedules and distributes your clips to all connected accounts. Your brand will get access to hundreds of ready-made social media accounts, posting only your content, managed by our team. AI-optimized posting times and platform-specific formatting maximize your reach.",
     icon: "solar:global-bold",
     features: [
       {
         icon: "solar:share-bold",
         title: "Multi-Platform Publishing",
         description:
-          "Connect TikTok, Instagram, YouTube Shorts, X, LinkedIn. Post everywhere with one click.",
+          "Connect TikTok, Instagram, YouTube Shorts, X. Post everywhere with one click.",
       },
       {
         icon: "solar:calendar-mark-bold",
@@ -91,7 +91,7 @@ const comingSoonFeatures: ComingSoonFeature[] = [
           "Automatically adapt aspect ratios and captions for each platform. One clip, optimized everywhere.",
       },
     ],
-    eta: "Q2 2026",
+    eta: "Q1-Q2 2026",
   },
 ];
 
@@ -114,7 +114,8 @@ export default function ComingSoonPage() {
             What&apos;s Next
           </h1>
           <p className="text-text-secondary max-w-xl mx-auto text-sm">
-            New capabilities coming to the platform. Here&apos;s what we&apos;re building.
+            New capabilities coming to the platform. Here&apos;s what we&apos;re
+            building.
           </p>
         </div>
 
@@ -161,10 +162,7 @@ export default function ComingSoonPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
                       {feature.features.map((item, itemIndex) => (
-                        <div
-                          key={itemIndex}
-                          className="flex items-start gap-3"
-                        >
+                        <div key={itemIndex} className="flex items-start gap-3">
                           <div className="w-8 h-8 rounded-lg bg-surface-elevated flex items-center justify-center flex-shrink-0">
                             <Icon
                               icon={item.icon}
@@ -189,7 +187,6 @@ export default function ComingSoonPage() {
             </Card>
           ))}
         </div>
-
       </div>
     </div>
   );
