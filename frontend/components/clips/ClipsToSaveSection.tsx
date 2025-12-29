@@ -47,7 +47,9 @@ export const ClipsToSaveSection: React.FC<ClipsToSaveSectionProps> = ({
   onUsageUpdated,
 }) => {
   const [savingClipIds, setSavingClipIds] = useState<Set<number>>(new Set());
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
+    new Set()
+  );
   const [currentPage, setCurrentPage] = useState(0);
 
   const clipsBySourceVideo = clips.reduce(
@@ -153,7 +155,8 @@ export const ClipsToSaveSection: React.FC<ClipsToSaveSectionProps> = ({
           <p className="text-sm text-text-secondary">
             These clips have a preview watermark. Save the clips you want to
             keep and download. They will be added to your library without the
-            watermark. Saving a clip counts toward your usage quota.
+            watermark. Saving a clip counts toward your usage quota. Unsaved
+            clips expire after 7 days.
           </p>
         </CardBody>
       </Card>
@@ -193,8 +196,11 @@ export const ClipsToSaveSection: React.FC<ClipsToSaveSectionProps> = ({
                   />
                   <div className="text-left">
                     <span className="text-sm font-semibold text-text-primary">
-                      {groupClips.length} clip{groupClips.length !== 1 ? "s" : ""} from:{" "}
-                      <span className="font-normal text-text-secondary">{videoName}</span>
+                      {groupClips.length} clip
+                      {groupClips.length !== 1 ? "s" : ""} from:{" "}
+                      <span className="font-normal text-text-secondary">
+                        {videoName}
+                      </span>
                     </span>
                     <div className="flex items-center gap-1.5 text-xs text-text-tertiary mt-0.5">
                       <Icon icon="solar:calendar-outline" className="text-sm" />
@@ -203,7 +209,11 @@ export const ClipsToSaveSection: React.FC<ClipsToSaveSectionProps> = ({
                   </div>
                 </div>
                 <Icon
-                  icon={isCollapsed ? "solar:alt-arrow-down-outline" : "solar:alt-arrow-up-outline"}
+                  icon={
+                    isCollapsed
+                      ? "solar:alt-arrow-down-outline"
+                      : "solar:alt-arrow-up-outline"
+                  }
                   className="text-xl text-text-tertiary"
                 />
               </button>
@@ -219,7 +229,9 @@ export const ClipsToSaveSection: React.FC<ClipsToSaveSectionProps> = ({
                           clip={clip}
                           onSave={handleSaveClip}
                           onReject={onClipRejected}
-                          onView={onClipView ? () => onClipView(clip) : undefined}
+                          onView={
+                            onClipView ? () => onClipView(clip) : undefined
+                          }
                           isSaving={savingClipIds.has(clip.id)}
                         />
                       ))}
@@ -260,7 +272,9 @@ export const ClipsToSaveSection: React.FC<ClipsToSaveSectionProps> = ({
             size="sm"
             variant="flat"
             isDisabled={currentPage === totalPages - 1}
-            onPress={() => setCurrentPage((prev) => Math.min(totalPages - 1, prev + 1))}
+            onPress={() =>
+              setCurrentPage((prev) => Math.min(totalPages - 1, prev + 1))
+            }
             endContent={<Icon icon="solar:alt-arrow-right-outline" />}
           >
             Next
