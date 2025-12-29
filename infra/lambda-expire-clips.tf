@@ -19,6 +19,11 @@ import {
   id = "/aws/lambda/clipster-expire-clips"
 }
 
+import {
+  to = aws_lambda_function.expire_clips
+  id = "clipster-expire-clips"
+}
+
 # ECR Repository for Expire Clips Lambda
 resource "aws_ecr_repository" "expire_clips_lambda" {
   name                 = "${var.project_name}-expire-clips-lambda"
