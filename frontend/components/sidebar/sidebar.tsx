@@ -243,8 +243,8 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
               <div className="flex items-center justify-between">
                 <p className="text-xs text-text-tertiary">
                   {usageStats.totalRemaining > 0
-                    ? `${usageStats.totalRemaining} clip${usageStats.totalRemaining !== 1 ? "s" : ""} left`
-                    : "No clips left"}
+                    ? `${usageStats.totalRemaining} credit${usageStats.totalRemaining !== 1 ? "s" : ""} remaining`
+                    : "No credits left"}
                 </p>
                 {usageStats.addonRemaining > 0 && (
                   <span className="text-xs text-green-500 font-medium">

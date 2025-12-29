@@ -80,9 +80,9 @@ export function PricingTierCard({
             </span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-xs text-text-tertiary">Saved Clips</span>
+            <span className="text-xs text-text-tertiary">Credits</span>
             <span className="text-sm font-medium text-text-primary">
-              {tier.savedClips}
+              {tier.credits}
             </span>
           </div>
         </div>

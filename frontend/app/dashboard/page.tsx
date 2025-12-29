@@ -393,7 +393,7 @@ export default function DashboardPage() {
                       Upgrade to Pro
                     </h3>
                     <p className="text-sm text-text-secondary">
-                      Unlock unlimited generations and more saved clips
+                      Unlock unlimited generations and more credits
                     </p>
                   </div>
                 </div>

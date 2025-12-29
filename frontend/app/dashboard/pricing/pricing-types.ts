@@ -21,7 +21,7 @@ export type Tier = {
   buttonColor?: ButtonProps["color"];
   buttonVariant: ButtonProps["variant"];
   generations?: string;
-  savedClips?: string;
+  credits?: string;
   priceId?: string;
   addonPriceId?: string;
 };
