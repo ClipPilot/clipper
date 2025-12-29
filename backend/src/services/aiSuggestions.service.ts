@@ -12,7 +12,35 @@ import {
 import z from "zod";
 import { generatePrompt, generateBatchPrompt } from "../config/prompts";
 import fs from "fs";
+import path from "path";
+import { execSync } from "child_process";
 import { PromptType } from "../constants/promptTypes";
+
+/**
+ * Re-encode video to H.264 for Gemini compatibility
+ * Gemini often fails with HEVC/H.265 or other codecs
+ */
+async function reencodeForGemini(inputPath: string): Promise<string> {
+  const outputPath = inputPath.replace(/\.mp4$/, "_gemini.mp4");
+
+  console.log("Re-encoding video to H.264 for Gemini compatibility...");
+
+  // Use ffmpeg to re-encode to H.264 with reasonable quality
+  // -c:v libx264 - use H.264 codec
+  // -preset fast - balance between speed and compression
+  // -crf 23 - reasonable quality (18-28 range, lower = better)
+  // -c:a aac - re-encode audio to AAC
+  // -movflags +faststart - optimize for streaming
+  execSync(
+    `ffmpeg -y -i "${inputPath}" -c:v libx264 -preset fast -crf 23 -c:a aac -movflags +faststart "${outputPath}"`,
+    { stdio: "pipe", maxBuffer: 50 * 1024 * 1024 }
+  );
+
+  const stats = fs.statSync(outputPath);
+  console.log("Re-encoded video size:", (stats.size / 1024 / 1024).toFixed(2), "MB");
+
+  return outputPath;
+}
 
 const client = new OpenAI({
   apiKey: ENV.OPENAI_API_KEY,
@@ -76,17 +104,29 @@ export const generateClipSuggestionsService = async (
 
     let contents: any;
 
+    let uploadedFileName: string | null = null;
+    let reEncodedPath: string | null = null;
+
     if (options.videoPath && fs.existsSync(options.videoPath)) {
       console.log("Uploading video to Gemini for analysis...");
+      const fileStats = fs.statSync(options.videoPath);
+      console.log("Original video file size:", (fileStats.size / 1024 / 1024).toFixed(2), "MB");
+
+      // Re-encode to H.264 for Gemini compatibility
+      reEncodedPath = await reencodeForGemini(options.videoPath);
+
       let uploadedFile = await googleClient.files.upload({
-        file: options.videoPath,
+        file: reEncodedPath,
         config: { mimeType: "video/mp4" },
       });
+      uploadedFileName = uploadedFile.name;
       console.log(
         "Video uploaded to Gemini:",
         uploadedFile.name,
         "State:",
-        uploadedFile.state
+        uploadedFile.state,
+        "Size bytes:",
+        uploadedFile.sizeBytes
       );
 
       // Wait for file to become ACTIVE (processing can take time for videos)
@@ -100,7 +140,19 @@ export const generateClipSuggestionsService = async (
       }
 
       if (uploadedFile.state === "FAILED") {
-        throw new Error("Gemini failed to process the video file");
+        console.error("Gemini file processing failed:", JSON.stringify(uploadedFile, null, 2));
+        // Clean up re-encoded file
+        if (reEncodedPath && fs.existsSync(reEncodedPath)) {
+          fs.unlinkSync(reEncodedPath);
+        }
+        // Delete failed file from Gemini
+        try {
+          await googleClient.files.delete({ name: uploadedFileName });
+          console.log("Deleted failed file from Gemini:", uploadedFileName);
+        } catch (e) {
+          console.error("Failed to delete Gemini file:", e);
+        }
+        throw new Error(`Gemini failed to process the video file: ${uploadedFile.error?.message || uploadedFile.statusText || "Unknown error"}`);
       }
 
       console.log("Video ready for analysis");
@@ -116,19 +168,19 @@ export const generateClipSuggestionsService = async (
 
     const { ThinkingLevel } = await import("@google/genai");
 
-    const response = await googleClient.models.generateContent({
-      model: "gemini-3-pro-preview",
-      contents,
-      config: {
-        responseMimeType: "application/json",
-        responseJsonSchema: z.toJSONSchema(MultipleClipSuggestionsSchema),
-        thinkingConfig: {
-          thinkingLevel: ThinkingLevel.HIGH,
-        },
-      },
-    });
-
     try {
+      const response = await googleClient.models.generateContent({
+        model: "gemini-3-pro-preview",
+        contents,
+        config: {
+          responseMimeType: "application/json",
+          responseJsonSchema: z.toJSONSchema(MultipleClipSuggestionsSchema),
+          thinkingConfig: {
+            thinkingLevel: ThinkingLevel.HIGH,
+          },
+        },
+      });
+
       const jsonResponse = MultipleClipSuggestionsSchema.parse(
         JSON.parse(response.text)
       );
@@ -176,6 +228,20 @@ export const generateClipSuggestionsService = async (
     } catch (error) {
       console.error("Failed to parse Gemini response:", error);
       return [];
+    } finally {
+      // Cleanup: delete re-encoded file and Gemini upload
+      if (reEncodedPath && fs.existsSync(reEncodedPath)) {
+        fs.unlinkSync(reEncodedPath);
+        console.log("Deleted re-encoded temp file:", reEncodedPath);
+      }
+      if (uploadedFileName) {
+        try {
+          await googleClient.files.delete({ name: uploadedFileName });
+          console.log("Deleted file from Gemini:", uploadedFileName);
+        } catch (e) {
+          console.error("Failed to delete Gemini file:", e);
+        }
+      }
     }
   }
 
