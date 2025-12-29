@@ -3,8 +3,10 @@
 import React from "react";
 import { Card, CardBody, Chip } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import Image from "next/image";
+import Image, { StaticImageData } from "next/image";
 import CuttrLogo from "@/public/branding/cuttr_logo.png";
+import UGCIllustration from "@/public/illustrations/ugc_studio.svg";
+import AutopilotIllustration from "@/public/illustrations/autopilot_distribution.svg";
 
 interface FeatureItem {
   icon: string;
@@ -18,6 +20,7 @@ interface ComingSoonFeature {
   subtitle: string;
   description: string;
   icon: string;
+  illustration: StaticImageData;
   features: FeatureItem[];
   eta: string;
 }
@@ -30,6 +33,7 @@ const comingSoonFeatures: ComingSoonFeature[] = [
     description:
       "Create authentic user-generated content at scale. Cuttr will handle face generation, lip-syncing, and voice cloning. No large UGC team required.",
     icon: "solar:users-group-rounded-bold",
+    illustration: UGCIllustration,
     features: [
       {
         icon: "solar:user-id-bold",
@@ -65,6 +69,7 @@ const comingSoonFeatures: ComingSoonFeature[] = [
     description:
       "End manual posting across platforms. Cuttr Autopilot schedules and distributes your clips to all connected accounts. Your brand will get access to hundreds of ready-made social media accounts, posting only your content, managed by our team. AI-optimized posting times and platform-specific formatting maximize your reach.",
     icon: "solar:global-bold",
+    illustration: AutopilotIllustration,
     features: [
       {
         icon: "solar:share-bold",
@@ -98,7 +103,8 @@ const comingSoonFeatures: ComingSoonFeature[] = [
 export default function ComingSoonPage() {
   return (
     <div className="min-h-screen bg-surface-dark p-6 lg:p-8">
-      <div className="max-w-5xl mx-auto space-y-10">
+      <div className="max-w-6xl mx-auto space-y-12">
+        {/* Header */}
         <div className="text-center space-y-4">
           <div className="flex items-center justify-center gap-3 mb-2">
             <Image
@@ -110,82 +116,149 @@ export default function ComingSoonPage() {
               unoptimized
             />
           </div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-text-primary">
+          <h1 className="text-3xl lg:text-4xl font-bold text-text-primary">
             What&apos;s Next
           </h1>
-          <p className="text-text-secondary max-w-xl mx-auto text-sm">
-            New capabilities coming to the platform. Here&apos;s what we&apos;re
-            building.
+          <p className="text-text-secondary max-w-2xl mx-auto text-base">
+            Follow our roadmap as we build the future of content creation and
+            distribution.
           </p>
         </div>
 
-        <div className="space-y-6">
-          {comingSoonFeatures.map((feature) => (
-            <Card
-              key={feature.id}
-              className="bg-surface-base border border-border-base"
-            >
-              <CardBody className="p-6 lg:p-8">
-                <div className="flex flex-col lg:flex-row gap-6">
-                  <div className="flex-shrink-0">
-                    <div className="w-14 h-14 rounded-xl bg-surface-elevated border border-border-base flex items-center justify-center">
-                      <Icon
-                        icon={feature.icon}
-                        className="text-text-primary"
-                        width={28}
-                      />
-                    </div>
+        {/* Timeline */}
+        <div className="relative">
+          {/* Timeline line - hidden on mobile, shown on desktop */}
+          <div className="hidden lg:block absolute left-1/2 top-0 bottom-0 w-0.5 bg-gradient-to-b from-accent-500 via-accent-400 to-accent-300 -translate-x-1/2" />
+
+          <div className="space-y-16 lg:space-y-24">
+            {comingSoonFeatures.map((feature, index) => {
+              const isEven = index % 2 === 0;
+
+              return (
+                <div key={feature.id} className="relative">
+                  {/* Timeline dot */}
+                  <div className="hidden lg:flex absolute left-1/2 top-8 -translate-x-1/2 w-16 h-16 rounded-full bg-surface-dark border-4 border-accent-500 items-center justify-center z-10">
+                    <Icon
+                      icon={feature.icon}
+                      className="text-accent-400"
+                      width={28}
+                    />
                   </div>
 
-                  <div className="flex-1 space-y-4">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <h2 className="text-xl font-semibold text-text-primary">
-                        {feature.title}
-                      </h2>
-                      <Chip
-                        size="sm"
-                        variant="flat"
-                        classNames={{
-                          base: "bg-surface-elevated border border-border-base",
-                          content: "text-text-tertiary font-medium text-xs",
-                        }}
-                      >
-                        {feature.eta}
-                      </Chip>
-                    </div>
-                    <p className="text-sm text-accent-400 font-medium">
-                      {feature.subtitle}
-                    </p>
-                    <p className="text-sm text-text-secondary leading-relaxed">
-                      {feature.description}
-                    </p>
+                  {/* Content */}
+                  <div
+                    className={`lg:grid lg:grid-cols-2 lg:gap-16 ${
+                      isEven ? "" : "lg:flex-row-reverse"
+                    }`}
+                  >
+                    {/* Left/Right content area */}
+                    <div
+                      className={`${
+                        isEven ? "lg:col-start-1" : "lg:col-start-2"
+                      }`}
+                    >
+                      <Card className="bg-surface-base border border-border-base hover:border-accent-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-accent-500/10">
+                        <CardBody className="p-6 lg:p-8">
+                          {/* Header with ETA */}
+                          <div className="flex items-start justify-between gap-4 mb-4">
+                            <div className="flex items-center gap-3">
+                              <div className="lg:hidden w-12 h-12 rounded-xl bg-surface-elevated border border-border-base flex items-center justify-center flex-shrink-0">
+                                <Icon
+                                  icon={feature.icon}
+                                  className="text-text-primary"
+                                  width={24}
+                                />
+                              </div>
+                              <div>
+                                <h2 className="text-xl lg:text-2xl font-bold text-text-primary">
+                                  {feature.title}
+                                </h2>
+                                <p className="text-sm text-accent-400 font-medium mt-1">
+                                  {feature.subtitle}
+                                </p>
+                              </div>
+                            </div>
+                            <Chip
+                              size="sm"
+                              variant="flat"
+                              classNames={{
+                                base: "bg-accent-500/10 border border-accent-500/30",
+                                content:
+                                  "text-accent-400 font-semibold text-xs",
+                              }}
+                            >
+                              {feature.eta}
+                            </Chip>
+                          </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
-                      {feature.features.map((item, itemIndex) => (
-                        <div key={itemIndex} className="flex items-start gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-surface-elevated flex items-center justify-center flex-shrink-0">
-                            <Icon
-                              icon={item.icon}
-                              className="text-text-secondary"
-                              width={16}
-                            />
+                          {/* Description */}
+                          <p className="text-sm text-text-secondary leading-relaxed mb-6">
+                            {feature.description}
+                          </p>
+
+                          {/* Features grid */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {feature.features.map((item, itemIndex) => (
+                              <div
+                                key={itemIndex}
+                                className="flex items-start gap-3 p-3 rounded-lg bg-surface-elevated/50 border border-border-base/50 hover:border-accent-500/30 transition-colors"
+                              >
+                                <div className="w-8 h-8 rounded-lg bg-accent-500/10 flex items-center justify-center flex-shrink-0">
+                                  <Icon
+                                    icon={item.icon}
+                                    className="text-accent-400"
+                                    width={16}
+                                  />
+                                </div>
+                                <div>
+                                  <h3 className="text-sm font-semibold text-text-primary">
+                                    {item.title}
+                                  </h3>
+                                  <p className="text-xs text-text-tertiary mt-1 leading-relaxed">
+                                    {item.description}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
                           </div>
-                          <div>
-                            <h3 className="text-sm font-medium text-text-primary">
-                              {item.title}
-                            </h3>
-                            <p className="text-xs text-text-tertiary mt-0.5 leading-relaxed">
-                              {item.description}
-                            </p>
-                          </div>
+                        </CardBody>
+                      </Card>
+                    </div>
+
+                    {/* Illustration on opposite side */}
+                    <div
+                      className={`hidden lg:flex items-center justify-center ${
+                        isEven ? "lg:col-start-2" : "lg:col-start-1 lg:row-start-1"
+                      }`}
+                    >
+                      <div className="relative w-full max-w-lg p-12">
+                        <div className="absolute inset-8 bg-gradient-to-br from-accent-500/30 to-accent-300/20 rounded-full blur-3xl" />
+                        <div className="relative">
+                          <Image
+                            src={feature.illustration}
+                            alt={`${feature.title} illustration`}
+                            width={480}
+                            height={480}
+                            className="object-contain opacity-90 drop-shadow-2xl"
+                            unoptimized
+                          />
                         </div>
-                      ))}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </CardBody>
-            </Card>
-          ))}
+              );
+            })}
+          </div>
+
+          {/* End of timeline marker */}
+          <div className="hidden lg:flex absolute left-1/2 -translate-x-1/2 mt-8 w-12 h-12 rounded-full bg-gradient-to-br from-accent-500 to-accent-300 items-center justify-center">
+            <Icon
+              icon="solar:stars-bold"
+              className="text-surface-dark"
+              width={24}
+            />
+          </div>
         </div>
       </div>
     </div>
