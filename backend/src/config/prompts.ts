@@ -11,7 +11,63 @@ export interface PromptConfig {
   transcriptObject: string;
   numberOfVideos?: number;
   userTextPrompt?: string;
+  // Batch processing fields
+  isBatch?: boolean;
+  batchTranscripts?: Array<{
+    videoIndex: number;
+    transcriptText: string;
+    transcriptObject: string;
+    fileName?: string;
+  }>;
 }
+
+// Batch prompt addon template
+export const BATCH_ADDON_TEMPLATE = `
+===== BATCH VIDEO MODE =====
+You have access to MULTIPLE SOURCE VIDEOS. Each video has been transcribed separately.
+
+SOURCE VIDEOS:
+{{VIDEO_LIST}}
+
+CRITICAL BATCH INSTRUCTIONS:
+1. You can select the HOOK from ANY of the source videos - choose the most engaging moment across all videos
+2. You can MIX segments from DIFFERENT source videos in the main content
+3. Each segment MUST include a "sourceVideoIndex" field (0, 1, 2, etc.) to identify which video it comes from
+4. Create cohesive clips that combine the BEST moments from all available videos
+5. The narrative should flow naturally even when combining multiple sources
+6. Label your selections clearly so we know which video each segment originates from
+
+EXAMPLE OUTPUT FORMAT FOR BATCH:
+{
+  "hook": {
+    "text": "This is the hook text",
+    "start": 45.5,
+    "end": 51.2,
+    "sourceVideoIndex": 0
+  },
+  "main": [
+    {
+      "text": "First main segment",
+      "start": 12.0,
+      "end": 25.5,
+      "sourceVideoIndex": 1
+    },
+    {
+      "text": "Second main segment",
+      "start": 88.3,
+      "end": 102.1,
+      "sourceVideoIndex": 0
+    }
+  ],
+  "combined_script": "...",
+  "finalMessage": "...",
+  "evalScore": 85,
+  "clipTitle": "..."
+}
+
+Think of yourself as a curator selecting the best moments from a collection of related footage.
+===== END BATCH MODE =====
+`;
 
 /**
  * Business/Product Demo Prompt
@@ -302,14 +358,192 @@ Generate ${numberOfVideos} DIFFERENT clips. Each must be a UNIQUE exciting momen
 
 LENGTH CHECK: Hook (5.5s) + Main (15s + 14s + 6s = 35s) = 40.5s total ✓
 
+===== CRITICAL TIMESTAMP RULES =====
+
+YOU MUST FOLLOW THESE RULES FOR EVERY SEGMENT:
+
+1. TIMESTAMPS ARE IN SECONDS (e.g., 1904.5 means 31 minutes 44.5 seconds into the video)
+2. "end" MUST BE GREATER THAN "start" - ALWAYS (end > start)
+3. MINIMUM SEGMENT LENGTH: Each segment must be AT LEAST 3 seconds long (end - start >= 3)
+4. Hook should be ${hookLength}-${hookLength + 2} seconds long
+5. Each main segment should be 5-20 seconds long
+6. DO NOT use timestamps beyond the video length
+7. Round timestamps to 1 decimal place (e.g., 1904.5, not 1904.523)
+
+VERIFY BEFORE SUBMITTING:
+- Hook: end - start >= ${hookLength} seconds
+- Each Main segment: end - start >= 3 seconds
+- Total duration (hook + all main segments) ≈ ${length} seconds
+
 ===== FINAL RULES =====
-- Timestamps are in SECONDS (use transcript for reference: ${transcriptObject})
 - The "text" fields should describe VISUAL ACTION not dialogue
 - MAIN MUST have 2-3 segments minimum, and the LAST segment should include/overlap with hook timestamps
 - Main segments can be from DIFFERENT parts of the video (montage style) to tell a better story
 - evalScore: 90+ = insane clip, 80-89 = great clip, 70-79 = good clip
 - Each video MUST be approximately ${length} seconds total - ADD MORE SEGMENTS if too short!
 - If you can't find ${numberOfVideos} genuinely exciting moments, return fewer but better clips
+
+DOUBLE-CHECK: For EACH segment, verify end > start and duration >= 3 seconds!
+`;
+};
+
+/**
+ * General Long-Form Content Prompt
+ * Focuses on finding the most engaging hooks and viral-worthy moments from any video
+ * Uses Gemini with video upload for visual + audio analysis
+ */
+export const generateGeneralPrompt = (config: PromptConfig): string => {
+  const {
+    length,
+    hookLength,
+    transcriptText,
+    transcriptObject,
+    numberOfVideos = 1,
+    userTextPrompt,
+  } = config;
+  const mainLength = length - hookLength;
+
+  return `
+You are an expert short-form video editor. You are analyzing a VIDEO to find the most VISUALLY and EMOTIONALLY engaging moments.
+
+CRITICAL: WATCH THE ENTIRE VIDEO FRAME BY FRAME. You must analyze both what you SEE visually and what you HEAR being said. Base your clip selections on the actual video content.
+
+${userTextPrompt ? `USER SPECIFIC REQUEST: "${userTextPrompt}". Prioritize moments that align with this while watching the video.` : ""}
+
+${numberOfVideos > 1 ? `Generate ${numberOfVideos} different video variations. Each should highlight a DIFFERENT compelling moment.` : ""}
+
+===== HOW TO WATCH THE VIDEO =====
+
+VISUAL CUES TO LOOK FOR:
+- Facial expressions: Shock, surprise, laughter, excitement, emotional reactions
+- Body language: Leaning in, gesturing emphatically, standing up, physical reactions
+- Eye contact: Moments of intense connection with camera or another person
+- Movement: Quick actions, demonstrations, reveals, transformations
+- Scene changes: Before/after, product reveals, unexpected cuts
+- Props/objects: Items being shown, demonstrations, physical evidence
+- Environment: Interesting locations, setups, visual backdrops
+- On-screen graphics: Text, charts, images that add impact
+- Multiple people: Reactions between people, tension, agreement, conflict
+
+AUDIO/ENERGY CUES:
+- Voice tone changes: Excitement, emphasis, passion, whispers, shouts
+- Laughter: Genuine laughs, audience reactions
+- Pauses: Dramatic pauses before reveals
+- Music/sound: Background changes that signal important moments
+- Reactions: "Oh my god", "Wait what", gasps, exclamations
+
+===== WHAT MAKES A VIRAL HOOK (VISUAL-FIRST) =====
+
+TIER 1 - ALWAYS CLIP THESE:
+- VISUAL: Person's face showing genuine shock/excitement/emotion
+- VISUAL: A reveal or transformation happening on screen
+- VISUAL: Something unexpected or unusual being shown
+- VISUAL: Intense eye contact with camera during key statement
+- VISUAL: Physical demonstration of something impressive
+- VISUAL + AUDIO: Emotional peak with visible reaction
+
+TIER 2 - STRONG CLIPS:
+- VISUAL: Confident delivery with strong body language
+- VISUAL: Multiple people reacting together
+- VISUAL: Before/after comparison shown visually
+- VISUAL: Product or object being demonstrated
+- VISUAL: Person in an interesting/unusual setting
+
+===== WHAT TO NEVER CLIP =====
+- Static talking head with no energy or movement
+- Looking away from camera during key points
+- Poor lighting or visually uninteresting frames
+- Reading from notes or teleprompter obviously
+- Intros: "Hey guys welcome back"
+- Outros: "Like and subscribe"
+- Sponsors or promotional segments
+- Long pauses with no visual interest
+
+===== STRUCTURE =====
+
+TARGET: ${length} seconds total
+- Hook (~${hookLength}s): The MOST visually compelling moment. This plays FIRST.
+- Main (~${mainLength}s): 2-4 segments that build the story with visual interest throughout
+
+HOOK SELECTION (watch the video!):
+1. Scan the ENTIRE video visually for peak moments
+2. Find where the speaker is MOST animated/expressive
+3. Find where something VISUALLY interesting happens
+4. The hook should make viewers think "I need to see more"
+
+MAIN CONTENT:
+1. Provide context for the hook (can be from earlier in video)
+2. Keep visual interest throughout - no boring talking head sections
+3. End with satisfaction or another visual hook
+
+===== CRITICAL TIMESTAMP RULES =====
+
+YOU MUST FOLLOW THESE RULES FOR EVERY SEGMENT:
+
+1. TIMESTAMPS ARE IN SECONDS (e.g., 145.5 means 2 minutes 25.5 seconds into the video)
+2. "end" MUST BE GREATER THAN "start" - ALWAYS (end > start)
+3. MINIMUM SEGMENT LENGTH: Each segment must be AT LEAST 3 seconds long (end - start >= 3)
+4. Hook should be ${hookLength}-${hookLength + 2} seconds long
+5. Each main segment should be 5-15 seconds long
+6. DO NOT use timestamps beyond the video length
+7. Round timestamps to 1 decimal place (e.g., 145.5, not 145.523)
+
+VERIFY BEFORE SUBMITTING:
+- Hook: end - start >= ${hookLength} seconds
+- Each Main segment: end - start >= 3 seconds
+- Total duration (hook + all main segments) ≈ ${length} seconds
+
+===== OUTPUT FORMAT =====
+
+Generate ${numberOfVideos} DIFFERENT clips based on DIFFERENT visual moments you observed.
+
+{
+  "videos": [
+    {
+      "hook": {
+        "text": "Describe what you SEE happening visually in this moment",
+        "start": 145.5,
+        "end": 151.5
+      },
+      "main": [
+        {
+          "text": "Describe the visual action/context in this segment",
+          "start": 120.0,
+          "end": 140.0
+        },
+        {
+          "text": "Describe what happens visually here",
+          "start": 155.0,
+          "end": 170.0
+        }
+      ],
+      "combined_script": "Full text of what is said in the final clip",
+      "finalMessage": "Explain what VISUAL elements make this clip compelling",
+      "evalScore": 85,
+      "clipTitle": "Catchy title for this clip"
+    }
+  ]
+}
+
+DOUBLE-CHECK: For EACH segment, verify end > start and duration >= 3 seconds!
+
+===== EVALUATION CRITERIA =====
+- evalScore 90+: Visually stunning, impossible to scroll past
+- evalScore 80-89: Strong visual interest, viewers will watch to end
+- evalScore 70-79: Decent visuals but could be stronger
+- Below 70: Mostly talking head, limited visual appeal
+
+WATCH THE ENTIRE VIDEO. Find the most compelling visual and audio moments. Create clips people will share.
+
+===== TRANSCRIPT REFERENCE =====
+Use this transcript to help identify timestamps and understand what is being said. Cross-reference with what you SEE in the video.
+
+Transcript object schema:
+- "paragraphs" → list
+  - each paragraph → "sentences" with "text", "start", "end", "speaker", "num_words"
+
+Here is the full transcript text: ${transcriptText}
+Here is the transcript object: ${transcriptObject}
 `;
 };
 
@@ -327,6 +561,8 @@ export const generatePrompt = (
     basePrompt = generateBusinessPrompt(config);
   } else if (type === "gaming") {
     basePrompt = generateGamingPrompt(config);
+  } else if (type === "general") {
+    basePrompt = generateGeneralPrompt(config);
   } else {
     basePrompt = generateViralPrompt(config);
   }
@@ -334,6 +570,44 @@ export const generatePrompt = (
   // If custom instructions provided, append them
   if (customInstructions && customInstructions.trim()) {
     basePrompt += `\n\n---ADDITIONAL CUSTOM INSTRUCTIONS FROM USER---\n${customInstructions}\n---END CUSTOM INSTRUCTIONS---\n`;
+  }
+
+  return basePrompt;
+};
+
+/**
+ * Generate batch-aware prompt that instructs AI to select from multiple source videos
+ */
+export const generateBatchPrompt = (
+  type: PromptType,
+  config: PromptConfig,
+  customInstructions?: string
+): string => {
+  // Generate base prompt first
+  let basePrompt = generatePrompt(type, config, customInstructions);
+
+  // If batch mode with multiple transcripts, append batch addon
+  if (config.isBatch && config.batchTranscripts && config.batchTranscripts.length > 1) {
+    // Format the video list with all transcripts
+    const videoList = config.batchTranscripts
+      .map((bt) => {
+        const fileName = bt.fileName ? ` (${bt.fileName})` : "";
+        return `
+---
+VIDEO ${bt.videoIndex + 1}${fileName} (sourceVideoIndex: ${bt.videoIndex}):
+
+Transcript Text:
+${bt.transcriptText}
+
+Full Transcript Object:
+${bt.transcriptObject}
+---`;
+      })
+      .join("\n");
+
+    // Replace placeholder and append batch addon
+    const batchAddon = BATCH_ADDON_TEMPLATE.replace("{{VIDEO_LIST}}", videoList);
+    basePrompt = basePrompt + "\n\n" + batchAddon;
   }
 
   return basePrompt;

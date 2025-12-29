@@ -1,0 +1,1 @@
+ALTER TYPE "public"."clip_status" ADD VALUE 'expired';

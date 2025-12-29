@@ -134,6 +134,27 @@
       "when": 1766352413880,
       "tag": "0018_ambiguous_black_tarantula",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1766450000000,
+      "tag": "0019_persistent_addon_clips",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1766802760972,
+      "tag": "0020_rapid_vermin",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1766985519007,
+      "tag": "0021_keen_diamondback",
+      "breakpoints": true
     }
   ]
 }

@@ -40,7 +40,7 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
       customPrompt: options.customPrompt,
       textPrompt: options.textPrompt,
       numberOfVideos: options.numberOfVideos,
-      videoPath: options.promptType === "gaming" ? localVideoPath : undefined,
+      videoPath: (options.promptType === "gaming" || options.promptType === "general") ? localVideoPath : undefined,
     };
 
     const clipSuggestionsArray = await generateClipSuggestionsService(
@@ -184,8 +184,10 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
 
     throw error;
   } finally {
+    // Clean up local file
     if (fs.existsSync(localVideoPath)) {
       fs.unlinkSync(localVideoPath);
     }
+    // Note: Raw video in S3 is archived to Glacier via lifecycle policy (not deleted)
   }
 }

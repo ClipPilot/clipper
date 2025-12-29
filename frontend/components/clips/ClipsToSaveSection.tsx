@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { Card, CardBody, addToast } from "@heroui/react";
+import React, { useState, useEffect } from "react";
+import { Card, CardBody, Button, addToast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { Clip, clipsAPI } from "@/api/clips";
 import { UnsavedClipCard } from "./UnsavedClipCard";
@@ -14,6 +14,8 @@ interface ClipsToSaveSectionProps {
   onClipView?: (clip: Clip) => void;
   onUsageUpdated?: () => void;
 }
+
+const GROUPS_PER_PAGE = 5;
 
 const getSourceVideoName = (clip: Clip): string => {
   if (clip.input_metadata?.originalFileName) {
@@ -45,8 +47,10 @@ export const ClipsToSaveSection: React.FC<ClipsToSaveSectionProps> = ({
   onUsageUpdated,
 }) => {
   const [savingClipIds, setSavingClipIds] = useState<Set<number>>(new Set());
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
-  const [isSectionCollapsed, setIsSectionCollapsed] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
+    new Set()
+  );
+  const [currentPage, setCurrentPage] = useState(0);
 
   const clipsBySourceVideo = clips.reduce(
     (acc, clip) => {
@@ -61,6 +65,20 @@ export const ClipsToSaveSection: React.FC<ClipsToSaveSectionProps> = ({
     },
     {} as Record<string | number, Clip[]>
   );
+
+  const allGroups = Object.entries(clipsBySourceVideo);
+  const totalPages = Math.ceil(allGroups.length / GROUPS_PER_PAGE);
+  const paginatedGroups = allGroups.slice(
+    currentPage * GROUPS_PER_PAGE,
+    (currentPage + 1) * GROUPS_PER_PAGE
+  );
+
+  // Reset to last valid page if current page is out of bounds
+  useEffect(() => {
+    if (totalPages > 0 && currentPage >= totalPages) {
+      setCurrentPage(Math.max(0, totalPages - 1));
+    }
+  }, [totalPages, currentPage]);
 
   const handleSaveClip = async (clipId: number) => {
     setSavingClipIds((prev) => new Set(prev).add(clipId));
@@ -107,10 +125,7 @@ export const ClipsToSaveSection: React.FC<ClipsToSaveSectionProps> = ({
 
   return (
     <div className="mb-8">
-      <button
-        onClick={() => setIsSectionCollapsed(!isSectionCollapsed)}
-        className="w-full flex items-center justify-between mb-4 hover:opacity-80 transition-opacity"
-      >
+      <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
           <Icon
             icon="solar:gallery-check-bold-duotone"
@@ -122,30 +137,32 @@ export const ClipsToSaveSection: React.FC<ClipsToSaveSectionProps> = ({
             saved)
           </span>
         </h2>
-        <Icon
-          icon={isSectionCollapsed ? "solar:alt-arrow-down-outline" : "solar:alt-arrow-up-outline"}
-          className="text-xl text-text-tertiary"
-        />
-      </button>
+        {totalPages > 1 && (
+          <div className="flex items-center gap-2 text-sm text-text-tertiary">
+            <span>
+              Page {currentPage + 1} of {totalPages}
+            </span>
+          </div>
+        )}
+      </div>
 
-      {!isSectionCollapsed && (
-        <>
-          <Card className="bg-surface-base border border-warning-500/30 mb-4">
-            <CardBody className="p-4 flex items-center gap-3">
-              <Icon
-                icon="solar:info-circle-bold"
-                className="text-xl text-warning-500 flex-shrink-0"
-              />
-              <p className="text-sm text-text-secondary">
-                These clips have a preview watermark. Save the clips you want to
-                keep and download. They will be added to your library without the
-                watermark. Saving a clip counts toward your usage quota.
-              </p>
-            </CardBody>
-          </Card>
+      <Card className="bg-surface-base border border-warning-500/30 mb-4">
+        <CardBody className="p-4 flex items-center gap-3">
+          <Icon
+            icon="solar:info-circle-bold"
+            className="text-xl text-warning-500 flex-shrink-0"
+          />
+          <p className="text-sm text-text-secondary">
+            These clips have a preview watermark. Save the clips you want to
+            keep and download. They will be added to your library without the
+            watermark. Saving a clip counts toward your usage quota. Unsaved
+            clips expire after 7 days.
+          </p>
+        </CardBody>
+      </Card>
 
-          <div className="space-y-4">
-        {Object.entries(clipsBySourceVideo).map(([sourceKey, groupClips]) => {
+      <div className="space-y-4">
+        {paginatedGroups.map(([sourceKey, groupClips]) => {
           const isCollapsed = collapsedGroups.has(sourceKey);
           const firstClip = groupClips[0];
           const videoName = getSourceVideoName(firstClip);
@@ -179,8 +196,11 @@ export const ClipsToSaveSection: React.FC<ClipsToSaveSectionProps> = ({
                   />
                   <div className="text-left">
                     <span className="text-sm font-semibold text-text-primary">
-                      {groupClips.length} clip{groupClips.length !== 1 ? "s" : ""} from:{" "}
-                      <span className="font-normal text-text-secondary">{videoName}</span>
+                      {groupClips.length} clip
+                      {groupClips.length !== 1 ? "s" : ""} from:{" "}
+                      <span className="font-normal text-text-secondary">
+                        {videoName}
+                      </span>
                     </span>
                     <div className="flex items-center gap-1.5 text-xs text-text-tertiary mt-0.5">
                       <Icon icon="solar:calendar-outline" className="text-sm" />
@@ -189,7 +209,11 @@ export const ClipsToSaveSection: React.FC<ClipsToSaveSectionProps> = ({
                   </div>
                 </div>
                 <Icon
-                  icon={isCollapsed ? "solar:alt-arrow-down-outline" : "solar:alt-arrow-up-outline"}
+                  icon={
+                    isCollapsed
+                      ? "solar:alt-arrow-down-outline"
+                      : "solar:alt-arrow-up-outline"
+                  }
                   className="text-xl text-text-tertiary"
                 />
               </button>
@@ -205,7 +229,9 @@ export const ClipsToSaveSection: React.FC<ClipsToSaveSectionProps> = ({
                           clip={clip}
                           onSave={handleSaveClip}
                           onReject={onClipRejected}
-                          onView={onClipView ? () => onClipView(clip) : undefined}
+                          onView={
+                            onClipView ? () => onClipView(clip) : undefined
+                          }
                           isSaving={savingClipIds.has(clip.id)}
                         />
                       ))}
@@ -215,8 +241,45 @@ export const ClipsToSaveSection: React.FC<ClipsToSaveSectionProps> = ({
             </div>
           );
         })}
+      </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 mt-6">
+          <Button
+            size="sm"
+            variant="flat"
+            isDisabled={currentPage === 0}
+            onPress={() => setCurrentPage((prev) => Math.max(0, prev - 1))}
+            startContent={<Icon icon="solar:alt-arrow-left-outline" />}
+          >
+            Previous
+          </Button>
+          <div className="flex items-center gap-1">
+            {Array.from({ length: totalPages }, (_, i) => (
+              <Button
+                key={i}
+                size="sm"
+                variant={currentPage === i ? "solid" : "flat"}
+                className={currentPage === i ? "bg-accent-400" : ""}
+                onPress={() => setCurrentPage(i)}
+                isIconOnly
+              >
+                {i + 1}
+              </Button>
+            ))}
           </div>
-        </>
+          <Button
+            size="sm"
+            variant="flat"
+            isDisabled={currentPage === totalPages - 1}
+            onPress={() =>
+              setCurrentPage((prev) => Math.min(totalPages - 1, prev + 1))
+            }
+            endContent={<Icon icon="solar:alt-arrow-right-outline" />}
+          >
+            Next
+          </Button>
+        </div>
       )}
     </div>
   );

@@ -10,6 +10,7 @@ interface FolderTreeProps {
   folders: FolderTreeNode[];
   selectedFolderId: number | null;
   isCollapsed: boolean;
+  isReadOnly?: boolean;
   onSelectFolder: (folderId: number | null) => void;
   onToggleCollapse: () => void;
   onMoveClip: (clipId: number, folderId: number | null) => Promise<void>;
@@ -44,6 +45,7 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
   folders,
   selectedFolderId,
   isCollapsed,
+  isReadOnly = false,
   onSelectFolder,
   onToggleCollapse,
   onMoveClip,
@@ -190,14 +192,16 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
       <div className="flex items-center justify-between p-3 border-b border-border-base">
         <h3 className="text-sm font-semibold text-text-primary">Folders</h3>
         <div className="flex items-center gap-1">
-          <Button
-            isIconOnly
-            size="sm"
-            variant="light"
-            onPress={() => onCreateFolder()}
-          >
-            <Icon icon="solar:add-circle-bold" className="text-lg text-accent-400" />
-          </Button>
+          {!isReadOnly && (
+            <Button
+              isIconOnly
+              size="sm"
+              variant="light"
+              onPress={() => onCreateFolder()}
+            >
+              <Icon icon="solar:add-circle-bold" className="text-lg text-accent-400" />
+            </Button>
+          )}
           <Button
             isIconOnly
             size="sm"
@@ -212,14 +216,14 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
       <div className="flex-1 overflow-y-auto p-2">
         <div
           onClick={() => onSelectFolder(null)}
-          onDragOver={handleRootDragOver}
-          onDragLeave={handleRootDragLeave}
-          onDrop={handleRootDrop}
+          onDragOver={isReadOnly ? undefined : handleRootDragOver}
+          onDragLeave={isReadOnly ? undefined : handleRootDragLeave}
+          onDrop={isReadOnly ? undefined : handleRootDrop}
           className={`
             flex items-center gap-2 py-1.5 px-2 rounded-lg cursor-pointer transition-all mb-1
             ${selectedFolderId === null && !isDragOverRoot ? "bg-accent-400/20 border border-accent-400/50" : ""}
             ${selectedFolderId !== null && !isDragOverRoot ? "hover:bg-surface-elevated border border-transparent" : ""}
-            ${isDragOverRoot ? "bg-accent-400/40 border-2 border-accent-400 border-dashed shadow-[0_0_12px_rgba(147,51,234,0.4)]" : ""}
+            ${isDragOverRoot && !isReadOnly ? "bg-accent-400/40 border-2 border-accent-400 border-dashed shadow-[0_0_12px_rgba(147,51,234,0.4)]" : ""}
           `}
         >
           <Icon icon="solar:home-2-bold-duotone" className="text-xl text-accent-400" />
@@ -236,6 +240,7 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
               expandedFolderIds={expandedFolderIds}
               dragOverFolderId={dragOverFolderId}
               draggingFolderId={draggingFolderId}
+              isReadOnly={isReadOnly}
               onSelect={onSelectFolder}
               onToggle={handleToggle}
               onDragOver={handleDragOver}
@@ -251,7 +256,7 @@ export const FolderTree: React.FC<FolderTreeProps> = ({
           <div className="flex flex-col items-center justify-center py-8 px-2 text-center">
             <Icon icon="solar:folder-add-bold-duotone" className="text-3xl text-text-tertiary mb-2" />
             <p className="text-xs text-text-secondary">No folders yet</p>
-            <p className="text-xs text-text-tertiary">Click + to create one</p>
+            {!isReadOnly && <p className="text-xs text-text-tertiary">Click + to create one</p>}
           </div>
         )}
       </div>

@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Button, Input, Divider, Checkbox } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import ContinueWithGoogle from "./ContinueWithGoogle";
 
 interface LoginFormProps {
   onSignUp: () => void;
@@ -57,9 +58,8 @@ export default function LoginForm({
             variant="flat"
             classNames={{
               inputWrapper:
-                "bg-surface-elevated border-2 border-border-base data-[hover=true]:border-border-light data-[focus=true]:border-accent-400 shadow-none rounded-xl ring-0 ring-offset-0 focus-within:ring-0",
-              input: "text-text-primary placeholder:text-text-tertiary outline-none",
-              innerWrapper: "shadow-none",
+                "bg-surface-elevated border-2 border-border-base data-[hover=true]:border-border-light data-[focus=true]:border-accent-400 shadow-none rounded-xl",
+              input: "text-text-primary placeholder:text-text-tertiary",
             }}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -73,16 +73,10 @@ export default function LoginForm({
           <Input
             isRequired
             endContent={
-              <button
-                type="button"
-                onClick={() => setIsVisible(!isVisible)}
-                className="focus:outline-none"
-              >
+              <button type="button" onClick={() => setIsVisible(!isVisible)}>
                 <Icon
                   className="text-text-tertiary text-xl"
-                  icon={
-                    isVisible ? "solar:eye-closed-linear" : "solar:eye-bold"
-                  }
+                  icon={isVisible ? "solar:eye-closed-linear" : "solar:eye-bold"}
                 />
               </button>
             }
@@ -92,9 +86,8 @@ export default function LoginForm({
             variant="flat"
             classNames={{
               inputWrapper:
-                "bg-surface-elevated border-2 border-border-base data-[hover=true]:border-border-light data-[focus=true]:border-accent-400 shadow-none rounded-xl ring-0 ring-offset-0 focus-within:ring-0",
-              input: "text-text-primary placeholder:text-text-tertiary outline-none",
-              innerWrapper: "shadow-none",
+                "bg-surface-elevated border-2 border-border-base data-[hover=true]:border-border-light data-[focus=true]:border-accent-400 shadow-none rounded-xl",
+              input: "text-text-primary placeholder:text-text-tertiary",
             }}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -107,7 +100,6 @@ export default function LoginForm({
             onValueChange={setRememberMe}
             size="sm"
             classNames={{
-              base: "gap-2",
               label: "text-sm text-text-secondary",
             }}
           >
@@ -132,44 +124,17 @@ export default function LoginForm({
         </Button>
       </form>
 
-      {/* Social login - temporarily disabled
-      <div className="flex items-center gap-4">
-        <Divider className="flex-1 bg-border-base" />
+      {/* Divider */}
+      <div className="flex items-center gap-4 my-2">
+        <Divider className="flex-1" />
         <span className="text-xs text-text-tertiary">OR</span>
-        <Divider className="flex-1 bg-border-base" />
+        <Divider className="flex-1" />
       </div>
 
-      <div className="flex flex-col gap-3">
-        <div className="p-3 border-2 border-border-base rounded-xl bg-surface-elevated/50 hover:border-accent-400 transition-colors">
-          <Button
-            startContent={<Icon icon="flat-color-icons:google" width={20} />}
-            variant="light"
-            size="lg"
-            className="w-full rounded-xl"
-          >
-            <span className="text-text-primary font-medium">
-              Continue with Google
-            </span>
-          </Button>
-        </div>
-        <div className="p-3 border-2 border-border-base rounded-xl bg-surface-elevated/50 hover:border-accent-400 transition-colors">
-          <Button
-            startContent={
-              <Icon icon="fe:github" width={20} className="text-text-primary" />
-            }
-            variant="light"
-            size="lg"
-            className="w-full rounded-xl"
-          >
-            <span className="text-text-primary font-medium">
-              Continue with Github
-            </span>
-          </Button>
-        </div>
-      </div>
-      */}
+      {/* Google Button */}
+      <ContinueWithGoogle />
 
-      <p className="text-sm text-center text-text-secondary">
+      <p className="text-sm text-center text-text-secondary mt-2">
         Don&apos;t have an account?{" "}
         <button
           className="text-accent-400 font-medium hover:underline"
@@ -178,7 +143,6 @@ export default function LoginForm({
           Sign Up
         </button>
       </p>
-
     </>
   );
 }

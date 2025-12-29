@@ -45,22 +45,48 @@ resource "aws_s3_bucket_public_access_block" "videos" {
 }
 
 # S3 Bucket Lifecycle Policy
+# Note: IA storage classes require minimum 30 days for transition
 resource "aws_s3_bucket_lifecycle_configuration" "videos" {
   bucket = aws_s3_bucket.videos.id
 
+  # Raw videos → Glacier Deep Archive after 1 day (cheapest long-term storage)
   rule {
-    id     = "delete-raw-videos-after-2-months"
+    id     = "archive-raw-videos-to-glacier"
     status = "Enabled"
 
     filter {
       prefix = "raw-videos/"
     }
 
+    transition {
+      days          = 1
+      storage_class = "DEEP_ARCHIVE"
+    }
+
+    # Delete after 1 year in Glacier
     expiration {
-      days = 60
+      days = 365
     }
   }
 
+  # Blank clips (clean videos for editing) → One Zone-IA after 30 days
+  # These are accessed occasionally for re-editing but don't need multi-AZ redundancy
+  rule {
+    id     = "transition-blank-clips-to-one-zone"
+    status = "Enabled"
+
+    filter {
+      prefix = "blank-clips/"
+    }
+
+    transition {
+      days          = 30
+      storage_class = "ONEZONE_IA"
+    }
+  }
+
+  # Generated clips stay in Standard (frequently accessed by users)
+  # Transition to One Zone-IA after 30 days, stay there indefinitely
   rule {
     id     = "transition-generated-clips"
     status = "Enabled"
@@ -71,12 +97,57 @@ resource "aws_s3_bucket_lifecycle_configuration" "videos" {
 
     transition {
       days          = 30
-      storage_class = "STANDARD_IA"
+      storage_class = "ONEZONE_IA"
+    }
+  }
+
+  # Watermarked clips (preview versions) → One Zone-IA after 30 days
+  rule {
+    id     = "transition-watermarked-clips"
+    status = "Enabled"
+
+    filter {
+      prefix = "watermarked-clips/"
     }
 
     transition {
-      days          = 90
-      storage_class = "GLACIER"
+      days          = 30
+      storage_class = "ONEZONE_IA"
+    }
+
+    # Delete watermarked clips after 60 days (users should have downloaded by then)
+    expiration {
+      days = 60
+    }
+  }
+
+  # SRT files → One Zone-IA after 30 days (small files, rarely accessed)
+  rule {
+    id     = "transition-srt-files"
+    status = "Enabled"
+
+    filter {
+      prefix = "srt-files/"
+    }
+
+    transition {
+      days          = 30
+      storage_class = "ONEZONE_IA"
+    }
+  }
+
+  # Thumbnails → One Zone-IA after 30 days
+  rule {
+    id     = "transition-thumbnails"
+    status = "Enabled"
+
+    filter {
+      prefix = "thumbnails/"
+    }
+
+    transition {
+      days          = 30
+      storage_class = "ONEZONE_IA"
     }
   }
 }

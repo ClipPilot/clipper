@@ -111,10 +111,15 @@ export async function requireSubscriptionForAction(
 
 export interface UsageInfo {
   clipsCreated: number;
-  limit: number;
-  remaining: number;
+  baseLimit: number;
+  baseRemaining: number;
+  addonRemaining: number;
+  totalRemaining: number;
   resetsDate: Date;
   plan: string;
+  // Legacy fields for backward compatibility
+  limit: number;
+  remaining: number;
 }
 
 // Helper function to get team usage info
@@ -135,12 +140,21 @@ export async function getTeamUsage(teamId: number): Promise<UsageInfo | null> {
 
   if (!usage) return null;
 
+  const baseRemaining = Math.max(0, usage.limit - usage.clips_created);
+  const addonRemaining = team.addon_clips_remaining || 0;
+  const totalRemaining = baseRemaining + addonRemaining;
+
   return {
     clipsCreated: usage.clips_created,
-    limit: usage.limit,
-    remaining: Math.max(0, usage.limit - usage.clips_created),
+    baseLimit: usage.limit,
+    baseRemaining,
+    addonRemaining,
+    totalRemaining,
     resetsDate: usage.resets_date,
     plan: team.plan || "free",
+    // Legacy fields for backward compatibility
+    limit: usage.limit,
+    remaining: totalRemaining,
   };
 }
 
@@ -169,10 +183,15 @@ export async function requireClipQuota(
         code: "CLIP_LIMIT_REACHED",
         usage: {
           clipsCreated: usage.clipsCreated,
-          limit: usage.limit,
-          remaining: 0,
+          baseLimit: usage.baseLimit,
+          baseRemaining: usage.baseRemaining,
+          addonRemaining: usage.addonRemaining,
+          totalRemaining: usage.totalRemaining,
           resetsDate: usage.resetsDate,
           plan: usage.plan,
+          // Legacy fields
+          limit: usage.limit,
+          remaining: 0,
         },
       });
     }

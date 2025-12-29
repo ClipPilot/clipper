@@ -1,7 +1,15 @@
 "use client";
 
 import React from "react";
-import { Select, SelectItem, Slider, Textarea } from "@heroui/react";
+import {
+  Select,
+  SelectItem,
+  Slider,
+  Textarea,
+  Card,
+  CardBody,
+} from "@heroui/react";
+import { Icon } from "@iconify/react";
 import {
   PromptType,
   PROMPT_TYPES,
@@ -21,6 +29,7 @@ interface SettingsPanelProps {
   numberOfVideos: number;
   setNumberOfVideos: (value: number) => void;
   maxClips?: number;
+  batchMode?: boolean;
 }
 
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({
@@ -35,7 +44,13 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   numberOfVideos,
   setNumberOfVideos,
   maxClips,
+  batchMode = false,
 }) => {
+  // Filter out gaming prompt type (temporarily hidden)
+  const availablePromptTypes = PROMPT_TYPES.filter(
+    (type) => type !== "gaming"
+  );
+
   return (
     <div className="space-y-6">
       <h3 className="text-lg font-bold text-text-primary">Clip Settings</h3>
@@ -48,18 +63,17 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           if (key) setPromptType(key);
         }}
       >
-        {PROMPT_TYPES.map((type) => (
+        {availablePromptTypes.map((type) => (
           <SelectItem key={type}>{PROMPT_TYPE_LABELS[type]}</SelectItem>
         ))}
       </Select>
 
       <Textarea
-        label={promptType === "gaming" ? "Describe the Clip" : "Custom Instructions (Optional)"}
+        label="Custom Instructions (Optional)"
         placeholder={PROMPT_TYPE_PLACEHOLDERS[promptType]}
         value={customPrompt}
         onValueChange={setCustomPrompt}
         minRows={3}
-        description={promptType === "gaming" ? "Help the AI understand what game and moments to look for" : undefined}
       />
 
       <Slider

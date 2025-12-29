@@ -1,7 +1,7 @@
 import { db } from "../db";
-import { teams, teamMembers, users, usageStats } from "@clipper/shared-db/src/schema";
+import { teams, teamMembers, users, usageStats, subscriptions } from "@clipper/shared-db/src/schema";
 import { eq, and, desc, count } from "drizzle-orm";
-import { PLAN_LIMITS } from "../config/stripe.config";
+import { PLAN_LIMITS, stripe } from "../config/stripe.config";
 
 class TeamService {
   /**
@@ -120,6 +120,53 @@ class TeamService {
         updated_at: new Date(),
       })
       .where(eq(usageStats.id, stats.id));
+  }
+
+  /**
+   * Consume one clip from the team's quota.
+   * Order: Base plan clips first, then addon clips.
+   * Returns info about whether successful and which pool was used.
+   */
+  async consumeClip(
+    teamId: number
+  ): Promise<{ success: boolean; source: "base" | "addon" | null }> {
+    const stats = await this.getTeamUsageStats(teamId);
+    const [team] = await db
+      .select()
+      .from(teams)
+      .where(eq(teams.id, teamId))
+      .limit(1);
+
+    if (!team) {
+      return { success: false, source: null };
+    }
+
+    const baseRemaining = Math.max(0, stats.limit - stats.clips_created);
+    const addonRemaining = team.addon_clips_remaining || 0;
+
+    if (baseRemaining > 0) {
+      // Consume from base plan
+      await db
+        .update(usageStats)
+        .set({
+          clips_created: stats.clips_created + 1,
+          updated_at: new Date(),
+        })
+        .where(eq(usageStats.id, stats.id));
+      return { success: true, source: "base" };
+    } else if (addonRemaining > 0) {
+      // Consume from addon pool
+      await db
+        .update(teams)
+        .set({
+          addon_clips_remaining: addonRemaining - 1,
+          updated_at: new Date(),
+        })
+        .where(eq(teams.id, teamId));
+      return { success: true, source: "addon" };
+    }
+
+    return { success: false, source: null };
   }
 
   /**
@@ -355,8 +402,33 @@ class TeamService {
 
   /**
    * Delete team (owner only)
+   * Automatically cancels any active Stripe subscription
    */
   async deleteTeam(teamId: number) {
+    // Check for active subscription and cancel it in Stripe
+    const [subscription] = await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.team_id, teamId))
+      .limit(1);
+
+    if (subscription && subscription.stripe_subscription_id) {
+      try {
+        // Cancel the subscription immediately in Stripe
+        await stripe.subscriptions.cancel(subscription.stripe_subscription_id);
+        console.log(
+          `Cancelled Stripe subscription ${subscription.stripe_subscription_id} for team ${teamId}`
+        );
+      } catch (stripeError) {
+        // Log but don't block deletion - subscription might already be cancelled
+        console.error(
+          `Failed to cancel Stripe subscription for team ${teamId}:`,
+          stripeError
+        );
+      }
+    }
+
+    // Delete the team (cascades to team_members, usage_stats, subscriptions, clips, etc.)
     await db.delete(teams).where(eq(teams.id, teamId));
   }
 

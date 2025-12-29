@@ -77,17 +77,26 @@ export const getTeamUsageStatsController = async (req: AuthRequest, res: Respons
     const generationLimit = plan === "free" ? (stats.limit === 0 ? 0 : PLAN_LIMITS.FREE.generations) : -1;
     const generationsRemaining = generationLimit === -1 ? -1 : Math.max(0, generationLimit - clipsGenerated);
 
+    const baseRemaining = Math.max(0, stats.limit - stats.clips_created);
+    const addonRemaining = team.addon_clips_remaining || 0;
+    const totalRemaining = baseRemaining + addonRemaining;
+
     res.json({
       teamId: team.id,
       teamName: team.name,
       clipsCreated: stats.clips_created,
-      limit: stats.limit,
-      remaining: Math.max(0, stats.limit - stats.clips_created),
+      baseLimit: stats.limit,
+      baseRemaining,
+      addonRemaining,
+      totalRemaining,
       clipsGenerated,
       generationLimit,
       generationsRemaining,
       resetsDate: stats.resets_date,
       rollover: stats.rollover,
+      // Legacy fields for backward compatibility
+      limit: stats.limit,
+      remaining: totalRemaining,
     });
   } catch (err) {
     console.error("Error in getTeamUsageStatsController:", err);
@@ -142,6 +151,14 @@ export const addTeamMemberController = async (req: AuthRequest, res: Response) =
     const { email, role } = req.body;
     if (!email) {
       return res.status(400).json({ error: "Email is required" });
+    }
+
+    // Check if team is on Scale plan (only Scale allows team members)
+    const team = await teamService.getTeamById(teamId);
+    if (team.plan !== "scale") {
+      return res.status(403).json({
+        error: "Team collaboration requires a Scale plan. Please upgrade to invite team members.",
+      });
     }
 
     // Get user to verify permissions

@@ -52,7 +52,7 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
     }, [refreshTrigger, refetch]);
 
     const usagePercentage = usageStats
-      ? (usageStats.clipsCreated / usageStats.limit) * 100
+      ? (usageStats.clipsCreated / usageStats.baseLimit) * 100
       : 0;
 
     const plan = selectedTeam?.plan || "free";
@@ -222,7 +222,7 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
                   </span>
                 </div>
                 <span className="text-text-tertiary flex-shrink-0 ml-2">
-                  {usageStats.clipsCreated} / {usageStats.limit}
+                  {usageStats.clipsCreated} / {usageStats.baseLimit}
                 </span>
               </div>
               <Progress
@@ -240,11 +240,18 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
                   indicator: "transition-all",
                 }}
               />
-              <p className="text-xs text-text-tertiary">
-                {usageStats.remaining > 0
-                  ? `${usageStats.remaining} clip${usageStats.remaining !== 1 ? "s" : ""} left`
-                  : "No clips left"}
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-text-tertiary">
+                  {usageStats.totalRemaining > 0
+                    ? `${usageStats.totalRemaining} clip${usageStats.totalRemaining !== 1 ? "s" : ""} left`
+                    : "No clips left"}
+                </p>
+                {usageStats.addonRemaining > 0 && (
+                  <span className="text-xs text-green-500 font-medium">
+                    +{usageStats.addonRemaining} bonus
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         )}

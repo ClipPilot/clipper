@@ -361,7 +361,22 @@ class StripeService {
       return new Date(val);
     };
 
-    const plan = getPlanFromPriceId(priceId);
+    let plan = getPlanFromPriceId(priceId);
+    if (plan === "free") {
+      const [team] = await db
+        .select()
+        .from(teams)
+        .where(eq(teams.id, existingSub.team_id))
+        .limit(1);
+
+      if (team && team.plan !== "free") {
+        console.log(
+          `Unrecognized price ID ${priceId}, preserving existing plan: ${team.plan}`
+        );
+        plan = team.plan;
+      }
+    }
+
     const clipsLimit = getClipsLimitForPlan(plan);
     const newPeriodStart = parseDate(periodStartTs);
     const newPeriodEnd = parseDate(periodEndTs);
@@ -504,31 +519,31 @@ class StripeService {
       return;
     }
 
-    // Get current usage stats
-    const [currentUsage] = await db
+    // Get current team
+    const [team] = await db
       .select()
-      .from(usageStats)
-      .where(eq(usageStats.team_id, teamId))
+      .from(teams)
+      .where(eq(teams.id, teamId))
       .limit(1);
 
-    if (!currentUsage) {
-      console.error(`No usage stats found for team ${teamId}`);
+    if (!team) {
+      console.error(`No team found for team ${teamId}`);
       return;
     }
 
-    // Add addon clips to the current limit
-    const newLimit = currentUsage.limit + addonClips;
+    // Add addon clips to the persistent addon pool (never expires)
+    const newAddonTotal = (team.addon_clips_remaining || 0) + addonClips;
 
     await db
-      .update(usageStats)
+      .update(teams)
       .set({
-        limit: newLimit,
+        addon_clips_remaining: newAddonTotal,
         updated_at: new Date(),
       })
-      .where(eq(usageStats.team_id, teamId));
+      .where(eq(teams.id, teamId));
 
     console.log(
-      `Added ${addonClips} clips to team ${teamId}. New limit: ${newLimit}`
+      `Added ${addonClips} addon clips to team ${teamId}. New addon total: ${newAddonTotal}`
     );
   }
 

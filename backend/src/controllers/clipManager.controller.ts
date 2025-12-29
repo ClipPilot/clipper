@@ -186,6 +186,16 @@ export class ClipManagerController {
         return res.status(400).json({ error: "Invalid clip ID or team ID" });
       }
 
+      // Check if moving clip to a folder requires Scale plan
+      if (folderId !== undefined && folderId !== null) {
+        const team = await teamService.getTeamById(teamId);
+        if (team.plan !== "scale") {
+          return res.status(403).json({
+            error: "Moving clips to folders requires a Scale plan. Please upgrade to organize clips into folders.",
+          });
+        }
+      }
+
       const updates: any = {};
       if (message !== undefined) updates.message = message;
       if (clipScore !== undefined) updates.clipScore = clipScore;
@@ -462,16 +472,29 @@ export class ClipManagerController {
           code: "CLIP_LIMIT_REACHED",
           usage: {
             clipsCreated: usage.clipsCreated,
-            limit: usage.limit,
-            remaining: 0,
+            baseLimit: usage.baseLimit,
+            baseRemaining: usage.baseRemaining,
+            addonRemaining: usage.addonRemaining,
+            totalRemaining: usage.totalRemaining,
             resetsDate: usage.resetsDate,
             plan: usage.plan,
+            // Legacy
+            limit: usage.limit,
+            remaining: 0,
           },
         });
       }
 
       await clipManagerService.saveClip(clipId, teamId);
-      await teamService.incrementTeamUsage(teamId, 1);
+
+      // Consume clip from base plan first, then addon
+      const consumeResult = await teamService.consumeClip(teamId);
+      if (!consumeResult.success) {
+        return res.status(403).json({
+          error: "Failed to consume clip quota",
+          code: "CLIP_CONSUME_FAILED",
+        });
+      }
 
       const updatedUsage = await getTeamUsage(teamId);
 

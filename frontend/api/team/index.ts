@@ -16,13 +16,18 @@ export interface TeamUsageStats {
   teamId: number;
   teamName: string;
   clipsCreated: number;
-  limit: number;
-  remaining: number;
+  baseLimit: number;
+  baseRemaining: number;
+  addonRemaining: number;
+  totalRemaining: number;
   clipsGenerated: number;
   generationLimit: number;
   generationsRemaining: number;
   resetsDate: string;
   rollover: boolean;
+  // Legacy fields for backward compatibility
+  limit: number;
+  remaining: number;
 }
 
 export interface TeamMember {

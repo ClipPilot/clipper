@@ -70,6 +70,42 @@ export class AuthController {
     }
   }
 
+  async signInWithSupabase(req: Request, res: Response) {
+    try {
+      const { accessToken, refreshToken } = req.body;
+
+      if (!accessToken || !refreshToken) {
+        return res.status(400).json({
+          error: "Missing accessToken or refreshToken",
+        });
+      }
+
+      const result = await authService.signInWithSupabase(
+        accessToken,
+        refreshToken
+      );
+
+      return res.status(200).json({
+        message: "Signed in successfully",
+        user: {
+          id: result.dbUser.id.toString(),
+          email: result.dbUser.email,
+          firstName: result.dbUser.first_name,
+          lastName: result.dbUser.last_name,
+        },
+        session: result.session,
+      });
+    } catch (error) {
+      console.error("Supabase signin error:", error);
+      return res.status(401).json({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to sign in with Google",
+      });
+    }
+  }
+
   async signOut(req: Request, res: Response) {
     try {
       const authHeader = req.headers.authorization;
@@ -218,7 +254,10 @@ export class AuthController {
       const { firstName, lastName } = req.body;
 
       const dbUser = await userService.getUserBySupabaseUid(req.user.id);
-      const updated = await userService.updateUser(dbUser.id, { firstName, lastName });
+      const updated = await userService.updateUser(dbUser.id, {
+        firstName,
+        lastName,
+      });
 
       return res.status(200).json({
         message: "Profile updated successfully",
@@ -232,7 +271,8 @@ export class AuthController {
     } catch (error) {
       console.error("Update profile error:", error);
       return res.status(400).json({
-        error: error instanceof Error ? error.message : "Failed to update profile",
+        error:
+          error instanceof Error ? error.message : "Failed to update profile",
       });
     }
   }

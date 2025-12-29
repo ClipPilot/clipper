@@ -90,6 +90,38 @@ class AuthAPI {
     return result;
   }
 
+  async signInWithSupabase(
+    accessToken: string,
+    refreshToken: string
+  ) {
+    console.log("Signing in with Supabase tokens..." + accessToken + ", " + refreshToken);
+    const response = await fetch(`${API_URL}/auth/supabase`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+      }),
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      throw new Error("Google sign-in failed");
+    }
+
+    const result = await response.json();
+
+    if (result.session?.access_token) {
+      tokenManager.setTokens(
+        result.session.access_token,
+        result.session.refresh_token,
+        result.session.expires_in || 3600
+      );
+    }
+
+    return result;
+  }
+
   async signOut(): Promise<void> {
     try {
       await apiFetch(`${API_URL}/auth/signout`, {
@@ -128,16 +160,21 @@ class AuthAPI {
 
     if (!response.ok) {
       const error: ErrorResponse = await response.json();
-      throw new Error(error.error || error.message || "Failed to send reset email");
+      throw new Error(
+        error.error || error.message || "Failed to send reset email"
+      );
     }
   }
 
-  async updatePassword(accessToken: string, newPassword: string): Promise<AuthResponse> {
+  async updatePassword(
+    accessToken: string,
+    newPassword: string
+  ): Promise<AuthResponse> {
     const response = await fetch(`${API_URL}/auth/update-password`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${accessToken}`,
+        Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({ password: newPassword }),
       credentials: "include",
@@ -145,7 +182,9 @@ class AuthAPI {
 
     if (!response.ok) {
       const error: ErrorResponse = await response.json();
-      throw new Error(error.error || error.message || "Failed to update password");
+      throw new Error(
+        error.error || error.message || "Failed to update password"
+      );
     }
 
     const result = await response.json();
@@ -172,7 +211,10 @@ class AuthAPI {
     }
   }
 
-  async updateProfile(data: { firstName?: string; lastName?: string }): Promise<User> {
+  async updateProfile(data: {
+    firstName?: string;
+    lastName?: string;
+  }): Promise<User> {
     const response = await apiFetch(`${API_URL}/auth/profile`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -182,7 +224,9 @@ class AuthAPI {
 
     if (!response.ok) {
       const error: ErrorResponse = await response.json();
-      throw new Error(error.error || error.message || "Failed to update profile");
+      throw new Error(
+        error.error || error.message || "Failed to update profile"
+      );
     }
 
     const result = await response.json();
