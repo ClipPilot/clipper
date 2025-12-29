@@ -15,7 +15,7 @@ COPY lambda-expire-clips/package.json ./lambda-expire-clips/
 COPY packages/shared-db/package.json ./packages/shared-db/
 
 # Install ALL dependencies (including dev dependencies for build)
-RUN pnpm install --frozen-lockfile
+RUN pnpm install
 
 # Copy source code
 COPY lambda-expire-clips ./lambda-expire-clips
@@ -43,7 +43,7 @@ COPY lambda-expire-clips/package.json ./lambda-expire-clips/
 COPY packages/shared-db/package.json ./packages/shared-db/
 
 # Install production dependencies only
-RUN pnpm install --frozen-lockfile --prod
+RUN pnpm install --prod
 
 # Copy built files
 COPY --from=builder /app/lambda-expire-clips/dist ./lambda-expire-clips/dist
