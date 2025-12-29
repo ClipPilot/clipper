@@ -4,7 +4,8 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Button, Card, CardBody, Progress } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { videoAPI, UploadProgress, MultipartUploadResponse } from "@/api/video";
-import { DrivePicker } from "./DrivePicker";
+// TODO: Re-enable when Google Drive integration is complete
+// import { DrivePicker } from "./DrivePicker";
 
 interface UploadSectionProps {
   teamId: number;
@@ -319,7 +320,9 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                 Browse Files
               </Button>
 
+              {/* TODO: Re-enable when Google Drive integration is complete
               <DrivePicker setDownloading={setDownloading} downloading={downloading} processFile={processFile} />
+              */}
             </div>
 
             <div className="flex items-start gap-2 text-xs text-text-tertiary">
@@ -367,7 +370,9 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                 Browse Files
               </Button>
 
+              {/* TODO: Re-enable when Google Drive integration is complete
               <DrivePicker setDownloading={setDownloading} disabled />
+              */}
             </div>
           </div>
         </CardBody>
