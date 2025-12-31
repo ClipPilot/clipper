@@ -351,6 +351,16 @@ export function useFolders() {
     setFolderPath([]);
   }, [setSelectedFolderId, setFolderPath]);
 
+  const refreshFolderClips = useCallback(async (folderId: number) => {
+    if (!selectedTeam?.id) return;
+    try {
+      const clips = await clipsAPI.getClipsByFolder(selectedTeam.id, folderId);
+      setSavedClips(clips);
+    } catch (error) {
+      console.error("Failed to refresh folder clips:", error);
+    }
+  }, [selectedTeam?.id, setSavedClips]);
+
   return {
     folders,
     folderTree,
@@ -365,6 +375,7 @@ export function useFolders() {
     deleteFolder,
     getParentFolderName,
     resetFolderState,
+    refreshFolderClips,
   };
 }
 

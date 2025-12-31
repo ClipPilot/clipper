@@ -97,6 +97,7 @@ function MyClipsPageContent() {
     deleteFolder,
     getParentFolderName,
     resetFolderState,
+    refreshFolderClips,
   } = useFolders();
 
   const { tags, loadTags, createTag, deleteTag, updateClipTags } = useTags();
@@ -137,10 +138,14 @@ function MyClipsPageContent() {
       lastSocketUpdateRef.current = Date.now();
       loadPendingClips();
       loadUnsavedClips();
-      // Also refresh saved clips to pick up completed edits
-      loadSavedClips(true);
+      // Refresh clips based on current view - folder-specific or all clips
+      if (selectedFolderId !== null) {
+        refreshFolderClips(selectedFolderId);
+      } else {
+        loadSavedClips(true);
+      }
     }, 500);
-  }, [loadPendingClips, loadUnsavedClips, loadSavedClips, isDraggingRef]);
+  }, [loadPendingClips, loadUnsavedClips, loadSavedClips, isDraggingRef, selectedFolderId, refreshFolderClips]);
 
   useSocket(selectedTeam?.id, handleSocketUpdate);
 
