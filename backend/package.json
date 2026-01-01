@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "nodemon --watch src --exec ts-node src/server.ts",
     "dev:worker": "nodemon --watch src --exec ts-node src/worker/index.ts",
-    "build": "tsc && cp -r src/fonts dist/ && cp -r src/templates dist/",
+    "build": "tsc && cp -r src/fonts dist/ && cp -r src/templates dist/ && cp -r src/config dist/",
     "start": "node dist/server.js",
     "start:worker": "node dist/worker/index.js",
     "lint": "eslint . --ext .ts",
