@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
 import { emitClipsRefresh, emitClipUpdate } from "../services/socket.service";
+import { comfyController } from "../controllers/comfy.controller";
 
 const router = Router();
 
@@ -133,5 +134,112 @@ router.post("/notify/clip-update", validateInternalKey, (req: Request, res: Resp
 
   return res.status(200).json({ success: true });
 });
+
+/**
+ * @openapi
+ * /internal/comfy/next-job:
+ *   post:
+ *     summary: GPU pod pulls next available job
+ *     tags:
+ *       - Internal
+ *     security:
+ *       - internalApiKey: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - podId
+ *             properties:
+ *               podId:
+ *                 type: string
+ *                 format: uuid
+ *     responses:
+ *       200:
+ *         description: Job assigned or null if queue empty
+ */
+router.post(
+  "/comfy/next-job",
+  validateInternalKey,
+  comfyController.assignNextJob.bind(comfyController)
+);
+
+/**
+ * @openapi
+ * /internal/comfy/progress:
+ *   post:
+ *     summary: Worker reports job progress
+ *     tags:
+ *       - Internal
+ *     security:
+ *       - internalApiKey: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - jobId
+ *               - progress
+ *             properties:
+ *               jobId:
+ *                 type: string
+ *                 format: uuid
+ *               progress:
+ *                 type: integer
+ *                 minimum: 0
+ *                 maximum: 100
+ *               message:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Progress updated
+ */
+router.post(
+  "/comfy/progress",
+  validateInternalKey,
+  comfyController.updateProgress.bind(comfyController)
+);
+
+/**
+ * @openapi
+ * /internal/comfy/complete:
+ *   post:
+ *     summary: GPU pod marks job completed or failed
+ *     tags:
+ *       - Internal
+ *     security:
+ *       - internalApiKey: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - jobId
+ *               - success
+ *             properties:
+ *               jobId:
+ *                 type: string
+ *                 format: uuid
+ *               success:
+ *                 type: boolean
+ *               outputFile:
+ *                 type: string
+ *               errorMessage:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Job marked complete
+ */
+router.post(
+  "/comfy/complete",
+  validateInternalKey,
+  comfyController.completeJob.bind(comfyController)
+);
 
 export default router;

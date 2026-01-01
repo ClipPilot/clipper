@@ -35,6 +35,20 @@ export const inviteStatusEnum = pgEnum("invite_status", [
   "expired",
   "revoked",
 ]);
+
+export const gpuPodStatusEnum = pgEnum("gpu_pod_status", [
+  "idle",
+  "busy",
+  "offline",
+]);
+
+export const comfyJobStatusEnum = pgEnum("comfy_job_status", [
+  "queued",
+  "running",
+  "completed",
+  "failed",
+]);
+
 // Tables
 
 export const users = pgTable("users", {
@@ -277,6 +291,35 @@ export const clipTags = pgTable(
         table.clip_id,
         table.tag_id
       ),
+    };
+  }
+).enableRLS();
+
+export const comfyJobs = pgTable(
+  "comfy_jobs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    teamId: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    status: comfyJobStatusEnum("status").notNull().default("queued"),
+    imageFile: text("image_file").notNull(),
+    videoFile: text("video_file").notNull(),
+    workflowJson: jsonb("workflow_json"),
+    assignedPod: text("assigned_pod"),
+    progress: integer("progress").default(0),
+    progressMessage: text("progress_message"),
+    outputFile: text("output_file"),
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    startedAt: timestamp("started_at"),
+    finishedAt: timestamp("finished_at"),
+  },
+  (table) => {
+    return {
+      statusIdx: index("comfy_jobs_status_idx").on(table.status),
+      teamIdx: index("comfy_jobs_team_id_idx").on(table.teamId),
+      createdAtIdx: index("comfy_jobs_created_at_idx").on(table.createdAt),
     };
   }
 ).enableRLS();
