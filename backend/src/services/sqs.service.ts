@@ -6,7 +6,6 @@ const sqsClient = new SQSClient({
   region: config.aws.region,
 });
 
-// Job types for video processing
 export type JobType =
   | "clip-video"
   | "batch-clip-video"

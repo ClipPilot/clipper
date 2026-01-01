@@ -14,7 +14,9 @@ const getVideoMetadata = (videoPath: string): Promise<VideoMetadata> => {
   return new Promise((resolve, reject) => {
     ffmpeg.ffprobe(videoPath, (err, metadata) => {
       if (err) return reject(err);
-      const videoStream = metadata.streams.find(s => s.codec_type === "video");
+      const videoStream = metadata.streams.find(
+        (s) => s.codec_type === "video"
+      );
       if (!videoStream || !videoStream.width || !videoStream.height) {
         return reject(new Error("Could not get video dimensions"));
       }
@@ -22,7 +24,9 @@ const getVideoMetadata = (videoPath: string): Promise<VideoMetadata> => {
         width: videoStream.width,
         height: videoStream.height,
         duration: metadata.format.duration,
-        bitrate: metadata.format.bit_rate ? parseInt(String(metadata.format.bit_rate)) : undefined,
+        bitrate: metadata.format.bit_rate
+          ? parseInt(String(metadata.format.bit_rate))
+          : undefined,
       });
     });
   });
@@ -35,15 +39,29 @@ const MAX_BITRATE = 12000; // 12 Mbps max bitrate cap
 export const compressVideoForUpload = async (
   inputPath: string,
   outputPath: string
-): Promise<{ path: string; compressed: boolean; originalSize: number; newSize: number }> => {
+): Promise<{
+  path: string;
+  compressed: boolean;
+  originalSize: number;
+  newSize: number;
+}> => {
   const originalSize = fs.statSync(inputPath).size;
 
   if (originalSize < COMPRESSION_THRESHOLD) {
-    console.log(`[COMPRESS] File ${Math.round(originalSize / 1024 / 1024)}MB below threshold, skipping compression`);
-    return { path: inputPath, compressed: false, originalSize, newSize: originalSize };
+    console.log(
+      `[COMPRESS] File ${Math.round(originalSize / 1024 / 1024)}MB below threshold, skipping compression`
+    );
+    return {
+      path: inputPath,
+      compressed: false,
+      originalSize,
+      newSize: originalSize,
+    };
   }
 
-  console.log(`[COMPRESS] Compressing ${Math.round(originalSize / 1024 / 1024)}MB video with high quality settings...`);
+  console.log(
+    `[COMPRESS] Compressing ${Math.round(originalSize / 1024 / 1024)}MB video with high quality settings...`
+  );
 
   try {
     const metadata = await getVideoMetadata(inputPath);
@@ -51,8 +69,15 @@ export const compressVideoForUpload = async (
 
     // Skip if already reasonably sized
     if (currentBitrate <= MAX_BITRATE) {
-      console.log(`[COMPRESS] Bitrate ${Math.round(currentBitrate)}kbps already good, skipping`);
-      return { path: inputPath, compressed: false, originalSize, newSize: originalSize };
+      console.log(
+        `[COMPRESS] Bitrate ${Math.round(currentBitrate)}kbps already good, skipping`
+      );
+      return {
+        path: inputPath,
+        compressed: false,
+        originalSize,
+        newSize: originalSize,
+      };
     }
 
     await new Promise<void>((resolve, reject) => {
@@ -70,7 +95,9 @@ export const compressVideoForUpload = async (
         .save(outputPath)
         .on("progress", (progress) => {
           if (progress.percent && Math.round(progress.percent) % 25 === 0) {
-            console.log(`[COMPRESS] Progress: ${Math.round(progress.percent)}%`);
+            console.log(
+              `[COMPRESS] Progress: ${Math.round(progress.percent)}%`
+            );
           }
         })
         .on("end", () => resolve())
@@ -79,18 +106,43 @@ export const compressVideoForUpload = async (
 
     const newSize = fs.statSync(outputPath).size;
     const savings = Math.round(((originalSize - newSize) / originalSize) * 100);
-    console.log(`[COMPRESS] Done: ${Math.round(originalSize / 1024 / 1024)}MB -> ${Math.round(newSize / 1024 / 1024)}MB (${savings}% smaller)`);
+    console.log(
+      `[COMPRESS] Done: ${Math.round(originalSize / 1024 / 1024)}MB -> ${Math.round(newSize / 1024 / 1024)}MB (${savings}% smaller)`
+    );
 
     return { path: outputPath, compressed: true, originalSize, newSize };
   } catch (error) {
     console.error("[COMPRESS] Failed, using original:", error);
-    return { path: inputPath, compressed: false, originalSize, newSize: originalSize };
+    return {
+      path: inputPath,
+      compressed: false,
+      originalSize,
+      newSize: originalSize,
+    };
   }
 };
 
-export const cutClip = (input: string, output: string, start: number, end: number) => {
+export const getVideoDuration = (videoPath: string): Promise<number> => {
+  return new Promise((resolve, reject) => {
+    ffmpeg.ffprobe(videoPath, (err, metadata) => {
+      if (err) return reject(err);
+      const duration = metadata.format.duration;
+      if (!duration) return reject(new Error("Could not get video duration"));
+      resolve(duration);
+    });
+  });
+};
+
+export const cutClip = (
+  input: string,
+  output: string,
+  start: number,
+  end: number
+) => {
   const duration = end - start;
-  console.log(`[CUT] Cutting ${start}s-${end}s (${duration.toFixed(1)}s) from ${input}`);
+  console.log(
+    `[CUT] Cutting ${start}s-${end}s (${duration.toFixed(1)}s) from ${input}`
+  );
 
   return new Promise((resolve, reject) => {
     ffmpeg(input)
@@ -100,25 +152,33 @@ export const cutClip = (input: string, output: string, start: number, end: numbe
         "-c:v libx264",
         "-preset ultrafast",
         "-crf 28",
-        "-r 30",           // Normalize frame rate to 30fps
-        "-ar 48000",       // Normalize audio sample rate to 48kHz
-        "-ac 2",           // Normalize to stereo audio
+        "-r 30",
+        "-ar 48000",
+        "-ac 2",
         "-c:a aac",
         "-b:a 128k",
-        "-vsync cfr",      // Constant frame rate for consistent timing
-        "-async 1",        // Sync audio to video timestamps
+        "-vsync cfr",
+        "-async 1",
       ])
       .save(output)
       .on("end", () => {
-        // Verify the output file exists and has content
         if (!fs.existsSync(output)) {
-          return reject(new Error(`Cut clip failed: output file not created at ${output}`));
+          return reject(
+            new Error(`Cut clip failed: output file not created at ${output}`)
+          );
         }
         const stats = fs.statSync(output);
-        if (stats.size < 1000) { // Less than 1KB is likely invalid
-          return reject(new Error(`Cut clip failed: output file too small (${stats.size} bytes)`));
+        if (stats.size < 1000) {
+          // Less than 1KB is likely invalid
+          return reject(
+            new Error(
+              `Cut clip failed: output file too small (${stats.size} bytes)`
+            )
+          );
         }
-        console.log(`[CUT] Success: ${output} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`);
+        console.log(
+          `[CUT] Success: ${output} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`
+        );
         resolve(output);
       })
       .on("error", (err) => {
@@ -137,14 +197,18 @@ export const mergeClips = async (clips: string[], outputPath: string) => {
       throw new Error(`[MERGE] Input clip not found: ${clip}`);
     }
     const stats = fs.statSync(clip);
-    console.log(`[MERGE] Input: ${clip} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`);
+    console.log(
+      `[MERGE] Input: ${clip} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`
+    );
   }
 
   const firstClip = clips[0];
   let metadata;
   try {
     metadata = await getVideoMetadata(firstClip);
-    console.log(`[MERGE] First clip dimensions: ${metadata.width}x${metadata.height}`);
+    console.log(
+      `[MERGE] First clip dimensions: ${metadata.width}x${metadata.height}`
+    );
   } catch (err) {
     console.error(`[MERGE] Failed to get metadata for ${firstClip}:`, err);
     throw err;
@@ -154,7 +218,7 @@ export const mergeClips = async (clips: string[], outputPath: string) => {
   return new Promise((resolve, reject) => {
     const listPath = outputPath + ".txt";
     const content = clips
-      .map(c => `file '${c.replace(/'/g, "'\\''")}'`)
+      .map((c) => `file '${c.replace(/'/g, "'\\''")}'`)
       .join("\n");
 
     fs.writeFileSync(listPath, content);
@@ -221,18 +285,17 @@ export const mergeClips = async (clips: string[], outputPath: string) => {
           "-ac 2",
         ]);
     } else {
-      ffmpegCmd
-        .outputOptions([
-          "-c:v libx264",
-          "-preset veryfast",
-          "-pix_fmt yuv420p",
-          "-r 30",
-          "-movflags +faststart",
-          "-c:a aac",
-          "-b:a 128k",
-          "-ar 48000",
-          "-ac 2",
-        ]);
+      ffmpegCmd.outputOptions([
+        "-c:v libx264",
+        "-preset veryfast",
+        "-pix_fmt yuv420p",
+        "-r 30",
+        "-movflags +faststart",
+        "-c:a aac",
+        "-b:a 128k",
+        "-ar 48000",
+        "-ac 2",
+      ]);
     }
 
     ffmpegCmd
@@ -241,7 +304,7 @@ export const mergeClips = async (clips: string[], outputPath: string) => {
         fs.unlinkSync(listPath);
         resolve(outputPath);
       })
-      .on("error", err => reject(err));
+      .on("error", (err) => reject(err));
   });
 };
 
@@ -251,7 +314,7 @@ const FONT_CONFIG: Record<string, { url: string; family: string }> = {
     url: "https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap",
     family: "'Luckiest Guy', cursive",
   },
-  "Montserrat": {
+  Montserrat: {
     url: "https://fonts.googleapis.com/css2?family=Montserrat:wght@900&display=swap",
     family: "'Montserrat', sans-serif",
   },
@@ -259,7 +322,7 @@ const FONT_CONFIG: Record<string, { url: string; family: string }> = {
     url: "https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap",
     family: "'Bebas Neue', sans-serif",
   },
-  "Anton": {
+  Anton: {
     url: "https://fonts.googleapis.com/css2?family=Anton&display=swap",
     family: "'Anton', sans-serif",
   },
@@ -277,7 +340,7 @@ const generateTextImage = async (
 
   const browser = await puppeteer.launch({
     headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
   });
 
   try {
@@ -286,7 +349,7 @@ const generateTextImage = async (
     await page.setViewport({
       width: 1080,
       height: 400,
-      deviceScaleFactor: 2
+      deviceScaleFactor: 2,
     });
 
     const htmlContent = `
@@ -328,7 +391,7 @@ const generateTextImage = async (
           </style>
         </head>
         <body>
-          <div class="text">${text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+          <div class="text">${text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
         </body>
       </html>
     `;
@@ -337,8 +400,8 @@ const generateTextImage = async (
 
     await page.screenshot({
       path: outputPath,
-      type: 'png',
-      omitBackground: true
+      type: "png",
+      omitBackground: true,
     });
 
     if (!fs.existsSync(outputPath)) {
@@ -371,7 +434,7 @@ export const addTextOverlayAtPosition = async (
   try {
     const browser = await puppeteer.launch({
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
 
     const page = await browser.newPage();
@@ -407,13 +470,17 @@ export const addTextOverlayAtPosition = async (
           </style>
         </head>
         <body>
-          <div class="text">${text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+          <div class="text">${text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
         </body>
       </html>
     `;
 
     await page.setContent(htmlContent);
-    await page.screenshot({ path: textImagePath, type: 'png', omitBackground: true });
+    await page.screenshot({
+      path: textImagePath,
+      type: "png",
+      omitBackground: true,
+    });
     await browser.close();
 
     const xPos = `(W*${xPercent / 100})-(w/2)`;
@@ -423,7 +490,12 @@ export const addTextOverlayAtPosition = async (
       ffmpeg(inputPath)
         .input(textImagePath)
         .complexFilter([`overlay=${xPos}:${yPos}`])
-        .outputOptions(["-c:v libx264", "-preset ultrafast", "-crf 23", "-c:a copy"])
+        .outputOptions([
+          "-c:v libx264",
+          "-preset ultrafast",
+          "-crf 23",
+          "-c:a copy",
+        ])
         .save(outputPath)
         .on("end", () => {
           if (fs.existsSync(textImagePath)) fs.unlinkSync(textImagePath);
@@ -445,7 +517,7 @@ export const addPreviewWatermark = async (
   outputPath: string
 ): Promise<string> => {
   // Use the Cuttr logo from assets
-  const logoPath = path.join(__dirname, '../templates/assets/cuttr-logo.png');
+  const logoPath = path.join(__dirname, "../templates/assets/cuttr-logo.png");
 
   if (!fs.existsSync(logoPath)) {
     throw new Error(`Cuttr logo not found at ${logoPath}`);
@@ -475,9 +547,14 @@ export const addPreviewWatermark = async (
         // Scale logo and set opacity to 65%
         `[1:v]scale=${logoSize}:-1,format=rgba,colorchannelmixer=aa=0.65[logo]`,
         // Single overlay with dynamic position based on time
-        `[0:v][logo]overlay=x='${xExpr}':y='${yExpr}':format=auto`
+        `[0:v][logo]overlay=x='${xExpr}':y='${yExpr}':format=auto`,
       ])
-      .outputOptions(["-c:v libx264", "-preset ultrafast", "-crf 23", "-c:a copy"])
+      .outputOptions([
+        "-c:v libx264",
+        "-preset ultrafast",
+        "-crf 23",
+        "-c:a copy",
+      ])
       .save(outputPath)
       .on("end", () => {
         resolve(outputPath);
@@ -504,7 +581,13 @@ export const addTextOverlay = async (
 
   try {
     console.log("Generating text image with:", text);
-    await generateTextImage(text, textImagePath, fillColor, strokeColor, fontName);
+    await generateTextImage(
+      text,
+      textImagePath,
+      fillColor,
+      strokeColor,
+      fontName
+    );
     console.log("Text image created at:", textImagePath);
 
     if (!fs.existsSync(textImagePath)) {
@@ -515,14 +598,19 @@ export const addTextOverlay = async (
       position === "top"
         ? "H*0.05"
         : position === "center"
-        ? "(H-h)/2"
-        : "H-h-H*0.1";
+          ? "(H-h)/2"
+          : "H-h-H*0.1";
 
     return new Promise<string>((resolve, reject) => {
       ffmpeg(inputPath)
         .input(textImagePath)
         .complexFilter([`overlay=(W-w)/2:${yPosition}`])
-        .outputOptions(["-c:v libx264", "-preset ultrafast", "-crf 23", "-c:a copy"])
+        .outputOptions([
+          "-c:v libx264",
+          "-preset ultrafast",
+          "-crf 23",
+          "-c:a copy",
+        ])
         .save(outputPath)
         .on("end", () => {
           if (fs.existsSync(textImagePath)) {
@@ -547,4 +635,3 @@ export const addTextOverlay = async (
     throw err;
   }
 };
-

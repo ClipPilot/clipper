@@ -12,6 +12,8 @@ const getDatabaseUrl = () => {
     return process.env.PROD_DATABASE_URL || process.env.DATABASE_URL;
   } else if (env === "staging") {
     return process.env.STAGING_DATABASE_URL || process.env.DATABASE_URL;
+  } else if (env === "development") {
+    return process.env.STAGING_DATABASE_URL;
   }
 
   return process.env.DATABASE_URL;
@@ -27,10 +29,15 @@ const initializeDatabase = () => {
 
     pool = new Pool({
       connectionString: databaseUrl,
+      max: 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000,
     });
 
     dbInstance = drizzle(pool, { schema });
-    console.log(`Database connection initialized (${process.env.NODE_ENV || "development"})`);
+    console.log(
+      `Database connection initialized (${process.env.NODE_ENV || "development"})`
+    );
   }
   return dbInstance!;
 };

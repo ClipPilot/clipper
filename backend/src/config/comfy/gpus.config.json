@@ -1,0 +1,16 @@
+{
+  "gpus": [
+    {
+      "id": "gpu-2",
+      "name": "RunPod GPU 2",
+      "url": "https://r17xxfj7ie31t5-8188.proxy.runpod.net",
+      "cleanupUrl": "https://r17xxfj7ie31t5-8188.proxy.runpod.net"
+    },
+    {
+      "id": "gpu-1",
+      "name": "RunPod GPU 1",
+      "url": "https://d7extz01utcetv-8188.proxy.runpod.net",
+      "cleanupUrl": "https://d7extz01utcetv-3001.proxy.runpod.net"
+    }
+  ]
+}
