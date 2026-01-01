@@ -75,3 +75,20 @@ export const emitClipsRefresh = (teamId: number) => {
     io.to(`team-${teamId}`).emit("clips-refresh");
   }
 };
+
+export interface ComfyJobUpdate {
+  id: string;
+  status: "queued" | "running" | "completed" | "failed";
+  progress: number | null;
+  progressMessage: string | null;
+  outputUrl: string | null;
+  errorMessage: string | null;
+  createdAt?: string;
+  finishedAt: string | null;
+}
+
+export const emitComfyJobUpdate = (teamId: number, job: ComfyJobUpdate) => {
+  if (io) {
+    io.to(`team-${teamId}`).emit("comfy-job-update", job);
+  }
+};

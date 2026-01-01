@@ -6,10 +6,13 @@ let output;
 let DATABASE_URL;
 
 if (env === "prod") {
-  output = "./drizzle/prod";
+  output = "./drizzle/";
   DATABASE_URL = process.env.PROD_DATABASE_URL;
 } else if (env === "staging") {
   output = "./drizzle/staging";
+  DATABASE_URL = process.env.STAGING_DATABASE_URL;
+} else if (env === "dev") {
+  output = "./drizzle/dev";
   DATABASE_URL = process.env.STAGING_DATABASE_URL;
 } else {
   output = "./drizzle/";
