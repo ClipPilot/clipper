@@ -4,6 +4,14 @@ import "./config/env";
 import { initializeSocket } from "./services/socket.service";
 import { startComfyWorker, stopComfyWorker } from "./services/comfy.worker";
 
+process.on("uncaughtException", (error) => {
+  console.error("[UNCAUGHT EXCEPTION]", error.message);
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("[UNHANDLED REJECTION]", reason);
+});
+
 const PORT = process.env.PORT || 3000;
 const ENABLE_COMFY_WORKER = process.env.ENABLE_COMFY_WORKER !== "false";
 

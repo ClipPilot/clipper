@@ -59,6 +59,22 @@ export async function requireAuth(
     next();
   } catch (error) {
     console.error("Auth middleware error:", error);
+
+    const err = error as Error & { code?: string; cause?: { code?: string } };
+    const isNetworkError =
+      err.code === 'ETIMEDOUT' ||
+      err.code === 'ECONNREFUSED' ||
+      err.code === 'EHOSTUNREACH' ||
+      err.cause?.code === 'UND_ERR_CONNECT_TIMEOUT' ||
+      err.message?.includes('fetch failed') ||
+      err.message?.includes('timeout');
+
+    if (isNetworkError) {
+      return res.status(503).json({
+        error: "Service temporarily unavailable",
+      });
+    }
+
     return res.status(401).json({
       error: "Authentication failed",
     });
