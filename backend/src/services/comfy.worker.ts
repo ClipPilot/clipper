@@ -4,11 +4,14 @@ import fs from "fs";
 import crypto from "crypto";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { db } from "../db";
-import { comfyJobs } from "@clipper/shared-db/src/schema";
+import { comfyJobs, teamMembers, clips, users } from "@clipper/shared-db/src/schema";
 import { eq, and, asc, desc, inArray } from "drizzle-orm";
 import { config } from "../config/env";
 import { s3Service } from "./s3.service";
 import { cutClip, mergeClips } from "./videoEditor.service";
+import { emitComfyJobUpdate } from "./socket.service";
+import { teamService } from "./team.service";
+import { emailNotiService } from "./emailNoti.service";
 
 interface GpuConfig {
   id: string;
@@ -148,63 +151,68 @@ async function uploadFileToGpu(
 // ─────────────────────────────────────────────────────────────
 
 async function getNextJob(): Promise<ComfyJob | null> {
-  // FIFO
-  const jobs = await db
-    .select({
-      id: comfyJobs.id,
-      teamId: comfyJobs.teamId,
-      imageFile: comfyJobs.imageFile,
-      videoFile: comfyJobs.videoFile,
-      status: comfyJobs.status,
-      parentJobId: comfyJobs.parentJobId,
-      sequenceNumber: comfyJobs.sequenceNumber,
-      jobType: comfyJobs.jobType,
-      originalVideoS3Key: comfyJobs.originalVideoS3Key,
-      totalChunks: comfyJobs.totalChunks,
-    })
-    .from(comfyJobs)
-    .where(
-      and(
-        eq(comfyJobs.status, "queued"),
-        inArray(comfyJobs.jobType, [
-          "single",
-          "ugc-face-swap-chunk",
-          "ugc-face-swap-parent",
-        ])
+  try {
+    const jobs = await db
+      .select({
+        id: comfyJobs.id,
+        teamId: comfyJobs.teamId,
+        imageFile: comfyJobs.imageFile,
+        videoFile: comfyJobs.videoFile,
+        status: comfyJobs.status,
+        parentJobId: comfyJobs.parentJobId,
+        sequenceNumber: comfyJobs.sequenceNumber,
+        jobType: comfyJobs.jobType,
+        originalVideoS3Key: comfyJobs.originalVideoS3Key,
+        totalChunks: comfyJobs.totalChunks,
+      })
+      .from(comfyJobs)
+      .where(
+        and(
+          eq(comfyJobs.status, "queued"),
+          inArray(comfyJobs.jobType, [
+            "single",
+            "ugc-face-swap-chunk",
+            "ugc-face-swap-parent",
+          ])
+        )
       )
-    )
-    .orderBy(desc(comfyJobs.priority), asc(comfyJobs.createdAt))
-    .limit(1);
+      .orderBy(desc(comfyJobs.priority), asc(comfyJobs.createdAt))
+      .limit(1);
 
-  if (jobs.length === 0) return null;
+    if (jobs.length === 0) return null;
 
-  const job = jobs[0];
+    const job = jobs[0];
 
-  // Mark as running
-  await db
-    .update(comfyJobs)
-    .set({
-      status: "running",
-      startedAt: new Date(),
-    })
-    .where(eq(comfyJobs.id, job.id));
+    // Mark as running
+    await db
+      .update(comfyJobs)
+      .set({
+        status: "running",
+        startedAt: new Date(),
+      })
+      .where(eq(comfyJobs.id, job.id));
 
-  return {
-    id: job.id,
-    teamId: job.teamId,
-    imageFile: job.imageFile,
-    videoFile: job.videoFile,
-    status: job.status,
-    parentJobId: job.parentJobId ?? undefined,
-    sequenceNumber: job.sequenceNumber ?? undefined,
-    jobType: job.jobType,
-    originalVideoS3Key: job.originalVideoS3Key ?? undefined,
-    totalChunks: job.totalChunks ?? undefined,
-  };
+    return {
+      id: job.id,
+      teamId: job.teamId,
+      imageFile: job.imageFile,
+      videoFile: job.videoFile,
+      status: job.status,
+      parentJobId: job.parentJobId ?? undefined,
+      sequenceNumber: job.sequenceNumber ?? undefined,
+      jobType: job.jobType,
+      originalVideoS3Key: job.originalVideoS3Key ?? undefined,
+      totalChunks: job.totalChunks ?? undefined,
+    };
+  } catch (err) {
+    console.error("[comfy-worker] getNextJob error:", err);
+    return null;
+  }
 }
 
 async function updateProgress(
   jobId: string,
+  teamId: number,
   progress: number,
   message?: string
 ): Promise<void> {
@@ -215,14 +223,27 @@ async function updateProgress(
       progressMessage: message || null,
     })
     .where(eq(comfyJobs.id, jobId));
+
+  emitComfyJobUpdate(teamId, {
+    id: jobId,
+    status: "running",
+    progress,
+    progressMessage: message || null,
+    outputUrl: null,
+    errorMessage: null,
+    finishedAt: null,
+  });
 }
 
 async function completeJob(
   jobId: string,
+  teamId: number,
   success: boolean,
   outputFile?: string,
+  outputUrl?: string,
   errorMessage?: string
 ): Promise<void> {
+  const finishedAt = new Date();
   await db
     .update(comfyJobs)
     .set({
@@ -231,9 +252,19 @@ async function completeJob(
       progressMessage: success ? "Completed" : errorMessage || null,
       outputFile: outputFile || null,
       errorMessage: errorMessage || null,
-      finishedAt: new Date(),
+      finishedAt,
     })
     .where(eq(comfyJobs.id, jobId));
+
+  emitComfyJobUpdate(teamId, {
+    id: jobId,
+    status: success ? "completed" : "failed",
+    progress: success ? 100 : null,
+    progressMessage: success ? "Completed" : errorMessage || null,
+    outputUrl: outputUrl || null,
+    errorMessage: errorMessage || null,
+    finishedAt: finishedAt.toISOString(),
+  });
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -310,13 +341,12 @@ function waitForCompletion(
 
     const resetTimeout = () => {
       if (timeout) clearTimeout(timeout);
-      // 30 minute timeout for long-running workflows
       timeout = setTimeout(
         () => {
           ws.close();
-          reject(new Error("Workflow execution timed out after 30 minutes"));
+          reject(new Error("Workflow execution timed out after 60 minutes"));
         },
-        30 * 60 * 1000
+        60 * 60 * 1000
       );
     };
 
@@ -549,7 +579,8 @@ async function uploadToS3(buffer: Buffer, key: string): Promise<string> {
       ContentType: "video/mp4",
     })
   );
-  return `s3://${config.aws.s3Bucket}/${key}`;
+  // Return just the S3 key - the API will generate signed URLs when needed
+  return key;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -809,6 +840,7 @@ async function processUGCFaceSwapParentJob(
       const chunkProgress = Math.round(15 + ((i + 1) / chunkInfos.length) * 70);
       await updateProgress(
         job.id,
+        job.teamId,
         chunkProgress,
         `Completed chunk ${i + 1}/${chunkInfos.length}`
       );
@@ -858,22 +890,78 @@ async function processJobOnGpu(job: ComfyJob, gpu: GpuConfig): Promise<void> {
       `[comfy-worker] Processing job ${job.id} (${job.jobType}) on GPU ${gpu.id}`
     );
 
-    let outputUrl: string;
+    let outputS3Key: string;
 
     if (job.jobType === "ugc-face-swap-parent") {
-      outputUrl = await processUGCFaceSwapParentJob(job, gpu);
+      outputS3Key = await processUGCFaceSwapParentJob(job, gpu);
     } else {
-      outputUrl = await processJob(job, gpu);
+      outputS3Key = await processJob(job, gpu);
     }
 
-    await completeJob(job.id, true, outputUrl);
+    const outputUrl = await s3Service.getPresignedUrl(outputS3Key, 3600);
+    await completeJob(job.id, job.teamId, true, outputS3Key, outputUrl);
+
+    if (job.jobType === "ugc-face-swap-parent") {
+      try {
+        const [member] = await db
+          .select({ userId: teamMembers.user_id })
+          .from(teamMembers)
+          .where(eq(teamMembers.team_id, job.teamId))
+          .limit(1);
+
+        if (member) {
+          const [clip] = await db
+            .insert(clips)
+            .values({
+              team_id: job.teamId,
+              generated_by_user_id: member.userId,
+              clip_path: outputS3Key,
+              blank_video_path: outputS3Key,
+              source_video_path: job.videoFile,
+              status: "completed",
+              saved: true,
+              clip_metadata: { type: "face-swap", comfyJobId: job.id },
+              title: "UGC Face Swap",
+            })
+            .returning();
+          console.log(`[comfy-worker] Created clip ${clip.id} in library`);
+
+          await teamService.incrementTeamUsage(job.teamId, 5);
+          console.log(`[comfy-worker] Charged 5 credits to team ${job.teamId}`);
+
+          const [user] = await db
+            .select()
+            .from(users)
+            .where(eq(users.id, member.userId))
+            .limit(1);
+
+          if (user) {
+            const frontendUrl = process.env.FRONTEND_URL || "https://platform.cuttr.com";
+            await emailNotiService.sendClipsReady(user.email, {
+              userName: user.first_name || "there",
+              clipCount: 1,
+              sourceFileName: "UGC Face Swap",
+              clipsUrl: `${frontendUrl}/dashboard/ugc-studio`,
+            });
+            console.log(`[comfy-worker] Sent email notification to ${user.email}`);
+          }
+        }
+      } catch (clipErr) {
+        console.error(`[comfy-worker] Failed to create clip or notify:`, (clipErr as Error).message);
+      }
+    }
+
     console.log(`[comfy-worker] Job ${job.id} completed successfully on ${gpu.id}`);
   } catch (err) {
     console.error(
       `[comfy-worker] Job ${job.id} failed on ${gpu.id}:`,
       (err as Error).message
     );
-    await completeJob(job.id, false, undefined, (err as Error).message);
+    try {
+      await completeJob(job.id, job.teamId, false, undefined, undefined, (err as Error).message);
+    } catch (dbErr) {
+      console.error(`[comfy-worker] Failed to update job status in DB:`, (dbErr as Error).message);
+    }
   } finally {
     busyGpus.delete(gpu.id);
   }

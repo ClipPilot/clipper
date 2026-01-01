@@ -72,4 +72,26 @@ router.get(
   comfyController.getJobStatus.bind(comfyController)
 );
 
+/**
+ * @openapi
+ * /comfy/team/{teamId}/jobs:
+ *   get:
+ *     summary: Get all jobs for a team
+ *     tags:
+ *       - ComfyUI
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: List of jobs
+ */
+router.get(
+  "/team/:teamId/jobs",
+  comfyController.getTeamJobs.bind(comfyController)
+);
+
 export default router;
