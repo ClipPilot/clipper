@@ -3,12 +3,22 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { Button, Card, CardBody, CardHeader, Progress } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import { useAtomValue } from "jotai";
+import { selectedTeamAtom } from "@/store/auth";
+import { apiFetch } from "@/lib/apiClient";
+import API_URL from "@/config/constants";
 
 type StudioView = "menu" | "face-swap";
 
 interface UploadedFile {
   file: File;
   preview: string;
+}
+
+interface TrimResult {
+  trimmedVideoKey: string;
+  trimmedVideoUrl: string;
+  duration: number;
 }
 
 // Video Trimmer Component
@@ -370,6 +380,7 @@ function VideoTrimmer({
 }
 
 export default function UGCStudioPage() {
+  const selectedTeam = useAtomValue(selectedTeamAtom);
   const [currentView, setCurrentView] = useState<StudioView>("menu");
   const [video, setVideo] = useState<UploadedFile | null>(null);
   const [characterImage, setCharacterImage] = useState<UploadedFile | null>(null);
@@ -378,6 +389,10 @@ export default function UGCStudioPage() {
   const [isDraggingVideo, setIsDraggingVideo] = useState(false);
   const [isDraggingImage, setIsDraggingImage] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState("");
+  const [trimResult, setTrimResult] = useState<TrimResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const videoInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -466,19 +481,51 @@ export default function UGCStudioPage() {
     setClipRange([start, end]);
   };
 
-  const handleGenerate = () => {
-    if (!video || !characterImage) return;
+  const handleGenerate = async () => {
+    if (!video || !characterImage || !selectedTeam?.id) return;
+
+    setError(null);
     setIsProcessing(true);
-    // TODO: Implement face swap API call
-    console.log("Generating face swap with:", {
-      video: video.file.name,
-      characterImage: characterImage.file.name,
-      clipRange,
-    });
-    // Simulate processing
-    setTimeout(() => {
+    setIsUploading(true);
+    setTrimResult(null);
+    setProcessingStatus("Uploading and trimming video...");
+
+    try {
+      // Create FormData with video file and trim parameters
+      const formData = new FormData();
+      formData.append("video", video.file);
+      formData.append("startTime", clipRange[0].toString());
+      formData.append("endTime", clipRange[1].toString());
+      formData.append("teamId", selectedTeam.id.toString());
+
+      // Upload video directly to backend, which trims it and uploads only the trimmed result to S3
+      const trimResponse = await apiFetch(`${API_URL}/face-swap/trim`, {
+        method: "POST",
+        body: formData,
+        // Don't set Content-Type header - browser will set it with boundary for FormData
+      });
+
+      if (!trimResponse.ok) {
+        const error = await trimResponse.json();
+        throw new Error(error.error || "Failed to trim video");
+      }
+
+      const result: TrimResult = await trimResponse.json();
+      setTrimResult(result);
+      setProcessingStatus("Video trimmed successfully!");
+
+      console.log("Trimmed video result:", result);
+
+      // TODO: Next step would be to pass this to face swap API
+      // For now, we have the trimmed video ready
+    } catch (err) {
+      console.error("Generate error:", err);
+      setError(err instanceof Error ? err.message : "An error occurred");
+      setProcessingStatus("");
+    } finally {
       setIsProcessing(false);
-    }, 3000);
+      setIsUploading(false);
+    }
   };
 
   const resetFaceSwap = () => {
@@ -489,6 +536,9 @@ export default function UGCStudioPage() {
     setVideoDuration(0);
     setClipRange([0, 30]);
     setCurrentView("menu");
+    setTrimResult(null);
+    setError(null);
+    setProcessingStatus("");
   };
 
   const clipDuration = clipRange[1] - clipRange[0];
@@ -852,17 +902,17 @@ export default function UGCStudioPage() {
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-accent-400/20 flex items-center justify-center">
                         <Icon
-                          icon="solar:magic-stick-3-bold-duotone"
+                          icon={isUploading ? "solar:cloud-upload-bold-duotone" : "solar:magic-stick-3-bold-duotone"}
                           className="text-accent-400 animate-pulse"
                           width={22}
                         />
                       </div>
                       <div>
                         <p className="text-sm font-medium text-text-primary">
-                          Processing...
+                          {processingStatus || "Processing..."}
                         </p>
                         <p className="text-xs text-text-tertiary">
-                          This may take a few minutes
+                          {isUploading ? "Uploading to cloud..." : "This may take a moment"}
                         </p>
                       </div>
                     </div>
@@ -872,6 +922,57 @@ export default function UGCStudioPage() {
                       size="sm"
                       className="w-full"
                     />
+                  </div>
+                ) : trimResult ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center">
+                        <Icon
+                          icon="solar:check-circle-bold-duotone"
+                          className="text-green-500"
+                          width={22}
+                        />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-text-primary">
+                          Video Trimmed Successfully!
+                        </p>
+                        <p className="text-xs text-text-tertiary">
+                          Duration: {trimResult.duration.toFixed(1)}s
+                        </p>
+                      </div>
+                    </div>
+                    <video
+                      src={trimResult.trimmedVideoUrl}
+                      controls
+                      className="w-full rounded-lg"
+                    />
+                    <Button
+                      className="w-full bg-accent-400 text-white font-semibold"
+                      size="lg"
+                      onPress={() => {
+                        setTrimResult(null);
+                        setProcessingStatus("");
+                      }}
+                      startContent={<Icon icon="solar:refresh-bold" width={20} />}
+                    >
+                      Trim Again
+                    </Button>
+                  </div>
+                ) : error ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3 p-3 bg-red-500/10 rounded-lg">
+                      <Icon icon="solar:danger-circle-bold" className="text-red-500" width={20} />
+                      <p className="text-sm text-red-500">{error}</p>
+                    </div>
+                    <Button
+                      className="w-full bg-accent-400 text-white font-semibold"
+                      size="lg"
+                      onPress={() => setError(null)}
+                      startContent={<Icon icon="solar:refresh-bold" width={20} />}
+                    >
+                      Try Again
+                    </Button>
                   </div>
                 ) : (
                   <div className="space-y-4">

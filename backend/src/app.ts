@@ -8,6 +8,7 @@ import folderRoutes from "./routes/folder.routes";
 import tagRoutes from "./routes/tag.routes";
 import internalRoutes from "./routes/internal.routes";
 import stripeRoutes from "./routes/stripe.routes";
+import faceSwapRoutes from "./routes/faceSwap.routes";
 import { swaggerSpec } from "./config/swagger";
 
 const app = express();
@@ -49,5 +50,6 @@ app.use("/api/clip-video", transcribeRoutes);
 app.use("/api/folders", folderRoutes);
 app.use("/api/tags", tagRoutes);
 app.use("/api/stripe", stripeRoutes);
+app.use("/api/face-swap", faceSwapRoutes);
 
 export default app;
