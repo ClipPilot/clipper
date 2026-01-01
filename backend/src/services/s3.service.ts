@@ -317,6 +317,29 @@ class S3Service {
 
     await s3Client.send(command);
   }
+
+  async uploadFile(filePath: string, key: string, contentType: string): Promise<string> {
+    try {
+      return await this.multipartUpload(filePath, key, contentType);
+    } catch (error) {
+      console.error("Error uploading file to S3:", error);
+      throw new Error(`Failed to upload file to S3: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+  }
+
+  async getPresignedUploadUrlForKey(
+    key: string,
+    contentType: string,
+    expiresIn: number = 3600
+  ): Promise<string> {
+    const command = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: key,
+      ContentType: contentType,
+    });
+
+    return await getSignedUrl(s3Client, command, { expiresIn });
+  }
 }
 
 export const s3Service = new S3Service();
