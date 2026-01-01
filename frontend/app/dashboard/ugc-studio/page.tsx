@@ -211,7 +211,6 @@ function VideoTrimmer({
           ref={videoRef}
           src={videoSrc}
           className="w-full h-full object-contain"
-          muted
           playsInline
           onPlay={() => setIsPlaying(true)}
           onPause={() => setIsPlaying(false)}
