@@ -378,11 +378,34 @@ function VideoTrimmer({
   );
 }
 
+// Example characters from public/characters folder
+const EXAMPLE_CHARACTERS = [
+  { id: 1, src: "/characters/1.jpg" },
+  { id: 2, src: "/characters/2.jpg" },
+  { id: 3, src: "/characters/3.jpg" },
+  { id: 4, src: "/characters/4.jpg" },
+  { id: 5, src: "/characters/5.jpg" },
+  { id: 6, src: "/characters/6.jpg" },
+  { id: 7, src: "/characters/7.jpg" },
+  { id: 8, src: "/characters/8.jpg" },
+];
+
+interface SelectedCharacter {
+  type: "example" | "uploaded";
+  src: string;
+  file?: File;
+}
+
 export default function UGCStudioPage() {
   const selectedTeam = useAtomValue(selectedTeamAtom);
   const [currentView, setCurrentView] = useState<StudioView>("menu");
   const [video, setVideo] = useState<UploadedFile | null>(null);
-  const [characterImage, setCharacterImage] = useState<UploadedFile | null>(null);
+  const [selectedCharacter, setSelectedCharacter] = useState<SelectedCharacter | null>(null);
+  // Keep for backwards compatibility with existing logic
+  const characterImage = selectedCharacter ? {
+    file: selectedCharacter.file || new File([], "example.jpg"),
+    preview: selectedCharacter.src
+  } : null;
   const [videoDuration, setVideoDuration] = useState(0);
   const [clipRange, setClipRange] = useState<[number, number]>([0, 30]);
   const [isDraggingVideo, setIsDraggingVideo] = useState(false);
@@ -445,16 +468,24 @@ export default function UGCStudioPage() {
         return;
       }
 
-      // Cleanup old preview
-      if (characterImage?.preview) {
-        URL.revokeObjectURL(characterImage.preview);
+      // Cleanup old preview if it was an uploaded file
+      if (selectedCharacter?.type === "uploaded" && selectedCharacter.src) {
+        URL.revokeObjectURL(selectedCharacter.src);
       }
 
       const preview = URL.createObjectURL(file);
-      setCharacterImage({ file, preview });
+      setSelectedCharacter({ type: "uploaded", src: preview, file });
     },
-    [characterImage]
+    [selectedCharacter]
   );
+
+  const handleExampleSelect = (src: string) => {
+    // Cleanup old preview if it was an uploaded file
+    if (selectedCharacter?.type === "uploaded" && selectedCharacter.src) {
+      URL.revokeObjectURL(selectedCharacter.src);
+    }
+    setSelectedCharacter({ type: "example", src });
+  };
 
   const handleVideoDrop = useCallback(
     (e: React.DragEvent) => {
@@ -529,9 +560,11 @@ export default function UGCStudioPage() {
 
   const resetFaceSwap = () => {
     if (video?.preview) URL.revokeObjectURL(video.preview);
-    if (characterImage?.preview) URL.revokeObjectURL(characterImage.preview);
+    if (selectedCharacter?.type === "uploaded" && selectedCharacter.src) {
+      URL.revokeObjectURL(selectedCharacter.src);
+    }
     setVideo(null);
-    setCharacterImage(null);
+    setSelectedCharacter(null);
     setVideoDuration(0);
     setClipRange([0, 30]);
     setCurrentView("menu");
@@ -802,18 +835,19 @@ export default function UGCStudioPage() {
                       Character Face
                     </h3>
                     <p className="text-xs text-text-tertiary">
-                      Upload the face to swap
+                      Choose a character or upload your own
                     </p>
                   </div>
                 </div>
               </CardHeader>
-              <CardBody className="pt-4">
-                {characterImage ? (
-                  <div className="space-y-4">
+              <CardBody className="pt-4 space-y-4">
+                {/* Selected Character Display */}
+                {selectedCharacter && (
+                  <div className="space-y-3">
                     <div className="relative rounded-xl overflow-hidden bg-surface-elevated aspect-square">
                       <img
-                        src={characterImage.preview}
-                        alt="Character"
+                        src={selectedCharacter.src}
+                        alt="Selected Character"
                         className="w-full h-full object-cover"
                       />
                       <Button
@@ -822,73 +856,114 @@ export default function UGCStudioPage() {
                         variant="flat"
                         className="absolute top-2 right-2 bg-surface-base/80"
                         onPress={() => {
-                          if (characterImage.preview)
-                            URL.revokeObjectURL(characterImage.preview);
-                          setCharacterImage(null);
+                          if (selectedCharacter.type === "uploaded" && selectedCharacter.src) {
+                            URL.revokeObjectURL(selectedCharacter.src);
+                          }
+                          setSelectedCharacter(null);
                         }}
                       >
                         <Icon icon="solar:close-circle-bold" width={18} />
                       </Button>
                     </div>
-                    <div className="flex items-center justify-center gap-2 text-sm text-text-secondary">
-                      <Icon icon="solar:gallery-bold-duotone" width={16} />
-                      <span className="truncate">{characterImage.file.name}</span>
-                    </div>
+                    {selectedCharacter.type === "uploaded" && selectedCharacter.file && (
+                      <div className="flex items-center justify-center gap-2 text-sm text-text-secondary">
+                        <Icon icon="solar:gallery-bold-duotone" width={16} />
+                        <span className="truncate">{selectedCharacter.file.name}</span>
+                      </div>
+                    )}
+                    {selectedCharacter.type === "example" && (
+                      <div className="flex items-center justify-center gap-2 text-sm text-text-secondary">
+                        <Icon icon="solar:star-bold-duotone" width={16} />
+                        <span>Example Character</span>
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <div
-                    className={`border-2 border-dashed rounded-xl p-6 transition-colors ${
-                      isDraggingImage
-                        ? "border-purple-500 bg-purple-500/10"
-                        : "border-border-base hover:border-purple-500/50"
-                    }`}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      setIsDraggingImage(true);
-                    }}
-                    onDragLeave={(e) => {
-                      e.preventDefault();
-                      setIsDraggingImage(false);
-                    }}
-                    onDrop={handleImageDrop}
-                  >
-                    <div className="flex flex-col items-center space-y-3">
-                      <div className="w-12 h-12 bg-purple-500/10 rounded-full flex items-center justify-center">
-                        <Icon
-                          icon="solar:gallery-add-bold-duotone"
-                          className="text-2xl text-purple-500"
+                )}
+
+                {/* Example Characters Grid */}
+                {!selectedCharacter && (
+                  <>
+                    <div>
+                      <p className="text-xs text-text-tertiary mb-2">Choose an example</p>
+                      <div className="grid grid-cols-4 gap-2">
+                        {EXAMPLE_CHARACTERS.map((char) => (
+                          <button
+                            key={char.id}
+                            onClick={() => handleExampleSelect(char.src)}
+                            className="aspect-square rounded-lg overflow-hidden border-2 border-transparent hover:border-purple-500 transition-all hover:scale-105 focus:outline-none focus:border-purple-500"
+                          >
+                            <img
+                              src={char.src}
+                              alt={`Character ${char.id}`}
+                              className="w-full h-full object-cover"
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 h-px bg-border-base" />
+                      <span className="text-xs text-text-muted">or</span>
+                      <div className="flex-1 h-px bg-border-base" />
+                    </div>
+
+                    {/* Upload Custom */}
+                    <div
+                      className={`border-2 border-dashed rounded-xl p-4 transition-colors ${
+                        isDraggingImage
+                          ? "border-purple-500 bg-purple-500/10"
+                          : "border-border-base hover:border-purple-500/50"
+                      }`}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setIsDraggingImage(true);
+                      }}
+                      onDragLeave={(e) => {
+                        e.preventDefault();
+                        setIsDraggingImage(false);
+                      }}
+                      onDrop={handleImageDrop}
+                    >
+                      <div className="flex flex-col items-center space-y-2">
+                        <div className="w-10 h-10 bg-purple-500/10 rounded-full flex items-center justify-center">
+                          <Icon
+                            icon="solar:gallery-add-bold-duotone"
+                            className="text-xl text-purple-500"
+                          />
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm font-medium text-text-primary">
+                            Upload your own
+                          </p>
+                          <p className="text-xs text-text-tertiary">
+                            JPG, PNG, WebP
+                          </p>
+                        </div>
+                        <input
+                          ref={imageInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleImageSelect(file);
+                            e.target.value = "";
+                          }}
                         />
+                        <Button
+                          size="sm"
+                          variant="flat"
+                          className="bg-purple-500/20 text-purple-500"
+                          onPress={() => imageInputRef.current?.click()}
+                          startContent={<Icon icon="solar:folder-open-bold" />}
+                        >
+                          Browse
+                        </Button>
                       </div>
-                      <div className="text-center">
-                        <p className="text-sm font-medium text-text-primary">
-                          Drop character image
-                        </p>
-                        <p className="text-xs text-text-tertiary mt-1">
-                          JPG, PNG, WebP
-                        </p>
-                      </div>
-                      <input
-                        ref={imageInputRef}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleImageSelect(file);
-                          e.target.value = "";
-                        }}
-                      />
-                      <Button
-                        size="sm"
-                        variant="flat"
-                        className="bg-purple-500/20 text-purple-500"
-                        onPress={() => imageInputRef.current?.click()}
-                        startContent={<Icon icon="solar:folder-open-bold" />}
-                      >
-                        Browse
-                      </Button>
                     </div>
-                  </div>
+                  </>
                 )}
               </CardBody>
             </Card>
