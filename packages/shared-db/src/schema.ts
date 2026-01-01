@@ -10,6 +10,7 @@ import {
   boolean,
   pgEnum,
   index,
+  numeric,
 } from "drizzle-orm/pg-core";
 
 // Enums
@@ -228,7 +229,9 @@ export const clipFolders = pgTable(
   (table) => {
     return {
       teamIdx: index("clip_folders_team_id_idx").on(table.team_id),
-      parentIdx: index("clip_folders_parent_folder_id_idx").on(table.parent_folder_id),
+      parentIdx: index("clip_folders_parent_folder_id_idx").on(
+        table.parent_folder_id
+      ),
     };
   }
 ).enableRLS();
@@ -314,12 +317,25 @@ export const comfyJobs = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
     startedAt: timestamp("started_at"),
     finishedAt: timestamp("finished_at"),
+    parentJobId: uuid("parent_job_id"),
+    priority: integer("priority").notNull().default(0),
+    sequenceNumber: integer("sequence_number"),
+    totalChunks: integer("total_chunks"),
+    chunkStartTime: numeric("chunk_start_time", { precision: 10, scale: 3 }),
+    chunkEndTime: numeric("chunk_end_time", { precision: 10, scale: 3 }),
+    jobType: text("job_type").notNull().default("single"),
+    originalVideoS3Key: text("original_video_s3_key"),
   },
   (table) => {
     return {
       statusIdx: index("comfy_jobs_status_idx").on(table.status),
       teamIdx: index("comfy_jobs_team_id_idx").on(table.teamId),
       createdAtIdx: index("comfy_jobs_created_at_idx").on(table.createdAt),
+      parentJobIdx: index("comfy_jobs_parent_job_id_idx").on(table.parentJobId),
+      priorityCreatedAtIdx: index("comfy_jobs_priority_created_at_idx").on(
+        table.priority,
+        table.createdAt
+      ),
     };
   }
 ).enableRLS();

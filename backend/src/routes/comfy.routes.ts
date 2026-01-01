@@ -1,22 +1,18 @@
 import { Router } from "express";
 import multer from "multer";
 import { comfyController } from "../controllers/comfy.controller";
-import { requireAuth } from "../middleware/auth.middleware";
 
 const router = Router();
-
 const upload = multer({ storage: multer.memoryStorage() });
 
 /**
  * @openapi
- * /comfy/uploads:
+ * /comfy/ugc-face-swap:
  *   post:
- *     summary: Upload image and video to ComfyUI
- *     description: Uploads reference image and video to ComfyUI input storage. Returns filenames for workflow injection.
+ *     summary: Queue a UGC face swap job
+ *     description: Upload image and video, process through ComfyUI face swap. Videos split into 10s chunks, processed, then stitched. Max 30 seconds.
  *     tags:
  *       - ComfyUI
- *     security:
- *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -24,104 +20,31 @@ const upload = multer({ storage: multer.memoryStorage() });
  *           schema:
  *             type: object
  *             required:
+ *               - teamId
  *               - image
  *               - video
  *             properties:
+ *               teamId:
+ *                 type: integer
  *               image:
  *                 type: string
  *                 format: binary
- *                 description: Reference image
  *               video:
  *                 type: string
  *                 format: binary
- *                 description: Reference video
  *     responses:
- *       200:
- *         description: Files uploaded successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 image:
- *                   type: string
- *                   example: "uuid-image.jpg"
- *                 video:
- *                   type: string
- *                   example: "uuid-video.mp4"
+ *       202:
+ *         description: Job queued
  *       400:
- *         description: Invalid input
- *       500:
- *         description: Upload failed
+ *         description: Invalid input or video too long
  */
 router.post(
-  "/uploads",
-  //   requireAuth,
+  "/ugc-face-swap",
   upload.fields([
     { name: "image", maxCount: 1 },
     { name: "video", maxCount: 1 },
   ]),
-  comfyController.uploadInputs.bind(comfyController)
-);
-
-/**
- * @openapi
- * /comfy/jobs:
- *   post:
- *     summary: Queue a ComfyUI workflow job
- *     description: Creates a job to process image and video through the ComfyUI workflow. The workflow template is managed by the worker.
- *     tags:
- *       - ComfyUI
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - teamId
- *               - imageFile
- *               - videoFile
- *             properties:
- *               teamId:
- *                 type: integer
- *                 description: Team ID for the job
- *               imageFile:
- *                 type: string
- *                 description: Filename of the uploaded reference image
- *               videoFile:
- *                 type: string
- *                 description: Filename of the uploaded reference video
- *     responses:
- *       201:
- *         description: Job queued successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 job:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: string
- *                       format: uuid
- *                     status:
- *                       type: string
- *                       enum: [queued, running, completed, failed]
- *                     progress:
- *                       type: integer
- *                     progressMessage:
- *                       type: string
- *       400:
- *         description: Missing fields
- */
-router.post(
-  "/jobs",
-  // requireAuth,
-  comfyController.createJob.bind(comfyController)
+  comfyController.createUGCFaceSwapJob.bind(comfyController)
 );
 
 /**
@@ -131,8 +54,6 @@ router.post(
  *     summary: Get job status
  *     tags:
  *       - ComfyUI
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: jobId
@@ -148,7 +69,6 @@ router.post(
  */
 router.get(
   "/jobs/:jobId",
-  // requireAuth,
   comfyController.getJobStatus.bind(comfyController)
 );
 

@@ -144,6 +144,18 @@ class S3Service {
     }
   }
 
+  async uploadBuffer(buffer: Buffer, key: string, contentType: string): Promise<string> {
+    const command = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: key,
+      Body: buffer,
+      ContentType: contentType,
+    });
+
+    await s3Client.send(command);
+    return key;
+  }
+
   async downloadFile(key: string, localPath: string): Promise<void> {
     try {
       const command = new GetObjectCommand({

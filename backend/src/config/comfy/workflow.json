@@ -31,7 +31,7 @@
   },
   "227": {
     "inputs": {
-      "text": "highly realistic human face, natural skin texture, correct facial proportions,\nconsistent identity across frames, sharp focus,\ncinematic lighting, soft shadows, realistic color grading,\nnatural expression,\n\n\n\nno alteration to clothing or accessories,\n\nphotorealistic, high detail, smooth temporal consistency\n",
+      "text": "highly realistic human face, natural skin texture, correct facial proportions,\nconsistent identity across frames, sharp focus,\ncinematic lighting, soft shadows, realistic color grading,\nnatural expression,\n\npreserve original clothing exactly as in source video,\nsame clothes, same outfit, same shirt, same jacket,\nidentical clothing style and design throughout,\nno clothing replacement, keep original wardrobe,\npreserve exact clothing color and pattern,\n\nno hats, no headwear, bare head, natural hair visible,\nremove any hats or head coverings,\n\nphotorealistic, high detail, smooth temporal consistency\n",
       "clip": ["224", 0]
     },
     "class_type": "CLIPTextEncode",
@@ -41,7 +41,7 @@
   },
   "228": {
     "inputs": {
-      "text": "Vivid colors, overexposed, static, blurry details, subtitles,\nstyle, artwork, painting, illustration, still image,\nmotionless image, overall grayish tone,\nworst quality, low quality, JPEG compression artifacts,\nugly, incomplete, blurred movements\n\npoorly drawn face, facial distortion, asymmetrical face,\ndeformed, disfigured, malformed limbs,\nextra fingers, fused fingers, poorly drawn hands,\nthree legs, extra limbs,\n\ncluttered background, many people in the background,\nwalking backward, text,captions from the original video MUST BE REMOVED \n\nchanged hat, altered headwear, new hat,\ndifferent headwear, removed hat, added hat,\nheadwear swap, accessory swap, any hat or accessory\n\ndifferent clothing, altered outfit, clothing change,\nnew shirt, jacket change, collar change,\nwardrobe change, costume, outfit swap\n\nblur around character\n\nremove all headwear, hats, etc\n",
+      "text": "Vivid colors, overexposed, static, blurry details, subtitles,\nstyle, artwork, painting, illustration, still image,\nmotionless image, overall grayish tone,\nworst quality, low quality, JPEG compression artifacts,\nugly, incomplete, blurred movements,\n\npoorly drawn face, facial distortion, asymmetrical face,\ndeformed, disfigured, malformed limbs,\nextra fingers, fused fingers, poorly drawn hands,\nthree legs, extra limbs,\n\ncluttered background, many people in the background,\nwalking backward, text, captions from the original video MUST BE REMOVED,\n\nhat, cap, beanie, headwear, head covering, hood,\nbaseball cap, snapback, fedora, any hat type,\nkeep hat, preserve headwear, visible hat,\n\nclothing replacement, replaced clothes, new clothes,\ndifferent outfit, changed wardrobe, swapped clothing,\nnew shirt, new jacket, different shirt, different jacket,\ngenerated clothing, AI generated clothes,\nclothing that differs from source video,\n\ninconsistent clothing, changing clothing between frames,\nclothing color change, color shift in clothing,\naltered clothing appearance,\n\nblur around character\n",
       "clip": ["224", 0]
     },
     "class_type": "CLIPTextEncode",
@@ -282,7 +282,7 @@
       "force_rate": 16,
       "custom_width": 0,
       "custom_height": 0,
-      "frame_load_cap": 192,
+      "frame_load_cap": 0,
       "skip_first_frames": 0,
       "select_every_nth": 1,
       "format": "AnimateDiff"

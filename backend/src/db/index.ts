@@ -29,6 +29,9 @@ const initializeDatabase = () => {
 
     pool = new Pool({
       connectionString: databaseUrl,
+      max: 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000,
     });
 
     dbInstance = drizzle(pool, { schema });

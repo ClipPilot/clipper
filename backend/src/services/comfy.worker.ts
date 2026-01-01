@@ -1,18 +1,20 @@
 import WebSocket from "ws";
 import path from "path";
 import fs from "fs";
+import crypto from "crypto";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { db } from "../db";
 import { comfyJobs } from "@clipper/shared-db/src/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq, and, asc, desc, inArray } from "drizzle-orm";
 import { config } from "../config/env";
+import { s3Service } from "./s3.service";
+import { cutClip, mergeClips } from "./videoEditor.service";
 
-// Types
 interface GpuConfig {
   id: string;
   name: string;
   url: string;
-  cleanupUrl?: string; // URL to cleanup server running on the GPU pod
+  cleanupUrl?: string;
 }
 
 interface GpuConfigFile {
@@ -25,6 +27,11 @@ interface ComfyJob {
   imageFile: string;
   videoFile: string;
   status: string;
+  parentJobId?: string;
+  sequenceNumber?: number;
+  jobType: string;
+  originalVideoS3Key?: string;
+  totalChunks?: number;
 }
 
 interface ComfyOutput {
@@ -74,12 +81,17 @@ async function checkGpuAvailability(
 
     if (!res.ok) return { available: false };
 
-    const data = (await res.json()) as { exec_info?: { queue_remaining?: number } };
+    const data = (await res.json()) as {
+      exec_info?: { queue_remaining?: number };
+    };
     const queueRemaining = data.exec_info?.queue_remaining ?? 1;
 
     return { available: queueRemaining === 0, queueRemaining };
   } catch (err) {
-    console.error(`[comfy-worker] GPU ${gpu.id} check failed:`, (err as Error).message);
+    console.error(
+      `[comfy-worker] GPU ${gpu.id} check failed:`,
+      (err as Error).message
+    );
     return { available: false };
   }
 }
@@ -94,34 +106,101 @@ async function findAvailableGpu(): Promise<GpuConfig | null> {
   return null;
 }
 
+async function uploadFileToGpu(
+  gpu: GpuConfig,
+  filePath: string
+): Promise<string> {
+  const ext = path.extname(filePath);
+  const filename = `${crypto.randomUUID()}${ext}`;
+
+  const fileBuffer = fs.readFileSync(filePath);
+  const blob = new Blob([fileBuffer]);
+
+  const form = new FormData();
+  form.append("image", blob, filename);
+  form.append("type", "input");
+
+  const res = await fetch(`${gpu.url}/upload/image`, {
+    method: "POST",
+    body: form,
+  });
+
+  if (!res.ok) {
+    const responseBody = await res.text();
+    console.error(
+      `[comfy-worker] GPU upload failed for ${gpu.id}:`,
+      `\n  URL: ${gpu.url}/upload/image`,
+      `\n  Status: ${res.status} ${res.statusText}`,
+      `\n  Response: ${responseBody}`
+    );
+    throw new Error(`GPU upload failed (${res.status}): ${responseBody}`);
+  }
+
+  const data = (await res.json()) as { name: string };
+  console.log(
+    `[comfy-worker] Uploaded ${path.basename(filePath)} to GPU ${gpu.id} as ${data.name}`
+  );
+  return data.name;
+}
+
 // ─────────────────────────────────────────────────────────────
 // Database Operations
 // ─────────────────────────────────────────────────────────────
 
 async function getNextJob(): Promise<ComfyJob | null> {
-  return await db.transaction(async (tx) => {
-    const result = await tx.execute(sql`
-      SELECT id, team_id as "teamId", image_file as "imageFile", video_file as "videoFile", status
-      FROM comfy_jobs
-      WHERE status = 'queued'
-      ORDER BY created_at ASC
-      LIMIT 1
-      FOR UPDATE SKIP LOCKED
-    `);
+  // FIFO
+  const jobs = await db
+    .select({
+      id: comfyJobs.id,
+      teamId: comfyJobs.teamId,
+      imageFile: comfyJobs.imageFile,
+      videoFile: comfyJobs.videoFile,
+      status: comfyJobs.status,
+      parentJobId: comfyJobs.parentJobId,
+      sequenceNumber: comfyJobs.sequenceNumber,
+      jobType: comfyJobs.jobType,
+      originalVideoS3Key: comfyJobs.originalVideoS3Key,
+      totalChunks: comfyJobs.totalChunks,
+    })
+    .from(comfyJobs)
+    .where(
+      and(
+        eq(comfyJobs.status, "queued"),
+        inArray(comfyJobs.jobType, [
+          "single",
+          "ugc-face-swap-chunk",
+          "ugc-face-swap-parent",
+        ])
+      )
+    )
+    .orderBy(desc(comfyJobs.priority), asc(comfyJobs.createdAt))
+    .limit(1);
 
-    const job = result.rows[0] as unknown as ComfyJob | undefined;
-    if (!job) return null;
+  if (jobs.length === 0) return null;
 
-    await tx
-      .update(comfyJobs)
-      .set({
-        status: "running",
-        startedAt: new Date(),
-      })
-      .where(eq(comfyJobs.id, job.id));
+  const job = jobs[0];
 
-    return job;
-  });
+  // Mark as running
+  await db
+    .update(comfyJobs)
+    .set({
+      status: "running",
+      startedAt: new Date(),
+    })
+    .where(eq(comfyJobs.id, job.id));
+
+  return {
+    id: job.id,
+    teamId: job.teamId,
+    imageFile: job.imageFile,
+    videoFile: job.videoFile,
+    status: job.status,
+    parentJobId: job.parentJobId ?? undefined,
+    sequenceNumber: job.sequenceNumber ?? undefined,
+    jobType: job.jobType,
+    originalVideoS3Key: job.originalVideoS3Key ?? undefined,
+    totalChunks: job.totalChunks ?? undefined,
+  };
 }
 
 async function updateProgress(
@@ -161,7 +240,10 @@ async function completeJob(
 // ComfyUI Workflow
 // ─────────────────────────────────────────────────────────────
 
-function buildWorkflow(imageFile: string, videoFile: string): Record<string, unknown> {
+function buildWorkflow(
+  imageFile: string,
+  videoFile: string
+): Record<string, unknown> {
   const workflow = JSON.parse(JSON.stringify(workflowTemplate));
 
   // Inject reference image (node 311 - LoadImage)
@@ -224,23 +306,24 @@ function waitForCompletion(
     console.log(`[comfy-worker] Connecting to WebSocket`);
 
     const ws = new WebSocket(wsUrl);
-    let lastProgress = 0;
     let timeout: NodeJS.Timeout | null = null;
 
     const resetTimeout = () => {
       if (timeout) clearTimeout(timeout);
       // 30 minute timeout for long-running workflows
-      timeout = setTimeout(() => {
-        ws.close();
-        reject(new Error("Workflow execution timed out after 30 minutes"));
-      }, 30 * 60 * 1000);
+      timeout = setTimeout(
+        () => {
+          ws.close();
+          reject(new Error("Workflow execution timed out after 30 minutes"));
+        },
+        30 * 60 * 1000
+      );
     };
 
     resetTimeout();
 
     ws.on("open", () => {
       console.log("[comfy-worker] WebSocket connected");
-      updateProgress(jobId, 0, "Connected to GPU, starting execution...");
     });
 
     ws.on("message", async (rawData) => {
@@ -267,24 +350,14 @@ function waitForCompletion(
         };
 
         // Debug: log all message types
-        console.log(`[comfy-worker] WS message: ${msg.type}`, msg.data?.prompt_id === promptId ? "(our job)" : "");
+        console.log(
+          `[comfy-worker] WS message: ${msg.type}`,
+          msg.data?.prompt_id === promptId ? "(our job)" : ""
+        );
 
-        // Progress within a node (e.g., KSampler steps)
-        if (msg.type === "progress" && msg.data.prompt_id === promptId) {
-          const { value, max } = msg.data;
-          if (value !== undefined && max !== undefined) {
-            const percent = Math.round((value / max) * 100);
-            if (percent !== lastProgress) {
-              lastProgress = percent;
-              await updateProgress(jobId, percent, `Sampling step ${value}/${max}`);
-            }
-          }
-        }
-
-        // Execution started
+        // Execution started (log only, no DB write)
         if (msg.type === "execution_start" && msg.data.prompt_id === promptId) {
           console.log("[comfy-worker] Execution started");
-          await updateProgress(jobId, 5, "Execution started");
         }
 
         // Currently executing node (node=null means workflow finished)
@@ -292,7 +365,8 @@ function waitForCompletion(
           const node = msg.data.node;
           if (node) {
             const nodeMeta =
-              (workflowTemplate[node] as { _meta?: { title?: string } })?._meta?.title || node;
+              (workflowTemplate[node] as { _meta?: { title?: string } })?._meta
+                ?.title || node;
             console.log(`[comfy-worker] Executing: ${nodeMeta}`);
           } else {
             // node is null = all nodes finished executing
@@ -303,11 +377,16 @@ function waitForCompletion(
             // Fetch outputs from history
             const histRes = await fetch(`${gpu.url}/history/${promptId}`);
             const hist = (await histRes.json()) as Record<string, unknown>;
-            const promptData = hist[promptId] as { outputs?: WorkflowOutputs } | undefined;
+            const promptData = hist[promptId] as
+              | { outputs?: WorkflowOutputs }
+              | undefined;
             const outputs = promptData?.outputs;
 
             if (outputs) {
-              console.log("[comfy-worker] Got outputs from nodes:", Object.keys(outputs));
+              console.log(
+                "[comfy-worker] Got outputs from nodes:",
+                Object.keys(outputs)
+              );
               resolve(outputs);
             } else {
               reject(new Error("No outputs found in history"));
@@ -317,7 +396,10 @@ function waitForCompletion(
         }
 
         // Execution complete
-        if (msg.type === "execution_complete" && msg.data.prompt_id === promptId) {
+        if (
+          msg.type === "execution_complete" &&
+          msg.data.prompt_id === promptId
+        ) {
           console.log("[comfy-worker] Execution complete");
           if (timeout) clearTimeout(timeout);
           ws.close();
@@ -327,16 +409,27 @@ function waitForCompletion(
           const hist = (await histRes.json()) as Record<string, unknown>;
 
           // Debug: log full history response
-          console.log("[comfy-worker] History response:", JSON.stringify(hist, null, 2));
+          console.log(
+            "[comfy-worker] History response:",
+            JSON.stringify(hist, null, 2)
+          );
 
-          const promptData = hist[promptId] as { outputs?: WorkflowOutputs } | undefined;
+          const promptData = hist[promptId] as
+            | { outputs?: WorkflowOutputs }
+            | undefined;
           const outputs = promptData?.outputs;
 
-          console.log("[comfy-worker] Outputs keys:", outputs ? Object.keys(outputs) : "none");
+          console.log(
+            "[comfy-worker] Outputs keys:",
+            outputs ? Object.keys(outputs) : "none"
+          );
           if (outputs) {
             // Log each output node's structure
             for (const [nodeId, nodeOut] of Object.entries(outputs)) {
-              console.log(`[comfy-worker] Node ${nodeId} output keys:`, Object.keys(nodeOut));
+              console.log(
+                `[comfy-worker] Node ${nodeId} output keys:`,
+                Object.keys(nodeOut)
+              );
             }
             resolve(outputs);
           } else {
@@ -353,7 +446,10 @@ function waitForCompletion(
           reject(new Error(`Execution error: ${errMsg}`));
         }
       } catch (err) {
-        console.error("[comfy-worker] Error parsing message:", (err as Error).message);
+        console.error(
+          "[comfy-worker] Error parsing message:",
+          (err as Error).message
+        );
       }
     });
 
@@ -375,14 +471,18 @@ function waitForCompletion(
 // ─────────────────────────────────────────────────────────────
 
 function findVideoOutput(outputs: WorkflowOutputs): ComfyOutput | null {
-  console.log("[comfy-worker] Looking for video output in nodes:", Object.keys(outputs));
+  console.log(
+    "[comfy-worker] Looking for video output in nodes:",
+    Object.keys(outputs)
+  );
 
   // Check node 467 first (RIFE interpolated - higher quality)
   const node467 = outputs["467"] as Record<string, ComfyOutput[]> | undefined;
   if (node467) {
     console.log("[comfy-worker] Node 467 has keys:", Object.keys(node467));
     // VHS_VideoCombine can output to 'gifs', 'videos', or 'images'
-    const video = node467.gifs?.[0] || node467.videos?.[0] || node467.images?.[0];
+    const video =
+      node467.gifs?.[0] || node467.videos?.[0] || node467.images?.[0];
     if (video) {
       console.log("[comfy-worker] Found output in node 467:", video);
       return video;
@@ -393,7 +493,8 @@ function findVideoOutput(outputs: WorkflowOutputs): ComfyOutput | null {
   const node462 = outputs["462"] as Record<string, ComfyOutput[]> | undefined;
   if (node462) {
     console.log("[comfy-worker] Node 462 has keys:", Object.keys(node462));
-    const video = node462.gifs?.[0] || node462.videos?.[0] || node462.images?.[0];
+    const video =
+      node462.gifs?.[0] || node462.videos?.[0] || node462.images?.[0];
     if (video) {
       console.log("[comfy-worker] Found output in node 462:", video);
       return video;
@@ -403,7 +504,10 @@ function findVideoOutput(outputs: WorkflowOutputs): ComfyOutput | null {
   // Fallback: search all nodes for any video-like output
   for (const [nodeId, nodeOutput] of Object.entries(outputs)) {
     const output = nodeOutput as Record<string, ComfyOutput[]>;
-    console.log(`[comfy-worker] Checking node ${nodeId}, keys:`, Object.keys(output));
+    console.log(
+      `[comfy-worker] Checking node ${nodeId}, keys:`,
+      Object.keys(output)
+    );
 
     const video = output.gifs?.[0] || output.videos?.[0] || output.images?.[0];
     if (video && video.filename?.includes(".mp4")) {
@@ -416,7 +520,10 @@ function findVideoOutput(outputs: WorkflowOutputs): ComfyOutput | null {
   return null;
 }
 
-async function downloadOutput(gpu: GpuConfig, file: ComfyOutput): Promise<Buffer> {
+async function downloadOutput(
+  gpu: GpuConfig,
+  file: ComfyOutput
+): Promise<Buffer> {
   const url = new URL(`${gpu.url}/view`);
   url.searchParams.set("filename", file.filename);
   url.searchParams.set("type", file.type || "output");
@@ -466,12 +573,16 @@ async function cleanupAfterJob(
     });
     console.log(`[comfy-worker] Cleared history for prompt: ${promptId}`);
   } catch (err) {
-    console.log(`[comfy-worker] Could not clear history: ${(err as Error).message}`);
+    console.log(
+      `[comfy-worker] Could not clear history: ${(err as Error).message}`
+    );
   }
 
   // Delete actual files via cleanup server
   if (!gpu.cleanupUrl) {
-    console.log(`[comfy-worker] No cleanup URL configured for GPU ${gpu.id}, skipping file deletion`);
+    console.log(
+      `[comfy-worker] No cleanup URL configured for GPU ${gpu.id}, skipping file deletion`
+    );
     return;
   }
 
@@ -522,7 +633,6 @@ async function processJob(job: ComfyJob, gpu: GpuConfig): Promise<string> {
 
     // Submit to ComfyUI
     console.log(`[comfy-worker] Submitting to GPU ${gpu.id}`);
-    await updateProgress(job.id, 0, "Submitting workflow to GPU");
     promptId = await submitPrompt(gpu, workflow, clientId);
     console.log(`[comfy-worker] Prompt ID: ${promptId}`);
 
@@ -536,11 +646,11 @@ async function processJob(job: ComfyJob, gpu: GpuConfig): Promise<string> {
       throw new Error("No video output found in workflow results");
     }
 
-    await updateProgress(job.id, 95, "Downloading output video");
+    console.log(`[comfy-worker] Downloading output video`);
     const buffer = await downloadOutput(gpu, outputFile);
 
     // Upload to S3
-    await updateProgress(job.id, 98, "Uploading to storage");
+    console.log(`[comfy-worker] Uploading to S3`);
     const s3Key = `comfy-outputs/${job.teamId}/${job.id}.mp4`;
     const s3Url = await uploadToS3(buffer, s3Key);
 
@@ -559,46 +669,266 @@ async function processJob(job: ComfyJob, gpu: GpuConfig): Promise<string> {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Main Loop
+// UGC Face Swap Parent Job Processing
+// ─────────────────────────────────────────────────────────────
+
+const MAX_VIDEO_DURATION = 30;
+const CHUNK_DURATION = 10;
+
+interface ChunkInfo {
+  sequenceNumber: number;
+  startTime: number;
+  endTime: number;
+  localPath: string;
+}
+
+function calculateChunks(
+  duration: number,
+  chunkSize: number
+): Array<{ start: number; end: number }> {
+  const chunks: Array<{ start: number; end: number }> = [];
+  let start = 0;
+
+  while (start < duration) {
+    const end = Math.min(start + chunkSize, duration);
+    chunks.push({ start, end });
+    start = end;
+  }
+
+  return chunks;
+}
+
+async function processUGCFaceSwapParentJob(
+  job: ComfyJob,
+  gpu: GpuConfig
+): Promise<string> {
+  const outDir = path.join(process.cwd(), "output", `ugc-${Date.now()}`);
+  if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
+
+  const localVideoPath = path.join(outDir, `source_${Date.now()}.mp4`);
+  const localImagePath = path.join(outDir, `reference_${Date.now()}.jpg`);
+
+  try {
+    console.log(
+      `[comfy-worker] Processing UGC Face Swap parent job ${job.id} on GPU ${gpu.id}`
+    );
+
+    // imageFile = S3 key for image, videoFile = S3 key for video
+    const imageS3Key = job.imageFile;
+    const videoS3Key = job.videoFile;
+
+    // Step 1: Download video and image from S3
+    console.log(`[comfy-worker] Downloading ${imageS3Key} and ${videoS3Key}`);
+    await Promise.all([
+      s3Service.downloadFile(videoS3Key, localVideoPath),
+      s3Service.downloadFile(imageS3Key, localImagePath),
+    ]);
+
+    // Step 2: Get video duration and calculate chunks
+    // For now, we'll assume the video is already validated to be <= 30s by the controller
+    // We could use ffprobe here to get exact duration, but for simplicity use a fixed chunk strategy
+    const videoDuration = MAX_VIDEO_DURATION;
+    const chunks = calculateChunks(videoDuration, CHUNK_DURATION);
+    console.log(`[comfy-worker] Splitting video into ${chunks.length} chunks`);
+
+    // Step 3: Cut video into chunks
+    const chunkInfos: ChunkInfo[] = [];
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      const chunkPath = path.join(outDir, `chunk_${i}.mp4`);
+
+      try {
+        console.log(
+          `[comfy-worker] Cutting chunk ${i + 1}/${chunks.length}: ${chunk.start}s - ${chunk.end}s`
+        );
+        await cutClip(localVideoPath, chunkPath, chunk.start, chunk.end);
+
+        // Only add if file was created (video might be shorter than expected)
+        if (fs.existsSync(chunkPath) && fs.statSync(chunkPath).size > 0) {
+          chunkInfos.push({
+            sequenceNumber: i,
+            startTime: chunk.start,
+            endTime: chunk.end,
+            localPath: chunkPath,
+          });
+        }
+      } catch (err) {
+        // If chunk fails to cut, video is probably shorter - stop here
+        console.log(
+          `[comfy-worker] Chunk ${i} cut failed (video may be shorter), stopping`
+        );
+        break;
+      }
+    }
+
+    if (chunkInfos.length === 0) {
+      throw new Error("Failed to create any video chunks");
+    }
+
+    console.log(
+      `[comfy-worker] Created ${chunkInfos.length} chunks for processing`
+    );
+
+    // Step 4: Upload image to GPU once (shared across all chunks)
+    console.log(`[comfy-worker] Uploading reference image to GPU`);
+    const gpuImageName = await uploadFileToGpu(gpu, localImagePath);
+
+    // Step 5: Process each chunk through ComfyUI
+    const processedChunkPaths: string[] = [];
+
+    for (let i = 0; i < chunkInfos.length; i++) {
+      const chunk = chunkInfos[i];
+
+      console.log(`[comfy-worker] Processing chunk ${i + 1}/${chunkInfos.length}...`);
+
+      // Upload chunk video to GPU
+      const gpuVideoName = await uploadFileToGpu(gpu, chunk.localPath);
+
+      // Process chunk through ComfyUI
+      const clientId = crypto.randomUUID();
+      const workflow = buildWorkflow(gpuImageName, gpuVideoName);
+      const promptId = await submitPrompt(gpu, workflow, clientId);
+
+      console.log(`[comfy-worker] Chunk ${i} submitted, prompt: ${promptId}`);
+
+      // Wait for completion
+      const outputs = await waitForCompletion(gpu, promptId, clientId, job.id);
+      const outputFile = findVideoOutput(outputs);
+
+      if (!outputFile) {
+        throw new Error(`No output for chunk ${i}`);
+      }
+
+      // Download processed chunk
+      const buffer = await downloadOutput(gpu, outputFile);
+      const processedPath = path.join(outDir, `processed_${i}.mp4`);
+      fs.writeFileSync(processedPath, buffer);
+      processedChunkPaths.push(processedPath);
+
+      // Update progress after each chunk completes
+      const chunkProgress = Math.round(15 + ((i + 1) / chunkInfos.length) * 70);
+      await updateProgress(
+        job.id,
+        chunkProgress,
+        `Completed chunk ${i + 1}/${chunkInfos.length}`
+      );
+
+      console.log(`[comfy-worker] Chunk ${i + 1} processed successfully`);
+    }
+
+    // Step 6: Stitch chunks together
+    console.log(`[comfy-worker] Stitching final video...`);
+    const finalOutputPath = path.join(outDir, `final_${Date.now()}.mp4`);
+    await mergeClips(processedChunkPaths, finalOutputPath);
+    console.log(`[comfy-worker] Stitched ${processedChunkPaths.length} chunks`);
+
+    // Step 7: Upload final video to S3
+    console.log(`[comfy-worker] Uploading final video to S3...`);
+    const finalBuffer = fs.readFileSync(finalOutputPath);
+    const s3Key = `comfy-outputs/${job.teamId}/${job.id}/final.mp4`;
+    const s3Url = await uploadToS3(finalBuffer, s3Key);
+
+    console.log(`[comfy-worker] UGC Face Swap job ${job.id} completed!`);
+    return s3Url;
+  } finally {
+    // Cleanup local files
+    if (fs.existsSync(outDir)) {
+      fs.rmSync(outDir, { recursive: true, force: true });
+      console.log(`[comfy-worker] Cleaned up temp directory: ${outDir}`);
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Main Loop (Parallel GPU Processing)
 // ─────────────────────────────────────────────────────────────
 
 async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Track which GPUs are currently busy
+const busyGpus = new Set<string>();
+
+async function processJobOnGpu(job: ComfyJob, gpu: GpuConfig): Promise<void> {
+  busyGpus.add(gpu.id);
+
+  try {
+    console.log(
+      `[comfy-worker] Processing job ${job.id} (${job.jobType}) on GPU ${gpu.id}`
+    );
+
+    let outputUrl: string;
+
+    if (job.jobType === "ugc-face-swap-parent") {
+      outputUrl = await processUGCFaceSwapParentJob(job, gpu);
+    } else {
+      outputUrl = await processJob(job, gpu);
+    }
+
+    await completeJob(job.id, true, outputUrl);
+    console.log(`[comfy-worker] Job ${job.id} completed successfully on ${gpu.id}`);
+  } catch (err) {
+    console.error(
+      `[comfy-worker] Job ${job.id} failed on ${gpu.id}:`,
+      (err as Error).message
+    );
+    await completeJob(job.id, false, undefined, (err as Error).message);
+  } finally {
+    busyGpus.delete(gpu.id);
+  }
+}
+
+function getLocallyFreeGpu(): GpuConfig | null {
+  // Returns first GPU not currently tracked as busy (no HTTP call)
+  for (const gpu of gpuConfig.gpus) {
+    if (!busyGpus.has(gpu.id)) {
+      return gpu;
+    }
+  }
+  return null;
+}
+
 async function runWorkerLoop(): Promise<void> {
-  console.log("[comfy-worker] Starting ComfyUI worker loop");
+  console.log("[comfy-worker] Starting ComfyUI worker loop (parallel mode)");
   console.log(`[comfy-worker] Loaded ${gpuConfig.gpus.length} GPU(s)`);
 
   while (isRunning) {
     try {
-      // Check for available GPU first
-      const gpu = await findAvailableGpu();
-      if (!gpu) {
+      // Step 1: Check if ANY GPU is locally free (no HTTP call)
+      const locallyFreeGpu = getLocallyFreeGpu();
+      if (!locallyFreeGpu) {
+        // All GPUs busy - sleep longer, no need to poll
+        await sleep(5000);
+        continue;
+      }
+
+      // Step 2: Only query DB if we have a potentially free GPU
+      const job = await getNextJob();
+      if (!job) {
+        // No jobs - sleep longer
+        await sleep(5000);
+        continue;
+      }
+
+      // Step 3: Only NOW check GPU HTTP availability (we have a job to run)
+      const status = await checkGpuAvailability(locallyFreeGpu);
+      if (!status.available) {
+        // GPU not actually ready - put job back and try again
         await sleep(2000);
         continue;
       }
 
-      // Get next job from database
-      const job = await getNextJob();
-      if (!job) {
-        await sleep(3000);
-        continue;
-      }
+      // Step 4: Dispatch job WITHOUT awaiting - allows parallel processing
+      processJobOnGpu(job, locallyFreeGpu).catch((err) => {
+        console.error(`[comfy-worker] Unexpected error:`, err);
+      });
 
-      console.log(`[comfy-worker] Processing job ${job.id} on GPU ${gpu.id}`);
-
-      try {
-        const outputUrl = await processJob(job, gpu);
-        await completeJob(job.id, true, outputUrl);
-        console.log(`[comfy-worker] Job ${job.id} completed successfully`);
-      } catch (err) {
-        console.error(`[comfy-worker] Job ${job.id} failed:`, (err as Error).message);
-        await completeJob(job.id, false, undefined, (err as Error).message);
-      }
+      // Small delay before checking for more work
+      await sleep(1000);
     } catch (err) {
       console.error("[comfy-worker] Main loop error:", (err as Error).message);
-      await sleep(5000);
+      await sleep(10000);
     }
   }
 
