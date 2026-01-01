@@ -398,7 +398,7 @@ interface SelectedCharacter {
 
 export default function UGCStudioPage() {
   const selectedTeam = useAtomValue(selectedTeamAtom);
-  const [currentView, setCurrentView] = useState<StudioView>("menu");
+  const [currentView, setCurrentView] = useState<StudioView>("face-swap"); // default: menu
   const [video, setVideo] = useState<UploadedFile | null>(null);
   const [selectedCharacter, setSelectedCharacter] = useState<SelectedCharacter | null>(null);
   // Keep for backwards compatibility with existing logic
@@ -689,14 +689,14 @@ export default function UGCStudioPage() {
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header with Back Button */}
         <div className="flex items-center gap-4">
-          <Button
+          {/* <Button
             variant="flat"
             isIconOnly
             className="bg-surface-base border border-border-base"
             onPress={resetFaceSwap}
           >
             <Icon icon="solar:arrow-left-bold" width={20} />
-          </Button>
+          </Button> */}
           <div>
             <h1 className="text-2xl font-bold text-text-primary">Face Swap</h1>
             <p className="text-text-secondary text-sm">
