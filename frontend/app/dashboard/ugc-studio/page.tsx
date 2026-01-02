@@ -1065,10 +1065,10 @@ export default function UGCStudioPage() {
                         {EXAMPLE_CHARACTERS.map((char) => (
                           <button
                             key={char.id}
-                            onClick={() => handleExampleSelect(char.id, char.src)}
+                            onClick={() => handleExampleSelect(String(char.id), char.src)}
                             disabled={loadingCharacterId !== null}
                             className={`aspect-square rounded-lg overflow-hidden border-2 transition-all focus:outline-none ${
-                              loadingCharacterId === char.id
+                              loadingCharacterId === String(char.id)
                                 ? "border-purple-500 opacity-50"
                                 : "border-transparent hover:border-purple-500 hover:scale-105"
                             }`}
