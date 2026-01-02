@@ -521,7 +521,7 @@ const FaceSwapJobCard = memo(function FaceSwapJobCard({ job, onClick }: { job: F
   );
 }, (prev, next) => prev.job.id === next.job.id && prev.job.status === next.job.status && prev.job.progress === next.job.progress && prev.job.outputUrl === next.job.outputUrl);
 
-function MyFaceSwapsSection({ teamId }: { teamId: number }) {
+function MyFaceSwapsSection({ teamId, refreshTrigger }: { teamId: number; refreshTrigger?: number }) {
   const [jobs, setJobs] = useState<FaceSwapJob[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -567,6 +567,10 @@ function MyFaceSwapsSection({ teamId }: { teamId: number }) {
       leaveTeam(teamId);
     };
   }, [teamId, fetchJobs]);
+
+  useEffect(() => {
+    if (refreshTrigger) fetchJobs();
+  }, [refreshTrigger, fetchJobs]);
 
   useEffect(() => {
     if (selectedJob && isModalOpen) {
@@ -626,19 +630,44 @@ function MyFaceSwapsSection({ teamId }: { teamId: number }) {
   );
 }
 
+// Example characters from public/characters folder
+const EXAMPLE_CHARACTERS = [
+  { id: 1, src: "/characters/1.jpg" },
+  { id: 2, src: "/characters/2.jpg" },
+  { id: 3, src: "/characters/3.jpg" },
+  { id: 4, src: "/characters/4.jpg" },
+  { id: 5, src: "/characters/5.jpg" },
+  { id: 6, src: "/characters/6.jpg" },
+  { id: 7, src: "/characters/7.jpg" },
+  { id: 8, src: "/characters/8.jpg" },
+];
+
+interface SelectedCharacter {
+  type: "example" | "uploaded";
+  src: string;
+  file?: File;
+}
+
 export default function UGCStudioPage() {
   const selectedTeam = useAtomValue(selectedTeamAtom);
-  const [currentView, setCurrentView] = useState<StudioView>("menu");
+  const [currentView, setCurrentView] = useState<StudioView>("face-swap"); // default: menu
   const [video, setVideo] = useState<UploadedFile | null>(null);
-  const [characterImage, setCharacterImage] = useState<UploadedFile | null>(null);
+  const [selectedCharacter, setSelectedCharacter] = useState<SelectedCharacter | null>(null);
+  // Keep for backwards compatibility with existing logic
+  const characterImage = selectedCharacter ? {
+    file: selectedCharacter.file || new File([], "example.jpg"),
+    preview: selectedCharacter.src
+  } : null;
   const [videoDuration, setVideoDuration] = useState(0);
   const [clipRange, setClipRange] = useState<[number, number]>([0, 30]);
   const [isDraggingVideo, setIsDraggingVideo] = useState(false);
   const [isDraggingImage, setIsDraggingImage] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [loadingCharacterId, setLoadingCharacterId] = useState<string | null>(null);
   const [processingStatus, setProcessingStatus] = useState("");
   const [submittedJobId, setSubmittedJobId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [jobRefreshTrigger, setJobRefreshTrigger] = useState(0);
 
   const videoInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -680,10 +709,28 @@ export default function UGCStudioPage() {
       if (characterImage?.preview) URL.revokeObjectURL(characterImage.preview);
 
       const preview = URL.createObjectURL(file);
-      setCharacterImage({ file, preview });
+      setSelectedCharacter({ type: "uploaded", src: preview, file });
     },
-    [characterImage]
+    [selectedCharacter]
   );
+
+  const handleExampleSelect = async (id: string, src: string) => {
+    if (selectedCharacter?.type === "uploaded" && selectedCharacter.src) {
+      URL.revokeObjectURL(selectedCharacter.src);
+    }
+    setLoadingCharacterId(id);
+    try {
+      const response = await fetch(src);
+      const blob = await response.blob();
+      const filename = src.split("/").pop() || "character.jpg";
+      const file = new File([blob], filename, { type: blob.type });
+      setSelectedCharacter({ type: "example", src, file });
+    } catch {
+      setSelectedCharacter({ type: "example", src });
+    } finally {
+      setLoadingCharacterId(null);
+    }
+  };
 
   const handleVideoDrop = useCallback(
     (e: React.DragEvent) => {
@@ -738,6 +785,7 @@ export default function UGCStudioPage() {
       const data = await response.json();
       setSubmittedJobId(data.jobId);
       setProcessingStatus("Job submitted! Processing...");
+      setJobRefreshTrigger((prev) => prev + 1);
 
       addToast({
         title: "Face swap started!",
@@ -748,7 +796,7 @@ export default function UGCStudioPage() {
       if (video?.preview) URL.revokeObjectURL(video.preview);
       if (characterImage?.preview) URL.revokeObjectURL(characterImage.preview);
       setVideo(null);
-      setCharacterImage(null);
+      setSelectedCharacter(null);
       setVideoDuration(0);
       setClipRange([0, 30]);
     } catch (err) {
@@ -768,9 +816,11 @@ export default function UGCStudioPage() {
 
   const resetFaceSwap = () => {
     if (video?.preview) URL.revokeObjectURL(video.preview);
-    if (characterImage?.preview) URL.revokeObjectURL(characterImage.preview);
+    if (selectedCharacter?.type === "uploaded" && selectedCharacter.src) {
+      URL.revokeObjectURL(selectedCharacter.src);
+    }
     setVideo(null);
-    setCharacterImage(null);
+    setSelectedCharacter(null);
     setVideoDuration(0);
     setClipRange([0, 30]);
     setCurrentView("menu");
@@ -847,7 +897,7 @@ export default function UGCStudioPage() {
           {selectedTeam?.id && (
             <div className="space-y-4">
               <h2 className="text-xl font-semibold text-text-primary">My Face Swaps</h2>
-              <MyFaceSwapsSection teamId={selectedTeam.id} />
+              <MyFaceSwapsSection teamId={selectedTeam.id} refreshTrigger={jobRefreshTrigger} />
             </div>
           )}
         </div>
@@ -859,9 +909,14 @@ export default function UGCStudioPage() {
     <div className="min-h-screen bg-surface-dark p-6 lg:p-8">
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex items-center gap-4">
-          <Button variant="flat" isIconOnly className="bg-surface-base border border-border-base" onPress={resetFaceSwap}>
+          {/* <Button
+            variant="flat"
+            isIconOnly
+            className="bg-surface-base border border-border-base"
+            onPress={resetFaceSwap}
+          >
             <Icon icon="solar:arrow-left-bold" width={20} />
-          </Button>
+          </Button> */}
           <div>
             <h1 className="text-2xl font-bold text-text-primary">Face Swap</h1>
             <p className="text-text-secondary text-sm">Upload a video and swap faces with a character</p>
@@ -949,7 +1004,7 @@ export default function UGCStudioPage() {
             {selectedTeam?.id && (
               <div className="space-y-4">
                 <h2 className="text-lg font-semibold text-text-primary">My Face Swaps</h2>
-                <MyFaceSwapsSection teamId={selectedTeam.id} />
+                <MyFaceSwapsSection teamId={selectedTeam.id} refreshTrigger={jobRefreshTrigger} />
               </div>
             )}
           </div>
@@ -967,62 +1022,129 @@ export default function UGCStudioPage() {
                   </div>
                 </div>
               </CardHeader>
-              <CardBody className="pt-4">
-                {characterImage ? (
-                  <div className="space-y-4">
+              <CardBody className="pt-4 space-y-4">
+                {/* Selected Character Display */}
+                {selectedCharacter && (
+                  <div className="space-y-3">
                     <div className="relative rounded-xl overflow-hidden bg-surface-elevated aspect-square">
-                      <img src={characterImage.preview} alt="Character" className="w-full h-full object-cover" />
+                      <img src={characterImage ? characterImage.preview : ""} alt="Character" className="w-full h-full object-cover" />
                       <Button
                         isIconOnly
                         size="sm"
                         variant="flat"
                         className="absolute top-2 right-2 bg-surface-base/80"
                         onPress={() => {
-                          if (characterImage.preview) URL.revokeObjectURL(characterImage.preview);
-                          setCharacterImage(null);
+                          if (characterImage && characterImage.preview) URL.revokeObjectURL(characterImage.preview);
+                          setSelectedCharacter(null);
                         }}
                       >
                         <Icon icon="solar:close-circle-bold" width={18} />
                       </Button>
                     </div>
-                    <div className="flex items-center justify-center gap-2 text-sm text-text-secondary">
-                      <Icon icon="solar:gallery-bold-duotone" width={16} />
-                      <span className="truncate">{characterImage.file.name}</span>
-                    </div>
-                  </div>
-                ) : (
-                  <div
-                    className={`border-2 border-dashed rounded-xl p-6 transition-colors ${
-                      isDraggingImage ? "border-purple-500 bg-purple-500/10" : "border-border-base hover:border-purple-500/50"
-                    }`}
-                    onDragOver={(e) => { e.preventDefault(); setIsDraggingImage(true); }}
-                    onDragLeave={(e) => { e.preventDefault(); setIsDraggingImage(false); }}
-                    onDrop={handleImageDrop}
-                  >
-                    <div className="flex flex-col items-center space-y-3">
-                      <div className="w-12 h-12 bg-purple-500/10 rounded-full flex items-center justify-center">
-                        <Icon icon="solar:gallery-add-bold-duotone" className="text-2xl text-purple-500" />
+                    {selectedCharacter.type === "uploaded" && selectedCharacter.file && (
+                      <div className="flex items-center justify-center gap-2 text-sm text-text-secondary">
+                        <Icon icon="solar:gallery-bold-duotone" width={16} />
+                        <span className="truncate">{selectedCharacter.file.name}</span>
                       </div>
-                      <div className="text-center">
-                        <p className="text-sm font-medium text-text-primary">Drop character image</p>
-                        <p className="text-xs text-text-tertiary mt-1">JPG, PNG, WebP</p>
+                    )}
+                    {selectedCharacter.type === "example" && (
+                      <div className="flex items-center justify-center gap-2 text-sm text-text-secondary">
+                        <Icon icon="solar:star-bold-duotone" width={16} />
+                        <span>Example Character</span>
                       </div>
-                      <input
-                        ref={imageInputRef}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleImageSelect(file);
-                          e.target.value = "";
-                        }}
-                      />
-                      <Button size="sm" variant="flat" className="bg-purple-500/20 text-purple-500" onPress={() => imageInputRef.current?.click()} startContent={<Icon icon="solar:folder-open-bold" />}>
-                        Browse
-                      </Button>
-                    </div>
+                    )}
                   </div>
+                )}
+
+                {/* Example Characters Grid */}
+                {!selectedCharacter && (
+                  <>
+                    <div>
+                      <p className="text-xs text-text-tertiary mb-2">Choose an example</p>
+                      <div className="grid grid-cols-4 gap-2">
+                        {EXAMPLE_CHARACTERS.map((char) => (
+                          <button
+                            key={char.id}
+                            onClick={() => handleExampleSelect(String(char.id), char.src)}
+                            disabled={loadingCharacterId !== null}
+                            className={`aspect-square rounded-lg overflow-hidden border-2 transition-all focus:outline-none ${
+                              loadingCharacterId === String(char.id)
+                                ? "border-purple-500 opacity-50"
+                                : "border-transparent hover:border-purple-500 hover:scale-105"
+                            }`}
+                          >
+                            <img
+                              src={char.src}
+                              alt={`Character ${char.id}`}
+                              className="w-full h-full object-cover"
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 h-px bg-border-base" />
+                      <span className="text-xs text-text-muted">or</span>
+                      <div className="flex-1 h-px bg-border-base" />
+                    </div>
+
+                    {/* Upload Custom */}
+                    <div
+                      className={`border-2 border-dashed rounded-xl p-4 transition-colors ${
+                        isDraggingImage
+                          ? "border-purple-500 bg-purple-500/10"
+                          : "border-border-base hover:border-purple-500/50"
+                      }`}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setIsDraggingImage(true);
+                      }}
+                      onDragLeave={(e) => {
+                        e.preventDefault();
+                        setIsDraggingImage(false);
+                      }}
+                      onDrop={handleImageDrop}
+                    >
+                      <div className="flex flex-col items-center space-y-2">
+                        <div className="w-10 h-10 bg-purple-500/10 rounded-full flex items-center justify-center">
+                          <Icon
+                            icon="solar:gallery-add-bold-duotone"
+                            className="text-xl text-purple-500"
+                          />
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm font-medium text-text-primary">
+                            Upload your own
+                          </p>
+                          <p className="text-xs text-text-tertiary">
+                            JPG, PNG, WebP
+                          </p>
+                        </div>
+                        <input
+                          ref={imageInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleImageSelect(file);
+                            e.target.value = "";
+                          }}
+                        />
+                        <Button
+                          size="sm"
+                          variant="flat"
+                          className="bg-purple-500/20 text-purple-500"
+                          onPress={() => imageInputRef.current?.click()}
+                          startContent={<Icon icon="solar:folder-open-bold" />}
+                        >
+                          Browse
+                        </Button>
+                      </div>
+                    </div>
+                  </>
                 )}
               </CardBody>
             </Card>
