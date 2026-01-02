@@ -123,6 +123,11 @@ export const UnsavedClipCard: React.FC<UnsavedClipCardProps> = ({
           isLoading={saving}
           isDisabled={saving}
           startContent={!saving && <Icon icon="solar:diskette-bold" />}
+          endContent={!saving && (
+            <span className="ml-1 px-1.5 py-0.5 text-xs bg-white/20 rounded-full">
+              1 Credit
+            </span>
+          )}
         >
           {saving ? "Saving..." : "Save"}
         </Button>

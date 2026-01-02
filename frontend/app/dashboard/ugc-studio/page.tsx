@@ -1644,6 +1644,11 @@ export default function UGCStudioPage() {
                           width={20}
                         />
                       }
+                      endContent={
+                        <span className="px-1.5 py-0.5 text-xs bg-white/20 rounded-full">
+                          5 Credits
+                        </span>
+                      }
                     >
                       Generate Face Swap
                     </Button>
