@@ -1,7 +1,21 @@
 "use client";
 
 import React, { useState, useCallback, useRef, useEffect, memo } from "react";
-import { Button, Card, CardBody, CardHeader, Progress, Chip, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Pagination, addToast } from "@heroui/react";
+import {
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+  Progress,
+  Chip,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  Pagination,
+  addToast,
+} from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAtomValue } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
@@ -50,7 +64,9 @@ function VideoTrimmer({
   const timelineRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [isDragging, setIsDragging] = useState<"start" | "end" | "segment" | "playhead" | null>(null);
+  const [isDragging, setIsDragging] = useState<
+    "start" | "end" | "segment" | "playhead" | null
+  >(null);
   const [dragStartX, setDragStartX] = useState(0);
   const [dragStartTrimStart, setDragStartTrimStart] = useState(0);
   const [dragStartTrimEnd, setDragStartTrimEnd] = useState(0);
@@ -208,7 +224,17 @@ function VideoTrimmer({
         }
       }
     },
-    [isDragging, duration, trimStart, trimEnd, maxDuration, onTrimChange, dragStartX, dragStartTrimStart, dragStartTrimEnd]
+    [
+      isDragging,
+      duration,
+      trimStart,
+      trimEnd,
+      maxDuration,
+      onTrimChange,
+      dragStartX,
+      dragStartTrimStart,
+      dragStartTrimEnd,
+    ]
   );
 
   const handleTimelineMouseUp = useCallback(() => {
@@ -350,11 +376,15 @@ function VideoTrimmer({
           <div className="flex items-center gap-4 text-sm">
             <div className="flex items-center gap-2">
               <span className="text-text-tertiary">Start:</span>
-              <span className="text-text-primary font-mono">{formatTime(trimStart)}</span>
+              <span className="text-text-primary font-mono">
+                {formatTime(trimStart)}
+              </span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-text-tertiary">End:</span>
-              <span className="text-text-primary font-mono">{formatTime(trimEnd)}</span>
+              <span className="text-text-primary font-mono">
+                {formatTime(trimEnd)}
+              </span>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -366,7 +396,9 @@ function VideoTrimmer({
             >
               {formatTime(clipDuration)}
             </span>
-            <span className="text-text-muted text-xs">/ {maxDuration}s max</span>
+            <span className="text-text-muted text-xs">
+              / {maxDuration}s max
+            </span>
           </div>
         </div>
 
@@ -383,19 +415,27 @@ function VideoTrimmer({
 
 function getStatusColor(status: FaceSwapJob["status"]) {
   switch (status) {
-    case "completed": return "success";
-    case "failed": return "danger";
-    case "running": return "primary";
-    default: return "default";
+    case "completed":
+      return "success";
+    case "failed":
+      return "danger";
+    case "running":
+      return "primary";
+    default:
+      return "default";
   }
 }
 
 function getStatusIcon(status: FaceSwapJob["status"]) {
   switch (status) {
-    case "completed": return "solar:check-circle-bold";
-    case "failed": return "solar:close-circle-bold";
-    case "running": return "solar:refresh-circle-bold-duotone";
-    default: return "solar:clock-circle-bold";
+    case "completed":
+      return "solar:check-circle-bold";
+    case "failed":
+      return "solar:close-circle-bold";
+    case "running":
+      return "solar:refresh-circle-bold-duotone";
+    default:
+      return "solar:clock-circle-bold";
   }
 }
 
@@ -406,62 +446,154 @@ function formatDuration(start: string, end: string | null): string {
   return `${Math.floor(duration / 60)}m ${Math.round(duration % 60)}s`;
 }
 
-function FaceSwapDetailModal({ job, isOpen, onClose }: { job: FaceSwapJob | null; isOpen: boolean; onClose: () => void }) {
+function FaceSwapDetailModal({
+  job,
+  isOpen,
+  onClose,
+}: {
+  job: FaceSwapJob | null;
+  isOpen: boolean;
+  onClose: () => void;
+}) {
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    if (!job?.outputUrl || isDownloading) return;
+
+    setIsDownloading(true);
+    try {
+      const response = await fetch(job.outputUrl);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = `face-swap-${job.id}.mp4`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error("Failed to download video:", error);
+      addToast({
+        title: "Download failed",
+        description: "Failed to download the video. Please try again.",
+        color: "danger",
+      });
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   if (!job) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="2xl" classNames={{ base: "bg-surface-base border border-border-base", header: "border-b border-border-base", footer: "border-t border-border-base" }}>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="2xl"
+      classNames={{
+        base: "bg-surface-base border border-border-base",
+        header: "border-b border-border-base",
+        footer: "border-t border-border-base",
+      }}
+    >
       <ModalContent>
         <ModalHeader className="flex items-center gap-3">
-          <Icon icon="solar:mask-happly-bold-duotone" className="text-accent-400" width={24} />
+          <Icon
+            icon="solar:mask-happly-bold-duotone"
+            className="text-accent-400"
+            width={24}
+          />
           <span>Face Swap Details</span>
         </ModalHeader>
         <ModalBody className="py-6">
           <div className="space-y-6">
             {job.status === "completed" && job.outputUrl ? (
               <div className="rounded-xl overflow-hidden bg-black aspect-video">
-                <video src={job.outputUrl} className="w-full h-full object-contain" controls playsInline />
+                <video
+                  src={job.outputUrl}
+                  className="w-full h-full object-contain"
+                  controls
+                  playsInline
+                />
               </div>
             ) : (
               <div className="rounded-xl bg-surface-elevated aspect-video flex items-center justify-center">
                 <div className="text-center space-y-3">
-                  <Icon icon={getStatusIcon(job.status)} className={`text-5xl ${job.status === "running" ? "animate-spin text-accent-400" : "text-text-tertiary"}`} />
+                  <Icon
+                    icon={getStatusIcon(job.status)}
+                    className={`text-5xl ${job.status === "running" ? "animate-spin text-accent-400" : "text-text-tertiary"}`}
+                  />
                   {job.status === "running" && (
                     <div className="space-y-2 px-8">
-                      <Progress value={job.progress || 0} size="md" color="primary" className="max-w-xs mx-auto" />
-                      <p className="text-sm text-text-secondary">{job.progressMessage || "Processing..."}</p>
+                      <Progress
+                        value={job.progress || 0}
+                        size="md"
+                        color="primary"
+                        className="max-w-xs mx-auto"
+                      />
+                      <p className="text-sm text-text-secondary">
+                        {job.progressMessage || "Processing..."}
+                      </p>
                     </div>
                   )}
-                  {job.status === "failed" && <p className="text-sm text-red-500 px-4">{job.errorMessage || "Processing failed"}</p>}
-                  {job.status === "queued" && <p className="text-sm text-text-secondary">Waiting for GPU...</p>}
+                  {job.status === "failed" && (
+                    <p className="text-sm text-red-500 px-4">
+                      {job.errorMessage || "Processing failed"}
+                    </p>
+                  )}
+                  {job.status === "queued" && (
+                    <p className="text-sm text-text-secondary">Queuing Job.</p>
+                  )}
                 </div>
               </div>
             )}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <p className="text-xs text-text-tertiary">Status</p>
-                <Chip size="sm" color={getStatusColor(job.status)} variant="flat">{job.status}</Chip>
+                <Chip
+                  size="sm"
+                  color={getStatusColor(job.status)}
+                  variant="flat"
+                >
+                  {job.status}
+                </Chip>
               </div>
               <div className="space-y-1">
                 <p className="text-xs text-text-tertiary">Created</p>
-                <p className="text-sm text-text-primary">{new Date(job.createdAt).toLocaleString()}</p>
+                <p className="text-sm text-text-primary">
+                  {new Date(job.createdAt).toLocaleString()}
+                </p>
               </div>
               <div className="space-y-1">
                 <p className="text-xs text-text-tertiary">Processing Time</p>
-                <p className="text-sm text-text-primary">{formatDuration(job.createdAt, job.finishedAt)}</p>
+                <p className="text-sm text-text-primary">
+                  {formatDuration(job.createdAt, job.finishedAt)}
+                </p>
               </div>
               <div className="space-y-1">
                 <p className="text-xs text-text-tertiary">Job ID</p>
-                <p className="text-sm text-text-primary font-mono truncate">{job.id}</p>
+                <p className="text-sm text-text-primary font-mono truncate">
+                  {job.id}
+                </p>
               </div>
             </div>
           </div>
         </ModalBody>
         <ModalFooter>
-          <Button variant="flat" onPress={onClose}>Close</Button>
+          <Button variant="flat" onPress={onClose}>
+            Close
+          </Button>
           {job.status === "completed" && job.outputUrl && (
-            <Button as="a" href={job.outputUrl} target="_blank" rel="noopener noreferrer" color="primary" startContent={<Icon icon="solar:download-bold" width={18} />}>
-              Download Video
+            <Button
+              color="primary"
+              onPress={handleDownload}
+              isLoading={isDownloading}
+              startContent={!isDownloading && <Icon icon="solar:download-bold" width={18} />}
+            >
+              {isDownloading ? "Downloading..." : "Download Video"}
             </Button>
           )}
         </ModalFooter>
@@ -470,58 +602,151 @@ function FaceSwapDetailModal({ job, isOpen, onClose }: { job: FaceSwapJob | null
   );
 }
 
-const FaceSwapJobCard = memo(function FaceSwapJobCard({ job, onClick }: { job: FaceSwapJob; onClick: () => void }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+const FaceSwapJobCard = memo(
+  function FaceSwapJobCard({
+    job,
+    onClick,
+  }: {
+    job: FaceSwapJob;
+    onClick: () => void;
+  }) {
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const [isDownloading, setIsDownloading] = useState(false);
 
-  return (
-    <Card className="bg-surface-base border border-border-base hover:border-accent-400/30 transition-colors cursor-pointer" isPressable onPress={onClick}>
-      <CardBody className="p-4">
-        <div className="flex gap-4">
-          <div className="w-32 h-20 rounded-lg bg-surface-elevated overflow-hidden flex-shrink-0">
-            {job.status === "completed" && job.outputUrl ? (
-              <video
-                ref={videoRef}
-                src={job.outputUrl}
-                className="w-full h-full object-cover"
-                muted
-                playsInline
-                preload="metadata"
-                onMouseEnter={() => videoRef.current?.play()}
-                onMouseLeave={() => {
-                  if (videoRef.current) {
-                    videoRef.current.pause();
-                    videoRef.current.currentTime = 0;
-                  }
-                }}
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <Icon icon={getStatusIcon(job.status)} className={`text-2xl ${job.status === "running" ? "animate-spin text-accent-400" : "text-text-tertiary"}`} />
-              </div>
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-2">
-              <Chip size="sm" color={getStatusColor(job.status)} variant="flat">{job.status}</Chip>
-              <span className="text-xs text-text-tertiary">{new Date(job.createdAt).toLocaleDateString()}</span>
+    const handleDownload = async (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!job.outputUrl || isDownloading) return;
+
+      setIsDownloading(true);
+      try {
+        const response = await fetch(job.outputUrl);
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = `face-swap-${job.id}.mp4`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        URL.revokeObjectURL(blobUrl);
+      } catch (error) {
+        console.error("Failed to download video:", error);
+        addToast({
+          title: "Download failed",
+          description: "Failed to download the video. Please try again.",
+          color: "danger",
+        });
+      } finally {
+        setIsDownloading(false);
+      }
+    };
+
+    return (
+      <Card
+        className="bg-surface-base border border-border-base hover:border-accent-400/30 transition-colors cursor-pointer"
+        isPressable
+        onPress={onClick}
+      >
+        <CardBody className="p-4">
+          <div className="flex gap-4">
+            <div className="w-32 h-20 rounded-lg bg-surface-elevated overflow-hidden flex-shrink-0">
+              {job.status === "completed" && job.outputUrl ? (
+                <video
+                  ref={videoRef}
+                  src={job.outputUrl}
+                  className="w-full h-full object-cover"
+                  muted
+                  playsInline
+                  preload="metadata"
+                  onMouseEnter={() => videoRef.current?.play()}
+                  onMouseLeave={() => {
+                    if (videoRef.current) {
+                      videoRef.current.pause();
+                      videoRef.current.currentTime = 0;
+                    }
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <Icon
+                    icon={getStatusIcon(job.status)}
+                    className={`text-2xl ${job.status === "running" ? "animate-spin text-accent-400" : "text-text-tertiary"}`}
+                  />
+                </div>
+              )}
             </div>
-            {job.status === "running" && (
-              <div className="space-y-1">
-                <Progress value={job.progress || 0} size="sm" color="primary" />
-                <p className="text-xs text-text-tertiary">{job.progressMessage || "Processing..."}</p>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <div className="flex items-center gap-2">
+                  <Chip
+                    size="sm"
+                    color={getStatusColor(job.status)}
+                    variant="flat"
+                  >
+                    {job.status}
+                  </Chip>
+                  <span className="text-xs text-text-tertiary">
+                    {new Date(job.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+                {job.status === "completed" && job.outputUrl && (
+                  <Button
+                    size="sm"
+                    variant="flat"
+                    isIconOnly
+                    className="bg-accent-400/20 text-accent-400 min-w-8 w-8 h-8"
+                    onPress={handleDownload as any}
+                    isLoading={isDownloading}
+                  >
+                    {!isDownloading && <Icon icon="solar:download-bold" width={16} />}
+                  </Button>
+                )}
               </div>
-            )}
-            {job.status === "failed" && <p className="text-xs text-red-500 truncate">{job.errorMessage || "Processing failed"}</p>}
-            {job.status === "completed" && <p className="text-xs text-text-secondary">Click to view</p>}
-            {job.status === "queued" && <p className="text-xs text-text-tertiary">Waiting for GPU...</p>}
+              {job.status === "running" && (
+                <div className="space-y-1">
+                  <Progress
+                    value={job.progress || 0}
+                    size="sm"
+                    color="primary"
+                  />
+                  <p className="text-xs text-text-tertiary">
+                    {job.progressMessage || "Processing..."}
+                  </p>
+                </div>
+              )}
+              {job.status === "failed" && (
+                <p className="text-xs text-red-500 truncate">
+                  {job.errorMessage || "Processing failed"}
+                </p>
+              )}
+              {job.status === "completed" && (
+                <p className="text-xs text-text-secondary">Click to view</p>
+              )}
+              {job.status === "queued" && (
+                <p className="text-xs text-text-tertiary">Queuing Job.</p>
+              )}
+            </div>
           </div>
-        </div>
-      </CardBody>
-    </Card>
-  );
-}, (prev, next) => prev.job.id === next.job.id && prev.job.status === next.job.status && prev.job.progress === next.job.progress && prev.job.outputUrl === next.job.outputUrl);
+        </CardBody>
+      </Card>
+    );
+  },
+  (prev, next) =>
+    prev.job.id === next.job.id &&
+    prev.job.status === next.job.status &&
+    prev.job.progress === next.job.progress &&
+    prev.job.outputUrl === next.job.outputUrl
+);
 
-function MyFaceSwapsSection({ teamId, refreshTrigger }: { teamId: number; refreshTrigger?: number }) {
+function MyFaceSwapsSection({
+  teamId,
+  refreshTrigger,
+}: {
+  teamId: number;
+  refreshTrigger?: number;
+}) {
   const [jobs, setJobs] = useState<FaceSwapJob[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -575,14 +800,22 @@ function MyFaceSwapsSection({ teamId, refreshTrigger }: { teamId: number; refres
   useEffect(() => {
     if (selectedJob && isModalOpen) {
       const updated = jobs.find((j) => j.id === selectedJob.id);
-      if (updated && (updated.status !== selectedJob.status || updated.progress !== selectedJob.progress || updated.outputUrl !== selectedJob.outputUrl)) {
+      if (
+        updated &&
+        (updated.status !== selectedJob.status ||
+          updated.progress !== selectedJob.progress ||
+          updated.outputUrl !== selectedJob.outputUrl)
+      ) {
         setSelectedJob(updated);
       }
     }
   }, [jobs, selectedJob, isModalOpen]);
 
   const totalPages = Math.ceil(jobs.length / JOBS_PER_PAGE);
-  const paginatedJobs = jobs.slice((currentPage - 1) * JOBS_PER_PAGE, currentPage * JOBS_PER_PAGE);
+  const paginatedJobs = jobs.slice(
+    (currentPage - 1) * JOBS_PER_PAGE,
+    currentPage * JOBS_PER_PAGE
+  );
 
   const handleJobClick = (job: FaceSwapJob) => {
     setSelectedJob(job);
@@ -593,7 +826,10 @@ function MyFaceSwapsSection({ teamId, refreshTrigger }: { teamId: number; refres
     return (
       <Card className="bg-surface-base border border-border-base">
         <CardBody className="p-8 flex items-center justify-center">
-          <Icon icon="solar:refresh-circle-bold-duotone" className="text-3xl text-accent-400 animate-spin" />
+          <Icon
+            icon="solar:refresh-circle-bold-duotone"
+            className="text-3xl text-accent-400 animate-spin"
+          />
         </CardBody>
       </Card>
     );
@@ -603,9 +839,14 @@ function MyFaceSwapsSection({ teamId, refreshTrigger }: { teamId: number; refres
     return (
       <Card className="bg-surface-base border border-border-base">
         <CardBody className="p-8 text-center">
-          <Icon icon="solar:mask-happly-bold-duotone" className="text-4xl text-text-tertiary mx-auto mb-3" />
+          <Icon
+            icon="solar:mask-happly-bold-duotone"
+            className="text-4xl text-text-tertiary mx-auto mb-3"
+          />
           <p className="text-text-secondary">No face swaps yet</p>
-          <p className="text-xs text-text-tertiary mt-1">Create your first face swap above</p>
+          <p className="text-xs text-text-tertiary mt-1">
+            Create your first face swap above
+          </p>
         </CardBody>
       </Card>
     );
@@ -616,16 +857,31 @@ function MyFaceSwapsSection({ teamId, refreshTrigger }: { teamId: number; refres
       <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {paginatedJobs.map((job) => (
-            <FaceSwapJobCard key={job.id} job={job} onClick={() => handleJobClick(job)} />
+            <FaceSwapJobCard
+              key={job.id}
+              job={job}
+              onClick={() => handleJobClick(job)}
+            />
           ))}
         </div>
         {totalPages > 1 && (
           <div className="flex justify-center pt-4">
-            <Pagination total={totalPages} page={currentPage} onChange={setCurrentPage} color="primary" size="sm" showControls />
+            <Pagination
+              total={totalPages}
+              page={currentPage}
+              onChange={setCurrentPage}
+              color="primary"
+              size="sm"
+              showControls
+            />
           </div>
         )}
       </div>
-      <FaceSwapDetailModal job={selectedJob} isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <FaceSwapDetailModal
+        job={selectedJob}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      />
     </>
   );
 }
@@ -652,18 +908,23 @@ export default function UGCStudioPage() {
   const selectedTeam = useAtomValue(selectedTeamAtom);
   const [currentView, setCurrentView] = useState<StudioView>("face-swap"); // default: menu
   const [video, setVideo] = useState<UploadedFile | null>(null);
-  const [selectedCharacter, setSelectedCharacter] = useState<SelectedCharacter | null>(null);
+  const [selectedCharacter, setSelectedCharacter] =
+    useState<SelectedCharacter | null>(null);
   // Keep for backwards compatibility with existing logic
-  const characterImage = selectedCharacter ? {
-    file: selectedCharacter.file || new File([], "example.jpg"),
-    preview: selectedCharacter.src
-  } : null;
+  const characterImage = selectedCharacter
+    ? {
+        file: selectedCharacter.file || new File([], "example.jpg"),
+        preview: selectedCharacter.src,
+      }
+    : null;
   const [videoDuration, setVideoDuration] = useState(0);
   const [clipRange, setClipRange] = useState<[number, number]>([0, 30]);
   const [isDraggingVideo, setIsDraggingVideo] = useState(false);
   const [isDraggingImage, setIsDraggingImage] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [loadingCharacterId, setLoadingCharacterId] = useState<string | null>(null);
+  const [loadingCharacterId, setLoadingCharacterId] = useState<string | null>(
+    null
+  );
   const [processingStatus, setProcessingStatus] = useState("");
   const [submittedJobId, setSubmittedJobId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -681,7 +942,12 @@ export default function UGCStudioPage() {
 
   const handleVideoSelect = useCallback(
     async (file: File) => {
-      const validTypes = ["video/mp4", "video/quicktime", "video/webm", "video/x-msvideo"];
+      const validTypes = [
+        "video/mp4",
+        "video/quicktime",
+        "video/webm",
+        "video/x-msvideo",
+      ];
       if (!validTypes.includes(file.type)) return;
 
       if (video?.preview) URL.revokeObjectURL(video.preview);
@@ -789,7 +1055,8 @@ export default function UGCStudioPage() {
 
       addToast({
         title: "Face swap started!",
-        description: "Your video is being processed. This may take 20-40 minutes.",
+        description:
+          "Your video is being processed. This may take 20-40 minutes.",
         color: "success",
       });
 
@@ -801,7 +1068,8 @@ export default function UGCStudioPage() {
       setClipRange([0, 30]);
     } catch (err) {
       console.error("Generate error:", err);
-      const errorMessage = err instanceof Error ? err.message : "An error occurred";
+      const errorMessage =
+        err instanceof Error ? err.message : "An error occurred";
       setError(errorMessage);
       addToast({
         title: "Failed to start face swap",
@@ -836,8 +1104,12 @@ export default function UGCStudioPage() {
       <div className="min-h-screen bg-surface-dark p-6 lg:p-8">
         <div className="max-w-6xl mx-auto space-y-8">
           <div>
-            <h1 className="text-2xl lg:text-3xl font-bold text-text-primary">UGC Studio</h1>
-            <p className="text-text-secondary mt-1">Create AI-powered user-generated content</p>
+            <h1 className="text-2xl lg:text-3xl font-bold text-text-primary">
+              UGC Studio
+            </h1>
+            <p className="text-text-secondary mt-1">
+              Create AI-powered user-generated content
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -849,15 +1121,27 @@ export default function UGCStudioPage() {
               <CardBody className="p-6">
                 <div className="flex flex-col items-center text-center space-y-4">
                   <div className="w-16 h-16 rounded-2xl bg-accent-400/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Icon icon="solar:mask-happly-bold-duotone" className="text-accent-400" width={36} />
+                    <Icon
+                      icon="solar:mask-happly-bold-duotone"
+                      className="text-accent-400"
+                      width={36}
+                    />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-text-primary mb-1">Face Swap</h3>
-                    <p className="text-sm text-text-secondary">Swap faces in your videos with AI</p>
+                    <h3 className="text-lg font-semibold text-text-primary mb-1">
+                      Face Swap
+                    </h3>
+                    <p className="text-sm text-text-secondary">
+                      Swap faces in your videos with AI
+                    </p>
                   </div>
                   <div className="flex items-center gap-2 text-accent-400 text-sm font-medium">
                     <span>Get Started</span>
-                    <Icon icon="solar:arrow-right-bold" width={16} className="group-hover:translate-x-1 transition-transform" />
+                    <Icon
+                      icon="solar:arrow-right-bold"
+                      width={16}
+                      className="group-hover:translate-x-1 transition-transform"
+                    />
                   </div>
                 </div>
               </CardBody>
@@ -867,13 +1151,23 @@ export default function UGCStudioPage() {
               <CardBody className="p-6">
                 <div className="flex flex-col items-center text-center space-y-4">
                   <div className="w-16 h-16 rounded-2xl bg-surface-elevated flex items-center justify-center">
-                    <Icon icon="solar:microphone-3-bold-duotone" className="text-text-tertiary" width={36} />
+                    <Icon
+                      icon="solar:microphone-3-bold-duotone"
+                      className="text-text-tertiary"
+                      width={36}
+                    />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-text-tertiary mb-1">Voice Clone</h3>
-                    <p className="text-sm text-text-muted">Clone voices and add custom narration</p>
+                    <h3 className="text-lg font-semibold text-text-tertiary mb-1">
+                      Voice Clone
+                    </h3>
+                    <p className="text-sm text-text-muted">
+                      Clone voices and add custom narration
+                    </p>
                   </div>
-                  <span className="text-xs font-medium px-3 py-1 rounded-full bg-surface-elevated text-text-tertiary">Coming Soon</span>
+                  <span className="text-xs font-medium px-3 py-1 rounded-full bg-surface-elevated text-text-tertiary">
+                    Coming Soon
+                  </span>
                 </div>
               </CardBody>
             </Card>
@@ -882,13 +1176,23 @@ export default function UGCStudioPage() {
               <CardBody className="p-6">
                 <div className="flex flex-col items-center text-center space-y-4">
                   <div className="w-16 h-16 rounded-2xl bg-surface-elevated flex items-center justify-center">
-                    <Icon icon="solar:gallery-bold-duotone" className="text-text-tertiary" width={36} />
+                    <Icon
+                      icon="solar:gallery-bold-duotone"
+                      className="text-text-tertiary"
+                      width={36}
+                    />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-text-tertiary mb-1">AI Backgrounds</h3>
-                    <p className="text-sm text-text-muted">Generate custom backgrounds for your content</p>
+                    <h3 className="text-lg font-semibold text-text-tertiary mb-1">
+                      AI Backgrounds
+                    </h3>
+                    <p className="text-sm text-text-muted">
+                      Generate custom backgrounds for your content
+                    </p>
                   </div>
-                  <span className="text-xs font-medium px-3 py-1 rounded-full bg-surface-elevated text-text-tertiary">Coming Soon</span>
+                  <span className="text-xs font-medium px-3 py-1 rounded-full bg-surface-elevated text-text-tertiary">
+                    Coming Soon
+                  </span>
                 </div>
               </CardBody>
             </Card>
@@ -896,8 +1200,13 @@ export default function UGCStudioPage() {
 
           {selectedTeam?.id && (
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-text-primary">My Face Swaps</h2>
-              <MyFaceSwapsSection teamId={selectedTeam.id} refreshTrigger={jobRefreshTrigger} />
+              <h2 className="text-xl font-semibold text-text-primary">
+                My Face Swaps
+              </h2>
+              <MyFaceSwapsSection
+                teamId={selectedTeam.id}
+                refreshTrigger={jobRefreshTrigger}
+              />
             </div>
           )}
         </div>
@@ -919,7 +1228,9 @@ export default function UGCStudioPage() {
           </Button> */}
           <div>
             <h1 className="text-2xl font-bold text-text-primary">Face Swap</h1>
-            <p className="text-text-secondary text-sm">Upload a video and swap faces with a character</p>
+            <p className="text-text-secondary text-sm">
+              Upload a video and swap faces with a character
+            </p>
           </div>
         </div>
 
@@ -929,11 +1240,19 @@ export default function UGCStudioPage() {
               <CardHeader className="pb-0">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-accent-400/20 flex items-center justify-center">
-                    <Icon icon="solar:videocamera-record-bold-duotone" className="text-accent-400" width={22} />
+                    <Icon
+                      icon="solar:videocamera-record-bold-duotone"
+                      className="text-accent-400"
+                      width={22}
+                    />
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-base font-semibold text-text-primary">Video & Trim</h3>
-                    <p className="text-xs text-text-tertiary">Upload video and select a clip (max 30 seconds)</p>
+                    <h3 className="text-base font-semibold text-text-primary">
+                      Video & Trim
+                    </h3>
+                    <p className="text-xs text-text-tertiary">
+                      Upload video and select a clip (max 30 seconds)
+                    </p>
                   </div>
                   {video && (
                     <Button
@@ -946,7 +1265,9 @@ export default function UGCStudioPage() {
                         setVideoDuration(0);
                         setClipRange([0, 30]);
                       }}
-                      startContent={<Icon icon="solar:refresh-bold" width={16} />}
+                      startContent={
+                        <Icon icon="solar:refresh-bold" width={16} />
+                      }
                     >
                       Change Video
                     </Button>
@@ -966,19 +1287,34 @@ export default function UGCStudioPage() {
                 ) : (
                   <div
                     className={`border-2 border-dashed rounded-xl p-12 transition-colors ${
-                      isDraggingVideo ? "border-accent-400 bg-accent-400/10" : "border-border-base hover:border-accent-400/50"
+                      isDraggingVideo
+                        ? "border-accent-400 bg-accent-400/10"
+                        : "border-border-base hover:border-accent-400/50"
                     }`}
-                    onDragOver={(e) => { e.preventDefault(); setIsDraggingVideo(true); }}
-                    onDragLeave={(e) => { e.preventDefault(); setIsDraggingVideo(false); }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDraggingVideo(true);
+                    }}
+                    onDragLeave={(e) => {
+                      e.preventDefault();
+                      setIsDraggingVideo(false);
+                    }}
                     onDrop={handleVideoDrop}
                   >
                     <div className="flex flex-col items-center space-y-4">
                       <div className="w-16 h-16 bg-accent-400/10 rounded-full flex items-center justify-center">
-                        <Icon icon="solar:upload-bold-duotone" className="text-3xl text-accent-400" />
+                        <Icon
+                          icon="solar:upload-bold-duotone"
+                          className="text-3xl text-accent-400"
+                        />
                       </div>
                       <div className="text-center">
-                        <p className="text-lg font-medium text-text-primary">Drag & drop your video</p>
-                        <p className="text-sm text-text-tertiary mt-1">or click to browse files</p>
+                        <p className="text-lg font-medium text-text-primary">
+                          Drag & drop your video
+                        </p>
+                        <p className="text-sm text-text-tertiary mt-1">
+                          or click to browse files
+                        </p>
                       </div>
                       <input
                         ref={videoInputRef}
@@ -991,10 +1327,18 @@ export default function UGCStudioPage() {
                           e.target.value = "";
                         }}
                       />
-                      <Button size="md" variant="flat" color="primary" onPress={() => videoInputRef.current?.click()} startContent={<Icon icon="solar:folder-open-bold" />}>
+                      <Button
+                        size="md"
+                        variant="flat"
+                        color="primary"
+                        onPress={() => videoInputRef.current?.click()}
+                        startContent={<Icon icon="solar:folder-open-bold" />}
+                      >
                         Browse Files
                       </Button>
-                      <p className="text-xs text-text-muted">MP4, MOV, WebM supported</p>
+                      <p className="text-xs text-text-muted">
+                        MP4, MOV, WebM supported
+                      </p>
                     </div>
                   </div>
                 )}
@@ -1003,8 +1347,13 @@ export default function UGCStudioPage() {
 
             {selectedTeam?.id && (
               <div className="space-y-4">
-                <h2 className="text-lg font-semibold text-text-primary">My Face Swaps</h2>
-                <MyFaceSwapsSection teamId={selectedTeam.id} refreshTrigger={jobRefreshTrigger} />
+                <h2 className="text-lg font-semibold text-text-primary">
+                  My Face Swaps
+                </h2>
+                <MyFaceSwapsSection
+                  teamId={selectedTeam.id}
+                  refreshTrigger={jobRefreshTrigger}
+                />
               </div>
             )}
           </div>
@@ -1014,11 +1363,19 @@ export default function UGCStudioPage() {
               <CardHeader className="pb-0">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
-                    <Icon icon="solar:user-circle-bold-duotone" className="text-purple-500" width={22} />
+                    <Icon
+                      icon="solar:user-circle-bold-duotone"
+                      className="text-purple-500"
+                      width={22}
+                    />
                   </div>
                   <div>
-                    <h3 className="text-base font-semibold text-text-primary">Character Face</h3>
-                    <p className="text-xs text-text-tertiary">Upload the face to swap</p>
+                    <h3 className="text-base font-semibold text-text-primary">
+                      Character Face
+                    </h3>
+                    <p className="text-xs text-text-tertiary">
+                      Upload the face to swap
+                    </p>
                   </div>
                 </div>
               </CardHeader>
@@ -1027,26 +1384,34 @@ export default function UGCStudioPage() {
                 {selectedCharacter && (
                   <div className="space-y-3">
                     <div className="relative rounded-xl overflow-hidden bg-surface-elevated aspect-square">
-                      <img src={characterImage ? characterImage.preview : ""} alt="Character" className="w-full h-full object-cover" />
+                      <img
+                        src={characterImage ? characterImage.preview : ""}
+                        alt="Character"
+                        className="w-full h-full object-cover"
+                      />
                       <Button
                         isIconOnly
                         size="sm"
                         variant="flat"
                         className="absolute top-2 right-2 bg-surface-base/80"
                         onPress={() => {
-                          if (characterImage && characterImage.preview) URL.revokeObjectURL(characterImage.preview);
+                          if (characterImage && characterImage.preview)
+                            URL.revokeObjectURL(characterImage.preview);
                           setSelectedCharacter(null);
                         }}
                       >
                         <Icon icon="solar:close-circle-bold" width={18} />
                       </Button>
                     </div>
-                    {selectedCharacter.type === "uploaded" && selectedCharacter.file && (
-                      <div className="flex items-center justify-center gap-2 text-sm text-text-secondary">
-                        <Icon icon="solar:gallery-bold-duotone" width={16} />
-                        <span className="truncate">{selectedCharacter.file.name}</span>
-                      </div>
-                    )}
+                    {selectedCharacter.type === "uploaded" &&
+                      selectedCharacter.file && (
+                        <div className="flex items-center justify-center gap-2 text-sm text-text-secondary">
+                          <Icon icon="solar:gallery-bold-duotone" width={16} />
+                          <span className="truncate">
+                            {selectedCharacter.file.name}
+                          </span>
+                        </div>
+                      )}
                     {selectedCharacter.type === "example" && (
                       <div className="flex items-center justify-center gap-2 text-sm text-text-secondary">
                         <Icon icon="solar:star-bold-duotone" width={16} />
@@ -1060,12 +1425,16 @@ export default function UGCStudioPage() {
                 {!selectedCharacter && (
                   <>
                     <div>
-                      <p className="text-xs text-text-tertiary mb-2">Choose an example</p>
+                      <p className="text-xs text-text-tertiary mb-2">
+                        Choose an example
+                      </p>
                       <div className="grid grid-cols-4 gap-2">
                         {EXAMPLE_CHARACTERS.map((char) => (
                           <button
                             key={char.id}
-                            onClick={() => handleExampleSelect(String(char.id), char.src)}
+                            onClick={() =>
+                              handleExampleSelect(String(char.id), char.src)
+                            }
                             disabled={loadingCharacterId !== null}
                             className={`aspect-square rounded-lg overflow-hidden border-2 transition-all focus:outline-none ${
                               loadingCharacterId === String(char.id)
@@ -1155,31 +1524,54 @@ export default function UGCStudioPage() {
                   <div className="space-y-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-accent-400/20 flex items-center justify-center">
-                        <Icon icon="solar:cloud-upload-bold-duotone" className="text-accent-400 animate-pulse" width={22} />
+                        <Icon
+                          icon="solar:cloud-upload-bold-duotone"
+                          className="text-accent-400 animate-pulse"
+                          width={22}
+                        />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-text-primary">{processingStatus || "Processing..."}</p>
-                        <p className="text-xs text-text-tertiary">This may take a moment</p>
+                        <p className="text-sm font-medium text-text-primary">
+                          {processingStatus || "Processing..."}
+                        </p>
+                        <p className="text-xs text-text-tertiary">
+                          This may take a moment
+                        </p>
                       </div>
                     </div>
-                    <Progress isIndeterminate color="primary" size="sm" className="w-full" />
+                    <Progress
+                      isIndeterminate
+                      color="primary"
+                      size="sm"
+                      className="w-full"
+                    />
                   </div>
                 ) : submittedJobId ? (
                   <div className="space-y-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center">
-                        <Icon icon="solar:check-circle-bold-duotone" className="text-green-500" width={22} />
+                        <Icon
+                          icon="solar:check-circle-bold-duotone"
+                          className="text-green-500"
+                          width={22}
+                        />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-text-primary">Job Submitted!</p>
-                        <p className="text-xs text-text-tertiary">Check progress below</p>
+                        <p className="text-sm font-medium text-text-primary">
+                          Job Submitted!
+                        </p>
+                        <p className="text-xs text-text-tertiary">
+                          Check progress below
+                        </p>
                       </div>
                     </div>
                     <Button
                       className="w-full bg-accent-400 text-white font-semibold"
                       size="lg"
                       onPress={() => setSubmittedJobId(null)}
-                      startContent={<Icon icon="solar:add-circle-bold" width={20} />}
+                      startContent={
+                        <Icon icon="solar:add-circle-bold" width={20} />
+                      }
                     >
                       Create Another
                     </Button>
@@ -1187,14 +1579,20 @@ export default function UGCStudioPage() {
                 ) : error ? (
                   <div className="space-y-4">
                     <div className="flex items-center gap-3 p-3 bg-red-500/10 rounded-lg">
-                      <Icon icon="solar:danger-circle-bold" className="text-red-500" width={20} />
+                      <Icon
+                        icon="solar:danger-circle-bold"
+                        className="text-red-500"
+                        width={20}
+                      />
                       <p className="text-sm text-red-500">{error}</p>
                     </div>
                     <Button
                       className="w-full bg-accent-400 text-white font-semibold"
                       size="lg"
                       onPress={() => setError(null)}
-                      startContent={<Icon icon="solar:refresh-bold" width={20} />}
+                      startContent={
+                        <Icon icon="solar:refresh-bold" width={20} />
+                      }
                     >
                       Try Again
                     </Button>
@@ -1203,24 +1601,49 @@ export default function UGCStudioPage() {
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <div className="flex items-center gap-3">
-                        <div className={`w-2.5 h-2.5 rounded-full ${video ? "bg-green-500" : "bg-surface-elevated"}`} />
-                        <span className={`text-sm ${video ? "text-text-primary" : "text-text-tertiary"}`}>Video uploaded</span>
+                        <div
+                          className={`w-2.5 h-2.5 rounded-full ${video ? "bg-green-500" : "bg-surface-elevated"}`}
+                        />
+                        <span
+                          className={`text-sm ${video ? "text-text-primary" : "text-text-tertiary"}`}
+                        >
+                          Video uploaded
+                        </span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <div className={`w-2.5 h-2.5 rounded-full ${characterImage ? "bg-green-500" : "bg-surface-elevated"}`} />
-                        <span className={`text-sm ${characterImage ? "text-text-primary" : "text-text-tertiary"}`}>Character uploaded</span>
+                        <div
+                          className={`w-2.5 h-2.5 rounded-full ${characterImage ? "bg-green-500" : "bg-surface-elevated"}`}
+                        />
+                        <span
+                          className={`text-sm ${characterImage ? "text-text-primary" : "text-text-tertiary"}`}
+                        >
+                          Character uploaded
+                        </span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <div className={`w-2.5 h-2.5 rounded-full ${video && clipDuration <= 30.01 ? "bg-green-500" : "bg-surface-elevated"}`} />
-                        <span className={`text-sm ${video && clipDuration <= 30.01 ? "text-text-primary" : "text-text-tertiary"}`}>Clip selected (≤30s)</span>
+                        <div
+                          className={`w-2.5 h-2.5 rounded-full ${video && clipDuration <= 30.01 ? "bg-green-500" : "bg-surface-elevated"}`}
+                        />
+                        <span
+                          className={`text-sm ${video && clipDuration <= 30.01 ? "text-text-primary" : "text-text-tertiary"}`}
+                        >
+                          Clip selected (≤30s)
+                        </span>
                       </div>
                     </div>
                     <Button
                       className="w-full bg-accent-400 text-white font-semibold"
                       size="lg"
-                      isDisabled={!video || !characterImage || clipDuration > 30.01}
+                      isDisabled={
+                        !video || !characterImage || clipDuration > 30.01
+                      }
                       onPress={handleGenerate}
-                      startContent={<Icon icon="solar:magic-stick-3-bold-duotone" width={20} />}
+                      startContent={
+                        <Icon
+                          icon="solar:magic-stick-3-bold-duotone"
+                          width={20}
+                        />
+                      }
                     >
                       Generate Face Swap
                     </Button>

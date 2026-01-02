@@ -63,7 +63,10 @@ export class ComfyController {
         });
       }
 
-      trimmedVideoPath = path.join(tempDir, `${crypto.randomUUID()}_trimmed.mp4`);
+      trimmedVideoPath = path.join(
+        tempDir,
+        `${crypto.randomUUID()}_trimmed.mp4`
+      );
       await cutClip(tempVideoPath, trimmedVideoPath, start, end);
 
       const imageExt = path.extname(image.originalname) || ".jpg";
@@ -88,7 +91,7 @@ export class ComfyController {
           priority: Math.floor(Date.now() / 1000),
           originalVideoS3Key: videoS3Key,
           progress: 0,
-          progressMessage: "Waiting for GPU...",
+          progressMessage: "Queuing job",
         })
         .returning();
 
@@ -96,7 +99,7 @@ export class ComfyController {
         id: job.id,
         status: "queued",
         progress: 0,
-        progressMessage: "Waiting for GPU...",
+        progressMessage: "Queuing job",
         outputUrl: null,
         errorMessage: null,
         createdAt: job.createdAt.toISOString(),
