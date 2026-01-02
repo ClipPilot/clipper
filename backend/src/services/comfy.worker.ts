@@ -844,7 +844,7 @@ async function processUGCFaceSwapParentJob(
         job.id,
         job.teamId,
         chunkProgress,
-        `Completed chunk ${i + 1}/${chunkInfos.length}`
+        `Processing: ${Math.round(((i + 1) / chunkInfos.length) * 100)}% complete`
       );
 
       console.log(`[comfy-worker] Chunk ${i + 1} processed successfully`);
