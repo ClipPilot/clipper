@@ -166,7 +166,7 @@ function PricingContent() {
         />
       </div>
 
-      <div className="relative z-10 flex max-w-xl flex-col text-center">
+      <div className="relative z-10 flex max-w-xl flex-col text-center xl:translate-x-[12.5%]">
         <h2 className="text-accent-400 text-sm font-medium uppercase tracking-wider">
           Pricing
         </h2>

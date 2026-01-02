@@ -22,6 +22,8 @@ import { userAtom, selectedTeamAtom } from "@/store/auth";
 import { useAuth } from "@/hooks/useAuth";
 import { useTeams } from "@/hooks/useTeams";
 import WorkspaceSelector from "@/components/workspace-selector";
+import CreateTeamModal from "@/components/teams/CreateTeamModal";
+import TeamManagementModal from "@/components/teams/TeamManagementModal";
 import Image from "next/image";
 // import NotificationsCard from "@/components/notifications/notifications-card"; // TODO: Re-enable
 import { UsageStatsProvider } from "@/contexts/UsageStatsContext";
@@ -65,9 +67,12 @@ export default function DashboardLayout({
   const [user] = useAtom(userAtom);
   const { signOut: handleSignOut } = useAuth();
   const [selectedTeam] = useAtom(selectedTeamAtom);
-  const {} = useTeams(); // Initialize teams on mount
+  const { fetchTeams } = useTeams();
   const [sidebarWidth, setSidebarWidth] = useState(256);
   const [isResizing, setIsResizing] = useState(false);
+  const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
+  const [isCreateTeamOpen, setIsCreateTeamOpen] = useState(false);
+  const [isManageTeamOpen, setIsManageTeamOpen] = useState(false);
 
   // Only show pricing to owners and managers
   const canViewPricing =
@@ -177,7 +182,11 @@ export default function DashboardLayout({
               */}
             </div>
 
-            <Popover placement="bottom-start">
+            <Popover
+              placement="bottom-start"
+              isOpen={isWorkspaceOpen}
+              onOpenChange={setIsWorkspaceOpen}
+            >
               <PopoverTrigger>
                 <Button
                   variant="flat"
@@ -199,7 +208,16 @@ export default function DashboardLayout({
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="p-0">
-                <WorkspaceSelector />
+                <WorkspaceSelector
+                  onCreateTeam={() => {
+                    setIsWorkspaceOpen(false);
+                    setIsCreateTeamOpen(true);
+                  }}
+                  onManageTeam={() => {
+                    setIsWorkspaceOpen(false);
+                    setIsManageTeamOpen(true);
+                  }}
+                />
               </PopoverContent>
             </Popover>
           </div>
@@ -306,6 +324,22 @@ export default function DashboardLayout({
         <main className="flex-1 overflow-auto">{children}</main>
         <ToastProvider placement="top-right" />
       </div>
+
+      <CreateTeamModal
+        isOpen={isCreateTeamOpen}
+        onClose={() => setIsCreateTeamOpen(false)}
+        onTeamCreated={fetchTeams}
+      />
+
+      {selectedTeam && (
+        <TeamManagementModal
+          isOpen={isManageTeamOpen}
+          onClose={() => setIsManageTeamOpen(false)}
+          team={selectedTeam}
+          onTeamUpdated={fetchTeams}
+          onTeamDeleted={fetchTeams}
+        />
+      )}
     </UsageStatsProvider>
   );
 }

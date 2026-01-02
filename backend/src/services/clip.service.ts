@@ -85,6 +85,8 @@ const generateCaptionsData = (
   return { captionsData, srtContent };
 };
 
+const MIN_SEGMENT_DURATION = 0.25;
+
 const validateSegment = (segment: { start: number; end: number; text: string }, name: string) => {
   if (typeof segment.start !== 'number' || typeof segment.end !== 'number') {
     throw new Error(`${name}: Invalid timestamp types - start: ${typeof segment.start}, end: ${typeof segment.end}`);
@@ -96,8 +98,8 @@ const validateSegment = (segment: { start: number; end: number; text: string }, 
     throw new Error(`${name}: End (${segment.end}) must be greater than start (${segment.start})`);
   }
   const duration = segment.end - segment.start;
-  if (duration < 0.5) {
-    throw new Error(`${name}: Segment too short (${duration}s) - minimum is 0.5s`);
+  if (duration < MIN_SEGMENT_DURATION) {
+    throw new Error(`${name}: Segment too short (${duration.toFixed(2)}s) - minimum is ${MIN_SEGMENT_DURATION}s`);
   }
 };
 
