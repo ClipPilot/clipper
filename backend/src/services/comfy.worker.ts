@@ -12,6 +12,8 @@ import { cutClip, mergeClips } from "./videoEditor.service";
 import { emitComfyJobUpdate } from "./socket.service";
 import { teamService } from "./team.service";
 import { emailNotiService } from "./emailNoti.service";
+import { transcribeVideoService } from "./transcription.service";
+import { convertWordsToCaptionEntries, generateSrtFromCaptions } from "./captions.service";
 
 interface GpuConfig {
   id: string;
@@ -925,6 +927,31 @@ async function processJobOnGpu(job: ComfyJob, gpu: GpuConfig): Promise<void> {
             })
             .returning();
           console.log(`[comfy-worker] Created clip ${clip.id} in library`);
+
+          try {
+            const tempDir = path.join(process.cwd(), "output", `transcribe-${Date.now()}`);
+            fs.mkdirSync(tempDir, { recursive: true });
+            const tempVideoPath = path.join(tempDir, "video.mp4");
+
+            await s3Service.downloadFile(outputS3Key, tempVideoPath);
+            const transcriptionData = await transcribeVideoService(tempVideoPath);
+            const words = transcriptionData.results.channels[0].alternatives[0].words;
+            const captionsData = convertWordsToCaptionEntries(words);
+            const srtContent = generateSrtFromCaptions(captionsData);
+            const srtPath = path.join(tempDir, `captions_${clip.id}.srt`);
+            fs.writeFileSync(srtPath, srtContent);
+            const srtS3Key = await s3Service.uploadSrtFile(srtPath, job.teamId, clip.id);
+
+            await db.update(clips).set({
+              captions_data: captionsData,
+              srt_path: srtS3Key,
+            }).where(eq(clips.id, clip.id));
+
+            fs.rmSync(tempDir, { recursive: true, force: true });
+            console.log(`[comfy-worker] Added captions to clip ${clip.id}`);
+          } catch (transcribeErr) {
+            console.error(`[comfy-worker] Transcription failed:`, (transcribeErr as Error).message);
+          }
 
           await teamService.incrementTeamUsage(job.teamId, 5);
           console.log(`[comfy-worker] Charged 5 credits to team ${job.teamId}`);

@@ -521,7 +521,7 @@ const FaceSwapJobCard = memo(function FaceSwapJobCard({ job, onClick }: { job: F
   );
 }, (prev, next) => prev.job.id === next.job.id && prev.job.status === next.job.status && prev.job.progress === next.job.progress && prev.job.outputUrl === next.job.outputUrl);
 
-function MyFaceSwapsSection({ teamId }: { teamId: number }) {
+function MyFaceSwapsSection({ teamId, refreshTrigger }: { teamId: number; refreshTrigger?: number }) {
   const [jobs, setJobs] = useState<FaceSwapJob[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -567,6 +567,10 @@ function MyFaceSwapsSection({ teamId }: { teamId: number }) {
       leaveTeam(teamId);
     };
   }, [teamId, fetchJobs]);
+
+  useEffect(() => {
+    if (refreshTrigger) fetchJobs();
+  }, [refreshTrigger, fetchJobs]);
 
   useEffect(() => {
     if (selectedJob && isModalOpen) {
@@ -659,9 +663,11 @@ export default function UGCStudioPage() {
   const [isDraggingVideo, setIsDraggingVideo] = useState(false);
   const [isDraggingImage, setIsDraggingImage] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [loadingCharacterId, setLoadingCharacterId] = useState<string | null>(null);
   const [processingStatus, setProcessingStatus] = useState("");
   const [submittedJobId, setSubmittedJobId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [jobRefreshTrigger, setJobRefreshTrigger] = useState(0);
 
   const videoInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -708,12 +714,22 @@ export default function UGCStudioPage() {
     [selectedCharacter]
   );
 
-  const handleExampleSelect = (src: string) => {
-    // Cleanup old preview if it was an uploaded file
+  const handleExampleSelect = async (id: string, src: string) => {
     if (selectedCharacter?.type === "uploaded" && selectedCharacter.src) {
       URL.revokeObjectURL(selectedCharacter.src);
     }
-    setSelectedCharacter({ type: "example", src });
+    setLoadingCharacterId(id);
+    try {
+      const response = await fetch(src);
+      const blob = await response.blob();
+      const filename = src.split("/").pop() || "character.jpg";
+      const file = new File([blob], filename, { type: blob.type });
+      setSelectedCharacter({ type: "example", src, file });
+    } catch {
+      setSelectedCharacter({ type: "example", src });
+    } finally {
+      setLoadingCharacterId(null);
+    }
   };
 
   const handleVideoDrop = useCallback(
@@ -769,6 +785,7 @@ export default function UGCStudioPage() {
       const data = await response.json();
       setSubmittedJobId(data.jobId);
       setProcessingStatus("Job submitted! Processing...");
+      setJobRefreshTrigger((prev) => prev + 1);
 
       addToast({
         title: "Face swap started!",
@@ -880,7 +897,7 @@ export default function UGCStudioPage() {
           {selectedTeam?.id && (
             <div className="space-y-4">
               <h2 className="text-xl font-semibold text-text-primary">My Face Swaps</h2>
-              <MyFaceSwapsSection teamId={selectedTeam.id} />
+              <MyFaceSwapsSection teamId={selectedTeam.id} refreshTrigger={jobRefreshTrigger} />
             </div>
           )}
         </div>
@@ -987,7 +1004,7 @@ export default function UGCStudioPage() {
             {selectedTeam?.id && (
               <div className="space-y-4">
                 <h2 className="text-lg font-semibold text-text-primary">My Face Swaps</h2>
-                <MyFaceSwapsSection teamId={selectedTeam.id} />
+                <MyFaceSwapsSection teamId={selectedTeam.id} refreshTrigger={jobRefreshTrigger} />
               </div>
             )}
           </div>
@@ -1048,8 +1065,13 @@ export default function UGCStudioPage() {
                         {EXAMPLE_CHARACTERS.map((char) => (
                           <button
                             key={char.id}
-                            onClick={() => handleExampleSelect(char.src)}
-                            className="aspect-square rounded-lg overflow-hidden border-2 border-transparent hover:border-purple-500 transition-all hover:scale-105 focus:outline-none focus:border-purple-500"
+                            onClick={() => handleExampleSelect(char.id, char.src)}
+                            disabled={loadingCharacterId !== null}
+                            className={`aspect-square rounded-lg overflow-hidden border-2 transition-all focus:outline-none ${
+                              loadingCharacterId === char.id
+                                ? "border-purple-500 opacity-50"
+                                : "border-transparent hover:border-purple-500 hover:scale-105"
+                            }`}
                           >
                             <img
                               src={char.src}

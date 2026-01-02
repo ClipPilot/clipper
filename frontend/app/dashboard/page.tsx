@@ -182,7 +182,7 @@ export default function DashboardPage() {
                     {usageStats?.clipsCreated ?? 0}
                   </span>
                   <span className="text-sm text-text-tertiary">
-                    / {usageStats?.limit ?? 0} clips
+                    / {usageStats?.limit ?? 0} credits
                   </span>
                 </div>
                 <Progress
@@ -200,7 +200,7 @@ export default function DashboardPage() {
                   }}
                 />
                 <p className="text-xs text-text-tertiary">
-                  {usageStats?.remaining ?? 0} clips remaining this period
+                  {usageStats?.remaining ?? 0} credits remaining this period
                 </p>
               </div>
             </CardBody>

@@ -206,6 +206,10 @@ export default function ClipViewModal({
     try {
       const token = await onGenerateShareLink(clip.id);
       setShareToken(token);
+      const url = `${window.location.origin}/shared/${token}`;
+      await navigator.clipboard.writeText(url);
+      setShowShareTooltip(true);
+      setTimeout(() => setShowShareTooltip(false), 2000);
     } finally {
       setIsSharing(false);
     }
@@ -662,22 +666,28 @@ export default function ClipViewModal({
             {onGenerateShareLink && clip.clipUrl && (
               <>
                 {shareToken ? (
-                  <div className="flex items-center gap-2">
-                    <div className="relative">
-                      <Button
-                        variant="flat"
-                        color="success"
-                        startContent={<Icon icon="solar:copy-bold" />}
-                        onPress={handleCopyShareLink}
-                      >
-                        Copy Link
-                      </Button>
-                      {showShareTooltip && (
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-success-500 text-white text-xs rounded whitespace-nowrap">
-                          Copied!
-                        </div>
-                      )}
+                  <div className="flex items-center gap-2 relative">
+                    {showShareTooltip && (
+                      <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-success-500 text-white text-xs rounded whitespace-nowrap z-10">
+                        Copied!
+                      </div>
+                    )}
+                    <div
+                      className="px-3 py-2 bg-default-100 rounded-lg text-sm text-default-600 truncate max-w-[180px] cursor-pointer hover:bg-default-200 transition-colors"
+                      title={getShareUrl()}
+                      onClick={handleCopyShareLink}
+                    >
+                      {getShareUrl()}
                     </div>
+                    <Button
+                      variant="flat"
+                      color="success"
+                      isIconOnly
+                      onPress={handleCopyShareLink}
+                      title="Copy link"
+                    >
+                      <Icon icon="solar:copy-bold" />
+                    </Button>
                     <Button
                       variant="flat"
                       color="danger"
