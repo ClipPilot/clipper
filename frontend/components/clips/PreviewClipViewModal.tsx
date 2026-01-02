@@ -148,10 +148,6 @@ export default function PreviewClipViewModal({
                 Preview Clip
               </h2>
             </div>
-            <div className="flex items-center gap-2 bg-warning-500/20 text-warning-500 px-3 py-1 rounded-full text-sm">
-              <Icon icon="solar:shield-warning-bold" />
-              <span>Watermarked Preview</span>
-            </div>
           </div>
         </ModalHeader>
         <ModalBody>
@@ -185,7 +181,9 @@ export default function PreviewClipViewModal({
                       className="w-16 h-16 rounded-full bg-white/90 hover:bg-white flex items-center justify-center transition-colors"
                     >
                       <Icon
-                        icon={isPlaying ? "solar:pause-bold" : "solar:play-bold"}
+                        icon={
+                          isPlaying ? "solar:pause-bold" : "solar:play-bold"
+                        }
                         className="text-3xl text-black ml-1"
                       />
                     </button>
@@ -199,7 +197,9 @@ export default function PreviewClipViewModal({
                     >
                       <div
                         className="h-full bg-accent-400 rounded-full transition-all"
-                        style={{ width: `${(currentTime / duration) * 100 || 0}%` }}
+                        style={{
+                          width: `${(currentTime / duration) * 100 || 0}%`,
+                        }}
                       />
                     </div>
                     <div className="flex items-center justify-between text-white text-xs">
@@ -233,7 +233,10 @@ export default function PreviewClipViewModal({
               {clip.clip_score !== null && clip.clip_score !== undefined && (
                 <div className="p-4 rounded-lg bg-surface-elevated">
                   <h3 className="text-sm font-semibold text-text-secondary mb-3 flex items-center gap-2">
-                    <Icon icon="solar:star-bold-duotone" className="text-accent-400" />
+                    <Icon
+                      icon="solar:star-bold-duotone"
+                      className="text-accent-400"
+                    />
                     Virality Score
                   </h3>
                   <div className="flex items-center gap-3 mb-2">
@@ -291,8 +294,8 @@ export default function PreviewClipViewModal({
                   />
                   <div>
                     <p className="text-sm text-text-secondary">
-                      This is a preview with a watermark. Save the clip to download
-                      the clean version without the watermark.
+                      This is a preview with a watermark. Save the clip to
+                      download the clean version without the watermark.
                     </p>
                   </div>
                 </div>

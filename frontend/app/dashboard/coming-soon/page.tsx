@@ -67,7 +67,7 @@ const comingSoonFeatures: ComingSoonFeature[] = [
     title: "Autopilot Distribution",
     subtitle: "Automated Multi-Platform Posting",
     description:
-      "End manual posting across platforms. Cuttr Autopilot schedules and distributes your clips to all connected accounts. Your brand will get access to hundreds of ready-made social media accounts, posting only your content, managed by our team. AI-optimized posting times and platform-specific formatting maximize your reach.",
+      "Cuttr revolutionizes your content strategy by taking the high-quality posts you generate and approve, then handling the entire distribution process end-to-end. We vet, hire, and train dedicated reposters to amplify your voice across platforms, ensuring consistent, authentic engagement without you lifting a finger. This drastically boosts your efficiency and post volume—allowing you to scale to thousands of posts per month—all while following proven best practices like optimal posting times, platform-specific formatting, and algorithmic tweaks to maximize virality and reach. The result? Massive cost savings compared to building an in-house clipper and reposter team, freeing you to focus on running your business while Cuttr delivers exponential growth in visibility and impact.",
     icon: "solar:global-bold",
     illustration: AutopilotIllustration,
     features: [

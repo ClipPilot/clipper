@@ -182,7 +182,7 @@ function PricingContent() {
 
       <Spacer y={12} />
 
-      <div className="relative z-10 grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:hidden">
+      <div className="relative z-10 mx-auto grid max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:hidden">
         {tiers.map((tier) => (
           <PricingTierCard
             key={tier.key}

@@ -12,8 +12,7 @@ const features: PricingFeatures = [
           [TiersEnum.Studio]: "Unlimited",
           [TiersEnum.Scale]: "Unlimited",
         },
-        helpText:
-          "Generate AI-powered clips from your videos. Generated clips have watermarks until saved.",
+        helpText: "Generate AI-powered clips from your videos. ",
       },
       {
         title: "Saved clips included",
@@ -45,7 +44,7 @@ const features: PricingFeatures = [
           [TiersEnum.Studio]: true,
           [TiersEnum.Scale]: true,
         },
-        helpText: "Export clips without any watermarks or branding.",
+        helpText: "Export clips in high quality ready to post",
       },
       {
         title: "Multiple export formats",
