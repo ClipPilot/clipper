@@ -179,10 +179,10 @@ export default function DashboardPage() {
               <div className="space-y-3">
                 <div className="flex items-baseline justify-between">
                   <span className="text-2xl font-bold text-text-primary">
-                    {usageStats?.clipsCreated ?? 0}
+                    {usageStats?.clipsCreated ?? 0} {/* MUST CHANGE THIS TO CREDITS LATER RATHER THAN JUST CLIPS CREATED! */}
                   </span>
                   <span className="text-sm text-text-tertiary">
-                    / {usageStats?.limit ?? 0} clips
+                    / {usageStats?.limit ?? 0} credits
                   </span>
                 </div>
                 <Progress
@@ -200,7 +200,7 @@ export default function DashboardPage() {
                   }}
                 />
                 <p className="text-xs text-text-tertiary">
-                  {usageStats?.remaining ?? 0} clips remaining this period
+                  {usageStats?.remaining ?? 0} credits remaining this period
                 </p>
               </div>
             </CardBody>
@@ -393,7 +393,7 @@ export default function DashboardPage() {
                       Upgrade to Pro
                     </h3>
                     <p className="text-sm text-text-secondary">
-                      Unlock unlimited generations and more saved clips
+                      Unlock unlimited generations and more credits
                     </p>
                   </div>
                 </div>

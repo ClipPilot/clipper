@@ -10,6 +10,7 @@ import {
   boolean,
   pgEnum,
   index,
+  numeric,
 } from "drizzle-orm/pg-core";
 
 // Enums
@@ -35,6 +36,20 @@ export const inviteStatusEnum = pgEnum("invite_status", [
   "expired",
   "revoked",
 ]);
+
+export const gpuPodStatusEnum = pgEnum("gpu_pod_status", [
+  "idle",
+  "busy",
+  "offline",
+]);
+
+export const comfyJobStatusEnum = pgEnum("comfy_job_status", [
+  "queued",
+  "running",
+  "completed",
+  "failed",
+]);
+
 // Tables
 
 export const users = pgTable("users", {
@@ -214,7 +229,9 @@ export const clipFolders = pgTable(
   (table) => {
     return {
       teamIdx: index("clip_folders_team_id_idx").on(table.team_id),
-      parentIdx: index("clip_folders_parent_folder_id_idx").on(table.parent_folder_id),
+      parentIdx: index("clip_folders_parent_folder_id_idx").on(
+        table.parent_folder_id
+      ),
     };
   }
 ).enableRLS();
@@ -276,6 +293,48 @@ export const clipTags = pgTable(
       uniqueClipTag: index("clip_tags_clip_id_tag_id_idx").on(
         table.clip_id,
         table.tag_id
+      ),
+    };
+  }
+).enableRLS();
+
+export const comfyJobs = pgTable(
+  "comfy_jobs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    teamId: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    status: comfyJobStatusEnum("status").notNull().default("queued"),
+    imageFile: text("image_file").notNull(),
+    videoFile: text("video_file").notNull(),
+    workflowJson: jsonb("workflow_json"),
+    assignedPod: text("assigned_pod"),
+    progress: integer("progress").default(0),
+    progressMessage: text("progress_message"),
+    outputFile: text("output_file"),
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    startedAt: timestamp("started_at"),
+    finishedAt: timestamp("finished_at"),
+    parentJobId: uuid("parent_job_id"),
+    priority: integer("priority").notNull().default(0),
+    sequenceNumber: integer("sequence_number"),
+    totalChunks: integer("total_chunks"),
+    chunkStartTime: numeric("chunk_start_time", { precision: 10, scale: 3 }),
+    chunkEndTime: numeric("chunk_end_time", { precision: 10, scale: 3 }),
+    jobType: text("job_type").notNull().default("single"),
+    originalVideoS3Key: text("original_video_s3_key"),
+  },
+  (table) => {
+    return {
+      statusIdx: index("comfy_jobs_status_idx").on(table.status),
+      teamIdx: index("comfy_jobs_team_id_idx").on(table.teamId),
+      createdAtIdx: index("comfy_jobs_created_at_idx").on(table.createdAt),
+      parentJobIdx: index("comfy_jobs_parent_job_id_idx").on(table.parentJobId),
+      priorityCreatedAtIdx: index("comfy_jobs_priority_created_at_idx").on(
+        table.priority,
+        table.createdAt
       ),
     };
   }

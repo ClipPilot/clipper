@@ -15,13 +15,13 @@ const features: PricingFeatures = [
         helpText: "Generate AI-powered clips from your videos. ",
       },
       {
-        title: "Saved clips included",
+        title: "Credits",
         tiers: {
-          [TiersEnum.Free]: "3 included",
-          [TiersEnum.Studio]: "400/month",
-          [TiersEnum.Scale]: "1,000/month",
+          [TiersEnum.Free]: "3 credits included",
+          [TiersEnum.Studio]: "400 credits / month",
+          [TiersEnum.Scale]: "1,000 credits / month",
         },
-        helpText: "Save and download your favorite clips without watermarks.",
+        helpText: "Use credits to save and download your favorite clips.",
       },
       {
         title: "Clip storage duration",

@@ -287,7 +287,7 @@ export default function WorkspaceSelector({
             <div className="flex items-center justify-between text-xs mb-2">
               <span className="text-text-secondary font-medium">Usage</span>
               <span className="text-text-tertiary">
-                {usageStats.clipsCreated} / {usageStats.limit} clips
+                {usageStats.clipsCreated} / {usageStats.limit} credits used
               </span>
             </div>
             <div className="w-full bg-surface-elevated rounded-full h-1.5">

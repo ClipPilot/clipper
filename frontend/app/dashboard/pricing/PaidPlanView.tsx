@@ -122,12 +122,12 @@ export function PaidPlanView({
                   Monthly Limit
                 </span>
                 <span className="text-lg font-semibold text-text-primary">
-                  {usageStats?.baseLimit || 0} clips
+                  {usageStats?.baseLimit || 0} credits
                 </span>
               </div>
               <div className="flex flex-col gap-1 p-4 rounded-xl bg-surface-dark/50">
                 <span className="text-xs text-text-tertiary uppercase tracking-wider">
-                  Bonus Clips
+                  Bonus Credits
                 </span>
                 <span className="text-lg font-semibold text-green-500">
                   +{usageStats?.addonRemaining || 0}
@@ -138,7 +138,7 @@ export function PaidPlanView({
                   Total Remaining
                 </span>
                 <span className="text-lg font-semibold text-text-primary">
-                  {usageStats?.totalRemaining || 0} clips
+                  {usageStats?.totalRemaining || 0} credits
                 </span>
               </div>
             </div>
@@ -186,10 +186,10 @@ export function PaidPlanView({
         <div className="space-y-4">
           <div className="text-center">
             <h3 className="text-xl font-bold text-text-primary">
-              Need more clips?
+              Need more credits?
             </h3>
             <p className="text-sm text-text-secondary mt-1">
-              Purchase additional clip packs to increase your monthly limit
+              Purchase additional credits to increase your monthly limit
             </p>
           </div>
 
@@ -217,7 +217,7 @@ export function PaidPlanView({
                 </div>
                 <div>
                   <h4 className="text-lg font-semibold text-text-primary">
-                    +{isScale ? "100" : "50"} Clips
+                    +{isScale ? "100" : "50"} Credits
                   </h4>
                   <p className="text-sm text-text-tertiary">
                     {isScale ? "Scale" : "Studio"} Pack
@@ -229,7 +229,7 @@ export function PaidPlanView({
                   <span className="text-3xl font-bold text-text-primary">
                     ${isScale ? "5.99" : "11.49"}
                   </span>
-                  <span className="text-sm text-text-tertiary">/per clip</span>
+                  <span className="text-sm text-text-tertiary">/per credit</span>
                 </div>
                 <p className="text-xs text-text-tertiary mt-1">
                   ${isScale ? "599" : "574.50"} one time purchase
@@ -242,7 +242,7 @@ export function PaidPlanView({
                   width={16}
                 />
                 <p className="text-xs text-green-500">
-                  Bonus clips never expire
+                  Bonus credits never expire
                 </p>
               </div>
             </CardBody>

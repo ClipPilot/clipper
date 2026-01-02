@@ -48,6 +48,12 @@ const baseSidebarItems: SidebarItem[] = [
     icon: "solar:video-library-bold-duotone",
     href: "/dashboard/clips",
   },
+  {
+    key: "ugc-studio",
+    title: "UGC Studio",
+    icon: "solar:video-frame-play-vertical-bold-duotone",
+    href: "/dashboard/ugc-studio",
+  }
 ];
 
 const pricingItem: SidebarItem = {

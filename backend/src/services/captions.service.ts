@@ -159,6 +159,44 @@ Format: Layer,Start,End,Style,Text
   });
 };
 
+export function convertWordsToCaptionEntries(
+  words: TranscriptionWord[],
+  wordsPerGroup: number = WORDS_PER_GROUP
+): CaptionEntry[] {
+  const entries: CaptionEntry[] = [];
+
+  for (let i = 0; i < words.length; i += wordsPerGroup) {
+    const group = words.slice(i, i + wordsPerGroup);
+    if (group.length === 0) continue;
+
+    entries.push({
+      index: entries.length,
+      startTime: group[0].start,
+      endTime: group[group.length - 1].end,
+      text: group.map(w => w.punctuated_word || "").join(" "),
+    });
+  }
+
+  return entries;
+}
+
+export function generateSrtFromCaptions(captions: CaptionEntry[]): string {
+  const formatSrtTime = (seconds: number): string => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60);
+    const ms = Math.floor((seconds % 1) * 1000);
+    return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")},${ms.toString().padStart(3, "0")}`;
+  };
+
+  return captions
+    .map(
+      c =>
+        `${c.index + 1}\n${formatSrtTime(c.startTime)} --> ${formatSrtTime(c.endTime)}\n${c.text}\n`
+    )
+    .join("\n");
+}
+
 export const addCaptionsFromData = async (
   inputPath: string,
   outputPath: string,

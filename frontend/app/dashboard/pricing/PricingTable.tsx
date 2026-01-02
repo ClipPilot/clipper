@@ -114,11 +114,11 @@ export function PricingTable({
                     <div className="flex items-center gap-2">
                       <Icon
                         className="text-accent-400"
-                        icon="solar:bookmark-bold"
+                        icon="solar:dollar-minimalistic-bold"
                         width={16}
                       />
                       <span className="text-text-secondary">
-                        {tier.savedClips}
+                        {tier.credits}
                       </span>
                     </div>
                   </div>

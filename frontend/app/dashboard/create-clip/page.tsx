@@ -284,13 +284,13 @@ export default function CreateClipPage() {
                 ) : (
                   <>
                     <p className="text-sm text-text-secondary mb-1">
-                      Saved Clips
+                      Credits
                     </p>
                     <p className="text-2xl font-bold text-text-primary">
                       {usageStats.clipsCreated} / {usageStats.limit}
                     </p>
                     <p className="text-xs text-text-tertiary mt-1">
-                      {usageStats.remaining} saves remaining
+                      {usageStats.remaining} credits remaining
                     </p>
                   </>
                 )}
