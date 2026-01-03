@@ -137,7 +137,13 @@ export function PricingTable({
                     variant={isButtonDisabled(tier) ? "flat" : tier.buttonVariant}
                     isDisabled={isButtonDisabled(tier)}
                     isLoading={loadingTier === tier.key}
-                    onPress={() => onUpgrade(tier)}
+                    onPress={() => {
+                      if (tier.key === TiersEnum.Enterprise) {
+                        window.open("https://cuttr.com/contact", "_blank");
+                      } else {
+                        onUpgrade(tier);
+                      }
+                    }}
                   >
                     {getButtonText(tier)}
                   </Button>

@@ -4,6 +4,7 @@ export enum TiersEnum {
   Free = "free",
   Studio = "studio",
   Scale = "scale",
+  Enterprise = "enterprise",
 }
 
 export type Tier = {

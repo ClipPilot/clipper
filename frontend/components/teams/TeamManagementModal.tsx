@@ -14,6 +14,7 @@ import {
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { Team, teamAPI } from "@/api/team";
+import { canInviteMembers } from "@/lib/plans";
 import TeamMembersList from "./TeamMembersList";
 import TeamInvitesList from "./TeamInvitesList";
 import TeamSettingsCard from "./TeamSettingsCard";
@@ -121,7 +122,7 @@ export default function TeamManagementModal({
                       <Button
                         color="primary"
                         onPress={onInviteOpen}
-                        isDisabled={team.plan !== "scale"}
+                        isDisabled={!canInviteMembers(team.plan)}
                         startContent={
                           <Icon icon="solar:user-plus-bold-duotone" width={18} />
                         }
@@ -129,7 +130,7 @@ export default function TeamManagementModal({
                       >
                         Invite Member
                       </Button>
-                      {team.plan !== "scale" && (
+                      {!canInviteMembers(team.plan) && (
                         <p className="text-xs text-text-tertiary">
                           Upgrade to Scale to invite team members
                         </p>

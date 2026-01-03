@@ -3,6 +3,7 @@ import { teams, teamMembers, teamInvites, users } from "@clipper/shared-db/src/s
 import { eq, and, lt } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { emailNotiService } from "./emailNoti.service";
+import { canInviteMembers } from "../utils/plans";
 
 const INVITE_EXPIRY_DAYS = 7;
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
@@ -34,7 +35,7 @@ class TeamInviteService {
       throw new Error("Team not found");
     }
 
-    if (team.type === "personal" && team.plan !== "scale") {
+    if (team.type === "personal" && !canInviteMembers(team.plan)) {
       throw new Error("Cannot invite members to personal workspaces. Upgrade to Scale plan to invite team members.");
     }
 

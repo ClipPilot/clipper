@@ -8,7 +8,7 @@ import { comfyJobs, teamMembers, clips, users } from "@clipper/shared-db/src/sch
 import { eq, and, asc, desc, inArray } from "drizzle-orm";
 import { config } from "../config/env";
 import { s3Service } from "./s3.service";
-import { cutClip, mergeClips } from "./videoEditor.service";
+import { cutClip, mergeClips, extractLastFrame } from "./videoEditor.service";
 import { emitComfyJobUpdate } from "./socket.service";
 import { teamService } from "./team.service";
 import { emailNotiService } from "./emailNoti.service";
@@ -802,11 +802,14 @@ async function processUGCFaceSwapParentJob(
       `[comfy-worker] Created ${chunkInfos.length} chunks for processing`
     );
 
-    // Step 4: Upload image to GPU once (shared across all chunks)
+    // Step 4: Upload initial reference image to GPU
     console.log(`[comfy-worker] Uploading reference image to GPU`);
-    const gpuImageName = await uploadFileToGpu(gpu, localImagePath);
+    let currentReferenceImagePath = localImagePath;
+    let gpuImageName = await uploadFileToGpu(gpu, currentReferenceImagePath);
 
-    // Step 5: Process each chunk through ComfyUI
+    // Step 5: Process each chunk through ComfyUI with last-frame conditioning
+    // For chunks after the first, we use the last frame of the previous output
+    // as the reference image to maintain temporal consistency (same person/clothing)
     const processedChunkPaths: string[] = [];
 
     for (let i = 0; i < chunkInfos.length; i++) {
@@ -837,6 +840,15 @@ async function processUGCFaceSwapParentJob(
       const processedPath = path.join(outDir, `processed_${i}.mp4`);
       fs.writeFileSync(processedPath, buffer);
       processedChunkPaths.push(processedPath);
+
+      // Extract last frame for next chunk's reference (temporal consistency)
+      // This ensures the next chunk starts with the same person/clothing appearance
+      if (i < chunkInfos.length - 1) {
+        const lastFramePath = path.join(outDir, `lastframe_${i}.jpg`);
+        await extractLastFrame(processedPath, lastFramePath);
+        gpuImageName = await uploadFileToGpu(gpu, lastFramePath);
+        console.log(`[comfy-worker] Using last frame of chunk ${i} as reference for chunk ${i + 1}`);
+      }
 
       // Update progress after each chunk completes
       const chunkProgress = Math.round(15 + ((i + 1) / chunkInfos.length) * 70);
@@ -953,8 +965,7 @@ async function processJobOnGpu(job: ComfyJob, gpu: GpuConfig): Promise<void> {
             console.error(`[comfy-worker] Transcription failed:`, (transcribeErr as Error).message);
           }
 
-          await teamService.incrementTeamUsage(job.teamId, 5);
-          console.log(`[comfy-worker] Charged 5 credits to team ${job.teamId}`);
+          // Credits already charged upfront in controller - no charge needed on success
 
           const [user] = await db
             .select()
@@ -986,6 +997,12 @@ async function processJobOnGpu(job: ComfyJob, gpu: GpuConfig): Promise<void> {
     );
     try {
       await completeJob(job.id, job.teamId, false, undefined, undefined, (err as Error).message);
+
+      // Refund credits on failure (5 credits charged upfront in controller)
+      if (job.jobType === "ugc-face-swap-parent") {
+        await teamService.decrementTeamUsage(job.teamId, 5);
+        console.log(`[comfy-worker] Refunded 5 credits to team ${job.teamId} due to job failure`);
+      }
     } catch (dbErr) {
       console.error(`[comfy-worker] Failed to update job status in DB:`, (dbErr as Error).message);
     }

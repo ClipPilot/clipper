@@ -29,9 +29,16 @@ const initializeDatabase = () => {
 
     pool = new Pool({
       connectionString: databaseUrl,
-      max: 10,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 10000,
+      max: 20, // Increased for concurrent API + worker usage
+      min: 2, // Keep minimum connections alive
+      idleTimeoutMillis: 60000, // 60s before closing idle connections
+      connectionTimeoutMillis: 30000, // 30s to wait for connection
+      allowExitOnIdle: false, // Don't exit if idle
+    });
+
+    // Handle pool errors gracefully
+    pool.on("error", (err) => {
+      console.error("Unexpected database pool error:", err.message);
     });
 
     dbInstance = drizzle(pool, { schema });

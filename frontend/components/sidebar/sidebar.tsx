@@ -43,7 +43,6 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
       selectedTeam?.id
     );
 
-    // Sync selected state when pathname changes (e.g., navigating via links)
     useEffect(() => {
       if (isComingSoonSelected) {
         setSelected("");
@@ -63,10 +62,12 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
       : 0;
 
     const plan = selectedTeam?.plan || "free";
-    const isPaidPlan = plan === "studio" || plan === "scale";
+    const isPaidPlan = ["studio", "scale", "enterprise"].includes(plan);
 
     const getPlanName = () => {
       switch (plan) {
+        case "enterprise":
+          return "Enterprise";
         case "scale":
           return "Scale";
         case "studio":
@@ -78,6 +79,8 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
 
     const getPlanColor = () => {
       switch (plan) {
+        case "enterprise":
+          return "bg-emerald-500/10 text-emerald-500";
         case "scale":
           return "bg-purple-500/10 text-purple-500";
         case "studio":
@@ -95,42 +98,52 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
             aria-label="Navigation"
             selectedKeys={[selected] as unknown as Selection}
             selectionMode="single"
+            disallowEmptySelection
             variant="flat"
             onSelectionChange={(keys) => {
               const key = Array.from(keys)[0];
-              setSelected(key as React.Key);
-              onSelect?.(key as string);
+              if (key) {
+                setSelected(key as React.Key);
+                onSelect?.(key as string);
+              }
             }}
             classNames={{
               list: "gap-1",
             }}
           >
-            {items.map((item) => (
-              <ListboxItem
-                key={item.key}
-                textValue={item.title}
-                classNames={{
-                  base: "px-3 py-2.5 rounded-lg data-[selected=true]:bg-accent-400/10 hover:bg-surface-elevated transition-colors",
-                  title:
-                    "text-sm font-medium text-white data-[selected=true]:text-accent-400",
-                }}
-                startContent={
-                  item.icon && (
-                    <Icon
-                      icon={item.icon}
-                      width={20}
-                      className="text-white data-[selected=true]:text-accent-400"
-                    />
-                  )
-                }
-              >
-                {item.title}
-              </ListboxItem>
-            ))}
+            {items.map((item) => {
+              const isSelected = selected === item.key;
+              return (
+                <ListboxItem
+                  key={item.key}
+                  textValue={item.title}
+                  classNames={{
+                    base: "px-3 py-2.5 rounded-lg data-[selected=true]:bg-accent-400/10 hover:bg-surface-elevated transition-colors",
+                    title: cn(
+                      "text-sm font-medium transition-colors",
+                      isSelected ? "text-accent-400" : "text-white"
+                    ),
+                  }}
+                  startContent={
+                    item.icon && (
+                      <Icon
+                        icon={item.icon}
+                        width={20}
+                        className={cn(
+                          "transition-colors",
+                          isSelected ? "text-accent-400" : "text-white"
+                        )}
+                      />
+                    )
+                  }
+                >
+                  {item.title}
+                </ListboxItem>
+              );
+            })}
           </Listbox>
         </div>
 
-        {/* Coming Soon */}
         <div className="mt-auto px-4 pb-2">
           <button
             onClick={() => router.push("/dashboard/coming-soon")}
@@ -159,105 +172,53 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
           </button>
         </div>
 
-        {canViewPricing &&
-          !isLoading &&
-          !error &&
-          selectedTeam &&
-          !isPaidPlan && (
-            <div className="p-4 border-t border-border-base">
-              <button
-                onClick={() => router.push("/dashboard/pricing")}
-                className="w-full flex items-center gap-3 p-3 rounded-lg bg-accent-400/10 border border-accent-400/20 hover:bg-accent-400/20 transition-colors"
-              >
-                <Icon
-                  icon="solar:rocket-bold-duotone"
-                  className="text-accent-400 flex-shrink-0"
-                  width={18}
-                />
-                <div className="flex-1 text-left">
-                  <p className="text-xs font-medium text-accent-400">
-                    Upgrade workspace
-                  </p>
-                  <p className="text-[10px] text-text-tertiary">
-                    Unlimited clips
-                  </p>
-                </div>
-                <Icon
-                  icon="solar:arrow-right-bold"
-                  className="text-accent-400"
-                  width={14}
-                />
-              </button>
-            </div>
-          )}
-
-        {canViewPricing &&
-          !isLoading &&
-          !error &&
-          selectedTeam &&
-          isPaidPlan && (
-            <div className="mt-auto p-4 border-t border-border-base">
-              <button
-                onClick={() => router.push("/dashboard/pricing")}
-                className={cn(
-                  "w-full flex items-center gap-3 p-3 rounded-lg border transition-colors",
-                  plan === "scale"
-                    ? "bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20"
-                    : "bg-accent-400/10 border-accent-400/20 hover:bg-accent-400/20"
-                )}
-              >
-                <Icon
-                  icon="solar:verified-check-bold"
-                  className={
-                    plan === "scale" ? "text-purple-500" : "text-accent-400"
-                  }
-                  width={18}
-                />
-                <div className="flex-1 text-left">
-                  <p
-                    className={cn(
-                      "text-xs font-medium",
-                      plan === "scale" ? "text-purple-500" : "text-accent-400"
-                    )}
-                  >
-                    {getPlanName()} plan
-                  </p>
-                  <p className="text-[10px] text-text-tertiary">
-                    Manage subscription
-                  </p>
-                </div>
-                <Icon
-                  icon="solar:arrow-right-bold"
-                  className={
-                    plan === "scale" ? "text-purple-500" : "text-accent-400"
-                  }
-                  width={14}
-                />
-              </button>
-            </div>
-          )}
+        {canViewPricing && selectedTeam && (
+          <div className="px-4 pb-3">
+            <button
+              onClick={() => router.push("/dashboard/referrals")}
+              className="w-full flex items-center gap-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 transition-colors"
+            >
+              <Icon
+                icon="solar:money-bag-bold-duotone"
+                className="text-amber-500 flex-shrink-0"
+                width={20}
+              />
+              <div className="flex-1 text-left">
+                <p className="text-xs font-medium text-amber-500">
+                  Referral Program
+                </p>
+                <p className="text-[10px] text-text-tertiary">
+                  Earn credits & discounts
+                </p>
+              </div>
+              <Icon
+                icon="solar:arrow-right-bold"
+                className="text-amber-500"
+                width={14}
+              />
+            </button>
+          </div>
+        )}
 
         {!isLoading && !error && usageStats && selectedTeam && (
           <div className="p-4 border-t border-border-base">
-            <div className="space-y-2">
+            <div className="space-y-3">
+              <p
+                className="text-xs text-text-secondary font-medium truncate"
+                title={selectedTeam.name}
+              >
+                {selectedTeam.name}
+              </p>
               <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span
-                    className="text-text-secondary font-medium truncate"
-                    title={selectedTeam.name}
-                  >
-                    {selectedTeam.name}
-                  </span>
-                  <span
-                    className={cn(
-                      "text-[10px] px-1.5 py-0.5 rounded font-medium flex-shrink-0",
-                      getPlanColor()
-                    )}
-                  >
-                    {getPlanName()}
-                  </span>
-                </div>
-                <span className="text-text-tertiary flex-shrink-0 ml-2">
+                <span
+                  className={cn(
+                    "text-[10px] px-1.5 py-0.5 rounded font-medium",
+                    getPlanColor()
+                  )}
+                >
+                  {getPlanName()}
+                </span>
+                <span className="text-text-tertiary">
                   {usageStats.clipsCreated} / {usageStats.baseLimit}
                 </span>
               </div>
@@ -288,6 +249,41 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
                   </span>
                 )}
               </div>
+
+              {canViewPricing && (
+                isPaidPlan ? (
+                  <button
+                    onClick={() => router.push("/dashboard/pricing")}
+                    className={cn(
+                      "w-full flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors",
+                      plan === "scale"
+                        ? "bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20"
+                        : "bg-accent-400/10 border-accent-400/20 hover:bg-accent-400/20"
+                    )}
+                  >
+                    <Icon
+                      icon="solar:verified-check-bold"
+                      className={plan === "scale" ? "text-purple-500" : "text-accent-400"}
+                      width={16}
+                    />
+                    <span
+                      className={cn(
+                        "text-xs font-medium",
+                        plan === "scale" ? "text-purple-500" : "text-accent-400"
+                      )}
+                    >
+                      Manage subscription
+                    </span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => router.push("/dashboard/pricing")}
+                    className="w-full text-xs text-text-tertiary hover:text-accent-400 transition-colors text-left"
+                  >
+                    Upgrade workspace
+                  </button>
+                )
+              )}
             </div>
           </div>
         )}

@@ -19,10 +19,15 @@ export const STRIPE_PRICES = isProduction
       SCALE_ADDON: "price_1SfTAzGu9cYiGgY3SHUjgUf0",
     };
 
+export const ENTERPRISE_PRODUCT = isProduction
+  ? "prod_TipHjIJw7ibIIw"
+  : "prod_TipICPrW7FcHcY";
+
 export const PLAN_LIMITS = {
   FREE: { clips: 3, generations: 10, seats: 1 },
   STUDIO: { clips: 400, generations: -1, seats: 1 },
   SCALE: { clips: 1000, generations: -1, seats: -1 },
+  ENTERPRISE: { clips: -1, generations: -1, seats: -1 },
   STUDIO_ADDON: { clips: 50 },
   SCALE_ADDON: { clips: 100 },
 } as const;
@@ -42,12 +47,17 @@ export const getPlanFromPriceId = (priceId: string): string => {
   }
 };
 
-export const getClipsLimitForPlan = (plan: string): number => {
+export const getClipsLimitForPlan = (plan: string, customLimit?: number): number => {
+  if (plan === "enterprise" && customLimit !== undefined) {
+    return customLimit;
+  }
   switch (plan) {
     case "studio":
       return PLAN_LIMITS.STUDIO.clips;
     case "scale":
       return PLAN_LIMITS.SCALE.clips;
+    case "enterprise":
+      return PLAN_LIMITS.ENTERPRISE.clips;
     default:
       return PLAN_LIMITS.FREE.clips;
   }

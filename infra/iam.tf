@@ -45,7 +45,8 @@ resource "aws_iam_role_policy" "ecs_execution_secrets" {
         aws_secretsmanager_secret.stripe_secret_key.arn,
         aws_secretsmanager_secret.stripe_webhook_secret.arn,
         aws_secretsmanager_secret.resend_api_key.arn,
-        aws_secretsmanager_secret.gemini_api_key.arn
+        aws_secretsmanager_secret.gemini_api_key.arn,
+        aws_secretsmanager_secret.admin_jwt_secret.arn
       ]
     }]
   })

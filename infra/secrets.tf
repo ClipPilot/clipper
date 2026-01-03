@@ -132,3 +132,17 @@ resource "aws_secretsmanager_secret_version" "gemini_api_key" {
   secret_id     = aws_secretsmanager_secret.gemini_api_key.id
   secret_string = var.gemini_api_key
 }
+
+# Admin JWT Secret
+resource "aws_secretsmanager_secret" "admin_jwt_secret" {
+  name                    = "${var.project_name}-${var.environment}/admin-jwt-secret"
+  recovery_window_in_days = 0
+
+  tags = {
+    Name = "${var.project_name}-admin-jwt-secret-${var.environment}"
+  }
+}
+resource "aws_secretsmanager_secret_version" "admin_jwt_secret" {
+  secret_id     = aws_secretsmanager_secret.admin_jwt_secret.id
+  secret_string = var.admin_jwt_secret
+}

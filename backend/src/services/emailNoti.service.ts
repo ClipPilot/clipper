@@ -12,6 +12,16 @@ import {
   SubscriptionRenewalEmailData,
   clipsReadyEmail,
   ClipsReadyEmailData,
+  admin2faEmail,
+  Admin2FAEmailData,
+  referralAppliedEmail,
+  ReferralAppliedEmailData,
+  referralConvertedEmail,
+  ReferralConvertedEmailData,
+  referralSuccessAdminEmail,
+  ReferralSuccessAdminEmailData,
+  referralRewardSetEmail,
+  ReferralRewardSetEmailData,
 } from "../templates/emailTemplates";
 
 export class EmailNotiService {
@@ -84,6 +94,31 @@ export class EmailNotiService {
       ? `Your ${data.clipCount} clips are ready!`
       : `Your clip is ready!`;
     return this.sendEmailNotification(to, subject, html);
+  }
+
+  async sendAdmin2FACode(to: string, data: Admin2FAEmailData) {
+    const html = admin2faEmail(data);
+    return this.sendEmailNotification(to, "Your Cuttr Admin Verification Code", html);
+  }
+
+  async sendReferralApplied(to: string, data: ReferralAppliedEmailData) {
+    const html = referralAppliedEmail(data);
+    return this.sendEmailNotification(to, "Someone used your referral code!", html);
+  }
+
+  async sendReferralConverted(to: string, data: ReferralConvertedEmailData) {
+    const html = referralConvertedEmail(data);
+    return this.sendEmailNotification(to, "Your referral converted to a paid plan!", html);
+  }
+
+  async sendReferralSuccess(to: string, data: ReferralSuccessAdminEmailData) {
+    const html = referralSuccessAdminEmail(data);
+    return this.sendEmailNotification(to, `New Referral: ${data.referredTeamName} → ${data.plan}`, html);
+  }
+
+  async sendReferralRewardSet(to: string, data: ReferralRewardSetEmailData) {
+    const html = referralRewardSetEmail(data);
+    return this.sendEmailNotification(to, "Your referral reward has been set!", html);
   }
 }
 

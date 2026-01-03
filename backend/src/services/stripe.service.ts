@@ -16,6 +16,7 @@ import {
 } from "@clipper/shared-db/src/schema";
 import { eq, and } from "drizzle-orm";
 import { emailNotiService } from "./emailNoti.service";
+import { referralService } from "./referral.service";
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://platform.cuttr.com";
 
@@ -198,7 +199,9 @@ class StripeService {
       return;
     }
 
-    const plan = getPlanFromPriceId(priceId);
+    // Check metadata for enterprise plan (dynamic prices aren't in getPlanFromPriceId)
+    const metadataPlan = subscription.metadata?.plan;
+    const plan = metadataPlan === "enterprise" ? "enterprise" : getPlanFromPriceId(priceId);
 
     // Get dates from subscription items (Stripe puts them there, not at root level)
     const subscriptionItem = subscription.items?.data?.[0];
@@ -274,14 +277,21 @@ class StripeService {
       });
     }
 
-    const clipsLimit = getClipsLimitForPlan(plan);
+    const [team] = await db
+      .select()
+      .from(teams)
+      .where(eq(teams.id, teamId))
+      .limit(1);
+
+    const clipsLimit = plan === "enterprise" && team?.enterprise_clip_limit
+      ? team.enterprise_clip_limit
+      : getClipsLimitForPlan(plan);
 
     await db
       .update(teams)
       .set({ plan, updated_at: new Date() })
       .where(eq(teams.id, teamId));
 
-    // Reset usage for new subscription - start fresh with new limit
     await db
       .update(usageStats)
       .set({
@@ -293,8 +303,14 @@ class StripeService {
       .where(eq(usageStats.team_id, teamId));
 
     console.log(
-      `Subscription ${subscription.id} created/updated for team ${teamId}, plan: ${plan}`
+      `Subscription ${subscription.id} created/updated for team ${teamId}, plan: ${plan}, clips: ${clipsLimit}`
     );
+
+    try {
+      await referralService.activateReferral(teamId, plan);
+    } catch (refError) {
+      console.error("Failed to activate referral:", refError);
+    }
 
     try {
       const [team] = await db
@@ -361,23 +377,26 @@ class StripeService {
       return new Date(val);
     };
 
-    let plan = getPlanFromPriceId(priceId);
-    if (plan === "free") {
-      const [team] = await db
-        .select()
-        .from(teams)
-        .where(eq(teams.id, existingSub.team_id))
-        .limit(1);
+    const [team] = await db
+      .select()
+      .from(teams)
+      .where(eq(teams.id, existingSub.team_id))
+      .limit(1);
 
-      if (team && team.plan !== "free") {
-        console.log(
-          `Unrecognized price ID ${priceId}, preserving existing plan: ${team.plan}`
-        );
-        plan = team.plan;
-      }
+    // Check metadata for enterprise plan (dynamic prices aren't in getPlanFromPriceId)
+    const metadataPlan = subscription.metadata?.plan;
+    let plan = metadataPlan === "enterprise" ? "enterprise" : getPlanFromPriceId(priceId);
+
+    if (plan === "free" && team && team.plan !== "free") {
+      console.log(
+        `Unrecognized price ID ${priceId}, preserving existing plan: ${team.plan}`
+      );
+      plan = team.plan;
     }
 
-    const clipsLimit = getClipsLimitForPlan(plan);
+    const clipsLimit = plan === "enterprise" && team?.enterprise_clip_limit
+      ? team.enterprise_clip_limit
+      : getClipsLimitForPlan(plan);
     const newPeriodStart = parseDate(periodStartTs);
     const newPeriodEnd = parseDate(periodEndTs);
 
@@ -411,8 +430,6 @@ class StripeService {
       .set({ plan, updated_at: new Date() })
       .where(eq(teams.id, existingSub.team_id));
 
-    // Only reset usage stats when billing period changes (new month)
-    // This ensures addon clips only last for the current billing period
     if (periodChanged) {
       await db
         .update(usageStats)
@@ -423,8 +440,16 @@ class StripeService {
           updated_at: new Date(),
         })
         .where(eq(usageStats.team_id, existingSub.team_id));
+
+      try {
+        const bonusClipsApplied = await referralService.applyBonusClipsOnRenewal(existingSub.team_id);
+        if (bonusClipsApplied > 0) {
+          console.log(`Applied ${bonusClipsApplied} referral bonus clips to team ${existingSub.team_id}`);
+        }
+      } catch (refError) {
+        console.error("Failed to apply referral bonus clips:", refError);
+      }
     } else {
-      // Just update the resets_date without touching limit (preserves addon clips)
       await db
         .update(usageStats)
         .set({

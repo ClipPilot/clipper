@@ -1,0 +1,137 @@
+"use client";
+
+import { Button, Card, CardBody, Progress } from "@heroui/react";
+import { Icon } from "@iconify/react";
+
+interface GeneratePanelProps {
+  isProcessing: boolean;
+  processingStatus: string;
+  submittedJobId: string | null;
+  error: string | null;
+  hasVideo: boolean;
+  hasCharacter: boolean;
+  segmentCount: number;
+  totalDuration: number;
+  onGenerate: () => void;
+  onClearSubmitted: () => void;
+  onClearError: () => void;
+}
+
+export function GeneratePanel({
+  isProcessing,
+  processingStatus,
+  submittedJobId,
+  error,
+  hasVideo,
+  hasCharacter,
+  segmentCount,
+  totalDuration,
+  onGenerate,
+  onClearSubmitted,
+  onClearError,
+}: GeneratePanelProps) {
+  const isValid = hasVideo && hasCharacter && segmentCount > 0 && totalDuration <= 30.01;
+
+  return (
+    <Card className="bg-surface-base border border-border-base">
+      <CardBody className="p-4">
+        {isProcessing ? (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-accent-400/20 flex items-center justify-center">
+                <Icon
+                  icon="solar:cloud-upload-bold-duotone"
+                  className="text-accent-400 animate-pulse"
+                  width={22}
+                />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-text-primary">
+                  {processingStatus || "Processing..."}
+                </p>
+                <p className="text-xs text-text-tertiary">This may take a moment</p>
+              </div>
+            </div>
+            <Progress isIndeterminate color="primary" size="sm" className="w-full" />
+          </div>
+        ) : submittedJobId ? (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center">
+                <Icon icon="solar:check-circle-bold-duotone" className="text-green-500" width={22} />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-text-primary">Job Submitted!</p>
+                <p className="text-xs text-text-tertiary">Check progress below</p>
+              </div>
+            </div>
+            <Button
+              className="w-full bg-accent-400 text-white font-semibold"
+              size="lg"
+              onPress={onClearSubmitted}
+              startContent={<Icon icon="solar:add-circle-bold" width={20} />}
+            >
+              Generate Clips
+            </Button>
+          </div>
+        ) : error ? (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 p-3 bg-red-500/10 rounded-lg">
+              <Icon icon="solar:danger-circle-bold" className="text-red-500" width={20} />
+              <p className="text-sm text-red-500">{error}</p>
+            </div>
+            <Button
+              className="w-full bg-accent-400 text-white font-semibold"
+              size="lg"
+              onPress={onClearError}
+              startContent={<Icon icon="solar:refresh-bold" width={20} />}
+            >
+              Try Again
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <div className={`w-2.5 h-2.5 rounded-full ${hasVideo ? "bg-green-500" : "bg-surface-elevated"}`} />
+                <span className={`text-sm ${hasVideo ? "text-text-primary" : "text-text-tertiary"}`}>
+                  Video uploaded
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className={`w-2.5 h-2.5 rounded-full ${hasCharacter ? "bg-green-500" : "bg-surface-elevated"}`} />
+                <span className={`text-sm ${hasCharacter ? "text-text-primary" : "text-text-tertiary"}`}>
+                  Character uploaded
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-2.5 h-2.5 rounded-full ${
+                    hasVideo && segmentCount > 0 && totalDuration <= 30.01 ? "bg-green-500" : "bg-surface-elevated"
+                  }`}
+                />
+                <span
+                  className={`text-sm ${
+                    hasVideo && segmentCount > 0 && totalDuration <= 30.01 ? "text-text-primary" : "text-text-tertiary"
+                  }`}
+                >
+                  {segmentCount} segment{segmentCount !== 1 ? "s" : ""} (≤30s)
+                </span>
+              </div>
+            </div>
+            <Button
+              className="w-full bg-accent-400 text-white font-semibold"
+              size="lg"
+              isDisabled={!isValid}
+              onPress={onGenerate}
+              startContent={<Icon icon="solar:magic-stick-3-bold-duotone" width={20} />}
+              endContent={<span className="px-1.5 py-0.5 text-xs bg-white/20 rounded-full">5 Credits</span>}
+            >
+              Generate Face Swap
+            </Button>
+          </div>
+        )}
+      </CardBody>
+    </Card>
+  );
+}

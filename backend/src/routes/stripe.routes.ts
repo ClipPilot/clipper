@@ -289,7 +289,7 @@ router.post("/portal", requireAuth, createPortalSession);
  *                   description: Subscription object or null if no subscription
  *                 plan:
  *                   type: string
- *                   enum: [free, studio, scale]
+ *                   enum: [free, studio, scale, enterprise]
  *                   description: Current plan name
  *                   example: "studio"
  *       401:

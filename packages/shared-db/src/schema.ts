@@ -1,3 +1,4 @@
+import { float } from "drizzle-orm/mysql-core";
 import {
   pgTable,
   varchar,
@@ -11,6 +12,7 @@ import {
   pgEnum,
   index,
   numeric,
+  decimal,
 } from "drizzle-orm/pg-core";
 
 // Enums
@@ -96,6 +98,8 @@ export const teams = pgTable("teams", {
   stripe_customer_id: varchar("stripe_customer_id", { length: 255 }),
   plan: varchar("plan", { length: 50 }).notNull().default("free"),
   addon_clips_remaining: integer("addon_clips_remaining").notNull().default(0),
+  enterprise_clip_limit: integer("enterprise_clip_limit"),
+  enterprise_monthly_price: integer("enterprise_monthly_price"),
   created_at: timestamp("created_at").notNull().defaultNow(),
   updated_at: timestamp("updated_at").notNull().defaultNow(),
 }).enableRLS();
@@ -339,3 +343,32 @@ export const comfyJobs = pgTable(
     };
   }
 ).enableRLS();
+
+export const referralCodes = pgTable("referral_codes", {
+  id: serial("id").primaryKey(),
+  code: varchar("code", { length: 50 }).notNull().unique(),
+  created_by_team_id: integer("created_by_team_id")
+    .notNull()
+    .references(() => teams.id, { onDelete: "cascade" }),
+  created_at: timestamp("created_at").notNull().defaultNow(),
+  updated_at: timestamp("updated_at").notNull().defaultNow(),
+}).enableRLS();
+
+export const referralStatusEnum = pgEnum("referral_status", ["pending", "active", "churned"]);
+
+export const referrals = pgTable("referrals", {
+  id: serial("id").primaryKey(),
+  referral_code_id: integer("referral_code_id")
+    .notNull()
+    .references(() => referralCodes.id, { onDelete: "cascade" }),
+  referred_team_id: integer("referred_team_id")
+    .notNull()
+    .references(() => teams.id, { onDelete: "cascade" }),
+  referred_plan: varchar("referred_plan", { length: 50 }),
+  status: referralStatusEnum("status").notNull().default("pending"),
+  percent_off: decimal("percent_off", { precision: 5, scale: 2 }).notNull().default("0"),
+  bonus_clips: integer("bonus_clips").notNull().default(0),
+  reward_applied: boolean("reward_applied").notNull().default(false),
+  created_at: timestamp("created_at").notNull().defaultNow(),
+  updated_at: timestamp("updated_at").notNull().defaultNow(),
+}).enableRLS();

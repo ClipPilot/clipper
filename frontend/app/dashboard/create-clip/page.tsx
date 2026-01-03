@@ -255,44 +255,44 @@ export default function CreateClipPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-dark p-8">
+    <div className="min-h-screen bg-surface-dark p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 lg:mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-text-primary mb-2">
+            <h1 className="text-2xl sm:text-3xl font-bold text-text-primary mb-1 sm:mb-2">
               Create Clip
             </h1>
-            <p className="text-text-secondary">
+            <p className="text-sm sm:text-base text-text-secondary">
               Upload a video and let AI create viral clips for social media
             </p>
           </div>
           {usageStats && (
-            <Card className="bg-surface-base border border-border-accent">
-              <CardBody className="p-4">
+            <Card className="bg-surface-base border border-border-accent flex-shrink-0">
+              <CardBody className="p-3 sm:p-4">
                 {selectedTeam?.plan === "free" ? (
-                  <>
-                    <p className="text-sm text-text-secondary mb-1">
+                  <div className="flex sm:block items-center gap-3">
+                    <p className="text-xs sm:text-sm text-text-secondary sm:mb-1">
                       Generations
                     </p>
-                    <p className="text-2xl font-bold text-text-primary">
+                    <p className="text-lg sm:text-2xl font-bold text-text-primary">
                       {usageStats.clipsGenerated} / {usageStats.generationLimit}
                     </p>
-                    <p className="text-xs text-text-tertiary mt-1">
-                      {usageStats.generationsRemaining} generations remaining
+                    <p className="hidden sm:block text-xs text-text-tertiary mt-1">
+                      {usageStats.generationsRemaining} remaining
                     </p>
-                  </>
+                  </div>
                 ) : (
-                  <>
-                    <p className="text-sm text-text-secondary mb-1">
+                  <div className="flex sm:block items-center gap-3">
+                    <p className="text-xs sm:text-sm text-text-secondary sm:mb-1">
                       Credits
                     </p>
-                    <p className="text-2xl font-bold text-text-primary">
+                    <p className="text-lg sm:text-2xl font-bold text-text-primary">
                       {usageStats.clipsCreated} / {usageStats.limit}
                     </p>
-                    <p className="text-xs text-text-tertiary mt-1">
-                      {usageStats.remaining} credits remaining
+                    <p className="hidden sm:block text-xs text-text-tertiary mt-1">
+                      {usageStats.remaining} remaining
                     </p>
-                  </>
+                  </div>
                 )}
               </CardBody>
             </Card>
@@ -348,7 +348,7 @@ export default function CreateClipPage() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
             {!hasVideosReady ? (
               <div className="lg:col-span-3">
                 {/* Batch mode toggle */}
@@ -512,7 +512,7 @@ export default function CreateClipPage() {
                   </Card>
 
                   <Card className="bg-surface-base border border-border-base">
-                    <CardBody className="p-6">
+                    <CardBody className="p-4 sm:p-6">
                       <SettingsPanel
                         promptType={promptType}
                         setPromptType={setPromptType}
@@ -538,7 +538,7 @@ export default function CreateClipPage() {
 
                 <div className="lg:col-span-2">
                   <Card className="bg-surface-base border border-border-base h-full">
-                    <CardBody className="p-6">
+                    <CardBody className="p-4 sm:p-6">
                       <TextOverlayPanel
                         customText={customText}
                         setCustomText={setCustomText}

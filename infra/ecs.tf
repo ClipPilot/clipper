@@ -162,6 +162,10 @@ resource "aws_ecs_task_definition" "backend" {
       {
         name      = "GEMINI_API_KEY"
         valueFrom = aws_secretsmanager_secret.gemini_api_key.arn
+      },
+      {
+        name      = "ADMIN_JWT_SECRET"
+        valueFrom = aws_secretsmanager_secret.admin_jwt_secret.arn
       }
     ]
 

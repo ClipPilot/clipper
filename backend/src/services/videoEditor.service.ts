@@ -133,6 +133,40 @@ export const getVideoDuration = (videoPath: string): Promise<number> => {
   });
 };
 
+/**
+ * Extracts the last frame from a video as a JPG image.
+ * Used for temporal consistency when processing video in chunks -
+ * the last frame of chunk N becomes the reference for chunk N+1.
+ */
+export const extractLastFrame = (
+  videoPath: string,
+  outputPath: string
+): Promise<string> => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const duration = await getVideoDuration(videoPath);
+      // Seek to 0.1s before end to ensure we get a valid frame
+      const seekTime = Math.max(0, duration - 0.1);
+
+      ffmpeg(videoPath)
+        .setStartTime(seekTime)
+        .outputOptions(["-vframes", "1", "-q:v", "2"]) // 1 frame, high quality
+        .output(outputPath)
+        .on("end", () => {
+          console.log(`[EXTRACT] Last frame saved to ${outputPath}`);
+          resolve(outputPath);
+        })
+        .on("error", (err) => {
+          console.error(`[EXTRACT] Failed to extract last frame: ${err.message}`);
+          reject(err);
+        })
+        .run();
+    } catch (err) {
+      reject(err);
+    }
+  });
+};
+
 export const cutClip = (
   input: string,
   output: string,

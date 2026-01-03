@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Link, Spacer, addToast } from "@heroui/react";
+import { Link, Spacer, addToast, Input, Button, Chip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 
 import { tiers } from "./pricing-tiers";
@@ -14,6 +14,8 @@ import { PricingTable } from "./PricingTable";
 import { useTeams } from "@/hooks/useTeams";
 import { useUsageStats } from "@/hooks/useUsageStats";
 import { stripeAPI, STRIPE_PRICES } from "@/api/stripe";
+import { apiJson } from "@/lib/apiClient";
+import API_URL from "@/config/constants";
 
 function PricingContent() {
   const searchParams = useSearchParams();
@@ -21,9 +23,13 @@ function PricingContent() {
   const { usageStats, refetch: refetchUsage } = useUsageStats(selectedTeam?.id);
   const [loadingTier, setLoadingTier] = useState<string | null>(null);
   const [loadingPortal, setLoadingPortal] = useState(false);
+  const [referralCode, setReferralCode] = useState("");
+  const [appliedReferral, setAppliedReferral] = useState<string | null>(null);
+  const [isApplyingCode, setIsApplyingCode] = useState(false);
+  const [showReferralInput, setShowReferralInput] = useState(false);
 
   const currentPlan = selectedTeam?.plan || "free";
-  const isPaidPlan = currentPlan === "studio" || currentPlan === "scale";
+  const isPaidPlan = ["studio", "scale", "enterprise"].includes(currentPlan);
 
   useEffect(() => {
     if (searchParams.get("success") === "true") {
@@ -137,10 +143,56 @@ function PricingContent() {
     return tier.key === TiersEnum.Free || tier.key === currentPlan;
   };
 
+  const handleApplyReferral = async () => {
+    if (!referralCode.trim() || !selectedTeam) return;
+
+    setIsApplyingCode(true);
+    try {
+      const validation = await apiJson<{ valid: boolean; code: string }>(
+        `${API_URL}/referrals/validate/${encodeURIComponent(referralCode.trim())}`,
+        { skipAuth: true }
+      );
+
+      if (validation.valid) {
+        await apiJson(`${API_URL}/referrals/${selectedTeam.id}/apply`, {
+          method: "POST",
+          body: JSON.stringify({ code: referralCode.trim() }),
+        });
+
+        setAppliedReferral(validation.code);
+        setShowReferralInput(false);
+        addToast({
+          title: "Referral code applied!",
+          description: "Your referral has been linked successfully.",
+          color: "success",
+        });
+      } else {
+        addToast({
+          title: "Invalid code",
+          description: "Please check your referral code and try again.",
+          color: "danger",
+        });
+      }
+    } catch (error: any) {
+      addToast({
+        title: "Error",
+        description: error.message || "Failed to apply referral code",
+        color: "danger",
+      });
+    } finally {
+      setIsApplyingCode(false);
+    }
+  };
+
+  const handleRemoveReferral = () => {
+    setAppliedReferral(null);
+    setReferralCode("");
+  };
+
   if (isPaidPlan) {
     return (
       <PaidPlanView
-        currentPlan={currentPlan as "studio" | "scale"}
+        currentPlan={currentPlan as "studio" | "scale" | "enterprise"}
         teamName={selectedTeam?.name}
         usageStats={usageStats ?? undefined}
         loadingPortal={loadingPortal}
@@ -180,7 +232,101 @@ function PricingContent() {
         </p>
       </div>
 
-      <Spacer y={12} />
+      <Spacer y={8} />
+
+      <div className="relative z-10 w-full max-w-md xl:translate-x-[12.5%]">
+        {appliedReferral ? (
+          <div className="flex items-center justify-center gap-3 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+            <Icon
+              icon="solar:verified-check-bold"
+              className="text-green-500"
+              width={20}
+            />
+            <span className="text-sm text-green-500 font-medium">
+              Referral code applied: {appliedReferral}
+            </span>
+            <button
+              onClick={handleRemoveReferral}
+              className="text-text-tertiary hover:text-text-secondary transition-colors"
+            >
+              <Icon icon="solar:close-circle-bold" width={18} />
+            </button>
+          </div>
+        ) : showReferralInput ? (
+          <div className="flex flex-col sm:flex-row items-stretch gap-2 p-3 rounded-lg bg-surface-base border border-border-base">
+            <Input
+              placeholder="Enter referral code"
+              value={referralCode}
+              onValueChange={setReferralCode}
+              size="sm"
+              classNames={{
+                input: "bg-surface-elevated text-text-primary",
+                inputWrapper:
+                  "bg-surface-elevated border-border-base hover:border-border-light",
+              }}
+              startContent={
+                <Icon
+                  icon="solar:ticket-bold-duotone"
+                  className="text-text-tertiary"
+                  width={16}
+                />
+              }
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleApplyReferral();
+              }}
+            />
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                className="bg-accent-400 text-white font-medium"
+                onPress={handleApplyReferral}
+                isLoading={isApplyingCode}
+              >
+                Apply
+              </Button>
+              <Button
+                size="sm"
+                variant="flat"
+                className="text-text-secondary"
+                onPress={() => {
+                  setShowReferralInput(false);
+                  setReferralCode("");
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowReferralInput(true)}
+            className="w-full flex items-center justify-center gap-3 p-4 rounded-xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-500/30 hover:border-amber-500/50 hover:from-amber-500/20 hover:via-orange-500/20 hover:to-amber-500/20 transition-all group"
+          >
+            <div className="p-2 rounded-lg bg-amber-500/20 group-hover:bg-amber-500/30 transition-colors">
+              <Icon
+                icon="solar:gift-bold-duotone"
+                className="text-amber-500"
+                width={20}
+              />
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-medium text-amber-500">
+                Have a referral code?
+              </p>
+              <p className="text-xs text-text-tertiary">
+                Get bonus credits when you sign up
+              </p>
+            </div>
+            <Icon
+              icon="solar:arrow-right-bold"
+              className="text-amber-500/50 group-hover:text-amber-500 transition-colors"
+              width={16}
+            />
+          </button>
+        )}
+      </div>
+
+      <Spacer y={8} />
 
       <div className="relative z-10 mx-auto grid max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:hidden">
         {tiers.map((tier) => (

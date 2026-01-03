@@ -22,6 +22,20 @@
       "when": 1767243330283,
       "tag": "0002_striped_hardball",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1767453286037,
+      "tag": "0003_crazy_mystique",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1767466372610,
+      "tag": "0004_closed_whistler",
+      "breakpoints": true
     }
   ]
 }

@@ -146,4 +146,6 @@ output
 # uploads directory for temporary video files
 uploads
 
+temp
+
 *.DS_Store
