@@ -624,7 +624,7 @@ class StripeService {
     }
 
     await stripe.subscriptions.update(subscriptionId, {
-      coupon: coupon.id,
+      discounts: [{ coupon: coupon.id }],
     });
   }
 
