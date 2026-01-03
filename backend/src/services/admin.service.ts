@@ -263,6 +263,42 @@ class AdminService {
     const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
     return team;
   }
+
+  async changePlanToEnterprise(
+    teamId: number,
+    clipLimit: number,
+    monthlyPriceCents: number,
+    customerEmail: string
+  ): Promise<{ checkoutUrl: string; priceId: string; cancelledSubscription: boolean }> {
+    const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
+    if (!team) throw new Error("Team not found");
+
+    let cancelledSubscription = false;
+
+    const [existingSub] = await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.team_id, teamId))
+      .limit(1);
+
+    if (existingSub && existingSub.stripe_subscription_id && existingSub.status === "active") {
+      await stripe.subscriptions.cancel(existingSub.stripe_subscription_id);
+
+      await db
+        .update(subscriptions)
+        .set({ status: "canceled", updated_at: new Date() })
+        .where(eq(subscriptions.team_id, teamId));
+
+      cancelledSubscription = true;
+    }
+
+    const result = await this.setupEnterprise(teamId, clipLimit, monthlyPriceCents, customerEmail);
+
+    return {
+      ...result,
+      cancelledSubscription,
+    };
+  }
 }
 
 export const adminService = new AdminService();

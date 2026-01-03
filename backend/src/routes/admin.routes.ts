@@ -7,6 +7,7 @@ import {
   getAllTeams,
   getTeam,
   setupEnterprise,
+  changePlan,
 } from "../controllers/admin.controller";
 
 const router = Router();
@@ -208,5 +209,7 @@ router.get("/teams/:teamId", requireAdminAuth, getTeam);
  *         description: Setup failed
  */
 router.post("/enterprise/setup", requireAdminAuth, setupEnterprise);
+
+router.post("/teams/change-plan", requireAdminAuth, changePlan);
 
 export default router;

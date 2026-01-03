@@ -141,3 +141,44 @@ export async function setupEnterprise(req: AdminRequest, res: Response) {
     return res.status(500).json({ error: "Failed to setup enterprise" });
   }
 }
+
+export async function changePlan(req: AdminRequest, res: Response) {
+  try {
+    const { teamId, newPlan, clipLimit, monthlyPrice, customerEmail } = req.body;
+
+    if (!teamId || !newPlan) {
+      return res.status(400).json({
+        error: "teamId and newPlan are required",
+      });
+    }
+
+    if (newPlan === "enterprise") {
+      if (!clipLimit || !monthlyPrice || !customerEmail) {
+        return res.status(400).json({
+          error: "clipLimit, monthlyPrice, and customerEmail are required for enterprise plan",
+        });
+      }
+
+      const monthlyPriceCents = Math.round(parseFloat(monthlyPrice) * 100);
+
+      const result = await adminService.changePlanToEnterprise(
+        parseInt(teamId),
+        parseInt(clipLimit),
+        monthlyPriceCents,
+        customerEmail
+      );
+
+      return res.json({
+        success: true,
+        checkoutUrl: result.checkoutUrl,
+        priceId: result.priceId,
+        cancelledSubscription: result.cancelledSubscription,
+      });
+    }
+
+    return res.status(400).json({ error: "Only enterprise plan changes are currently supported" });
+  } catch (error) {
+    console.error("Change plan error:", error);
+    return res.status(500).json({ error: "Failed to change plan" });
+  }
+}

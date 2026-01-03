@@ -58,6 +58,13 @@ export interface EnterpriseSetupResult {
   team: Team;
 }
 
+export interface ChangePlanResult {
+  success: boolean;
+  checkoutUrl: string;
+  priceId: string;
+  cancelledSubscription: boolean;
+}
+
 export interface LoginResponse {
   message: string;
   email: string;
@@ -135,6 +142,24 @@ export const adminAPI = {
         ...getAuthHeaders(),
       },
       body: JSON.stringify({ teamId, clipLimit, monthlyPrice, customerEmail }),
+    });
+    return handleResponse(response);
+  },
+
+  async changePlan(
+    teamId: string,
+    newPlan: string,
+    clipLimit?: number,
+    monthlyPrice?: number,
+    customerEmail?: string
+  ): Promise<ChangePlanResult> {
+    const response = await fetch(`${API_URL}/admin/teams/change-plan`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify({ teamId, newPlan, clipLimit, monthlyPrice, customerEmail }),
     });
     return handleResponse(response);
   },

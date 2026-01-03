@@ -6,6 +6,155 @@ import { adminAPI, Team, Pagination } from "@/lib/api";
 
 const ITEMS_PER_PAGE = 10;
 
+interface ChangePlanModalProps {
+  team: Team;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+function ChangePlanModal({ team, onClose, onSuccess }: ChangePlanModalProps) {
+  const [clipLimit, setClipLimit] = useState("");
+  const [monthlyPrice, setMonthlyPrice] = useState("");
+  const [customerEmail, setCustomerEmail] = useState(team.ownerEmail || "");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [checkoutUrl, setCheckoutUrl] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const result = await adminAPI.changePlan(
+        team.id.toString(),
+        "enterprise",
+        parseInt(clipLimit),
+        parseFloat(monthlyPrice),
+        customerEmail
+      );
+
+      if (result.checkoutUrl) {
+        setCheckoutUrl(result.checkoutUrl);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to change plan");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCopyUrl = () => {
+    navigator.clipboard.writeText(checkoutUrl);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={onClose}>
+      <div className="bg-surface border border-border rounded-2xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
+        <h2 className="text-xl font-bold text-text-primary mb-2">
+          Upgrade to Enterprise
+        </h2>
+        <p className="text-sm text-text-secondary mb-4">
+          {team.name} • Current plan: <span className="capitalize">{team.plan}</span>
+          {team.plan !== "free" && (
+            <span className="text-yellow-400 ml-2">(subscription will be cancelled)</span>
+          )}
+        </p>
+
+        {error && (
+          <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm mb-4">
+            {error}
+          </div>
+        )}
+
+        {checkoutUrl ? (
+          <div className="space-y-4">
+            <div className="p-4 rounded-lg bg-emerald/10 border border-emerald/20">
+              <p className="text-sm text-emerald font-medium mb-2">Checkout URL Generated</p>
+              <p className="text-xs text-text-tertiary mb-3">Send this to the customer to complete payment:</p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={checkoutUrl}
+                  readOnly
+                  className="flex-1 px-3 py-2 text-xs rounded-lg bg-surface-elevated border border-border text-text-secondary"
+                />
+                <button
+                  onClick={handleCopyUrl}
+                  className="px-3 py-2 rounded-lg bg-emerald text-black text-sm font-medium hover:bg-emerald-light transition-colors"
+                >
+                  Copy
+                </button>
+              </div>
+            </div>
+            <button
+              onClick={() => { onSuccess(); onClose(); }}
+              className="w-full py-2.5 rounded-lg bg-surface-elevated border border-border text-text-secondary hover:bg-surface-hover transition-colors"
+            >
+              Done
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm text-text-secondary mb-1.5">Customer Email</label>
+              <input
+                type="email"
+                value={customerEmail}
+                onChange={e => setCustomerEmail(e.target.value)}
+                required
+                className="w-full px-3 py-2.5 rounded-lg bg-surface-elevated border border-border focus:border-emerald outline-none text-text-primary"
+                placeholder="customer@company.com"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-text-secondary mb-1.5">Monthly Clip Limit</label>
+              <input
+                type="number"
+                value={clipLimit}
+                onChange={e => setClipLimit(e.target.value)}
+                required
+                min="1"
+                className="w-full px-3 py-2.5 rounded-lg bg-surface-elevated border border-border focus:border-emerald outline-none text-text-primary"
+                placeholder="5000"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-text-secondary mb-1.5">Monthly Price (USD)</label>
+              <input
+                type="number"
+                value={monthlyPrice}
+                onChange={e => setMonthlyPrice(e.target.value)}
+                required
+                min="1"
+                step="0.01"
+                className="w-full px-3 py-2.5 rounded-lg bg-surface-elevated border border-border focus:border-emerald outline-none text-text-primary"
+                placeholder="499.00"
+              />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 py-2.5 rounded-lg bg-surface-elevated border border-border text-text-secondary hover:bg-surface-hover transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="flex-1 py-2.5 rounded-lg bg-emerald text-black font-medium hover:bg-emerald-light transition-colors disabled:opacity-50"
+              >
+                {isLoading ? "Processing..." : "Upgrade"}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const [teams, setTeams] = useState<Team[]>([]);
@@ -14,6 +163,7 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [changePlanTeam, setChangePlanTeam] = useState<Team | null>(null);
 
   // Debounce search input
   useEffect(() => {
@@ -206,12 +356,20 @@ export default function DashboardPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        {team.plan !== "enterprise" && (
+                        {team.plan === "free" && (
                           <button
                             onClick={() => router.push(`/dashboard/enterprise?teamId=${team.id}`)}
                             className="text-sm px-4 py-2 rounded-lg bg-emerald/10 text-emerald hover:bg-emerald/20 border border-emerald/20 hover:border-emerald/40 transition-all font-medium"
                           >
                             Setup Enterprise
+                          </button>
+                        )}
+                        {(team.plan === "studio" || team.plan === "scale") && (
+                          <button
+                            onClick={() => setChangePlanTeam(team)}
+                            className="text-sm px-4 py-2 rounded-lg bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 border border-purple-500/20 hover:border-purple-500/40 transition-all font-medium"
+                          >
+                            Upgrade to Enterprise
                           </button>
                         )}
                         {team.plan === "enterprise" && (
@@ -261,6 +419,14 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {changePlanTeam && (
+        <ChangePlanModal
+          team={changePlanTeam}
+          onClose={() => setChangePlanTeam(null)}
+          onSuccess={() => loadTeams(pagination?.offset || 0)}
+        />
+      )}
     </div>
   );
 }
