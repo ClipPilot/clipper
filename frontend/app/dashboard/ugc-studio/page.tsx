@@ -22,6 +22,7 @@ import { selectedTeamAtom } from "@/store/auth";
 import { apiFetch } from "@/lib/apiClient";
 import API_URL from "@/config/constants";
 import { connectSocket, joinTeam, leaveTeam, getSocket } from "@/lib/socket";
+import { MultiSegmentTrimmer, VideoSegment } from "./components/MultiSegmentTrimmer";
 
 type StudioView = "menu" | "face-swap";
 
@@ -42,376 +43,6 @@ interface FaceSwapJob {
 }
 
 const JOBS_PER_PAGE = 6;
-
-interface VideoTrimmerProps {
-  videoSrc: string;
-  duration: number;
-  trimStart: number;
-  trimEnd: number;
-  onTrimChange: (start: number, end: number) => void;
-  maxDuration?: number;
-}
-
-function VideoTrimmer({
-  videoSrc,
-  duration,
-  trimStart,
-  trimEnd,
-  onTrimChange,
-  maxDuration = 30,
-}: VideoTrimmerProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const timelineRef = useRef<HTMLDivElement>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [isDragging, setIsDragging] = useState<
-    "start" | "end" | "segment" | "playhead" | null
-  >(null);
-  const [dragStartX, setDragStartX] = useState(0);
-  const [dragStartTrimStart, setDragStartTrimStart] = useState(0);
-  const [dragStartTrimEnd, setDragStartTrimEnd] = useState(0);
-  const [thumbnails, setThumbnails] = useState<string[]>([]);
-  const [isGeneratingThumbnails, setIsGeneratingThumbnails] = useState(false);
-
-  const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    const ms = Math.floor((seconds % 1) * 10);
-    return `${mins}:${secs.toString().padStart(2, "0")}.${ms}`;
-  };
-
-  useEffect(() => {
-    if (!videoSrc || duration <= 0) return;
-
-    const generateThumbnails = async () => {
-      setIsGeneratingThumbnails(true);
-      const video = document.createElement("video");
-      video.src = videoSrc;
-      video.crossOrigin = "anonymous";
-      video.muted = true;
-
-      await new Promise((resolve) => {
-        video.onloadeddata = resolve;
-      });
-
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-
-      const numThumbnails = Math.min(20, Math.ceil(duration / 2));
-      const interval = duration / numThumbnails;
-      const thumbs: string[] = [];
-
-      canvas.width = 120;
-      canvas.height = 68;
-
-      for (let i = 0; i < numThumbnails; i++) {
-        video.currentTime = i * interval;
-        await new Promise((resolve) => {
-          video.onseeked = resolve;
-        });
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        thumbs.push(canvas.toDataURL("image/jpeg", 0.5));
-      }
-
-      setThumbnails(thumbs);
-      setIsGeneratingThumbnails(false);
-    };
-
-    generateThumbnails();
-  }, [videoSrc, duration]);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    const handleTimeUpdate = () => {
-      setCurrentTime(video.currentTime);
-      if (video.currentTime >= trimEnd) {
-        video.currentTime = trimStart;
-        if (!isPlaying) {
-          video.pause();
-        }
-      }
-    };
-
-    video.addEventListener("timeupdate", handleTimeUpdate);
-    return () => video.removeEventListener("timeupdate", handleTimeUpdate);
-  }, [trimStart, trimEnd, isPlaying]);
-
-  useEffect(() => {
-    if (videoRef.current && !isPlaying) {
-      videoRef.current.currentTime = trimStart;
-    }
-  }, [trimStart]);
-
-  const togglePlayPause = () => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    if (isPlaying) {
-      video.pause();
-    } else {
-      if (video.currentTime < trimStart || video.currentTime >= trimEnd) {
-        video.currentTime = trimStart;
-      }
-      video.play();
-    }
-    setIsPlaying(!isPlaying);
-  };
-
-  const handleTimelineMouseDown = (
-    e: React.MouseEvent,
-    type: "start" | "end" | "segment" | "playhead"
-  ) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(type);
-    setDragStartX(e.clientX);
-    setDragStartTrimStart(trimStart);
-    setDragStartTrimEnd(trimEnd);
-  };
-
-  const handleTimelineMouseMove = useCallback(
-    (e: MouseEvent) => {
-      if (!isDragging || !timelineRef.current) return;
-
-      const rect = timelineRef.current.getBoundingClientRect();
-
-      if (isDragging === "segment") {
-        const deltaX = e.clientX - dragStartX;
-        const deltaTime = (deltaX / rect.width) * duration;
-        const segmentDuration = dragStartTrimEnd - dragStartTrimStart;
-
-        let newStart = dragStartTrimStart + deltaTime;
-        let newEnd = dragStartTrimEnd + deltaTime;
-
-        if (newStart < 0) {
-          newStart = 0;
-          newEnd = segmentDuration;
-        }
-        if (newEnd > duration) {
-          newEnd = duration;
-          newStart = duration - segmentDuration;
-        }
-
-        onTrimChange(newStart, newEnd);
-      } else {
-        const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
-        const percentage = x / rect.width;
-        const time = percentage * duration;
-
-        if (isDragging === "start") {
-          const newStart = Math.max(0, Math.min(time, trimEnd - 1));
-          if (trimEnd - newStart > maxDuration) {
-            onTrimChange(trimEnd - maxDuration, trimEnd);
-          } else {
-            onTrimChange(newStart, trimEnd);
-          }
-        } else if (isDragging === "end") {
-          const newEnd = Math.max(trimStart + 1, Math.min(time, duration));
-          if (newEnd - trimStart > maxDuration) {
-            onTrimChange(trimStart, trimStart + maxDuration);
-          } else {
-            onTrimChange(trimStart, newEnd);
-          }
-        } else if (isDragging === "playhead") {
-          const newTime = Math.max(trimStart, Math.min(time, trimEnd));
-          if (videoRef.current) {
-            videoRef.current.currentTime = newTime;
-            setCurrentTime(newTime);
-          }
-        }
-      }
-    },
-    [
-      isDragging,
-      duration,
-      trimStart,
-      trimEnd,
-      maxDuration,
-      onTrimChange,
-      dragStartX,
-      dragStartTrimStart,
-      dragStartTrimEnd,
-    ]
-  );
-
-  const handleTimelineMouseUp = useCallback(() => {
-    setIsDragging(null);
-  }, []);
-
-  useEffect(() => {
-    if (isDragging) {
-      window.addEventListener("mousemove", handleTimelineMouseMove);
-      window.addEventListener("mouseup", handleTimelineMouseUp);
-      return () => {
-        window.removeEventListener("mousemove", handleTimelineMouseMove);
-        window.removeEventListener("mouseup", handleTimelineMouseUp);
-      };
-    }
-  }, [isDragging, handleTimelineMouseMove, handleTimelineMouseUp]);
-
-  const trimStartPercent = (trimStart / duration) * 100;
-  const trimEndPercent = (trimEnd / duration) * 100;
-  const playheadPercent = (currentTime / duration) * 100;
-  const clipDuration = Math.round((trimEnd - trimStart) * 100) / 100;
-  const exceedsMax = clipDuration > maxDuration + 0.01;
-
-  return (
-    <div className="space-y-4">
-      <div className="relative rounded-xl overflow-hidden bg-black aspect-video">
-        <video
-          ref={videoRef}
-          src={videoSrc}
-          className="w-full h-full object-contain"
-          playsInline
-          onPlay={() => setIsPlaying(true)}
-          onPause={() => setIsPlaying(false)}
-        />
-        <button
-          onClick={togglePlayPause}
-          className="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/20 transition-colors group"
-        >
-          <div className="w-16 h-16 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-            <Icon
-              icon={isPlaying ? "solar:pause-bold" : "solar:play-bold"}
-              className="text-white text-2xl ml-1"
-            />
-          </div>
-        </button>
-        <div className="absolute bottom-3 left-3 px-2 py-1 rounded bg-black/70 text-white text-xs font-mono">
-          {formatTime(currentTime)}
-        </div>
-        <div className="absolute bottom-3 right-3 px-2 py-1 rounded bg-black/70 text-white text-xs font-mono">
-          {formatTime(duration)}
-        </div>
-      </div>
-
-      <div className="space-y-3">
-        <div className="flex justify-between text-xs text-text-tertiary px-1">
-          <span>{formatTime(0)}</span>
-          <span>{formatTime(duration / 2)}</span>
-          <span>{formatTime(duration)}</span>
-        </div>
-
-        <div
-          ref={timelineRef}
-          className="relative h-16 rounded-lg overflow-hidden bg-surface-elevated cursor-pointer select-none"
-        >
-          <div className="absolute inset-0 flex">
-            {isGeneratingThumbnails ? (
-              <div className="flex-1 flex items-center justify-center">
-                <Icon
-                  icon="solar:refresh-circle-bold-duotone"
-                  className="text-2xl text-text-tertiary animate-spin"
-                />
-              </div>
-            ) : thumbnails.length > 0 ? (
-              thumbnails.map((thumb, i) => (
-                <div
-                  key={i}
-                  className="flex-1 h-full"
-                  style={{
-                    backgroundImage: `url(${thumb})`,
-                    backgroundSize: "cover",
-                    backgroundPosition: "center",
-                  }}
-                />
-              ))
-            ) : (
-              <div className="flex-1 bg-surface-elevated" />
-            )}
-          </div>
-
-          <div
-            className="absolute top-0 bottom-0 left-0 bg-black/70"
-            style={{ width: `${trimStartPercent}%` }}
-          />
-          <div
-            className="absolute top-0 bottom-0 right-0 bg-black/70"
-            style={{ width: `${100 - trimEndPercent}%` }}
-          />
-
-          <div
-            className="absolute top-0 bottom-0 border-y-2 border-accent-400 cursor-grab active:cursor-grabbing"
-            style={{
-              left: `${trimStartPercent}%`,
-              width: `${trimEndPercent - trimStartPercent}%`,
-            }}
-            onMouseDown={(e) => handleTimelineMouseDown(e, "segment")}
-          />
-
-          <div
-            className="absolute top-0 bottom-0 w-4 cursor-ew-resize group z-10"
-            style={{ left: `calc(${trimStartPercent}% - 8px)` }}
-            onMouseDown={(e) => handleTimelineMouseDown(e, "start")}
-          >
-            <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-1 bg-accent-400 group-hover:w-1.5 transition-all" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-8 rounded bg-accent-400 flex items-center justify-center">
-              <div className="w-0.5 h-4 bg-white/50 rounded-full" />
-            </div>
-          </div>
-
-          <div
-            className="absolute top-0 bottom-0 w-4 cursor-ew-resize group z-10"
-            style={{ left: `calc(${trimEndPercent}% - 8px)` }}
-            onMouseDown={(e) => handleTimelineMouseDown(e, "end")}
-          >
-            <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-1 bg-accent-400 group-hover:w-1.5 transition-all" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-8 rounded bg-accent-400 flex items-center justify-center">
-              <div className="w-0.5 h-4 bg-white/50 rounded-full" />
-            </div>
-          </div>
-
-          <div
-            className="absolute top-0 bottom-0 w-0.5 bg-white z-20 pointer-events-none"
-            style={{ left: `${playheadPercent}%` }}
-          >
-            <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-white rounded-full shadow-lg" />
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4 text-sm">
-            <div className="flex items-center gap-2">
-              <span className="text-text-tertiary">Start:</span>
-              <span className="text-text-primary font-mono">
-                {formatTime(trimStart)}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-text-tertiary">End:</span>
-              <span className="text-text-primary font-mono">
-                {formatTime(trimEnd)}
-              </span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-text-tertiary text-sm">Duration:</span>
-            <span
-              className={`font-mono text-sm font-medium ${
-                exceedsMax ? "text-red-500" : "text-accent-400"
-              }`}
-            >
-              {formatTime(clipDuration)}
-            </span>
-            <span className="text-text-muted text-xs">
-              / {maxDuration}s max
-            </span>
-          </div>
-        </div>
-
-        {exceedsMax && (
-          <div className="flex items-center gap-2 text-xs text-red-500 bg-red-500/10 p-2 rounded-lg">
-            <Icon icon="solar:danger-circle-bold" width={16} />
-            <span>Clip duration must be {maxDuration} seconds or less</span>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 function getStatusColor(status: FaceSwapJob["status"]) {
   switch (status) {
@@ -890,7 +521,6 @@ function MyFaceSwapsSection({
   );
 }
 
-// Example characters from public/characters folder
 const EXAMPLE_CHARACTERS = [
   { id: 1, src: "/characters/1.jpg" },
   { id: 2, src: "/characters/2.jpg" },
@@ -986,7 +616,7 @@ function UGCStudioContent({ selectedTeam }: { selectedTeam: { id: number; plan?:
   const [video, setVideo] = useState<UploadedFile | null>(null);
   const [selectedCharacter, setSelectedCharacter] = useState<SelectedCharacter | null>(null);
   const [videoDuration, setVideoDuration] = useState(0);
-  const [clipRange, setClipRange] = useState<[number, number]>([0, 30]);
+  const [segments, setSegments] = useState<VideoSegment[]>([]);
   const [isDraggingVideo, setIsDraggingVideo] = useState(false);
   const [isDraggingImage, setIsDraggingImage] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -1031,10 +661,10 @@ function UGCStudioContent({ selectedTeam }: { selectedTeam: { id: number; plan?:
       const videoEl = document.createElement("video");
       videoEl.src = preview;
       videoEl.onloadedmetadata = () => {
-        const duration = videoEl.duration;
-        setVideoDuration(duration);
-        const maxEnd = Math.min(duration, 30);
-        setClipRange([0, maxEnd]);
+        const dur = videoEl.duration;
+        setVideoDuration(dur);
+        const maxEnd = Math.min(dur, 30);
+        setSegments([{ id: crypto.randomUUID(), start: 0, end: maxEnd }]);
       };
     },
     [video]
@@ -1091,12 +721,12 @@ function UGCStudioContent({ selectedTeam }: { selectedTeam: { id: number; plan?:
     [handleImageSelect]
   );
 
-  const handleTrimChange = (start: number, end: number) => {
-    setClipRange([start, end]);
+  const handleSegmentsChange = (newSegments: VideoSegment[]) => {
+    setSegments(newSegments);
   };
 
   const handleGenerate = async () => {
-    if (!video || !characterImage || !selectedTeam?.id) return;
+    if (!video || !characterImage || !selectedTeam?.id || segments.length === 0) return;
 
     setError(null);
     setIsProcessing(true);
@@ -1108,8 +738,7 @@ function UGCStudioContent({ selectedTeam }: { selectedTeam: { id: number; plan?:
       formData.append("video", video.file);
       formData.append("image", characterImage.file);
       formData.append("teamId", selectedTeam.id.toString());
-      formData.append("startTime", clipRange[0].toString());
-      formData.append("endTime", clipRange[1].toString());
+      formData.append("segments", JSON.stringify(segments.map(s => ({ start: s.start, end: s.end }))));
 
       const response = await apiFetch(`${API_URL}/comfy/ugc-face-swap`, {
         method: "POST",
@@ -1138,7 +767,7 @@ function UGCStudioContent({ selectedTeam }: { selectedTeam: { id: number; plan?:
       setVideo(null);
       setSelectedCharacter(null);
       setVideoDuration(0);
-      setClipRange([0, 30]);
+      setSegments([]);
     } catch (err) {
       console.error("Generate error:", err);
       const errorMessage =
@@ -1163,14 +792,14 @@ function UGCStudioContent({ selectedTeam }: { selectedTeam: { id: number; plan?:
     setVideo(null);
     setSelectedCharacter(null);
     setVideoDuration(0);
-    setClipRange([0, 30]);
+    setSegments([]);
     setCurrentView("menu");
     setSubmittedJobId(null);
     setError(null);
     setProcessingStatus("");
   };
 
-  const clipDuration = Math.round((clipRange[1] - clipRange[0]) * 100) / 100;
+  const totalDuration = segments.reduce((sum, s) => sum + (s.end - s.start), 0);
 
   if (currentView === "menu") {
     return (
@@ -1336,7 +965,7 @@ function UGCStudioContent({ selectedTeam }: { selectedTeam: { id: number; plan?:
                         if (video.preview) URL.revokeObjectURL(video.preview);
                         setVideo(null);
                         setVideoDuration(0);
-                        setClipRange([0, 30]);
+                        setSegments([]);
                       }}
                       startContent={
                         <Icon icon="solar:refresh-bold" width={16} />
@@ -1349,13 +978,13 @@ function UGCStudioContent({ selectedTeam }: { selectedTeam: { id: number; plan?:
               </CardHeader>
               <CardBody className="pt-4">
                 {video ? (
-                  <VideoTrimmer
+                  <MultiSegmentTrimmer
                     videoSrc={video.preview}
                     duration={videoDuration}
-                    trimStart={clipRange[0]}
-                    trimEnd={clipRange[1]}
-                    onTrimChange={handleTrimChange}
-                    maxDuration={30}
+                    segments={segments}
+                    onSegmentsChange={handleSegmentsChange}
+                    maxTotalDuration={30}
+                    maxSegments={3}
                   />
                 ) : (
                   <div
@@ -1695,12 +1324,12 @@ function UGCStudioContent({ selectedTeam }: { selectedTeam: { id: number; plan?:
                       </div>
                       <div className="flex items-center gap-3">
                         <div
-                          className={`w-2.5 h-2.5 rounded-full ${video && clipDuration <= 30.01 ? "bg-green-500" : "bg-surface-elevated"}`}
+                          className={`w-2.5 h-2.5 rounded-full ${video && segments.length > 0 && totalDuration <= 30.01 ? "bg-green-500" : "bg-surface-elevated"}`}
                         />
                         <span
-                          className={`text-sm ${video && clipDuration <= 30.01 ? "text-text-primary" : "text-text-tertiary"}`}
+                          className={`text-sm ${video && segments.length > 0 && totalDuration <= 30.01 ? "text-text-primary" : "text-text-tertiary"}`}
                         >
-                          Clip selected (≤30s)
+                          {segments.length} segment{segments.length !== 1 ? "s" : ""} (≤30s)
                         </span>
                       </div>
                     </div>
@@ -1708,7 +1337,7 @@ function UGCStudioContent({ selectedTeam }: { selectedTeam: { id: number; plan?:
                       className="w-full bg-accent-400 text-white font-semibold"
                       size="lg"
                       isDisabled={
-                        !video || !characterImage || clipDuration > 30.01
+                        !video || !characterImage || segments.length === 0 || totalDuration > 30.01
                       }
                       onPress={handleGenerate}
                       startContent={
