@@ -124,21 +124,20 @@ export const ClipsToSaveSection: React.FC<ClipsToSaveSectionProps> = ({
   }
 
   return (
-    <div className="mb-8">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
+    <div className="mb-6 sm:mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 mb-4">
+        <h2 className="text-lg sm:text-xl font-bold text-text-primary flex items-center gap-2">
           <Icon
             icon="solar:gallery-check-bold-duotone"
-            className="text-2xl text-warning-500"
+            className="text-xl sm:text-2xl text-warning-500 flex-shrink-0"
           />
-          Clips to Save
-          <span className="text-sm font-normal text-text-tertiary">
-            ({clips.length} clip{clips.length !== 1 ? "s" : ""} waiting to be
-            saved)
+          <span>Clips to Save</span>
+          <span className="text-xs sm:text-sm font-normal text-text-tertiary">
+            ({clips.length})
           </span>
         </h2>
         {totalPages > 1 && (
-          <div className="flex items-center gap-2 text-sm text-text-tertiary">
+          <div className="flex items-center gap-2 text-xs sm:text-sm text-text-tertiary">
             <span>
               Page {currentPage + 1} of {totalPages}
             </span>
@@ -147,16 +146,14 @@ export const ClipsToSaveSection: React.FC<ClipsToSaveSectionProps> = ({
       </div>
 
       <Card className="bg-surface-base border border-warning-500/30 mb-4">
-        <CardBody className="p-4 flex items-center gap-3">
+        <CardBody className="p-3 sm:p-4 flex items-start sm:items-center gap-3">
           <Icon
             icon="solar:info-circle-bold"
-            className="text-xl text-warning-500 flex-shrink-0"
+            className="text-lg sm:text-xl text-warning-500 flex-shrink-0 mt-0.5 sm:mt-0"
           />
-          <p className="text-sm text-text-secondary">
-            These clips have a preview watermark. Save the clips you want to
-            keep and download. They will be added to your library without the
-            watermark. Saving a clip counts toward your usage quota. Unsaved
-            clips expire after 7 days.
+          <p className="text-xs sm:text-sm text-text-secondary">
+            Clips have a preview watermark. Save to add to your library without watermark.
+            <span className="hidden sm:inline"> Saving counts toward your usage quota. Unsaved clips expire after 7 days.</span>
           </p>
         </CardBody>
       </Card>
