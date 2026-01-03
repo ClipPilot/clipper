@@ -1,8 +1,15 @@
 import { db } from "../db";
-import { referralCodes, referrals, teams, teamMembers, users } from "@clipper/shared-db/src/schema";
+import {
+  referralCodes,
+  referrals,
+  teams,
+  teamMembers,
+  users,
+} from "@clipper/shared-db/src/schema";
 import { eq, and, desc } from "drizzle-orm";
 import crypto from "crypto";
 import { emailNotiService } from "./emailNoti.service";
+import { applyReferralDiscount } from "./stripe.service";
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "https://platform.cuttr.com";
 const ADMIN_EMAIL = "contact@cuttr.com";
@@ -47,7 +54,10 @@ class ReferralService {
     return referralCode || null;
   }
 
-  async applyReferralCode(referredTeamId: number, code: string): Promise<boolean> {
+  async applyReferralCode(
+    referredTeamId: number,
+    code: string
+  ): Promise<boolean> {
     const referralCode = await this.getCodeByCode(code);
     if (!referralCode) return false;
 
@@ -67,7 +77,9 @@ class ReferralService {
       status: "pending",
     });
 
-    const referrerTeam = await this.getTeamWithOwner(referralCode.created_by_team_id);
+    const referrerTeam = await this.getTeamWithOwner(
+      referralCode.created_by_team_id
+    );
     const referredTeam = await this.getTeamWithOwner(referredTeamId);
 
     if (referrerTeam?.ownerEmail) {
@@ -111,7 +123,9 @@ class ReferralService {
         .limit(1);
 
       if (referralCode) {
-        const referrerTeam = await this.getTeamWithOwner(referralCode.created_by_team_id);
+        const referrerTeam = await this.getTeamWithOwner(
+          referralCode.created_by_team_id
+        );
         const referredTeam = await this.getTeamWithOwner(referredTeamId);
 
         try {
@@ -128,11 +142,14 @@ class ReferralService {
 
         if (referrerTeam?.ownerEmail) {
           try {
-            await emailNotiService.sendReferralConverted(referrerTeam.ownerEmail, {
-              referrerName: referrerTeam.ownerName || "there",
-              referredTeamName: referredTeam?.teamName || "A team",
-              plan,
-            });
+            await emailNotiService.sendReferralConverted(
+              referrerTeam.ownerEmail,
+              {
+                referrerName: referrerTeam.ownerName || "there",
+                referredTeamName: referredTeam?.teamName || "A team",
+                plan,
+              }
+            );
           } catch (err) {
             console.error("Failed to send referral converted email:", err);
           }
@@ -296,7 +313,11 @@ class ReferralService {
     );
 
     if (totalBonusClips > 0) {
-      const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
+      const [team] = await db
+        .select()
+        .from(teams)
+        .where(eq(teams.id, teamId))
+        .limit(1);
       const currentAddon = team?.addon_clips_remaining || 0;
 
       await db
@@ -321,7 +342,11 @@ class ReferralService {
   }
 
   private async getTeamWithOwner(teamId: number) {
-    const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
+    const [team] = await db
+      .select()
+      .from(teams)
+      .where(eq(teams.id, teamId))
+      .limit(1);
     if (!team) return null;
 
     const [owner] = await db
@@ -331,7 +356,9 @@ class ReferralService {
       })
       .from(teamMembers)
       .innerJoin(users, eq(teamMembers.user_id, users.id))
-      .where(and(eq(teamMembers.team_id, teamId), eq(teamMembers.role, "owner")))
+      .where(
+        and(eq(teamMembers.team_id, teamId), eq(teamMembers.role, "owner"))
+      )
       .limit(1);
 
     return {
@@ -420,7 +447,11 @@ class ReferralService {
     const referrerTeamId = code.created_by_team_id;
 
     if (bonusClips > 0) {
-      const [team] = await db.select().from(teams).where(eq(teams.id, referrerTeamId)).limit(1);
+      const [team] = await db
+        .select()
+        .from(teams)
+        .where(eq(teams.id, referrerTeamId))
+        .limit(1);
       const currentAddon = team?.addon_clips_remaining || 0;
 
       await db
@@ -431,11 +462,12 @@ class ReferralService {
         })
         .where(eq(teams.id, referrerTeamId));
 
-      console.log(`Applied ${bonusClips} bonus clips to team ${referrerTeamId}`);
+      console.log(
+        `Applied ${bonusClips} bonus clips to team ${referrerTeamId}`
+      );
     }
 
     if (percentOff > 0) {
-      const { applyReferralDiscount } = await import("./stripe.service");
       await applyReferralDiscount(referrerTeamId, percentOff);
     }
 
