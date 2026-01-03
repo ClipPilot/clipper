@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { db } from "../db";
 import { comfyJobs } from "@clipper/shared-db/src/schema";
 import { s3Service } from "../services/s3.service";
-import { getVideoDuration, cutClip } from "../services/videoEditor.service";
+import { cutClip, mergeClips } from "../services/videoEditor.service";
 import { emitComfyJobUpdate } from "../services/socket.service";
 import { getTeamUsage } from "../middleware/subscription.middleware";
 import { teamService } from "../services/team.service";
@@ -18,14 +18,20 @@ interface AuthRequest extends Request {
   user?: { id: string; email: string; dbUserId: number };
 }
 
+interface SegmentInput {
+  start: number;
+  end: number;
+}
+
 export class ComfyController {
   async createUGCFaceSwapJob(req: AuthRequest, res: Response) {
     const MAX_VIDEO_DURATION = 30;
     let tempVideoPath: string | null = null;
-    let trimmedVideoPath: string | null = null;
+    let mergedVideoPath: string | null = null;
+    const segmentPaths: string[] = [];
 
     try {
-      const { teamId, startTime, endTime } = req.body;
+      const { teamId, startTime, endTime, segments: segmentsRaw } = req.body;
       const files = req.files as {
         image?: Express.Multer.File[];
         video?: Express.Multer.File[];
@@ -57,14 +63,36 @@ export class ComfyController {
       tempVideoPath = path.join(tempDir, `${crypto.randomUUID()}.mp4`);
       fs.writeFileSync(tempVideoPath, video.buffer);
 
-      const start = parseFloat(startTime) || 0;
-      const end = parseFloat(endTime) || 0;
-      const clipDuration = end - start;
+      let segments: SegmentInput[];
+      if (segmentsRaw) {
+        segments = JSON.parse(segmentsRaw);
+      } else {
+        segments = [{ start: parseFloat(startTime) || 0, end: parseFloat(endTime) || 0 }];
+      }
 
-      if (clipDuration <= 0 || clipDuration > MAX_VIDEO_DURATION + 0.1) {
+      if (segments.length === 0 || segments.length > 3) {
+        return res.status(400).json({ error: "Must provide 1-3 segments" });
+      }
+
+      let totalDuration = 0;
+      for (const seg of segments) {
+        if (seg.start >= seg.end) {
+          return res.status(400).json({ error: "Each segment must have start < end" });
+        }
+        totalDuration += seg.end - seg.start;
+      }
+
+      if (totalDuration <= 0 || totalDuration > MAX_VIDEO_DURATION + 0.1) {
         return res.status(400).json({
-          error: `Clip duration must be between 0 and ${MAX_VIDEO_DURATION} seconds`,
+          error: `Combined segment duration must be between 0 and ${MAX_VIDEO_DURATION} seconds`,
         });
+      }
+
+      const sortedSegments = [...segments].sort((a, b) => a.start - b.start);
+      for (let i = 0; i < sortedSegments.length - 1; i++) {
+        if (sortedSegments[i].end > sortedSegments[i + 1].start) {
+          return res.status(400).json({ error: "Segments cannot overlap" });
+        }
       }
 
       const usage = await getTeamUsage(parseInt(teamId));
@@ -93,23 +121,31 @@ export class ComfyController {
       await teamService.incrementTeamUsage(parseInt(teamId), UGC_CREDIT_COST);
       console.log(`[comfy] Charged ${UGC_CREDIT_COST} credits upfront to team ${teamId}`);
 
-      trimmedVideoPath = path.join(
-        tempDir,
-        `${crypto.randomUUID()}_trimmed.mp4`
-      );
-      await cutClip(tempVideoPath, trimmedVideoPath, start, end);
+      for (let i = 0; i < segments.length; i++) {
+        const segPath = path.join(tempDir, `${crypto.randomUUID()}_segment_${i}.mp4`);
+        await cutClip(tempVideoPath, segPath, segments[i].start, segments[i].end);
+        segmentPaths.push(segPath);
+      }
+
+      let finalVideoPath: string;
+      if (segmentPaths.length === 1) {
+        finalVideoPath = segmentPaths[0];
+      } else {
+        mergedVideoPath = path.join(tempDir, `${crypto.randomUUID()}_merged.mp4`);
+        await mergeClips(segmentPaths, mergedVideoPath);
+        finalVideoPath = mergedVideoPath;
+      }
 
       const imageExt = path.extname(image.originalname) || ".jpg";
       const imageS3Key = `ugc-inputs/${teamId}/${crypto.randomUUID()}${imageExt}`;
       const videoS3Key = `ugc-inputs/${teamId}/${crypto.randomUUID()}.mp4`;
 
-      const trimmedBuffer = fs.readFileSync(trimmedVideoPath);
+      const finalBuffer = fs.readFileSync(finalVideoPath);
       await Promise.all([
         s3Service.uploadBuffer(image.buffer, imageS3Key, image.mimetype),
-        s3Service.uploadBuffer(trimmedBuffer, videoS3Key, "video/mp4"),
+        s3Service.uploadBuffer(finalBuffer, videoS3Key, "video/mp4"),
       ]);
 
-      // Create job in DB
       const [job] = await db
         .insert(comfyJobs)
         .values({
@@ -139,7 +175,7 @@ export class ComfyController {
       return res.status(202).json({
         message: "UGC face swap job queued",
         jobId: job.id,
-        duration: Math.round(clipDuration),
+        duration: Math.round(totalDuration),
       });
     } catch (error) {
       console.error("Create UGC face swap job error:", error);
@@ -150,8 +186,11 @@ export class ComfyController {
       if (tempVideoPath && fs.existsSync(tempVideoPath)) {
         fs.unlinkSync(tempVideoPath);
       }
-      if (trimmedVideoPath && fs.existsSync(trimmedVideoPath)) {
-        fs.unlinkSync(trimmedVideoPath);
+      for (const segPath of segmentPaths) {
+        if (fs.existsSync(segPath)) fs.unlinkSync(segPath);
+      }
+      if (mergedVideoPath && fs.existsSync(mergedVideoPath)) {
+        fs.unlinkSync(mergedVideoPath);
       }
     }
   }

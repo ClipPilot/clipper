@@ -95,38 +95,49 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
             aria-label="Navigation"
             selectedKeys={[selected] as unknown as Selection}
             selectionMode="single"
+            disallowEmptySelection
             variant="flat"
             onSelectionChange={(keys) => {
               const key = Array.from(keys)[0];
-              setSelected(key as React.Key);
-              onSelect?.(key as string);
+              if (key) {
+                setSelected(key as React.Key);
+                onSelect?.(key as string);
+              }
             }}
             classNames={{
               list: "gap-1",
             }}
           >
-            {items.map((item) => (
-              <ListboxItem
-                key={item.key}
-                textValue={item.title}
-                classNames={{
-                  base: "px-3 py-2.5 rounded-lg data-[selected=true]:bg-accent-400/10 hover:bg-surface-elevated transition-colors",
-                  title:
-                    "text-sm font-medium text-white data-[selected=true]:text-accent-400",
-                }}
-                startContent={
-                  item.icon && (
-                    <Icon
-                      icon={item.icon}
-                      width={20}
-                      className="text-white data-[selected=true]:text-accent-400"
-                    />
-                  )
-                }
-              >
-                {item.title}
-              </ListboxItem>
-            ))}
+            {items.map((item) => {
+              const isSelected = selected === item.key;
+              return (
+                <ListboxItem
+                  key={item.key}
+                  textValue={item.title}
+                  classNames={{
+                    base: "px-3 py-2.5 rounded-lg data-[selected=true]:bg-accent-400/10 hover:bg-surface-elevated transition-colors",
+                    title: cn(
+                      "text-sm font-medium transition-colors",
+                      isSelected ? "text-accent-400" : "text-white"
+                    ),
+                  }}
+                  startContent={
+                    item.icon && (
+                      <Icon
+                        icon={item.icon}
+                        width={20}
+                        className={cn(
+                          "transition-colors",
+                          isSelected ? "text-accent-400" : "text-white"
+                        )}
+                      />
+                    )
+                  }
+                >
+                  {item.title}
+                </ListboxItem>
+              );
+            })}
           </Listbox>
         </div>
 

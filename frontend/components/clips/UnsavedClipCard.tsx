@@ -64,7 +64,7 @@ export const UnsavedClipCard: React.FC<UnsavedClipCardProps> = ({
   return (
     <Card className="bg-surface-base border border-border-accent overflow-hidden">
       <CardBody className="p-0 cursor-pointer" onClick={handleCardClick}>
-        <div className="aspect-[9/16] max-h-[400px]">
+        <div className="aspect-[9/16] max-h-[280px] sm:max-h-[400px]">
           {clip.clipUrl ? (
             <SecureVideoPlayer
               ref={videoRef}
@@ -114,35 +114,37 @@ export const UnsavedClipCard: React.FC<UnsavedClipCardProps> = ({
         </div>
       </CardBody>
 
-      <CardFooter className="px-4 py-3 border-t border-border-base flex gap-2">
+      <CardFooter className="px-3 py-2.5 border-t border-border-base flex gap-2">
         <Button
-          fullWidth
+          className="flex-1 justify-center"
           color="primary"
           size="sm"
           onPress={handleSave}
           isLoading={saving}
           isDisabled={saving}
-          startContent={!saving && <Icon icon="solar:diskette-bold" />}
-          endContent={!saving && (
-            <span className="ml-1 px-1.5 py-0.5 text-xs bg-white/20 rounded-full">
-              1 Credit
-            </span>
-          )}
         >
-          {saving ? "Saving..." : "Save"}
+          <span className="flex items-center gap-1.5">
+            {!saving && <Icon icon="solar:diskette-bold" className="text-sm" />}
+            <span className="text-xs sm:text-sm">{saving ? "Saving..." : "Save"}</span>
+            {!saving && (
+              <span className="px-1.5 py-0.5 text-[10px] bg-white/20 rounded-full font-medium hidden sm:inline">
+                1 Credit
+              </span>
+            )}
+          </span>
         </Button>
 
         {onReject && (
           <Button
-            fullWidth
             size="sm"
             variant="flat"
             color="danger"
+            isIconOnly
+            className="flex-shrink-0"
             onPress={() => setIsRejectModalOpen(true)}
             isDisabled={saving}
-            startContent={<Icon icon="solar:close-circle-bold" />}
           >
-            Reject
+            <Icon icon="solar:close-circle-bold" className="text-lg" />
           </Button>
         )}
       </CardFooter>

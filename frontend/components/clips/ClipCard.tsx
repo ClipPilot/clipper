@@ -287,15 +287,15 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
   return (
     <Card
       ref={cardRef}
-      className={`bg-surface-base border border-border-accent hover:bg-surface-elevated transition-all cursor-pointer h-[180px] relative z-0 ${
+      className={`bg-surface-base border border-border-accent hover:bg-surface-elevated transition-all cursor-pointer min-h-[180px] relative z-0 overflow-visible ${
         isDragging ? "opacity-50 scale-95" : ""
       }`}
       draggable
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex h-full" onClick={handleCardClick}>
-        <div className="w-24 flex-shrink-0 bg-surface-dark relative z-0">
+      <div className="flex flex-col sm:flex-row h-full" onClick={handleCardClick}>
+        <div className="w-full sm:w-24 h-32 sm:h-full sm:min-h-[180px] flex-shrink-0 bg-surface-dark relative z-0">
           {clip.clipUrl && isVisible && !isSelected ? (
             <video
               src={clip.clipUrl}
@@ -362,18 +362,18 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
             <span>{formatDate(clip.updated_at)}</span>
           </div>
 
-          <div className="mt-auto flex items-center gap-1">
+          <div className="mt-auto flex items-center gap-0.5 flex-wrap">
             <Tooltip content="View">
               <Button
                 isIconOnly
                 size="sm"
                 variant="light"
-                className="w-8 h-8 min-w-8"
+                className="w-7 h-7 min-w-7"
                 onPress={handleView}
               >
                 <Icon
                   icon="solar:eye-bold"
-                  className="text-lg text-text-secondary"
+                  className="text-base text-text-secondary"
                 />
               </Button>
             </Tooltip>
@@ -384,12 +384,12 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
                   isIconOnly
                   size="sm"
                   variant="light"
-                  className="w-8 h-8 min-w-8"
+                  className="w-7 h-7 min-w-7"
                   onPress={handleEdit}
                 >
                   <Icon
                     icon="solar:pen-bold"
-                    className="text-lg text-text-secondary"
+                    className="text-base text-text-secondary"
                   />
                 </Button>
               </Tooltip>
@@ -400,7 +400,7 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
                 isIconOnly
                 size="sm"
                 variant="light"
-                className="w-8 h-8 min-w-8"
+                className="w-7 h-7 min-w-7"
                 onPress={handleDownload}
                 isDisabled={!clip.clipUrl || isDownloading}
               >
@@ -410,7 +410,7 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
                       ? "svg-spinners:ring-resize"
                       : "solar:download-bold"
                   }
-                  className="text-lg text-text-secondary"
+                  className="text-base text-text-secondary"
                 />
               </Button>
             </Tooltip>
@@ -422,10 +422,10 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
                   size="sm"
                   variant="light"
                   color="danger"
-                  className="w-8 h-8 min-w-8"
+                  className="w-7 h-7 min-w-7"
                   onPress={handleDelete}
                 >
-                  <Icon icon="mdi:delete-outline" className="text-lg" />
+                  <Icon icon="mdi:delete-outline" className="text-base" />
                 </Button>
               </Tooltip>
             )}

@@ -303,31 +303,31 @@ function MyClipsPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-dark p-8">
+    <div className="min-h-screen bg-surface-dark p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-text-primary">My Clips</h1>
+        <div className="mb-4 sm:mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold text-text-primary">My Clips</h1>
         </div>
 
         <Tabs
           selectedKey={activeTab}
           onSelectionChange={(key) => setActiveTab(key as string)}
           classNames={{
-            tabList: "bg-surface-base border border-border-base rounded-lg p-1 gap-1",
+            tabList: "bg-surface-base border border-border-base rounded-lg p-1 gap-1 w-full max-w-md",
             cursor: "bg-accent-400",
-            tab: "px-4 py-2 data-[selected=true]:text-white",
-            tabContent: "group-data-[selected=true]:text-white",
+            tab: "px-3 sm:px-4 py-2 data-[selected=true]:text-white flex-1 min-w-0",
+            tabContent: "group-data-[selected=true]:text-white truncate",
           }}
-          className="mb-6"
+          className="mb-4 sm:mb-6"
         >
           <Tab
             key="processing"
             title={
-              <div className="flex items-center gap-2">
-                <Icon icon="solar:hourglass-bold-duotone" className="text-lg" />
-                <span>Processing</span>
+              <div className="flex items-center justify-center gap-1.5 sm:gap-2 min-w-0">
+                <Icon icon="solar:hourglass-bold-duotone" className="text-base sm:text-lg flex-shrink-0" />
+                <span className="text-xs sm:text-sm truncate">Processing</span>
                 {processingCount > 0 && (
-                  <span className="px-1.5 py-0.5 text-xs rounded-full bg-warning-500/20 text-warning-500">
+                  <span className="px-1.5 py-0.5 text-[10px] sm:text-xs rounded-full bg-warning-500/20 text-warning-500 flex-shrink-0">
                     {processingCount}
                   </span>
                 )}
@@ -337,9 +337,9 @@ function MyClipsPageContent() {
           <Tab
             key="library"
             title={
-              <div className="flex items-center gap-2">
-                <Icon icon="solar:library-bold-duotone" className="text-lg" />
-                <span>Library</span>
+              <div className="flex items-center justify-center gap-1.5 sm:gap-2 min-w-0">
+                <Icon icon="solar:library-bold-duotone" className="text-base sm:text-lg flex-shrink-0" />
+                <span className="text-xs sm:text-sm truncate">Library</span>
               </div>
             }
           />
@@ -381,21 +381,23 @@ function MyClipsPageContent() {
         )}
 
         {activeTab === "library" && (
-          <div className="flex gap-6">
-            {/* Show folders for all plans - read-only for non-Scale (allows viewing existing folders after downgrade) */}
+          <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
+            {/* Folder tree - hidden on mobile, shown on lg+ */}
             {(selectedTeam?.plan === "scale" || folderTree.length > 0) && (
-              <FolderTree
-                folders={folderTree}
-                selectedFolderId={selectedFolderId}
-                isCollapsed={isSidebarCollapsed}
-                isReadOnly={selectedTeam?.plan !== "scale"}
-                onSelectFolder={handleSelectFolder}
-                onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                onMoveClip={moveClipToFolder}
-                onMoveFolder={moveFolder}
-                onCreateFolder={handleOpenCreateFolder}
-                onDeleteFolder={deleteFolder}
-              />
+              <div className="hidden lg:block">
+                <FolderTree
+                  folders={folderTree}
+                  selectedFolderId={selectedFolderId}
+                  isCollapsed={isSidebarCollapsed}
+                  isReadOnly={selectedTeam?.plan !== "scale"}
+                  onSelectFolder={handleSelectFolder}
+                  onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                  onMoveClip={moveClipToFolder}
+                  onMoveFolder={moveFolder}
+                  onCreateFolder={handleOpenCreateFolder}
+                  onDeleteFolder={deleteFolder}
+                />
+              </div>
             )}
 
             <div className="flex-1 min-w-0">
@@ -425,15 +427,17 @@ function MyClipsPageContent() {
                 onDragOver={handleDragOver}
                 className="min-h-[200px]"
               >
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
+                <div className="flex items-center justify-between gap-2 mb-4">
+                  <h2 className="text-base sm:text-xl font-bold text-text-primary flex items-center gap-2 min-w-0">
                     <Icon
                       icon="solar:video-library-bold-duotone"
-                      className="text-2xl text-accent-400"
+                      className="text-xl sm:text-2xl text-accent-400 flex-shrink-0"
                     />
-                    {selectedFolderId === null ? "All Clips" : folderPath[folderPath.length - 1]?.name || "Clips"}
+                    <span className="truncate">
+                      {selectedFolderId === null ? "All Clips" : folderPath[folderPath.length - 1]?.name || "Clips"}
+                    </span>
                   </h2>
-                  <div className="flex items-center gap-1 bg-surface-base border border-border-base rounded-lg p-1">
+                  <div className="flex items-center gap-1 bg-surface-base border border-border-base rounded-lg p-1 flex-shrink-0">
                     <Button
                       isIconOnly
                       size="sm"
