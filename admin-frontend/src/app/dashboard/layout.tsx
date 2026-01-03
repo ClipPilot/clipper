@@ -60,6 +60,12 @@ export default function DashboardLayout({
                 >
                   Teams
                 </Link>
+                <Link
+                  href="/dashboard/referrals"
+                  className="text-sm text-text-secondary hover:text-text-primary hover:bg-surface-hover px-3 py-2 rounded-lg transition-colors"
+                >
+                  Referrals
+                </Link>
               </div>
             </div>
             <button

@@ -145,3 +145,82 @@ export const admin2faEmail = (data: Admin2FAEmailData): string => {
   const content = admin2faTemplate.replace(/{{CODE}}/g, data.code);
   return wrapInBase(content);
 };
+
+export interface ReferralAppliedEmailData {
+  referrerName: string;
+  referredTeamName: string;
+}
+
+export const referralAppliedEmail = (data: ReferralAppliedEmailData): string => {
+  const content = `
+    <h1 style="color: #ffffff; font-size: 24px; margin-bottom: 16px;">Someone Used Your Referral Code!</h1>
+    <p style="color: #a0a0a0; font-size: 16px; line-height: 1.6;">Hey ${data.referrerName},</p>
+    <p style="color: #a0a0a0; font-size: 16px; line-height: 1.6;"><strong style="color: #ffffff;">${data.referredTeamName}</strong> just signed up using your referral code. Once they subscribe to a paid plan, you'll earn your reward!</p>
+    <p style="color: #a0a0a0; font-size: 14px; margin-top: 24px;">Keep sharing your code to earn more rewards.</p>
+  `;
+  return wrapInBase(content);
+};
+
+export interface ReferralConvertedEmailData {
+  referrerName: string;
+  referredTeamName: string;
+  plan: string;
+}
+
+export const referralConvertedEmail = (data: ReferralConvertedEmailData): string => {
+  const planName = data.plan.charAt(0).toUpperCase() + data.plan.slice(1);
+  const content = `
+    <h1 style="color: #ffffff; font-size: 24px; margin-bottom: 16px;">Your Referral Converted!</h1>
+    <p style="color: #a0a0a0; font-size: 16px; line-height: 1.6;">Hey ${data.referrerName},</p>
+    <p style="color: #a0a0a0; font-size: 16px; line-height: 1.6;">Great news! <strong style="color: #ffffff;">${data.referredTeamName}</strong> just subscribed to the <strong style="color: #10b981;">${planName}</strong> plan using your referral code.</p>
+    <p style="color: #a0a0a0; font-size: 16px; line-height: 1.6;">Our team will set your reward shortly. Check your referrals page to see your benefits!</p>
+  `;
+  return wrapInBase(content);
+};
+
+export interface ReferralSuccessAdminEmailData {
+  referrerTeamName: string;
+  referrerEmail: string;
+  referredTeamName: string;
+  referredEmail: string;
+  plan: string;
+}
+
+export const referralSuccessAdminEmail = (data: ReferralSuccessAdminEmailData): string => {
+  const planName = data.plan.charAt(0).toUpperCase() + data.plan.slice(1);
+  const content = `
+    <h1 style="color: #ffffff; font-size: 24px; margin-bottom: 16px;">New Referral Conversion</h1>
+    <div style="background: #1a1a1a; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <p style="color: #a0a0a0; font-size: 14px; margin: 8px 0;"><strong style="color: #ffffff;">Referrer:</strong> ${data.referrerTeamName} (${data.referrerEmail})</p>
+      <p style="color: #a0a0a0; font-size: 14px; margin: 8px 0;"><strong style="color: #ffffff;">Referred:</strong> ${data.referredTeamName} (${data.referredEmail})</p>
+      <p style="color: #a0a0a0; font-size: 14px; margin: 8px 0;"><strong style="color: #ffffff;">Plan:</strong> ${planName}</p>
+    </div>
+    <p style="color: #a0a0a0; font-size: 14px;">Please set the referral reward in the admin dashboard.</p>
+  `;
+  return wrapInBase(content);
+};
+
+export interface ReferralRewardSetEmailData {
+  referrerName: string;
+  bonusClips: number;
+  percentOff: number;
+}
+
+export const referralRewardSetEmail = (data: ReferralRewardSetEmailData): string => {
+  let rewardText = "";
+  if (data.bonusClips > 0 && data.percentOff > 0) {
+    rewardText = `${data.bonusClips} bonus clips and ${data.percentOff}% off`;
+  } else if (data.bonusClips > 0) {
+    rewardText = `${data.bonusClips} bonus clips`;
+  } else if (data.percentOff > 0) {
+    rewardText = `${data.percentOff}% off your subscription`;
+  }
+
+  const content = `
+    <h1 style="color: #ffffff; font-size: 24px; margin-bottom: 16px;">Your Referral Reward is Set!</h1>
+    <p style="color: #a0a0a0; font-size: 16px; line-height: 1.6;">Hey ${data.referrerName},</p>
+    <p style="color: #a0a0a0; font-size: 16px; line-height: 1.6;">Your referral reward has been set: <strong style="color: #10b981;">${rewardText}</strong></p>
+    <p style="color: #a0a0a0; font-size: 16px; line-height: 1.6;">Bonus clips will be added on your next subscription renewal. Percent off applies to all future subscription payments!</p>
+  `;
+  return wrapInBase(content);
+};

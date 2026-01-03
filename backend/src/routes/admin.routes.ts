@@ -8,6 +8,8 @@ import {
   getTeam,
   setupEnterprise,
   changePlan,
+  getAllReferrals,
+  setReferralReward,
 } from "../controllers/admin.controller";
 
 const router = Router();
@@ -211,5 +213,60 @@ router.get("/teams/:teamId", requireAdminAuth, getTeam);
 router.post("/enterprise/setup", requireAdminAuth, setupEnterprise);
 
 router.post("/teams/change-plan", requireAdminAuth, changePlan);
+
+/**
+ * @openapi
+ * /admin/referrals:
+ *   get:
+ *     summary: Get all referrals (admin)
+ *     description: Returns all referrals with full details for admin management
+ *     tags:
+ *       - Admin
+ *     security:
+ *       - adminAuth: []
+ *     responses:
+ *       200:
+ *         description: List of all referrals
+ *       401:
+ *         description: Unauthorized
+ */
+router.get("/referrals", requireAdminAuth, getAllReferrals);
+
+/**
+ * @openapi
+ * /admin/referrals/reward:
+ *   post:
+ *     summary: Set referral reward (admin)
+ *     description: Set bonus clips or percent off for a referral
+ *     tags:
+ *       - Admin
+ *     security:
+ *       - adminAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - referralId
+ *             properties:
+ *               referralId:
+ *                 type: integer
+ *               bonusClips:
+ *                 type: integer
+ *                 default: 0
+ *               percentOff:
+ *                 type: number
+ *                 default: 0
+ *     responses:
+ *       200:
+ *         description: Reward set successfully
+ *       404:
+ *         description: Referral not found
+ *       401:
+ *         description: Unauthorized
+ */
+router.post("/referrals/reward", requireAdminAuth, setReferralReward);
 
 export default router;

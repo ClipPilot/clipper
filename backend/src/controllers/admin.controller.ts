@@ -1,5 +1,6 @@
 import { Response } from "express";
 import { adminService } from "../services/admin.service";
+import { referralService } from "../services/referral.service";
 import { AdminRequest } from "../middleware/admin.middleware";
 
 // Step 1: Validate credentials and send 2FA code
@@ -180,5 +181,40 @@ export async function changePlan(req: AdminRequest, res: Response) {
   } catch (error) {
     console.error("Change plan error:", error);
     return res.status(500).json({ error: "Failed to change plan" });
+  }
+}
+
+export async function getAllReferrals(req: AdminRequest, res: Response) {
+  try {
+    const referrals = await referralService.getAllReferralsAdmin();
+    return res.json({ referrals });
+  } catch (error) {
+    console.error("Get all referrals error:", error);
+    return res.status(500).json({ error: "Failed to get referrals" });
+  }
+}
+
+export async function setReferralReward(req: AdminRequest, res: Response) {
+  try {
+    const { referralId, bonusClips, percentOff } = req.body;
+
+    if (referralId === undefined) {
+      return res.status(400).json({ error: "referralId is required" });
+    }
+
+    const success = await referralService.setReferralReward(
+      parseInt(referralId),
+      parseInt(bonusClips) || 0,
+      parseFloat(percentOff) || 0
+    );
+
+    if (!success) {
+      return res.status(404).json({ error: "Referral not found" });
+    }
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error("Set referral reward error:", error);
+    return res.status(500).json({ error: "Failed to set referral reward" });
   }
 }

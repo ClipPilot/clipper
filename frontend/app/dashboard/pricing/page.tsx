@@ -14,6 +14,8 @@ import { PricingTable } from "./PricingTable";
 import { useTeams } from "@/hooks/useTeams";
 import { useUsageStats } from "@/hooks/useUsageStats";
 import { stripeAPI, STRIPE_PRICES } from "@/api/stripe";
+import { apiJson } from "@/lib/apiClient";
+import API_URL from "@/config/constants";
 
 function PricingContent() {
   const searchParams = useSearchParams();
@@ -142,27 +144,44 @@ function PricingContent() {
   };
 
   const handleApplyReferral = async () => {
-    if (!referralCode.trim()) return;
+    if (!referralCode.trim() || !selectedTeam) return;
 
     setIsApplyingCode(true);
-    await new Promise((r) => setTimeout(r, 500));
+    try {
+      const validation = await apiJson<{ valid: boolean; code: string }>(
+        `${API_URL}/referrals/validate/${encodeURIComponent(referralCode.trim())}`,
+        { skipAuth: true }
+      );
 
-    if (referralCode.toUpperCase().startsWith("CUTTR-")) {
-      setAppliedReferral(referralCode.toUpperCase());
-      setShowReferralInput(false);
+      if (validation.valid) {
+        await apiJson(`${API_URL}/referrals/${selectedTeam.id}/apply`, {
+          method: "POST",
+          body: JSON.stringify({ code: referralCode.trim() }),
+        });
+
+        setAppliedReferral(validation.code);
+        setShowReferralInput(false);
+        addToast({
+          title: "Referral code applied!",
+          description: "Your referral has been linked successfully.",
+          color: "success",
+        });
+      } else {
+        addToast({
+          title: "Invalid code",
+          description: "Please check your referral code and try again.",
+          color: "danger",
+        });
+      }
+    } catch (error: any) {
       addToast({
-        title: "Referral code applied!",
-        description: "Your referral benefits will be applied at checkout.",
-        color: "success",
-      });
-    } else {
-      addToast({
-        title: "Invalid code",
-        description: "Please check your referral code and try again.",
+        title: "Error",
+        description: error.message || "Failed to apply referral code",
         color: "danger",
       });
+    } finally {
+      setIsApplyingCode(false);
     }
-    setIsApplyingCode(false);
   };
 
   const handleRemoveReferral = () => {

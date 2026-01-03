@@ -16,6 +16,7 @@ import {
 } from "@clipper/shared-db/src/schema";
 import { eq, and } from "drizzle-orm";
 import { emailNotiService } from "./emailNoti.service";
+import { referralService } from "./referral.service";
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://platform.cuttr.com";
 
@@ -306,6 +307,12 @@ class StripeService {
     );
 
     try {
+      await referralService.activateReferral(teamId, plan);
+    } catch (refError) {
+      console.error("Failed to activate referral:", refError);
+    }
+
+    try {
       const [team] = await db
         .select()
         .from(teams)
@@ -423,8 +430,6 @@ class StripeService {
       .set({ plan, updated_at: new Date() })
       .where(eq(teams.id, existingSub.team_id));
 
-    // Only reset usage stats when billing period changes (new month)
-    // This ensures addon clips only last for the current billing period
     if (periodChanged) {
       await db
         .update(usageStats)
@@ -435,8 +440,16 @@ class StripeService {
           updated_at: new Date(),
         })
         .where(eq(usageStats.team_id, existingSub.team_id));
+
+      try {
+        const bonusClipsApplied = await referralService.applyBonusClipsOnRenewal(existingSub.team_id);
+        if (bonusClipsApplied > 0) {
+          console.log(`Applied ${bonusClipsApplied} referral bonus clips to team ${existingSub.team_id}`);
+        }
+      } catch (refError) {
+        console.error("Failed to apply referral bonus clips:", refError);
+      }
     } else {
-      // Just update the resets_date without touching limit (preserves addon clips)
       await db
         .update(usageStats)
         .set({

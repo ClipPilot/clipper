@@ -1,29 +1,30 @@
-export type ReferralPlan = "studio" | "scale" | "enterprise";
+export type ReferralPlan = "studio" | "scale" | "enterprise" | "free";
+export type ReferralStatus = "pending" | "active" | "churned";
 
 export interface ReferralCode {
-  id: string;
+  id: number;
   code: string;
   createdAt: string;
-  isActive: boolean;
 }
 
 export interface Referral {
-  id: string;
-  referralCodeId: string;
-  refereeName: string;
-  refereeEmail: string;
-  plan: ReferralPlan;
-  status: "pending" | "active" | "churned";
-  signedUpAt: string;
-  monthlyBenefit: number;
+  id: number;
+  referredTeamId: number;
+  referredTeamName: string;
+  referredEmail: string;
+  referredPlan: ReferralPlan | null;
+  status: ReferralStatus;
+  percentOff: string;
+  bonusClips: number;
+  createdAt: string;
 }
 
 export interface ReferralStats {
   totalReferrals: number;
   activeReferrals: number;
-  monthlyCreditsEarned: number;
-  totalCreditsEarned: number;
-  discountPercentage: number;
+  pendingReferrals: number;
+  totalBonusClips: number;
+  totalPercentOff: number;
 }
 
 export const REFERRAL_BENEFITS = {

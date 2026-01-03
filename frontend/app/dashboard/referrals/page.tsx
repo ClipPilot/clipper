@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Card,
   CardBody,
   CardHeader,
   Button,
-  Divider,
   Chip,
   addToast,
   Table,
@@ -15,45 +14,90 @@ import {
   TableBody,
   TableRow,
   TableCell,
+  Spinner,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { REFERRAL_BENEFITS, Referral } from "@/types/referral";
-import {
-  mockReferralCodes,
-  mockReferrals,
-  generateReferralCode,
-} from "@/mocks/referral-data";
+import { useAtomValue } from "jotai";
+import { selectedTeamAtom } from "@/store/auth";
+import { apiJson } from "@/lib/apiClient";
+import API_URL from "@/config/constants";
+import { ReferralCode, Referral, ReferralStats, REFERRAL_BENEFITS } from "@/types/referral";
+
+interface ReferralsResponse {
+  code: ReferralCode | null;
+  referrals: Referral[];
+}
+
+interface CodeResponse {
+  code: ReferralCode;
+}
 
 export default function ReferralsPage() {
-  const [referralCodes, setReferralCodes] = useState(mockReferralCodes);
-  const [referrals] = useState<Referral[]>(mockReferrals);
+  const selectedTeam = useAtomValue(selectedTeamAtom);
+  const [referralCode, setReferralCode] = useState<ReferralCode | null>(null);
+  const [referrals, setReferrals] = useState<Referral[]>([]);
+  const [stats, setStats] = useState<ReferralStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const activeCode = referralCodes.find((c) => c.isActive);
+  const fetchReferralData = useCallback(async () => {
+    if (!selectedTeam?.id) return;
+
+    try {
+      setIsLoading(true);
+      const [referralsData, statsData] = await Promise.all([
+        apiJson<ReferralsResponse>(`${API_URL}/referrals/${selectedTeam.id}`),
+        apiJson<ReferralStats>(`${API_URL}/referrals/${selectedTeam.id}/stats`),
+      ]);
+
+      setReferralCode(referralsData.code);
+      setReferrals(referralsData.referrals);
+      setStats(statsData);
+    } catch (error) {
+      console.error("Failed to fetch referral data:", error);
+      addToast({
+        title: "Error",
+        description: "Failed to load referral data",
+        color: "danger",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedTeam?.id]);
+
+  useEffect(() => {
+    fetchReferralData();
+  }, [fetchReferralData]);
 
   const handleGenerateCode = async () => {
+    if (!selectedTeam?.id) return;
+
     setIsGenerating(true);
-    await new Promise((r) => setTimeout(r, 500));
-    const newCode = {
-      id: String(referralCodes.length + 1),
-      code: generateReferralCode(),
-      createdAt: new Date().toISOString(),
-      isActive: true,
-    };
-    setReferralCodes((prev) =>
-      prev.map((c) => ({ ...c, isActive: false })).concat(newCode)
-    );
-    setIsGenerating(false);
-    addToast({
-      title: "Code generated!",
-      description: "Your new referral code is ready to share.",
-      color: "success",
-    });
+    try {
+      const response = await apiJson<CodeResponse>(`${API_URL}/referrals/${selectedTeam.id}/code`, {
+        method: "POST",
+      });
+      setReferralCode(response.code);
+      addToast({
+        title: "Code generated!",
+        description: "Your referral code is ready to share.",
+        color: "success",
+      });
+    } catch (error) {
+      console.error("Failed to generate code:", error);
+      addToast({
+        title: "Error",
+        description: "Failed to generate referral code",
+        color: "danger",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleCopyCode = () => {
-    if (activeCode) {
-      navigator.clipboard.writeText(activeCode.code);
+    if (referralCode) {
+      navigator.clipboard.writeText(referralCode.code);
       addToast({
         title: "Copied!",
         description: "Referral code copied to clipboard.",
@@ -61,14 +105,6 @@ export default function ReferralsPage() {
       });
     }
   };
-
-  const totalMonthlyCredits = referrals
-    .filter((r) => r.status === "active" && r.plan !== "enterprise")
-    .reduce((sum, r) => sum + r.monthlyBenefit, 0);
-
-  const enterpriseReferrals = referrals.filter(
-    (r) => r.status === "active" && r.plan === "enterprise"
-  );
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -83,7 +119,7 @@ export default function ReferralsPage() {
     }
   };
 
-  const getPlanColor = (plan: string) => {
+  const getPlanColor = (plan: string | null) => {
     switch (plan) {
       case "enterprise":
         return "bg-amber-500/10 text-amber-500";
@@ -103,6 +139,25 @@ export default function ReferralsPage() {
       year: "numeric",
     });
   };
+
+  const formatReward = (referral: Referral) => {
+    const percentOff = parseFloat(referral.percentOff);
+    if (percentOff > 0) {
+      return `${percentOff}% off`;
+    }
+    if (referral.bonusClips > 0) {
+      return `+${referral.bonusClips} clips`;
+    }
+    return "Pending";
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-surface-dark flex items-center justify-center">
+        <Spinner size="lg" color="primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-surface-dark p-6 lg:p-8">
@@ -132,7 +187,7 @@ export default function ReferralsPage() {
                 </span>
               </div>
               <p className="text-2xl font-bold text-text-primary">
-                {referrals.filter((r) => r.status === "active").length}
+                {stats?.activeReferrals ?? 0}
               </p>
             </CardBody>
           </Card>
@@ -148,11 +203,11 @@ export default function ReferralsPage() {
                   />
                 </div>
                 <span className="text-sm text-text-tertiary">
-                  Monthly Credits
+                  Bonus Clips Earned
                 </span>
               </div>
               <p className="text-2xl font-bold text-text-primary">
-                +{totalMonthlyCredits}
+                +{stats?.totalBonusClips ?? 0}
               </p>
             </CardBody>
           </Card>
@@ -168,11 +223,11 @@ export default function ReferralsPage() {
                   />
                 </div>
                 <span className="text-sm text-text-tertiary">
-                  Enterprise Discount
+                  Total Discount
                 </span>
               </div>
               <p className="text-2xl font-bold text-text-primary">
-                {enterpriseReferrals.length > 0 ? "10%" : "0%"}
+                {stats?.totalPercentOff ?? 0}%
               </p>
             </CardBody>
           </Card>
@@ -258,11 +313,11 @@ export default function ReferralsPage() {
             </div>
           </CardHeader>
           <CardBody className="gap-4">
-            {activeCode ? (
+            {referralCode ? (
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                 <div className="flex-1 flex items-center justify-between p-4 rounded-lg bg-surface-elevated border border-border-base">
                   <span className="text-lg font-mono font-bold text-text-primary tracking-wider">
-                    {activeCode.code}
+                    {referralCode.code}
                   </span>
                   <Button
                     isIconOnly
@@ -274,17 +329,6 @@ export default function ReferralsPage() {
                     <Icon icon="solar:copy-bold-duotone" width={18} />
                   </Button>
                 </div>
-                <Button
-                  variant="flat"
-                  className="bg-surface-elevated text-text-secondary"
-                  startContent={
-                    <Icon icon="solar:refresh-bold-duotone" width={18} />
-                  }
-                  onPress={handleGenerateCode}
-                  isLoading={isGenerating}
-                >
-                  Generate New
-                </Button>
               </div>
             ) : (
               <div className="flex flex-col items-center gap-4 py-6">
@@ -345,7 +389,7 @@ export default function ReferralsPage() {
                 }}
               >
                 <TableHeader>
-                  <TableColumn>NAME</TableColumn>
+                  <TableColumn>TEAM</TableColumn>
                   <TableColumn>PLAN</TableColumn>
                   <TableColumn>STATUS</TableColumn>
                   <TableColumn>SIGNED UP</TableColumn>
@@ -356,17 +400,17 @@ export default function ReferralsPage() {
                     <TableRow key={referral.id}>
                       <TableCell>
                         <div>
-                          <p className="font-medium">{referral.refereeName}</p>
+                          <p className="font-medium">{referral.referredTeamName}</p>
                           <p className="text-xs text-text-tertiary">
-                            {referral.refereeEmail}
+                            {referral.referredEmail}
                           </p>
                         </div>
                       </TableCell>
                       <TableCell>
                         <span
-                          className={`text-xs px-2 py-1 rounded font-medium capitalize ${getPlanColor(referral.plan)}`}
+                          className={`text-xs px-2 py-1 rounded font-medium capitalize ${getPlanColor(referral.referredPlan)}`}
                         >
-                          {referral.plan}
+                          {referral.referredPlan || "Free"}
                         </span>
                       </TableCell>
                       <TableCell>
@@ -379,12 +423,10 @@ export default function ReferralsPage() {
                           {referral.status}
                         </Chip>
                       </TableCell>
-                      <TableCell>{formatDate(referral.signedUpAt)}</TableCell>
+                      <TableCell>{formatDate(referral.createdAt)}</TableCell>
                       <TableCell>
                         <span className="text-green-500 font-medium">
-                          {referral.plan === "enterprise"
-                            ? `${referral.monthlyBenefit}% off`
-                            : `+${referral.monthlyBenefit}/mo`}
+                          {formatReward(referral)}
                         </span>
                       </TableCell>
                     </TableRow>

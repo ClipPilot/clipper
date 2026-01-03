@@ -65,6 +65,27 @@ export interface ChangePlanResult {
   cancelledSubscription: boolean;
 }
 
+export interface AdminReferral {
+  id: number;
+  code: string;
+  referrerTeamId: number;
+  referrerTeamName: string;
+  referrerEmail: string;
+  referredTeamId: number;
+  referredTeamName: string;
+  referredEmail: string;
+  referredPlan: string | null;
+  status: "pending" | "active" | "churned";
+  percentOff: string;
+  bonusClips: number;
+  rewardApplied: boolean;
+  createdAt: string;
+}
+
+export interface ReferralsResponse {
+  referrals: AdminReferral[];
+}
+
 export interface LoginResponse {
   message: string;
   email: string;
@@ -160,6 +181,29 @@ export const adminAPI = {
         ...getAuthHeaders(),
       },
       body: JSON.stringify({ teamId, newPlan, clipLimit, monthlyPrice, customerEmail }),
+    });
+    return handleResponse(response);
+  },
+
+  async getReferrals(): Promise<ReferralsResponse> {
+    const response = await fetch(`${API_URL}/admin/referrals`, {
+      headers: { ...getAuthHeaders() },
+    });
+    return handleResponse(response);
+  },
+
+  async setReferralReward(
+    referralId: number,
+    bonusClips: number,
+    percentOff: number
+  ): Promise<{ success: boolean }> {
+    const response = await fetch(`${API_URL}/admin/referrals/reward`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify({ referralId, bonusClips, percentOff }),
     });
     return handleResponse(response);
   },

@@ -24,7 +24,7 @@ type StudioView = "menu" | "face-swap";
 export default function UGCStudioPage() {
   const selectedTeam = useAtomValue(selectedTeamAtom);
 
-  if (!canAccessUGCStudio(selectedTeam?.plan)) {
+  if (!selectedTeam || !canAccessUGCStudio(selectedTeam.plan)) {
     return <ScalePlanRequired currentPlan={selectedTeam?.plan || "free"} />;
   }
 
