@@ -449,6 +449,16 @@ class StripeService {
       } catch (refError) {
         console.error("Failed to apply referral bonus clips:", refError);
       }
+
+      try {
+        const percentOff = await referralService.getAccumulatedPercentOff(existingSub.team_id);
+        if (percentOff > 0 && team?.stripe_customer_id) {
+          await this.applyReferralDiscountToSubscription(team.stripe_customer_id, subscription.id, percentOff);
+          console.log(`Applied ${percentOff}% referral discount to team ${existingSub.team_id}`);
+        }
+      } catch (discountError) {
+        console.error("Failed to apply referral discount:", discountError);
+      }
     } else {
       await db
         .update(usageStats)
@@ -590,6 +600,34 @@ class StripeService {
     return team?.plan || "free";
   }
 
+  async applyReferralDiscountToSubscription(
+    customerId: string,
+    subscriptionId: string,
+    percentOff: number
+  ): Promise<void> {
+    const couponId = `referral_${customerId}_${Math.round(percentOff)}`;
+
+    let coupon;
+    try {
+      coupon = await stripe.coupons.retrieve(couponId);
+      if (coupon.percent_off !== percentOff) {
+        await stripe.coupons.del(couponId);
+        throw new Error("Recreate coupon");
+      }
+    } catch {
+      coupon = await stripe.coupons.create({
+        id: couponId,
+        percent_off: Math.min(percentOff, 100),
+        duration: "forever",
+        name: `Referral Discount ${percentOff}%`,
+      });
+    }
+
+    await stripe.subscriptions.update(subscriptionId, {
+      discounts: [{ coupon: coupon.id }],
+    });
+  }
+
   async handleInvoicePaymentSucceeded(invoice: any): Promise<void> {
     if (!invoice.subscription) return;
 
@@ -689,3 +727,35 @@ class StripeService {
 }
 
 export const stripeService = new StripeService();
+
+export async function applyReferralDiscount(teamId: number, percentOff: number): Promise<void> {
+  const [team] = await db
+    .select()
+    .from(teams)
+    .where(eq(teams.id, teamId))
+    .limit(1);
+
+  if (!team?.stripe_customer_id) {
+    console.log(`Team ${teamId} has no Stripe customer, skipping discount`);
+    return;
+  }
+
+  const [sub] = await db
+    .select()
+    .from(subscriptions)
+    .where(eq(subscriptions.team_id, teamId))
+    .limit(1);
+
+  if (!sub?.stripe_subscription_id || sub.status !== "active") {
+    console.log(`Team ${teamId} has no active subscription, skipping discount`);
+    return;
+  }
+
+  await stripeService.applyReferralDiscountToSubscription(
+    team.stripe_customer_id,
+    sub.stripe_subscription_id,
+    percentOff
+  );
+
+  console.log(`Applied ${percentOff}% discount to team ${teamId} subscription`);
+}
