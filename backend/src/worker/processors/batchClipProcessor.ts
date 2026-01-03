@@ -100,103 +100,111 @@ export async function processBatchClipVideoJob(
       captionFont: options.captionFont,
     };
 
-    // Step 6: Create clips sequentially
-    console.log(
-      `Processing ${batchClipSuggestions.length} batch clips sequentially...`
-    );
+    console.log(`Processing ${batchClipSuggestions.length} batch clips sequentially...`);
+
+    let successCount = 0;
+    let failedCount = 0;
 
     for (let i = 0; i < batchClipSuggestions.length; i++) {
       const suggestions = batchClipSuggestions[i];
       const clipId = clipIds[i];
 
-      console.log(
-        `\n=== Creating batch clip ${i + 1}/${batchClipSuggestions.length} ===`
-      );
+      try {
+        console.log(`\n=== Creating batch clip ${i + 1}/${batchClipSuggestions.length} ===`);
 
-      // Create the clip from multiple source videos
-      const result = await createBatchCombinedClipService(
-        videoSources,
-        suggestions,
-        clipServiceOptions,
-        i
-      );
+        const result = await createBatchCombinedClipService(
+          videoSources,
+          suggestions,
+          clipServiceOptions,
+          i
+        );
 
-      console.log(`Batch clip ${i + 1} created, uploading to S3...`);
+        console.log(`Batch clip ${i + 1} created, uploading to S3...`);
 
-      // Upload to S3
-      const [clipS3Key, blankS3Key, watermarkedS3Key] = await Promise.all([
-        s3Service.uploadGeneratedClip(result.finalPath, teamId, clipId),
-        s3Service.uploadBlankClip(result.blankPath, teamId, clipId),
-        s3Service.uploadWatermarkedClip(result.watermarkedPath, teamId, clipId),
-      ]);
+        const [clipS3Key, blankS3Key, watermarkedS3Key] = await Promise.all([
+          s3Service.uploadGeneratedClip(result.finalPath, teamId, clipId),
+          s3Service.uploadBlankClip(result.blankPath, teamId, clipId),
+          s3Service.uploadWatermarkedClip(result.watermarkedPath, teamId, clipId),
+        ]);
 
-      // Upload SRT file
-      const srtPath = path.join(outDir, `batch_captions_${clipId}.srt`);
-      fs.writeFileSync(srtPath, result.srtContent);
-      const srtS3Key = await s3Service.uploadSrtFile(srtPath, teamId, clipId);
-      fs.unlinkSync(srtPath);
+        const srtPath = path.join(outDir, `batch_captions_${clipId}.srt`);
+        fs.writeFileSync(srtPath, result.srtContent);
+        const srtS3Key = await s3Service.uploadSrtFile(srtPath, teamId, clipId);
+        fs.unlinkSync(srtPath);
 
-      console.log(`Batch clip ${i + 1} uploaded, updating database...`);
+        console.log(`Batch clip ${i + 1} uploaded, updating database...`);
 
-      // Build source videos metadata for tracking
-      const sourceVideosMetadata = videos.map((v) => ({
-        videoIndex: v.videoIndex,
-        s3Key: v.s3Key,
-        fileName: v.originalFileName || `Video ${v.videoIndex + 1}`,
-      }));
+        const sourceVideosMetadata = videos.map((v) => ({
+          videoIndex: v.videoIndex,
+          s3Key: v.s3Key,
+          fileName: v.originalFileName || `Video ${v.videoIndex + 1}`,
+        }));
 
-      // Update database
-      await clipManagerService.updateClipComplete(clipId, teamId, {
-        clipPath: clipS3Key,
-        blankVideoPath: blankS3Key,
-        watermarkedClipPath: watermarkedS3Key,
-        srtPath: srtS3Key,
-        captionsData: result.captionsData,
-        sourceVideoPath: thumbnailS3Key,
-        title: suggestions.clipTitle,
-        clipMetadata: {
-          clipSuggestions: suggestions,
-          parameters: {
-            length: options.length || 40,
-            hookLength: options.hookLength || 6,
-            promptType: options.promptType || "business",
-            customText: options.customText,
-            textPosition: options.textPosition,
-            textColor: options.textColor,
-            textFont: options.textFont,
-            captions: options.captions || false,
-            captionColor: options.captionColor,
-            captionFont: options.captionFont,
+        await clipManagerService.updateClipComplete(clipId, teamId, {
+          clipPath: clipS3Key,
+          blankVideoPath: blankS3Key,
+          watermarkedClipPath: watermarkedS3Key,
+          srtPath: srtS3Key,
+          captionsData: result.captionsData,
+          sourceVideoPath: thumbnailS3Key,
+          title: suggestions.clipTitle,
+          clipMetadata: {
+            clipSuggestions: suggestions,
+            parameters: {
+              length: options.length || 40,
+              hookLength: options.hookLength || 6,
+              promptType: options.promptType || "business",
+              customText: options.customText,
+              textPosition: options.textPosition,
+              textColor: options.textColor,
+              textFont: options.textFont,
+              captions: options.captions || false,
+              captionColor: options.captionColor,
+              captionFont: options.captionFont,
+            },
+            batchInfo: {
+              isBatch: true,
+              sourceVideos: sourceVideosMetadata,
+            },
           },
-          batchInfo: {
-            isBatch: true,
-            sourceVideos: sourceVideosMetadata,
+          inputMetadata: {
+            originalFileName: videos.map((v) => v.originalFileName).join(", "),
+            fileSize: videos.reduce((sum, v) => sum + (v.fileSize || 0), 0),
           },
-        },
-        inputMetadata: {
-          originalFileName: videos.map((v) => v.originalFileName).join(", "),
-          fileSize: videos.reduce((sum, v) => sum + (v.fileSize || 0), 0),
-        },
-        prompt: options.textPrompt || options.customPrompt,
-        message: suggestions.finalMessage,
-        clipScore: suggestions.evalScore,
-      });
+          prompt: options.textPrompt || options.customPrompt,
+          message: suggestions.finalMessage,
+          clipScore: suggestions.evalScore,
+        });
 
-      // Clean up local files for this clip immediately
-      if (fs.existsSync(result.finalPath)) fs.unlinkSync(result.finalPath);
-      if (fs.existsSync(result.blankPath)) fs.unlinkSync(result.blankPath);
-      if (fs.existsSync(result.watermarkedPath))
-        fs.unlinkSync(result.watermarkedPath);
+        if (fs.existsSync(result.finalPath)) fs.unlinkSync(result.finalPath);
+        if (fs.existsSync(result.blankPath)) fs.unlinkSync(result.blankPath);
+        if (fs.existsSync(result.watermarkedPath)) fs.unlinkSync(result.watermarkedPath);
 
-      // Notify frontend after each clip
-      await notifyClipsRefresh(teamId);
+        await notifyClipsRefresh(teamId);
 
-      console.log(
-        `Batch clip ${i + 1}/${batchClipSuggestions.length} complete and visible to user!`
-      );
+        successCount++;
+        console.log(`Batch clip ${i + 1}/${batchClipSuggestions.length} complete!`);
+      } catch (clipError) {
+        failedCount++;
+        console.error(`Error processing batch clip ${i + 1} (ID: ${clipId}):`, clipError);
+
+        await clipManagerService.updateClipStatus(
+          clipId,
+          teamId,
+          "failed",
+          clipError instanceof Error ? clipError.message : "Unknown error"
+        );
+
+        await notifyClipsRefresh(teamId);
+        console.log(`Batch clip ${i + 1} marked as failed, continuing with remaining clips...`);
+      }
     }
 
-    console.log(`\nSuccessfully processed all ${clipIds.length} batch clips`);
+    console.log(`\nProcessing complete: ${successCount} succeeded, ${failedCount} failed out of ${clipIds.length} clips`);
+
+    if (successCount === 0 && failedCount > 0) {
+      throw new Error(`All ${failedCount} clips failed to process`);
+    }
 
     // Send email notification
     try {
@@ -218,25 +226,27 @@ export async function processBatchClipVideoJob(
   } catch (error) {
     console.error("Error processing batch clips:", error);
 
-    for (const clipId of clipIds) {
-      await clipManagerService.updateClipStatus(
-        clipId,
-        teamId,
-        "failed",
-        error instanceof Error ? error.message : "Unknown error"
-      );
-    }
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const alreadyHandled = errorMessage.startsWith("All") && errorMessage.includes("clips failed");
 
-    await notifyClipsRefresh(teamId);
+    if (!alreadyHandled) {
+      for (const clipId of clipIds) {
+        await clipManagerService.updateClipStatus(
+          clipId,
+          teamId,
+          "failed",
+          errorMessage
+        );
+      }
+      await notifyClipsRefresh(teamId);
+    }
 
     throw error;
   } finally {
-    // Clean up all local video files
     for (const { path: videoPath } of localVideoPaths) {
       if (fs.existsSync(videoPath)) {
         fs.unlinkSync(videoPath);
       }
     }
-    // Note: Raw videos in S3 are archived to Glacier via lifecycle policy (not deleted)
   }
 }

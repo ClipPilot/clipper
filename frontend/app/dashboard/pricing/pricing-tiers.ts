@@ -76,4 +76,27 @@ export const tiers: Array<Tier> = [
     priceId: STRIPE_PRICES.STUDIO,
     addonPriceId: STRIPE_PRICES.STUDIO_ADDON,
   },
+  {
+    key: TiersEnum.Enterprise,
+    title: "Enterprise",
+    description: "Built for organizations with advanced needs.",
+    href: "#",
+    mostPopular: false,
+    price: "Custom Pricing",
+    featured: false,
+    generations: "Unlimited AI generations",
+    credits: "Custom credits allocation",
+    features: [
+      "Unlimited AI generations",
+      "Custom credits allocation",
+      "Team member seats",
+      "Advanced folder management",
+      "API access",
+      "Custom integrations",
+      "SLA & dedicated support",
+    ],
+    buttonText: "Contact Sales",
+    buttonColor: "default",
+    buttonVariant: "flat",
+  }
 ];

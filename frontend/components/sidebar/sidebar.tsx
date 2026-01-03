@@ -34,8 +34,9 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
     const router = useRouter();
     const pathname = usePathname();
     const isComingSoonSelected = pathname === "/dashboard/coming-soon";
-    const [selected, setSelected] =
-      React.useState<React.Key>(isComingSoonSelected ? "" : defaultSelectedKey);
+    const [selected, setSelected] = React.useState<React.Key>(
+      isComingSoonSelected ? "" : defaultSelectedKey
+    );
     const [selectedTeam] = useAtom(selectedTeamAtom);
     const { refreshTrigger } = useUsageStatsRefresh();
     const { usageStats, isLoading, error, refetch } = useUsageStats(
@@ -111,14 +112,14 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
                 classNames={{
                   base: "px-3 py-2.5 rounded-lg data-[selected=true]:bg-accent-400/10 hover:bg-surface-elevated transition-colors",
                   title:
-                    "text-sm font-medium text-text-secondary data-[selected=true]:text-accent-400",
+                    "text-sm font-medium text-white data-[selected=true]:text-accent-400",
                 }}
                 startContent={
                   item.icon && (
                     <Icon
                       icon={item.icon}
                       width={20}
-                      className="text-text-tertiary data-[selected=true]:text-accent-400"
+                      className="text-white data-[selected=true]:text-accent-400"
                     />
                   )
                 }
@@ -142,13 +143,17 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
           >
             <Icon
               icon="solar:stars-bold-duotone"
-              className={isComingSoonSelected ? "text-accent-400" : "text-text-tertiary"}
+              className={
+                isComingSoonSelected ? "text-accent-400" : "text-white"
+              }
               width={20}
             />
-            <span className={cn(
-              "text-sm font-medium",
-              isComingSoonSelected ? "text-accent-400" : "text-text-secondary"
-            )}>
+            <span
+              className={cn(
+                "text-sm font-medium text-white",
+                isComingSoonSelected ? "text-accent-400" : "text-white"
+              )}
+            >
               Coming Soon
             </span>
           </button>

@@ -166,7 +166,7 @@ function PricingContent() {
         />
       </div>
 
-      <div className="relative z-10 flex max-w-xl flex-col text-center">
+      <div className="relative z-10 flex max-w-xl flex-col text-center xl:translate-x-[12.5%]">
         <h2 className="text-accent-400 text-sm font-medium uppercase tracking-wider">
           Pricing
         </h2>
@@ -182,7 +182,7 @@ function PricingContent() {
 
       <Spacer y={12} />
 
-      <div className="relative z-10 grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:hidden">
+      <div className="relative z-10 mx-auto grid max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:hidden">
         {tiers.map((tier) => (
           <PricingTierCard
             key={tier.key}

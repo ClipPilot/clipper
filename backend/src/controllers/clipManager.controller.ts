@@ -18,20 +18,22 @@ export class ClipManagerController {
       const clips = await clipManagerService.getClipsByTeam(teamId);
 
       const clipKeys = clips
-        .filter(clip => clip.clip_path)
-        .map(clip => clip.clip_path!);
+        .filter((clip) => clip.clip_path)
+        .map((clip) => clip.clip_path!);
 
       const thumbnailKeys = clips
-        .filter(clip => clip.source_video_path)
-        .map(clip => clip.source_video_path!);
+        .filter((clip) => clip.source_video_path)
+        .map((clip) => clip.source_video_path!);
 
       const allKeys = [...new Set([...clipKeys, ...thumbnailKeys])];
       const presignedUrls = await s3Service.getMultiplePresignedUrls(allKeys);
 
-      const clipsWithUrls = clips.map(clip => ({
+      const clipsWithUrls = clips.map((clip) => ({
         ...clip,
         clipUrl: clip.clip_path ? presignedUrls[clip.clip_path] : null,
-        sourceVideoUrl: clip.source_video_path ? presignedUrls[clip.source_video_path] : null,
+        sourceVideoUrl: clip.source_video_path
+          ? presignedUrls[clip.source_video_path]
+          : null,
       }));
 
       return res.status(200).json({ clips: clipsWithUrls });
@@ -58,7 +60,8 @@ export class ClipManagerController {
         .map((clip: any) => clip.raw_video_path!);
 
       const uniqueKeys = [...new Set(rawVideoKeys)];
-      const presignedUrls = await s3Service.getMultiplePresignedUrls(uniqueKeys);
+      const presignedUrls =
+        await s3Service.getMultiplePresignedUrls(uniqueKeys);
 
       const clipsWithUrls = clips.map((clip: any) => ({
         ...clip,
@@ -71,7 +74,10 @@ export class ClipManagerController {
     } catch (error) {
       console.error("Get pending clips error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to get pending clips",
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to get pending clips",
       });
     }
   }
@@ -84,29 +90,37 @@ export class ClipManagerController {
       }
 
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
-      const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
+      const offset = req.query.offset
+        ? parseInt(req.query.offset as string)
+        : 0;
 
       if (limit > 100) {
         return res.status(400).json({ error: "Limit cannot exceed 100" });
       }
 
-      const clips = await clipManagerService.getCompletedClipsByTeam(teamId, limit, offset);
+      const clips = await clipManagerService.getCompletedClipsByTeam(
+        teamId,
+        limit,
+        offset
+      );
 
       const clipKeys = clips
-        .filter(clip => clip.clip_path)
-        .map(clip => clip.clip_path!);
+        .filter((clip) => clip.clip_path)
+        .map((clip) => clip.clip_path!);
 
       const thumbnailKeys = clips
-        .filter(clip => clip.source_video_path)
-        .map(clip => clip.source_video_path!);
+        .filter((clip) => clip.source_video_path)
+        .map((clip) => clip.source_video_path!);
 
       const allKeys = [...new Set([...clipKeys, ...thumbnailKeys])];
       const presignedUrls = await s3Service.getMultiplePresignedUrls(allKeys);
 
-      const clipsWithUrls = clips.map(clip => ({
+      const clipsWithUrls = clips.map((clip) => ({
         ...clip,
         clipUrl: clip.clip_path ? presignedUrls[clip.clip_path] : null,
-        sourceVideoUrl: clip.source_video_path ? presignedUrls[clip.source_video_path] : null,
+        sourceVideoUrl: clip.source_video_path
+          ? presignedUrls[clip.source_video_path]
+          : null,
       }));
 
       return res.status(200).json({
@@ -120,7 +134,10 @@ export class ClipManagerController {
     } catch (error) {
       console.error("Get completed clips error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to get completed clips",
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to get completed clips",
       });
     }
   }
@@ -150,7 +167,9 @@ export class ClipManagerController {
       }
 
       if (clip.source_video_path) {
-        sourceVideoUrl = await s3Service.getPresignedUrl(clip.source_video_path);
+        sourceVideoUrl = await s3Service.getPresignedUrl(
+          clip.source_video_path
+        );
       }
 
       if (clip.blank_video_path) {
@@ -191,7 +210,8 @@ export class ClipManagerController {
         const team = await teamService.getTeamById(teamId);
         if (team.plan !== "scale") {
           return res.status(403).json({
-            error: "Moving clips to folders requires a Scale plan. Please upgrade to organize clips into folders.",
+            error:
+              "Moving clips to folders requires a Scale plan. Please upgrade to organize clips into folders.",
           });
         }
       }
@@ -201,7 +221,11 @@ export class ClipManagerController {
       if (clipScore !== undefined) updates.clipScore = clipScore;
       if (folderId !== undefined) updates.folderId = folderId;
 
-      const updatedClip = await clipManagerService.updateClip(clipId, teamId, updates);
+      const updatedClip = await clipManagerService.updateClip(
+        clipId,
+        teamId,
+        updates
+      );
       const tags = await tagService.getTagsForClip(clipId);
 
       return res.status(200).json({
@@ -228,23 +252,25 @@ export class ClipManagerController {
       const clips = await clipManagerService.getClipsByFolder(teamId, folderId);
 
       const clipKeys = clips
-        .filter(clip => clip.clip_path)
-        .map(clip => clip.clip_path!);
+        .filter((clip) => clip.clip_path)
+        .map((clip) => clip.clip_path!);
 
       const thumbnailKeys = clips
-        .filter(clip => clip.source_video_path)
-        .map(clip => clip.source_video_path!);
+        .filter((clip) => clip.source_video_path)
+        .map((clip) => clip.source_video_path!);
 
       const allKeys = [...new Set([...clipKeys, ...thumbnailKeys])];
       const presignedUrls = await s3Service.getMultiplePresignedUrls(allKeys);
 
-      const clipIds = clips.map(clip => clip.id);
+      const clipIds = clips.map((clip) => clip.id);
       const tagsByClip = await tagService.getTagsForClips(clipIds);
 
-      const clipsWithUrls = clips.map(clip => ({
+      const clipsWithUrls = clips.map((clip) => ({
         ...clip,
         clipUrl: clip.clip_path ? presignedUrls[clip.clip_path] : null,
-        sourceVideoUrl: clip.source_video_path ? presignedUrls[clip.source_video_path] : null,
+        sourceVideoUrl: clip.source_video_path
+          ? presignedUrls[clip.source_video_path]
+          : null,
         tags: tagsByClip[clip.id] || [],
       }));
 
@@ -289,7 +315,8 @@ export class ClipManagerController {
     try {
       const clipId = parseInt(req.params.clipId);
       const teamId = parseInt(req.params.teamId);
-      const { captionsData, captionColor, captionFont, captionsEnabled } = req.body;
+      const { captionsData, captionColor, captionFont, captionsEnabled } =
+        req.body;
 
       if (isNaN(clipId) || isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid clip ID or team ID" });
@@ -306,7 +333,9 @@ export class ClipManagerController {
       }
 
       if (!clip.blank_video_path) {
-        return res.status(400).json({ error: "No blank video available for this clip" });
+        return res
+          .status(400)
+          .json({ error: "No blank video available for this clip" });
       }
 
       // Mark clip as processing
@@ -324,7 +353,9 @@ export class ClipManagerController {
         captionsEnabled: captionsEnabled !== false, // default to true
       });
 
-      console.log(`Captions update job sent to SQS with messageId: ${messageId}`);
+      console.log(
+        `Captions update job sent to SQS with messageId: ${messageId}`
+      );
 
       return res.status(200).json({
         message: "Captions update queued for processing",
@@ -334,7 +365,10 @@ export class ClipManagerController {
     } catch (error) {
       console.error("Update captions error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to queue captions update",
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to queue captions update",
       });
     }
   }
@@ -360,7 +394,9 @@ export class ClipManagerController {
       }
 
       if (!clip.blank_video_path) {
-        return res.status(400).json({ error: "No blank video available for this clip" });
+        return res
+          .status(400)
+          .json({ error: "No blank video available for this clip" });
       }
 
       await clipManagerService.updateClipStatus(clipId, teamId, "pending");
@@ -388,7 +424,10 @@ export class ClipManagerController {
     } catch (error) {
       console.error("Update text overlay error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to queue text overlay",
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to queue text overlay",
       });
     }
   }
@@ -397,7 +436,13 @@ export class ClipManagerController {
     try {
       const clipId = parseInt(req.params.clipId);
       const teamId = parseInt(req.params.teamId);
-      const { captionsEnabled, captionsData, captionColor, captionFont, heading } = req.body;
+      const {
+        captionsEnabled,
+        captionsData,
+        captionColor,
+        captionFont,
+        heading,
+      } = req.body;
 
       if (isNaN(clipId) || isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid clip ID or team ID" });
@@ -410,7 +455,9 @@ export class ClipManagerController {
       }
 
       if (!clip.blank_video_path) {
-        return res.status(400).json({ error: "No blank video available for this clip" });
+        return res
+          .status(400)
+          .json({ error: "No blank video available for this clip" });
       }
 
       await clipManagerService.updateClipStatus(clipId, teamId, "pending");
@@ -427,7 +474,9 @@ export class ClipManagerController {
         heading,
       });
 
-      console.log(`Update overlays job sent to SQS with messageId: ${messageId}`);
+      console.log(
+        `Update overlays job sent to SQS with messageId: ${messageId}`
+      );
 
       return res.status(200).json({
         message: "Overlays update queued for processing",
@@ -437,7 +486,10 @@ export class ClipManagerController {
     } catch (error) {
       console.error("Update overlays error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to queue overlays update",
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to queue overlays update",
       });
     }
   }
@@ -530,30 +582,41 @@ export class ClipManagerController {
       const clips = await clipManagerService.getUnsavedClipsByTeam(teamId);
 
       const watermarkedKeys = clips
-        .filter(clip => clip.watermarked_clip_path)
-        .map(clip => clip.watermarked_clip_path!);
+        .filter((clip) => clip.watermarked_clip_path)
+        .map((clip) => clip.watermarked_clip_path!);
 
       const thumbnailKeys = clips
-        .filter(clip => clip.source_video_path)
-        .map(clip => clip.source_video_path!);
+        .filter((clip) => clip.source_video_path)
+        .map((clip) => clip.source_video_path!);
 
-      // Use short expiration (5 minutes) for watermarked preview URLs
-      // This makes it harder to share/download the watermarked video URL
       const SHORT_EXPIRY = 300; // 5 minutes
-      const watermarkedUrls = await s3Service.getMultiplePresignedUrls(watermarkedKeys, SHORT_EXPIRY);
-      const thumbnailUrls = await s3Service.getMultiplePresignedUrls(thumbnailKeys, SHORT_EXPIRY);
+      const watermarkedUrls = await s3Service.getMultiplePresignedUrls(
+        watermarkedKeys,
+        SHORT_EXPIRY
+      );
+      const thumbnailUrls = await s3Service.getMultiplePresignedUrls(
+        thumbnailKeys,
+        SHORT_EXPIRY
+      );
 
-      const clipsWithUrls = clips.map(clip => ({
+      const clipsWithUrls = clips.map((clip) => ({
         ...clip,
-        clipUrl: clip.watermarked_clip_path ? watermarkedUrls[clip.watermarked_clip_path] : null,
-        sourceVideoUrl: clip.source_video_path ? thumbnailUrls[clip.source_video_path] : null,
+        clipUrl: clip.watermarked_clip_path
+          ? watermarkedUrls[clip.watermarked_clip_path]
+          : null,
+        sourceVideoUrl: clip.source_video_path
+          ? thumbnailUrls[clip.source_video_path]
+          : null,
       }));
 
       return res.status(200).json({ clips: clipsWithUrls });
     } catch (error) {
       console.error("Get unsaved clips error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to get unsaved clips",
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to get unsaved clips",
       });
     }
   }
@@ -566,32 +629,40 @@ export class ClipManagerController {
       }
 
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
-      const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
+      const offset = req.query.offset
+        ? parseInt(req.query.offset as string)
+        : 0;
 
       if (limit > 100) {
         return res.status(400).json({ error: "Limit cannot exceed 100" });
       }
 
-      const clips = await clipManagerService.getSavedUnorganizedClips(teamId, limit, offset);
+      const clips = await clipManagerService.getSavedUnorganizedClips(
+        teamId,
+        limit,
+        offset
+      );
 
       const clipKeys = clips
-        .filter(clip => clip.clip_path)
-        .map(clip => clip.clip_path!);
+        .filter((clip) => clip.clip_path)
+        .map((clip) => clip.clip_path!);
 
       const thumbnailKeys = clips
-        .filter(clip => clip.source_video_path)
-        .map(clip => clip.source_video_path!);
+        .filter((clip) => clip.source_video_path)
+        .map((clip) => clip.source_video_path!);
 
       const allKeys = [...new Set([...clipKeys, ...thumbnailKeys])];
       const presignedUrls = await s3Service.getMultiplePresignedUrls(allKeys);
 
-      const clipIds = clips.map(clip => clip.id);
+      const clipIds = clips.map((clip) => clip.id);
       const tagsByClip = await tagService.getTagsForClips(clipIds);
 
-      const clipsWithUrls = clips.map(clip => ({
+      const clipsWithUrls = clips.map((clip) => ({
         ...clip,
         clipUrl: clip.clip_path ? presignedUrls[clip.clip_path] : null,
-        sourceVideoUrl: clip.source_video_path ? presignedUrls[clip.source_video_path] : null,
+        sourceVideoUrl: clip.source_video_path
+          ? presignedUrls[clip.source_video_path]
+          : null,
         tags: tagsByClip[clip.id] || [],
       }));
 
@@ -606,7 +677,8 @@ export class ClipManagerController {
     } catch (error) {
       console.error("Get saved clips error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to get saved clips",
+        error:
+          error instanceof Error ? error.message : "Failed to get saved clips",
       });
     }
   }
@@ -658,7 +730,10 @@ export class ClipManagerController {
         return res.status(400).json({ error: "Can only share saved clips" });
       }
 
-      const updatedClip = await clipManagerService.generateShareToken(clipId, teamId);
+      const updatedClip = await clipManagerService.generateShareToken(
+        clipId,
+        teamId
+      );
 
       return res.status(200).json({
         message: "Share link generated successfully",
@@ -667,7 +742,10 @@ export class ClipManagerController {
     } catch (error) {
       console.error("Generate share link error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to generate share link",
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to generate share link",
       });
     }
   }
@@ -689,7 +767,10 @@ export class ClipManagerController {
     } catch (error) {
       console.error("Remove share link error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to remove share link",
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to remove share link",
       });
     }
   }
@@ -740,8 +821,14 @@ export class ClipManagerController {
         return res.status(404).json({ error: "Clip file not found" });
       }
 
-      const filename = `${clip.title || `clip_${clip.id}`}.mp4`.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const downloadUrl = await s3Service.getPresignedDownloadUrl(clip.clip_path, filename);
+      const filename = `${clip.title || `clip_${clip.id}`}.mp4`.replace(
+        /[^a-zA-Z0-9._-]/g,
+        "_"
+      );
+      const downloadUrl = await s3Service.getPresignedDownloadUrl(
+        clip.clip_path,
+        filename
+      );
 
       return res.status(200).json({ downloadUrl });
     } catch (error) {
