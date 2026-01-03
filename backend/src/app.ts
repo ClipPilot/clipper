@@ -10,6 +10,7 @@ import internalRoutes from "./routes/internal.routes";
 import stripeRoutes from "./routes/stripe.routes";
 import comfyRoutes from "./routes/comfy.routes";
 import faceSwapRoutes from "./routes/faceSwap.routes";
+import adminRoutes from "./routes/admin.routes";
 import { swaggerSpec } from "./config/swagger";
 
 const app = express();
@@ -18,12 +19,14 @@ app.use(
   cors({
     origin: [
       "http://localhost:3000",
+      "http://localhost:3002",
       "https://platform.cuttr.com",
       "https://www.platform.cuttr.com",
       "https://beta.cuttr.com",
       "https://www.beta.cuttr.com",
       "https://cuttr.com",
       "https://www.cuttr.com",
+      "https://admin.cuttr.com",
     ],
     credentials: true,
   })
@@ -53,5 +56,6 @@ app.use("/api/tags", tagRoutes);
 app.use("/api/stripe", stripeRoutes);
 app.use("/api/comfy", comfyRoutes);
 app.use("/api/face-swap", faceSwapRoutes);
+app.use("/api/admin", adminRoutes);
 
 export default app;

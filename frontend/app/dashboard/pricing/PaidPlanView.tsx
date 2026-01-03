@@ -26,7 +26,7 @@ interface UsageStats {
 }
 
 interface PaidPlanViewProps {
-  currentPlan: "studio" | "scale";
+  currentPlan: "studio" | "scale" | "enterprise";
   teamName?: string;
   usageStats?: UsageStats;
   loadingPortal: boolean;
@@ -48,9 +48,25 @@ export function PaidPlanView({
     ? (usageStats.clipsCreated / usageStats.baseLimit) * 100
     : 0;
 
+  const isEnterprise = currentPlan === "enterprise";
   const isScale = currentPlan === "scale";
-  const planColor = isScale ? "purple" : "primary";
-  const colorClass = isScale ? "purple-500" : "accent-400";
+
+  const getPlanDisplayName = () => {
+    switch (currentPlan) {
+      case "enterprise":
+        return "Enterprise";
+      case "scale":
+        return "Scale";
+      default:
+        return "Studio";
+    }
+  };
+
+  const getColorClass = () => {
+    if (isEnterprise) return "emerald-500";
+    if (isScale) return "purple-500";
+    return "accent-400";
+  };
 
   return (
     <div className="relative mx-auto flex max-w-4xl flex-col items-center px-4 py-12 lg:py-16">
@@ -75,18 +91,28 @@ export function PaidPlanView({
                 <div
                   className={cn(
                     "flex items-center justify-center w-12 h-12 rounded-xl",
-                    isScale ? "bg-purple-500/20" : "bg-accent-400/20"
+                    isEnterprise
+                      ? "bg-emerald-500/20"
+                      : isScale
+                        ? "bg-purple-500/20"
+                        : "bg-accent-400/20"
                   )}
                 >
                   <Icon
                     icon="solar:verified-check-bold"
-                    className={isScale ? "text-purple-500" : "text-accent-400"}
+                    className={cn(
+                      isEnterprise
+                        ? "text-emerald-500"
+                        : isScale
+                          ? "text-purple-500"
+                          : "text-accent-400"
+                    )}
                     width={28}
                   />
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-text-primary">
-                    {isScale ? "Scale" : "Studio"} Plan
+                    {getPlanDisplayName()} Plan
                   </h2>
                   <p className="text-sm text-text-secondary">{teamName}</p>
                 </div>
@@ -96,13 +122,22 @@ export function PaidPlanView({
                 variant="flat"
                 size="lg"
                 classNames={{
-                  base: isScale ? "bg-purple-500/20" : "",
-                  content: isScale
-                    ? "text-purple-500 font-semibold"
-                    : "font-semibold",
+                  base: isEnterprise
+                    ? "bg-emerald-500/20"
+                    : isScale
+                      ? "bg-purple-500/20"
+                      : "",
+                  content: cn(
+                    "font-semibold",
+                    isEnterprise
+                      ? "text-emerald-500"
+                      : isScale
+                        ? "text-purple-500"
+                        : ""
+                  ),
                 }}
               >
-                Active
+                {isEnterprise ? "Managed" : "Active"}
               </Chip>
             </div>
           </CardHeader>
@@ -183,84 +218,97 @@ export function PaidPlanView({
           </CardFooter>
         </Card>
 
-        <div className="space-y-4">
-          <div className="text-center">
-            <h3 className="text-xl font-bold text-text-primary">
-              Need more credits?
-            </h3>
-            <p className="text-sm text-text-secondary mt-1">
-              Purchase additional credits to increase your monthly limit
-            </p>
-          </div>
+        {!isEnterprise && (
+          <div className="space-y-4">
+            <div className="text-center">
+              <h3 className="text-xl font-bold text-text-primary">
+                Need more credits?
+              </h3>
+              <p className="text-sm text-text-secondary mt-1">
+                Purchase additional credits to increase your monthly limit
+              </p>
+            </div>
 
-          <Card
-            className={cn(
-              "bg-surface-elevated/80 backdrop-blur-md max-w-md mx-auto",
-              isScale
-                ? "border border-purple-500/30"
-                : "border border-border-base"
-            )}
-          >
-            <CardBody className="gap-4">
-              <div className="flex items-center gap-3">
-                <div
-                  className={cn(
-                    "flex items-center justify-center w-12 h-12 rounded-lg",
-                    isScale ? "bg-purple-500/20" : "bg-accent-400/20"
-                  )}
-                >
-                  <Icon
-                    icon="solar:add-circle-bold"
-                    className={isScale ? "text-purple-500" : "text-accent-400"}
-                    width={28}
-                  />
+            <Card
+              className={cn(
+                "bg-surface-elevated/80 backdrop-blur-md max-w-md mx-auto",
+                isScale
+                  ? "border border-purple-500/30"
+                  : "border border-border-base"
+              )}
+            >
+              <CardBody className="gap-4">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={cn(
+                      "flex items-center justify-center w-12 h-12 rounded-lg",
+                      isScale ? "bg-purple-500/20" : "bg-accent-400/20"
+                    )}
+                  >
+                    <Icon
+                      icon="solar:add-circle-bold"
+                      className={isScale ? "text-purple-500" : "text-accent-400"}
+                      width={28}
+                    />
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-semibold text-text-primary">
+                      +{isScale ? "100" : "50"} Credits
+                    </h4>
+                    <p className="text-sm text-text-tertiary">
+                      {isScale ? "Scale" : "Studio"} Pack
+                    </p>
+                  </div>
                 </div>
                 <div>
-                  <h4 className="text-lg font-semibold text-text-primary">
-                    +{isScale ? "100" : "50"} Credits
-                  </h4>
-                  <p className="text-sm text-text-tertiary">
-                    {isScale ? "Scale" : "Studio"} Pack
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-3xl font-bold text-text-primary">
+                      ${isScale ? "5.99" : "11.49"}
+                    </span>
+                    <span className="text-sm text-text-tertiary">/per credit</span>
+                  </div>
+                  <p className="text-xs text-text-tertiary mt-1">
+                    ${isScale ? "599" : "574.50"} one time purchase
                   </p>
                 </div>
-              </div>
-              <div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-3xl font-bold text-text-primary">
-                    ${isScale ? "5.99" : "11.49"}
-                  </span>
-                  <span className="text-sm text-text-tertiary">/per credit</span>
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-green-500/10 border border-green-500/20">
+                  <Icon
+                    icon="solar:check-circle-bold"
+                    className="text-green-500"
+                    width={16}
+                  />
+                  <p className="text-xs text-green-500">
+                    Bonus credits never expire
+                  </p>
                 </div>
-                <p className="text-xs text-text-tertiary mt-1">
-                  ${isScale ? "599" : "574.50"} one time purchase
-                </p>
-              </div>
-              <div className="flex items-center gap-2 p-2 rounded-lg bg-green-500/10 border border-green-500/20">
-                <Icon
-                  icon="solar:check-circle-bold"
-                  className="text-green-500"
-                  width={16}
-                />
-                <p className="text-xs text-green-500">
-                  Bonus credits never expire
-                </p>
-              </div>
-            </CardBody>
-            <CardFooter>
-              <Button
-                fullWidth
-                size="lg"
-                className={isScale ? "bg-purple-500 text-white" : ""}
-                color={isScale ? "default" : "primary"}
-                startContent={<Icon icon="solar:cart-bold" width={20} />}
-                onPress={onBuyAddon}
-                isLoading={loadingAddon}
-              >
-                Buy Now
-              </Button>
-            </CardFooter>
-          </Card>
-        </div>
+              </CardBody>
+              <CardFooter>
+                <Button
+                  fullWidth
+                  size="lg"
+                  className={isScale ? "bg-purple-500 text-white" : ""}
+                  color={isScale ? "default" : "primary"}
+                  startContent={<Icon icon="solar:cart-bold" width={20} />}
+                  onPress={onBuyAddon}
+                  isLoading={loadingAddon}
+                >
+                  Buy Now
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
+        )}
+
+        {isEnterprise && (
+          <div className="text-center space-y-2">
+            <p className="text-text-secondary">
+              Your enterprise plan is managed by your account administrator.
+            </p>
+            <p className="text-sm text-text-tertiary">
+              Contact support@cuttr.com for billing inquiries.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

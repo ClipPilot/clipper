@@ -47,6 +47,8 @@ export default function WorkspaceSelector({
 
   const getPlanName = (plan?: string) => {
     switch (plan) {
+      case "enterprise":
+        return "Enterprise";
       case "scale":
         return "Scale";
       case "studio":
@@ -58,6 +60,8 @@ export default function WorkspaceSelector({
 
   const getPlanColor = (plan?: string) => {
     switch (plan) {
+      case "enterprise":
+        return "bg-emerald-500/10 text-emerald-500";
       case "scale":
         return "bg-purple-500/10 text-purple-500";
       case "studio":
@@ -68,7 +72,7 @@ export default function WorkspaceSelector({
   };
 
   const currentPlan = selectedTeam?.plan || "free";
-  const isPaidPlan = currentPlan === "studio" || currentPlan === "scale";
+  const isPaidPlan = ["studio", "scale", "enterprise"].includes(currentPlan);
 
   return (
       <Card
@@ -127,11 +131,13 @@ export default function WorkspaceSelector({
                       <div
                         className={cn(
                           "flex items-center justify-center w-10 h-10 rounded-lg",
-                          teamPlan === "scale"
-                            ? "bg-purple-500 text-white"
-                            : teamPlan === "studio"
-                              ? "bg-accent-400 text-white"
-                              : "bg-blue-500 text-white"
+                          teamPlan === "enterprise"
+                            ? "bg-emerald-500 text-white"
+                            : teamPlan === "scale"
+                              ? "bg-purple-500 text-white"
+                              : teamPlan === "studio"
+                                ? "bg-accent-400 text-white"
+                                : "bg-blue-500 text-white"
                         )}
                       >
                         <Icon icon={getRoleIcon(team.role)} width={20} />
@@ -240,17 +246,21 @@ export default function WorkspaceSelector({
               onClick={() => router.push("/dashboard/pricing")}
               className={cn(
                 "w-full flex items-center gap-3 p-3 rounded-lg border transition-colors",
-                currentPlan === "scale"
-                  ? "bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20"
-                  : "bg-accent-400/10 border-accent-400/20 hover:bg-accent-400/20"
+                currentPlan === "enterprise"
+                  ? "bg-emerald-500/10 border-emerald-500/20 hover:bg-emerald-500/20"
+                  : currentPlan === "scale"
+                    ? "bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20"
+                    : "bg-accent-400/10 border-accent-400/20 hover:bg-accent-400/20"
               )}
             >
               <Icon
                 icon="solar:verified-check-bold"
                 className={
-                  currentPlan === "scale"
-                    ? "text-purple-500"
-                    : "text-accent-400"
+                  currentPlan === "enterprise"
+                    ? "text-emerald-500"
+                    : currentPlan === "scale"
+                      ? "text-purple-500"
+                      : "text-accent-400"
                 }
                 width={20}
               />
@@ -258,23 +268,27 @@ export default function WorkspaceSelector({
                 <p
                   className={cn(
                     "text-sm font-medium",
-                    currentPlan === "scale"
-                      ? "text-purple-500"
-                      : "text-accent-400"
+                    currentPlan === "enterprise"
+                      ? "text-emerald-500"
+                      : currentPlan === "scale"
+                        ? "text-purple-500"
+                        : "text-accent-400"
                   )}
                 >
                   {getPlanName(currentPlan)} Plan
                 </p>
                 <p className="text-xs text-text-tertiary">
-                  Manage subscription
+                  {currentPlan === "enterprise" ? "Managed plan" : "Manage subscription"}
                 </p>
               </div>
               <Icon
                 icon="solar:arrow-right-bold"
                 className={
-                  currentPlan === "scale"
-                    ? "text-purple-500"
-                    : "text-accent-400"
+                  currentPlan === "enterprise"
+                    ? "text-emerald-500"
+                    : currentPlan === "scale"
+                      ? "text-purple-500"
+                      : "text-accent-400"
                 }
                 width={16}
               />

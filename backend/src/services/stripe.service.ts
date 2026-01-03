@@ -274,14 +274,21 @@ class StripeService {
       });
     }
 
-    const clipsLimit = getClipsLimitForPlan(plan);
+    const [team] = await db
+      .select()
+      .from(teams)
+      .where(eq(teams.id, teamId))
+      .limit(1);
+
+    const clipsLimit = plan === "enterprise" && team?.enterprise_clip_limit
+      ? team.enterprise_clip_limit
+      : getClipsLimitForPlan(plan);
 
     await db
       .update(teams)
       .set({ plan, updated_at: new Date() })
       .where(eq(teams.id, teamId));
 
-    // Reset usage for new subscription - start fresh with new limit
     await db
       .update(usageStats)
       .set({
@@ -293,7 +300,7 @@ class StripeService {
       .where(eq(usageStats.team_id, teamId));
 
     console.log(
-      `Subscription ${subscription.id} created/updated for team ${teamId}, plan: ${plan}`
+      `Subscription ${subscription.id} created/updated for team ${teamId}, plan: ${plan}, clips: ${clipsLimit}`
     );
 
     try {
@@ -361,23 +368,23 @@ class StripeService {
       return new Date(val);
     };
 
-    let plan = getPlanFromPriceId(priceId);
-    if (plan === "free") {
-      const [team] = await db
-        .select()
-        .from(teams)
-        .where(eq(teams.id, existingSub.team_id))
-        .limit(1);
+    const [team] = await db
+      .select()
+      .from(teams)
+      .where(eq(teams.id, existingSub.team_id))
+      .limit(1);
 
-      if (team && team.plan !== "free") {
-        console.log(
-          `Unrecognized price ID ${priceId}, preserving existing plan: ${team.plan}`
-        );
-        plan = team.plan;
-      }
+    let plan = getPlanFromPriceId(priceId);
+    if (plan === "free" && team && team.plan !== "free") {
+      console.log(
+        `Unrecognized price ID ${priceId}, preserving existing plan: ${team.plan}`
+      );
+      plan = team.plan;
     }
 
-    const clipsLimit = getClipsLimitForPlan(plan);
+    const clipsLimit = plan === "enterprise" && team?.enterprise_clip_limit
+      ? team.enterprise_clip_limit
+      : getClipsLimitForPlan(plan);
     const newPeriodStart = parseDate(periodStartTs);
     const newPeriodEnd = parseDate(periodEndTs);
 

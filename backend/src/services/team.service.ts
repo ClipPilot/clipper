@@ -479,6 +479,8 @@ class TeamService {
    */
   getSeatLimitForPlan(plan: string): number {
     switch (plan) {
+      case "enterprise":
+        return PLAN_LIMITS.ENTERPRISE.seats;
       case "scale":
         return PLAN_LIMITS.SCALE.seats;
       case "studio":

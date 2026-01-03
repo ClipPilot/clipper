@@ -23,7 +23,7 @@ function PricingContent() {
   const [loadingPortal, setLoadingPortal] = useState(false);
 
   const currentPlan = selectedTeam?.plan || "free";
-  const isPaidPlan = currentPlan === "studio" || currentPlan === "scale";
+  const isPaidPlan = ["studio", "scale", "enterprise"].includes(currentPlan);
 
   useEffect(() => {
     if (searchParams.get("success") === "true") {
@@ -140,7 +140,7 @@ function PricingContent() {
   if (isPaidPlan) {
     return (
       <PaidPlanView
-        currentPlan={currentPlan as "studio" | "scale"}
+        currentPlan={currentPlan as "studio" | "scale" | "enterprise"}
         teamName={selectedTeam?.name}
         usageStats={usageStats ?? undefined}
         loadingPortal={loadingPortal}

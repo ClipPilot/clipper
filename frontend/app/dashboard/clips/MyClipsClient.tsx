@@ -383,13 +383,13 @@ function MyClipsPageContent() {
         {activeTab === "library" && (
           <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
             {/* Folder tree - hidden on mobile, shown on lg+ */}
-            {(selectedTeam?.plan === "scale" || folderTree.length > 0) && (
+            {(selectedTeam?.plan === "scale" || selectedTeam?.plan === "enterprise" || folderTree.length > 0) && (
               <div className="hidden lg:block">
                 <FolderTree
                   folders={folderTree}
                   selectedFolderId={selectedFolderId}
                   isCollapsed={isSidebarCollapsed}
-                  isReadOnly={selectedTeam?.plan !== "scale"}
+                  isReadOnly={selectedTeam?.plan !== "scale" && selectedTeam?.plan !== "enterprise"}
                   onSelectFolder={handleSelectFolder}
                   onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
                   onMoveClip={moveClipToFolder}
@@ -474,8 +474,8 @@ function MyClipsPageContent() {
                           folder={subfolder}
                           viewMode={viewMode}
                           onOpen={handleSelectFolder}
-                          onDelete={selectedTeam?.plan === "scale" ? deleteFolder : undefined}
-                          onDropClip={selectedTeam?.plan === "scale" ? moveClipToFolder : undefined}
+                          onDelete={selectedTeam?.plan === "scale" || selectedTeam?.plan === "enterprise" ? deleteFolder : undefined}
+                          onDropClip={selectedTeam?.plan === "scale" || selectedTeam?.plan === "enterprise" ? moveClipToFolder : undefined}
                         />
                       ))}
                       {savedClips.map((clip) => (

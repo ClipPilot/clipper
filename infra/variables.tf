@@ -177,3 +177,9 @@ variable "gemini_api_key" {
   sensitive   = true
 }
 
+variable "admin_jwt_secret" {
+  description = "JWT secret for admin dashboard authentication"
+  type        = string
+  sensitive   = true
+}
+
