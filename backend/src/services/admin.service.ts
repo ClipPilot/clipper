@@ -198,12 +198,18 @@ class AdminService {
     };
   }
 
-  async createEnterprisePrice(monthlyAmountCents: number): Promise<string> {
+  async createEnterprisePrice(monthlyAmountCents: number, teamId: number, teamName: string): Promise<string> {
     const price = await stripe.prices.create({
       unit_amount: monthlyAmountCents,
       currency: "usd",
       recurring: { interval: "month" },
       product: ENTERPRISE_PRODUCT,
+      nickname: `Enterprise - ${teamName}`,
+      metadata: {
+        teamId: teamId.toString(),
+        teamName,
+        plan: "enterprise",
+      },
     });
     return price.id;
   }
@@ -217,7 +223,7 @@ class AdminService {
     const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
     if (!team) throw new Error("Team not found");
 
-    const priceId = await this.createEnterprisePrice(monthlyPriceCents);
+    const priceId = await this.createEnterprisePrice(monthlyPriceCents, teamId, team.name);
 
     await db
       .update(teams)

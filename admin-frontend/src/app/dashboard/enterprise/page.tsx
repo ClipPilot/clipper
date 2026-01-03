@@ -18,6 +18,13 @@ function EnterpriseSetupContent() {
   const [isLoadingTeam, setIsLoadingTeam] = useState(true);
   const [error, setError] = useState("");
   const [result, setResult] = useState<{ checkoutUrl: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async (text: string) => {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   useEffect(() => {
     if (teamId) {
@@ -50,7 +57,7 @@ function EnterpriseSetupContent() {
       const response = await adminAPI.setupEnterprise(
         teamId,
         parseInt(clipLimit),
-        Math.round(parseFloat(monthlyPrice) * 100),
+        parseFloat(monthlyPrice),
         customerEmail
       );
       setResult(response);
@@ -109,14 +116,32 @@ function EnterpriseSetupContent() {
                 className="flex-1 px-4 py-3 rounded-xl bg-surface-elevated border border-border text-text-primary text-sm font-mono"
               />
               <button
-                onClick={() => navigator.clipboard.writeText(result.checkoutUrl)}
-                className="px-4 py-3 rounded-xl bg-emerald/10 text-emerald hover:bg-emerald/20 border border-emerald/20 transition-all"
+                onClick={() => handleCopy(result.checkoutUrl)}
+                className={`px-4 py-3 rounded-xl border transition-all ${
+                  copied
+                    ? "bg-emerald text-white border-emerald"
+                    : "bg-emerald/10 text-emerald hover:bg-emerald/20 border-emerald/20"
+                }`}
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
+                {copied ? (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                )}
               </button>
             </div>
+            {copied && (
+              <p className="text-xs text-emerald mt-2 flex items-center gap-1">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Copied to clipboard
+              </p>
+            )}
           </div>
 
           <a

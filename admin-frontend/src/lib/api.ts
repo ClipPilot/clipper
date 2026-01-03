@@ -125,7 +125,7 @@ export const adminAPI = {
   async setupEnterprise(
     teamId: string,
     clipLimit: number,
-    monthlyPriceCents: number,
+    monthlyPrice: number,
     customerEmail: string
   ): Promise<EnterpriseSetupResult> {
     const response = await fetch(`${API_URL}/admin/enterprise/setup`, {
@@ -134,7 +134,7 @@ export const adminAPI = {
         "Content-Type": "application/json",
         ...getAuthHeaders(),
       },
-      body: JSON.stringify({ teamId, clipLimit, monthlyPriceCents, customerEmail }),
+      body: JSON.stringify({ teamId, clipLimit, monthlyPrice, customerEmail }),
     });
     return handleResponse(response);
   },
