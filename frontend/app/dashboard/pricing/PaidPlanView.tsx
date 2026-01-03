@@ -180,7 +180,9 @@ export function PaidPlanView({
 
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-text-secondary">Plan usage this period</span>
+                <span className="text-text-secondary">
+                  Plan usage this period
+                </span>
                 <span className="text-text-primary font-medium">
                   {usageStats?.clipsCreated || 0} / {usageStats?.baseLimit || 0}
                 </span>
@@ -203,18 +205,22 @@ export function PaidPlanView({
           </CardBody>
           <Divider />
           <CardFooter>
-            <Button
-              variant="flat"
-              color="default"
-              startContent={
-                <Icon icon="solar:settings-bold-duotone" width={20} />
-              }
-              onPress={onManageSubscription}
-              isLoading={loadingPortal}
-              className="text-text-secondary"
-            >
-              Manage Subscription
-            </Button>
+            {currentPlan !== "enterprise" && (
+              <>
+                <Button
+                  variant="flat"
+                  color="default"
+                  startContent={
+                    <Icon icon="solar:settings-bold-duotone" width={20} />
+                  }
+                  onPress={onManageSubscription}
+                  isLoading={loadingPortal}
+                  className="text-text-secondary"
+                >
+                  Manage Subscription
+                </Button>
+              </>
+            )}
           </CardFooter>
         </Card>
 
@@ -247,7 +253,9 @@ export function PaidPlanView({
                   >
                     <Icon
                       icon="solar:add-circle-bold"
-                      className={isScale ? "text-purple-500" : "text-accent-400"}
+                      className={
+                        isScale ? "text-purple-500" : "text-accent-400"
+                      }
                       width={28}
                     />
                   </div>
@@ -265,7 +273,9 @@ export function PaidPlanView({
                     <span className="text-3xl font-bold text-text-primary">
                       ${isScale ? "5.99" : "11.49"}
                     </span>
-                    <span className="text-sm text-text-tertiary">/per credit</span>
+                    <span className="text-sm text-text-tertiary">
+                      /per credit
+                    </span>
                   </div>
                   <p className="text-xs text-text-tertiary mt-1">
                     ${isScale ? "599" : "574.50"} one time purchase

@@ -248,7 +248,9 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
                     {getPlanName()} plan
                   </p>
                   <p className="text-[10px] text-text-tertiary">
-                    {plan === "enterprise" ? "Managed plan" : "Manage subscription"}
+                    {plan === "enterprise"
+                      ? "Managed plan"
+                      : "Manage subscription"}
                   </p>
                 </div>
                 <Icon
@@ -269,24 +271,22 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
         {!isLoading && !error && usageStats && selectedTeam && (
           <div className="p-4 border-t border-border-base">
             <div className="space-y-2">
+              <p
+                className="text-xs text-text-secondary font-medium truncate"
+                title={selectedTeam.name}
+              >
+                {selectedTeam.name}
+              </p>
               <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span
-                    className="text-text-secondary font-medium truncate"
-                    title={selectedTeam.name}
-                  >
-                    {selectedTeam.name}
-                  </span>
-                  <span
-                    className={cn(
-                      "text-[10px] px-1.5 py-0.5 rounded font-medium flex-shrink-0",
-                      getPlanColor()
-                    )}
-                  >
-                    {getPlanName()}
-                  </span>
-                </div>
-                <span className="text-text-tertiary flex-shrink-0 ml-2">
+                <span
+                  className={cn(
+                    "text-[10px] px-1.5 py-0.5 rounded font-medium",
+                    getPlanColor()
+                  )}
+                >
+                  {getPlanName()}
+                </span>
+                <span className="text-text-tertiary">
                   {usageStats.clipsCreated} / {usageStats.baseLimit}
                 </span>
               </div>
