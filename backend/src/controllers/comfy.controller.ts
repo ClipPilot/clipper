@@ -6,6 +6,7 @@ import { cutClip, mergeClips } from "../services/videoEditor.service";
 import { emitComfyJobUpdate } from "../services/socket.service";
 import { getTeamUsage } from "../middleware/subscription.middleware";
 import { teamService } from "../services/team.service";
+import { canAccessUGCStudio } from "../utils/plans";
 import { eq, desc } from "drizzle-orm";
 import crypto from "crypto";
 import path from "path";
@@ -100,9 +101,9 @@ export class ComfyController {
         return res.status(404).json({ error: "Team usage stats not found" });
       }
 
-      if (usage.plan !== "scale") {
+      if (!canAccessUGCStudio(usage.plan)) {
         return res.status(403).json({
-          error: "UGC Studio is only available on the Scale plan. Please upgrade to access this feature.",
+          error: "UGC Studio is only available on Scale and Enterprise plans. Please upgrade to access this feature.",
           code: "PLAN_REQUIRED",
           requiredPlan: "scale",
           currentPlan: usage.plan,

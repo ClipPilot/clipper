@@ -5,6 +5,7 @@ import { Button, Card, CardBody, addToast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAtomValue } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
+import { canAccessUGCStudio } from "@/lib/plans";
 import { apiFetch } from "@/lib/apiClient";
 import API_URL from "@/config/constants";
 import {
@@ -23,7 +24,7 @@ type StudioView = "menu" | "face-swap";
 export default function UGCStudioPage() {
   const selectedTeam = useAtomValue(selectedTeamAtom);
 
-  if (selectedTeam?.plan !== "scale") {
+  if (!canAccessUGCStudio(selectedTeam?.plan)) {
     return <ScalePlanRequired currentPlan={selectedTeam?.plan || "free"} />;
   }
 
