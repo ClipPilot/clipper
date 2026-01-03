@@ -404,7 +404,7 @@ class ReferralService {
       .set({
         bonus_clips: bonusClips,
         percent_off: percentOff.toString(),
-        reward_applied: false,
+        reward_applied: true,
         updated_at: new Date(),
       })
       .where(eq(referrals.id, referralId));
@@ -415,19 +415,41 @@ class ReferralService {
       .where(eq(referralCodes.id, referral.referral_code_id))
       .limit(1);
 
-    if (code) {
-      const referrerTeam = await this.getTeamWithOwner(code.created_by_team_id);
+    if (!code) return false;
 
-      if (referrerTeam?.ownerEmail) {
-        try {
-          await emailNotiService.sendReferralRewardSet(referrerTeam.ownerEmail, {
-            referrerName: referrerTeam.ownerName || "there",
-            bonusClips,
-            percentOff,
-          });
-        } catch (err) {
-          console.error("Failed to send reward set email:", err);
-        }
+    const referrerTeamId = code.created_by_team_id;
+
+    if (bonusClips > 0) {
+      const [team] = await db.select().from(teams).where(eq(teams.id, referrerTeamId)).limit(1);
+      const currentAddon = team?.addon_clips_remaining || 0;
+
+      await db
+        .update(teams)
+        .set({
+          addon_clips_remaining: currentAddon + bonusClips,
+          updated_at: new Date(),
+        })
+        .where(eq(teams.id, referrerTeamId));
+
+      console.log(`Applied ${bonusClips} bonus clips to team ${referrerTeamId}`);
+    }
+
+    if (percentOff > 0) {
+      const { applyReferralDiscount } = await import("./stripe.service");
+      await applyReferralDiscount(referrerTeamId, percentOff);
+    }
+
+    const referrerTeam = await this.getTeamWithOwner(referrerTeamId);
+
+    if (referrerTeam?.ownerEmail) {
+      try {
+        await emailNotiService.sendReferralRewardSet(referrerTeam.ownerEmail, {
+          referrerName: referrerTeam.ownerName || "there",
+          bonusClips,
+          percentOff,
+        });
+      } catch (err) {
+        console.error("Failed to send reward set email:", err);
       }
     }
 
