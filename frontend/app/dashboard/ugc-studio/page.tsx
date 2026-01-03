@@ -900,6 +900,10 @@ const EXAMPLE_CHARACTERS = [
   { id: 6, src: "/characters/6.jpg" },
   { id: 7, src: "/characters/7.jpg" },
   { id: 8, src: "/characters/8.jpg" },
+  { id: 9, src: "/characters/9.jpg" },
+  { id: 10, src: "/characters/10.jpg" },
+  { id: 11, src: "/characters/11.jpg" },
+  { id: 12, src: "/characters/12.jpg" },
 ];
 
 interface SelectedCharacter {
