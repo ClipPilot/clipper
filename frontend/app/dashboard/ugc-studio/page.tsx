@@ -591,7 +591,9 @@ function FaceSwapDetailModal({
               color="primary"
               onPress={handleDownload}
               isLoading={isDownloading}
-              startContent={!isDownloading && <Icon icon="solar:download-bold" width={18} />}
+              startContent={
+                !isDownloading && <Icon icon="solar:download-bold" width={18} />
+              }
             >
               {isDownloading ? "Downloading..." : "Download Video"}
             </Button>
@@ -700,7 +702,9 @@ const FaceSwapJobCard = memo(
                     onPress={handleDownload as any}
                     isLoading={isDownloading}
                   >
-                    {!isDownloading && <Icon icon="solar:download-bold" width={16} />}
+                    {!isDownloading && (
+                      <Icon icon="solar:download-bold" width={16} />
+                    )}
                   </Button>
                 )}
               </div>
@@ -904,27 +908,89 @@ interface SelectedCharacter {
   file?: File;
 }
 
+function ScalePlanRequired({ currentPlan }: { currentPlan: string }) {
+  return (
+    <div className="min-h-screen bg-surface-dark p-6 lg:p-8">
+      <div className="max-w-2xl mx-auto">
+        <Card className="bg-surface-base border border-border-base">
+          <CardBody className="p-8 text-center space-y-6">
+            <div className="w-20 h-20 rounded-full bg-accent-400/10 flex items-center justify-center mx-auto">
+              <Icon
+                icon="solar:mask-happly-bold-duotone"
+                className="text-accent-400"
+                width={40}
+              />
+            </div>
+            <div className="space-y-2">
+              <h1 className="text-2xl font-bold text-text-primary">
+                UGC Studio
+              </h1>
+              <p className="text-text-secondary">
+                Create AI-powered face swaps and more with UGC Studio.
+              </p>
+            </div>
+            <div className="bg-surface-elevated rounded-xl p-4 space-y-3">
+              <div className="flex items-center gap-3">
+                <Icon icon="solar:crown-bold-duotone" className="text-yellow-500" width={24} />
+                <span className="text-text-primary font-medium">Scale Plan Required</span>
+              </div>
+              <p className="text-sm text-text-secondary text-left">
+                UGC Studio is exclusively available on the Scale plan. Upgrade to unlock:
+              </p>
+              <ul className="text-sm text-text-secondary text-left space-y-2">
+                <li className="flex items-center gap-2">
+                  <Icon icon="solar:check-circle-bold" className="text-green-500" width={16} />
+                  AI Face Swap for videos
+                </li>
+                <li className="flex items-center gap-2">
+                  <Icon icon="solar:check-circle-bold" className="text-green-500" width={16} />
+                  Voice Clone (coming soon)
+                </li>
+                <li className="flex items-center gap-2">
+                  <Icon icon="solar:check-circle-bold" className="text-green-500" width={16} />
+                  AI Backgrounds (coming soon)
+                </li>
+              </ul>
+            </div>
+            <Button
+              as="a"
+              href="/dashboard/pricing"
+              className="bg-accent-400 text-white font-semibold"
+              size="lg"
+              startContent={<Icon icon="solar:arrow-up-bold" width={20} />}
+            >
+              Upgrade to Scale
+            </Button>
+            <p className="text-xs text-text-muted">
+              Currently on: <span className="capitalize font-medium">{currentPlan}</span> plan
+            </p>
+          </CardBody>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 export default function UGCStudioPage() {
   const selectedTeam = useAtomValue(selectedTeamAtom);
-  const [currentView, setCurrentView] = useState<StudioView>("face-swap"); // default: menu
+
+  if (selectedTeam?.plan !== "scale") {
+    return <ScalePlanRequired currentPlan={selectedTeam?.plan || "free"} />;
+  }
+
+  return <UGCStudioContent selectedTeam={selectedTeam} />;
+}
+
+function UGCStudioContent({ selectedTeam }: { selectedTeam: { id: number; plan?: string } }) {
+  const [currentView, setCurrentView] = useState<StudioView>("face-swap");
   const [video, setVideo] = useState<UploadedFile | null>(null);
-  const [selectedCharacter, setSelectedCharacter] =
-    useState<SelectedCharacter | null>(null);
-  // Keep for backwards compatibility with existing logic
-  const characterImage = selectedCharacter
-    ? {
-        file: selectedCharacter.file || new File([], "example.jpg"),
-        preview: selectedCharacter.src,
-      }
-    : null;
+  const [selectedCharacter, setSelectedCharacter] = useState<SelectedCharacter | null>(null);
   const [videoDuration, setVideoDuration] = useState(0);
   const [clipRange, setClipRange] = useState<[number, number]>([0, 30]);
   const [isDraggingVideo, setIsDraggingVideo] = useState(false);
   const [isDraggingImage, setIsDraggingImage] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [loadingCharacterId, setLoadingCharacterId] = useState<string | null>(
-    null
-  );
+  const [loadingCharacterId, setLoadingCharacterId] = useState<string | null>(null);
   const [processingStatus, setProcessingStatus] = useState("");
   const [submittedJobId, setSubmittedJobId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -932,6 +998,13 @@ export default function UGCStudioPage() {
 
   const videoInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+
+  const characterImage = selectedCharacter
+    ? {
+        file: selectedCharacter.file || new File([], "example.jpg"),
+        preview: selectedCharacter.src,
+      }
+    : null;
 
   useEffect(() => {
     return () => {
@@ -1573,7 +1646,7 @@ export default function UGCStudioPage() {
                         <Icon icon="solar:add-circle-bold" width={20} />
                       }
                     >
-                      Create Another
+                      Generate Clips
                     </Button>
                   </div>
                 ) : error ? (

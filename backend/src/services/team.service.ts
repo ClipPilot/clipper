@@ -108,7 +108,7 @@ class TeamService {
   }
 
   /**
-   * Increment team usage
+   * Increment team usage (charge credits)
    */
   async incrementTeamUsage(teamId: number, count: number = 1) {
     const stats = await this.getTeamUsageStats(teamId);
@@ -120,6 +120,27 @@ class TeamService {
         updated_at: new Date(),
       })
       .where(eq(usageStats.id, stats.id));
+  }
+
+  /**
+   * Decrement team usage (refund credits)
+   * Used when a job fails after upfront charging
+   */
+  async decrementTeamUsage(teamId: number, count: number = 1) {
+    const stats = await this.getTeamUsageStats(teamId);
+
+    // Don't go below 0
+    const newCount = Math.max(0, stats.clips_created - count);
+
+    await db
+      .update(usageStats)
+      .set({
+        clips_created: newCount,
+        updated_at: new Date(),
+      })
+      .where(eq(usageStats.id, stats.id));
+
+    console.log(`[team-service] Refunded ${count} credits to team ${teamId} (${stats.clips_created} -> ${newCount})`);
   }
 
   /**

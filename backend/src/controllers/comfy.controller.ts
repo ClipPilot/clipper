@@ -4,11 +4,15 @@ import { comfyJobs } from "@clipper/shared-db/src/schema";
 import { s3Service } from "../services/s3.service";
 import { getVideoDuration, cutClip } from "../services/videoEditor.service";
 import { emitComfyJobUpdate } from "../services/socket.service";
+import { getTeamUsage } from "../middleware/subscription.middleware";
+import { teamService } from "../services/team.service";
 import { eq, desc } from "drizzle-orm";
 import crypto from "crypto";
 import path from "path";
 import fs from "fs";
 import "multer";
+
+const UGC_CREDIT_COST = 5;
 
 interface AuthRequest extends Request {
   user?: { id: string; email: string; dbUserId: number };
@@ -62,6 +66,32 @@ export class ComfyController {
           error: `Clip duration must be between 0 and ${MAX_VIDEO_DURATION} seconds`,
         });
       }
+
+      const usage = await getTeamUsage(parseInt(teamId));
+      if (!usage) {
+        return res.status(404).json({ error: "Team usage stats not found" });
+      }
+
+      if (usage.plan !== "scale") {
+        return res.status(403).json({
+          error: "UGC Studio is only available on the Scale plan. Please upgrade to access this feature.",
+          code: "PLAN_REQUIRED",
+          requiredPlan: "scale",
+          currentPlan: usage.plan,
+        });
+      }
+
+      if (usage.totalRemaining < UGC_CREDIT_COST) {
+        return res.status(403).json({
+          error: `Insufficient credits. UGC generation requires ${UGC_CREDIT_COST} credits, but you have ${usage.totalRemaining} remaining.`,
+          code: "INSUFFICIENT_CREDITS",
+          required: UGC_CREDIT_COST,
+          available: usage.totalRemaining,
+        });
+      }
+
+      await teamService.incrementTeamUsage(parseInt(teamId), UGC_CREDIT_COST);
+      console.log(`[comfy] Charged ${UGC_CREDIT_COST} credits upfront to team ${teamId}`);
 
       trimmedVideoPath = path.join(
         tempDir,
