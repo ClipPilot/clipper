@@ -929,29 +929,6 @@ function ScalePlanRequired({ currentPlan }: { currentPlan: string }) {
                 Create AI-powered face swaps and more with UGC Studio.
               </p>
             </div>
-            <div className="bg-surface-elevated rounded-xl p-4 space-y-3">
-              <div className="flex items-center gap-3">
-                <Icon icon="solar:crown-bold-duotone" className="text-yellow-500" width={24} />
-                <span className="text-text-primary font-medium">Scale Plan Required</span>
-              </div>
-              <p className="text-sm text-text-secondary text-left">
-                UGC Studio is exclusively available on the Scale plan. Upgrade to unlock:
-              </p>
-              <ul className="text-sm text-text-secondary text-left space-y-2">
-                <li className="flex items-center gap-2">
-                  <Icon icon="solar:check-circle-bold" className="text-green-500" width={16} />
-                  AI Face Swap for videos
-                </li>
-                <li className="flex items-center gap-2">
-                  <Icon icon="solar:check-circle-bold" className="text-green-500" width={16} />
-                  Voice Clone (coming soon)
-                </li>
-                <li className="flex items-center gap-2">
-                  <Icon icon="solar:check-circle-bold" className="text-green-500" width={16} />
-                  AI Backgrounds (coming soon)
-                </li>
-              </ul>
-            </div>
             <Button
               as="a"
               href="/dashboard/pricing"
@@ -962,7 +939,8 @@ function ScalePlanRequired({ currentPlan }: { currentPlan: string }) {
               Upgrade to Scale
             </Button>
             <p className="text-xs text-text-muted">
-              Currently on: <span className="capitalize font-medium">{currentPlan}</span> plan
+              Currently on:{" "}
+              <span className="capitalize font-medium">{currentPlan}</span> plan
             </p>
           </CardBody>
         </Card>
@@ -981,16 +959,23 @@ export default function UGCStudioPage() {
   return <UGCStudioContent selectedTeam={selectedTeam} />;
 }
 
-function UGCStudioContent({ selectedTeam }: { selectedTeam: { id: number; plan?: string } }) {
+function UGCStudioContent({
+  selectedTeam,
+}: {
+  selectedTeam: { id: number; plan?: string };
+}) {
   const [currentView, setCurrentView] = useState<StudioView>("face-swap");
   const [video, setVideo] = useState<UploadedFile | null>(null);
-  const [selectedCharacter, setSelectedCharacter] = useState<SelectedCharacter | null>(null);
+  const [selectedCharacter, setSelectedCharacter] =
+    useState<SelectedCharacter | null>(null);
   const [videoDuration, setVideoDuration] = useState(0);
   const [clipRange, setClipRange] = useState<[number, number]>([0, 30]);
   const [isDraggingVideo, setIsDraggingVideo] = useState(false);
   const [isDraggingImage, setIsDraggingImage] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [loadingCharacterId, setLoadingCharacterId] = useState<string | null>(null);
+  const [loadingCharacterId, setLoadingCharacterId] = useState<string | null>(
+    null
+  );
   const [processingStatus, setProcessingStatus] = useState("");
   const [submittedJobId, setSubmittedJobId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
