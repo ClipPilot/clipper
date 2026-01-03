@@ -86,19 +86,19 @@ export function PricingTable({
               </th>
               {tiers.map((tier) => (
                 <td key={tier.key} className="relative px-6 py-4 xl:px-8">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-bold text-text-primary">
-                      {tier.price}
-                    </span>
-                    {tier.priceSuffix && (
-                      <span className="text-sm text-text-tertiary">
-                        /{tier.priceSuffix}
+                  <div className="min-h-[72px]">
+                    <div className="flex items-baseline gap-1 min-h-[48px]">
+                      <span className="text-4xl font-bold text-text-primary">
+                        {tier.price}
                       </span>
-                    )}
+                      <span className="text-sm text-text-tertiary min-w-[70px]">
+                        {tier.priceSuffix ? `/${tier.priceSuffix}` : "\u00A0"}
+                      </span>
+                    </div>
+                    <p className="text-sm font-medium text-text-secondary mt-1 min-h-[20px]">
+                      {tier.billedAmount || "\u00A0"}
+                    </p>
                   </div>
-                  {tier.billedAmount && (
-                    <p className="text-sm font-medium text-text-secondary mt-1">{tier.billedAmount}</p>
-                  )}
 
                   <div className="mt-3 flex flex-col gap-1 text-sm">
                     <div className="flex items-center gap-2">

@@ -313,9 +313,6 @@ function PricingContent() {
               <p className="text-sm font-medium text-amber-500">
                 Have a referral code?
               </p>
-              <p className="text-xs text-text-tertiary">
-                Get bonus credits when you sign up
-              </p>
             </div>
             <Icon
               icon="solar:arrow-right-bold"
@@ -328,7 +325,7 @@ function PricingContent() {
 
       <Spacer y={8} />
 
-      <div className="relative z-10 mx-auto grid max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:hidden">
+      <div className="relative z-10 mx-auto grid max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:hidden items-stretch">
         {tiers.map((tier) => (
           <PricingTierCard
             key={tier.key}
@@ -372,7 +369,10 @@ function PricingFallback() {
   return (
     <div className="flex h-[60vh] items-center justify-center">
       <div className="flex flex-col items-center gap-4">
-        <Icon icon="solar:loading-circle-bold" className="text-4xl animate-spin text-accent-400" />
+        <Icon
+          icon="solar:loading-circle-bold"
+          className="text-4xl animate-spin text-accent-400"
+        />
         <p className="text-text-secondary">Loading pricing...</p>
       </div>
     </div>
