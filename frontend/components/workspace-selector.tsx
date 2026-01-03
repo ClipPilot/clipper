@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import {
   Button,
   Card,
@@ -16,16 +16,21 @@ import { selectedTeamAtom } from "@/store/auth";
 import { useTeams } from "@/hooks/useTeams";
 import { useUsageStats } from "@/hooks/useUsageStats";
 import { useRouter } from "next/navigation";
-import CreateTeamModal from "./teams/CreateTeamModal";
-import TeamManagementModal from "./teams/TeamManagementModal";
 
-export default function WorkspaceSelector(props: CardProps) {
+interface WorkspaceSelectorProps extends CardProps {
+  onCreateTeam?: () => void;
+  onManageTeam?: () => void;
+}
+
+export default function WorkspaceSelector({
+  onCreateTeam,
+  onManageTeam,
+  ...props
+}: WorkspaceSelectorProps) {
   const router = useRouter();
-  const { teams, isLoading, fetchTeams, defaultTeamId, setAsDefaultTeam } =
+  const { teams, isLoading, defaultTeamId, setAsDefaultTeam } =
     useTeams();
   const [selectedTeam, setSelectedTeam] = useAtom(selectedTeamAtom);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isManageModalOpen, setIsManageModalOpen] = useState(false);
   const { usageStats } = useUsageStats(selectedTeam?.id);
 
   const getRoleIcon = (role: string) => {
@@ -62,28 +67,10 @@ export default function WorkspaceSelector(props: CardProps) {
     }
   };
 
-  const handleTeamCreated = async () => {
-    await fetchTeams();
-  };
-
-  const handleTeamUpdated = async () => {
-    await fetchTeams();
-  };
-
-  const handleTeamDeleted = async () => {
-    await fetchTeams();
-    if (teams.length > 0) {
-      setSelectedTeam(teams[0]);
-    } else {
-      setSelectedTeam(null);
-    }
-  };
-
   const currentPlan = selectedTeam?.plan || "free";
   const isPaidPlan = currentPlan === "studio" || currentPlan === "scale";
 
   return (
-    <>
       <Card
         className="w-full min-w-[320px] bg-surface-base border border-border-base"
         {...props}
@@ -328,7 +315,7 @@ export default function WorkspaceSelector(props: CardProps) {
             startContent={
               <Icon icon="solar:add-circle-bold-duotone" width={18} />
             }
-            onPress={() => setIsCreateModalOpen(true)}
+            onPress={onCreateTeam}
           >
             Create Team
           </Button>
@@ -339,29 +326,12 @@ export default function WorkspaceSelector(props: CardProps) {
               startContent={
                 <Icon icon="solar:settings-bold-duotone" width={18} />
               }
-              onPress={() => setIsManageModalOpen(true)}
+              onPress={onManageTeam}
             >
               Manage Team
             </Button>
           )}
         </div>
       </Card>
-
-      <CreateTeamModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onTeamCreated={handleTeamCreated}
-      />
-
-      {selectedTeam && (
-        <TeamManagementModal
-          isOpen={isManageModalOpen}
-          onClose={() => setIsManageModalOpen(false)}
-          team={selectedTeam}
-          onTeamUpdated={handleTeamUpdated}
-          onTeamDeleted={handleTeamDeleted}
-        />
-      )}
-    </>
   );
 }
