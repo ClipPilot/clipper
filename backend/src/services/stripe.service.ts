@@ -198,7 +198,9 @@ class StripeService {
       return;
     }
 
-    const plan = getPlanFromPriceId(priceId);
+    // Check metadata for enterprise plan (dynamic prices aren't in getPlanFromPriceId)
+    const metadataPlan = subscription.metadata?.plan;
+    const plan = metadataPlan === "enterprise" ? "enterprise" : getPlanFromPriceId(priceId);
 
     // Get dates from subscription items (Stripe puts them there, not at root level)
     const subscriptionItem = subscription.items?.data?.[0];
@@ -374,7 +376,10 @@ class StripeService {
       .where(eq(teams.id, existingSub.team_id))
       .limit(1);
 
-    let plan = getPlanFromPriceId(priceId);
+    // Check metadata for enterprise plan (dynamic prices aren't in getPlanFromPriceId)
+    const metadataPlan = subscription.metadata?.plan;
+    let plan = metadataPlan === "enterprise" ? "enterprise" : getPlanFromPriceId(priceId);
+
     if (plan === "free" && team && team.plan !== "free") {
       console.log(
         `Unrecognized price ID ${priceId}, preserving existing plan: ${team.plan}`

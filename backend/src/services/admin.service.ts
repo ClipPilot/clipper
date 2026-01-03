@@ -245,6 +245,9 @@ class AdminService {
       success_url: `${process.env.FRONTEND_URL || "https://platform.cuttr.com"}/dashboard?enterprise=success`,
       cancel_url: `${process.env.FRONTEND_URL || "https://platform.cuttr.com"}/dashboard?enterprise=canceled`,
       metadata: { teamId: teamId.toString(), plan: "enterprise" },
+      subscription_data: {
+        metadata: { teamId: teamId.toString(), plan: "enterprise" },
+      },
     });
 
     return { checkoutUrl: session.url!, priceId };
