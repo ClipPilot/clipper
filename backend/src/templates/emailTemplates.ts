@@ -14,6 +14,7 @@ const subscriptionCancelledTemplate = loadTemplate("subscription-cancelled.html"
 const paymentFailedTemplate = loadTemplate("payment-failed.html");
 const subscriptionRenewalTemplate = loadTemplate("subscription-renewal.html");
 const clipsReadyTemplate = loadTemplate("clips-ready.html");
+const admin2faTemplate = loadTemplate("admin-2fa.html");
 
 const wrapInBase = (content: string): string => {
   const frontendUrl = process.env.FRONTEND_URL || "https://platform.cuttr.com";
@@ -133,5 +134,14 @@ export const clipsReadyEmail = (data: ClipsReadyEmailData): string => {
     .replace(/{{CLIP_ARE}}/g, are)
     .replace(/{{SOURCE_FILE}}/g, data.sourceFileName)
     .replace(/{{CLIPS_URL}}/g, data.clipsUrl);
+  return wrapInBase(content);
+};
+
+export interface Admin2FAEmailData {
+  code: string;
+}
+
+export const admin2faEmail = (data: Admin2FAEmailData): string => {
+  const content = admin2faTemplate.replace(/{{CODE}}/g, data.code);
   return wrapInBase(content);
 };

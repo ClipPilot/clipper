@@ -12,6 +12,8 @@ import {
   SubscriptionRenewalEmailData,
   clipsReadyEmail,
   ClipsReadyEmailData,
+  admin2faEmail,
+  Admin2FAEmailData,
 } from "../templates/emailTemplates";
 
 export class EmailNotiService {
@@ -84,6 +86,11 @@ export class EmailNotiService {
       ? `Your ${data.clipCount} clips are ready!`
       : `Your clip is ready!`;
     return this.sendEmailNotification(to, subject, html);
+  }
+
+  async sendAdmin2FACode(to: string, data: Admin2FAEmailData) {
+    const html = admin2faEmail(data);
+    return this.sendEmailNotification(to, "Your Cuttr Admin Verification Code", html);
   }
 }
 

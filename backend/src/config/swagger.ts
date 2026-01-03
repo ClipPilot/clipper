@@ -22,6 +22,12 @@ const options: swaggerJsdoc.Options = {
           bearerFormat: "JWT",
           description: "JWT access token from authentication",
         },
+        adminAuth: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
+          description: "Admin JWT token from /api/admin/login",
+        },
         internalApiKey: {
           type: "apiKey",
           in: "header",
@@ -173,7 +179,7 @@ const options: swaggerJsdoc.Options = {
             },
             plan: {
               type: "string",
-              enum: ["free", "studio", "scale"],
+              enum: ["free", "studio", "scale", "enterprise"],
               description: "Current plan name",
             },
             price_id: {
@@ -218,7 +224,7 @@ const options: swaggerJsdoc.Options = {
             },
             plan: {
               type: "string",
-              enum: ["free", "studio", "scale"],
+              enum: ["free", "studio", "scale", "enterprise"],
               description: "Current plan name",
             },
           },
@@ -241,7 +247,7 @@ const options: swaggerJsdoc.Options = {
             },
             plan: {
               type: "string",
-              enum: ["free", "studio", "scale"],
+              enum: ["free", "studio", "scale", "enterprise"],
               description: "Current subscription plan",
             },
             role: {
@@ -365,6 +371,119 @@ const options: swaggerJsdoc.Options = {
             created_at: {
               type: "string",
               format: "date-time",
+            },
+          },
+        },
+        AdminLoginRequest: {
+          type: "object",
+          required: ["email", "password"],
+          properties: {
+            email: {
+              type: "string",
+              format: "email",
+              description: "Admin email address",
+            },
+            password: {
+              type: "string",
+              description: "Admin password",
+            },
+          },
+        },
+        AdminLoginResponse: {
+          type: "object",
+          properties: {
+            token: {
+              type: "string",
+              description: "JWT token for admin authentication",
+            },
+          },
+        },
+        AdminTeam: {
+          type: "object",
+          properties: {
+            id: {
+              type: "integer",
+              description: "Team ID",
+            },
+            name: {
+              type: "string",
+              description: "Team name",
+            },
+            plan: {
+              type: "string",
+              enum: ["free", "studio", "scale", "enterprise"],
+              description: "Current subscription plan",
+            },
+            clips_created: {
+              type: "integer",
+              description: "Clips created this period",
+            },
+            clips_limit: {
+              type: "integer",
+              description: "Clips limit for current period",
+            },
+            enterprise_clip_limit: {
+              type: "integer",
+              nullable: true,
+              description: "Custom clip limit for enterprise plans",
+            },
+            enterprise_monthly_price: {
+              type: "integer",
+              nullable: true,
+              description: "Custom monthly price in cents for enterprise plans",
+            },
+            stripe_customer_id: {
+              type: "string",
+              nullable: true,
+              description: "Stripe customer ID",
+            },
+            owner_email: {
+              type: "string",
+              description: "Team owner email",
+            },
+            member_count: {
+              type: "integer",
+              description: "Number of team members",
+            },
+            created_at: {
+              type: "string",
+              format: "date-time",
+            },
+          },
+        },
+        EnterpriseSetupRequest: {
+          type: "object",
+          required: ["teamId", "clipLimit", "monthlyPriceCents", "customerEmail"],
+          properties: {
+            teamId: {
+              type: "string",
+              description: "Team ID to upgrade",
+            },
+            clipLimit: {
+              type: "integer",
+              description: "Monthly clip limit for enterprise plan",
+            },
+            monthlyPriceCents: {
+              type: "integer",
+              description: "Monthly price in cents",
+            },
+            customerEmail: {
+              type: "string",
+              format: "email",
+              description: "Customer email for Stripe",
+            },
+          },
+        },
+        EnterpriseSetupResponse: {
+          type: "object",
+          properties: {
+            checkoutUrl: {
+              type: "string",
+              format: "uri",
+              description: "Stripe checkout URL to share with customer",
+            },
+            team: {
+              $ref: "#/components/schemas/AdminTeam",
             },
           },
         },

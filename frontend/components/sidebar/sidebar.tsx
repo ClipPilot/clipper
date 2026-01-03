@@ -63,10 +63,12 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
       : 0;
 
     const plan = selectedTeam?.plan || "free";
-    const isPaidPlan = plan === "studio" || plan === "scale";
+    const isPaidPlan = ["studio", "scale", "enterprise"].includes(plan);
 
     const getPlanName = () => {
       switch (plan) {
+        case "enterprise":
+          return "Enterprise";
         case "scale":
           return "Scale";
         case "studio":
@@ -78,6 +80,8 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
 
     const getPlanColor = () => {
       switch (plan) {
+        case "enterprise":
+          return "bg-emerald-500/10 text-emerald-500";
         case "scale":
           return "bg-purple-500/10 text-purple-500";
         case "studio":
@@ -212,15 +216,21 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
                 onClick={() => router.push("/dashboard/pricing")}
                 className={cn(
                   "w-full flex items-center gap-3 p-3 rounded-lg border transition-colors",
-                  plan === "scale"
-                    ? "bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20"
-                    : "bg-accent-400/10 border-accent-400/20 hover:bg-accent-400/20"
+                  plan === "enterprise"
+                    ? "bg-emerald-500/10 border-emerald-500/20 hover:bg-emerald-500/20"
+                    : plan === "scale"
+                      ? "bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20"
+                      : "bg-accent-400/10 border-accent-400/20 hover:bg-accent-400/20"
                 )}
               >
                 <Icon
                   icon="solar:verified-check-bold"
                   className={
-                    plan === "scale" ? "text-purple-500" : "text-accent-400"
+                    plan === "enterprise"
+                      ? "text-emerald-500"
+                      : plan === "scale"
+                        ? "text-purple-500"
+                        : "text-accent-400"
                   }
                   width={18}
                 />
@@ -228,19 +238,27 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
                   <p
                     className={cn(
                       "text-xs font-medium",
-                      plan === "scale" ? "text-purple-500" : "text-accent-400"
+                      plan === "enterprise"
+                        ? "text-emerald-500"
+                        : plan === "scale"
+                          ? "text-purple-500"
+                          : "text-accent-400"
                     )}
                   >
                     {getPlanName()} plan
                   </p>
                   <p className="text-[10px] text-text-tertiary">
-                    Manage subscription
+                    {plan === "enterprise" ? "Managed plan" : "Manage subscription"}
                   </p>
                 </div>
                 <Icon
                   icon="solar:arrow-right-bold"
                   className={
-                    plan === "scale" ? "text-purple-500" : "text-accent-400"
+                    plan === "enterprise"
+                      ? "text-emerald-500"
+                      : plan === "scale"
+                        ? "text-purple-500"
+                        : "text-accent-400"
                   }
                   width={14}
                 />

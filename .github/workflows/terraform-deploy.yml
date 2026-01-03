@@ -94,6 +94,9 @@ jobs:
           gemini_api_key      = "${{ secrets.GEMINI_API_KEY }}"
           amplify_branch      = "main"
 
+          # Admin
+          admin_jwt_secret    = "${{ secrets.ADMIN_JWT_SECRET }}"
+
           # Custom Domain
           api_domain          = "api.cuttr.com"
           frontend_url        = "https://platform.cuttr.com"
@@ -205,6 +208,9 @@ jobs:
           github_access_token = "${{ secrets.GH_PAT }}"
           gemini_api_key      = "${{ secrets.GEMINI_API_KEY }}"
           amplify_branch      = "main"
+
+          # Admin
+          admin_jwt_secret    = "${{ secrets.ADMIN_JWT_SECRET }}"
 
           # Custom Domain
           api_domain          = "api.cuttr.com"

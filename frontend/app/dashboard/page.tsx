@@ -80,6 +80,8 @@ export default function DashboardPage() {
 
   const getPlanColor = (plan?: string) => {
     switch (plan) {
+      case "enterprise":
+        return "emerald-500";
       case "scale":
         return "purple-500";
       case "studio":
@@ -91,6 +93,8 @@ export default function DashboardPage() {
 
   const getPlanName = (plan?: string) => {
     switch (plan) {
+      case "enterprise":
+        return "Enterprise";
       case "scale":
         return "Scale";
       case "studio":
