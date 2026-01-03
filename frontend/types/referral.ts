@@ -30,16 +30,16 @@ export const REFERRAL_BENEFITS = {
   enterprise: {
     type: "discount" as const,
     value: 10,
-    description: "10% off for as long as they are a customer",
+    description: "Up to 10% off every month for as long as they are a customer",
   },
   scale: {
     type: "credits" as const,
     value: 150,
-    description: "150 bonus credits each month",
+    description: "150 bonus credits",
   },
   studio: {
     type: "credits" as const,
     value: 100,
-    description: "100 bonus credits each month",
+    description: "100 bonus credits",
   },
 } as const;
