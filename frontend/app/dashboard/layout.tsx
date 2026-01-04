@@ -169,25 +169,18 @@ export default function DashboardLayout({
                 className="object-contain"
                 unoptimized
               />
-              {/* TODO: Re-enable notifications
-              <Popover placement="bottom-end">
-                <PopoverTrigger>
-                  <Button
-                    isIconOnly
-                    size="sm"
-                    variant="light"
-                    className="text-text-secondary hover:text-text-primary"
-                  >
-                    <Badge content="3" color="danger" size="sm">
-                      <Icon icon="solar:bell-bold-duotone" width={20} />
-                    </Badge>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="p-0">
-                  <NotificationsCard />
-                </PopoverContent>
-              </Popover>
-              */}
+              <Button
+                isIconOnly
+                size="sm"
+                variant="light"
+                className="text-text-secondary hover:text-text-primary"
+                onPress={() => setTheme(theme === "dark" ? "light" : "dark")}
+              >
+                <Icon
+                  icon={theme === "dark" ? "solar:sun-bold-duotone" : "solar:moon-bold-duotone"}
+                  width={20}
+                />
+              </Button>
             </div>
 
             <Popover
@@ -305,23 +298,6 @@ export default function DashboardLayout({
                   }}
                 >
                   Settings
-                </DropdownItem>
-                <DropdownItem
-                  key="theme"
-                  startContent={
-                    <Icon
-                      icon={theme === "dark" ? "solar:moon-bold-duotone" : "solar:sun-bold-duotone"}
-                      width={20}
-                      className="text-text-secondary"
-                    />
-                  }
-                  onPress={() => setTheme(theme === "dark" ? "light" : "dark")}
-                  classNames={{
-                    base: "rounded-lg hover:bg-surface-elevated",
-                    title: "text-text-primary font-medium",
-                  }}
-                >
-                  {theme === "dark" ? "Light Mode" : "Dark Mode"}
                 </DropdownItem>
                 <DropdownItem
                   key="logout"

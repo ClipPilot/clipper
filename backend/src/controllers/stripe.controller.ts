@@ -138,3 +138,35 @@ export const getPrices = async (_req: Request, res: Response) => {
     prices: STRIPE_PRICES,
   });
 };
+
+export const changePlan = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { teamId, newPriceId } = req.body;
+
+    if (!teamId || !newPriceId) {
+      return res.status(400).json({ error: "Missing teamId or newPriceId" });
+    }
+
+    // Only allow changing between Studio and Scale
+    const validPrices = [STRIPE_PRICES.STUDIO, STRIPE_PRICES.SCALE];
+    if (!validPrices.includes(newPriceId)) {
+      return res.status(400).json({ error: "Invalid plan. Can only change between Studio and Scale." });
+    }
+
+    const result = await stripeService.changePlan(parseInt(teamId), newPriceId);
+
+    return res.json({
+      success: result.success,
+      effectiveDate: result.effectiveDate,
+      newPlan: result.newPlan,
+      message: `Your plan will change to ${result.newPlan} on ${new Date(result.effectiveDate).toLocaleDateString()}.`,
+    });
+  } catch (err: any) {
+    console.error("Change plan error:", err);
+    return res.status(500).json({ error: err.message || "Failed to change plan" });
+  }
+};

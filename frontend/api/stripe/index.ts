@@ -70,6 +70,29 @@ class StripeAPI {
 
     return response.json();
   }
+
+  async changePlan(
+    teamId: number,
+    newPriceId: string
+  ): Promise<{
+    success: boolean;
+    effectiveDate: string;
+    newPlan: string;
+    message: string;
+  }> {
+    const response = await apiFetch(`${API_URL}/stripe/change-plan`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ teamId, newPriceId }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to change plan");
+    }
+
+    return response.json();
+  }
 }
 
 export const stripeAPI = new StripeAPI();

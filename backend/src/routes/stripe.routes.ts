@@ -6,6 +6,7 @@ import {
   getSubscription,
   handleWebhook,
   getPrices,
+  changePlan,
 } from "../controllers/stripe.controller";
 
 const router = Router();
@@ -306,5 +307,61 @@ router.post("/portal", requireAuth, createPortalSession);
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get("/subscription/:teamId", requireAuth, getSubscription);
+
+/**
+ * @openapi
+ * /stripe/change-plan:
+ *   post:
+ *     summary: Change subscription plan
+ *     description: |
+ *       Changes the subscription plan between Studio and Scale.
+ *       The change takes effect at the next billing cycle (no proration).
+ *       Only team owners can change plans. Enterprise plans cannot be changed.
+ *     tags:
+ *       - Stripe
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - teamId
+ *               - newPriceId
+ *             properties:
+ *               teamId:
+ *                 type: integer
+ *                 description: The team ID to change the plan for
+ *                 example: 1
+ *               newPriceId:
+ *                 type: string
+ *                 description: The Stripe price ID for the new plan (Studio or Scale only)
+ *     responses:
+ *       200:
+ *         description: Plan change scheduled successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 effectiveDate:
+ *                   type: string
+ *                   format: date-time
+ *                 newPlan:
+ *                   type: string
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: Invalid request or plan
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Failed to change plan
+ */
+router.post("/change-plan", requireAuth, changePlan);
 
 export default router;

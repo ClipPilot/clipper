@@ -23,6 +23,7 @@ function PricingContent() {
   const { usageStats, refetch: refetchUsage } = useUsageStats(selectedTeam?.id);
   const [loadingTier, setLoadingTier] = useState<string | null>(null);
   const [loadingPortal, setLoadingPortal] = useState(false);
+  const [loadingChangePlan, setLoadingChangePlan] = useState(false);
   const [referralCode, setReferralCode] = useState("");
   const [appliedReferral, setAppliedReferral] = useState<string | null>(null);
   const [isApplyingCode, setIsApplyingCode] = useState(false);
@@ -30,6 +31,7 @@ function PricingContent() {
 
   const currentPlan = selectedTeam?.plan || "free";
   const isPaidPlan = ["studio", "scale", "enterprise"].includes(currentPlan);
+  const isOwner = selectedTeam?.role === "owner";
 
   useEffect(() => {
     if (searchParams.get("success") === "true") {
@@ -129,6 +131,33 @@ function PricingContent() {
     }
   };
 
+  const handleChangePlan = async (newPlan: "studio" | "scale"): Promise<{ effectiveDate: string } | void> => {
+    if (!selectedTeam) return;
+
+    const newPriceId = newPlan === "studio" ? STRIPE_PRICES.STUDIO : STRIPE_PRICES.SCALE;
+
+    try {
+      setLoadingChangePlan(true);
+      const result = await stripeAPI.changePlan(selectedTeam.id, newPriceId);
+
+      addToast({
+        title: "Plan change scheduled",
+        description: result.message,
+        color: "success",
+      });
+
+      return { effectiveDate: result.effectiveDate };
+    } catch (error: any) {
+      addToast({
+        title: "Failed to change plan",
+        description: error.message || "Failed to change plan",
+        color: "danger",
+      });
+    } finally {
+      setLoadingChangePlan(false);
+    }
+  };
+
   const getButtonText = (tier: Tier) => {
     if (tier.key === TiersEnum.Free) {
       return currentPlan === "free" ? "Current Plan" : "Free";
@@ -194,11 +223,15 @@ function PricingContent() {
       <PaidPlanView
         currentPlan={currentPlan as "studio" | "scale" | "enterprise"}
         teamName={selectedTeam?.name}
+        teamId={selectedTeam?.id}
+        isOwner={isOwner}
         usageStats={usageStats ?? undefined}
         loadingPortal={loadingPortal}
         loadingAddon={loadingTier === currentPlan}
+        loadingChangePlan={loadingChangePlan}
         onManageSubscription={handleManageSubscription}
         onBuyAddon={handleBuyAddon}
+        onChangePlan={handleChangePlan}
       />
     );
   }

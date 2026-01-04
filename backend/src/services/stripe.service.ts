@@ -600,6 +600,52 @@ class StripeService {
     return team?.plan || "free";
   }
 
+  async changePlan(teamId: number, newPriceId: string): Promise<{
+    success: boolean;
+    effectiveDate: Date;
+    newPlan: string;
+  }> {
+    // Get current subscription
+    const [sub] = await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.team_id, teamId))
+      .limit(1);
+
+    if (!sub?.stripe_subscription_id || sub.status !== "active") {
+      throw new Error("No active subscription found");
+    }
+
+    // Get the current subscription from Stripe to find the item ID
+    const stripeSubscription = await stripe.subscriptions.retrieve(sub.stripe_subscription_id);
+    const subscriptionItemId = stripeSubscription.items.data[0]?.id;
+
+    if (!subscriptionItemId) {
+      throw new Error("Subscription item not found");
+    }
+
+    // Update subscription with new price, effective at next billing cycle
+    // Using proration_behavior: 'none' means the change takes effect at renewal
+    await stripe.subscriptions.update(sub.stripe_subscription_id, {
+      items: [{
+        id: subscriptionItemId,
+        price: newPriceId,
+      }],
+      proration_behavior: "none",
+    });
+
+    const newPlan = getPlanFromPriceId(newPriceId);
+    const effectiveDate = sub.current_period_end || new Date();
+
+    console.log(`Plan change scheduled for team ${teamId}: ${sub.plan} -> ${newPlan}, effective ${effectiveDate}`);
+
+    return {
+      success: true,
+      effectiveDate,
+      newPlan,
+    };
+  }
+
   async applyReferralDiscountToSubscription(
     customerId: string,
     subscriptionId: string,
