@@ -25,6 +25,9 @@ const SEGMENT_COLORS = [
   { border: "border-green-500", bg: "bg-green-500", handle: "bg-green-500" },
 ];
 
+const FRAME_RATE = 30;
+const FRAME_DURATION = 1 / FRAME_RATE;
+
 export function MultiSegmentTrimmer({
   videoSrc,
   duration,
@@ -42,6 +45,7 @@ export function MultiSegmentTrimmer({
     segmentIndex: number;
     type: "start" | "end" | "segment";
   } | null>(null);
+  const [isDraggingPlayhead, setIsDraggingPlayhead] = useState(false);
   const [dragStartX, setDragStartX] = useState(0);
   const [dragStartSegment, setDragStartSegment] = useState<VideoSegment | null>(null);
   const [thumbnails, setThumbnails] = useState<string[]>([]);
@@ -50,8 +54,89 @@ export function MultiSegmentTrimmer({
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
-    const ms = Math.floor((seconds % 1) * 10);
-    return `${mins}:${secs.toString().padStart(2, "0")}.${ms}`;
+    const ms = Math.floor((seconds % 1) * 100);
+    return `${mins}:${secs.toString().padStart(2, "0")}.${ms.toString().padStart(2, "0")}`;
+  };
+
+  const formatTimeWithFrames = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    const frames = Math.round((seconds % 1) * FRAME_RATE);
+    return `${mins}:${secs.toString().padStart(2, "0")}:${frames.toString().padStart(2, "0")}f`;
+  };
+
+  const adjustSegmentByFrames = (edge: "start" | "end", frames: number) => {
+    const segment = segments[activeSegmentIndex];
+    if (!segment) return;
+
+    const delta = frames * FRAME_DURATION;
+    const updated = [...segments];
+
+    if (edge === "start") {
+      const newStart = Math.max(0, Math.min(segment.start + delta, segment.end - FRAME_DURATION));
+      const otherSegments = segments.filter((_, i) => i !== activeSegmentIndex);
+      const hasOverlap = otherSegments.some((s) => !(segment.end <= s.start || newStart >= s.end));
+      if (hasOverlap) return;
+      updated[activeSegmentIndex] = { ...segment, start: newStart };
+    } else {
+      const newEnd = Math.max(segment.start + FRAME_DURATION, Math.min(segment.end + delta, duration));
+      const otherSegments = segments.filter((_, i) => i !== activeSegmentIndex);
+      const hasOverlap = otherSegments.some((s) => !(newEnd <= s.start || segment.start >= s.end));
+      if (hasOverlap) return;
+      updated[activeSegmentIndex] = { ...segment, end: newEnd };
+    }
+
+    onSegmentsChange(updated);
+  };
+
+  const stepFrame = (direction: number) => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.currentTime = Math.max(0, Math.min(video.currentTime + direction * FRAME_DURATION, duration));
+  };
+
+  const handlePlayheadMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingPlayhead(true);
+    if (videoRef.current && isPlaying) {
+      videoRef.current.pause();
+    }
+  };
+
+  const seekToPosition = useCallback(
+    (clientX: number) => {
+      if (!timelineRef.current || !videoRef.current) return;
+      const rect = timelineRef.current.getBoundingClientRect();
+      const x = Math.max(0, Math.min(clientX - rect.left, rect.width));
+      const time = (x / rect.width) * duration;
+      videoRef.current.currentTime = time;
+      setCurrentTime(time);
+    },
+    [duration]
+  );
+
+  const getCurrentSegmentIndex = (): number => {
+    for (let i = 0; i < segments.length; i++) {
+      if (currentTime >= segments[i].start && currentTime < segments[i].end) {
+        return i;
+      }
+    }
+    return -1;
+  };
+
+  const currentSegmentIndex = getCurrentSegmentIndex();
+  const isInSegment = currentSegmentIndex !== -1;
+
+  const playSegment = (index: number) => {
+    const video = videoRef.current;
+    const segment = segments[index];
+    if (!video || !segment) return;
+
+    setActiveSegmentIndex(index);
+    video.currentTime = segment.start;
+    video.play();
+    setIsPlaying(true);
   };
 
   const totalDuration = segments.reduce((sum, s) => sum + (s.end - s.start), 0);
@@ -106,6 +191,8 @@ export function MultiSegmentTrimmer({
       const time = video.currentTime;
       setCurrentTime(time);
 
+      if (!isPlaying || isDraggingPlayhead) return;
+
       const activeSegment = segments[activeSegmentIndex];
       if (activeSegment && time >= activeSegment.end) {
         const nextIndex = activeSegmentIndex + 1;
@@ -115,14 +202,14 @@ export function MultiSegmentTrimmer({
         } else {
           setActiveSegmentIndex(0);
           video.currentTime = segments[0].start;
-          if (!isPlaying) video.pause();
+          video.pause();
         }
       }
     };
 
     video.addEventListener("timeupdate", handleTimeUpdate);
     return () => video.removeEventListener("timeupdate", handleTimeUpdate);
-  }, [segments, activeSegmentIndex, isPlaying]);
+  }, [segments, activeSegmentIndex, isPlaying, isDraggingPlayhead]);
 
   const togglePlayPause = () => {
     const video = videoRef.current;
@@ -157,6 +244,11 @@ export function MultiSegmentTrimmer({
 
   const handleTimelineMouseMove = useCallback(
     (e: MouseEvent) => {
+      if (isDraggingPlayhead) {
+        seekToPosition(e.clientX);
+        return;
+      }
+
       if (!isDragging || !timelineRef.current || !dragStartSegment) return;
 
       const rect = timelineRef.current.getBoundingClientRect();
@@ -231,16 +323,17 @@ export function MultiSegmentTrimmer({
         }
       }
     },
-    [isDragging, duration, segments, maxTotalDuration, onSegmentsChange, dragStartX, dragStartSegment]
+    [isDragging, isDraggingPlayhead, seekToPosition, duration, segments, maxTotalDuration, onSegmentsChange, dragStartX, dragStartSegment]
   );
 
   const handleTimelineMouseUp = useCallback(() => {
     setIsDragging(null);
     setDragStartSegment(null);
+    setIsDraggingPlayhead(false);
   }, []);
 
   useEffect(() => {
-    if (isDragging) {
+    if (isDragging || isDraggingPlayhead) {
       window.addEventListener("mousemove", handleTimelineMouseMove);
       window.addEventListener("mouseup", handleTimelineMouseUp);
       return () => {
@@ -248,7 +341,7 @@ export function MultiSegmentTrimmer({
         window.removeEventListener("mouseup", handleTimelineMouseUp);
       };
     }
-  }, [isDragging, handleTimelineMouseMove, handleTimelineMouseUp]);
+  }, [isDragging, isDraggingPlayhead, handleTimelineMouseMove, handleTimelineMouseUp]);
 
   const addSegment = () => {
     if (segments.length >= maxSegments) return;
@@ -331,8 +424,41 @@ export function MultiSegmentTrimmer({
             />
           </div>
         </button>
-        <div className="absolute bottom-3 left-3 px-2 py-1 rounded bg-black/70 text-white text-xs font-mono">
-          {formatTime(currentTime)}
+        <div className="absolute bottom-3 left-3 flex items-center gap-2">
+          <button
+            onClick={() => stepFrame(-1)}
+            className="w-7 h-7 rounded bg-black/70 hover:bg-black/90 flex items-center justify-center text-white transition-colors"
+            title="Previous frame"
+          >
+            <Icon icon="solar:rewind-back-bold" width={14} />
+          </button>
+          <button
+            onClick={togglePlayPause}
+            className="w-8 h-8 rounded bg-black/70 hover:bg-black/90 flex items-center justify-center text-white transition-colors"
+          >
+            <Icon icon={isPlaying ? "solar:pause-bold" : "solar:play-bold"} width={16} />
+          </button>
+          <button
+            onClick={() => stepFrame(1)}
+            className="w-7 h-7 rounded bg-black/70 hover:bg-black/90 flex items-center justify-center text-white transition-colors"
+            title="Next frame"
+          >
+            <Icon icon="solar:rewind-forward-bold" width={14} />
+          </button>
+          <div className="px-2 py-1 rounded bg-black/70 text-white text-xs font-mono">
+            {formatTimeWithFrames(currentTime)}
+          </div>
+          {isInSegment ? (
+            <div className={`px-2 py-1 rounded text-xs font-medium flex items-center gap-1 ${SEGMENT_COLORS[currentSegmentIndex % SEGMENT_COLORS.length].bg}`}>
+              <Icon icon="solar:mask-happly-bold" width={12} />
+              <span>Seg {currentSegmentIndex + 1}</span>
+            </div>
+          ) : (
+            <div className="px-2 py-1 rounded bg-blue-500/80 text-white text-xs font-medium flex items-center gap-1">
+              <Icon icon="solar:video-frame-bold" width={12} />
+              <span>Original</span>
+            </div>
+          )}
         </div>
         <div className="absolute bottom-3 right-3 px-2 py-1 rounded bg-black/70 text-white text-xs font-mono">
           {formatTime(duration)}
@@ -349,6 +475,11 @@ export function MultiSegmentTrimmer({
         <div
           ref={timelineRef}
           className="relative h-16 rounded-lg overflow-hidden bg-surface-elevated cursor-pointer select-none"
+          onClick={(e) => {
+            if (e.target === e.currentTarget || (e.target as HTMLElement).closest("[data-timeline-bg]")) {
+              seekToPosition(e.clientX);
+            }
+          }}
         >
           <div className="absolute inset-0 flex">
             {isGeneratingThumbnails ? (
@@ -375,7 +506,7 @@ export function MultiSegmentTrimmer({
             )}
           </div>
 
-          <div className="absolute inset-0 bg-black/60" />
+          <div className="absolute inset-0 bg-black/60" data-timeline-bg />
 
           {segments.map((segment, index) => {
             const startPercent = (segment.start / duration) * 100;
@@ -451,17 +582,19 @@ export function MultiSegmentTrimmer({
             })()}
 
           <div
-            className="absolute top-0 bottom-0 w-0.5 bg-white z-30 pointer-events-none"
-            style={{ left: `${playheadPercent}%` }}
+            className={`absolute top-0 bottom-0 w-4 z-30 cursor-ew-resize group flex justify-center ${isDraggingPlayhead ? "cursor-grabbing" : ""}`}
+            style={{ left: `calc(${playheadPercent}% - 8px)` }}
+            onMouseDown={handlePlayheadMouseDown}
           >
-            <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-white rounded-full shadow-lg" />
+            <div className="w-0.5 h-full bg-white group-hover:w-1 transition-all" />
+            <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-4 h-4 bg-white rounded-full shadow-lg group-hover:scale-110 transition-transform" />
           </div>
         </div>
 
         <div className="flex flex-wrap gap-2">
           {segments.map((segment, index) => {
             const color = SEGMENT_COLORS[index % SEGMENT_COLORS.length];
-            const segDuration = Math.round((segment.end - segment.start) * 10) / 10;
+            const segDuration = Math.round((segment.end - segment.start) * 100) / 100;
             const isActive = index === activeSegmentIndex;
 
             return (
@@ -480,7 +613,16 @@ export function MultiSegmentTrimmer({
                   }
                 }}
               >
-                <div className={`w-2 h-2 rounded-full ${color.bg}`} />
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    playSegment(index);
+                  }}
+                  className={`w-5 h-5 rounded-full ${color.bg} flex items-center justify-center hover:opacity-80 transition-opacity`}
+                  title="Play this segment"
+                >
+                  <Icon icon="solar:play-bold" className="text-white" width={10} />
+                </button>
                 <span className="text-xs font-mono text-text-primary">
                   {formatTime(segment.start)} - {formatTime(segment.end)}
                 </span>
@@ -512,6 +654,93 @@ export function MultiSegmentTrimmer({
             </Button>
           )}
         </div>
+
+        {segments[activeSegmentIndex] && (
+          <div className="p-3 bg-surface-elevated rounded-lg space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-text-secondary">
+                Fine-tune Segment {activeSegmentIndex + 1}
+              </span>
+              <span className="text-[10px] text-text-tertiary">
+                1 frame = {Math.round(FRAME_DURATION * 1000)}ms
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <div className="text-[10px] text-text-tertiary uppercase tracking-wide">Start</div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => adjustSegmentByFrames("start", -10)}
+                    className="w-7 h-7 rounded bg-surface-base hover:bg-surface-dark flex items-center justify-center text-text-secondary transition-colors"
+                    title="-10 frames"
+                  >
+                    <span className="text-[10px] font-medium">-10</span>
+                  </button>
+                  <button
+                    onClick={() => adjustSegmentByFrames("start", -1)}
+                    className="w-7 h-7 rounded bg-surface-base hover:bg-surface-dark flex items-center justify-center text-text-secondary transition-colors"
+                    title="-1 frame"
+                  >
+                    <Icon icon="solar:alt-arrow-left-bold" width={14} />
+                  </button>
+                  <div className="flex-1 text-center font-mono text-xs text-text-primary">
+                    {formatTimeWithFrames(segments[activeSegmentIndex].start)}
+                  </div>
+                  <button
+                    onClick={() => adjustSegmentByFrames("start", 1)}
+                    className="w-7 h-7 rounded bg-surface-base hover:bg-surface-dark flex items-center justify-center text-text-secondary transition-colors"
+                    title="+1 frame"
+                  >
+                    <Icon icon="solar:alt-arrow-right-bold" width={14} />
+                  </button>
+                  <button
+                    onClick={() => adjustSegmentByFrames("start", 10)}
+                    className="w-7 h-7 rounded bg-surface-base hover:bg-surface-dark flex items-center justify-center text-text-secondary transition-colors"
+                    title="+10 frames"
+                  >
+                    <span className="text-[10px] font-medium">+10</span>
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-[10px] text-text-tertiary uppercase tracking-wide">End</div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => adjustSegmentByFrames("end", -10)}
+                    className="w-7 h-7 rounded bg-surface-base hover:bg-surface-dark flex items-center justify-center text-text-secondary transition-colors"
+                    title="-10 frames"
+                  >
+                    <span className="text-[10px] font-medium">-10</span>
+                  </button>
+                  <button
+                    onClick={() => adjustSegmentByFrames("end", -1)}
+                    className="w-7 h-7 rounded bg-surface-base hover:bg-surface-dark flex items-center justify-center text-text-secondary transition-colors"
+                    title="-1 frame"
+                  >
+                    <Icon icon="solar:alt-arrow-left-bold" width={14} />
+                  </button>
+                  <div className="flex-1 text-center font-mono text-xs text-text-primary">
+                    {formatTimeWithFrames(segments[activeSegmentIndex].end)}
+                  </div>
+                  <button
+                    onClick={() => adjustSegmentByFrames("end", 1)}
+                    className="w-7 h-7 rounded bg-surface-base hover:bg-surface-dark flex items-center justify-center text-text-secondary transition-colors"
+                    title="+1 frame"
+                  >
+                    <Icon icon="solar:alt-arrow-right-bold" width={14} />
+                  </button>
+                  <button
+                    onClick={() => adjustSegmentByFrames("end", 10)}
+                    className="w-7 h-7 rounded bg-surface-base hover:bg-surface-dark flex items-center justify-center text-text-secondary transition-colors"
+                    title="+10 frames"
+                  >
+                    <span className="text-[10px] font-medium">+10</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center justify-between">
           <div className="text-sm text-text-tertiary">
