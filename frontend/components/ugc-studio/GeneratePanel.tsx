@@ -119,6 +119,31 @@ export function GeneratePanel({
                 </span>
               </div>
             </div>
+
+            <div className="p-3 bg-surface-elevated rounded-lg space-y-2">
+              <p className="text-xs font-medium text-text-secondary flex items-center gap-1.5">
+                <Icon icon="solar:lightbulb-bolt-bold" className="text-yellow-400" width={14} />
+                Tips for best results
+              </p>
+              <ul className="text-xs text-text-tertiary space-y-1 pl-5 list-disc">
+                <li>Use clips with clear faces looking at the camera</li>
+                <li>Avoid videos with text overlays or captions</li>
+                <li>Ensure good lighting on the face</li>
+              </ul>
+            </div>
+
+            {segmentCount >= 2 && (
+              <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg space-y-1">
+                <div className="flex items-center gap-2">
+                  <Icon icon="solar:layers-bold" className="text-blue-400" width={16} />
+                  <span className="text-sm font-medium text-blue-400">Full Video Mode</span>
+                </div>
+                <p className="text-xs text-text-secondary">
+                  Face swap applies to selected segments only. Gaps and edges keep original footage.
+                </p>
+              </div>
+            )}
+
             <Button
               className="w-full bg-accent-400 text-white font-semibold"
               size="lg"

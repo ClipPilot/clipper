@@ -9,3 +9,63 @@
 }
 
 @config "../tailwind.config.js";
+
+/* Light mode (default) */
+:root {
+  /* Background & Foreground */
+  --background: #ffffff;
+  --foreground: #0a0a14;
+
+  /* Surface colors */
+  --surface-dark: #f8f9fa;
+  --surface-base: #ffffff;
+  --surface-elevated: #f1f3f5;
+  --surface-hover: #e9ecef;
+
+  /* Text colors */
+  --text-primary: #0a0a14;
+  --text-secondary: #495057;
+  --text-tertiary: #6c757d;
+  --text-muted: #868e96;
+  --text-disabled: #adb5bd;
+  --text-inverse: #ffffff;
+
+  /* Border colors */
+  --border-base: #dee2e6;
+  --border-light: #e9ecef;
+}
+
+/* Dark mode */
+.dark {
+  /* Background & Foreground */
+  --background: #0a0a14;
+  --foreground: #ffffff;
+
+  /* Surface colors */
+  --surface-dark: #0a0a14;
+  --surface-base: #0f0f1a;
+  --surface-elevated: #16161f;
+  --surface-hover: #1a1a2e;
+
+  /* Text colors */
+  --text-primary: #ffffff;
+  --text-secondary: #a1a1aa;
+  --text-tertiary: #71717a;
+  --text-muted: #52525b;
+  --text-disabled: #3f3f46;
+  --text-inverse: #0a0a14;
+
+  /* Border colors */
+  --border-base: #27272a;
+  --border-light: #3f3f46;
+}
+
+/* Smooth theme transitions */
+html {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+}

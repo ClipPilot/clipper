@@ -121,7 +121,7 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
                     base: "px-3 py-2.5 rounded-lg data-[selected=true]:bg-accent-400/10 hover:bg-surface-elevated transition-colors",
                     title: cn(
                       "text-sm font-medium transition-colors",
-                      isSelected ? "text-accent-400" : "text-white"
+                      isSelected ? "text-accent-400" : "text-text-primary"
                     ),
                   }}
                   startContent={
@@ -131,7 +131,7 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
                         width={20}
                         className={cn(
                           "transition-colors",
-                          isSelected ? "text-accent-400" : "text-white"
+                          isSelected ? "text-accent-400" : "text-text-primary"
                         )}
                       />
                     )
@@ -157,14 +157,14 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
             <Icon
               icon="solar:stars-bold-duotone"
               className={
-                isComingSoonSelected ? "text-accent-400" : "text-white"
+                isComingSoonSelected ? "text-accent-400" : "text-text-primary"
               }
               width={20}
             />
             <span
               className={cn(
-                "text-sm font-medium text-white",
-                isComingSoonSelected ? "text-accent-400" : "text-white"
+                "text-sm font-medium",
+                isComingSoonSelected ? "text-accent-400" : "text-text-primary"
               )}
             >
               Coming Soon

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Icon } from "@iconify/react";
 import {
   Button,
@@ -11,6 +11,12 @@ import {
   Chip,
   Divider,
   Progress,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  Link,
   cn,
 } from "@heroui/react";
 
@@ -28,28 +34,52 @@ interface UsageStats {
 interface PaidPlanViewProps {
   currentPlan: "studio" | "scale" | "enterprise";
   teamName?: string;
+  teamId?: number;
+  isOwner?: boolean;
   usageStats?: UsageStats;
   loadingPortal: boolean;
   loadingAddon: boolean;
+  loadingChangePlan?: boolean;
   onManageSubscription: () => void;
   onBuyAddon: () => void;
+  onChangePlan?: (newPlan: "studio" | "scale") => Promise<{ effectiveDate: string } | void>;
 }
 
 export function PaidPlanView({
   currentPlan,
   teamName,
+  teamId,
+  isOwner = false,
   usageStats,
   loadingPortal,
   loadingAddon,
+  loadingChangePlan = false,
   onManageSubscription,
   onBuyAddon,
+  onChangePlan,
 }: PaidPlanViewProps) {
+  const [isChangePlanModalOpen, setIsChangePlanModalOpen] = useState(false);
+  const [pendingEffectiveDate, setPendingEffectiveDate] = useState<string | null>(null);
+
   const usagePercentage = usageStats
     ? (usageStats.clipsCreated / usageStats.baseLimit) * 100
     : 0;
 
   const isEnterprise = currentPlan === "enterprise";
   const isScale = currentPlan === "scale";
+  const isStudio = currentPlan === "studio";
+  const canChangePlan = isOwner && !isEnterprise && onChangePlan;
+  const targetPlan = isScale ? "studio" : "scale";
+
+  const handleChangePlan = async () => {
+    if (!onChangePlan) return;
+
+    const result = await onChangePlan(targetPlan);
+    if (result?.effectiveDate) {
+      setPendingEffectiveDate(result.effectiveDate);
+    }
+    setIsChangePlanModalOpen(false);
+  };
 
   const getPlanDisplayName = () => {
     switch (currentPlan) {
@@ -204,9 +234,22 @@ export function PaidPlanView({
             </div>
           </CardBody>
           <Divider />
-          <CardFooter>
-            {currentPlan !== "enterprise" && (
-              <>
+          <CardFooter className="flex-col gap-3 items-stretch">
+            {pendingEffectiveDate && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                <Icon icon="solar:clock-circle-bold" className="text-amber-500" width={18} />
+                <p className="text-sm text-amber-500">
+                  Your plan will change to <span className="font-semibold capitalize">{targetPlan}</span> on{" "}
+                  {new Date(pendingEffectiveDate).toLocaleDateString("en-US", {
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </p>
+              </div>
+            )}
+            <div className="flex gap-2 flex-wrap">
+              {currentPlan !== "enterprise" && (
                 <Button
                   variant="flat"
                   color="default"
@@ -219,8 +262,21 @@ export function PaidPlanView({
                 >
                   Manage Subscription
                 </Button>
-              </>
-            )}
+              )}
+              {canChangePlan && !pendingEffectiveDate && (
+                <Button
+                  variant="flat"
+                  color="default"
+                  startContent={
+                    <Icon icon="solar:refresh-bold-duotone" width={20} />
+                  }
+                  onPress={() => setIsChangePlanModalOpen(true)}
+                  className="text-text-secondary"
+                >
+                  Change Plan
+                </Button>
+              )}
+            </div>
           </CardFooter>
         </Card>
 
@@ -320,6 +376,134 @@ export function PaidPlanView({
           </div>
         )}
       </div>
+
+      {/* Change Plan Modal */}
+      <Modal
+        isOpen={isChangePlanModalOpen}
+        onClose={() => setIsChangePlanModalOpen(false)}
+        size="lg"
+      >
+        <ModalContent className="bg-surface-base border border-border-accent">
+          <ModalHeader className="pb-0">
+            <h3 className="text-xl font-bold text-text-primary">Change Your Plan</h3>
+          </ModalHeader>
+          <ModalBody className="py-6">
+            <div className="space-y-6">
+              {/* Plan Comparison Cards */}
+              <div className="grid grid-cols-2 gap-4">
+                {/* Current Plan */}
+                <div className="p-4 rounded-xl bg-surface-dark/30 border border-border-base">
+                  <p className="text-xs text-text-tertiary uppercase tracking-wider mb-2">Current</p>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className={cn(
+                      "w-8 h-8 rounded-lg flex items-center justify-center",
+                      isScale ? "bg-purple-500/20" : "bg-accent-400/20"
+                    )}>
+                      <Icon
+                        icon="solar:star-bold"
+                        className={isScale ? "text-purple-500" : "text-accent-400"}
+                        width={16}
+                      />
+                    </div>
+                    <span className="text-lg font-semibold text-text-primary capitalize">{currentPlan}</span>
+                  </div>
+                  <div className="space-y-1 text-sm text-text-secondary">
+                    <p>{isScale ? "1,000" : "400"} credits/month</p>
+                    <p>{isScale ? "Team seats included" : "Single seat"}</p>
+                    <p>{isScale ? "Folder management" : "No folders"}</p>
+                  </div>
+                </div>
+
+                {/* New Plan */}
+                <div className={cn(
+                  "p-4 rounded-xl border-2",
+                  targetPlan === "scale"
+                    ? "bg-purple-500/5 border-purple-500/30"
+                    : "bg-accent-400/5 border-accent-400/30"
+                )}>
+                  <p className="text-xs text-text-tertiary uppercase tracking-wider mb-2">New Plan</p>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className={cn(
+                      "w-8 h-8 rounded-lg flex items-center justify-center",
+                      targetPlan === "scale" ? "bg-purple-500/20" : "bg-accent-400/20"
+                    )}>
+                      <Icon
+                        icon={targetPlan === "scale" ? "solar:star-bold" : "solar:star-bold"}
+                        className={targetPlan === "scale" ? "text-purple-500" : "text-accent-400"}
+                        width={16}
+                      />
+                    </div>
+                    <span className={cn(
+                      "text-lg font-semibold capitalize",
+                      targetPlan === "scale" ? "text-purple-500" : "text-accent-400"
+                    )}>
+                      {targetPlan}
+                    </span>
+                  </div>
+                  <div className="space-y-1 text-sm text-text-secondary">
+                    <p>{targetPlan === "scale" ? "1,000" : "400"} credits/month</p>
+                    <p>{targetPlan === "scale" ? "Team seats included" : "Single seat"}</p>
+                    <p>{targetPlan === "scale" ? "Folder management" : "No folders"}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Info Note */}
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-surface-dark/50">
+                <Icon icon="solar:clock-circle-bold" className="text-text-tertiary flex-shrink-0" width={20} />
+                <p className="text-sm text-text-secondary">
+                  Changes take effect at your <span className="text-text-primary font-medium">next billing cycle</span>.
+                  You'll keep your current plan until then.
+                </p>
+              </div>
+
+              {/* Divider */}
+              <Divider className="bg-border-base" />
+
+              {/* Contact Links */}
+              <div className="flex flex-col sm:flex-row gap-4 text-sm">
+                <Link
+                  href="https://cuttr.com/contact"
+                  target="_blank"
+                  className="flex items-center gap-2 text-accent-400/80 hover:text-accent-400 transition-colors"
+                >
+                  <Icon icon="solar:letter-bold" width={16} />
+                  <span>Need it immediately? Contact support</span>
+                </Link>
+                <Link
+                  href="https://cuttr.com/contact"
+                  target="_blank"
+                  className="flex items-center gap-2 text-emerald-500/80 hover:text-emerald-400 transition-colors"
+                >
+                  <Icon icon="solar:buildings-bold" width={16} />
+                  <span>Looking for Enterprise?</span>
+                </Link>
+              </div>
+            </div>
+          </ModalBody>
+          <ModalFooter className="border-t border-border-base pt-4">
+            <Button
+              variant="light"
+              onPress={() => setIsChangePlanModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              className={cn(
+                "font-semibold",
+                targetPlan === "scale"
+                  ? "bg-purple-500 text-white"
+                  : "bg-accent-400 text-white"
+              )}
+              onPress={handleChangePlan}
+              isLoading={loadingChangePlan}
+              startContent={!loadingChangePlan && <Icon icon="solar:check-circle-bold" width={18} />}
+            >
+              {isScale ? "Switch to Studio" : "Upgrade to Scale"}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </div>
   );
 }

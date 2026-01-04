@@ -49,23 +49,26 @@ const config = {
           900: "#130f40",
           DEFAULT: "#4F47E6",
         },
+        // Theme-aware surface colors (use CSS variables)
         surface: {
-          dark: "#0a0a14",
-          base: "#0f0f1a",
-          elevated: "#16161f",
-          hover: "#1a1a2e",
+          dark: "var(--surface-dark)",
+          base: "var(--surface-base)",
+          elevated: "var(--surface-elevated)",
+          hover: "var(--surface-hover)",
         },
+        // Theme-aware text colors (use CSS variables)
         text: {
-          primary: "#ffffff",
-          secondary: "#a1a1aa",
-          tertiary: "#71717a",
-          muted: "#52525b",
-          disabled: "#3f3f46",
-          inverse: "#0a0a14",
+          primary: "var(--text-primary)",
+          secondary: "var(--text-secondary)",
+          tertiary: "var(--text-tertiary)",
+          muted: "var(--text-muted)",
+          disabled: "var(--text-disabled)",
+          inverse: "var(--text-inverse)",
         },
+        // Theme-aware border colors (use CSS variables)
         border: {
-          base: "#27272a",
-          light: "#3f3f46",
+          base: "var(--border-base)",
+          light: "var(--border-light)",
           accent: "#4F47E633",
           focus: "#4F47E6",
         },
@@ -75,6 +78,12 @@ const config = {
           error: "#ef4444",
           info: "#3b82f6",
         },
+      },
+      backgroundColor: {
+        background: "var(--background)",
+      },
+      textColor: {
+        foreground: "var(--foreground)",
       },
     },
   },

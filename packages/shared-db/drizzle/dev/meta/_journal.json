@@ -36,6 +36,13 @@
       "when": 1767466372610,
       "tag": "0004_closed_whistler",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1767546511440,
+      "tag": "0005_high_wolfpack",
+      "breakpoints": true
     }
   ]
 }

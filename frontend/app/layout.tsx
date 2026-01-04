@@ -28,7 +28,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#0a0a14" },
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
     { media: "(prefers-color-scheme: dark)", color: "#0a0a14" },
   ],
 };
@@ -42,7 +42,7 @@ export default function RootLayout({
     <html
       suppressHydrationWarning
       lang="en"
-      className={`dark ${fontMontserrat.variable} ${fontLuckiestGuy.variable} ${fontEverlasting.variable} ${fontKomika.variable} ${fontBurbank.variable} ${fontBebasNeue.variable} ${fontAnton.variable}`}
+      className={`${fontMontserrat.variable} ${fontLuckiestGuy.variable} ${fontEverlasting.variable} ${fontKomika.variable} ${fontBurbank.variable} ${fontBebasNeue.variable} ${fontAnton.variable}`}
     >
       <head />
       <body
@@ -50,14 +50,12 @@ export default function RootLayout({
           "min-h-screen text-foreground bg-background font-sans antialiased",
           fontSans.variable
         )}
-        style={{ backgroundColor: "#0a0a14", color: "#ffffff" }}
       >
         <Providers
           themeProps={{
             attribute: "class",
             defaultTheme: "dark",
-            enableSystem: false,
-            forcedTheme: "dark",
+            enableSystem: true,
           }}
         >
           {children}

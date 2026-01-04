@@ -419,6 +419,37 @@ export function MultiSegmentTrimmer({
             );
           })}
 
+          {segments.length >= 2 &&
+            (() => {
+              const sorted = [...segments].sort((a, b) => a.start - b.start);
+              const gaps: Array<{ start: number; end: number }> = [];
+
+              if (sorted[0].start > 0.5) gaps.push({ start: 0, end: sorted[0].start });
+
+              for (let i = 0; i < sorted.length - 1; i++) {
+                if (sorted[i].end < sorted[i + 1].start - 0.1) {
+                  gaps.push({ start: sorted[i].end, end: sorted[i + 1].start });
+                }
+              }
+
+              if (sorted[sorted.length - 1].end < duration - 0.5) {
+                gaps.push({ start: sorted[sorted.length - 1].end, end: duration });
+              }
+
+              return gaps.map((gap, i) => (
+                <div
+                  key={`gap-${i}`}
+                  className="absolute top-0 bottom-0 bg-blue-400/15 border-x border-blue-400/40 pointer-events-none flex items-center justify-center z-0"
+                  style={{
+                    left: `${(gap.start / duration) * 100}%`,
+                    width: `${((gap.end - gap.start) / duration) * 100}%`,
+                  }}
+                >
+                  <span className="text-[10px] text-blue-400/70 font-medium">Original</span>
+                </div>
+              ));
+            })()}
+
           <div
             className="absolute top-0 bottom-0 w-0.5 bg-white z-30 pointer-events-none"
             style={{ left: `${playheadPercent}%` }}
