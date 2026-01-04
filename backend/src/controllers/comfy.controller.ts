@@ -57,7 +57,7 @@ function calculateSpliceSegments(
 
 export class ComfyController {
   async createUGCFaceSwapJob(req: AuthRequest, res: Response) {
-    const MAX_VIDEO_DURATION = 30;
+    const MAX_VIDEO_DURATION = 50;
     let tempVideoPath: string | null = null;
     let mergedVideoPath: string | null = null;
     const segmentPaths: string[] = [];

@@ -38,7 +38,7 @@ export function VideoUploadCard({
       videoEl.src = preview;
       videoEl.onloadedmetadata = () => {
         const dur = videoEl.duration;
-        const maxEnd = Math.min(dur, 30);
+        const maxEnd = Math.min(dur, 50);
         onVideoChange(newVideo, dur);
         onSegmentsChange([{ id: crypto.randomUUID(), start: 0, end: maxEnd }]);
       };
@@ -71,7 +71,7 @@ export function VideoUploadCard({
           </div>
           <div className="flex-1">
             <h3 className="text-base font-semibold text-text-primary">Video & Trim</h3>
-            <p className="text-xs text-text-tertiary">Upload video and select a clip (max 30 seconds)</p>
+            <p className="text-xs text-text-tertiary">Upload video and select a clip (max 50 seconds)</p>
           </div>
           {video && (
             <Button
@@ -93,7 +93,7 @@ export function VideoUploadCard({
             duration={videoDuration}
             segments={segments}
             onSegmentsChange={onSegmentsChange}
-            maxTotalDuration={30}
+            maxTotalDuration={50}
             maxSegments={3}
           />
         ) : (
