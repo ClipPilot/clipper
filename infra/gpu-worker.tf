@@ -82,10 +82,22 @@ resource "aws_ecs_task_definition" "gpu_worker" {
       {
         name  = "API_INTERNAL_URL"
         value = var.api_domain != "" ? "https://${var.api_domain}" : "http://${aws_lb.backend.dns_name}"
+      },
+      {
+        name  = "FRONTEND_URL"
+        value = var.frontend_url
       }
     ]
 
     secrets = [
+      {
+        name      = "OPENAI_API_KEY"
+        valueFrom = aws_secretsmanager_secret.openai_api_key.arn
+      },
+      {
+        name      = "DEEPGRAM_API_KEY"
+        valueFrom = aws_secretsmanager_secret.deepgram_api_key.arn
+      },
       {
         name      = "DATABASE_URL"
         valueFrom = aws_secretsmanager_secret.database_url.arn
@@ -95,16 +107,20 @@ resource "aws_ecs_task_definition" "gpu_worker" {
         valueFrom = aws_secretsmanager_secret.supabase_anon_key.arn
       },
       {
-        name      = "DEEPGRAM_API_KEY"
-        valueFrom = aws_secretsmanager_secret.deepgram_api_key.arn
+        name      = "INTERNAL_API_KEY"
+        valueFrom = aws_secretsmanager_secret.internal_api_key.arn
       },
       {
         name      = "RESEND_API_KEY"
         valueFrom = aws_secretsmanager_secret.resend_api_key.arn
       },
       {
-        name      = "OPENAI_API_KEY"
-        valueFrom = aws_secretsmanager_secret.openai_api_key.arn
+        name      = "STRIPE_SECRET_KEY"
+        valueFrom = aws_secretsmanager_secret.stripe_secret_key.arn
+      },
+      {
+        name      = "STRIPE_WEBHOOK_SECRET"
+        valueFrom = aws_secretsmanager_secret.stripe_webhook_secret.arn
       },
       {
         name      = "GEMINI_API_KEY"
