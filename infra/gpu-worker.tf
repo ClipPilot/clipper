@@ -101,6 +101,14 @@ resource "aws_ecs_task_definition" "gpu_worker" {
       {
         name      = "RESEND_API_KEY"
         valueFrom = aws_secretsmanager_secret.resend_api_key.arn
+      },
+      {
+        name      = "OPENAI_API_KEY"
+        valueFrom = aws_secretsmanager_secret.openai_api_key.arn
+      },
+      {
+        name      = "GEMINI_API_KEY"
+        valueFrom = aws_secretsmanager_secret.gemini_api_key.arn
       }
     ]
 
