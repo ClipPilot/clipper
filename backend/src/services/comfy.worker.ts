@@ -37,6 +37,11 @@ interface ComfyJob {
   jobType: string;
   originalVideoS3Key?: string;
   totalChunks?: number;
+  spliceMode?: boolean;
+  spliceMetadata?: {
+    videoDuration: number;
+    segments: Array<{ start: number; end: number; type: string }>;
+  };
 }
 
 interface ComfyOutput {
@@ -166,6 +171,8 @@ async function getNextJob(): Promise<ComfyJob | null> {
         jobType: comfyJobs.jobType,
         originalVideoS3Key: comfyJobs.originalVideoS3Key,
         totalChunks: comfyJobs.totalChunks,
+        spliceMode: comfyJobs.spliceMode,
+        spliceMetadata: comfyJobs.spliceMetadata,
       })
       .from(comfyJobs)
       .where(
@@ -205,6 +212,8 @@ async function getNextJob(): Promise<ComfyJob | null> {
       jobType: job.jobType,
       originalVideoS3Key: job.originalVideoS3Key ?? undefined,
       totalChunks: job.totalChunks ?? undefined,
+      spliceMode: job.spliceMode ?? undefined,
+      spliceMetadata: job.spliceMetadata as ComfyJob["spliceMetadata"],
     };
   } catch (err) {
     console.error("[comfy-worker] getNextJob error:", err);
@@ -864,9 +873,40 @@ async function processUGCFaceSwapParentJob(
 
     // Step 6: Stitch chunks together
     console.log(`[comfy-worker] Stitching final video...`);
-    const finalOutputPath = path.join(outDir, `final_${Date.now()}.mp4`);
+    let finalOutputPath = path.join(outDir, `final_${Date.now()}.mp4`);
     await mergeClips(processedChunkPaths, finalOutputPath);
     console.log(`[comfy-worker] Stitched ${processedChunkPaths.length} chunks`);
+
+    // Step 6.5: Splice assembly (if splice mode enabled)
+    if (job.spliceMode && job.spliceMetadata && job.originalVideoS3Key) {
+      console.log(`[comfy-worker] Splice mode enabled, assembling full video...`);
+      const spliceData = job.spliceMetadata;
+
+      const originalPath = path.join(outDir, `original_${Date.now()}.mp4`);
+      await s3Service.downloadFile(job.originalVideoS3Key, originalPath);
+
+      const spliceSegmentPaths: string[] = [];
+      let processedOffset = 0;
+
+      for (let i = 0; i < spliceData.segments.length; i++) {
+        const seg = spliceData.segments[i];
+        const segPath = path.join(outDir, `splice_seg_${i}.mp4`);
+
+        if (seg.type === "processed") {
+          const duration = seg.end - seg.start;
+          await cutClip(finalOutputPath, segPath, processedOffset, processedOffset + duration);
+          processedOffset += duration;
+        } else {
+          await cutClip(originalPath, segPath, seg.start, seg.end);
+        }
+        spliceSegmentPaths.push(segPath);
+      }
+
+      const splicedPath = path.join(outDir, `spliced_final_${Date.now()}.mp4`);
+      await mergeClips(spliceSegmentPaths, splicedPath);
+      finalOutputPath = splicedPath;
+      console.log(`[comfy-worker] Spliced ${spliceSegmentPaths.length} segments into full video`);
+    }
 
     // Step 7: Upload final video to S3
     console.log(`[comfy-worker] Uploading final video to S3...`);

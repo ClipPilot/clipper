@@ -87,6 +87,7 @@ function UGCStudioContent({
         "segments",
         JSON.stringify(segments.map((s) => ({ start: s.start, end: s.end })))
       );
+      formData.append("videoDuration", videoDuration.toString());
 
       const response = await apiFetch(`${API_URL}/comfy/ugc-face-swap`, {
         method: "POST",

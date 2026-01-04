@@ -145,7 +145,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // Cleanup old files (>4 days): POST /cleanup-old or DELETE /cleanup-old
+  // Cleanup old files (>2 days): POST /cleanup-old or DELETE /cleanup-old
   if (
     (req.method === "POST" || req.method === "DELETE") &&
     url.pathname === "/cleanup-old"

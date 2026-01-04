@@ -24,6 +24,37 @@ interface SegmentInput {
   end: number;
 }
 
+interface SpliceSegment {
+  start: number;
+  end: number;
+  type: "processed" | "original";
+}
+
+function calculateSpliceSegments(
+  segments: SegmentInput[],
+  videoDuration: number
+): SpliceSegment[] {
+  const sorted = [...segments].sort((a, b) => a.start - b.start);
+  const result: SpliceSegment[] = [];
+
+  if (sorted[0].start > 0.1) {
+    result.push({ start: 0, end: sorted[0].start, type: "original" });
+  }
+
+  for (let i = 0; i < sorted.length; i++) {
+    result.push({ start: sorted[i].start, end: sorted[i].end, type: "processed" });
+    if (i < sorted.length - 1 && sorted[i].end < sorted[i + 1].start - 0.1) {
+      result.push({ start: sorted[i].end, end: sorted[i + 1].start, type: "original" });
+    }
+  }
+
+  if (sorted[sorted.length - 1].end < videoDuration - 0.1) {
+    result.push({ start: sorted[sorted.length - 1].end, end: videoDuration, type: "original" });
+  }
+
+  return result;
+}
+
 export class ComfyController {
   async createUGCFaceSwapJob(req: AuthRequest, res: Response) {
     const MAX_VIDEO_DURATION = 30;
@@ -32,7 +63,8 @@ export class ComfyController {
     const segmentPaths: string[] = [];
 
     try {
-      const { teamId, startTime, endTime, segments: segmentsRaw } = req.body;
+      const { teamId, startTime, endTime, segments: segmentsRaw, videoDuration: videoDurationRaw } = req.body;
+      const videoDuration = parseFloat(videoDurationRaw) || 0;
       const files = req.files as {
         image?: Express.Multer.File[];
         video?: Express.Multer.File[];
@@ -141,11 +173,25 @@ export class ComfyController {
       const imageS3Key = `ugc-inputs/${teamId}/${crypto.randomUUID()}${imageExt}`;
       const videoS3Key = `ugc-inputs/${teamId}/${crypto.randomUUID()}.mp4`;
 
+      const isSpliceMode = segments.length >= 2 && videoDuration > 0;
+      const spliceMetadata = isSpliceMode
+        ? { videoDuration, segments: calculateSpliceSegments(segments, videoDuration) }
+        : null;
+
       const finalBuffer = fs.readFileSync(finalVideoPath);
-      await Promise.all([
+      const uploads: Promise<string>[] = [
         s3Service.uploadBuffer(image.buffer, imageS3Key, image.mimetype),
         s3Service.uploadBuffer(finalBuffer, videoS3Key, "video/mp4"),
-      ]);
+      ];
+
+      let originalVideoS3Key = videoS3Key;
+      if (isSpliceMode) {
+        originalVideoS3Key = `ugc-inputs/${teamId}/${crypto.randomUUID()}_original.mp4`;
+        const originalBuffer = fs.readFileSync(tempVideoPath);
+        uploads.push(s3Service.uploadBuffer(originalBuffer, originalVideoS3Key, "video/mp4"));
+      }
+
+      await Promise.all(uploads);
 
       const [job] = await db
         .insert(comfyJobs)
@@ -156,7 +202,9 @@ export class ComfyController {
           videoFile: videoS3Key,
           jobType: "ugc-face-swap-parent",
           priority: Math.floor(Date.now() / 1000),
-          originalVideoS3Key: videoS3Key,
+          originalVideoS3Key,
+          spliceMode: isSpliceMode,
+          spliceMetadata,
           progress: 0,
           progressMessage: "Queuing job",
         })

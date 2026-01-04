@@ -329,6 +329,8 @@ export const comfyJobs = pgTable(
     chunkEndTime: numeric("chunk_end_time", { precision: 10, scale: 3 }),
     jobType: text("job_type").notNull().default("single"),
     originalVideoS3Key: text("original_video_s3_key"),
+    spliceMode: boolean("splice_mode").default(false),
+    spliceMetadata: jsonb("splice_metadata"),
   },
   (table) => {
     return {
