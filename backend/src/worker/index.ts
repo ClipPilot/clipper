@@ -118,8 +118,7 @@ async function processMessage(job: VideoProcessingJob, receiptHandle: string): P
       case "update-overlays":
         await processOverlaysJob(job as UpdateOverlaysJob);
         break;
-      // Note: ugc-face-swap is handled by comfy.worker.ts directly (not SQS)
-      // The GPU worker downloads from S3, cuts, uploads to its GPU, processes, stitches
+      // Note: ugc-face-swap is handled by the separate gpu-worker (SQS-based)
       default:
         console.error(`Unknown job type: ${(job as any).type}`);
     }
