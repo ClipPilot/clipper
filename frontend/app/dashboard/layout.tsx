@@ -28,6 +28,7 @@ import Image from "next/image";
 // import NotificationsCard from "@/components/notifications/notifications-card"; // TODO: Re-enable
 import { UsageStatsProvider } from "@/contexts/UsageStatsContext";
 import CuttrLogo from "@/public/branding/cuttr_logo.png";
+import { useTheme } from "next-themes";
 
 const baseSidebarItems: SidebarItem[] = [
   {
@@ -74,6 +75,7 @@ export default function DashboardLayout({
   const { signOut: handleSignOut } = useAuth();
   const [selectedTeam] = useAtom(selectedTeamAtom);
   const { fetchTeams } = useTeams();
+  const { theme, setTheme } = useTheme();
   const [sidebarWidth, setSidebarWidth] = useState(256);
   const [isResizing, setIsResizing] = useState(false);
   const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
@@ -303,6 +305,23 @@ export default function DashboardLayout({
                   }}
                 >
                   Settings
+                </DropdownItem>
+                <DropdownItem
+                  key="theme"
+                  startContent={
+                    <Icon
+                      icon={theme === "dark" ? "solar:moon-bold-duotone" : "solar:sun-bold-duotone"}
+                      width={20}
+                      className="text-text-secondary"
+                    />
+                  }
+                  onPress={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  classNames={{
+                    base: "rounded-lg hover:bg-surface-elevated",
+                    title: "text-text-primary font-medium",
+                  }}
+                >
+                  {theme === "dark" ? "Light Mode" : "Dark Mode"}
                 </DropdownItem>
                 <DropdownItem
                   key="logout"
