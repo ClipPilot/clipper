@@ -1,6 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
 import { comfyController } from "../controllers/comfy.controller";
+import { requireAuth } from "../middleware/auth.middleware";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -40,6 +41,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  */
 router.post(
   "/ugc-face-swap",
+  requireAuth,
   upload.fields([
     { name: "image", maxCount: 1 },
     { name: "video", maxCount: 1 },
@@ -69,6 +71,7 @@ router.post(
  */
 router.get(
   "/jobs/:jobId",
+  requireAuth,
   comfyController.getJobStatus.bind(comfyController)
 );
 
@@ -91,6 +94,7 @@ router.get(
  */
 router.get(
   "/team/:teamId/jobs",
+  requireAuth,
   comfyController.getTeamJobs.bind(comfyController)
 );
 
