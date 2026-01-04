@@ -14,6 +14,7 @@ import { teamService } from "./team.service";
 import { emailNotiService } from "./emailNoti.service";
 import { transcribeVideoService } from "./transcription.service";
 import { convertWordsToCaptionEntries, generateSrtFromCaptions } from "./captions.service";
+import { acquireJobLock, releaseJobLock, extendJobLock } from "./redis.service";
 
 interface GpuConfig {
   id: string;
@@ -106,19 +107,13 @@ async function checkGpuAvailability(
   }
 }
 
-async function findAvailableGpu(): Promise<GpuConfig | null> {
-  for (const gpu of gpuConfig.gpus) {
-    const status = await checkGpuAvailability(gpu);
-    if (status.available) {
-      return gpu;
-    }
-  }
-  return null;
-}
+const UPLOAD_TIMEOUT_MS = 60000;
+const UPLOAD_MAX_RETRIES = 3;
 
 async function uploadFileToGpu(
   gpu: GpuConfig,
-  filePath: string
+  filePath: string,
+  retryCount = 0
 ): Promise<string> {
   const ext = path.extname(filePath);
   const filename = `${crypto.randomUUID()}${ext}`;
@@ -130,27 +125,48 @@ async function uploadFileToGpu(
   form.append("image", blob, filename);
   form.append("type", "input");
 
-  const res = await fetch(`${gpu.url}/upload/image`, {
-    method: "POST",
-    body: form,
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
 
-  if (!res.ok) {
-    const responseBody = await res.text();
-    console.error(
-      `[comfy-worker] GPU upload failed for ${gpu.id}:`,
-      `\n  URL: ${gpu.url}/upload/image`,
-      `\n  Status: ${res.status} ${res.statusText}`,
-      `\n  Response: ${responseBody}`
+  try {
+    const res = await fetch(`${gpu.url}/upload/image`, {
+      method: "POST",
+      body: form,
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      const responseBody = await res.text();
+      console.error(
+        `[comfy-worker] GPU upload failed for ${gpu.id}:`,
+        `\n  Status: ${res.status} ${res.statusText}`,
+        `\n  Response: ${responseBody.slice(0, 200)}`
+      );
+      throw new Error(`GPU upload failed (${res.status})`);
+    }
+
+    const data = (await res.json()) as { name: string };
+    console.log(
+      `[comfy-worker] Uploaded ${path.basename(filePath)} to GPU ${gpu.id} as ${data.name}`
     );
-    throw new Error(`GPU upload failed (${res.status}): ${responseBody}`);
-  }
+    return data.name;
+  } catch (err) {
+    clearTimeout(timeoutId);
 
-  const data = (await res.json()) as { name: string };
-  console.log(
-    `[comfy-worker] Uploaded ${path.basename(filePath)} to GPU ${gpu.id} as ${data.name}`
-  );
-  return data.name;
+    const isTimeout = err instanceof Error && err.name === "AbortError";
+    const errMsg = isTimeout ? "timeout" : (err instanceof Error ? err.message : String(err));
+
+    if (retryCount < UPLOAD_MAX_RETRIES) {
+      const delay = Math.pow(2, retryCount) * 1000;
+      console.log(`[comfy-worker] Upload to ${gpu.id} failed (${errMsg}), retry ${retryCount + 1}/${UPLOAD_MAX_RETRIES} in ${delay}ms...`);
+      await new Promise((r) => setTimeout(r, delay));
+      return uploadFileToGpu(gpu, filePath, retryCount + 1);
+    }
+
+    throw new Error(`GPU upload failed after ${UPLOAD_MAX_RETRIES} retries: ${errMsg}`);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -159,6 +175,7 @@ async function uploadFileToGpu(
 
 async function getNextJob(): Promise<ComfyJob | null> {
   try {
+    // Fetch multiple candidates to handle race conditions
     const jobs = await db
       .select({
         id: comfyJobs.id,
@@ -186,35 +203,56 @@ async function getNextJob(): Promise<ComfyJob | null> {
         )
       )
       .orderBy(desc(comfyJobs.priority), asc(comfyJobs.createdAt))
-      .limit(1);
+      .limit(5);
 
     if (jobs.length === 0) return null;
 
-    const job = jobs[0];
+    // Try to acquire lock on each job (Redis distributed lock)
+    for (const job of jobs) {
+      const lockAcquired = await acquireJobLock(job.id);
+      if (!lockAcquired) {
+        console.log(`[comfy-worker] Job ${job.id} locked by another instance, skipping`);
+        continue;
+      }
 
-    // Mark as running
-    await db
-      .update(comfyJobs)
-      .set({
-        status: "running",
-        startedAt: new Date(),
-      })
-      .where(eq(comfyJobs.id, job.id));
+      // Double-check status (another instance may have claimed it)
+      const [current] = await db
+        .select({ status: comfyJobs.status })
+        .from(comfyJobs)
+        .where(eq(comfyJobs.id, job.id))
+        .limit(1);
 
-    return {
-      id: job.id,
-      teamId: job.teamId,
-      imageFile: job.imageFile,
-      videoFile: job.videoFile,
-      status: job.status,
-      parentJobId: job.parentJobId ?? undefined,
-      sequenceNumber: job.sequenceNumber ?? undefined,
-      jobType: job.jobType,
-      originalVideoS3Key: job.originalVideoS3Key ?? undefined,
-      totalChunks: job.totalChunks ?? undefined,
-      spliceMode: job.spliceMode ?? undefined,
-      spliceMetadata: job.spliceMetadata as ComfyJob["spliceMetadata"],
-    };
+      if (current?.status !== "queued") {
+        console.log(`[comfy-worker] Job ${job.id} no longer queued, skipping`);
+        continue;
+      }
+
+      // Mark as running
+      await db
+        .update(comfyJobs)
+        .set({
+          status: "running",
+          startedAt: new Date(),
+        })
+        .where(eq(comfyJobs.id, job.id));
+
+      return {
+        id: job.id,
+        teamId: job.teamId,
+        imageFile: job.imageFile,
+        videoFile: job.videoFile,
+        status: job.status,
+        parentJobId: job.parentJobId ?? undefined,
+        sequenceNumber: job.sequenceNumber ?? undefined,
+        jobType: job.jobType,
+        originalVideoS3Key: job.originalVideoS3Key ?? undefined,
+        totalChunks: job.totalChunks ?? undefined,
+        spliceMode: job.spliceMode ?? undefined,
+        spliceMetadata: job.spliceMetadata as ComfyJob["spliceMetadata"],
+      };
+    }
+
+    return null;
   } catch (err) {
     console.error("[comfy-worker] getNextJob error:", err);
     return null;
@@ -867,6 +905,8 @@ async function processUGCFaceSwapParentJob(
         `Processing: ${Math.round(((i + 1) / chunkInfos.length) * 100)}% complete`
       );
 
+      await extendJobLock(job.id);
+
       console.log(`[comfy-worker] Chunk ${i + 1} processed successfully`);
     }
 
@@ -936,8 +976,6 @@ async function sleep(ms: number): Promise<void> {
 const busyGpus = new Set<string>();
 
 async function processJobOnGpu(job: ComfyJob, gpu: GpuConfig): Promise<void> {
-  busyGpus.add(gpu.id);
-
   try {
     console.log(
       `[comfy-worker] Processing job ${job.id} (${job.jobType}) on GPU ${gpu.id}`
@@ -1047,56 +1085,91 @@ async function processJobOnGpu(job: ComfyJob, gpu: GpuConfig): Promise<void> {
     }
   } finally {
     busyGpus.delete(gpu.id);
+    await releaseJobLock(job.id);
   }
 }
 
-function getLocallyFreeGpu(): GpuConfig | null {
-  // Returns first GPU not currently tracked as busy (no HTTP call)
+async function findAvailableGpu(): Promise<GpuConfig | null> {
+  // Try each GPU in order, skipping locally busy ones
   for (const gpu of gpuConfig.gpus) {
-    if (!busyGpus.has(gpu.id)) {
-      return gpu;
+    if (busyGpus.has(gpu.id)) {
+      console.log(`[comfy-worker] GPU ${gpu.id} locally busy, trying next...`);
+      continue;
+    }
+
+    try {
+      const status = await checkGpuAvailability(gpu);
+      if (status.available) {
+        console.log(`[comfy-worker] GPU ${gpu.id} available (queue: ${status.queueRemaining})`);
+        return gpu;
+      } else {
+        console.log(`[comfy-worker] GPU ${gpu.id} busy (queue: ${status.queueRemaining}), trying next...`);
+      }
+    } catch (err) {
+      console.log(`[comfy-worker] GPU ${gpu.id} unreachable, trying next...`);
     }
   }
   return null;
+}
+
+async function getQueuedJobCount(): Promise<number> {
+  try {
+    const result = await db
+      .select({ id: comfyJobs.id })
+      .from(comfyJobs)
+      .where(
+        and(
+          eq(comfyJobs.status, "queued"),
+          inArray(comfyJobs.jobType, ["single", "ugc-face-swap-chunk", "ugc-face-swap-parent"])
+        )
+      )
+      .limit(20);
+    return result.length;
+  } catch {
+    return 0;
+  }
 }
 
 async function runWorkerLoop(): Promise<void> {
   console.log("[comfy-worker] Starting ComfyUI worker loop (parallel mode)");
   console.log(`[comfy-worker] Loaded ${gpuConfig.gpus.length} GPU(s)`);
 
+  let consecutiveIdleCycles = 0;
+
   while (isRunning) {
     try {
-      // Step 1: Check if ANY GPU is locally free (no HTTP call)
-      const locallyFreeGpu = getLocallyFreeGpu();
-      if (!locallyFreeGpu) {
-        // All GPUs busy - sleep longer, no need to poll
-        await sleep(5000);
+      // Step 1: Find an available GPU (tries ALL GPUs)
+      const availableGpu = await findAvailableGpu();
+      if (!availableGpu) {
+        const queuedCount = await getQueuedJobCount();
+        const waitTime = queuedCount > 0 ? 5000 : 20000;
+        console.log(`[comfy-worker] All GPUs busy, ${queuedCount} jobs queued, retrying in ${waitTime / 1000}s...`);
+        await sleep(waitTime);
         continue;
       }
 
-      // Step 2: Only query DB if we have a potentially free GPU
+      // Step 2: Mark GPU busy IMMEDIATELY (prevents race conditions)
+      busyGpus.add(availableGpu.id);
+
+      // Step 3: Get a job (GPU is now reserved)
       const job = await getNextJob();
       if (!job) {
-        // No jobs - sleep longer
-        await sleep(5000);
+        busyGpus.delete(availableGpu.id);
+        consecutiveIdleCycles++;
+        const idleWait = Math.min(5000 + consecutiveIdleCycles * 2000, 30000);
+        await sleep(idleWait);
         continue;
       }
 
-      // Step 3: Only NOW check GPU HTTP availability (we have a job to run)
-      const status = await checkGpuAvailability(locallyFreeGpu);
-      if (!status.available) {
-        // GPU not actually ready - put job back and try again
-        await sleep(2000);
-        continue;
-      }
+      consecutiveIdleCycles = 0;
 
-      // Step 4: Dispatch job WITHOUT awaiting - allows parallel processing
-      processJobOnGpu(job, locallyFreeGpu).catch((err) => {
-        console.error(`[comfy-worker] Unexpected error:`, err);
+      // Step 4: Dispatch job (non-blocking for parallel GPU usage)
+      console.log(`[comfy-worker] Dispatching job ${job.id} to GPU ${availableGpu.id}`);
+      processJobOnGpu(job, availableGpu).catch((err) => {
+        console.error(`[comfy-worker] Unexpected error processing job:`, err);
       });
 
-      // Small delay before checking for more work
-      await sleep(1000);
+      await sleep(500);
     } catch (err) {
       console.error("[comfy-worker] Main loop error:", (err as Error).message);
       await sleep(10000);
