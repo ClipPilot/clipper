@@ -8,7 +8,7 @@ import { comfyJobs, teamMembers, clips, users } from "@clipper/shared-db/src/sch
 import { eq, and, asc, desc, inArray } from "drizzle-orm";
 import { config } from "../config/env";
 import { s3Service } from "./s3.service";
-import { cutClip, mergeClips, extractLastFrame, getVideoDuration } from "./videoEditor.service";
+import { cutClip, mergeClips, extractLastFrame, extractFirstFrame, getVideoDuration } from "./videoEditor.service";
 import { emitComfyJobUpdate } from "./socket.service";
 import { teamService } from "./team.service";
 import { emailNotiService } from "./emailNoti.service";
@@ -853,10 +853,11 @@ async function processUGCFaceSwapParentJob(
     let currentReferenceImagePath = localImagePath;
     let gpuImageName = await uploadFileToGpu(gpu, currentReferenceImagePath);
 
-    // Step 5: Process each chunk through ComfyUI with last-frame conditioning
-    // For chunks after the first, we use the last frame of the previous output
-    // as the reference image to maintain temporal consistency (same person/clothing)
+    // Step 5: Process each chunk through ComfyUI
+    // Use "golden reference" approach: after chunk 1, extract its first frame
+    // and use that SAME reference for ALL subsequent chunks to prevent drift
     const processedChunkPaths: string[] = [];
+    let goldenReferencePath: string | null = null;
 
     for (let i = 0; i < chunkInfos.length; i++) {
       const chunk = chunkInfos[i];
@@ -887,13 +888,13 @@ async function processUGCFaceSwapParentJob(
       fs.writeFileSync(processedPath, buffer);
       processedChunkPaths.push(processedPath);
 
-      // Extract last frame for next chunk's reference (temporal consistency)
-      // This ensures the next chunk starts with the same person/clothing appearance
-      if (i < chunkInfos.length - 1) {
-        const lastFramePath = path.join(outDir, `lastframe_${i}.jpg`);
-        await extractLastFrame(processedPath, lastFramePath);
-        gpuImageName = await uploadFileToGpu(gpu, lastFramePath);
-        console.log(`[comfy-worker] Using last frame of chunk ${i} as reference for chunk ${i + 1}`);
+      // After chunk 1: extract first frame as "golden reference" for all remaining chunks
+      // This prevents drift - the same swapped face is used throughout the video
+      if (i === 0 && chunkInfos.length > 1) {
+        goldenReferencePath = path.join(outDir, `golden_reference.jpg`);
+        await extractFirstFrame(processedPath, goldenReferencePath);
+        gpuImageName = await uploadFileToGpu(gpu, goldenReferencePath);
+        console.log(`[comfy-worker] Extracted golden reference from chunk 1 for all subsequent chunks`);
       }
 
       // Update progress after each chunk completes
@@ -1155,9 +1156,15 @@ async function runWorkerLoop(): Promise<void> {
       const job = await getNextJob();
       if (!job) {
         busyGpus.delete(availableGpu.id);
-        consecutiveIdleCycles++;
-        const idleWait = Math.min(5000 + consecutiveIdleCycles * 2000, 30000);
-        await sleep(idleWait);
+        const queuedCount = await getQueuedJobCount();
+        if (queuedCount > 0) {
+          console.log(`[comfy-worker] No job claimed but ${queuedCount} in queue, retrying quickly...`);
+          await sleep(2000);
+        } else {
+          consecutiveIdleCycles++;
+          const idleWait = Math.min(5000 + consecutiveIdleCycles * 2000, 20000);
+          await sleep(idleWait);
+        }
         continue;
       }
 
@@ -1165,11 +1172,22 @@ async function runWorkerLoop(): Promise<void> {
 
       // Step 4: Dispatch job (non-blocking for parallel GPU usage)
       console.log(`[comfy-worker] Dispatching job ${job.id} to GPU ${availableGpu.id}`);
-      processJobOnGpu(job, availableGpu).catch((err) => {
-        console.error(`[comfy-worker] Unexpected error processing job:`, err);
-      });
+      processJobOnGpu(job, availableGpu)
+        .then(() => {
+          console.log(`[comfy-worker] Job ${job.id} completed on GPU ${availableGpu.id}`);
+        })
+        .catch((err) => {
+          console.error(`[comfy-worker] Job ${job.id} failed:`, err);
+        });
 
-      await sleep(500);
+      // Quick check - if more jobs queued, loop immediately to grab another GPU
+      const remainingQueued = await getQueuedJobCount();
+      if (remainingQueued > 0) {
+        console.log(`[comfy-worker] ${remainingQueued} more jobs queued, checking for available GPU...`);
+        await sleep(500);
+      } else {
+        await sleep(2000);
+      }
     } catch (err) {
       console.error("[comfy-worker] Main loop error:", (err as Error).message);
       await sleep(10000);

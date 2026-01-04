@@ -134,6 +134,32 @@ export const getVideoDuration = (videoPath: string): Promise<number> => {
 };
 
 /**
+ * Extracts the first frame from a video as a JPG image.
+ * Used as a "golden reference" - the first successfully swapped frame
+ * becomes the reference for all subsequent chunks to prevent drift.
+ */
+export const extractFirstFrame = (
+  videoPath: string,
+  outputPath: string
+): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    ffmpeg(videoPath)
+      .setStartTime(0)
+      .outputOptions(["-vframes", "1", "-q:v", "2"])
+      .output(outputPath)
+      .on("end", () => {
+        console.log(`[EXTRACT] First frame saved to ${outputPath}`);
+        resolve(outputPath);
+      })
+      .on("error", (err) => {
+        console.error(`[EXTRACT] Failed to extract first frame: ${err.message}`);
+        reject(err);
+      })
+      .run();
+  });
+};
+
+/**
  * Extracts the last frame from a video as a JPG image.
  * Used for temporal consistency when processing video in chunks -
  * the last frame of chunk N becomes the reference for chunk N+1.
