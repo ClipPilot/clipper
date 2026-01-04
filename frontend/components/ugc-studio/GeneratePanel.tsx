@@ -30,7 +30,7 @@ export function GeneratePanel({
   onClearSubmitted,
   onClearError,
 }: GeneratePanelProps) {
-  const isValid = hasVideo && hasCharacter && segmentCount > 0 && totalDuration <= 30.01;
+  const isValid = hasVideo && hasCharacter && segmentCount > 0 && totalDuration <= 50.01;
 
   return (
     <Card className="bg-surface-base border border-border-base">
@@ -107,15 +107,15 @@ export function GeneratePanel({
               <div className="flex items-center gap-3">
                 <div
                   className={`w-2.5 h-2.5 rounded-full ${
-                    hasVideo && segmentCount > 0 && totalDuration <= 30.01 ? "bg-green-500" : "bg-surface-elevated"
+                    hasVideo && segmentCount > 0 && totalDuration <= 50.01 ? "bg-green-500" : "bg-surface-elevated"
                   }`}
                 />
                 <span
                   className={`text-sm ${
-                    hasVideo && segmentCount > 0 && totalDuration <= 30.01 ? "text-text-primary" : "text-text-tertiary"
+                    hasVideo && segmentCount > 0 && totalDuration <= 50.01 ? "text-text-primary" : "text-text-tertiary"
                   }`}
                 >
-                  {segmentCount} segment{segmentCount !== 1 ? "s" : ""} (≤30s)
+                  {segmentCount} segment{segmentCount !== 1 ? "s" : ""} (≤50s)
                 </span>
               </div>
             </div>
