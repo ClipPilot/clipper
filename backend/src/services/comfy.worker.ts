@@ -387,13 +387,29 @@ function waitForCompletion(
 
     const ws = new WebSocket(wsUrl);
     let timeout: NodeJS.Timeout | null = null;
+    let settled = false;
+    let lastMessageTime = Date.now();
+
+    const safeResolve = (value: WorkflowOutputs) => {
+      if (settled) return;
+      settled = true;
+      if (timeout) clearTimeout(timeout);
+      resolve(value);
+    };
+
+    const safeReject = (err: Error) => {
+      if (settled) return;
+      settled = true;
+      if (timeout) clearTimeout(timeout);
+      reject(err);
+    };
 
     const resetTimeout = () => {
       if (timeout) clearTimeout(timeout);
       timeout = setTimeout(
         () => {
           ws.close();
-          reject(new Error("Workflow execution timed out after 60 minutes"));
+          safeReject(new Error("Workflow execution timed out after 60 minutes"));
         },
         60 * 60 * 1000
       );
@@ -403,14 +419,14 @@ function waitForCompletion(
 
     ws.on("open", () => {
       console.log("[comfy-worker] WebSocket connected");
+      lastMessageTime = Date.now();
     });
 
     ws.on("message", async (rawData) => {
       resetTimeout();
+      lastMessageTime = Date.now();
 
-      // Skip binary messages (preview images)
       if (Buffer.isBuffer(rawData) && rawData[0] !== 0x7b) {
-        // Not a JSON message (doesn't start with '{'), skip silently
         return;
       }
 
@@ -428,18 +444,15 @@ function waitForCompletion(
           };
         };
 
-        // Debug: log all message types
         console.log(
           `[comfy-worker] WS message: ${msg.type}`,
           msg.data?.prompt_id === promptId ? "(our job)" : ""
         );
 
-        // Execution started (log only, no DB write)
         if (msg.type === "execution_start" && msg.data.prompt_id === promptId) {
           console.log("[comfy-worker] Execution started");
         }
 
-        // Currently executing node (node=null means workflow finished)
         if (msg.type === "executing" && msg.data.prompt_id === promptId) {
           const node = msg.data.node;
           if (node) {
@@ -448,12 +461,35 @@ function waitForCompletion(
                 ?.title || node;
             console.log(`[comfy-worker] Executing: ${nodeMeta}`);
           } else {
-            // node is null = all nodes finished executing
             console.log("[comfy-worker] Workflow finished (node=null)");
-            if (timeout) clearTimeout(timeout);
             ws.close();
 
-            // Fetch outputs from history
+            try {
+              const histRes = await fetch(`${gpu.url}/history/${promptId}`);
+              const hist = (await histRes.json()) as Record<string, unknown>;
+              const promptData = hist[promptId] as
+                | { outputs?: WorkflowOutputs }
+                | undefined;
+              const outputs = promptData?.outputs;
+
+              if (outputs) {
+                console.log("[comfy-worker] Got outputs from nodes:", Object.keys(outputs));
+                safeResolve(outputs);
+              } else {
+                safeReject(new Error("No outputs found in history"));
+              }
+            } catch (fetchErr) {
+              safeReject(new Error(`Failed to fetch history: ${(fetchErr as Error).message}`));
+            }
+            return;
+          }
+        }
+
+        if (msg.type === "execution_complete" && msg.data.prompt_id === promptId) {
+          console.log("[comfy-worker] Execution complete");
+          ws.close();
+
+          try {
             const histRes = await fetch(`${gpu.url}/history/${promptId}`);
             const hist = (await histRes.json()) as Record<string, unknown>;
             const promptData = hist[promptId] as
@@ -461,86 +497,41 @@ function waitForCompletion(
               | undefined;
             const outputs = promptData?.outputs;
 
+            console.log("[comfy-worker] Outputs keys:", outputs ? Object.keys(outputs) : "none");
             if (outputs) {
-              console.log(
-                "[comfy-worker] Got outputs from nodes:",
-                Object.keys(outputs)
-              );
-              resolve(outputs);
+              for (const [nodeId, nodeOut] of Object.entries(outputs)) {
+                console.log(`[comfy-worker] Node ${nodeId} output keys:`, Object.keys(nodeOut));
+              }
+              safeResolve(outputs);
             } else {
-              reject(new Error("No outputs found in history"));
+              safeReject(new Error("No outputs found in history"));
             }
-            return; // Exit early to prevent further processing
+          } catch (fetchErr) {
+            safeReject(new Error(`Failed to fetch history: ${(fetchErr as Error).message}`));
           }
         }
 
-        // Execution complete
-        if (
-          msg.type === "execution_complete" &&
-          msg.data.prompt_id === promptId
-        ) {
-          console.log("[comfy-worker] Execution complete");
-          if (timeout) clearTimeout(timeout);
-          ws.close();
-
-          // Fetch outputs from history
-          const histRes = await fetch(`${gpu.url}/history/${promptId}`);
-          const hist = (await histRes.json()) as Record<string, unknown>;
-
-          // Debug: log full history response
-          console.log(
-            "[comfy-worker] History response:",
-            JSON.stringify(hist, null, 2)
-          );
-
-          const promptData = hist[promptId] as
-            | { outputs?: WorkflowOutputs }
-            | undefined;
-          const outputs = promptData?.outputs;
-
-          console.log(
-            "[comfy-worker] Outputs keys:",
-            outputs ? Object.keys(outputs) : "none"
-          );
-          if (outputs) {
-            // Log each output node's structure
-            for (const [nodeId, nodeOut] of Object.entries(outputs)) {
-              console.log(
-                `[comfy-worker] Node ${nodeId} output keys:`,
-                Object.keys(nodeOut)
-              );
-            }
-            resolve(outputs);
-          } else {
-            reject(new Error("No outputs found in history"));
-          }
-        }
-
-        // Execution error
         if (msg.type === "execution_error" && msg.data.prompt_id === promptId) {
-          if (timeout) clearTimeout(timeout);
           ws.close();
-          const errMsg =
-            msg.data.exception_message || msg.data.message || "Unknown error";
-          reject(new Error(`Execution error: ${errMsg}`));
+          const errMsg = msg.data.exception_message || msg.data.message || "Unknown error";
+          safeReject(new Error(`Execution error: ${errMsg}`));
         }
       } catch (err) {
-        console.error(
-          "[comfy-worker] Error parsing message:",
-          (err as Error).message
-        );
+        console.error("[comfy-worker] Error parsing message:", (err as Error).message);
       }
     });
 
     ws.on("error", (err) => {
       console.error("[comfy-worker] WebSocket error:", err.message);
-      if (timeout) clearTimeout(timeout);
-      reject(err);
+      safeReject(err);
     });
 
     ws.on("close", () => {
       console.log("[comfy-worker] WebSocket closed");
-      if (timeout) clearTimeout(timeout);
+      const silentDuration = Date.now() - lastMessageTime;
+      if (!settled) {
+        safeReject(new Error(`WebSocket closed unexpectedly (last message ${Math.round(silentDuration / 1000)}s ago)`));
+      }
     });
   });
 }
@@ -918,12 +909,16 @@ async function processUGCFaceSwapParentJob(
     console.log(`[comfy-worker] Stitched ${processedChunkPaths.length} chunks`);
 
     // Step 6.5: Splice assembly (if splice mode enabled)
+    console.log(`[comfy-worker] Checking splice mode: spliceMode=${job.spliceMode}, hasMetadata=${!!job.spliceMetadata}, hasOriginal=${!!job.originalVideoS3Key}`);
+
     if (job.spliceMode && job.spliceMetadata && job.originalVideoS3Key) {
       console.log(`[comfy-worker] Splice mode enabled, assembling full video...`);
       const spliceData = job.spliceMetadata;
+      console.log(`[comfy-worker] Splice segments:`, JSON.stringify(spliceData.segments));
 
       const originalPath = path.join(outDir, `original_${Date.now()}.mp4`);
       await s3Service.downloadFile(job.originalVideoS3Key, originalPath);
+      console.log(`[comfy-worker] Downloaded original video for splice`);
 
       const spliceSegmentPaths: string[] = [];
       let processedOffset = 0;
@@ -934,9 +929,11 @@ async function processUGCFaceSwapParentJob(
 
         if (seg.type === "processed") {
           const duration = seg.end - seg.start;
+          console.log(`[comfy-worker] Splice segment ${i}: PROCESSED ${seg.start}-${seg.end}s (from finalOutput ${processedOffset}-${processedOffset + duration}s)`);
           await cutClip(finalOutputPath, segPath, processedOffset, processedOffset + duration);
           processedOffset += duration;
         } else {
+          console.log(`[comfy-worker] Splice segment ${i}: ORIGINAL ${seg.start}-${seg.end}s`);
           await cutClip(originalPath, segPath, seg.start, seg.end);
         }
         spliceSegmentPaths.push(segPath);
@@ -946,6 +943,8 @@ async function processUGCFaceSwapParentJob(
       await mergeClips(spliceSegmentPaths, splicedPath);
       finalOutputPath = splicedPath;
       console.log(`[comfy-worker] Spliced ${spliceSegmentPaths.length} segments into full video`);
+    } else {
+      console.log(`[comfy-worker] Splice mode NOT enabled - outputting processed segments only`);
     }
 
     // Step 7: Upload final video to S3
