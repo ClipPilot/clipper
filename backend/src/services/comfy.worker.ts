@@ -8,7 +8,7 @@ import { comfyJobs, teamMembers, clips, users } from "@clipper/shared-db/src/sch
 import { eq, and, asc, desc, inArray } from "drizzle-orm";
 import { config } from "../config/env";
 import { s3Service } from "./s3.service";
-import { cutClip, mergeClips, extractLastFrame } from "./videoEditor.service";
+import { cutClip, mergeClips, extractLastFrame, getVideoDuration } from "./videoEditor.service";
 import { emitComfyJobUpdate } from "./socket.service";
 import { teamService } from "./team.service";
 import { emailNotiService } from "./emailNoti.service";
@@ -714,7 +714,7 @@ async function processJob(job: ComfyJob, gpu: GpuConfig): Promise<string> {
 // UGC Face Swap Parent Job Processing
 // ─────────────────────────────────────────────────────────────
 
-const MAX_VIDEO_DURATION = 30;
+const MAX_VIDEO_DURATION = 50;
 const CHUNK_DURATION = 10;
 
 interface ChunkInfo {
@@ -767,9 +767,8 @@ async function processUGCFaceSwapParentJob(
     ]);
 
     // Step 2: Get video duration and calculate chunks
-    // For now, we'll assume the video is already validated to be <= 30s by the controller
-    // We could use ffprobe here to get exact duration, but for simplicity use a fixed chunk strategy
-    const videoDuration = MAX_VIDEO_DURATION;
+    const videoDuration = await getVideoDuration(localVideoPath);
+    console.log(`[comfy-worker] Video duration: ${videoDuration}s`);
     const chunks = calculateChunks(videoDuration, CHUNK_DURATION);
     console.log(`[comfy-worker] Splitting video into ${chunks.length} chunks`);
 
