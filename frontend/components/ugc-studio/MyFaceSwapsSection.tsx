@@ -14,12 +14,10 @@ const JOBS_PER_PAGE = 6;
 
 interface MyFaceSwapsSectionProps {
   teamId: number;
-  refreshTrigger?: number;
 }
 
 export function MyFaceSwapsSection({
   teamId,
-  refreshTrigger,
 }: MyFaceSwapsSectionProps) {
   const [jobs, setJobs] = useState<FaceSwapJob[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -71,10 +69,6 @@ export function MyFaceSwapsSection({
       leaveTeam(teamId);
     };
   }, [teamId, fetchJobs]);
-
-  useEffect(() => {
-    if (refreshTrigger) fetchJobs();
-  }, [refreshTrigger, fetchJobs]);
 
   useEffect(() => {
     if (selectedJob && isModalOpen) {

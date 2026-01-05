@@ -246,7 +246,7 @@ export class ComfyController {
 
       return res.status(202).json({
         message: "UGC face swap job queued",
-        sqsMessageId,
+        jobId: sqsMessageId,
         duration: Math.round(totalDuration),
       });
     } catch (error) {

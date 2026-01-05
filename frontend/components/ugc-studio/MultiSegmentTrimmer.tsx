@@ -303,6 +303,12 @@ export function MultiSegmentTrimmer({
           const updated = [...segments];
           updated[segmentIndex] = { ...segment, start: adjustedStart };
           onSegmentsChange(updated);
+
+          // Seek video to show the start frame while dragging
+          if (videoRef.current) {
+            videoRef.current.currentTime = adjustedStart;
+            setCurrentTime(adjustedStart);
+          }
         } else if (type === "end") {
           const newEnd = Math.max(segment.start + 0.5, Math.min(time, duration));
           const otherDuration = segments
@@ -320,10 +326,16 @@ export function MultiSegmentTrimmer({
           const updated = [...segments];
           updated[segmentIndex] = { ...segment, end: adjustedEnd };
           onSegmentsChange(updated);
+
+          // Seek video to show the end frame while dragging
+          if (videoRef.current) {
+            videoRef.current.currentTime = adjustedEnd;
+            setCurrentTime(adjustedEnd);
+          }
         }
       }
     },
-    [isDragging, isDraggingPlayhead, seekToPosition, duration, segments, maxTotalDuration, onSegmentsChange, dragStartX, dragStartSegment]
+    [isDragging, isDraggingPlayhead, seekToPosition, duration, segments, maxTotalDuration, onSegmentsChange, dragStartX, dragStartSegment, setCurrentTime]
   );
 
   const handleTimelineMouseUp = useCallback(() => {
@@ -767,7 +779,7 @@ export function MultiSegmentTrimmer({
 
         <div className="flex items-start gap-2 text-xs text-text-tertiary bg-surface-elevated/50 p-2 rounded-lg">
           <Icon icon="solar:info-circle-bold" width={14} className="mt-0.5 shrink-0 text-accent-400" />
-          <span>Select clips with a <strong className="text-text-secondary">clear talking face</strong> and <strong className="text-text-secondary">no text overlays</strong> for best results. Use the white playhead to position, then click &quot;Add at Playhead&quot;.</span>
+          <span><strong className="text-yellow-400">Important:</strong> The <strong className="text-text-secondary">first frame of each segment must show a face</strong> for the swap to work. Select clips with <strong className="text-text-secondary">clear talking faces</strong> and <strong className="text-text-secondary">no text overlays</strong>. Drag handles to preview frames.</span>
         </div>
 
         {exceedsMax && (

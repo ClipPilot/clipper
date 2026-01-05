@@ -48,7 +48,6 @@ function UGCStudioContent({
   const [processingStatus, setProcessingStatus] = useState("");
   const [submittedJobId, setSubmittedJobId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [jobRefreshTrigger, setJobRefreshTrigger] = useState(0);
 
   const characterImage = selectedCharacter
     ? {
@@ -105,7 +104,6 @@ function UGCStudioContent({
       const data = await response.json();
       setSubmittedJobId(data.jobId);
       setProcessingStatus("Job submitted! Processing...");
-      setJobRefreshTrigger((prev) => prev + 1);
 
       addToast({
         title: "Face swap started!",
@@ -176,10 +174,7 @@ function UGCStudioContent({
               <h2 className="text-xl font-semibold text-text-primary">
                 My Face Swaps
               </h2>
-              <MyFaceSwapsSection
-                teamId={selectedTeam.id}
-                refreshTrigger={jobRefreshTrigger}
-              />
+              <MyFaceSwapsSection teamId={selectedTeam.id} />
             </div>
           )}
         </div>
@@ -213,10 +208,7 @@ function UGCStudioContent({
                 <h2 className="text-lg font-semibold text-text-primary">
                   My Face Swaps
                 </h2>
-                <MyFaceSwapsSection
-                  teamId={selectedTeam.id}
-                  refreshTrigger={jobRefreshTrigger}
-                />
+                <MyFaceSwapsSection teamId={selectedTeam.id} />
               </div>
             )}
           </div>
