@@ -38,7 +38,6 @@ export function VideoUploadCard({
       videoEl.src = preview;
       videoEl.onloadedmetadata = () => {
         const dur = videoEl.duration;
-        // Use full video duration - MultiSegmentTrimmer shows warning if over 50s
         onVideoChange(newVideo, dur);
         onSegmentsChange([{ id: crypto.randomUUID(), start: 0, end: dur }]);
       };

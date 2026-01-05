@@ -347,10 +347,10 @@ export function MultiSegmentTrimmer({
     if (segments.length >= maxSegments) return;
 
     const sortedSegments = [...segments].sort((a, b) => a.start - b.start);
-    let newStart = 0;
-    let newEnd = 0;
     const minDuration = 1;
     const desiredDuration = 5;
+    const remainingDuration = maxTotalDuration - totalDuration;
+    const maxNewDuration = Math.min(remainingDuration, desiredDuration);
 
     const gaps: { start: number; end: number }[] = [];
     if (sortedSegments.length === 0) {
@@ -369,15 +369,21 @@ export function MultiSegmentTrimmer({
       }
     }
 
-    const remainingDuration = maxTotalDuration - totalDuration;
-    const maxNewDuration = Math.min(remainingDuration, desiredDuration);
+    let newStart = 0;
+    let newEnd = 0;
 
-    for (const gap of gaps) {
-      const gapSize = gap.end - gap.start;
-      if (gapSize >= minDuration) {
-        newStart = gap.start;
-        newEnd = Math.min(gap.start + maxNewDuration, gap.end);
-        break;
+    const playheadGap = gaps.find((g) => currentTime >= g.start && currentTime < g.end);
+    if (playheadGap && playheadGap.end - currentTime >= minDuration) {
+      newStart = currentTime;
+      newEnd = Math.min(currentTime + maxNewDuration, playheadGap.end);
+    } else {
+      for (const gap of gaps) {
+        const gapSize = gap.end - gap.start;
+        if (gapSize >= minDuration) {
+          newStart = gap.start;
+          newEnd = Math.min(gap.start + maxNewDuration, gap.end);
+          break;
+        }
       }
     }
 
@@ -650,7 +656,7 @@ export function MultiSegmentTrimmer({
               onPress={addSegment}
               startContent={<Icon icon="solar:add-circle-bold" width={16} />}
             >
-              Add Segment
+              Add at Playhead
             </Button>
           )}
         </div>
@@ -757,6 +763,11 @@ export function MultiSegmentTrimmer({
             </span>
             <span className="text-text-muted text-xs">/ {maxTotalDuration}s max</span>
           </div>
+        </div>
+
+        <div className="flex items-start gap-2 text-xs text-text-tertiary bg-surface-elevated/50 p-2 rounded-lg">
+          <Icon icon="solar:info-circle-bold" width={14} className="mt-0.5 shrink-0 text-accent-400" />
+          <span>Select clips with a <strong className="text-text-secondary">clear talking face</strong> and <strong className="text-text-secondary">no text overlays</strong> for best results. Use the white playhead to position, then click &quot;Add at Playhead&quot;.</span>
         </div>
 
         {exceedsMax && (
