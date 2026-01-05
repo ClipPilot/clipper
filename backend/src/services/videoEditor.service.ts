@@ -206,9 +206,9 @@ export const cutClip = (
 
   return new Promise((resolve, reject) => {
     ffmpeg(input)
+      .setStartTime(start)
+      .setDuration(duration)
       .outputOptions([
-        `-ss ${start}`,
-        `-t ${duration}`,
         "-c:v libx264",
         "-preset ultrafast",
         "-crf 28",
@@ -217,8 +217,8 @@ export const cutClip = (
         "-ac 2",
         "-c:a aac",
         "-b:a 128k",
-        "-vsync cfr",
-        "-async 1",
+        "-avoid_negative_ts make_zero",
+        "-reset_timestamps 1",
       ])
       .save(output)
       .on("end", () => {
@@ -229,7 +229,6 @@ export const cutClip = (
         }
         const stats = fs.statSync(output);
         if (stats.size < 1000) {
-          // Less than 1KB is likely invalid
           return reject(
             new Error(
               `Cut clip failed: output file too small (${stats.size} bytes)`
