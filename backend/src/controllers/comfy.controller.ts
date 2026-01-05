@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { db } from "../db";
 import { comfyJobs } from "@clipper/shared-db/src/schema";
 import { s3Service } from "../services/s3.service";
+import { gpuSqsService } from "../services/gpuSqs.service";
 import { cutClip, mergeClips } from "../services/videoEditor.service";
 import { emitComfyJobUpdate } from "../services/socket.service";
 import { getTeamUsage } from "../middleware/subscription.middleware";
@@ -193,37 +194,36 @@ export class ComfyController {
 
       await Promise.all(uploads);
 
-      const [job] = await db
-        .insert(comfyJobs)
-        .values({
-          teamId: parseInt(teamId),
-          status: "queued",
-          imageFile: imageS3Key,
-          videoFile: videoS3Key,
-          jobType: "ugc-face-swap-parent",
-          priority: Math.floor(Date.now() / 1000),
-          originalVideoS3Key,
-          spliceMode: isSpliceMode,
-          spliceMetadata,
-          progress: 0,
-          progressMessage: "Queuing job",
-        })
-        .returning();
+      // Send job to SQS queue for GPU worker to pick up
+      const sqsMessageId = await gpuSqsService.sendFaceSwapJob({
+        teamId: parseInt(teamId),
+        userId: req.user!.dbUserId,
+        imageS3Key,
+        videoS3Key,
+        originalVideoS3Key,
+        segments: sortedSegments,
+        videoDuration,
+        spliceMode: isSpliceMode,
+        spliceMetadata: spliceMetadata || undefined,
+      });
 
+      console.log(`[comfy] Sent job to GPU SQS queue: ${sqsMessageId}`);
+
+      // Emit initial status update (worker will create DB record when processing starts)
       emitComfyJobUpdate(parseInt(teamId), {
-        id: job.id,
+        id: sqsMessageId,
         status: "queued",
         progress: 0,
-        progressMessage: "Queuing job",
+        progressMessage: "Job sent to GPU queue",
         outputUrl: null,
         errorMessage: null,
-        createdAt: job.createdAt.toISOString(),
+        createdAt: new Date().toISOString(),
         finishedAt: null,
       });
 
       return res.status(202).json({
         message: "UGC face swap job queued",
-        jobId: job.id,
+        sqsMessageId,
         duration: Math.round(totalDuration),
       });
     } catch (error) {

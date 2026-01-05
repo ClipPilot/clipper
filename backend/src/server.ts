@@ -2,7 +2,6 @@ import { createServer } from "http";
 import app from "./app";
 import "./config/env";
 import { initializeSocket } from "./services/socket.service";
-import { startComfyWorker, stopComfyWorker } from "./services/comfy.worker";
 
 process.on("uncaughtException", (error) => {
   console.error("[UNCAUGHT EXCEPTION]", error.message);
@@ -13,18 +12,14 @@ process.on("unhandledRejection", (reason) => {
 });
 
 const PORT = process.env.PORT || 3000;
-const ENABLE_COMFY_WORKER = process.env.ENABLE_COMFY_WORKER !== "false";
 
 const httpServer = createServer(app);
 
 async function startServer() {
   await initializeSocket(httpServer);
 
-  // Start ComfyUI worker if enabled
-  if (ENABLE_COMFY_WORKER) {
-    startComfyWorker();
-    console.log("ComfyUI worker started");
-  }
+  // Note: GPU face swap jobs are now handled by separate SQS-based GPU worker (gpu-worker/)
+  // The old comfy.worker.ts polling approach has been replaced
 
   httpServer.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
@@ -34,7 +29,6 @@ async function startServer() {
 // Graceful shutdown
 process.on("SIGTERM", () => {
   console.log("SIGTERM received, shutting down...");
-  stopComfyWorker();
   httpServer.close(() => {
     console.log("Server closed");
     process.exit(0);
