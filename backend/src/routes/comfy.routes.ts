@@ -98,4 +98,30 @@ router.get(
   comfyController.getTeamJobs.bind(comfyController)
 );
 
+/**
+ * @openapi
+ * /comfy/jobs/{jobId}:
+ *   delete:
+ *     summary: Delete a job
+ *     tags:
+ *       - ComfyUI
+ *     parameters:
+ *       - in: path
+ *         name: jobId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Job deleted
+ *       404:
+ *         description: Job not found
+ */
+router.delete(
+  "/jobs/:jobId",
+  requireAuth,
+  comfyController.deleteJob.bind(comfyController)
+);
+
 export default router;

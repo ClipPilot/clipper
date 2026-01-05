@@ -12,6 +12,7 @@ import {
   UploadedFile,
   SelectedCharacter,
   VideoSegment,
+  SwapType,
   ScalePlanRequired,
   VideoUploadCard,
   CharacterSelector,
@@ -42,6 +43,7 @@ function UGCStudioContent({
     useState<SelectedCharacter | null>(null);
   const [videoDuration, setVideoDuration] = useState(0);
   const [segments, setSegments] = useState<VideoSegment[]>([]);
+  const [swapType, setSwapType] = useState<SwapType>("face");
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStatus, setProcessingStatus] = useState("");
   const [submittedJobId, setSubmittedJobId] = useState<string | null>(null);
@@ -88,6 +90,7 @@ function UGCStudioContent({
         JSON.stringify(segments.map((s) => ({ start: s.start, end: s.end })))
       );
       formData.append("videoDuration", videoDuration.toString());
+      formData.append("swapType", swapType);
 
       const response = await apiFetch(`${API_URL}/comfy/ugc-face-swap`, {
         method: "POST",
@@ -232,6 +235,8 @@ function UGCStudioContent({
               hasCharacter={!!characterImage}
               segmentCount={segments.length}
               totalDuration={totalDuration}
+              swapType={swapType}
+              onSwapTypeChange={setSwapType}
               onGenerate={handleGenerate}
               onClearSubmitted={() => setSubmittedJobId(null)}
               onClearError={() => setError(null)}

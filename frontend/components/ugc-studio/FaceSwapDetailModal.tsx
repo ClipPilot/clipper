@@ -19,10 +19,23 @@ interface FaceSwapDetailModalProps {
   job: FaceSwapJob | null;
   isOpen: boolean;
   onClose: () => void;
+  onDelete?: (jobId: string) => void;
 }
 
-export function FaceSwapDetailModal({ job, isOpen, onClose }: FaceSwapDetailModalProps) {
+export function FaceSwapDetailModal({ job, isOpen, onClose, onDelete }: FaceSwapDetailModalProps) {
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!job || isDeleting || !onDelete) return;
+
+    setIsDeleting(true);
+    try {
+      await onDelete(job.id);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const handleDownload = async () => {
     if (!job?.outputUrl || isDownloading) return;
@@ -140,19 +153,36 @@ export function FaceSwapDetailModal({ job, isOpen, onClose }: FaceSwapDetailModa
           </div>
         </ModalBody>
         <ModalFooter>
-          <Button variant="flat" onPress={onClose}>
-            Close
-          </Button>
-          {job.status === "completed" && job.outputUrl && (
-            <Button
-              color="primary"
-              onPress={handleDownload}
-              isLoading={isDownloading}
-              startContent={!isDownloading && <Icon icon="solar:download-bold" width={18} />}
-            >
-              {isDownloading ? "Downloading..." : "Download Video"}
-            </Button>
-          )}
+          <div className="flex items-center justify-between w-full">
+            <div>
+              {onDelete && (
+                <Button
+                  variant="flat"
+                  color="danger"
+                  onPress={handleDelete}
+                  isLoading={isDeleting}
+                  startContent={!isDeleting && <Icon icon="solar:trash-bin-trash-bold" width={18} />}
+                >
+                  {isDeleting ? "Deleting..." : "Delete"}
+                </Button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="flat" onPress={onClose}>
+                Close
+              </Button>
+              {job.status === "completed" && job.outputUrl && (
+                <Button
+                  color="primary"
+                  onPress={handleDownload}
+                  isLoading={isDownloading}
+                  startContent={!isDownloading && <Icon icon="solar:download-bold" width={18} />}
+                >
+                  {isDownloading ? "Downloading..." : "Download Video"}
+                </Button>
+              )}
+            </div>
+          </div>
         </ModalFooter>
       </ModalContent>
     </Modal>

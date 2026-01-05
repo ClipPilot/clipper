@@ -11,18 +11,31 @@ import {
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { FaceSwapJob, getStatusColor, getStatusIcon } from "./types";
+
 interface FaceSwapJobCardProps {
   job: FaceSwapJob;
   onClick: () => void;
+  onDelete?: (jobId: string) => void;
 }
 
 export const FaceSwapJobCard = memo(
-  function FaceSwapJobCard({ job, onClick }: FaceSwapJobCardProps) {
+  function FaceSwapJobCard({ job, onClick, onDelete }: FaceSwapJobCardProps) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isDownloading, setIsDownloading] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
-    const handleDownload = async (e: React.MouseEvent) => {
-      e.stopPropagation();
+    const handleDelete = async () => {
+      if (isDeleting || !onDelete) return;
+
+      setIsDeleting(true);
+      try {
+        await onDelete(job.id);
+      } finally {
+        setIsDeleting(false);
+      }
+    };
+
+    const handleDownload = async () => {
       if (!job.outputUrl || isDownloading) return;
 
       setIsDownloading(true);
@@ -53,13 +66,13 @@ export const FaceSwapJobCard = memo(
 
     return (
       <Card
-        className="bg-surface-base border border-border-base hover:border-accent-400/30 transition-colors cursor-pointer"
+        className="bg-surface-base border border-border-base hover:border-accent-400/30 transition-colors cursor-pointer overflow-hidden"
         isPressable
         onPress={onClick}
       >
-        <CardBody className="p-4">
-          <div className="flex gap-4">
-            <div className="w-32 h-20 rounded-lg bg-surface-elevated overflow-hidden flex-shrink-0">
+        <CardBody className="p-3">
+          <div className="flex gap-3">
+            <div className="w-20 h-14 sm:w-24 sm:h-16 rounded-lg bg-surface-elevated overflow-hidden flex-shrink-0">
               {job.status === "completed" && job.outputUrl ? (
                 <video
                   ref={videoRef}
@@ -80,39 +93,56 @@ export const FaceSwapJobCard = memo(
                 <div className="w-full h-full flex items-center justify-center">
                   <Icon
                     icon={getStatusIcon(job.status)}
-                    className={`text-2xl ${job.status === "running" ? "animate-spin text-accent-400" : "text-text-tertiary"}`}
+                    className={`text-xl ${job.status === "running" ? "animate-spin text-accent-400" : "text-text-tertiary"}`}
                   />
                 </div>
               )}
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between gap-2 mb-2">
-                <div className="flex items-center gap-2">
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <div className="flex items-start justify-between gap-2 mb-1.5">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 min-w-0">
                   <Chip
                     size="sm"
                     color={getStatusColor(job.status)}
                     variant="flat"
+                    className="text-[10px] h-5"
                   >
                     {job.status}
                   </Chip>
-                  <span className="text-xs text-text-tertiary">
+                  <span className="text-[10px] sm:text-xs text-text-tertiary truncate">
                     {new Date(job.createdAt).toLocaleDateString()}
                   </span>
                 </div>
-                {job.status === "completed" && job.outputUrl && (
-                  <Button
-                    size="sm"
-                    variant="flat"
-                    isIconOnly
-                    className="bg-accent-400/20 text-accent-400 min-w-8 w-8 h-8"
-                    onPress={handleDownload as any}
-                    isLoading={isDownloading}
-                  >
-                    {!isDownloading && (
-                      <Icon icon="solar:download-bold" width={16} />
-                    )}
-                  </Button>
-                )}
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  {job.status === "completed" && job.outputUrl && (
+                    <Button
+                      size="sm"
+                      variant="flat"
+                      isIconOnly
+                      className="bg-accent-400/20 text-accent-400 min-w-7 w-7 h-7"
+                      onPress={handleDownload}
+                      isLoading={isDownloading}
+                    >
+                      {!isDownloading && (
+                        <Icon icon="solar:download-bold" width={14} />
+                      )}
+                    </Button>
+                  )}
+                  {onDelete && (
+                    <Button
+                      size="sm"
+                      variant="flat"
+                      isIconOnly
+                      className="bg-red-500/20 text-red-500 min-w-7 w-7 h-7"
+                      onPress={handleDelete}
+                      isLoading={isDeleting}
+                    >
+                      {!isDeleting && (
+                        <Icon icon="solar:trash-bin-trash-bold" width={14} />
+                      )}
+                    </Button>
+                  )}
+                </div>
               </div>
               {job.status === "running" && (
                 <div className="space-y-1">
@@ -121,21 +151,21 @@ export const FaceSwapJobCard = memo(
                     size="sm"
                     color="primary"
                   />
-                  <p className="text-xs text-text-tertiary">
+                  <p className="text-[10px] sm:text-xs text-text-tertiary truncate">
                     {job.progressMessage || "Processing..."}
                   </p>
                 </div>
               )}
               {job.status === "failed" && (
-                <p className="text-xs text-red-500 truncate">
+                <p className="text-[10px] sm:text-xs text-red-500 truncate">
                   {job.errorMessage || "Processing failed"}
                 </p>
               )}
               {job.status === "completed" && (
-                <p className="text-xs text-text-secondary">Click to view</p>
+                <p className="text-[10px] sm:text-xs text-text-secondary">Click to view</p>
               )}
               {job.status === "queued" && (
-                <p className="text-xs text-text-tertiary">Queuing Job.</p>
+                <p className="text-[10px] sm:text-xs text-text-tertiary">Queuing Job.</p>
               )}
             </div>
           </div>
@@ -147,5 +177,6 @@ export const FaceSwapJobCard = memo(
     prev.job.id === next.job.id &&
     prev.job.status === next.job.status &&
     prev.job.progress === next.job.progress &&
-    prev.job.outputUrl === next.job.outputUrl
+    prev.job.outputUrl === next.job.outputUrl &&
+    prev.onDelete === next.onDelete
 );

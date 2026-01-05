@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { db } from "../db";
 import { comfyJobs } from "@clipper/shared-db/src/schema";
 import { s3Service } from "../services/s3.service";
-import { gpuSqsService } from "../services/gpuSqs.service";
+import { gpuSqsService, SwapType } from "../services/gpuSqs.service";
 import { cutClip, getVideoDuration } from "../services/videoEditor.service";
 import { emitComfyJobUpdate } from "../services/socket.service";
 import { getTeamUsage } from "../middleware/subscription.middleware";
@@ -16,6 +16,7 @@ import "multer";
 
 const UGC_CREDIT_COST = 5;
 const CHUNK_DURATION = 10;
+const CHUNK_LEEWAY = 1; // Allow up to 1 extra second to avoid tiny leftover chunks
 
 interface AuthRequest extends Request {
   user?: { id: string; email: string; dbUserId: number };
@@ -65,7 +66,8 @@ export class ComfyController {
     const chunkPaths: string[] = [];
 
     try {
-      const { teamId, startTime, endTime, segments: segmentsRaw, videoDuration: videoDurationRaw } = req.body;
+      const { teamId, startTime, endTime, segments: segmentsRaw, videoDuration: videoDurationRaw, swapType: swapTypeRaw } = req.body;
+      const swapType: SwapType = swapTypeRaw === "fullBody" ? "fullBody" : "face";
       const videoDuration = parseFloat(videoDurationRaw) || 0;
       const files = req.files as {
         image?: Express.Multer.File[];
@@ -162,13 +164,19 @@ export class ComfyController {
         segmentPaths.push(segPath);
 
         const segDuration = await getVideoDuration(segPath);
-        if (segDuration <= CHUNK_DURATION) {
+        // If segment fits within chunk duration + leeway, keep as single chunk
+        if (segDuration <= CHUNK_DURATION + CHUNK_LEEWAY) {
           chunkPaths.push(segPath);
         } else {
           let start = 0;
           let chunkIdx = 0;
           while (start < segDuration) {
-            const end = Math.min(start + CHUNK_DURATION, segDuration);
+            const remaining = segDuration - start;
+            // If remaining is within leeway of a full chunk, include it all in this chunk
+            // This prevents tiny leftover chunks (e.g., 0.08s from a 10.08s video)
+            const end = remaining <= CHUNK_DURATION + CHUNK_LEEWAY
+              ? segDuration
+              : start + CHUNK_DURATION;
             const chunkPath = path.join(tempDir, `${crypto.randomUUID()}_seg${i}_chunk${chunkIdx}.mp4`);
             await cutClip(segPath, chunkPath, start, end);
             chunkPaths.push(chunkPath);
@@ -219,6 +227,7 @@ export class ComfyController {
         videoDuration,
         spliceMode: isSpliceMode,
         spliceMetadata: spliceMetadata || undefined,
+        swapType,
       });
 
       console.log(`[comfy] Sent job to GPU SQS queue: ${sqsMessageId}`);
@@ -349,6 +358,67 @@ export class ComfyController {
       console.error("Get team jobs error:", error);
       return res.status(500).json({
         error: error instanceof Error ? error.message : "Failed to get jobs",
+      });
+    }
+  }
+
+  async deleteJob(req: Request, res: Response) {
+    try {
+      const { jobId } = req.params;
+
+      if (!jobId) {
+        return res.status(400).json({ error: "Job ID required" });
+      }
+
+      // First check if job exists
+      const [job] = await db
+        .select({
+          id: comfyJobs.id,
+          teamId: comfyJobs.teamId,
+          outputFile: comfyJobs.outputFile,
+        })
+        .from(comfyJobs)
+        .where(eq(comfyJobs.id, jobId));
+
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+
+      // Delete the output file from S3 if it exists
+      if (job.outputFile) {
+        try {
+          const s3Key = job.outputFile.startsWith("s3://")
+            ? job.outputFile.replace(/^s3:\/\/[^/]+\//, "")
+            : job.outputFile;
+          await s3Service.deleteObject(s3Key);
+          console.log(`[comfy] Deleted S3 object: ${s3Key}`);
+        } catch (s3Error) {
+          console.warn(`[comfy] Failed to delete S3 object: ${s3Error}`);
+          // Continue with DB deletion even if S3 delete fails
+        }
+      }
+
+      // Delete the job from database
+      await db.delete(comfyJobs).where(eq(comfyJobs.id, jobId));
+
+      // Emit update to notify frontend
+      emitComfyJobUpdate(job.teamId, {
+        id: jobId,
+        status: "deleted",
+        progress: 0,
+        progressMessage: null,
+        outputUrl: null,
+        errorMessage: null,
+        createdAt: new Date().toISOString(),
+        finishedAt: null,
+      });
+
+      console.log(`[comfy] Deleted job ${jobId}`);
+      return res.status(200).json({ message: "Job deleted successfully" });
+    } catch (error) {
+      console.error("Delete job error:", error);
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to delete job",
       });
     }
   }

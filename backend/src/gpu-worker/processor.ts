@@ -58,9 +58,17 @@ const configDir = path.join(__dirname, "../config/comfy");
 const gpuConfig: GpuConfigFile = JSON.parse(
   fs.readFileSync(path.join(configDir, "gpus.config.json"), "utf-8")
 );
-const workflowTemplate = JSON.parse(
+
+// Load both workflow templates
+const workflowFullBody = JSON.parse(
   fs.readFileSync(path.join(configDir, "workflow.json"), "utf-8")
 );
+const workflowFaceOnly = JSON.parse(
+  fs.readFileSync(path.join(configDir, "workflow_face_only.json"), "utf-8")
+);
+
+// Legacy alias for backwards compatibility
+const workflowTemplate = workflowFullBody;
 
 const s3 = new S3Client({ region: config.aws.region });
 
@@ -290,9 +298,12 @@ async function completeJob(
 
 function buildWorkflow(
   imageFile: string,
-  videoFile: string
+  videoFile: string,
+  swapType: "face" | "fullBody" = "face"
 ): Record<string, unknown> {
-  const workflow = JSON.parse(JSON.stringify(workflowTemplate));
+  // Select the appropriate workflow template based on swap type
+  const template = swapType === "face" ? workflowFaceOnly : workflowFullBody;
+  const workflow = JSON.parse(JSON.stringify(template));
 
   // Inject reference image (node 311 - LoadImage)
   if (workflow["311"]?.inputs) {
@@ -631,6 +642,7 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
     }
 
     console.log(`[gpu-worker] Using GPU ${gpu.id}`);
+    console.log(`[gpu-worker] Swap type: ${job.swapType || "face"} (${job.swapType === "fullBody" ? "full body" : "face only"})`);
     await updateProgress(jobId, job.teamId, 10, "Downloading files from S3");
 
     console.log(`[gpu-worker] Downloading ${job.chunkS3Keys.length} chunks and reference image`);
@@ -662,7 +674,7 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
 
       const gpuVideoName = await uploadFileToGpu(gpu, chunkPath);
       const clientId = crypto.randomUUID();
-      const workflow = buildWorkflow(gpuImageName, gpuVideoName);
+      const workflow = buildWorkflow(gpuImageName, gpuVideoName, job.swapType || "face");
       const promptId = await submitPrompt(gpu, workflow, clientId);
 
       console.log(`[gpu-worker] Chunk ${i} submitted, prompt: ${promptId}`);

@@ -78,7 +78,7 @@ export const emitClipsRefresh = (teamId: number) => {
 
 export interface ComfyJobUpdate {
   id: string;
-  status: "queued" | "running" | "completed" | "failed";
+  status: "queued" | "running" | "completed" | "failed" | "deleted";
   progress: number | null;
   progressMessage: string | null;
   outputUrl: string | null;

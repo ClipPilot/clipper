@@ -1,7 +1,8 @@
 "use client";
 
-import { Button, Card, CardBody, Progress } from "@heroui/react";
+import { Button, Card, CardBody, Progress, RadioGroup, Radio } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import { SwapType } from "./types";
 
 interface GeneratePanelProps {
   isProcessing: boolean;
@@ -12,6 +13,8 @@ interface GeneratePanelProps {
   hasCharacter: boolean;
   segmentCount: number;
   totalDuration: number;
+  swapType: SwapType;
+  onSwapTypeChange: (type: SwapType) => void;
   onGenerate: () => void;
   onClearSubmitted: () => void;
   onClearError: () => void;
@@ -26,6 +29,8 @@ export function GeneratePanel({
   hasCharacter,
   segmentCount,
   totalDuration,
+  swapType,
+  onSwapTypeChange,
   onGenerate,
   onClearSubmitted,
   onClearError,
@@ -118,6 +123,36 @@ export function GeneratePanel({
                   {segmentCount} segment{segmentCount !== 1 ? "s" : ""} (≤50s)
                 </span>
               </div>
+            </div>
+
+            <div className="p-3 bg-surface-elevated rounded-lg space-y-3">
+              <p className="text-xs font-medium text-text-secondary">Swap Mode</p>
+              <RadioGroup
+                value={swapType}
+                onValueChange={(value) => onSwapTypeChange(value as SwapType)}
+                size="sm"
+                classNames={{
+                  wrapper: "gap-2",
+                }}
+              >
+                <Radio value="face" classNames={{ label: "text-sm" }}>
+                  <div className="flex items-center gap-2">
+                    <span>Face Swap</span>
+                    <span className="px-1.5 py-0.5 text-[10px] bg-green-500/20 text-green-400 rounded">Recommended</span>
+                  </div>
+                </Radio>
+                <Radio value="fullBody" classNames={{ label: "text-sm" }}>
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2">
+                      <span>Full Body Swap</span>
+                      <span className="px-1.5 py-0.5 text-[10px] bg-yellow-500/20 text-yellow-400 rounded">Experimental</span>
+                    </div>
+                    <span className="text-[10px] text-text-tertiary mt-0.5">
+                      May not work well with complex movements
+                    </span>
+                  </div>
+                </Radio>
+              </RadioGroup>
             </div>
 
             <div className="p-3 bg-surface-elevated rounded-lg space-y-2">

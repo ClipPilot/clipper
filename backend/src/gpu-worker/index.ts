@@ -134,19 +134,23 @@ async function pollMessages(): Promise<void> {
             );
 
             await processMessage(job, message.ReceiptHandle);
-
-            // Delete message after successful processing
-            await sqsClient.send(
-              new DeleteMessageCommand({
-                QueueUrl: QUEUE_URL,
-                ReceiptHandle: message.ReceiptHandle,
-              })
-            );
-            console.log(`[gpu-worker] Successfully processed and deleted message`);
+            console.log(`[gpu-worker] Successfully processed job`);
           } catch (error) {
             console.error("[gpu-worker] Error processing message:", error);
-            // Message will become visible again after visibility timeout
-            // and will be retried (up to maxReceiveCount times before going to DLQ)
+          } finally {
+            // Always delete message - no retry on failure
+            // Failed jobs are marked in DB and credits refunded by processor
+            try {
+              await sqsClient.send(
+                new DeleteMessageCommand({
+                  QueueUrl: QUEUE_URL,
+                  ReceiptHandle: message.ReceiptHandle,
+                })
+              );
+              console.log(`[gpu-worker] Deleted message from queue`);
+            } catch (deleteError) {
+              console.error("[gpu-worker] Failed to delete message:", deleteError);
+            }
           }
         }
       }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { Card, CardBody, Pagination } from "@heroui/react";
+import { Card, CardBody, Pagination, addToast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { apiFetch } from "@/lib/apiClient";
 import API_URL from "@/config/constants";
@@ -47,7 +47,12 @@ export function MyFaceSwapsSection({
     const socket = connectSocket();
     joinTeam(teamId);
 
-    const handleJobUpdate = (update: FaceSwapJob) => {
+    const handleJobUpdate = (update: FaceSwapJob | { id: string; status: "deleted" }) => {
+      // Handle deleted jobs from websocket
+      if (update.status === "deleted") {
+        setJobs((prev) => prev.filter((j) => j.id !== update.id));
+        return;
+      }
       setJobs((prev) => {
         const idx = prev.findIndex((j) => j.id === update.id);
         if (idx === -1) {
@@ -96,6 +101,41 @@ export function MyFaceSwapsSection({
     setIsModalOpen(true);
   };
 
+  const handleDeleteJob = useCallback(async (jobId: string) => {
+    try {
+      const response = await apiFetch(`${API_URL}/comfy/jobs/${jobId}`, {
+        method: "DELETE",
+      });
+      if (response.ok) {
+        setJobs((prev) => prev.filter((j) => j.id !== jobId));
+        // Close modal if the deleted job was being viewed
+        if (selectedJob?.id === jobId) {
+          setIsModalOpen(false);
+          setSelectedJob(null);
+        }
+        addToast({
+          title: "Job deleted",
+          description: "The face swap job has been deleted.",
+          color: "success",
+        });
+      } else {
+        const data = await response.json();
+        addToast({
+          title: "Delete failed",
+          description: data.error || "Failed to delete job.",
+          color: "danger",
+        });
+      }
+    } catch (err) {
+      console.error("Failed to delete job:", err);
+      addToast({
+        title: "Delete failed",
+        description: "An error occurred while deleting the job.",
+        color: "danger",
+      });
+    }
+  }, [selectedJob]);
+
   if (isLoading) {
     return (
       <Card className="bg-surface-base border border-border-base">
@@ -135,6 +175,7 @@ export function MyFaceSwapsSection({
               key={job.id}
               job={job}
               onClick={() => handleJobClick(job)}
+              onDelete={handleDeleteJob}
             />
           ))}
         </div>
@@ -155,6 +196,7 @@ export function MyFaceSwapsSection({
         job={selectedJob}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        onDelete={handleDeleteJob}
       />
     </>
   );

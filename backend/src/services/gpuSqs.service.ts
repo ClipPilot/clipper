@@ -1,6 +1,9 @@
 import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import { config } from "../config/env";
 
+// Swap type determines which workflow to use
+export type SwapType = "face" | "fullBody";
+
 // GPU Job message structure for SQS
 export interface GpuJobMessage {
   type: "ugc-face-swap";
@@ -16,6 +19,7 @@ export interface GpuJobMessage {
     videoDuration: number;
     segments: Array<{ start: number; end: number; type: string }>;
   };
+  swapType: SwapType;
   createdAt: string;
 }
 
