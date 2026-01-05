@@ -12,7 +12,6 @@ import {
   cutClip,
   mergeClips,
   extractFirstFrame,
-  getVideoDuration,
 } from "../services/videoEditor.service";
 import { emitComfyJobUpdate } from "../services/socket.service";
 import { teamService } from "../services/team.service";
@@ -53,12 +52,6 @@ interface WorkflowOutputs {
   };
 }
 
-interface ChunkInfo {
-  sequenceNumber: number;
-  startTime: number;
-  endTime: number;
-  localPath: string;
-}
 
 // Load GPU and workflow configs
 const configDir = path.join(__dirname, "../config/comfy");
@@ -70,8 +63,6 @@ const workflowTemplate = JSON.parse(
 );
 
 const s3 = new S3Client({ region: config.aws.region });
-
-const CHUNK_DURATION = 10;
 
 // ─────────────────────────────────────────────────────────────
 // GPU Management
@@ -211,7 +202,7 @@ async function createJobRecord(
       teamId: job.teamId,
       status: "running",
       imageFile: job.imageS3Key,
-      videoFile: job.videoS3Key,
+      videoFile: job.chunkS3Keys[0],
       jobType: "ugc-face-swap-parent",
       priority: Math.floor(Date.now() / 1000),
       originalVideoS3Key: job.originalVideoS3Key,
@@ -606,26 +597,6 @@ async function uploadToS3(buffer: Buffer, key: string): Promise<string> {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Video Chunking Helpers
-// ─────────────────────────────────────────────────────────────
-
-function calculateChunks(
-  duration: number,
-  chunkSize: number
-): Array<{ start: number; end: number }> {
-  const chunks: Array<{ start: number; end: number }> = [];
-  let start = 0;
-
-  while (start < duration) {
-    const end = Math.min(start + chunkSize, duration);
-    chunks.push({ start, end });
-    start = end;
-  }
-
-  return chunks;
-}
-
-// ─────────────────────────────────────────────────────────────
 // Main GPU Job Processor
 // ─────────────────────────────────────────────────────────────
 
@@ -633,34 +604,24 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
   const outDir = path.join(process.cwd(), "output", `ugc-${Date.now()}`);
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
 
-  const localVideoPath = path.join(outDir, `source_${Date.now()}.mp4`);
   const localImagePath = path.join(outDir, `reference_${Date.now()}.jpg`);
 
   let jobId: string | null = null;
 
   try {
-    // Step 1: Create DB record
     jobId = await createJobRecord(job);
     console.log(`[gpu-worker] Created job record: ${jobId}`);
 
-    // Step 2: Find available GPU (with retry)
     let gpu: GpuConfig | null = null;
     let gpuRetries = 0;
-    const maxGpuRetries = 30; // Wait up to 5 minutes for GPU
+    const maxGpuRetries = 30;
 
     while (!gpu && gpuRetries < maxGpuRetries) {
       gpu = await findAvailableGpu();
       if (!gpu) {
         gpuRetries++;
-        console.log(
-          `[gpu-worker] No GPU available, waiting... (${gpuRetries}/${maxGpuRetries})`
-        );
-        await updateProgress(
-          jobId,
-          job.teamId,
-          5,
-          `Waiting for GPU (${gpuRetries}/${maxGpuRetries})...`
-        );
+        console.log(`[gpu-worker] No GPU available, waiting... (${gpuRetries}/${maxGpuRetries})`);
+        await updateProgress(jobId, job.teamId, 5, `Waiting for GPU (${gpuRetries}/${maxGpuRetries})...`);
         await new Promise((r) => setTimeout(r, 10000));
       }
     }
@@ -672,90 +633,40 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
     console.log(`[gpu-worker] Using GPU ${gpu.id}`);
     await updateProgress(jobId, job.teamId, 10, "Downloading files from S3");
 
-    // Step 3: Download video and image from S3
-    console.log(
-      `[gpu-worker] Downloading ${job.imageS3Key} and ${job.videoS3Key}`
-    );
-    await Promise.all([
-      s3Service.downloadFile(job.videoS3Key, localVideoPath),
-      s3Service.downloadFile(job.imageS3Key, localImagePath),
-    ]);
+    console.log(`[gpu-worker] Downloading ${job.chunkS3Keys.length} chunks and reference image`);
+    await s3Service.downloadFile(job.imageS3Key, localImagePath);
 
-    // Step 4: Get video duration and calculate chunks
-    const videoDuration = await getVideoDuration(localVideoPath);
-    console.log(`[gpu-worker] Video duration: ${videoDuration}s`);
-    const chunks = calculateChunks(videoDuration, CHUNK_DURATION);
-    console.log(`[gpu-worker] Splitting video into ${chunks.length} chunks`);
-
-    await updateProgress(
-      jobId,
-      job.teamId,
-      15,
-      `Preparing ${chunks.length} video segments`
-    );
-
-    // Step 5: Cut video into chunks
-    const chunkInfos: ChunkInfo[] = [];
-    for (let i = 0; i < chunks.length; i++) {
-      const chunk = chunks[i];
+    const chunkLocalPaths: string[] = [];
+    for (let i = 0; i < job.chunkS3Keys.length; i++) {
       const chunkPath = path.join(outDir, `chunk_${i}.mp4`);
-
-      try {
-        console.log(
-          `[gpu-worker] Cutting chunk ${i + 1}/${chunks.length}: ${chunk.start}s - ${chunk.end}s`
-        );
-        await cutClip(localVideoPath, chunkPath, chunk.start, chunk.end);
-
-        if (fs.existsSync(chunkPath) && fs.statSync(chunkPath).size > 0) {
-          chunkInfos.push({
-            sequenceNumber: i,
-            startTime: chunk.start,
-            endTime: chunk.end,
-            localPath: chunkPath,
-          });
-        }
-      } catch (err) {
-        console.log(
-          `[gpu-worker] Chunk ${i} cut failed (video may be shorter), stopping`
-        );
-        break;
+      await s3Service.downloadFile(job.chunkS3Keys[i], chunkPath);
+      if (fs.existsSync(chunkPath) && fs.statSync(chunkPath).size > 0) {
+        chunkLocalPaths.push(chunkPath);
+      } else {
+        throw new Error(`Failed to download chunk ${i}`);
       }
     }
 
-    if (chunkInfos.length === 0) {
-      throw new Error("Failed to create any video chunks");
-    }
+    console.log(`[gpu-worker] Downloaded ${chunkLocalPaths.length} chunks for processing`);
+    await updateProgress(jobId, job.teamId, 15, `Processing ${chunkLocalPaths.length} video segments`);
 
-    console.log(
-      `[gpu-worker] Created ${chunkInfos.length} chunks for processing`
-    );
-
-    // Step 6: Upload initial reference image to GPU
     console.log(`[gpu-worker] Uploading reference image to GPU`);
     let gpuImageName = await uploadFileToGpu(gpu, localImagePath);
 
-    // Step 7: Process each chunk through ComfyUI
     const processedChunkPaths: string[] = [];
     let goldenReferencePath: string | null = null;
 
-    for (let i = 0; i < chunkInfos.length; i++) {
-      const chunk = chunkInfos[i];
+    for (let i = 0; i < chunkLocalPaths.length; i++) {
+      const chunkPath = chunkLocalPaths[i];
+      console.log(`[gpu-worker] Processing chunk ${i + 1}/${chunkLocalPaths.length}...`);
 
-      console.log(
-        `[gpu-worker] Processing chunk ${i + 1}/${chunkInfos.length}...`
-      );
-
-      // Upload chunk video to GPU
-      const gpuVideoName = await uploadFileToGpu(gpu, chunk.localPath);
-
-      // Process chunk through ComfyUI
+      const gpuVideoName = await uploadFileToGpu(gpu, chunkPath);
       const clientId = crypto.randomUUID();
       const workflow = buildWorkflow(gpuImageName, gpuVideoName);
       const promptId = await submitPrompt(gpu, workflow, clientId);
 
       console.log(`[gpu-worker] Chunk ${i} submitted, prompt: ${promptId}`);
 
-      // Wait for completion
       const outputs = await waitForCompletion(gpu, promptId, clientId, jobId);
       const outputFile = findVideoOutput(outputs);
 
@@ -763,33 +674,20 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
         throw new Error(`No output for chunk ${i}`);
       }
 
-      // Download processed chunk
       const buffer = await downloadOutput(gpu, outputFile);
       const processedPath = path.join(outDir, `processed_${i}.mp4`);
       fs.writeFileSync(processedPath, buffer);
       processedChunkPaths.push(processedPath);
 
-      // After chunk 1: extract first frame as "golden reference" for all remaining chunks
-      if (i === 0 && chunkInfos.length > 1) {
+      if (i === 0 && chunkLocalPaths.length > 1) {
         goldenReferencePath = path.join(outDir, `golden_reference.jpg`);
         await extractFirstFrame(processedPath, goldenReferencePath);
         gpuImageName = await uploadFileToGpu(gpu, goldenReferencePath);
-        console.log(
-          `[gpu-worker] Extracted golden reference from chunk 1 for all subsequent chunks`
-        );
+        console.log(`[gpu-worker] Extracted golden reference from chunk 1`);
       }
 
-      // Update progress after each chunk completes
-      const chunkProgress = Math.round(
-        20 + ((i + 1) / chunkInfos.length) * 60
-      );
-      await updateProgress(
-        jobId,
-        job.teamId,
-        chunkProgress,
-        `Processing: ${i + 1}/${chunkInfos.length} segments complete`
-      );
-
+      const chunkProgress = Math.round(20 + ((i + 1) / chunkLocalPaths.length) * 60);
+      await updateProgress(jobId, job.teamId, chunkProgress, `Processing: ${i + 1}/${chunkLocalPaths.length} segments complete`);
       console.log(`[gpu-worker] Chunk ${i + 1} processed successfully`);
     }
 
@@ -887,7 +785,7 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
             generated_by_user_id: member.userId,
             clip_path: outputS3Key,
             blank_video_path: outputS3Key,
-            source_video_path: job.videoS3Key,
+            source_video_path: job.chunkS3Keys[0],
             status: "completed",
             saved: true,
             clip_metadata: { type: "face-swap", comfyJobId: jobId },

@@ -7,7 +7,7 @@ export interface GpuJobMessage {
   teamId: number;
   userId: number;
   imageS3Key: string;
-  videoS3Key: string;
+  chunkS3Keys: string[];
   originalVideoS3Key?: string;
   segments: Array<{ start: number; end: number }>;
   videoDuration: number;

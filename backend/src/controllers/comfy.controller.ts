@@ -3,7 +3,7 @@ import { db } from "../db";
 import { comfyJobs } from "@clipper/shared-db/src/schema";
 import { s3Service } from "../services/s3.service";
 import { gpuSqsService } from "../services/gpuSqs.service";
-import { cutClip, mergeClips } from "../services/videoEditor.service";
+import { cutClip, getVideoDuration } from "../services/videoEditor.service";
 import { emitComfyJobUpdate } from "../services/socket.service";
 import { getTeamUsage } from "../middleware/subscription.middleware";
 import { teamService } from "../services/team.service";
@@ -15,6 +15,7 @@ import fs from "fs";
 import "multer";
 
 const UGC_CREDIT_COST = 5;
+const CHUNK_DURATION = 10;
 
 interface AuthRequest extends Request {
   user?: { id: string; email: string; dbUserId: number };
@@ -60,8 +61,8 @@ export class ComfyController {
   async createUGCFaceSwapJob(req: AuthRequest, res: Response) {
     const MAX_VIDEO_DURATION = 50;
     let tempVideoPath: string | null = null;
-    let mergedVideoPath: string | null = null;
     const segmentPaths: string[] = [];
+    const chunkPaths: string[] = [];
 
     try {
       const { teamId, startTime, endTime, segments: segmentsRaw, videoDuration: videoDurationRaw } = req.body;
@@ -159,33 +160,47 @@ export class ComfyController {
         const segPath = path.join(tempDir, `${crypto.randomUUID()}_segment_${i}.mp4`);
         await cutClip(tempVideoPath, segPath, segments[i].start, segments[i].end);
         segmentPaths.push(segPath);
+
+        const segDuration = await getVideoDuration(segPath);
+        if (segDuration <= CHUNK_DURATION) {
+          chunkPaths.push(segPath);
+        } else {
+          let start = 0;
+          let chunkIdx = 0;
+          while (start < segDuration) {
+            const end = Math.min(start + CHUNK_DURATION, segDuration);
+            const chunkPath = path.join(tempDir, `${crypto.randomUUID()}_seg${i}_chunk${chunkIdx}.mp4`);
+            await cutClip(segPath, chunkPath, start, end);
+            chunkPaths.push(chunkPath);
+            start = end;
+            chunkIdx++;
+          }
+        }
       }
 
-      let finalVideoPath: string;
-      if (segmentPaths.length === 1) {
-        finalVideoPath = segmentPaths[0];
-      } else {
-        mergedVideoPath = path.join(tempDir, `${crypto.randomUUID()}_merged.mp4`);
-        await mergeClips(segmentPaths, mergedVideoPath);
-        finalVideoPath = mergedVideoPath;
-      }
+      console.log(`[comfy] Split ${segments.length} segments into ${chunkPaths.length} chunks`);
 
       const imageExt = path.extname(image.originalname) || ".jpg";
       const imageS3Key = `ugc-inputs/${teamId}/${crypto.randomUUID()}${imageExt}`;
-      const videoS3Key = `ugc-inputs/${teamId}/${crypto.randomUUID()}.mp4`;
 
       const isSpliceMode = segments.length >= 2 && videoDuration > 0;
       const spliceMetadata = isSpliceMode
         ? { videoDuration, segments: calculateSpliceSegments(segments, videoDuration) }
         : null;
 
-      const finalBuffer = fs.readFileSync(finalVideoPath);
       const uploads: Promise<string>[] = [
         s3Service.uploadBuffer(image.buffer, imageS3Key, image.mimetype),
-        s3Service.uploadBuffer(finalBuffer, videoS3Key, "video/mp4"),
       ];
 
-      let originalVideoS3Key = videoS3Key;
+      const chunkS3Keys: string[] = [];
+      for (let i = 0; i < chunkPaths.length; i++) {
+        const chunkBuffer = fs.readFileSync(chunkPaths[i]);
+        const chunkS3Key = `ugc-inputs/${teamId}/${crypto.randomUUID()}_chunk_${i}.mp4`;
+        chunkS3Keys.push(chunkS3Key);
+        uploads.push(s3Service.uploadBuffer(chunkBuffer, chunkS3Key, "video/mp4"));
+      }
+
+      let originalVideoS3Key: string | undefined;
       if (isSpliceMode) {
         originalVideoS3Key = `ugc-inputs/${teamId}/${crypto.randomUUID()}_original.mp4`;
         const originalBuffer = fs.readFileSync(tempVideoPath);
@@ -194,12 +209,11 @@ export class ComfyController {
 
       await Promise.all(uploads);
 
-      // Send job to SQS queue for GPU worker to pick up
       const sqsMessageId = await gpuSqsService.sendFaceSwapJob({
         teamId: parseInt(teamId),
         userId: req.user!.dbUserId,
         imageS3Key,
-        videoS3Key,
+        chunkS3Keys,
         originalVideoS3Key,
         segments: sortedSegments,
         videoDuration,
@@ -235,11 +249,8 @@ export class ComfyController {
       if (tempVideoPath && fs.existsSync(tempVideoPath)) {
         fs.unlinkSync(tempVideoPath);
       }
-      for (const segPath of segmentPaths) {
-        if (fs.existsSync(segPath)) fs.unlinkSync(segPath);
-      }
-      if (mergedVideoPath && fs.existsSync(mergedVideoPath)) {
-        fs.unlinkSync(mergedVideoPath);
+      for (const p of [...segmentPaths, ...chunkPaths]) {
+        if (fs.existsSync(p)) fs.unlinkSync(p);
       }
     }
   }
