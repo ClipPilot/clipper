@@ -38,9 +38,9 @@ export function VideoUploadCard({
       videoEl.src = preview;
       videoEl.onloadedmetadata = () => {
         const dur = videoEl.duration;
-        const maxEnd = Math.min(dur, 50);
+        // Use full video duration - MultiSegmentTrimmer shows warning if over 50s
         onVideoChange(newVideo, dur);
-        onSegmentsChange([{ id: crypto.randomUUID(), start: 0, end: maxEnd }]);
+        onSegmentsChange([{ id: crypto.randomUUID(), start: 0, end: dur }]);
       };
     },
     [video, onVideoChange, onSegmentsChange]
@@ -71,7 +71,7 @@ export function VideoUploadCard({
           </div>
           <div className="flex-1">
             <h3 className="text-base font-semibold text-text-primary">Video & Trim</h3>
-            <p className="text-xs text-text-tertiary">Upload video and select a clip (max 50 seconds)</p>
+            <p className="text-xs text-text-tertiary">Upload video and select clips (max 50s total)</p>
           </div>
           {video && (
             <Button
