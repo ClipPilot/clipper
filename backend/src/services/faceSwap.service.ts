@@ -31,18 +31,18 @@ export const trimVideo = async (
 
   return new Promise((resolve, reject) => {
     ffmpeg(inputPath)
-      .setStartTime(startTime)
-      .setDuration(duration)
       .outputOptions([
+        `-ss ${startTime}`,
+        `-t ${duration}`,
         "-c:v libx264",
         "-preset fast",
         "-crf 23",
-        "-r 30",           // Normalize frame rate to 30fps
-        "-ar 48000",       // Normalize audio sample rate to 48kHz
-        "-ac 2",           // Normalize to stereo audio
+        "-r 30",
+        "-ar 48000",
+        "-ac 2",
         "-c:a aac",
         "-b:a 128k",
-        "-movflags +faststart", // Enable fast start for web playback
+        "-movflags +faststart",
       ])
       .save(outputPath)
       .on("end", () => {

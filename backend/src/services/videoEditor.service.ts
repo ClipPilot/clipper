@@ -206,9 +206,9 @@ export const cutClip = (
 
   return new Promise((resolve, reject) => {
     ffmpeg(input)
-      .setStartTime(start)
-      .setDuration(duration)
       .outputOptions([
+        `-ss ${start}`,
+        `-t ${duration}`,
         "-c:v libx264",
         "-preset ultrafast",
         "-crf 28",
