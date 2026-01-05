@@ -631,21 +631,14 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
     console.log(`[gpu-worker] Started processing job: ${jobId}`);
 
     let gpu: GpuConfig | null = null;
-    let gpuRetries = 0;
-    const maxGpuRetries = 30;
 
-    while (!gpu && gpuRetries < maxGpuRetries) {
+    while (!gpu) {
       gpu = await findAvailableGpu();
       if (!gpu) {
-        gpuRetries++;
-        console.log(`[gpu-worker] No GPU available, waiting... (${gpuRetries}/${maxGpuRetries})`);
-        await updateProgress(jobId, job.teamId, 5, `Waiting for GPU (${gpuRetries}/${maxGpuRetries})...`);
-        await new Promise((r) => setTimeout(r, 10000));
+        console.log(`[gpu-worker] No GPU available, waiting...`);
+        await updateProgress(jobId, job.teamId, 5, `Waiting for GPU`);
+        await new Promise((r) => setTimeout(r, 60000));
       }
-    }
-
-    if (!gpu) {
-      throw new Error("No GPU available after timeout");
     }
 
     console.log(`[gpu-worker] Using GPU ${gpu.id}`);
