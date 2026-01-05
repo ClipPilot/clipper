@@ -365,6 +365,7 @@ function waitForCompletion(
     const ws = new WebSocket(wsUrl);
     let timeout: NodeJS.Timeout | null = null;
     let settled = false;
+    let intentionalClose = false; // Track if we're closing intentionally
     let lastMessageTime = Date.now();
 
     const safeResolve = (value: WorkflowOutputs) => {
@@ -435,6 +436,7 @@ function waitForCompletion(
             console.log(`[gpu-worker] Executing: ${nodeMeta}`);
           } else {
             console.log("[gpu-worker] Workflow finished (node=null)");
+            intentionalClose = true;
             ws.close();
 
             try {
@@ -470,6 +472,7 @@ function waitForCompletion(
           msg.data.prompt_id === promptId
         ) {
           console.log("[gpu-worker] Execution complete");
+          intentionalClose = true;
           ws.close();
 
           try {
@@ -495,6 +498,7 @@ function waitForCompletion(
         }
 
         if (msg.type === "execution_error" && msg.data.prompt_id === promptId) {
+          intentionalClose = true;
           ws.close();
           const errMsg =
             msg.data.exception_message || msg.data.message || "Unknown error";
@@ -515,8 +519,9 @@ function waitForCompletion(
 
     ws.on("close", () => {
       console.log("[gpu-worker] WebSocket closed");
-      const silentDuration = Date.now() - lastMessageTime;
-      if (!settled) {
+      // Only reject if this was an unexpected close (not triggered by us after success/error)
+      if (!settled && !intentionalClose) {
+        const silentDuration = Date.now() - lastMessageTime;
         safeReject(
           new Error(
             `WebSocket closed unexpectedly (last message ${Math.round(silentDuration / 1000)}s ago)`
