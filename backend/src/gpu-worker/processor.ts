@@ -72,6 +72,13 @@ const workflowTemplate = workflowFullBody;
 
 const s3 = new S3Client({ region: config.aws.region });
 
+const ASSIGNED_GPU_ID = process.env.GPU_ID || null;
+
+function getAssignedGpu(): GpuConfig | null {
+  if (!ASSIGNED_GPU_ID) return null;
+  return gpuConfig.gpus.find((g) => g.id === ASSIGNED_GPU_ID) || null;
+}
+
 // ─────────────────────────────────────────────────────────────
 // GPU Management
 // ─────────────────────────────────────────────────────────────
@@ -108,18 +115,26 @@ async function checkGpuAvailability(
 }
 
 async function findAvailableGpu(): Promise<GpuConfig | null> {
+  const assignedGpu = getAssignedGpu();
+
+  if (assignedGpu) {
+    const status = await checkGpuAvailability(assignedGpu);
+    if (status.available) {
+      console.log(`[gpu-worker] Assigned GPU ${assignedGpu.id} available`);
+      return assignedGpu;
+    }
+    console.log(`[gpu-worker] Assigned GPU ${assignedGpu.id} busy (queue: ${status.queueRemaining})`);
+    return null;
+  }
+
   for (const gpu of gpuConfig.gpus) {
     try {
       const status = await checkGpuAvailability(gpu);
       if (status.available) {
-        console.log(
-          `[gpu-worker] GPU ${gpu.id} available (queue: ${status.queueRemaining})`
-        );
+        console.log(`[gpu-worker] GPU ${gpu.id} available (queue: ${status.queueRemaining})`);
         return gpu;
       }
-      console.log(
-        `[gpu-worker] GPU ${gpu.id} busy (queue: ${status.queueRemaining})`
-      );
+      console.log(`[gpu-worker] GPU ${gpu.id} busy (queue: ${status.queueRemaining})`);
     } catch {
       console.log(`[gpu-worker] GPU ${gpu.id} unreachable`);
     }

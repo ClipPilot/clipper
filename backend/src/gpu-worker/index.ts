@@ -166,6 +166,7 @@ async function main(): Promise<void> {
   console.log("[gpu-worker] Starting GPU processing worker...");
   console.log(`[gpu-worker] Queue URL: ${QUEUE_URL}`);
   console.log(`[gpu-worker] AWS Region: ${config.aws.region}`);
+  console.log(`[gpu-worker] Assigned GPU: ${process.env.GPU_ID || "auto (any available)"}`);
 
   if (!QUEUE_URL) {
     console.error("[gpu-worker] GPU_SQS_QUEUE_URL is not configured. Exiting.");
