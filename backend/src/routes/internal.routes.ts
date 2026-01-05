@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { emitClipsRefresh, emitClipUpdate } from "../services/socket.service";
+import { emitClipsRefresh, emitClipUpdate, emitComfyJobUpdate, ComfyJobUpdate } from "../services/socket.service";
 
 const router = Router();
 
@@ -130,6 +130,19 @@ router.post("/notify/clip-update", validateInternalKey, (req: Request, res: Resp
 
   emitClipUpdate(teamId, clip || { id: clipId });
   console.log(`[INTERNAL] Emitted clip-update for team ${teamId}, clip ${clipId}`);
+
+  return res.status(200).json({ success: true });
+});
+
+router.post("/notify/comfy-job-update", validateInternalKey, (req: Request, res: Response) => {
+  const { teamId, job } = req.body as { teamId: number; job: ComfyJobUpdate };
+
+  if (!teamId || !job) {
+    return res.status(400).json({ error: "teamId and job are required" });
+  }
+
+  emitComfyJobUpdate(teamId, job);
+  console.log(`[INTERNAL] Emitted comfy-job-update for team ${teamId}, job ${job.id}`);
 
   return res.status(200).json({ success: true });
 });

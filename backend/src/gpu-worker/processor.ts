@@ -13,7 +13,7 @@ import {
   mergeClips,
   extractFirstFrame,
 } from "../services/videoEditor.service";
-import { emitComfyJobUpdate } from "../services/socket.service";
+import { ComfyJobUpdate } from "../services/socket.service";
 import { teamService } from "../services/team.service";
 import { emailNotiService } from "../services/emailNoti.service";
 import { transcribeVideoService } from "../services/transcription.service";
@@ -22,6 +22,27 @@ import {
   generateSrtFromCaptions,
 } from "../services/captions.service";
 import { GpuJobMessage } from "../services/gpuSqs.service";
+
+const API_INTERNAL_URL = process.env.API_INTERNAL_URL || "http://localhost:3001";
+const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || "";
+
+async function emitJobUpdate(teamId: number, job: ComfyJobUpdate): Promise<void> {
+  try {
+    const response = await fetch(`${API_INTERNAL_URL}/internal/notify/comfy-job-update`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-internal-api-key": INTERNAL_API_KEY,
+      },
+      body: JSON.stringify({ teamId, job }),
+    });
+    if (!response.ok) {
+      console.error(`[gpu-worker] Failed to emit job update: ${response.status}`);
+    }
+  } catch (err) {
+    console.error(`[gpu-worker] Error emitting job update:`, (err as Error).message);
+  }
+}
 
 // ─────────────────────────────────────────────────────────────
 // Types & Configuration
@@ -229,7 +250,7 @@ async function startJobProcessing(
     })
     .where(eq(comfyJobs.id, job.jobId));
 
-  emitComfyJobUpdate(job.teamId, {
+  emitJobUpdate(job.teamId, {
     id: job.jobId,
     status: "running",
     progress: 5,
@@ -256,7 +277,7 @@ async function updateProgress(
     })
     .where(eq(comfyJobs.id, jobId));
 
-  emitComfyJobUpdate(teamId, {
+  emitJobUpdate(teamId, {
     id: jobId,
     status: "running",
     progress,
@@ -288,7 +309,7 @@ async function completeJob(
     })
     .where(eq(comfyJobs.id, jobId));
 
-  emitComfyJobUpdate(teamId, {
+  emitJobUpdate(teamId, {
     id: jobId,
     status: success ? "completed" : "failed",
     progress: success ? 100 : null,
