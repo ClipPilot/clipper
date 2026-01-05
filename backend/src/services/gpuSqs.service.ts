@@ -4,9 +4,9 @@ import { config } from "../config/env";
 // Swap type determines which workflow to use
 export type SwapType = "face" | "fullBody";
 
-// GPU Job message structure for SQS
 export interface GpuJobMessage {
   type: "ugc-face-swap";
+  jobId: string;
   teamId: number;
   userId: number;
   imageS3Key: string;

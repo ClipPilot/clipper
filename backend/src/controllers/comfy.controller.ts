@@ -217,7 +217,31 @@ export class ComfyController {
 
       await Promise.all(uploads);
 
-      const sqsMessageId = await gpuSqsService.sendFaceSwapJob({
+      const jobId = crypto.randomUUID();
+      const now = new Date();
+
+      await db
+        .insert(comfyJobs)
+        .values({
+          id: jobId,
+          teamId: parseInt(teamId),
+          status: "queued",
+          imageFile: imageS3Key,
+          videoFile: chunkS3Keys[0],
+          jobType: "ugc-face-swap-parent",
+          priority: Math.floor(Date.now() / 1000),
+          originalVideoS3Key,
+          spliceMode: isSpliceMode,
+          spliceMetadata: spliceMetadata || undefined,
+          progress: 0,
+          progressMessage: "Waiting for GPU worker",
+          createdAt: now,
+        });
+
+      console.log(`[comfy] Created job record in DB: ${jobId}`);
+
+      await gpuSqsService.sendFaceSwapJob({
+        jobId,
         teamId: parseInt(teamId),
         userId: req.user!.dbUserId,
         imageS3Key,
@@ -230,23 +254,22 @@ export class ComfyController {
         swapType,
       });
 
-      console.log(`[comfy] Sent job to GPU SQS queue: ${sqsMessageId}`);
+      console.log(`[comfy] Sent job to GPU SQS queue: ${jobId}`);
 
-      // Emit initial status update (worker will create DB record when processing starts)
       emitComfyJobUpdate(parseInt(teamId), {
-        id: sqsMessageId,
+        id: jobId,
         status: "queued",
         progress: 0,
-        progressMessage: "Job sent to GPU queue",
+        progressMessage: "Waiting for GPU worker",
         outputUrl: null,
         errorMessage: null,
-        createdAt: new Date().toISOString(),
+        createdAt: now.toISOString(),
         finishedAt: null,
       });
 
       return res.status(202).json({
         message: "UGC face swap job queued",
-        jobId: sqsMessageId,
+        jobId,
         duration: Math.round(totalDuration),
       });
     } catch (error) {

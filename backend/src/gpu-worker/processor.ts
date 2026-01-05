@@ -216,29 +216,21 @@ async function uploadFileToGpu(
 // Database Operations
 // ─────────────────────────────────────────────────────────────
 
-async function createJobRecord(
+async function startJobProcessing(
   job: GpuJobMessage
 ): Promise<string> {
-  const [record] = await db
-    .insert(comfyJobs)
-    .values({
-      teamId: job.teamId,
+  await db
+    .update(comfyJobs)
+    .set({
       status: "running",
-      imageFile: job.imageS3Key,
-      videoFile: job.chunkS3Keys[0],
-      jobType: "ugc-face-swap-parent",
-      priority: Math.floor(Date.now() / 1000),
-      originalVideoS3Key: job.originalVideoS3Key,
-      spliceMode: job.spliceMode,
-      spliceMetadata: job.spliceMetadata,
       progress: 5,
       progressMessage: "Starting GPU processing",
       startedAt: new Date(),
     })
-    .returning();
+    .where(eq(comfyJobs.id, job.jobId));
 
   emitComfyJobUpdate(job.teamId, {
-    id: record.id,
+    id: job.jobId,
     status: "running",
     progress: 5,
     progressMessage: "Starting GPU processing",
@@ -247,7 +239,7 @@ async function createJobRecord(
     finishedAt: null,
   });
 
-  return record.id;
+  return job.jobId;
 }
 
 async function updateProgress(
@@ -635,8 +627,8 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
   let jobId: string | null = null;
 
   try {
-    jobId = await createJobRecord(job);
-    console.log(`[gpu-worker] Created job record: ${jobId}`);
+    jobId = await startJobProcessing(job);
+    console.log(`[gpu-worker] Started processing job: ${jobId}`);
 
     let gpu: GpuConfig | null = null;
     let gpuRetries = 0;

@@ -140,15 +140,15 @@ variable "gpu_worker_memory" {
 }
 
 variable "gpu_worker_min_capacity" {
-  description = "Minimum number of GPU worker tasks"
+  description = "Minimum number of GPU worker tasks (should match GPU count in gpus.config.json)"
   type        = number
-  default     = 1
+  default     = 2
 }
 
 variable "gpu_worker_max_capacity" {
-  description = "Maximum number of GPU worker tasks"
+  description = "Maximum number of GPU worker tasks (should match GPU count in gpus.config.json)"
   type        = number
-  default     = 5
+  default     = 2
 }
 
 variable "internal_api_key" {
