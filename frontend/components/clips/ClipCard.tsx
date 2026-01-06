@@ -4,6 +4,8 @@ import React, { useState, memo, useRef, useEffect } from "react";
 import { Card, Button, Tooltip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { Clip } from "@/api/clips";
+import { apiFetch } from "@/lib/apiClient";
+import API_URL from "@/config/constants";
 
 interface ClipCardProps {
   clip: Clip;
@@ -12,6 +14,7 @@ interface ClipCardProps {
   onView?: () => void;
   onEdit?: () => void;
   isSelected?: boolean;
+  isUgcVideo?: boolean;
 }
 
 const ClipCardComponent: React.FC<ClipCardProps> = ({
@@ -21,6 +24,7 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
   onView,
   onEdit,
   isSelected = false,
+  isUgcVideo = false,
 }) => {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
@@ -50,13 +54,23 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
 
     setIsDownloading(true);
     try {
-      const response = await fetch(clip.clipUrl);
+      const filename = `${clip.title || `clip-${clip.id}`}.mp4`;
+      let response: Response;
+
+      if (isUgcVideo) {
+        const downloadUrl = `${API_URL}/face-swap/download-fixed?url=${encodeURIComponent(clip.clipUrl)}&filename=${encodeURIComponent(filename)}`;
+        response = await apiFetch(downloadUrl);
+        if (!response.ok) throw new Error("Download failed");
+      } else {
+        response = await fetch(clip.clipUrl);
+      }
+
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
 
       const link = document.createElement("a");
       link.href = blobUrl;
-      link.download = `${clip.title || `clip-${clip.id}`}.mp4`;
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -443,6 +457,7 @@ export const ClipCard = memo(ClipCardComponent, (prevProps, nextProps) => {
     prevProps.clip.clipUrl === nextProps.clip.clipUrl &&
     prevProps.clip.raw_video_path === nextProps.clip.raw_video_path &&
     prevProps.viewMode === nextProps.viewMode &&
-    prevProps.isSelected === nextProps.isSelected
+    prevProps.isSelected === nextProps.isSelected &&
+    prevProps.isUgcVideo === nextProps.isUgcVideo
   );
 });
