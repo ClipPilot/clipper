@@ -46,13 +46,21 @@ export default function SharedClipPage() {
   const handleDownload = async () => {
     if (!clip?.clipUrl || isDownloading) return;
 
+    // Only use download-fixed-public for ComfyUI outputs (UGC videos)
+    const isComfyOutput = clip.clipUrl.includes("comfy-outputs");
+
     setIsDownloading(true);
     try {
       const filename = `${clip.title || `clip_${clip.id}`}.mp4`.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const downloadUrl = `${API_URL}/face-swap/download-fixed-public?url=${encodeURIComponent(clip.clipUrl)}&filename=${encodeURIComponent(filename)}`;
+      let response: Response;
 
-      const response = await fetch(downloadUrl);
-      if (!response.ok) throw new Error("Download failed");
+      if (isComfyOutput) {
+        const downloadUrl = `${API_URL}/face-swap/download-fixed-public?url=${encodeURIComponent(clip.clipUrl)}&filename=${encodeURIComponent(filename)}`;
+        response = await fetch(downloadUrl);
+        if (!response.ok) throw new Error("Download failed");
+      } else {
+        response = await fetch(clip.clipUrl);
+      }
 
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
@@ -171,7 +179,7 @@ export default function SharedClipPage() {
                     startContent={!isDownloading && <Icon icon="solar:download-bold" />}
                     onPress={handleDownload}
                   >
-                    {isDownloading ? "Processing..." : "Download Clip"}
+                    {isDownloading ? "Preparing, just a moment..." : "Download Clip"}
                   </Button>
                 </div>
               </div>
