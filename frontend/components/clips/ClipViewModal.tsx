@@ -16,6 +16,8 @@ import {
   DropdownItem,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import { apiFetch } from "@/lib/apiClient";
+import API_URL from "@/config/constants";
 
 interface Folder {
   id: number;
@@ -99,6 +101,7 @@ export default function ClipViewModal({
   const [isSharing, setIsSharing] = useState(false);
   const [shareToken, setShareToken] = useState<string | null>(clip.share_token || null);
   const [showShareTooltip, setShowShareTooltip] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   React.useEffect(() => {
     setSelectedTagIds(clip.tags?.map((t) => t.id) || []);
@@ -128,21 +131,29 @@ export default function ClipViewModal({
   };
 
   const handleDownload = async () => {
-    if (!clip.clipUrl) return;
+    if (!clip.clipUrl || isDownloading) return;
 
+    setIsDownloading(true);
     try {
-      const response = await fetch(clip.clipUrl);
+      const filename = `clip_${clip.id}.mp4`;
+      const downloadUrl = `${API_URL}/face-swap/download-fixed?url=${encodeURIComponent(clip.clipUrl)}&filename=${encodeURIComponent(filename)}`;
+
+      const response = await apiFetch(downloadUrl);
+      if (!response.ok) throw new Error("Download failed");
+
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `clip_${clip.id}.mp4`;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (error) {
       console.error("Download failed:", error);
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -714,10 +725,11 @@ export default function ClipViewModal({
             {clip.clipUrl && (
               <Button
                 color="primary"
-                startContent={<Icon icon="solar:download-bold" />}
+                isLoading={isDownloading}
+                startContent={!isDownloading && <Icon icon="solar:download-bold" />}
                 onPress={handleDownload}
               >
-                Download
+                {isDownloading ? "Processing..." : "Download"}
               </Button>
             )}
           </div>
