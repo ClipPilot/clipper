@@ -4,13 +4,17 @@ import fs from "fs";
 import crypto from "crypto";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { db } from "../db";
-import { comfyJobs, teamMembers, clips, users } from "@clipper/shared-db/src/schema";
+import {
+  comfyJobs,
+  teamMembers,
+  clips,
+  users,
+} from "@clipper/shared-db/src/schema";
 import { eq } from "drizzle-orm";
 import { config } from "../config/env";
 import { s3Service } from "../services/s3.service";
 import {
   cutClip,
-  mergeClips,
   mergeClipsGpu,
   extractFirstFrame,
 } from "../services/videoEditor.service";
@@ -24,24 +28,36 @@ import {
 } from "../services/captions.service";
 import { GpuJobMessage, SpliceSegmentInfo } from "../services/gpuSqs.service";
 
-const API_INTERNAL_URL = process.env.API_INTERNAL_URL || "http://localhost:3001";
+const API_INTERNAL_URL =
+  process.env.API_INTERNAL_URL || "http://localhost:3001";
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || "";
 
-async function emitJobUpdate(teamId: number, job: ComfyJobUpdate): Promise<void> {
+async function emitJobUpdate(
+  teamId: number,
+  job: ComfyJobUpdate
+): Promise<void> {
   try {
-    const response = await fetch(`${API_INTERNAL_URL}/internal/notify/comfy-job-update`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-internal-api-key": INTERNAL_API_KEY,
-      },
-      body: JSON.stringify({ teamId, job }),
-    });
+    const response = await fetch(
+      `${API_INTERNAL_URL}/internal/notify/comfy-job-update`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-internal-api-key": INTERNAL_API_KEY,
+        },
+        body: JSON.stringify({ teamId, job }),
+      }
+    );
     if (!response.ok) {
-      console.error(`[gpu-worker] Failed to emit job update: ${response.status}`);
+      console.error(
+        `[gpu-worker] Failed to emit job update: ${response.status}`
+      );
     }
   } catch (err) {
-    console.error(`[gpu-worker] Error emitting job update:`, (err as Error).message);
+    console.error(
+      `[gpu-worker] Error emitting job update:`,
+      (err as Error).message
+    );
   }
 }
 
@@ -73,7 +89,6 @@ interface WorkflowOutputs {
     images?: ComfyOutput[];
   };
 }
-
 
 // Load GPU and workflow configs
 const configDir = path.join(__dirname, "../config/comfy");
@@ -145,7 +160,9 @@ async function findAvailableGpu(): Promise<GpuConfig | null> {
       console.log(`[gpu-worker] Assigned GPU ${assignedGpu.id} available`);
       return assignedGpu;
     }
-    console.log(`[gpu-worker] Assigned GPU ${assignedGpu.id} busy (queue: ${status.queueRemaining})`);
+    console.log(
+      `[gpu-worker] Assigned GPU ${assignedGpu.id} busy (queue: ${status.queueRemaining})`
+    );
     return null;
   }
 
@@ -153,10 +170,14 @@ async function findAvailableGpu(): Promise<GpuConfig | null> {
     try {
       const status = await checkGpuAvailability(gpu);
       if (status.available) {
-        console.log(`[gpu-worker] GPU ${gpu.id} available (queue: ${status.queueRemaining})`);
+        console.log(
+          `[gpu-worker] GPU ${gpu.id} available (queue: ${status.queueRemaining})`
+        );
         return gpu;
       }
-      console.log(`[gpu-worker] GPU ${gpu.id} busy (queue: ${status.queueRemaining})`);
+      console.log(
+        `[gpu-worker] GPU ${gpu.id} busy (queue: ${status.queueRemaining})`
+      );
     } catch {
       console.log(`[gpu-worker] GPU ${gpu.id} unreachable`);
     }
@@ -238,9 +259,7 @@ async function uploadFileToGpu(
 // Database Operations
 // ─────────────────────────────────────────────────────────────
 
-async function startJobProcessing(
-  job: GpuJobMessage
-): Promise<string> {
+async function startJobProcessing(job: GpuJobMessage): Promise<string> {
   await db
     .update(comfyJobs)
     .set({
@@ -418,7 +437,9 @@ function waitForCompletion(
       timeout = setTimeout(
         () => {
           ws.close();
-          safeReject(new Error("Workflow execution timed out after 60 minutes"));
+          safeReject(
+            new Error("Workflow execution timed out after 60 minutes")
+          );
         },
         60 * 60 * 1000
       );
@@ -664,10 +685,14 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
     }
 
     console.log(`[gpu-worker] Using GPU ${gpu.id}`);
-    console.log(`[gpu-worker] Swap type: ${job.swapType || "face"} (${job.swapType === "fullBody" ? "full body" : "face only"})`);
+    console.log(
+      `[gpu-worker] Swap type: ${job.swapType || "face"} (${job.swapType === "fullBody" ? "full body" : "face only"})`
+    );
     await updateProgress(jobId, job.teamId, 10, "Downloading files from S3");
 
-    console.log(`[gpu-worker] Downloading ${job.chunkS3Keys.length} chunks and reference image`);
+    console.log(
+      `[gpu-worker] Downloading ${job.chunkS3Keys.length} chunks and reference image`
+    );
     await s3Service.downloadFile(job.imageS3Key, localImagePath);
 
     const chunkLocalPaths: string[] = [];
@@ -681,8 +706,15 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
       }
     }
 
-    console.log(`[gpu-worker] Downloaded ${chunkLocalPaths.length} chunks for processing`);
-    await updateProgress(jobId, job.teamId, 15, `Processing ${chunkLocalPaths.length} video segments`);
+    console.log(
+      `[gpu-worker] Downloaded ${chunkLocalPaths.length} chunks for processing`
+    );
+    await updateProgress(
+      jobId,
+      job.teamId,
+      15,
+      `Processing ${chunkLocalPaths.length} video segments`
+    );
 
     console.log(`[gpu-worker] Uploading reference image to GPU`);
     let gpuImageName = await uploadFileToGpu(gpu, localImagePath);
@@ -692,11 +724,17 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
 
     for (let i = 0; i < chunkLocalPaths.length; i++) {
       const chunkPath = chunkLocalPaths[i];
-      console.log(`[gpu-worker] Processing chunk ${i + 1}/${chunkLocalPaths.length}...`);
+      console.log(
+        `[gpu-worker] Processing chunk ${i + 1}/${chunkLocalPaths.length}...`
+      );
 
       const gpuVideoName = await uploadFileToGpu(gpu, chunkPath);
       const clientId = crypto.randomUUID();
-      const workflow = buildWorkflow(gpuImageName, gpuVideoName, job.swapType || "face");
+      const workflow = buildWorkflow(
+        gpuImageName,
+        gpuVideoName,
+        job.swapType || "face"
+      );
       const promptId = await submitPrompt(gpu, workflow, clientId);
 
       console.log(`[gpu-worker] Chunk ${i} submitted, prompt: ${promptId}`);
@@ -720,8 +758,15 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
         console.log(`[gpu-worker] Extracted golden reference from chunk 1`);
       }
 
-      const chunkProgress = Math.round(20 + ((i + 1) / chunkLocalPaths.length) * 60);
-      await updateProgress(jobId, job.teamId, chunkProgress, `Processing: ${i + 1}/${chunkLocalPaths.length} segments complete`);
+      const chunkProgress = Math.round(
+        20 + ((i + 1) / chunkLocalPaths.length) * 60
+      );
+      await updateProgress(
+        jobId,
+        job.teamId,
+        chunkProgress,
+        `Processing: ${i + 1}/${chunkLocalPaths.length} segments complete`
+      );
       console.log(`[gpu-worker] Chunk ${i + 1} processed successfully`);
     }
 
@@ -753,6 +798,22 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
       await s3Service.downloadFile(job.originalVideoS3Key, originalPath);
       console.log(`[gpu-worker] Downloaded original video for splice`);
 
+      const CHUNK_DURATION = 10;
+      const CHUNK_LEEWAY = 1;
+
+      function getChunkCount(duration: number): number {
+        if (duration <= CHUNK_DURATION + CHUNK_LEEWAY) return 1;
+        let count = 0;
+        let start = 0;
+        while (start < duration) {
+          count++;
+          const remaining = duration - start;
+          if (remaining <= CHUNK_DURATION + CHUNK_LEEWAY) break;
+          start += CHUNK_DURATION;
+        }
+        return count;
+      }
+
       const spliceSegmentPaths: string[] = [];
       const spliceSegmentS3Keys: SpliceSegmentInfo[] = [];
       let processedIndex = 0;
@@ -762,11 +823,23 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
         const segPath = path.join(outDir, `splice_seg_${i}.mp4`);
 
         if (seg.type === "processed") {
-          const src = processedChunkPaths[processedIndex++];
-          console.log(
-            `[gpu-worker] Splice segment ${i}: PROCESSED ${seg.start}-${seg.end}s from chunk ${src}`
+          const duration = seg.end - seg.start;
+          const numChunks = getChunkCount(duration);
+          const chunksForSegment = processedChunkPaths.slice(
+            processedIndex,
+            processedIndex + numChunks
           );
-          fs.copyFileSync(src, segPath);
+          processedIndex += numChunks;
+
+          console.log(
+            `[gpu-worker] Splice segment ${i}: PROCESSED ${seg.start}-${seg.end}s (${duration}s) using ${numChunks} chunks`
+          );
+
+          if (chunksForSegment.length === 1) {
+            fs.copyFileSync(chunksForSegment[0], segPath);
+          } else {
+            await mergeClipsGpu(chunksForSegment, segPath);
+          }
         } else {
           console.log(
             `[gpu-worker] Splice segment ${i}: ORIGINAL ${seg.start}-${seg.end}s`
