@@ -197,6 +197,49 @@ export const extractLastFrame = (
   });
 };
 
+export const cutClipGpu = (
+  input: string,
+  output: string,
+  start: number,
+  end: number
+) => {
+  const duration = Math.max(0, end - start);
+  console.log(
+    `[CUT-GPU] Cutting ${start}s-${end}s (${duration.toFixed(1)}s) from ${input}`
+  );
+
+  return new Promise((resolve, reject) => {
+    ffmpeg(input)
+      .inputOptions([`-ss ${start}`])
+      .outputOptions([
+        `-t ${duration}`,
+        "-fflags +genpts",
+        "-avoid_negative_ts make_zero",
+        "-reset_timestamps 1",
+        "-c:v libx264",
+        "-preset veryfast",
+        "-pix_fmt yuv420p",
+        "-c:a aac",
+        "-b:a 192k",
+      ])
+      .save(output)
+      .on("end", () => {
+        if (!fs.existsSync(output)) {
+          return reject(
+            new Error(`Cut clip failed: output file not created at ${output}`)
+          );
+        }
+        console.log(`[CUT-GPU] Success: ${output}`);
+        resolve(output);
+      })
+      .on("error", (err) => {
+        console.error(`[CUT-GPU] Failed: ${err.message}`);
+        reject(err);
+      })
+      .run();
+  });
+};
+
 export const cutClip = (
   input: string,
   output: string,

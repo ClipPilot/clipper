@@ -10,6 +10,7 @@ import { config } from "../config/env";
 import { s3Service } from "../services/s3.service";
 import {
   cutClip,
+  cutClipGpu,
   mergeClips,
   mergeClipsGpu,
   extractFirstFrame,
@@ -754,29 +755,24 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
       console.log(`[gpu-worker] Downloaded original video for splice`);
 
       const spliceSegmentPaths: string[] = [];
-      let processedOffset = 0;
+      let processedIndex = 0;
 
       for (let i = 0; i < spliceData.segments.length; i++) {
         const seg = spliceData.segments[i];
         const segPath = path.join(outDir, `splice_seg_${i}.mp4`);
 
         if (seg.type === "processed") {
+          const src = processedChunkPaths[processedIndex++];
           const duration = seg.end - seg.start;
           console.log(
-            `[gpu-worker] Splice segment ${i}: PROCESSED ${seg.start}-${seg.end}s`
+            `[gpu-worker] Splice segment ${i}: PROCESSED ${seg.start}-${seg.end}s from ${src}`
           );
-          await cutClip(
-            finalOutputPath,
-            segPath,
-            processedOffset,
-            processedOffset + duration
-          );
-          processedOffset += duration;
+          await cutClipGpu(src, segPath, 0, duration);
         } else {
           console.log(
             `[gpu-worker] Splice segment ${i}: ORIGINAL ${seg.start}-${seg.end}s`
           );
-          await cutClip(originalPath, segPath, seg.start, seg.end);
+          await cutClipGpu(originalPath, segPath, seg.start, seg.end);
         }
         spliceSegmentPaths.push(segPath);
       }
