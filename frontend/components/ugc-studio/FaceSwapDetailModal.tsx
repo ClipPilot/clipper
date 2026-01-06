@@ -15,6 +15,12 @@ import {
 import { Icon } from "@iconify/react";
 import { FaceSwapJob, formatDuration, getStatusColor, getStatusIcon } from "./types";
 
+function formatTime(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+
 interface FaceSwapDetailModalProps {
   job: FaceSwapJob | null;
   isOpen: boolean;
@@ -25,6 +31,8 @@ interface FaceSwapDetailModalProps {
 export function FaceSwapDetailModal({ job, isOpen, onClose, onDelete }: FaceSwapDetailModalProps) {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showSegments, setShowSegments] = useState(false);
+  const [activeSegmentIndex, setActiveSegmentIndex] = useState<number | null>(null);
 
   const handleDelete = async () => {
     if (!job || isDeleting || !onDelete) return;
@@ -66,12 +74,18 @@ export function FaceSwapDetailModal({ job, isOpen, onClose, onDelete }: FaceSwap
     }
   };
 
+  const handleClose = () => {
+    setShowSegments(false);
+    setActiveSegmentIndex(null);
+    onClose();
+  };
+
   if (!job) return null;
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       size="2xl"
       classNames={{
         base: "bg-surface-base border border-border-base",
@@ -87,13 +101,87 @@ export function FaceSwapDetailModal({ job, isOpen, onClose, onDelete }: FaceSwap
         <ModalBody className="py-6">
           <div className="space-y-6">
             {job.status === "completed" && job.outputUrl ? (
-              <div className="rounded-xl overflow-hidden bg-black aspect-video">
-                <video
-                  src={job.outputUrl}
-                  className="w-full h-full object-contain"
-                  controls
-                  playsInline
-                />
+              <div className="space-y-3">
+                <div className="rounded-xl overflow-hidden bg-black aspect-video">
+                  <video
+                    src={activeSegmentIndex !== null && job.spliceSegments?.[activeSegmentIndex]
+                      ? job.spliceSegments[activeSegmentIndex].url
+                      : job.outputUrl}
+                    className="w-full h-full object-contain"
+                    controls
+                    playsInline
+                    key={activeSegmentIndex !== null ? `segment-${activeSegmentIndex}` : "main"}
+                  />
+                </div>
+                {job.spliceSegments && job.spliceSegments.length > 0 && (
+                  <div className="space-y-2">
+                    <Button
+                      variant="flat"
+                      size="sm"
+                      onPress={() => {
+                        setShowSegments(!showSegments);
+                        if (!showSegments) setActiveSegmentIndex(null);
+                      }}
+                      startContent={<Icon icon={showSegments ? "solar:alt-arrow-up-bold" : "solar:layers-bold"} width={16} />}
+                      className="w-full"
+                    >
+                      {showSegments ? "Hide Segments" : `View ${job.spliceSegments.length} Individual Segments`}
+                    </Button>
+                    {showSegments && (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        <button
+                          onClick={() => setActiveSegmentIndex(null)}
+                          className={`p-2 rounded-lg border transition-colors text-left ${
+                            activeSegmentIndex === null
+                              ? "border-accent-400 bg-accent-400/10"
+                              : "border-border-base hover:border-accent-400/50"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <Icon icon="solar:video-frame-bold" className="text-accent-400" width={14} />
+                            <span className="text-xs font-medium text-text-primary">Final Video</span>
+                          </div>
+                          <p className="text-[10px] text-text-tertiary">Complete merged output</p>
+                        </button>
+                        {job.spliceSegments.map((segment, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => setActiveSegmentIndex(idx)}
+                            className={`p-2 rounded-lg border transition-colors text-left ${
+                              activeSegmentIndex === idx
+                                ? "border-accent-400 bg-accent-400/10"
+                                : "border-border-base hover:border-accent-400/50"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 mb-1">
+                              <Icon
+                                icon={segment.type === "processed" ? "solar:mask-happly-bold" : "solar:videocamera-bold"}
+                                className={segment.type === "processed" ? "text-green-400" : "text-blue-400"}
+                                width={14}
+                              />
+                              <span className="text-xs font-medium text-text-primary">
+                                Segment {idx + 1}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Chip
+                                size="sm"
+                                variant="flat"
+                                color={segment.type === "processed" ? "success" : "primary"}
+                                className="text-[10px] h-4"
+                              >
+                                {segment.type === "processed" ? "Swapped" : "Original"}
+                              </Chip>
+                            </div>
+                            <p className="text-[10px] text-text-tertiary mt-1">
+                              {formatTime(segment.start)} - {formatTime(segment.end)}
+                            </p>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="rounded-xl bg-surface-elevated aspect-video flex items-center justify-center">
@@ -168,7 +256,7 @@ export function FaceSwapDetailModal({ job, isOpen, onClose, onDelete }: FaceSwap
               )}
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="flat" onPress={onClose}>
+              <Button variant="flat" onPress={handleClose}>
                 Close
               </Button>
               {job.status === "completed" && job.outputUrl && (

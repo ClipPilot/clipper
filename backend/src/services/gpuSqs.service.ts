@@ -4,6 +4,13 @@ import { config } from "../config/env";
 // Swap type determines which workflow to use
 export type SwapType = "face" | "fullBody";
 
+export interface SpliceSegmentInfo {
+  s3Key: string;
+  type: string;
+  start: number;
+  end: number;
+}
+
 export interface GpuJobMessage {
   type: "ugc-face-swap";
   jobId: string;
@@ -21,6 +28,7 @@ export interface GpuJobMessage {
   };
   swapType: SwapType;
   createdAt: string;
+  spliceSegmentS3Keys?: SpliceSegmentInfo[];
 }
 
 const sqsClient = new SQSClient({

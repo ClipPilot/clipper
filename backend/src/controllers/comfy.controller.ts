@@ -305,6 +305,7 @@ export class ComfyController {
           errorMessage: comfyJobs.errorMessage,
           createdAt: comfyJobs.createdAt,
           finishedAt: comfyJobs.finishedAt,
+          spliceMetadata: comfyJobs.spliceMetadata,
         })
         .from(comfyJobs)
         .where(eq(comfyJobs.id, jobId));
@@ -313,20 +314,32 @@ export class ComfyController {
         return res.status(404).json({ error: "Job not found" });
       }
 
-      // Generate signed URL if job has output file
       let outputUrl: string | null = null;
       if (job.outputFile) {
-        // Handle legacy s3:// URIs by extracting the key
         const s3Key = job.outputFile.startsWith("s3://")
           ? job.outputFile.replace(/^s3:\/\/[^/]+\//, "")
           : job.outputFile;
         outputUrl = await s3Service.getPresignedUrl(s3Key, 3600);
       }
 
+      let spliceSegments: Array<{ url: string; type: string; start: number; end: number }> | null = null;
+      const metadata = job.spliceMetadata as { processedSegments?: Array<{ s3Key: string; type: string; start: number; end: number }> } | null;
+      if (metadata?.processedSegments) {
+        spliceSegments = await Promise.all(
+          metadata.processedSegments.map(async (seg) => ({
+            url: await s3Service.getPresignedUrl(seg.s3Key, 3600),
+            type: seg.type,
+            start: seg.start,
+            end: seg.end,
+          }))
+        );
+      }
+
       return res.status(200).json({
         job: {
           ...job,
           outputUrl,
+          spliceSegments,
         },
       });
     } catch (error) {
@@ -355,24 +368,37 @@ export class ComfyController {
           errorMessage: comfyJobs.errorMessage,
           createdAt: comfyJobs.createdAt,
           finishedAt: comfyJobs.finishedAt,
+          spliceMetadata: comfyJobs.spliceMetadata,
         })
         .from(comfyJobs)
         .where(eq(comfyJobs.teamId, parseInt(teamId)))
         .orderBy(desc(comfyJobs.createdAt))
         .limit(20);
 
-      // Generate signed URLs for completed jobs
       const jobsWithUrls = await Promise.all(
         jobs.map(async (job) => {
           let outputUrl: string | null = null;
           if (job.outputFile) {
-            // Handle legacy s3:// URIs by extracting the key
             const s3Key = job.outputFile.startsWith("s3://")
               ? job.outputFile.replace(/^s3:\/\/[^/]+\//, "")
               : job.outputFile;
             outputUrl = await s3Service.getPresignedUrl(s3Key, 3600);
           }
-          return { ...job, outputUrl };
+
+          let spliceSegments: Array<{ url: string; type: string; start: number; end: number }> | null = null;
+          const metadata = job.spliceMetadata as { processedSegments?: Array<{ s3Key: string; type: string; start: number; end: number }> } | null;
+          if (metadata?.processedSegments) {
+            spliceSegments = await Promise.all(
+              metadata.processedSegments.map(async (seg) => ({
+                url: await s3Service.getPresignedUrl(seg.s3Key, 3600),
+                type: seg.type,
+                start: seg.start,
+                end: seg.end,
+              }))
+            );
+          }
+
+          return { ...job, outputUrl, spliceSegments };
         })
       );
 

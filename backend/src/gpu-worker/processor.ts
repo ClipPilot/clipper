@@ -22,7 +22,7 @@ import {
   convertWordsToCaptionEntries,
   generateSrtFromCaptions,
 } from "../services/captions.service";
-import { GpuJobMessage } from "../services/gpuSqs.service";
+import { GpuJobMessage, SpliceSegmentInfo } from "../services/gpuSqs.service";
 
 const API_INTERNAL_URL = process.env.API_INTERNAL_URL || "http://localhost:3001";
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || "";
@@ -754,6 +754,7 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
       console.log(`[gpu-worker] Downloaded original video for splice`);
 
       const spliceSegmentPaths: string[] = [];
+      const spliceSegmentS3Keys: SpliceSegmentInfo[] = [];
       let processedOffset = 0;
 
       for (let i = 0; i < spliceData.segments.length; i++) {
@@ -779,6 +780,17 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
           await cutClip(originalPath, segPath, seg.start, seg.end);
         }
         spliceSegmentPaths.push(segPath);
+
+        const segBuffer = fs.readFileSync(segPath);
+        const segS3Key = `comfy-outputs/${job.teamId}/${jobId}/segment_${i}_${seg.type}.mp4`;
+        await uploadToS3(segBuffer, segS3Key);
+        spliceSegmentS3Keys.push({
+          s3Key: segS3Key,
+          type: seg.type,
+          start: seg.start,
+          end: seg.end,
+        });
+        console.log(`[gpu-worker] Uploaded segment ${i} to S3: ${segS3Key}`);
       }
 
       const splicedPath = path.join(outDir, `spliced_final_${Date.now()}.mp4`);
@@ -787,6 +799,19 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
       console.log(
         `[gpu-worker] Spliced ${spliceSegmentPaths.length} segments into full video`
       );
+
+      job.spliceSegmentS3Keys = spliceSegmentS3Keys;
+
+      await db
+        .update(comfyJobs)
+        .set({
+          spliceMetadata: {
+            ...spliceData,
+            processedSegments: spliceSegmentS3Keys,
+          },
+        })
+        .where(eq(comfyJobs.id, jobId));
+      console.log(`[gpu-worker] Updated job with splice segment S3 keys`);
     }
 
     // Step 10: Upload final video to S3
@@ -812,6 +837,14 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
         .limit(1);
 
       if (member) {
+        const clipMetadata: Record<string, unknown> = {
+          type: "face-swap",
+          comfyJobId: jobId,
+        };
+        if (job.spliceSegmentS3Keys && job.spliceSegmentS3Keys.length > 0) {
+          clipMetadata.spliceSegments = job.spliceSegmentS3Keys;
+        }
+
         const [clip] = await db
           .insert(clips)
           .values({
@@ -822,7 +855,7 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
             source_video_path: job.chunkS3Keys[0],
             status: "completed",
             saved: true,
-            clip_metadata: { type: "face-swap", comfyJobId: jobId },
+            clip_metadata: clipMetadata,
             title: "UGC Face Swap",
           })
           .returning();

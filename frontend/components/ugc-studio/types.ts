@@ -5,6 +5,13 @@ export interface UploadedFile {
   preview: string;
 }
 
+export interface SpliceSegment {
+  url: string;
+  type: "processed" | "original";
+  start: number;
+  end: number;
+}
+
 export interface FaceSwapJob {
   id: string;
   status: "queued" | "running" | "completed" | "failed";
@@ -14,6 +21,7 @@ export interface FaceSwapJob {
   errorMessage: string | null;
   createdAt: string;
   finishedAt: string | null;
+  spliceSegments?: SpliceSegment[] | null;
 }
 
 export interface SelectedCharacter {
