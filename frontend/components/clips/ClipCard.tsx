@@ -52,12 +52,15 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
   const handleDownload = async (e: any) => {
     if (!clip.clipUrl || isDownloading) return;
 
+    // Auto-detect UGC videos by checking if URL contains "comfy-outputs"
+    const isUgc = isUgcVideo || clip.clipUrl.includes("comfy-outputs");
+
     setIsDownloading(true);
     try {
       const filename = `${clip.title || `clip-${clip.id}`}.mp4`;
       let response: Response;
 
-      if (isUgcVideo) {
+      if (isUgc) {
         const downloadUrl = `${API_URL}/face-swap/download-fixed?url=${encodeURIComponent(clip.clipUrl)}&filename=${encodeURIComponent(filename)}`;
         response = await apiFetch(downloadUrl);
         if (!response.ok) throw new Error("Download failed");
