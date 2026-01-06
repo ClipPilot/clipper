@@ -9,8 +9,8 @@ import { eq } from "drizzle-orm";
 import { config } from "../config/env";
 import { s3Service } from "../services/s3.service";
 import {
-  cutClip,
-  mergeClips,
+  cutClipGPU,
+  mergeClipsGPU,
   extractFirstFrame,
 } from "../services/videoEditor.service";
 import { ComfyJobUpdate } from "../services/socket.service";
@@ -729,7 +729,7 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
     await updateProgress(jobId, job.teamId, 85, "Stitching video segments");
 
     let finalOutputPath = path.join(outDir, `final_${Date.now()}.mp4`);
-    await mergeClips(processedChunkPaths, finalOutputPath);
+    await mergeClipsGPU(processedChunkPaths, finalOutputPath);
     console.log(`[gpu-worker] Stitched ${processedChunkPaths.length} chunks`);
 
     // Step 9: Splice assembly (if splice mode enabled)
@@ -764,7 +764,7 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
           console.log(
             `[gpu-worker] Splice segment ${i}: PROCESSED ${seg.start}-${seg.end}s`
           );
-          await cutClip(
+          await cutClipGPU(
             finalOutputPath,
             segPath,
             processedOffset,
@@ -775,13 +775,13 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
           console.log(
             `[gpu-worker] Splice segment ${i}: ORIGINAL ${seg.start}-${seg.end}s`
           );
-          await cutClip(originalPath, segPath, seg.start, seg.end);
+          await cutClipGPU(originalPath, segPath, seg.start, seg.end);
         }
         spliceSegmentPaths.push(segPath);
       }
 
       const splicedPath = path.join(outDir, `spliced_final_${Date.now()}.mp4`);
-      await mergeClips(spliceSegmentPaths, splicedPath);
+      await mergeClipsGPU(spliceSegmentPaths, splicedPath);
       finalOutputPath = splicedPath;
       console.log(
         `[gpu-worker] Spliced ${spliceSegmentPaths.length} segments into full video`

@@ -206,9 +206,9 @@ export const cutClip = (
 
   return new Promise((resolve, reject) => {
     ffmpeg(input)
-      .setStartTime(start)
-      .setDuration(duration)
       .outputOptions([
+        `-ss ${start}`,
+        `-t ${duration}`,
         "-c:v libx264",
         "-preset ultrafast",
         "-crf 28",
@@ -217,8 +217,8 @@ export const cutClip = (
         "-ac 2",
         "-c:a aac",
         "-b:a 128k",
-        "-avoid_negative_ts make_zero",
-        "-reset_timestamps 1",
+        "-vsync cfr",
+        "-async 1",
       ])
       .save(output)
       .on("end", () => {
@@ -247,10 +247,68 @@ export const cutClip = (
       .run();
   });
 };
+
+export const cutClipGPU = (
+  input: string,
+  output: string,
+  start: number,
+  end: number
+) => {
+  const duration = end - start;
+  console.log(
+    `[CUT-GPU] Cutting ${start}s-${end}s (${duration.toFixed(1)}s) from ${input}`
+  );
+
+  return new Promise((resolve, reject) => {
+    ffmpeg(input)
+      .setStartTime(start)
+      .setDuration(duration)
+      .videoFilters(["setpts=PTS-STARTPTS"])
+      .audioFilters(["asetpts=PTS-STARTPTS"])
+      .outputOptions([
+        "-c:v libx264",
+        "-preset ultrafast",
+        "-crf 28",
+        "-vsync cfr",
+        "-r 30",
+        "-ar 48000",
+        "-ac 2",
+        "-c:a aac",
+        "-b:a 128k",
+        "-fflags +genpts",
+        "-avoid_negative_ts make_zero",
+        "-reset_timestamps 1",
+      ])
+      .save(output)
+      .on("end", () => {
+        if (!fs.existsSync(output)) {
+          return reject(
+            new Error(`Cut clip failed: output file not created at ${output}`)
+          );
+        }
+        const stats = fs.statSync(output);
+        if (stats.size < 1000) {
+          return reject(
+            new Error(
+              `Cut clip failed: output file too small (${stats.size} bytes)`
+            )
+          );
+        }
+        console.log(
+          `[CUT-GPU] Success: ${output} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`
+        );
+        resolve(output);
+      })
+      .on("error", (err) => {
+        console.error(`[CUT-GPU] Failed: ${err.message}`);
+        reject(err);
+      })
+      .run();
+  });
+};
 export const mergeClips = async (clips: string[], outputPath: string) => {
   console.log(`[MERGE] Merging ${clips.length} clips...`);
 
-  // Verify all input clips exist
   for (const clip of clips) {
     if (!fs.existsSync(clip)) {
       throw new Error(`[MERGE] Input clip not found: ${clip}`);
@@ -364,6 +422,64 @@ export const mergeClips = async (clips: string[], outputPath: string) => {
         resolve(outputPath);
       })
       .on("error", (err) => reject(err));
+  });
+};
+
+export const mergeClipsGPU = async (clips: string[], outputPath: string) => {
+  console.log(`[MERGE-GPU] Merging ${clips.length} clips with timestamp normalization...`);
+
+  for (const clip of clips) {
+    if (!fs.existsSync(clip)) {
+      throw new Error(`[MERGE-GPU] Input clip not found: ${clip}`);
+    }
+    const stats = fs.statSync(clip);
+    console.log(
+      `[MERGE-GPU] Input: ${clip} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`
+    );
+  }
+
+  const listPath = outputPath + ".txt";
+  fs.writeFileSync(
+    listPath,
+    clips.map((c) => `file '${c.replace(/'/g, "'\\''")}'`).join("\n")
+  );
+
+  return new Promise((resolve, reject) => {
+    ffmpeg()
+      .input(listPath)
+      .inputOptions([
+        "-f concat",
+        "-safe 0",
+        "-fflags +genpts",
+      ])
+      .complexFilter([
+        { filter: "setpts", options: "PTS-STARTPTS", inputs: "0:v", outputs: "v" },
+        { filter: "asetpts", options: "PTS-STARTPTS", inputs: "0:a", outputs: "a" },
+      ])
+      .outputOptions([
+        "-map [v]",
+        "-map [a]",
+        "-vsync cfr",
+        "-r 30",
+        "-c:v libx264",
+        "-preset veryfast",
+        "-pix_fmt yuv420p",
+        "-movflags +faststart",
+        "-c:a aac",
+        "-b:a 128k",
+        "-ar 48000",
+        "-ac 2",
+      ])
+      .save(outputPath)
+      .on("end", () => {
+        fs.unlinkSync(listPath);
+        console.log(`[MERGE-GPU] Done: ${outputPath}`);
+        resolve(outputPath);
+      })
+      .on("error", (err) => {
+        console.error(`[MERGE-GPU] Failed: ${err.message}`);
+        reject(err);
+      });
   });
 };
 
