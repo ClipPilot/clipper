@@ -255,8 +255,30 @@ export const cutClip = (
       .run();
   });
 };
+const normalizeClip = (input: string, output: string): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    ffmpeg(input)
+      .outputOptions([
+        "-c:v libx264",
+        "-preset veryfast",
+        "-pix_fmt yuv420p",
+        "-r 30",
+        "-c:a aac",
+        "-ar 48000",
+        "-ac 2",
+        "-b:a 192k",
+        "-fflags +genpts",
+        "-avoid_negative_ts make_zero",
+        "-reset_timestamps 1",
+      ])
+      .save(output)
+      .on("end", () => resolve(output))
+      .on("error", reject);
+  });
+};
+
 export const mergeClipsGpu = async (clips: string[], outputPath: string) => {
-  console.log(`[MERGE-GPU] Merging ${clips.length} clips using concat filter`);
+  console.log(`[MERGE-GPU] Merging ${clips.length} clips`);
 
   for (const clip of clips) {
     if (!fs.existsSync(clip)) {
@@ -268,40 +290,30 @@ export const mergeClipsGpu = async (clips: string[], outputPath: string) => {
     );
   }
 
+  const normalizedClips: string[] = [];
+  for (let i = 0; i < clips.length; i++) {
+    const normPath = clips[i].replace(/\.mp4$/, `_norm.mp4`);
+    await normalizeClip(clips[i], normPath);
+    normalizedClips.push(normPath);
+    console.log(`[MERGE-GPU] Normalized clip ${i + 1}/${clips.length}`);
+  }
+
   return new Promise((resolve, reject) => {
-    const cmd = ffmpeg();
+    const listPath = outputPath + ".txt";
+    const content = normalizedClips
+      .map((c) => `file '${c.replace(/'/g, "'\\''")}'`)
+      .join("\n");
 
-    clips.forEach((clip) => {
-      cmd.input(clip);
-    });
+    fs.writeFileSync(listPath, content);
 
-    const filterParts: string[] = [];
-    clips.forEach((_, i) => {
-      filterParts.push(`[${i}:v]setpts=PTS-STARTPTS,fps=30[v${i}]`);
-      filterParts.push(`[${i}:a]asetpts=PTS-STARTPTS[a${i}]`);
-    });
-
-    const videoConcat = clips.map((_, i) => `[v${i}]`).join("") + `concat=n=${clips.length}:v=1:a=0[vout]`;
-    const audioConcat = clips.map((_, i) => `[a${i}]`).join("") + `concat=n=${clips.length}:v=0:a=1[aout]`;
-
-    const filterComplex = [...filterParts, videoConcat, audioConcat].join(";");
-
-    cmd
-      .complexFilter(filterComplex)
-      .outputOptions([
-        "-map [vout]",
-        "-map [aout]",
-        "-c:v libx264",
-        "-preset veryfast",
-        "-pix_fmt yuv420p",
-        "-profile:v high",
-        "-level 4.2",
-        "-c:a aac",
-        "-b:a 192k",
-        "-movflags +faststart",
-      ])
+    ffmpeg()
+      .input(listPath)
+      .inputOptions(["-f concat", "-safe 0"])
+      .outputOptions(["-c copy", "-movflags +faststart"])
       .save(outputPath)
       .on("end", () => {
+        fs.unlinkSync(listPath);
+        normalizedClips.forEach((c) => fs.existsSync(c) && fs.unlinkSync(c));
         console.log(`[MERGE-GPU] Success: ${outputPath}`);
         resolve(outputPath);
       })
