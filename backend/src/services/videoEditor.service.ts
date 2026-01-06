@@ -152,7 +152,9 @@ export const extractFirstFrame = (
         resolve(outputPath);
       })
       .on("error", (err) => {
-        console.error(`[EXTRACT] Failed to extract first frame: ${err.message}`);
+        console.error(
+          `[EXTRACT] Failed to extract first frame: ${err.message}`
+        );
         reject(err);
       })
       .run();
@@ -183,7 +185,9 @@ export const extractLastFrame = (
           resolve(outputPath);
         })
         .on("error", (err) => {
-          console.error(`[EXTRACT] Failed to extract last frame: ${err.message}`);
+          console.error(
+            `[EXTRACT] Failed to extract last frame: ${err.message}`
+          );
           reject(err);
         })
         .run();
@@ -252,7 +256,7 @@ export const cutClip = (
   });
 };
 export const mergeClipsGpu = async (clips: string[], outputPath: string) => {
-  console.log(`[MERGE-GPU] Merging ${clips.length} clips with stream copy...`);
+  console.log(`[MERGE-GPU] Merging ${clips.length} clips (safe re-encode)`);
 
   for (const clip of clips) {
     if (!fs.existsSync(clip)) {
@@ -275,7 +279,18 @@ export const mergeClipsGpu = async (clips: string[], outputPath: string) => {
     ffmpeg()
       .input(listPath)
       .inputOptions(["-f concat", "-safe 0"])
-      .outputOptions(["-c copy", "-movflags +faststart"])
+      .outputOptions([
+        "-c:v libx264",
+        "-preset veryfast",
+        "-pix_fmt yuv420p",
+        "-profile:v high",
+        "-level 4.2",
+
+        "-c:a aac",
+        "-b:a 192k",
+
+        "-movflags +faststart",
+      ])
       .save(outputPath)
       .on("end", () => {
         fs.unlinkSync(listPath);
