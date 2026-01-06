@@ -191,7 +191,9 @@ export class ComfyController {
       const imageExt = path.extname(image.originalname) || ".jpg";
       const imageS3Key = `ugc-inputs/${teamId}/${crypto.randomUUID()}${imageExt}`;
 
-      const isSpliceMode = segments.length >= 2 && videoDuration > 0;
+      // Enable splice mode if multiple segments OR if frontend explicitly requests original footage
+      const spliceWithOriginal = req.body.spliceWithOriginal === "true";
+      const isSpliceMode = (segments.length >= 2 || spliceWithOriginal) && videoDuration > 0;
       const spliceMetadata = isSpliceMode
         ? { videoDuration, segments: calculateSpliceSegments(segments, videoDuration) }
         : null;

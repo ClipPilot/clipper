@@ -90,6 +90,8 @@ function UGCStudioContent({
       );
       formData.append("videoDuration", videoDuration.toString());
       formData.append("swapType", swapType);
+      // Always include original video before/after segments, even with single segment
+      formData.append("spliceWithOriginal", "true");
 
       const response = await apiFetch(`${API_URL}/comfy/ugc-face-swap`, {
         method: "POST",
