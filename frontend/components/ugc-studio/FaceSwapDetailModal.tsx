@@ -14,6 +14,8 @@ import {
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { FaceSwapJob, formatDuration, getStatusColor, getStatusIcon } from "./types";
+import { apiFetch } from "@/lib/apiClient";
+import API_URL from "@/config/constants";
 
 function formatTime(seconds: number): string {
   const mins = Math.floor(seconds / 60);
@@ -50,13 +52,21 @@ export function FaceSwapDetailModal({ job, isOpen, onClose, onDelete }: FaceSwap
 
     setIsDownloading(true);
     try {
-      const response = await fetch(job.outputUrl);
+      const filename = `face-swap-${job.id}.mp4`;
+      const downloadUrl = `${API_URL}/face-swap/download-fixed?url=${encodeURIComponent(job.outputUrl)}&filename=${encodeURIComponent(filename)}`;
+
+      const response = await apiFetch(downloadUrl);
+
+      if (!response.ok) {
+        throw new Error("Download failed");
+      }
+
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
 
       const link = document.createElement("a");
       link.href = blobUrl;
-      link.download = `face-swap-${job.id}.mp4`;
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

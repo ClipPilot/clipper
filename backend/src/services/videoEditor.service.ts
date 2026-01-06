@@ -256,29 +256,49 @@ export const cutClip = (
   });
 };
 const normalizeClip = (input: string, output: string): Promise<string> => {
+  console.log(`[NORMALIZE] Processing: ${input}`);
   return new Promise((resolve, reject) => {
     ffmpeg(input)
       .outputOptions([
+        // Video encoding - identical settings for all clips
         "-c:v libx264",
         "-preset veryfast",
+        "-crf 18",
         "-pix_fmt yuv420p",
         "-r 30",
+        "-vsync cfr",
+        "-bf 0", // No B-frames - cleaner cuts
+        "-g 30", // GOP of 30 frames (1 second)
+        "-keyint_min 30", // Force consistent keyframe interval
+        "-sc_threshold 0", // Disable scene change detection
+        // Audio encoding - identical settings for all clips
         "-c:a aac",
         "-ar 48000",
         "-ac 2",
         "-b:a 192k",
-        "-fflags +genpts",
+        "-af apad=whole_dur=0", // Ensure audio doesn't have trailing silence issues
+        // Timestamp handling
+        "-fflags +genpts+igndts",
         "-avoid_negative_ts make_zero",
         "-reset_timestamps 1",
+        "-start_at_zero",
+        // Output optimization
+        "-movflags +faststart",
       ])
       .save(output)
-      .on("end", () => resolve(output))
-      .on("error", reject);
+      .on("end", () => {
+        console.log(`[NORMALIZE] Done: ${output}`);
+        resolve(output);
+      })
+      .on("error", (err) => {
+        console.error(`[NORMALIZE] Failed: ${err.message}`);
+        reject(err);
+      });
   });
 };
 
 export const mergeClipsGpu = async (clips: string[], outputPath: string) => {
-  console.log(`[MERGE-GPU] Merging ${clips.length} clips`);
+  console.log(`[MERGE-GPU] Merging ${clips.length} clips with normalize-then-copy approach`);
 
   for (const clip of clips) {
     if (!fs.existsSync(clip)) {
@@ -290,6 +310,8 @@ export const mergeClipsGpu = async (clips: string[], outputPath: string) => {
     );
   }
 
+  // Step 1: Normalize each clip to identical encoding parameters
+  // This ensures all clips have the same codec settings, GOP structure, and timestamps
   const normalizedClips: string[] = [];
   for (let i = 0; i < clips.length; i++) {
     const normPath = clips[i].replace(/\.mp4$/, `_norm.mp4`);
@@ -298,6 +320,7 @@ export const mergeClipsGpu = async (clips: string[], outputPath: string) => {
     console.log(`[MERGE-GPU] Normalized clip ${i + 1}/${clips.length}`);
   }
 
+  // Step 2: Concat with stream copy (fast since all clips are now identical)
   return new Promise((resolve, reject) => {
     const listPath = outputPath + ".txt";
     const content = normalizedClips
@@ -305,20 +328,35 @@ export const mergeClipsGpu = async (clips: string[], outputPath: string) => {
       .join("\n");
 
     fs.writeFileSync(listPath, content);
+    console.log(`[MERGE-GPU] Concat list created with ${normalizedClips.length} normalized clips`);
 
     ffmpeg()
       .input(listPath)
       .inputOptions(["-f concat", "-safe 0"])
-      .outputOptions(["-c copy", "-movflags +faststart"])
+      .outputOptions([
+        "-c copy",
+        "-fflags +genpts",
+        "-movflags +faststart",
+      ])
       .save(outputPath)
       .on("end", () => {
         fs.unlinkSync(listPath);
-        normalizedClips.forEach((c) => fs.existsSync(c) && fs.unlinkSync(c));
-        console.log(`[MERGE-GPU] Success: ${outputPath}`);
+        // Cleanup normalized clips
+        normalizedClips.forEach((c) => {
+          if (fs.existsSync(c)) {
+            fs.unlinkSync(c);
+          }
+        });
+        const finalStats = fs.statSync(outputPath);
+        console.log(
+          `[MERGE-GPU] Success: ${outputPath} (${(finalStats.size / 1024 / 1024).toFixed(2)}MB)`
+        );
         resolve(outputPath);
       })
       .on("error", (err) => {
         console.error(`[MERGE-GPU] Failed: ${err.message}`);
+        // Cleanup on error too
+        normalizedClips.forEach((c) => fs.existsSync(c) && fs.unlinkSync(c));
         reject(err);
       });
   });

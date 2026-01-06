@@ -6,6 +6,7 @@ import { Card, CardBody, Button, Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { clipsAPI } from "@/api/clips";
 import { BrandLogo } from "@/components/brand-logo";
+import API_URL from "@/config/constants";
 
 interface SharedClip {
   id: number;
@@ -40,14 +41,32 @@ export default function SharedClipPage() {
     }
   }, [shareToken]);
 
-  const handleDownload = async () => {
-    if (!shareToken) return;
+  const [isDownloading, setIsDownloading] = useState(false);
 
+  const handleDownload = async () => {
+    if (!clip?.clipUrl || isDownloading) return;
+
+    setIsDownloading(true);
     try {
-      const downloadUrl = await clipsAPI.getSharedClipDownloadUrl(shareToken);
-      window.location.href = downloadUrl;
+      const filename = `${clip.title || `clip_${clip.id}`}.mp4`.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const downloadUrl = `${API_URL}/face-swap/download-fixed-public?url=${encodeURIComponent(clip.clipUrl)}&filename=${encodeURIComponent(filename)}`;
+
+      const response = await fetch(downloadUrl);
+      if (!response.ok) throw new Error("Download failed");
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
     } catch (error) {
       console.error("Download failed:", error);
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -148,10 +167,11 @@ export default function SharedClipPage() {
                     fullWidth
                     color="primary"
                     size="lg"
-                    startContent={<Icon icon="solar:download-bold" />}
+                    isLoading={isDownloading}
+                    startContent={!isDownloading && <Icon icon="solar:download-bold" />}
                     onPress={handleDownload}
                   >
-                    Download Clip
+                    {isDownloading ? "Processing..." : "Download Clip"}
                   </Button>
                 </div>
               </div>

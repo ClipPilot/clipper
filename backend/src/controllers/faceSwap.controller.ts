@@ -1,13 +1,11 @@
-import { Response } from "express";
+import { Request, Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { faceSwapService } from "../services/faceSwap.service";
 import fs from "fs";
+import path from "path";
+import os from "os";
+import ffmpeg from "fluent-ffmpeg";
 
-/**
- * Trim a video to the specified time range
- * Accepts a video file upload via multipart form data
- * Only uploads the trimmed result to S3
- */
 export const trimVideo = async (req: AuthRequest, res: Response) => {
   const uploadedFile = req.file;
 
@@ -88,6 +86,155 @@ export const trimVideo = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const downloadFixed = async (req: AuthRequest, res: Response) => {
+  const tempInputPath = path.join(os.tmpdir(), `dl_input_${Date.now()}.mp4`);
+  const tempOutputPath = path.join(os.tmpdir(), `dl_output_${Date.now()}.mp4`);
+
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { url, filename } = req.query;
+
+    if (!url || typeof url !== "string") {
+      return res.status(400).json({ error: "Missing required 'url' parameter" });
+    }
+
+    console.log(`[DOWNLOAD-FIXED] Starting: ${url.substring(0, 100)}...`);
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch video: ${response.status}`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    fs.writeFileSync(tempInputPath, Buffer.from(arrayBuffer));
+    console.log(`[DOWNLOAD-FIXED] Downloaded ${(arrayBuffer.byteLength / 1024 / 1024).toFixed(2)}MB`);
+
+    await new Promise<void>((resolve, reject) => {
+      ffmpeg(tempInputPath)
+        .outputOptions([
+          "-c:v libx264", "-preset veryfast", "-crf 18", "-pix_fmt yuv420p",
+          "-r 30", "-vsync cfr", "-bf 0", "-g 30", "-keyint_min 30", "-sc_threshold 0",
+          "-c:a aac", "-ar 48000", "-ac 2", "-b:a 192k",
+          "-fflags +genpts+igndts", "-avoid_negative_ts make_zero",
+          "-reset_timestamps 1", "-start_at_zero", "-movflags +faststart",
+        ])
+        .save(tempOutputPath)
+        .on("progress", (progress) => {
+          if (progress.percent && Math.round(progress.percent) % 25 === 0) {
+            console.log(`[DOWNLOAD-FIXED] Normalizing: ${Math.round(progress.percent)}%`);
+          }
+        })
+        .on("end", () => {
+          console.log("[DOWNLOAD-FIXED] Normalization complete");
+          resolve();
+        })
+        .on("error", (err) => {
+          console.error("[DOWNLOAD-FIXED] FFmpeg error:", err.message);
+          reject(err);
+        });
+    });
+
+    const stats = fs.statSync(tempOutputPath);
+    const outputFilename = typeof filename === "string" ? filename : "video-fixed.mp4";
+
+    res.setHeader("Content-Type", "video/mp4");
+    res.setHeader("Content-Length", stats.size);
+    res.setHeader("Content-Disposition", `attachment; filename="${outputFilename}"`);
+
+    const readStream = fs.createReadStream(tempOutputPath);
+    readStream.pipe(res);
+
+    readStream.on("end", () => {
+      if (fs.existsSync(tempInputPath)) fs.unlinkSync(tempInputPath);
+      if (fs.existsSync(tempOutputPath)) fs.unlinkSync(tempOutputPath);
+      console.log("[DOWNLOAD-FIXED] Sent and cleaned up");
+    });
+
+    readStream.on("error", (err) => {
+      console.error("[DOWNLOAD-FIXED] Stream error:", err);
+      if (fs.existsSync(tempInputPath)) fs.unlinkSync(tempInputPath);
+      if (fs.existsSync(tempOutputPath)) fs.unlinkSync(tempOutputPath);
+    });
+  } catch (error) {
+    console.error("[DOWNLOAD-FIXED] Error:", error);
+    if (fs.existsSync(tempInputPath)) fs.unlinkSync(tempInputPath);
+    if (fs.existsSync(tempOutputPath)) fs.unlinkSync(tempOutputPath);
+    return res.status(500).json({
+      error: error instanceof Error ? error.message : "Failed to process video",
+    });
+  }
+};
+
+export const downloadFixedPublic = async (req: Request, res: Response) => {
+  const tempInputPath = path.join(os.tmpdir(), `dl_input_${Date.now()}.mp4`);
+  const tempOutputPath = path.join(os.tmpdir(), `dl_output_${Date.now()}.mp4`);
+
+  try {
+    const { url, filename } = req.query;
+
+    if (!url || typeof url !== "string") {
+      return res.status(400).json({ error: "Missing required 'url' parameter" });
+    }
+
+    console.log(`[DOWNLOAD-FIXED-PUBLIC] Starting: ${url.substring(0, 100)}...`);
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch video: ${response.status}`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    fs.writeFileSync(tempInputPath, Buffer.from(arrayBuffer));
+    console.log(`[DOWNLOAD-FIXED-PUBLIC] Downloaded ${(arrayBuffer.byteLength / 1024 / 1024).toFixed(2)}MB`);
+
+    await new Promise<void>((resolve, reject) => {
+      ffmpeg(tempInputPath)
+        .outputOptions([
+          "-c:v libx264", "-preset veryfast", "-crf 18", "-pix_fmt yuv420p",
+          "-r 30", "-vsync cfr", "-bf 0", "-g 30", "-keyint_min 30", "-sc_threshold 0",
+          "-c:a aac", "-ar 48000", "-ac 2", "-b:a 192k",
+          "-fflags +genpts+igndts", "-avoid_negative_ts make_zero",
+          "-reset_timestamps 1", "-start_at_zero", "-movflags +faststart",
+        ])
+        .save(tempOutputPath)
+        .on("end", () => resolve())
+        .on("error", (err) => reject(err));
+    });
+
+    const stats = fs.statSync(tempOutputPath);
+    const outputFilename = typeof filename === "string" ? filename : "video-fixed.mp4";
+
+    res.setHeader("Content-Type", "video/mp4");
+    res.setHeader("Content-Length", stats.size);
+    res.setHeader("Content-Disposition", `attachment; filename="${outputFilename}"`);
+
+    const readStream = fs.createReadStream(tempOutputPath);
+    readStream.pipe(res);
+
+    readStream.on("end", () => {
+      if (fs.existsSync(tempInputPath)) fs.unlinkSync(tempInputPath);
+      if (fs.existsSync(tempOutputPath)) fs.unlinkSync(tempOutputPath);
+    });
+
+    readStream.on("error", () => {
+      if (fs.existsSync(tempInputPath)) fs.unlinkSync(tempInputPath);
+      if (fs.existsSync(tempOutputPath)) fs.unlinkSync(tempOutputPath);
+    });
+  } catch (error) {
+    console.error("[DOWNLOAD-FIXED-PUBLIC] Error:", error);
+    if (fs.existsSync(tempInputPath)) fs.unlinkSync(tempInputPath);
+    if (fs.existsSync(tempOutputPath)) fs.unlinkSync(tempOutputPath);
+    return res.status(500).json({
+      error: error instanceof Error ? error.message : "Failed to process video",
+    });
+  }
+};
+
 export const faceSwapController = {
   trimVideo,
+  downloadFixed,
+  downloadFixedPublic,
 };
