@@ -755,24 +755,18 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
 
       const spliceSegmentPaths: string[] = [];
       const spliceSegmentS3Keys: SpliceSegmentInfo[] = [];
-      let processedOffset = 0;
+      let processedIndex = 0;
 
       for (let i = 0; i < spliceData.segments.length; i++) {
         const seg = spliceData.segments[i];
         const segPath = path.join(outDir, `splice_seg_${i}.mp4`);
 
         if (seg.type === "processed") {
-          const duration = seg.end - seg.start;
+          const src = processedChunkPaths[processedIndex++];
           console.log(
-            `[gpu-worker] Splice segment ${i}: PROCESSED ${seg.start}-${seg.end}s`
+            `[gpu-worker] Splice segment ${i}: PROCESSED ${seg.start}-${seg.end}s from chunk ${src}`
           );
-          await cutClip(
-            finalOutputPath,
-            segPath,
-            processedOffset,
-            processedOffset + duration
-          );
-          processedOffset += duration;
+          fs.copyFileSync(src, segPath);
         } else {
           console.log(
             `[gpu-worker] Splice segment ${i}: ORIGINAL ${seg.start}-${seg.end}s`
