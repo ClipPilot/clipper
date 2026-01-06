@@ -256,7 +256,7 @@ export const cutClip = (
   });
 };
 export const mergeClipsGpu = async (clips: string[], outputPath: string) => {
-  console.log(`[MERGE-GPU] Merging ${clips.length} clips (safe re-encode)`);
+  console.log(`[MERGE-GPU] Merging ${clips.length} clips using concat filter`);
 
   for (const clip of clips) {
     if (!fs.existsSync(clip)) {
@@ -269,34 +269,46 @@ export const mergeClipsGpu = async (clips: string[], outputPath: string) => {
   }
 
   return new Promise((resolve, reject) => {
-    const listPath = outputPath + ".txt";
-    const content = clips
-      .map((c) => `file '${c.replace(/'/g, "'\\''")}'`)
-      .join("\n");
+    const cmd = ffmpeg();
 
-    fs.writeFileSync(listPath, content);
+    clips.forEach((clip) => {
+      cmd.input(clip);
+    });
 
-    ffmpeg()
-      .input(listPath)
-      .inputOptions(["-f concat", "-safe 0"])
+    const filterParts: string[] = [];
+    clips.forEach((_, i) => {
+      filterParts.push(`[${i}:v]setpts=PTS-STARTPTS,fps=30[v${i}]`);
+      filterParts.push(`[${i}:a]asetpts=PTS-STARTPTS[a${i}]`);
+    });
+
+    const videoConcat = clips.map((_, i) => `[v${i}]`).join("") + `concat=n=${clips.length}:v=1:a=0[vout]`;
+    const audioConcat = clips.map((_, i) => `[a${i}]`).join("") + `concat=n=${clips.length}:v=0:a=1[aout]`;
+
+    const filterComplex = [...filterParts, videoConcat, audioConcat].join(";");
+
+    cmd
+      .complexFilter(filterComplex)
       .outputOptions([
+        "-map [vout]",
+        "-map [aout]",
         "-c:v libx264",
         "-preset veryfast",
         "-pix_fmt yuv420p",
         "-profile:v high",
         "-level 4.2",
-
         "-c:a aac",
         "-b:a 192k",
-
         "-movflags +faststart",
       ])
       .save(outputPath)
       .on("end", () => {
-        fs.unlinkSync(listPath);
+        console.log(`[MERGE-GPU] Success: ${outputPath}`);
         resolve(outputPath);
       })
-      .on("error", (err) => reject(err));
+      .on("error", (err) => {
+        console.error(`[MERGE-GPU] Failed: ${err.message}`);
+        reject(err);
+      });
   });
 };
 
