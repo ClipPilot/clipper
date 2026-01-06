@@ -251,6 +251,40 @@ export const cutClip = (
       .run();
   });
 };
+export const mergeClipsGpu = async (clips: string[], outputPath: string) => {
+  console.log(`[MERGE-GPU] Merging ${clips.length} clips with stream copy...`);
+
+  for (const clip of clips) {
+    if (!fs.existsSync(clip)) {
+      throw new Error(`[MERGE-GPU] Input clip not found: ${clip}`);
+    }
+    const stats = fs.statSync(clip);
+    console.log(
+      `[MERGE-GPU] Input: ${clip} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`
+    );
+  }
+
+  return new Promise((resolve, reject) => {
+    const listPath = outputPath + ".txt";
+    const content = clips
+      .map((c) => `file '${c.replace(/'/g, "'\\''")}'`)
+      .join("\n");
+
+    fs.writeFileSync(listPath, content);
+
+    ffmpeg()
+      .input(listPath)
+      .inputOptions(["-f concat", "-safe 0"])
+      .outputOptions(["-c copy", "-movflags +faststart"])
+      .save(outputPath)
+      .on("end", () => {
+        fs.unlinkSync(listPath);
+        resolve(outputPath);
+      })
+      .on("error", (err) => reject(err));
+  });
+};
+
 export const mergeClips = async (clips: string[], outputPath: string) => {
   console.log(`[MERGE] Merging ${clips.length} clips...`);
 
