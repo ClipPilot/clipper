@@ -24,35 +24,44 @@ FACE_CONFIG = {
     'max_workers': 4,  # Parallel frame processing threads
 }
 
-# OpenCV DNN face detector model URLs
+# OpenCV DNN face detector model URLs (fallback if not baked in)
 PROTOTXT_URL = "https://raw.githubusercontent.com/opencv/opencv/master/samples/dnn/face_detector/deploy.prototxt"
 CAFFEMODEL_URL = "https://raw.githubusercontent.com/opencv/opencv_3rdparty/dnn_samples_face_detector_20170830/res10_300x300_ssd_iter_140000.caffemodel"
 
-# Cache directory for models
-MODEL_DIR = "/tmp/face_models"
+# Model paths - check baked-in first, then /tmp cache
+BAKED_MODEL_DIR = "/var/task/models"
+CACHE_MODEL_DIR = "/tmp/face_models"
 
 
-def download_model_files():
-    """Download OpenCV DNN face detection model files."""
-    os.makedirs(MODEL_DIR, exist_ok=True)
+def get_model_paths() -> Tuple[str, str]:
+    """Get model paths, preferring baked-in models over downloaded ones."""
+    # Check for baked-in models first (faster cold start)
+    baked_prototxt = os.path.join(BAKED_MODEL_DIR, "deploy.prototxt")
+    baked_caffemodel = os.path.join(BAKED_MODEL_DIR, "res10_300x300_ssd_iter_140000.caffemodel")
 
-    prototxt_path = os.path.join(MODEL_DIR, "deploy.prototxt")
-    caffemodel_path = os.path.join(MODEL_DIR, "res10_300x300_ssd_iter_140000.caffemodel")
+    if os.path.exists(baked_prototxt) and os.path.exists(baked_caffemodel):
+        print("[FACE-DETECT] Using baked-in models")
+        return baked_prototxt, baked_caffemodel
 
-    if not os.path.exists(prototxt_path):
+    # Fall back to downloading models
+    os.makedirs(CACHE_MODEL_DIR, exist_ok=True)
+    cache_prototxt = os.path.join(CACHE_MODEL_DIR, "deploy.prototxt")
+    cache_caffemodel = os.path.join(CACHE_MODEL_DIR, "res10_300x300_ssd_iter_140000.caffemodel")
+
+    if not os.path.exists(cache_prototxt):
         print("[FACE-DETECT] Downloading prototxt...")
-        urllib.request.urlretrieve(PROTOTXT_URL, prototxt_path)
+        urllib.request.urlretrieve(PROTOTXT_URL, cache_prototxt)
 
-    if not os.path.exists(caffemodel_path):
+    if not os.path.exists(cache_caffemodel):
         print("[FACE-DETECT] Downloading caffemodel...")
-        urllib.request.urlretrieve(CAFFEMODEL_URL, caffemodel_path)
+        urllib.request.urlretrieve(CAFFEMODEL_URL, cache_caffemodel)
 
-    return prototxt_path, caffemodel_path
+    return cache_prototxt, cache_caffemodel
 
 
 def get_face_detector():
     """Get OpenCV DNN face detector."""
-    prototxt_path, caffemodel_path = download_model_files()
+    prototxt_path, caffemodel_path = get_model_paths()
     net = cv2.dnn.readNetFromCaffe(prototxt_path, caffemodel_path)
     return net
 
@@ -241,10 +250,21 @@ def get_video_duration(video_path: str) -> float:
     return float(result.stdout.strip())
 
 
+def process_frame_batch(args: Tuple[int, str, str, str]) -> Tuple[int, bool]:
+    """Process a single frame - designed for parallel execution."""
+    frame_idx, frame_path, prototxt_path, caffemodel_path = args
+
+    # Each thread loads its own network copy for thread safety
+    net = cv2.dnn.readNetFromCaffe(prototxt_path, caffemodel_path)
+    has_face = detect_faces_in_frame(net, frame_path)
+    return (frame_idx, has_face)
+
+
 def detect_face_segments(video_path: str, net) -> List[Dict[str, float]]:
-    """Main face detection pipeline."""
+    """Main face detection pipeline with parallel processing."""
     sample_rate = FACE_CONFIG['sample_fps']
     sample_interval = 1 / sample_rate
+    max_workers = FACE_CONFIG['max_workers']
 
     with tempfile.TemporaryDirectory() as temp_dir:
         frames_dir = os.path.join(temp_dir, 'frames')
@@ -253,10 +273,26 @@ def detect_face_segments(video_path: str, net) -> List[Dict[str, float]]:
         if not frames:
             return []
 
+        print(f"[FACE-DETECT] Processing {len(frames)} frames with {max_workers} workers...")
+
+        # Get model paths for parallel workers
+        prototxt_path, caffemodel_path = get_model_paths()
+
+        # Prepare arguments for parallel processing
+        frame_args = [
+            (i, frame_path, prototxt_path, caffemodel_path)
+            for i, frame_path in enumerate(frames)
+        ]
+
+        # Process frames in parallel
         face_times = []
-        for i, frame_path in enumerate(frames):
-            if detect_faces_in_frame(net, frame_path):
-                face_times.append(i / sample_rate)
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(process_frame_batch, args): args[0] for args in frame_args}
+
+            for future in as_completed(futures):
+                frame_idx, has_face = future.result()
+                if has_face:
+                    face_times.append(frame_idx / sample_rate)
 
         print(f"[FACE-DETECT] Raw detections: {len(face_times)}/{len(frames)} frames")
 

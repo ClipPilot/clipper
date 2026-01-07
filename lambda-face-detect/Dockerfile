@@ -19,6 +19,13 @@ RUN curl -L https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-stati
 COPY requirements.txt ${LAMBDA_TASK_ROOT}/
 RUN pip install --no-cache-dir -r ${LAMBDA_TASK_ROOT}/requirements.txt
 
+# Download face detection models at build time (faster cold starts)
+RUN mkdir -p ${LAMBDA_TASK_ROOT}/models && \
+    curl -L "https://raw.githubusercontent.com/opencv/opencv/master/samples/dnn/face_detector/deploy.prototxt" \
+        -o ${LAMBDA_TASK_ROOT}/models/deploy.prototxt && \
+    curl -L "https://raw.githubusercontent.com/opencv/opencv_3rdparty/dnn_samples_face_detector_20170830/res10_300x300_ssd_iter_140000.caffemodel" \
+        -o ${LAMBDA_TASK_ROOT}/models/res10_300x300_ssd_iter_140000.caffemodel
+
 # Copy function code
 COPY handler.py ${LAMBDA_TASK_ROOT}/
 
