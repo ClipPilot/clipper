@@ -34,37 +34,30 @@ const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || "";
 
 async function emitJobUpdate(
   teamId: number,
-  job: ComfyJobUpdate,
-  retries = 3
+  job: ComfyJobUpdate
 ): Promise<void> {
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      const response = await fetch(
-        `${API_INTERNAL_URL}/internal/notify/comfy-job-update`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-internal-api-key": INTERNAL_API_KEY,
-          },
-          body: JSON.stringify({ teamId, job }),
-        }
-      );
-      if (response.ok) {
-        return;
+  try {
+    const response = await fetch(
+      `${API_INTERNAL_URL}/internal/notify/comfy-job-update`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-internal-api-key": INTERNAL_API_KEY,
+        },
+        body: JSON.stringify({ teamId, job }),
       }
+    );
+    if (!response.ok) {
       console.error(
-        `[gpu-worker] Failed to emit job update (attempt ${attempt}/${retries}): ${response.status}`
-      );
-    } catch (err) {
-      console.error(
-        `[gpu-worker] Error emitting job update (attempt ${attempt}/${retries}):`,
-        (err as Error).message
+        `[gpu-worker] Failed to emit job update: ${response.status}`
       );
     }
-    if (attempt < retries) {
-      await new Promise((r) => setTimeout(r, 1000 * attempt));
-    }
+  } catch (err) {
+    console.error(
+      `[gpu-worker] Error emitting job update:`,
+      (err as Error).message
+    );
   }
 }
 
@@ -409,24 +402,11 @@ async function submitPrompt(
 // WebSocket Progress Tracking
 // ─────────────────────────────────────────────────────────────
 
-interface WaitForCompletionOptions {
-  gpu: GpuConfig;
-  promptId: string;
-  clientId: string;
-  jobId: string;
-  teamId: number;
-  chunkIndex: number;
-  totalChunks: number;
-}
-
 function waitForCompletion(
   gpu: GpuConfig,
   promptId: string,
   clientId: string,
-  jobId: string,
-  teamId?: number,
-  chunkIndex?: number,
-  totalChunks?: number
+  jobId: string
 ): Promise<WorkflowOutputs> {
   return new Promise((resolve, reject) => {
     const wsUrl = gpu.url.replace(/^http/, "ws") + `/ws?clientId=${clientId}`;
@@ -435,29 +415,8 @@ function waitForCompletion(
     const ws = new WebSocket(wsUrl);
     let timeout: NodeJS.Timeout | null = null;
     let settled = false;
-    let intentionalClose = false;
+    let intentionalClose = false; // Track if we're closing intentionally
     let lastMessageTime = Date.now();
-    let lastProgressEmit = 0;
-
-    const emitChunkProgress = (nodeTitle: string) => {
-      if (teamId === undefined || chunkIndex === undefined || totalChunks === undefined) return;
-      const now = Date.now();
-      if (now - lastProgressEmit < 2000) return;
-      lastProgressEmit = now;
-
-      const baseProgress = 20 + (chunkIndex / totalChunks) * 60;
-      const chunkProgress = Math.min(baseProgress + 5, 80);
-
-      emitJobUpdate(teamId, {
-        id: jobId,
-        status: "running",
-        progress: Math.round(chunkProgress),
-        progressMessage: `Segment ${chunkIndex + 1}/${totalChunks}: ${nodeTitle}`,
-        outputUrl: null,
-        errorMessage: null,
-        finishedAt: null,
-      });
-    };
 
     const safeResolve = (value: WorkflowOutputs) => {
       if (settled) return;
@@ -527,7 +486,6 @@ function waitForCompletion(
               (workflowTemplate[node] as { _meta?: { title?: string } })?._meta
                 ?.title || node;
             console.log(`[gpu-worker] Executing: ${nodeMeta}`);
-            emitChunkProgress(nodeMeta);
           } else {
             console.log("[gpu-worker] Workflow finished (node=null)");
             intentionalClose = true;
@@ -781,15 +739,7 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
 
       console.log(`[gpu-worker] Chunk ${i} submitted, prompt: ${promptId}`);
 
-      const outputs = await waitForCompletion(
-        gpu,
-        promptId,
-        clientId,
-        jobId,
-        job.teamId,
-        i,
-        chunkLocalPaths.length
-      );
+      const outputs = await waitForCompletion(gpu, promptId, clientId, jobId);
       const outputFile = findVideoOutput(outputs);
 
       if (!outputFile) {
