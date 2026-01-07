@@ -9,6 +9,10 @@ export interface FaceSegment {
   end: number;
 }
 
+export interface FaceDetectionOptions {
+  frameAccurate?: boolean;
+}
+
 const lambdaClient = new LambdaClient({
   region: config.aws.region,
 });
@@ -17,9 +21,12 @@ const FACE_DETECT_LAMBDA = `clipster-face-detect-${process.env.NODE_ENV === "pro
 
 export async function detectFaceSegmentsWithPadding(
   videoPath: string,
-  videoDuration: number
+  videoDuration: number,
+  options: FaceDetectionOptions = {}
 ): Promise<FaceSegment[]> {
-  console.log(`[FACE-DETECT] Starting Lambda-based detection for ${videoPath}`);
+  const { frameAccurate = true } = options;
+  const modeLabel = frameAccurate ? "FRAME-ACCURATE" : "STANDARD";
+  console.log(`[FACE-DETECT] Starting Lambda-based detection for ${videoPath} (${modeLabel} mode)`);
 
   try {
     const s3Key = `temp-face-detect/${Date.now()}_${path.basename(videoPath)}`;
@@ -33,6 +40,7 @@ export async function detectFaceSegmentsWithPadding(
     const payload = {
       video_url: s3Url,
       video_duration: videoDuration,
+      frame_accurate: frameAccurate,
     };
 
     const command = new InvokeCommand({
@@ -81,9 +89,8 @@ export async function detectFaceSegmentsWithPadding(
 
 export async function detectFaceSegments(
   videoPath: string,
-  sampleRate: number = 5,
-  mergeGap: number = 0.5
+  options: FaceDetectionOptions = {}
 ): Promise<FaceSegment[]> {
   const duration = await getVideoDuration(videoPath);
-  return detectFaceSegmentsWithPadding(videoPath, duration);
+  return detectFaceSegmentsWithPadding(videoPath, duration, options);
 }

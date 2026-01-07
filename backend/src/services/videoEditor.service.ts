@@ -210,23 +210,32 @@ export const cutClip = (
 
   return new Promise((resolve, reject) => {
     ffmpeg(input)
-      .setStartTime(start)
-      .setDuration(duration)
+      .inputOptions([
+        `-ss ${start}`,
+        "-accurate_seek",
+      ])
       .outputOptions([
+        `-t ${duration}`,
         "-c:v libx264",
-        "-preset ultrafast",
-        "-crf 28",
+        "-preset veryfast",
+        "-crf 18",
+        "-pix_fmt yuv420p",
         "-r 30",
+        "-vsync cfr",
         "-bf 0",
         "-g 30",
-        "-force_key_frames 0",
-        "-vsync cfr",
+        "-keyint_min 30",
+        "-sc_threshold 0",
+        "-c:a aac",
         "-ar 48000",
         "-ac 2",
-        "-c:a aac",
-        "-b:a 128k",
+        "-b:a 192k",
+        "-af aresample=async=1:first_pts=0",
+        "-fflags +genpts+igndts",
         "-avoid_negative_ts make_zero",
         "-reset_timestamps 1",
+        "-start_at_zero",
+        "-movflags +faststart",
       ])
       .save(output)
       .on("end", () => {

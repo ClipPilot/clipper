@@ -11,31 +11,38 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 s3_client = boto3.client('s3')
 
-# Configuration
 FACE_CONFIG = {
     'min_confidence': 0.5,
     'min_face_size_percent': 0.03,
     'max_face_size_percent': 0.9,
-    'min_consecutive_frames': 2,  # Reduced since we sample fewer frames
+    'min_consecutive_frames': 2,
     'min_segment_duration': 1.0,
-    'sample_fps': 3,  # Reduced from 5 for faster processing
-    'merge_gap': 0.7,  # Increased slightly to compensate for lower FPS
+    'sample_fps': 3,
+    'merge_gap': 0.7,
     'padding': 0.3,
-    'max_workers': 4,  # Parallel frame processing threads
+    'max_workers': 4,
 }
 
-# OpenCV DNN face detector model URLs (fallback if not baked in)
+FRAME_ACCURATE_CONFIG = {
+    'min_confidence': 0.5,
+    'min_face_size_percent': 0.03,
+    'max_face_size_percent': 0.9,
+    'min_consecutive_frames': 3,
+    'min_segment_duration': 0.1,
+    'sample_fps': None,
+    'merge_gap': 0.1,
+    'padding': 0.0,
+    'max_workers': 8,
+}
+
 PROTOTXT_URL = "https://raw.githubusercontent.com/opencv/opencv/master/samples/dnn/face_detector/deploy.prototxt"
 CAFFEMODEL_URL = "https://raw.githubusercontent.com/opencv/opencv_3rdparty/dnn_samples_face_detector_20170830/res10_300x300_ssd_iter_140000.caffemodel"
 
-# Model paths - check baked-in first, then /tmp cache
 BAKED_MODEL_DIR = "/var/task/models"
 CACHE_MODEL_DIR = "/tmp/face_models"
 
 
 def get_model_paths() -> Tuple[str, str]:
-    """Get model paths, preferring baked-in models over downloaded ones."""
-    # Check for baked-in models first (faster cold start)
     baked_prototxt = os.path.join(BAKED_MODEL_DIR, "deploy.prototxt")
     baked_caffemodel = os.path.join(BAKED_MODEL_DIR, "res10_300x300_ssd_iter_140000.caffemodel")
 
@@ -43,7 +50,6 @@ def get_model_paths() -> Tuple[str, str]:
         print("[FACE-DETECT] Using baked-in models")
         return baked_prototxt, baked_caffemodel
 
-    # Fall back to downloading models
     os.makedirs(CACHE_MODEL_DIR, exist_ok=True)
     cache_prototxt = os.path.join(CACHE_MODEL_DIR, "deploy.prototxt")
     cache_caffemodel = os.path.join(CACHE_MODEL_DIR, "res10_300x300_ssd_iter_140000.caffemodel")
@@ -60,14 +66,12 @@ def get_model_paths() -> Tuple[str, str]:
 
 
 def get_face_detector():
-    """Get OpenCV DNN face detector."""
     prototxt_path, caffemodel_path = get_model_paths()
     net = cv2.dnn.readNetFromCaffe(prototxt_path, caffemodel_path)
     return net
 
 
 def download_from_s3(s3_url: str, local_path: str) -> None:
-    """Download file from S3 URL to local path."""
     parsed = urlparse(s3_url)
     if parsed.scheme == 's3':
         bucket = parsed.netloc
@@ -81,7 +85,6 @@ def download_from_s3(s3_url: str, local_path: str) -> None:
 
 
 def extract_frames(video_path: str, output_dir: str, fps: int = 5) -> List[str]:
-    """Extract frames from video using ffmpeg."""
     os.makedirs(output_dir, exist_ok=True)
     output_pattern = os.path.join(output_dir, 'frame_%04d.jpg')
 
@@ -103,7 +106,6 @@ def extract_frames(video_path: str, output_dir: str, fps: int = 5) -> List[str]:
 
 
 def detect_faces_in_frame(net, frame_path: str) -> bool:
-    """Detect if frame contains a valid face using OpenCV DNN."""
     image = cv2.imread(frame_path)
     if image is None:
         return False
@@ -111,7 +113,6 @@ def detect_faces_in_frame(net, frame_path: str) -> bool:
     (h, w) = image.shape[:2]
     frame_area = w * h
 
-    # Create blob from image
     blob = cv2.dnn.blobFromImage(
         cv2.resize(image, (300, 300)),
         1.0,
@@ -128,7 +129,6 @@ def detect_faces_in_frame(net, frame_path: str) -> bool:
         if confidence < FACE_CONFIG['min_confidence']:
             continue
 
-        # Get bounding box
         box = detections[0, 0, i, 3:7] * [w, h, w, h]
         (startX, startY, endX, endY) = box.astype("int")
 
@@ -144,9 +144,13 @@ def detect_faces_in_frame(net, frame_path: str) -> bool:
     return False
 
 
-def filter_isolated_detections(times: List[float], sample_interval: float) -> List[float]:
-    """Filter out isolated detections, keep only consecutive ones."""
-    min_consecutive = FACE_CONFIG['min_consecutive_frames']
+def filter_isolated_detections(
+    times: List[float],
+    sample_interval: float,
+    min_consecutive: int = None
+) -> List[float]:
+    if min_consecutive is None:
+        min_consecutive = FACE_CONFIG['min_consecutive_frames']
     if len(times) < min_consecutive:
         return []
 
@@ -176,7 +180,6 @@ def filter_isolated_detections(times: List[float], sample_interval: float) -> Li
 
 
 def merge_times_into_segments(times: List[float], gap: float = 0.5) -> List[Dict[str, float]]:
-    """Merge adjacent times into segments."""
     if not times:
         return []
 
@@ -202,18 +205,12 @@ def pad_segments(
     video_duration: float,
     padding: float = 0.3
 ) -> List[Dict[str, float]]:
-    """Add end padding to segments and merge overlapping ones.
-
-    IMPORTANT: Start times are kept exact (first frame with face detected).
-    Only end times are padded to allow smooth transitions out.
-    """
     if not segments:
         return []
 
-    # Only pad the END - start must be exact (first face frame)
     padded = [
         {
-            'start': seg['start'],  # Keep exact start (first face detection)
+            'start': seg['start'],
             'end': min(video_duration, seg['end'] + padding)
         }
         for seg in segments
@@ -225,10 +222,9 @@ def pad_segments(
     current = padded[0]
 
     for seg in padded[1:]:
-        # Merge if segments are close (within padding distance)
         if seg['start'] <= current['end'] + 0.1:
             current = {
-                'start': current['start'],  # Keep original start (first face)
+                'start': current['start'],
                 'end': max(current['end'], seg['end'])
             }
         else:
@@ -245,7 +241,6 @@ def pad_segments(
 
 
 def get_video_duration(video_path: str) -> float:
-    """Get video duration using ffprobe."""
     cmd = [
         'ffprobe', '-v', 'error',
         '-show_entries', 'format=duration',
@@ -256,21 +251,47 @@ def get_video_duration(video_path: str) -> float:
     return float(result.stdout.strip())
 
 
-def process_frame_batch(args: Tuple[int, str, str, str]) -> Tuple[int, bool]:
-    """Process a single frame - designed for parallel execution."""
-    frame_idx, frame_path, prototxt_path, caffemodel_path = args
+def get_video_fps(video_path: str) -> float:
+    cmd = [
+        'ffprobe', '-v', 'error',
+        '-select_streams', 'v:0',
+        '-show_entries', 'stream=r_frame_rate',
+        '-of', 'default=noprint_wrappers=1:nokey=1',
+        video_path
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    fps_str = result.stdout.strip()
+    if '/' in fps_str:
+        num, den = fps_str.split('/')
+        return float(num) / float(den)
+    return float(fps_str)
 
-    # Each thread loads its own network copy for thread safety
+
+def process_frame_batch(args: Tuple[int, str, str, str]) -> Tuple[int, bool]:
+    frame_idx, frame_path, prototxt_path, caffemodel_path = args
     net = cv2.dnn.readNetFromCaffe(prototxt_path, caffemodel_path)
     has_face = detect_faces_in_frame(net, frame_path)
     return (frame_idx, has_face)
 
 
-def detect_face_segments(video_path: str, net) -> List[Dict[str, float]]:
-    """Main face detection pipeline with parallel processing."""
-    sample_rate = FACE_CONFIG['sample_fps']
+def detect_face_segments(
+    video_path: str,
+    net,
+    config: Dict[str, Any] = None,
+    native_fps: float = None
+) -> List[Dict[str, float]]:
+    if config is None:
+        config = FACE_CONFIG
+
+    sample_rate = config['sample_fps']
+    if sample_rate is None:
+        if native_fps is None:
+            native_fps = get_video_fps(video_path)
+        sample_rate = native_fps
+        print(f"[FACE-DETECT] Frame-accurate mode: using native FPS {sample_rate:.2f}")
+
     sample_interval = 1 / sample_rate
-    max_workers = FACE_CONFIG['max_workers']
+    max_workers = config['max_workers']
 
     with tempfile.TemporaryDirectory() as temp_dir:
         frames_dir = os.path.join(temp_dir, 'frames')
@@ -281,16 +302,13 @@ def detect_face_segments(video_path: str, net) -> List[Dict[str, float]]:
 
         print(f"[FACE-DETECT] Processing {len(frames)} frames with {max_workers} workers...")
 
-        # Get model paths for parallel workers
         prototxt_path, caffemodel_path = get_model_paths()
 
-        # Prepare arguments for parallel processing
         frame_args = [
             (i, frame_path, prototxt_path, caffemodel_path)
             for i, frame_path in enumerate(frames)
         ]
 
-        # Process frames in parallel
         face_times = []
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = {executor.submit(process_frame_batch, args): args[0] for args in frame_args}
@@ -302,17 +320,20 @@ def detect_face_segments(video_path: str, net) -> List[Dict[str, float]]:
 
         print(f"[FACE-DETECT] Raw detections: {len(face_times)}/{len(frames)} frames")
 
-        filtered_times = filter_isolated_detections(face_times, sample_interval)
+        filtered_times = filter_isolated_detections(
+            face_times,
+            sample_interval,
+            min_consecutive=config['min_consecutive_frames']
+        )
         print(f"[FACE-DETECT] After filtering: {len(filtered_times)} detections")
 
-        segments = merge_times_into_segments(filtered_times, FACE_CONFIG['merge_gap'])
+        segments = merge_times_into_segments(filtered_times, config['merge_gap'])
         print(f"[FACE-DETECT] Merged into {len(segments)} segments")
 
         return segments
 
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
-    """Lambda handler for face detection."""
     print(f"[FACE-DETECT] Received event: {json.dumps(event)}")
 
     try:
@@ -324,6 +345,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
         video_url = body.get('video_url') or body.get('videoUrl')
         video_duration = body.get('video_duration') or body.get('videoDuration')
+        frame_accurate = body.get('frame_accurate') or body.get('frameAccurate') or False
 
         if not video_url:
             return {
@@ -331,7 +353,10 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'body': json.dumps({'error': 'video_url is required'})
             }
 
-        # Load face detector
+        config = FRAME_ACCURATE_CONFIG if frame_accurate else FACE_CONFIG
+        mode_name = "FRAME-ACCURATE" if frame_accurate else "STANDARD"
+        print(f"[FACE-DETECT] Mode: {mode_name}")
+
         print("[FACE-DETECT] Loading face detector...")
         net = get_face_detector()
 
@@ -345,17 +370,20 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             if not video_duration:
                 video_duration = get_video_duration(video_path)
 
-            print(f"[FACE-DETECT] Video duration: {video_duration}s")
+            native_fps = get_video_fps(video_path)
+            print(f"[FACE-DETECT] Video duration: {video_duration}s, native FPS: {native_fps:.2f}")
 
-            raw_segments = detect_face_segments(video_path, net)
+            raw_segments = detect_face_segments(video_path, net, config, native_fps)
 
             segments = pad_segments(
                 raw_segments,
                 video_duration,
-                FACE_CONFIG['padding']
+                config['padding']
             )
 
             print(f"[FACE-DETECT] Final segments: {segments}")
+
+            sample_fps_used = native_fps if frame_accurate else config['sample_fps']
 
             return {
                 'statusCode': 200,
@@ -367,7 +395,10 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     'success': True,
                     'segments': segments,
                     'videoDuration': video_duration,
-                    'segmentCount': len(segments)
+                    'segmentCount': len(segments),
+                    'frameAccurate': frame_accurate,
+                    'nativeFps': round(native_fps, 2),
+                    'sampleFps': round(sample_fps_used, 2)
                 })
             }
         finally:
