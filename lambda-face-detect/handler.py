@@ -30,7 +30,7 @@ FRAME_ACCURATE_CONFIG = {
     'max_face_size_percent': 0.9,
     'min_consecutive_frames': 3,
     'min_segment_duration': 0.1,
-    'sample_fps': None,
+    'sample_fps': 30,
     'merge_gap': 0.1,
     'padding': 0.0,
     'max_workers': 8,
@@ -85,18 +85,28 @@ def download_from_s3(s3_url: str, local_path: str) -> None:
     s3_client.download_file(bucket, key, local_path)
 
 
-def extract_frames(video_path: str, output_dir: str, fps: int = 5) -> List[str]:
+def extract_frames(video_path: str, output_dir: str, fps: float = 5.0) -> List[str]:
     os.makedirs(output_dir, exist_ok=True)
     output_pattern = os.path.join(output_dir, 'frame_%04d.jpg')
 
+    fps_val = min(float(fps), 30.0)
+    if fps_val != int(fps_val):
+        fps_filter = f'fps={fps_val:.2f}'
+    else:
+        fps_filter = f'fps={int(fps_val)}'
+
     cmd = [
         'ffmpeg', '-i', video_path,
-        '-vf', f'fps={fps}',
+        '-vf', fps_filter,
         '-q:v', '2',
         output_pattern,
-        '-y', '-loglevel', 'error'
+        '-y', '-loglevel', 'warning'
     ]
-    subprocess.run(cmd, check=True)
+
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"[FACE-DETECT] FFmpeg stderr: {result.stderr}")
+        raise RuntimeError(f"Frame extraction failed: {result.stderr}")
 
     frames = sorted([
         os.path.join(output_dir, f)
@@ -278,13 +288,12 @@ def process_frame_batch(args: Tuple[int, str, str, str]) -> Tuple[int, bool]:
 def detect_face_segments(
     video_path: str,
     net,
-    config: Dict[str, Any] = None,
-    native_fps: float = 30.0
+    config: Dict[str, Any] = None
 ) -> List[Dict[str, float]]:
     if config is None:
         config = FACE_CONFIG
 
-    sample_rate = config['sample_fps'] if config['sample_fps'] else native_fps
+    sample_rate = config['sample_fps']
     print(f"[FACE-DETECT] Using {sample_rate} FPS")
 
     sample_interval = 1 / sample_rate
@@ -370,7 +379,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
             print(f"[FACE-DETECT] Video: {video_duration}s @ {native_fps} FPS")
 
-            raw_segments = detect_face_segments(video_path, net, config, native_fps)
+            raw_segments = detect_face_segments(video_path, net, config)
 
             segments = pad_segments(
                 raw_segments,
@@ -378,7 +387,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 config['padding']
             )
 
-            sample_fps_used = config['sample_fps'] if config['sample_fps'] else native_fps
             print(f"[FACE-DETECT] Final segments: {segments}")
 
             return {
@@ -394,7 +402,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     'segmentCount': len(segments),
                     'frameAccurate': frame_accurate,
                     'nativeFps': native_fps,
-                    'sampleFps': sample_fps_used
+                    'sampleFps': config['sample_fps']
                 })
             }
         finally:
