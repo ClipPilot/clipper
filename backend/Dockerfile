@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y \
     python3 \
     make \
     g++ \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 RUN npm install -g pnpm
@@ -21,6 +22,10 @@ COPY packages/shared-db/package.json ./packages/shared-db/
 
 # Install ALL dependencies (including dev dependencies for build)
 RUN pnpm install --frozen-lockfile
+
+# Rebuild TensorFlow native addon from source for Linux
+RUN TFJS_DIR=$(find /app/node_modules/.pnpm -type d -name "tfjs-node" -path "*/@tensorflow/tfjs-node" | head -1) && \
+    cd "$TFJS_DIR" && npm run build-addon-from-source
 
 # Copy source code
 COPY backend ./backend
