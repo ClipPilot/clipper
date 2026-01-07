@@ -258,7 +258,7 @@ export const detectFaces = async (req: AuthRequest, res: Response) => {
     console.log(`[FACE-DETECT] Video duration: ${videoDuration.toFixed(2)}s`);
 
     // Validate video isn't too long (prevent abuse)
-    const MAX_DETECTION_DURATION = 120; // 2 minutes max
+    const MAX_DETECTION_DURATION = 300; // 5 minutes max
     if (videoDuration > MAX_DETECTION_DURATION) {
       return res.status(400).json({
         error: `Video too long for face detection. Maximum ${MAX_DETECTION_DURATION} seconds allowed.`,
