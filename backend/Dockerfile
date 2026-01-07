@@ -18,6 +18,11 @@ COPY packages/shared-db/package.json ./packages/shared-db/
 
 RUN pnpm install --frozen-lockfile
 
+# Rebuild tfjs-node native addon from source for Linux
+RUN TFJS_DIR=$(find /app/node_modules/.pnpm -type d -name "tfjs-node" -path "*/@tensorflow/tfjs-node" | head -1) \
+    && cd "$TFJS_DIR" \
+    && npm run build-addon-from-source
+
 COPY backend ./backend
 COPY packages/shared-db ./packages/shared-db
 
@@ -32,6 +37,7 @@ FROM node:22-slim
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
+    libstdc++6 \
     ffmpeg \
     wget \
     gnupg \
