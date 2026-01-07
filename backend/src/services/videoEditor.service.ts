@@ -204,51 +204,21 @@ export const cutClip = (
   end: number
 ) => {
   const duration = end - start;
-  console.log(
-    `[CUT] Cutting ${start.toFixed(3)}s-${end.toFixed(3)}s (${duration.toFixed(3)}s) from ${input}`
-  );
+  console.log(`[CUT] Cutting ${start}s-${end}s (${duration}s) from ${input}`);
 
   return new Promise((resolve, reject) => {
     ffmpeg(input)
-      .inputOptions([`-ss ${start.toFixed(3)}`, "-accurate_seek"])
-      .outputOptions([
-        `-t ${duration.toFixed(3)}`,
-        "-c:v libx264",
-        "-preset veryfast",
-        "-crf 18",
-        "-pix_fmt yuv420p",
-        "-r 30",
-        "-vsync cfr",
-        "-bf 0",
-        "-g 30",
-        "-keyint_min 30",
-        "-sc_threshold 0",
-        "-c:a aac",
-        "-ar 48000",
-        "-ac 2",
-        "-b:a 192k",
-        "-async 1",
-        "-avoid_negative_ts make_zero",
-        "-movflags +faststart",
-      ])
+      .setStartTime(start)
+      .setDuration(duration)
+      .videoCodec("libx264")
+      .audioCodec("aac")
+      .outputOptions(["-preset veryfast", "-crf 18", "-movflags +faststart"])
       .save(output)
       .on("end", () => {
         if (!fs.existsSync(output)) {
-          return reject(
-            new Error(`Cut clip failed: output file not created at ${output}`)
-          );
+          return reject(new Error(`Cut failed: no output`));
         }
-        const stats = fs.statSync(output);
-        if (stats.size < 1000) {
-          return reject(
-            new Error(
-              `Cut clip failed: output file too small (${stats.size} bytes)`
-            )
-          );
-        }
-        console.log(
-          `[CUT] Success: ${output} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`
-        );
+        console.log(`[CUT] Success: ${output}`);
         resolve(output);
       })
       .on("error", (err) => {
