@@ -1,9 +1,8 @@
 import ffmpeg from "fluent-ffmpeg";
 import fs from "fs";
 import path from "path";
-import * as tf from "@tensorflow/tfjs";
+import * as tf from "@tensorflow/tfjs-node";
 import * as blazeface from "@tensorflow-models/blazeface";
-import { Jimp } from "jimp";
 
 export interface FaceSegment {
   start: number;
@@ -62,26 +61,11 @@ async function detectFaceInImage(
   imagePath: string
 ): Promise<boolean> {
   try {
-    const image = await Jimp.read(imagePath);
-    const width = image.width;
-    const height = image.height;
+    const imageBuffer = fs.readFileSync(imagePath);
+    const tensor = tf.node.decodeImage(imageBuffer, 3) as tf.Tensor3D;
+    const [height, width] = tensor.shape;
     const frameArea = width * height;
 
-    const rgbData = new Int32Array(width * height * 3);
-    let idx = 0;
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const pixel = image.getPixelColor(x, y);
-        const r = (pixel >> 24) & 0xff;
-        const g = (pixel >> 16) & 0xff;
-        const b = (pixel >> 8) & 0xff;
-        rgbData[idx++] = r;
-        rgbData[idx++] = g;
-        rgbData[idx++] = b;
-      }
-    }
-
-    const tensor = tf.tensor3d(rgbData, [height, width, 3], "int32");
     const predictions = await model.estimateFaces(tensor, false);
     tensor.dispose();
 
