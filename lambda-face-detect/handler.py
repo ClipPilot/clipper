@@ -4,14 +4,11 @@ import tempfile
 import subprocess
 import boto3
 import cv2
-import mediapipe as mp
+import urllib.request
 from typing import List, Dict, Any
 from urllib.parse import urlparse
 
 s3_client = boto3.client('s3')
-
-# MediaPipe face detection
-mp_face_detection = mp.solutions.face_detection
 
 # Configuration
 FACE_CONFIG = {
@@ -25,6 +22,38 @@ FACE_CONFIG = {
     'padding': 0.3,
 }
 
+# OpenCV DNN face detector model URLs
+PROTOTXT_URL = "https://raw.githubusercontent.com/opencv/opencv/master/samples/dnn/face_detector/deploy.prototxt"
+CAFFEMODEL_URL = "https://raw.githubusercontent.com/opencv/opencv_3rdparty/dnn_samples_face_detector_20170830/res10_300x300_ssd_iter_140000.caffemodel"
+
+# Cache directory for models
+MODEL_DIR = "/tmp/face_models"
+
+
+def download_model_files():
+    """Download OpenCV DNN face detection model files."""
+    os.makedirs(MODEL_DIR, exist_ok=True)
+
+    prototxt_path = os.path.join(MODEL_DIR, "deploy.prototxt")
+    caffemodel_path = os.path.join(MODEL_DIR, "res10_300x300_ssd_iter_140000.caffemodel")
+
+    if not os.path.exists(prototxt_path):
+        print("[FACE-DETECT] Downloading prototxt...")
+        urllib.request.urlretrieve(PROTOTXT_URL, prototxt_path)
+
+    if not os.path.exists(caffemodel_path):
+        print("[FACE-DETECT] Downloading caffemodel...")
+        urllib.request.urlretrieve(CAFFEMODEL_URL, caffemodel_path)
+
+    return prototxt_path, caffemodel_path
+
+
+def get_face_detector():
+    """Get OpenCV DNN face detector."""
+    prototxt_path, caffemodel_path = download_model_files()
+    net = cv2.dnn.readNetFromCaffe(prototxt_path, caffemodel_path)
+    return net
+
 
 def download_from_s3(s3_url: str, local_path: str) -> None:
     """Download file from S3 URL to local path."""
@@ -33,7 +62,6 @@ def download_from_s3(s3_url: str, local_path: str) -> None:
         bucket = parsed.netloc
         key = parsed.path.lstrip('/')
     else:
-        # Handle https://bucket.s3.region.amazonaws.com/key format
         parts = parsed.netloc.split('.')
         bucket = parts[0]
         key = parsed.path.lstrip('/')
@@ -63,34 +91,38 @@ def extract_frames(video_path: str, output_dir: str, fps: int = 5) -> List[str]:
     return frames
 
 
-def detect_faces_in_frame(
-    face_detection: mp_face_detection.FaceDetection,
-    frame_path: str
-) -> bool:
-    """Detect if frame contains a valid face."""
+def detect_faces_in_frame(net, frame_path: str) -> bool:
+    """Detect if frame contains a valid face using OpenCV DNN."""
     image = cv2.imread(frame_path)
     if image is None:
         return False
 
-    height, width = image.shape[:2]
-    frame_area = width * height
+    (h, w) = image.shape[:2]
+    frame_area = w * h
 
-    # Convert BGR to RGB for MediaPipe
-    rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    results = face_detection.process(rgb_image)
+    # Create blob from image
+    blob = cv2.dnn.blobFromImage(
+        cv2.resize(image, (300, 300)),
+        1.0,
+        (300, 300),
+        (104.0, 177.0, 123.0)
+    )
 
-    if not results.detections:
-        return False
+    net.setInput(blob)
+    detections = net.forward()
 
-    for detection in results.detections:
-        confidence = detection.score[0]
+    for i in range(detections.shape[2]):
+        confidence = detections[0, 0, i, 2]
+
         if confidence < FACE_CONFIG['min_confidence']:
             continue
 
         # Get bounding box
-        bbox = detection.location_data.relative_bounding_box
-        face_width = bbox.width * width
-        face_height = bbox.height * height
+        box = detections[0, 0, i, 3:7] * [w, h, w, h]
+        (startX, startY, endX, endY) = box.astype("int")
+
+        face_width = endX - startX
+        face_height = endY - startY
         face_area = face_width * face_height
         face_size_percent = face_area / frame_area
 
@@ -114,14 +146,12 @@ def filter_isolated_detections(times: List[float], sample_interval: float) -> Li
     for i, current in enumerate(sorted_times):
         consecutive_count = 1
 
-        # Check backwards
         for j in range(i - 1, -1, -1):
             if current - sorted_times[j] <= max_gap * (i - j):
                 consecutive_count += 1
             else:
                 break
 
-        # Check forwards
         for j in range(i + 1, len(sorted_times)):
             if sorted_times[j] - current <= max_gap * (j - i):
                 consecutive_count += 1
@@ -165,7 +195,6 @@ def pad_segments(
     if not segments:
         return []
 
-    # Add padding
     padded = [
         {
             'start': max(0, seg['start'] - padding),
@@ -174,10 +203,8 @@ def pad_segments(
         for seg in segments
     ]
 
-    # Sort by start time
     padded.sort(key=lambda x: x['start'])
 
-    # Merge overlapping
     merged = []
     current = padded[0]
 
@@ -192,7 +219,6 @@ def pad_segments(
             current = seg
     merged.append(current)
 
-    # Filter by minimum duration
     filtered = [
         seg for seg in merged
         if seg['end'] - seg['start'] >= FACE_CONFIG['min_segment_duration']
@@ -213,7 +239,7 @@ def get_video_duration(video_path: str) -> float:
     return float(result.stdout.strip())
 
 
-def detect_face_segments(video_path: str) -> List[Dict[str, float]]:
+def detect_face_segments(video_path: str, net) -> List[Dict[str, float]]:
     """Main face detection pipeline."""
     sample_rate = FACE_CONFIG['sample_fps']
     sample_interval = 1 / sample_rate
@@ -221,40 +247,31 @@ def detect_face_segments(video_path: str) -> List[Dict[str, float]]:
     with tempfile.TemporaryDirectory() as temp_dir:
         frames_dir = os.path.join(temp_dir, 'frames')
 
-        # Extract frames
         frames = extract_frames(video_path, frames_dir, sample_rate)
         if not frames:
             return []
 
-        # Detect faces in each frame
         face_times = []
-        with mp_face_detection.FaceDetection(
-            model_selection=0,  # 0 for short-range, 1 for full-range
-            min_detection_confidence=FACE_CONFIG['min_confidence']
-        ) as face_detection:
-            for i, frame_path in enumerate(frames):
-                if detect_faces_in_frame(face_detection, frame_path):
-                    face_times.append(i / sample_rate)
+        for i, frame_path in enumerate(frames):
+            if detect_faces_in_frame(net, frame_path):
+                face_times.append(i / sample_rate)
 
-        print(f"Raw detections: {len(face_times)}/{len(frames)} frames")
+        print(f"[FACE-DETECT] Raw detections: {len(face_times)}/{len(frames)} frames")
 
-        # Filter isolated detections
         filtered_times = filter_isolated_detections(face_times, sample_interval)
-        print(f"After filtering: {len(filtered_times)} detections")
+        print(f"[FACE-DETECT] After filtering: {len(filtered_times)} detections")
 
-        # Merge into segments
         segments = merge_times_into_segments(filtered_times, FACE_CONFIG['merge_gap'])
-        print(f"Merged into {len(segments)} segments")
+        print(f"[FACE-DETECT] Merged into {len(segments)} segments")
 
         return segments
 
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """Lambda handler for face detection."""
-    print(f"Received event: {json.dumps(event)}")
+    print(f"[FACE-DETECT] Received event: {json.dumps(event)}")
 
     try:
-        # Parse input
         body = event.get('body')
         if isinstance(body, str):
             body = json.loads(body)
@@ -270,31 +287,31 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'body': json.dumps({'error': 'video_url is required'})
             }
 
+        # Load face detector
+        print("[FACE-DETECT] Loading face detector...")
+        net = get_face_detector()
+
         with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as tmp:
             video_path = tmp.name
 
         try:
-            # Download video from S3
-            print(f"Downloading video from {video_url}")
+            print(f"[FACE-DETECT] Downloading video from {video_url}")
             download_from_s3(video_url, video_path)
 
-            # Get video duration if not provided
             if not video_duration:
                 video_duration = get_video_duration(video_path)
 
-            print(f"Video duration: {video_duration}s")
+            print(f"[FACE-DETECT] Video duration: {video_duration}s")
 
-            # Detect face segments
-            raw_segments = detect_face_segments(video_path)
+            raw_segments = detect_face_segments(video_path, net)
 
-            # Add padding
             segments = pad_segments(
                 raw_segments,
                 video_duration,
                 FACE_CONFIG['padding']
             )
 
-            print(f"Final segments: {segments}")
+            print(f"[FACE-DETECT] Final segments: {segments}")
 
             return {
                 'statusCode': 200,
@@ -314,20 +331,10 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 os.unlink(video_path)
 
     except Exception as e:
-        print(f"Error: {str(e)}")
+        print(f"[FACE-DETECT] Error: {str(e)}")
         import traceback
         traceback.print_exc()
         return {
             'statusCode': 500,
             'body': json.dumps({'error': str(e)})
         }
-
-
-if __name__ == '__main__':
-    # Local testing
-    test_event = {
-        'video_url': 's3://test-bucket/test-video.mp4',
-        'video_duration': 60
-    }
-    result = handler(test_event, None)
-    print(json.dumps(result, indent=2))
