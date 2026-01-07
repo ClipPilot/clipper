@@ -21,6 +21,7 @@ app.use(
     origin: [
       "http://localhost:3000",
       "http://localhost:3002",
+      "http://localhost:3003",
       "https://platform.cuttr.com",
       "https://www.platform.cuttr.com",
       "https://beta.cuttr.com",

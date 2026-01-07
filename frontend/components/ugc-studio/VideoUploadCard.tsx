@@ -89,6 +89,7 @@ export function VideoUploadCard({
         {video ? (
           <MultiSegmentTrimmer
             videoSrc={video.preview}
+            videoFile={video.file}
             duration={videoDuration}
             segments={segments}
             onSegmentsChange={onSegmentsChange}

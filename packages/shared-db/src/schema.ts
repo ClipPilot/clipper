@@ -61,6 +61,7 @@ export const users = pgTable("users", {
   first_name: varchar("first_name", { length: 100 }).notNull(),
   last_name: varchar("last_name", { length: 100 }).notNull(),
   role: userRoleEnum("role").notNull().default("user"),
+  is_affiliate: boolean("is_affiliate").notNull().default(false),
   created_at: timestamp("created_at").notNull().defaultNow(),
   updated_at: timestamp("updated_at").notNull().defaultNow(),
 }).enableRLS();
@@ -356,7 +357,17 @@ export const referralCodes = pgTable("referral_codes", {
   updated_at: timestamp("updated_at").notNull().defaultNow(),
 }).enableRLS();
 
-export const referralStatusEnum = pgEnum("referral_status", ["pending", "active", "churned"]);
+export const referralStatusEnum = pgEnum("referral_status", [
+  "pending",
+  "active",
+  "churned",
+]);
+
+export const affiliateStatusEnum = pgEnum("affiliate_status", [
+  "pending",
+  "active",
+  "churned",
+]);
 
 export const referrals = pgTable("referrals", {
   id: serial("id").primaryKey(),
@@ -368,7 +379,9 @@ export const referrals = pgTable("referrals", {
     .references(() => teams.id, { onDelete: "cascade" }),
   referred_plan: varchar("referred_plan", { length: 50 }),
   status: referralStatusEnum("status").notNull().default("pending"),
-  percent_off: decimal("percent_off", { precision: 5, scale: 2 }).notNull().default("0"),
+  percent_off: decimal("percent_off", { precision: 5, scale: 2 })
+    .notNull()
+    .default("0"),
   bonus_clips: integer("bonus_clips").notNull().default(0),
   reward_applied: boolean("reward_applied").notNull().default(false),
   created_at: timestamp("created_at").notNull().defaultNow(),
