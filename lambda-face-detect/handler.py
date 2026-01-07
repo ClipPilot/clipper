@@ -202,13 +202,18 @@ def pad_segments(
     video_duration: float,
     padding: float = 0.3
 ) -> List[Dict[str, float]]:
-    """Add padding to segments and merge overlapping ones."""
+    """Add end padding to segments and merge overlapping ones.
+
+    IMPORTANT: Start times are kept exact (first frame with face detected).
+    Only end times are padded to allow smooth transitions out.
+    """
     if not segments:
         return []
 
+    # Only pad the END - start must be exact (first face frame)
     padded = [
         {
-            'start': max(0, seg['start'] - padding),
+            'start': seg['start'],  # Keep exact start (first face detection)
             'end': min(video_duration, seg['end'] + padding)
         }
         for seg in segments
@@ -220,9 +225,10 @@ def pad_segments(
     current = padded[0]
 
     for seg in padded[1:]:
+        # Merge if segments are close (within padding distance)
         if seg['start'] <= current['end'] + 0.1:
             current = {
-                'start': current['start'],
+                'start': current['start'],  # Keep original start (first face)
                 'end': max(current['end'], seg['end'])
             }
         else:
