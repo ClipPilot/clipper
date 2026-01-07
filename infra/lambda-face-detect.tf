@@ -93,7 +93,7 @@ resource "aws_lambda_function" "face_detect" {
   role          = aws_iam_role.face_detect_lambda.arn
   package_type  = "Image"
   image_uri     = "${aws_ecr_repository.face_detect_lambda.repository_url}:latest"
-  timeout       = 300  # 5 minutes max for video processing
+  timeout       = 900  # 15 minutes (max) for video processing at 15 FPS
   memory_size   = 4096 # 4GB = ~2.5 vCPUs for parallel frame processing
 
   environment {

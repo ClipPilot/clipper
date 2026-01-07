@@ -125,6 +125,10 @@ resource "aws_ecs_task_definition" "gpu_worker" {
       {
         name      = "GEMINI_API_KEY"
         valueFrom = aws_secretsmanager_secret.gemini_api_key.arn
+      },
+      {
+        name      = "SYNC_KEY"
+        valueFrom = aws_secretsmanager_secret.sync_key.arn
       }
     ]
 

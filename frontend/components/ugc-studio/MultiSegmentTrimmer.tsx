@@ -31,6 +31,8 @@ const SEGMENT_COLORS = [
 const FRAME_RATE = 30;
 const FRAME_DURATION = 1 / FRAME_RATE;
 
+const round3 = (n: number) => Math.round(n * 1000) / 1000;
+
 export function MultiSegmentTrimmer({
   videoSrc,
   videoFile,
@@ -91,18 +93,17 @@ export function MultiSegmentTrimmer({
           if (totalDuration + segDuration <= maxTotalDuration) {
             selectedSegments.push({
               id: crypto.randomUUID(),
-              start: seg.start,
-              end: seg.end,
+              start: round3(seg.start),
+              end: round3(seg.end),
             });
             totalDuration += segDuration;
           } else if (totalDuration < maxTotalDuration) {
-            // Truncate segment to fit
             const availableDuration = maxTotalDuration - totalDuration;
             if (availableDuration >= 0.5) {
               selectedSegments.push({
                 id: crypto.randomUUID(),
-                start: seg.start,
-                end: seg.start + availableDuration,
+                start: round3(seg.start),
+                end: round3(seg.start + availableDuration),
               });
             }
             break;
@@ -213,23 +214,21 @@ export function MultiSegmentTrimmer({
     const updated = [...segments];
 
     if (edge === "start") {
-      const newStart = Math.max(0, Math.min(segment.start + delta, segment.end - FRAME_DURATION));
+      const newStart = round3(Math.max(0, Math.min(segment.start + delta, segment.end - FRAME_DURATION)));
       const otherSegments = segments.filter((_, i) => i !== activeSegmentIndex);
       const hasOverlap = otherSegments.some((s) => !(segment.end <= s.start || newStart >= s.end));
       if (hasOverlap) return;
       updated[activeSegmentIndex] = { ...segment, start: newStart };
-      // Seek video to show the new start frame
       if (videoRef.current) {
         videoRef.current.currentTime = newStart;
         setCurrentTime(newStart);
       }
     } else {
-      const newEnd = Math.max(segment.start + FRAME_DURATION, Math.min(segment.end + delta, duration));
+      const newEnd = round3(Math.max(segment.start + FRAME_DURATION, Math.min(segment.end + delta, duration)));
       const otherSegments = segments.filter((_, i) => i !== activeSegmentIndex);
       const hasOverlap = otherSegments.some((s) => !(newEnd <= s.start || segment.start >= s.end));
       if (hasOverlap) return;
       updated[activeSegmentIndex] = { ...segment, end: newEnd };
-      // Seek video to show the new end frame
       if (videoRef.current) {
         videoRef.current.currentTime = newEnd - 0.001;
         setCurrentTime(newEnd - 0.001);
@@ -454,7 +453,7 @@ export function MultiSegmentTrimmer({
         if (hasOverlap) return;
 
         const updated = [...segments];
-        updated[segmentIndex] = { ...segment, start: newStart, end: newEnd };
+        updated[segmentIndex] = { ...segment, start: round3(newStart), end: round3(newEnd) };
         onSegmentsChange(updated);
       } else {
         const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
@@ -466,7 +465,7 @@ export function MultiSegmentTrimmer({
             .filter((_, i) => i !== segmentIndex)
             .reduce((sum, s) => sum + (s.end - s.start), 0);
           const maxForThis = maxTotalDuration - otherDuration;
-          const adjustedStart = Math.max(newStart, segment.end - maxForThis);
+          const adjustedStart = round3(Math.max(newStart, segment.end - maxForThis));
 
           const otherSegments = segments.filter((_, i) => i !== segmentIndex);
           const hasOverlap = otherSegments.some(
@@ -478,7 +477,6 @@ export function MultiSegmentTrimmer({
           updated[segmentIndex] = { ...segment, start: adjustedStart };
           onSegmentsChange(updated);
 
-          // Seek video to show the start frame while dragging
           if (videoRef.current) {
             videoRef.current.currentTime = adjustedStart;
             setCurrentTime(adjustedStart);
@@ -489,7 +487,7 @@ export function MultiSegmentTrimmer({
             .filter((_, i) => i !== segmentIndex)
             .reduce((sum, s) => sum + (s.end - s.start), 0);
           const maxForThis = maxTotalDuration - otherDuration;
-          const adjustedEnd = Math.min(newEnd, segment.start + maxForThis);
+          const adjustedEnd = round3(Math.min(newEnd, segment.start + maxForThis));
 
           const otherSegments = segments.filter((_, i) => i !== segmentIndex);
           const hasOverlap = otherSegments.some(
@@ -501,7 +499,6 @@ export function MultiSegmentTrimmer({
           updated[segmentIndex] = { ...segment, end: adjustedEnd };
           onSegmentsChange(updated);
 
-          // Seek video to show the end frame while dragging
           if (videoRef.current) {
             videoRef.current.currentTime = adjustedEnd;
             setCurrentTime(adjustedEnd);
@@ -577,8 +574,8 @@ export function MultiSegmentTrimmer({
 
     const newSegment: VideoSegment = {
       id: crypto.randomUUID(),
-      start: newStart,
-      end: newEnd,
+      start: round3(newStart),
+      end: round3(newEnd),
     };
 
     onSegmentsChange([...segments, newSegment]);

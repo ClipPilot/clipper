@@ -248,7 +248,10 @@ def pad_segments(
         if seg['end'] - seg['start'] >= FACE_CONFIG['min_segment_duration']
     ]
 
-    return filtered
+    return [
+        {'start': round(seg['start'], 3), 'end': round(seg['end'], 3)}
+        for seg in filtered
+    ]
 
 
 def get_video_info(video_path: str) -> Tuple[float, float]:
@@ -288,7 +291,8 @@ def process_frame_batch(args: Tuple[int, str, str, str]) -> Tuple[int, bool]:
 def detect_face_segments(
     video_path: str,
     net,
-    config: Dict[str, Any] = None
+    config: Dict[str, Any] = None,
+    context: Any = None
 ) -> List[Dict[str, float]]:
     if config is None:
         config = FACE_CONFIG
@@ -306,7 +310,8 @@ def detect_face_segments(
         if not frames:
             return []
 
-        print(f"[FACE-DETECT] Processing {len(frames)} frames with {max_workers} workers...")
+        total_frames = len(frames)
+        print(f"[FACE-DETECT] Processing {total_frames} frames with {max_workers} workers...")
 
         prototxt_path, caffemodel_path = get_model_paths()
 
@@ -316,6 +321,9 @@ def detect_face_segments(
         ]
 
         face_times = []
+        processed_count = 0
+        progress_interval = max(1, total_frames // 10)  # Log every 10%
+
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = {executor.submit(process_frame_batch, args): args[0] for args in frame_args}
 
@@ -323,6 +331,17 @@ def detect_face_segments(
                 frame_idx, has_face = future.result()
                 if has_face:
                     face_times.append(frame_idx / sample_rate)
+
+                processed_count += 1
+
+                # Keep-alive: log progress every 10% and show remaining Lambda time
+                if processed_count % progress_interval == 0 or processed_count == total_frames:
+                    pct = (processed_count / total_frames) * 100
+                    remaining_time = "N/A"
+                    if context:
+                        remaining_ms = context.get_remaining_time_in_millis()
+                        remaining_time = f"{remaining_ms // 1000}s"
+                    print(f"[KEEP-ALIVE] Progress: {processed_count}/{total_frames} ({pct:.0f}%) | Faces found: {len(face_times)} | Lambda time remaining: {remaining_time}")
 
         print(f"[FACE-DETECT] Raw detections: {len(face_times)}/{len(frames)} frames")
 
@@ -370,16 +389,29 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             video_path = tmp.name
 
         try:
+            # Keep-alive: Log remaining time at each step
+            def log_remaining_time(step: str):
+                if context:
+                    remaining_ms = context.get_remaining_time_in_millis()
+                    print(f"[KEEP-ALIVE] {step} | Lambda time remaining: {remaining_ms // 1000}s")
+                else:
+                    print(f"[KEEP-ALIVE] {step}")
+
+            log_remaining_time("Starting - downloading video")
             print(f"[FACE-DETECT] Downloading video from {video_url}")
             download_from_s3(video_url, video_path)
 
+            log_remaining_time("Download complete - extracting video info")
             detected_duration, native_fps = get_video_info(video_path)
             if not video_duration:
                 video_duration = detected_duration
 
             print(f"[FACE-DETECT] Video: {video_duration}s @ {native_fps} FPS")
+            log_remaining_time("Starting face detection")
 
-            raw_segments = detect_face_segments(video_path, net, config)
+            raw_segments = detect_face_segments(video_path, net, config, context)
+
+            log_remaining_time("Face detection complete - padding segments")
 
             segments = pad_segments(
                 raw_segments,
@@ -387,6 +419,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 config['padding']
             )
 
+            log_remaining_time(f"Complete - found {len(segments)} segments")
             print(f"[FACE-DETECT] Final segments: {segments}")
 
             return {

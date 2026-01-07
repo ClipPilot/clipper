@@ -164,18 +164,17 @@ export class ComfyController {
         segmentPaths.push(segPath);
 
         const segDuration = await getVideoDuration(segPath);
-        // If segment fits within chunk duration + leeway, keep as single chunk
-        if (segDuration <= CHUNK_DURATION + CHUNK_LEEWAY) {
+        const roundedSegDuration = Math.round(segDuration * 1000) / 1000;
+
+        if (roundedSegDuration <= CHUNK_DURATION + CHUNK_LEEWAY) {
           chunkPaths.push(segPath);
         } else {
           let start = 0;
           let chunkIdx = 0;
-          while (start < segDuration) {
-            const remaining = segDuration - start;
-            // If remaining is within leeway of a full chunk, include it all in this chunk
-            // This prevents tiny leftover chunks (e.g., 0.08s from a 10.08s video)
+          while (start < roundedSegDuration - 0.001) {
+            const remaining = roundedSegDuration - start;
             const end = remaining <= CHUNK_DURATION + CHUNK_LEEWAY
-              ? segDuration
+              ? roundedSegDuration
               : start + CHUNK_DURATION;
             const chunkPath = path.join(tempDir, `${crypto.randomUUID()}_seg${i}_chunk${chunkIdx}.mp4`);
             await cutClip(segPath, chunkPath, start, end);

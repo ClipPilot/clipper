@@ -203,12 +203,29 @@ export const cutClip = (
   start: number,
   end: number
 ) => {
-  const duration = end - start;
-  console.log(`[CUT] Cutting ${start}s-${end}s (${duration}s) from ${input}`);
+  const roundedStart = Math.round(start * 1000) / 1000;
+  const roundedEnd = Math.round(end * 1000) / 1000;
+  const duration = Math.round((roundedEnd - roundedStart) * 1000) / 1000;
+
+  console.log(`[CUT] Cutting ${roundedStart}s-${roundedEnd}s (${duration}s) from ${input}`);
 
   return new Promise((resolve, reject) => {
+    if (!fs.existsSync(input)) {
+      const err = new Error(`Input file does not exist: ${input}`);
+      console.error(`[CUT] Failed: ${err.message}`);
+      return reject(err);
+    }
+
+    if (duration <= 0) {
+      const err = new Error(`Invalid duration: ${duration}s (start=${roundedStart}, end=${roundedEnd})`);
+      console.error(`[CUT] Failed: ${err.message}`);
+      return reject(err);
+    }
+
+    let stderrOutput = "";
+
     ffmpeg(input)
-      .setStartTime(start)
+      .setStartTime(roundedStart)
       .setDuration(duration)
       .outputOptions([
         "-c:v libx264",
@@ -220,6 +237,9 @@ export const cutClip = (
         "-ac 2",
         "-movflags +faststart",
       ])
+      .on("stderr", (stderrLine: string) => {
+        stderrOutput += stderrLine + "\n";
+      })
       .save(output)
       .on("end", () => {
         if (!fs.existsSync(output)) {
@@ -230,6 +250,7 @@ export const cutClip = (
       })
       .on("error", (err) => {
         console.error(`[CUT] Failed: ${err.message}`);
+        console.error(`[CUT] FFmpeg stderr:\n${stderrOutput}`);
         reject(err);
       })
       .run();
