@@ -3,7 +3,13 @@
 # Stage 1: Build stage
 FROM node:22-slim AS builder
 
-# Install pnpm
+# Install pnpm and build dependencies for native modules (tensorflow)
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN npm install -g pnpm
 
 WORKDIR /app
@@ -31,8 +37,10 @@ RUN pnpm run build
 # Stage 2: Production stage
 FROM node:22-slim
 
-# Install system dependencies for ffmpeg and Puppeteer
+# Install system dependencies for ffmpeg, Puppeteer, and TensorFlow native addon
 RUN apt-get update && apt-get install -y \
+    # TensorFlow native runtime dependencies
+    libstdc++6 \
     # ffmpeg and dependencies
     ffmpeg \
     # Puppeteer/Chrome dependencies
