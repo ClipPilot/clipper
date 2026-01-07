@@ -8,7 +8,9 @@ const MAX_RECONNECT_ATTEMPTS = 10;
 
 export function getSocket(): Socket {
   if (!socket) {
-    socket = io(API_URL, {
+    const socketUrl = API_URL?.replace(/\/api$/, '') || '';
+
+    socket = io(socketUrl, {
       withCredentials: true,
       autoConnect: false,
       reconnection: true,
@@ -16,6 +18,7 @@ export function getSocket(): Socket {
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       timeout: 20000,
+      path: '/socket.io/',
     });
 
     socket.on("connect", () => {

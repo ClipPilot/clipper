@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import tempfile
 import subprocess
 import boto3
@@ -240,31 +241,31 @@ def pad_segments(
     return filtered
 
 
-def get_video_duration(video_path: str) -> float:
+def get_video_info(video_path: str) -> Tuple[float, float]:
+    """Get video duration and FPS using ffmpeg."""
     cmd = [
-        'ffprobe', '-v', 'error',
-        '-show_entries', 'format=duration',
-        '-of', 'default=noprint_wrappers=1:nokey=1',
-        video_path
+        'ffmpeg', '-i', video_path,
+        '-f', 'null', '-'
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-    return float(result.stdout.strip())
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    stderr = result.stderr
+
+    duration = 0.0
+    fps = 30.0
+
+    import re
+    duration_match = re.search(r'Duration: (\d+):(\d+):(\d+)\.(\d+)', stderr)
+    if duration_match:
+        h, m, s, ms = duration_match.groups()
+        duration = int(h) * 3600 + int(m) * 60 + int(s) + int(ms) / 100
+
+    fps_match = re.search(r'(\d+(?:\.\d+)?)\s*fps', stderr)
+    if fps_match:
+        fps = float(fps_match.group(1))
+
+    return duration, fps
 
 
-def get_video_fps(video_path: str) -> float:
-    cmd = [
-        'ffprobe', '-v', 'error',
-        '-select_streams', 'v:0',
-        '-show_entries', 'stream=r_frame_rate',
-        '-of', 'default=noprint_wrappers=1:nokey=1',
-        video_path
-    ]
-    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-    fps_str = result.stdout.strip()
-    if '/' in fps_str:
-        num, den = fps_str.split('/')
-        return float(num) / float(den)
-    return float(fps_str)
 
 
 def process_frame_batch(args: Tuple[int, str, str, str]) -> Tuple[int, bool]:
@@ -278,17 +279,13 @@ def detect_face_segments(
     video_path: str,
     net,
     config: Dict[str, Any] = None,
-    native_fps: float = None
+    native_fps: float = 30.0
 ) -> List[Dict[str, float]]:
     if config is None:
         config = FACE_CONFIG
 
-    sample_rate = config['sample_fps']
-    if sample_rate is None:
-        if native_fps is None:
-            native_fps = get_video_fps(video_path)
-        sample_rate = native_fps
-        print(f"[FACE-DETECT] Frame-accurate mode: using native FPS {sample_rate:.2f}")
+    sample_rate = config['sample_fps'] if config['sample_fps'] else native_fps
+    print(f"[FACE-DETECT] Using {sample_rate} FPS")
 
     sample_interval = 1 / sample_rate
     max_workers = config['max_workers']
@@ -367,11 +364,11 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             print(f"[FACE-DETECT] Downloading video from {video_url}")
             download_from_s3(video_url, video_path)
 
+            detected_duration, native_fps = get_video_info(video_path)
             if not video_duration:
-                video_duration = get_video_duration(video_path)
+                video_duration = detected_duration
 
-            native_fps = get_video_fps(video_path)
-            print(f"[FACE-DETECT] Video duration: {video_duration}s, native FPS: {native_fps:.2f}")
+            print(f"[FACE-DETECT] Video: {video_duration}s @ {native_fps} FPS")
 
             raw_segments = detect_face_segments(video_path, net, config, native_fps)
 
@@ -381,9 +378,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 config['padding']
             )
 
+            sample_fps_used = config['sample_fps'] if config['sample_fps'] else native_fps
             print(f"[FACE-DETECT] Final segments: {segments}")
-
-            sample_fps_used = native_fps if frame_accurate else config['sample_fps']
 
             return {
                 'statusCode': 200,
@@ -397,8 +393,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     'videoDuration': video_duration,
                     'segmentCount': len(segments),
                     'frameAccurate': frame_accurate,
-                    'nativeFps': round(native_fps, 2),
-                    'sampleFps': round(sample_fps_used, 2)
+                    'nativeFps': native_fps,
+                    'sampleFps': sample_fps_used
                 })
             }
         finally:
