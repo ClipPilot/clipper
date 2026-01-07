@@ -34,7 +34,7 @@ export const config = {
     apiKey: getEnv("GEMINI_API_KEY"),
   },
   sync: {
-    apiKey: process.env.SYNC_API_KEY || "",
+    apiKey: process.env.SYNC_KEY || "",
   },
   port: getEnv("PORT", "3001"),
 };

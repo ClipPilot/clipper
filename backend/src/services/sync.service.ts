@@ -41,7 +41,7 @@ export class SyncService {
   private apiKey: string;
 
   constructor() {
-    this.apiKey = config.sync?.apiKey || process.env.SYNC_API_KEY || "";
+    this.apiKey = config.sync?.apiKey || process.env.SYNC_KEY || "";
     if (!this.apiKey) {
       console.warn("[SYNC] No API key configured - lip sync will be skipped");
     }
