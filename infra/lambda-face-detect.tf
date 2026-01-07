@@ -1,5 +1,51 @@
-# Lambda function for face detection using Python + MediaPipe
+# Lambda function for face detection using Python + OpenCV DNN
 # Fast, reliable face detection without native compilation issues
+
+# Import existing resources (created during staging deploy)
+import {
+  to = aws_ecr_repository.face_detect_lambda
+  id = "clipster-face-detect-lambda"
+}
+
+import {
+  to = aws_iam_role.face_detect_lambda
+  id = "clipster-face-detect-lambda-role"
+}
+
+import {
+  to = aws_ecr_lifecycle_policy.face_detect_lambda
+  id = "clipster-face-detect-lambda"
+}
+
+import {
+  to = aws_iam_role_policy_attachment.face_detect_lambda_basic
+  id = "clipster-face-detect-lambda-role/arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+import {
+  to = aws_iam_role_policy.face_detect_lambda_s3
+  id = "clipster-face-detect-lambda-role:clipster-face-detect-lambda-s3-policy"
+}
+
+import {
+  to = aws_lambda_function.face_detect
+  id = "clipster-face-detect-${var.environment}"
+}
+
+import {
+  to = aws_cloudwatch_log_group.face_detect_lambda
+  id = "/aws/lambda/clipster-face-detect-${var.environment}"
+}
+
+import {
+  to = aws_lambda_function_url.face_detect
+  id = "clipster-face-detect-${var.environment}"
+}
+
+import {
+  to = aws_iam_role_policy.ecs_task_invoke_face_detect
+  id = "clipster-ecs-task-role:clipster-ecs-task-invoke-face-detect-${var.environment}"
+}
 
 # ECR Repository for Face Detect Lambda
 resource "aws_ecr_repository" "face_detect_lambda" {
