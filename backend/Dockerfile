@@ -3,11 +3,7 @@
 # Stage 1: Build stage
 FROM node:22-slim AS builder
 
-RUN apt-get update && apt-get install -y \
-    curl \
-    python3 \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 RUN npm install -g pnpm
 
 WORKDIR /app
@@ -17,11 +13,6 @@ COPY backend/package.json ./backend/
 COPY packages/shared-db/package.json ./packages/shared-db/
 
 RUN pnpm install --frozen-lockfile
-
-# Rebuild tfjs-node native addon from source for Linux
-RUN TFJS_DIR=$(find /app/node_modules/.pnpm -type d -name "tfjs-node" -path "*/@tensorflow/tfjs-node" | head -1) \
-    && cd "$TFJS_DIR" \
-    && npm run build-addon-from-source
 
 COPY backend ./backend
 COPY packages/shared-db ./packages/shared-db
@@ -37,7 +28,6 @@ FROM node:22-slim
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    libstdc++6 \
     ffmpeg \
     wget \
     gnupg \
