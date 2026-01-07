@@ -263,8 +263,8 @@ router.get("/validate/:code", validateCodeController);
  * @openapi
  * /referrals/validate-code/{code}:
  *   get:
- *     summary: Validate any code (affiliate or referral)
- *     description: Unified endpoint to check if a code is valid and determine its type
+ *     summary: Validate a referral code
+ *     description: Endpoint to check if a referral code is valid
  *     tags:
  *       - Referrals
  *     parameters:
@@ -273,7 +273,7 @@ router.get("/validate/:code", validateCodeController);
  *         required: true
  *         schema:
  *           type: string
- *         description: Code to validate (affiliate or referral)
+ *         description: Referral code to validate
  *     responses:
  *       200:
  *         description: Validation result
@@ -286,7 +286,7 @@ router.get("/validate/:code", validateCodeController);
  *                   type: boolean
  *                 type:
  *                   type: string
- *                   enum: [affiliate, referral]
+ *                   enum: [referral]
  *                   nullable: true
  *                 code:
  *                   type: string

@@ -1,7 +1,6 @@
 import { Response } from "express";
 import { adminService } from "../services/admin.service";
 import { referralService } from "../services/referral.service";
-import { affiliateService } from "../services/affiliate.service";
 import { AdminRequest } from "../middleware/admin.middleware";
 
 // Step 1: Validate credentials and send 2FA code
@@ -37,13 +36,17 @@ export async function verify2FA(req: AdminRequest, res: Response) {
     const { email, code } = req.body;
 
     if (!email || !code) {
-      return res.status(400).json({ error: "Email and verification code required" });
+      return res
+        .status(400)
+        .json({ error: "Email and verification code required" });
     }
 
     const isValid = await adminService.verify2FACode(email, code);
 
     if (!isValid) {
-      return res.status(401).json({ error: "Invalid or expired verification code" });
+      return res
+        .status(401)
+        .json({ error: "Invalid or expired verification code" });
     }
 
     const token = adminService.generateToken(email);
@@ -120,7 +123,8 @@ export async function setupEnterprise(req: AdminRequest, res: Response) {
 
     if (!teamId || !clipLimit || !monthlyPrice || !customerEmail) {
       return res.status(400).json({
-        error: "teamId, clipLimit, monthlyPrice, and customerEmail are required",
+        error:
+          "teamId, clipLimit, monthlyPrice, and customerEmail are required",
       });
     }
 
@@ -146,7 +150,8 @@ export async function setupEnterprise(req: AdminRequest, res: Response) {
 
 export async function changePlan(req: AdminRequest, res: Response) {
   try {
-    const { teamId, newPlan, clipLimit, monthlyPrice, customerEmail } = req.body;
+    const { teamId, newPlan, clipLimit, monthlyPrice, customerEmail } =
+      req.body;
 
     if (!teamId || !newPlan) {
       return res.status(400).json({
@@ -157,7 +162,8 @@ export async function changePlan(req: AdminRequest, res: Response) {
     if (newPlan === "enterprise") {
       if (!clipLimit || !monthlyPrice || !customerEmail) {
         return res.status(400).json({
-          error: "clipLimit, monthlyPrice, and customerEmail are required for enterprise plan",
+          error:
+            "clipLimit, monthlyPrice, and customerEmail are required for enterprise plan",
         });
       }
 
@@ -178,7 +184,9 @@ export async function changePlan(req: AdminRequest, res: Response) {
       });
     }
 
-    return res.status(400).json({ error: "Only enterprise plan changes are currently supported" });
+    return res
+      .status(400)
+      .json({ error: "Only enterprise plan changes are currently supported" });
   } catch (error) {
     console.error("Change plan error:", error);
     return res.status(500).json({ error: "Failed to change plan" });
@@ -217,25 +225,5 @@ export async function setReferralReward(req: AdminRequest, res: Response) {
   } catch (error) {
     console.error("Set referral reward error:", error);
     return res.status(500).json({ error: "Failed to set referral reward" });
-  }
-}
-
-export async function getAllAffiliates(req: AdminRequest, res: Response) {
-  try {
-    const affiliates = await affiliateService.getAllAffiliatesAdmin();
-    return res.json({ affiliates });
-  } catch (error) {
-    console.error("Get all affiliates error:", error);
-    return res.status(500).json({ error: "Failed to get affiliates" });
-  }
-}
-
-export async function getAffiliateUsers(req: AdminRequest, res: Response) {
-  try {
-    const users = await affiliateService.getAffiliateUsersAdmin();
-    return res.json({ users });
-  } catch (error) {
-    console.error("Get affiliate users error:", error);
-    return res.status(500).json({ error: "Failed to get affiliate users" });
   }
 }

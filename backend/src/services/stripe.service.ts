@@ -17,7 +17,6 @@ import {
 import { eq, and } from "drizzle-orm";
 import { emailNotiService } from "./emailNoti.service";
 import { referralService } from "./referral.service";
-import { affiliateService } from "./affiliate.service";
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://platform.cuttr.com";
 
@@ -202,7 +201,10 @@ class StripeService {
 
     // Check metadata for enterprise plan (dynamic prices aren't in getPlanFromPriceId)
     const metadataPlan = subscription.metadata?.plan;
-    const plan = metadataPlan === "enterprise" ? "enterprise" : getPlanFromPriceId(priceId);
+    const plan =
+      metadataPlan === "enterprise"
+        ? "enterprise"
+        : getPlanFromPriceId(priceId);
 
     // Get dates from subscription items (Stripe puts them there, not at root level)
     const subscriptionItem = subscription.items?.data?.[0];
@@ -284,9 +286,10 @@ class StripeService {
       .where(eq(teams.id, teamId))
       .limit(1);
 
-    const clipsLimit = plan === "enterprise" && team?.enterprise_clip_limit
-      ? team.enterprise_clip_limit
-      : getClipsLimitForPlan(plan);
+    const clipsLimit =
+      plan === "enterprise" && team?.enterprise_clip_limit
+        ? team.enterprise_clip_limit
+        : getClipsLimitForPlan(plan);
 
     await db
       .update(teams)
@@ -311,12 +314,6 @@ class StripeService {
       await referralService.activateReferral(teamId, plan);
     } catch (refError) {
       console.error("Failed to activate referral:", refError);
-    }
-
-    try {
-      await affiliateService.activateAffiliate(teamId, plan);
-    } catch (affError) {
-      console.error("Failed to activate affiliate:", affError);
     }
 
     try {
@@ -392,7 +389,10 @@ class StripeService {
 
     // Check metadata for enterprise plan (dynamic prices aren't in getPlanFromPriceId)
     const metadataPlan = subscription.metadata?.plan;
-    let plan = metadataPlan === "enterprise" ? "enterprise" : getPlanFromPriceId(priceId);
+    let plan =
+      metadataPlan === "enterprise"
+        ? "enterprise"
+        : getPlanFromPriceId(priceId);
 
     if (plan === "free" && team && team.plan !== "free") {
       console.log(
@@ -401,9 +401,10 @@ class StripeService {
       plan = team.plan;
     }
 
-    const clipsLimit = plan === "enterprise" && team?.enterprise_clip_limit
-      ? team.enterprise_clip_limit
-      : getClipsLimitForPlan(plan);
+    const clipsLimit =
+      plan === "enterprise" && team?.enterprise_clip_limit
+        ? team.enterprise_clip_limit
+        : getClipsLimitForPlan(plan);
     const newPeriodStart = parseDate(periodStartTs);
     const newPeriodEnd = parseDate(periodEndTs);
 
@@ -449,19 +450,30 @@ class StripeService {
         .where(eq(usageStats.team_id, existingSub.team_id));
 
       try {
-        const bonusClipsApplied = await referralService.applyBonusClipsOnRenewal(existingSub.team_id);
+        const bonusClipsApplied =
+          await referralService.applyBonusClipsOnRenewal(existingSub.team_id);
         if (bonusClipsApplied > 0) {
-          console.log(`Applied ${bonusClipsApplied} referral bonus clips to team ${existingSub.team_id}`);
+          console.log(
+            `Applied ${bonusClipsApplied} referral bonus clips to team ${existingSub.team_id}`
+          );
         }
       } catch (refError) {
         console.error("Failed to apply referral bonus clips:", refError);
       }
 
       try {
-        const percentOff = await referralService.getAccumulatedPercentOff(existingSub.team_id);
+        const percentOff = await referralService.getAccumulatedPercentOff(
+          existingSub.team_id
+        );
         if (percentOff > 0 && team?.stripe_customer_id) {
-          await this.applyReferralDiscountToSubscription(team.stripe_customer_id, subscription.id, percentOff);
-          console.log(`Applied ${percentOff}% referral discount to team ${existingSub.team_id}`);
+          await this.applyReferralDiscountToSubscription(
+            team.stripe_customer_id,
+            subscription.id,
+            percentOff
+          );
+          console.log(
+            `Applied ${percentOff}% referral discount to team ${existingSub.team_id}`
+          );
         }
       } catch (discountError) {
         console.error("Failed to apply referral discount:", discountError);
@@ -607,7 +619,10 @@ class StripeService {
     return team?.plan || "free";
   }
 
-  async changePlan(teamId: number, newPriceId: string): Promise<{
+  async changePlan(
+    teamId: number,
+    newPriceId: string
+  ): Promise<{
     success: boolean;
     effectiveDate: Date;
     newPlan: string;
@@ -624,7 +639,9 @@ class StripeService {
     }
 
     // Get the current subscription from Stripe to find the item ID
-    const stripeSubscription = await stripe.subscriptions.retrieve(sub.stripe_subscription_id);
+    const stripeSubscription = await stripe.subscriptions.retrieve(
+      sub.stripe_subscription_id
+    );
     const subscriptionItemId = stripeSubscription.items.data[0]?.id;
 
     if (!subscriptionItemId) {
@@ -634,17 +651,21 @@ class StripeService {
     // Update subscription with new price, effective at next billing cycle
     // Using proration_behavior: 'none' means the change takes effect at renewal
     await stripe.subscriptions.update(sub.stripe_subscription_id, {
-      items: [{
-        id: subscriptionItemId,
-        price: newPriceId,
-      }],
+      items: [
+        {
+          id: subscriptionItemId,
+          price: newPriceId,
+        },
+      ],
       proration_behavior: "none",
     });
 
     const newPlan = getPlanFromPriceId(newPriceId);
     const effectiveDate = sub.current_period_end || new Date();
 
-    console.log(`Plan change scheduled for team ${teamId}: ${sub.plan} -> ${newPlan}, effective ${effectiveDate}`);
+    console.log(
+      `Plan change scheduled for team ${teamId}: ${sub.plan} -> ${newPlan}, effective ${effectiveDate}`
+    );
 
     return {
       success: true,
@@ -729,19 +750,6 @@ class StripeService {
     } catch (emailError) {
       console.error("Failed to send renewal email:", emailError);
     }
-
-    try {
-      const amountInDollars = (invoice.amount_paid || 0) / 100;
-      if (amountInDollars > 0) {
-        await affiliateService.recordCommission(
-          existingSub.team_id,
-          invoice.id,
-          amountInDollars
-        );
-      }
-    } catch (affError) {
-      console.error("Failed to record affiliate commission:", affError);
-    }
   }
 
   async handleInvoicePaymentFailed(invoice: any): Promise<void> {
@@ -794,7 +802,10 @@ class StripeService {
 
 export const stripeService = new StripeService();
 
-export async function applyReferralDiscount(teamId: number, percentOff: number): Promise<void> {
+export async function applyReferralDiscount(
+  teamId: number,
+  percentOff: number
+): Promise<void> {
   const [team] = await db
     .select()
     .from(teams)
