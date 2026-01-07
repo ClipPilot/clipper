@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button, Card, CardBody, addToast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAtomValue } from "jotai";
@@ -18,6 +18,7 @@ import {
   CharacterSelector,
   GeneratePanel,
   MyFaceSwapsSection,
+  MyFaceSwapsSectionRef,
 } from "@/components/ugc-studio";
 
 type StudioView = "menu" | "face-swap";
@@ -48,6 +49,7 @@ function UGCStudioContent({
   const [processingStatus, setProcessingStatus] = useState("");
   const [submittedJobId, setSubmittedJobId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const faceSwapsSectionRef = useRef<MyFaceSwapsSectionRef>(null);
 
   const characterImage = selectedCharacter
     ? {
@@ -114,6 +116,9 @@ function UGCStudioContent({
         color: "success",
       });
 
+      // Refetch jobs to show the new job immediately
+      faceSwapsSectionRef.current?.refetch();
+
       if (video?.preview) URL.revokeObjectURL(video.preview);
       setVideo(null);
       setSelectedCharacter(null);
@@ -176,7 +181,7 @@ function UGCStudioContent({
               <h2 className="text-xl font-semibold text-text-primary">
                 My Face Swaps
               </h2>
-              <MyFaceSwapsSection teamId={selectedTeam.id} />
+              <MyFaceSwapsSection ref={faceSwapsSectionRef} teamId={selectedTeam.id} />
             </div>
           )}
         </div>
@@ -210,7 +215,7 @@ function UGCStudioContent({
                 <h2 className="text-lg font-semibold text-text-primary">
                   My Face Swaps
                 </h2>
-                <MyFaceSwapsSection teamId={selectedTeam.id} />
+                <MyFaceSwapsSection ref={faceSwapsSectionRef} teamId={selectedTeam.id} />
               </div>
             )}
           </div>

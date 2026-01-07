@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useImperativeHandle, forwardRef } from "react";
 import { Card, CardBody, Pagination, addToast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { apiFetch } from "@/lib/apiClient";
@@ -16,9 +16,13 @@ interface MyFaceSwapsSectionProps {
   teamId: number;
 }
 
-export function MyFaceSwapsSection({
+export interface MyFaceSwapsSectionRef {
+  refetch: () => Promise<void>;
+}
+
+export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsSectionProps>(function MyFaceSwapsSection({
   teamId,
-}: MyFaceSwapsSectionProps) {
+}, ref) {
   const [jobs, setJobs] = useState<FaceSwapJob[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -38,6 +42,10 @@ export function MyFaceSwapsSection({
       setIsLoading(false);
     }
   }, [teamId]);
+
+  useImperativeHandle(ref, () => ({
+    refetch: fetchJobs,
+  }), [fetchJobs]);
 
   useEffect(() => {
     fetchJobs();
@@ -194,4 +202,4 @@ export function MyFaceSwapsSection({
       />
     </>
   );
-}
+});

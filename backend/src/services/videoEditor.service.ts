@@ -225,6 +225,7 @@ export const cutClip = (
         "-ac 2",
         "-c:a aac",
         "-b:a 128k",
+        "-af", "aresample=async=1:first_pts=0",
         "-avoid_negative_ts make_zero",
         "-reset_timestamps 1",
       ])
