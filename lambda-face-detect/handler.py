@@ -18,10 +18,10 @@ FACE_CONFIG = {
     'max_face_size_percent': 0.9,
     'min_consecutive_frames': 2,
     'min_segment_duration': 1.0,
-    'sample_fps': 3,
-    'merge_gap': 0.7,
+    'sample_fps': 8,
+    'merge_gap': 0.3,
     'padding': 0.3,
-    'max_workers': 4,
+    'max_workers': 6,
 }
 
 FRAME_ACCURATE_CONFIG = {

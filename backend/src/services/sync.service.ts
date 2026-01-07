@@ -86,7 +86,7 @@ export class SyncService {
       throw new Error(`Sync API error (${response.status}): ${errorText}`);
     }
 
-    const data: SyncGenerationResponse = await response.json();
+    const data = (await response.json()) as SyncGenerationResponse;
     console.log(`[SYNC] Job created: ${data.id} (status: ${data.status})`);
     return data;
   }
@@ -104,7 +104,7 @@ export class SyncService {
       throw new Error(`Sync API error (${response.status}): ${errorText}`);
     }
 
-    return response.json();
+    return (await response.json()) as SyncGenerationResponse;
   }
 
   async waitForCompletion(
