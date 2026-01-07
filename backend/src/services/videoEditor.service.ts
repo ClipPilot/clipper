@@ -272,12 +272,8 @@ const normalizeClip = (input: string, output: string): Promise<string> => {
         "-g 30", // GOP of 30 frames (1 second)
         "-keyint_min 30", // Force consistent keyframe interval
         "-sc_threshold 0", // Disable scene change detection
-        // Audio encoding - identical settings for all clips
-        "-c:a aac",
-        "-ar 48000",
-        "-ac 2",
-        "-b:a 192k",
-        "-af apad=whole_dur=0", // Ensure audio doesn't have trailing silence issues
+        // Audio: copy without re-encoding to preserve exact timing
+        "-c:a copy",
         // Timestamp handling
         "-fflags +genpts+igndts",
         "-avoid_negative_ts make_zero",
