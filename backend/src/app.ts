@@ -12,6 +12,7 @@ import comfyRoutes from "./routes/comfy.routes";
 import faceSwapRoutes from "./routes/faceSwap.routes";
 import adminRoutes from "./routes/admin.routes";
 import referralRoutes from "./routes/referral.routes";
+import affiliateRoutes from "./routes/affiliate.routes";
 import { swaggerSpec } from "./config/swagger";
 
 const app = express();
@@ -21,6 +22,7 @@ app.use(
     origin: [
       "http://localhost:3000",
       "http://localhost:3002",
+      "http://localhost:3003",
       "https://platform.cuttr.com",
       "https://www.platform.cuttr.com",
       "https://beta.cuttr.com",
@@ -28,6 +30,7 @@ app.use(
       "https://cuttr.com",
       "https://www.cuttr.com",
       "https://admin.cuttr.com",
+      "https://affiliates.cuttr.com",
     ],
     credentials: true,
   })
@@ -59,5 +62,6 @@ app.use("/api/comfy", comfyRoutes);
 app.use("/api/face-swap", faceSwapRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/referrals", referralRoutes);
+app.use("/api/affiliates", affiliateRoutes);
 
 export default app;

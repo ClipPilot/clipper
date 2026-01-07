@@ -43,6 +43,13 @@
       "when": 1767546511440,
       "tag": "0005_high_wolfpack",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1767752691937,
+      "tag": "0006_complete_peter_quill",
+      "breakpoints": true
     }
   ]
 }

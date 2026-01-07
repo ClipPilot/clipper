@@ -61,6 +61,7 @@ export const users = pgTable("users", {
   first_name: varchar("first_name", { length: 100 }).notNull(),
   last_name: varchar("last_name", { length: 100 }).notNull(),
   role: userRoleEnum("role").notNull().default("user"),
+  is_affiliate: boolean("is_affiliate").notNull().default(false),
   created_at: timestamp("created_at").notNull().defaultNow(),
   updated_at: timestamp("updated_at").notNull().defaultNow(),
 }).enableRLS();
@@ -356,7 +357,17 @@ export const referralCodes = pgTable("referral_codes", {
   updated_at: timestamp("updated_at").notNull().defaultNow(),
 }).enableRLS();
 
-export const referralStatusEnum = pgEnum("referral_status", ["pending", "active", "churned"]);
+export const referralStatusEnum = pgEnum("referral_status", [
+  "pending",
+  "active",
+  "churned",
+]);
+
+export const affiliateStatusEnum = pgEnum("affiliate_status", [
+  "pending",
+  "active",
+  "churned",
+]);
 
 export const referrals = pgTable("referrals", {
   id: serial("id").primaryKey(),
@@ -368,9 +379,104 @@ export const referrals = pgTable("referrals", {
     .references(() => teams.id, { onDelete: "cascade" }),
   referred_plan: varchar("referred_plan", { length: 50 }),
   status: referralStatusEnum("status").notNull().default("pending"),
-  percent_off: decimal("percent_off", { precision: 5, scale: 2 }).notNull().default("0"),
+  percent_off: decimal("percent_off", { precision: 5, scale: 2 })
+    .notNull()
+    .default("0"),
   bonus_clips: integer("bonus_clips").notNull().default(0),
   reward_applied: boolean("reward_applied").notNull().default(false),
   created_at: timestamp("created_at").notNull().defaultNow(),
   updated_at: timestamp("updated_at").notNull().defaultNow(),
 }).enableRLS();
+
+export const affiliateCodes = pgTable(
+  "affiliate_codes",
+  {
+    id: serial("id").primaryKey(),
+    code: varchar("code", { length: 50 }).notNull().unique(),
+    created_by_user_id: integer("created_by_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    commission_percent: decimal("commission_percent", { precision: 5, scale: 2 })
+      .notNull()
+      .default("10"),
+    is_active: boolean("is_active").notNull().default(true),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => {
+    return {
+      userIdx: index("affiliate_codes_user_id_idx").on(table.created_by_user_id),
+    };
+  }
+).enableRLS();
+
+export const affiliates = pgTable(
+  "affiliates",
+  {
+    id: serial("id").primaryKey(),
+    affiliate_code_id: integer("affiliate_code_id")
+      .notNull()
+      .references(() => affiliateCodes.id, { onDelete: "cascade" }),
+    referred_team_id: integer("referred_team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    referred_plan: varchar("referred_plan", { length: 50 }),
+    status: affiliateStatusEnum("status").notNull().default("pending"),
+    commission_earned: decimal("commission_earned", { precision: 10, scale: 2 })
+      .notNull()
+      .default("0"),
+    payout_sent: boolean("payout_sent").notNull().default(false),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => {
+    return {
+      codeIdx: index("affiliates_code_id_idx").on(table.affiliate_code_id),
+      teamIdx: index("affiliates_team_id_idx").on(table.referred_team_id),
+    };
+  }
+).enableRLS();
+
+export const affiliatePayouts = pgTable(
+  "affiliate_payouts",
+  {
+    id: serial("id").primaryKey(),
+    affiliate_user_id: integer("affiliate_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+    status: varchar("status", { length: 50 }).notNull().default("pending"),
+    payout_date: timestamp("payout_date"),
+    stripe_transfer_id: varchar("stripe_transfer_id", { length: 255 }),
+    notes: text("notes"),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => {
+    return {
+      userIdx: index("affiliate_payouts_user_id_idx").on(table.affiliate_user_id),
+    };
+  }
+).enableRLS();
+
+export const affiliateCommissions = pgTable(
+  "affiliate_commissions",
+  {
+    id: serial("id").primaryKey(),
+    affiliate_id: integer("affiliate_id")
+      .notNull()
+      .references(() => affiliates.id, { onDelete: "cascade" }),
+    invoice_id: varchar("invoice_id", { length: 255 }).notNull(),
+    amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+    commission_amount: decimal("commission_amount", { precision: 10, scale: 2 }).notNull(),
+    commission_percent: decimal("commission_percent", { precision: 5, scale: 2 }).notNull(),
+    payout_id: integer("payout_id").references(() => affiliatePayouts.id),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => {
+    return {
+      affiliateIdx: index("affiliate_commissions_affiliate_id_idx").on(table.affiliate_id),
+      payoutIdx: index("affiliate_commissions_payout_id_idx").on(table.payout_id),
+    };
+  }
+).enableRLS();

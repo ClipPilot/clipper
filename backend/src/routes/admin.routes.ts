@@ -10,6 +10,8 @@ import {
   changePlan,
   getAllReferrals,
   setReferralReward,
+  getAllAffiliates,
+  getAffiliateUsers,
 } from "../controllers/admin.controller";
 
 const router = Router();
@@ -268,5 +270,41 @@ router.get("/referrals", requireAdminAuth, getAllReferrals);
  *         description: Unauthorized
  */
 router.post("/referrals/reward", requireAdminAuth, setReferralReward);
+
+/**
+ * @openapi
+ * /admin/affiliates:
+ *   get:
+ *     summary: Get all affiliates (admin)
+ *     description: Returns all affiliate relationships with full details
+ *     tags:
+ *       - Admin
+ *     security:
+ *       - adminAuth: []
+ *     responses:
+ *       200:
+ *         description: List of all affiliates
+ *       401:
+ *         description: Unauthorized
+ */
+router.get("/affiliates", requireAdminAuth, getAllAffiliates);
+
+/**
+ * @openapi
+ * /admin/affiliates/users:
+ *   get:
+ *     summary: Get all affiliate users (admin)
+ *     description: Returns all users who are affiliates
+ *     tags:
+ *       - Admin
+ *     security:
+ *       - adminAuth: []
+ *     responses:
+ *       200:
+ *         description: List of affiliate users
+ *       401:
+ *         description: Unauthorized
+ */
+router.get("/affiliates/users", requireAdminAuth, getAffiliateUsers);
 
 export default router;

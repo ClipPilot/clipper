@@ -1,6 +1,7 @@
 import { Response } from "express";
 import { adminService } from "../services/admin.service";
 import { referralService } from "../services/referral.service";
+import { affiliateService } from "../services/affiliate.service";
 import { AdminRequest } from "../middleware/admin.middleware";
 
 // Step 1: Validate credentials and send 2FA code
@@ -216,5 +217,25 @@ export async function setReferralReward(req: AdminRequest, res: Response) {
   } catch (error) {
     console.error("Set referral reward error:", error);
     return res.status(500).json({ error: "Failed to set referral reward" });
+  }
+}
+
+export async function getAllAffiliates(req: AdminRequest, res: Response) {
+  try {
+    const affiliates = await affiliateService.getAllAffiliatesAdmin();
+    return res.json({ affiliates });
+  } catch (error) {
+    console.error("Get all affiliates error:", error);
+    return res.status(500).json({ error: "Failed to get affiliates" });
+  }
+}
+
+export async function getAffiliateUsers(req: AdminRequest, res: Response) {
+  try {
+    const users = await affiliateService.getAffiliateUsersAdmin();
+    return res.json({ users });
+  } catch (error) {
+    console.error("Get affiliate users error:", error);
+    return res.status(500).json({ error: "Failed to get affiliate users" });
   }
 }

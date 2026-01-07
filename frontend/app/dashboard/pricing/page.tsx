@@ -177,13 +177,22 @@ function PricingContent() {
 
     setIsApplyingCode(true);
     try {
-      const validation = await apiJson<{ valid: boolean; code: string }>(
-        `${API_URL}/referrals/validate/${encodeURIComponent(referralCode.trim())}`,
+      const validation = await apiJson<{
+        valid: boolean;
+        type: "affiliate" | "referral" | null;
+        code: string;
+      }>(
+        `${API_URL}/referrals/validate-code/${encodeURIComponent(referralCode.trim())}`,
         { skipAuth: true }
       );
 
-      if (validation.valid) {
-        await apiJson(`${API_URL}/referrals/${selectedTeam.id}/apply`, {
+      if (validation.valid && validation.type) {
+        const applyEndpoint =
+          validation.type === "affiliate"
+            ? `${API_URL}/affiliates/${selectedTeam.id}/apply`
+            : `${API_URL}/referrals/${selectedTeam.id}/apply`;
+
+        await apiJson(applyEndpoint, {
           method: "POST",
           body: JSON.stringify({ code: referralCode.trim() }),
         });
@@ -191,21 +200,21 @@ function PricingContent() {
         setAppliedReferral(validation.code);
         setShowReferralInput(false);
         addToast({
-          title: "Referral code applied!",
-          description: "Your referral has been linked successfully.",
+          title: `${validation.type === "affiliate" ? "Affiliate" : "Referral"} code applied!`,
+          description: "Your code has been linked successfully.",
           color: "success",
         });
       } else {
         addToast({
           title: "Invalid code",
-          description: "Please check your referral code and try again.",
+          description: "Please check your code and try again.",
           color: "danger",
         });
       }
     } catch (error: any) {
       addToast({
         title: "Error",
-        description: error.message || "Failed to apply referral code",
+        description: error.message || "Failed to apply code",
         color: "danger",
       });
     } finally {
@@ -344,7 +353,7 @@ function PricingContent() {
             </div>
             <div className="text-left">
               <p className="text-sm font-medium text-amber-500">
-                Have a referral code?
+                Have a referral or affiliate code?
               </p>
             </div>
             <Icon

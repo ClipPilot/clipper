@@ -17,6 +17,7 @@ import {
 import { eq, and } from "drizzle-orm";
 import { emailNotiService } from "./emailNoti.service";
 import { referralService } from "./referral.service";
+import { affiliateService } from "./affiliate.service";
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://platform.cuttr.com";
 
@@ -310,6 +311,12 @@ class StripeService {
       await referralService.activateReferral(teamId, plan);
     } catch (refError) {
       console.error("Failed to activate referral:", refError);
+    }
+
+    try {
+      await affiliateService.activateAffiliate(teamId, plan);
+    } catch (affError) {
+      console.error("Failed to activate affiliate:", affError);
     }
 
     try {
@@ -721,6 +728,19 @@ class StripeService {
       }
     } catch (emailError) {
       console.error("Failed to send renewal email:", emailError);
+    }
+
+    try {
+      const amountInDollars = (invoice.amount_paid || 0) / 100;
+      if (amountInDollars > 0) {
+        await affiliateService.recordCommission(
+          existingSub.team_id,
+          invoice.id,
+          amountInDollars
+        );
+      }
+    } catch (affError) {
+      console.error("Failed to record affiliate commission:", affError);
     }
   }
 
