@@ -210,9 +210,16 @@ export const cutClip = (
     ffmpeg(input)
       .setStartTime(start)
       .setDuration(duration)
-      .videoCodec("libx264")
-      .audioCodec("aac")
-      .outputOptions(["-preset veryfast", "-crf 18", "-movflags +faststart"])
+      .outputOptions([
+        "-c:v libx264",
+        "-preset veryfast",
+        "-crf 18",
+        "-c:a aac",
+        "-b:a 128k",
+        "-ar 44100",
+        "-ac 2",
+        "-movflags +faststart",
+      ])
       .save(output)
       .on("end", () => {
         if (!fs.existsSync(output)) {

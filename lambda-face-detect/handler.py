@@ -28,10 +28,10 @@ FRAME_ACCURATE_CONFIG = {
     'min_confidence': 0.5,
     'min_face_size_percent': 0.03,
     'max_face_size_percent': 0.9,
-    'min_consecutive_frames': 3,
+    'min_consecutive_frames': 2,
     'min_segment_duration': 0.1,
-    'sample_fps': 30,
-    'merge_gap': 0.1,
+    'sample_fps': 15,
+    'merge_gap': 0.15,
     'padding': 0.0,
     'max_workers': 8,
 }
