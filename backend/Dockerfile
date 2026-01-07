@@ -1,13 +1,9 @@
 # Multi-stage Dockerfile for Node.js backend with ffmpeg, Puppeteer, and TensorFlow
 
-# Stage 1: Build stage - use full image for native compilation
-FROM node:20-bookworm AS builder
+# Stage 1: Build stage
+FROM node:20-slim AS builder
 
-RUN apt-get update && apt-get install -y \
-    python3 \
-    build-essential \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 RUN npm install -g pnpm
 
 WORKDIR /app
@@ -28,7 +24,7 @@ WORKDIR /app/backend
 RUN pnpm run build
 
 # Stage 2: Production stage
-FROM node:20-bookworm-slim
+FROM node:20-slim
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \

@@ -1,31 +1,52 @@
 import ffmpeg from "fluent-ffmpeg";
 import fs from "fs";
 import path from "path";
-import * as tf from "@tensorflow/tfjs-node";
-import * as blazeface from "@tensorflow-models/blazeface";
+import * as faceapi from "@vladmandic/face-api";
+import * as tf from "@tensorflow/tfjs";
+import { Jimp } from "jimp";
 
 export interface FaceSegment {
   start: number;
   end: number;
 }
 
-let blazefaceModel: blazeface.BlazeFaceModel | null = null;
+let modelsLoaded = false;
 
 const FACE_CONFIG = {
-  minConfidence: 0.85,
+  minConfidence: 0.5,
   minFaceSizePercent: 0.03,
   maxFaceSizePercent: 0.9,
   minConsecutiveFrames: 3,
   minSegmentDuration: 1.0,
 };
 
-async function loadModel(): Promise<blazeface.BlazeFaceModel> {
-  if (!blazefaceModel) {
-    console.log("[FACE-DETECT] Loading BlazeFace model...");
-    blazefaceModel = await blazeface.load();
-    console.log("[FACE-DETECT] BlazeFace model loaded");
+async function loadModels(): Promise<void> {
+  if (modelsLoaded) return;
+
+  console.log("[FACE-DETECT] Loading face-api models...");
+
+  const modelPath = path.join(__dirname, "../models/face-api");
+
+  if (!fs.existsSync(modelPath)) {
+    fs.mkdirSync(modelPath, { recursive: true });
+    console.log("[FACE-DETECT] Downloading face detection models...");
+
+    const modelUrl = "https://raw.githubusercontent.com/vladmandic/face-api/master/model";
+    const modelFiles = [
+      "ssd_mobilenetv1_model-weights_manifest.json",
+      "ssd_mobilenetv1_model.bin",
+    ];
+
+    for (const file of modelFiles) {
+      const response = await fetch(`${modelUrl}/${file}`);
+      const buffer = await response.arrayBuffer();
+      fs.writeFileSync(path.join(modelPath, file), Buffer.from(buffer));
+    }
   }
-  return blazefaceModel;
+
+  await faceapi.nets.ssdMobilenetv1.loadFromDisk(modelPath);
+  modelsLoaded = true;
+  console.log("[FACE-DETECT] Models loaded");
 }
 
 async function extractFrames(
@@ -56,28 +77,36 @@ async function extractFrames(
   });
 }
 
-async function detectFaceInImage(
-  model: blazeface.BlazeFaceModel,
-  imagePath: string
-): Promise<boolean> {
+async function detectFaceInImage(imagePath: string): Promise<boolean> {
   try {
-    const imageBuffer = fs.readFileSync(imagePath);
-    const tensor = tf.node.decodeImage(imageBuffer, 3) as tf.Tensor3D;
-    const [height, width] = tensor.shape;
+    const image = await Jimp.read(imagePath);
+    const width = image.width;
+    const height = image.height;
     const frameArea = width * height;
 
-    const predictions = await model.estimateFaces(tensor, false);
-    tensor.dispose();
+    const rgbData = new Uint8Array(width * height * 3);
+    let idx = 0;
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const pixel = image.getPixelColor(x, y);
+        rgbData[idx++] = (pixel >> 24) & 0xff;
+        rgbData[idx++] = (pixel >> 16) & 0xff;
+        rgbData[idx++] = (pixel >> 8) & 0xff;
+      }
+    }
 
-    for (const face of predictions) {
-      const confidence = face.probability as number;
-      if (confidence < FACE_CONFIG.minConfidence) continue;
+    const imageTensor = tf.tensor3d(rgbData, [height, width, 3], "int32");
 
-      const topLeft = face.topLeft as [number, number];
-      const bottomRight = face.bottomRight as [number, number];
-      const faceWidth = bottomRight[0] - topLeft[0];
-      const faceHeight = bottomRight[1] - topLeft[1];
-      const faceArea = faceWidth * faceHeight;
+    const detections = await faceapi.detectAllFaces(
+      imageTensor as unknown as faceapi.TNetInput,
+      new faceapi.SsdMobilenetv1Options({ minConfidence: FACE_CONFIG.minConfidence })
+    );
+
+    imageTensor.dispose();
+
+    for (const detection of detections) {
+      const box = detection.box;
+      const faceArea = box.width * box.height;
       const faceSizePercent = faceArea / frameArea;
 
       if (
@@ -208,7 +237,7 @@ export async function detectFaceSegments(
   console.log(`[FACE-DETECT] Starting detection for ${videoPath}`);
 
   try {
-    const model = await loadModel();
+    await loadModels();
     const frames = await extractFrames(videoPath, framesDir, sampleRate);
 
     if (frames.length === 0) {
@@ -219,7 +248,7 @@ export async function detectFaceSegments(
     const faceTimes: number[] = [];
 
     for (let i = 0; i < frames.length; i++) {
-      const hasFace = await detectFaceInImage(model, frames[i]);
+      const hasFace = await detectFaceInImage(frames[i]);
       if (hasFace) {
         faceTimes.push(i / sampleRate);
       }
