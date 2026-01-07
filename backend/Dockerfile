@@ -1,7 +1,7 @@
-# Multi-stage Dockerfile for Node.js backend with ffmpeg, Puppeteer, and TensorFlow
+# Multi-stage Dockerfile for Node.js backend with ffmpeg and Puppeteer
 
 # Stage 1: Build stage
-FROM node:20-slim AS builder
+FROM node:22-slim AS builder
 
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 RUN npm install -g pnpm
@@ -24,7 +24,7 @@ WORKDIR /app/backend
 RUN pnpm run build
 
 # Stage 2: Production stage
-FROM node:20-slim
+FROM node:22-slim
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \

@@ -265,16 +265,10 @@ export const detectFaces = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Run face detection
-    // Sample rate of 5 fps = analyze every 0.2 seconds
-    // Merge gap of 0.4s = combine detections within 0.4s of each other
-    // Padding of 0.3s = add buffer around detected segments
+    // Run face detection via Lambda
     const segments = await detectFaceSegmentsWithPadding(
       uploadedFile.path,
-      videoDuration,
-      5,    // sampleRate (fps)
-      0.4,  // mergeGap (seconds)
-      0.3   // padding (seconds)
+      videoDuration
     );
 
     console.log(`[FACE-DETECT] Found ${segments.length} face segments`);
