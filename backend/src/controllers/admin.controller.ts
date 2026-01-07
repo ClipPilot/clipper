@@ -36,13 +36,17 @@ export async function verify2FA(req: AdminRequest, res: Response) {
     const { email, code } = req.body;
 
     if (!email || !code) {
-      return res.status(400).json({ error: "Email and verification code required" });
+      return res
+        .status(400)
+        .json({ error: "Email and verification code required" });
     }
 
     const isValid = await adminService.verify2FACode(email, code);
 
     if (!isValid) {
-      return res.status(401).json({ error: "Invalid or expired verification code" });
+      return res
+        .status(401)
+        .json({ error: "Invalid or expired verification code" });
     }
 
     const token = adminService.generateToken(email);
@@ -119,7 +123,8 @@ export async function setupEnterprise(req: AdminRequest, res: Response) {
 
     if (!teamId || !clipLimit || !monthlyPrice || !customerEmail) {
       return res.status(400).json({
-        error: "teamId, clipLimit, monthlyPrice, and customerEmail are required",
+        error:
+          "teamId, clipLimit, monthlyPrice, and customerEmail are required",
       });
     }
 
@@ -145,7 +150,8 @@ export async function setupEnterprise(req: AdminRequest, res: Response) {
 
 export async function changePlan(req: AdminRequest, res: Response) {
   try {
-    const { teamId, newPlan, clipLimit, monthlyPrice, customerEmail } = req.body;
+    const { teamId, newPlan, clipLimit, monthlyPrice, customerEmail } =
+      req.body;
 
     if (!teamId || !newPlan) {
       return res.status(400).json({
@@ -156,7 +162,8 @@ export async function changePlan(req: AdminRequest, res: Response) {
     if (newPlan === "enterprise") {
       if (!clipLimit || !monthlyPrice || !customerEmail) {
         return res.status(400).json({
-          error: "clipLimit, monthlyPrice, and customerEmail are required for enterprise plan",
+          error:
+            "clipLimit, monthlyPrice, and customerEmail are required for enterprise plan",
         });
       }
 
@@ -177,7 +184,9 @@ export async function changePlan(req: AdminRequest, res: Response) {
       });
     }
 
-    return res.status(400).json({ error: "Only enterprise plan changes are currently supported" });
+    return res
+      .status(400)
+      .json({ error: "Only enterprise plan changes are currently supported" });
   } catch (error) {
     console.error("Change plan error:", error);
     return res.status(500).json({ error: "Failed to change plan" });

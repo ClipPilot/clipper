@@ -66,6 +66,12 @@ export default function DashboardLayout({
                 >
                   Referrals
                 </Link>
+                <Link
+                  href="/dashboard/affiliates"
+                  className="text-sm text-text-secondary hover:text-text-primary hover:bg-surface-hover px-3 py-2 rounded-lg transition-colors"
+                >
+                  Affiliates
+                </Link>
               </div>
             </div>
             <button

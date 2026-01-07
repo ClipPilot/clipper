@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, Request, Response } from "express";
 import { requireAuth } from "../middleware/auth.middleware";
 import {
   generateCodeController,
@@ -8,6 +8,7 @@ import {
   getStatsController,
   validateCodeController,
 } from "../controllers/referral.controller";
+import { codeValidationService } from "../services/codeValidation.service";
 
 const router = Router();
 
@@ -257,5 +258,52 @@ router.get("/:teamId/stats", requireAuth, getStatsController);
  *                   type: string
  */
 router.get("/validate/:code", validateCodeController);
+
+/**
+ * @openapi
+ * /referrals/validate-code/{code}:
+ *   get:
+ *     summary: Validate a referral code
+ *     description: Endpoint to check if a referral code is valid
+ *     tags:
+ *       - Referrals
+ *     parameters:
+ *       - in: path
+ *         name: code
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Referral code to validate
+ *     responses:
+ *       200:
+ *         description: Validation result
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 valid:
+ *                   type: boolean
+ *                 type:
+ *                   type: string
+ *                   enum: [referral]
+ *                   nullable: true
+ *                 code:
+ *                   type: string
+ */
+router.get("/validate-code/:code", async (req: Request, res: Response) => {
+  try {
+    const { code } = req.params;
+    if (!code) {
+      return res.status(400).json({ error: "Code is required" });
+    }
+
+    const result = await codeValidationService.validateCode(code);
+    return res.json(result);
+  } catch (error) {
+    console.error("Validate code error:", error);
+    return res.status(500).json({ error: "Failed to validate code" });
+  }
+});
 
 export default router;

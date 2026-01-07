@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useState, useCallback, useRef, useEffect } from "react";
-import { Button } from "@heroui/react";
+import { Button, addToast } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import { apiFetch } from "@/lib/apiClient";
+import API_URL from "@/config/constants";
 
 export interface VideoSegment {
   id: string;
@@ -12,6 +14,7 @@ export interface VideoSegment {
 
 interface MultiSegmentTrimmerProps {
   videoSrc: string;
+  videoFile?: File;
   duration: number;
   segments: VideoSegment[];
   onSegmentsChange: (segments: VideoSegment[]) => void;
@@ -30,6 +33,7 @@ const FRAME_DURATION = 1 / FRAME_RATE;
 
 export function MultiSegmentTrimmer({
   videoSrc,
+  videoFile,
   duration,
   segments,
   onSegmentsChange,
@@ -52,6 +56,93 @@ export function MultiSegmentTrimmer({
   const [isGeneratingThumbnails, setIsGeneratingThumbnails] = useState(false);
   const [startFramePreview, setStartFramePreview] = useState<string | null>(null);
   const [endFramePreview, setEndFramePreview] = useState<string | null>(null);
+  const [isDetectingFaces, setIsDetectingFaces] = useState(false);
+
+  const handleAutoDetectFaces = async () => {
+    if (!videoFile || isDetectingFaces) return;
+
+    setIsDetectingFaces(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("video", videoFile);
+
+      const response = await apiFetch(`${API_URL}/face-swap/detect-faces`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to detect faces");
+      }
+
+      const data = await response.json();
+
+      if (data.segments && data.segments.length > 0) {
+        // Limit to maxSegments and ensure total duration doesn't exceed max
+        let selectedSegments: VideoSegment[] = [];
+        let totalDuration = 0;
+
+        for (const seg of data.segments) {
+          if (selectedSegments.length >= maxSegments) break;
+
+          const segDuration = seg.end - seg.start;
+          if (totalDuration + segDuration <= maxTotalDuration) {
+            selectedSegments.push({
+              id: crypto.randomUUID(),
+              start: seg.start,
+              end: seg.end,
+            });
+            totalDuration += segDuration;
+          } else if (totalDuration < maxTotalDuration) {
+            // Truncate segment to fit
+            const availableDuration = maxTotalDuration - totalDuration;
+            if (availableDuration >= 0.5) {
+              selectedSegments.push({
+                id: crypto.randomUUID(),
+                start: seg.start,
+                end: seg.start + availableDuration,
+              });
+            }
+            break;
+          }
+        }
+
+        if (selectedSegments.length > 0) {
+          onSegmentsChange(selectedSegments);
+          setActiveSegmentIndex(0);
+
+          addToast({
+            title: "Faces detected!",
+            description: `Found ${data.segmentCount} face segment${data.segmentCount !== 1 ? "s" : ""}, using ${selectedSegments.length}`,
+            color: "success",
+          });
+        } else {
+          addToast({
+            title: "No usable segments",
+            description: "Detected segments were too short. Try manual selection.",
+            color: "warning",
+          });
+        }
+      } else {
+        addToast({
+          title: "No faces detected",
+          description: "Could not find clear face segments. Try manual selection.",
+          color: "warning",
+        });
+      }
+    } catch (error) {
+      console.error("Face detection error:", error);
+      addToast({
+        title: "Detection failed",
+        description: error instanceof Error ? error.message : "Failed to detect faces",
+        color: "danger",
+      });
+    } finally {
+      setIsDetectingFaces(false);
+    }
+  };
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -752,6 +843,20 @@ export function MultiSegmentTrimmer({
               startContent={<Icon icon="solar:add-circle-bold" width={16} />}
             >
               Add at Playhead
+            </Button>
+          )}
+
+          {videoFile && (
+            <Button
+              size="sm"
+              variant="flat"
+              className="bg-purple-500/20 text-purple-400 hover:bg-purple-500/30"
+              onPress={handleAutoDetectFaces}
+              isLoading={isDetectingFaces}
+              isDisabled={isDetectingFaces}
+              startContent={!isDetectingFaces && <Icon icon="solar:face-scan-circle-bold" width={16} />}
+            >
+              {isDetectingFaces ? "Detecting..." : "Auto-detect Faces"}
             </Button>
           )}
         </div>

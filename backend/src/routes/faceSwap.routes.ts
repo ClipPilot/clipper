@@ -98,4 +98,62 @@ router.get("/download-fixed", requireAuth, faceSwapController.downloadFixed);
  */
 router.get("/download-fixed-public", faceSwapController.downloadFixedPublic);
 
+/**
+ * @openapi
+ * /face-swap/detect-faces:
+ *   post:
+ *     summary: Auto-detect face segments in a video
+ *     description: |
+ *       Uses BlazeFace ML model to detect faces in video frames.
+ *       Samples at 5 fps and returns merged time segments where faces appear.
+ *       Maximum video duration is 120 seconds.
+ *     tags: [Face Swap]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [video]
+ *             properties:
+ *               video:
+ *                 type: string
+ *                 format: binary
+ *                 description: Video file to analyze (max 120s)
+ *     responses:
+ *       200:
+ *         description: Face segments detected
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 segments:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       start:
+ *                         type: number
+ *                         description: Start time in seconds
+ *                       end:
+ *                         type: number
+ *                         description: End time in seconds
+ *                 videoDuration:
+ *                   type: number
+ *                 segmentCount:
+ *                   type: integer
+ *       400:
+ *         description: No video uploaded or video too long
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Face detection failed
+ */
+router.post("/detect-faces", requireAuth, upload.single("video"), faceSwapController.detectFaces);
+
 export default router;

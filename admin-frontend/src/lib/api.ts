@@ -86,6 +86,27 @@ export interface ReferralsResponse {
   referrals: AdminReferral[];
 }
 
+export interface AdminAffiliate {
+  id: number;
+  affiliateCodeId: number;
+  affiliateCode: string;
+  affiliateEmail: string;
+  affiliateName: string;
+  referredTeamId: number;
+  referredPlan: string | null;
+  status: "pending" | "active" | "churned";
+  commissionEarned: string;
+  commissionPercent: string;
+  payoutSent: boolean;
+  createdAt: string;
+  teamName: string;
+  teamPlan: string;
+}
+
+export interface AffiliatesResponse {
+  affiliates: AdminAffiliate[];
+}
+
 export interface LoginResponse {
   message: string;
   email: string;
@@ -204,6 +225,13 @@ export const adminAPI = {
         ...getAuthHeaders(),
       },
       body: JSON.stringify({ referralId, bonusClips, percentOff }),
+    });
+    return handleResponse(response);
+  },
+
+  async getAffiliates(): Promise<AffiliatesResponse> {
+    const response = await fetch(`${API_URL}/admin/affiliates`, {
+      headers: { ...getAuthHeaders() },
     });
     return handleResponse(response);
   },

@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { faceSwapService } from "../services/faceSwap.service";
+import { detectFaceSegmentsWithPadding } from "../services/faceDetection.service";
+import { getVideoDuration } from "../services/videoEditor.service";
 import fs from "fs";
 import path from "path";
 import os from "os";
@@ -233,8 +235,77 @@ export const downloadFixedPublic = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * Detect faces in a video and return time segments where faces appear
+ * Uses BlazeFace ML model for detection at 5 fps sampling
+ */
+export const detectFaces = async (req: AuthRequest, res: Response) => {
+  const uploadedFile = req.file;
+
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    if (!uploadedFile) {
+      return res.status(400).json({ error: "No video file uploaded" });
+    }
+
+    console.log(`[FACE-DETECT] Starting detection for: ${uploadedFile.originalname}`);
+
+    // Get video duration for padding logic
+    const videoDuration = await getVideoDuration(uploadedFile.path);
+    console.log(`[FACE-DETECT] Video duration: ${videoDuration.toFixed(2)}s`);
+
+    // Validate video isn't too long (prevent abuse)
+    const MAX_DETECTION_DURATION = 120; // 2 minutes max
+    if (videoDuration > MAX_DETECTION_DURATION) {
+      return res.status(400).json({
+        error: `Video too long for face detection. Maximum ${MAX_DETECTION_DURATION} seconds allowed.`,
+      });
+    }
+
+    // Run face detection
+    // Sample rate of 5 fps = analyze every 0.2 seconds
+    // Merge gap of 0.4s = combine detections within 0.4s of each other
+    // Padding of 0.3s = add buffer around detected segments
+    const segments = await detectFaceSegmentsWithPadding(
+      uploadedFile.path,
+      videoDuration,
+      5,    // sampleRate (fps)
+      0.4,  // mergeGap (seconds)
+      0.3   // padding (seconds)
+    );
+
+    console.log(`[FACE-DETECT] Found ${segments.length} face segments`);
+
+    return res.status(200).json({
+      success: true,
+      segments,
+      videoDuration,
+      segmentCount: segments.length,
+    });
+  } catch (error) {
+    console.error("[FACE-DETECT] Error:", error);
+    return res.status(500).json({
+      error: error instanceof Error ? error.message : "Failed to detect faces",
+    });
+  } finally {
+    // Cleanup uploaded file
+    if (uploadedFile?.path && fs.existsSync(uploadedFile.path)) {
+      try {
+        fs.unlinkSync(uploadedFile.path);
+        console.log(`[FACE-DETECT] Cleaned up uploaded file: ${uploadedFile.path}`);
+      } catch (cleanupError) {
+        console.error("[FACE-DETECT] Failed to cleanup:", cleanupError);
+      }
+    }
+  }
+};
+
 export const faceSwapController = {
   trimVideo,
   downloadFixed,
   downloadFixedPublic,
+  detectFaces,
 };
