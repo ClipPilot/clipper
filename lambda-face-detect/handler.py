@@ -5,8 +5,9 @@ import subprocess
 import boto3
 import cv2
 import urllib.request
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 from urllib.parse import urlparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 s3_client = boto3.client('s3')
 
@@ -15,11 +16,12 @@ FACE_CONFIG = {
     'min_confidence': 0.5,
     'min_face_size_percent': 0.03,
     'max_face_size_percent': 0.9,
-    'min_consecutive_frames': 3,
+    'min_consecutive_frames': 2,  # Reduced since we sample fewer frames
     'min_segment_duration': 1.0,
-    'sample_fps': 5,
-    'merge_gap': 0.5,
+    'sample_fps': 3,  # Reduced from 5 for faster processing
+    'merge_gap': 0.7,  # Increased slightly to compensate for lower FPS
     'padding': 0.3,
+    'max_workers': 4,  # Parallel frame processing threads
 }
 
 # OpenCV DNN face detector model URLs

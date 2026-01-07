@@ -94,7 +94,7 @@ resource "aws_lambda_function" "face_detect" {
   package_type  = "Image"
   image_uri     = "${aws_ecr_repository.face_detect_lambda.repository_url}:latest"
   timeout       = 300  # 5 minutes max for video processing
-  memory_size   = 2048 # 2GB for MediaPipe + video processing
+  memory_size   = 4096 # 4GB = ~2.5 vCPUs for parallel frame processing
 
   environment {
     variables = {
