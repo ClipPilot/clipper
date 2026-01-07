@@ -205,17 +205,14 @@ export const cutClip = (
 ) => {
   const duration = end - start;
   console.log(
-    `[CUT] Cutting ${start}s-${end}s (${duration.toFixed(1)}s) from ${input}`
+    `[CUT] Cutting ${start.toFixed(3)}s-${end.toFixed(3)}s (${duration.toFixed(3)}s) from ${input}`
   );
 
   return new Promise((resolve, reject) => {
     ffmpeg(input)
-      .inputOptions([
-        `-ss ${start}`,
-        "-accurate_seek",
-      ])
+      .setStartTime(start)
+      .setDuration(duration)
       .outputOptions([
-        `-t ${duration}`,
         "-c:v libx264",
         "-preset veryfast",
         "-crf 18",
@@ -230,11 +227,7 @@ export const cutClip = (
         "-ar 48000",
         "-ac 2",
         "-b:a 192k",
-        "-af aresample=async=1:first_pts=0",
-        "-fflags +genpts+igndts",
         "-avoid_negative_ts make_zero",
-        "-reset_timestamps 1",
-        "-start_at_zero",
         "-movflags +faststart",
       ])
       .save(output)
