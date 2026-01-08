@@ -196,10 +196,6 @@ export default function AIVideoCreatorPage() {
     router.push("/dashboard/ugc-studio/ai-video-creator/create");
   };
 
-  const handleManageActors = () => {
-    router.push("/dashboard/ugc-studio/ai-video-creator/create");
-  };
-
   return (
     <div className="min-h-screen bg-surface-dark">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
@@ -228,15 +224,6 @@ export default function AIVideoCreatorPage() {
             onPress={handleCreateNew}
           >
             Create New Ad
-          </Button>
-          <Button
-            size="lg"
-            variant="bordered"
-            className="border-border-base text-text-primary font-medium px-6"
-            startContent={<Icon icon="solar:users-group-rounded-bold-duotone" width={20} />}
-            onPress={handleManageActors}
-          >
-            Actors
           </Button>
         </div>
 

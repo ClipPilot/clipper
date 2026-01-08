@@ -117,7 +117,13 @@ export function CharacterCard({
                       setIsUpdating(true);
                       try {
                         const response = await actorsAPI.update(character.id, { isPublic: !character.public });
-                        onShareToggle?.(response.character, !character.public);
+                        // Preserve image URLs from original character since API response may not include computed fields
+                        const updatedCharacter = {
+                          ...response.character,
+                          imageUrls: response.character.imageUrls || character.imageUrls,
+                          primaryImageUrl: response.character.primaryImageUrl || character.primaryImageUrl,
+                        };
+                        onShareToggle?.(updatedCharacter, !character.public);
                       } catch (error) {
                         console.error("Failed to update character:", error);
                       } finally {
