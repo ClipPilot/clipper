@@ -106,7 +106,8 @@ function UGCStudioContent({
       }
 
       const data = await response.json();
-      setSubmittedJobId(data.jobId);
+      // Don't set submittedJobId - let the toast provide feedback
+      // and keep the form visible for the next job
       setProcessingStatus("Job submitted! Processing...");
 
       addToast({
