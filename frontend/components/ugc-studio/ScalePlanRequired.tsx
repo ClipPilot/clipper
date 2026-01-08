@@ -29,7 +29,7 @@ export function ScalePlanRequired({ currentPlan }: ScalePlanRequiredProps) {
               size="lg"
               startContent={<Icon icon="solar:arrow-up-bold" width={20} />}
             >
-              Upgrade to Scale
+              Upgrade to Studio
             </Button>
             <p className="text-xs text-text-muted">
               Currently on: <span className="capitalize font-medium">{currentPlan}</span> plan

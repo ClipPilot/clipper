@@ -1,18 +1,18 @@
-FROM public.ecr.aws/lambda/python:3.11
+FROM public.ecr.aws/lambda/python:3.12
 
-# Install ffmpeg and system dependencies
-RUN yum update -y && \
-    yum install -y \
+# Install ffmpeg and system dependencies (AL2023 uses dnf)
+RUN dnf install -y \
     tar \
     xz \
     mesa-libGL \
-    && yum clean all
+    && dnf clean all
 
-# Install ffmpeg (static build)
-RUN curl -L https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz -o /tmp/ffmpeg.tar.xz && \
+# Install ffmpeg (static build from GitHub)
+RUN curl -L https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz -o /tmp/ffmpeg.tar.xz && \
     tar -xf /tmp/ffmpeg.tar.xz -C /tmp && \
-    cp /tmp/ffmpeg-*-amd64-static/ffmpeg /usr/local/bin/ && \
-    cp /tmp/ffmpeg-*-amd64-static/ffprobe /usr/local/bin/ && \
+    cp /tmp/ffmpeg-master-latest-linux64-gpl/bin/ffmpeg /usr/local/bin/ && \
+    cp /tmp/ffmpeg-master-latest-linux64-gpl/bin/ffprobe /usr/local/bin/ && \
+    chmod +x /usr/local/bin/ffmpeg /usr/local/bin/ffprobe && \
     rm -rf /tmp/ffmpeg*
 
 # Copy requirements and install Python dependencies

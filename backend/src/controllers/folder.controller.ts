@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import { Request, Response } from "express";
 import { folderService } from "../services/folder.service";
 import { teamService } from "../services/team.service";
@@ -16,6 +17,7 @@ export class FolderController {
       return res.status(200).json({ folders });
     } catch (error) {
       console.error("Get folders error:", error);
+      Sentry.captureException(error);
       return res.status(500).json({
         error: error instanceof Error ? error.message : "Failed to get folders",
       });
@@ -36,6 +38,7 @@ export class FolderController {
       return res.status(200).json({ folder });
     } catch (error) {
       console.error("Get folder error:", error);
+      Sentry.captureException(error);
       return res.status(404).json({
         error: error instanceof Error ? error.message : "Folder not found",
       });
@@ -55,6 +58,7 @@ export class FolderController {
       return res.status(200).json({ tree });
     } catch (error) {
       console.error("Get folder tree error:", error);
+      Sentry.captureException(error);
       return res.status(500).json({
         error: error instanceof Error ? error.message : "Failed to get folder tree",
       });
@@ -75,6 +79,7 @@ export class FolderController {
       return res.status(200).json({ path });
     } catch (error) {
       console.error("Get folder path error:", error);
+      Sentry.captureException(error);
       return res.status(404).json({
         error: error instanceof Error ? error.message : "Folder not found",
       });
@@ -116,6 +121,7 @@ export class FolderController {
       });
     } catch (error) {
       console.error("Create folder error:", error);
+      Sentry.captureException(error);
       return res.status(500).json({
         error: error instanceof Error ? error.message : "Failed to create folder",
       });
@@ -157,6 +163,7 @@ export class FolderController {
       });
     } catch (error) {
       console.error("Update folder error:", error);
+      Sentry.captureException(error);
       return res.status(404).json({
         error: error instanceof Error ? error.message : "Failed to update folder",
       });
@@ -197,6 +204,7 @@ export class FolderController {
       });
     } catch (error) {
       console.error("Move folder error:", error);
+      Sentry.captureException(error);
       const errorMessage = error instanceof Error ? error.message : "Failed to move folder";
       const statusCode = errorMessage.includes("Cannot move") ? 400 : 404;
       return res.status(statusCode).json({ error: errorMessage });
@@ -227,6 +235,7 @@ export class FolderController {
       });
     } catch (error) {
       console.error("Delete folder error:", error);
+      Sentry.captureException(error);
       return res.status(404).json({
         error: error instanceof Error ? error.message : "Failed to delete folder",
       });

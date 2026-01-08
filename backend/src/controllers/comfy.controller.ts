@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import { Request, Response } from "express";
 import { db } from "../db";
 import { comfyJobs } from "@clipper/shared-db/src/schema";
@@ -139,9 +140,9 @@ export class ComfyController {
 
       if (!canAccessUGCStudio(usage.plan)) {
         return res.status(403).json({
-          error: "UGC Studio is only available on Scale and Enterprise plans. Please upgrade to access this feature.",
+          error: "UGC Studio is only available on Studio, Scale, and Enterprise plans. Please upgrade to access this feature.",
           code: "PLAN_REQUIRED",
-          requiredPlan: "scale",
+          requiredPlan: "studio",
           currentPlan: usage.plan,
         });
       }
@@ -276,6 +277,7 @@ export class ComfyController {
       });
     } catch (error) {
       console.error("Create UGC face swap job error:", error);
+      Sentry.captureException(error);
       return res.status(500).json({
         error: error instanceof Error ? error.message : "Failed to queue job",
       });
@@ -346,6 +348,7 @@ export class ComfyController {
       });
     } catch (error) {
       console.error("Get job error:", error);
+      Sentry.captureException(error);
       return res.status(500).json({
         error: error instanceof Error ? error.message : "Failed to get job",
       });
@@ -407,6 +410,7 @@ export class ComfyController {
       return res.status(200).json({ jobs: jobsWithUrls });
     } catch (error) {
       console.error("Get team jobs error:", error);
+      Sentry.captureException(error);
       return res.status(500).json({
         error: error instanceof Error ? error.message : "Failed to get jobs",
       });
@@ -468,6 +472,7 @@ export class ComfyController {
       return res.status(200).json({ message: "Job deleted successfully" });
     } catch (error) {
       console.error("Delete job error:", error);
+      Sentry.captureException(error);
       return res.status(500).json({
         error: error instanceof Error ? error.message : "Failed to delete job",
       });

@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import { Request, Response } from "express";
 import { tagService } from "../services/tag.service";
 
@@ -15,6 +16,7 @@ export class TagController {
       return res.status(200).json({ tags: tagsList });
     } catch (error) {
       console.error("Get tags error:", error);
+      Sentry.captureException(error);
       return res.status(500).json({
         error: error instanceof Error ? error.message : "Failed to get tags",
       });
@@ -35,6 +37,7 @@ export class TagController {
       return res.status(200).json({ tag });
     } catch (error) {
       console.error("Get tag error:", error);
+      Sentry.captureException(error);
       return res.status(404).json({
         error: error instanceof Error ? error.message : "Tag not found",
       });
@@ -66,6 +69,7 @@ export class TagController {
       });
     } catch (error) {
       console.error("Create tag error:", error);
+      Sentry.captureException(error);
       return res.status(500).json({
         error: error instanceof Error ? error.message : "Failed to create tag",
       });
@@ -98,6 +102,7 @@ export class TagController {
       });
     } catch (error) {
       console.error("Update tag error:", error);
+      Sentry.captureException(error);
       return res.status(404).json({
         error: error instanceof Error ? error.message : "Failed to update tag",
       });
@@ -120,6 +125,7 @@ export class TagController {
       });
     } catch (error) {
       console.error("Delete tag error:", error);
+      Sentry.captureException(error);
       return res.status(404).json({
         error: error instanceof Error ? error.message : "Failed to delete tag",
       });
@@ -139,6 +145,7 @@ export class TagController {
       return res.status(200).json({ tags: clipTags });
     } catch (error) {
       console.error("Get clip tags error:", error);
+      Sentry.captureException(error);
       return res.status(500).json({
         error:
           error instanceof Error ? error.message : "Failed to get clip tags",
@@ -164,6 +171,7 @@ export class TagController {
       });
     } catch (error) {
       console.error("Add tag to clip error:", error);
+      Sentry.captureException(error);
       return res.status(500).json({
         error:
           error instanceof Error ? error.message : "Failed to add tag to clip",
@@ -189,6 +197,7 @@ export class TagController {
       });
     } catch (error) {
       console.error("Remove tag from clip error:", error);
+      Sentry.captureException(error);
       return res.status(500).json({
         error:
           error instanceof Error
@@ -219,6 +228,7 @@ export class TagController {
       });
     } catch (error) {
       console.error("Set clip tags error:", error);
+      Sentry.captureException(error);
       return res.status(500).json({
         error:
           error instanceof Error ? error.message : "Failed to set clip tags",

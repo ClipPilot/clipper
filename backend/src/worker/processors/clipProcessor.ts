@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import fs from "fs";
 import path from "path";
 import { ClipVideoJob } from "../../services/sqs.service";

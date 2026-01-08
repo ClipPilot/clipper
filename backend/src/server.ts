@@ -1,3 +1,5 @@
+import "./instrument";
+import * as Sentry from "@sentry/node";
 import { createServer } from "http";
 import app from "./app";
 import "./config/env";
@@ -5,10 +7,12 @@ import { initializeSocket } from "./services/socket.service";
 
 process.on("uncaughtException", (error) => {
   console.error("[UNCAUGHT EXCEPTION]", error.message);
+  Sentry.captureException(error);
 });
 
 process.on("unhandledRejection", (reason) => {
   console.error("[UNHANDLED REJECTION]", reason);
+  Sentry.captureException(reason);
 });
 
 const PORT = process.env.PORT || 3000;

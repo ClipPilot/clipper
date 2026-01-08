@@ -97,6 +97,9 @@ jobs:
           # Admin
           admin_jwt_secret    = "${{ secrets.ADMIN_JWT_SECRET }}"
 
+          # Sync
+          sync_key            = "${{ secrets.SYNC_KEY }}"
+
           # Custom Domain
           api_domain          = "api-staging.cuttr.com"
           frontend_url        = "https://beta.cuttr.com"
@@ -214,6 +217,9 @@ jobs:
 
           # Admin
           admin_jwt_secret    = "${{ secrets.ADMIN_JWT_SECRET }}"
+
+          # Sync
+          sync_key            = "${{ secrets.SYNC_KEY }}"
 
           # Custom Domain
           api_domain          = "api-staging.cuttr.com"

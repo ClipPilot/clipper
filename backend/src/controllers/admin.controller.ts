@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import { Response } from "express";
 import { adminService } from "../services/admin.service";
 import { referralService } from "../services/referral.service";
@@ -26,6 +27,7 @@ export async function login(req: AdminRequest, res: Response) {
     });
   } catch (error) {
     console.error("Admin login error:", error);
+    Sentry.captureException(error);
     return res.status(500).json({ error: "Login failed" });
   }
 }
@@ -53,6 +55,7 @@ export async function verify2FA(req: AdminRequest, res: Response) {
     return res.json({ token, email });
   } catch (error) {
     console.error("Admin 2FA verification error:", error);
+    Sentry.captureException(error);
     return res.status(500).json({ error: "Verification failed" });
   }
 }
@@ -79,6 +82,7 @@ export async function resend2FA(req: AdminRequest, res: Response) {
     });
   } catch (error) {
     console.error("Admin resend 2FA error:", error);
+    Sentry.captureException(error);
     return res.status(500).json({ error: "Failed to resend code" });
   }
 }
@@ -94,6 +98,7 @@ export async function getAllTeams(req: AdminRequest, res: Response) {
     return res.json(result);
   } catch (error) {
     console.error("Get teams error:", error);
+    Sentry.captureException(error);
     return res.status(500).json({ error: "Failed to fetch teams" });
   }
 }
@@ -113,6 +118,7 @@ export async function getTeam(req: AdminRequest, res: Response) {
     return res.json({ team });
   } catch (error) {
     console.error("Get team error:", error);
+    Sentry.captureException(error);
     return res.status(500).json({ error: "Failed to fetch team" });
   }
 }
@@ -144,6 +150,7 @@ export async function setupEnterprise(req: AdminRequest, res: Response) {
     });
   } catch (error) {
     console.error("Setup enterprise error:", error);
+    Sentry.captureException(error);
     return res.status(500).json({ error: "Failed to setup enterprise" });
   }
 }
@@ -189,6 +196,7 @@ export async function changePlan(req: AdminRequest, res: Response) {
       .json({ error: "Only enterprise plan changes are currently supported" });
   } catch (error) {
     console.error("Change plan error:", error);
+    Sentry.captureException(error);
     return res.status(500).json({ error: "Failed to change plan" });
   }
 }
@@ -199,6 +207,7 @@ export async function getAllReferrals(req: AdminRequest, res: Response) {
     return res.json({ referrals });
   } catch (error) {
     console.error("Get all referrals error:", error);
+    Sentry.captureException(error);
     return res.status(500).json({ error: "Failed to get referrals" });
   }
 }
@@ -224,6 +233,7 @@ export async function setReferralReward(req: AdminRequest, res: Response) {
     return res.json({ success: true });
   } catch (error) {
     console.error("Set referral reward error:", error);
+    Sentry.captureException(error);
     return res.status(500).json({ error: "Failed to set referral reward" });
   }
 }

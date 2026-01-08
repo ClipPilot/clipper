@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import { Request, Response } from "express";
 import { clipManagerService } from "../services/clipManager.service";
 import { s3Service } from "../services/s3.service";
@@ -39,6 +40,7 @@ export class ClipManagerController {
       return res.status(200).json({ clips: clipsWithUrls });
     } catch (error) {
       console.error("Get clips error:", error);
+      Sentry.captureException(error);
       return res.status(500).json({
         error: error instanceof Error ? error.message : "Failed to get clips",
       });
@@ -73,6 +75,7 @@ export class ClipManagerController {
       return res.status(200).json({ clips: clipsWithUrls });
     } catch (error) {
       console.error("Get pending clips error:", error);
+      Sentry.captureException(error);
       return res.status(500).json({
         error:
           error instanceof Error
@@ -133,6 +136,7 @@ export class ClipManagerController {
       });
     } catch (error) {
       console.error("Get completed clips error:", error);
+      Sentry.captureException(error);
       return res.status(500).json({
         error:
           error instanceof Error
@@ -189,6 +193,7 @@ export class ClipManagerController {
       });
     } catch (error) {
       console.error("Get clip error:", error);
+      Sentry.captureException(error);
       return res.status(404).json({
         error: error instanceof Error ? error.message : "Clip not found",
       });
@@ -234,6 +239,7 @@ export class ClipManagerController {
       });
     } catch (error) {
       console.error("Update clip error:", error);
+      Sentry.captureException(error);
       return res.status(404).json({
         error: error instanceof Error ? error.message : "Failed to update clip",
       });
@@ -277,6 +283,7 @@ export class ClipManagerController {
       return res.status(200).json({ clips: clipsWithUrls });
     } catch (error) {
       console.error("Get clips by folder error:", error);
+      Sentry.captureException(error);
       return res.status(500).json({
         error: error instanceof Error ? error.message : "Failed to get clips",
       });
@@ -305,6 +312,7 @@ export class ClipManagerController {
       });
     } catch (error) {
       console.error("Delete clip error:", error);
+      Sentry.captureException(error);
       return res.status(404).json({
         error: error instanceof Error ? error.message : "Failed to delete clip",
       });
@@ -364,6 +372,7 @@ export class ClipManagerController {
       });
     } catch (error) {
       console.error("Update captions error:", error);
+      Sentry.captureException(error);
       return res.status(500).json({
         error:
           error instanceof Error
@@ -423,6 +432,7 @@ export class ClipManagerController {
       });
     } catch (error) {
       console.error("Update text overlay error:", error);
+      Sentry.captureException(error);
       return res.status(500).json({
         error:
           error instanceof Error
@@ -485,6 +495,7 @@ export class ClipManagerController {
       });
     } catch (error) {
       console.error("Update overlays error:", error);
+      Sentry.captureException(error);
       return res.status(500).json({
         error:
           error instanceof Error
@@ -566,6 +577,7 @@ export class ClipManagerController {
       });
     } catch (error) {
       console.error("Save clip error:", error);
+      Sentry.captureException(error);
       return res.status(500).json({
         error: error instanceof Error ? error.message : "Failed to save clip",
       });
@@ -612,6 +624,7 @@ export class ClipManagerController {
       return res.status(200).json({ clips: clipsWithUrls });
     } catch (error) {
       console.error("Get unsaved clips error:", error);
+      Sentry.captureException(error);
       return res.status(500).json({
         error:
           error instanceof Error
@@ -676,6 +689,7 @@ export class ClipManagerController {
       });
     } catch (error) {
       console.error("Get saved clips error:", error);
+      Sentry.captureException(error);
       return res.status(500).json({
         error:
           error instanceof Error ? error.message : "Failed to get saved clips",
@@ -709,6 +723,7 @@ export class ClipManagerController {
       });
     } catch (error) {
       console.error("Reject clip error:", error);
+      Sentry.captureException(error);
       return res.status(404).json({
         error: error instanceof Error ? error.message : "Failed to reject clip",
       });
@@ -741,6 +756,7 @@ export class ClipManagerController {
       });
     } catch (error) {
       console.error("Generate share link error:", error);
+      Sentry.captureException(error);
       return res.status(500).json({
         error:
           error instanceof Error
@@ -766,6 +782,7 @@ export class ClipManagerController {
       });
     } catch (error) {
       console.error("Remove share link error:", error);
+      Sentry.captureException(error);
       return res.status(500).json({
         error:
           error instanceof Error
@@ -801,6 +818,7 @@ export class ClipManagerController {
       });
     } catch (error) {
       console.error("Get shared clip error:", error);
+      Sentry.captureException(error);
       return res.status(404).json({
         error: "Shared clip not found",
       });
@@ -833,6 +851,7 @@ export class ClipManagerController {
       return res.status(200).json({ downloadUrl });
     } catch (error) {
       console.error("Download shared clip error:", error);
+      Sentry.captureException(error);
       return res.status(404).json({
         error: "Shared clip not found",
       });

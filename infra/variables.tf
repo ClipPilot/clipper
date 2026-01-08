@@ -208,3 +208,9 @@ variable "admin_jwt_secret" {
   sensitive   = true
 }
 
+variable "sync_key" {
+  description = "Sync key for service synchronization"
+  type        = string
+  sensitive   = true
+}
+

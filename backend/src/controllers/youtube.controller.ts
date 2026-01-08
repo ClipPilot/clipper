@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { youtubeService } from "../services/youtube.service";
@@ -18,6 +19,7 @@ export const getVideoInfo = async (req: AuthRequest, res: Response) => {
     return res.json(info);
   } catch (err: any) {
     console.error("Get video info error:", err);
+    Sentry.captureException(err);
     return res.status(400).json({ error: err.message || "Failed to get video info" });
   }
 };
@@ -86,6 +88,7 @@ export const downloadVideo = async (req: AuthRequest, res: Response) => {
     res.end();
   } catch (err: any) {
     console.error("Download video error:", err);
+    Sentry.captureException(err);
     if (!res.headersSent) {
       return res.status(500).json({ error: err.message || "Failed to download video" });
     }
@@ -118,6 +121,7 @@ export const downloadVideoSync = async (req: AuthRequest, res: Response) => {
     });
   } catch (err: any) {
     console.error("Download video error:", err);
+    Sentry.captureException(err);
     return res.status(500).json({ error: err.message || "Failed to download video" });
   }
 };

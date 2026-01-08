@@ -146,3 +146,17 @@ resource "aws_secretsmanager_secret_version" "admin_jwt_secret" {
   secret_id     = aws_secretsmanager_secret.admin_jwt_secret.id
   secret_string = var.admin_jwt_secret
 }
+
+# Sync Key
+resource "aws_secretsmanager_secret" "sync_key" {
+  name                    = "${var.project_name}-${var.environment}/sync-key"
+  recovery_window_in_days = 0
+
+  tags = {
+    Name = "${var.project_name}-sync-key-${var.environment}"
+  }
+}
+resource "aws_secretsmanager_secret_version" "sync_key" {
+  secret_id     = aws_secretsmanager_secret.sync_key.id
+  secret_string = var.sync_key
+}

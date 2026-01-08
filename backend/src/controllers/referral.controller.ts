@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { referralService } from "../services/referral.service";
@@ -18,6 +19,7 @@ export async function generateCodeController(req: AuthRequest, res: Response) {
     return res.status(201).json({ code: newCode });
   } catch (error) {
     console.error("Generate referral code error:", error);
+    Sentry.captureException(error);
     return res.status(500).json({ error: "Failed to generate referral code" });
   }
 }
@@ -33,6 +35,7 @@ export async function getCodeController(req: AuthRequest, res: Response) {
     return res.json({ code });
   } catch (error) {
     console.error("Get referral code error:", error);
+    Sentry.captureException(error);
     return res.status(500).json({ error: "Failed to get referral code" });
   }
 }
@@ -58,6 +61,7 @@ export async function applyCodeController(req: AuthRequest, res: Response) {
     return res.json({ success: true, message: "Referral code applied successfully" });
   } catch (error) {
     console.error("Apply referral code error:", error);
+    Sentry.captureException(error);
     return res.status(500).json({ error: "Failed to apply referral code" });
   }
 }
@@ -73,6 +77,7 @@ export async function getReferralsController(req: AuthRequest, res: Response) {
     return res.json(data);
   } catch (error) {
     console.error("Get referrals error:", error);
+    Sentry.captureException(error);
     return res.status(500).json({ error: "Failed to get referrals" });
   }
 }
@@ -88,6 +93,7 @@ export async function getStatsController(req: AuthRequest, res: Response) {
     return res.json(stats);
   } catch (error) {
     console.error("Get referral stats error:", error);
+    Sentry.captureException(error);
     return res.status(500).json({ error: "Failed to get referral stats" });
   }
 }
@@ -107,6 +113,7 @@ export async function validateCodeController(req: AuthRequest, res: Response) {
     return res.json({ valid: true, code: referralCode.code });
   } catch (error) {
     console.error("Validate referral code error:", error);
+    Sentry.captureException(error);
     return res.status(500).json({ error: "Failed to validate referral code" });
   }
 }

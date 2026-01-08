@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import { Response, Request } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { teamInviteService } from "../services/teamInvite.service";
@@ -37,6 +38,7 @@ export const createInviteController = async (req: AuthRequest, res: Response) =>
     res.status(201).json({ invite });
   } catch (err) {
     console.error("Error in createInviteController:", err);
+    Sentry.captureException(err);
     res.status(500).json({
       error: err instanceof Error ? err.message : "Failed to create invite",
     });
@@ -66,6 +68,7 @@ export const getTeamInvitesController = async (req: AuthRequest, res: Response) 
     res.json({ invites });
   } catch (err) {
     console.error("Error in getTeamInvitesController:", err);
+    Sentry.captureException(err);
     res.status(500).json({
       error: err instanceof Error ? err.message : "Failed to get invites",
     });
@@ -96,6 +99,7 @@ export const getInviteByTokenController = async (req: Request, res: Response) =>
     res.json({ invite });
   } catch (err) {
     console.error("Error in getInviteByTokenController:", err);
+    Sentry.captureException(err);
     res.status(500).json({
       error: err instanceof Error ? err.message : "Failed to get invite",
     });
@@ -119,6 +123,7 @@ export const acceptInviteController = async (req: AuthRequest, res: Response) =>
     res.json({ message: "Invite accepted successfully", ...result });
   } catch (err) {
     console.error("Error in acceptInviteController:", err);
+    Sentry.captureException(err);
     res.status(500).json({
       error: err instanceof Error ? err.message : "Failed to accept invite",
     });
@@ -150,6 +155,7 @@ export const revokeInviteController = async (req: AuthRequest, res: Response) =>
     res.json({ message: "Invite revoked successfully" });
   } catch (err) {
     console.error("Error in revokeInviteController:", err);
+    Sentry.captureException(err);
     res.status(500).json({
       error: err instanceof Error ? err.message : "Failed to revoke invite",
     });
@@ -181,6 +187,7 @@ export const resendInviteController = async (req: AuthRequest, res: Response) =>
     res.json({ message: "Invite resent successfully" });
   } catch (err) {
     console.error("Error in resendInviteController:", err);
+    Sentry.captureException(err);
     res.status(500).json({
       error: err instanceof Error ? err.message : "Failed to resend invite",
     });

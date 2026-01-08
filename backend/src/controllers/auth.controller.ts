@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import { Request, Response } from "express";
 import { authService } from "../services/auth.service";
 import { userService } from "../services/user.service";
@@ -33,6 +34,7 @@ export class AuthController {
       });
     } catch (error) {
       console.error("Signup error:", error);
+      Sentry.captureException(error);
       return res.status(400).json({
         error: error instanceof Error ? error.message : "Failed to sign up",
       });
@@ -64,6 +66,7 @@ export class AuthController {
       });
     } catch (error) {
       console.error("Signin error:", error);
+      Sentry.captureException(error);
       return res.status(401).json({
         error: error instanceof Error ? error.message : "Failed to sign in",
       });
@@ -97,6 +100,7 @@ export class AuthController {
       });
     } catch (error) {
       console.error("Supabase signin error:", error);
+      Sentry.captureException(error);
       return res.status(401).json({
         error:
           error instanceof Error
@@ -124,6 +128,7 @@ export class AuthController {
       });
     } catch (error) {
       console.error("Signout error:", error);
+      Sentry.captureException(error);
       return res.status(400).json({
         error: error instanceof Error ? error.message : "Failed to sign out",
       });
@@ -153,6 +158,7 @@ export class AuthController {
       });
     } catch (error) {
       console.error("Get user error:", error);
+      Sentry.captureException(error);
       return res.status(401).json({
         error: error instanceof Error ? error.message : "Failed to get user",
       });
@@ -177,6 +183,7 @@ export class AuthController {
       });
     } catch (error) {
       console.error("Refresh session error:", error);
+      Sentry.captureException(error);
       return res.status(401).json({
         error:
           error instanceof Error ? error.message : "Failed to refresh session",
@@ -199,6 +206,7 @@ export class AuthController {
       return res.status(200).json(result);
     } catch (error) {
       console.error("Reset password error:", error);
+      Sentry.captureException(error);
       return res.status(400).json({
         error:
           error instanceof Error ? error.message : "Failed to send reset email",
@@ -239,6 +247,7 @@ export class AuthController {
       });
     } catch (error) {
       console.error("Update password error:", error);
+      Sentry.captureException(error);
       return res.status(400).json({
         error:
           error instanceof Error ? error.message : "Failed to update password",
@@ -270,6 +279,7 @@ export class AuthController {
       });
     } catch (error) {
       console.error("Update profile error:", error);
+      Sentry.captureException(error);
       return res.status(400).json({
         error:
           error instanceof Error ? error.message : "Failed to update profile",

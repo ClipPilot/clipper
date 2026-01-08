@@ -1,3 +1,5 @@
+import "../instrument";
+import * as Sentry from "@sentry/node";
 import {
   SQSClient,
   ReceiveMessageCommand,
@@ -9,6 +11,16 @@ import {
   UpdateTaskProtectionCommand,
 } from "@aws-sdk/client-ecs";
 import { config } from "../config/env";
+
+process.on("uncaughtException", (error) => {
+  console.error("[worker] UNCAUGHT EXCEPTION:", error);
+  Sentry.captureException(error);
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("[worker] UNHANDLED REJECTION:", reason);
+  Sentry.captureException(reason);
+});
 import { processClipVideoJob } from "./processors/clipProcessor";
 import { processBatchClipVideoJob } from "./processors/batchClipProcessor";
 import { processCaptionsJob } from "./processors/captionsProcessor";

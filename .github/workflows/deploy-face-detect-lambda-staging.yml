@@ -11,7 +11,7 @@ on:
 
 env:
   AWS_REGION: us-west-2
-  ECR_REPOSITORY: clipster-face-detect-lambda
+  ECR_REPOSITORY: clipster-face-detect-lambda-staging
   LAMBDA_FUNCTION: clipster-face-detect-staging
 
 jobs:

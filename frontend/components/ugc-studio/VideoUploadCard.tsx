@@ -32,14 +32,20 @@ export function VideoUploadCard({
       if (video?.preview) URL.revokeObjectURL(video.preview);
 
       const preview = URL.createObjectURL(file);
-      const newVideo = { file, preview };
-
       const videoEl = document.createElement("video");
       videoEl.src = preview;
       videoEl.onloadedmetadata = () => {
         const dur = videoEl.duration;
+        const MAX_UPLOAD_DURATION = 300;
+        if (dur > MAX_UPLOAD_DURATION) {
+          URL.revokeObjectURL(preview);
+          alert(`Video too long. Maximum upload duration is 5 minutes.`);
+          return;
+        }
+        const newVideo = { file, preview };
         onVideoChange(newVideo, dur);
-        onSegmentsChange([{ id: crypto.randomUUID(), start: 0, end: dur }]);
+        const initialEnd = Math.min(dur, 50);
+        onSegmentsChange([{ id: crypto.randomUUID(), start: 0, end: initialEnd }]);
       };
     },
     [video, onVideoChange, onSegmentsChange]

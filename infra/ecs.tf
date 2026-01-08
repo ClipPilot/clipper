@@ -170,6 +170,10 @@ resource "aws_ecs_task_definition" "backend" {
       {
         name      = "ADMIN_JWT_SECRET"
         valueFrom = aws_secretsmanager_secret.admin_jwt_secret.arn
+      },
+      {
+        name      = "SYNC_KEY"
+        valueFrom = aws_secretsmanager_secret.sync_key.arn
       }
     ]
 

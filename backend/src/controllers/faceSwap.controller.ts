@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import { Request, Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { faceSwapService } from "../services/faceSwap.service";
@@ -72,6 +73,7 @@ export const trimVideo = async (req: AuthRequest, res: Response) => {
     });
   } catch (error) {
     console.error("[FACE-SWAP] Trim video error:", error);
+    Sentry.captureException(error);
     return res.status(500).json({
       error: error instanceof Error ? error.message : "Failed to trim video",
     });
@@ -162,6 +164,7 @@ export const downloadFixed = async (req: AuthRequest, res: Response) => {
     });
   } catch (error) {
     console.error("[DOWNLOAD-FIXED] Error:", error);
+    Sentry.captureException(error);
     if (fs.existsSync(tempInputPath)) fs.unlinkSync(tempInputPath);
     if (fs.existsSync(tempOutputPath)) fs.unlinkSync(tempOutputPath);
     return res.status(500).json({
@@ -227,6 +230,7 @@ export const downloadFixedPublic = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("[DOWNLOAD-FIXED-PUBLIC] Error:", error);
+    Sentry.captureException(error);
     if (fs.existsSync(tempInputPath)) fs.unlinkSync(tempInputPath);
     if (fs.existsSync(tempOutputPath)) fs.unlinkSync(tempOutputPath);
     return res.status(500).json({
@@ -281,6 +285,7 @@ export const detectFaces = async (req: AuthRequest, res: Response) => {
     });
   } catch (error) {
     console.error("[FACE-DETECT] Error:", error);
+    Sentry.captureException(error);
     return res.status(500).json({
       error: error instanceof Error ? error.message : "Failed to detect faces",
     });

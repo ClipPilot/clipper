@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { teamService } from "../services/team.service";
@@ -21,6 +22,7 @@ export const getUserTeamsController = async (req: AuthRequest, res: Response) =>
     res.json({ teams });
   } catch (err) {
     console.error("Error in getUserTeamsController:", err);
+    Sentry.captureException(err);
     res.status(500).json({
       error: err instanceof Error ? err.message : "Failed to get teams",
     });
@@ -43,6 +45,7 @@ export const getDefaultTeamController = async (req: AuthRequest, res: Response) 
     res.json(defaultTeam);
   } catch (err) {
     console.error("Error in getDefaultTeamController:", err);
+    Sentry.captureException(err);
     res.status(500).json({
       error: err instanceof Error ? err.message : "Failed to get default team",
     });
@@ -100,6 +103,7 @@ export const getTeamUsageStatsController = async (req: AuthRequest, res: Respons
     });
   } catch (err) {
     console.error("Error in getTeamUsageStatsController:", err);
+    Sentry.captureException(err);
     res.status(500).json({
       error: err instanceof Error ? err.message : "Failed to get usage stats",
     });
@@ -131,6 +135,7 @@ export const getTeamMembersController = async (req: AuthRequest, res: Response) 
     res.json({ members });
   } catch (err) {
     console.error("Error in getTeamMembersController:", err);
+    Sentry.captureException(err);
     res.status(500).json({
       error: err instanceof Error ? err.message : "Failed to get team members",
     });
@@ -174,6 +179,7 @@ export const addTeamMemberController = async (req: AuthRequest, res: Response) =
     res.json({ member });
   } catch (err) {
     console.error("Error in addTeamMemberController:", err);
+    Sentry.captureException(err);
     res.status(500).json({
       error: err instanceof Error ? err.message : "Failed to add team member",
     });
@@ -214,6 +220,7 @@ export const removeTeamMemberController = async (req: AuthRequest, res: Response
     res.json({ message: "Member removed successfully" });
   } catch (err) {
     console.error("Error in removeTeamMemberController:", err);
+    Sentry.captureException(err);
     res.status(500).json({
       error: err instanceof Error ? err.message : "Failed to remove team member",
     });
@@ -251,6 +258,7 @@ export const updateTeamMemberRoleController = async (req: AuthRequest, res: Resp
     res.json({ member: updated });
   } catch (err) {
     console.error("Error in updateTeamMemberRoleController:", err);
+    Sentry.captureException(err);
     res.status(500).json({
       error: err instanceof Error ? err.message : "Failed to update member role",
     });
@@ -274,6 +282,7 @@ export const leaveTeamController = async (req: AuthRequest, res: Response) => {
     res.json({ message: "Left team successfully" });
   } catch (err) {
     console.error("Error in leaveTeamController:", err);
+    Sentry.captureException(err);
     res.status(500).json({
       error: err instanceof Error ? err.message : "Failed to leave team",
     });
@@ -310,6 +319,7 @@ export const updateTeamNameController = async (req: AuthRequest, res: Response) 
     res.json({ team: updated });
   } catch (err) {
     console.error("Error in updateTeamNameController:", err);
+    Sentry.captureException(err);
     res.status(500).json({
       error: err instanceof Error ? err.message : "Failed to update team name",
     });
@@ -339,6 +349,7 @@ export const deleteTeamController = async (req: AuthRequest, res: Response) => {
     res.json({ message: "Team deleted successfully" });
   } catch (err) {
     console.error("Error in deleteTeamController:", err);
+    Sentry.captureException(err);
     res.status(500).json({
       error: err instanceof Error ? err.message : "Failed to delete team",
     });
@@ -371,6 +382,7 @@ export const createTeamController = async (req: AuthRequest, res: Response) => {
     res.status(201).json({ team });
   } catch (err) {
     console.error("Error in createTeamController:", err);
+    Sentry.captureException(err);
     res.status(500).json({
       error: err instanceof Error ? err.message : "Failed to create team",
     });
