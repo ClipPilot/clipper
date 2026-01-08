@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import shutil
 import tempfile
 import subprocess
 import boto3
@@ -20,7 +21,7 @@ FACE_CONFIG = {
     'min_segment_duration': 1.0,
     'sample_fps': 8,
     'merge_gap': 0.3,
-    'padding': 0.3,
+    'padding': 0.0,  # No padding - edge refinement provides precise boundaries
     'max_workers': 6,
 }
 
@@ -209,6 +210,139 @@ def merge_times_into_segments(times: List[float], gap: float = 0.5) -> List[Dict
 
     segments.append({'start': start, 'end': prev})
     return segments
+
+
+def extract_edge_frames(
+    video_path: str,
+    start_time: float,
+    duration: float,
+    fps: float = 30.0
+) -> Tuple[List[str], str]:
+    """Extract frames for a specific time window at high FPS for edge refinement."""
+    temp_dir = tempfile.mkdtemp()
+    frames_dir = os.path.join(temp_dir, 'edge_frames')
+    os.makedirs(frames_dir, exist_ok=True)
+
+    output_pattern = os.path.join(frames_dir, 'frame_%04d.jpg')
+
+    # Clamp start_time to >= 0
+    start_time = max(0, start_time)
+
+    cmd = [
+        'ffmpeg', '-ss', str(start_time),
+        '-i', video_path,
+        '-t', str(duration),
+        '-vf', f'fps={int(fps)}',
+        '-q:v', '2',
+        output_pattern,
+        '-y', '-loglevel', 'warning'
+    ]
+
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"[EDGE-REFINE] FFmpeg stderr: {result.stderr}")
+        return [], temp_dir
+
+    frames = sorted([
+        os.path.join(frames_dir, f)
+        for f in os.listdir(frames_dir)
+        if f.endswith('.jpg')
+    ])
+    return frames, temp_dir
+
+
+def refine_segment_edges(
+    segments: List[Dict[str, float]],
+    video_path: str,
+    video_duration: float,
+    context: Any = None
+) -> List[Dict[str, float]]:
+    """
+    Refine segment edges by analyzing frames at 30fps in a 1-second window
+    around each edge (0.5s before and after).
+
+    This ensures every frame with a face is captured by the segment.
+    """
+    if not segments:
+        return segments
+
+    REFINE_FPS = 30.0
+    EDGE_WINDOW = 0.5  # seconds before and after edge
+
+    prototxt_path, caffemodel_path = get_model_paths()
+    net = cv2.dnn.readNetFromCaffe(prototxt_path, caffemodel_path)
+
+    refined_segments = []
+
+    for seg_idx, segment in enumerate(segments):
+        original_start = segment['start']
+        original_end = segment['end']
+
+        print(f"[EDGE-REFINE] Segment {seg_idx + 1}/{len(segments)}: {original_start:.3f}s - {original_end:.3f}s")
+
+        # Refine START edge
+        start_window_begin = max(0, original_start - EDGE_WINDOW)
+        start_window_duration = min(EDGE_WINDOW * 2, video_duration - start_window_begin)
+
+        start_frames, start_temp_dir = extract_edge_frames(
+            video_path, start_window_begin, start_window_duration, REFINE_FPS
+        )
+
+        new_start = original_start
+        if start_frames:
+            # Scan forward to find FIRST frame with a face
+            for i, frame_path in enumerate(start_frames):
+                frame_time = start_window_begin + (i / REFINE_FPS)
+                if detect_faces_in_frame(net, frame_path):
+                    new_start = frame_time
+                    break
+
+            # Clean up temp directory
+            shutil.rmtree(start_temp_dir, ignore_errors=True)
+
+        # Refine END edge
+        end_window_begin = max(0, original_end - EDGE_WINDOW)
+        end_window_duration = min(EDGE_WINDOW * 2, video_duration - end_window_begin)
+
+        end_frames, end_temp_dir = extract_edge_frames(
+            video_path, end_window_begin, end_window_duration, REFINE_FPS
+        )
+
+        new_end = original_end
+        if end_frames:
+            # Scan BACKWARD to find LAST frame with a face
+            for i in range(len(end_frames) - 1, -1, -1):
+                frame_path = end_frames[i]
+                frame_time = end_window_begin + (i / REFINE_FPS)
+                if detect_faces_in_frame(net, frame_path):
+                    new_end = frame_time
+                    break
+
+            # Clean up temp directory
+            shutil.rmtree(end_temp_dir, ignore_errors=True)
+
+        # Log refinement results
+        start_delta = new_start - original_start
+        end_delta = new_end - original_end
+        print(f"[EDGE-REFINE] Refined: {new_start:.3f}s - {new_end:.3f}s "
+              f"(start: {start_delta:+.3f}s, end: {end_delta:+.3f}s)")
+
+        # Only keep segment if it still has positive duration
+        if new_end > new_start:
+            refined_segments.append({
+                'start': round(new_start, 3),
+                'end': round(new_end, 3)
+            })
+        else:
+            print(f"[EDGE-REFINE] Segment {seg_idx + 1} removed (no faces found in refined window)")
+
+        # Keep-alive logging
+        if context:
+            remaining_ms = context.get_remaining_time_in_millis()
+            print(f"[KEEP-ALIVE] Edge refinement {seg_idx + 1}/{len(segments)} | Lambda time remaining: {remaining_ms // 1000}s")
+
+    print(f"[EDGE-REFINE] Refined {len(segments)} → {len(refined_segments)} segments")
+    return refined_segments
 
 
 def pad_segments(
@@ -411,10 +545,20 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
             raw_segments = detect_face_segments(video_path, net, config, context)
 
-            log_remaining_time("Face detection complete - padding segments")
+            log_remaining_time("Face detection complete - refining segment edges")
+
+            # Fine-tune segment edges at 30fps for frame-accurate boundaries
+            refined_segments = refine_segment_edges(
+                raw_segments,
+                video_path,
+                video_duration,
+                context
+            )
+
+            log_remaining_time("Edge refinement complete - padding segments")
 
             segments = pad_segments(
-                raw_segments,
+                refined_segments,
                 video_duration,
                 config['padding']
             )
