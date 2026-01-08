@@ -3,7 +3,7 @@ import { db } from "../db";
 import { comfyJobs } from "@clipper/shared-db/src/schema";
 import { s3Service } from "../services/s3.service";
 import { gpuSqsService, SwapType } from "../services/gpuSqs.service";
-import { cutClip, getVideoDuration, detectSilencePoints, findBestCutPoint } from "../services/videoEditor.service";
+import { cutClip, getVideoDuration } from "../services/videoEditor.service";
 import { emitComfyJobUpdate } from "../services/socket.service";
 import { getTeamUsage } from "../middleware/subscription.middleware";
 import { teamService } from "../services/team.service";
@@ -168,32 +168,19 @@ export class ComfyController {
         if (segDuration <= CHUNK_DURATION + CHUNK_LEEWAY) {
           chunkPaths.push(segPath);
         } else {
-          // Detect silence points for smart chunking (cut at natural pauses)
-          const silencePoints = await detectSilencePoints(segPath);
-
           let start = 0;
           let chunkIdx = 0;
           while (start < segDuration) {
             const remaining = segDuration - start;
             // If remaining is within leeway of a full chunk, include it all in this chunk
-            if (remaining <= CHUNK_DURATION + CHUNK_LEEWAY) {
-              const chunkPath = path.join(tempDir, `${crypto.randomUUID()}_seg${i}_chunk${chunkIdx}.mp4`);
-              await cutClip(segPath, chunkPath, start, segDuration);
-              chunkPaths.push(chunkPath);
-              break;
-            }
-
-            // Find best cut point using silence detection (±2s from target, max 12s chunk)
-            const targetCut = start + CHUNK_DURATION;
-            const minCut = start + CHUNK_DURATION - 2; // Allow cutting 2s earlier
-            const maxCut = Math.min(start + 12, segDuration - 0.5); // Max 12s chunk, leave at least 0.5s
-
-            const bestCut = findBestCutPoint(silencePoints, targetCut, minCut, maxCut);
-
+            // This prevents tiny leftover chunks (e.g., 0.08s from a 10.08s video)
+            const end = remaining <= CHUNK_DURATION + CHUNK_LEEWAY
+              ? segDuration
+              : start + CHUNK_DURATION;
             const chunkPath = path.join(tempDir, `${crypto.randomUUID()}_seg${i}_chunk${chunkIdx}.mp4`);
-            await cutClip(segPath, chunkPath, start, bestCut);
+            await cutClip(segPath, chunkPath, start, end);
             chunkPaths.push(chunkPath);
-            start = bestCut;
+            start = end;
             chunkIdx++;
           }
         }
