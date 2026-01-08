@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import { db } from "../db";
 import {
   referralCodes,
@@ -90,6 +91,7 @@ class ReferralService {
         });
       } catch (err) {
         console.error("Failed to send referral applied email:", err);
+        Sentry.captureException(err);
       }
     }
 
@@ -138,6 +140,7 @@ class ReferralService {
           });
         } catch (err) {
           console.error("Failed to send admin referral notification:", err);
+          Sentry.captureException(err);
         }
 
         if (referrerTeam?.ownerEmail) {
@@ -152,6 +155,7 @@ class ReferralService {
             );
           } catch (err) {
             console.error("Failed to send referral converted email:", err);
+            Sentry.captureException(err);
           }
         }
       }
@@ -482,6 +486,7 @@ class ReferralService {
         });
       } catch (err) {
         console.error("Failed to send reward set email:", err);
+        Sentry.captureException(err);
       }
     }
 

@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import jwt from "jsonwebtoken";
 import { Redis } from "ioredis";
 import { db } from "../db";
@@ -26,6 +27,7 @@ const initRedis = async () => {
       console.log("Admin 2FA: Using Redis for code storage");
     } catch (error) {
       console.log("Admin 2FA: Redis unavailable, using in-memory storage");
+      Sentry.captureException(error);
       redisClient = null;
     }
   }

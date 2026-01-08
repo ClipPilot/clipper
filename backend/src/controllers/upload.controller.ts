@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { s3Service } from "../services/s3.service";
@@ -51,6 +52,7 @@ export const initiateMultipartUpload = async (req: AuthRequest, res: Response) =
     });
   } catch (err) {
     console.error("Error initiating multipart upload:", err);
+    Sentry.captureException(err);
     return res.status(500).json({ error: "Failed to initiate upload" });
   }
 };
@@ -72,6 +74,7 @@ export const completeMultipartUpload = async (req: AuthRequest, res: Response) =
     return res.json({ success: true, s3Key });
   } catch (err) {
     console.error("Error completing multipart upload:", err);
+    Sentry.captureException(err);
     return res.status(500).json({ error: "Failed to complete upload" });
   }
 };
@@ -93,6 +96,7 @@ export const abortMultipartUpload = async (req: AuthRequest, res: Response) => {
     return res.json({ success: true });
   } catch (err) {
     console.error("Error aborting multipart upload:", err);
+    Sentry.captureException(err);
     return res.status(500).json({ error: "Failed to abort upload" });
   }
 };
@@ -129,6 +133,7 @@ export const getPresignedUploadUrl = async (req: AuthRequest, res: Response) => 
     return res.json({ uploadUrl, s3Key });
   } catch (err) {
     console.error("Error generating presigned URL:", err);
+    Sentry.captureException(err);
     return res.status(500).json({ error: "Failed to generate upload URL" });
   }
 };
@@ -275,6 +280,7 @@ export const submitClipJob = async (req: AuthRequest, res: Response) => {
     });
   } catch (err) {
     console.error("Error submitting clip job:", err);
+    Sentry.captureException(err);
     return res.status(500).json({ error: "Failed to submit job" });
   }
 };
@@ -472,6 +478,7 @@ export const submitBatchClipJob = async (req: AuthRequest, res: Response) => {
     });
   } catch (err) {
     console.error("Error submitting batch clip job:", err);
+    Sentry.captureException(err);
     return res.status(500).json({ error: "Failed to submit batch job" });
   }
 };

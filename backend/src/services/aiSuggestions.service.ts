@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import { ENV } from "../config/env";
@@ -151,6 +152,7 @@ export const generateClipSuggestionsService = async (
           console.log("Deleted failed file from Gemini:", uploadedFileName);
         } catch (e) {
           console.error("Failed to delete Gemini file:", e);
+          Sentry.captureException(e);
         }
         throw new Error(`Gemini failed to process the video file: ${uploadedFile.error?.message || uploadedFile.statusText || "Unknown error"}`);
       }
@@ -227,6 +229,7 @@ export const generateClipSuggestionsService = async (
       return validVideos;
     } catch (error) {
       console.error("Failed to parse Gemini response:", error);
+      Sentry.captureException(error);
       return [];
     } finally {
       // Cleanup: delete re-encoded file and Gemini upload
@@ -240,6 +243,7 @@ export const generateClipSuggestionsService = async (
           console.log("Deleted file from Gemini:", uploadedFileName);
         } catch (e) {
           console.error("Failed to delete Gemini file:", e);
+          Sentry.captureException(e);
         }
       }
     }

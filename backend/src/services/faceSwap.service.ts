@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import ffmpeg from "fluent-ffmpeg";
 import fs from "fs";
 import path from "path";
@@ -99,6 +100,7 @@ export const trimAndUpload = async (params: TrimAndUploadParams): Promise<TrimRe
       if (fs.existsSync(tempDir)) fs.rmdirSync(tempDir);
     } catch (cleanupError) {
       console.error("[FACE-SWAP] Cleanup error:", cleanupError);
+      Sentry.captureException(cleanupError);
     }
   }
 };

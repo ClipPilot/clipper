@@ -2,8 +2,11 @@
 # Fast, reliable face detection without native compilation issues
 
 # ECR Repository for Face Detect Lambda
+# Note: Prod uses 'clipster-face-detect-lambda', staging uses 'clipster-face-detect-lambda-staging'
+# This separation prevents staging deployments from triggering ECR lifecycle policy
+# that could delete production images
 resource "aws_ecr_repository" "face_detect_lambda" {
-  name                 = "${var.project_name}-face-detect-lambda"
+  name                 = var.environment == "prod" ? "${var.project_name}-face-detect-lambda" : "${var.project_name}-face-detect-lambda-${var.environment}"
   image_tag_mutability = "MUTABLE"
   force_delete         = true
 
@@ -12,7 +15,8 @@ resource "aws_ecr_repository" "face_detect_lambda" {
   }
 
   tags = {
-    Name = "${var.project_name}-face-detect-lambda"
+    Name        = var.environment == "prod" ? "${var.project_name}-face-detect-lambda" : "${var.project_name}-face-detect-lambda-${var.environment}"
+    Environment = var.environment
   }
 }
 
