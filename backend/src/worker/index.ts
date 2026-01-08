@@ -14,6 +14,7 @@ import { processBatchClipVideoJob } from "./processors/batchClipProcessor";
 import { processCaptionsJob } from "./processors/captionsProcessor";
 import { processTextOverlayJob } from "./processors/textOverlayProcessor";
 import { processOverlaysJob } from "./processors/overlaysProcessor";
+import { processCharacterJob } from "./processors/characterProcessor";
 import {
   VideoProcessingJob,
   ClipVideoJob,
@@ -21,6 +22,7 @@ import {
   UpdateCaptionsJob,
   TextOverlayJob,
   UpdateOverlaysJob,
+  GenerateCharacterJob,
 } from "../services/sqs.service";
 
 const sqsClient = new SQSClient({
@@ -118,7 +120,9 @@ async function processMessage(job: VideoProcessingJob, receiptHandle: string): P
       case "update-overlays":
         await processOverlaysJob(job as UpdateOverlaysJob);
         break;
-      // Note: ugc-face-swap is handled by the separate gpu-worker (SQS-based)
+      case "generate-character":
+        await processCharacterJob(job as GenerateCharacterJob);
+        break;
       default:
         console.error(`Unknown job type: ${(job as any).type}`);
     }

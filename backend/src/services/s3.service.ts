@@ -340,6 +340,45 @@ class S3Service {
 
     return await getSignedUrl(s3Client, command, { expiresIn });
   }
+
+  async uploadCharacterImage(
+    buffer: Buffer,
+    teamId: number,
+    characterId: string,
+    variantIndex: number
+  ): Promise<string> {
+    const key = `characters/${teamId}/${characterId}/generated/variant_${variantIndex}.png`;
+    await this.uploadBuffer(buffer, key, "image/png");
+    return key;
+  }
+
+  async uploadCharacterReference(
+    buffer: Buffer,
+    teamId: number,
+    characterId: string,
+    refIndex: number
+  ): Promise<string> {
+    const key = `characters/${teamId}/${characterId}/references/ref_${refIndex}.png`;
+    await this.uploadBuffer(buffer, key, "image/png");
+    return key;
+  }
+
+  async getCharacterImagePresignedUpload(
+    teamId: number,
+    fileName: string
+  ): Promise<{ uploadUrl: string; s3Key: string }> {
+    const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const s3Key = `characters/${teamId}/temp/${Date.now()}_${sanitizedFileName}`;
+
+    const command = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: s3Key,
+      ContentType: "image/png",
+    });
+
+    const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+    return { uploadUrl, s3Key };
+  }
 }
 
 export const s3Service = new S3Service();

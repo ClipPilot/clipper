@@ -49,8 +49,7 @@ export default function UGCStudioPage() {
             gradient="from-cyan-500/20 via-blue-500/10 to-transparent"
             iconColor="text-cyan-400"
             features={["Text-to-video generation", "Custom AI avatars", "Script to video"]}
-            comingSoon
-            onPress={() => {}}
+            onPress={() => router.push("/dashboard/ugc-studio/ai-video-creator")}
           />
         </div>
 

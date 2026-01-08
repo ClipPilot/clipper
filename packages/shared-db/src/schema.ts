@@ -52,6 +52,13 @@ export const comfyJobStatusEnum = pgEnum("comfy_job_status", [
   "failed",
 ]);
 
+export const characterJobStatusEnum = pgEnum("character_job_status", [
+  "queued",
+  "generating",
+  "completed",
+  "failed",
+]);
+
 // Tables
 
 export const users = pgTable("users", {
@@ -387,3 +394,70 @@ export const referrals = pgTable("referrals", {
   created_at: timestamp("created_at").notNull().defaultNow(),
   updated_at: timestamp("updated_at").notNull().defaultNow(),
 }).enableRLS();
+
+export const characters = pgTable(
+  "characters",
+  {
+    id: serial("id").primaryKey(),
+    team_id: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 255 }).notNull(),
+    public: boolean("public").notNull().default(false),
+
+    gender: varchar("gender", { length: 20 }),
+    age_range: varchar("age_range", { length: 20 }),
+    vibe: varchar("vibe", { length: 50 }),
+
+    appearance_config: jsonb("appearance_config"),
+    style_config: jsonb("style_config"),
+
+    character_images: jsonb("character_images").notNull(),
+    primary_image_index: integer("primary_image_index").notNull().default(0),
+
+    reference_images: jsonb("reference_images"),
+    generation_prompt: text("generation_prompt"),
+
+    parent_character_id: integer("parent_character_id"),
+    is_variation: boolean("is_variation").notNull().default(false),
+
+    uses_count: integer("uses_count").notNull().default(0),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    teamIdx: index("characters_team_id_idx").on(table.team_id),
+    publicIdx: index("characters_public_idx").on(table.public),
+    usesIdx: index("characters_uses_count_idx").on(table.uses_count),
+    parentIdx: index("characters_parent_id_idx").on(table.parent_character_id),
+  })
+).enableRLS();
+
+export const characterGenerationJobs = pgTable(
+  "character_generation_jobs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    team_id: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    user_id: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: characterJobStatusEnum("status").notNull().default("queued"),
+    config: jsonb("config").notNull(),
+    parent_character_id: integer("parent_character_id"),
+    progress: integer("progress").notNull().default(0),
+    progress_message: text("progress_message"),
+    generated_images: jsonb("generated_images"),
+    generation_prompt: text("generation_prompt"),
+    error_message: text("error_message"),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    started_at: timestamp("started_at"),
+    completed_at: timestamp("completed_at"),
+  },
+  (table) => ({
+    teamIdx: index("character_generation_jobs_team_id_idx").on(table.team_id),
+    statusIdx: index("character_generation_jobs_status_idx").on(table.status),
+    createdAtIdx: index("character_generation_jobs_created_at_idx").on(table.created_at),
+  })
+).enableRLS();

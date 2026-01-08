@@ -34,3 +34,8 @@ export async function notifyClipUpdate(teamId: number, clipId: number): Promise<
   console.log(`[NOTIFY] Clip ${clipId} updated for team ${teamId}`);
   await callNotifyEndpoint("/internal/notify/clip-update", { teamId, clipId });
 }
+
+export async function notifyCharacterGenerated(teamId: number, jobId: string): Promise<void> {
+  console.log(`[NOTIFY] Character generation ${jobId} completed for team ${teamId}`);
+  await callNotifyEndpoint("/internal/notify/character-generated", { teamId, jobId });
+}

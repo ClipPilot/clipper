@@ -11,7 +11,8 @@ export type JobType =
   | "batch-clip-video"
   | "update-captions"
   | "text-overlay"
-  | "update-overlays";
+  | "update-overlays"
+  | "generate-character";
 
 // Base job interface
 interface BaseJob {
@@ -113,12 +114,39 @@ export interface UpdateOverlaysJob extends BaseJob {
   };
 }
 
+// Character generation job payload
+export interface GenerateCharacterJob extends BaseJob {
+  type: "generate-character";
+  jobId: string;
+  config: {
+    gender: string;
+    ageRange: string;
+    appearance: {
+      hairColor: string;
+      hairStyle: string;
+      skinTone: string;
+      eyeColor: string;
+      bodyType: string;
+    };
+    style: {
+      outfit: string;
+      outfitCustom?: string;
+      setting: string;
+      cameraStyle: string;
+      anythingElse?: string;
+    };
+    referenceImages?: string[];
+  };
+  parentCharacterId?: number;
+}
+
 export type VideoProcessingJob =
   | ClipVideoJob
   | BatchClipVideoJob
   | UpdateCaptionsJob
   | TextOverlayJob
-  | UpdateOverlaysJob;
+  | UpdateOverlaysJob
+  | GenerateCharacterJob;
 
 class SQSService {
   private queueUrl: string;
@@ -270,6 +298,26 @@ class SQSService {
       captionColor: params.captionColor,
       captionFont: params.captionFont,
       heading: params.heading,
+      createdAt: new Date().toISOString(),
+    };
+
+    return this.sendJob(job);
+  }
+
+  async sendGenerateCharacterJob(params: {
+    jobId: string;
+    teamId: number;
+    userId: number;
+    config: GenerateCharacterJob["config"];
+    parentCharacterId?: number;
+  }): Promise<string> {
+    const job: GenerateCharacterJob = {
+      type: "generate-character",
+      jobId: params.jobId,
+      teamId: params.teamId,
+      userId: params.userId,
+      config: params.config,
+      parentCharacterId: params.parentCharacterId,
       createdAt: new Date().toISOString(),
     };
 
