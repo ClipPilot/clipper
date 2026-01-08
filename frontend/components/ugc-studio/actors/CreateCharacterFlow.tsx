@@ -57,6 +57,7 @@ export function CreateCharacterFlow({ teamId, onCharacterCreated }: CreateCharac
   const [selectedImageKeys, setSelectedImageKeys] = useState<string[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [generationPrompt, setGenerationPrompt] = useState("");
   const [generationProgress, setGenerationProgress] = useState(0);
   const [generationMessage, setGenerationMessage] = useState("");
@@ -179,6 +180,7 @@ export function CreateCharacterFlow({ teamId, onCharacterCreated }: CreateCharac
     if (selectedImageKeys.length === 0) return;
 
     setIsSaving(true);
+    setSaveError(null);
     try {
       const referenceKeys = referenceImages.map((img) => img.key);
       const response = await actorsAPI.create({
@@ -196,6 +198,12 @@ export function CreateCharacterFlow({ teamId, onCharacterCreated }: CreateCharac
       onCharacterCreated(response.character);
     } catch (error) {
       console.error("Failed to save character:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to save character";
+      if (errorMessage.includes("Insufficient credits")) {
+        setSaveError("Not enough credits. Please purchase more credits or select fewer images.");
+      } else {
+        setSaveError(errorMessage);
+      }
     } finally {
       setIsSaving(false);
     }
@@ -309,6 +317,16 @@ export function CreateCharacterFlow({ teamId, onCharacterCreated }: CreateCharac
           />
         )}
       </div>
+
+      {saveError && (
+        <div className="bg-danger-100 border border-danger-300 text-danger-700 px-4 py-3 rounded-xl flex items-center gap-3">
+          <Icon icon="solar:danger-triangle-bold" className="text-danger-500" width={20} />
+          <span className="text-sm">{saveError}</span>
+          <button onClick={() => setSaveError(null)} className="ml-auto">
+            <Icon icon="solar:close-circle-bold" className="text-danger-400 hover:text-danger-600" width={18} />
+          </button>
+        </div>
+      )}
 
       <div className="flex items-center justify-between">
         <Button

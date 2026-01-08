@@ -52,7 +52,7 @@ export default function CreateAdPage() {
     }
   };
 
-  const handleCharacterSelect = (character: Character) => {
+  const handleCharacterSelect = (character: Character | null) => {
     setSelectedCharacter(character);
   };
 
@@ -140,6 +140,7 @@ export default function CreateAdPage() {
           <CharacterStep
             selectedCharacter={selectedCharacter}
             onCharacterSelect={handleCharacterSelect}
+            onContinue={handleNext}
           />
         )}
 

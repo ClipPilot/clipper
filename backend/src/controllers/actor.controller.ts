@@ -4,9 +4,6 @@ import { characters, characterGenerationJobs } from "@clipper/shared-db/src/sche
 import { s3Service } from "../services/s3.service";
 import { sqsService } from "../services/sqs.service";
 import {
-  generateCharacterImages,
-  generateVariationImages,
-  buildPromptFromConfig,
   CharacterConfig,
   AppearanceConfig,
   StyleConfig,
@@ -169,6 +166,22 @@ export class ActorController {
 
       const creditCost = selectedImageKeys.length * CREDIT_PER_IMAGE;
 
+      const consumeResult = await teamService.consumeMultiple(teamId, creditCost);
+
+      if (!consumeResult.success) {
+        return res.status(403).json({
+          error: "Insufficient credits",
+          code: "INSUFFICIENT_CREDITS",
+          required: creditCost,
+          available: consumeResult.remaining.total,
+          usage: {
+            baseRemaining: consumeResult.remaining.base,
+            addonRemaining: consumeResult.remaining.addon,
+            totalRemaining: consumeResult.remaining.total,
+          },
+        });
+      }
+
       const [character] = await db
         .insert(characters)
         .values({
@@ -195,10 +208,24 @@ export class ActorController {
           .where(eq(characters.id, parentCharacterId));
       }
 
+      console.log(
+        `[ACTOR] Character ${character.id} created. Charged ${creditCost} credits (${consumeResult.fromBase} base, ${consumeResult.fromAddon} addon). Team ${teamId} remaining: ${consumeResult.remaining.total}`
+      );
+
       return res.status(201).json({
         success: true,
         character,
         creditCost,
+        creditsCharged: {
+          total: creditCost,
+          fromBase: consumeResult.fromBase,
+          fromAddon: consumeResult.fromAddon,
+        },
+        usage: {
+          baseRemaining: consumeResult.remaining.base,
+          addonRemaining: consumeResult.remaining.addon,
+          totalRemaining: consumeResult.remaining.total,
+        },
       });
     } catch (error) {
       console.error("[ACTOR] Create error:", error);
@@ -211,16 +238,28 @@ export class ActorController {
   async list(req: AuthRequest, res: Response) {
     try {
       const teamId = parseInt(req.query.teamId as string);
+      const limit = parseInt(req.query.limit as string) || 50;
+      const offset = parseInt(req.query.offset as string) || 0;
+      const sort = req.query.sort as "recent" | "popular" || "recent";
 
       if (!teamId) {
         return res.status(400).json({ error: "teamId is required" });
       }
 
+      const orderBy = sort === "popular" ? desc(characters.uses_count) : desc(characters.created_at);
+
       const result = await db
         .select()
         .from(characters)
         .where(eq(characters.team_id, teamId))
-        .orderBy(desc(characters.created_at));
+        .orderBy(orderBy)
+        .limit(limit)
+        .offset(offset);
+
+      const [countResult] = await db
+        .select({ count: sql`count(*)::int` })
+        .from(characters)
+        .where(eq(characters.team_id, teamId));
 
       const charactersWithUrls = await Promise.all(
         result.map(async (char) => {
@@ -238,6 +277,7 @@ export class ActorController {
       return res.status(200).json({
         success: true,
         characters: charactersWithUrls,
+        total: countResult?.count || 0,
       });
     } catch (error) {
       console.error("[ACTOR] List error:", error);
@@ -251,14 +291,22 @@ export class ActorController {
     try {
       const limit = parseInt(req.query.limit as string) || 50;
       const offset = parseInt(req.query.offset as string) || 0;
+      const sort = req.query.sort as "recent" | "popular" || "popular";
+
+      const orderBy = sort === "recent" ? desc(characters.created_at) : desc(characters.uses_count);
 
       const result = await db
         .select()
         .from(characters)
         .where(eq(characters.public, true))
-        .orderBy(desc(characters.uses_count))
+        .orderBy(orderBy)
         .limit(limit)
         .offset(offset);
+
+      const [countResult] = await db
+        .select({ count: sql`count(*)::int` })
+        .from(characters)
+        .where(eq(characters.public, true));
 
       const charactersWithUrls = await Promise.all(
         result.map(async (char) => {
@@ -277,6 +325,7 @@ export class ActorController {
       return res.status(200).json({
         success: true,
         characters: charactersWithUrls,
+        total: countResult?.count || 0,
       });
     } catch (error) {
       console.error("[ACTOR] List community error:", error);
@@ -425,6 +474,10 @@ export class ActorController {
         });
       }
 
+      if (!req.user?.dbUserId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
       const team = await teamService.getTeamById(teamId);
       if (!team || !canAccessUGCStudio(team.plan)) {
         return res.status(403).json({ error: "UGC Studio access required" });
@@ -439,32 +492,53 @@ export class ActorController {
         return res.status(404).json({ error: "Character not found" });
       }
 
-      const tempCharacterId = crypto.randomUUID();
       const appearance = original.appearance_config as AppearanceConfig;
-
-      const imageKeys = await generateVariationImages(
+      const config = {
+        gender: original.gender || "female",
+        ageRange: original.age_range || "25-35",
         appearance,
-        original.gender || "female",
-        original.age_range || "25-35",
-        styleConfig,
+        style: styleConfig,
+        referenceImages: (original.character_images as string[]) || undefined,
+      };
+
+      const [job] = await db
+        .insert(characterGenerationJobs)
+        .values({
+          team_id: teamId,
+          user_id: req.user.dbUserId,
+          config,
+          parent_character_id: id,
+          status: "queued",
+          progress: 0,
+          progress_message: "Queued for variation generation...",
+        })
+        .returning();
+
+      await sqsService.sendGenerateCharacterJob({
+        jobId: job.id,
         teamId,
-        tempCharacterId
-      );
+        userId: req.user.dbUserId,
+        config: {
+          gender: config.gender,
+          ageRange: config.ageRange,
+          appearance: config.appearance,
+          style: config.style,
+          referenceImages: config.referenceImages,
+        },
+        parentCharacterId: id,
+      });
 
-      const imageUrls = await Promise.all(
-        imageKeys.map((key) => s3Service.getPresignedUrl(key, 3600))
-      );
+      await db
+        .update(characters)
+        .set({ uses_count: sql`${characters.uses_count} + 1` })
+        .where(eq(characters.id, id));
 
-      return res.status(200).json({
+      return res.status(202).json({
         success: true,
-        tempCharacterId,
-        images: imageKeys.map((key, i) => ({
-          key,
-          url: imageUrls[i],
-          index: i,
-        })),
+        jobId: job.id,
+        status: "queued",
         originalCharacterId: id,
-        originalAppearance: appearance,
+        message: "Variation generation started. Poll for status.",
       });
     } catch (error) {
       console.error("[ACTOR] Create variation error:", error);

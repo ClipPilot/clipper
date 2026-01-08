@@ -180,6 +180,33 @@ class S3Service {
     }
   }
 
+  async getImageAsBuffer(key: string): Promise<Buffer> {
+    try {
+      const command = new GetObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: key,
+      });
+
+      const response = await s3Client.send(command);
+
+      if (!response.Body) {
+        throw new Error("No body in S3 response");
+      }
+
+      const chunks: Uint8Array[] = [];
+      const stream = response.Body as NodeJS.ReadableStream;
+
+      for await (const chunk of stream) {
+        chunks.push(chunk as Uint8Array);
+      }
+
+      return Buffer.concat(chunks);
+    } catch (error) {
+      console.error("Error getting image from S3:", error);
+      throw new Error(`Failed to get image from S3: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+  }
+
   async getPresignedUrl(key: string, expiresIn: number = 3600): Promise<string> {
     const command = new GetObjectCommand({
       Bucket: BUCKET_NAME,

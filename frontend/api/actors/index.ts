@@ -5,6 +5,7 @@ import type {
   CharacterConfig,
   GeneratePreviewResponse,
   GenerationStatusResponse,
+  CreateCharacterResponse,
   StyleConfig,
   AppearanceConfig,
 } from "@/components/ugc-studio/actors/types";
@@ -59,7 +60,7 @@ class ActorsAPI {
     generationPrompt?: string;
     referenceImages?: string[];
     parentCharacterId?: number;
-  }): Promise<{ success: boolean; character: Character; creditCost: number }> {
+  }): Promise<CreateCharacterResponse> {
     const response = await apiFetch(`${API_URL}/actors/create`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -75,8 +76,16 @@ class ActorsAPI {
     return response.json();
   }
 
-  async list(teamId: number): Promise<{ success: boolean; characters: Character[] }> {
-    const response = await apiFetch(`${API_URL}/actors?teamId=${teamId}`, {
+  async list(
+    teamId: number,
+    options?: { limit?: number; offset?: number; sort?: "recent" | "popular" }
+  ): Promise<{ success: boolean; characters: Character[]; total?: number }> {
+    const params = new URLSearchParams({ teamId: String(teamId) });
+    if (options?.limit) params.set("limit", String(options.limit));
+    if (options?.offset) params.set("offset", String(options.offset));
+    if (options?.sort) params.set("sort", options.sort);
+
+    const response = await apiFetch(`${API_URL}/actors?${params.toString()}`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -90,12 +99,18 @@ class ActorsAPI {
     return response.json();
   }
 
-  async listCommunity(
-    limit = 50,
-    offset = 0
-  ): Promise<{ success: boolean; characters: Character[] }> {
+  async listCommunity(options?: {
+    limit?: number;
+    offset?: number;
+    sort?: "recent" | "popular";
+  }): Promise<{ success: boolean; characters: Character[]; total?: number }> {
+    const params = new URLSearchParams();
+    if (options?.limit) params.set("limit", String(options.limit));
+    if (options?.offset) params.set("offset", String(options.offset));
+    if (options?.sort) params.set("sort", options.sort);
+
     const response = await apiFetch(
-      `${API_URL}/actors/community?limit=${limit}&offset=${offset}`,
+      `${API_URL}/actors/community?${params.toString()}`,
       {
         method: "GET",
         headers: { "Content-Type": "application/json" },
@@ -179,7 +194,7 @@ class ActorsAPI {
     id: number,
     teamId: number,
     styleConfig: StyleConfig
-  ): Promise<GeneratePreviewResponse & { originalCharacterId: number }> {
+  ): Promise<{ success: boolean; jobId: string; status: string; originalCharacterId: number; message: string }> {
     const response = await apiFetch(`${API_URL}/actors/${id}/create-variation`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

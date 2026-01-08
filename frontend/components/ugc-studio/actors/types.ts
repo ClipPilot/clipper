@@ -71,6 +71,32 @@ export interface GenerationStatusResponse {
   error?: string;
 }
 
+export interface UsageInfo {
+  baseRemaining: number;
+  addonRemaining: number;
+  totalRemaining: number;
+}
+
+export interface CreateCharacterResponse {
+  success: boolean;
+  character: Character;
+  creditCost: number;
+  creditsCharged: {
+    total: number;
+    fromBase: number;
+    fromAddon: number;
+  };
+  usage: UsageInfo;
+}
+
+export interface InsufficientCreditsError {
+  error: string;
+  code: "INSUFFICIENT_CREDITS";
+  required: number;
+  available: number;
+  usage: UsageInfo;
+}
+
 export type CharacterSource = "my-actors" | "community" | "create-new";
 
 export type CreateStep = "basic-info" | "appearance" | "style" | "references" | "generate";

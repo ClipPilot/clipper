@@ -7,27 +7,27 @@ interface CharacterGridProps {
   characters: Character[];
   selectedId?: number;
   onSelect: (character: Character) => void;
-  showVariationButton?: boolean;
-  onVariation?: (character: Character) => void;
+  showShareToggle?: boolean;
+  onShareToggle?: (character: Character, isPublic: boolean) => void;
 }
 
 export function CharacterGrid({
   characters,
   selectedId,
   onSelect,
-  showVariationButton = false,
-  onVariation,
+  showShareToggle = false,
+  onShareToggle,
 }: CharacterGridProps) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4 sm:gap-5">
       {characters.map((character) => (
         <CharacterCard
           key={character.id}
           character={character}
           isSelected={character.id === selectedId}
           onSelect={onSelect}
-          showVariationButton={showVariationButton}
-          onVariation={onVariation}
+          showShareToggle={showShareToggle}
+          onShareToggle={onShareToggle}
         />
       ))}
     </div>
