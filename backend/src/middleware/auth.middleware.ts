@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import * as Sentry from "@sentry/node";
 import { authService } from "../services/auth.service";
 import { db } from "../db";
 import { users } from "@clipper/shared-db/src/schema";
@@ -59,6 +60,7 @@ export async function requireAuth(
     next();
   } catch (error) {
     console.error("Auth middleware error:", error);
+    Sentry.captureException(error);
 
     const err = error as Error & { code?: string; cause?: { code?: string } };
     const isNetworkError =
@@ -119,6 +121,7 @@ export async function requireSeatAccess(
     next();
   } catch (error) {
     console.error("Seat access middleware error:", error);
+    Sentry.captureException(error);
     return res.status(500).json({
       error: "Failed to verify seat access",
     });

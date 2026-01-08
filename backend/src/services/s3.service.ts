@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import {
   S3Client,
   GetObjectCommand,

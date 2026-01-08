@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import express from "express";
 import cors from "cors";
 import swaggerUi from "swagger-ui-express";
@@ -62,5 +63,13 @@ app.use("/api/face-swap", faceSwapRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/referrals", referralRoutes);
 app.use("/api/actors", actorRoutes);
+
+// Sentry test route
+app.get("/debug-sentry", function mainHandler(req, res) {
+  throw new Error("My first Sentry error!");
+});
+
+// Sentry error handler must be after all controllers
+Sentry.setupExpressErrorHandler(app);
 
 export default app;

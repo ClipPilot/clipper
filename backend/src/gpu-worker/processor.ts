@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import WebSocket from "ws";
 import path from "path";
 import fs from "fs";
@@ -17,9 +18,9 @@ import {
   cutClip,
   mergeClipsGpu,
   extractFirstFrame,
-  extractAudio,
+  // extractAudio, // Only used for sync.so lip sync
 } from "../services/videoEditor.service";
-import { syncService } from "../services/sync.service";
+// import { syncService } from "../services/sync.service";
 import { ComfyJobUpdate } from "../services/socket.service";
 import { teamService } from "../services/team.service";
 import { emailNotiService } from "../services/emailNoti.service";
@@ -884,57 +885,58 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
     }
 
     // Step 10: Apply lip sync polish (if configured)
-    if (syncService.isConfigured() && job.originalVideoS3Key) {
-      console.log(`[gpu-worker] Applying lip sync polish...`);
-      await updateProgress(jobId, job.teamId, 88, "Applying polish (lip sync)");
+    // DISABLED: sync.so integration commented out
+    // if (syncService.isConfigured() && job.originalVideoS3Key) {
+    //   console.log(`[gpu-worker] Applying lip sync polish...`);
+    //   await updateProgress(jobId, job.teamId, 88, "Applying polish (lip sync)");
 
-      try {
-        // Upload face-swapped video to get a URL for sync.so
-        const tempVideoKey = `temp-sync/${jobId}/video_${Date.now()}.mp4`;
-        const videoBuffer = fs.readFileSync(finalOutputPath);
-        await uploadToS3(videoBuffer, tempVideoKey);
-        const videoUrl = await s3Service.getPresignedUrl(tempVideoKey, 1800);
+    //   try {
+    //     // Upload face-swapped video to get a URL for sync.so
+    //     const tempVideoKey = `temp-sync/${jobId}/video_${Date.now()}.mp4`;
+    //     const videoBuffer = fs.readFileSync(finalOutputPath);
+    //     await uploadToS3(videoBuffer, tempVideoKey);
+    //     const videoUrl = await s3Service.getPresignedUrl(tempVideoKey, 1800);
 
-        // Extract audio from original video
-        const originalVideoPath = path.join(outDir, `original_for_audio_${Date.now()}.mp4`);
-        await s3Service.downloadFile(job.originalVideoS3Key, originalVideoPath);
-        const audioPath = path.join(outDir, `original_audio_${Date.now()}.wav`);
-        await extractAudio(originalVideoPath, audioPath);
+    //     // Extract audio from original video
+    //     const originalVideoPath = path.join(outDir, `original_for_audio_${Date.now()}.mp4`);
+    //     await s3Service.downloadFile(job.originalVideoS3Key, originalVideoPath);
+    //     const audioPath = path.join(outDir, `original_audio_${Date.now()}.wav`);
+    //     await extractAudio(originalVideoPath, audioPath);
 
-        // Upload audio to get a URL
-        const tempAudioKey = `temp-sync/${jobId}/audio_${Date.now()}.wav`;
-        const audioBuffer = fs.readFileSync(audioPath);
-        await uploadToS3(audioBuffer, tempAudioKey);
-        const audioUrl = await s3Service.getPresignedUrl(tempAudioKey, 1800);
+    //     // Upload audio to get a URL
+    //     const tempAudioKey = `temp-sync/${jobId}/audio_${Date.now()}.wav`;
+    //     const audioBuffer = fs.readFileSync(audioPath);
+    //     await uploadToS3(audioBuffer, tempAudioKey);
+    //     const audioUrl = await s3Service.getPresignedUrl(tempAudioKey, 1800);
 
-        console.log(`[gpu-worker] Calling sync.so API...`);
-        await updateProgress(jobId, job.teamId, 90, "Processing lip sync");
+    //     console.log(`[gpu-worker] Calling sync.so API...`);
+    //     await updateProgress(jobId, job.teamId, 90, "Processing lip sync");
 
-        const syncedVideoUrl = await syncService.applyLipSync(videoUrl, audioUrl, {
-          onProgress: (status) => {
-            console.log(`[gpu-worker] Sync status: ${status}`);
-          },
-        });
+    //     const syncedVideoUrl = await syncService.applyLipSync(videoUrl, audioUrl, {
+    //       onProgress: (status) => {
+    //         console.log(`[gpu-worker] Sync status: ${status}`);
+    //       },
+    //     });
 
-        // Download synced video and replace final output
-        const syncedBuffer = await syncService.downloadOutput(syncedVideoUrl);
-        const syncedPath = path.join(outDir, `synced_final_${Date.now()}.mp4`);
-        fs.writeFileSync(syncedPath, syncedBuffer);
-        finalOutputPath = syncedPath;
-        console.log(`[gpu-worker] Lip sync applied successfully`);
+    //     // Download synced video and replace final output
+    //     const syncedBuffer = await syncService.downloadOutput(syncedVideoUrl);
+    //     const syncedPath = path.join(outDir, `synced_final_${Date.now()}.mp4`);
+    //     fs.writeFileSync(syncedPath, syncedBuffer);
+    //     finalOutputPath = syncedPath;
+    //     console.log(`[gpu-worker] Lip sync applied successfully`);
 
-        // Cleanup temp S3 files
-        try {
-          await s3Service.deleteObject(tempVideoKey);
-          await s3Service.deleteObject(tempAudioKey);
-        } catch (cleanupErr) {
-          console.warn(`[gpu-worker] Failed to cleanup temp sync files:`, cleanupErr);
-        }
-      } catch (syncErr) {
-        console.error(`[gpu-worker] Lip sync failed, continuing without:`, (syncErr as Error).message);
-        // Continue without lip sync - don't fail the whole job
-      }
-    }
+    //     // Cleanup temp S3 files
+    //     try {
+    //       await s3Service.deleteObject(tempVideoKey);
+    //       await s3Service.deleteObject(tempAudioKey);
+    //     } catch (cleanupErr) {
+    //       console.warn(`[gpu-worker] Failed to cleanup temp sync files:`, cleanupErr);
+    //     }
+    //   } catch (syncErr) {
+    //     console.error(`[gpu-worker] Lip sync failed, continuing without:`, (syncErr as Error).message);
+    //     // Continue without lip sync - don't fail the whole job
+    //   }
+    // }
 
     // Step 11: Upload final video to S3
     console.log(`[gpu-worker] Uploading final video to S3...`);

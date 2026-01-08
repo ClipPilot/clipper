@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import { db } from "../db";
 import { teams, teamMembers, users, usageStats, subscriptions } from "@clipper/shared-db/src/schema";
 import { eq, and, desc, count } from "drizzle-orm";
@@ -535,6 +536,7 @@ class TeamService {
           `Failed to cancel Stripe subscription for team ${teamId}:`,
           stripeError
         );
+        Sentry.captureException(stripeError);
       }
     }
 

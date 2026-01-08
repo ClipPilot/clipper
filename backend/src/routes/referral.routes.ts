@@ -1,4 +1,5 @@
 import { Router, Request, Response } from "express";
+import * as Sentry from "@sentry/node";
 import { requireAuth } from "../middleware/auth.middleware";
 import {
   generateCodeController,
@@ -302,6 +303,7 @@ router.get("/validate-code/:code", async (req: Request, res: Response) => {
     return res.json(result);
   } catch (error) {
     console.error("Validate code error:", error);
+    Sentry.captureException(error);
     return res.status(500).json({ error: "Failed to validate code" });
   }
 });

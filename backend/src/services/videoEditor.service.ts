@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import ffmpeg from "fluent-ffmpeg";
 import fs from "fs";
 import puppeteer from "puppeteer";
@@ -113,6 +114,7 @@ export const compressVideoForUpload = async (
     return { path: outputPath, compressed: true, originalSize, newSize };
   } catch (error) {
     console.error("[COMPRESS] Failed, using original:", error);
+    Sentry.captureException(error);
     return {
       path: inputPath,
       compressed: false,

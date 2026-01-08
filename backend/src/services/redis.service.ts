@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import Redis from "ioredis";
 
 let redisClient: Redis | null = null;
@@ -22,6 +23,7 @@ export const getRedisClient = (): Redis | null => {
     return redisClient;
   } catch (err) {
     console.error("[redis] Failed to create client:", err);
+    Sentry.captureException(err);
     return null;
   }
 };

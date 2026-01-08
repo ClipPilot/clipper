@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import { Server as SocketServer } from "socket.io";
 import { Server as HttpServer } from "http";
 import { createAdapter } from "@socket.io/redis-adapter";
@@ -30,6 +31,7 @@ export const initializeSocket = async (httpServer: HttpServer) => {
       console.log("Socket.io Redis adapter connected successfully");
     } catch (error) {
       console.error("Failed to connect Socket.io Redis adapter:", error);
+      Sentry.captureException(error);
       console.log("Falling back to in-memory adapter");
     }
   } else {

@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import { db } from "../db";
 import { teams, teamMembers, teamInvites, users } from "@clipper/shared-db/src/schema";
 import { eq, and, lt } from "drizzle-orm";
@@ -114,6 +115,7 @@ class TeamInviteService {
       });
     } catch (error) {
       console.error("Failed to send invite email:", error);
+      Sentry.captureException(error);
     }
 
     return invite;

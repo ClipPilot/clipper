@@ -1,4 +1,5 @@
 import { Response, NextFunction } from "express";
+import * as Sentry from "@sentry/node";
 import { AuthRequest } from "./auth.middleware";
 import { db } from "../db";
 import {
@@ -56,6 +57,7 @@ export async function requireActiveSubscription(
     next();
   } catch (err) {
     console.error("Subscription check error:", err);
+    Sentry.captureException(err);
     return res.status(500).json({ error: "Failed to verify subscription" });
   }
 }
@@ -105,6 +107,7 @@ export async function requireSubscriptionForAction(
     next();
   } catch (err) {
     console.error("Subscription check error:", err);
+    Sentry.captureException(err);
     return res.status(500).json({ error: "Failed to verify subscription" });
   }
 }
@@ -202,6 +205,7 @@ export async function requireClipQuota(
     next();
   } catch (err) {
     console.error("Usage check error:", err);
+    Sentry.captureException(err);
     return res.status(500).json({ error: "Failed to verify usage quota" });
   }
 }
@@ -247,6 +251,7 @@ export async function checkSubscriptionAndUsage(
     next();
   } catch (err) {
     console.error("Subscription/usage check error:", err);
+    Sentry.captureException(err);
     next();
   }
 }
@@ -277,6 +282,7 @@ export async function incrementClipUsage(teamId: number): Promise<boolean> {
     return true;
   } catch (err) {
     console.error("Failed to increment clip usage:", err);
+    Sentry.captureException(err);
     return false;
   }
 }

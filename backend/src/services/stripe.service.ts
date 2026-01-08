@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import {
   stripe,
   STRIPE_PRICES,
@@ -314,6 +315,7 @@ class StripeService {
       await referralService.activateReferral(teamId, plan);
     } catch (refError) {
       console.error("Failed to activate referral:", refError);
+      Sentry.captureException(refError);
     }
 
     try {
@@ -335,6 +337,7 @@ class StripeService {
       }
     } catch (emailError) {
       console.error("Failed to send subscription welcome email:", emailError);
+      Sentry.captureException(emailError);
     }
   }
 
@@ -459,6 +462,7 @@ class StripeService {
         }
       } catch (refError) {
         console.error("Failed to apply referral bonus clips:", refError);
+        Sentry.captureException(refError);
       }
 
       try {
@@ -477,6 +481,7 @@ class StripeService {
         }
       } catch (discountError) {
         console.error("Failed to apply referral discount:", discountError);
+        Sentry.captureException(discountError);
       }
     } else {
       await db
@@ -550,6 +555,7 @@ class StripeService {
       }
     } catch (emailError) {
       console.error("Failed to send subscription cancelled email:", emailError);
+      Sentry.captureException(emailError);
     }
   }
 
@@ -749,6 +755,7 @@ class StripeService {
       }
     } catch (emailError) {
       console.error("Failed to send renewal email:", emailError);
+      Sentry.captureException(emailError);
     }
   }
 
@@ -796,6 +803,7 @@ class StripeService {
       }
     } catch (emailError) {
       console.error("Failed to send payment failed email:", emailError);
+      Sentry.captureException(emailError);
     }
   }
 }

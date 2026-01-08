@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import * as Sentry from "@sentry/node";
 import { adminService } from "../services/admin.service";
 
 export interface AdminRequest extends Request {
@@ -28,6 +29,7 @@ export async function requireAdminAuth(
     next();
   } catch (error) {
     console.error("Admin auth error:", error);
+    Sentry.captureException(error);
     return res.status(401).json({ error: "Authentication failed" });
   }
 }

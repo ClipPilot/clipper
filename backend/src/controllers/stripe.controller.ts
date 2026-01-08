@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import { Request, Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { stripeService } from "../services/stripe.service";
@@ -32,6 +33,7 @@ export const createCheckoutSession = async (req: AuthRequest, res: Response) => 
     return res.json({ url });
   } catch (err) {
     console.error("Checkout session error:", err);
+    Sentry.captureException(err);
     return res.status(500).json({ error: "Failed to create checkout session" });
   }
 };
@@ -56,6 +58,7 @@ export const createPortalSession = async (req: AuthRequest, res: Response) => {
     return res.json({ url });
   } catch (err: any) {
     console.error("Portal session error:", err);
+    Sentry.captureException(err);
     return res.status(500).json({ error: err.message || "Failed to create portal session" });
   }
 };
@@ -74,6 +77,7 @@ export const getSubscription = async (req: AuthRequest, res: Response) => {
     return res.json({ subscription, plan });
   } catch (err) {
     console.error("Get subscription error:", err);
+    Sentry.captureException(err);
     return res.status(500).json({ error: "Failed to get subscription" });
   }
 };
@@ -129,6 +133,7 @@ export const handleWebhook = async (req: Request, res: Response) => {
     return res.json({ received: true });
   } catch (err) {
     console.error("Webhook handler error:", err);
+    Sentry.captureException(err);
     return res.status(500).json({ error: "Webhook handler failed" });
   }
 };
@@ -167,6 +172,7 @@ export const changePlan = async (req: AuthRequest, res: Response) => {
     });
   } catch (err: any) {
     console.error("Change plan error:", err);
+    Sentry.captureException(err);
     return res.status(500).json({ error: err.message || "Failed to change plan" });
   }
 };

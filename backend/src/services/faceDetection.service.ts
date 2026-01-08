@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
 import { s3Service } from "./s3.service";
 import { config } from "../config/env";
@@ -70,6 +71,7 @@ export async function detectFaceSegmentsWithPadding(
       console.log(`[FACE-DETECT] Cleaned up temp S3 file: ${s3Key}`);
     } catch (cleanupErr) {
       console.warn(`[FACE-DETECT] Failed to cleanup temp file: ${cleanupErr}`);
+      Sentry.captureException(cleanupErr);
     }
 
     return body.segments || [];

@@ -1,3 +1,5 @@
+import * as Sentry from "@sentry/node";
+
 const API_INTERNAL_URL = process.env.API_INTERNAL_URL || "";
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || "";
 
@@ -22,6 +24,7 @@ async function callNotifyEndpoint(endpoint: string, body: object): Promise<void>
     }
   } catch (error) {
     console.warn("[NOTIFY] Failed to notify API:", error);
+    Sentry.captureException(error);
   }
 }
 
