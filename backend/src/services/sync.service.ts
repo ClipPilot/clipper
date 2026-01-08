@@ -3,7 +3,12 @@ import { config } from "../config/env";
 const SYNC_API_BASE = "https://api.sync.so/v2";
 
 type SyncModel = "lipsync-2" | "lipsync-1.9.0-beta" | "lipsync-2-pro";
-type SyncStatus = "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | "REJECTED";
+type SyncStatus =
+  | "PENDING"
+  | "PROCESSING"
+  | "COMPLETED"
+  | "FAILED"
+  | "REJECTED";
 type SyncMode = "loop" | "freeze" | "bounce";
 
 interface SyncInput {
@@ -41,7 +46,7 @@ export class SyncService {
   private apiKey: string;
 
   constructor() {
-    this.apiKey = config.sync?.apiKey || process.env.SYNC_API_KEY || "";
+    this.apiKey = config.sync?.apiKey || process.env.SYNC_KEY || "";
     if (!this.apiKey) {
       console.warn("[SYNC] No API key configured - lip sync will be skipped");
     }
@@ -56,7 +61,7 @@ export class SyncService {
     audioUrl: string,
     options: CreateLipSyncOptions = {}
   ): Promise<SyncGenerationResponse> {
-    const { model = "lipsync-2", syncMode = "loop" } = options;
+    const { model = "lipsync-1.9.0-beta", syncMode = "loop" } = options;
 
     console.log(`[SYNC] Creating lip sync job`);
     console.log(`[SYNC] Video: ${videoUrl}`);
@@ -118,7 +123,7 @@ export class SyncService {
     const {
       pollInterval = 5000,
       maxWaitTime = 10 * 60 * 1000,
-      onProgress
+      onProgress,
     } = options;
 
     const startTime = Date.now();
@@ -135,7 +140,9 @@ export class SyncService {
       const result = await this.getStatus(jobId);
 
       if (result.status !== lastStatus) {
-        console.log(`[SYNC] Status: ${result.status} (${Math.round(elapsed / 1000)}s elapsed)`);
+        console.log(
+          `[SYNC] Status: ${result.status} (${Math.round(elapsed / 1000)}s elapsed)`
+        );
         lastStatus = result.status;
         onProgress?.(result.status);
       }

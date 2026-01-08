@@ -139,9 +139,9 @@ export class ComfyController {
 
       if (!canAccessUGCStudio(usage.plan)) {
         return res.status(403).json({
-          error: "UGC Studio is only available on Scale and Enterprise plans. Please upgrade to access this feature.",
+          error: "UGC Studio is only available on Studio, Scale, and Enterprise plans. Please upgrade to access this feature.",
           code: "PLAN_REQUIRED",
-          requiredPlan: "scale",
+          requiredPlan: "studio",
           currentPlan: usage.plan,
         });
       }

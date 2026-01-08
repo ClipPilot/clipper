@@ -616,43 +616,43 @@ export function MultiSegmentTrimmer({
             />
           </div>
         </button>
-        <div className="absolute bottom-3 left-3 flex items-center gap-2">
+        <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 flex items-center gap-1 sm:gap-2">
           <button
             onClick={() => stepFrame(-1)}
-            className="w-7 h-7 rounded bg-black/70 hover:bg-black/90 flex items-center justify-center text-white transition-colors"
+            className="w-6 h-6 sm:w-7 sm:h-7 rounded bg-black/70 hover:bg-black/90 flex items-center justify-center text-white transition-colors"
             title="Previous frame"
           >
-            <Icon icon="solar:rewind-back-bold" width={14} />
+            <Icon icon="solar:rewind-back-bold" width={12} />
           </button>
           <button
             onClick={togglePlayPause}
-            className="w-8 h-8 rounded bg-black/70 hover:bg-black/90 flex items-center justify-center text-white transition-colors"
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded bg-black/70 hover:bg-black/90 flex items-center justify-center text-white transition-colors"
           >
-            <Icon icon={isPlaying ? "solar:pause-bold" : "solar:play-bold"} width={16} />
+            <Icon icon={isPlaying ? "solar:pause-bold" : "solar:play-bold"} width={14} />
           </button>
           <button
             onClick={() => stepFrame(1)}
-            className="w-7 h-7 rounded bg-black/70 hover:bg-black/90 flex items-center justify-center text-white transition-colors"
+            className="w-6 h-6 sm:w-7 sm:h-7 rounded bg-black/70 hover:bg-black/90 flex items-center justify-center text-white transition-colors"
             title="Next frame"
           >
-            <Icon icon="solar:rewind-forward-bold" width={14} />
+            <Icon icon="solar:rewind-forward-bold" width={12} />
           </button>
-          <div className="px-2 py-1 rounded bg-black/70 text-white text-xs font-mono">
+          <div className="hidden sm:block px-2 py-1 rounded bg-black/70 text-white text-xs font-mono">
             {formatTimeWithFrames(currentTime)}
           </div>
           {isInSegment ? (
-            <div className={`px-2 py-1 rounded text-xs font-medium flex items-center gap-1 ${SEGMENT_COLORS[currentSegmentIndex % SEGMENT_COLORS.length].bg}`}>
-              <Icon icon="solar:mask-happly-bold" width={12} />
-              <span>Seg {currentSegmentIndex + 1}</span>
+            <div className={`px-1.5 sm:px-2 py-0.5 sm:py-1 rounded text-[10px] sm:text-xs font-medium flex items-center gap-1 ${SEGMENT_COLORS[currentSegmentIndex % SEGMENT_COLORS.length].bg}`}>
+              <Icon icon="solar:mask-happly-bold" width={10} />
+              <span className="hidden xs:inline">Seg</span> {currentSegmentIndex + 1}
             </div>
           ) : (
-            <div className="px-2 py-1 rounded bg-blue-500/80 text-white text-xs font-medium flex items-center gap-1">
-              <Icon icon="solar:video-frame-bold" width={12} />
+            <div className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded bg-blue-500/80 text-white text-[10px] sm:text-xs font-medium flex items-center gap-1">
+              <Icon icon="solar:video-frame-bold" width={10} />
               <span>Original</span>
             </div>
           )}
         </div>
-        <div className="absolute bottom-3 right-3 px-2 py-1 rounded bg-black/70 text-white text-xs font-mono">
+        <div className="absolute bottom-2 sm:bottom-3 right-2 sm:right-3 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded bg-black/70 text-white text-[10px] sm:text-xs font-mono">
           {formatTime(duration)}
         </div>
       </div>
@@ -792,7 +792,7 @@ export function MultiSegmentTrimmer({
             return (
               <div
                 key={segment.id}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer transition-all ${
+                className={`flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-lg border cursor-pointer transition-all ${
                   isActive
                     ? `${color.border} bg-surface-elevated`
                     : "border-border-base hover:border-text-tertiary"
@@ -810,22 +810,22 @@ export function MultiSegmentTrimmer({
                     e.stopPropagation();
                     playSegment(index);
                   }}
-                  className={`w-5 h-5 rounded-full ${color.bg} flex items-center justify-center hover:opacity-80 transition-opacity`}
+                  className={`w-5 h-5 shrink-0 rounded-full ${color.bg} flex items-center justify-center hover:opacity-80 transition-opacity`}
                   title="Play this segment"
                 >
                   <Icon icon="solar:play-bold" className="text-white" width={10} />
                 </button>
-                <span className="text-xs font-mono text-text-primary">
+                <span className="text-[10px] sm:text-xs font-mono text-text-primary whitespace-nowrap">
                   {formatTime(segment.start)} - {formatTime(segment.end)}
                 </span>
-                <span className="text-xs text-text-tertiary">({segDuration}s)</span>
+                <span className="text-[10px] sm:text-xs text-text-tertiary hidden sm:inline">({segDuration}s)</span>
                 {segments.length > 1 && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       removeSegment(index);
                     }}
-                    className="ml-1 text-text-tertiary hover:text-red-500 transition-colors"
+                    className="ml-0.5 sm:ml-1 text-text-tertiary hover:text-red-500 transition-colors"
                   >
                     <Icon icon="solar:close-circle-bold" width={14} />
                   </button>
@@ -862,7 +862,7 @@ export function MultiSegmentTrimmer({
         </div>
 
         {segments[activeSegmentIndex] && (
-          <div className="p-3 bg-surface-elevated rounded-lg space-y-2">
+          <div className="p-2 sm:p-3 bg-surface-elevated rounded-lg space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-text-secondary">
                 Fine-tune Segment {activeSegmentIndex + 1}
@@ -871,7 +871,7 @@ export function MultiSegmentTrimmer({
                 Duration: <span className="text-accent-400 font-medium">{formatTime(segments[activeSegmentIndex].end - segments[activeSegmentIndex].start)}</span>
               </span>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <div className="text-[10px] text-text-tertiary uppercase tracking-wide">Start (IN)</div>
@@ -960,32 +960,32 @@ export function MultiSegmentTrimmer({
           </div>
         )}
 
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-text-tertiary">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-2">
+          <div className="text-xs sm:text-sm text-text-tertiary">
             {segments.length} segment{segments.length !== 1 ? "s" : ""} selected
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-text-tertiary text-sm">Total:</span>
+            <span className="text-text-tertiary text-xs sm:text-sm">Total:</span>
             <span
-              className={`font-mono text-sm font-medium ${
+              className={`font-mono text-xs sm:text-sm font-medium ${
                 exceedsMax ? "text-red-500" : "text-accent-400"
               }`}
             >
               {formatTime(totalDuration)}
             </span>
-            <span className="text-text-muted text-xs">/ {maxTotalDuration}s max</span>
+            <span className="text-text-muted text-[10px] sm:text-xs">/ {maxTotalDuration}s max</span>
           </div>
         </div>
 
-        <div className="flex items-start gap-2 text-xs text-text-tertiary bg-surface-elevated/50 p-2 rounded-lg">
+        <div className="flex items-start gap-2 text-[10px] sm:text-xs text-text-tertiary bg-surface-elevated/50 p-2 rounded-lg">
           <Icon icon="solar:info-circle-bold" width={14} className="mt-0.5 shrink-0 text-accent-400" />
-          <span><strong className="text-yellow-400">Important:</strong> The <strong className="text-text-secondary">first frame of each segment must show a face</strong> for the swap to work. Select clips with <strong className="text-text-secondary">clear talking faces</strong> and <strong className="text-text-secondary">no text overlays</strong>. Drag handles to preview frames.</span>
+          <span><strong className="text-yellow-400">Important:</strong> The <strong className="text-text-secondary">first frame must show a face</strong> for the swap to work. Select clips with <strong className="text-text-secondary">clear talking faces</strong> and <strong className="text-text-secondary">no text overlays</strong>.</span>
         </div>
 
         {exceedsMax && (
-          <div className="flex items-center gap-2 text-xs text-red-500 bg-red-500/10 p-2 rounded-lg">
-            <Icon icon="solar:danger-circle-bold" width={16} />
-            <span>Combined segment duration must be {maxTotalDuration} seconds or less</span>
+          <div className="flex items-center gap-2 text-[10px] sm:text-xs text-red-500 bg-red-500/10 p-2 rounded-lg">
+            <Icon icon="solar:danger-circle-bold" width={16} className="shrink-0" />
+            <span>Combined segment duration must be {maxTotalDuration}s or less</span>
           </div>
         )}
       </div>

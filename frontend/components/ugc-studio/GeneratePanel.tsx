@@ -41,23 +41,27 @@ export function GeneratePanel({
     <Card className="bg-surface-base border border-border-base">
       <CardBody className="p-4">
         {isProcessing ? (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-accent-400/20 flex items-center justify-center">
+          <div className="space-y-3 sm:space-y-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-xl bg-accent-400/20 flex items-center justify-center">
                 <Icon
                   icon="solar:cloud-upload-bold-duotone"
                   className="text-accent-400 animate-pulse"
-                  width={22}
+                  width={18}
                 />
               </div>
-              <div>
-                <p className="text-sm font-medium text-text-primary">
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm font-medium text-text-primary truncate">
                   {processingStatus || "Processing..."}
                 </p>
-                <p className="text-xs text-text-tertiary">This may take a moment</p>
+                <p className="text-[10px] sm:text-xs text-text-tertiary">This may take a moment</p>
               </div>
             </div>
             <Progress isIndeterminate color="primary" size="sm" className="w-full" />
+            <div className="flex items-center gap-2 p-2 bg-yellow-500/10 rounded-lg">
+              <Icon icon="solar:danger-triangle-bold" className="text-yellow-500 shrink-0" width={14} />
+              <p className="text-[10px] sm:text-xs text-yellow-500">Please don&apos;t leave this page while uploading</p>
+            </div>
           </div>
         ) : submittedJobId ? (
           <div className="space-y-4">
