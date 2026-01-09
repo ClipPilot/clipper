@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useAtom } from "jotai";
 import { Card, CardBody, Button, Input, Textarea, Progress } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { ProductImageUploader } from "./ProductImageUploader";
 import { ScriptEditor } from "./ScriptEditor";
 import { ScriptVariantSelector } from "./ScriptVariantSelector";
 import { ugcScriptAPI } from "@/api/ugc";
+import { scriptIdAtom, scriptsAtom, selectedVariantIndexAtom } from "@/store/ugc";
 import type { Character } from "../actors/types";
 import type { UGCScript, UGCScene, ProductImage, SceneType, ShotType } from "./types";
 import { SCRIPT_STRUCTURES, SCENE_TYPES, SHOT_TYPES } from "./types";
@@ -14,7 +16,7 @@ import { SCRIPT_STRUCTURES, SCENE_TYPES, SHOT_TYPES } from "./types";
 interface ScriptStepProps {
   teamId: number;
   selectedCharacter: Character;
-  onScriptComplete: (scriptId: string, script: UGCScript) => void;
+  onContinue?: () => void;
 }
 
 type ScriptPhase = "upload" | "generating" | "editing";
@@ -22,9 +24,13 @@ type ScriptPhase = "upload" | "generating" | "editing";
 export function ScriptStep({
   teamId,
   selectedCharacter,
-  onScriptComplete,
+  onContinue,
 }: ScriptStepProps) {
-  const [phase, setPhase] = useState<ScriptPhase>("upload");
+  const [scripts, setScripts] = useAtom(scriptsAtom);
+  const [selectedVariantIndex, setSelectedVariantIndex] = useAtom(selectedVariantIndexAtom);
+  const [scriptId, setScriptId] = useAtom(scriptIdAtom);
+
+  const [phase, setPhase] = useState<ScriptPhase>(scripts.length > 0 ? "editing" : "upload");
   const [productImages, setProductImages] = useState<ProductImage[]>([]);
   const [productName, setProductName] = useState("");
   const [scriptDirection, setScriptDirection] = useState("");
@@ -38,10 +44,6 @@ export function ScriptStep({
   const [selectedActorImageIndex, setSelectedActorImageIndex] = useState(
     selectedCharacter.primary_image_index || 0
   );
-
-  const [scripts, setScripts] = useState<UGCScript[]>([]);
-  const [selectedVariantIndex, setSelectedVariantIndex] = useState(0);
-  const [scriptId, setScriptId] = useState<string | null>(null);
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
@@ -189,8 +191,8 @@ export function ScriptStep({
   };
 
   const handleContinue = () => {
-    if (scriptId && scripts[selectedVariantIndex]) {
-      onScriptComplete(scriptId, scripts[selectedVariantIndex]);
+    if (scriptId && scripts[selectedVariantIndex] && onContinue) {
+      onContinue();
     }
   };
 

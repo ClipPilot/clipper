@@ -1,4 +1,4 @@
-interface Voice {
+export interface Voice {
   name: string;
   previewFile: string;
   gender: "male" | "female";

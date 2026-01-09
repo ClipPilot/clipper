@@ -2,13 +2,15 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useAtomValue } from "jotai";
 import { Button, Progress, Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { CharacterStep } from "@/components/ugc-studio/actors/CharacterStep";
 import { ScriptStep } from "@/components/ugc-studio/script";
+import { AudioStep } from "@/components/ugc-studio/voice";
+import { selectedVoiceAtom, scriptIdAtom, scriptsAtom, selectedVariantIndexAtom } from "@/store/ugc";
 import { useTeams } from "@/hooks/useTeams";
 import type { Character } from "@/components/ugc-studio/actors/types";
-import type { UGCScript } from "@/components/ugc-studio/script/types";
 
 type WizardStep = "character" | "script" | "shot-plan" | "audio" | "generate";
 
@@ -28,8 +30,12 @@ export default function CreateAdPage() {
 
   const [currentStep, setCurrentStep] = useState<WizardStep>("character");
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
-  const [scriptId, setScriptId] = useState<string | null>(null);
-  const [script, setScript] = useState<UGCScript | null>(null);
+  const scriptId = useAtomValue(scriptIdAtom);
+  const scripts = useAtomValue(scriptsAtom);
+  const selectedVariantIndex = useAtomValue(selectedVariantIndexAtom);
+  const selectedVoice = useAtomValue(selectedVoiceAtom);
+
+  const currentScript = scripts[selectedVariantIndex] ?? null;
 
   const currentStepIndex = STEPS.findIndex((s) => s.id === currentStep);
   const progress = ((currentStepIndex + 1) / STEPS.length) * 100;
@@ -40,15 +46,12 @@ export default function CreateAdPage() {
       case "character":
         return selectedCharacter !== null;
       case "script":
-        return scriptId !== null && script !== null;
+        return scriptId !== null && currentScript !== null;
+      case "audio":
+        return selectedVoice !== null;
       default:
         return false;
     }
-  };
-
-  const handleScriptComplete = (id: string, completedScript: UGCScript) => {
-    setScriptId(id);
-    setScript(completedScript);
   };
 
   const handleNext = () => {
@@ -170,7 +173,7 @@ export default function CreateAdPage() {
           <ScriptStep
             teamId={teamId}
             selectedCharacter={selectedCharacter}
-            onScriptComplete={handleScriptComplete}
+            onContinue={handleNext}
           />
         )}
 
@@ -182,13 +185,7 @@ export default function CreateAdPage() {
           </div>
         )}
 
-        {currentStep === "audio" && (
-          <div className="text-center py-20">
-            <Icon icon="solar:soundwave-bold-duotone" className="text-text-muted mx-auto mb-4" width={48} />
-            <h2 className="text-xl font-semibold text-text-primary mb-2">Generate Audio</h2>
-            <p className="text-text-secondary">Coming soon - AI voice generation with ElevenLabs</p>
-          </div>
-        )}
+        {currentStep === "audio" && <AudioStep onContinue={handleNext} />}
 
         {currentStep === "generate" && (
           <div className="text-center py-20">
