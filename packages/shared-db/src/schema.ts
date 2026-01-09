@@ -59,6 +59,12 @@ export const characterJobStatusEnum = pgEnum("character_job_status", [
   "failed",
 ]);
 
+export const ugcScriptStatusEnum = pgEnum("ugc_script_status", [
+  "generating",
+  "completed",
+  "failed",
+]);
+
 // Tables
 
 export const users = pgTable("users", {
@@ -459,5 +465,32 @@ export const characterGenerationJobs = pgTable(
     teamIdx: index("character_generation_jobs_team_id_idx").on(table.team_id),
     statusIdx: index("character_generation_jobs_status_idx").on(table.status),
     createdAtIdx: index("character_generation_jobs_created_at_idx").on(table.created_at),
+  })
+).enableRLS();
+
+export const ugcScripts = pgTable(
+  "ugc_scripts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    team_id: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    character_id: integer("character_id")
+      .notNull()
+      .references(() => characters.id, { onDelete: "cascade" }),
+    product_image_keys: jsonb("product_image_keys").notNull(),
+    product_name: varchar("product_name", { length: 255 }),
+    script_direction: text("script_direction"),
+    scripts_data: jsonb("scripts_data").notNull(),
+    selected_variant_index: integer("selected_variant_index").notNull().default(0),
+    status: ugcScriptStatusEnum("status").notNull().default("completed"),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    teamIdx: index("ugc_scripts_team_id_idx").on(table.team_id),
+    characterIdx: index("ugc_scripts_character_id_idx").on(table.character_id),
+    statusIdx: index("ugc_scripts_status_idx").on(table.status),
+    createdAtIdx: index("ugc_scripts_created_at_idx").on(table.created_at),
   })
 ).enableRLS();

@@ -1,11 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Button, Progress } from "@heroui/react";
+import { Button, Progress, Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { CharacterStep } from "@/components/ugc-studio/actors/CharacterStep";
+import { ScriptStep } from "@/components/ugc-studio/script";
+import { useTeams } from "@/hooks/useTeams";
 import type { Character } from "@/components/ugc-studio/actors/types";
+import type { UGCScript } from "@/components/ugc-studio/script/types";
 
 type WizardStep = "character" | "script" | "shot-plan" | "audio" | "generate";
 
@@ -21,20 +24,31 @@ export default function CreateAdPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const templateId = searchParams.get("template");
+  const { selectedTeam, isLoading: teamsLoading } = useTeams();
 
   const [currentStep, setCurrentStep] = useState<WizardStep>("character");
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
+  const [scriptId, setScriptId] = useState<string | null>(null);
+  const [script, setScript] = useState<UGCScript | null>(null);
 
   const currentStepIndex = STEPS.findIndex((s) => s.id === currentStep);
   const progress = ((currentStepIndex + 1) / STEPS.length) * 100;
+  const teamId = selectedTeam?.id ?? null;
 
   const canProceed = () => {
     switch (currentStep) {
       case "character":
         return selectedCharacter !== null;
+      case "script":
+        return scriptId !== null && script !== null;
       default:
         return false;
     }
+  };
+
+  const handleScriptComplete = (id: string, completedScript: UGCScript) => {
+    setScriptId(id);
+    setScript(completedScript);
   };
 
   const handleNext = () => {
@@ -55,6 +69,14 @@ export default function CreateAdPage() {
   const handleCharacterSelect = (character: Character | null) => {
     setSelectedCharacter(character);
   };
+
+  if (teamsLoading) {
+    return (
+      <div className="min-h-screen bg-surface-dark flex items-center justify-center">
+        <Spinner size="lg" color="primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-surface-dark">
@@ -144,12 +166,12 @@ export default function CreateAdPage() {
           />
         )}
 
-        {currentStep === "script" && (
-          <div className="text-center py-20">
-            <Icon icon="solar:document-text-bold-duotone" className="text-text-muted mx-auto mb-4" width={48} />
-            <h2 className="text-xl font-semibold text-text-primary mb-2">Script Editor</h2>
-            <p className="text-text-secondary">Coming soon - write your ad script here</p>
-          </div>
+        {currentStep === "script" && selectedCharacter && teamId && (
+          <ScriptStep
+            teamId={teamId}
+            selectedCharacter={selectedCharacter}
+            onScriptComplete={handleScriptComplete}
+          />
         )}
 
         {currentStep === "shot-plan" && (

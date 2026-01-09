@@ -25,24 +25,51 @@ export function CharacterDetailModal({
 }: CharacterDetailModalProps) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [fullCharacter, setFullCharacter] = useState<Character | null>(null);
+  const [selectedCharacterId, setSelectedCharacterId] = useState<number | null>(null);
+  const [loadedCharacters, setLoadedCharacters] = useState<Record<number, Character>>({});
   const [loading, setLoading] = useState(false);
 
   const variations = allCharacters.filter((c) => c.parent_character_id === character?.id);
+  const allOptions = character ? [character, ...variations] : [];
+
+  // Load character data when needed
+  const loadCharacterData = async (char: Character) => {
+    if (loadedCharacters[char.id]) return loadedCharacters[char.id];
+    if (char.imageUrls && char.imageUrls.length > 0) {
+      setLoadedCharacters((prev) => ({ ...prev, [char.id]: char }));
+      return char;
+    }
+
+    setLoading(true);
+    try {
+      const res = await actorsAPI.getById(char.id);
+      setLoadedCharacters((prev) => ({ ...prev, [char.id]: res.character }));
+      return res.character;
+    } catch (e) {
+      console.error(e);
+      return char;
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (character && isOpen) {
+      setSelectedCharacterId(character.id);
       setSelectedImageIndex(character.primary_image_index || 0);
-      if (!character.imageUrls || character.imageUrls.length === 0) {
-        setLoading(true);
-        actorsAPI.getById(character.id)
-          .then((res) => setFullCharacter(res.character))
-          .catch(console.error)
-          .finally(() => setLoading(false));
-      } else {
-        setFullCharacter(character);
-      }
+      loadCharacterData(character).then((loaded) => {
+        setFullCharacter(loaded);
+      });
     }
   }, [character, isOpen]);
+
+  // Handle selecting a different character/variation
+  const handleCharacterSelect = async (char: Character) => {
+    setSelectedCharacterId(char.id);
+    setSelectedImageIndex(char.primary_image_index || 0);
+    const loaded = await loadCharacterData(char);
+    setFullCharacter(loaded);
+  };
 
   if (!character) return null;
 
@@ -130,6 +157,57 @@ export function CharacterDetailModal({
                     ))}
                   </div>
                 )}
+
+                {allOptions.length > 1 && (
+                  <div className="space-y-2 pt-2 border-t border-border-base">
+                    <p className="text-xs text-text-muted text-center">
+                      Original & Variations ({allOptions.length})
+                    </p>
+                    <div className="flex gap-2 justify-center flex-wrap">
+                      {allOptions.map((char) => {
+                        const isSelected = selectedCharacterId === char.id;
+                        const isOriginal = char.id === character?.id;
+                        const thumbUrl = char.primaryImageUrl || char.imageUrls?.[0];
+
+                        return (
+                          <button
+                            key={char.id}
+                            onClick={() => handleCharacterSelect(char)}
+                            className={`relative w-16 h-20 rounded-lg overflow-hidden border-2 transition-all group ${
+                              isSelected
+                                ? "border-accent-400 ring-2 ring-accent-400/30"
+                                : isOriginal
+                                  ? "border-border-base hover:border-accent-400/50"
+                                  : "border-purple-500/50 hover:border-purple-400"
+                            }`}
+                          >
+                            {thumbUrl ? (
+                              <img
+                                src={thumbUrl}
+                                alt={char.name}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-surface-elevated">
+                                <Icon icon="solar:user-circle-bold-duotone" className="text-text-muted" width={24} />
+                              </div>
+                            )}
+                            {isOriginal && (
+                              <div className="absolute top-1 left-1 w-4 h-4 rounded-full bg-accent-400 flex items-center justify-center">
+                                <Icon icon="solar:star-bold" className="text-white" width={10} />
+                              </div>
+                            )}
+                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1">
+                              <p className="text-[10px] text-white truncate">
+                                {isOriginal ? "Original" : char.name}
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-6">
@@ -193,44 +271,6 @@ export function CharacterDetailModal({
                   </div>
                 )}
 
-                {variations.length > 0 && (
-                  <div className="bg-surface-elevated rounded-xl p-4 space-y-3">
-                    <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
-                      <Icon icon="solar:copy-bold-duotone" width={18} className="text-purple-400" />
-                      Variations ({variations.length})
-                    </h3>
-                    <div className="grid grid-cols-3 gap-2">
-                      {variations.slice(0, 6).map((variation) => (
-                        <button
-                          key={variation.id}
-                          onClick={() => {
-                            onClose();
-                            setTimeout(() => onSelect?.(variation), 100);
-                          }}
-                          className="relative aspect-[3/4] rounded-lg overflow-hidden bg-surface-base group"
-                        >
-                          {variation.primaryImageUrl || variation.imageUrls?.[0] ? (
-                            <img
-                              src={variation.primaryImageUrl || variation.imageUrls?.[0]}
-                              alt={variation.name}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Icon icon="solar:user-circle-bold-duotone" className="text-text-muted" width={32} />
-                            </div>
-                          )}
-                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2">
-                            <p className="text-xs text-white truncate">{variation.name}</p>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                    {variations.length > 6 && (
-                      <p className="text-xs text-text-muted text-center">+{variations.length - 6} more</p>
-                    )}
-                  </div>
-                )}
 
                 <div className="flex items-center gap-4 text-sm text-text-secondary">
                   <div className="flex items-center gap-1.5">
@@ -241,12 +281,6 @@ export function CharacterDetailModal({
                     <Icon icon="solar:gallery-bold" width={16} className="text-text-muted" />
                     <span>{images.length} images</span>
                   </div>
-                  {variations.length > 0 && (
-                    <div className="flex items-center gap-1.5">
-                      <Icon icon="solar:copy-bold" width={16} className="text-text-muted" />
-                      <span>{variations.length} variations</span>
-                    </div>
-                  )}
                 </div>
 
                 <div className="flex gap-3 pt-2">

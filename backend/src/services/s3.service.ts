@@ -407,6 +407,24 @@ class S3Service {
     const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
     return { uploadUrl, s3Key };
   }
+
+  async getProductImagePresignedUpload(
+    teamId: number,
+    fileName: string,
+    contentType: string = "image/jpeg"
+  ): Promise<{ uploadUrl: string; s3Key: string }> {
+    const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const s3Key = `ugc-products/${teamId}/${Date.now()}_${sanitizedFileName}`;
+
+    const command = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: s3Key,
+      ContentType: contentType,
+    });
+
+    const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+    return { uploadUrl, s3Key };
+  }
 }
 
 export const s3Service = new S3Service();
