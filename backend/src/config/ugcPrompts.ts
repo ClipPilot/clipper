@@ -93,9 +93,13 @@ Follow this EXACT scene order and shot types:
 ${sceneBreakdown}
 
 Shot Types:
-- "a-roll" = Actor speaking directly to camera (face visible, talking head)
-- "b-roll" = Product shots, close-ups, demos WITHOUT actor face visible
-- "mixed" = Combination (actor hands visible with product, over-shoulder, etc.)
+- "a-roll" = Actor speaking directly to camera (face visible, talking head, lip-sync required)
+- "b-roll" = Product shots, close-ups, demos WITHOUT actor visible (voiceover continues)
+- "mixed" = Actor visible but NOT speaking to camera (hands holding product, over-shoulder view, mouth NOT moving)
+
+CRITICAL DIALOGUE RULES:
+- ONLY "a-roll" scenes contain dialogue spoken directly to camera
+- "b-roll" and "mixed" scenes: dialogue is VOICEOVER (voice continues but no lip-sync needed)
 `;
   }
 
@@ -112,9 +116,13 @@ Follow this EXACT scene order and shot types:
 ${sceneBreakdown}
 
 Shot Types:
-- "a-roll" = Actor speaking directly to camera (face visible, talking head)
-- "b-roll" = Product shots, close-ups, demos WITHOUT actor face visible
-- "mixed" = Combination (actor hands visible with product, over-shoulder, etc.)
+- "a-roll" = Actor speaking directly to camera (face visible, talking head, lip-sync required)
+- "b-roll" = Product shots, close-ups, demos WITHOUT actor visible (voiceover continues)
+- "mixed" = Actor visible but NOT speaking to camera (hands holding product, over-shoulder view, mouth NOT moving)
+
+CRITICAL DIALOGUE RULES:
+- ONLY "a-roll" scenes contain dialogue spoken directly to camera
+- "b-roll" and "mixed" scenes: dialogue is VOICEOVER (voice continues but no lip-sync needed)
 `;
 };
 
@@ -187,10 +195,14 @@ NEVER START WITH:
    - Build emotional arc through the script
    - Match energy to content naturally
 
-3. VOICE OPTIMIZATION:
+3. VOICE OPTIMIZATION (TTS SAFETY):
    - Clear pronunciation over fancy vocabulary
    - Spell out numbers ("fifteen" not "15")
    - Avoid tongue twisters and complex phrases
+   - Avoid repeated plosives (p, b, t, k clusters like "big black bag")
+   - Avoid unnatural capitalization (don't write "SO GOOD" - write "so good")
+   - Write for SPOKEN audio, not reading
+   - Keep sentences under 20 words for natural breath pacing
 
 ===== CINEMATIC PROMPTS (HIDDEN FROM USER) =====
 
@@ -232,6 +244,11 @@ For cameraAngle, choose from:
 - low-angle: Looking up at subject
 - custom: Only if none of the above fit (provide customCameraAngle description)
 
+DURATION RULES:
+- estimatedDurationSeconds MUST be a NUMBER (integer), not a range or text
+- Example: use 4 not "3-5s" or "about 4 seconds"
+- This is critical for audio pacing and timeline assembly
+
 ===== FINAL CHECKS =====
 - Dialogue sounds like something a real person would actually say
 - Hook makes you want to keep watching (test: would YOU stop scrolling?)
@@ -239,6 +256,9 @@ For cameraAngle, choose from:
 - cinematicPrompts are detailed enough for video generation
 - Total duration close to ${duration} seconds
 - Structure matches the required pattern EXACTLY
+- estimatedDurationSeconds is a NUMBER for each scene
+- Only a-roll scenes have on-camera dialogue (b-roll/mixed = voiceover)
+- No tongue twisters or plosive clusters in dialogue
 `;
 };
 
@@ -262,6 +282,12 @@ CREATIVE DIRECTION:
 - Be bold, authentic, and raw
 - Profanity allowed where natural
 - Sound like a real person, not a marketer
+
+TTS SAFETY:
+- Avoid tongue twisters and plosive clusters (p, b, t, k)
+- No unnatural capitalization
+- Write for spoken audio, not reading
+- Keep sentences under 20 words
 
 Create a new version that:
 - Keeps the same scene type and approximate duration
