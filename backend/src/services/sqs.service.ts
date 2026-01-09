@@ -12,7 +12,9 @@ export type JobType =
   | "update-captions"
   | "text-overlay"
   | "update-overlays"
-  | "generate-character";
+  | "generate-character"
+  | "generate-scene-image"
+  | "generate-script";
 
 // Base job interface
 interface BaseJob {
@@ -140,13 +142,51 @@ export interface GenerateCharacterJob extends BaseJob {
   parentCharacterId?: number;
 }
 
+// Scene image generation job payload
+export interface GenerateSceneImageJob extends BaseJob {
+  type: "generate-scene-image";
+  jobId: string;
+  scriptId: string;
+  sceneId: string;
+  sceneNumber: number;
+  characterId: number;
+  sceneData: {
+    sceneType: string;
+    action: string;
+    dialogue: string;
+    emotion: string;
+    shotType: string;
+    cameraAngle: string;
+    cinematicPrompt: string;
+  };
+  productImageKeys: string[];
+  userRefinement?: string;
+  supportingImageKeys: string[];
+}
+
+// Script generation job payload
+export interface GenerateScriptJob extends BaseJob {
+  type: "generate-script";
+  jobId: string;
+  characterId: number;
+  productImageKeys: string[];
+  productName?: string;
+  scriptDirection?: string;
+  targetDuration: number;
+  numberOfVariations: number;
+  structureId: string;
+  customPattern?: { type: string; shot: string }[];
+}
+
 export type VideoProcessingJob =
   | ClipVideoJob
   | BatchClipVideoJob
   | UpdateCaptionsJob
   | TextOverlayJob
   | UpdateOverlaysJob
-  | GenerateCharacterJob;
+  | GenerateCharacterJob
+  | GenerateSceneImageJob
+  | GenerateScriptJob;
 
 class SQSService {
   private queueUrl: string;
@@ -318,6 +358,70 @@ class SQSService {
       userId: params.userId,
       config: params.config,
       parentCharacterId: params.parentCharacterId,
+      createdAt: new Date().toISOString(),
+    };
+
+    return this.sendJob(job);
+  }
+
+  async sendGenerateSceneImageJob(params: {
+    jobId: string;
+    teamId: number;
+    userId: number;
+    scriptId: string;
+    sceneId: string;
+    sceneNumber: number;
+    characterId: number;
+    sceneData: GenerateSceneImageJob["sceneData"];
+    productImageKeys: string[];
+    userRefinement?: string;
+    supportingImageKeys: string[];
+  }): Promise<string> {
+    const job: GenerateSceneImageJob = {
+      type: "generate-scene-image",
+      jobId: params.jobId,
+      teamId: params.teamId,
+      userId: params.userId,
+      scriptId: params.scriptId,
+      sceneId: params.sceneId,
+      sceneNumber: params.sceneNumber,
+      characterId: params.characterId,
+      sceneData: params.sceneData,
+      productImageKeys: params.productImageKeys,
+      userRefinement: params.userRefinement,
+      supportingImageKeys: params.supportingImageKeys,
+      createdAt: new Date().toISOString(),
+    };
+
+    return this.sendJob(job);
+  }
+
+  async sendGenerateScriptJob(params: {
+    jobId: string;
+    teamId: number;
+    userId: number;
+    characterId: number;
+    productImageKeys: string[];
+    productName?: string;
+    scriptDirection?: string;
+    targetDuration: number;
+    numberOfVariations: number;
+    structureId: string;
+    customPattern?: { type: string; shot: string }[];
+  }): Promise<string> {
+    const job: GenerateScriptJob = {
+      type: "generate-script",
+      jobId: params.jobId,
+      teamId: params.teamId,
+      userId: params.userId,
+      characterId: params.characterId,
+      productImageKeys: params.productImageKeys,
+      productName: params.productName,
+      scriptDirection: params.scriptDirection,
+      targetDuration: params.targetDuration,
+      numberOfVariations: params.numberOfVariations,
+      structureId: params.structureId,
+      customPattern: params.customPattern,
       createdAt: new Date().toISOString(),
     };
 

@@ -94,3 +94,19 @@ export const emitComfyJobUpdate = (teamId: number, job: ComfyJobUpdate) => {
     io.to(`team-${teamId}`).emit("comfy-job-update", job);
   }
 };
+
+export interface ScriptJobUpdate {
+  scriptId: string;
+  status: "queued" | "generating" | "completed" | "failed";
+  progress: number;
+  progressMessage: string;
+  scripts?: any[];
+  selectedVariantIndex?: number;
+  error?: string;
+}
+
+export const emitScriptJobUpdate = (teamId: number, update: ScriptJobUpdate) => {
+  if (io) {
+    io.to(`team-${teamId}`).emit("script-job-update", update);
+  }
+};

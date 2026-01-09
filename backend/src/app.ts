@@ -15,6 +15,7 @@ import adminRoutes from "./routes/admin.routes";
 import referralRoutes from "./routes/referral.routes";
 import actorRoutes from "./routes/actor.routes";
 import ugcScriptRoutes from "./routes/ugcScript.routes";
+import sceneBuilderRoutes from "./routes/sceneBuilder.routes";
 import { swaggerSpec } from "./config/swagger";
 
 const app = express();
@@ -65,6 +66,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/referrals", referralRoutes);
 app.use("/api/actors", actorRoutes);
 app.use("/api/ugc", ugcScriptRoutes);
+app.use("/api/scene-builder", sceneBuilderRoutes);
 
 // Sentry test route
 app.get("/debug-sentry", function mainHandler(req, res) {

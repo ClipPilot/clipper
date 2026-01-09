@@ -42,3 +42,16 @@ export async function notifyCharacterGenerated(teamId: number, jobId: string): P
   console.log(`[NOTIFY] Character generation ${jobId} completed for team ${teamId}`);
   await callNotifyEndpoint("/internal/notify/character-generated", { teamId, jobId });
 }
+
+export interface ScriptJobUpdate {
+  scriptId: string;
+  status: "queued" | "generating" | "completed" | "failed";
+  progress: number;
+  progressMessage: string;
+  scripts?: any[];
+  error?: string;
+}
+
+export async function notifyScriptJobUpdate(teamId: number, update: ScriptJobUpdate): Promise<void> {
+  await callNotifyEndpoint("/internal/notify/script-job-update", { teamId, update });
+}

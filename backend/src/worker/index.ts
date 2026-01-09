@@ -27,6 +27,8 @@ import { processCaptionsJob } from "./processors/captionsProcessor";
 import { processTextOverlayJob } from "./processors/textOverlayProcessor";
 import { processOverlaysJob } from "./processors/overlaysProcessor";
 import { processCharacterJob } from "./processors/characterProcessor";
+import { processSceneImageJob } from "./processors/sceneImageProcessor";
+import { processScriptJob } from "./processors/scriptProcessor";
 import {
   VideoProcessingJob,
   ClipVideoJob,
@@ -35,6 +37,8 @@ import {
   TextOverlayJob,
   UpdateOverlaysJob,
   GenerateCharacterJob,
+  GenerateSceneImageJob,
+  GenerateScriptJob,
 } from "../services/sqs.service";
 
 const sqsClient = new SQSClient({
@@ -134,6 +138,12 @@ async function processMessage(job: VideoProcessingJob, receiptHandle: string): P
         break;
       case "generate-character":
         await processCharacterJob(job as GenerateCharacterJob);
+        break;
+      case "generate-scene-image":
+        await processSceneImageJob(job as GenerateSceneImageJob);
+        break;
+      case "generate-script":
+        await processScriptJob(job as GenerateScriptJob);
         break;
       default:
         console.error(`Unknown job type: ${(job as any).type}`);

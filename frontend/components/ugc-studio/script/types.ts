@@ -86,8 +86,23 @@ export interface GenerateScriptRequest {
 
 export interface GenerateScriptResponse {
   success: boolean;
-  scripts: UGCScript[];
   scriptId: string;
+  status: "queued" | "generating" | "completed" | "failed";
+  message: string;
+}
+
+export interface ScriptStatusResponse {
+  success: boolean;
+  scriptId: string;
+  status: "queued" | "generating" | "completed" | "failed";
+  progress: number;
+  progressMessage: string;
+  scripts?: UGCScript[];
+  selectedVariantIndex?: number;
+  error?: string;
+  createdAt?: string;
+  startedAt?: string;
+  completedAt?: string;
 }
 
 export interface RegenerateSceneRequest {

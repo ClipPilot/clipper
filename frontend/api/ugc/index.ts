@@ -3,6 +3,7 @@ import { apiFetch } from "@/lib/apiClient";
 import type {
   GenerateScriptRequest,
   GenerateScriptResponse,
+  ScriptStatusResponse,
   RegenerateSceneRequest,
   RegenerateSceneResponse,
   UploadUrlResponse,
@@ -22,6 +23,21 @@ class UGCScriptAPI {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || "Failed to generate script");
+    }
+
+    return response.json();
+  }
+
+  async getScriptStatus(scriptId: string): Promise<ScriptStatusResponse> {
+    const response = await apiFetch(`${API_URL}/ugc/script/${scriptId}/status`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to get script status");
     }
 
     return response.json();

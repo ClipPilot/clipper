@@ -60,6 +60,7 @@ export const characterJobStatusEnum = pgEnum("character_job_status", [
 ]);
 
 export const ugcScriptStatusEnum = pgEnum("ugc_script_status", [
+  "queued",
   "generating",
   "completed",
   "failed",
@@ -481,9 +482,18 @@ export const ugcScripts = pgTable(
     product_image_keys: jsonb("product_image_keys").notNull(),
     product_name: varchar("product_name", { length: 255 }),
     script_direction: text("script_direction"),
-    scripts_data: jsonb("scripts_data").notNull(),
+    scripts_data: jsonb("scripts_data"),
     selected_variant_index: integer("selected_variant_index").notNull().default(0),
-    status: ugcScriptStatusEnum("status").notNull().default("completed"),
+    status: ugcScriptStatusEnum("status").notNull().default("queued"),
+    progress: integer("progress").notNull().default(0),
+    progress_message: text("progress_message"),
+    error_message: text("error_message"),
+    structure_id: varchar("structure_id", { length: 50 }),
+    custom_pattern: jsonb("custom_pattern"),
+    target_duration: integer("target_duration").default(30),
+    number_of_variations: integer("number_of_variations").default(2),
+    started_at: timestamp("started_at"),
+    completed_at: timestamp("completed_at"),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },
@@ -492,5 +502,75 @@ export const ugcScripts = pgTable(
     characterIdx: index("ugc_scripts_character_id_idx").on(table.character_id),
     statusIdx: index("ugc_scripts_status_idx").on(table.status),
     createdAtIdx: index("ugc_scripts_created_at_idx").on(table.created_at),
+  })
+).enableRLS();
+
+// Scene Image Generation - used for generating images for each scene in a script
+export const sceneImageJobStatusEnum = pgEnum("scene_image_job_status", [
+  "queued",
+  "generating",
+  "completed",
+  "failed",
+]);
+
+export const sceneImageGenerationJobs = pgTable(
+  "scene_image_generation_jobs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    team_id: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    user_id: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    script_id: uuid("script_id").notNull(),
+    scene_id: varchar("scene_id", { length: 255 }).notNull(),
+    scene_number: integer("scene_number").notNull(),
+    character_id: integer("character_id")
+      .references(() => characters.id, { onDelete: "set null" }),
+    prompt: text("prompt").notNull(),
+    user_refinement: text("user_refinement"),
+    supporting_image_keys: jsonb("supporting_image_keys").default([]),
+    status: sceneImageJobStatusEnum("status").notNull().default("queued"),
+    progress: integer("progress").notNull().default(0),
+    progress_message: text("progress_message"),
+    generated_images: jsonb("generated_images"), // Array of S3 keys
+    selected_image_index: integer("selected_image_index"),
+    error_message: text("error_message"),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    started_at: timestamp("started_at"),
+    completed_at: timestamp("completed_at"),
+  },
+  (table) => ({
+    teamIdx: index("scene_image_jobs_team_id_idx").on(table.team_id),
+    scriptIdx: index("scene_image_jobs_script_id_idx").on(table.script_id),
+    sceneIdx: index("scene_image_jobs_scene_id_idx").on(table.scene_id),
+    statusIdx: index("scene_image_jobs_status_idx").on(table.status),
+    createdAtIdx: index("scene_image_jobs_created_at_idx").on(table.created_at),
+  })
+).enableRLS();
+
+// Final selected images for each scene
+export const sceneImages = pgTable(
+  "scene_images",
+  {
+    id: serial("id").primaryKey(),
+    script_id: uuid("script_id").notNull(),
+    scene_id: varchar("scene_id", { length: 255 }).notNull(),
+    scene_number: integer("scene_number").notNull(),
+    image_key: text("image_key").notNull(),
+    generation_job_id: uuid("generation_job_id"),
+    prompt_used: text("prompt_used"),
+    user_refinement: text("user_refinement"),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    scriptIdx: index("scene_images_script_id_idx").on(table.script_id),
+    sceneIdx: index("scene_images_scene_id_idx").on(table.scene_id),
+    scriptSceneIdx: index("scene_images_script_scene_idx").on(
+      table.script_id,
+      table.scene_id
+    ),
   })
 ).enableRLS();

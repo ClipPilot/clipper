@@ -34,4 +34,10 @@ router.get(
   ugcScriptController.getFullScript.bind(ugcScriptController)
 );
 
+router.get(
+  "/script/:scriptId/status",
+  requireAuth,
+  ugcScriptController.getScriptStatus.bind(ugcScriptController)
+);
+
 export default router;

@@ -8,7 +8,8 @@ import { Icon } from "@iconify/react";
 import { CharacterStep } from "@/components/ugc-studio/actors/CharacterStep";
 import { ScriptStep } from "@/components/ugc-studio/script";
 import { AudioStep } from "@/components/ugc-studio/voice";
-import { selectedVoiceAtom, scriptIdAtom, scriptsAtom, selectedVariantIndexAtom } from "@/store/ugc";
+import { SceneBuilderStep } from "@/components/ugc-studio/scene-builder";
+import { selectedVoiceAtom, scriptIdAtom, scriptsAtom, selectedVariantIndexAtom, productImageKeysAtom, allScenesCompleteAtom } from "@/store/ugc";
 import { useTeams } from "@/hooks/useTeams";
 import type { Character } from "@/components/ugc-studio/actors/types";
 
@@ -34,6 +35,8 @@ export default function CreateAdPage() {
   const scripts = useAtomValue(scriptsAtom);
   const selectedVariantIndex = useAtomValue(selectedVariantIndexAtom);
   const selectedVoice = useAtomValue(selectedVoiceAtom);
+  const productImageKeys = useAtomValue(productImageKeysAtom);
+  const allScenesComplete = useAtomValue(allScenesCompleteAtom);
 
   const currentScript = scripts[selectedVariantIndex] ?? null;
 
@@ -49,6 +52,8 @@ export default function CreateAdPage() {
         return scriptId !== null && currentScript !== null;
       case "audio":
         return selectedVoice !== null;
+      case "shot-plan":
+        return allScenesComplete;
       default:
         return false;
     }
@@ -177,12 +182,14 @@ export default function CreateAdPage() {
           />
         )}
 
-        {currentStep === "shot-plan" && (
-          <div className="text-center py-20">
-            <Icon icon="solar:clapperboard-bold-duotone" className="text-text-muted mx-auto mb-4" width={48} />
-            <h2 className="text-xl font-semibold text-text-primary mb-2">Shot Plan</h2>
-            <p className="text-text-secondary">Coming soon - plan your A-roll and B-roll shots</p>
-          </div>
+        {currentStep === "shot-plan" && scriptId && selectedCharacter && teamId && (
+          <SceneBuilderStep
+            teamId={teamId}
+            scriptId={scriptId}
+            characterId={selectedCharacter.id}
+            productImageKeys={productImageKeys}
+            onContinue={handleNext}
+          />
         )}
 
         {currentStep === "audio" && <AudioStep onContinue={handleNext} />}

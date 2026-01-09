@@ -1,8 +1,12 @@
 import { Request, Response } from "express";
 import { s3Service } from "../services/s3.service";
+import { sqsService } from "../services/sqs.service";
 import { ugcScriptService } from "../services/ugcScript.service";
 import { teamService } from "../services/team.service";
 import { canAccessUGCStudio } from "../utils/plans";
+import { db } from "../db";
+import { ugcScripts } from "@clipper/shared-db/src/schema";
+import { eq } from "drizzle-orm";
 
 interface AuthRequest extends Request {
   user?: { id: string; email: string; dbUserId: number };
@@ -16,7 +20,6 @@ export class UGCScriptController {
         characterId,
         productImageKeys,
         productName,
-        productDescription,
         scriptDirection,
         targetDuration,
         numberOfVariations,
@@ -34,6 +37,10 @@ export class UGCScriptController {
         return res.status(400).json({ error: "Maximum 5 product images allowed" });
       }
 
+      if (!req.user?.dbUserId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
       const team = await teamService.getTeamById(teamId);
       if (!team || !canAccessUGCStudio(team.plan)) {
         return res.status(403).json({ error: "UGC Studio access required" });
@@ -44,60 +51,100 @@ export class UGCScriptController {
         return res.status(404).json({ error: "Character not found" });
       }
 
-      const productImageUrls = await Promise.all(
-        productImageKeys.map((key: string) => s3Service.getPresignedUrl(key, 3600))
-      );
+      // Create the job record with queued status
+      const [job] = await db
+        .insert(ugcScripts)
+        .values({
+          team_id: teamId,
+          character_id: characterId,
+          product_image_keys: productImageKeys,
+          product_name: productName || null,
+          script_direction: scriptDirection || null,
+          structure_id: structureId || "classic",
+          custom_pattern: customPattern || null,
+          target_duration: targetDuration || 30,
+          number_of_variations: numberOfVariations || 2,
+          status: "queued",
+          progress: 0,
+          progress_message: "Queued for generation...",
+        })
+        .returning();
 
-      const scripts = await ugcScriptService.generateScripts({
-        productImageUrls,
+      // Send to SQS
+      await sqsService.sendGenerateScriptJob({
+        jobId: job.id,
+        teamId,
+        userId: req.user.dbUserId,
+        characterId,
+        productImageKeys,
         productName,
-        productDescription,
         scriptDirection,
-        character: {
-          id: character.id,
-          name: character.name,
-          gender: character.gender,
-          age_range: character.age_range,
-          appearance_config: character.appearance_config,
-        },
         targetDuration: targetDuration || 30,
         numberOfVariations: numberOfVariations || 2,
         structureId: structureId || "classic",
         customPattern,
       });
 
-      console.log(
-        "[UGC_SCRIPT] Generated scripts with cinematic prompts:",
-        scripts.map((s) =>
-          s.scenes.map((sc) => ({
-            sceneId: sc.id,
-            cinematicPrompt: sc.cinematicPrompt?.substring(0, 50) + "...",
-          }))
-        )
-      );
-
-      const clientScripts = scripts.map((script) =>
-        ugcScriptService.stripCinematicPrompts(script)
-      );
-
-      const scriptId = await ugcScriptService.storeFullScripts(
-        teamId,
-        characterId,
-        productImageKeys,
-        productName,
-        scriptDirection,
-        scripts
-      );
-
-      return res.status(200).json({
+      return res.status(202).json({
         success: true,
-        scripts: clientScripts,
-        scriptId,
+        scriptId: job.id,
+        status: "queued",
+        message: "Script generation started. Poll for status.",
       });
     } catch (error) {
       console.error("[UGC_SCRIPT] Generate script error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to generate script",
+        error: error instanceof Error ? error.message : "Failed to queue script generation",
+      });
+    }
+  }
+
+  async getScriptStatus(req: AuthRequest, res: Response) {
+    try {
+      const { scriptId } = req.params;
+
+      if (!scriptId) {
+        return res.status(400).json({ error: "scriptId is required" });
+      }
+
+      const [script] = await db
+        .select()
+        .from(ugcScripts)
+        .where(eq(ugcScripts.id, scriptId));
+
+      if (!script) {
+        return res.status(404).json({ error: "Script not found" });
+      }
+
+      const response: any = {
+        success: true,
+        scriptId: script.id,
+        status: script.status,
+        progress: script.progress,
+        progressMessage: script.progress_message,
+        createdAt: script.created_at,
+        startedAt: script.started_at,
+        completedAt: script.completed_at,
+      };
+
+      if (script.status === "completed" && script.scripts_data) {
+        // Strip cinematic prompts from client response
+        const scripts = script.scripts_data as any[];
+        response.scripts = scripts.map((s) =>
+          ugcScriptService.stripCinematicPrompts(s)
+        );
+        response.selectedVariantIndex = script.selected_variant_index;
+      }
+
+      if (script.status === "failed") {
+        response.error = script.error_message;
+      }
+
+      return res.status(200).json(response);
+    } catch (error) {
+      console.error("[UGC_SCRIPT] Get script status error:", error);
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to get script status",
       });
     }
   }

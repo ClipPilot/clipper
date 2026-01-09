@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useAtom } from "jotai";
 import { Card, CardBody, Button, Input, Textarea, Progress } from "@heroui/react";
 import { Icon } from "@iconify/react";
@@ -8,7 +8,8 @@ import { ProductImageUploader } from "./ProductImageUploader";
 import { ScriptEditor } from "./ScriptEditor";
 import { ScriptVariantSelector } from "./ScriptVariantSelector";
 import { ugcScriptAPI } from "@/api/ugc";
-import { scriptIdAtom, scriptsAtom, selectedVariantIndexAtom } from "@/store/ugc";
+import { scriptIdAtom, scriptsAtom, selectedVariantIndexAtom, productImageKeysAtom } from "@/store/ugc";
+import { connectSocket, joinTeam, leaveTeam } from "@/lib/socket";
 import type { Character } from "../actors/types";
 import type { UGCScript, UGCScene, ProductImage, SceneType, ShotType } from "./types";
 import { SCRIPT_STRUCTURES, SCENE_TYPES, SHOT_TYPES } from "./types";
@@ -29,6 +30,7 @@ export function ScriptStep({
   const [scripts, setScripts] = useAtom(scriptsAtom);
   const [selectedVariantIndex, setSelectedVariantIndex] = useAtom(selectedVariantIndexAtom);
   const [scriptId, setScriptId] = useAtom(scriptIdAtom);
+  const [, setProductImageKeys] = useAtom(productImageKeysAtom);
 
   const [phase, setPhase] = useState<ScriptPhase>(scripts.length > 0 ? "editing" : "upload");
   const [productImages, setProductImages] = useState<ProductImage[]>([]);
@@ -47,7 +49,53 @@ export function ScriptStep({
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
+  const [progressMessage, setProgressMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [pendingScriptId, setPendingScriptId] = useState<string | null>(null);
+
+  // WebSocket listener for real-time script updates
+  useEffect(() => {
+    const socket = connectSocket();
+    joinTeam(teamId);
+
+    interface ScriptJobUpdate {
+      scriptId: string;
+      status: "queued" | "generating" | "completed" | "failed";
+      progress: number;
+      progressMessage: string;
+      scripts?: UGCScript[];
+      error?: string;
+    }
+
+    const handleScriptUpdate = (update: ScriptJobUpdate) => {
+      // Only handle updates for our pending script
+      if (!pendingScriptId || update.scriptId !== pendingScriptId) return;
+
+      setGenerationProgress(update.progress);
+      setProgressMessage(update.progressMessage);
+
+      if (update.status === "completed" && update.scripts) {
+        setScripts(update.scripts);
+        setScriptId(update.scriptId);
+        setProductImageKeys(productImages.map((img) => img.key));
+        setPhase("editing");
+        setIsGenerating(false);
+        setPendingScriptId(null);
+      } else if (update.status === "failed") {
+        setError(update.error || "Script generation failed");
+        setPhase("upload");
+        setIsGenerating(false);
+        setPendingScriptId(null);
+      }
+    };
+
+    socket.on("script-job-update", handleScriptUpdate);
+
+    return () => {
+      socket.off("script-job-update", handleScriptUpdate);
+      leaveTeam(teamId);
+    };
+  }, [teamId, pendingScriptId, productImages, setScripts, setScriptId, setProductImageKeys]);
 
   const handleGenerate = async () => {
     if (productImages.length === 0) {
@@ -63,10 +111,7 @@ export function ScriptStep({
     setIsGenerating(true);
     setError(null);
     setGenerationProgress(0);
-
-    const progressInterval = setInterval(() => {
-      setGenerationProgress((prev) => Math.min(prev + 8, 90));
-    }, 600);
+    setProgressMessage("Queuing script generation...");
 
     try {
       const response = await ugcScriptAPI.generateScript({
@@ -80,17 +125,11 @@ export function ScriptStep({
         customPattern: selectedStructureId === "custom" ? customPattern : undefined,
       });
 
-      clearInterval(progressInterval);
-      setGenerationProgress(100);
-
-      setScripts(response.scripts);
-      setScriptId(response.scriptId);
-      setPhase("editing");
+      // Set pending scriptId - WebSocket will handle updates
+      setPendingScriptId(response.scriptId);
     } catch (err: any) {
-      clearInterval(progressInterval);
       setError(err.message || "Failed to generate script");
       setPhase("upload");
-    } finally {
       setIsGenerating(false);
     }
   };
@@ -464,9 +503,9 @@ export function ScriptStep({
           Crafting Your Viral Script
         </h3>
         <p className="text-text-secondary mb-6">
-          Analyzing product images and generating script variations...
+          {progressMessage || "Analyzing product images and generating script variations..."}
         </p>
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-md space-y-2">
           <Progress
             value={generationProgress}
             size="lg"
@@ -474,6 +513,7 @@ export function ScriptStep({
               indicator: "bg-gradient-to-r from-accent-400 to-purple-500",
             }}
           />
+          <p className="text-center text-xs text-text-muted">{generationProgress}% complete</p>
         </div>
       </div>
     );
