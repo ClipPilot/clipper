@@ -5,8 +5,6 @@
   "scripts": {
     "dev": "nodemon --watch src --exec ts-node src/server.ts",
     "dev:worker": "nodemon --watch src --exec ts-node src/worker/index.ts",
-    "dev:gpu-worker": "nodemon --watch src --exec ts-node src/gpu-worker/index.ts",
-    "start:gpu-worker": "node dist/gpu-worker/index.js",
     "build": "tsc && cp -r src/fonts dist/ && cp -r src/templates dist/ && cp -r src/config dist/",
     "start": "node dist/server.js",
     "start:worker": "node dist/worker/index.js",

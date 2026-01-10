@@ -406,30 +406,13 @@ async function submitPrompt(
     node_errors?: Record<string, unknown>;
   };
 
-  if (data.error || data.node_errors) {
-    const errorMsg = typeof data.error === 'string'
-      ? data.error
-      : JSON.stringify(data.error, null, 2);
-
+  if (data.error) {
     const nodeErrors = data.node_errors
       ? Object.entries(data.node_errors)
-          .map(([node, err]) => {
-            const errObj = err as { errors?: Array<{ message?: string; details?: string }> };
-            if (errObj.errors?.length) {
-              return errObj.errors.map(e =>
-                `Node ${node}: ${e.message || ''} ${e.details || ''}`
-              ).join('; ');
-            }
-            return `Node ${node}: ${JSON.stringify(err)}`;
-          })
-          .join("\n")
+          .map(([node, err]) => `Node ${node}: ${JSON.stringify(err)}`)
+          .join("; ")
       : "";
-
-    console.error(`[gpu-worker] ComfyUI submission failed:`);
-    console.error(`[gpu-worker] Error: ${errorMsg}`);
-    if (nodeErrors) console.error(`[gpu-worker] Node errors:\n${nodeErrors}`);
-
-    throw new Error(`ComfyUI error: ${errorMsg}${nodeErrors ? `\n${nodeErrors}` : ''}`);
+    throw new Error(`ComfyUI error: ${data.error}. ${nodeErrors}`);
   }
 
   return data.prompt_id!;
@@ -690,80 +673,6 @@ async function downloadOutput(
   }
 
   return Buffer.from(await res.arrayBuffer());
-}
-
-async function cleanupGpuFiles(gpu: GpuConfig): Promise<void> {
-  const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
-
-  try {
-    // 1. Clear old history entries from ComfyUI
-    console.log(`[gpu-worker] Cleaning up GPU ${gpu.id}...`);
-
-    const historyRes = await fetch(`${gpu.url}/history`, { method: "GET" });
-    if (historyRes.ok) {
-      const history = (await historyRes.json()) as Record<string, unknown>;
-      const promptIds = Object.keys(history);
-
-      if (promptIds.length > 50) {
-        // Keep last 50, delete older ones
-        const toDelete = promptIds.slice(0, promptIds.length - 50);
-        for (const promptId of toDelete) {
-          await fetch(`${gpu.url}/history/${promptId}`, { method: "DELETE" });
-        }
-        console.log(`[gpu-worker] Cleared ${toDelete.length} old history entries`);
-      }
-    }
-
-    // 2. Clean up old input files via ComfyUI's view API
-    // List files in input directory
-    const inputFilesRes = await fetch(`${gpu.url}/api/view_files?type=input`);
-    if (inputFilesRes.ok) {
-      const files = (await inputFilesRes.json()) as Array<{
-        name: string;
-        mtime?: number;
-        size?: number;
-      }>;
-
-      const now = Date.now();
-      const oldFiles = files.filter((f) => {
-        if (!f.mtime) return false;
-        const fileAge = now - f.mtime * 1000;
-        return fileAge > THREE_DAYS_MS;
-      });
-
-      if (oldFiles.length > 0) {
-        console.log(`[gpu-worker] Found ${oldFiles.length} input files older than 3 days`);
-
-        // Try to delete via custom cleanup endpoint if available
-        if (gpu.cleanupUrl && gpu.cleanupUrl !== gpu.url) {
-          const deleteRes = await fetch(`${gpu.cleanupUrl}/cleanup`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              files: oldFiles.map((f) => f.name),
-              type: "input",
-              maxAgeDays: 3,
-            }),
-          });
-          if (deleteRes.ok) {
-            const result = await deleteRes.json();
-            console.log(`[gpu-worker] Cleanup result:`, result);
-          }
-        }
-      }
-    }
-
-    // 3. Free up memory
-    await fetch(`${gpu.url}/free`, { method: "POST" }).catch(() => {});
-
-    console.log(`[gpu-worker] GPU cleanup completed for ${gpu.id}`);
-  } catch (err) {
-    // Don't fail the job if cleanup fails - just log it
-    console.warn(
-      `[gpu-worker] GPU cleanup failed (non-critical):`,
-      (err as Error).message
-    );
-  }
 }
 
 async function uploadToS3(buffer: Buffer, key: string): Promise<string> {
@@ -1071,12 +980,7 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
 
     console.log(`[gpu-worker] Job ${jobId} completed successfully!`);
 
-    // Step 12: Cleanup old GPU files (non-blocking)
-    cleanupGpuFiles(gpu).catch((err) => {
-      console.warn(`[gpu-worker] Background cleanup failed:`, err.message);
-    });
-
-    // Step 13: Create clip record and send notifications
+    // Step 12: Create clip record and send notifications
     try {
       const [member] = await db
         .select({ userId: teamMembers.user_id })
