@@ -146,7 +146,7 @@ Format: Layer,Start,End,Style,Text
   return new Promise((resolve, reject) => {
     ffmpeg(inputPath)
       .videoFilters(`ass=${assPath}:fontsdir=${fontsDir}`)
-      .outputOptions(["-c:a copy"])
+      .outputOptions(["-c:a copy", "-map_metadata -1"])
       .save(outputPath)
       .on("end", () => {
         fs.unlinkSync(assPath);
@@ -257,7 +257,7 @@ Format: Layer,Start,End,Style,Text
   return new Promise((resolve, reject) => {
     ffmpeg(inputPath)
       .videoFilters(`ass=${assPath}:fontsdir=${fontsDir}`)
-      .outputOptions(["-c:a copy"])
+      .outputOptions(["-c:a copy", "-map_metadata -1"])
       .save(outputPath)
       .on("end", () => {
         fs.unlinkSync(assPath);

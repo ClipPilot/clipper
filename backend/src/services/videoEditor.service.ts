@@ -92,6 +92,7 @@ export const compressVideoForUpload = async (
           "-c:a aac",
           "-b:a 192k", // Higher audio quality
           "-movflags +faststart",
+          "-map_metadata -1", // Strip all metadata
         ])
         .save(outputPath)
         .on("progress", (progress) => {
@@ -231,6 +232,7 @@ export const cutClip = (
         "aresample=async=1:first_pts=0",
         "-avoid_negative_ts make_zero",
         "-reset_timestamps 1",
+        "-map_metadata -1", // Strip all metadata
       ])
       .save(output)
       .on("end", () => {
@@ -304,6 +306,7 @@ const normalizeClip = (input: string, output: string): Promise<string> => {
         "-reset_timestamps 1",
         "-start_at_zero",
         "-movflags +faststart",
+        "-map_metadata -1", // Strip all metadata
       ])
       .save(output)
       .on("end", () => {
@@ -345,7 +348,7 @@ export const mergeClipsGpu = async (clips: string[], outputPath: string) => {
     ffmpeg()
       .input(listPath)
       .inputOptions(["-f concat", "-safe 0"])
-      .outputOptions(["-c copy", "-fflags +genpts", "-movflags +faststart"])
+      .outputOptions(["-c copy", "-fflags +genpts", "-movflags +faststart", "-map_metadata -1"])
       .save(outputPath)
       .on("end", () => {
         fs.unlinkSync(listPath);
@@ -459,6 +462,7 @@ export const mergeClips = async (clips: string[], outputPath: string) => {
           "-b:a 128k",
           "-ar 48000",
           "-ac 2",
+          "-map_metadata -1", // Strip all metadata
         ]);
     } else {
       ffmpegCmd.outputOptions([
@@ -473,6 +477,7 @@ export const mergeClips = async (clips: string[], outputPath: string) => {
         "-b:a 128k",
         "-ar 48000",
         "-ac 2",
+        "-map_metadata -1", // Strip all metadata
       ]);
     }
 
@@ -673,6 +678,7 @@ export const addTextOverlayAtPosition = async (
           "-preset ultrafast",
           "-crf 23",
           "-c:a copy",
+          "-map_metadata -1", // Strip all metadata
         ])
         .save(outputPath)
         .on("end", () => {
@@ -732,6 +738,7 @@ export const addPreviewWatermark = async (
         "-preset ultrafast",
         "-crf 23",
         "-c:a copy",
+        "-map_metadata -1", // Strip all metadata
       ])
       .save(outputPath)
       .on("end", () => {
@@ -788,6 +795,7 @@ export const addTextOverlay = async (
           "-preset ultrafast",
           "-crf 23",
           "-c:a copy",
+          "-map_metadata -1", // Strip all metadata
         ])
         .save(outputPath)
         .on("end", () => {

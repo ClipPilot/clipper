@@ -124,6 +124,7 @@ export const downloadFixed = async (req: AuthRequest, res: Response) => {
           "-c:a aac", "-ar 48000", "-ac 2", "-b:a 192k",
           "-fflags +genpts+igndts", "-avoid_negative_ts make_zero",
           "-reset_timestamps 1", "-start_at_zero", "-movflags +faststart",
+          "-map_metadata -1", // Strip all metadata
         ])
         .save(tempOutputPath)
         .on("progress", (progress) => {
@@ -203,6 +204,7 @@ export const downloadFixedPublic = async (req: Request, res: Response) => {
           "-c:a aac", "-ar 48000", "-ac 2", "-b:a 192k",
           "-fflags +genpts+igndts", "-avoid_negative_ts make_zero",
           "-reset_timestamps 1", "-start_at_zero", "-movflags +faststart",
+          "-map_metadata -1", // Strip all metadata
         ])
         .save(tempOutputPath)
         .on("end", () => resolve())
