@@ -41,6 +41,8 @@ const router = Router();
  *         cameraStyle:
  *           type: string
  *           enum: [phone-selfie, tripod, mirror, ring-light]
+ *           deprecated: true
+ *           description: No longer used in UI
  *         anythingElse:
  *           type: string
  *           description: Additional details for generation

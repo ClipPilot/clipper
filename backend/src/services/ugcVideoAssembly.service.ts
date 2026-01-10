@@ -254,7 +254,8 @@ function combineVideoAudio(videoPath: string, audioPath: string, audioDuration: 
 }
 
 /**
- * Process A-Roll scene: dialogue audio -> silent video -> lip-sync -> trim
+ * Process A-Roll scene using Kling Avatar v2 (optimized for talking heads).
+ * Single-step: image + audio → video with built-in lip-sync (better quality than 2-step).
  */
 async function processArollScene(
   scene: SceneVideoData,
@@ -271,50 +272,42 @@ async function processArollScene(
     voiceId, dialogue, teamId, scriptId, sceneNumber
   );
 
-  // Step 2: Determine Kling video duration (5s or 10s based on audio)
-  const klingDuration: 5 | 10 = audioDuration <= 5 ? 5 : 10;
-  console.log(`[UGC Assembly] A-Roll Scene ${sceneNumber}: audio ${audioDuration.toFixed(2)}s -> Kling ${klingDuration}s`);
+  console.log(`[UGC Assembly] A-Roll Scene ${sceneNumber}: Using Avatar v2 for better lip-sync`);
 
-  // Step 3: Generate SILENT video with Kling
-  onProgress?.(`Scene ${sceneNumber}: Generating video...`);
+  // Step 2: Get presigned URLs for image and audio
+  onProgress?.(`Scene ${sceneNumber}: Generating video with lip-sync...`);
   const imageUrl = await s3Service.getPresignedUrl(imageKey, 3600);
-  const prompt = buildKlingPrompt(cinematicPrompt, shotType, emotion, action);
-
-  const { videoUrl: silentVideoUrl } = await klingService.generateVideoWithRetry({
-    imageUrl,
-    prompt,
-    duration: klingDuration,
-    generateAudio: false, // NO audio from Kling
-  });
-
-  // Step 4: Apply lip-sync with ElevenLabs audio
-  onProgress?.(`Scene ${sceneNumber}: Applying lip-sync...`);
   const audioUrl = await s3Service.getPresignedUrl(audioKey, 3600);
-  const { videoUrl: lipsyncVideoUrl } = await klingService.applyLipsyncWithRetry({
-    videoUrl: silentVideoUrl,
+
+  // Step 3: Generate video with Avatar v2 (single-step, optimized for talking heads)
+  // Avatar v2 generates lip-sync directly from image + audio, better quality than post-processing
+  const prompt = buildKlingPrompt(cinematicPrompt, shotType, emotion, action);
+  const { videoUrl: avatarVideoUrl } = await klingService.generateAvatarWithRetry({
+    imageUrl,
     audioUrl,
+    prompt, // Optional guidance for motion style
   });
 
-  // Step 5: Download lip-synced video
-  const lipsyncVideoPath = path.join(OUTPUT_DIR, `lipsync_${sceneNumber}_${Date.now()}.mp4`);
-  await s3Service.downloadVideoFromUrl(lipsyncVideoUrl, lipsyncVideoPath);
+  // Step 4: Download avatar video
+  const avatarVideoPath = path.join(OUTPUT_DIR, `avatar_${sceneNumber}_${Date.now()}.mp4`);
+  await s3Service.downloadVideoFromUrl(avatarVideoUrl, avatarVideoPath);
 
-  // Step 6: Trim video to match audio duration exactly
-  const trimmedPath = trimVideoToAudio(lipsyncVideoPath, audioDuration, sceneNumber);
+  // Step 5: Trim video to match audio duration exactly
+  const trimmedPath = trimVideoToAudio(avatarVideoPath, audioDuration, sceneNumber);
 
   // Cleanup temp files
-  if (fs.existsSync(lipsyncVideoPath) && lipsyncVideoPath !== trimmedPath) {
-    fs.unlinkSync(lipsyncVideoPath);
+  if (fs.existsSync(avatarVideoPath) && avatarVideoPath !== trimmedPath) {
+    fs.unlinkSync(avatarVideoPath);
   }
   if (fs.existsSync(audioPath)) {
     fs.unlinkSync(audioPath);
   }
 
-  // Step 7: Upload processed scene
+  // Step 6: Upload processed scene
   const videoBuffer = fs.readFileSync(trimmedPath);
   const videoKey = await s3Service.uploadUGCSceneVideo(videoBuffer, teamId, scriptId, sceneNumber, "processed");
 
-  console.log(`[UGC Assembly] A-Roll Scene ${sceneNumber} complete: ${audioDuration.toFixed(2)}s`);
+  console.log(`[UGC Assembly] A-Roll Scene ${sceneNumber} complete (Avatar v2): ${audioDuration.toFixed(2)}s`);
 
   return { sceneId, sceneNumber, audioKey, videoKey, localVideoPath: trimmedPath, duration: audioDuration };
 }

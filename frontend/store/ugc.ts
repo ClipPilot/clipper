@@ -18,6 +18,7 @@ export interface SceneImageState {
   jobId?: string;
   generatedImages?: { key: string; url: string; index: number }[];
   selectedImageKey?: string;
+  selectedImageUrl?: string; // Direct URL for rendering (from API or generation)
   selectedImageIndex?: number;
   userRefinement?: string;
   supportingImageKeys?: string[];

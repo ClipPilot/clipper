@@ -10,7 +10,7 @@ export interface StyleConfig {
   outfit: "casual" | "gym" | "office" | "cozy-home" | "streetwear" | "other";
   outfitCustom?: string;
   setting: string;
-  cameraStyle: "phone-selfie" | "tripod" | "mirror" | "ring-light";
+  cameraStyle?: "phone-selfie" | "tripod" | "mirror" | "ring-light"; // Deprecated - no longer used in UI
   anythingElse?: string;
 }
 

@@ -76,13 +76,13 @@ export function SceneBuilderStep({
       try {
         const response = await sceneBuilderAPI.getSceneImages(scriptId);
         if (response.success && response.sceneImages) {
-          const newState: Record<string, SceneImageState> = { ...sceneImages };
+          const newState: Record<string, SceneImageState> = {};
           Object.entries(response.sceneImages).forEach(
-            ([sceneId, sceneImage]) => {
+            ([sceneId, sceneImage]: [string, any]) => {
               newState[sceneId] = {
-                ...newState[sceneId],
                 status: "completed",
                 selectedImageKey: sceneImage.image_key,
+                selectedImageUrl: sceneImage.imageUrl, // Store the presigned URL for rendering
               };
             }
           );
@@ -334,6 +334,7 @@ export function SceneBuilderStep({
               productImageKeys={productImageKeys}
               generation={generation}
               selectedImageKey={sceneState.selectedImageKey}
+              selectedImageUrl={sceneState.selectedImageUrl}
               selectedImageIndex={sceneState.selectedImageIndex}
               userRefinement={sceneState.userRefinement}
               supportingImageKeys={sceneState.supportingImageKeys}

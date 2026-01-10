@@ -3,7 +3,7 @@
 import { Input, Textarea } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { ChipSelector } from "../ChipSelector";
-import { OUTFITS, CAMERA_STYLES, StyleConfig } from "../types";
+import { OUTFITS, StyleConfig } from "../types";
 
 interface StyleStepProps {
   style: StyleConfig;
@@ -23,7 +23,7 @@ export function StyleStep({ style, onStyleChange }: StyleStepProps) {
         </div>
         <h3 className="text-xl font-semibold text-text-primary mb-2">Style & Setting</h3>
         <p className="text-text-secondary text-sm">
-          Choose the outfit, location, and camera style for your actor
+          Choose the outfit and location for your actor
         </p>
       </div>
 
@@ -69,14 +69,6 @@ export function StyleStep({ style, onStyleChange }: StyleStepProps) {
             }
           />
         </div>
-
-        <ChipSelector
-          label="Camera Style"
-          options={CAMERA_STYLES}
-          value={style.cameraStyle}
-          onChange={(v) => handleChange("cameraStyle", v as StyleConfig["cameraStyle"])}
-          columns={2}
-        />
 
         <div className="space-y-2">
           <label className="text-sm font-medium text-text-primary">Anything else?</label>

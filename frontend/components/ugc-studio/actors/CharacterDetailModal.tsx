@@ -255,12 +255,6 @@ export function CharacterDetailModal({
                             : displayCharacter.style_config.outfit}
                         </span>
                       </div>
-                      <div>
-                        <span className="text-text-muted">Camera:</span>{" "}
-                        <span className="text-text-secondary capitalize">
-                          {displayCharacter.style_config.cameraStyle?.replace("-", " ")}
-                        </span>
-                      </div>
                       {displayCharacter.style_config.setting && (
                         <div className="col-span-2">
                           <span className="text-text-muted">Setting:</span>{" "}

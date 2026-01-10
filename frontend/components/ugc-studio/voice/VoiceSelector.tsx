@@ -31,10 +31,22 @@ export function VoiceSelector({ selectedVoice, onVoiceChange }: VoiceSelectorPro
     }
 
     if (audioRef.current) {
+      // Stop any currently playing audio first
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+
       audioRef.current.src = voice.previewFile;
-      audioRef.current.play().catch(() => {});
-      setPlayingVoiceId(voice.id);
-      setPlaybackProgress(0);
+      audioRef.current.load(); // Ensure the new source is loaded
+
+      audioRef.current.play()
+        .then(() => {
+          setPlayingVoiceId(voice.id);
+          setPlaybackProgress(0);
+        })
+        .catch((err) => {
+          console.error("[VoiceSelector] Audio playback failed:", err);
+          setPlayingVoiceId(null);
+        });
     }
   }, [playingVoiceId]);
 
@@ -55,12 +67,19 @@ export function VoiceSelector({ selectedVoice, onVoiceChange }: VoiceSelectorPro
         setPlaybackProgress(audio.currentTime / audio.duration);
       }
     };
+    const handleError = (e: Event) => {
+      console.error("[VoiceSelector] Audio error:", audio.error);
+      setPlayingVoiceId(null);
+      setPlaybackProgress(0);
+    };
 
     audio.addEventListener("ended", handleEnded);
     audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("error", handleError);
     return () => {
       audio.removeEventListener("ended", handleEnded);
       audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener("error", handleError);
     };
   }, []);
 
@@ -102,7 +121,7 @@ export function VoiceSelector({ selectedVoice, onVoiceChange }: VoiceSelectorPro
             />
           ))}
         </div>
-        <audio ref={audioRef} className="hidden" />
+        <audio ref={audioRef} className="hidden" preload="none" />
       </CardBody>
     </Card>
   );

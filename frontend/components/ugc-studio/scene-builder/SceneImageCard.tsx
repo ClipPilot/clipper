@@ -17,6 +17,7 @@ interface SceneImageCardProps {
   productImageKeys: string[];
   generation?: SceneImageGeneration;
   selectedImageKey?: string;
+  selectedImageUrl?: string; // Direct URL for rendering (from API or generation)
   selectedImageIndex?: number;
   userRefinement?: string;
   supportingImageKeys?: string[];
@@ -35,6 +36,7 @@ export function SceneImageCard({
   productImageKeys,
   generation,
   selectedImageKey,
+  selectedImageUrl,
   selectedImageIndex,
   userRefinement,
   supportingImageKeys,
@@ -196,12 +198,13 @@ export function SceneImageCard({
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
-              {isComplete && selectedImageKey && generation?.generatedImages ? (
+              {isComplete && selectedImageKey && (selectedImageUrl || generation?.generatedImages) ? (
                 <div className="w-10 h-12 rounded-md overflow-hidden bg-surface-base relative ring-2 ring-accent-400">
                   <img
                     src={
-                      generation.generatedImages.find((img) => img.key === selectedImageKey)?.url ||
-                      generation.generatedImages[selectedImageIndex || 0]?.url
+                      selectedImageUrl ||
+                      generation?.generatedImages?.find((img) => img.key === selectedImageKey)?.url ||
+                      generation?.generatedImages?.[selectedImageIndex || 0]?.url
                     }
                     alt="Selected"
                     className="w-full h-full object-cover"
@@ -361,6 +364,28 @@ export function SceneImageCard({
           />
         )}
 
+        {/* Show saved image when loaded from API (no generatedImages yet) */}
+        {selectedImageUrl && !generation?.generatedImages && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-xs text-text-muted">
+              <Icon icon="solar:gallery-check-bold" width={14} />
+              <span>Previously selected image</span>
+            </div>
+            <div className="flex gap-3">
+              <div className="w-24 h-32 rounded-lg overflow-hidden bg-surface-base ring-2 ring-accent-400 relative">
+                <img
+                  src={selectedImageUrl}
+                  alt="Selected"
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-accent-400 flex items-center justify-center">
+                  <Icon icon="solar:check-circle-bold" className="text-white" width={12} />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Actions */}
         <div className="flex items-center justify-between pt-2 border-t border-border-base">
           <div className="flex items-center gap-2">
@@ -373,24 +398,24 @@ export function SceneImageCard({
           </div>
           <Button
             className={
-              generation?.status === "completed"
+              (generation?.status === "completed" || selectedImageUrl)
                 ? "border-border-base text-text-secondary"
                 : "bg-accent-400 text-white"
             }
-            variant={generation?.status === "completed" ? "bordered" : "solid"}
+            variant={(generation?.status === "completed" || selectedImageUrl) ? "bordered" : "solid"}
             size="sm"
             onPress={handleGenerate}
             isLoading={isGenerating || generation?.status === "generating"}
             isDisabled={generation?.status === "generating"}
             startContent={
-              generation?.status === "completed" ? (
+              (generation?.status === "completed" || selectedImageUrl) ? (
                 <Icon icon="solar:refresh-bold" width={14} />
               ) : (
                 <Icon icon="solar:magic-stick-3-bold" width={14} />
               )
             }
           >
-            {generation?.status === "completed" ? "Regenerate" : "Generate Images"}
+            {(generation?.status === "completed" || selectedImageUrl) ? "Regenerate" : "Generate Images"}
           </Button>
         </div>
       </CardBody>

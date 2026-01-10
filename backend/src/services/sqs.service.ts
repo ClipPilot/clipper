@@ -135,7 +135,7 @@ export interface GenerateCharacterJob extends BaseJob {
       outfit: string;
       outfitCustom?: string;
       setting: string;
-      cameraStyle: string;
+      cameraStyle?: string; // Deprecated - no longer used in UI
       anythingElse?: string;
     };
     referenceImages?: string[];

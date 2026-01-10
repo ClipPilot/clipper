@@ -88,7 +88,6 @@ export function VariationModal({
       const response = await actorsAPI.createVariation(character.id, teamId, {
         outfit: "casual",
         setting: "",
-        cameraStyle: "phone-selfie",
         anythingElse: prompt.trim(),
       });
       setCurrentJobId(response.jobId);
@@ -122,7 +121,6 @@ export function VariationModal({
         styleConfig: {
           outfit: "casual",
           setting: "",
-          cameraStyle: "phone-selfie",
           anythingElse: prompt.trim(),
         },
         selectedImageKeys,

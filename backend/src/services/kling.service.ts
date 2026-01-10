@@ -25,9 +25,22 @@ export interface ImageToVideoResult {
 export interface LipsyncOptions {
   videoUrl: string;
   audioUrl: string;
+  cfgScale?: number; // 0-1, default 0.5. Lower = more natural motion
 }
 
 export interface LipsyncResult {
+  videoUrl: string;
+  requestId: string;
+}
+
+// Kling Avatar v2 - optimized for talking heads (single step: image + audio → video)
+export interface AvatarOptions {
+  imageUrl: string;
+  audioUrl: string;
+  prompt?: string; // Optional text guidance
+}
+
+export interface AvatarResult {
   videoUrl: string;
   requestId: string;
 }
@@ -215,10 +228,92 @@ export async function applyLipsyncWithRetry(
   throw lastError || new Error("Lipsync failed after retries");
 }
 
+interface KlingAvatarResponse {
+  video: {
+    url: string;
+    file_size?: number;
+    file_name?: string;
+    content_type?: string;
+  };
+}
+
+// Kling Avatar v2 Pro - optimized single-step talking head generation
+// Uses image + audio to generate video with built-in lip sync (better quality than 2-step process)
+export async function generateAvatar(
+  options: AvatarOptions
+): Promise<AvatarResult> {
+  const { imageUrl, audioUrl, prompt } = options;
+
+  console.log(`[Kling Avatar v2] Generating talking head video`);
+  console.log(`[Kling Avatar v2] Image: ${imageUrl.substring(0, 80)}...`);
+  console.log(`[Kling Avatar v2] Audio: ${audioUrl.substring(0, 80)}...`);
+
+  try {
+    const result = await fal.subscribe("fal-ai/kling-video/ai-avatar/v2/pro", {
+      input: {
+        image_url: imageUrl,
+        audio_url: audioUrl,
+        ...(prompt && { prompt }),
+      },
+      logs: true,
+      onQueueUpdate: (update) => {
+        if (update.status === "IN_PROGRESS" && update.logs) {
+          update.logs.forEach((log) => console.log(`[Kling Avatar v2] ${log.message}`));
+        }
+      },
+    });
+
+    const data = result.data as KlingAvatarResponse;
+
+    if (!data?.video?.url) {
+      throw new Error("No video URL in Kling Avatar v2 response");
+    }
+
+    console.log(`[Kling Avatar v2] Video generated: ${data.video.url}`);
+
+    return {
+      videoUrl: data.video.url,
+      requestId: result.requestId,
+    };
+  } catch (error) {
+    console.error("[Kling Avatar v2] Generation failed:", error);
+    throw error;
+  }
+}
+
+export async function generateAvatarWithRetry(
+  options: AvatarOptions,
+  maxRetries: number = 3
+): Promise<AvatarResult> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await generateAvatar(options);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      console.warn(
+        `[Kling Avatar v2] Attempt ${attempt}/${maxRetries} failed:`,
+        lastError.message
+      );
+
+      if (attempt < maxRetries) {
+        const delay = Math.pow(2, attempt) * 1000;
+        console.log(`[Kling Avatar v2] Retrying in ${delay / 1000}s...`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+  }
+
+  throw lastError || new Error("Avatar generation failed after retries");
+}
+
 export const klingService = {
   generateVideo,
   generateVideoWithRetry,
   applyLipsync,
   applyLipsyncWithRetry,
+  generateAvatar,
+  generateAvatarWithRetry,
   buildKlingPrompt,
 };

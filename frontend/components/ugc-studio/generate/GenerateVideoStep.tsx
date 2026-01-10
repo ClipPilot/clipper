@@ -55,6 +55,24 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
   const scenes = currentScript?.scenes || [];
   const totalScenes = scenes.length;
 
+  // Track last socket update for fallback polling
+  const lastSocketUpdateRef = useRef<number>(0);
+
+  // Auto-finalize and redirect to edit when complete
+  const autoFinalizeAndRedirect = useCallback(async (completedJobId: string) => {
+    setStepState("finalizing");
+    try {
+      const response = await ugcVideoAPI.finalizeVideo({
+        jobId: completedJobId,
+        teamId,
+      });
+      router.push(`/dashboard/clips/${response.clipId}/edit`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to finalize video");
+      setStepState("ready");
+    }
+  }, [teamId, router]);
+
   // Check for existing video on mount - but only if we haven't intentionally skipped
   useEffect(() => {
     // Check sessionStorage flag set by ScriptStep when loading saved script or creating new
@@ -88,24 +106,6 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
 
     checkExistingVideo();
   }, [scriptId, videoStatus, stepState, autoFinalizeAndRedirect]);
-
-  // Track last socket update for fallback polling
-  const lastSocketUpdateRef = useRef<number>(0);
-
-  // Auto-finalize and redirect to edit when complete
-  const autoFinalizeAndRedirect = useCallback(async (completedJobId: string) => {
-    setStepState("finalizing");
-    try {
-      const response = await ugcVideoAPI.finalizeVideo({
-        jobId: completedJobId,
-        teamId,
-      });
-      router.push(`/dashboard/clips/${response.clipId}/edit`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to finalize video");
-      setStepState("ready");
-    }
-  }, [teamId, router]);
 
   // Socket-based real-time updates
   const handleSocketUpdate = useCallback((status: VideoGenerationStatus) => {

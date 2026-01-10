@@ -10,7 +10,7 @@ export interface StyleConfig {
   outfit: string;
   outfitCustom?: string;
   setting: string;
-  cameraStyle: string;
+  cameraStyle?: string; // Deprecated - no longer used in UI
   anythingElse?: string;
 }
 

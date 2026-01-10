@@ -92,13 +92,14 @@ export function ScriptStep({
     try {
       const response = await ugcScriptAPI.getFullScript(existingScript.id);
 
-      // Clear all video/image state - we only want the script content
-      clearVideoState();
+      // Clear video state but allow scene images to load from API
+      setVideoJobId(null);
+      setVideoStatus(null);
+      setVideoPreviewUrl(null);
       setProductImageKeys([]);
 
-      // Set flags to prevent auto-loading of saved state in other steps
+      // Skip loading existing video (we want fresh generation) but allow scene images to load
       sessionStorage.setItem("skipLoadExistingVideo", existingScript.id);
-      sessionStorage.setItem("skipLoadSceneImages", existingScript.id);
 
       setScripts(response.scripts);
       setScriptId(existingScript.id);

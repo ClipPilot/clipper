@@ -42,7 +42,6 @@ const DEFAULT_APPEARANCE: AppearanceConfig = {
 const DEFAULT_STYLE: StyleConfig = {
   outfit: "casual",
   setting: "",
-  cameraStyle: "phone-selfie",
 };
 
 export function CreateCharacterFlow({ teamId, onCharacterCreated }: CreateCharacterFlowProps) {
