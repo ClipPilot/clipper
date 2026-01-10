@@ -122,7 +122,7 @@ async function processScene(
     onProgress?.(`Scene ${sceneNumber}: Finalizing audio...`);
 
     const outputPath = path.join(OUTPUT_DIR, `final_scene_${sceneNumber}_${Date.now()}.mp4`);
-    const ffmpegCommand = `ffmpeg -y -i "${tempVideoPath}" -i "${convertedAudioPath}" -c:v copy -map 0:v:0 -map 1:a:0 "${outputPath}"`;
+    const ffmpegCommand = `ffmpeg -y -i "${tempVideoPath}" -i "${convertedAudioPath}" -c:v copy -map 0:v:0 -map 1:a:0 -shortest "${outputPath}"`;
 
     console.log(`[FFmpeg] Overlaying converted audio for scene ${sceneNumber}`);
     execSync(ffmpegCommand, { stdio: "pipe" });
@@ -141,19 +141,6 @@ async function processScene(
     if (fs.existsSync(convertedAudioPath)) fs.unlinkSync(convertedAudioPath);
 
   } else {
-    onProgress?.(`Scene ${sceneNumber}: Generating voiceover...`);
-
-    const { s3Key } = await elevenLabsService.generateSpeechAndUpload({
-      voiceId,
-      text: dialogue,
-      teamId,
-      scriptId,
-      sceneNumber,
-    });
-    audioKey = s3Key;
-
-    const audioUrl = await s3Service.getPresignedUrl(audioKey, 3600);
-
     onProgress?.(`Scene ${sceneNumber}: Generating video...`);
 
     const { videoUrl: rawVideoUrl } = await klingService.generateVideoWithRetry({
@@ -162,6 +149,25 @@ async function processScene(
       duration: klingDuration,
       generateAudio: false,
     });
+
+    onProgress?.(`Scene ${sceneNumber}: Generating expressive voiceover...`);
+
+    const { s3Key, actualDuration } = await elevenLabsService.generateDialogueAndUpload({
+      voiceId,
+      text: dialogue,
+      teamId,
+      scriptId,
+      sceneNumber,
+      targetDurationSeconds: klingDuration,
+      tolerancePercent: 20,
+    });
+    audioKey = s3Key;
+
+    console.log(
+      `[UGC Assembly] Scene ${sceneNumber}: Dialogue generated for ${klingDuration}s video (actual: ${actualDuration.toFixed(2)}s)`
+    );
+
+    const audioUrl = await s3Service.getPresignedUrl(audioKey, 3600);
 
     onProgress?.(`Scene ${sceneNumber}: Adding voiceover...`);
 

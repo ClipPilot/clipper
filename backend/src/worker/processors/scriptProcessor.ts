@@ -136,15 +136,18 @@ export async function processScriptJob(job: GenerateScriptJob): Promise<void> {
       throw new Error("Character not found");
     }
 
-    await updateJobProgress(jobId, teamId, 20, "Analyzing product images...");
+    let productImageUrls: string[] = [];
+    let imageDescriptions: string[] = [];
 
-    // Get presigned URLs for product images
-    const productImageUrls = await Promise.all(
-      productImageKeys.map((key) => s3Service.getPresignedUrl(key, 3600))
-    );
+    if (productImageKeys && productImageKeys.length > 0) {
+      await updateJobProgress(jobId, teamId, 20, "Analyzing product images...");
 
-    // Analyze product images
-    const imageDescriptions = await analyzeProductImages(productImageUrls);
+      productImageUrls = await Promise.all(
+        productImageKeys.map((key) => s3Service.getPresignedUrl(key, 3600))
+      );
+
+      imageDescriptions = await analyzeProductImages(productImageUrls);
+    }
 
     await updateJobProgress(jobId, teamId, 40, "Generating script variations...");
 
@@ -249,7 +252,6 @@ export async function processScriptJob(job: GenerateScriptJob): Promise<void> {
       })
       .where(eq(schema.ugcScripts.id, jobId));
 
-    // Emit failure via WebSocket
     await notifyScriptJobUpdate(teamId, {
       scriptId: jobId,
       status: "failed",
@@ -257,7 +259,5 @@ export async function processScriptJob(job: GenerateScriptJob): Promise<void> {
       progressMessage: "Script generation failed",
       error: errorMessage,
     });
-
-    throw error;
   }
 }

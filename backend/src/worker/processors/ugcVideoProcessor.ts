@@ -163,7 +163,6 @@ export async function processUGCVideoJob(
       })
       .where(eq(schema.ugcVideoGenerationJobs.id, jobId));
 
-    // Emit failure status
     await notifyUGCVideoJobUpdate(teamId, {
       jobId,
       status: "failed",
@@ -172,7 +171,5 @@ export async function processUGCVideoJob(
       totalScenes,
       error: errorMessage,
     });
-
-    throw error;
   }
 }

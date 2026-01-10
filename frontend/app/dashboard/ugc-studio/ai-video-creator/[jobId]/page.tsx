@@ -46,11 +46,10 @@ export default function VideoJobPage() {
         // Get the script to load scenes using scriptId from the status response
         if (status.scriptId) {
           setScriptId(status.scriptId);
-          const scriptResponse = await ugcScriptAPI.getScript(status.scriptId);
-          if (scriptResponse) {
-            const scriptsData = scriptResponse.scripts_data as any[];
+          const scriptResponse = await ugcScriptAPI.getFullScript(status.scriptId);
+          if (scriptResponse?.scripts) {
             const selectedScript =
-              scriptsData[scriptResponse.selected_variant_index || 0];
+              scriptResponse.scripts[scriptResponse.selectedVariantIndex || 0];
             setScenes(selectedScript?.scenes || []);
           }
         }

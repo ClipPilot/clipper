@@ -1,4 +1,6 @@
 import { Request, Response } from "express";
+import path from "path";
+import fs from "fs";
 import { db } from "../db";
 import {
   ugcVideoGenerationJobs,
@@ -11,6 +13,8 @@ import { sqsService, GenerateUGCVideoJob } from "../services/sqs.service";
 import { teamService } from "../services/team.service";
 import { canAccessUGCStudio } from "../utils/plans";
 import { eq, and, desc, count, sql } from "drizzle-orm";
+import { transcribeVideoService } from "../services/transcription.service";
+import { convertWordsToCaptionEntries, CaptionEntry } from "../services/captions.service";
 
 interface AuthRequest extends Request {
   user?: { id: string; email: string; dbUserId: number };
@@ -422,8 +426,7 @@ export class UGCVideoController {
       const selectedScript = scriptsData?.[script?.selected_variant_index ?? 0];
       const title = selectedScript?.title || "UGC Video";
 
-      // Build captions data from scene dialogues
-      // The scene_videos array has timing info we can use
+      // Generate captions using Deepgram transcription of the actual audio
       const sceneVideos = job.scene_videos as Array<{
         sceneId: string;
         sceneNumber: number;
@@ -431,24 +434,43 @@ export class UGCVideoController {
         videoKey: string;
       }> | null;
 
-      let captionsData: any[] = [];
-      if (sceneVideos && selectedScript?.scenes) {
-        let currentTime = 0;
-        for (const sceneVideo of sceneVideos) {
-          const scene = selectedScript.scenes.find(
-            (s: any) => s.id === sceneVideo.sceneId
-          );
-          if (scene?.dialogue) {
-            const duration = scene.durationSeconds || scene.estimatedDurationSeconds || 5;
-            captionsData.push({
-              start: currentTime,
-              end: currentTime + duration,
-              text: scene.dialogue,
-              sceneId: sceneVideo.sceneId,
-              sceneNumber: sceneVideo.sceneNumber,
-            });
-            currentTime += duration;
-          }
+      let captionsData: CaptionEntry[] = [];
+
+      // Download video and transcribe with Deepgram for accurate captions
+      const tempDir = path.join(process.cwd(), "output", "temp-transcribe");
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+
+      const tempVideoPath = path.join(tempDir, `finalize_${jobId}_${Date.now()}.mp4`);
+
+      try {
+        console.log("[UGC_VIDEO] Downloading video for transcription...");
+        await s3Service.downloadVideoFromUrl(
+          await s3Service.getPresignedUrl(job.final_video_key, 300),
+          tempVideoPath
+        );
+
+        console.log("[UGC_VIDEO] Transcribing video with Deepgram...");
+        const transcription = await transcribeVideoService(tempVideoPath);
+
+        // Extract words from Deepgram response
+        const words = transcription?.results?.channels?.[0]?.alternatives?.[0]?.words || [];
+
+        if (words.length > 0) {
+          console.log(`[UGC_VIDEO] Got ${words.length} words from transcription`);
+          captionsData = convertWordsToCaptionEntries(words, 4);
+          console.log(`[UGC_VIDEO] Created ${captionsData.length} caption entries`);
+        } else {
+          console.log("[UGC_VIDEO] No words found in transcription");
+        }
+      } catch (transcribeError) {
+        console.error("[UGC_VIDEO] Transcription failed, proceeding without captions:", transcribeError);
+        // Continue without captions rather than failing the finalization
+      } finally {
+        // Clean up temp file
+        if (fs.existsSync(tempVideoPath)) {
+          fs.unlinkSync(tempVideoPath);
         }
       }
 

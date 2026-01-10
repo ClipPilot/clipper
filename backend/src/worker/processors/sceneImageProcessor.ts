@@ -95,8 +95,11 @@ function buildSceneImagePrompt(
     "- Vertical 3:4 aspect ratio",
     "- Natural lighting appropriate for the scene",
     `- Expression matches emotion: ${sceneData.emotion}`,
+    "- Correct human anatomy with natural proportions",
+    "- Exactly two arms, exactly two hands with five fingers each",
+    "- Natural body positioning and limb placement",
     "",
-    "NEGATIVE: Do not include cartoon style, illustration, watermarks, text overlays, deformed features, unnatural colors, oversaturated images"
+    "NEGATIVE: Do not include extra limbs, extra arms, extra hands, extra fingers, missing limbs, deformed hands, fused fingers, too many fingers, mutated hands, malformed limbs, bad anatomy, distorted body parts, unnatural arm positions, floating limbs, disconnected limbs, cartoon style, illustration, watermarks, text overlays, deformed features, unnatural colors, oversaturated images"
   );
 
   return parts.join("\n");
@@ -318,7 +321,5 @@ export async function processSceneImageJob(
         completed_at: new Date(),
       })
       .where(eq(schema.sceneImageGenerationJobs.id, jobId));
-
-    throw error;
   }
 }

@@ -112,10 +112,6 @@ export function ScriptStep({
   }, [teamId, pendingScriptId, productImages, setScripts, setScriptId, setProductImageKeys]);
 
   const handleGenerate = async () => {
-    if (productImages.length === 0) {
-      setError("Please upload at least one product image");
-      return;
-    }
     if (!scriptDirection.trim()) {
       setError("Please provide a script direction");
       return;
@@ -316,10 +312,10 @@ export function ScriptStep({
 
         <div className="text-center">
           <h2 className="text-2xl font-bold text-text-primary mb-2">
-            Product Images
+            Product Images <span className="text-text-muted font-normal text-lg">(Optional)</span>
           </h2>
           <p className="text-text-secondary">
-            Upload 1-5 images of your product. Our AI will analyze them to create
+            Upload up to 5 images of your product. Our AI will analyze them to create
             a viral script.
           </p>
         </div>
@@ -492,7 +488,7 @@ export function ScriptStep({
           <Button
             size="lg"
             className="bg-accent-400 text-white font-semibold px-8"
-            isDisabled={productImages.length === 0 || !scriptDirection.trim()}
+            isDisabled={!scriptDirection.trim()}
             onPress={handleGenerate}
             startContent={<Icon icon="solar:magic-stick-3-bold" width={20} />}
           >
@@ -561,14 +557,16 @@ export function ScriptStep({
       )}
 
       <div className="flex justify-between items-center pt-4">
-        <Button
-          variant="bordered"
-          className="border-border-base text-text-secondary"
-          onPress={() => setPhase("upload")}
-          startContent={<Icon icon="solar:arrow-left-linear" width={16} />}
-        >
-          Back to Images
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="bordered"
+            className="border-border-base text-text-secondary"
+            onPress={() => setPhase("upload")}
+            startContent={<Icon icon="solar:arrow-left-linear" width={16} />}
+          >
+            Edit & Regenerate
+          </Button>
+        </div>
         <Button
           size="lg"
           className="bg-accent-400 text-white font-semibold"

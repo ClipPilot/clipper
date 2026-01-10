@@ -113,7 +113,7 @@ TECHNICAL REQUIREMENTS:
 
 CRITICAL: This is the same person photographed in a different context. Maintain their identity, face shape, hair, facial hair, glasses, accessories, and body exactly. Only change what the user requested above.
 
-NEGATIVE: Do not change the person's face, do not change hair color or style, do not add facial hair if originally clean-shaven, do not add glasses or accessories that were not in the original, cartoon style, illustration, overly airbrushed skin, plastic-looking skin, extra limbs, deformed features, watermarks, text overlays, unnatural colors, oversaturated images.`;
+NEGATIVE: Do not change the person's face, do not change hair color or style, do not add facial hair if originally clean-shaven, do not add glasses or accessories that were not in the original, extra limbs, extra arms, extra hands, extra fingers, missing limbs, deformed hands, fused fingers, too many fingers, mutated hands, malformed limbs, bad anatomy, distorted body parts, cartoon style, illustration, overly airbrushed skin, plastic-looking skin, deformed features, watermarks, text overlays, unnatural colors, oversaturated images.`;
   }
 
   const anythingElseText = userChanges
@@ -131,7 +131,6 @@ Body type: ${config.appearance.bodyType} build.
 STYLE AND SETTING:
 Wearing ${outfitText} attire that looks natural and authentic.
 Setting: ${config.style.setting || "cozy indoor"} environment.
-Camera perspective: ${config.style.cameraStyle} style shot.
 
 EXPRESSION AND POSE:
 ${hint}
@@ -146,7 +145,7 @@ TECHNICAL REQUIREMENTS:
 - Vertical 3:4 aspect ratio composition
 - Natural lighting
 
-NEGATIVE: Do not include cartoon style, illustration, overly airbrushed skin, plastic-looking skin, extra limbs, deformed features, watermarks, text overlays, unnatural colors, oversaturated images.`;
+NEGATIVE: Do not include extra limbs, extra arms, extra hands, extra fingers, missing limbs, deformed hands, fused fingers, too many fingers, mutated hands, malformed limbs, bad anatomy, distorted body parts, cartoon style, illustration, overly airbrushed skin, plastic-looking skin, deformed features, watermarks, text overlays, unnatural colors, oversaturated images.`;
 };
 
 async function generateSingleImage(
@@ -316,7 +315,5 @@ CRITICAL: Match the person's facial features, bone structure, and overall appear
         completed_at: new Date(),
       })
       .where(eq(schema.characterGenerationJobs.id, jobId));
-
-    throw error;
   }
 }

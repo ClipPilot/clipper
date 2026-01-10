@@ -27,13 +27,13 @@ export class UGCScriptController {
         customPattern,
       } = req.body;
 
-      if (!teamId || !characterId || !productImageKeys?.length) {
+      if (!teamId || !characterId) {
         return res.status(400).json({
-          error: "teamId, characterId, and at least one product image are required",
+          error: "teamId and characterId are required",
         });
       }
 
-      if (productImageKeys.length > 5) {
+      if (productImageKeys && productImageKeys.length > 5) {
         return res.status(400).json({ error: "Maximum 5 product images allowed" });
       }
 
@@ -51,13 +51,12 @@ export class UGCScriptController {
         return res.status(404).json({ error: "Character not found" });
       }
 
-      // Create the job record with queued status
       const [job] = await db
         .insert(ugcScripts)
         .values({
           team_id: teamId,
           character_id: characterId,
-          product_image_keys: productImageKeys,
+          product_image_keys: productImageKeys || [],
           product_name: productName || null,
           script_direction: scriptDirection || null,
           structure_id: structureId || "classic",
@@ -70,13 +69,12 @@ export class UGCScriptController {
         })
         .returning();
 
-      // Send to SQS
       await sqsService.sendGenerateScriptJob({
         jobId: job.id,
         teamId,
         userId: req.user.dbUserId,
         characterId,
-        productImageKeys,
+        productImageKeys: productImageKeys || [],
         productName,
         scriptDirection,
         targetDuration: targetDuration || 30,

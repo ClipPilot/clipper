@@ -245,7 +245,7 @@ export function VideoPreview({
         </CardBody>
       </Card>
 
-      {/* Scene breakdown */}
+      {/* Scene breakdown - temporarily disabled
       <div>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-text-primary">
@@ -269,9 +269,7 @@ export function VideoPreview({
               >
                 <Card className="bg-surface-elevated border border-border-base overflow-hidden group hover:border-accent-400/50 transition-colors">
                   <CardBody className="p-0">
-                    {/* Scene thumbnail/preview */}
                     <div className="relative aspect-[9/16] bg-surface-base">
-                      {/* Placeholder - in production, this could show the first frame */}
                       <div className="absolute inset-0 flex items-center justify-center">
                         <div className="w-12 h-12 rounded-xl bg-accent-400/20 flex items-center justify-center">
                           <Icon
@@ -282,14 +280,12 @@ export function VideoPreview({
                         </div>
                       </div>
 
-                      {/* Scene number badge */}
                       <div className="absolute top-2 left-2 px-2 py-1 rounded-lg bg-black/60 backdrop-blur-sm">
                         <span className="text-xs font-medium text-white">
                           Scene {scene.sceneNumber}
                         </span>
                       </div>
 
-                      {/* Duration badge */}
                       {(scene.estimatedDurationSeconds || (scene as any).durationSeconds) && (
                         <div className="absolute bottom-2 right-2 px-2 py-1 rounded-lg bg-black/60 backdrop-blur-sm">
                           <span className="text-xs text-white">
@@ -298,7 +294,6 @@ export function VideoPreview({
                         </div>
                       )}
 
-                      {/* Edit overlay on hover */}
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
                         <Button
                           size="sm"
@@ -311,7 +306,6 @@ export function VideoPreview({
                       </div>
                     </div>
 
-                    {/* Scene info */}
                     <div className="p-3">
                       <p className="text-sm text-text-primary font-medium truncate">
                         {scene.action || `Scene ${scene.sceneNumber}`}
@@ -327,6 +321,7 @@ export function VideoPreview({
           })}
         </div>
       </div>
+      */}
 
       {/* What happens next */}
       <Card className="bg-surface-elevated border border-border-base">

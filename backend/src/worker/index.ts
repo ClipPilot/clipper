@@ -55,8 +55,10 @@ const QUEUE_URL = config.aws.sqsQueueUrl;
 const VISIBILITY_TIMEOUT = 900; // 15 minutes
 const HEARTBEAT_INTERVAL = 300000; // 5 minutes - extend visibility before it expires
 const TASK_PROTECTION_MINUTES = 120; // Protect task for up to 2 hours
+const MAX_CONCURRENT_JOBS = 5; // Process up to 5 jobs concurrently
 
 let isShuttingDown = false;
+let activeJobs = 0;
 
 // Get ECS task metadata (available in Fargate)
 async function getTaskInfo(): Promise<{ cluster: string; taskArn: string } | null> {
@@ -160,13 +162,42 @@ async function processMessage(job: VideoProcessingJob, receiptHandle: string): P
   }
 }
 
+async function handleMessage(message: { Body: string; ReceiptHandle: string }): Promise<void> {
+  activeJobs++;
+  try {
+    const job: VideoProcessingJob = JSON.parse(message.Body);
+    console.log(`[Worker] Starting job: ${job.type} for team ${job.teamId} (active: ${activeJobs})`);
+
+    await processMessage(job, message.ReceiptHandle);
+
+    await sqsClient.send(
+      new DeleteMessageCommand({
+        QueueUrl: QUEUE_URL,
+        ReceiptHandle: message.ReceiptHandle,
+      })
+    );
+    console.log(`[Worker] Completed job: ${job.type} (active: ${activeJobs - 1})`);
+  } catch (error) {
+    console.error("[Worker] Error processing message:", error);
+  } finally {
+    activeJobs--;
+  }
+}
+
 async function pollMessages(): Promise<void> {
   while (!isShuttingDown) {
     try {
+      // Only fetch more messages if we have capacity
+      const availableSlots = MAX_CONCURRENT_JOBS - activeJobs;
+      if (availableSlots <= 0) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        continue;
+      }
+
       const command = new ReceiveMessageCommand({
         QueueUrl: QUEUE_URL,
-        MaxNumberOfMessages: 1, // Process one message at a time for video processing
-        WaitTimeSeconds: 20, // Long polling
+        MaxNumberOfMessages: Math.min(availableSlots, 10),
+        WaitTimeSeconds: activeJobs > 0 ? 5 : 20, // Shorter poll when already processing
         VisibilityTimeout: VISIBILITY_TIMEOUT,
         MessageAttributeNames: ["All"],
       });
@@ -174,38 +205,28 @@ async function pollMessages(): Promise<void> {
       const response = await sqsClient.send(command);
 
       if (response.Messages && response.Messages.length > 0) {
+        console.log(`[Worker] Received ${response.Messages.length} messages (active: ${activeJobs})`);
+
         for (const message of response.Messages) {
           if (!message.Body || !message.ReceiptHandle) {
             console.error("Invalid message received:", message);
             continue;
           }
 
-          try {
-            const job: VideoProcessingJob = JSON.parse(message.Body);
-            console.log(`Received job: ${job.type} for team ${job.teamId}`);
-
-            await processMessage(job, message.ReceiptHandle);
-
-            // Delete message after successful processing
-            await sqsClient.send(
-              new DeleteMessageCommand({
-                QueueUrl: QUEUE_URL,
-                ReceiptHandle: message.ReceiptHandle,
-              })
-            );
-            console.log(`Successfully processed and deleted message for job: ${job.type}`);
-          } catch (error) {
-            console.error("Error processing message:", error);
-            // Message will become visible again after visibility timeout
-            // and will be retried (up to maxReceiveCount times before going to DLQ)
-          }
+          // Fire and forget - don't await, let them run concurrently
+          handleMessage({ Body: message.Body, ReceiptHandle: message.ReceiptHandle });
         }
       }
     } catch (error) {
       console.error("Error polling SQS:", error);
-      // Wait a bit before retrying to avoid hammering SQS on errors
       await new Promise((resolve) => setTimeout(resolve, 5000));
     }
+  }
+
+  // Wait for active jobs to complete before shutting down
+  while (activeJobs > 0) {
+    console.log(`[Worker] Waiting for ${activeJobs} active jobs to complete...`);
+    await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 }
 

@@ -14,6 +14,7 @@ import {
   ModalFooter,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import { BrandLogo } from "@/components/brand-logo";
 import {
   scriptsAtom,
   selectedVariantIndexAtom,
@@ -436,8 +437,8 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
           </ModalHeader>
           <ModalBody>
             <div className="text-center py-4">
-              <div className="w-16 h-16 rounded-2xl bg-accent-400/20 flex items-center justify-center mx-auto mb-4">
-                <Icon icon="solar:video-frame-play-bold-duotone" className="text-accent-400" width={32} />
+              <div className="flex justify-center mb-4">
+                <BrandLogo size={64} />
               </div>
               <p className="text-text-primary mb-2">
                 This will use <span className="font-bold text-accent-400">{GENERATE_CREDIT_COST} credits</span>

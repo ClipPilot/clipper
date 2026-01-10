@@ -163,7 +163,7 @@ export async function applyLipsync(
 
 export async function generateVideoWithRetry(
   options: ImageToVideoOptions,
-  maxRetries: number = 1
+  maxRetries: number = 3
 ): Promise<ImageToVideoResult> {
   let lastError: Error | null = null;
 
@@ -190,7 +190,7 @@ export async function generateVideoWithRetry(
 
 export async function applyLipsyncWithRetry(
   options: LipsyncOptions,
-  maxRetries: number = 1
+  maxRetries: number = 3
 ): Promise<LipsyncResult> {
   let lastError: Error | null = null;
 
