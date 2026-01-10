@@ -3,6 +3,7 @@
 import { atom } from "jotai";
 import type { Voice } from "@/config/voicesConfig";
 import type { UGCScript } from "@/components/ugc-studio/script/types";
+import type { VideoGenerationStatus } from "@/api/ugc/video";
 
 export const selectedVoiceAtom = atom<Voice | null>(null);
 
@@ -36,4 +37,16 @@ export const allScenesCompleteAtom = atom((get) => {
   return currentScript.scenes.every(
     (scene) => sceneImages[scene.id]?.selectedImageKey
   );
+});
+
+// Video Generation state
+export const videoJobIdAtom = atom<string | null>(null);
+export const videoStatusAtom = atom<VideoGenerationStatus | null>(null);
+export const videoPreviewUrlAtom = atom<string | null>(null);
+export const editingSceneIdAtom = atom<string | null>(null);
+
+// Derived atom: check if video can be finalized
+export const canFinalizeAtom = atom((get) => {
+  const status = get(videoStatusAtom);
+  return status?.status === "completed" && !!status.finalVideoUrl;
 });

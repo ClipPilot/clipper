@@ -455,6 +455,68 @@ class S3Service {
     await this.uploadBuffer(buffer, key, "image/png");
     return key;
   }
+
+  async uploadTTSAudio(
+    buffer: Buffer,
+    teamId: number,
+    scriptId: string,
+    sceneNumber: number
+  ): Promise<string> {
+    const key = `ugc-audio/${teamId}/${scriptId}/scene_${sceneNumber}_${Date.now()}.mp3`;
+    await this.uploadBuffer(buffer, key, "audio/mpeg");
+    console.log(`[S3] Uploaded TTS audio: ${key} (${(buffer.length / 1024).toFixed(1)}KB)`);
+    return key;
+  }
+
+  async uploadUGCSceneVideo(
+    buffer: Buffer,
+    teamId: number,
+    scriptId: string,
+    sceneNumber: number,
+    stage: "raw" | "processed"
+  ): Promise<string> {
+    const folder = stage === "raw" ? "raw-videos" : "processed-videos";
+    const key = `ugc-videos/${teamId}/${scriptId}/${folder}/scene_${sceneNumber}_${Date.now()}.mp4`;
+    await this.uploadBuffer(buffer, key, "video/mp4");
+    console.log(`[S3] Uploaded UGC ${stage} video: ${key}`);
+    return key;
+  }
+
+  async uploadUGCFinalVideo(
+    buffer: Buffer,
+    teamId: number,
+    scriptId: string
+  ): Promise<string> {
+    const key = `ugc-videos/${teamId}/${scriptId}/final/${scriptId}_${Date.now()}.mp4`;
+    await this.uploadBuffer(buffer, key, "video/mp4");
+    console.log(`[S3] Uploaded UGC final video: ${key}`);
+    return key;
+  }
+
+  async uploadUGCFinalVideoFromFile(
+    filePath: string,
+    teamId: number,
+    scriptId: string
+  ): Promise<string> {
+    const key = `ugc-videos/${teamId}/${scriptId}/final/${scriptId}_${Date.now()}.mp4`;
+    await this.uploadFile(filePath, key, "video/mp4");
+    console.log(`[S3] Uploaded UGC final video from file: ${key}`);
+    return key;
+  }
+
+  async downloadToFile(key: string, localPath: string): Promise<void> {
+    await this.downloadFile(key, localPath);
+  }
+
+  async downloadVideoFromUrl(url: string, localPath: string): Promise<void> {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to download video: ${response.statusText}`);
+    }
+    const buffer = Buffer.from(await response.arrayBuffer());
+    fs.writeFileSync(localPath, buffer);
+    console.log(`[S3] Downloaded video to: ${localPath}`);
+  }
 }
 
 export const s3Service = new S3Service();

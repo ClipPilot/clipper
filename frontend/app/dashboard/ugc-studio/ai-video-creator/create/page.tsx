@@ -9,6 +9,7 @@ import { CharacterStep } from "@/components/ugc-studio/actors/CharacterStep";
 import { ScriptStep } from "@/components/ugc-studio/script";
 import { AudioStep } from "@/components/ugc-studio/voice";
 import { SceneBuilderStep } from "@/components/ugc-studio/scene-builder";
+import { GenerateVideoStep } from "@/components/ugc-studio/generate";
 import { selectedVoiceAtom, scriptIdAtom, scriptsAtom, selectedVariantIndexAtom, productImageKeysAtom, allScenesCompleteAtom } from "@/store/ugc";
 import { useTeams } from "@/hooks/useTeams";
 import type { Character } from "@/components/ugc-studio/actors/types";
@@ -194,12 +195,11 @@ export default function CreateAdPage() {
 
         {currentStep === "audio" && <AudioStep onContinue={handleNext} />}
 
-        {currentStep === "generate" && (
-          <div className="text-center py-20">
-            <Icon icon="solar:video-frame-play-bold-duotone" className="text-text-muted mx-auto mb-4" width={48} />
-            <h2 className="text-xl font-semibold text-text-primary mb-2">Generate Video</h2>
-            <p className="text-text-secondary">Coming soon - assemble your final video</p>
-          </div>
+        {currentStep === "generate" && scriptId && teamId && (
+          <GenerateVideoStep
+            teamId={teamId}
+            scriptId={scriptId}
+          />
         )}
       </div>
     </div>

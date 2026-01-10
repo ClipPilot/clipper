@@ -53,6 +53,20 @@ export function ScriptStep({
   const [error, setError] = useState<string | null>(null);
   const [pendingScriptId, setPendingScriptId] = useState<string | null>(null);
 
+  // Handle variant selection and sync to backend
+  const handleVariantSelect = useCallback(async (index: number) => {
+    setSelectedVariantIndex(index);
+
+    // Sync to backend so scene generation uses the correct variant
+    if (scriptId) {
+      try {
+        await ugcScriptAPI.updateScript(scriptId, { selectedVariantIndex: index });
+      } catch (err) {
+        console.error("Failed to sync variant selection:", err);
+      }
+    }
+  }, [scriptId, setSelectedVariantIndex]);
+
   // WebSocket listener for real-time script updates
   useEffect(() => {
     const socket = connectSocket();
@@ -525,7 +539,7 @@ export function ScriptStep({
         <ScriptVariantSelector
           scripts={scripts}
           selectedIndex={selectedVariantIndex}
-          onSelect={setSelectedVariantIndex}
+          onSelect={handleVariantSelect}
         />
       )}
 

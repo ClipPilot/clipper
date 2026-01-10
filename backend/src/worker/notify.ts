@@ -55,3 +55,26 @@ export interface ScriptJobUpdate {
 export async function notifyScriptJobUpdate(teamId: number, update: ScriptJobUpdate): Promise<void> {
   await callNotifyEndpoint("/internal/notify/script-job-update", { teamId, update });
 }
+
+export interface UGCVideoJobUpdate {
+  jobId: string;
+  status: "queued" | "generating" | "completed" | "failed";
+  progress: number;
+  progressMessage: string;
+  currentScene?: number;
+  totalScenes?: number;
+  finalVideoUrl?: string;
+  finalVideoKey?: string;
+  totalDurationSeconds?: number;
+  sceneVideos?: Array<{
+    sceneId: string;
+    sceneNumber: number;
+    audioKey: string;
+    videoKey: string;
+  }>;
+  error?: string;
+}
+
+export async function notifyUGCVideoJobUpdate(teamId: number, update: UGCVideoJobUpdate): Promise<void> {
+  await callNotifyEndpoint("/internal/notify/ugc-video-job-update", { teamId, update });
+}

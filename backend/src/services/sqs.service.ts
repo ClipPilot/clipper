@@ -14,7 +14,8 @@ export type JobType =
   | "update-overlays"
   | "generate-character"
   | "generate-scene-image"
-  | "generate-script";
+  | "generate-script"
+  | "generate-ugc-video";
 
 // Base job interface
 interface BaseJob {
@@ -178,6 +179,27 @@ export interface GenerateScriptJob extends BaseJob {
   customPattern?: { type: string; shot: string }[];
 }
 
+// UGC video generation job payload
+export interface GenerateUGCVideoJob extends BaseJob {
+  type: "generate-ugc-video";
+  jobId: string;
+  scriptId: string;
+  voiceId: string;
+  scenes: Array<{
+    sceneId: string;
+    sceneNumber: number;
+    shotType: "a-roll" | "b-roll" | "mixed";
+    imageKey: string;
+    dialogue: string;
+    duration: number;
+    cinematicPrompt: string;
+    action: string;
+    emotion: string;
+    regenerate?: boolean; // Mark this scene for regeneration
+  }>;
+  regenerateSceneId?: string; // If set, only regenerate this scene
+}
+
 export type VideoProcessingJob =
   | ClipVideoJob
   | BatchClipVideoJob
@@ -186,7 +208,8 @@ export type VideoProcessingJob =
   | UpdateOverlaysJob
   | GenerateCharacterJob
   | GenerateSceneImageJob
-  | GenerateScriptJob;
+  | GenerateScriptJob
+  | GenerateUGCVideoJob;
 
 class SQSService {
   private queueUrl: string;
@@ -422,6 +445,30 @@ class SQSService {
       numberOfVariations: params.numberOfVariations,
       structureId: params.structureId,
       customPattern: params.customPattern,
+      createdAt: new Date().toISOString(),
+    };
+
+    return this.sendJob(job);
+  }
+
+  async sendGenerateUGCVideoJob(params: {
+    jobId: string;
+    teamId: number;
+    userId: number;
+    scriptId: string;
+    voiceId: string;
+    scenes: GenerateUGCVideoJob["scenes"];
+    regenerateSceneId?: string;
+  }): Promise<string> {
+    const job: GenerateUGCVideoJob = {
+      type: "generate-ugc-video",
+      jobId: params.jobId,
+      teamId: params.teamId,
+      userId: params.userId,
+      scriptId: params.scriptId,
+      voiceId: params.voiceId,
+      scenes: params.scenes,
+      regenerateSceneId: params.regenerateSceneId,
       createdAt: new Date().toISOString(),
     };
 

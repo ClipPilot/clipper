@@ -122,6 +122,14 @@ resource "aws_ecs_task_definition" "worker" {
       {
         name      = "GEMINI_API_KEY"
         valueFrom = aws_secretsmanager_secret.gemini_api_key.arn
+      },
+      {
+        name      = "ELEVENLABS_API_KEY"
+        valueFrom = aws_secretsmanager_secret.elevenlabs_api_key.arn
+      },
+      {
+        name      = "FAL_KEY"
+        valueFrom = aws_secretsmanager_secret.fal_key.arn
       }
     ]
 

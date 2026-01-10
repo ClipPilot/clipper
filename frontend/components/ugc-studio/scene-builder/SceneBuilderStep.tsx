@@ -11,6 +11,7 @@ import {
   SceneImageState,
 } from "@/store/ugc";
 import { sceneBuilderAPI } from "@/api/sceneBuilder";
+import { ugcScriptAPI } from "@/api/ugc";
 import { SceneImageCard } from "./SceneImageCard";
 import type { SceneImageGeneration } from "./types";
 
@@ -45,6 +46,20 @@ export function SceneBuilderStep({
   const allComplete = completedScenes === totalScenes && totalScenes > 0;
   const progressPercent =
     totalScenes > 0 ? (completedScenes / totalScenes) * 100 : 0;
+
+  // Sync selected variant index to backend on mount
+  // This ensures the backend knows which variant we're working with
+  useEffect(() => {
+    const syncVariantIndex = async () => {
+      try {
+        await ugcScriptAPI.updateScript(scriptId, { selectedVariantIndex });
+      } catch (error) {
+        console.error("Failed to sync variant index:", error);
+      }
+    };
+
+    syncVariantIndex();
+  }, [scriptId, selectedVariantIndex]);
 
   // Load saved scene images on mount
   useEffect(() => {

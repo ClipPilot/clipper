@@ -1,0 +1,629 @@
+import { Request, Response } from "express";
+import { db } from "../db";
+import {
+  ugcVideoGenerationJobs,
+  ugcScripts,
+  sceneImages,
+  clips,
+} from "@clipper/shared-db/src/schema";
+import { s3Service } from "../services/s3.service";
+import { sqsService, GenerateUGCVideoJob } from "../services/sqs.service";
+import { teamService } from "../services/team.service";
+import { canAccessUGCStudio } from "../utils/plans";
+import { eq, and, desc, count, sql } from "drizzle-orm";
+
+interface AuthRequest extends Request {
+  user?: { id: string; email: string; dbUserId: number };
+}
+
+interface SceneData {
+  id: string;
+  sceneNumber: number;
+  sceneType: string;
+  action: string;
+  dialogue: string;
+  emotion: string;
+  shotType: "a-roll" | "b-roll" | "mixed";
+  cameraAngle: string;
+  cinematicPrompt: string;
+  durationSeconds: number;
+}
+
+export class UGCVideoController {
+  /**
+   * List video generation jobs for a team with pagination
+   */
+  async listVideoJobs(req: AuthRequest, res: Response) {
+    try {
+      const teamId = parseInt(req.query.teamId as string, 10);
+      const limit = Math.min(parseInt(req.query.limit as string, 10) || 10, 50);
+      const offset = parseInt(req.query.offset as string, 10) || 0;
+
+      if (!teamId) {
+        return res.status(400).json({ error: "teamId is required" });
+      }
+
+      // Get jobs with script info
+      const jobs = await db
+        .select({
+          id: ugcVideoGenerationJobs.id,
+          scriptId: ugcVideoGenerationJobs.script_id,
+          status: ugcVideoGenerationJobs.status,
+          progress: ugcVideoGenerationJobs.progress,
+          progressMessage: ugcVideoGenerationJobs.progress_message,
+          finalVideoKey: ugcVideoGenerationJobs.final_video_key,
+          totalDurationSeconds: ugcVideoGenerationJobs.total_duration_seconds,
+          errorMessage: ugcVideoGenerationJobs.error_message,
+          createdAt: ugcVideoGenerationJobs.created_at,
+          completedAt: ugcVideoGenerationJobs.completed_at,
+          // Script info - fetch the full data and extract in JS
+          scriptsData: ugcScripts.scripts_data,
+          selectedVariantIndex: ugcScripts.selected_variant_index,
+          productName: ugcScripts.product_name,
+        })
+        .from(ugcVideoGenerationJobs)
+        .leftJoin(ugcScripts, eq(ugcVideoGenerationJobs.script_id, ugcScripts.id))
+        .where(eq(ugcVideoGenerationJobs.team_id, teamId))
+        .orderBy(desc(ugcVideoGenerationJobs.created_at))
+        .limit(limit)
+        .offset(offset);
+
+      // Get total count
+      const [countResult] = await db
+        .select({ count: count() })
+        .from(ugcVideoGenerationJobs)
+        .where(eq(ugcVideoGenerationJobs.team_id, teamId));
+
+      // Get thumbnails for each job (first scene image per script)
+      const scriptIds = [...new Set(jobs.map((j) => j.scriptId))];
+      const thumbnails: Record<string, string> = {};
+
+      if (scriptIds.length > 0) {
+        const firstSceneImages = await db
+          .select({
+            scriptId: sceneImages.script_id,
+            imageKey: sceneImages.image_key,
+          })
+          .from(sceneImages)
+          .where(sql`${sceneImages.script_id} IN ${scriptIds}`)
+          .orderBy(sceneImages.scene_number);
+
+        // Keep only first image per script
+        for (const img of firstSceneImages) {
+          if (!thumbnails[img.scriptId]) {
+            thumbnails[img.scriptId] = img.imageKey;
+          }
+        }
+      }
+
+      // Generate presigned URLs
+      const jobsWithUrls = await Promise.all(
+        jobs.map(async (job) => {
+          // Extract title from script data
+          let scriptTitle = job.productName || "Untitled Video";
+          if (job.scriptsData && Array.isArray(job.scriptsData)) {
+            const selectedScript = job.scriptsData[job.selectedVariantIndex || 0] as any;
+            if (selectedScript?.title) {
+              scriptTitle = selectedScript.title;
+            }
+          }
+
+          const result: any = {
+            id: job.id,
+            scriptId: job.scriptId,
+            scriptTitle,
+            status: job.status,
+            progress: job.progress,
+            progressMessage: job.progressMessage,
+            totalDurationSeconds: job.totalDurationSeconds,
+            errorMessage: job.errorMessage,
+            createdAt: job.createdAt,
+            completedAt: job.completedAt,
+          };
+
+          // Add video URL for completed jobs
+          if (job.status === "completed" && job.finalVideoKey) {
+            result.finalVideoUrl = await s3Service.getPresignedUrl(
+              job.finalVideoKey,
+              3600
+            );
+          }
+
+          // Add thumbnail URL
+          const thumbnailKey = thumbnails[job.scriptId];
+          if (thumbnailKey) {
+            result.thumbnailUrl = await s3Service.getPresignedUrl(
+              thumbnailKey,
+              3600
+            );
+          }
+
+          return result;
+        })
+      );
+
+      return res.status(200).json({
+        jobs: jobsWithUrls,
+        total: countResult?.count || 0,
+        limit,
+        offset,
+      });
+    } catch (error) {
+      console.error("[UGC_VIDEO] List jobs error:", error);
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to list video jobs",
+      });
+    }
+  }
+
+  /**
+   * Generate a UGC video from a script
+   * Queues a background job that processes all scenes
+   */
+  async generateVideo(req: AuthRequest, res: Response) {
+    try {
+      const { teamId, scriptId, voiceId } = req.body;
+
+      if (!teamId || !scriptId || !voiceId) {
+        return res.status(400).json({
+          error: "teamId, scriptId, and voiceId are required",
+        });
+      }
+
+      if (!req.user?.dbUserId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const team = await teamService.getTeamById(teamId);
+      if (!team || !canAccessUGCStudio(team.plan)) {
+        return res.status(403).json({ error: "UGC Studio access required" });
+      }
+
+      // Fetch the script to get scene data
+      const [script] = await db
+        .select()
+        .from(ugcScripts)
+        .where(eq(ugcScripts.id, scriptId));
+
+      if (!script) {
+        return res.status(404).json({ error: "Script not found" });
+      }
+
+      if (script.status !== "completed") {
+        return res.status(400).json({
+          error: "Script generation must be completed before video generation",
+        });
+      }
+
+      // Get the selected script variant
+      const scriptsData = script.scripts_data as any[];
+      const selectedScript = scriptsData[script.selected_variant_index];
+
+      if (!selectedScript?.scenes?.length) {
+        return res.status(400).json({
+          error: "No scenes found in the selected script variant",
+        });
+      }
+
+      // Fetch all scene images for this script
+      const savedImages = await db
+        .select()
+        .from(sceneImages)
+        .where(eq(sceneImages.script_id, scriptId));
+
+      // Build scene video data from script + saved images
+      const scenes: GenerateUGCVideoJob["scenes"] = [];
+
+      for (const scene of selectedScript.scenes as SceneData[]) {
+        // Find the saved image for this scene
+        const savedImage = savedImages.find((img) => img.scene_id === scene.id);
+
+        if (!savedImage) {
+          return res.status(400).json({
+            error: `No image selected for scene ${scene.sceneNumber}. Please select images for all scenes first.`,
+          });
+        }
+
+        scenes.push({
+          sceneId: scene.id,
+          sceneNumber: scene.sceneNumber,
+          shotType: scene.shotType,
+          imageKey: savedImage.image_key,
+          dialogue: scene.dialogue,
+          duration: scene.durationSeconds || 5,
+          cinematicPrompt: scene.cinematicPrompt,
+          action: scene.action,
+          emotion: scene.emotion,
+        });
+      }
+
+      // Create the job record
+      const [job] = await db
+        .insert(ugcVideoGenerationJobs)
+        .values({
+          team_id: teamId,
+          user_id: req.user.dbUserId,
+          script_id: scriptId,
+          voice_id: voiceId,
+          status: "queued",
+          progress: 0,
+          progress_message: "Queued for video generation...",
+        })
+        .returning();
+
+      // Send to SQS
+      await sqsService.sendGenerateUGCVideoJob({
+        jobId: job.id,
+        teamId,
+        userId: req.user.dbUserId,
+        scriptId,
+        voiceId,
+        scenes,
+      });
+
+      return res.status(202).json({
+        success: true,
+        jobId: job.id,
+        status: "queued",
+        message: "Video generation started. Poll for status.",
+      });
+    } catch (error) {
+      console.error("[UGC_VIDEO] Generate video error:", error);
+      return res.status(500).json({
+        error:
+          error instanceof Error ? error.message : "Failed to queue video generation",
+      });
+    }
+  }
+
+  /**
+   * Get video generation job status
+   */
+  async getVideoGenerationStatus(req: AuthRequest, res: Response) {
+    try {
+      const { jobId } = req.params;
+
+      if (!jobId) {
+        return res.status(400).json({ error: "jobId is required" });
+      }
+
+      const [job] = await db
+        .select()
+        .from(ugcVideoGenerationJobs)
+        .where(eq(ugcVideoGenerationJobs.id, jobId));
+
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+
+      const response: any = {
+        jobId: job.id,
+        scriptId: job.script_id,
+        status: job.status,
+        progress: job.progress,
+        progressMessage: job.progress_message,
+        createdAt: job.created_at,
+        startedAt: job.started_at,
+        completedAt: job.completed_at,
+      };
+
+      if (job.status === "completed" && job.final_video_key) {
+        response.finalVideoUrl = await s3Service.getPresignedUrl(
+          job.final_video_key,
+          3600
+        );
+        response.finalVideoKey = job.final_video_key;
+        response.totalDurationSeconds = job.total_duration_seconds;
+        response.sceneVideos = job.scene_videos;
+      }
+
+      if (job.status === "failed") {
+        response.error = job.error_message;
+      }
+
+      return res.status(200).json(response);
+    } catch (error) {
+      console.error("[UGC_VIDEO] Get status error:", error);
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to get job status",
+      });
+    }
+  }
+
+  /**
+   * Get the generated video for a script (if any)
+   */
+  async getScriptVideo(req: AuthRequest, res: Response) {
+    try {
+      const { scriptId } = req.params;
+
+      if (!scriptId) {
+        return res.status(400).json({ error: "scriptId is required" });
+      }
+
+      // Find the latest completed video generation job for this script
+      const [job] = await db
+        .select()
+        .from(ugcVideoGenerationJobs)
+        .where(
+          and(
+            eq(ugcVideoGenerationJobs.script_id, scriptId),
+            eq(ugcVideoGenerationJobs.status, "completed")
+          )
+        )
+        .orderBy(desc(ugcVideoGenerationJobs.completed_at))
+        .limit(1);
+
+      if (!job || !job.final_video_key) {
+        return res.status(404).json({
+          error: "No completed video found for this script",
+        });
+      }
+
+      const videoUrl = await s3Service.getPresignedUrl(job.final_video_key, 3600);
+
+      return res.status(200).json({
+        jobId: job.id,
+        videoKey: job.final_video_key,
+        videoUrl,
+        totalDurationSeconds: job.total_duration_seconds,
+        sceneVideos: job.scene_videos,
+        createdAt: job.created_at,
+        completedAt: job.completed_at,
+      });
+    } catch (error) {
+      console.error("[UGC_VIDEO] Get script video error:", error);
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to get video",
+      });
+    }
+  }
+
+  /**
+   * Finalize a completed video and create a clip in the library
+   */
+  async finalizeVideo(req: AuthRequest, res: Response) {
+    try {
+      const { jobId, teamId } = req.body;
+
+      if (!jobId || !teamId) {
+        return res.status(400).json({
+          error: "jobId and teamId are required",
+        });
+      }
+
+      if (!req.user?.dbUserId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      // Get the completed video job
+      const [job] = await db
+        .select()
+        .from(ugcVideoGenerationJobs)
+        .where(eq(ugcVideoGenerationJobs.id, jobId));
+
+      if (!job) {
+        return res.status(404).json({ error: "Video job not found" });
+      }
+
+      if (job.status !== "completed" || !job.final_video_key) {
+        return res.status(400).json({
+          error: "Video generation must be completed before finalizing",
+        });
+      }
+
+      // Get the script to extract title and scene data for captions
+      const [script] = await db
+        .select()
+        .from(ugcScripts)
+        .where(eq(ugcScripts.id, job.script_id));
+
+      const scriptsData = script?.scripts_data as any[];
+      const selectedScript = scriptsData?.[script?.selected_variant_index ?? 0];
+      const title = selectedScript?.title || "UGC Video";
+
+      // Build captions data from scene dialogues
+      // The scene_videos array has timing info we can use
+      const sceneVideos = job.scene_videos as Array<{
+        sceneId: string;
+        sceneNumber: number;
+        audioKey: string;
+        videoKey: string;
+      }> | null;
+
+      let captionsData: any[] = [];
+      if (sceneVideos && selectedScript?.scenes) {
+        let currentTime = 0;
+        for (const sceneVideo of sceneVideos) {
+          const scene = selectedScript.scenes.find(
+            (s: any) => s.id === sceneVideo.sceneId
+          );
+          if (scene?.dialogue) {
+            const duration = scene.durationSeconds || scene.estimatedDurationSeconds || 5;
+            captionsData.push({
+              start: currentTime,
+              end: currentTime + duration,
+              text: scene.dialogue,
+              sceneId: sceneVideo.sceneId,
+              sceneNumber: sceneVideo.sceneNumber,
+            });
+            currentTime += duration;
+          }
+        }
+      }
+
+      // Create the clip record
+      const [clip] = await db
+        .insert(clips)
+        .values({
+          team_id: teamId,
+          generated_by_user_id: req.user.dbUserId,
+          clip_path: job.final_video_key,
+          blank_video_path: job.final_video_key,
+          captions_data: captionsData.length > 0 ? captionsData : null,
+          clip_metadata: {
+            type: "ugc",
+            scriptId: job.script_id,
+            generationJobId: jobId,
+            totalDurationSeconds: job.total_duration_seconds,
+            sceneCount: sceneVideos?.length || 0,
+          },
+          title,
+          status: "completed",
+          saved: true,
+        })
+        .returning();
+
+      console.log("[UGC_VIDEO] Finalized video as clip:", clip.id);
+
+      return res.status(200).json({
+        success: true,
+        clipId: clip.id,
+        clipPath: clip.clip_path,
+      });
+    } catch (error) {
+      console.error("[UGC_VIDEO] Finalize video error:", error);
+      return res.status(500).json({
+        error:
+          error instanceof Error ? error.message : "Failed to finalize video",
+      });
+    }
+  }
+
+  /**
+   * Regenerate a single scene (costs 3 credits)
+   * This triggers a new video generation for the entire video with the scene re-rendered
+   */
+  async regenerateScene(req: AuthRequest, res: Response) {
+    try {
+      const { jobId, sceneId, teamId } = req.body;
+
+      if (!jobId || !sceneId || !teamId) {
+        return res.status(400).json({
+          error: "jobId, sceneId, and teamId are required",
+        });
+      }
+
+      if (!req.user?.dbUserId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const team = await teamService.getTeamById(teamId);
+      if (!team || !canAccessUGCStudio(team.plan)) {
+        return res.status(403).json({ error: "UGC Studio access required" });
+      }
+
+      // Get the original job
+      const [originalJob] = await db
+        .select()
+        .from(ugcVideoGenerationJobs)
+        .where(eq(ugcVideoGenerationJobs.id, jobId));
+
+      if (!originalJob) {
+        return res.status(404).json({ error: "Video job not found" });
+      }
+
+      if (originalJob.status !== "completed") {
+        return res.status(400).json({
+          error: "Original video must be completed before regenerating scenes",
+        });
+      }
+
+      // TODO: Implement credit deduction (3 credits)
+      // For now, we'll skip credit checking - this should be added
+
+      // Get the script and scene data
+      const [script] = await db
+        .select()
+        .from(ugcScripts)
+        .where(eq(ugcScripts.id, originalJob.script_id));
+
+      if (!script) {
+        return res.status(404).json({ error: "Script not found" });
+      }
+
+      const scriptsData = script.scripts_data as any[];
+      const selectedScript = scriptsData[script.selected_variant_index];
+
+      if (!selectedScript?.scenes?.length) {
+        return res.status(400).json({
+          error: "No scenes found in the script",
+        });
+      }
+
+      // Fetch all scene images for this script
+      const savedImages = await db
+        .select()
+        .from(sceneImages)
+        .where(eq(sceneImages.script_id, originalJob.script_id));
+
+      // Build scene video data, marking the target scene for regeneration
+      const scenes: GenerateUGCVideoJob["scenes"] = [];
+
+      for (const scene of selectedScript.scenes as SceneData[]) {
+        const savedImage = savedImages.find((img) => img.scene_id === scene.id);
+
+        if (!savedImage) {
+          return res.status(400).json({
+            error: `No image selected for scene ${scene.sceneNumber}`,
+          });
+        }
+
+        scenes.push({
+          sceneId: scene.id,
+          sceneNumber: scene.sceneNumber,
+          shotType: scene.shotType,
+          imageKey: savedImage.image_key,
+          dialogue: scene.dialogue,
+          duration: scene.durationSeconds || 5,
+          cinematicPrompt: scene.cinematicPrompt,
+          action: scene.action,
+          emotion: scene.emotion,
+          // Mark which scene to regenerate
+          regenerate: scene.id === sceneId,
+        });
+      }
+
+      // Create a new job record for the regeneration
+      const [newJob] = await db
+        .insert(ugcVideoGenerationJobs)
+        .values({
+          team_id: teamId,
+          user_id: req.user.dbUserId,
+          script_id: originalJob.script_id,
+          voice_id: originalJob.voice_id,
+          status: "queued",
+          progress: 0,
+          progress_message: `Regenerating scene...`,
+        })
+        .returning();
+
+      // Send to SQS
+      await sqsService.sendGenerateUGCVideoJob({
+        jobId: newJob.id,
+        teamId,
+        userId: req.user.dbUserId,
+        scriptId: originalJob.script_id,
+        voiceId: originalJob.voice_id,
+        scenes,
+        regenerateSceneId: sceneId,
+      });
+
+      return res.status(202).json({
+        success: true,
+        sceneJobId: newJob.id,
+        message: "Scene regeneration started. Poll for status.",
+      });
+    } catch (error) {
+      console.error("[UGC_VIDEO] Regenerate scene error:", error);
+      return res.status(500).json({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to regenerate scene",
+      });
+    }
+  }
+}
+
+export const ugcVideoController = new UGCVideoController();

@@ -574,3 +574,43 @@ export const sceneImages = pgTable(
     ),
   })
 ).enableRLS();
+
+// UGC Video Generation - orchestrates TTS, image-to-video, and lipsync for each scene
+export const ugcVideoJobStatusEnum = pgEnum("ugc_video_job_status", [
+  "queued",
+  "generating",
+  "completed",
+  "failed",
+]);
+
+export const ugcVideoGenerationJobs = pgTable(
+  "ugc_video_generation_jobs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    team_id: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    user_id: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    script_id: uuid("script_id").notNull(),
+    voice_id: varchar("voice_id", { length: 255 }).notNull(),
+    status: ugcVideoJobStatusEnum("status").notNull().default("queued"),
+    progress: integer("progress").notNull().default(0),
+    progress_message: text("progress_message"),
+    // Tracks each scene's video/audio keys as they're processed
+    scene_videos: jsonb("scene_videos"), // Array of { sceneId, sceneNumber, audioKey, videoKey }
+    final_video_key: text("final_video_key"),
+    total_duration_seconds: integer("total_duration_seconds"),
+    error_message: text("error_message"),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    started_at: timestamp("started_at"),
+    completed_at: timestamp("completed_at"),
+  },
+  (table) => ({
+    teamIdx: index("ugc_video_jobs_team_id_idx").on(table.team_id),
+    scriptIdx: index("ugc_video_jobs_script_id_idx").on(table.script_id),
+    statusIdx: index("ugc_video_jobs_status_idx").on(table.status),
+    createdAtIdx: index("ugc_video_jobs_created_at_idx").on(table.created_at),
+  })
+).enableRLS();
