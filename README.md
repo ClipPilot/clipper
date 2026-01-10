@@ -157,8 +157,12 @@ const allUsers = await db.select().from(users);
 ### Backend Scripts
 
 - `pnpm dev` - Start backend in development mode
+- `pnpm dev:worker` - Start clip processing worker in dev mode
+- `pnpm dev:gpu-worker` - Start GPU face swap worker in dev mode
 - `pnpm build` - Build backend
 - `pnpm start` - Start production backend
+- `pnpm start:worker` - Start clip processing worker
+- `pnpm start:gpu-worker` - Start GPU face swap worker
 - `pnpm db:generate` - Generate migrations (delegates to shared-db)
 - `pnpm db:migrate` - Run migrations (delegates to shared-db)
 - `pnpm db:studio` - Open Drizzle Studio (delegates to shared-db)
@@ -230,6 +234,65 @@ const items = await db.select().from(myNewTable);
 3. Ensure `PROD_DATABASE_URL` is configured
 4. Run migrations: `ENV=prod pnpm db:migrate`
 5. Build and deploy: `pnpm build:backend`
+
+## GPU Worker (Face Swap Processing)
+
+The GPU worker processes face swap jobs from an SQS queue using ComfyUI on remote GPUs.
+
+### GPU Worker Environment Variables
+
+Add these to `backend/.env`:
+
+```env
+# GPU Worker Configuration
+GPU_SQS_QUEUE_URL=https://sqs.us-west-2.amazonaws.com/YOUR_ACCOUNT/gpu-queue
+GPU_ID=gpu-2                    # Optional: locks worker to specific GPU from gpus.config.json
+
+# Required AWS credentials (for local dev)
+AWS_REGION=us-west-2
+AWS_ACCESS_KEY_ID=your-key
+AWS_SECRET_ACCESS_KEY=your-secret
+
+# Internal API communication
+API_INTERNAL_URL=http://localhost:3001
+INTERNAL_API_KEY=your-internal-key
+```
+
+### Running the GPU Worker
+
+```bash
+cd backend
+
+# Development (with hot reload)
+pnpm dev:gpu-worker
+
+# Production
+pnpm start:gpu-worker
+```
+
+### GPU Configuration
+
+GPUs are configured in `backend/src/config/comfy/gpus.config.json`:
+
+```json
+{
+  "gpus": [
+    {
+      "id": "gpu-1",
+      "name": "RunPod GPU 1",
+      "url": "https://your-gpu-endpoint:8188",
+      "cleanupUrl": "https://your-gpu-endpoint:3001"
+    }
+  ]
+}
+```
+
+### Workflow Files
+
+Face swap workflows are stored in `backend/src/config/comfy/`:
+
+- `workflow.json` - Full body swap workflow
+- `newFaceRawWorkflow.json` - Face-only swap workflow (WanAnimate)
 
 ## Tips
 
