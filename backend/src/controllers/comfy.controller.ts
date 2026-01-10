@@ -5,6 +5,7 @@ import { comfyJobs } from "@clipper/shared-db/src/schema";
 import { s3Service } from "../services/s3.service";
 import { gpuSqsService, SwapType } from "../services/gpuSqs.service";
 import { cutClip, getVideoDuration } from "../services/videoEditor.service";
+import { createSceneAwareChunks } from "../services/sceneChunker.service";
 import { emitComfyJobUpdate } from "../services/socket.service";
 import { getTeamUsage } from "../middleware/subscription.middleware";
 import { teamService } from "../services/team.service";
@@ -159,32 +160,20 @@ export class ComfyController {
       await teamService.incrementTeamUsage(parseInt(teamId), UGC_CREDIT_COST);
       console.log(`[comfy] Charged ${UGC_CREDIT_COST} credits upfront to team ${teamId}`);
 
+      // Scene-aware chunking: detect scene boundaries and combine to ~10s chunks
+      // Falls back to blind 10s chunking if scene detection fails
       for (let i = 0; i < segments.length; i++) {
         const segPath = path.join(tempDir, `${crypto.randomUUID()}_segment_${i}.mp4`);
         await cutClip(tempVideoPath, segPath, segments[i].start, segments[i].end);
         segmentPaths.push(segPath);
 
-        const segDuration = await getVideoDuration(segPath);
-        // If segment fits within chunk duration + leeway, keep as single chunk
-        if (segDuration <= CHUNK_DURATION + CHUNK_LEEWAY) {
-          chunkPaths.push(segPath);
-        } else {
-          let start = 0;
-          let chunkIdx = 0;
-          while (start < segDuration) {
-            const remaining = segDuration - start;
-            // If remaining is within leeway of a full chunk, include it all in this chunk
-            // This prevents tiny leftover chunks (e.g., 0.08s from a 10.08s video)
-            const end = remaining <= CHUNK_DURATION + CHUNK_LEEWAY
-              ? segDuration
-              : start + CHUNK_DURATION;
-            const chunkPath = path.join(tempDir, `${crypto.randomUUID()}_seg${i}_chunk${chunkIdx}.mp4`);
-            await cutClip(segPath, chunkPath, start, end);
-            chunkPaths.push(chunkPath);
-            start = end;
-            chunkIdx++;
-          }
-        }
+        // Use scene-aware chunking instead of blind 10-second splits
+        const segmentChunks = await createSceneAwareChunks(segPath, tempDir, {
+          targetDuration: CHUNK_DURATION,
+          leeway: CHUNK_LEEWAY,
+        });
+
+        chunkPaths.push(...segmentChunks);
       }
 
       console.log(`[comfy] Split ${segments.length} segments into ${chunkPaths.length} chunks`);
