@@ -99,12 +99,15 @@ const gpuConfig: GpuConfigFile = JSON.parse(
   fs.readFileSync(path.join(configDir, "gpus.config.json"), "utf-8")
 );
 
-// Load both workflow templates
+// Load all workflow templates
 const workflowFullBody = JSON.parse(
   fs.readFileSync(path.join(configDir, "workflow.json"), "utf-8")
 );
 const workflowFaceOnly = JSON.parse(
   fs.readFileSync(path.join(configDir, "workflow_face_only.json"), "utf-8")
+);
+const workflowNewFaceRaw = JSON.parse(
+  fs.readFileSync(path.join(configDir, "newFaceRawWorkflow.json"), "utf-8")
 );
 
 // Legacy alias for backwards compatibility
@@ -353,17 +356,31 @@ function buildWorkflow(
   swapType: "face" | "fullBody" = "face"
 ): Record<string, unknown> {
   // Select the appropriate workflow template based on swap type
-  const template = swapType === "face" ? workflowFaceOnly : workflowFullBody;
+  // Face swap uses the new WanAnimate workflow (newFaceRawWorkflow.json)
+  // Full body swap uses the original workflow (workflow.json)
+  const template = swapType === "face" ? workflowNewFaceRaw : workflowFullBody;
   const workflow = JSON.parse(JSON.stringify(template));
 
-  // Inject reference image (node 311 - LoadImage)
-  if (workflow["311"]?.inputs) {
-    workflow["311"].inputs.image = imageFile;
-  }
-
-  // Inject reference video (node 417 - VHS_LoadVideo)
-  if (workflow["417"]?.inputs) {
-    workflow["417"].inputs.video = videoFile;
+  if (swapType === "face") {
+    // New face swap workflow (newFaceRawWorkflow.json) node mappings:
+    // - Node 57: LoadImage (titled "Load Face") - reference image input
+    // - Node 254: VHS_LoadVideo - video input
+    if (workflow["57"]?.inputs) {
+      workflow["57"].inputs.image = imageFile;
+    }
+    if (workflow["254"]?.inputs) {
+      workflow["254"].inputs.video = videoFile;
+    }
+  } else {
+    // Full body workflow (workflow.json) node mappings:
+    // - Node 311: LoadImage - reference image input
+    // - Node 417: VHS_LoadVideo - video input
+    if (workflow["311"]?.inputs) {
+      workflow["311"].inputs.image = imageFile;
+    }
+    if (workflow["417"]?.inputs) {
+      workflow["417"].inputs.video = videoFile;
+    }
   }
 
   return workflow;
@@ -592,7 +609,18 @@ function waitForCompletion(
 // ─────────────────────────────────────────────────────────────
 
 function findVideoOutput(outputs: WorkflowOutputs): ComfyOutput | null {
-  // Check node 467 first (RIFE interpolated - higher quality)
+  // Check node 30 first (new face swap workflow - VHS_VideoCombine output)
+  const node30 = outputs["30"] as Record<string, ComfyOutput[]> | undefined;
+  if (node30) {
+    const video =
+      node30.gifs?.[0] || node30.videos?.[0] || node30.images?.[0];
+    if (video) {
+      console.log("[gpu-worker] Found output in node 30 (new face swap):", video);
+      return video;
+    }
+  }
+
+  // Check node 467 (RIFE interpolated - higher quality, original face workflow)
   const node467 = outputs["467"] as Record<string, ComfyOutput[]> | undefined;
   if (node467) {
     const video =
@@ -603,7 +631,7 @@ function findVideoOutput(outputs: WorkflowOutputs): ComfyOutput | null {
     }
   }
 
-  // Check node 462 (base output)
+  // Check node 462 (base output, original face workflow)
   const node462 = outputs["462"] as Record<string, ComfyOutput[]> | undefined;
   if (node462) {
     const video =
