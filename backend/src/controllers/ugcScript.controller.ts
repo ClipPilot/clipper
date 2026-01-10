@@ -5,8 +5,8 @@ import { ugcScriptService } from "../services/ugcScript.service";
 import { teamService } from "../services/team.service";
 import { canAccessUGCStudio } from "../utils/plans";
 import { db } from "../db";
-import { ugcScripts } from "@clipper/shared-db/src/schema";
-import { eq } from "drizzle-orm";
+import { ugcScripts, characters } from "@clipper/shared-db/src/schema";
+import { eq, desc, and } from "drizzle-orm";
 
 interface AuthRequest extends Request {
   user?: { id: string; email: string; dbUserId: number };
@@ -260,6 +260,85 @@ export class UGCScriptController {
       console.error("[UGC_SCRIPT] Get full script error:", error);
       return res.status(500).json({
         error: error instanceof Error ? error.message : "Failed to get script",
+      });
+    }
+  }
+
+  async listScripts(req: AuthRequest, res: Response) {
+    try {
+      const { teamId } = req.params;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const offset = parseInt(req.query.offset as string) || 0;
+
+      if (!teamId) {
+        return res.status(400).json({ error: "teamId is required" });
+      }
+
+      const team = await teamService.getTeamById(parseInt(teamId));
+      if (!team || !canAccessUGCStudio(team.plan)) {
+        return res.status(403).json({ error: "UGC Studio access required" });
+      }
+
+      // Fetch completed scripts with character info
+      const scriptsWithCharacters = await db
+        .select({
+          id: ugcScripts.id,
+          productName: ugcScripts.product_name,
+          scriptDirection: ugcScripts.script_direction,
+          structureId: ugcScripts.structure_id,
+          scriptsData: ugcScripts.scripts_data,
+          selectedVariantIndex: ugcScripts.selected_variant_index,
+          createdAt: ugcScripts.created_at,
+          characterId: ugcScripts.character_id,
+          characterName: characters.name,
+        })
+        .from(ugcScripts)
+        .leftJoin(characters, eq(ugcScripts.character_id, characters.id))
+        .where(
+          and(
+            eq(ugcScripts.team_id, parseInt(teamId)),
+            eq(ugcScripts.status, "completed")
+          )
+        )
+        .orderBy(desc(ugcScripts.created_at))
+        .limit(limit)
+        .offset(offset);
+
+      // Format response with script summary
+      const formattedScripts = scriptsWithCharacters.map((script) => {
+        const scriptsData = script.scriptsData as any[] | null;
+        const selectedScript = scriptsData?.[script.selectedVariantIndex || 0];
+        const sceneCount = selectedScript?.scenes?.length || 0;
+        const totalDuration = selectedScript?.scenes?.reduce(
+          (sum: number, s: any) => sum + (s.estimatedDurationSeconds || 0),
+          0
+        ) || 0;
+
+        return {
+          id: script.id,
+          productName: script.productName,
+          scriptDirection: script.scriptDirection,
+          structureId: script.structureId,
+          characterId: script.characterId,
+          characterName: script.characterName,
+          sceneCount,
+          totalDuration,
+          title: selectedScript?.title || "Untitled Script",
+          hook: selectedScript?.hook || "",
+          viralScore: selectedScript?.viralScore || 0,
+          createdAt: script.createdAt,
+        };
+      });
+
+      return res.status(200).json({
+        success: true,
+        scripts: formattedScripts,
+        hasMore: formattedScripts.length === limit,
+      });
+    } catch (error) {
+      console.error("[UGC_SCRIPT] List scripts error:", error);
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to list scripts",
       });
     }
   }

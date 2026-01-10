@@ -13,6 +13,7 @@ import {
   index,
   numeric,
   decimal,
+  real,
 } from "drizzle-orm/pg-core";
 
 // Enums
@@ -601,7 +602,7 @@ export const ugcVideoGenerationJobs = pgTable(
     // Tracks each scene's video/audio keys as they're processed
     scene_videos: jsonb("scene_videos"), // Array of { sceneId, sceneNumber, audioKey, videoKey }
     final_video_key: text("final_video_key"),
-    total_duration_seconds: integer("total_duration_seconds"),
+    total_duration_seconds: real("total_duration_seconds"),
     error_message: text("error_message"),
     created_at: timestamp("created_at").notNull().defaultNow(),
     started_at: timestamp("started_at"),

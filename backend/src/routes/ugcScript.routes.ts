@@ -40,4 +40,10 @@ router.get(
   ugcScriptController.getScriptStatus.bind(ugcScriptController)
 );
 
+router.get(
+  "/scripts/:teamId",
+  requireAuth,
+  ugcScriptController.listScripts.bind(ugcScriptController)
+);
+
 export default router;

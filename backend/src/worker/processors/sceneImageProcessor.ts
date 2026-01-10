@@ -89,6 +89,11 @@ function buildSceneImagePrompt(
 
   parts.push(
     "",
+    "CRITICAL OUTPUT FORMAT:",
+    "- Generate EXACTLY ONE single image, NOT a collage, grid, matrix, or multiple images combined",
+    "- The output must be a single photograph-style image as if taken by a camera",
+    "- Do NOT create side-by-side comparisons, before/after layouts, or any multi-panel arrangements",
+    "",
     "TECHNICAL REQUIREMENTS:",
     "- Photorealistic quality, indistinguishable from a real photograph",
     "- UGC/social media authentic aesthetic similar to iPhone photos",
@@ -99,7 +104,7 @@ function buildSceneImagePrompt(
     "- Exactly two arms, exactly two hands with five fingers each",
     "- Natural body positioning and limb placement",
     "",
-    "NEGATIVE: Do not include extra limbs, extra arms, extra hands, extra fingers, missing limbs, deformed hands, fused fingers, too many fingers, mutated hands, malformed limbs, bad anatomy, distorted body parts, unnatural arm positions, floating limbs, disconnected limbs, cartoon style, illustration, watermarks, text overlays, deformed features, unnatural colors, oversaturated images"
+    "NEGATIVE: Do not include extra limbs, extra arms, extra hands, extra fingers, missing limbs, deformed hands, fused fingers, too many fingers, mutated hands, malformed limbs, bad anatomy, distorted body parts, unnatural arm positions, floating limbs, disconnected limbs, cartoon style, illustration, watermarks, text overlays, deformed features, unnatural colors, oversaturated images, collages, grids, multiple images, split images, side-by-side images, matrix layouts, photo grids"
   );
 
   return parts.join("\n");
@@ -270,9 +275,29 @@ export async function processSceneImageJob(
 
     await updateJobProgress(jobId, 20, "Generating 4 scene image variants...");
 
-    // Generate 4 variations
-    const generationPromises = [0, 1, 2, 3].map((i) =>
-      generateSingleImage(
+    // Generate 4 variations sequentially with delays to avoid rate limiting
+    // Gemini has a 20 requests/minute limit, so we add 1 second delays between calls
+    const DELAY_BETWEEN_CALLS_MS = 1000;
+    const results: (string | null)[] = [];
+
+    for (let i = 0; i < 4; i++) {
+      // Add delay before each call (except the first one)
+      if (i > 0) {
+        console.log(
+          `[SCENE_IMAGE] Waiting ${DELAY_BETWEEN_CALLS_MS}ms before generating image ${i + 1}/4...`
+        );
+        await new Promise((resolve) =>
+          setTimeout(resolve, DELAY_BETWEEN_CALLS_MS)
+        );
+      }
+
+      await updateJobProgress(
+        jobId,
+        20 + i * 20,
+        `Generating image ${i + 1} of 4...`
+      );
+
+      const result = await generateSingleImage(
         ai,
         prompt,
         teamId,
@@ -280,10 +305,9 @@ export async function processSceneImageJob(
         sceneId,
         i,
         referenceImageData
-      )
-    );
-
-    const results = await Promise.all(generationPromises);
+      );
+      results.push(result);
+    }
     const successfulImages = results.filter(
       (key): key is string => key !== null
     );

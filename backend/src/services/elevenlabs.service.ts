@@ -6,6 +6,9 @@ import os from "os";
 import { config } from "../config/env";
 import { s3Service } from "./s3.service";
 
+// Maximum audio duration to match Kling video clip limits (5-10 seconds)
+const MAX_AUDIO_DURATION_SECONDS = 10;
+
 let elevenLabsClient: ElevenLabsClient | null = null;
 
 const getClient = (): ElevenLabsClient => {
@@ -176,55 +179,61 @@ export interface GenerateSpeechForDurationOptions extends TextToSpeechOptions {
 
 /**
  * Generate speech that matches a target duration by adjusting speed.
- * Uses a two-pass approach: generate at normal speed, measure, then regenerate with adjusted speed.
+ * When tolerancePercent is 0, strictly enforces max duration with iterative speed adjustment.
  */
 export async function generateSpeechForTargetDuration(
   options: GenerateSpeechForDurationOptions
 ): Promise<{ audioBuffer: Buffer; actualDuration: number; speedUsed: number }> {
   const {
-    targetDurationSeconds,
+    targetDurationSeconds: requestedDuration,
     tolerancePercent = 10,
     ...ttsOptions
   } = options;
-  console.log(
-    `[ElevenLabs] Generating speech with target duration: ${targetDurationSeconds}s`
-  );
+
+  const targetDurationSeconds = Math.min(requestedDuration, MAX_AUDIO_DURATION_SECONDS);
+  const strictMode = tolerancePercent === 0;
+
+  console.log(`[ElevenLabs] Generating speech with target: ${targetDurationSeconds}s (strict: ${strictMode})`);
+
   const normalAudio = await generateSpeech(ttsOptions);
-  const naturalDuration = getAudioDuration(normalAudio);
-  console.log(
-    `[ElevenLabs] Natural speech duration: ${naturalDuration.toFixed(2)}s`
-  );
-  const durationDiff = Math.abs(naturalDuration - targetDurationSeconds);
-  const diffPercent = (durationDiff / targetDurationSeconds) * 100;
-  if (diffPercent <= tolerancePercent) {
-    console.log(
-      `[ElevenLabs] Duration within ${tolerancePercent}% tolerance, using normal speed`
-    );
-    return {
-      audioBuffer: normalAudio,
-      actualDuration: naturalDuration,
-      speedUsed: 1.0,
-    };
+  let currentDuration = getAudioDuration(normalAudio);
+  console.log(`[ElevenLabs] Natural speech duration: ${currentDuration.toFixed(2)}s`);
+
+  if (currentDuration <= targetDurationSeconds) {
+    return { audioBuffer: normalAudio, actualDuration: currentDuration, speedUsed: 1.0 };
   }
-  let speed = naturalDuration / targetDurationSeconds;
-  speed = Math.max(0.25, Math.min(4.0, speed));
 
-  console.log(
-    `[ElevenLabs] Regenerating at ${speed.toFixed(2)}x speed to match ${targetDurationSeconds}s target`
-  );
+  if (!strictMode) {
+    const diffPercent = ((currentDuration - targetDurationSeconds) / targetDurationSeconds) * 100;
+    if (diffPercent <= tolerancePercent) {
+      console.log(`[ElevenLabs] Duration within ${tolerancePercent}% tolerance`);
+      return { audioBuffer: normalAudio, actualDuration: currentDuration, speedUsed: 1.0 };
+    }
+  }
 
-  const adjustedAudio = await generateSpeech({ ...ttsOptions, speed });
-  const adjustedDuration = getAudioDuration(adjustedAudio);
+  let speed = currentDuration / targetDurationSeconds;
+  speed = Math.max(0.25, Math.min(2.0, speed));
+  let audioBuffer = normalAudio;
+  let attempts = 0;
+  const maxAttempts = 3;
 
-  console.log(
-    `[ElevenLabs] Adjusted speech duration: ${adjustedDuration.toFixed(2)}s (target: ${targetDurationSeconds}s)`
-  );
+  while (currentDuration > targetDurationSeconds && attempts < maxAttempts) {
+    attempts++;
+    speed = Math.min(speed * 1.1, 2.0);
+    console.log(`[ElevenLabs] Attempt ${attempts}: Regenerating at ${speed.toFixed(2)}x speed`);
 
-  return {
-    audioBuffer: adjustedAudio,
-    actualDuration: adjustedDuration,
-    speedUsed: speed,
-  };
+    audioBuffer = await generateSpeech({ ...ttsOptions, speed });
+    currentDuration = getAudioDuration(audioBuffer);
+    console.log(`[ElevenLabs] Result: ${currentDuration.toFixed(2)}s`);
+
+    if (currentDuration <= targetDurationSeconds) break;
+  }
+
+  if (currentDuration > targetDurationSeconds) {
+    console.log(`[ElevenLabs] Warning: Could not get under ${targetDurationSeconds}s, got ${currentDuration.toFixed(2)}s`);
+  }
+
+  return { audioBuffer, actualDuration: currentDuration, speedUsed: speed };
 }
 
 export interface GenerateAndUploadForDurationOptions extends GenerateSpeechForDurationOptions {
@@ -336,11 +345,19 @@ export async function textToDialogueForTargetDuration(
   const {
     text,
     voiceId,
-    targetDurationSeconds,
+    targetDurationSeconds: requestedDuration,
     tolerancePercent = 15,
     modelId,
     outputFormat,
   } = options;
+
+  // Cap target duration to MAX_AUDIO_DURATION_SECONDS to match Kling video limits
+  const targetDurationSeconds = Math.min(requestedDuration, MAX_AUDIO_DURATION_SECONDS);
+  if (requestedDuration > MAX_AUDIO_DURATION_SECONDS) {
+    console.log(
+      `[ElevenLabs] Capping dialogue target from ${requestedDuration}s to ${MAX_AUDIO_DURATION_SECONDS}s (Kling video limit)`
+    );
+  }
 
   console.log(
     `[ElevenLabs] Generating dialogue with target duration: ${targetDurationSeconds}s`

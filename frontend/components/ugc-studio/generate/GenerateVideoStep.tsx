@@ -26,14 +26,13 @@ import { ugcVideoAPI, VideoGenerationStatus } from "@/api/ugc/video";
 import { useUsageStats } from "@/hooks/useUsageStats";
 import { useUGCVideoSocket } from "@/hooks/useUGCVideoSocket";
 import { VideoLoadingAnimation } from "./VideoLoadingAnimation";
-import { VideoPreview } from "./VideoPreview";
 
 interface GenerateVideoStepProps {
   teamId: number;
   scriptId: string;
 }
 
-type StepState = "ready" | "confirming" | "generating" | "preview" | "finalizing";
+type StepState = "ready" | "confirming" | "generating" | "finalizing";
 
 const GENERATE_CREDIT_COST = 15;
 const SCENE_EDIT_CREDIT_COST = 3;
@@ -56,24 +55,31 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
   const scenes = currentScript?.scenes || [];
   const totalScenes = scenes.length;
 
-  // Check for existing video on mount
+  // Check for existing video on mount - but only if we haven't intentionally skipped
   useEffect(() => {
+    // Check sessionStorage flag set by ScriptStep when loading saved script or creating new
+    const skipFlag = sessionStorage.getItem("skipLoadExistingVideo");
+    if (skipFlag === scriptId) {
+      sessionStorage.removeItem("skipLoadExistingVideo");
+      console.log("[GenerateVideoStep] Skipping existing video load for reused script");
+      return;
+    }
+
+    // Already have video status - auto-finalize and redirect
+    if (videoStatus?.status === "completed" && videoStatus.jobId) {
+      autoFinalizeAndRedirect(videoStatus.jobId);
+      return;
+    }
+
+    // Don't fetch if we already have status or are not in ready state
+    if (videoStatus !== null || stepState !== "ready") return;
+
     const checkExistingVideo = async () => {
       try {
         const existingVideo = await ugcVideoAPI.getScriptVideo(scriptId);
         if (existingVideo && existingVideo.videoUrl) {
-          setVideoStatus({
-            jobId: existingVideo.jobId,
-            status: "completed",
-            progress: 100,
-            progressMessage: "Video ready",
-            finalVideoUrl: existingVideo.videoUrl,
-            finalVideoKey: existingVideo.videoKey,
-            totalDurationSeconds: existingVideo.totalDurationSeconds,
-            sceneVideos: existingVideo.sceneVideos,
-          });
-          setJobId(existingVideo.jobId);
-          setStepState("preview");
+          // Auto-finalize and redirect instead of showing preview
+          autoFinalizeAndRedirect(existingVideo.jobId);
         }
       } catch {
         // No existing video - that's fine
@@ -81,10 +87,25 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
     };
 
     checkExistingVideo();
-  }, [scriptId, setJobId, setVideoStatus]);
+  }, [scriptId, videoStatus, stepState, autoFinalizeAndRedirect]);
 
   // Track last socket update for fallback polling
   const lastSocketUpdateRef = useRef<number>(0);
+
+  // Auto-finalize and redirect to edit when complete
+  const autoFinalizeAndRedirect = useCallback(async (completedJobId: string) => {
+    setStepState("finalizing");
+    try {
+      const response = await ugcVideoAPI.finalizeVideo({
+        jobId: completedJobId,
+        teamId,
+      });
+      router.push(`/dashboard/clips/${response.clipId}/edit`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to finalize video");
+      setStepState("ready");
+    }
+  }, [teamId, router]);
 
   // Socket-based real-time updates
   const handleSocketUpdate = useCallback((status: VideoGenerationStatus) => {
@@ -92,13 +113,16 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
     setVideoStatus(status);
 
     if (status.status === "completed") {
-      setStepState("preview");
       refetchUsage();
+      // Auto-finalize and go directly to edit - skip preview
+      if (status.jobId) {
+        autoFinalizeAndRedirect(status.jobId);
+      }
     } else if (status.status === "failed") {
       setError(status.error || "Video generation failed");
       setStepState("ready");
     }
-  }, [setVideoStatus, refetchUsage]);
+  }, [setVideoStatus, refetchUsage, autoFinalizeAndRedirect]);
 
   // Connect to socket when generating
   useUGCVideoSocket({
@@ -179,32 +203,6 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
     }
   };
 
-  const handleFinalize = async () => {
-    if (!jobId) return;
-
-    setStepState("finalizing");
-    setError(null);
-
-    try {
-      const response = await ugcVideoAPI.finalizeVideo({
-        jobId,
-        teamId,
-      });
-
-      // Redirect to clip edit page
-      router.push(`/dashboard/clips/${response.clipId}/edit`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to finalize video");
-      setStepState("preview");
-    }
-  };
-
-  const handleRegenerate = () => {
-    setJobId(null);
-    setVideoStatus(null);
-    setStepState("ready");
-    setError(null);
-  };
 
   if (!currentScript || scenes.length === 0) {
     return (
@@ -246,31 +244,23 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
     );
   }
 
-  // Generating state - show loading animation
-  if (stepState === "generating") {
+  // Generating or Finalizing state - show loading animation
+  if (stepState === "generating" || stepState === "finalizing") {
+    const finalizingStatus = stepState === "finalizing" ? {
+      jobId: jobId || "",
+      status: "completed" as const,
+      progress: 100,
+      progressMessage: "Finalizing and preparing editor...",
+    } : videoStatus;
+
     return (
       <VideoLoadingAnimation
-        status={videoStatus}
+        status={finalizingStatus}
         totalScenes={totalScenes}
         onCancel={() => {
           // Note: We can't actually cancel the job, but we can go back
           setStepState("ready");
         }}
-      />
-    );
-  }
-
-  // Preview state - show video preview
-  if ((stepState === "preview" || stepState === "finalizing") && videoStatus?.status === "completed") {
-    return (
-      <VideoPreview
-        videoStatus={videoStatus}
-        scenes={scenes}
-        teamId={teamId}
-        scriptId={scriptId}
-        onFinalize={handleFinalize}
-        onRegenerate={handleRegenerate}
-        isFinalizing={stepState === "finalizing"}
       />
     );
   }

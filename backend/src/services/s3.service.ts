@@ -475,10 +475,9 @@ class S3Service {
     sceneNumber: number,
     stage: "raw" | "processed"
   ): Promise<string> {
-    const folder = stage === "raw" ? "raw-videos" : "processed-videos";
-    const key = `ugc-videos/${teamId}/${scriptId}/${folder}/scene_${sceneNumber}_${Date.now()}.mp4`;
+    const key = `ugc-temp-scenes/${teamId}/${scriptId}/${stage}/scene_${sceneNumber}_${Date.now()}.mp4`;
     await this.uploadBuffer(buffer, key, "video/mp4");
-    console.log(`[S3] Uploaded UGC ${stage} video: ${key}`);
+    console.log(`[S3] Uploaded UGC ${stage} scene: ${key}`);
     return key;
   }
 

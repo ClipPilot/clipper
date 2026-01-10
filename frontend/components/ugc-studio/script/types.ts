@@ -125,6 +125,21 @@ export interface UploadUrlResponse {
   s3Key: string;
 }
 
+export interface ScriptSummary {
+  id: string;
+  productName: string | null;
+  scriptDirection: string | null;
+  structureId: string;
+  characterId: number;
+  characterName: string | null;
+  sceneCount: number;
+  totalDuration: number;
+  title: string;
+  hook: string;
+  viralScore: number;
+  createdAt: string;
+}
+
 export const EMOTION_CONFIG: Record<
   Emotion,
   { emoji: string; color: string; label: string }

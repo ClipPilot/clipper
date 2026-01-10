@@ -9,6 +9,7 @@ import type {
   UploadUrlResponse,
   UGCScript,
   UGCScene,
+  ScriptSummary,
 } from "@/components/ugc-studio/script/types";
 
 class UGCScriptAPI {
@@ -136,6 +137,29 @@ class UGCScriptAPI {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || "Failed to get script");
+    }
+
+    return response.json();
+  }
+
+  async listScripts(
+    teamId: number,
+    options?: { limit?: number; offset?: number }
+  ): Promise<{ success: boolean; scripts: ScriptSummary[]; hasMore: boolean }> {
+    const params = new URLSearchParams();
+    if (options?.limit) params.set("limit", options.limit.toString());
+    if (options?.offset) params.set("offset", options.offset.toString());
+
+    const url = `${API_URL}/ugc/scripts/${teamId}${params.toString() ? `?${params}` : ""}`;
+    const response = await apiFetch(url, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to list scripts");
     }
 
     return response.json();

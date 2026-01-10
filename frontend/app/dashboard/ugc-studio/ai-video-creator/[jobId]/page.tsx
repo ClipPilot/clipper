@@ -65,8 +65,21 @@ export default function VideoJobPage() {
   }, [jobId]);
 
   // Socket for real-time updates
-  const handleSocketUpdate = useCallback((status: VideoGenerationStatus) => {
-    setVideoStatus(status);
+  // When status becomes "completed", re-fetch from API to get presigned URL
+  const handleSocketUpdate = useCallback(async (status: VideoGenerationStatus) => {
+    if (status.status === "completed" && !status.finalVideoUrl) {
+      // Socket sends finalVideoKey but not finalVideoUrl
+      // Re-fetch from API to get the presigned URL
+      try {
+        const fullStatus = await ugcVideoAPI.getVideoStatus(status.jobId);
+        setVideoStatus(fullStatus);
+      } catch (err) {
+        console.error("Failed to fetch completed video status:", err);
+        setVideoStatus(status);
+      }
+    } else {
+      setVideoStatus(status);
+    }
   }, []);
 
   useUGCVideoSocket({

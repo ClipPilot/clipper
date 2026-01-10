@@ -61,9 +61,18 @@ export function SceneBuilderStep({
     syncVariantIndex();
   }, [scriptId, selectedVariantIndex]);
 
-  // Load saved scene images on mount
+  // Load saved scene images on mount (unless loading fresh from existing script)
   useEffect(() => {
     const loadSavedImages = async () => {
+      // Check if we should skip loading (e.g., user selected existing script for fresh start)
+      const skipFlag = sessionStorage.getItem("skipLoadSceneImages");
+      if (skipFlag === scriptId) {
+        sessionStorage.removeItem("skipLoadSceneImages");
+        console.log("[SceneBuilder] Skipping saved scene images for fresh start");
+        setLoading(false);
+        return;
+      }
+
       try {
         const response = await sceneBuilderAPI.getSceneImages(scriptId);
         if (response.success && response.sceneImages) {

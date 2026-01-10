@@ -220,9 +220,9 @@ resource "aws_s3_bucket_lifecycle_configuration" "videos" {
     }
   }
 
-  # UGC videos → One Zone-IA after 30 days
+  # UGC final videos → One Zone-IA after 30 days, NO EXPIRATION
   rule {
-    id     = "transition-ugc-videos"
+    id     = "archive-ugc-final-videos"
     status = "Enabled"
 
     filter {
@@ -235,9 +235,23 @@ resource "aws_s3_bucket_lifecycle_configuration" "videos" {
     }
   }
 
-  # UGC audio (TTS files) → One Zone-IA after 30 days
+  # UGC intermediate scene videos → Delete after 7 days
   rule {
-    id     = "transition-ugc-audio"
+    id     = "expire-ugc-temp-scenes"
+    status = "Enabled"
+
+    filter {
+      prefix = "ugc-temp-scenes/"
+    }
+
+    expiration {
+      days = 7
+    }
+  }
+
+  # UGC audio (TTS files) → One Zone-IA after 7 days, delete after 30 days
+  rule {
+    id     = "lifecycle-ugc-audio"
     status = "Enabled"
 
     filter {
@@ -245,8 +259,12 @@ resource "aws_s3_bucket_lifecycle_configuration" "videos" {
     }
 
     transition {
-      days          = 30
+      days          = 7
       storage_class = "ONEZONE_IA"
+    }
+
+    expiration {
+      days = 30
     }
   }
 
@@ -269,13 +287,36 @@ resource "aws_s3_bucket_lifecycle_configuration" "videos" {
     }
   }
 
-  # Scene images → One Zone-IA after 30 days
+  # Scene images → One Zone-IA after 7 days, delete after 30 days
   rule {
-    id     = "transition-scene-images"
+    id     = "lifecycle-scene-images"
     status = "Enabled"
 
     filter {
       prefix = "scene-images/"
+    }
+
+    transition {
+      days          = 7
+      storage_class = "ONEZONE_IA"
+    }
+
+    expiration {
+      days = 30
+    }
+  }
+
+  # ============================================
+  # FACE-SWAP OUTPUTS - Keep indefinitely
+  # ============================================
+
+  # ComfyUI outputs (face-swap final videos) → One Zone-IA after 30 days, NO EXPIRATION
+  rule {
+    id     = "archive-comfy-outputs"
+    status = "Enabled"
+
+    filter {
+      prefix = "comfy-outputs/"
     }
 
     transition {
