@@ -48,6 +48,7 @@ export interface UGCScene {
   shotType: ShotType;
   cameraAngle: CameraAngle;
   customCameraAngle?: string;
+  ambientSound?: string;
 }
 
 export interface UGCScript {

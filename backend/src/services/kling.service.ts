@@ -70,7 +70,7 @@ export function buildKlingPrompt(
   action: string
 ): string {
   if (shotType === "a-roll") {
-    return `${cinematicPrompt}. The person speaks naturally to camera with ${emotion} expression, subtle head movements, natural eye contact, conversational gestures. UGC-style authentic movement, slight handheld feel.`;
+    return `${cinematicPrompt}. The person speaks naturally to camera with ${emotion} expression. Subtle, realistic lip movements - not exaggerated. Natural micro-expressions, gentle head movements, relaxed eye contact. Authentic UGC-style, conversational and relaxed.`;
   }
 
   if (shotType === "b-roll") {

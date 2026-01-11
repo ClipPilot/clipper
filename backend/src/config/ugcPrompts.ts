@@ -111,11 +111,13 @@ Add these tags at the START of b-roll dialogue for expressive delivery:
 - [dramatic] - Building tension
 - [satisfied] - Content, pleased
 - [amazed] - Blown away, impressed
+- [laughing] - Light laughter, amused, delighted
 
 B-roll examples:
 ✓ "[whispering] Look at that texture... absolutely insane"
 ✓ "[amazed] And this is where it gets crazy..."
 ✓ "[satisfied] This is what peak performance looks like"
+✓ "[laughing] I can't believe this actually works"
 
 DO NOT use tags for a-roll - those should be natural and conversational
 `;
@@ -152,11 +154,13 @@ Add these tags at the START of b-roll dialogue for expressive delivery:
 - [dramatic] - Building tension
 - [satisfied] - Content, pleased
 - [amazed] - Blown away, impressed
+- [laughing] - Light laughter, amused, delighted
 
 B-roll examples:
 ✓ "[whispering] Look at that texture... absolutely insane"
 ✓ "[amazed] And this is where it gets crazy..."
 ✓ "[satisfied] This is what peak performance looks like"
+✓ "[laughing] I can't believe this actually works"
 
 DO NOT use tags for a-roll - those should be natural and conversational
 `;
@@ -279,6 +283,43 @@ B-ROLL (product focus):
 MIXED (action without talking):
 "Over-shoulder view of ${config.characterName} applying product to face in bathroom mirror. Soft ring light illumination. Focus pulls from mirror reflection to product in hand. Steam from recent shower adds atmosphere. Natural, unhurried movements."
 
+===== DIGITAL PRODUCTS & APP SCREENS (CRITICAL) =====
+
+For apps, software, or digital products, cinematicPrompts MUST be EXTREMELY SPECIFIC about what's on screen.
+Vague descriptions = AI generates gibberish screens. Be precise about:
+
+1. EXACT UI ELEMENTS visible:
+   - Button labels, navigation tabs, icons
+   - Specific text/numbers shown on screen
+   - Color scheme and layout structure
+
+2. SCREEN STATE & CONTENT:
+   - What data is displayed (dashboard numbers, lists, feeds)
+   - Any notifications, popups, or highlights
+   - Progress indicators, charts, graphs
+
+3. USER INTERACTION:
+   - What the finger/cursor is tapping or hovering
+   - Which element is being selected or highlighted
+   - Animation or transition happening
+
+BAD APP cinematicPrompt examples:
+✗ "Shows the app interface" (too vague - AI will generate random UI gibberish)
+✗ "User scrolls through the app" (no specifics about what's on screen)
+✗ "The dashboard displays data" (what data? what layout?)
+
+GOOD APP cinematicPrompt examples:
+✓ "Phone screen showing clean white fitness app dashboard. Large '2,847 steps' counter centered with circular progress ring at 65%. Three stat cards below: 'Calories: 342', 'Distance: 1.2mi', 'Active: 28min'. Green accent colors. Finger taps the steps counter, subtle ripple animation."
+
+✓ "Modern dark-mode finance app. Portfolio value '$12,458.32' prominently displayed with green +2.4% badge. Three stock ticker cards below: AAPL, TSLA, GOOGL with mini sparkline charts. Bottom navigation bar with Home, Search, Portfolio, Profile icons. Smooth scroll gesture reveals transaction history list."
+
+✓ "Minimalist meal planning app in light mode. Weekly calendar grid at top, Monday highlighted in blue. Below: 'Today's Meals' section with three cards showing breakfast (avocado toast photo), lunch (salad), dinner (empty + add button). Floating '+' button in bottom right pulses gently."
+
+✓ "Social media feed with clean card-based layout. Profile avatars on left, usernames in bold, timestamps in gray. Three visible posts with engagement metrics (likes, comments). Finger double-taps center post, heart animation bursts from touch point."
+
+For app B-ROLL scenes: describe the EXACT screen flow, transitions, and what makes the UI special.
+For app A-ROLL scenes: if showing phone screen, describe what's visible while actor talks.
+
 ===== OUTPUT FORMAT =====
 
 Return exactly ${numVariations} script variation(s). Each must:
@@ -303,6 +344,17 @@ For cameraAngle, choose from:
 - low-angle: Looking up at subject
 - custom: Only if none of the above fit (provide customCameraAngle description)
 
+For ambientSound (A-ROLL SCENES ONLY):
+- Add contextual background audio that matches the environment in cinematicPrompt
+- Keep descriptions short (5-15 words) for best audio generation
+- Examples:
+  - "quiet bedroom ambience with subtle room tone"
+  - "busy coffee shop background chatter and clinking cups"
+  - "soft beach waves and distant seagulls"
+  - "modern office with gentle air conditioning hum"
+  - "outdoor park with birds and light wind"
+- Set to null for b-roll and mixed scenes (no ambient sound needed)
+
 DURATION RULES:
 - estimatedDurationSeconds MUST be a NUMBER (integer), not a range or text
 - Example: use 4 not "3-5s" or "about 4 seconds"
@@ -316,10 +368,11 @@ DURATION RULES:
 - Total duration close to ${duration} seconds
 - Structure matches the required pattern EXACTLY
 - estimatedDurationSeconds is a NUMBER for each scene
-- a-roll: natural conversational dialogue (NO voice tags)
-- b-roll/mixed: MUST have voice direction tags like [whispering], [excited], etc.
+- a-roll: natural conversational dialogue (NO voice tags), include ambientSound
+- b-roll/mixed: MUST have voice direction tags like [whispering], [excited], etc., NO ambientSound
 - No tongue twisters or plosive clusters in dialogue
 - Each scene's action is SPECIFIC, not generic ("rotates product slowly" not "holds product")
+- ambientSound: ONLY for a-roll scenes, describes subtle background audio matching the environment
 `;
 };
 
@@ -334,7 +387,7 @@ export const generateSceneRegenerationPrompt = (
   const voiceTagInstruction = shotType === "b-roll" || shotType === "mixed"
     ? `
 VOICE DIRECTION TAGS (REQUIRED for ${shotType}):
-Add a voice tag at the START of dialogue: [whispering], [excited], [curious], [sincere], [playful], [dramatic], [satisfied], [amazed]
+Add a voice tag at the START of dialogue: [whispering], [excited], [curious], [sincere], [playful], [dramatic], [satisfied], [amazed], [laughing]
 Example: "[whispering] Look at that texture... absolutely insane"`
     : `
 DIALOGUE STYLE:

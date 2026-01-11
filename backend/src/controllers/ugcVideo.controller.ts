@@ -31,6 +31,7 @@ interface SceneData {
   cameraAngle: string;
   cinematicPrompt: string;
   durationSeconds: number;
+  ambientSound?: string | null;
 }
 
 export class UGCVideoController {
@@ -238,6 +239,7 @@ export class UGCVideoController {
           cinematicPrompt: scene.cinematicPrompt,
           action: scene.action,
           emotion: scene.emotion,
+          ambientSound: scene.ambientSound,
         });
       }
 
@@ -601,6 +603,7 @@ export class UGCVideoController {
           cinematicPrompt: scene.cinematicPrompt,
           action: scene.action,
           emotion: scene.emotion,
+          ambientSound: scene.ambientSound,
           // Mark which scene to regenerate
           regenerate: scene.id === sceneId,
         });

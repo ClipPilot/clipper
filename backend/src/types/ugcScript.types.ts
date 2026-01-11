@@ -67,6 +67,11 @@ export const UGCSceneSchema = z.object({
     .string()
     .nullable()
     .describe("Camera movement suggestions"),
+  ambientSound: z
+    .string()
+    .nullable()
+    .optional()
+    .describe("Ambient sound effect description for A-roll scenes (e.g., 'quiet bedroom ambience', 'coffee shop background')"),
 });
 
 export const UGCScriptSchema = z.object({

@@ -195,6 +195,7 @@ export interface GenerateUGCVideoJob extends BaseJob {
     cinematicPrompt: string;
     action: string;
     emotion: string;
+    ambientSound?: string | null; // Ambient sound effect for A-roll scenes
     regenerate?: boolean; // Mark this scene for regeneration
   }>;
   regenerateSceneId?: string; // If set, only regenerate this scene

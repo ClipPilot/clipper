@@ -32,8 +32,10 @@ export function SceneCard({
   onRegenerate,
   isRegenerating,
 }: SceneCardProps) {
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditingDialogue, setIsEditingDialogue] = useState(false);
   const [editedDialogue, setEditedDialogue] = useState(scene.dialogue);
+  const [isEditingAction, setIsEditingAction] = useState(false);
+  const [editedAction, setEditedAction] = useState(scene.action);
 
   const sceneConfig = SCENE_TYPE_CONFIG[scene.sceneType];
   const canRemove = totalScenes > 3;
@@ -42,12 +44,24 @@ export function SceneCard({
     if (editedDialogue !== scene.dialogue) {
       onUpdate({ dialogue: editedDialogue });
     }
-    setIsEditing(false);
+    setIsEditingDialogue(false);
   };
 
-  const handleCancelEdit = () => {
+  const handleCancelDialogueEdit = () => {
     setEditedDialogue(scene.dialogue);
-    setIsEditing(false);
+    setIsEditingDialogue(false);
+  };
+
+  const handleSaveAction = () => {
+    if (editedAction !== scene.action) {
+      onUpdate({ action: editedAction });
+    }
+    setIsEditingAction(false);
+  };
+
+  const handleCancelActionEdit = () => {
+    setEditedAction(scene.action);
+    setIsEditingAction(false);
   };
 
   return (
@@ -94,12 +108,47 @@ export function SceneCard({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 text-sm text-text-secondary">
-          <Icon icon="solar:running-bold" width={14} className="text-text-muted shrink-0" />
-          <span>{scene.action}</span>
-        </div>
+        {isEditingAction ? (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Icon icon="solar:running-bold" width={14} className="text-text-muted shrink-0" />
+              <span className="text-xs text-text-muted">Action</span>
+            </div>
+            <Textarea
+              value={editedAction}
+              onChange={(e) => setEditedAction(e.target.value)}
+              placeholder="Enter action..."
+              minRows={1}
+              classNames={{
+                input: "bg-surface-base text-text-primary text-sm",
+                inputWrapper: "bg-surface-base border-border-base",
+              }}
+            />
+            <div className="flex justify-end gap-2">
+              <Button size="sm" variant="flat" onPress={handleCancelActionEdit}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                className="bg-accent-400 text-white"
+                onPress={handleSaveAction}
+              >
+                Save
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div
+            className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer hover:text-text-primary transition-colors group"
+            onClick={() => setIsEditingAction(true)}
+          >
+            <Icon icon="solar:running-bold" width={14} className="text-text-muted shrink-0" />
+            <span className="flex-1">{scene.action}</span>
+            <Icon icon="solar:pen-2-linear" width={12} className="text-text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
+          </div>
+        )}
 
-        {isEditing ? (
+        {isEditingDialogue ? (
           <div className="space-y-2">
             <Textarea
               value={editedDialogue}
@@ -112,7 +161,7 @@ export function SceneCard({
               }}
             />
             <div className="flex justify-end gap-2">
-              <Button size="sm" variant="flat" onPress={handleCancelEdit}>
+              <Button size="sm" variant="flat" onPress={handleCancelDialogueEdit}>
                 Cancel
               </Button>
               <Button
@@ -126,12 +175,15 @@ export function SceneCard({
           </div>
         ) : (
           <div
-            className="bg-surface-base rounded-lg p-3 cursor-pointer hover:bg-surface-base/80 transition-colors"
-            onClick={() => setIsEditing(true)}
+            className="bg-surface-base rounded-lg p-3 cursor-pointer hover:bg-surface-base/80 transition-colors group"
+            onClick={() => setIsEditingDialogue(true)}
           >
-            <p className="text-text-primary text-sm leading-relaxed">
-              "{scene.dialogue}"
-            </p>
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-text-primary text-sm leading-relaxed flex-1">
+                "{scene.dialogue}"
+              </p>
+              <Icon icon="solar:pen-2-linear" width={12} className="text-text-muted opacity-0 group-hover:opacity-100 transition-opacity mt-1" />
+            </div>
           </div>
         )}
 

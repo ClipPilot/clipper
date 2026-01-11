@@ -422,6 +422,57 @@ export async function generateDialogueAndUpload(
   return { s3Key, actualDuration };
 }
 
+export interface GenerateSoundEffectOptions {
+  text: string;
+  durationSeconds: number;
+  promptInfluence?: number;
+}
+
+/**
+ * Generate ambient sound effects using ElevenLabs Text-to-Sound-Effects API.
+ * Used for A-roll scenes to add realistic background audio.
+ */
+export async function generateSoundEffect(
+  options: GenerateSoundEffectOptions
+): Promise<Buffer> {
+  const client = getClient();
+
+  const {
+    text,
+    durationSeconds,
+    promptInfluence = 0.3,
+  } = options;
+
+  const clampedDuration = Math.max(0.5, Math.min(30, durationSeconds));
+
+  console.log(
+    `[ElevenLabs] Generating sound effect: "${text}" (${clampedDuration}s)`
+  );
+
+  try {
+    const audioStream = await client.textToSoundEffects.convert({
+      text,
+      durationSeconds: clampedDuration,
+      promptInfluence: promptInfluence,
+    });
+
+    const chunks: Uint8Array[] = [];
+    for await (const chunk of audioStream) {
+      chunks.push(chunk);
+    }
+    const audioBuffer = Buffer.concat(chunks);
+
+    console.log(
+      `[ElevenLabs] Generated sound effect: ${(audioBuffer.length / 1024).toFixed(1)}KB of audio`
+    );
+
+    return audioBuffer;
+  } catch (error) {
+    console.error("[ElevenLabs] Sound effect generation failed:", error);
+    throw error;
+  }
+}
+
 export const elevenLabsService = {
   generateSpeech,
   generateSpeechAndUpload,
@@ -431,5 +482,6 @@ export const elevenLabsService = {
   textToDialogue,
   textToDialogueForTargetDuration,
   generateDialogueAndUpload,
+  generateSoundEffect,
   getAudioDuration,
 };

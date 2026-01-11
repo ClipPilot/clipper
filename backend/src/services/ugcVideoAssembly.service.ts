@@ -81,6 +81,7 @@ export interface SceneVideoData {
   cinematicPrompt: string;
   action: string;
   emotion: string;
+  ambientSound?: string | null;
 }
 
 export interface ProcessedScene {
@@ -166,9 +167,12 @@ function speedUpAudio(inputPath: string, targetDuration: number, sceneNumber: nu
   return { outputPath, finalDuration };
 }
 
+// Default speech speed multiplier for snappier, more engaging pacing
+const SPEECH_SPEED_BOOST = 1.12;
+
 /**
  * Generate audio using ElevenLabs Dialogue API (expressive TTS).
- * If audio exceeds max duration, speed it up with FFmpeg.
+ * Applies a speed boost for snappier pacing, then ensures max duration.
  */
 async function generateDialogueAudio(
   voiceId: string,
@@ -184,28 +188,31 @@ async function generateDialogueAudio(
     voiceId,
     text,
     targetDurationSeconds: MAX_AUDIO_DURATION,
-    tolerancePercent: 50, // Allow some tolerance, we'll speed up if needed
+    tolerancePercent: 50,
   });
 
   // Save to temp file
   const tempAudioPath = path.join(OUTPUT_DIR, `dialogue_${sceneNumber}_${Date.now()}.mp3`);
   fs.writeFileSync(tempAudioPath, audioBuffer);
 
-  let finalAudioPath = tempAudioPath;
-  let finalDuration = actualDuration;
+  // Apply speed boost for snappier, more engaging pacing
+  const boostedTargetDuration = actualDuration / SPEECH_SPEED_BOOST;
+  const speedResult = speedUpAudio(tempAudioPath, boostedTargetDuration, sceneNumber);
+  let finalAudioPath = speedResult.outputPath;
+  let finalDuration = speedResult.finalDuration;
 
-  // Speed up if exceeds max duration
-  if (actualDuration > MAX_AUDIO_DURATION) {
-    const speedResult = speedUpAudio(tempAudioPath, MAX_AUDIO_DURATION, sceneNumber);
-    finalAudioPath = speedResult.outputPath;
-    finalDuration = speedResult.finalDuration;
+  // Ensure we don't exceed max duration after speed boost
+  if (finalDuration > MAX_AUDIO_DURATION) {
+    const trimResult = speedUpAudio(finalAudioPath, MAX_AUDIO_DURATION, sceneNumber);
+    finalAudioPath = trimResult.outputPath;
+    finalDuration = trimResult.finalDuration;
   }
 
   // Upload to S3
   const audioBuffer2 = fs.readFileSync(finalAudioPath);
   const audioKey = await s3Service.uploadTTSAudio(audioBuffer2, teamId, scriptId, sceneNumber);
 
-  console.log(`[UGC Assembly] Scene ${sceneNumber}: Dialogue audio ready - ${finalDuration.toFixed(2)}s`);
+  console.log(`[UGC Assembly] Scene ${sceneNumber}: Dialogue audio ready - ${finalDuration.toFixed(2)}s (${SPEECH_SPEED_BOOST}x boost)`);
 
   return { audioPath: finalAudioPath, audioKey, duration: finalDuration };
 }
@@ -254,8 +261,40 @@ function combineVideoAudio(videoPath: string, audioPath: string, audioDuration: 
 }
 
 /**
+ * Mix ambient sound effect into video at specified volume level.
+ * Used for A-roll scenes to add realistic background audio.
+ * Volume is set to ~22% for audible but non-distracting background ambience.
+ */
+function mixAmbientAudio(
+  videoPath: string,
+  ambientAudioPath: string,
+  sceneNumber: number,
+  ambientVolume: number = 0.22
+): string {
+  const outputPath = path.join(OUTPUT_DIR, `ambient_mixed_${sceneNumber}_${Date.now()}.mp4`);
+  const videoDuration = getMediaDuration(videoPath);
+
+  // Use amix to blend the ambient audio (looped if needed) with the original video audio
+  // adelay ensures ambient starts immediately
+  // aloop loops the ambient to cover full video duration
+  const cmd = `ffmpeg -y -i "${videoPath}" -stream_loop -1 -i "${ambientAudioPath}" \
+    -filter_complex "[1:a]volume=${ambientVolume},afade=t=in:st=0:d=0.5,afade=t=out:st=${(videoDuration - 0.5).toFixed(3)}:d=0.5[ambient];[0:a][ambient]amix=inputs=2:duration=first:dropout_transition=2[aout]" \
+    -map 0:v:0 -map "[aout]" \
+    -c:v copy \
+    -c:a aac -ar ${AUDIO_SAMPLE_RATE} -ac ${AUDIO_CHANNELS} -b:a ${AUDIO_BITRATE} \
+    -t ${videoDuration.toFixed(3)} \
+    "${outputPath}"`;
+
+  console.log(`[FFmpeg] Scene ${sceneNumber}: Mixing ambient audio at ${(ambientVolume * 100).toFixed(0)}% volume`);
+  execSync(cmd, { stdio: "pipe" });
+
+  return outputPath;
+}
+
+/**
  * Process A-Roll scene using Kling Avatar v2 (optimized for talking heads).
  * Single-step: image + audio → video with built-in lip-sync (better quality than 2-step).
+ * Optionally mixes in ambient sound effects for realistic background audio.
  */
 async function processArollScene(
   scene: SceneVideoData,
@@ -264,7 +303,7 @@ async function processArollScene(
   voiceId: string,
   onProgress?: (message: string) => void
 ): Promise<ProcessedScene> {
-  const { sceneId, sceneNumber, shotType, imageKey, cinematicPrompt, dialogue, action, emotion } = scene;
+  const { sceneId, sceneNumber, shotType, imageKey, cinematicPrompt, dialogue, action, emotion, ambientSound } = scene;
 
   // Step 1: Generate dialogue audio with ElevenLabs
   onProgress?.(`Scene ${sceneNumber}: Generating dialogue...`);
@@ -293,23 +332,60 @@ async function processArollScene(
   await s3Service.downloadVideoFromUrl(avatarVideoUrl, avatarVideoPath);
 
   // Step 5: Trim video to match audio duration exactly
-  const trimmedPath = trimVideoToAudio(avatarVideoPath, audioDuration, sceneNumber);
+  let processedVideoPath = trimVideoToAudio(avatarVideoPath, audioDuration, sceneNumber);
 
-  // Cleanup temp files
-  if (fs.existsSync(avatarVideoPath) && avatarVideoPath !== trimmedPath) {
+  // Cleanup avatar video
+  if (fs.existsSync(avatarVideoPath) && avatarVideoPath !== processedVideoPath) {
     fs.unlinkSync(avatarVideoPath);
   }
+
+  // Step 6: Generate and mix ambient sound effect (if provided)
+  if (ambientSound) {
+    onProgress?.(`Scene ${sceneNumber}: Adding ambient audio...`);
+    console.log(`[UGC Assembly] Scene ${sceneNumber}: Generating ambient sound: "${ambientSound}"`);
+
+    try {
+      const ambientBuffer = await elevenLabsService.generateSoundEffect({
+        text: ambientSound,
+        durationSeconds: audioDuration,
+        promptInfluence: 0.3,
+      });
+
+      // Save ambient audio to temp file
+      const ambientAudioPath = path.join(OUTPUT_DIR, `ambient_${sceneNumber}_${Date.now()}.mp3`);
+      fs.writeFileSync(ambientAudioPath, ambientBuffer);
+
+      // Mix ambient audio into video
+      const mixedVideoPath = mixAmbientAudio(processedVideoPath, ambientAudioPath, sceneNumber);
+
+      // Cleanup temp files
+      if (fs.existsSync(processedVideoPath) && processedVideoPath !== mixedVideoPath) {
+        fs.unlinkSync(processedVideoPath);
+      }
+      if (fs.existsSync(ambientAudioPath)) {
+        fs.unlinkSync(ambientAudioPath);
+      }
+
+      processedVideoPath = mixedVideoPath;
+      console.log(`[UGC Assembly] Scene ${sceneNumber}: Ambient audio mixed successfully`);
+    } catch (error) {
+      console.warn(`[UGC Assembly] Scene ${sceneNumber}: Ambient audio generation failed, continuing without:`, error);
+      // Continue without ambient sound if it fails
+    }
+  }
+
+  // Cleanup dialogue audio
   if (fs.existsSync(audioPath)) {
     fs.unlinkSync(audioPath);
   }
 
-  // Step 6: Upload processed scene
-  const videoBuffer = fs.readFileSync(trimmedPath);
+  // Step 7: Upload processed scene
+  const videoBuffer = fs.readFileSync(processedVideoPath);
   const videoKey = await s3Service.uploadUGCSceneVideo(videoBuffer, teamId, scriptId, sceneNumber, "processed");
 
   console.log(`[UGC Assembly] A-Roll Scene ${sceneNumber} complete (Avatar v2): ${audioDuration.toFixed(2)}s`);
 
-  return { sceneId, sceneNumber, audioKey, videoKey, localVideoPath: trimmedPath, duration: audioDuration };
+  return { sceneId, sceneNumber, audioKey, videoKey, localVideoPath: processedVideoPath, duration: audioDuration };
 }
 
 /**

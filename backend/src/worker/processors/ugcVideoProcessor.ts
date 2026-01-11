@@ -86,6 +86,7 @@ export async function processUGCVideoJob(
       cinematicPrompt: scene.cinematicPrompt,
       action: scene.action,
       emotion: scene.emotion,
+      ambientSound: scene.ambientSound,
     }));
 
     // Track current scene for real-time updates
