@@ -1,5 +1,16 @@
-# Lambda function for face detection using Python + MediaPipe
+# Lambda function for face detection using Python + OpenCV DNN
 # Fast, reliable face detection without native compilation issues
+
+# Import existing shared resources (ECR + IAM are shared across environments)
+import {
+  to = aws_ecr_repository.face_detect_lambda
+  id = "clipster-face-detect-lambda"
+}
+
+import {
+  to = aws_iam_role.face_detect_lambda
+  id = "clipster-face-detect-lambda-role"
+}
 
 # ECR Repository for Face Detect Lambda
 # Note: Prod uses 'clipster-face-detect-lambda', staging uses 'clipster-face-detect-lambda-staging'

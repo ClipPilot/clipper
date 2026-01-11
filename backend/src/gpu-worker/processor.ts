@@ -72,7 +72,7 @@ interface GpuConfig {
   id: string;
   name: string;
   url: string;
-  cleanupUrl?: string;
+  podId?: string;
 }
 
 interface GpuConfigFile {
@@ -647,6 +647,33 @@ async function downloadOutput(
   return Buffer.from(await res.arrayBuffer());
 }
 
+async function cleanupGpuFiles(gpu: GpuConfig): Promise<void> {
+  try {
+    console.log(`[gpu-worker] Cleaning up GPU ${gpu.id}...`);
+
+    // Clear old history entries (keep last 50)
+    const historyRes = await fetch(`${gpu.url}/history`, { method: "GET" });
+    if (historyRes.ok) {
+      const history = (await historyRes.json()) as Record<string, unknown>;
+      const promptIds = Object.keys(history);
+      if (promptIds.length > 50) {
+        const toDelete = promptIds.slice(0, promptIds.length - 50);
+        for (const promptId of toDelete) {
+          await fetch(`${gpu.url}/history/${promptId}`, { method: "DELETE" });
+        }
+        console.log(`[gpu-worker] Cleared ${toDelete.length} old history entries`);
+      }
+    }
+
+    // Free up VRAM
+    await fetch(`${gpu.url}/free`, { method: "POST" }).catch(() => {});
+
+    console.log(`[gpu-worker] GPU cleanup completed for ${gpu.id}`);
+  } catch (err) {
+    console.warn(`[gpu-worker] GPU cleanup failed (non-critical):`, (err as Error).message);
+  }
+}
+
 async function uploadToS3(buffer: Buffer, key: string): Promise<string> {
   console.log(`[gpu-worker] Uploading to S3: ${key}`);
   await s3.send(
@@ -951,6 +978,11 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
     await completeJob(jobId, job.teamId, true, outputS3Key, outputUrl);
 
     console.log(`[gpu-worker] Job ${jobId} completed successfully!`);
+
+    // Cleanup GPU (non-blocking)
+    cleanupGpuFiles(gpu).catch((err) => {
+      console.warn(`[gpu-worker] Background cleanup failed:`, err.message);
+    });
 
     // Step 12: Create clip record and send notifications
     try {
