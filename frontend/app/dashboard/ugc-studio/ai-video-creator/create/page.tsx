@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAtomValue } from "jotai";
 import { Button, Progress, Spinner } from "@heroui/react";
@@ -25,6 +25,18 @@ const STEPS: { id: WizardStep; label: string; icon: string }[] = [
 ];
 
 export default function CreateAdPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-surface-dark flex items-center justify-center">
+        <Spinner size="lg" color="primary" />
+      </div>
+    }>
+      <CreateAdPageContent />
+    </Suspense>
+  );
+}
+
+function CreateAdPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const templateId = searchParams.get("template");

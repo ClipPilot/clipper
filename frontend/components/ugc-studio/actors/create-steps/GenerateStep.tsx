@@ -193,7 +193,7 @@ export function GenerateStep({
                 <Button
                   size="lg"
                   className="bg-accent-400 text-white font-semibold px-8"
-                  onPress={onGenerate}
+                  onPress={() => onGenerate()}
                   startContent={<Icon icon="solar:magic-stick-3-bold" width={20} />}
                 >
                   Generate Actors
