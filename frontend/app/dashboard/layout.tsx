@@ -153,8 +153,8 @@ export default function DashboardLayout({
   // Sort by href length descending to match most specific route first
   const currentKey =
     [...sidebarItems]
-      .sort((a, b) => b.href.length - a.href.length)
-      .find((item) => pathname.startsWith(item.href))?.key || "home";
+      .sort((a, b) => (b.href?.length || 0) - (a.href?.length || 0))
+      .find((item) => item.href && pathname.startsWith(item.href))?.key || "home";
 
   return (
     <UsageStatsProvider>
