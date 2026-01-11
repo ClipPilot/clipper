@@ -70,8 +70,7 @@ export const UGCSceneSchema = z.object({
   ambientSound: z
     .string()
     .nullable()
-    .optional()
-    .describe("Ambient sound effect description for A-roll scenes (e.g., 'quiet bedroom ambience', 'coffee shop background')"),
+    .describe("REQUIRED for a-roll scenes: ambient background audio description (e.g., 'gym with weights clanking', 'quiet bedroom ambience'). Set to null for b-roll/mixed scenes."),
 });
 
 export const UGCScriptSchema = z.object({

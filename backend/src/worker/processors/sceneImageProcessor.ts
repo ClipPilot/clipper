@@ -273,52 +273,25 @@ export async function processSceneImageJob(
     // Build the prompt using cinematicPrompt from OpenAI
     const prompt = buildSceneImagePrompt(sceneData, userRefinement);
 
-    await updateJobProgress(jobId, 20, "Generating 4 scene image variants...");
+    await updateJobProgress(jobId, 30, "Generating scene image...");
 
-    // Generate 4 variations sequentially with delays to avoid rate limiting
-    // Gemini has a 20 requests/minute limit, so we add 1 second delays between calls
-    const DELAY_BETWEEN_CALLS_MS = 1000;
-    const results: (string | null)[] = [];
-
-    for (let i = 0; i < 4; i++) {
-      // Add delay before each call (except the first one)
-      if (i > 0) {
-        console.log(
-          `[SCENE_IMAGE] Waiting ${DELAY_BETWEEN_CALLS_MS}ms before generating image ${i + 1}/4...`
-        );
-        await new Promise((resolve) =>
-          setTimeout(resolve, DELAY_BETWEEN_CALLS_MS)
-        );
-      }
-
-      await updateJobProgress(
-        jobId,
-        20 + i * 20,
-        `Generating image ${i + 1} of 4...`
-      );
-
-      const result = await generateSingleImage(
-        ai,
-        prompt,
-        teamId,
-        scriptId,
-        sceneId,
-        i,
-        referenceImageData
-      );
-      results.push(result);
-    }
-    const successfulImages = results.filter(
-      (key): key is string => key !== null
+    // Generate single image (regenerate if you don't like it)
+    const imageKey = await generateSingleImage(
+      ai,
+      prompt,
+      teamId,
+      scriptId,
+      sceneId,
+      0,
+      referenceImageData
     );
 
-    if (successfulImages.length === 0) {
-      throw new Error("Failed to generate any scene images");
+    if (!imageKey) {
+      throw new Error("Failed to generate scene image");
     }
 
-    console.log(
-      `[SCENE_IMAGE] Generated ${successfulImages.length}/4 images for job ${jobId}`
-    );
+    const successfulImages = [imageKey];
+    console.log(`[SCENE_IMAGE] Generated image for job ${jobId}`);
 
     // Update job as completed
     await db
@@ -326,7 +299,7 @@ export async function processSceneImageJob(
       .set({
         status: "completed",
         progress: 100,
-        progress_message: `Generated ${successfulImages.length} images`,
+        progress_message: "Image generated",
         generated_images: successfulImages,
         completed_at: new Date(),
       })

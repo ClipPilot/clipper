@@ -344,16 +344,22 @@ For cameraAngle, choose from:
 - low-angle: Looking up at subject
 - custom: Only if none of the above fit (provide customCameraAngle description)
 
-For ambientSound (A-ROLL SCENES ONLY):
-- Add contextual background audio that matches the environment in cinematicPrompt
+CRITICAL - ambientSound field (REQUIRED FOR ALL A-ROLL SCENES):
+- EVERY a-roll scene MUST have an ambientSound value (not null)
+- This creates realistic background audio that matches the environment
 - Keep descriptions short (5-15 words) for best audio generation
-- Examples:
-  - "quiet bedroom ambience with subtle room tone"
-  - "busy coffee shop background chatter and clinking cups"
-  - "soft beach waves and distant seagulls"
-  - "modern office with gentle air conditioning hum"
-  - "outdoor park with birds and light wind"
-- Set to null for b-roll and mixed scenes (no ambient sound needed)
+- Match the environment from cinematicPrompt
+
+Examples based on setting:
+- Bedroom/home: "quiet bedroom ambience with subtle room tone and distant muffled sounds"
+- Gym/fitness: "gym ambience with clanking weights, distant music, and echoing voices"
+- Coffee shop: "busy coffee shop chatter, espresso machine hissing, cups clinking"
+- Beach: "soft ocean waves lapping, distant seagulls, light breeze"
+- Office: "office ambience with keyboard typing, air conditioning hum, distant chatter"
+- Outdoor/park: "outdoor park sounds with birds chirping, leaves rustling, distant traffic"
+- Kitchen: "kitchen ambience with subtle refrigerator hum, pots and pans"
+
+For b-roll and mixed scenes: set ambientSound to null (voiceover only, no background)
 
 DURATION RULES:
 - estimatedDurationSeconds MUST be a NUMBER (integer), not a range or text
@@ -368,11 +374,11 @@ DURATION RULES:
 - Total duration close to ${duration} seconds
 - Structure matches the required pattern EXACTLY
 - estimatedDurationSeconds is a NUMBER for each scene
-- a-roll: natural conversational dialogue (NO voice tags), include ambientSound
-- b-roll/mixed: MUST have voice direction tags like [whispering], [excited], etc., NO ambientSound
+- a-roll scenes: natural dialogue (NO voice tags), MUST have ambientSound (e.g., "gym with weights clanking")
+- b-roll/mixed scenes: MUST have voice direction tags, ambientSound should be null
 - No tongue twisters or plosive clusters in dialogue
 - Each scene's action is SPECIFIC, not generic ("rotates product slowly" not "holds product")
-- ambientSound: ONLY for a-roll scenes, describes subtle background audio matching the environment
+- VERIFY: Every a-roll scene has a non-null ambientSound describing background audio
 `;
 };
 

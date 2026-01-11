@@ -13,21 +13,57 @@ const AUDIO_SAMPLE_RATE = 44100;
 const AUDIO_CHANNELS = 2;
 const AUDIO_BITRATE = "192k";
 
+// Mobile-compatible H.264 encoding settings
+// profile:v main + level 3.1 = broad device support (iOS, Android, web)
+// g/keyint_min = keyframe every 30 frames (1 sec) for smooth seeking on mobile
+// vsync cfr = constant frame rate required for mobile playback
+const VIDEO_ENCODE_SETTINGS = "-c:v libx264 -preset fast -crf 23 -profile:v main -level 3.1 -pix_fmt yuv420p -r 30 -g 30 -keyint_min 30 -vsync cfr";
+
+// Generate jumbled metadata to prevent duplicate detection
+// Covers: encoder signatures, timestamps, software IDs, handler names, device info, and more
+const generateJumbledMetadata = (): string => {
+  const encoders = ["Lavf58.76.100", "Lavf59.27.100", "Lavf60.3.100", "Lavf60.16.100", "Lavf61.1.100"];
+  const handlerNames = ["VideoHandler", "Core Media Video", "Apple Video Media Handler", "ISO Media file"];
+  const majorBrands = ["isom", "mp42", "iso5", "avc1", "M4V "];
+  const devices = [
+    { make: "Apple", model: "iPhone 14 Pro" },
+    { make: "Apple", model: "iPhone 15 Pro Max" },
+    { make: "Apple", model: "iPhone 13" },
+    { make: "Samsung", model: "Galaxy S23 Ultra" },
+    { make: "Samsung", model: "Galaxy S24" },
+    { make: "Google", model: "Pixel 8 Pro" },
+    { make: "Google", model: "Pixel 7" },
+    { make: "OnePlus", model: "12" },
+    { make: "Sony", model: "Xperia 1 V" },
+    { make: "", model: "" },
+  ];
+
+  const randomEncoder = encoders[Math.floor(Math.random() * encoders.length)];
+  const randomHandler = handlerNames[Math.floor(Math.random() * handlerNames.length)];
+  const randomBrand = majorBrands[Math.floor(Math.random() * majorBrands.length)];
+  const randomDevice = devices[Math.floor(Math.random() * devices.length)];
+  const randomDate = new Date(Date.now() - Math.random() * 86400000 * 60).toISOString();
+  const randomId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 8);
+
+  return `-metadata encoder="${randomEncoder}" -metadata creation_time="${randomDate}" -metadata comment="${randomId}" -metadata title="" -metadata artist="" -metadata album="" -metadata description="" -metadata copyright="" -metadata author="" -metadata software="" -metadata make="${randomDevice.make}" -metadata model="${randomDevice.model}" -metadata:s:v:0 handler_name="${randomHandler}" -metadata:s:a:0 handler_name="SoundHandler" -brand ${randomBrand}`;
+};
+
 /**
  * Normalize a video clip to have consistent video and audio parameters.
  * This is CRITICAL for proper concatenation - all clips must have identical streams.
+ * Uses mobile-compatible H.264 settings for smooth playback on all devices.
  */
 function normalizeClipForMerge(inputPath: string, sceneNumber: number): string {
   const outputPath = path.join(OUTPUT_DIR, `normalized_${sceneNumber}_${Date.now()}.mp4`);
 
-  // Re-encode both video AND audio to ensure consistency
+  // Re-encode both video AND audio with mobile-compatible settings
   const cmd = `ffmpeg -y -i "${inputPath}" \
-    -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p -r 30 \
+    ${VIDEO_ENCODE_SETTINGS} \
     -c:a aac -ar ${AUDIO_SAMPLE_RATE} -ac ${AUDIO_CHANNELS} -b:a ${AUDIO_BITRATE} \
     -avoid_negative_ts make_zero -fflags +genpts \
     "${outputPath}"`;
 
-  console.log(`[FFmpeg] Normalizing scene ${sceneNumber} for merge...`);
+  console.log(`[FFmpeg] Normalizing scene ${sceneNumber} for merge (mobile-compatible)...`);
   execSync(cmd, { stdio: "pipe" });
 
   return outputPath;
@@ -55,8 +91,10 @@ function mergeUGCClips(clips: string[], outputPath: string): void {
   fs.writeFileSync(listPath, listContent);
 
   // Step 3: Concatenate using concat demuxer with stream copy (safe because all normalized)
+  // Add jumbled metadata to prevent duplicate detection on social platforms
   const cmd = `ffmpeg -y -f concat -safe 0 -i "${listPath}" \
     -c copy -movflags +faststart \
+    ${generateJumbledMetadata()} \
     "${outputPath}"`;
 
   console.log(`[MERGE] Concatenating ${normalizedPaths.length} normalized clips...`);
@@ -230,9 +268,9 @@ function trimVideoToAudio(videoPath: string, audioDuration: number, sceneNumber:
 
   const outputPath = path.join(OUTPUT_DIR, `trimmed_${sceneNumber}_${Date.now()}.mp4`);
 
-  // Trim to exact duration with consistent audio encoding
+  // Trim to exact duration with mobile-compatible encoding
   const cmd = `ffmpeg -y -i "${videoPath}" -t ${audioDuration.toFixed(3)} \
-    -c:v libx264 -preset fast -crf 23 \
+    ${VIDEO_ENCODE_SETTINGS} \
     -c:a aac -ar ${AUDIO_SAMPLE_RATE} -ac ${AUDIO_CHANNELS} -b:a ${AUDIO_BITRATE} \
     -avoid_negative_ts make_zero "${outputPath}"`;
   console.log(`[FFmpeg] Scene ${sceneNumber}: Trimming video to ${audioDuration.toFixed(2)}s`);
@@ -249,9 +287,9 @@ function combineVideoAudio(videoPath: string, audioPath: string, audioDuration: 
   const outputPath = path.join(OUTPUT_DIR, `combined_${sceneNumber}_${Date.now()}.mp4`);
 
   // Map video from first input, audio from second, trim to audio duration
-  // Use consistent audio encoding for proper concatenation
+  // Use mobile-compatible encoding for smooth playback on all devices
   const cmd = `ffmpeg -y -i "${videoPath}" -i "${audioPath}" -t ${audioDuration.toFixed(3)} \
-    -c:v libx264 -preset fast -crf 23 \
+    ${VIDEO_ENCODE_SETTINGS} \
     -c:a aac -ar ${AUDIO_SAMPLE_RATE} -ac ${AUDIO_CHANNELS} -b:a ${AUDIO_BITRATE} \
     -map 0:v:0 -map 1:a:0 -avoid_negative_ts make_zero "${outputPath}"`;
   console.log(`[FFmpeg] Scene ${sceneNumber}: Combining video + audio (${audioDuration.toFixed(2)}s)`);
@@ -263,13 +301,13 @@ function combineVideoAudio(videoPath: string, audioPath: string, audioDuration: 
 /**
  * Mix ambient sound effect into video at specified volume level.
  * Used for A-roll scenes to add realistic background audio.
- * Volume is set to ~22% for audible but non-distracting background ambience.
+ * Volume is set to 35% for clearly audible background ambience.
  */
 function mixAmbientAudio(
   videoPath: string,
   ambientAudioPath: string,
   sceneNumber: number,
-  ambientVolume: number = 0.22
+  ambientVolume: number = 0.35
 ): string {
   const outputPath = path.join(OUTPUT_DIR, `ambient_mixed_${sceneNumber}_${Date.now()}.mp4`);
   const videoDuration = getMediaDuration(videoPath);
@@ -340,7 +378,9 @@ async function processArollScene(
   }
 
   // Step 6: Generate and mix ambient sound effect (if provided)
-  if (ambientSound) {
+  console.log(`[UGC Assembly] Scene ${sceneNumber}: ambientSound field = "${ambientSound || 'NOT SET'}"`);
+
+  if (ambientSound && ambientSound.trim()) {
     onProgress?.(`Scene ${sceneNumber}: Adding ambient audio...`);
     console.log(`[UGC Assembly] Scene ${sceneNumber}: Generating ambient sound: "${ambientSound}"`);
 
@@ -350,6 +390,8 @@ async function processArollScene(
         durationSeconds: audioDuration,
         promptInfluence: 0.3,
       });
+
+      console.log(`[UGC Assembly] Scene ${sceneNumber}: Ambient audio generated (${(ambientBuffer.length / 1024).toFixed(1)}KB)`);
 
       // Save ambient audio to temp file
       const ambientAudioPath = path.join(OUTPUT_DIR, `ambient_${sceneNumber}_${Date.now()}.mp3`);
@@ -367,11 +409,13 @@ async function processArollScene(
       }
 
       processedVideoPath = mixedVideoPath;
-      console.log(`[UGC Assembly] Scene ${sceneNumber}: Ambient audio mixed successfully`);
+      console.log(`[UGC Assembly] Scene ${sceneNumber}: Ambient audio mixed successfully at 35% volume`);
     } catch (error) {
-      console.warn(`[UGC Assembly] Scene ${sceneNumber}: Ambient audio generation failed, continuing without:`, error);
+      console.error(`[UGC Assembly] Scene ${sceneNumber}: Ambient audio generation failed:`, error);
       // Continue without ambient sound if it fails
     }
+  } else {
+    console.log(`[UGC Assembly] Scene ${sceneNumber}: No ambient sound configured, skipping`);
   }
 
   // Cleanup dialogue audio

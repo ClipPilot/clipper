@@ -5,9 +5,8 @@ import { Card, CardBody, Button, Textarea, Chip, Progress } from "@heroui/react"
 import { Icon } from "@iconify/react";
 import { SCENE_TYPE_CONFIG, type UGCScene } from "../script/types";
 import { SupportingImageUploader } from "./SupportingImageUploader";
-import { SceneImageGallery } from "./SceneImageGallery";
 import { sceneBuilderAPI } from "@/api/sceneBuilder";
-import type { SupportingImage, GeneratedImage, SceneImageGeneration } from "./types";
+import type { SupportingImage, SceneImageGeneration } from "./types";
 
 interface SceneImageCardProps {
   scene: UGCScene;
@@ -78,7 +77,29 @@ export function SceneImageCard({
 
           onGenerationUpdate(updatedGeneration);
 
-          if (status.status === "completed" || status.status === "failed") {
+          if (status.status === "completed") {
+            setIsGenerating(false);
+            if (pollIntervalRef.current) {
+              clearInterval(pollIntervalRef.current);
+              pollIntervalRef.current = null;
+            }
+            // Auto-select the single generated image
+            if (status.images && status.images.length > 0) {
+              const image = status.images[0];
+              try {
+                await sceneBuilderAPI.selectSceneImage({
+                  scriptId,
+                  sceneId: scene.id,
+                  sceneNumber: scene.sceneNumber,
+                  imageKey: image.key,
+                  generationJobId: status.jobId,
+                });
+                onImageSelect(image.key, 0);
+              } catch (error) {
+                console.error("Failed to auto-select scene image:", error);
+              }
+            }
+          } else if (status.status === "failed") {
             setIsGenerating(false);
             if (pollIntervalRef.current) {
               clearInterval(pollIntervalRef.current);
@@ -97,7 +118,7 @@ export function SceneImageCard({
         pollIntervalRef.current = null;
       }
     };
-  }, [generation?.jobId, generation?.status]);
+  }, [generation?.jobId, generation?.status, scriptId, scene.id, scene.sceneNumber, onImageSelect]);
 
   const handleGenerate = async () => {
     setIsGenerating(true);
@@ -126,31 +147,6 @@ export function SceneImageCard({
   const handleRefinementBlur = () => {
     if (localRefinement !== userRefinement) {
       onRefinementChange(localRefinement);
-    }
-  };
-
-  const handleImageSelect = (index: number) => {
-    const image = generation?.generatedImages?.[index];
-    if (image) {
-      onImageSelect(image.key, index);
-    }
-  };
-
-  const handleSelectAndSave = async (index: number) => {
-    const image = generation?.generatedImages?.[index];
-    if (!image) return;
-
-    try {
-      await sceneBuilderAPI.selectSceneImage({
-        scriptId,
-        sceneId: scene.id,
-        sceneNumber: scene.sceneNumber,
-        imageKey: image.key,
-        generationJobId: generation?.jobId,
-      });
-      onImageSelect(image.key, index);
-    } catch (error) {
-      console.error("Failed to save scene image selection:", error);
     }
   };
 
@@ -356,26 +352,18 @@ export function SceneImageCard({
           </div>
         )}
 
-        {generation?.status === "completed" && generation.generatedImages && (
-          <SceneImageGallery
-            images={generation.generatedImages}
-            selectedIndex={selectedImageIndex}
-            onSelect={handleSelectAndSave}
-          />
-        )}
-
-        {/* Show saved image when loaded from API (no generatedImages yet) */}
-        {selectedImageUrl && !generation?.generatedImages && (
+        {/* Show generated/selected image */}
+        {(selectedImageUrl || (generation?.status === "completed" && generation.generatedImages?.[0])) && (
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-xs text-text-muted">
               <Icon icon="solar:gallery-check-bold" width={14} />
-              <span>Previously selected image</span>
+              <span>Generated image</span>
             </div>
             <div className="flex gap-3">
               <div className="w-24 h-32 rounded-lg overflow-hidden bg-surface-base ring-2 ring-accent-400 relative">
                 <img
-                  src={selectedImageUrl}
-                  alt="Selected"
+                  src={selectedImageUrl || generation?.generatedImages?.[0]?.url}
+                  alt="Generated"
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-accent-400 flex items-center justify-center">
@@ -415,7 +403,7 @@ export function SceneImageCard({
               )
             }
           >
-            {(generation?.status === "completed" || selectedImageUrl) ? "Regenerate" : "Generate Images"}
+            {(generation?.status === "completed" || selectedImageUrl) ? "Regenerate" : "Generate Image"}
           </Button>
         </div>
       </CardBody>

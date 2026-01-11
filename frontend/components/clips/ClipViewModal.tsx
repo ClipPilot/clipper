@@ -295,6 +295,9 @@ export default function ClipViewModal({
                   <video
                     src={clip.clipUrl}
                     controls
+                    controlsList="nodownload nofullscreen noremoteplayback"
+                    disablePictureInPicture
+                    onContextMenu={(e) => e.preventDefault()}
                     className="max-w-full max-h-[600px] object-contain relative z-10"
                     autoPlay
                   />

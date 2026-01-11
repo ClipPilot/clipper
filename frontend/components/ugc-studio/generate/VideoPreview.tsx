@@ -176,6 +176,9 @@ export function VideoPreview({
                   onPlay={() => setIsPlaying(true)}
                   onPause={() => setIsPlaying(false)}
                   controls
+                  controlsList="nodownload nofullscreen noremoteplayback"
+                  disablePictureInPicture
+                  onContextMenu={(e) => e.preventDefault()}
                 />
 
                 {/* Play overlay (only shows when paused and no native controls visible) */}
