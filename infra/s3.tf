@@ -249,18 +249,14 @@ resource "aws_s3_bucket_lifecycle_configuration" "videos" {
     }
   }
 
-  # UGC audio (TTS files) → One Zone-IA after 7 days, delete after 30 days
+  # UGC audio (TTS files) → Delete after 30 days
+  # Note: No transition to IA - minimum 30 days required, same as expiration
   rule {
     id     = "lifecycle-ugc-audio"
     status = "Enabled"
 
     filter {
       prefix = "ugc-audio/"
-    }
-
-    transition {
-      days          = 7
-      storage_class = "ONEZONE_IA"
     }
 
     expiration {
@@ -287,18 +283,14 @@ resource "aws_s3_bucket_lifecycle_configuration" "videos" {
     }
   }
 
-  # Scene images → One Zone-IA after 7 days, delete after 30 days
+  # Scene images → Delete after 30 days
+  # Note: No transition to IA - minimum 30 days required, same as expiration
   rule {
     id     = "lifecycle-scene-images"
     status = "Enabled"
 
     filter {
       prefix = "scene-images/"
-    }
-
-    transition {
-      days          = 7
-      storage_class = "ONEZONE_IA"
     }
 
     expiration {
