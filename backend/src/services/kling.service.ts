@@ -11,11 +11,14 @@ export type KlingDuration = 5 | 10;
 export const PRODUCT_NEGATIVE_PROMPT =
   "distortion, warping, morphing, blur, text change, label deformation, " +
   "stretching, proportion change, shape shifting, logo distortion, " +
-  "text overlay, watermark, low quality, blurry, out of focus";
+  "text overlay, subtitles, captions, floating text, graphic overlays, " +
+  "watermark, low quality, blurry, out of focus, " +
+  "phone screen on back, screen through phone, transparent phone, glitchy phone display";
 
 export const PRODUCT_STABILITY_MODIFIERS =
   "Preserve product shape. Maintain label text. Keep proportions identical. " +
-  "Stable camera movement. No distortion.";
+  "Stable camera movement. No distortion. No subtitles or text overlays. " +
+  "Phones have opaque solid backs with no screen bleed-through.";
 
 export const GENTLE_MOTION_MODIFIERS =
   "Subtle movement. Slow and controlled. Micro-motion only. " +
