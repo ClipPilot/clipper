@@ -9,5 +9,6 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  // Exclude static assets, API routes, and public files from middleware
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|voices|images|fonts|.*\\.(?:png|jpg|jpeg|gif|svg|ico|mp3|mp4|webm|wav|ogg)).*)"],
 };

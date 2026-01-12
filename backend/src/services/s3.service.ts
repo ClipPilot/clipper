@@ -181,6 +181,33 @@ class S3Service {
     }
   }
 
+  async getImageAsBuffer(key: string): Promise<Buffer> {
+    try {
+      const command = new GetObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: key,
+      });
+
+      const response = await s3Client.send(command);
+
+      if (!response.Body) {
+        throw new Error("No body in S3 response");
+      }
+
+      const chunks: Uint8Array[] = [];
+      const stream = response.Body as NodeJS.ReadableStream;
+
+      for await (const chunk of stream) {
+        chunks.push(chunk as Uint8Array);
+      }
+
+      return Buffer.concat(chunks);
+    } catch (error) {
+      console.error("Error getting image from S3:", error);
+      throw new Error(`Failed to get image from S3: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+  }
+
   async getPresignedUrl(key: string, expiresIn: number = 3600): Promise<string> {
     const command = new GetObjectCommand({
       Bucket: BUCKET_NAME,
@@ -340,6 +367,154 @@ class S3Service {
     });
 
     return await getSignedUrl(s3Client, command, { expiresIn });
+  }
+
+  async uploadCharacterImage(
+    buffer: Buffer,
+    teamId: number,
+    characterId: string,
+    variantIndex: number
+  ): Promise<string> {
+    const key = `characters/${teamId}/${characterId}/generated/variant_${variantIndex}.png`;
+    await this.uploadBuffer(buffer, key, "image/png");
+    return key;
+  }
+
+  async uploadCharacterReference(
+    buffer: Buffer,
+    teamId: number,
+    characterId: string,
+    refIndex: number
+  ): Promise<string> {
+    const key = `characters/${teamId}/${characterId}/references/ref_${refIndex}.png`;
+    await this.uploadBuffer(buffer, key, "image/png");
+    return key;
+  }
+
+  async getCharacterImagePresignedUpload(
+    teamId: number,
+    fileName: string
+  ): Promise<{ uploadUrl: string; s3Key: string }> {
+    const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const s3Key = `characters/${teamId}/temp/${Date.now()}_${sanitizedFileName}`;
+
+    const command = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: s3Key,
+      ContentType: "image/png",
+    });
+
+    const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+    return { uploadUrl, s3Key };
+  }
+
+  async getProductImagePresignedUpload(
+    teamId: number,
+    fileName: string,
+    contentType: string = "image/jpeg"
+  ): Promise<{ uploadUrl: string; s3Key: string }> {
+    const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const s3Key = `ugc-products/${teamId}/${Date.now()}_${sanitizedFileName}`;
+
+    const command = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: s3Key,
+      ContentType: contentType,
+    });
+
+    const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+    return { uploadUrl, s3Key };
+  }
+
+  async getSceneImagePresignedUpload(
+    teamId: number,
+    fileName: string,
+    contentType: string = "image/jpeg"
+  ): Promise<{ uploadUrl: string; s3Key: string }> {
+    const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const s3Key = `scene-images/${teamId}/supporting/${Date.now()}_${sanitizedFileName}`;
+
+    const command = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: s3Key,
+      ContentType: contentType,
+    });
+
+    const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+    return { uploadUrl, s3Key };
+  }
+
+  async uploadSceneImage(
+    buffer: Buffer,
+    teamId: number,
+    scriptId: string,
+    sceneId: string,
+    variantIndex: number
+  ): Promise<string> {
+    const key = `scene-images/${teamId}/${scriptId}/${sceneId}/variant_${variantIndex}.png`;
+    await this.uploadBuffer(buffer, key, "image/png");
+    return key;
+  }
+
+  async uploadTTSAudio(
+    buffer: Buffer,
+    teamId: number,
+    scriptId: string,
+    sceneNumber: number
+  ): Promise<string> {
+    const key = `ugc-audio/${teamId}/${scriptId}/scene_${sceneNumber}_${Date.now()}.mp3`;
+    await this.uploadBuffer(buffer, key, "audio/mpeg");
+    console.log(`[S3] Uploaded TTS audio: ${key} (${(buffer.length / 1024).toFixed(1)}KB)`);
+    return key;
+  }
+
+  async uploadUGCSceneVideo(
+    buffer: Buffer,
+    teamId: number,
+    scriptId: string,
+    sceneNumber: number,
+    stage: "raw" | "processed"
+  ): Promise<string> {
+    const key = `ugc-temp-scenes/${teamId}/${scriptId}/${stage}/scene_${sceneNumber}_${Date.now()}.mp4`;
+    await this.uploadBuffer(buffer, key, "video/mp4");
+    console.log(`[S3] Uploaded UGC ${stage} scene: ${key}`);
+    return key;
+  }
+
+  async uploadUGCFinalVideo(
+    buffer: Buffer,
+    teamId: number,
+    scriptId: string
+  ): Promise<string> {
+    const key = `ugc-videos/${teamId}/${scriptId}/final/${scriptId}_${Date.now()}.mp4`;
+    await this.uploadBuffer(buffer, key, "video/mp4");
+    console.log(`[S3] Uploaded UGC final video: ${key}`);
+    return key;
+  }
+
+  async uploadUGCFinalVideoFromFile(
+    filePath: string,
+    teamId: number,
+    scriptId: string
+  ): Promise<string> {
+    const key = `ugc-videos/${teamId}/${scriptId}/final/${scriptId}_${Date.now()}.mp4`;
+    await this.uploadFile(filePath, key, "video/mp4");
+    console.log(`[S3] Uploaded UGC final video from file: ${key}`);
+    return key;
+  }
+
+  async downloadToFile(key: string, localPath: string): Promise<void> {
+    await this.downloadFile(key, localPath);
+  }
+
+  async downloadVideoFromUrl(url: string, localPath: string): Promise<void> {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to download video: ${response.statusText}`);
+    }
+    const buffer = Buffer.from(await response.arrayBuffer());
+    fs.writeFileSync(localPath, buffer);
+    console.log(`[S3] Downloaded video to: ${localPath}`);
   }
 }
 

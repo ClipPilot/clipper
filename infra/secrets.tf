@@ -160,3 +160,31 @@ resource "aws_secretsmanager_secret_version" "sync_key" {
   secret_id     = aws_secretsmanager_secret.sync_key.id
   secret_string = var.sync_key
 }
+
+# ElevenLabs API Key
+resource "aws_secretsmanager_secret" "elevenlabs_api_key" {
+  name                    = "${var.project_name}-${var.environment}/elevenlabs-api-key"
+  recovery_window_in_days = 0
+
+  tags = {
+    Name = "${var.project_name}-elevenlabs-api-key-${var.environment}"
+  }
+}
+resource "aws_secretsmanager_secret_version" "elevenlabs_api_key" {
+  secret_id     = aws_secretsmanager_secret.elevenlabs_api_key.id
+  secret_string = var.elevenlabs_api_key
+}
+
+# FAL API Key
+resource "aws_secretsmanager_secret" "fal_key" {
+  name                    = "${var.project_name}-${var.environment}/fal-key"
+  recovery_window_in_days = 0
+
+  tags = {
+    Name = "${var.project_name}-fal-key-${var.environment}"
+  }
+}
+resource "aws_secretsmanager_secret_version" "fal_key" {
+  secret_id     = aws_secretsmanager_secret.fal_key.id
+  secret_string = var.fal_key
+}

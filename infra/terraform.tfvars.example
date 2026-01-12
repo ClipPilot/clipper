@@ -25,6 +25,10 @@ amplify_branch      = "main"
 stripe_secret_key     = "sk_live_..."
 stripe_webhook_secret = "whsec_..."
 
+# Video Generation Keys
+elevenlabs_api_key = "..."
+fal_key            = "..."
+
 # Custom Domain (optional - leave empty to use ALB DNS)
 # For prod: api.cuttr.com
 # For staging: api-staging.cuttr.com

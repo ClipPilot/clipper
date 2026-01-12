@@ -20,7 +20,7 @@ resource "aws_sqs_queue" "video_processing" {
 
   redrive_policy = jsonencode({
     deadLetterTargetArn = aws_sqs_queue.video_processing_dlq.arn
-    maxReceiveCount     = 3 # Move to DLQ after 3 failed attempts
+    maxReceiveCount     = 1
   })
 
   tags = {
@@ -71,7 +71,7 @@ resource "aws_sqs_queue" "gpu_processing" {
 
   redrive_policy = jsonencode({
     deadLetterTargetArn = aws_sqs_queue.gpu_processing_dlq.arn
-    maxReceiveCount     = 2 # Move to DLQ after 2 failed attempts
+    maxReceiveCount     = 1
   })
 
   tags = {

@@ -37,6 +37,78 @@ const COMPRESSION_THRESHOLD = 200 * 1024 * 1024; // Only compress files > 200MB
 const TARGET_CRF = 23; // Quality level (18-28, lower = better quality, 23 is default/good)
 const MAX_BITRATE = 12000; // 12 Mbps max bitrate cap
 
+// Mobile-compatible H.264 encoding settings
+// profile:v main - Broad device support (especially older iOS/Android)
+// level 3.1 - Compatible with most mobile devices
+// pix_fmt yuv420p - Required for QuickTime/iOS playback
+// g/keyint_min 30 - Keyframe every second for smooth seeking
+// vsync cfr - Constant frame rate prevents mobile playback issues
+const MOBILE_VIDEO_SETTINGS = [
+  "-profile:v main",
+  "-level 3.1",
+  "-pix_fmt yuv420p",
+  "-r 30",
+  "-g 30",
+  "-keyint_min 30",
+  "-vsync cfr",
+];
+
+// Generate jumbled metadata to prevent duplicate detection
+// Covers: encoder signatures, timestamps, software IDs, handler names, device info, and more
+const generateJumbledMetadata = (): string[] => {
+  // Encoder signatures (mimics different FFmpeg versions)
+  const encoders = ["Lavf58.76.100", "Lavf59.27.100", "Lavf60.3.100", "Lavf60.16.100", "Lavf61.1.100"];
+  const handlerNames = ["VideoHandler", "Core Media Video", "Apple Video Media Handler", "ISO Media file"];
+  const majorBrands = ["isom", "mp42", "iso5", "avc1", "M4V "];
+
+  // Device signatures (common phones/cameras)
+  const devices = [
+    { make: "Apple", model: "iPhone 14 Pro" },
+    { make: "Apple", model: "iPhone 15 Pro Max" },
+    { make: "Apple", model: "iPhone 13" },
+    { make: "Samsung", model: "Galaxy S23 Ultra" },
+    { make: "Samsung", model: "Galaxy S24" },
+    { make: "Google", model: "Pixel 8 Pro" },
+    { make: "Google", model: "Pixel 7" },
+    { make: "OnePlus", model: "12" },
+    { make: "Sony", model: "Xperia 1 V" },
+    { make: "", model: "" }, // Sometimes no device info
+  ];
+
+  const randomEncoder = encoders[Math.floor(Math.random() * encoders.length)];
+  const randomHandler = handlerNames[Math.floor(Math.random() * handlerNames.length)];
+  const randomBrand = majorBrands[Math.floor(Math.random() * majorBrands.length)];
+  const randomDevice = devices[Math.floor(Math.random() * devices.length)];
+
+  // Random date within past 60 days
+  const randomDate = new Date(Date.now() - Math.random() * 86400000 * 60).toISOString();
+  // Random unique ID for this render
+  const randomId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 8);
+
+  return [
+    // Core metadata
+    `-metadata`, `encoder=${randomEncoder}`,
+    `-metadata`, `creation_time=${randomDate}`,
+    `-metadata`, `comment=${randomId}`,
+    // Clear identifying info
+    `-metadata`, `title=`,
+    `-metadata`, `artist=`,
+    `-metadata`, `album=`,
+    `-metadata`, `description=`,
+    `-metadata`, `copyright=`,
+    `-metadata`, `author=`,
+    // Device identifiers (randomized)
+    `-metadata`, `software=`,
+    `-metadata`, `make=${randomDevice.make}`,
+    `-metadata`, `model=${randomDevice.model}`,
+    // Track handler names (important for fingerprinting)
+    `-metadata:s:v:0`, `handler_name=${randomHandler}`,
+    `-metadata:s:a:0`, `handler_name=SoundHandler`,
+    // Container-level brand (MP4 box structure)
+    `-brand`, randomBrand,
+  ];
+};
+
 export const compressVideoForUpload = async (
   inputPath: string,
   outputPath: string
@@ -85,14 +157,17 @@ export const compressVideoForUpload = async (
       ffmpeg(inputPath)
         .outputOptions([
           "-c:v libx264",
-          "-preset fast", // Good balance of speed and quality
-          `-crf ${TARGET_CRF}`, // Quality-based encoding
+          "-preset fast",
+          `-crf ${TARGET_CRF}`,
           `-maxrate ${MAX_BITRATE}k`,
           `-bufsize ${MAX_BITRATE * 2}k`,
+          ...MOBILE_VIDEO_SETTINGS,
           "-c:a aac",
-          "-b:a 192k", // Higher audio quality
+          "-b:a 192k",
+          "-ar 48000",
+          "-ac 2",
           "-movflags +faststart",
-          "-map_metadata -1", // Strip all metadata
+          ...generateJumbledMetadata(),
         ])
         .save(outputPath)
         .on("progress", (progress) => {
@@ -217,13 +292,10 @@ export const cutClip = (
       .setDuration(duration)
       .outputOptions([
         "-c:v libx264",
-        "-preset ultrafast",
-        "-crf 28",
-        "-r 30",
+        "-preset fast",
+        "-crf 23",
+        ...MOBILE_VIDEO_SETTINGS,
         "-bf 0",
-        "-g 30",
-        "-force_key_frames 0",
-        "-vsync cfr",
         "-ar 48000",
         "-ac 2",
         "-c:a aac",
@@ -232,7 +304,8 @@ export const cutClip = (
         "aresample=async=1:first_pts=0",
         "-avoid_negative_ts make_zero",
         "-reset_timestamps 1",
-        "-map_metadata -1", // Strip all metadata
+        "-movflags +faststart",
+        ...generateJumbledMetadata(),
       ])
       .save(output)
       .on("end", () => {
@@ -291,22 +364,21 @@ const normalizeClip = (input: string, output: string): Promise<string> => {
     ffmpeg(input)
       .outputOptions([
         "-c:v libx264",
-        "-preset veryfast",
-        "-crf 18",
-        "-pix_fmt yuv420p",
-        "-r 30",
-        "-vsync cfr",
+        "-preset fast",
+        "-crf 23",
+        ...MOBILE_VIDEO_SETTINGS,
         "-bf 0",
-        "-g 30",
-        "-keyint_min 30",
         "-sc_threshold 0",
-        "-c:a copy",
+        "-c:a aac",
+        "-b:a 128k",
+        "-ar 48000",
+        "-ac 2",
         "-fflags +genpts+igndts",
         "-avoid_negative_ts make_zero",
         "-reset_timestamps 1",
         "-start_at_zero",
         "-movflags +faststart",
-        "-map_metadata -1", // Strip all metadata
+        ...generateJumbledMetadata(),
       ])
       .save(output)
       .on("end", () => {
@@ -348,7 +420,12 @@ export const mergeClipsGpu = async (clips: string[], outputPath: string) => {
     ffmpeg()
       .input(listPath)
       .inputOptions(["-f concat", "-safe 0"])
-      .outputOptions(["-c copy", "-fflags +genpts", "-movflags +faststart", "-map_metadata -1"])
+      .outputOptions([
+        "-c copy",
+        "-fflags +genpts",
+        "-movflags +faststart",
+        ...generateJumbledMetadata(),
+      ])
       .save(outputPath)
       .on("end", () => {
         fs.unlinkSync(listPath);
@@ -452,32 +529,30 @@ export const mergeClips = async (clips: string[], outputPath: string) => {
           "-map [v]",
           "-map 0:a?",
           "-c:v libx264",
-          "-preset veryfast",
-          "-pix_fmt yuv420p",
-          "-r 30",
+          "-preset fast",
+          "-crf 23",
+          ...MOBILE_VIDEO_SETTINGS,
           "-bf 0",
-          "-vsync cfr",
           "-movflags +faststart",
           "-c:a aac",
           "-b:a 128k",
           "-ar 48000",
           "-ac 2",
-          "-map_metadata -1", // Strip all metadata
+          ...generateJumbledMetadata(),
         ]);
     } else {
       ffmpegCmd.outputOptions([
         "-c:v libx264",
-        "-preset veryfast",
-        "-pix_fmt yuv420p",
-        "-r 30",
+        "-preset fast",
+        "-crf 23",
+        ...MOBILE_VIDEO_SETTINGS,
         "-bf 0",
-        "-vsync cfr",
         "-movflags +faststart",
         "-c:a aac",
         "-b:a 128k",
         "-ar 48000",
         "-ac 2",
-        "-map_metadata -1", // Strip all metadata
+        ...generateJumbledMetadata(),
       ]);
     }
 
@@ -675,10 +750,14 @@ export const addTextOverlayAtPosition = async (
         .complexFilter([`overlay=${xPos}:${yPos}`])
         .outputOptions([
           "-c:v libx264",
-          "-preset ultrafast",
+          "-preset fast",
           "-crf 23",
-          "-c:a copy",
-          "-map_metadata -1", // Strip all metadata
+          ...MOBILE_VIDEO_SETTINGS,
+          "-c:a aac",
+          "-b:a 128k",
+          "-ar 48000",
+          "-movflags +faststart",
+          ...generateJumbledMetadata(),
         ])
         .save(outputPath)
         .on("end", () => {
@@ -735,10 +814,14 @@ export const addPreviewWatermark = async (
       ])
       .outputOptions([
         "-c:v libx264",
-        "-preset ultrafast",
+        "-preset fast",
         "-crf 23",
-        "-c:a copy",
-        "-map_metadata -1", // Strip all metadata
+        ...MOBILE_VIDEO_SETTINGS,
+        "-c:a aac",
+        "-b:a 128k",
+        "-ar 48000",
+        "-movflags +faststart",
+        ...generateJumbledMetadata(),
       ])
       .save(outputPath)
       .on("end", () => {
@@ -792,10 +875,14 @@ export const addTextOverlay = async (
         .complexFilter([`overlay=(W-w)/2:${yPosition}`])
         .outputOptions([
           "-c:v libx264",
-          "-preset ultrafast",
+          "-preset fast",
           "-crf 23",
-          "-c:a copy",
-          "-map_metadata -1", // Strip all metadata
+          ...MOBILE_VIDEO_SETTINGS,
+          "-c:a aac",
+          "-b:a 128k",
+          "-ar 48000",
+          "-movflags +faststart",
+          ...generateJumbledMetadata(),
         ])
         .save(outputPath)
         .on("end", () => {

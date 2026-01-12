@@ -37,3 +37,44 @@ export async function notifyClipUpdate(teamId: number, clipId: number): Promise<
   console.log(`[NOTIFY] Clip ${clipId} updated for team ${teamId}`);
   await callNotifyEndpoint("/internal/notify/clip-update", { teamId, clipId });
 }
+
+export async function notifyCharacterGenerated(teamId: number, jobId: string): Promise<void> {
+  console.log(`[NOTIFY] Character generation ${jobId} completed for team ${teamId}`);
+  await callNotifyEndpoint("/internal/notify/character-generated", { teamId, jobId });
+}
+
+export interface ScriptJobUpdate {
+  scriptId: string;
+  status: "queued" | "generating" | "completed" | "failed";
+  progress: number;
+  progressMessage: string;
+  scripts?: any[];
+  error?: string;
+}
+
+export async function notifyScriptJobUpdate(teamId: number, update: ScriptJobUpdate): Promise<void> {
+  await callNotifyEndpoint("/internal/notify/script-job-update", { teamId, update });
+}
+
+export interface UGCVideoJobUpdate {
+  jobId: string;
+  status: "queued" | "generating" | "completed" | "failed";
+  progress: number;
+  progressMessage: string;
+  currentScene?: number;
+  totalScenes?: number;
+  finalVideoUrl?: string;
+  finalVideoKey?: string;
+  totalDurationSeconds?: number;
+  sceneVideos?: Array<{
+    sceneId: string;
+    sceneNumber: number;
+    audioKey: string;
+    videoKey: string;
+  }>;
+  error?: string;
+}
+
+export async function notifyUGCVideoJobUpdate(teamId: number, update: UGCVideoJobUpdate): Promise<void> {
+  await callNotifyEndpoint("/internal/notify/ugc-video-job-update", { teamId, update });
+}

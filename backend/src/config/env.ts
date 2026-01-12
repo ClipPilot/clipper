@@ -33,6 +33,12 @@ export const config = {
   gemini: {
     apiKey: getEnv("GEMINI_API_KEY"),
   },
+  elevenlabs: {
+    apiKey: getEnv("ELEVENLABS_API_KEY", ""),
+  },
+  fal: {
+    apiKey: getEnv("FAL_KEY", ""),
+  },
   sync: {
     apiKey: process.env.SYNC_KEY || "",
   },
@@ -49,4 +55,6 @@ export const ENV = {
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY || "",
   STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET || "",
   GEMINI_API_KEY: config.gemini.apiKey,
+  ELEVENLABS_API_KEY: config.elevenlabs.apiKey,
+  FAL_KEY: config.fal.apiKey,
 };

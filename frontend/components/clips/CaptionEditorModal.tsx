@@ -117,6 +117,9 @@ export default function CaptionEditorModal({
                     ref={videoRef}
                     src={blankVideoUrl}
                     controls
+                    controlsList="nodownload nofullscreen noremoteplayback"
+                    disablePictureInPicture
+                    onContextMenu={(e) => e.preventDefault()}
                     className="w-full max-h-[50vh] object-contain"
                     onTimeUpdate={handleTimeUpdate}
                   />

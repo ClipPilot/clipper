@@ -13,6 +13,10 @@ import comfyRoutes from "./routes/comfy.routes";
 import faceSwapRoutes from "./routes/faceSwap.routes";
 import adminRoutes from "./routes/admin.routes";
 import referralRoutes from "./routes/referral.routes";
+import actorRoutes from "./routes/actor.routes";
+import ugcScriptRoutes from "./routes/ugcScript.routes";
+import sceneBuilderRoutes from "./routes/sceneBuilder.routes";
+import ugcVideoRoutes from "./routes/ugcVideo.routes";
 import { swaggerSpec } from "./config/swagger";
 
 const app = express();
@@ -61,6 +65,10 @@ app.use("/api/comfy", comfyRoutes);
 app.use("/api/face-swap", faceSwapRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/referrals", referralRoutes);
+app.use("/api/actors", actorRoutes);
+app.use("/api/ugc", ugcScriptRoutes);
+app.use("/api/scene-builder", sceneBuilderRoutes);
+app.use("/api/ugc-video", ugcVideoRoutes);
 
 // Sentry test route
 app.get("/debug-sentry", function mainHandler(req, res) {

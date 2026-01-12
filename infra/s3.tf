@@ -150,6 +150,180 @@ resource "aws_s3_bucket_lifecycle_configuration" "videos" {
       storage_class = "ONEZONE_IA"
     }
   }
+
+  # ============================================
+  # TEMPORARY FILES - Delete quickly
+  # ============================================
+
+  # Temp face detection files → Delete after 1 day
+  rule {
+    id     = "expire-temp-face-detect"
+    status = "Enabled"
+
+    filter {
+      prefix = "temp-face-detect/"
+    }
+
+    expiration {
+      days = 1
+    }
+  }
+
+  # Temp scene detection files → Delete after 1 day
+  rule {
+    id     = "expire-temp-scene-detect"
+    status = "Enabled"
+
+    filter {
+      prefix = "temp-scene-detect/"
+    }
+
+    expiration {
+      days = 1
+    }
+  }
+
+  # Face swap temporary files → Delete after 1 day
+  rule {
+    id     = "expire-face-swap-temp"
+    status = "Enabled"
+
+    filter {
+      prefix = "teams/"
+    }
+
+    expiration {
+      days = 1
+    }
+  }
+
+  # ============================================
+  # UGC CONTENT - Transition to cheaper storage
+  # ============================================
+
+  # UGC product images → One Zone-IA after 30 days, delete after 90 days
+  rule {
+    id     = "lifecycle-ugc-products"
+    status = "Enabled"
+
+    filter {
+      prefix = "ugc-products/"
+    }
+
+    transition {
+      days          = 30
+      storage_class = "ONEZONE_IA"
+    }
+
+    expiration {
+      days = 90
+    }
+  }
+
+  # UGC final videos → One Zone-IA after 30 days, NO EXPIRATION
+  rule {
+    id     = "archive-ugc-final-videos"
+    status = "Enabled"
+
+    filter {
+      prefix = "ugc-videos/"
+    }
+
+    transition {
+      days          = 30
+      storage_class = "ONEZONE_IA"
+    }
+  }
+
+  # UGC intermediate scene videos → Delete after 7 days
+  rule {
+    id     = "expire-ugc-temp-scenes"
+    status = "Enabled"
+
+    filter {
+      prefix = "ugc-temp-scenes/"
+    }
+
+    expiration {
+      days = 7
+    }
+  }
+
+  # UGC audio (TTS files) → One Zone-IA after 7 days, delete after 30 days
+  rule {
+    id     = "lifecycle-ugc-audio"
+    status = "Enabled"
+
+    filter {
+      prefix = "ugc-audio/"
+    }
+
+    transition {
+      days          = 7
+      storage_class = "ONEZONE_IA"
+    }
+
+    expiration {
+      days = 30
+    }
+  }
+
+  # ============================================
+  # AI GENERATED ASSETS - Keep but archive
+  # ============================================
+
+  # Character images → One Zone-IA after 30 days
+  rule {
+    id     = "transition-characters"
+    status = "Enabled"
+
+    filter {
+      prefix = "characters/"
+    }
+
+    transition {
+      days          = 30
+      storage_class = "ONEZONE_IA"
+    }
+  }
+
+  # Scene images → One Zone-IA after 7 days, delete after 30 days
+  rule {
+    id     = "lifecycle-scene-images"
+    status = "Enabled"
+
+    filter {
+      prefix = "scene-images/"
+    }
+
+    transition {
+      days          = 7
+      storage_class = "ONEZONE_IA"
+    }
+
+    expiration {
+      days = 30
+    }
+  }
+
+  # ============================================
+  # FACE-SWAP OUTPUTS - Keep indefinitely
+  # ============================================
+
+  # ComfyUI outputs (face-swap final videos) → One Zone-IA after 30 days, NO EXPIRATION
+  rule {
+    id     = "archive-comfy-outputs"
+    status = "Enabled"
+
+    filter {
+      prefix = "comfy-outputs/"
+    }
+
+    transition {
+      days          = 30
+      storage_class = "ONEZONE_IA"
+    }
+  }
 }
 
 # CORS Configuration for S3

@@ -214,3 +214,16 @@ variable "sync_key" {
   sensitive   = true
 }
 
+# Video Generation Keys
+variable "elevenlabs_api_key" {
+  description = "ElevenLabs API Key for text-to-speech"
+  type        = string
+  sensitive   = true
+}
+
+variable "fal_key" {
+  description = "FAL API Key for AI video generation"
+  type        = string
+  sensitive   = true
+}
+

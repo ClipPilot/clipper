@@ -1,0 +1,1 @@
+ALTER TABLE "ugc_video_generation_jobs" ALTER COLUMN "total_duration_seconds" SET DATA TYPE real;

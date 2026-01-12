@@ -94,3 +94,45 @@ export const emitComfyJobUpdate = (teamId: number, job: ComfyJobUpdate) => {
     io.to(`team-${teamId}`).emit("comfy-job-update", job);
   }
 };
+
+export interface ScriptJobUpdate {
+  scriptId: string;
+  status: "queued" | "generating" | "completed" | "failed";
+  progress: number;
+  progressMessage: string;
+  scripts?: any[];
+  selectedVariantIndex?: number;
+  error?: string;
+}
+
+export const emitScriptJobUpdate = (teamId: number, update: ScriptJobUpdate) => {
+  if (io) {
+    io.to(`team-${teamId}`).emit("script-job-update", update);
+  }
+};
+
+export interface UGCVideoJobUpdate {
+  jobId: string;
+  status: "queued" | "generating" | "completed" | "failed";
+  progress: number;
+  progressMessage: string;
+  currentScene?: number;
+  totalScenes?: number;
+  finalVideoUrl?: string;
+  finalVideoKey?: string;
+  totalDurationSeconds?: number;
+  sceneVideos?: Array<{
+    sceneId: string;
+    sceneNumber: number;
+    audioKey: string;
+    videoKey: string;
+  }>;
+  error?: string;
+}
+
+export const emitUGCVideoJobUpdate = (teamId: number, update: UGCVideoJobUpdate) => {
+  if (io) {
+    io.to(`team-${teamId}`).emit("ugc-video-job-update", update);
+    console.log(`[SOCKET] Emitted ugc-video-job-update to team-${teamId}:`, update.jobId, update.status, update.progress);
+  }
+};
