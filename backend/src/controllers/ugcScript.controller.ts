@@ -255,6 +255,7 @@ export class UGCScriptController {
         success: true,
         scripts: fullScript.scripts,
         selectedVariantIndex: fullScript.selectedVariantIndex,
+        characterId: fullScript.characterId,
       });
     } catch (error) {
       console.error("[UGC_SCRIPT] Get full script error:", error);

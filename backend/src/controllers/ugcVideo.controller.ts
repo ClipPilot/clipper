@@ -73,6 +73,27 @@ export class UGCVideoController {
         .limit(limit)
         .offset(offset);
 
+      // Get clip IDs for completed jobs (to track finalized videos)
+      const completedJobIds = jobs.filter(j => j.status === "completed").map(j => j.id);
+      const clipsByJobId: Record<string, number> = {};
+
+      if (completedJobIds.length > 0) {
+        const clipsForJobs = await db
+          .select({
+            id: clips.id,
+            clipMetadata: clips.clip_metadata,
+          })
+          .from(clips)
+          .where(sql`${clips.clip_metadata}->>'generationJobId' IN ${completedJobIds}`);
+
+        for (const clip of clipsForJobs) {
+          const metadata = clip.clipMetadata as { generationJobId?: string } | null;
+          if (metadata?.generationJobId) {
+            clipsByJobId[metadata.generationJobId] = clip.id;
+          }
+        }
+      }
+
       // Get total count
       const [countResult] = await db
         .select({ count: count() })
@@ -124,6 +145,7 @@ export class UGCVideoController {
             errorMessage: job.errorMessage,
             createdAt: job.createdAt,
             completedAt: job.completedAt,
+            clipId: clipsByJobId[job.id] || null,
           };
 
           // Add video URL for completed jobs

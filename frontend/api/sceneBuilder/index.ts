@@ -6,6 +6,7 @@ export interface GenerateSceneImagesRequest {
   scriptId: string;
   sceneId: string;
   sceneNumber: number;
+  characterId: number;
   userRefinement?: string;
   supportingImageKeys?: string[];
 }
@@ -20,6 +21,7 @@ export interface GenerateSceneImagesResponse {
 export interface GenerateAllSceneImagesRequest {
   teamId: number;
   scriptId: string;
+  characterId: number;
   scenes: Array<{
     sceneId: string;
     sceneNumber: number;

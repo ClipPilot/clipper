@@ -97,6 +97,7 @@ export interface UGCVideoJob {
   errorMessage?: string;
   createdAt: string;
   completedAt?: string;
+  clipId?: number | null;
 }
 
 export interface ListVideoJobsResponse {

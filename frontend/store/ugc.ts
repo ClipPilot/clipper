@@ -14,7 +14,7 @@ export const productImageKeysAtom = atom<string[]>([]);
 
 // Scene Builder state
 export interface SceneImageState {
-  status: "idle" | "generating" | "completed" | "failed";
+  status: "idle" | "generating" | "regenerating" | "completed" | "failed";
   jobId?: string;
   generatedImages?: { key: string; url: string; index: number }[];
   selectedImageKey?: string;

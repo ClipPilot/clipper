@@ -217,6 +217,7 @@ Return a JSON object with a "descriptions" array of strings, one description per
   async getFullScript(scriptId: string): Promise<{
     scripts: UGCScript[];
     selectedVariantIndex: number;
+    characterId: number | null;
   } | null> {
     const [script] = await db
       .select()
@@ -229,6 +230,7 @@ Return a JSON object with a "descriptions" array of strings, one description per
     return {
       scripts: script.scripts_data as UGCScript[],
       selectedVariantIndex: script.selected_variant_index || 0,
+      characterId: script.character_id,
     };
   }
 

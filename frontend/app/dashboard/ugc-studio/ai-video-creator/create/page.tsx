@@ -1,8 +1,8 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAtomValue } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { Button, Progress, Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { CharacterStep } from "@/components/ugc-studio/actors/CharacterStep";
@@ -12,6 +12,8 @@ import { SceneBuilderStep } from "@/components/ugc-studio/scene-builder";
 import { GenerateVideoStep } from "@/components/ugc-studio/generate";
 import { selectedVoiceAtom, scriptIdAtom, scriptsAtom, selectedVariantIndexAtom, productImageKeysAtom, allScenesCompleteAtom } from "@/store/ugc";
 import { useTeams } from "@/hooks/useTeams";
+import { ugcScriptAPI } from "@/api/ugc";
+import { actorsAPI } from "@/api/actors";
 import type { Character } from "@/components/ugc-studio/actors/types";
 
 type WizardStep = "character" | "script" | "shot-plan" | "audio" | "generate";
@@ -40,18 +42,54 @@ function CreateAdPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const templateId = searchParams.get("template");
+  const urlScriptId = searchParams.get("scriptId");
+  const urlStep = searchParams.get("step") as WizardStep | null;
   const { selectedTeam, isLoading: teamsLoading } = useTeams();
 
   const [currentStep, setCurrentStep] = useState<WizardStep>("character");
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
-  const scriptId = useAtomValue(scriptIdAtom);
-  const scripts = useAtomValue(scriptsAtom);
+  const [isLoadingFromUrl, setIsLoadingFromUrl] = useState(!!urlScriptId && !!urlStep);
+  const [scriptId, setScriptId] = useAtom(scriptIdAtom);
+  const [scripts, setScripts] = useAtom(scriptsAtom);
+  const [, setSelectedVariantIndex] = useAtom(selectedVariantIndexAtom);
   const selectedVariantIndex = useAtomValue(selectedVariantIndexAtom);
   const selectedVoice = useAtomValue(selectedVoiceAtom);
   const productImageKeys = useAtomValue(productImageKeysAtom);
   const allScenesComplete = useAtomValue(allScenesCompleteAtom);
 
   const currentScript = scripts[selectedVariantIndex] ?? null;
+
+  useEffect(() => {
+    if (!urlScriptId || !urlStep) return;
+
+    const loadFromUrl = async () => {
+      try {
+        const response = await ugcScriptAPI.getFullScript(urlScriptId);
+        if (response.success) {
+          setScripts(response.scripts);
+          setSelectedVariantIndex(response.selectedVariantIndex);
+          setScriptId(urlScriptId);
+
+          if (response.characterId) {
+            const charResponse = await actorsAPI.getById(response.characterId);
+            if (charResponse.success) {
+              setSelectedCharacter(charResponse.character);
+            }
+          }
+
+          if (STEPS.some(s => s.id === urlStep)) {
+            setCurrentStep(urlStep);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load from URL:", err);
+      } finally {
+        setIsLoadingFromUrl(false);
+      }
+    };
+
+    loadFromUrl();
+  }, [urlScriptId, urlStep, setScripts, setSelectedVariantIndex, setScriptId]);
 
   const currentStepIndex = STEPS.findIndex((s) => s.id === currentStep);
   const progress = ((currentStepIndex + 1) / STEPS.length) * 100;
@@ -91,7 +129,7 @@ function CreateAdPageContent() {
     setSelectedCharacter(character);
   };
 
-  if (teamsLoading) {
+  if (teamsLoading || isLoadingFromUrl) {
     return (
       <div className="min-h-screen bg-surface-dark flex items-center justify-center">
         <Spinner size="lg" color="primary" />

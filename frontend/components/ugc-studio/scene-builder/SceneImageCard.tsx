@@ -128,6 +128,7 @@ export function SceneImageCard({
         scriptId,
         sceneId: scene.id,
         sceneNumber: scene.sceneNumber,
+        characterId,
         userRefinement: localRefinement || undefined,
         supportingImageKeys: supportingImageKeys,
       });
@@ -150,6 +151,9 @@ export function SceneImageCard({
     }
   };
 
+  const isCurrentlyGenerating = isGenerating || generation?.status === "generating";
+  const isRegenerating = generation?.status === "regenerating";
+
   // Collapsed view
   if (!isExpanded) {
     return (
@@ -157,9 +161,13 @@ export function SceneImageCard({
         isPressable
         onPress={() => setIsExpanded(true)}
         className={`bg-surface-elevated border transition-all ${
-          isComplete
-            ? "border-accent-400/30 hover:border-accent-400/50"
-            : "border-border-base hover:border-accent-400/30"
+          isRegenerating
+            ? "border-amber-500"
+            : isCurrentlyGenerating
+              ? "border-blue-500 animate-pulse"
+              : isComplete
+                ? "border-accent-400/30 hover:border-accent-400/50"
+                : "border-border-base hover:border-accent-400/30"
         }`}
       >
         <CardBody className="p-3">
@@ -194,7 +202,12 @@ export function SceneImageCard({
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
-              {isComplete && selectedImageKey && (selectedImageUrl || generation?.generatedImages) ? (
+              {isRegenerating ? (
+                <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-amber-500/20 border border-amber-500/30">
+                  <Icon icon="solar:refresh-bold" className="animate-spin text-amber-400" width={14} />
+                  <span className="text-xs font-medium text-amber-400">Regenerating</span>
+                </div>
+              ) : isComplete && selectedImageKey && (selectedImageUrl || generation?.generatedImages) ? (
                 <div className="w-10 h-12 rounded-md overflow-hidden bg-surface-base relative ring-2 ring-accent-400">
                   <img
                     src={
@@ -210,7 +223,6 @@ export function SceneImageCard({
                   </div>
                 </div>
               ) : generation?.status === "completed" && generation.generatedImages ? (
-                // Images ready but not selected - show alert state
                 <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-amber-500/20 border border-amber-500/30">
                   <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
                   <span className="text-xs font-medium text-amber-400">Select image</span>
@@ -239,7 +251,13 @@ export function SceneImageCard({
 
   // Expanded view
   return (
-    <Card className="bg-surface-elevated border border-accent-400/30">
+    <Card className={`bg-surface-elevated border ${
+      isRegenerating
+        ? "border-amber-500"
+        : isCurrentlyGenerating
+          ? "border-blue-500 animate-pulse"
+          : "border-accent-400/30"
+    }`}>
       <CardBody className="p-4 space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -327,6 +345,14 @@ export function SceneImageCard({
           />
         </div>
 
+        {/* Regenerating status */}
+        {isRegenerating && (
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+            <Icon icon="solar:refresh-bold" className="animate-spin text-amber-400" width={20} />
+            <span className="text-sm text-amber-400 font-medium">Regenerating image...</span>
+          </div>
+        )}
+
         {/* Generation status or gallery */}
         {generation?.status === "generating" && (
           <div className="space-y-2">
@@ -352,8 +378,8 @@ export function SceneImageCard({
           </div>
         )}
 
-        {/* Show generated/selected image */}
-        {(selectedImageUrl || (generation?.status === "completed" && generation.generatedImages?.[0])) && (
+        {/* Show generated/selected image (hide when regenerating) */}
+        {!isRegenerating && (selectedImageUrl || (generation?.status === "completed" && generation.generatedImages?.[0])) && (
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-xs text-text-muted">
               <Icon icon="solar:gallery-check-bold" width={14} />
@@ -377,7 +403,7 @@ export function SceneImageCard({
         {/* Actions */}
         <div className="flex items-center justify-between pt-2 border-t border-border-base">
           <div className="flex items-center gap-2">
-            {isComplete && (
+            {isComplete && !isRegenerating && (
               <span className="text-xs text-accent-400 flex items-center gap-1">
                 <Icon icon="solar:check-circle-bold" width={14} />
                 Image selected
@@ -386,24 +412,24 @@ export function SceneImageCard({
           </div>
           <Button
             className={
-              (generation?.status === "completed" || selectedImageUrl)
+              (generation?.status === "completed" || selectedImageUrl) && !isRegenerating
                 ? "border-border-base text-text-secondary"
                 : "bg-accent-400 text-white"
             }
-            variant={(generation?.status === "completed" || selectedImageUrl) ? "bordered" : "solid"}
+            variant={(generation?.status === "completed" || selectedImageUrl) && !isRegenerating ? "bordered" : "solid"}
             size="sm"
             onPress={handleGenerate}
             isLoading={isGenerating || generation?.status === "generating"}
-            isDisabled={generation?.status === "generating"}
+            isDisabled={generation?.status === "generating" || isRegenerating}
             startContent={
-              (generation?.status === "completed" || selectedImageUrl) ? (
+              !isRegenerating && (generation?.status === "completed" || selectedImageUrl) ? (
                 <Icon icon="solar:refresh-bold" width={14} />
-              ) : (
+              ) : !isRegenerating ? (
                 <Icon icon="solar:magic-stick-3-bold" width={14} />
-              )
+              ) : null
             }
           >
-            {(generation?.status === "completed" || selectedImageUrl) ? "Regenerate" : "Generate Image"}
+            {isRegenerating ? "Regenerating..." : (generation?.status === "completed" || selectedImageUrl) ? "Regenerate" : "Generate Image"}
           </Button>
         </div>
       </CardBody>

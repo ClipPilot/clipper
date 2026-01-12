@@ -39,13 +39,14 @@ export class SceneBuilderController {
         scriptId,
         sceneId,
         sceneNumber,
+        characterId,
         userRefinement,
         supportingImageKeys,
       } = req.body;
 
-      if (!teamId || !scriptId || !sceneId || sceneNumber === undefined) {
+      if (!teamId || !scriptId || !sceneId || sceneNumber === undefined || !characterId) {
         return res.status(400).json({
-          error: "teamId, scriptId, sceneId, and sceneNumber are required",
+          error: "teamId, scriptId, sceneId, sceneNumber, and characterId are required",
         });
       }
 
@@ -91,7 +92,7 @@ export class SceneBuilderController {
           script_id: scriptId,
           scene_id: sceneId,
           scene_number: sceneNumber,
-          character_id: script.character_id,
+          character_id: characterId,
           prompt,
           user_refinement: userRefinement || null,
           supporting_image_keys: supportingImageKeys || [],
@@ -109,7 +110,7 @@ export class SceneBuilderController {
         scriptId,
         sceneId,
         sceneNumber,
-        characterId: script.character_id,
+        characterId,
         sceneData: {
           sceneType: sceneData.sceneType,
           action: sceneData.action,
@@ -144,9 +145,10 @@ export class SceneBuilderController {
    */
   async generateAllSceneImages(req: AuthRequest, res: Response) {
     try {
-      const { teamId, scriptId, scenes } = req.body as {
+      const { teamId, scriptId, characterId, scenes } = req.body as {
         teamId: number;
         scriptId: string;
+        characterId: number;
         scenes: Array<{
           sceneId: string;
           sceneNumber: number;
@@ -155,9 +157,9 @@ export class SceneBuilderController {
         }>;
       };
 
-      if (!teamId || !scriptId || !scenes?.length) {
+      if (!teamId || !scriptId || !characterId || !scenes?.length) {
         return res.status(400).json({
-          error: "teamId, scriptId, and scenes array are required",
+          error: "teamId, scriptId, characterId, and scenes array are required",
         });
       }
 
@@ -211,7 +213,7 @@ export class SceneBuilderController {
             script_id: scriptId,
             scene_id: sceneRequest.sceneId,
             scene_number: sceneRequest.sceneNumber,
-            character_id: script.character_id,
+            character_id: characterId,
             prompt,
             user_refinement: sceneRequest.userRefinement || null,
             supporting_image_keys: sceneRequest.supportingImageKeys || [],
@@ -228,7 +230,7 @@ export class SceneBuilderController {
           scriptId,
           sceneId: sceneRequest.sceneId,
           sceneNumber: sceneRequest.sceneNumber,
-          characterId: script.character_id,
+          characterId,
           sceneData: {
             sceneType: sceneData.sceneType,
             action: sceneData.action,

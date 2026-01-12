@@ -127,7 +127,7 @@ class UGCScriptAPI {
 
   async getFullScript(
     scriptId: string
-  ): Promise<{ success: boolean; scripts: UGCScript[]; selectedVariantIndex: number }> {
+  ): Promise<{ success: boolean; scripts: UGCScript[]; selectedVariantIndex: number; characterId?: number }> {
     const response = await apiFetch(`${API_URL}/ugc/script/${scriptId}/full`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },

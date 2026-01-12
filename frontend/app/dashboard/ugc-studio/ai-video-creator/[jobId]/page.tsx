@@ -109,10 +109,9 @@ export default function VideoJobPage() {
   };
 
   const handleRegenerate = () => {
-    // Clear current status and redirect to create new video
-    // The user will need to go through the flow again
+    // Redirect to shot-plan step so user can regenerate images without starting over
     if (scriptId) {
-      router.push(`/dashboard/ugc-studio/ai-video-creator/create?scriptId=${scriptId}`);
+      router.push(`/dashboard/ugc-studio/ai-video-creator/create?scriptId=${scriptId}&step=shot-plan`);
     } else {
       router.push("/dashboard/ugc-studio/ai-video-creator/create");
     }

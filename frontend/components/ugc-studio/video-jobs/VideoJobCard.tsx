@@ -25,10 +25,10 @@ interface VideoJobCardProps {
   onClick: () => void;
 }
 
-function getStatusColor(status: UGCVideoJob["status"]) {
+function getStatusColor(status: UGCVideoJob["status"], isFinalized: boolean) {
   switch (status) {
     case "completed":
-      return "success";
+      return isFinalized ? "success" : "warning";
     case "generating":
       return "primary";
     case "queued":
@@ -40,10 +40,10 @@ function getStatusColor(status: UGCVideoJob["status"]) {
   }
 }
 
-function getStatusLabel(status: UGCVideoJob["status"]) {
+function getStatusLabel(status: UGCVideoJob["status"], isFinalized: boolean) {
   switch (status) {
     case "completed":
-      return "Ready";
+      return isFinalized ? "Finalized" : "Ready to Finalize";
     case "generating":
       return "Generating";
     case "queued":
@@ -66,6 +66,7 @@ export const VideoJobCard = memo(
     const videoRef = useRef<HTMLVideoElement>(null);
 
     const isProcessing = job.status === "generating" || job.status === "queued";
+    const isFinalized = job.status === "completed" && !!job.clipId;
 
     return (
       <Card
@@ -127,11 +128,11 @@ export const VideoJobCard = memo(
           <div className="absolute top-2 left-2">
             <Chip
               size="sm"
-              color={getStatusColor(job.status)}
+              color={getStatusColor(job.status, isFinalized)}
               variant="flat"
               className="text-[10px] h-5 backdrop-blur-sm"
             >
-              {getStatusLabel(job.status)}
+              {getStatusLabel(job.status, isFinalized)}
             </Chip>
           </div>
 
@@ -195,5 +196,6 @@ export const VideoJobCard = memo(
     prev.job.id === next.job.id &&
     prev.job.status === next.job.status &&
     prev.job.progress === next.job.progress &&
-    prev.job.finalVideoUrl === next.job.finalVideoUrl
+    prev.job.finalVideoUrl === next.job.finalVideoUrl &&
+    prev.job.clipId === next.job.clipId
 );

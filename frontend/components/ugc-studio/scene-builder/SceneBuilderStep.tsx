@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAtom, useAtomValue } from "jotai";
 import { Card, CardBody, Button, Spinner, Progress } from "@heroui/react";
 import { Icon } from "@iconify/react";
@@ -61,7 +61,10 @@ export function SceneBuilderStep({
     syncVariantIndex();
   }, [scriptId, selectedVariantIndex]);
 
-  // Load saved scene images on mount (unless loading fresh from existing script)
+  // Track previous characterId to detect character changes during session
+  const prevCharacterIdRef = useRef<number | null>(null);
+
+  // Load saved scene images on mount (unless character differs from script's original)
   useEffect(() => {
     const loadSavedImages = async () => {
       // Check if we should skip loading (e.g., user selected existing script for fresh start)
@@ -73,7 +76,27 @@ export function SceneBuilderStep({
         return;
       }
 
+      // If character changed during session, clear existing images
+      if (prevCharacterIdRef.current !== null && prevCharacterIdRef.current !== characterId) {
+        console.log("[SceneBuilder] Character changed during session, clearing scene images");
+        setSceneImages({});
+        setLoading(false);
+        prevCharacterIdRef.current = characterId;
+        return;
+      }
+      prevCharacterIdRef.current = characterId;
+
       try {
+        // First check if the script's original character matches the current selection
+        const scriptResponse = await ugcScriptAPI.getFullScript(scriptId);
+        if (scriptResponse.success && scriptResponse.characterId && scriptResponse.characterId !== characterId) {
+          console.log("[SceneBuilder] Script character differs from selected character, skipping saved images");
+          setSceneImages({});
+          setLoading(false);
+          return;
+        }
+
+        // Load saved images only if character matches
         const response = await sceneBuilderAPI.getSceneImages(scriptId);
         if (response.success && response.sceneImages) {
           const newState: Record<string, SceneImageState> = {};
@@ -82,7 +105,7 @@ export function SceneBuilderStep({
               newState[sceneId] = {
                 status: "completed",
                 selectedImageKey: sceneImage.image_key,
-                selectedImageUrl: sceneImage.imageUrl, // Store the presigned URL for rendering
+                selectedImageUrl: sceneImage.imageUrl,
               };
             }
           );
@@ -96,7 +119,7 @@ export function SceneBuilderStep({
     };
 
     loadSavedImages();
-  }, [scriptId]);
+  }, [scriptId, characterId, setSceneImages]);
 
   const handleGenerationStart = (sceneId: string, jobId: string) => {
     setSceneImages((prev) => ({
@@ -160,18 +183,32 @@ export function SceneBuilderStep({
   };
 
   const handleGenerateAll = async () => {
-    const scenesToGenerate = scenes.filter(
-      (scene) => !sceneImages[scene.id]?.generatedImages?.length
-    );
-
-    if (scenesToGenerate.length === 0) return;
+    if (scenes.length === 0) return;
 
     setGeneratingAll(true);
+
+    // Clear existing images and set regenerating state for all scenes
+    setSceneImages((prev) => {
+      const cleared: Record<string, SceneImageState> = {};
+      for (const scene of scenes) {
+        cleared[scene.id] = {
+          ...prev[scene.id],
+          status: "regenerating",
+          selectedImageKey: undefined,
+          selectedImageUrl: undefined,
+          selectedImageIndex: undefined,
+          generatedImages: undefined,
+        };
+      }
+      return cleared;
+    });
+
     try {
       const response = await sceneBuilderAPI.generateAllSceneImages({
         teamId,
         scriptId,
-        scenes: scenesToGenerate.map((scene) => ({
+        characterId,
+        scenes: scenes.map((scene) => ({
           sceneId: scene.id,
           sceneNumber: scene.sceneNumber,
           userRefinement: sceneImages[scene.id]?.userRefinement,
@@ -179,9 +216,8 @@ export function SceneBuilderStep({
         })),
       });
 
-      // Start tracking all jobs
       response.jobIds.forEach((jobId, idx) => {
-        const scene = scenesToGenerate[idx];
+        const scene = scenes[idx];
         if (scene) {
           handleGenerationStart(scene.id, jobId);
         }
@@ -310,19 +346,21 @@ export function SceneBuilderStep({
           const sceneState = sceneImages[scene.id] || {
             status: "idle" as const,
           };
-          const generation: SceneImageGeneration | undefined = sceneState.jobId
-            ? {
-                jobId: sceneState.jobId,
-                status: sceneState.status as
-                  | "queued"
-                  | "generating"
-                  | "completed"
-                  | "failed",
-                progress: 0,
-                progressMessage: "",
-                generatedImages: sceneState.generatedImages,
-              }
-            : undefined;
+          const generation: SceneImageGeneration | undefined =
+            sceneState.jobId || sceneState.status === "regenerating"
+              ? {
+                  jobId: sceneState.jobId || "",
+                  status: sceneState.status as
+                    | "queued"
+                    | "generating"
+                    | "regenerating"
+                    | "completed"
+                    | "failed",
+                  progress: 0,
+                  progressMessage: sceneState.status === "regenerating" ? "Regenerating..." : "",
+                  generatedImages: sceneState.generatedImages,
+                }
+              : undefined;
 
           return (
             <SceneImageCard

@@ -8,7 +8,7 @@ export interface SupportingImage {
 
 export interface SceneImageGeneration {
   jobId: string;
-  status: "queued" | "generating" | "completed" | "failed";
+  status: "queued" | "generating" | "regenerating" | "completed" | "failed";
   progress: number;
   progressMessage: string;
   generatedImages?: GeneratedImage[];
