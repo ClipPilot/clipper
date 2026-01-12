@@ -8,6 +8,19 @@ fal.config({
 export type ShotType = "a-roll" | "b-roll" | "mixed";
 export type KlingDuration = 5 | 10;
 
+export const PRODUCT_NEGATIVE_PROMPT =
+  "distortion, warping, morphing, blur, text change, label deformation, " +
+  "stretching, proportion change, shape shifting, logo distortion, " +
+  "text overlay, watermark, low quality, blurry, out of focus";
+
+export const PRODUCT_STABILITY_MODIFIERS =
+  "Preserve product shape. Maintain label text. Keep proportions identical. " +
+  "Stable camera movement. No distortion.";
+
+export const GENTLE_MOTION_MODIFIERS =
+  "Subtle movement. Slow and controlled. Micro-motion only. " +
+  "Maintain silhouette. Keep scale consistent.";
+
 export interface ImageToVideoOptions {
   imageUrl: string;
   prompt: string;
@@ -70,14 +83,14 @@ export function buildKlingPrompt(
   action: string
 ): string {
   if (shotType === "a-roll") {
-    return `${cinematicPrompt}. The person speaks naturally to camera with ${emotion} expression. Subtle, realistic lip movements - not exaggerated. Natural micro-expressions, gentle head movements, relaxed eye contact. Authentic UGC-style, conversational and relaxed.`;
+    return `${cinematicPrompt}. The person speaks naturally to camera with ${emotion} expression. Subtle, realistic lip movements - not exaggerated. Natural micro-expressions, gentle head movements, relaxed eye contact. Authentic UGC-style, conversational and relaxed. ${GENTLE_MOTION_MODIFIERS}`;
   }
 
   if (shotType === "b-roll") {
-    return `${cinematicPrompt}. Smooth product showcase motion, subtle camera movement, professional product photography style with gentle rotation or reveal. Clean background, focused lighting on product.`;
+    return `${cinematicPrompt}. Smooth product showcase with subtle, slow camera movement. Professional product photography style with gentle rotation or reveal. Clean background, focused lighting on product. ${PRODUCT_STABILITY_MODIFIERS} ${GENTLE_MOTION_MODIFIERS}`;
   }
 
-  return `${cinematicPrompt}. Person performs action: ${action}. Natural body movement, ${emotion} expression, hands interacting with product. No talking, action-focused.`;
+  return `${cinematicPrompt}. Person performs action: ${action}. Natural body movement, ${emotion} expression, hands interacting with product. No talking, action-focused. ${PRODUCT_STABILITY_MODIFIERS}`;
 }
 
 export async function generateVideo(
@@ -106,7 +119,7 @@ export async function generateVideo(
         prompt: finalPrompt,
         start_image_url: imageUrl,
         duration: String(duration) as "5" | "10",
-        negative_prompt: negativePrompt || "blur, distort, low quality, watermark, text",
+        negative_prompt: negativePrompt || PRODUCT_NEGATIVE_PROMPT,
         generate_audio: generateAudio,
       },
       logs: true,
@@ -316,4 +329,7 @@ export const klingService = {
   generateAvatar,
   generateAvatarWithRetry,
   buildKlingPrompt,
+  PRODUCT_NEGATIVE_PROMPT,
+  PRODUCT_STABILITY_MODIFIERS,
+  GENTLE_MOTION_MODIFIERS,
 };
