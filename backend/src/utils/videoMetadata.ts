@@ -126,6 +126,9 @@ const IOS_VERSIONS = [
   "17.7.2", "17.7.1", "17.6.1", "17.5.1", "17.4.1",
 ];
 
+const EXPOSURE_MODES = [0, 0, 0, 0, 1];
+const WHITE_BALANCE_MODES = [0, 0, 0, 0, 1];
+
 const OTHER_DEVICES = [
   { make: "samsung", model: "SM-S928U" },
   { make: "samsung", model: "SM-S926U" },
@@ -145,17 +148,35 @@ const OTHER_DEVICES = [
 
 const generateRandomDate = (): string => {
   const daysAgo = Math.random() * 60;
-  return new Date(Date.now() - daysAgo * 86400000).toISOString();
+  const hoursOffset = Math.random() * 24;
+  const minutesOffset = Math.random() * 60;
+  const secondsOffset = Math.random() * 60;
+  const timestamp = Date.now() - (daysAgo * 86400000) - (hoursOffset * 3600000) - (minutesOffset * 60000) - (secondsOffset * 1000);
+  return new Date(timestamp).toISOString();
 };
 
 const generateRandomId = (): string => {
-  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 8);
+  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 8) + Date.now().toString(36);
+};
+
+const generateUUID = (): string => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16).toUpperCase();
+  });
+};
+
+const generateContentIdentifier = (): string => {
+  return `${generateUUID()}/${generateUUID()}`;
 };
 
 const generateIPhoneMetadata = () => {
   const device = IPHONE_DEVICES[Math.floor(Math.random() * IPHONE_DEVICES.length)];
   const lensInfo = device.lenses[Math.floor(Math.random() * device.lenses.length)];
   const software = IOS_VERSIONS[Math.floor(Math.random() * IOS_VERSIONS.length)];
+  const exposureMode = EXPOSURE_MODES[Math.floor(Math.random() * EXPOSURE_MODES.length)];
+  const whiteBalanceMode = WHITE_BALANCE_MODES[Math.floor(Math.random() * WHITE_BALANCE_MODES.length)];
 
   return {
     make: "Apple",
@@ -163,6 +184,9 @@ const generateIPhoneMetadata = () => {
     software,
     lensModel: lensInfo.lens,
     focalLength: lensInfo.focalLength,
+    exposureMode,
+    whiteBalanceMode,
+    contentIdentifier: generateContentIdentifier(),
     handlerVideo: "Core Media Video",
     handlerAudio: "Core Media Audio",
     brand: "qt  ",
@@ -211,6 +235,9 @@ export const generateJumbledMetadata = (): string[] => {
   if (device.lensModel) {
     metadata.push(`-metadata`, `com.apple.quicktime.camera.lens_model=${device.lensModel}`);
     metadata.push(`-metadata`, `com.apple.quicktime.camera.focal_length.35mm_equivalent=${device.focalLength}`);
+    metadata.push(`-metadata`, `com.apple.quicktime.camera.exposure_mode=${device.exposureMode}`);
+    metadata.push(`-metadata`, `com.apple.quicktime.camera.white_balance_mode=${device.whiteBalanceMode}`);
+    metadata.push(`-metadata`, `com.apple.quicktime.content.identifier=${device.contentIdentifier}`);
   }
 
   return metadata;
@@ -243,6 +270,9 @@ export const generateJumbledMetadataString = (): string => {
   if (device.lensModel) {
     parts.push(`-metadata "com.apple.quicktime.camera.lens_model=${device.lensModel}"`);
     parts.push(`-metadata "com.apple.quicktime.camera.focal_length.35mm_equivalent=${device.focalLength}"`);
+    parts.push(`-metadata "com.apple.quicktime.camera.exposure_mode=${device.exposureMode}"`);
+    parts.push(`-metadata "com.apple.quicktime.camera.white_balance_mode=${device.whiteBalanceMode}"`);
+    parts.push(`-metadata "com.apple.quicktime.content.identifier=${device.contentIdentifier}"`);
   }
 
   return parts.join(" ");
