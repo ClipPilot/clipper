@@ -4,6 +4,7 @@ import { execSync } from "child_process";
 import { s3Service } from "./s3.service";
 import { elevenLabsService } from "./elevenlabs.service";
 import { klingService, buildKlingPrompt, ShotType } from "./kling.service";
+import { generateJumbledMetadataString } from "../utils/videoMetadata";
 
 const MAX_AUDIO_DURATION = 10;
 const PARALLEL_SCENES = 2;
@@ -19,34 +20,6 @@ const AUDIO_BITRATE = "192k";
 // vsync cfr = constant frame rate required for mobile playback
 const VIDEO_ENCODE_SETTINGS = "-c:v libx264 -preset fast -crf 23 -profile:v main -level 3.1 -pix_fmt yuv420p -r 30 -g 30 -keyint_min 30 -vsync cfr";
 
-// Generate jumbled metadata to prevent duplicate detection
-// Covers: encoder signatures, timestamps, software IDs, handler names, device info, and more
-const generateJumbledMetadata = (): string => {
-  const encoders = ["Lavf58.76.100", "Lavf59.27.100", "Lavf60.3.100", "Lavf60.16.100", "Lavf61.1.100"];
-  const handlerNames = ["VideoHandler", "Core Media Video", "Apple Video Media Handler", "ISO Media file"];
-  const majorBrands = ["isom", "mp42", "iso5", "avc1", "M4V "];
-  const devices = [
-    { make: "Apple", model: "iPhone 14 Pro" },
-    { make: "Apple", model: "iPhone 15 Pro Max" },
-    { make: "Apple", model: "iPhone 13" },
-    { make: "Samsung", model: "Galaxy S23 Ultra" },
-    { make: "Samsung", model: "Galaxy S24" },
-    { make: "Google", model: "Pixel 8 Pro" },
-    { make: "Google", model: "Pixel 7" },
-    { make: "OnePlus", model: "12" },
-    { make: "Sony", model: "Xperia 1 V" },
-    { make: "", model: "" },
-  ];
-
-  const randomEncoder = encoders[Math.floor(Math.random() * encoders.length)];
-  const randomHandler = handlerNames[Math.floor(Math.random() * handlerNames.length)];
-  const randomBrand = majorBrands[Math.floor(Math.random() * majorBrands.length)];
-  const randomDevice = devices[Math.floor(Math.random() * devices.length)];
-  const randomDate = new Date(Date.now() - Math.random() * 86400000 * 60).toISOString();
-  const randomId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 8);
-
-  return `-metadata encoder="${randomEncoder}" -metadata creation_time="${randomDate}" -metadata comment="${randomId}" -metadata title="" -metadata artist="" -metadata album="" -metadata description="" -metadata copyright="" -metadata author="" -metadata software="" -metadata make="${randomDevice.make}" -metadata model="${randomDevice.model}" -metadata:s:v:0 handler_name="${randomHandler}" -metadata:s:a:0 handler_name="SoundHandler" -brand ${randomBrand}`;
-};
 
 /**
  * Normalize a video clip to have consistent video and audio parameters.
@@ -94,7 +67,7 @@ function mergeUGCClips(clips: string[], outputPath: string): void {
   // Add jumbled metadata to prevent duplicate detection on social platforms
   const cmd = `ffmpeg -y -f concat -safe 0 -i "${listPath}" \
     -c copy -movflags +faststart \
-    ${generateJumbledMetadata()} \
+    ${generateJumbledMetadataString()} \
     "${outputPath}"`;
 
   console.log(`[MERGE] Concatenating ${normalizedPaths.length} normalized clips...`);

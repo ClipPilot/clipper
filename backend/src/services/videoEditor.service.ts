@@ -3,6 +3,7 @@ import ffmpeg from "fluent-ffmpeg";
 import fs from "fs";
 import puppeteer from "puppeteer";
 import path from "path";
+import { generateJumbledMetadata } from "../utils/videoMetadata";
 
 interface VideoMetadata {
   width: number;
@@ -53,61 +54,6 @@ const MOBILE_VIDEO_SETTINGS = [
   "-vsync cfr",
 ];
 
-// Generate jumbled metadata to prevent duplicate detection
-// Covers: encoder signatures, timestamps, software IDs, handler names, device info, and more
-const generateJumbledMetadata = (): string[] => {
-  // Encoder signatures (mimics different FFmpeg versions)
-  const encoders = ["Lavf58.76.100", "Lavf59.27.100", "Lavf60.3.100", "Lavf60.16.100", "Lavf61.1.100"];
-  const handlerNames = ["VideoHandler", "Core Media Video", "Apple Video Media Handler", "ISO Media file"];
-  const majorBrands = ["isom", "mp42", "iso5", "avc1", "M4V "];
-
-  // Device signatures (common phones/cameras)
-  const devices = [
-    { make: "Apple", model: "iPhone 14 Pro" },
-    { make: "Apple", model: "iPhone 15 Pro Max" },
-    { make: "Apple", model: "iPhone 13" },
-    { make: "Samsung", model: "Galaxy S23 Ultra" },
-    { make: "Samsung", model: "Galaxy S24" },
-    { make: "Google", model: "Pixel 8 Pro" },
-    { make: "Google", model: "Pixel 7" },
-    { make: "OnePlus", model: "12" },
-    { make: "Sony", model: "Xperia 1 V" },
-    { make: "", model: "" }, // Sometimes no device info
-  ];
-
-  const randomEncoder = encoders[Math.floor(Math.random() * encoders.length)];
-  const randomHandler = handlerNames[Math.floor(Math.random() * handlerNames.length)];
-  const randomBrand = majorBrands[Math.floor(Math.random() * majorBrands.length)];
-  const randomDevice = devices[Math.floor(Math.random() * devices.length)];
-
-  // Random date within past 60 days
-  const randomDate = new Date(Date.now() - Math.random() * 86400000 * 60).toISOString();
-  // Random unique ID for this render
-  const randomId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 8);
-
-  return [
-    // Core metadata
-    `-metadata`, `encoder=${randomEncoder}`,
-    `-metadata`, `creation_time=${randomDate}`,
-    `-metadata`, `comment=${randomId}`,
-    // Clear identifying info
-    `-metadata`, `title=`,
-    `-metadata`, `artist=`,
-    `-metadata`, `album=`,
-    `-metadata`, `description=`,
-    `-metadata`, `copyright=`,
-    `-metadata`, `author=`,
-    // Device identifiers (randomized)
-    `-metadata`, `software=`,
-    `-metadata`, `make=${randomDevice.make}`,
-    `-metadata`, `model=${randomDevice.model}`,
-    // Track handler names (important for fingerprinting)
-    `-metadata:s:v:0`, `handler_name=${randomHandler}`,
-    `-metadata:s:a:0`, `handler_name=SoundHandler`,
-    // Container-level brand (MP4 box structure)
-    `-brand`, randomBrand,
-  ];
-};
 
 export const compressVideoForUpload = async (
   inputPath: string,
