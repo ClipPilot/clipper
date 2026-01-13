@@ -54,7 +54,6 @@ const MOBILE_VIDEO_SETTINGS = [
   "-vsync cfr",
 ];
 
-
 export const compressVideoForUpload = async (
   inputPath: string,
   outputPath: string
@@ -234,7 +233,9 @@ export const cutClip = (
 
   // Validate paths before starting
   if (!input || !output) {
-    const error = new Error(`[CUT] Invalid paths: input="${input}", output="${output}"`);
+    const error = new Error(
+      `[CUT] Invalid paths: input="${input}", output="${output}"`
+    );
     console.error(error.message);
     return Promise.reject(error);
   }
@@ -266,7 +267,6 @@ export const cutClip = (
         "-movflags +faststart",
         ...generateJumbledMetadata(),
       ])
-      .save(output)
       .on("end", () => {
         if (!fs.existsSync(output)) {
           return reject(
@@ -290,7 +290,7 @@ export const cutClip = (
         console.error(`[CUT] Failed for output "${output}": ${err.message}`);
         reject(err);
       })
-      .run();
+      .save(output);
   });
 };
 export const extractAudio = (
@@ -359,7 +359,9 @@ export const mergeClipsGpu = async (clips: string[], outputPath: string) => {
       throw new Error(`[MERGE-GPU] Input clip not found: ${clip}`);
     }
     const stats = fs.statSync(clip);
-    console.log(`[MERGE-GPU] Input: ${clip} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`);
+    console.log(
+      `[MERGE-GPU] Input: ${clip} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`
+    );
   }
 
   const normalizedClips: string[] = [];
@@ -390,7 +392,9 @@ export const mergeClipsGpu = async (clips: string[], outputPath: string) => {
         fs.unlinkSync(listPath);
         normalizedClips.forEach((c) => fs.existsSync(c) && fs.unlinkSync(c));
         const finalStats = fs.statSync(outputPath);
-        console.log(`[MERGE-GPU] Success: ${outputPath} (${(finalStats.size / 1024 / 1024).toFixed(2)}MB)`);
+        console.log(
+          `[MERGE-GPU] Success: ${outputPath} (${(finalStats.size / 1024 / 1024).toFixed(2)}MB)`
+        );
         resolve(outputPath);
       })
       .on("error", (err) => {
