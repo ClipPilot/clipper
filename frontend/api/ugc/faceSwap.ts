@@ -33,17 +33,47 @@ class FaceSwapAPI {
     formData.append("swapType", data.swapType);
     formData.append("spliceWithOriginal", data.spliceWithOriginal ? "true" : "false");
 
-    const response = await apiFetch(`${this.baseUrl}/ugc-face-swap`, {
-      method: "POST",
-      body: formData,
-    });
+    const MAX_RETRIES = 2;
+    const RETRY_DELAY_MS = 3000;
+    let lastError: Error | null = null;
+    let response: Response | null = null;
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Failed to create face swap job");
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        if (attempt > 0) {
+          console.log(`Retrying upload (attempt ${attempt + 1}/${MAX_RETRIES + 1})...`);
+          await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+        }
+
+        response = await apiFetch(`${this.baseUrl}/ugc-face-swap`, {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          const err = new Error(error.error || "Failed to create face swap job");
+          if (response.status >= 500 && attempt < MAX_RETRIES) {
+            throw err;
+          }
+          throw err;
+        }
+
+        return response.json();
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error("Upload failed");
+        const isNetworkError = err instanceof TypeError;
+        const isServerError = response && response.status >= 500;
+        if (!isNetworkError && !isServerError) {
+          break;
+        }
+        if (attempt < MAX_RETRIES) {
+          console.warn(`Upload attempt ${attempt + 1} failed:`, lastError.message);
+        }
+      }
     }
 
-    return response.json();
+    throw lastError || new Error("Upload failed after retries");
   }
 
   async getTeamJobs(teamId: number): Promise<GetTeamJobsResponse> {
