@@ -104,14 +104,51 @@ function UGCStudioContent({
       // Always include original video before/after segments, even with single segment
       formData.append("spliceWithOriginal", "true");
 
-      const response = await apiFetch(`${API_URL}/comfy/ugc-face-swap`, {
-        method: "POST",
-        body: formData,
-      });
+      const MAX_RETRIES = 2;
+      const RETRY_DELAY_MS = 3000;
+      let lastError: Error | null = null;
+      let response: Response | null = null;
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to submit job");
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          if (attempt > 0) {
+            console.log(`Retrying upload (attempt ${attempt + 1}/${MAX_RETRIES + 1})...`);
+            await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+          }
+
+          response = await apiFetch(`${API_URL}/comfy/ugc-face-swap`, {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            const error = new Error(errorData.error || "Failed to submit job");
+            // Only retry on 5xx server errors (likely S3/infra issues), not 4xx client errors
+            if (response.status >= 500 && attempt < MAX_RETRIES) {
+              throw error;
+            }
+            throw error;
+          }
+
+          lastError = null;
+          break;
+        } catch (err) {
+          lastError = err instanceof Error ? err : new Error("Upload failed");
+          // Only retry on network errors or 5xx - break out for other errors
+          const isNetworkError = err instanceof TypeError;
+          const isServerError = response && response.status >= 500;
+          if (!isNetworkError && !isServerError) {
+            break;
+          }
+          if (attempt < MAX_RETRIES) {
+            console.warn(`Upload attempt ${attempt + 1} failed:`, lastError.message);
+          }
+        }
+      }
+
+      if (lastError || !response) {
+        throw lastError || new Error("Upload failed after retries");
       }
 
       const data = await response.json();
