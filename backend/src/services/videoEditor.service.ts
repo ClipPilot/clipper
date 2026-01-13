@@ -92,6 +92,7 @@ export const compressVideoForUpload = async (
           "-c:a aac",
           "-b:a 192k", // Higher audio quality
           "-movflags +faststart",
+          "-map_metadata -1", // Strip all metadata
         ])
         .save(outputPath)
         .on("progress", (progress) => {
@@ -207,8 +208,23 @@ export const cutClip = (
 ) => {
   const duration = end - start;
   console.log(
-    `[CUT] Cutting ${start}s-${end}s (${duration.toFixed(1)}s) from ${input}`
+    `[CUT] Cutting ${start.toFixed(3)}s-${end.toFixed(3)}s (${duration.toFixed(1)}s) from ${input} -> ${output}`
   );
+
+  // Validate paths before starting
+  if (!input || !output) {
+    const error = new Error(
+      `[CUT] Invalid paths: input="${input}", output="${output}"`
+    );
+    console.error(error.message);
+    return Promise.reject(error);
+  }
+
+  if (!fs.existsSync(input)) {
+    const error = new Error(`[CUT] Input file does not exist: ${input}`);
+    console.error(error.message);
+    return Promise.reject(error);
+  }
 
   return new Promise((resolve, reject) => {
     ffmpeg(input)
@@ -231,8 +247,8 @@ export const cutClip = (
         "aresample=async=1:first_pts=0",
         "-avoid_negative_ts make_zero",
         "-reset_timestamps 1",
+        "-map_metadata -1",
       ])
-      .save(output)
       .on("end", () => {
         if (!fs.existsSync(output)) {
           return reject(
@@ -253,10 +269,10 @@ export const cutClip = (
         resolve(output);
       })
       .on("error", (err) => {
-        console.error(`[CUT] Failed: ${err.message}`);
+        console.error(`[CUT] Failed for output "${output}": ${err.message}`);
         reject(err);
       })
-      .run();
+      .save(output);
   });
 };
 export const extractAudio = (
@@ -304,6 +320,7 @@ const normalizeClip = (input: string, output: string): Promise<string> => {
         "-reset_timestamps 1",
         "-start_at_zero",
         "-movflags +faststart",
+        "-map_metadata -1", // Strip all metadata
       ])
       .save(output)
       .on("end", () => {
@@ -325,7 +342,9 @@ export const mergeClipsGpu = async (clips: string[], outputPath: string) => {
       throw new Error(`[MERGE-GPU] Input clip not found: ${clip}`);
     }
     const stats = fs.statSync(clip);
-    console.log(`[MERGE-GPU] Input: ${clip} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`);
+    console.log(
+      `[MERGE-GPU] Input: ${clip} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`
+    );
   }
 
   const normalizedClips: string[] = [];
@@ -345,13 +364,20 @@ export const mergeClipsGpu = async (clips: string[], outputPath: string) => {
     ffmpeg()
       .input(listPath)
       .inputOptions(["-f concat", "-safe 0"])
-      .outputOptions(["-c copy", "-fflags +genpts", "-movflags +faststart"])
+      .outputOptions([
+        "-c copy",
+        "-fflags +genpts",
+        "-movflags +faststart",
+        "-map_metadata -1",
+      ])
       .save(outputPath)
       .on("end", () => {
         fs.unlinkSync(listPath);
         normalizedClips.forEach((c) => fs.existsSync(c) && fs.unlinkSync(c));
         const finalStats = fs.statSync(outputPath);
-        console.log(`[MERGE-GPU] Success: ${outputPath} (${(finalStats.size / 1024 / 1024).toFixed(2)}MB)`);
+        console.log(
+          `[MERGE-GPU] Success: ${outputPath} (${(finalStats.size / 1024 / 1024).toFixed(2)}MB)`
+        );
         resolve(outputPath);
       })
       .on("error", (err) => {
@@ -459,6 +485,7 @@ export const mergeClips = async (clips: string[], outputPath: string) => {
           "-b:a 128k",
           "-ar 48000",
           "-ac 2",
+          "-map_metadata -1", // Strip all metadata
         ]);
     } else {
       ffmpegCmd.outputOptions([
@@ -473,6 +500,7 @@ export const mergeClips = async (clips: string[], outputPath: string) => {
         "-b:a 128k",
         "-ar 48000",
         "-ac 2",
+        "-map_metadata -1", // Strip all metadata
       ]);
     }
 
@@ -673,6 +701,7 @@ export const addTextOverlayAtPosition = async (
           "-preset ultrafast",
           "-crf 23",
           "-c:a copy",
+          "-map_metadata -1", // Strip all metadata
         ])
         .save(outputPath)
         .on("end", () => {
@@ -732,6 +761,7 @@ export const addPreviewWatermark = async (
         "-preset ultrafast",
         "-crf 23",
         "-c:a copy",
+        "-map_metadata -1", // Strip all metadata
       ])
       .save(outputPath)
       .on("end", () => {
@@ -788,6 +818,7 @@ export const addTextOverlay = async (
           "-preset ultrafast",
           "-crf 23",
           "-c:a copy",
+          "-map_metadata -1", // Strip all metadata
         ])
         .save(outputPath)
         .on("end", () => {

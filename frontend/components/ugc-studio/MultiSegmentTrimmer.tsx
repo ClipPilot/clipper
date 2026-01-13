@@ -26,6 +26,8 @@ const SEGMENT_COLORS = [
   { border: "border-accent-400", bg: "bg-accent-400", handle: "bg-accent-400" },
   { border: "border-purple-500", bg: "bg-purple-500", handle: "bg-purple-500" },
   { border: "border-green-500", bg: "bg-green-500", handle: "bg-green-500" },
+  { border: "border-yellow-500", bg: "bg-yellow-500", handle: "bg-yellow-500" },
+  { border: "border-pink-500", bg: "bg-pink-500", handle: "bg-pink-500" },
 ];
 
 const FRAME_RATE = 30;
@@ -38,7 +40,7 @@ export function MultiSegmentTrimmer({
   segments,
   onSegmentsChange,
   maxTotalDuration = 50,
-  maxSegments = 3,
+  maxSegments = 5,
 }: MultiSegmentTrimmerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
@@ -62,6 +64,12 @@ export function MultiSegmentTrimmer({
     if (!videoFile || isDetectingFaces) return;
 
     setIsDetectingFaces(true);
+
+    addToast({
+      title: "Detecting faces...",
+      description: "This may take 1-3 minutes. Please wait.",
+      color: "primary",
+    });
 
     try {
       const formData = new FormData();

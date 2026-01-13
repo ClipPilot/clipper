@@ -146,3 +146,8 @@ output "gpu_sqs_queue_arn" {
   description = "ARN of the GPU processing SQS queue"
   value       = aws_sqs_queue.gpu_processing.arn
 }
+
+output "gpu_sqs_local_dev_queue_url" {
+  description = "URL of the local dev GPU processing queue (for running gpu-worker locally)"
+  value       = aws_sqs_queue.gpu_processing_local_dev.url
+}

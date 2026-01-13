@@ -44,6 +44,7 @@ export const trimVideo = async (
         "-c:a aac",
         "-b:a 128k",
         "-movflags +faststart",
+        "-map_metadata -1", // Strip all metadata
       ])
       .save(outputPath)
       .on("end", () => {

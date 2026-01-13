@@ -5,6 +5,7 @@ import { comfyJobs } from "@clipper/shared-db/src/schema";
 import { s3Service } from "../services/s3.service";
 import { gpuSqsService, SwapType } from "../services/gpuSqs.service";
 import { cutClip, getVideoDuration } from "../services/videoEditor.service";
+import { createSceneAwareChunks } from "../services/sceneChunker.service";
 import { emitComfyJobUpdate } from "../services/socket.service";
 import { getTeamUsage } from "../middleware/subscription.middleware";
 import { teamService } from "../services/team.service";
@@ -14,6 +15,7 @@ import crypto from "crypto";
 import path from "path";
 import fs from "fs";
 import "multer";
+import { TEMP_DIR } from "../utils/tempCleanup";
 
 const UGC_CREDIT_COST = 5;
 const CHUNK_DURATION = 10;
@@ -96,9 +98,7 @@ export class ComfyController {
         return res.status(400).json({ error: "Invalid video file type" });
       }
 
-      const tempDir = path.join(process.cwd(), "temp");
-      if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
-      tempVideoPath = path.join(tempDir, `${crypto.randomUUID()}.mp4`);
+      tempVideoPath = path.join(TEMP_DIR, `${crypto.randomUUID()}.mp4`);
       fs.writeFileSync(tempVideoPath, video.buffer);
 
       let segments: SegmentInput[];
@@ -108,8 +108,8 @@ export class ComfyController {
         segments = [{ start: parseFloat(startTime) || 0, end: parseFloat(endTime) || 0 }];
       }
 
-      if (segments.length === 0 || segments.length > 3) {
-        return res.status(400).json({ error: "Must provide 1-3 segments" });
+      if (segments.length === 0 || segments.length > 5) {
+        return res.status(400).json({ error: "Must provide 1-5 segments" });
       }
 
       let totalDuration = 0;
@@ -159,32 +159,19 @@ export class ComfyController {
       await teamService.incrementTeamUsage(parseInt(teamId), UGC_CREDIT_COST);
       console.log(`[comfy] Charged ${UGC_CREDIT_COST} credits upfront to team ${teamId}`);
 
+      // Scene-aware chunking: detect scene boundaries and combine to ~10s chunks
+      // Falls back to blind 10s chunking if scene detection fails
       for (let i = 0; i < segments.length; i++) {
-        const segPath = path.join(tempDir, `${crypto.randomUUID()}_segment_${i}.mp4`);
+        const segPath = path.join(TEMP_DIR, `${crypto.randomUUID()}_segment_${i}.mp4`);
         await cutClip(tempVideoPath, segPath, segments[i].start, segments[i].end);
         segmentPaths.push(segPath);
 
-        const segDuration = await getVideoDuration(segPath);
-        // If segment fits within chunk duration + leeway, keep as single chunk
-        if (segDuration <= CHUNK_DURATION + CHUNK_LEEWAY) {
-          chunkPaths.push(segPath);
-        } else {
-          let start = 0;
-          let chunkIdx = 0;
-          while (start < segDuration) {
-            const remaining = segDuration - start;
-            // If remaining is within leeway of a full chunk, include it all in this chunk
-            // This prevents tiny leftover chunks (e.g., 0.08s from a 10.08s video)
-            const end = remaining <= CHUNK_DURATION + CHUNK_LEEWAY
-              ? segDuration
-              : start + CHUNK_DURATION;
-            const chunkPath = path.join(tempDir, `${crypto.randomUUID()}_seg${i}_chunk${chunkIdx}.mp4`);
-            await cutClip(segPath, chunkPath, start, end);
-            chunkPaths.push(chunkPath);
-            start = end;
-            chunkIdx++;
-          }
-        }
+        const segmentChunks = await createSceneAwareChunks(segPath, TEMP_DIR, {
+          targetDuration: CHUNK_DURATION,
+          leeway: CHUNK_LEEWAY,
+        });
+
+        chunkPaths.push(...segmentChunks);
       }
 
       console.log(`[comfy] Split ${segments.length} segments into ${chunkPaths.length} chunks`);

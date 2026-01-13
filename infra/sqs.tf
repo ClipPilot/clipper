@@ -99,3 +99,21 @@ resource "aws_cloudwatch_metric_alarm" "gpu_dlq_messages" {
     Name = "${var.project_name}-gpu-dlq-alarm-${var.environment}"
   }
 }
+
+# ─────────────────────────────────────────────────────────────
+# Local Development GPU Queue (always created, separate from deployed workers)
+# Use this when running gpu-worker locally to avoid stealing messages from staging/prod
+# ─────────────────────────────────────────────────────────────
+
+resource "aws_sqs_queue" "gpu_processing_local_dev" {
+  name                       = "${var.project_name}-gpu-processing-local-dev"
+  visibility_timeout_seconds = 1800  # 30 min
+  message_retention_seconds  = 86400 # 1 day
+  receive_wait_time_seconds  = 20
+
+  tags = {
+    Name        = "${var.project_name}-gpu-processing-local-dev"
+    Purpose     = "Local development GPU worker queue"
+    Environment = "local-dev"
+  }
+}
