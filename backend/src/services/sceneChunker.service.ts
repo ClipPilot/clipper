@@ -17,11 +17,20 @@ export interface ChunkBoundary {
   end: number;
 }
 
+export interface SilencePoint {
+  start: number;
+  end: number;
+  duration: number;
+  midpoint: number; // Best point to cut (center of silence)
+}
+
 interface SceneDetectResponse {
   success: boolean;
   scenes: Scene[];
+  silencePoints?: SilencePoint[]; // NEW: Audio pause points
   totalDuration: number;
   sceneCount: number;
+  silencePointCount?: number;
   error?: string;
 }
 
@@ -31,14 +40,19 @@ const lambdaClient = new LambdaClient({
 
 const SCENE_DETECT_LAMBDA = `clipster-scene-detect-${process.env.NODE_ENV === "production" ? "prod" : "staging"}`;
 
+interface SceneDetectResult {
+  scenes: Scene[];
+  silencePoints: SilencePoint[];
+}
+
 /**
- * Invoke the scene detection Lambda to get scene boundaries.
+ * Invoke the scene detection Lambda to get scene boundaries AND silence points.
  */
 async function invokeSceneDetectLambda(
   videoPath: string,
   threshold: number = 30,
   minSceneLength: number = 0.5
-): Promise<Scene[]> {
+): Promise<SceneDetectResult> {
   console.log(`[SCENE-CHUNKER] Invoking Lambda for scene detection`);
 
   const s3Key = `temp-scene-detect/${Date.now()}_${path.basename(videoPath)}`;
@@ -84,8 +98,11 @@ async function invokeSceneDetectLambda(
       throw new Error(body.error || "Scene detection failed");
     }
 
-    console.log(`[SCENE-CHUNKER] Lambda returned ${body.scenes?.length || 0} scenes`);
-    return body.scenes || [];
+    console.log(`[SCENE-CHUNKER] Lambda returned ${body.scenes?.length || 0} scenes, ${body.silencePoints?.length || 0} silence points`);
+    return {
+      scenes: body.scenes || [],
+      silencePoints: body.silencePoints || [],
+    };
   } finally {
     // Cleanup temp S3 file
     try {
@@ -99,13 +116,47 @@ async function invokeSceneDetectLambda(
 }
 
 /**
+ * Find the best silence point to use as a cut within a time range.
+ * Prefers silence points closest to the target time.
+ */
+function findBestSilencePoint(
+  silencePoints: SilencePoint[],
+  targetTime: number,
+  minTime: number,
+  maxTime: number,
+  searchRadius: number = 2.0 // Look within ±2 seconds of target
+): number | null {
+  const searchMin = Math.max(minTime, targetTime - searchRadius);
+  const searchMax = Math.min(maxTime, targetTime + searchRadius);
+
+  // Find silence points within the search window
+  const validPoints = silencePoints.filter(
+    sp => sp.midpoint >= searchMin && sp.midpoint <= searchMax
+  );
+
+  if (validPoints.length === 0) {
+    return null;
+  }
+
+  // Return the midpoint closest to our target time
+  validPoints.sort((a, b) =>
+    Math.abs(a.midpoint - targetTime) - Math.abs(b.midpoint - targetTime)
+  );
+
+  console.log(`[SCENE-CHUNKER] Found silence point at ${validPoints[0].midpoint.toFixed(2)}s (target was ${targetTime.toFixed(2)}s)`);
+  return validPoints[0].midpoint;
+}
+
+/**
  * Greedy algorithm to combine consecutive scenes into chunks of approximately targetDuration.
- * If a single scene exceeds targetDuration + leeway, it will be sub-chunked.
+ * If a single scene exceeds targetDuration + leeway, it will be sub-chunked at silence points
+ * to avoid cutting in the middle of words.
  */
 export function combineScenesToChunks(
   scenes: Scene[],
   targetDuration: number,
-  leeway: number
+  leeway: number,
+  silencePoints: SilencePoint[] = []
 ): ChunkBoundary[] {
   if (scenes.length === 0) {
     return [];
@@ -127,13 +178,31 @@ export function combineScenesToChunks(
         currentDuration = 0;
       }
 
-      // Sub-chunk this long scene at targetDuration intervals
+      // Sub-chunk this long scene, preferring silence points over fixed intervals
       let start = scene.start;
       while (start < scene.end) {
         const remaining = scene.end - start;
-        const end = remaining <= maxChunkDuration
-          ? scene.end
-          : start + targetDuration;
+
+        if (remaining <= maxChunkDuration) {
+          // Last piece fits in one chunk
+          chunks.push({ start, end: scene.end });
+          break;
+        }
+
+        // Target cut point is at targetDuration, but look for nearby silence
+        const targetCut = start + targetDuration;
+
+        // Try to find a silence point near our target cut
+        const silenceCut = findBestSilencePoint(
+          silencePoints,
+          targetCut,
+          start + 5, // Ensure chunk is at least 5 seconds
+          start + maxChunkDuration, // Don't exceed max
+          3.0 // Search ±3 seconds around target
+        );
+
+        const end = silenceCut ?? targetCut; // Fall back to target if no silence found
+
         chunks.push({ start, end });
         start = end;
       }
@@ -236,8 +305,9 @@ export async function createSceneAwareChunks(
       return [videoPath];
     }
 
-    // Step 2: Detect scenes via Lambda
-    const scenes = await invokeSceneDetectLambda(videoPath, threshold, minSceneLength);
+    // Step 2: Detect scenes AND silence points via Lambda
+    const { scenes, silencePoints } = await invokeSceneDetectLambda(videoPath, threshold, minSceneLength);
+    console.log(`[SCENE-CHUNKER] Received ${silencePoints.length} silence points for smart sub-chunking`);
 
     // If no scenes detected (e.g., single continuous shot), fall back to blind chunking
     if (scenes.length === 0) {
@@ -245,8 +315,8 @@ export async function createSceneAwareChunks(
       return blindChunkVideo(videoPath, tempDir, targetDuration, leeway);
     }
 
-    // Step 3: Combine scenes into chunks
-    const chunkBoundaries = combineScenesToChunks(scenes, targetDuration, leeway);
+    // Step 3: Combine scenes into chunks (using silence points for sub-chunking long scenes)
+    const chunkBoundaries = combineScenesToChunks(scenes, targetDuration, leeway, silencePoints);
     console.log(`[SCENE-CHUNKER] Combined ${scenes.length} scenes into ${chunkBoundaries.length} chunks`);
 
     // Log chunk details

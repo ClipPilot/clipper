@@ -20,6 +20,12 @@ SCENE_CONFIG = {
     'frame_height': 180,         # Downscale height for faster processing
 }
 
+# Silence detection configuration (for finding speech pauses)
+SILENCE_CONFIG = {
+    'noise_threshold': -35,      # dB threshold below which audio is considered silent
+    'min_silence_duration': 0.15, # Minimum silence duration to detect (150ms = typical word gap)
+}
+
 
 def download_from_s3(bucket: str, key: str, local_path: str) -> None:
     """Download a file from S3 to local path."""
@@ -61,6 +67,66 @@ def get_video_info(video_path: str) -> Tuple[float, float]:
         fps = float(fps_match.group(1))
 
     return duration, fps
+
+
+def detect_silence_points(
+    video_path: str,
+    noise_threshold: float = -35,
+    min_silence_duration: float = 0.15
+) -> List[Dict[str, float]]:
+    """
+    Detect silence/pause points in video audio using FFmpeg silencedetect.
+
+    These points represent natural speech pauses where it's safe to cut
+    without interrupting words.
+
+    Args:
+        video_path: Path to the video file
+        noise_threshold: dB level below which audio is considered silent (-35dB works well for speech)
+        min_silence_duration: Minimum duration of silence to detect (0.15s catches word gaps)
+
+    Returns:
+        List of silence periods with start, end, and midpoint (best cut point)
+    """
+    print(f"[SILENCE-DETECT] Detecting silence points (threshold: {noise_threshold}dB, min duration: {min_silence_duration}s)")
+
+    cmd = [
+        'ffmpeg', '-i', video_path,
+        '-af', f'silencedetect=noise={noise_threshold}dB:d={min_silence_duration}',
+        '-f', 'null', '-'
+    ]
+
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    stderr = result.stderr
+
+    silence_points = []
+    current_start = None
+
+    for line in stderr.split('\n'):
+        # Parse silence_start events
+        start_match = re.search(r'silence_start:\s*([\d.]+)', line)
+        if start_match:
+            current_start = float(start_match.group(1))
+
+        # Parse silence_end events
+        end_match = re.search(r'silence_end:\s*([\d.]+)', line)
+        if end_match and current_start is not None:
+            end_time = float(end_match.group(1))
+            duration = end_time - current_start
+
+            # The midpoint of silence is the ideal cut point
+            midpoint = current_start + (duration / 2)
+
+            silence_points.append({
+                'start': round(current_start, 3),
+                'end': round(end_time, 3),
+                'duration': round(duration, 3),
+                'midpoint': round(midpoint, 3)  # Best point to cut
+            })
+            current_start = None
+
+    print(f"[SILENCE-DETECT] Found {len(silence_points)} silence points")
+    return silence_points
 
 
 def detect_scene_changes(
@@ -243,7 +309,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
             log_remaining_time("Starting scene detection")
 
-            # Detect scenes
+            # Detect visual scenes
             scenes = detect_scene_changes(
                 video_path,
                 threshold=threshold,
@@ -252,7 +318,19 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 context=context
             )
 
-            log_remaining_time(f"Complete - found {len(scenes)} scenes")
+            log_remaining_time(f"Scene detection complete - found {len(scenes)} scenes. Starting silence detection")
+
+            # Detect audio silence points (for smart sub-chunking of long scenes)
+            silence_noise_threshold = float(body.get('silenceNoiseThreshold', SILENCE_CONFIG['noise_threshold']))
+            silence_min_duration = float(body.get('silenceMinDuration', SILENCE_CONFIG['min_silence_duration']))
+
+            silence_points = detect_silence_points(
+                video_path,
+                noise_threshold=silence_noise_threshold,
+                min_silence_duration=silence_min_duration
+            )
+
+            log_remaining_time(f"Complete - found {len(scenes)} scenes, {len(silence_points)} silence points")
 
             return {
                 'statusCode': 200,
@@ -263,10 +341,14 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'body': json.dumps({
                     'success': True,
                     'scenes': scenes,
+                    'silencePoints': silence_points,  # NEW: Audio pause points for smart chunking
                     'totalDuration': round(duration, 3),
                     'sceneCount': len(scenes),
+                    'silencePointCount': len(silence_points),
                     'threshold': threshold,
                     'minSceneLength': min_scene_length,
+                    'silenceNoiseThreshold': silence_noise_threshold,
+                    'silenceMinDuration': silence_min_duration,
                     'nativeFps': native_fps,
                     'sampleFps': SCENE_CONFIG['sample_fps']
                 })
