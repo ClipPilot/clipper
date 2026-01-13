@@ -189,7 +189,6 @@ const generateIPhoneMetadata = () => {
     contentIdentifier: generateContentIdentifier(),
     handlerVideo: "Core Media Video",
     handlerAudio: "Core Media Audio",
-    brand: "qt  ",
   };
 };
 
@@ -207,7 +206,6 @@ const generateOtherDeviceMetadata = () => {
     contentIdentifier: "",
     handlerVideo: "VideoHandler",
     handlerAudio: "SoundHandler",
-    brand: "isom",
   };
 };
 
@@ -232,7 +230,6 @@ export const generateJumbledMetadata = (): string[] => {
     `-metadata`, `encoder=`,
     `-metadata:s:v:0`, `handler_name=${device.handlerVideo}`,
     `-metadata:s:a:0`, `handler_name=${device.handlerAudio}`,
-    `-brand`, device.brand,
   ];
 
   if (device.lensModel) {
@@ -267,7 +264,6 @@ export const generateJumbledMetadataString = (): string => {
     `-metadata encoder=""`,
     `-metadata:s:v:0 handler_name="${device.handlerVideo}"`,
     `-metadata:s:a:0 handler_name="${device.handlerAudio}"`,
-    `-brand ${device.brand}`,
   ];
 
   if (device.lensModel) {
