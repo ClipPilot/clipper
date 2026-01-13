@@ -156,7 +156,7 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
       }
       addToast({
         title: "Job deleted",
-        description: "The character swap job has been deleted.",
+        description: "The swap job has been deleted.",
         color: "success",
       });
     } catch (err) {
@@ -191,9 +191,9 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
             icon="solar:mask-happly-bold-duotone"
             className="text-4xl text-text-tertiary mx-auto mb-3"
           />
-          <p className="text-text-secondary">No character swaps yet</p>
+          <p className="text-text-secondary">No swaps yet</p>
           <p className="text-xs text-text-tertiary mt-1">
-            Create your first character swap above
+            Create your first swap above
           </p>
         </CardBody>
       </Card>

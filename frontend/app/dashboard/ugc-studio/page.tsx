@@ -35,11 +35,11 @@ export default function UGCStudioPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
           <FeatureCard
             icon="solar:mask-happly-bold-duotone"
-            title="Character Swap"
+            title="Face Swap"
             description="Replace faces in your existing videos with AI-generated characters. Perfect for creating UGC-style content with virtual creators."
             gradient="from-violet-500/20 via-purple-500/10 to-transparent"
             iconColor="text-violet-400"
-            features={["Upload any video", "Choose from 12+ characters", "Face swap"]}
+            features={["Upload any video", "Choose from 12+ characters", "Face or full body swap"]}
             onPress={() => router.push("/dashboard/ugc-studio/face-swap")}
           />
           <FeatureCard

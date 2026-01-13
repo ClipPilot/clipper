@@ -69,7 +69,10 @@ export function GeneratePanel({
               }}
             >
               <Radio value="face" classNames={{ label: "text-sm" }}>
-                <span>Character Swap</span>
+                <span>Face Swap</span>
+              </Radio>
+              <Radio value="full" classNames={{ label: "text-sm" }}>
+                <span>Full Body Swap</span>
               </Radio>
             </RadioGroup>
           </div>
@@ -93,7 +96,7 @@ export function GeneratePanel({
                 <span className="text-sm font-medium text-blue-400">Full Video Mode</span>
               </div>
               <p className="text-xs text-text-secondary">
-                Character swap applies to selected segments only. Gaps and edges keep original footage.
+                Swap applies to selected segments only. Gaps and edges keep original footage.
               </p>
             </div>
           )}
@@ -106,7 +109,7 @@ export function GeneratePanel({
             startContent={<Icon icon="solar:magic-stick-3-bold-duotone" width={20} />}
             endContent={<span className="px-1.5 py-0.5 text-xs bg-white/20 rounded-full">5 Credits</span>}
           >
-            Generate Character Swap
+            Generate
           </Button>
         </div>
       </CardBody>

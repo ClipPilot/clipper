@@ -103,7 +103,7 @@ function FaceSwapContent({
       faceSwapsSectionRef.current?.updateOptimisticJob(tempId, data.jobId);
 
       addToast({
-        title: "Character swap started!",
+        title: "Swap started!",
         description:
           "Your video is being processed. This may take 20-40 minutes.",
         color: "success",
@@ -118,7 +118,7 @@ function FaceSwapContent({
       faceSwapsSectionRef.current?.failOptimisticJob(tempId, errorMessage);
 
       addToast({
-        title: "Failed to start character swap",
+        title: "Failed to start swap",
         description: errorMessage,
         color: "danger",
       });
@@ -140,7 +140,7 @@ function FaceSwapContent({
             <Icon icon="solar:arrow-left-linear" width={20} />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-text-primary">Character Swap</h1>
+            <h1 className="text-2xl font-bold text-text-primary">Face Swap</h1>
             <p className="text-text-secondary text-sm">
               Upload a video and swap faces with a character
             </p>
@@ -159,7 +159,7 @@ function FaceSwapContent({
             {selectedTeam?.id && (
               <div className="space-y-4">
                 <h2 className="text-lg font-semibold text-text-primary">
-                  My Character Swaps
+                  My Swaps
                 </h2>
                 <MyFaceSwapsSection
                   ref={faceSwapsSectionRef}
