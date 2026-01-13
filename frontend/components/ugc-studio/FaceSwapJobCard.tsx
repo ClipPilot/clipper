@@ -108,17 +108,24 @@ export const FaceSwapJobCard = memo(
             <div className="flex-1 min-w-0 overflow-hidden">
               <div className="flex items-start justify-between gap-1 sm:gap-2 mb-1 sm:mb-1.5">
                 <div className="flex flex-col gap-0.5 sm:gap-1 min-w-0">
-                  <Chip
-                    size="sm"
-                    color={getStatusColor(job.status)}
-                    variant="flat"
-                    className="text-[9px] sm:text-[10px] h-4 sm:h-5"
-                  >
-                    {job.status}
-                  </Chip>
-                  <span className="text-[9px] sm:text-[10px] md:text-xs text-text-tertiary truncate">
-                    {new Date(job.createdAt).toLocaleDateString()}
-                  </span>
+                  {job.title && (
+                    <span className="text-xs sm:text-sm font-medium text-text-primary truncate">
+                      {job.title}
+                    </span>
+                  )}
+                  <div className="flex items-center gap-1.5">
+                    <Chip
+                      size="sm"
+                      color={getStatusColor(job.status)}
+                      variant="flat"
+                      className="text-[9px] sm:text-[10px] h-4 sm:h-5"
+                    >
+                      {job.status}
+                    </Chip>
+                    <span className="text-[9px] sm:text-[10px] md:text-xs text-text-tertiary truncate">
+                      {new Date(job.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
                 </div>
                 <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
                   {job.status === "completed" && job.outputUrl && (
@@ -190,5 +197,7 @@ export const FaceSwapJobCard = memo(
     prev.job.status === next.job.status &&
     prev.job.progress === next.job.progress &&
     prev.job.outputUrl === next.job.outputUrl &&
+    prev.job.clipId === next.job.clipId &&
+    prev.job.title === next.job.title &&
     prev.onDelete === next.onDelete
 );

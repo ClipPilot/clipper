@@ -63,6 +63,7 @@ export function SceneBuilderStep({
 
   // Track previous characterId to detect character changes during session
   const prevCharacterIdRef = useRef<number | null>(null);
+  const hasTriggeredAutoGenerate = useRef(false);
 
   // Load saved scene images on mount (unless character differs from script's original)
   useEffect(() => {
@@ -120,6 +121,28 @@ export function SceneBuilderStep({
 
     loadSavedImages();
   }, [scriptId, characterId, setSceneImages]);
+
+  // Auto-generate all scenes on first load if none have images yet
+  useEffect(() => {
+    if (loading || hasTriggeredAutoGenerate.current || generatingAll) return;
+    if (scenes.length === 0) return;
+
+    // Check if any scenes already have images
+    const hasAnyImages = scenes.some(scene => sceneImages[scene.id]?.selectedImageKey);
+    if (hasAnyImages) return;
+
+    // Also check if any are currently generating
+    const anyGenerating = scenes.some(scene => {
+      const state = sceneImages[scene.id];
+      return state?.status === "generating" || state?.status === "regenerating";
+    });
+    if (anyGenerating) return;
+
+    // Trigger auto-generation
+    hasTriggeredAutoGenerate.current = true;
+    console.log("[SceneBuilder] Auto-generating all scene images on mount");
+    handleGenerateAll();
+  }, [loading, scenes, sceneImages, generatingAll]);
 
   const handleGenerationStart = (sceneId: string, jobId: string) => {
     setSceneImages((prev) => ({

@@ -107,4 +107,38 @@ router.delete(
   comfyController.deleteJob.bind(comfyController)
 );
 
+/**
+ * @openapi
+ * /comfy/jobs/{jobId}:
+ *   patch:
+ *     summary: Update a job (e.g., title)
+ *     tags:
+ *       - ComfyUI
+ *     parameters:
+ *       - in: path
+ *         name: jobId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Job updated
+ *       404:
+ *         description: Job not found
+ */
+router.patch(
+  "/jobs/:jobId",
+  requireAuth,
+  comfyController.updateJob.bind(comfyController)
+);
+
 export default router;

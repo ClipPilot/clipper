@@ -127,7 +127,9 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
         updated &&
         (updated.status !== selectedJob.status ||
           updated.progress !== selectedJob.progress ||
-          updated.outputUrl !== selectedJob.outputUrl)
+          updated.outputUrl !== selectedJob.outputUrl ||
+          updated.clipId !== selectedJob.clipId ||
+          updated.title !== selectedJob.title)
       ) {
         setSelectedJob(updated);
       }
@@ -167,6 +169,18 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
         description: errorMessage,
         color: "danger",
       });
+    }
+  }, [selectedJob]);
+
+  const handleTitleUpdate = useCallback((jobId: string, title: string) => {
+    setJobs((prev) =>
+      prev.map((job) =>
+        job.id === jobId ? { ...job, title } : job
+      )
+    );
+    // Also update selectedJob if it's the one being edited
+    if (selectedJob?.id === jobId) {
+      setSelectedJob((prev) => prev ? { ...prev, title } : null);
     }
   }, [selectedJob]);
 
@@ -231,6 +245,7 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onDelete={handleDeleteJob}
+        onTitleUpdate={handleTitleUpdate}
       />
     </>
   );

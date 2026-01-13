@@ -22,6 +22,8 @@ export interface FaceSwapJob {
   createdAt: string;
   finishedAt: string | null;
   spliceSegments?: SpliceSegment[] | null;
+  clipId?: number | null;
+  title?: string | null;
 }
 
 export interface SelectedCharacter {

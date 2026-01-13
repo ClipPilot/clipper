@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, CardBody } from "@heroui/react";
+import { Card, CardBody, Tooltip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { UGCScript } from "./types";
 
@@ -40,12 +40,30 @@ export function ScriptVariantSelector({
                 </span>
               </div>
             </div>
-            <p className="text-sm font-medium text-text-primary line-clamp-1">
-              {script.title}
-            </p>
-            <p className="text-xs text-text-secondary line-clamp-2">
-              {script.hook}
-            </p>
+            <Tooltip
+              content={script.title}
+              delay={500}
+              closeDelay={0}
+              classNames={{
+                content: "max-w-xs bg-surface-elevated text-text-primary text-sm p-2 rounded-lg border border-border-base"
+              }}
+            >
+              <p className="text-sm font-medium text-text-primary line-clamp-1 cursor-default">
+                {script.title}
+              </p>
+            </Tooltip>
+            <Tooltip
+              content={script.hook}
+              delay={500}
+              closeDelay={0}
+              classNames={{
+                content: "max-w-sm bg-surface-elevated text-text-primary text-sm p-2 rounded-lg border border-border-base"
+              }}
+            >
+              <p className="text-xs text-text-secondary line-clamp-2 cursor-default">
+                {script.hook}
+              </p>
+            </Tooltip>
             <div className="flex items-center gap-2 text-xs text-text-muted">
               <span>{script.scenes.length} scenes</span>
               <span>•</span>

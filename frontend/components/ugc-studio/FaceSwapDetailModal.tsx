@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Button,
   Chip,
+  Input,
   Modal,
   ModalBody,
   ModalContent,
@@ -15,6 +16,7 @@ import {
 import { Icon } from "@iconify/react";
 import { FaceSwapJob, formatDuration, getStatusColor, getStatusIcon } from "./types";
 import { apiFetch } from "@/lib/apiClient";
+import { faceSwapAPI } from "@/api/ugc/faceSwap";
 import API_URL from "@/config/constants";
 
 function formatTime(seconds: number): string {
@@ -28,13 +30,48 @@ interface FaceSwapDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   onDelete?: (jobId: string) => void;
+  onTitleUpdate?: (jobId: string, title: string) => void;
 }
 
-export function FaceSwapDetailModal({ job, isOpen, onClose, onDelete }: FaceSwapDetailModalProps) {
+export function FaceSwapDetailModal({ job, isOpen, onClose, onDelete, onTitleUpdate }: FaceSwapDetailModalProps) {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showSegments, setShowSegments] = useState(false);
   const [activeSegmentIndex, setActiveSegmentIndex] = useState<number | null>(null);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [isSavingTitle, setIsSavingTitle] = useState(false);
+
+  // Sync title state when job changes
+  useEffect(() => {
+    if (job) {
+      setEditTitle(job.title || "");
+    }
+  }, [job]);
+
+  const handleSaveTitle = async () => {
+    if (!job || isSavingTitle) return;
+
+    setIsSavingTitle(true);
+    try {
+      await faceSwapAPI.updateJobTitle(job.id, editTitle);
+      setIsEditingTitle(false);
+      onTitleUpdate?.(job.id, editTitle);
+      addToast({
+        title: "Title updated",
+        color: "success",
+      });
+    } catch (error) {
+      console.error("Failed to update title:", error);
+      addToast({
+        title: "Failed to update title",
+        description: error instanceof Error ? error.message : "Please try again",
+        color: "danger",
+      });
+    } finally {
+      setIsSavingTitle(false);
+    }
+  };
 
   const handleDelete = async () => {
     if (!job || isDeleting || !onDelete) return;
@@ -104,9 +141,11 @@ export function FaceSwapDetailModal({ job, isOpen, onClose, onDelete }: FaceSwap
       }}
     >
       <ModalContent>
-        <ModalHeader className="flex items-center gap-3">
-          <Icon icon="solar:mask-happly-bold-duotone" className="text-accent-400" width={24} />
-          <span>Face Swap Details</span>
+        <ModalHeader className="flex flex-col gap-2">
+          <div className="flex items-center gap-3">
+            <Icon icon="solar:mask-happly-bold-duotone" className="text-accent-400" width={24} />
+            <span>Face Swap Details</span>
+          </div>
         </ModalHeader>
         <ModalBody className="py-6">
           <div className="space-y-6">
@@ -230,6 +269,69 @@ export function FaceSwapDetailModal({ job, isOpen, onClose, onDelete }: FaceSwap
                     </p>
                   )}
                 </div>
+              </div>
+            )}
+            {/* Editable Title - show for completed jobs */}
+            {job.status === "completed" && (
+              <div className="p-4 rounded-lg bg-surface-elevated">
+                <p className="text-xs text-text-tertiary mb-2">Title</p>
+                {isEditingTitle ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      size="sm"
+                      value={editTitle}
+                      onValueChange={setEditTitle}
+                      placeholder="Enter a title..."
+                      classNames={{
+                        input: "text-sm",
+                        inputWrapper: "h-9 bg-surface-base",
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSaveTitle();
+                        if (e.key === "Escape") {
+                          setIsEditingTitle(false);
+                          setEditTitle(job?.title || "");
+                        }
+                      }}
+                      autoFocus
+                    />
+                    <Button
+                      isIconOnly
+                      size="sm"
+                      variant="flat"
+                      color="success"
+                      onPress={handleSaveTitle}
+                      isLoading={isSavingTitle}
+                    >
+                      <Icon icon="solar:check-circle-bold" width={18} />
+                    </Button>
+                    <Button
+                      isIconOnly
+                      size="sm"
+                      variant="flat"
+                      onPress={() => {
+                        setIsEditingTitle(false);
+                        setEditTitle(job?.title || "");
+                      }}
+                    >
+                      <Icon icon="solar:close-circle-bold" width={18} />
+                    </Button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setIsEditingTitle(true)}
+                    className="flex items-center gap-2 text-sm hover:text-accent-400 transition-colors group w-full"
+                  >
+                    <span className={job?.title ? "text-text-primary font-medium" : "text-text-muted italic"}>
+                      {job?.title || "Click to add title..."}
+                    </span>
+                    <Icon
+                      icon="solar:pen-2-bold"
+                      width={14}
+                      className="text-text-tertiary group-hover:text-accent-400 transition-colors"
+                    />
+                  </button>
+                )}
               </div>
             )}
             <div className="grid grid-cols-2 gap-4">

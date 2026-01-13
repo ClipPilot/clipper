@@ -111,13 +111,51 @@ export const downloadFixed = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const { url, filename } = req.query;
+    const { url, filename, mode } = req.query;
 
     if (!url || typeof url !== "string") {
       return res.status(400).json({ error: "Missing required 'url' parameter" });
     }
 
-    console.log(`[DOWNLOAD-FIXED] Starting: ${url.substring(0, 100)}...`);
+    const outputFilename = typeof filename === "string" ? filename : "video.mp4";
+
+    // Mode: "direct" = stream from S3 directly (fastest)
+    //       "remux" = copy streams without re-encoding (fast, fixes metadata)
+    //       undefined = full re-encode (slowest but most compatible)
+    if (mode === "direct") {
+      // Direct proxy from S3 - no processing, fastest option
+      console.log(`[DOWNLOAD] Direct proxy: ${url.substring(0, 100)}...`);
+
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch video: ${response.status}`);
+      }
+
+      res.setHeader("Content-Type", "video/mp4");
+      if (response.headers.get("content-length")) {
+        res.setHeader("Content-Length", response.headers.get("content-length")!);
+      }
+      res.setHeader("Content-Disposition", `attachment; filename="${outputFilename}"`);
+
+      // Stream directly to response
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("No response body");
+
+      const pump = async (): Promise<void> => {
+        const { done, value } = await reader.read();
+        if (done) {
+          res.end();
+          return;
+        }
+        res.write(Buffer.from(value));
+        return pump();
+      };
+      await pump();
+      console.log("[DOWNLOAD] Direct proxy complete");
+      return;
+    }
+
+    console.log(`[DOWNLOAD-FIXED] Starting (mode=${mode || "full"}): ${url.substring(0, 100)}...`);
 
     const response = await fetch(url);
     if (!response.ok) {
@@ -128,20 +166,30 @@ export const downloadFixed = async (req: AuthRequest, res: Response) => {
     fs.writeFileSync(tempInputPath, Buffer.from(arrayBuffer));
     console.log(`[DOWNLOAD-FIXED] Downloaded ${(arrayBuffer.byteLength / 1024 / 1024).toFixed(2)}MB`);
 
-    await new Promise<void>((resolve, reject) => {
-      ffmpeg(tempInputPath)
-        .outputOptions([
+    // Remux mode: copy streams without re-encoding (much faster)
+    const ffmpegOptions = mode === "remux"
+      ? [
+          "-c:v copy",
+          "-c:a copy",
+          "-movflags +faststart",
+          ...generateJumbledMetadata(),
+        ]
+      : [
           ...MOBILE_DOWNLOAD_SETTINGS,
           ...generateJumbledMetadata(),
-        ])
+        ];
+
+    await new Promise<void>((resolve, reject) => {
+      ffmpeg(tempInputPath)
+        .outputOptions(ffmpegOptions)
         .save(tempOutputPath)
         .on("progress", (progress) => {
-          if (progress.percent && Math.round(progress.percent) % 25 === 0) {
-            console.log(`[DOWNLOAD-FIXED] Normalizing: ${Math.round(progress.percent)}%`);
+          if (mode !== "remux" && progress.percent && Math.round(progress.percent) % 25 === 0) {
+            console.log(`[DOWNLOAD-FIXED] Processing: ${Math.round(progress.percent)}%`);
           }
         })
         .on("end", () => {
-          console.log("[DOWNLOAD-FIXED] Normalization complete");
+          console.log(`[DOWNLOAD-FIXED] Processing complete (mode=${mode || "full"})`);
           resolve();
         })
         .on("error", (err) => {
@@ -151,7 +199,6 @@ export const downloadFixed = async (req: AuthRequest, res: Response) => {
     });
 
     const stats = fs.statSync(tempOutputPath);
-    const outputFilename = typeof filename === "string" ? filename : "video-fixed.mp4";
 
     res.setHeader("Content-Type", "video/mp4");
     res.setHeader("Content-Length", stats.size);
@@ -187,13 +234,49 @@ export const downloadFixedPublic = async (req: Request, res: Response) => {
   const tempOutputPath = path.join(os.tmpdir(), `dl_output_${Date.now()}.mp4`);
 
   try {
-    const { url, filename } = req.query;
+    const { url, filename, mode } = req.query;
 
     if (!url || typeof url !== "string") {
       return res.status(400).json({ error: "Missing required 'url' parameter" });
     }
 
-    console.log(`[DOWNLOAD-FIXED-PUBLIC] Starting: ${url.substring(0, 100)}...`);
+    const outputFilename = typeof filename === "string" ? filename : "video.mp4";
+
+    // Mode: "direct" = stream from S3 directly (fastest)
+    //       "remux" = copy streams without re-encoding (fast, fixes metadata)
+    //       undefined = full re-encode (slowest but most compatible)
+    if (mode === "direct") {
+      console.log(`[DOWNLOAD-PUBLIC] Direct proxy: ${url.substring(0, 100)}...`);
+
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch video: ${response.status}`);
+      }
+
+      res.setHeader("Content-Type", "video/mp4");
+      if (response.headers.get("content-length")) {
+        res.setHeader("Content-Length", response.headers.get("content-length")!);
+      }
+      res.setHeader("Content-Disposition", `attachment; filename="${outputFilename}"`);
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("No response body");
+
+      const pump = async (): Promise<void> => {
+        const { done, value } = await reader.read();
+        if (done) {
+          res.end();
+          return;
+        }
+        res.write(Buffer.from(value));
+        return pump();
+      };
+      await pump();
+      console.log("[DOWNLOAD-PUBLIC] Direct proxy complete");
+      return;
+    }
+
+    console.log(`[DOWNLOAD-FIXED-PUBLIC] Starting (mode=${mode || "full"}): ${url.substring(0, 100)}...`);
 
     const response = await fetch(url);
     if (!response.ok) {
@@ -204,19 +287,27 @@ export const downloadFixedPublic = async (req: Request, res: Response) => {
     fs.writeFileSync(tempInputPath, Buffer.from(arrayBuffer));
     console.log(`[DOWNLOAD-FIXED-PUBLIC] Downloaded ${(arrayBuffer.byteLength / 1024 / 1024).toFixed(2)}MB`);
 
-    await new Promise<void>((resolve, reject) => {
-      ffmpeg(tempInputPath)
-        .outputOptions([
+    const ffmpegOptions = mode === "remux"
+      ? [
+          "-c:v copy",
+          "-c:a copy",
+          "-movflags +faststart",
+          ...generateJumbledMetadata(),
+        ]
+      : [
           ...MOBILE_DOWNLOAD_SETTINGS,
           ...generateJumbledMetadata(),
-        ])
+        ];
+
+    await new Promise<void>((resolve, reject) => {
+      ffmpeg(tempInputPath)
+        .outputOptions(ffmpegOptions)
         .save(tempOutputPath)
         .on("end", () => resolve())
         .on("error", (err) => reject(err));
     });
 
     const stats = fs.statSync(tempOutputPath);
-    const outputFilename = typeof filename === "string" ? filename : "video-fixed.mp4";
 
     res.setHeader("Content-Type", "video/mp4");
     res.setHeader("Content-Length", stats.size);

@@ -366,7 +366,14 @@ DURATION RULES:
 - Example: use 4 not "3-5s" or "about 4 seconds"
 - This is critical for audio pacing and timeline assembly
 
+===== VIRALITY SCORE REQUIREMENT =====
+CRITICAL: Every script MUST score 95 or higher on virality (viralScore field).
+Your scripts need to be EXCEPTIONAL - hooks that physically make viewers stop scrolling.
+If you wouldn't share this with your friends, rewrite until you would.
+Score 95+ means: irresistible hook, perfect pacing, genuine emotion, share-worthy content.
+
 ===== FINAL CHECKS =====
+- viralScore is 95 or higher (MANDATORY - if below 95, your script is rejected)
 - Dialogue sounds like something a real person would actually say
 - Hook makes you want to keep watching (test: would YOU stop scrolling?)
 - Emotions flow naturally through the script

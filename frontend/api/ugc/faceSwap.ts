@@ -153,6 +153,19 @@ class FaceSwapAPI {
       throw new Error(error.error || "Failed to delete job");
     }
   }
+
+  async updateJobTitle(jobId: string, title: string): Promise<void> {
+    const response = await apiFetch(`${this.baseUrl}/jobs/${jobId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to update job title");
+    }
+  }
 }
 
 export const faceSwapAPI = new FaceSwapAPI();

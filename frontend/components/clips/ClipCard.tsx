@@ -55,7 +55,6 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
     setIsDownloading(true);
     try {
       const filename = `${clip.title || `clip-${clip.id}`}.mp4`;
-      // Always use download-fixed to apply fresh random metadata per download
       const downloadUrl = `${API_URL}/face-swap/download-fixed?url=${encodeURIComponent(clip.clipUrl)}&filename=${encodeURIComponent(filename)}`;
       const response = await apiFetch(downloadUrl);
       if (!response.ok) throw new Error("Download failed");

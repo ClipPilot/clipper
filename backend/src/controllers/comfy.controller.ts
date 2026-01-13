@@ -1,7 +1,7 @@
 import * as Sentry from "@sentry/node";
 import { Request, Response } from "express";
 import { db } from "../db";
-import { comfyJobs } from "@clipper/shared-db/src/schema";
+import { comfyJobs, clips } from "@clipper/shared-db/src/schema";
 import { s3Service } from "../services/s3.service";
 import { gpuSqsService, SwapType } from "../services/gpuSqs.service";
 import { cutClip, getVideoDuration } from "../services/videoEditor.service";
@@ -10,7 +10,7 @@ import { emitComfyJobUpdate } from "../services/socket.service";
 import { getTeamUsage } from "../middleware/subscription.middleware";
 import { teamService } from "../services/team.service";
 import { canAccessUGCStudio } from "../utils/plans";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import crypto from "crypto";
 import path from "path";
 import fs from "fs";
@@ -390,8 +390,14 @@ export class ComfyController {
           createdAt: comfyJobs.createdAt,
           finishedAt: comfyJobs.finishedAt,
           spliceMetadata: comfyJobs.spliceMetadata,
+          clipId: clips.id,
+          title: clips.title,
         })
         .from(comfyJobs)
+        .leftJoin(
+          clips,
+          sql`${clips.clip_metadata}->>'comfyJobId' = ${comfyJobs.id}::text`
+        )
         .where(eq(comfyJobs.id, jobId));
 
       if (!job) {
@@ -454,8 +460,14 @@ export class ComfyController {
           createdAt: comfyJobs.createdAt,
           finishedAt: comfyJobs.finishedAt,
           spliceMetadata: comfyJobs.spliceMetadata,
+          clipId: clips.id,
+          title: clips.title,
         })
         .from(comfyJobs)
+        .leftJoin(
+          clips,
+          sql`${clips.clip_metadata}->>'comfyJobId' = ${comfyJobs.id}::text`
+        )
         .where(eq(comfyJobs.teamId, parseInt(teamId)))
         .orderBy(desc(comfyJobs.createdAt))
         .limit(20);
@@ -555,6 +567,52 @@ export class ComfyController {
       Sentry.captureException(error);
       return res.status(500).json({
         error: error instanceof Error ? error.message : "Failed to delete job",
+      });
+    }
+  }
+
+  async updateJob(req: Request, res: Response) {
+    try {
+      const { jobId } = req.params;
+      const { title } = req.body;
+
+      if (!jobId) {
+        return res.status(400).json({ error: "Job ID required" });
+      }
+
+      // Check if job exists
+      const [job] = await db
+        .select({ id: comfyJobs.id, teamId: comfyJobs.teamId })
+        .from(comfyJobs)
+        .where(eq(comfyJobs.id, jobId));
+
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+
+      // Find the associated clip by comfyJobId in clip_metadata
+      const [clip] = await db
+        .select({ id: clips.id })
+        .from(clips)
+        .where(sql`${clips.clip_metadata}->>'comfyJobId' = ${jobId}`);
+
+      if (!clip) {
+        return res.status(404).json({ error: "Associated clip not found. The job may not be completed yet." });
+      }
+
+      // Update the clip's title
+      await db
+        .update(clips)
+        .set({ title: title ?? null })
+        .where(eq(clips.id, clip.id));
+
+      console.log(`[comfy] Updated clip ${clip.id} title to: ${title} (for job ${jobId})`);
+      return res.status(200).json({ message: "Title updated successfully", title, clipId: clip.id });
+    } catch (error) {
+      console.error("Update job error:", error);
+      Sentry.captureException(error);
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to update job",
       });
     }
   }
