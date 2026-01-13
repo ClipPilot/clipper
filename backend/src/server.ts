@@ -4,6 +4,7 @@ import { createServer } from "http";
 import app from "./app";
 import "./config/env";
 import { initializeSocket } from "./services/socket.service";
+import { initializeTempCleanup, stopTempCleanup } from "./utils/tempCleanup";
 
 process.on("uncaughtException", (error) => {
   console.error("[UNCAUGHT EXCEPTION]", error.message);
@@ -20,15 +21,16 @@ const PORT = process.env.PORT || 3000;
 const httpServer = createServer(app);
 
 async function startServer() {
+  initializeTempCleanup();
   await initializeSocket(httpServer);
   httpServer.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
 }
 
-// Graceful shutdown
 process.on("SIGTERM", () => {
   console.log("SIGTERM received, shutting down...");
+  stopTempCleanup();
   httpServer.close(() => {
     console.log("Server closed");
     process.exit(0);

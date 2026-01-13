@@ -15,6 +15,7 @@ import crypto from "crypto";
 import path from "path";
 import fs from "fs";
 import "multer";
+import { TEMP_DIR } from "../utils/tempCleanup";
 
 const UGC_CREDIT_COST = 5;
 const CHUNK_DURATION = 10;
@@ -97,9 +98,7 @@ export class ComfyController {
         return res.status(400).json({ error: "Invalid video file type" });
       }
 
-      const tempDir = path.join(process.cwd(), "temp");
-      if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
-      tempVideoPath = path.join(tempDir, `${crypto.randomUUID()}.mp4`);
+      tempVideoPath = path.join(TEMP_DIR, `${crypto.randomUUID()}.mp4`);
       fs.writeFileSync(tempVideoPath, video.buffer);
 
       let segments: SegmentInput[];
@@ -163,12 +162,11 @@ export class ComfyController {
       // Scene-aware chunking: detect scene boundaries and combine to ~10s chunks
       // Falls back to blind 10s chunking if scene detection fails
       for (let i = 0; i < segments.length; i++) {
-        const segPath = path.join(tempDir, `${crypto.randomUUID()}_segment_${i}.mp4`);
+        const segPath = path.join(TEMP_DIR, `${crypto.randomUUID()}_segment_${i}.mp4`);
         await cutClip(tempVideoPath, segPath, segments[i].start, segments[i].end);
         segmentPaths.push(segPath);
 
-        // Use scene-aware chunking instead of blind 10-second splits
-        const segmentChunks = await createSceneAwareChunks(segPath, tempDir, {
+        const segmentChunks = await createSceneAwareChunks(segPath, TEMP_DIR, {
           targetDuration: CHUNK_DURATION,
           leeway: CHUNK_LEEWAY,
         });
