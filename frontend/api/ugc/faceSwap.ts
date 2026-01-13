@@ -35,10 +35,14 @@ class FaceSwapAPI {
 
     const MAX_RETRIES = 2;
     const RETRY_DELAY_MS = 3000;
+    const UPLOAD_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes for large video uploads
     let lastError: Error | null = null;
     let response: Response | null = null;
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
+
       try {
         if (attempt > 0) {
           console.log(`Retrying upload (attempt ${attempt + 1}/${MAX_RETRIES + 1})...`);
@@ -48,7 +52,10 @@ class FaceSwapAPI {
         response = await apiFetch(`${this.baseUrl}/ugc-face-swap`, {
           method: "POST",
           body: formData,
+          signal: controller.signal,
         });
+
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
           const error = await response.json();
@@ -61,8 +68,17 @@ class FaceSwapAPI {
 
         return response.json();
       } catch (err) {
-        lastError = err instanceof Error ? err : new Error("Upload failed");
-        const isNetworkError = err instanceof TypeError;
+        clearTimeout(timeoutId);
+
+        // Detect timeout/abort errors
+        const isAbortError = err instanceof Error && err.name === "AbortError";
+        if (isAbortError) {
+          lastError = new Error("Upload timed out - please check your network connection");
+        } else {
+          lastError = err instanceof Error ? err : new Error("Upload failed");
+        }
+
+        const isNetworkError = err instanceof TypeError || isAbortError;
         const isServerError = response && response.status >= 500;
         if (!isNetworkError && !isServerError) {
           break;

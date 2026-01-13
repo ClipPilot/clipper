@@ -1,4 +1,5 @@
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import { requireAdminAuth } from "../middleware/admin.middleware";
 import {
   login,
@@ -13,6 +14,14 @@ import {
 } from "../controllers/admin.controller";
 
 const router = Router();
+
+const adminAuthLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 3,
+  message: { error: "Too many login attempts, please try again in 15 minutes" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 /**
  * @swagger
@@ -54,7 +63,7 @@ const router = Router();
  *       401:
  *         description: Invalid credentials
  */
-router.post("/login", login);
+router.post("/login", adminAuthLimiter, login);
 
 /**
  * @swagger
@@ -91,7 +100,7 @@ router.post("/login", login);
  *       401:
  *         description: Invalid or expired verification code
  */
-router.post("/verify-2fa", verify2FA);
+router.post("/verify-2fa", adminAuthLimiter, verify2FA);
 
 /**
  * @swagger

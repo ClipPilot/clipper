@@ -3,16 +3,17 @@ import { emitClipsRefresh, emitClipUpdate, emitComfyJobUpdate, ComfyJobUpdate, e
 
 const router = Router();
 
-const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || "";
+const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
 
 const validateInternalKey = (req: Request, res: Response, next: Function) => {
-  const apiKey = req.headers["x-internal-api-key"];
-
   if (!INTERNAL_API_KEY) {
-    return next();
+    console.error("INTERNAL_API_KEY is not configured");
+    return res.status(500).json({ error: "Internal API not configured" });
   }
 
-  if (apiKey !== INTERNAL_API_KEY) {
+  const apiKey = req.headers["x-internal-api-key"];
+
+  if (!apiKey || apiKey !== INTERNAL_API_KEY) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 

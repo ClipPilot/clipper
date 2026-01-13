@@ -1,8 +1,25 @@
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import { authController } from "../controllers/auth.controller";
 import { requireAuth } from "../middleware/auth.middleware";
 
 const router = Router();
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { error: "Too many attempts, please try again in 15 minutes" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const passwordResetLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 3,
+  message: { error: "Too many password reset attempts, please try again in 1 hour" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 /**
  * @swagger
@@ -51,7 +68,7 @@ const router = Router();
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post("/signup", authController.signUp.bind(authController));
+router.post("/signup", authLimiter, authController.signUp.bind(authController));
 
 /**
  * @swagger
@@ -91,7 +108,7 @@ router.post("/signup", authController.signUp.bind(authController));
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post("/signin", authController.signIn.bind(authController));
+router.post("/signin", authLimiter, authController.signIn.bind(authController));
 
 /**
  * @swagger
@@ -263,6 +280,7 @@ router.post("/refresh", authController.refreshSession.bind(authController));
  */
 router.post(
   "/reset-password",
+  passwordResetLimiter,
   authController.resetPassword.bind(authController)
 );
 
@@ -311,6 +329,7 @@ router.post(
  */
 router.post(
   "/update-password",
+  passwordResetLimiter,
   authController.updatePassword.bind(authController)
 );
 

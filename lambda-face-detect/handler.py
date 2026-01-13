@@ -348,6 +348,69 @@ def refine_segment_edges(
     return refined_segments
 
 
+def validate_segment_starts(
+    segments: List[Dict[str, float]],
+    video_path: str,
+    native_fps: float = 30.0
+) -> List[Dict[str, float]]:
+    """
+    Final validation: ensure each segment's first frame has a face.
+    If not, advance by 1 frame at native FPS until it does.
+    """
+    if not segments:
+        return segments
+
+    prototxt_path, caffemodel_path = get_model_paths()
+    net = cv2.dnn.readNetFromCaffe(prototxt_path, caffemodel_path)
+
+    frame_duration = 1.0 / native_fps
+    validated = []
+
+    for seg_idx, segment in enumerate(segments):
+        start = segment['start']
+        end = segment['end']
+        original_start = start
+
+        # Extract and check frames one at a time until we find a face
+        max_frames_to_check = 10  # Safety limit
+        for frame_num in range(max_frames_to_check):
+            if start >= end:
+                print(f"[VALIDATE] Segment {seg_idx + 1}: No face found, removing segment")
+                start = None
+                break
+
+            # Extract single frame at current start time
+            temp_dir = tempfile.mkdtemp()
+            frame_path = os.path.join(temp_dir, "frame.jpg")
+            cmd = [
+                'ffmpeg', '-y', '-ss', str(start), '-i', video_path,
+                '-vframes', '1', '-q:v', '2', frame_path
+            ]
+            subprocess.run(cmd, capture_output=True)
+
+            has_face = os.path.exists(frame_path) and detect_faces_in_frame(net, frame_path)
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+            if has_face:
+                if start > original_start:
+                    print(f"[VALIDATE] Segment {seg_idx + 1}: Advanced {frame_num} frame(s) from {original_start:.3f}s to {start:.3f}s")
+                else:
+                    print(f"[VALIDATE] Segment {seg_idx + 1}: First frame OK at {start:.3f}s")
+                break
+            else:
+                # No face, advance by 1 frame
+                start += frame_duration
+
+        if start is not None and start < end:
+            validated.append({
+                'start': round(start, 3),
+                'end': round(end, 3)
+            })
+
+    print(f"[VALIDATE] Validated {len(segments)} → {len(validated)} segments")
+    return validated
+
+
 def pad_segments(
     segments: List[Dict[str, float]],
     video_duration: float,
@@ -558,10 +621,18 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 native_fps
             )
 
-            log_remaining_time("Edge refinement complete - padding segments")
+            log_remaining_time("Edge refinement complete - validating segment starts")
+
+            validated_segments = validate_segment_starts(
+                refined_segments,
+                video_path,
+                native_fps
+            )
+
+            log_remaining_time("Validation complete - padding segments")
 
             segments = pad_segments(
-                refined_segments,
+                validated_segments,
                 video_duration,
                 config['padding']
             )

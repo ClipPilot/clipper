@@ -5,16 +5,41 @@ import { s3Service } from "../services/s3.service";
 import { sqsService } from "../services/sqs.service";
 import { teamService } from "../services/team.service";
 import { tagService } from "../services/tag.service";
+import { userService } from "../services/user.service";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { getTeamUsage } from "../middleware/subscription.middleware";
 
+async function verifyTeamAccessOrFail(req: AuthRequest, teamId: number, res: Response): Promise<{ id: number } | null> {
+  if (!req.user?.id) {
+    res.status(401).json({ error: "Authentication required" });
+    return null;
+  }
+
+  const user = await userService.getUserBySupabaseUid(req.user.id);
+  if (!user) {
+    res.status(401).json({ error: "User not found" });
+    return null;
+  }
+
+  const hasAccess = await teamService.verifyTeamAccess(teamId, user.id);
+  if (!hasAccess) {
+    res.status(403).json({ error: "Access denied to this team" });
+    return null;
+  }
+
+  return user;
+}
+
 export class ClipManagerController {
-  async getClips(req: Request, res: Response) {
+  async getClips(req: AuthRequest, res: Response) {
     try {
       const teamId = parseInt(req.params.teamId);
       if (isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid team ID" });
       }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
 
       const clips = await clipManagerService.getClipsByTeam(teamId);
 
@@ -47,12 +72,15 @@ export class ClipManagerController {
     }
   }
 
-  async getPendingClips(req: Request, res: Response) {
+  async getPendingClips(req: AuthRequest, res: Response) {
     try {
       const teamId = parseInt(req.params.teamId);
       if (isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid team ID" });
       }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
 
       const clips = await clipManagerService.getPendingClipsByTeam(teamId);
 
@@ -85,12 +113,15 @@ export class ClipManagerController {
     }
   }
 
-  async getCompletedClips(req: Request, res: Response) {
+  async getCompletedClips(req: AuthRequest, res: Response) {
     try {
       const teamId = parseInt(req.params.teamId);
       if (isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid team ID" });
       }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
 
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
       const offset = req.query.offset
@@ -146,7 +177,7 @@ export class ClipManagerController {
     }
   }
 
-  async getClip(req: Request, res: Response) {
+  async getClip(req: AuthRequest, res: Response) {
     try {
       const clipId = parseInt(req.params.clipId);
       const teamId = parseInt(req.params.teamId);
@@ -154,6 +185,9 @@ export class ClipManagerController {
       if (isNaN(clipId) || isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid clip ID or team ID" });
       }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
 
       const clip = await clipManagerService.getClipById(clipId, teamId);
 
@@ -200,7 +234,7 @@ export class ClipManagerController {
     }
   }
 
-  async updateClip(req: Request, res: Response) {
+  async updateClip(req: AuthRequest, res: Response) {
     try {
       const clipId = parseInt(req.params.clipId);
       const teamId = parseInt(req.params.teamId);
@@ -209,6 +243,9 @@ export class ClipManagerController {
       if (isNaN(clipId) || isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid clip ID or team ID" });
       }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
 
       // Check if moving clip to a folder requires Scale plan
       if (folderId !== undefined && folderId !== null) {
@@ -246,7 +283,7 @@ export class ClipManagerController {
     }
   }
 
-  async getClipsByFolder(req: Request, res: Response) {
+  async getClipsByFolder(req: AuthRequest, res: Response) {
     try {
       const teamId = parseInt(req.params.teamId);
       const folderId = parseInt(req.params.folderId);
@@ -254,6 +291,9 @@ export class ClipManagerController {
       if (isNaN(teamId) || isNaN(folderId)) {
         return res.status(400).json({ error: "Invalid team ID or folder ID" });
       }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
 
       const clips = await clipManagerService.getClipsByFolder(teamId, folderId);
 
@@ -290,7 +330,7 @@ export class ClipManagerController {
     }
   }
 
-  async deleteClip(req: Request, res: Response) {
+  async deleteClip(req: AuthRequest, res: Response) {
     try {
       const clipId = parseInt(req.params.clipId);
       const teamId = parseInt(req.params.teamId);
@@ -298,6 +338,9 @@ export class ClipManagerController {
       if (isNaN(clipId) || isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid clip ID or team ID" });
       }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
 
       const clip = await clipManagerService.getClipById(clipId, teamId);
 
@@ -329,6 +372,9 @@ export class ClipManagerController {
       if (isNaN(clipId) || isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid clip ID or team ID" });
       }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
 
       if (!captionsData || !Array.isArray(captionsData)) {
         return res.status(400).json({ error: "Invalid captions data" });
@@ -391,6 +437,9 @@ export class ClipManagerController {
       if (isNaN(clipId) || isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid clip ID or team ID" });
       }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
 
       if (!text || typeof text !== "string") {
         return res.status(400).json({ error: "Text is required" });
@@ -458,6 +507,9 @@ export class ClipManagerController {
         return res.status(400).json({ error: "Invalid clip ID or team ID" });
       }
 
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
+
       const clip = await clipManagerService.getClipById(clipId, teamId);
 
       if (!clip.saved) {
@@ -513,6 +565,9 @@ export class ClipManagerController {
       if (isNaN(clipId) || isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid clip ID or team ID" });
       }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
 
       const clip = await clipManagerService.getClipById(clipId, teamId);
 
@@ -584,12 +639,15 @@ export class ClipManagerController {
     }
   }
 
-  async getUnsavedClips(req: Request, res: Response) {
+  async getUnsavedClips(req: AuthRequest, res: Response) {
     try {
       const teamId = parseInt(req.params.teamId);
       if (isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid team ID" });
       }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
 
       const clips = await clipManagerService.getUnsavedClipsByTeam(teamId);
 
@@ -634,12 +692,15 @@ export class ClipManagerController {
     }
   }
 
-  async getSavedClips(req: Request, res: Response) {
+  async getSavedClips(req: AuthRequest, res: Response) {
     try {
       const teamId = parseInt(req.params.teamId);
       if (isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid team ID" });
       }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
 
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
       const offset = req.query.offset
@@ -697,7 +758,7 @@ export class ClipManagerController {
     }
   }
 
-  async rejectClip(req: Request, res: Response) {
+  async rejectClip(req: AuthRequest, res: Response) {
     try {
       const clipId = parseInt(req.params.clipId);
       const teamId = parseInt(req.params.teamId);
@@ -705,6 +766,9 @@ export class ClipManagerController {
       if (isNaN(clipId) || isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid clip ID or team ID" });
       }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
 
       const clip = await clipManagerService.getClipById(clipId, teamId);
 
@@ -730,7 +794,7 @@ export class ClipManagerController {
     }
   }
 
-  async generateShareLink(req: Request, res: Response) {
+  async generateShareLink(req: AuthRequest, res: Response) {
     try {
       const clipId = parseInt(req.params.clipId);
       const teamId = parseInt(req.params.teamId);
@@ -738,6 +802,9 @@ export class ClipManagerController {
       if (isNaN(clipId) || isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid clip ID or team ID" });
       }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
 
       const clip = await clipManagerService.getClipById(clipId, teamId);
 
@@ -766,7 +833,7 @@ export class ClipManagerController {
     }
   }
 
-  async removeShareLink(req: Request, res: Response) {
+  async removeShareLink(req: AuthRequest, res: Response) {
     try {
       const clipId = parseInt(req.params.clipId);
       const teamId = parseInt(req.params.teamId);
@@ -774,6 +841,9 @@ export class ClipManagerController {
       if (isNaN(clipId) || isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid clip ID or team ID" });
       }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
 
       await clipManagerService.removeShareToken(clipId, teamId);
 
