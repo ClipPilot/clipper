@@ -100,7 +100,7 @@ export function VideoUploadCard({
             segments={segments}
             onSegmentsChange={onSegmentsChange}
             maxTotalDuration={50}
-            maxSegments={3}
+            maxSegments={5}
           />
         ) : (
           <div

@@ -45,10 +45,6 @@ function UGCStudioContent({
   const [videoDuration, setVideoDuration] = useState(0);
   const [segments, setSegments] = useState<VideoSegment[]>([]);
   const [swapType, setSwapType] = useState<SwapType>("face");
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [processingStatus, setProcessingStatus] = useState("");
-  const [submittedJobId, setSubmittedJobId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const faceSwapsSectionRef = useRef<MyFaceSwapsSectionRef>(null);
 
   const characterImage = selectedCharacter
@@ -76,22 +72,35 @@ function UGCStudioContent({
     if (!video || !characterImage || !selectedTeam?.id || segments.length === 0)
       return;
 
-    setError(null);
-    setIsProcessing(true);
-    setProcessingStatus("Uploading files...");
-    setSubmittedJobId(null);
+    // Generate a temporary ID for optimistic update
+    const tempId = `temp-${Date.now()}`;
+
+    // Capture values before clearing state
+    const videoFile = video.file;
+    const imageFile = characterImage.file;
+    const teamId = selectedTeam.id.toString();
+    const segmentsData = JSON.stringify(segments.map((s) => ({ start: s.start, end: s.end })));
+    const duration = videoDuration.toString();
+    const swap = swapType;
+    const videoToRevoke = video.preview;
+
+    // Immediately show the job card with "uploading" status
+    faceSwapsSectionRef.current?.addOptimisticJob(tempId);
+
+    // Clear form immediately so user can queue another job
+    setVideo(null);
+    setSelectedCharacter(null);
+    setVideoDuration(0);
+    setSegments([]);
 
     try {
       const formData = new FormData();
-      formData.append("video", video.file);
-      formData.append("image", characterImage.file);
-      formData.append("teamId", selectedTeam.id.toString());
-      formData.append(
-        "segments",
-        JSON.stringify(segments.map((s) => ({ start: s.start, end: s.end })))
-      );
-      formData.append("videoDuration", videoDuration.toString());
-      formData.append("swapType", swapType);
+      formData.append("video", videoFile);
+      formData.append("image", imageFile);
+      formData.append("teamId", teamId);
+      formData.append("segments", segmentsData);
+      formData.append("videoDuration", duration);
+      formData.append("swapType", swap);
       // Always include original video before/after segments, even with single segment
       formData.append("spliceWithOriginal", "true");
 
@@ -106,9 +115,9 @@ function UGCStudioContent({
       }
 
       const data = await response.json();
-      // Don't set submittedJobId - let the toast provide feedback
-      // and keep the form visible for the next job
-      setProcessingStatus("Job submitted! Processing...");
+
+      // Update the optimistic job with the real ID and "queued" status
+      faceSwapsSectionRef.current?.updateOptimisticJob(tempId, data.jobId);
 
       addToast({
         title: "Face swap started!",
@@ -117,27 +126,20 @@ function UGCStudioContent({
         color: "success",
       });
 
-      // Refetch jobs to show the new job immediately
-      faceSwapsSectionRef.current?.refetch();
-
-      if (video?.preview) URL.revokeObjectURL(video.preview);
-      setVideo(null);
-      setSelectedCharacter(null);
-      setVideoDuration(0);
-      setSegments([]);
+      if (videoToRevoke) URL.revokeObjectURL(videoToRevoke);
     } catch (err) {
       console.error("Generate error:", err);
       const errorMessage =
         err instanceof Error ? err.message : "An error occurred";
-      setError(errorMessage);
+
+      // Update the optimistic job to show the failure
+      faceSwapsSectionRef.current?.failOptimisticJob(tempId, errorMessage);
+
       addToast({
         title: "Failed to start face swap",
         description: errorMessage,
         color: "danger",
       });
-    } finally {
-      setIsProcessing(false);
-      setProcessingStatus("");
     }
   };
 
@@ -227,10 +229,6 @@ function UGCStudioContent({
               onCharacterChange={setSelectedCharacter}
             />
             <GeneratePanel
-              isProcessing={isProcessing}
-              processingStatus={processingStatus}
-              submittedJobId={submittedJobId}
-              error={error}
               hasVideo={!!video}
               hasCharacter={!!characterImage}
               segmentCount={segments.length}
@@ -238,8 +236,6 @@ function UGCStudioContent({
               swapType={swapType}
               onSwapTypeChange={setSwapType}
               onGenerate={handleGenerate}
-              onClearSubmitted={() => setSubmittedJobId(null)}
-              onClearError={() => setError(null)}
             />
           </div>
         </div>
