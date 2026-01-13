@@ -4,6 +4,7 @@ import { AuthRequest } from "../middleware/auth.middleware";
 import { faceSwapService } from "../services/faceSwap.service";
 import { detectFaceSegmentsWithPadding } from "../services/faceDetection.service";
 import { getVideoDuration } from "../services/videoEditor.service";
+import { generateJumbledMetadata } from "../utils/videoMetadata";
 import fs from "fs";
 import path from "path";
 import os from "os";
@@ -19,38 +20,6 @@ const MOBILE_DOWNLOAD_SETTINGS = [
   "-fflags +genpts+igndts", "-avoid_negative_ts make_zero",
   "-reset_timestamps 1", "-start_at_zero", "-movflags +faststart",
 ];
-
-// Generate jumbled metadata for downloads
-// Covers: encoder signatures, timestamps, software IDs, handler names, and more
-const generateJumbledMetadata = (): string[] => {
-  const encoders = ["Lavf58.76.100", "Lavf59.27.100", "Lavf60.3.100", "Lavf60.16.100", "Lavf61.1.100"];
-  const handlerNames = ["VideoHandler", "Core Media Video", "Apple Video Media Handler", "ISO Media file"];
-  const majorBrands = ["isom", "mp42", "iso5", "avc1", "M4V "];
-
-  const randomEncoder = encoders[Math.floor(Math.random() * encoders.length)];
-  const randomHandler = handlerNames[Math.floor(Math.random() * handlerNames.length)];
-  const randomBrand = majorBrands[Math.floor(Math.random() * majorBrands.length)];
-  const randomDate = new Date(Date.now() - Math.random() * 86400000 * 60).toISOString();
-  const randomId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 8);
-
-  return [
-    "-metadata", `encoder=${randomEncoder}`,
-    "-metadata", `creation_time=${randomDate}`,
-    "-metadata", `comment=${randomId}`,
-    "-metadata", "title=",
-    "-metadata", "artist=",
-    "-metadata", "album=",
-    "-metadata", "description=",
-    "-metadata", "copyright=",
-    "-metadata", "author=",
-    "-metadata", "software=",
-    "-metadata", "make=",
-    "-metadata", "model=",
-    "-metadata:s:v:0", `handler_name=${randomHandler}`,
-    "-metadata:s:a:0", "handler_name=SoundHandler",
-    "-brand", randomBrand,
-  ];
-};
 
 export const trimVideo = async (req: AuthRequest, res: Response) => {
   const uploadedFile = req.file;

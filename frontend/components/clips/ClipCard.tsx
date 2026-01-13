@@ -52,21 +52,13 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
   const handleDownload = async (e: any) => {
     if (!clip.clipUrl || isDownloading) return;
 
-    // Auto-detect UGC videos by checking if URL contains "comfy-outputs"
-    const isUgc = isUgcVideo || clip.clipUrl.includes("comfy-outputs");
-
     setIsDownloading(true);
     try {
       const filename = `${clip.title || `clip-${clip.id}`}.mp4`;
-      let response: Response;
-
-      if (isUgc) {
-        const downloadUrl = `${API_URL}/face-swap/download-fixed?url=${encodeURIComponent(clip.clipUrl)}&filename=${encodeURIComponent(filename)}`;
-        response = await apiFetch(downloadUrl);
-        if (!response.ok) throw new Error("Download failed");
-      } else {
-        response = await fetch(clip.clipUrl);
-      }
+      // Always use download-fixed to apply fresh random metadata per download
+      const downloadUrl = `${API_URL}/face-swap/download-fixed?url=${encodeURIComponent(clip.clipUrl)}&filename=${encodeURIComponent(filename)}`;
+      const response = await apiFetch(downloadUrl);
+      if (!response.ok) throw new Error("Download failed");
 
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);

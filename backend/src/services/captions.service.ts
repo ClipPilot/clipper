@@ -2,7 +2,6 @@ import fs from "fs";
 import path from "path";
 import ffmpeg from "fluent-ffmpeg";
 import { ClipSuggestions } from "../types/ai.types";
-import { generateJumbledMetadata } from "../utils/videoMetadata";
 
 // Mobile-compatible H.264 encoding settings
 const MOBILE_VIDEO_SETTINGS = [
@@ -168,7 +167,6 @@ Format: Layer,Start,End,Style,Text
         "-b:a 128k",
         "-ar 48000",
         "-movflags +faststart",
-        ...generateJumbledMetadata(),
       ])
       .save(outputPath)
       .on("end", () => {
@@ -289,7 +287,6 @@ Format: Layer,Start,End,Style,Text
         "-b:a 128k",
         "-ar 48000",
         "-movflags +faststart",
-        ...generateJumbledMetadata(),
       ])
       .save(outputPath)
       .on("end", () => {

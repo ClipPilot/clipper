@@ -4,7 +4,6 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 import { s3Service } from "./s3.service";
-import { generateJumbledMetadata } from "../utils/videoMetadata";
 
 // Mobile-compatible H.264 encoding settings
 const MOBILE_VIDEO_SETTINGS = [
@@ -57,7 +56,6 @@ export const trimVideo = async (
         "-c:a aac",
         "-b:a 128k",
         "-movflags +faststart",
-        ...generateJumbledMetadata(),
       ])
       .save(outputPath)
       .on("end", () => {

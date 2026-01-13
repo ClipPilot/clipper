@@ -40,9 +40,10 @@ export const generateJumbledMetadata = (): string[] => {
   const device = DEVICES[Math.floor(Math.random() * DEVICES.length)];
   const creationTime = generateRandomDate();
 
+  // Use single quotes for values with spaces (fluent-ffmpeg compatibility)
   const metadata: string[] = [
-    "-metadata", `make=${device.make}`,
-    "-metadata", `model=${device.model}`,
+    "-metadata", `make='${device.make}'`,
+    "-metadata", `model='${device.model}'`,
     "-metadata", `creation_time=${creationTime}`,
   ];
 
@@ -51,8 +52,8 @@ export const generateJumbledMetadata = (): string[] => {
   }
 
   if (device.make === "Apple") {
-    metadata.push("-metadata:s:v:0", "handler_name=Core Media Video");
-    metadata.push("-metadata:s:a:0", "handler_name=Core Media Audio");
+    metadata.push("-metadata:s:v:0", "handler_name='Core Media Video'");
+    metadata.push("-metadata:s:a:0", "handler_name='Core Media Audio'");
   } else {
     metadata.push("-metadata:s:v:0", "handler_name=VideoHandler");
     metadata.push("-metadata:s:a:0", "handler_name=SoundHandler");
@@ -62,5 +63,43 @@ export const generateJumbledMetadata = (): string[] => {
 };
 
 export const generateJumbledMetadataString = (): string => {
-  return generateJumbledMetadata().join(" ");
+  const device = DEVICES[Math.floor(Math.random() * DEVICES.length)];
+  const creationTime = generateRandomDate();
+
+  // Use double quotes for shell command interpolation
+  const parts: string[] = [
+    `-metadata make="${device.make}"`,
+    `-metadata model="${device.model}"`,
+    `-metadata creation_time=${creationTime}`,
+  ];
+
+  if (device.software) {
+    parts.push(`-metadata software=${device.software}`);
+  }
+
+  if (device.make === "Apple") {
+    parts.push(`-metadata:s:v:0 handler_name="Core Media Video"`);
+    parts.push(`-metadata:s:a:0 handler_name="Core Media Audio"`);
+  } else {
+    parts.push(`-metadata:s:v:0 handler_name=VideoHandler`);
+    parts.push(`-metadata:s:a:0 handler_name=SoundHandler`);
+  }
+
+  return parts.join(" ");
+};
+
+/**
+ * Apply jumbled metadata to an existing video file (in-place or to new output)
+ * Uses stream copy to avoid re-encoding - fast and quality-preserving
+ */
+export const applyJumbledMetadata = async (
+  inputPath: string,
+  outputPath: string
+): Promise<void> => {
+  const { execSync } = await import("child_process");
+  const metadataString = generateJumbledMetadataString();
+
+  const cmd = `ffmpeg -y -i "${inputPath}" -c copy -movflags +faststart ${metadataString} "${outputPath}"`;
+
+  execSync(cmd, { stdio: "pipe" });
 };

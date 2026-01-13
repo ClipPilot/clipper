@@ -3,6 +3,7 @@ import path from "path";
 import fs from "fs";
 import { ClipSuggestions, BatchClipSuggestions } from "../types/ai.types";
 import { addCaptionsOverlay, TranscriptionWord, addCaptionsFromData } from "./captions.service";
+import { applyJumbledMetadata } from "../utils/videoMetadata";
 
 // Batch video source for multi-video clip creation
 export interface BatchVideoSource {
@@ -185,6 +186,11 @@ export const createCombinedClipService = async (
     // No captions - copy current video to final path
     fs.copyFileSync(currentVideoPath, finalPath);
   }
+
+  // Step 3: Apply jumbled metadata to final video
+  const metadataPath = path.join(outDir, `metadata_${videoIndex}_temp.mp4`);
+  await applyJumbledMetadata(finalPath, metadataPath);
+  fs.renameSync(metadataPath, finalPath);
 
   const watermarkedPath = path.join(outDir, `watermarked_${videoIndex}.mp4`);
   // WATERMARK DISABLED - just copy the file
@@ -425,6 +431,11 @@ export const createBatchCombinedClipService = async (
     // No captions - copy current video to final path
     fs.copyFileSync(currentVideoPath, finalPath);
   }
+
+  // Step 3: Apply jumbled metadata to final video
+  const metadataPath = path.join(outDir, `batch_metadata_${outputIndex}_temp.mp4`);
+  await applyJumbledMetadata(finalPath, metadataPath);
+  fs.renameSync(metadataPath, finalPath);
 
   const watermarkedPath = path.join(outDir, `batch_watermarked_${outputIndex}.mp4`);
   // WATERMARK DISABLED - just copy the file

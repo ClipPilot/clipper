@@ -30,6 +30,7 @@ import {
   generateSrtFromCaptions,
 } from "../services/captions.service";
 import { GpuJobMessage, SpliceSegmentInfo } from "../services/gpuSqs.service";
+import { applyJumbledMetadata } from "../utils/videoMetadata";
 
 const API_INTERNAL_URL =
   process.env.API_INTERNAL_URL || "http://localhost:3001";
@@ -965,7 +966,13 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
     //   }
     // }
 
-    // Step 11: Upload final video to S3
+    // Step 11: Apply jumbled metadata to final video
+    console.log(`[gpu-worker] Applying jumbled metadata...`);
+    const metadataOutputPath = path.join(outDir, `final_metadata_${Date.now()}.mp4`);
+    await applyJumbledMetadata(finalOutputPath, metadataOutputPath);
+    fs.renameSync(metadataOutputPath, finalOutputPath);
+
+    // Step 12: Upload final video to S3
     console.log(`[gpu-worker] Uploading final video to S3...`);
     await updateProgress(jobId, job.teamId, 95, "Uploading final video");
 
