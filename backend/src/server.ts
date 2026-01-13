@@ -21,10 +21,6 @@ const httpServer = createServer(app);
 
 async function startServer() {
   await initializeSocket(httpServer);
-
-  // Note: GPU face swap jobs are now handled by separate SQS-based GPU worker (gpu-worker/)
-  // The old comfy.worker.ts polling approach has been replaced
-
   httpServer.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });

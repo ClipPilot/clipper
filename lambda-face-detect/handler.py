@@ -255,19 +255,22 @@ def refine_segment_edges(
     segments: List[Dict[str, float]],
     video_path: str,
     video_duration: float,
-    context: Any = None
+    context: Any = None,
+    native_fps: float = 30.0
 ) -> List[Dict[str, float]]:
     """
-    Refine segment edges by analyzing frames at 30fps in a 1-second window
-    around each edge (0.5s before and after).
+    Refine segment edges by analyzing frames at the video's native FPS
+    in a 0.5-second window around each edge.
 
-    This ensures every frame with a face is captured by the segment.
+    Uses native FPS to ensure we check EVERY frame - no missed boundaries.
     """
     if not segments:
         return segments
 
-    REFINE_FPS = 30.0
-    EDGE_WINDOW = 0.5  # seconds before and after edge
+    REFINE_FPS = min(native_fps, 60.0)
+    EDGE_WINDOW = 0.5
+
+    print(f"[EDGE-REFINE] Using {REFINE_FPS} FPS for edge refinement (native: {native_fps})")
 
     prototxt_path, caffemodel_path = get_model_paths()
     net = cv2.dnn.readNetFromCaffe(prototxt_path, caffemodel_path)
@@ -547,12 +550,12 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
             log_remaining_time("Face detection complete - refining segment edges")
 
-            # Fine-tune segment edges at 30fps for frame-accurate boundaries
             refined_segments = refine_segment_edges(
                 raw_segments,
                 video_path,
                 video_duration,
-                context
+                context,
+                native_fps
             )
 
             log_remaining_time("Edge refinement complete - padding segments")

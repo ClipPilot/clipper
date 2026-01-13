@@ -201,7 +201,7 @@ export function FaceSwapDetailModal({ job, isOpen, onClose, onDelete }: FaceSwap
                 <div className="text-center space-y-3">
                   <Icon
                     icon={getStatusIcon(job.status)}
-                    className={`text-5xl ${job.status === "running" ? "animate-spin text-accent-400" : "text-text-tertiary"}`}
+                    className={`text-5xl ${job.status === "running" ? "animate-spin text-accent-400" : job.status === "uploading" ? "animate-pulse text-accent-400" : "text-text-tertiary"}`}
                   />
                   {job.status === "running" && (
                     <div className="space-y-2 px-8">
@@ -223,6 +223,11 @@ export function FaceSwapDetailModal({ job, isOpen, onClose, onDelete }: FaceSwap
                   )}
                   {job.status === "queued" && (
                     <p className="text-sm text-text-secondary">Queuing Job.</p>
+                  )}
+                  {job.status === "uploading" && (
+                    <p className="text-sm text-accent-400">
+                      {job.progressMessage || "Uploading files..."}
+                    </p>
                   )}
                 </div>
               </div>

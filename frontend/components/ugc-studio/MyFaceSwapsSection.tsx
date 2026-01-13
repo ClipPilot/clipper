@@ -17,6 +17,9 @@ interface MyFaceSwapsSectionProps {
 
 export interface MyFaceSwapsSectionRef {
   refetch: () => Promise<void>;
+  addOptimisticJob: (tempId: string) => void;
+  updateOptimisticJob: (tempId: string, realId: string) => void;
+  failOptimisticJob: (tempId: string, errorMessage: string) => void;
 }
 
 export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsSectionProps>(function MyFaceSwapsSection({
@@ -39,9 +42,49 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
     }
   }, [teamId]);
 
+  // Add an optimistic job with "uploading" status immediately
+  const addOptimisticJob = useCallback((tempId: string) => {
+    const optimisticJob: FaceSwapJob = {
+      id: tempId,
+      status: "uploading",
+      progress: null,
+      progressMessage: "Uploading files...",
+      outputUrl: null,
+      errorMessage: null,
+      createdAt: new Date().toISOString(),
+      finishedAt: null,
+    };
+    setJobs((prev) => [optimisticJob, ...prev]);
+  }, []);
+
+  // Update the optimistic job with the real ID and queued status
+  const updateOptimisticJob = useCallback((tempId: string, realId: string) => {
+    setJobs((prev) =>
+      prev.map((job) =>
+        job.id === tempId
+          ? { ...job, id: realId, status: "queued", progressMessage: null }
+          : job
+      )
+    );
+  }, []);
+
+  // Mark the optimistic job as failed if the API call fails
+  const failOptimisticJob = useCallback((tempId: string, errorMessage: string) => {
+    setJobs((prev) =>
+      prev.map((job) =>
+        job.id === tempId
+          ? { ...job, status: "failed", errorMessage }
+          : job
+      )
+    );
+  }, []);
+
   useImperativeHandle(ref, () => ({
     refetch: fetchJobs,
-  }), [fetchJobs]);
+    addOptimisticJob,
+    updateOptimisticJob,
+    failOptimisticJob,
+  }), [fetchJobs, addOptimisticJob, updateOptimisticJob, failOptimisticJob]);
 
   useEffect(() => {
     fetchJobs();

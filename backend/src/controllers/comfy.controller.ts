@@ -109,8 +109,8 @@ export class ComfyController {
         segments = [{ start: parseFloat(startTime) || 0, end: parseFloat(endTime) || 0 }];
       }
 
-      if (segments.length === 0 || segments.length > 3) {
-        return res.status(400).json({ error: "Must provide 1-3 segments" });
+      if (segments.length === 0 || segments.length > 5) {
+        return res.status(400).json({ error: "Must provide 1-5 segments" });
       }
 
       let totalDuration = 0;
