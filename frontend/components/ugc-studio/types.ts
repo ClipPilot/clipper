@@ -1,4 +1,4 @@
-export type SwapType = "face" | "fullBody";
+export type SwapType = "face" | "full";
 
 export interface UploadedFile {
   file: File;

@@ -68,7 +68,7 @@ export class ComfyController {
 
     try {
       const { teamId, startTime, endTime, segments: segmentsRaw, videoDuration: videoDurationRaw, swapType: swapTypeRaw } = req.body;
-      const swapType: SwapType = swapTypeRaw === "fullBody" ? "fullBody" : "face";
+      const swapType: SwapType = swapTypeRaw === "full" ? "full" : "face";
       const videoDuration = parseFloat(videoDurationRaw) || 0;
       const files = req.files as {
         image?: Express.Multer.File[];

@@ -350,7 +350,7 @@ async function completeJob(
 function buildWorkflow(
   imageFile: string,
   videoFile: string,
-  swapType: "face" | "fullBody" = "face"
+  swapType: "face" | "full" = "face"
 ): Record<string, unknown> {
   // Select the appropriate workflow template based on swap type
   const template = swapType === "face" ? workflowFaceOnly : workflowFullBody;
@@ -689,7 +689,7 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
 
     console.log(`[gpu-worker] Using GPU ${gpu.id}`);
     console.log(
-      `[gpu-worker] Swap type: ${job.swapType || "face"} (${job.swapType === "fullBody" ? "full body" : "face only"})`
+      `[gpu-worker] Swap type: ${job.swapType || "face"} (${job.swapType === "full" ? "full body" : "face only"})`
     );
     await updateProgress(jobId, job.teamId, 10, "Downloading files from S3");
 
