@@ -224,3 +224,22 @@ export const referralRewardSetEmail = (data: ReferralRewardSetEmailData): string
   `;
   return wrapInBase(content);
 };
+
+export interface UgcReadyEmailData {
+  userName: string;
+  ugcUrl: string;
+}
+
+export const ugcReadyEmail = (data: UgcReadyEmailData): string => {
+  const frontendUrl = process.env.FRONTEND_URL || "https://platform.cuttr.com";
+  const content = `
+    <h1 style="color: #ffffff; font-size: 24px; margin-bottom: 16px;">Your UGC Video is Ready! 🎉</h1>
+    <p style="color: #a0a0a0; font-size: 16px; line-height: 1.6;">Hey ${data.userName},</p>
+    <p style="color: #a0a0a0; font-size: 16px; line-height: 1.6;">Great news! Your face swap video has finished processing and is ready to view.</p>
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${data.ugcUrl}" style="display: inline-block; background: linear-gradient(135deg, #9333EA, #7C3AED); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">View Your Video</a>
+    </div>
+    <p style="color: #a0a0a0; font-size: 14px; margin-top: 24px;">You can download your video from the UGC Studio in your dashboard.</p>
+  `;
+  return wrapInBase(content);
+};

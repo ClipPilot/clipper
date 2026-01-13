@@ -1065,7 +1065,7 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
           );
         }
 
-        // Send email notification
+        // Send UGC ready email notification
         const [user] = await db
           .select()
           .from(users)
@@ -1075,13 +1075,11 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
         if (user) {
           const frontendUrl =
             process.env.FRONTEND_URL || "https://platform.cuttr.com";
-          await emailNotiService.sendClipsReady(user.email, {
+          await emailNotiService.sendUgcReady(user.email, {
             userName: user.first_name || "there",
-            clipCount: 1,
-            sourceFileName: "UGC Face Swap",
-            clipsUrl: `${frontendUrl}/dashboard/ugc-studio`,
+            ugcUrl: `${frontendUrl}/dashboard/ugc-studio`,
           });
-          console.log(`[gpu-worker] Sent email notification to ${user.email}`);
+          console.log(`[gpu-worker] Sent UGC ready email to ${user.email}`);
         }
       }
     } catch (clipErr) {

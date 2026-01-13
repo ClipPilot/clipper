@@ -22,6 +22,8 @@ import {
   ReferralSuccessAdminEmailData,
   referralRewardSetEmail,
   ReferralRewardSetEmailData,
+  ugcReadyEmail,
+  UgcReadyEmailData,
 } from "../templates/emailTemplates";
 
 export class EmailNotiService {
@@ -119,6 +121,11 @@ export class EmailNotiService {
   async sendReferralRewardSet(to: string, data: ReferralRewardSetEmailData) {
     const html = referralRewardSetEmail(data);
     return this.sendEmailNotification(to, "Your referral reward has been set!", html);
+  }
+
+  async sendUgcReady(to: string, data: UgcReadyEmailData) {
+    const html = ugcReadyEmail(data);
+    return this.sendEmailNotification(to, "Your UGC video is ready! 🎉", html);
   }
 }
 
