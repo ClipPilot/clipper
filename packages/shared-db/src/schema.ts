@@ -116,6 +116,7 @@ export const teams = pgTable("teams", {
   addon_clips_remaining: integer("addon_clips_remaining").notNull().default(0),
   enterprise_clip_limit: integer("enterprise_clip_limit"),
   enterprise_monthly_price: integer("enterprise_monthly_price"),
+  logo_url: text("logo_url"),
   created_at: timestamp("created_at").notNull().defaultNow(),
   updated_at: timestamp("updated_at").notNull().defaultNow(),
 }).enableRLS();

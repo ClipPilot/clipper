@@ -128,20 +128,39 @@ export default function WorkspaceSelector({
                       onClick={() => setSelectedTeam(team)}
                       className="flex items-center gap-3 flex-1"
                     >
-                      <div
-                        className={cn(
-                          "flex items-center justify-center w-10 h-10 rounded-lg",
-                          teamPlan === "enterprise"
-                            ? "bg-emerald-500 text-white"
-                            : teamPlan === "scale"
-                              ? "bg-purple-500 text-white"
-                              : teamPlan === "studio"
-                                ? "bg-accent-400 text-white"
-                                : "bg-blue-500 text-white"
-                        )}
-                      >
-                        <Icon icon={getRoleIcon(team.role)} width={20} />
-                      </div>
+                      {team.logo_url ? (
+                        <div
+                          className={cn(
+                            "w-10 h-10 rounded-lg overflow-hidden ring-2 ring-offset-2 ring-offset-surface-base transition-all",
+                            selectedTeam?.id === team.id
+                              ? "ring-accent-400"
+                              : "ring-transparent"
+                          )}
+                        >
+                          <img
+                            src={team.logo_url}
+                            alt={team.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div
+                          className={cn(
+                            "flex items-center justify-center w-10 h-10 rounded-lg transition-all",
+                            selectedTeam?.id === team.id
+                              ? "bg-accent-400 text-white ring-2 ring-accent-400 ring-offset-2 ring-offset-surface-base"
+                              : teamPlan === "enterprise"
+                                ? "bg-emerald-500 text-white"
+                                : teamPlan === "scale"
+                                  ? "bg-purple-500 text-white"
+                                  : teamPlan === "studio"
+                                    ? "bg-accent-400 text-white"
+                                    : "bg-blue-500 text-white"
+                          )}
+                        >
+                          <Icon icon={getRoleIcon(team.role)} width={20} />
+                        </div>
+                      )}
                       <div className="flex-1 flex flex-col items-start min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span

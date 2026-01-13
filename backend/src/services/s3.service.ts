@@ -444,6 +444,17 @@ class S3Service {
     return { uploadUrl, s3Key };
   }
 
+  async uploadTeamLogo(
+    buffer: Buffer,
+    teamId: number,
+    contentType: string = "image/png"
+  ): Promise<string> {
+    const extension = contentType.split("/")[1] || "png";
+    const key = `teams/${teamId}/logo_${Date.now()}.${extension}`;
+    await this.uploadBuffer(buffer, key, contentType);
+    return key;
+  }
+
   async uploadSceneImage(
     buffer: Buffer,
     teamId: number,

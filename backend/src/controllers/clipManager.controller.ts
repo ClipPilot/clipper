@@ -238,7 +238,7 @@ export class ClipManagerController {
     try {
       const clipId = parseInt(req.params.clipId);
       const teamId = parseInt(req.params.teamId);
-      const { message, clipScore, folderId } = req.body;
+      const { message, clipScore, folderId, title } = req.body;
 
       if (isNaN(clipId) || isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid clip ID or team ID" });
@@ -259,6 +259,7 @@ export class ClipManagerController {
       }
 
       const updates: any = {};
+      if (title !== undefined) updates.title = title;
       if (message !== undefined) updates.message = message;
       if (clipScore !== undefined) updates.clipScore = clipScore;
       if (folderId !== undefined) updates.folderId = folderId;

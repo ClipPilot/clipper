@@ -148,21 +148,25 @@ export default function DashboardPage() {
                 <div
                   className={cn(
                     "w-10 h-10 rounded-xl flex items-center justify-center",
-                    currentPlan === "scale"
-                      ? "bg-purple-500/20"
-                      : currentPlan === "studio"
-                        ? "bg-accent-400/20"
-                        : "bg-blue-500/20"
+                    currentPlan === "enterprise"
+                      ? "bg-emerald-500/20"
+                      : currentPlan === "scale"
+                        ? "bg-purple-500/20"
+                        : currentPlan === "studio"
+                          ? "bg-accent-400/20"
+                          : "bg-blue-500/20"
                   )}
                 >
                   <Icon
                     icon="solar:bookmark-bold-duotone"
                     className={cn(
-                      currentPlan === "scale"
-                        ? "text-purple-500"
-                        : currentPlan === "studio"
-                          ? "text-accent-400"
-                          : "text-blue-500"
+                      currentPlan === "enterprise"
+                        ? "text-emerald-500"
+                        : currentPlan === "scale"
+                          ? "text-purple-500"
+                          : currentPlan === "studio"
+                            ? "text-accent-400"
+                            : "text-blue-500"
                     )}
                     width={22}
                   />
@@ -170,11 +174,13 @@ export default function DashboardPage() {
                 <span
                   className={cn(
                     "text-xs font-medium px-2 py-1 rounded-full",
-                    currentPlan === "scale"
-                      ? "bg-purple-500/10 text-purple-500"
-                      : currentPlan === "studio"
-                        ? "bg-accent-400/10 text-accent-400"
-                        : "bg-blue-500/10 text-blue-500"
+                    currentPlan === "enterprise"
+                      ? "bg-emerald-500/10 text-emerald-500"
+                      : currentPlan === "scale"
+                        ? "bg-purple-500/10 text-purple-500"
+                        : currentPlan === "studio"
+                          ? "bg-accent-400/10 text-accent-400"
+                          : "bg-blue-500/10 text-blue-500"
                   )}
                 >
                   {getPlanName(currentPlan)}
@@ -183,7 +189,7 @@ export default function DashboardPage() {
               <div className="space-y-3">
                 <div className="flex items-baseline justify-between">
                   <span className="text-2xl font-bold text-text-primary">
-                    {usageStats?.clipsCreated ?? 0} {/* MUST CHANGE THIS TO CREDITS LATER RATHER THAN JUST CLIPS CREATED! */}
+                    {usageStats?.clipsCreated ?? 0}
                   </span>
                   <span className="text-sm text-text-tertiary">
                     / {usageStats?.limit ?? 0} credits
@@ -200,7 +206,12 @@ export default function DashboardPage() {
                         : "primary"
                   }
                   classNames={{
-                    indicator: currentPlan === "scale" ? "bg-purple-500" : "",
+                    indicator:
+                      currentPlan === "enterprise"
+                        ? "bg-emerald-500"
+                        : currentPlan === "scale"
+                          ? "bg-purple-500"
+                          : "",
                   }}
                 />
                 <p className="text-xs text-text-tertiary">

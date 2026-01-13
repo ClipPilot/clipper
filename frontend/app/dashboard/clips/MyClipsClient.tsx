@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useCallback, Suspense } from "react";
+import React, { useEffect, useRef, useCallback, Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { userAtom, selectedTeamAtom } from "@/store/auth";
@@ -48,6 +48,12 @@ function MyClipsPageContent() {
   const [user, setUser] = useAtom(userAtom);
   const selectedTeam = useAtomValue(selectedTeamAtom);
   const { triggerRefresh } = useUsageStatsRefresh();
+  const [mounted, setMounted] = useState(false);
+
+  // Ensure hydration consistency - only render dynamic content after mount
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const [activeTab, setActiveTab] = useAtom(activeTabAtom);
 
@@ -267,6 +273,17 @@ function MyClipsPageContent() {
     await clipsAPI.removeShareLink(selectedTeam.id, clipId);
   };
 
+  const handleUpdateTitle = async (clipId: number, title: string) => {
+    if (!selectedTeam?.id) throw new Error("No team selected");
+    await clipsAPI.updateClip(selectedTeam.id, clipId, { title });
+    // Refresh clips to update the title in the list
+    if (selectedFolderId !== null) {
+      await refreshFolderClips(selectedFolderId);
+    } else {
+      await loadSavedClips(true);
+    }
+  };
+
   // Get subfolders for the currently selected folder
   const getSubfolders = useCallback((folderId: number | null): FolderTreeNode[] => {
     if (folderId === null) {
@@ -288,7 +305,7 @@ function MyClipsPageContent() {
 
   const currentSubfolders = getSubfolders(selectedFolderId);
 
-  if (!user) {
+  if (!mounted || !user) {
     return (
       <div className="flex h-screen items-center justify-center bg-surface-dark">
         <div className="flex flex-col items-center gap-4">
@@ -553,6 +570,7 @@ function MyClipsPageContent() {
           onDeleteTag={deleteTag}
           onGenerateShareLink={handleGenerateShareLink}
           onRemoveShareLink={handleRemoveShareLink}
+          onUpdateTitle={handleUpdateTitle}
         />
       )}
 

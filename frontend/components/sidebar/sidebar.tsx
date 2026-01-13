@@ -256,20 +256,32 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
                     onClick={() => router.push("/dashboard/pricing")}
                     className={cn(
                       "w-full flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors",
-                      plan === "scale"
-                        ? "bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20"
-                        : "bg-accent-400/10 border-accent-400/20 hover:bg-accent-400/20"
+                      plan === "enterprise"
+                        ? "bg-emerald-500/10 border-emerald-500/20 hover:bg-emerald-500/20"
+                        : plan === "scale"
+                          ? "bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20"
+                          : "bg-accent-400/10 border-accent-400/20 hover:bg-accent-400/20"
                     )}
                   >
                     <Icon
                       icon="solar:verified-check-bold"
-                      className={plan === "scale" ? "text-purple-500" : "text-accent-400"}
+                      className={
+                        plan === "enterprise"
+                          ? "text-emerald-500"
+                          : plan === "scale"
+                            ? "text-purple-500"
+                            : "text-accent-400"
+                      }
                       width={16}
                     />
                     <span
                       className={cn(
                         "text-xs font-medium",
-                        plan === "scale" ? "text-purple-500" : "text-accent-400"
+                        plan === "enterprise"
+                          ? "text-emerald-500"
+                          : plan === "scale"
+                            ? "text-purple-500"
+                            : "text-accent-400"
                       )}
                     >
                       Manage subscription

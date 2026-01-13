@@ -402,7 +402,7 @@ export function ScriptStep({
             title={
               <div className="flex items-center gap-2">
                 <Icon icon="solar:document-text-bold-duotone" width={18} />
-                <span>Edit Existing</span>
+                <span>Use Existing</span>
                 {existingScripts.length > 0 && (
                   <span className="bg-accent-400/20 text-accent-400 text-xs px-1.5 py-0.5 rounded-full">
                     {existingScripts.length}

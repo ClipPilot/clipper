@@ -54,3 +54,36 @@ export const upload = multer({
     fileSize: 10 * 1024 * 1024 * 1024, // 10GB max file size (increased for large video files)
   },
 });
+
+// Image upload config (memory storage for S3 uploads)
+const imageFileFilter = (
+  req: Express.Request,
+  file: Express.Multer.File,
+  cb: multer.FileFilterCallback
+) => {
+  const allowedMimes = [
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+  ];
+
+  if (allowedMimes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(
+      new Error(
+        "Invalid file type. Only image files (jpg, png, gif, webp) are allowed."
+      )
+    );
+  }
+};
+
+export const imageUpload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: imageFileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB max for images
+  },
+});

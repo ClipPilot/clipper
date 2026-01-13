@@ -14,6 +14,7 @@ import {
   DropdownTrigger,
   DropdownMenu,
   DropdownItem,
+  Input,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { apiFetch } from "@/lib/apiClient";
@@ -34,6 +35,7 @@ interface Tag {
 interface Clip {
   id: number;
   folder_id?: number | null;
+  title?: string;
   message?: string;
   clip_score?: number;
   clip_metadata?: any;
@@ -47,6 +49,7 @@ interface Clip {
   sourceVideoUrl?: string;
   tags?: Tag[];
   share_token?: string | null;
+  source?: "clip" | "ugc" | "faceswap";
 }
 
 interface ClipViewModalProps {
@@ -61,6 +64,7 @@ interface ClipViewModalProps {
   onDeleteTag?: (tagId: number) => Promise<void>;
   onGenerateShareLink?: (clipId: number) => Promise<string>;
   onRemoveShareLink?: (clipId: number) => Promise<void>;
+  onUpdateTitle?: (clipId: number, title: string) => Promise<void>;
 }
 
 const TAG_COLORS = [
@@ -88,6 +92,7 @@ export default function ClipViewModal({
   onDeleteTag,
   onGenerateShareLink,
   onRemoveShareLink,
+  onUpdateTitle,
 }: ClipViewModalProps) {
   const [isMoving, setIsMoving] = useState(false);
   const [isUpdatingTags, setIsUpdatingTags] = useState(false);
@@ -104,6 +109,9 @@ export default function ClipViewModal({
   );
   const [showShareTooltip, setShowShareTooltip] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState(clip.title || "");
+  const [isSavingTitle, setIsSavingTitle] = useState(false);
 
   React.useEffect(() => {
     setSelectedTagIds(clip.tags?.map((t) => t.id) || []);
@@ -112,6 +120,33 @@ export default function ClipViewModal({
   React.useEffect(() => {
     setShareToken(clip.share_token || null);
   }, [clip.share_token]);
+
+  React.useEffect(() => {
+    setEditedTitle(clip.title || "");
+  }, [clip.title]);
+
+  const handleSaveTitle = async () => {
+    if (!onUpdateTitle || editedTitle === clip.title) {
+      setIsEditingTitle(false);
+      return;
+    }
+    setIsSavingTitle(true);
+    try {
+      await onUpdateTitle(clip.id, editedTitle);
+      setIsEditingTitle(false);
+    } catch (error) {
+      console.error("Failed to save title:", error);
+    } finally {
+      setIsSavingTitle(false);
+    }
+  };
+
+  const getSourceLabel = () => {
+    const metadataType = clip.clip_metadata?.type;
+    if (metadataType === "ugc") return { label: "AI UGC", color: "secondary" };
+    if (metadataType === "face-swap") return { label: "Face Swap", color: "warning" };
+    return { label: "Clip", color: "primary" };
+  };
 
   const getStatusColor = () => {
     switch (clip.status) {
@@ -269,11 +304,74 @@ export default function ClipViewModal({
       }}
     >
       <ModalContent>
-        <ModalHeader className="flex flex-col gap-1">
+        <ModalHeader className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-text-primary">
-              Clip Details
-            </h2>
+            <div className="flex items-center gap-3">
+              {isEditingTitle ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    size="sm"
+                    value={editedTitle}
+                    onChange={(e) => setEditedTitle(e.target.value)}
+                    placeholder="Enter title..."
+                    className="w-64"
+                    classNames={{
+                      input: "text-text-primary",
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSaveTitle();
+                      if (e.key === "Escape") {
+                        setEditedTitle(clip.title || "");
+                        setIsEditingTitle(false);
+                      }
+                    }}
+                    autoFocus
+                  />
+                  <Button
+                    size="sm"
+                    color="primary"
+                    isLoading={isSavingTitle}
+                    onPress={handleSaveTitle}
+                    className="bg-accent-400"
+                  >
+                    Save
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="flat"
+                    onPress={() => {
+                      setEditedTitle(clip.title || "");
+                      setIsEditingTitle(false);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <h2 className="text-xl font-bold text-text-primary">
+                    {editedTitle || `Clip #${clip.id}`}
+                  </h2>
+                  {onUpdateTitle && (
+                    <Button
+                      size="sm"
+                      variant="light"
+                      isIconOnly
+                      onPress={() => setIsEditingTitle(true)}
+                    >
+                      <Icon icon="solar:pen-bold" className="text-text-secondary" />
+                    </Button>
+                  )}
+                </>
+              )}
+              <Chip
+                size="sm"
+                color={getSourceLabel().color as any}
+                variant="flat"
+              >
+                {getSourceLabel().label}
+              </Chip>
+            </div>
           </div>
         </ModalHeader>
         <ModalBody>

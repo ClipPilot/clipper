@@ -3,6 +3,7 @@ import { db } from "../db";
 import { teams, teamMembers, users, usageStats, subscriptions } from "@clipper/shared-db/src/schema";
 import { eq, and, desc, count } from "drizzle-orm";
 import { PLAN_LIMITS, stripe } from "../config/stripe.config";
+import { s3Service } from "./s3.service";
 
 class TeamService {
   /**
@@ -16,6 +17,7 @@ class TeamService {
         type: teams.type,
         plan: teams.plan,
         teamSubscriptionId: teams.teamSubscrptionId,
+        logo_url: teams.logo_url,
         role: teamMembers.role,
         created_at: teams.created_at,
         updated_at: teams.updated_at,
@@ -25,7 +27,13 @@ class TeamService {
       .where(eq(teamMembers.user_id, userId))
       .orderBy(teams.created_at);
 
-    return userTeams;
+    // Generate presigned URLs for logos
+    return Promise.all(
+      userTeams.map(async (team) => ({
+        ...team,
+        logo_url: team.logo_url ? await s3Service.getPresignedUrl(team.logo_url, 3600) : null,
+      }))
+    );
   }
 
   /**
@@ -39,6 +47,7 @@ class TeamService {
         type: teams.type,
         plan: teams.plan,
         teamSubscriptionId: teams.teamSubscrptionId,
+        logo_url: teams.logo_url,
         role: teamMembers.role,
         created_at: teams.created_at,
         updated_at: teams.updated_at,
@@ -53,7 +62,11 @@ class TeamService {
       throw new Error("No default team found for user");
     }
 
-    return defaultTeam;
+    // Generate presigned URL for logo if exists
+    return {
+      ...defaultTeam,
+      logo_url: defaultTeam.logo_url ? await s3Service.getPresignedUrl(defaultTeam.logo_url, 3600) : null,
+    };
   }
 
   /**
@@ -88,6 +101,24 @@ class TeamService {
       .where(eq(teamMembers.team_id, teamId));
 
     return members;
+  }
+
+  /**
+   * Get a specific team member by team and user ID
+   */
+  async getTeamMember(teamId: number, userId: number) {
+    const [member] = await db
+      .select({
+        id: teamMembers.id,
+        userId: users.id,
+        role: teamMembers.role,
+      })
+      .from(teamMembers)
+      .innerJoin(users, eq(teamMembers.user_id, users.id))
+      .where(and(eq(teamMembers.team_id, teamId), eq(teamMembers.user_id, userId)))
+      .limit(1);
+
+    return member || null;
   }
 
   /**
@@ -505,6 +536,19 @@ class TeamService {
     const [updated] = await db
       .update(teams)
       .set({ name, updated_at: new Date() })
+      .where(eq(teams.id, teamId))
+      .returning();
+
+    return updated;
+  }
+
+  /**
+   * Update team logo URL
+   */
+  async updateTeamLogo(teamId: number, logoUrl: string | null) {
+    const [updated] = await db
+      .update(teams)
+      .set({ logo_url: logoUrl, updated_at: new Date() })
       .where(eq(teams.id, teamId))
       .returning();
 

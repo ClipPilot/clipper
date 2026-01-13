@@ -8,6 +8,7 @@ export interface Team {
   role: "owner" | "manager" | "member";
   plan: "free" | "studio" | "scale" | "enterprise";
   teamSubscriptionId?: string;
+  logo_url?: string;
   created_at: string;
   updated_at: string;
 }
@@ -322,6 +323,41 @@ class TeamAPI {
     }
 
     return await response.json();
+  }
+
+  async uploadTeamLogo(teamId: number, file: File): Promise<Team> {
+    const formData = new FormData();
+    formData.append("logo", file);
+
+    const response = await apiFetch(`${API_URL}/teams/${teamId}/logo`, {
+      method: "POST",
+      credentials: "include",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Failed to upload logo");
+    }
+
+    const data = await response.json();
+    return data.team;
+  }
+
+  async removeTeamLogo(teamId: number): Promise<Team> {
+    const response = await apiFetch(`${API_URL}/teams/${teamId}/logo`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Failed to remove logo");
+    }
+
+    const data = await response.json();
+    return data.team;
   }
 }
 

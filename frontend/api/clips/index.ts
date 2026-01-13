@@ -124,7 +124,7 @@ class ClipsAPI {
   async updateClip(
     teamId: number,
     clipId: number,
-    updates: { message?: string; clipScore?: number; folderId?: number | null }
+    updates: { title?: string; message?: string; clipScore?: number; folderId?: number | null }
   ): Promise<Clip> {
     const response = await apiFetch(
       `${API_URL}/clip-video/teams/${teamId}/clips/${clipId}`,

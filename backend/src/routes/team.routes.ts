@@ -11,6 +11,8 @@ import {
   updateTeamNameController,
   deleteTeamController,
   createTeamController,
+  uploadTeamLogoController,
+  removeTeamLogoController,
 } from "../controllers/team.controller";
 import {
   createInviteController,
@@ -22,6 +24,7 @@ import {
 } from "../controllers/teamInvite.controller";
 import { requireAuth } from "../middleware/auth.middleware";
 import { requireActiveSubscription } from "../middleware/subscription.middleware";
+import { imageUpload } from "../config/multer";
 
 const router = Router();
 
@@ -387,6 +390,66 @@ router.patch("/:teamId", requireAuth, updateTeamNameController);
  *         description: Only owners can delete team
  */
 router.delete("/:teamId", requireAuth, deleteTeamController);
+
+/**
+ * @openapi
+ * /teams/{teamId}/logo:
+ *   post:
+ *     summary: Upload team logo
+ *     description: Upload or update the team's logo image (owners only)
+ *     tags:
+ *       - Teams
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - logo
+ *             properties:
+ *               logo:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Logo uploaded successfully
+ *       403:
+ *         description: Only owners can update team logo
+ */
+router.post("/:teamId/logo", requireAuth, imageUpload.single("logo"), uploadTeamLogoController);
+
+/**
+ * @openapi
+ * /teams/{teamId}/logo:
+ *   delete:
+ *     summary: Remove team logo
+ *     description: Remove the team's logo image (owners only)
+ *     tags:
+ *       - Teams
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Logo removed successfully
+ *       403:
+ *         description: Only owners can remove team logo
+ */
+router.delete("/:teamId/logo", requireAuth, removeTeamLogoController);
 
 // Invite routes
 router.get("/invites/:token", getInviteByTokenController);

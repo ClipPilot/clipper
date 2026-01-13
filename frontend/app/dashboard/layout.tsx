@@ -104,6 +104,19 @@ export default function DashboardLayout({
     }
   };
 
+  const getPlanBgColor = (plan?: string) => {
+    switch (plan) {
+      case "enterprise":
+        return "bg-emerald-500";
+      case "scale":
+        return "bg-purple-500";
+      case "studio":
+        return "bg-accent-400";
+      default:
+        return "bg-blue-500";
+    }
+  };
+
   const handleMouseDown = () => {
     setIsResizing(true);
   };
@@ -198,9 +211,19 @@ export default function DashboardLayout({
                   className="w-full justify-start bg-surface-elevated hover:bg-surface-hover"
                 >
                   <div className="flex items-center gap-3 w-full">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-accent-400 text-white">
-                      <Icon icon={getTeamIcon(selectedTeam?.role)} width={16} />
-                    </div>
+                    {selectedTeam?.logo_url ? (
+                      <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0">
+                        <img
+                          src={selectedTeam.logo_url}
+                          alt={selectedTeam.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className={`flex items-center justify-center w-8 h-8 rounded-lg ${getPlanBgColor(selectedTeam?.plan)} text-white`}>
+                        <Icon icon={getTeamIcon(selectedTeam?.role)} width={16} />
+                      </div>
+                    )}
                     <span className="text-sm font-medium text-text-primary flex-1 text-left truncate">
                       {selectedTeam?.name || "Select Team"}
                     </span>

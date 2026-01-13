@@ -127,6 +127,7 @@ export class ClipManagerService {
     clipId: number,
     teamId: number,
     updates: {
+      title?: string;
       message?: string;
       clipScore?: number;
       folderId?: number | null;
@@ -137,6 +138,7 @@ export class ClipManagerService {
       updated_at: new Date(),
     };
 
+    if (updates.title !== undefined) updateData.title = updates.title;
     if (updates.message !== undefined) updateData.message = updates.message;
     if (updates.clipScore !== undefined)
       updateData.clip_score = updates.clipScore;
