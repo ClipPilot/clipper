@@ -229,8 +229,21 @@ export const cutClip = (
 ) => {
   const duration = end - start;
   console.log(
-    `[CUT] Cutting ${start}s-${end}s (${duration.toFixed(1)}s) from ${input}`
+    `[CUT] Cutting ${start.toFixed(3)}s-${end.toFixed(3)}s (${duration.toFixed(1)}s) from ${input} -> ${output}`
   );
+
+  // Validate paths before starting
+  if (!input || !output) {
+    const error = new Error(`[CUT] Invalid paths: input="${input}", output="${output}"`);
+    console.error(error.message);
+    return Promise.reject(error);
+  }
+
+  if (!fs.existsSync(input)) {
+    const error = new Error(`[CUT] Input file does not exist: ${input}`);
+    console.error(error.message);
+    return Promise.reject(error);
+  }
 
   return new Promise((resolve, reject) => {
     ffmpeg(input)
@@ -274,7 +287,7 @@ export const cutClip = (
         resolve(output);
       })
       .on("error", (err) => {
-        console.error(`[CUT] Failed: ${err.message}`);
+        console.error(`[CUT] Failed for output "${output}": ${err.message}`);
         reject(err);
       })
       .run();

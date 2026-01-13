@@ -65,6 +65,12 @@ export function MultiSegmentTrimmer({
 
     setIsDetectingFaces(true);
 
+    addToast({
+      title: "Detecting faces...",
+      description: "This may take 1-3 minutes. Please wait.",
+      color: "primary",
+    });
+
     try {
       const formData = new FormData();
       formData.append("video", videoFile);
