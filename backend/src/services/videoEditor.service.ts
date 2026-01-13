@@ -213,7 +213,9 @@ export const cutClip = (
 
   // Validate paths before starting
   if (!input || !output) {
-    const error = new Error(`[CUT] Invalid paths: input="${input}", output="${output}"`);
+    const error = new Error(
+      `[CUT] Invalid paths: input="${input}", output="${output}"`
+    );
     console.error(error.message);
     return Promise.reject(error);
   }
@@ -245,9 +247,8 @@ export const cutClip = (
         "aresample=async=1:first_pts=0",
         "-avoid_negative_ts make_zero",
         "-reset_timestamps 1",
-        "-map_metadata -1", // Strip all metadata
+        "-map_metadata -1",
       ])
-      .save(output)
       .on("end", () => {
         if (!fs.existsSync(output)) {
           return reject(
@@ -271,7 +272,7 @@ export const cutClip = (
         console.error(`[CUT] Failed for output "${output}": ${err.message}`);
         reject(err);
       })
-      .run();
+      .save(output);
   });
 };
 export const extractAudio = (
@@ -341,7 +342,9 @@ export const mergeClipsGpu = async (clips: string[], outputPath: string) => {
       throw new Error(`[MERGE-GPU] Input clip not found: ${clip}`);
     }
     const stats = fs.statSync(clip);
-    console.log(`[MERGE-GPU] Input: ${clip} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`);
+    console.log(
+      `[MERGE-GPU] Input: ${clip} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`
+    );
   }
 
   const normalizedClips: string[] = [];
@@ -361,13 +364,20 @@ export const mergeClipsGpu = async (clips: string[], outputPath: string) => {
     ffmpeg()
       .input(listPath)
       .inputOptions(["-f concat", "-safe 0"])
-      .outputOptions(["-c copy", "-fflags +genpts", "-movflags +faststart", "-map_metadata -1"])
+      .outputOptions([
+        "-c copy",
+        "-fflags +genpts",
+        "-movflags +faststart",
+        "-map_metadata -1",
+      ])
       .save(outputPath)
       .on("end", () => {
         fs.unlinkSync(listPath);
         normalizedClips.forEach((c) => fs.existsSync(c) && fs.unlinkSync(c));
         const finalStats = fs.statSync(outputPath);
-        console.log(`[MERGE-GPU] Success: ${outputPath} (${(finalStats.size / 1024 / 1024).toFixed(2)}MB)`);
+        console.log(
+          `[MERGE-GPU] Success: ${outputPath} (${(finalStats.size / 1024 / 1024).toFixed(2)}MB)`
+        );
         resolve(outputPath);
       })
       .on("error", (err) => {
