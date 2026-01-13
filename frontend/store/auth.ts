@@ -17,6 +17,7 @@ export interface Team {
   role: "owner" | "manager" | "member";
   plan: "free" | "studio" | "scale" | "enterprise";
   teamSubscriptionId?: string;
+  logo_url?: string;
   created_at: string;
   updated_at: string;
 }
