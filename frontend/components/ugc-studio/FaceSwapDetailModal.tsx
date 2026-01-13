@@ -119,7 +119,7 @@ export function FaceSwapDetailModal({ job, isOpen, onClose, onDelete }: FaceSwap
                       : job.outputUrl}
                     className="w-full h-full object-contain"
                     controls
-                    controlsList="nodownload nofullscreen noremoteplayback"
+                    controlsList="nodownload noremoteplayback"
                     disablePictureInPicture
                     onContextMenu={(e) => e.preventDefault()}
                     playsInline

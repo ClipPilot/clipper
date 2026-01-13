@@ -176,7 +176,7 @@ export function VideoPreview({
                   onPlay={() => setIsPlaying(true)}
                   onPause={() => setIsPlaying(false)}
                   controls
-                  controlsList="nodownload nofullscreen noremoteplayback"
+                  controlsList="nodownload noremoteplayback"
                   disablePictureInPicture
                   onContextMenu={(e) => e.preventDefault()}
                 />

@@ -662,16 +662,13 @@ export function ScriptStep({
                   }}
                 />
                 <Textarea
+                  isRequired
                   label="Script Direction"
+                  labelPlacement="outside"
                   placeholder="Describe what you want... e.g., Make it funny, focus on the before/after, target skeptics"
                   value={scriptDirection}
                   onChange={(e) => setScriptDirection(e.target.value)}
-                  minRows={2}
-                  isRequired
-                  classNames={{
-                    input: "bg-surface-base text-text-primary",
-                    inputWrapper: "bg-surface-base border-border-base",
-                  }}
+                  minRows={3}
                 />
               </CardBody>
             </Card>

@@ -170,7 +170,7 @@ export default function PreviewClipViewModal({
                     onPlay={() => setIsPlaying(true)}
                     onPause={() => setIsPlaying(false)}
                     onEnded={() => setIsPlaying(false)}
-                    controlsList="nodownload nofullscreen noremoteplayback"
+                    controlsList="nodownload noremoteplayback"
                     disablePictureInPicture
                   />
 
@@ -340,11 +340,13 @@ export default function PreviewClipViewModal({
                 isLoading={isSaving}
                 isDisabled={isSaving}
                 startContent={!isSaving && <Icon icon="solar:diskette-bold" />}
-                endContent={!isSaving && (
-                  <span className="ml-1 px-1.5 py-0.5 text-xs bg-white/20 rounded-full">
-                    1 Credit
-                  </span>
-                )}
+                endContent={
+                  !isSaving && (
+                    <span className="ml-1 px-1.5 py-0.5 text-xs bg-white/20 rounded-full">
+                      1 Credit
+                    </span>
+                  )
+                }
               >
                 {isSaving ? "Saving..." : "Save Clip"}
               </Button>

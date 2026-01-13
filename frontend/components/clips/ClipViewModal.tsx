@@ -99,7 +99,9 @@ export default function ClipViewModal({
   const [newTagColor, setNewTagColor] = useState(TAG_COLORS[0]);
   const [deletingTagId, setDeletingTagId] = useState<number | null>(null);
   const [isSharing, setIsSharing] = useState(false);
-  const [shareToken, setShareToken] = useState<string | null>(clip.share_token || null);
+  const [shareToken, setShareToken] = useState<string | null>(
+    clip.share_token || null
+  );
   const [showShareTooltip, setShowShareTooltip] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -295,7 +297,7 @@ export default function ClipViewModal({
                   <video
                     src={clip.clipUrl}
                     controls
-                    controlsList="nodownload nofullscreen noremoteplayback"
+                    controlsList="nodownload noremoteplayback"
                     disablePictureInPicture
                     onContextMenu={(e) => e.preventDefault()}
                     className="max-w-full max-h-[600px] object-contain relative z-10"
@@ -716,7 +718,9 @@ export default function ClipViewModal({
                 ) : (
                   <Button
                     variant="flat"
-                    startContent={!isSharing && <Icon icon="solar:share-bold" />}
+                    startContent={
+                      !isSharing && <Icon icon="solar:share-bold" />
+                    }
                     isLoading={isSharing}
                     onPress={handleShare}
                   >
@@ -729,7 +733,9 @@ export default function ClipViewModal({
               <Button
                 color="primary"
                 isLoading={isDownloading}
-                startContent={!isDownloading && <Icon icon="solar:download-bold" />}
+                startContent={
+                  !isDownloading && <Icon icon="solar:download-bold" />
+                }
                 onPress={handleDownload}
               >
                 {isDownloading ? "Processing..." : "Download"}

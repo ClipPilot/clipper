@@ -60,3 +60,7 @@ export const generateJumbledMetadata = (): string[] => {
 
   return metadata;
 };
+
+export const generateJumbledMetadataString = (): string => {
+  return generateJumbledMetadata().join(" ");
+};
