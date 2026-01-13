@@ -516,6 +516,44 @@ class S3Service {
     fs.writeFileSync(localPath, buffer);
     console.log(`[S3] Downloaded video to: ${localPath}`);
   }
+
+  async getUGCUploadUrls(
+    teamId: number,
+    videoFileName: string,
+    imageFileName: string
+  ): Promise<{
+    video: { uploadUrl: string; s3Key: string };
+    image: { uploadUrl: string; s3Key: string };
+  }> {
+    const sanitizedVideoName = videoFileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const sanitizedImageName = imageFileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const timestamp = Date.now();
+
+    const videoKey = `ugc-inputs/${teamId}/${timestamp}_${sanitizedVideoName}`;
+    const imageKey = `ugc-inputs/${teamId}/${timestamp}_${sanitizedImageName}`;
+
+    const videoCommand = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: videoKey,
+      ContentType: "video/mp4",
+    });
+
+    const imageCommand = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: imageKey,
+      ContentType: "image/jpeg",
+    });
+
+    const [videoUrl, imageUrl] = await Promise.all([
+      getSignedUrl(s3Client, videoCommand, { expiresIn: 3600 }),
+      getSignedUrl(s3Client, imageCommand, { expiresIn: 3600 }),
+    ]);
+
+    return {
+      video: { uploadUrl: videoUrl, s3Key: videoKey },
+      image: { uploadUrl: imageUrl, s3Key: imageKey },
+    };
+  }
 }
 
 export const s3Service = new S3Service();

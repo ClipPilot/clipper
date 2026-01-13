@@ -6,46 +6,29 @@ import { requireAuth } from "../middleware/auth.middleware";
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
-/**
- * @openapi
- * /comfy/ugc-face-swap:
- *   post:
- *     summary: Queue a UGC face swap job
- *     description: Upload image and video, process through ComfyUI face swap. Videos split into 10s chunks, processed, then stitched. Max 30 seconds.
- *     tags:
- *       - ComfyUI
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             required:
- *               - teamId
- *               - image
- *               - video
- *             properties:
- *               teamId:
- *                 type: integer
- *               image:
- *                 type: string
- *                 format: binary
- *               video:
- *                 type: string
- *                 format: binary
- *     responses:
- *       202:
- *         description: Job queued
- *       400:
- *         description: Invalid input or video too long
- */
+const optionalMulter = upload.fields([
+  { name: "image", maxCount: 1 },
+  { name: "video", maxCount: 1 },
+]);
+
+const conditionalMulter = (req: any, res: any, next: any) => {
+  const contentType = req.headers["content-type"] || "";
+  if (contentType.includes("multipart/form-data")) {
+    return optionalMulter(req, res, next);
+  }
+  next();
+};
+
+router.post(
+  "/ugc-upload-urls",
+  requireAuth,
+  comfyController.getUGCUploadUrls.bind(comfyController)
+);
+
 router.post(
   "/ugc-face-swap",
   requireAuth,
-  upload.fields([
-    { name: "image", maxCount: 1 },
-    { name: "video", maxCount: 1 },
-  ]),
+  conditionalMulter,
   comfyController.createUGCFaceSwapJob.bind(comfyController)
 );
 

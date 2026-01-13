@@ -93,7 +93,6 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
     joinTeam(teamId);
 
     const handleJobUpdate = (update: FaceSwapJob | { id: string; status: "deleted" }) => {
-      // Handle deleted jobs from websocket
       if (update.status === "deleted") {
         setJobs((prev) => prev.filter((j) => j.id !== update.id));
         return;
@@ -101,6 +100,10 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
       setJobs((prev) => {
         const idx = prev.findIndex((j) => j.id === update.id);
         if (idx === -1) {
+          const hasOptimisticJob = prev.some((j) => j.status === "uploading");
+          if (hasOptimisticJob && update.status === "queued") {
+            return prev;
+          }
           return [update, ...prev];
         }
         const updated = [...prev];
@@ -153,7 +156,7 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
       }
       addToast({
         title: "Job deleted",
-        description: "The face swap job has been deleted.",
+        description: "The character swap job has been deleted.",
         color: "success",
       });
     } catch (err) {
@@ -188,9 +191,9 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
             icon="solar:mask-happly-bold-duotone"
             className="text-4xl text-text-tertiary mx-auto mb-3"
           />
-          <p className="text-text-secondary">No face swaps yet</p>
+          <p className="text-text-secondary">No character swaps yet</p>
           <p className="text-xs text-text-tertiary mt-1">
-            Create your first face swap above
+            Create your first character swap above
           </p>
         </CardBody>
       </Card>

@@ -20,82 +20,109 @@ export interface GetTeamJobsResponse {
   jobs: FaceSwapJob[];
 }
 
+interface UploadUrlsResponse {
+  video: { uploadUrl: string; s3Key: string };
+  image: { uploadUrl: string; s3Key: string };
+}
+
 class FaceSwapAPI {
   private baseUrl = `${API_URL}/c`;
 
+  private async getUploadUrls(
+    teamId: number,
+    videoFileName: string,
+    imageFileName: string
+  ): Promise<UploadUrlsResponse> {
+    const response = await apiFetch(`${this.baseUrl}/ugc-upload-urls`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ teamId, videoFileName, imageFileName }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: "Unknown error" }));
+      throw new Error(error.error || "Failed to get upload URLs");
+    }
+
+    return response.json();
+  }
+
+  private async uploadToS3(url: string, file: File): Promise<void> {
+    const response = await fetch(url, {
+      method: "PUT",
+      body: file,
+      headers: {
+        "Content-Type": file.type || "application/octet-stream",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`S3 upload failed: ${response.status}`);
+    }
+  }
+
   async createJob(data: CreateFaceSwapRequest): Promise<CreateFaceSwapResponse> {
-    const formData = new FormData();
     const idempotencyKey = crypto.randomUUID();
-
-    formData.append("video", data.video);
-    formData.append("image", data.image);
-    formData.append("teamId", data.teamId.toString());
-    formData.append("segments", JSON.stringify(data.segments));
-    formData.append("videoDuration", data.videoDuration.toString());
-    formData.append("swapType", data.swapType);
-    formData.append("spliceWithOriginal", data.spliceWithOriginal ? "true" : "false");
-    formData.append("idempotencyKey", idempotencyKey);
-
     const MAX_RETRIES = 3;
     const RETRY_DELAY_MS = 2000;
-    const UPLOAD_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes for large video uploads
     let lastError: Error | null = null;
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
-      let response: Response | null = null;
-
       try {
         if (attempt > 0) {
-          console.log(`Retrying upload (attempt ${attempt + 1}/${MAX_RETRIES + 1})...`);
+          console.log(`Retrying (attempt ${attempt + 1}/${MAX_RETRIES + 1})...`);
           await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS * attempt));
         }
 
-        response = await apiFetch(`${this.baseUrl}/ugc-face-swap`, {
-          method: "POST",
-          body: formData,
-          signal: controller.signal,
-        });
+        console.log("[FaceSwap] Getting presigned upload URLs...");
+        const urls = await this.getUploadUrls(
+          data.teamId,
+          data.video.name,
+          data.image.name
+        );
 
-        clearTimeout(timeoutId);
+        console.log("[FaceSwap] Uploading video to S3...");
+        await this.uploadToS3(urls.video.uploadUrl, data.video);
+
+        console.log("[FaceSwap] Uploading image to S3...");
+        await this.uploadToS3(urls.image.uploadUrl, data.image);
+
+        console.log("[FaceSwap] Creating job with S3 keys...");
+        const response = await apiFetch(`${this.baseUrl}/ugc-face-swap`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            teamId: data.teamId,
+            videoS3Key: urls.video.s3Key,
+            imageS3Key: urls.image.s3Key,
+            segments: data.segments,
+            videoDuration: data.videoDuration,
+            swapType: data.swapType,
+            spliceWithOriginal: data.spliceWithOriginal,
+            idempotencyKey,
+          }),
+        });
 
         if (!response.ok) {
           const error = await response.json().catch(() => ({ error: "Unknown error" }));
-          const err = new Error(error.error || "Failed to create face swap job");
-
-          // Retry on 5xx server errors
-          if (response.status >= 500 && attempt < MAX_RETRIES) {
-            console.warn(`Server error ${response.status}, will retry...`);
-            lastError = err;
-            continue;
-          }
-          throw err;
+          throw new Error(error.error || "Failed to create job");
         }
 
         return response.json();
       } catch (err) {
-        clearTimeout(timeoutId);
+        const isNetworkError = err instanceof TypeError;
 
-        // Detect timeout/abort errors
-        const isAbortError = err instanceof Error && err.name === "AbortError";
-        const isNetworkError = err instanceof TypeError || isAbortError;
-
-        if (isAbortError) {
-          lastError = new Error("Upload timed out - please check your network connection");
-        } else if (err instanceof TypeError) {
+        if (isNetworkError) {
           lastError = new Error("Network error - failed to connect. Retrying...");
         } else {
           lastError = err instanceof Error ? err : new Error("Upload failed");
         }
 
-        // Only retry on network errors or if we haven't exhausted retries
         if (isNetworkError && attempt < MAX_RETRIES) {
-          console.warn(`Upload attempt ${attempt + 1} failed (network):`, lastError.message);
+          console.warn(`Attempt ${attempt + 1} failed (network):`, lastError.message);
           continue;
         }
 
-        // Non-retryable error (4xx client error, etc.)
         if (!isNetworkError) {
           throw lastError;
         }

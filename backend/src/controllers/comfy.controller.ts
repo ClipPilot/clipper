@@ -76,6 +76,49 @@ function calculateSpliceSegments(
 }
 
 export class ComfyController {
+  async getUGCUploadUrls(req: AuthRequest, res: Response) {
+    try {
+      const { teamId, videoFileName, imageFileName } = req.body;
+
+      if (!teamId || !videoFileName || !imageFileName) {
+        return res.status(400).json({ error: "teamId, videoFileName, and imageFileName are required" });
+      }
+
+      const usage = await getTeamUsage(parseInt(teamId));
+      if (!usage) {
+        return res.status(404).json({ error: "Team usage stats not found" });
+      }
+
+      if (!canAccessUGCStudio(usage.plan)) {
+        return res.status(403).json({
+          error: "UGC Studio is only available on Studio, Scale, and Enterprise plans.",
+          code: "PLAN_REQUIRED",
+        });
+      }
+
+      if (usage.totalRemaining < UGC_CREDIT_COST) {
+        return res.status(403).json({
+          error: `Insufficient credits. UGC generation requires ${UGC_CREDIT_COST} credits.`,
+          code: "INSUFFICIENT_CREDITS",
+        });
+      }
+
+      const urls = await s3Service.getUGCUploadUrls(
+        parseInt(teamId),
+        videoFileName,
+        imageFileName
+      );
+
+      return res.status(200).json(urls);
+    } catch (error) {
+      console.error("Get UGC upload URLs error:", error);
+      Sentry.captureException(error);
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to get upload URLs",
+      });
+    }
+  }
+
   async createUGCFaceSwapJob(req: AuthRequest, res: Response) {
     const MAX_VIDEO_DURATION = 50;
     let tempVideoPath: string | null = null;
@@ -83,41 +126,65 @@ export class ComfyController {
     const chunkPaths: string[] = [];
 
     try {
-      const { teamId, startTime, endTime, segments: segmentsRaw, videoDuration: videoDurationRaw, swapType: swapTypeRaw } = req.body;
+      const {
+        teamId,
+        startTime,
+        endTime,
+        segments: segmentsRaw,
+        videoDuration: videoDurationRaw,
+        swapType: swapTypeRaw,
+        videoS3Key: videoS3KeyInput,
+        imageS3Key: imageS3KeyInput,
+      } = req.body;
       const swapType: SwapType = swapTypeRaw === "full" ? "full" : "face";
       const videoDuration = parseFloat(videoDurationRaw) || 0;
-      const files = req.files as {
-        image?: Express.Multer.File[];
-        video?: Express.Multer.File[];
-      };
-
-      const image = files?.image?.[0];
-      const video = files?.video?.[0];
 
       if (!teamId) {
         return res.status(400).json({ error: "teamId is required" });
       }
 
-      if (!image || !video) {
-        return res.status(400).json({
-          error: "Both image and video files are required",
-        });
-      }
+      let imageS3Key: string;
 
-      if (!image.mimetype.startsWith("image/")) {
-        return res.status(400).json({ error: "Invalid image file type" });
-      }
+      if (videoS3KeyInput && imageS3KeyInput) {
+        console.log(`[comfy] Using S3 keys: video=${videoS3KeyInput}, image=${imageS3KeyInput}`);
+        imageS3Key = imageS3KeyInput;
+        tempVideoPath = path.join(TEMP_DIR, `${crypto.randomUUID()}.mp4`);
+        await s3Service.downloadFile(videoS3KeyInput, tempVideoPath);
+        console.log(`[comfy] Downloaded video from S3 to ${tempVideoPath}`);
+      } else {
+        const files = req.files as {
+          image?: Express.Multer.File[];
+          video?: Express.Multer.File[];
+        };
 
-      if (!video.mimetype.startsWith("video/")) {
-        return res.status(400).json({ error: "Invalid video file type" });
-      }
+        const image = files?.image?.[0];
+        const video = files?.video?.[0];
 
-      tempVideoPath = path.join(TEMP_DIR, `${crypto.randomUUID()}.mp4`);
-      fs.writeFileSync(tempVideoPath, video.buffer);
+        if (!image || !video) {
+          return res.status(400).json({
+            error: "Both image and video files are required (or provide S3 keys)",
+          });
+        }
+
+        if (!image.mimetype.startsWith("image/")) {
+          return res.status(400).json({ error: "Invalid image file type" });
+        }
+
+        if (!video.mimetype.startsWith("video/")) {
+          return res.status(400).json({ error: "Invalid video file type" });
+        }
+
+        tempVideoPath = path.join(TEMP_DIR, `${crypto.randomUUID()}.mp4`);
+        fs.writeFileSync(tempVideoPath, video.buffer);
+
+        const imageExt = path.extname(image.originalname) || ".jpg";
+        imageS3Key = `ugc-inputs/${teamId}/${crypto.randomUUID()}${imageExt}`;
+        await s3Service.uploadBuffer(image.buffer, imageS3Key, image.mimetype);
+      }
 
       let segments: SegmentInput[];
       if (segmentsRaw) {
-        segments = JSON.parse(segmentsRaw);
+        segments = typeof segmentsRaw === "string" ? JSON.parse(segmentsRaw) : segmentsRaw;
       } else {
         segments = [{ start: parseFloat(startTime) || 0, end: parseFloat(endTime) || 0 }];
       }
@@ -202,20 +269,13 @@ export class ComfyController {
 
       console.log(`[comfy] Split ${segments.length} segments into ${chunkPaths.length} chunks`);
 
-      const imageExt = path.extname(image.originalname) || ".jpg";
-      const imageS3Key = `ugc-inputs/${teamId}/${crypto.randomUUID()}${imageExt}`;
-
-      // Enable splice mode if multiple segments OR if frontend explicitly requests original footage
-      const spliceWithOriginal = req.body.spliceWithOriginal === "true";
+      const spliceWithOriginal = req.body.spliceWithOriginal === "true" || req.body.spliceWithOriginal === true;
       const isSpliceMode = (segments.length >= 2 || spliceWithOriginal) && videoDuration > 0;
       const spliceMetadata = isSpliceMode
         ? { videoDuration, segments: calculateSpliceSegments(segments, videoDuration) }
         : null;
 
-      const uploads: Promise<string>[] = [
-        s3Service.uploadBuffer(image.buffer, imageS3Key, image.mimetype),
-      ];
-
+      const uploads: Promise<string>[] = [];
       const chunkS3Keys: string[] = [];
       for (let i = 0; i < chunkPaths.length; i++) {
         const chunkBuffer = fs.readFileSync(chunkPaths[i]);

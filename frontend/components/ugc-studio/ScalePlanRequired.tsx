@@ -19,7 +19,7 @@ export function ScalePlanRequired({ currentPlan }: ScalePlanRequiredProps) {
             <div className="space-y-2">
               <h1 className="text-2xl font-bold text-text-primary">UGC Studio</h1>
               <p className="text-text-secondary">
-                Create AI-powered face swaps and more with UGC Studio.
+                Create AI-powered character swaps and more with UGC Studio.
               </p>
             </div>
             <Button
