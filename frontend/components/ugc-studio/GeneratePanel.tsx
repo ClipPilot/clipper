@@ -145,7 +145,7 @@ export function GeneratePanel({
                     <span className="px-1.5 py-0.5 text-[10px] bg-green-500/20 text-green-400 rounded">Recommended</span>
                   </div>
                 </Radio>
-                <Radio value="fullBody" classNames={{ label: "text-sm" }}>
+                <Radio value="full" classNames={{ label: "text-sm" }}>
                   <div className="flex flex-col">
                     <div className="flex items-center gap-2">
                       <span>Full Body Swap</span>

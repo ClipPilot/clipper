@@ -2,7 +2,7 @@ import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import { config } from "../config/env";
 
 // Swap type determines which workflow to use
-export type SwapType = "face" | "fullBody";
+export type SwapType = "face" | "full";
 
 export interface SpliceSegmentInfo {
   s3Key: string;
