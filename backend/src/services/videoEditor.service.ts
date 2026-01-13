@@ -3,7 +3,6 @@ import ffmpeg from "fluent-ffmpeg";
 import fs from "fs";
 import puppeteer from "puppeteer";
 import path from "path";
-import { generateJumbledMetadata } from "../utils/videoMetadata";
 
 interface VideoMetadata {
   width: number;
@@ -112,7 +111,7 @@ export const compressVideoForUpload = async (
           "-ar 48000",
           "-ac 2",
           "-movflags +faststart",
-          ...generateJumbledMetadata(),
+          "-map_metadata", "-1",
         ])
         .save(outputPath)
         .on("progress", (progress) => {
@@ -265,7 +264,7 @@ export const cutClip = (
         "-avoid_negative_ts make_zero",
         "-reset_timestamps 1",
         "-movflags +faststart",
-        ...generateJumbledMetadata(),
+        "-map_metadata", "-1",
       ])
       .on("end", () => {
         if (!fs.existsSync(output)) {
@@ -337,7 +336,7 @@ const normalizeClip = (input: string, output: string): Promise<string> => {
         "-reset_timestamps 1",
         "-start_at_zero",
         "-movflags +faststart",
-        ...generateJumbledMetadata(),
+        "-map_metadata", "-1",
       ])
       .save(output)
       .on("end", () => {
@@ -385,7 +384,7 @@ export const mergeClipsGpu = async (clips: string[], outputPath: string) => {
         "-c copy",
         "-fflags +genpts",
         "-movflags +faststart",
-        ...generateJumbledMetadata(),
+        "-map_metadata", "-1",
       ])
       .save(outputPath)
       .on("end", () => {
@@ -501,7 +500,7 @@ export const mergeClips = async (clips: string[], outputPath: string) => {
           "-b:a 128k",
           "-ar 48000",
           "-ac 2",
-          ...generateJumbledMetadata(),
+          "-map_metadata", "-1",
         ]);
     } else {
       ffmpegCmd.outputOptions([
@@ -515,7 +514,7 @@ export const mergeClips = async (clips: string[], outputPath: string) => {
         "-b:a 128k",
         "-ar 48000",
         "-ac 2",
-        ...generateJumbledMetadata(),
+        "-map_metadata", "-1",
       ]);
     }
 
@@ -720,7 +719,7 @@ export const addTextOverlayAtPosition = async (
           "-b:a 128k",
           "-ar 48000",
           "-movflags +faststart",
-          ...generateJumbledMetadata(),
+          "-map_metadata", "-1",
         ])
         .save(outputPath)
         .on("end", () => {
@@ -784,7 +783,7 @@ export const addPreviewWatermark = async (
         "-b:a 128k",
         "-ar 48000",
         "-movflags +faststart",
-        ...generateJumbledMetadata(),
+        "-map_metadata", "-1",
       ])
       .save(outputPath)
       .on("end", () => {
@@ -845,7 +844,7 @@ export const addTextOverlay = async (
           "-b:a 128k",
           "-ar 48000",
           "-movflags +faststart",
-          ...generateJumbledMetadata(),
+          "-map_metadata", "-1",
         ])
         .save(outputPath)
         .on("end", () => {
