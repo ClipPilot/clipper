@@ -45,10 +45,6 @@ function FaceSwapContent({
   const [videoDuration, setVideoDuration] = useState(0);
   const [segments, setSegments] = useState<VideoSegment[]>([]);
   const [swapType, setSwapType] = useState<SwapType>("face");
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [processingStatus, setProcessingStatus] = useState("");
-  const [submittedJobId, setSubmittedJobId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const faceSwapsSectionRef = useRef<MyFaceSwapsSectionRef>(null);
 
   const characterImage = selectedCharacter
@@ -76,23 +72,35 @@ function FaceSwapContent({
     if (!video || !characterImage || !selectedTeam?.id || segments.length === 0)
       return;
 
-    setError(null);
-    setIsProcessing(true);
-    setProcessingStatus("Uploading files...");
-    setSubmittedJobId(null);
+    const tempId = `temp-${Date.now()}`;
+
+    const videoFile = video.file;
+    const imageFile = characterImage.file;
+    const teamId = selectedTeam.id;
+    const segmentsData = segments.map((s) => ({ start: s.start, end: s.end }));
+    const duration = videoDuration;
+    const swap = swapType;
+    const videoToRevoke = video.preview;
+
+    faceSwapsSectionRef.current?.addOptimisticJob(tempId);
+
+    setVideo(null);
+    setSelectedCharacter(null);
+    setVideoDuration(0);
+    setSegments([]);
 
     try {
-      await faceSwapAPI.createJob({
-        video: video.file,
-        image: characterImage.file,
-        teamId: selectedTeam.id,
-        segments: segments.map((s) => ({ start: s.start, end: s.end })),
-        videoDuration,
-        swapType,
+      const data = await faceSwapAPI.createJob({
+        video: videoFile,
+        image: imageFile,
+        teamId,
+        segments: segmentsData,
+        videoDuration: duration,
+        swapType: swap,
         spliceWithOriginal: true,
       });
 
-      setProcessingStatus("Job submitted! Processing...");
+      faceSwapsSectionRef.current?.updateOptimisticJob(tempId, data.jobId);
 
       addToast({
         title: "Face swap started!",
@@ -101,26 +109,19 @@ function FaceSwapContent({
         color: "success",
       });
 
-      faceSwapsSectionRef.current?.refetch();
-
-      if (video?.preview) URL.revokeObjectURL(video.preview);
-      setVideo(null);
-      setSelectedCharacter(null);
-      setVideoDuration(0);
-      setSegments([]);
+      if (videoToRevoke) URL.revokeObjectURL(videoToRevoke);
     } catch (err) {
       console.error("Generate error:", err);
       const errorMessage =
         err instanceof Error ? err.message : "An error occurred";
-      setError(errorMessage);
+
+      faceSwapsSectionRef.current?.failOptimisticJob(tempId, errorMessage);
+
       addToast({
         title: "Failed to start face swap",
         description: errorMessage,
         color: "danger",
       });
-    } finally {
-      setIsProcessing(false);
-      setProcessingStatus("");
     }
   };
 
@@ -174,10 +175,6 @@ function FaceSwapContent({
               onCharacterChange={setSelectedCharacter}
             />
             <GeneratePanel
-              isProcessing={isProcessing}
-              processingStatus={processingStatus}
-              submittedJobId={submittedJobId}
-              error={error}
               hasVideo={!!video}
               hasCharacter={!!characterImage}
               segmentCount={segments.length}
@@ -185,8 +182,6 @@ function FaceSwapContent({
               swapType={swapType}
               onSwapTypeChange={setSwapType}
               onGenerate={handleGenerate}
-              onClearSubmitted={() => setSubmittedJobId(null)}
-              onClearError={() => setError(null)}
             />
           </div>
         </div>
