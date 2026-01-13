@@ -61,7 +61,7 @@ app.use("/api/clip-video", transcribeRoutes);
 app.use("/api/folders", folderRoutes);
 app.use("/api/tags", tagRoutes);
 app.use("/api/stripe", stripeRoutes);
-app.use("/api/comfy", comfyRoutes);
+app.use("/api/c", comfyRoutes);
 app.use("/api/face-swap", faceSwapRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/referrals", referralRoutes);

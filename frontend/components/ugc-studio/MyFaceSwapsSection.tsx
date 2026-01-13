@@ -3,9 +3,8 @@
 import { useState, useCallback, useEffect, useImperativeHandle, forwardRef } from "react";
 import { Card, CardBody, Pagination, addToast } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { apiFetch } from "@/lib/apiClient";
-import API_URL from "@/config/constants";
 import { connectSocket, joinTeam, leaveTeam } from "@/lib/socket";
+import { faceSwapAPI } from "@/api/ugc/faceSwap";
 import { FaceSwapJob } from "./types";
 import { FaceSwapDetailModal } from "./FaceSwapDetailModal";
 import { FaceSwapJobCard } from "./FaceSwapJobCard";
@@ -31,11 +30,8 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
 
   const fetchJobs = useCallback(async () => {
     try {
-      const response = await apiFetch(`${API_URL}/comfy/team/${teamId}/jobs`);
-      if (response.ok) {
-        const data = await response.json();
-        setJobs(data.jobs || []);
-      }
+      const data = await faceSwapAPI.getTeamJobs(teamId);
+      setJobs(data.jobs || []);
     } catch (err) {
       console.error("Failed to fetch jobs:", err);
     } finally {
@@ -105,34 +101,24 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
 
   const handleDeleteJob = useCallback(async (jobId: string) => {
     try {
-      const response = await apiFetch(`${API_URL}/comfy/jobs/${jobId}`, {
-        method: "DELETE",
-      });
-      if (response.ok) {
-        setJobs((prev) => prev.filter((j) => j.id !== jobId));
-        // Close modal if the deleted job was being viewed
-        if (selectedJob?.id === jobId) {
-          setIsModalOpen(false);
-          setSelectedJob(null);
-        }
-        addToast({
-          title: "Job deleted",
-          description: "The face swap job has been deleted.",
-          color: "success",
-        });
-      } else {
-        const data = await response.json();
-        addToast({
-          title: "Delete failed",
-          description: data.error || "Failed to delete job.",
-          color: "danger",
-        });
+      await faceSwapAPI.deleteJob(jobId);
+      setJobs((prev) => prev.filter((j) => j.id !== jobId));
+      // Close modal if the deleted job was being viewed
+      if (selectedJob?.id === jobId) {
+        setIsModalOpen(false);
+        setSelectedJob(null);
       }
+      addToast({
+        title: "Job deleted",
+        description: "The face swap job has been deleted.",
+        color: "success",
+      });
     } catch (err) {
       console.error("Failed to delete job:", err);
+      const errorMessage = err instanceof Error ? err.message : "Failed to delete job.";
       addToast({
         title: "Delete failed",
-        description: "An error occurred while deleting the job.",
+        description: errorMessage,
         color: "danger",
       });
     }

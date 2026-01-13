@@ -7,8 +7,7 @@ import { useAtomValue } from "jotai";
 import { useRouter } from "next/navigation";
 import { selectedTeamAtom } from "@/store/auth";
 import { canAccessUGCStudio } from "@/lib/plans";
-import { apiFetch } from "@/lib/apiClient";
-import API_URL from "@/config/constants";
+import { faceSwapAPI } from "@/api/ugc/faceSwap";
 import {
   UploadedFile,
   SelectedCharacter,
@@ -83,31 +82,16 @@ function FaceSwapContent({
     setSubmittedJobId(null);
 
     try {
-      const formData = new FormData();
-      formData.append("video", video.file);
-      formData.append("image", characterImage.file);
-      formData.append("teamId", selectedTeam.id.toString());
-      formData.append(
-        "segments",
-        JSON.stringify(segments.map((s) => ({ start: s.start, end: s.end })))
-      );
-      formData.append("videoDuration", videoDuration.toString());
-      formData.append("swapType", swapType);
-      formData.append("spliceWithOriginal", "true");
-
-      const response = await apiFetch(`${API_URL}/comfy/ugc-face-swap`, {
-        method: "POST",
-        body: formData,
+      await faceSwapAPI.createJob({
+        video: video.file,
+        image: characterImage.file,
+        teamId: selectedTeam.id,
+        segments: segments.map((s) => ({ start: s.start, end: s.end })),
+        videoDuration,
+        swapType,
+        spliceWithOriginal: true,
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to submit job");
-      }
-
-      const data = await response.json();
-      // Don't set submittedJobId - let the toast provide feedback
-      // and keep the form visible for the next job
       setProcessingStatus("Job submitted! Processing...");
 
       addToast({
