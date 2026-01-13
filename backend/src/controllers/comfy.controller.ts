@@ -21,6 +21,20 @@ const UGC_CREDIT_COST = 5;
 const CHUNK_DURATION = 10;
 const CHUNK_LEEWAY = 1; // Allow up to 1 extra second to avoid tiny leftover chunks
 
+const idempotencyCache = new Map<string, { jobId: string; expiresAt: number }>();
+const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
+
+function cleanExpiredIdempotencyKeys() {
+  const now = Date.now();
+  for (const [key, value] of idempotencyCache.entries()) {
+    if (now > value.expiresAt) {
+      idempotencyCache.delete(key);
+    }
+  }
+}
+
+setInterval(cleanExpiredIdempotencyKeys, 60 * 1000);
+
 interface AuthRequest extends Request {
   user?: { id: string; email: string; dbUserId: number };
 }
@@ -156,6 +170,18 @@ export class ComfyController {
         });
       }
 
+      const idempotencyKey = req.body.idempotencyKey;
+      if (idempotencyKey) {
+        const cached = idempotencyCache.get(idempotencyKey);
+        if (cached && Date.now() < cached.expiresAt) {
+          console.log(`[comfy] Returning cached job for idempotency key: ${idempotencyKey} -> ${cached.jobId}`);
+          return res.status(202).json({
+            message: "UGC face swap job already queued (retry detected)",
+            jobId: cached.jobId,
+          });
+        }
+      }
+
       await teamService.incrementTeamUsage(parseInt(teamId), UGC_CREDIT_COST);
       console.log(`[comfy] Charged ${UGC_CREDIT_COST} credits upfront to team ${teamId}`);
 
@@ -256,6 +282,13 @@ export class ComfyController {
         createdAt: now.toISOString(),
         finishedAt: null,
       });
+
+      if (idempotencyKey) {
+        idempotencyCache.set(idempotencyKey, {
+          jobId,
+          expiresAt: Date.now() + IDEMPOTENCY_TTL_MS,
+        });
+      }
 
       return res.status(202).json({
         message: "UGC face swap job queued",

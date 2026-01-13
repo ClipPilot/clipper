@@ -25,6 +25,8 @@ class FaceSwapAPI {
 
   async createJob(data: CreateFaceSwapRequest): Promise<CreateFaceSwapResponse> {
     const formData = new FormData();
+    const idempotencyKey = crypto.randomUUID();
+
     formData.append("video", data.video);
     formData.append("image", data.image);
     formData.append("teamId", data.teamId.toString());
@@ -32,21 +34,22 @@ class FaceSwapAPI {
     formData.append("videoDuration", data.videoDuration.toString());
     formData.append("swapType", data.swapType);
     formData.append("spliceWithOriginal", data.spliceWithOriginal ? "true" : "false");
+    formData.append("idempotencyKey", idempotencyKey);
 
-    const MAX_RETRIES = 2;
-    const RETRY_DELAY_MS = 3000;
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY_MS = 2000;
     const UPLOAD_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes for large video uploads
     let lastError: Error | null = null;
-    let response: Response | null = null;
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
+      let response: Response | null = null;
 
       try {
         if (attempt > 0) {
           console.log(`Retrying upload (attempt ${attempt + 1}/${MAX_RETRIES + 1})...`);
-          await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+          await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS * attempt));
         }
 
         response = await apiFetch(`${this.baseUrl}/ugc-face-swap`, {
@@ -58,10 +61,14 @@ class FaceSwapAPI {
         clearTimeout(timeoutId);
 
         if (!response.ok) {
-          const error = await response.json();
+          const error = await response.json().catch(() => ({ error: "Unknown error" }));
           const err = new Error(error.error || "Failed to create face swap job");
+
+          // Retry on 5xx server errors
           if (response.status >= 500 && attempt < MAX_RETRIES) {
-            throw err;
+            console.warn(`Server error ${response.status}, will retry...`);
+            lastError = err;
+            continue;
           }
           throw err;
         }
@@ -72,19 +79,25 @@ class FaceSwapAPI {
 
         // Detect timeout/abort errors
         const isAbortError = err instanceof Error && err.name === "AbortError";
+        const isNetworkError = err instanceof TypeError || isAbortError;
+
         if (isAbortError) {
           lastError = new Error("Upload timed out - please check your network connection");
+        } else if (err instanceof TypeError) {
+          lastError = new Error("Network error - failed to connect. Retrying...");
         } else {
           lastError = err instanceof Error ? err : new Error("Upload failed");
         }
 
-        const isNetworkError = err instanceof TypeError || isAbortError;
-        const isServerError = response && response.status >= 500;
-        if (!isNetworkError && !isServerError) {
-          break;
+        // Only retry on network errors or if we haven't exhausted retries
+        if (isNetworkError && attempt < MAX_RETRIES) {
+          console.warn(`Upload attempt ${attempt + 1} failed (network):`, lastError.message);
+          continue;
         }
-        if (attempt < MAX_RETRIES) {
-          console.warn(`Upload attempt ${attempt + 1} failed:`, lastError.message);
+
+        // Non-retryable error (4xx client error, etc.)
+        if (!isNetworkError) {
+          throw lastError;
         }
       }
     }
