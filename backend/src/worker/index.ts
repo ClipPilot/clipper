@@ -157,8 +157,10 @@ async function processMessage(job: VideoProcessingJob, receiptHandle: string): P
     }
   } finally {
     clearInterval(heartbeat);
-    // Disable task protection after job completes (or fails)
-    await setTaskProtection(false);
+    // Only disable task protection when ALL jobs are complete
+    if (activeJobs <= 1) {
+      await setTaskProtection(false);
+    }
   }
 }
 
