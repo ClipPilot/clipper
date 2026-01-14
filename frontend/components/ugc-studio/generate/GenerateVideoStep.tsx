@@ -32,7 +32,7 @@ interface GenerateVideoStepProps {
 
 type StepState = "ready" | "confirming" | "generating";
 
-const GENERATE_CREDIT_COST = 15;
+const GENERATE_CREDIT_COST = 10;
 
 export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) {
   const router = useRouter();

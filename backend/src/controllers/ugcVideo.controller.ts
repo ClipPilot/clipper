@@ -15,6 +15,7 @@ import { canAccessUGCStudio } from "../utils/plans";
 import { eq, and, desc, count, sql } from "drizzle-orm";
 import { transcribeVideoService } from "../services/transcription.service";
 import { convertWordsToCaptionEntries, CaptionEntry } from "../services/captions.service";
+import { getTeamUsage } from "../middleware/subscription.middleware";
 
 interface AuthRequest extends Request {
   user?: { id: string; email: string; dbUserId: number };
@@ -206,6 +207,20 @@ export class UGCVideoController {
         return res.status(403).json({ error: "UGC Studio access required" });
       }
 
+      const UGC_VIDEO_CREDIT_COST = 10;
+      const usage = await getTeamUsage(teamId);
+      if (!usage) {
+        return res.status(404).json({ error: "Team usage stats not found" });
+      }
+      if (usage.totalRemaining < UGC_VIDEO_CREDIT_COST) {
+        return res.status(403).json({
+          error: `Insufficient credits. UGC video generation requires ${UGC_VIDEO_CREDIT_COST} credits, but you have ${usage.totalRemaining} remaining.`,
+          code: "INSUFFICIENT_CREDITS",
+          required: UGC_VIDEO_CREDIT_COST,
+          available: usage.totalRemaining,
+        });
+      }
+
       // Fetch the script to get scene data
       const [script] = await db
         .select()
@@ -264,6 +279,8 @@ export class UGCVideoController {
           ambientSound: scene.ambientSound,
         });
       }
+
+      await teamService.incrementTeamUsage(teamId, UGC_VIDEO_CREDIT_COST);
 
       // Create the job record
       const [job] = await db
