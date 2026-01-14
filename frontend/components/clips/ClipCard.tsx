@@ -1,11 +1,10 @@
 "use client";
 
 import React, { useState, memo, useRef, useEffect } from "react";
-import { Card, Button, Tooltip } from "@heroui/react";
+import { Card, Button, Tooltip, addToast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { Clip } from "@/api/clips";
-import { apiFetch } from "@/lib/apiClient";
-import API_URL from "@/config/constants";
+import { faceSwapAPI } from "@/api/ugc/faceSwap";
 
 interface ClipCardProps {
   clip: Clip;
@@ -53,13 +52,10 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
     if (!clip.clipUrl || isDownloading) return;
 
     setIsDownloading(true);
+    addToast({ title: "Preparing your video for download...", color: "primary" });
     try {
       const filename = `${clip.title || `clip-${clip.id}`}.mp4`;
-      const downloadUrl = `${API_URL}/face-swap/download-fixed?url=${encodeURIComponent(clip.clipUrl)}&filename=${encodeURIComponent(filename)}`;
-      const response = await apiFetch(downloadUrl);
-      if (!response.ok) throw new Error("Download failed");
-
-      const blob = await response.blob();
+      const blob = await faceSwapAPI.downloadVideo(clip.clipUrl, filename);
       const blobUrl = URL.createObjectURL(blob);
 
       const link = document.createElement("a");

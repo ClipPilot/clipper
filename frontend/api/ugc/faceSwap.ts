@@ -166,6 +166,34 @@ class FaceSwapAPI {
       throw new Error(error.error || "Failed to update job title");
     }
   }
+
+  async downloadVideo(url: string, filename: string): Promise<Blob> {
+    const downloadUrl = `${API_URL}/face-swap/download-fixed?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`;
+    const response = await apiFetch(downloadUrl);
+
+    if (!response.ok) {
+      throw new Error("Download failed");
+    }
+
+    return response.blob();
+  }
+
+  async detectFaces(videoFile: File): Promise<{ segments: Array<{ start: number; end: number }>; segmentCount: number }> {
+    const formData = new FormData();
+    formData.append("video", videoFile);
+
+    const response = await apiFetch(`${API_URL}/face-swap/detect-faces`, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: "Failed to detect faces" }));
+      throw new Error(errorData.error || "Failed to detect faces");
+    }
+
+    return response.json();
+  }
 }
 
 export const faceSwapAPI = new FaceSwapAPI();

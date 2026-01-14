@@ -57,6 +57,13 @@
       "when": 1768338831069,
       "tag": "0007_polite_galactus",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1768375187819,
+      "tag": "0008_right_fabian_cortez",
+      "breakpoints": true
     }
   ]
 }

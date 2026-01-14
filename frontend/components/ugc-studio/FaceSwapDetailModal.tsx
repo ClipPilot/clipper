@@ -20,9 +20,7 @@ import {
   getStatusColor,
   getStatusIcon,
 } from "./types";
-import { apiFetch } from "@/lib/apiClient";
 import { faceSwapAPI } from "@/api/ugc/faceSwap";
-import API_URL from "@/config/constants";
 
 function formatTime(seconds: number): string {
   const mins = Math.floor(seconds / 60);
@@ -102,17 +100,10 @@ export function FaceSwapDetailModal({
     if (!job?.outputUrl || isDownloading) return;
 
     setIsDownloading(true);
+    addToast({ title: "Preparing your video for download...", color: "primary" });
     try {
       const filename = `face-swap-${job.id}.mp4`;
-      const downloadUrl = `${API_URL}/face-swap/download-fixed?url=${encodeURIComponent(job.outputUrl)}&filename=${encodeURIComponent(filename)}`;
-
-      const response = await apiFetch(downloadUrl);
-
-      if (!response.ok) {
-        throw new Error("Download failed");
-      }
-
-      const blob = await response.blob();
+      const blob = await faceSwapAPI.downloadVideo(job.outputUrl, filename);
       const blobUrl = URL.createObjectURL(blob);
 
       const link = document.createElement("a");

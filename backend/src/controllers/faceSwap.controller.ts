@@ -118,7 +118,8 @@ export const downloadFixed = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: "Missing required 'url' parameter" });
     }
 
-    const outputFilename = typeof filename === "string" ? filename : "video.mp4";
+    const rawFilename = typeof filename === "string" ? filename : "video.mp4";
+    const outputFilename = rawFilename.replace(/[^\x20-\x7E]/g, "_").replace(/["\\]/g, "_");
 
     // Mode: "direct" = stream from S3 directly (fastest)
     //       "remux" = copy streams without re-encoding (fast, fixes metadata)
@@ -168,14 +169,17 @@ export const downloadFixed = async (req: AuthRequest, res: Response) => {
     console.log(`[DOWNLOAD-FIXED] Downloaded ${(arrayBuffer.byteLength / 1024 / 1024).toFixed(2)}MB`);
 
     // Remux mode: copy streams without re-encoding (much faster)
+    // -map_metadata -1 strips corrupted input metadata, then we apply fresh jumbled metadata
     const ffmpegOptions = mode === "remux"
       ? [
+          "-map_metadata", "-1",
           "-c:v copy",
           "-c:a copy",
           "-movflags +faststart",
           ...generateJumbledMetadata(),
         ]
       : [
+          "-map_metadata", "-1",
           ...MOBILE_DOWNLOAD_SETTINGS,
           ...generateJumbledMetadata(),
         ];
@@ -241,7 +245,8 @@ export const downloadFixedPublic = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Missing required 'url' parameter" });
     }
 
-    const outputFilename = typeof filename === "string" ? filename : "video.mp4";
+    const rawFilename = typeof filename === "string" ? filename : "video.mp4";
+    const outputFilename = rawFilename.replace(/[^\x20-\x7E]/g, "_").replace(/["\\]/g, "_");
 
     // Mode: "direct" = stream from S3 directly (fastest)
     //       "remux" = copy streams without re-encoding (fast, fixes metadata)
@@ -290,12 +295,14 @@ export const downloadFixedPublic = async (req: Request, res: Response) => {
 
     const ffmpegOptions = mode === "remux"
       ? [
+          "-map_metadata", "-1",
           "-c:v copy",
           "-c:a copy",
           "-movflags +faststart",
           ...generateJumbledMetadata(),
         ]
       : [
+          "-map_metadata", "-1",
           ...MOBILE_DOWNLOAD_SETTINGS,
           ...generateJumbledMetadata(),
         ];

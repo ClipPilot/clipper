@@ -15,10 +15,10 @@ import {
   DropdownMenu,
   DropdownItem,
   Input,
+  addToast,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { apiFetch } from "@/lib/apiClient";
-import API_URL from "@/config/constants";
+import { faceSwapAPI } from "@/api/ugc/faceSwap";
 
 interface Folder {
   id: number;
@@ -171,14 +171,10 @@ export default function ClipViewModal({
     if (!clip.clipUrl || isDownloading) return;
 
     setIsDownloading(true);
+    addToast({ title: "Preparing your video for download...", color: "primary" });
     try {
       const filename = `clip_${clip.id}.mp4`;
-      const downloadUrl = `${API_URL}/face-swap/download-fixed?url=${encodeURIComponent(clip.clipUrl)}&filename=${encodeURIComponent(filename)}`;
-
-      const response = await apiFetch(downloadUrl);
-      if (!response.ok) throw new Error("Download failed");
-
-      const blob = await response.blob();
+      const blob = await faceSwapAPI.downloadVideo(clip.clipUrl, filename);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;

@@ -3,8 +3,7 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { Button, addToast } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { apiFetch } from "@/lib/apiClient";
-import API_URL from "@/config/constants";
+import { faceSwapAPI } from "@/api/ugc/faceSwap";
 
 export interface VideoSegment {
   id: string;
@@ -72,20 +71,7 @@ export function MultiSegmentTrimmer({
     });
 
     try {
-      const formData = new FormData();
-      formData.append("video", videoFile);
-
-      const response = await apiFetch(`${API_URL}/face-swap/detect-faces`, {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to detect faces");
-      }
-
-      const data = await response.json();
+      const data = await faceSwapAPI.detectFaces(videoFile);
 
       if (data.segments && data.segments.length > 0) {
         // Limit to maxSegments and ensure total duration doesn't exceed max

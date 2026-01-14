@@ -40,20 +40,24 @@ export const generateJumbledMetadata = (): string[] => {
   const device = DEVICES[Math.floor(Math.random() * DEVICES.length)];
   const creationTime = generateRandomDate();
 
-  // Use single quotes for values with spaces (fluent-ffmpeg compatibility)
+  // FFmpeg metadata: no shell quotes needed, fluent-ffmpeg handles escaping
+  // Escape special chars that FFmpeg interprets: = ; # \ and newlines
+  const escapeMetaValue = (val: string) => val.replace(/([=;#\\'\n])/g, "\\$1");
+
   const metadata: string[] = [
-    "-metadata", `make='${device.make}'`,
-    "-metadata", `model='${device.model}'`,
-    "-metadata", `creation_time=${creationTime}`,
+    `-metadata:g`, `make=${escapeMetaValue(device.make)}`,
+    `-metadata:g`, `model=${escapeMetaValue(device.model)}`,
+    `-metadata:g`, `creation_time=${creationTime}`,
   ];
 
   if (device.software) {
-    metadata.push("-metadata", `software=${device.software}`);
+    metadata.push(`-metadata:g`, `software=${escapeMetaValue(device.software)}`);
   }
 
+  // Only add stream metadata - handler names are simple ASCII, no escaping needed
   if (device.make === "Apple") {
-    metadata.push("-metadata:s:v:0", "handler_name='Core Media Video'");
-    metadata.push("-metadata:s:a:0", "handler_name='Core Media Audio'");
+    metadata.push("-metadata:s:v:0", "handler_name=Core Media Video");
+    metadata.push("-metadata:s:a:0", "handler_name=Core Media Audio");
   } else {
     metadata.push("-metadata:s:v:0", "handler_name=VideoHandler");
     metadata.push("-metadata:s:a:0", "handler_name=SoundHandler");

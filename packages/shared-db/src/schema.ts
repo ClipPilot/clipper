@@ -1,4 +1,5 @@
 import { float } from "drizzle-orm/mysql-core";
+import { sql } from "drizzle-orm";
 import {
   pgTable,
   varchar,
@@ -229,6 +230,11 @@ export const clips = pgTable(
       ),
       folderIdx: index("clips_folder_id_idx").on(table.folder_id),
       shareTokenIdx: index("clips_share_token_idx").on(table.share_token),
+      // GIN trigram indexes for fuzzy search (requires pg_trgm extension)
+      titleTrgmIdx: index("clips_title_trgm_idx")
+        .using("gin", sql`${table.title} gin_trgm_ops`),
+      messageTrgmIdx: index("clips_message_trgm_idx")
+        .using("gin", sql`${table.message} gin_trgm_ops`),
     };
   }
 ).enableRLS();
