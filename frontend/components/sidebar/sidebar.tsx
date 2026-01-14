@@ -13,7 +13,7 @@ import { useUsageStats } from "@/hooks/useUsageStats";
 import { useAtom } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
 import { useUsageStatsRefresh } from "@/contexts/UsageStatsContext";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 export type SidebarItem = {
   key: string;
@@ -32,11 +32,7 @@ export type SidebarProps = {
 const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
   ({ items, defaultSelectedKey, onSelect, canViewPricing = true }, ref) => {
     const router = useRouter();
-    const pathname = usePathname();
-    const isComingSoonSelected = pathname === "/dashboard/coming-soon";
-    const [selected, setSelected] = React.useState<React.Key>(
-      isComingSoonSelected ? "" : defaultSelectedKey
-    );
+    const [selected, setSelected] = React.useState<React.Key>(defaultSelectedKey);
     const [selectedTeam] = useAtom(selectedTeamAtom);
     const { refreshTrigger } = useUsageStatsRefresh();
     const { usageStats, isLoading, error, refetch } = useUsageStats(
@@ -44,12 +40,8 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
     );
 
     useEffect(() => {
-      if (isComingSoonSelected) {
-        setSelected("");
-      } else {
-        setSelected(defaultSelectedKey);
-      }
-    }, [defaultSelectedKey, isComingSoonSelected]);
+      setSelected(defaultSelectedKey);
+    }, [defaultSelectedKey]);
 
     useEffect(() => {
       if (refreshTrigger > 0) {
@@ -142,34 +134,6 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
               );
             })}
           </Listbox>
-        </div>
-
-        <div className="mt-auto px-4 pb-2">
-          <button
-            onClick={() => router.push("/dashboard/coming-soon")}
-            className={cn(
-              "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors cursor-pointer",
-              isComingSoonSelected
-                ? "bg-accent-400/10"
-                : "hover:bg-surface-elevated"
-            )}
-          >
-            <Icon
-              icon="solar:stars-bold-duotone"
-              className={
-                isComingSoonSelected ? "text-accent-400" : "text-text-primary"
-              }
-              width={20}
-            />
-            <span
-              className={cn(
-                "text-sm font-medium",
-                isComingSoonSelected ? "text-accent-400" : "text-text-primary"
-              )}
-            >
-              Coming Soon
-            </span>
-          </button>
         </div>
 
         {canViewPricing && selectedTeam && (
