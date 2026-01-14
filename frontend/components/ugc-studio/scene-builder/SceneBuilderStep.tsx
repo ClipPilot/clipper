@@ -100,17 +100,24 @@ export function SceneBuilderStep({
         // Load saved images only if character matches
         const response = await sceneBuilderAPI.getSceneImages(scriptId);
         if (response.success && response.sceneImages) {
-          const newState: Record<string, SceneImageState> = {};
-          Object.entries(response.sceneImages).forEach(
-            ([sceneId, sceneImage]: [string, any]) => {
-              newState[sceneId] = {
-                status: "completed",
-                selectedImageKey: sceneImage.image_key,
-                selectedImageUrl: sceneImage.imageUrl,
-              };
-            }
-          );
-          setSceneImages(newState);
+          setSceneImages((prev) => {
+            const newState: Record<string, SceneImageState> = { ...prev };
+            Object.entries(response.sceneImages).forEach(
+              ([sceneId, sceneImage]: [string, any]) => {
+                // Only update if not currently generating (preserve in-progress state)
+                const currentState = prev[sceneId];
+                if (currentState?.status === "generating" || currentState?.status === "regenerating") {
+                  return; // Keep generating status
+                }
+                newState[sceneId] = {
+                  status: "completed",
+                  selectedImageKey: sceneImage.image_key,
+                  selectedImageUrl: sceneImage.imageUrl,
+                };
+              }
+            );
+            return newState;
+          });
         }
       } catch (error) {
         console.error("Failed to load saved scene images:", error);
@@ -127,6 +134,13 @@ export function SceneBuilderStep({
     if (loading || hasTriggeredAutoGenerate.current || generatingAll) return;
     if (scenes.length === 0) return;
 
+    // Check sessionStorage to see if we already triggered for this script (survives remounts)
+    const autoGenKey = `autoGen_${scriptId}`;
+    if (sessionStorage.getItem(autoGenKey)) {
+      console.log("[SceneBuilder] Auto-generate already triggered for this script");
+      return;
+    }
+
     // Check if any scenes already have images
     const hasAnyImages = scenes.some(scene => sceneImages[scene.id]?.selectedImageKey);
     if (hasAnyImages) return;
@@ -140,9 +154,10 @@ export function SceneBuilderStep({
 
     // Trigger auto-generation
     hasTriggeredAutoGenerate.current = true;
+    sessionStorage.setItem(autoGenKey, "true");
     console.log("[SceneBuilder] Auto-generating all scene images on mount");
     handleGenerateAll();
-  }, [loading, scenes, sceneImages, generatingAll]);
+  }, [loading, scenes, sceneImages, generatingAll, scriptId]);
 
   const handleGenerationStart = (sceneId: string, jobId: string) => {
     setSceneImages((prev) => ({

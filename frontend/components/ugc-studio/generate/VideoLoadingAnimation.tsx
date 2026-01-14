@@ -275,6 +275,20 @@ export function VideoLoadingAnimation({
             This typically takes 2-5 minutes. You can leave this page and come back later.
           </p>
         </div>
+
+        {/* Close button */}
+        {onCancel && (
+          <div className="mt-6 flex justify-center">
+            <Button
+              variant="bordered"
+              className="border-border-base text-text-secondary"
+              onPress={onCancel}
+              startContent={<Icon icon="solar:close-circle-linear" width={18} />}
+            >
+              Close & Return to Menu
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

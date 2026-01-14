@@ -285,26 +285,65 @@ export function ScriptStep({
   };
 
   const handleRegenerateScene = async (sceneIndex: number) => {
-    if (!scriptId) return;
-
     const scene = scripts[selectedVariantIndex].scenes[sceneIndex];
 
-    const response = await ugcScriptAPI.regenerateScene({
-      teamId,
-      scriptId,
-      sceneId: scene.id,
-      currentDialogue: scene.dialogue,
-      currentEmotion: scene.emotion,
-      regenerationType: "full",
-    });
+    // If we have a scriptId, use the API to regenerate
+    if (scriptId) {
+      try {
+        const response = await ugcScriptAPI.regenerateScene({
+          teamId,
+          scriptId,
+          sceneId: scene.id,
+          currentDialogue: scene.dialogue,
+          currentEmotion: scene.emotion,
+          regenerationType: "full",
+        });
+        handleSceneUpdate(sceneIndex, response.scene);
+      } catch (err: any) {
+        setError(err.message || "Failed to regenerate scene");
+      }
+    } else {
+      // For new scenes without a scriptId, reset to default content
+      const defaultDialogues: Record<string, string> = {
+        hook: "Stop scrolling! You need to see this...",
+        problem: "I was struggling with this problem for so long...",
+        solution: "Then I discovered this game-changer...",
+        demo: "Let me show you how it works...",
+        testimonial: "This has completely changed my life...",
+        cta: "Click the link below to get yours now!",
+      };
 
-    handleSceneUpdate(sceneIndex, response.scene);
+      handleSceneUpdate(sceneIndex, {
+        dialogue: defaultDialogues[scene.sceneType] || "Add your dialogue here...",
+        action: "Speaking to camera",
+        emotion: "friendly",
+      });
+    }
   };
 
-  const handleContinue = () => {
-    if (scriptId && scripts[selectedVariantIndex] && onContinue) {
-      onContinue();
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleContinue = async () => {
+    if (!scripts[selectedVariantIndex] || !onContinue) return;
+
+    // Save script to DB if we have a scriptId
+    if (scriptId) {
+      setIsSaving(true);
+      setError(null);
+      try {
+        await ugcScriptAPI.updateScript(scriptId, {
+          scenes: scripts[selectedVariantIndex].scenes,
+          selectedVariantIndex,
+        });
+      } catch (err: any) {
+        setError(err.message || "Failed to save script");
+        setIsSaving(false);
+        return;
+      }
+      setIsSaving(false);
     }
+
+    onContinue();
   };
 
   const handleGoBackToUpload = () => {
@@ -768,9 +807,10 @@ export function ScriptStep({
           size="lg"
           className="bg-accent-400 text-white font-semibold"
           onPress={handleContinue}
-          endContent={<Icon icon="solar:arrow-right-linear" width={16} />}
+          isLoading={isSaving}
+          endContent={!isSaving && <Icon icon="solar:arrow-right-linear" width={16} />}
         >
-          Continue to Audio
+          {isSaving ? "Saving..." : "Continue to Audio"}
         </Button>
       </div>
     </div>

@@ -258,8 +258,8 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
         status={finalizingStatus}
         totalScenes={totalScenes}
         onCancel={() => {
-          // Note: We can't actually cancel the job, but we can go back
-          setStepState("ready");
+          // Return to the AI Video Creator menu - job continues in background
+          router.push("/dashboard/ugc-studio/ai-video-creator");
         }}
       />
     );

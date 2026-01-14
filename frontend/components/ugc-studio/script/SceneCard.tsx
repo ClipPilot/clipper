@@ -1,11 +1,30 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardBody, Button, Textarea, Chip } from "@heroui/react";
+import {
+  Card,
+  CardBody,
+  Button,
+  Textarea,
+  Chip,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+} from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { EmotionSelector } from "./EmotionSelector";
 import { CameraAngleSelector } from "./CameraAngleSelector";
-import { SCENE_TYPE_CONFIG, type UGCScene, type Emotion, type CameraAngle } from "./types";
+import {
+  SCENE_TYPE_CONFIG,
+  SCENE_TYPES,
+  SHOT_TYPES,
+  type UGCScene,
+  type Emotion,
+  type CameraAngle,
+  type SceneType,
+  type ShotType,
+} from "./types";
 
 interface SceneCardProps {
   scene: UGCScene;
@@ -69,32 +88,82 @@ export function SceneCard({
       <CardBody className="p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Chip
-              size="sm"
-              className={sceneConfig.color}
-              startContent={<Icon icon={sceneConfig.icon} width={12} />}
-            >
-              {sceneConfig.label}
-            </Chip>
+            <Dropdown>
+              <DropdownTrigger>
+                <Chip
+                  size="sm"
+                  className={`${sceneConfig.color} cursor-pointer hover:opacity-80`}
+                  startContent={<Icon icon={sceneConfig.icon} width={12} />}
+                >
+                  {sceneConfig.label}
+                </Chip>
+              </DropdownTrigger>
+              <DropdownMenu
+                aria-label="Select scene type"
+                selectionMode="single"
+                selectedKeys={[scene.sceneType]}
+                onAction={(key) => onUpdate({ sceneType: key as SceneType })}
+                className="bg-surface-elevated"
+              >
+                {SCENE_TYPES.map((type) => {
+                  const typeConfig = SCENE_TYPE_CONFIG[type];
+                  return (
+                    <DropdownItem
+                      key={type}
+                      startContent={<Icon icon={typeConfig.icon} width={16} />}
+                      className="text-text-primary"
+                    >
+                      {typeConfig.label}
+                    </DropdownItem>
+                  );
+                })}
+              </DropdownMenu>
+            </Dropdown>
             <span className="text-xs text-text-muted">
               {scene.estimatedDurationSeconds}s
             </span>
           </div>
 
           <div className="flex items-center gap-1">
-            <Chip
-              size="sm"
-              variant="flat"
-              className={
-                scene.shotType === "a-roll"
-                  ? "bg-blue-500/20 text-blue-400"
-                  : scene.shotType === "b-roll"
-                    ? "bg-amber-500/20 text-amber-400"
-                    : "bg-purple-500/20 text-purple-400"
-              }
-            >
-              {scene.shotType}
-            </Chip>
+            <Dropdown>
+              <DropdownTrigger>
+                <Chip
+                  size="sm"
+                  variant="flat"
+                  className={`cursor-pointer hover:opacity-80 ${
+                    scene.shotType === "a-roll"
+                      ? "bg-blue-500/20 text-blue-400"
+                      : scene.shotType === "b-roll"
+                        ? "bg-amber-500/20 text-amber-400"
+                        : "bg-purple-500/20 text-purple-400"
+                  }`}
+                >
+                  {scene.shotType}
+                </Chip>
+              </DropdownTrigger>
+              <DropdownMenu
+                aria-label="Select shot type"
+                selectionMode="single"
+                selectedKeys={[scene.shotType]}
+                onAction={(key) => onUpdate({ shotType: key as ShotType })}
+                className="bg-surface-elevated"
+              >
+                {SHOT_TYPES.map((shotType) => (
+                  <DropdownItem
+                    key={shotType}
+                    className={`text-text-primary ${
+                      shotType === "a-roll"
+                        ? "text-blue-400"
+                        : shotType === "b-roll"
+                          ? "text-amber-400"
+                          : "text-purple-400"
+                    }`}
+                  >
+                    {shotType}
+                  </DropdownItem>
+                ))}
+              </DropdownMenu>
+            </Dropdown>
             <Button
               isIconOnly
               size="sm"

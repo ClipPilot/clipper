@@ -228,9 +228,10 @@ def extract_edge_frames(
     # Clamp start_time to >= 0
     start_time = max(0, start_time)
 
+    # Use -ss AFTER -i for frame-accurate seeking (slower but precise)
     cmd = [
-        'ffmpeg', '-ss', str(start_time),
-        '-i', video_path,
+        'ffmpeg', '-i', video_path,
+        '-ss', str(start_time),
         '-t', str(duration),
         '-vf', f'fps={int(fps)}',
         '-q:v', '2',
@@ -380,11 +381,13 @@ def validate_segment_starts(
                 break
 
             # Extract single frame at current start time
+            # Use -ss AFTER -i for frame-accurate seeking (slower but precise)
             temp_dir = tempfile.mkdtemp()
             frame_path = os.path.join(temp_dir, "frame.jpg")
             cmd = [
-                'ffmpeg', '-y', '-ss', str(start), '-i', video_path,
-                '-vframes', '1', '-q:v', '2', frame_path
+                'ffmpeg', '-y', '-i', video_path, '-ss', str(start),
+                '-vframes', '1', '-q:v', '2', frame_path,
+                '-loglevel', 'warning'
             ]
             subprocess.run(cmd, capture_output=True)
 
