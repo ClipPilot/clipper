@@ -14,7 +14,12 @@ import {
   addToast,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { FaceSwapJob, formatDuration, getStatusColor, getStatusIcon } from "./types";
+import {
+  FaceSwapJob,
+  formatDuration,
+  getStatusColor,
+  getStatusIcon,
+} from "./types";
 import { apiFetch } from "@/lib/apiClient";
 import { faceSwapAPI } from "@/api/ugc/faceSwap";
 import API_URL from "@/config/constants";
@@ -33,11 +38,19 @@ interface FaceSwapDetailModalProps {
   onTitleUpdate?: (jobId: string, title: string) => void;
 }
 
-export function FaceSwapDetailModal({ job, isOpen, onClose, onDelete, onTitleUpdate }: FaceSwapDetailModalProps) {
+export function FaceSwapDetailModal({
+  job,
+  isOpen,
+  onClose,
+  onDelete,
+  onTitleUpdate,
+}: FaceSwapDetailModalProps) {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showSegments, setShowSegments] = useState(false);
-  const [activeSegmentIndex, setActiveSegmentIndex] = useState<number | null>(null);
+  const [activeSegmentIndex, setActiveSegmentIndex] = useState<number | null>(
+    null
+  );
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [isSavingTitle, setIsSavingTitle] = useState(false);
@@ -65,7 +78,8 @@ export function FaceSwapDetailModal({ job, isOpen, onClose, onDelete, onTitleUpd
       console.error("Failed to update title:", error);
       addToast({
         title: "Failed to update title",
-        description: error instanceof Error ? error.message : "Please try again",
+        description:
+          error instanceof Error ? error.message : "Please try again",
         color: "danger",
       });
     } finally {
@@ -143,8 +157,12 @@ export function FaceSwapDetailModal({ job, isOpen, onClose, onDelete, onTitleUpd
       <ModalContent>
         <ModalHeader className="flex flex-col gap-2">
           <div className="flex items-center gap-3">
-            <Icon icon="solar:mask-happly-bold-duotone" className="text-accent-400" width={24} />
-            <span>Face Swap Details</span>
+            <Icon
+              icon="solar:mask-happly-bold-duotone"
+              className="text-accent-400"
+              width={24}
+            />
+            <span>Character Swap Details</span>
           </div>
         </ModalHeader>
         <ModalBody className="py-6">
@@ -153,16 +171,23 @@ export function FaceSwapDetailModal({ job, isOpen, onClose, onDelete, onTitleUpd
               <div className="space-y-3">
                 <div className="rounded-xl overflow-hidden bg-black aspect-video">
                   <video
-                    src={activeSegmentIndex !== null && job.spliceSegments?.[activeSegmentIndex]
-                      ? job.spliceSegments[activeSegmentIndex].url
-                      : job.outputUrl}
+                    src={
+                      activeSegmentIndex !== null &&
+                      job.spliceSegments?.[activeSegmentIndex]
+                        ? job.spliceSegments[activeSegmentIndex].url
+                        : job.outputUrl
+                    }
                     className="w-full h-full object-contain"
                     controls
                     controlsList="nodownload noremoteplayback"
                     disablePictureInPicture
                     onContextMenu={(e) => e.preventDefault()}
                     playsInline
-                    key={activeSegmentIndex !== null ? `segment-${activeSegmentIndex}` : "main"}
+                    key={
+                      activeSegmentIndex !== null
+                        ? `segment-${activeSegmentIndex}`
+                        : "main"
+                    }
                   />
                 </div>
                 {job.spliceSegments && job.spliceSegments.length > 0 && (
@@ -174,10 +199,21 @@ export function FaceSwapDetailModal({ job, isOpen, onClose, onDelete, onTitleUpd
                         setShowSegments(!showSegments);
                         if (!showSegments) setActiveSegmentIndex(null);
                       }}
-                      startContent={<Icon icon={showSegments ? "solar:alt-arrow-up-bold" : "solar:layers-bold"} width={16} />}
+                      startContent={
+                        <Icon
+                          icon={
+                            showSegments
+                              ? "solar:alt-arrow-up-bold"
+                              : "solar:layers-bold"
+                          }
+                          width={16}
+                        />
+                      }
                       className="w-full"
                     >
-                      {showSegments ? "Hide Segments" : `View ${job.spliceSegments.length} Individual Segments`}
+                      {showSegments
+                        ? "Hide Segments"
+                        : `View ${job.spliceSegments.length} Individual Segments`}
                     </Button>
                     {showSegments && (
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -190,10 +226,18 @@ export function FaceSwapDetailModal({ job, isOpen, onClose, onDelete, onTitleUpd
                           }`}
                         >
                           <div className="flex items-center gap-2 mb-1">
-                            <Icon icon="solar:video-frame-bold" className="text-accent-400" width={14} />
-                            <span className="text-xs font-medium text-text-primary">Final Video</span>
+                            <Icon
+                              icon="solar:video-frame-bold"
+                              className="text-accent-400"
+                              width={14}
+                            />
+                            <span className="text-xs font-medium text-text-primary">
+                              Final Video
+                            </span>
                           </div>
-                          <p className="text-[10px] text-text-tertiary">Complete merged output</p>
+                          <p className="text-[10px] text-text-tertiary">
+                            Complete merged output
+                          </p>
                         </button>
                         {job.spliceSegments.map((segment, idx) => (
                           <button
@@ -207,8 +251,16 @@ export function FaceSwapDetailModal({ job, isOpen, onClose, onDelete, onTitleUpd
                           >
                             <div className="flex items-center gap-2 mb-1">
                               <Icon
-                                icon={segment.type === "processed" ? "solar:mask-happly-bold" : "solar:videocamera-bold"}
-                                className={segment.type === "processed" ? "text-green-400" : "text-blue-400"}
+                                icon={
+                                  segment.type === "processed"
+                                    ? "solar:mask-happly-bold"
+                                    : "solar:videocamera-bold"
+                                }
+                                className={
+                                  segment.type === "processed"
+                                    ? "text-green-400"
+                                    : "text-blue-400"
+                                }
                                 width={14}
                               />
                               <span className="text-xs font-medium text-text-primary">
@@ -219,14 +271,21 @@ export function FaceSwapDetailModal({ job, isOpen, onClose, onDelete, onTitleUpd
                               <Chip
                                 size="sm"
                                 variant="flat"
-                                color={segment.type === "processed" ? "success" : "primary"}
+                                color={
+                                  segment.type === "processed"
+                                    ? "success"
+                                    : "primary"
+                                }
                                 className="text-[10px] h-4"
                               >
-                                {segment.type === "processed" ? "Swapped" : "Original"}
+                                {segment.type === "processed"
+                                  ? "Swapped"
+                                  : "Original"}
                               </Chip>
                             </div>
                             <p className="text-[10px] text-text-tertiary mt-1">
-                              {formatTime(segment.start)} - {formatTime(segment.end)}
+                              {formatTime(segment.start)} -{" "}
+                              {formatTime(segment.end)}
                             </p>
                           </button>
                         ))}
@@ -322,7 +381,13 @@ export function FaceSwapDetailModal({ job, isOpen, onClose, onDelete, onTitleUpd
                     onClick={() => setIsEditingTitle(true)}
                     className="flex items-center gap-2 text-sm hover:text-accent-400 transition-colors group w-full"
                   >
-                    <span className={job?.title ? "text-text-primary font-medium" : "text-text-muted italic"}>
+                    <span
+                      className={
+                        job?.title
+                          ? "text-text-primary font-medium"
+                          : "text-text-muted italic"
+                      }
+                    >
                       {job?.title || "Click to add title..."}
                     </span>
                     <Icon
@@ -337,7 +402,11 @@ export function FaceSwapDetailModal({ job, isOpen, onClose, onDelete, onTitleUpd
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <p className="text-xs text-text-tertiary">Status</p>
-                <Chip size="sm" color={getStatusColor(job.status)} variant="flat">
+                <Chip
+                  size="sm"
+                  color={getStatusColor(job.status)}
+                  variant="flat"
+                >
                   {job.status}
                 </Chip>
               </div>
@@ -355,7 +424,9 @@ export function FaceSwapDetailModal({ job, isOpen, onClose, onDelete, onTitleUpd
               </div>
               <div className="space-y-1">
                 <p className="text-xs text-text-tertiary">Job ID</p>
-                <p className="text-sm text-text-primary font-mono truncate">{job.id}</p>
+                <p className="text-sm text-text-primary font-mono truncate">
+                  {job.id}
+                </p>
               </div>
             </div>
           </div>
@@ -369,7 +440,11 @@ export function FaceSwapDetailModal({ job, isOpen, onClose, onDelete, onTitleUpd
                   color="danger"
                   onPress={handleDelete}
                   isLoading={isDeleting}
-                  startContent={!isDeleting && <Icon icon="solar:trash-bin-trash-bold" width={18} />}
+                  startContent={
+                    !isDeleting && (
+                      <Icon icon="solar:trash-bin-trash-bold" width={18} />
+                    )
+                  }
                 >
                   {isDeleting ? "Deleting..." : "Delete"}
                 </Button>
@@ -384,7 +459,11 @@ export function FaceSwapDetailModal({ job, isOpen, onClose, onDelete, onTitleUpd
                   color="primary"
                   onPress={handleDownload}
                   isLoading={isDownloading}
-                  startContent={!isDownloading && <Icon icon="solar:download-bold" width={18} />}
+                  startContent={
+                    !isDownloading && (
+                      <Icon icon="solar:download-bold" width={18} />
+                    )
+                  }
                 >
                   {isDownloading ? "Downloading..." : "Download Video"}
                 </Button>

@@ -140,7 +140,9 @@ function FaceSwapContent({
             <Icon icon="solar:arrow-left-linear" width={20} />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-text-primary">Face Swap</h1>
+            <h1 className="text-2xl font-bold text-text-primary">
+              Character Swap
+            </h1>
             <p className="text-text-secondary text-sm">
               Upload a video and swap faces with a character
             </p>

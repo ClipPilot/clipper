@@ -21,25 +21,37 @@ export default function UGCStudioPage() {
       <div className="max-w-5xl mx-auto px-6 py-12 lg:py-16">
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent-400/10 border border-accent-400/20 mb-6">
-            <Icon icon="solar:magic-stick-3-bold" className="text-accent-400" width={18} />
-            <span className="text-accent-400 text-sm font-medium">AI-Powered Creation</span>
+            <Icon
+              icon="solar:magic-stick-3-bold"
+              className="text-accent-400"
+              width={18}
+            />
+            <span className="text-accent-400 text-sm font-medium">
+              AI-Powered Creation
+            </span>
           </div>
           <h1 className="text-4xl lg:text-5xl font-bold text-text-primary mb-4">
             UGC Studio
           </h1>
           <p className="text-lg text-text-secondary max-w-2xl mx-auto">
-            Create professional user-generated content with AI. Transform your videos with character swapping or generate entirely new UGC from scratch.
+            Create professional user-generated content with AI. Transform your
+            videos with character swapping or generate entirely new UGC from
+            scratch.
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
           <FeatureCard
             icon="solar:mask-happly-bold-duotone"
-            title="Face Swap"
+            title="Character Swap"
             description="Replace faces in your existing videos with AI-generated characters. Perfect for creating UGC-style content with virtual creators."
             gradient="from-violet-500/20 via-purple-500/10 to-transparent"
             iconColor="text-violet-400"
-            features={["Upload any video", "Choose from 12+ characters", "Face or full body swap"]}
+            features={[
+              "Upload any video",
+              "Choose from 12+ characters",
+              "Face or full body swap",
+            ]}
             onPress={() => router.push("/dashboard/ugc-studio/face-swap")}
           />
           <FeatureCard
@@ -48,8 +60,14 @@ export default function UGCStudioPage() {
             description="Generate complete UGC videos from text prompts. Create talking-head videos, product demos, and testimonials with AI actors."
             gradient="from-cyan-500/20 via-blue-500/10 to-transparent"
             iconColor="text-cyan-400"
-            features={["Text-to-video generation", "Custom AI avatars", "Script to video"]}
-            onPress={() => router.push("/dashboard/ugc-studio/ai-video-creator")}
+            features={[
+              "Text-to-video generation",
+              "Custom AI avatars",
+              "Script to video",
+            ]}
+            onPress={() =>
+              router.push("/dashboard/ugc-studio/ai-video-creator")
+            }
           />
         </div>
 
@@ -93,23 +111,37 @@ function FeatureCard({
       onPress={onPress}
     >
       <CardBody className="p-0">
-        <div className={`h-32 bg-gradient-to-br ${gradient} relative flex items-center justify-center`}>
-          <div className={`w-20 h-20 rounded-2xl bg-surface-base/80 backdrop-blur flex items-center justify-center ${!comingSoon && "group-hover:scale-110"} transition-transform duration-300`}>
-            <Icon icon={icon} className={comingSoon ? "text-text-tertiary" : iconColor} width={44} />
+        <div
+          className={`h-32 bg-gradient-to-br ${gradient} relative flex items-center justify-center`}
+        >
+          <div
+            className={`w-20 h-20 rounded-2xl bg-surface-base/80 backdrop-blur flex items-center justify-center ${!comingSoon && "group-hover:scale-110"} transition-transform duration-300`}
+          >
+            <Icon
+              icon={icon}
+              className={comingSoon ? "text-text-tertiary" : iconColor}
+              width={44}
+            />
           </div>
           {comingSoon && (
             <div className="absolute top-4 right-4 px-3 py-1 rounded-full bg-surface-base/90 backdrop-blur border border-border-subtle">
-              <span className="text-xs font-medium text-text-secondary">Coming Soon</span>
+              <span className="text-xs font-medium text-text-secondary">
+                Coming Soon
+              </span>
             </div>
           )}
         </div>
 
         <div className="p-6 space-y-4">
           <div>
-            <h3 className={`text-xl font-semibold mb-2 ${comingSoon ? "text-text-tertiary" : "text-text-primary"}`}>
+            <h3
+              className={`text-xl font-semibold mb-2 ${comingSoon ? "text-text-tertiary" : "text-text-primary"}`}
+            >
               {title}
             </h3>
-            <p className={`text-sm leading-relaxed ${comingSoon ? "text-text-muted" : "text-text-secondary"}`}>
+            <p
+              className={`text-sm leading-relaxed ${comingSoon ? "text-text-muted" : "text-text-secondary"}`}
+            >
               {description}
             </p>
           </div>
@@ -122,7 +154,9 @@ function FeatureCard({
                   className={comingSoon ? "text-text-muted" : "text-green-400"}
                   width={16}
                 />
-                <span className={`text-sm ${comingSoon ? "text-text-muted" : "text-text-secondary"}`}>
+                <span
+                  className={`text-sm ${comingSoon ? "text-text-muted" : "text-text-secondary"}`}
+                >
                   {feature}
                 </span>
               </div>

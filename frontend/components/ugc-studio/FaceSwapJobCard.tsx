@@ -74,8 +74,7 @@ export const FaceSwapJobCard = memo(
     return (
       <Card
         className="bg-surface-base border border-border-base hover:border-accent-400/30 transition-colors cursor-pointer overflow-hidden"
-        isPressable
-        onPress={onClick}
+        onClick={onClick}
       >
         <CardBody className="p-2 sm:p-3">
           <div className="flex gap-2 sm:gap-3">
@@ -134,7 +133,10 @@ export const FaceSwapJobCard = memo(
                       variant="flat"
                       isIconOnly
                       className="bg-accent-400/20 text-accent-400 min-w-6 w-6 h-6 sm:min-w-7 sm:w-7 sm:h-7"
-                      onPress={handleDownload}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleDownload();
+                      }}
                       isLoading={isDownloading}
                     >
                       {!isDownloading && (
@@ -148,7 +150,10 @@ export const FaceSwapJobCard = memo(
                       variant="flat"
                       isIconOnly
                       className="bg-red-500/20 text-red-500 min-w-6 w-6 h-6 sm:min-w-7 sm:w-7 sm:h-7"
-                      onPress={handleDelete}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleDelete();
+                      }}
                       isLoading={isDeleting}
                     >
                       {!isDeleting && (
