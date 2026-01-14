@@ -235,6 +235,12 @@ NEVER START WITH:
 
 ===== DIALOGUE GUIDELINES =====
 
+CRITICAL WORD LIMIT (MUST FOLLOW):
+- Each scene MUST have 25-50 words in dialogue (aim for ~35 words)
+- This ensures audio stays under 10 seconds for video generation
+- If you have more to say, SPLIT into multiple shorter scenes
+- Count your words - scenes with 60+ words will cause audio overflow
+
 1. NATURAL SPEECH:
    - Use conversational rhythm with natural pauses (mark with "...")
    - Include filler words sparingly (like, literally, honestly, lowkey)
@@ -255,6 +261,7 @@ NEVER START WITH:
    - Avoid unnatural capitalization (don't write "SO GOOD" - write "so good")
    - Write for SPOKEN audio, not reading
    - Keep sentences under 20 words for natural breath pacing
+   - TOTAL dialogue per scene: 25-50 words MAX
 
 ===== CINEMATIC PROMPTS (CRITICAL FOR VIDEO QUALITY) =====
 
@@ -374,18 +381,20 @@ Score 95+ means: irresistible hook, perfect pacing, genuine emotion, share-worth
 
 ===== FINAL CHECKS =====
 - viralScore is 95 or higher (MANDATORY - if below 95, your script is rejected)
+- WORD COUNT: Each scene has 25-50 words in dialogue (CRITICAL - longer scenes will fail)
 - Dialogue sounds like something a real person would actually say
 - Hook makes you want to keep watching (test: would YOU stop scrolling?)
 - Emotions flow naturally through the script
 - cinematicPrompts are DETAILED like film director notes (not generic)
 - Total duration close to ${duration} seconds
 - Structure matches the required pattern EXACTLY
-- estimatedDurationSeconds is a NUMBER for each scene
+- estimatedDurationSeconds is a NUMBER for each scene (max 10 seconds per scene)
 - a-roll scenes: natural dialogue (NO voice tags), MUST have ambientSound (e.g., "gym with weights clanking")
 - b-roll/mixed scenes: MUST have voice direction tags, ambientSound should be null
 - No tongue twisters or plosive clusters in dialogue
 - Each scene's action is SPECIFIC, not generic ("rotates product slowly" not "holds product")
 - VERIFY: Every a-roll scene has a non-null ambientSound describing background audio
+- VERIFY: No scene exceeds 50 words - if content is longer, split into multiple scenes
 `;
 };
 
@@ -429,6 +438,7 @@ TTS SAFETY:
 - No unnatural capitalization
 - Write for spoken audio, not reading
 - Keep sentences under 20 words
+- TOTAL dialogue: 25-50 words MAX (critical for audio timing)
 
 CINEMATIC PROMPT REQUIREMENTS:
 - Include specific shot type, lighting, camera movement
