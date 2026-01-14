@@ -3,7 +3,8 @@ import fs from "fs";
 import { execSync } from "child_process";
 import { s3Service } from "./s3.service";
 import { elevenLabsService } from "./elevenlabs.service";
-import { klingService, buildKlingPrompt, ShotType } from "./kling.service";
+import { klingService, buildKlingPrompt, ShotType, PRODUCT_NEGATIVE_PROMPT } from "./kling.service";
+import { veoService } from "./veo.service";
 import { generateJumbledMetadataString } from "../utils/videoMetadata";
 
 const MAX_AUDIO_DURATION = 10;
@@ -406,8 +407,19 @@ async function processArollScene(
 }
 
 /**
- * Process B-Roll scene: dialogue audio -> silent video -> combine audio track -> trim
+ * Build a prompt for Veo B-roll video generation
+ * Focuses on smooth product showcases and cutaway shots
+ */
+function buildVeoBrollPrompt(cinematicPrompt: string, action: string): string {
+  return `${cinematicPrompt}. Smooth product showcase with subtle, slow camera movement. Professional product photography style with gentle rotation or reveal. Clean background, focused lighting. ${action}. Cinematic 9:16 vertical video. High quality, no text overlays, no watermarks.`;
+}
+
+/**
+ * Process B-Roll scene using Veo 3.1 with automatic chaining for longer durations
  * No lip-sync needed for B-roll (product shots, cutaways, etc.)
+ *
+ * Veo generates 8s initially, then chains 7s extensions as needed.
+ * Final video is trimmed to match exact audio duration.
  */
 async function processBrollScene(
   scene: SceneVideoData,
@@ -416,7 +428,7 @@ async function processBrollScene(
   voiceId: string,
   onProgress?: (message: string) => void
 ): Promise<ProcessedScene> {
-  const { sceneId, sceneNumber, shotType, imageKey, cinematicPrompt, dialogue, action, emotion } = scene;
+  const { sceneId, sceneNumber, imageKey, cinematicPrompt, dialogue, action } = scene;
 
   // Step 1: Generate dialogue audio with ElevenLabs
   onProgress?.(`Scene ${sceneNumber}: Generating voiceover...`);
@@ -424,27 +436,29 @@ async function processBrollScene(
     voiceId, dialogue, teamId, scriptId, sceneNumber
   );
 
-  // Step 2: Determine Kling video duration
-  const klingDuration: 5 | 10 = audioDuration <= 5 ? 5 : 10;
-  console.log(`[UGC Assembly] B-Roll Scene ${sceneNumber}: audio ${audioDuration.toFixed(2)}s -> Kling ${klingDuration}s`);
+  console.log(`[UGC Assembly] B-Roll Scene ${sceneNumber}: audio ${audioDuration.toFixed(2)}s -> Veo (auto-chain)`);
 
-  // Step 3: Generate SILENT video with Kling
-  onProgress?.(`Scene ${sceneNumber}: Generating video...`);
+  // Step 2: Generate video with Veo (auto-chains for durations > 8s)
+  onProgress?.(`Scene ${sceneNumber}: Generating video with Veo...`);
   const imageUrl = await s3Service.getPresignedUrl(imageKey, 3600);
-  const prompt = buildKlingPrompt(cinematicPrompt, shotType, emotion, action);
+  const prompt = buildVeoBrollPrompt(cinematicPrompt, action);
 
-  const { videoUrl: silentVideoUrl } = await klingService.generateVideoWithRetry({
-    imageUrl,
+  const { videoUrl: silentVideoUrl, generatedDuration, extensionsUsed } = await veoService.generateVideoForDuration({
     prompt,
-    duration: klingDuration,
-    generateAudio: false, // NO audio from Kling
+    imageUrl,
+    targetDuration: audioDuration,
+    aspectRatio: "9:16",
+    resolution: "720p",
+    negativePrompt: PRODUCT_NEGATIVE_PROMPT,
   });
 
-  // Step 4: Download silent video
+  console.log(`[UGC Assembly] B-Roll Scene ${sceneNumber}: Veo generated ${generatedDuration}s (${extensionsUsed} extensions)`);
+
+  // Step 3: Download silent video
   const silentVideoPath = path.join(OUTPUT_DIR, `silent_${sceneNumber}_${Date.now()}.mp4`);
   await s3Service.downloadVideoFromUrl(silentVideoUrl, silentVideoPath);
 
-  // Step 5: Combine video with audio track and trim to audio duration
+  // Step 4: Combine video with audio track and trim to exact audio duration
   onProgress?.(`Scene ${sceneNumber}: Adding voiceover...`);
   const combinedPath = combineVideoAudio(silentVideoPath, audioPath, audioDuration, sceneNumber);
 
@@ -452,7 +466,7 @@ async function processBrollScene(
   if (fs.existsSync(silentVideoPath)) fs.unlinkSync(silentVideoPath);
   if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
 
-  // Step 6: Upload processed scene
+  // Step 5: Upload processed scene
   const videoBuffer = fs.readFileSync(combinedPath);
   const videoKey = await s3Service.uploadUGCSceneVideo(videoBuffer, teamId, scriptId, sceneNumber, "processed");
 
