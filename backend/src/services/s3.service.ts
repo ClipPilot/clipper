@@ -528,6 +528,23 @@ class S3Service {
     console.log(`[S3] Downloaded video to: ${localPath}`);
   }
 
+  async getFaceDetectUploadUrl(
+    teamId: number,
+    fileName: string
+  ): Promise<{ uploadUrl: string; s3Key: string }> {
+    const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const s3Key = `temp-face-detect/${teamId}/${Date.now()}_${sanitizedFileName}`;
+
+    const command = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: s3Key,
+      ContentType: "video/mp4",
+    });
+
+    const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+    return { uploadUrl, s3Key };
+  }
+
   async getUGCUploadUrls(
     teamId: number,
     videoFileName: string,

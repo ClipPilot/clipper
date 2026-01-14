@@ -151,21 +151,48 @@ function FaceSwapContent({
     // Process everything in background
     (async () => {
       try {
-        // Step 1: Detect faces
-        const formData = new FormData();
-        formData.append("video", videoFile);
+        // Step 1: Get presigned URL for S3 upload
+        faceSwapsSectionRef.current?.updateOptimisticJobStatus(tempId, "Uploading video...");
 
-        const response = await apiFetch(`${API_URL}/face-swap/detect-faces`, {
+        const uploadUrlResponse = await apiFetch(`${API_URL}/face-swap/detect-faces/upload-url`, {
           method: "POST",
-          body: formData,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fileName: videoFile.name, teamId }),
         });
 
-        if (!response.ok) {
-          const errorData = await response.json();
+        if (!uploadUrlResponse.ok) {
+          const errorData = await uploadUrlResponse.json();
+          throw new Error(errorData.error || "Failed to get upload URL");
+        }
+
+        const { uploadUrl, s3Key } = await uploadUrlResponse.json();
+
+        // Step 2: Upload video directly to S3
+        const s3Response = await fetch(uploadUrl, {
+          method: "PUT",
+          body: videoFile,
+          headers: { "Content-Type": "video/mp4" },
+        });
+
+        if (!s3Response.ok) {
+          throw new Error("Failed to upload video to S3");
+        }
+
+        // Step 3: Detect faces from S3
+        faceSwapsSectionRef.current?.updateOptimisticJobStatus(tempId, "Detecting faces...");
+
+        const detectResponse = await apiFetch(`${API_URL}/face-swap/detect-faces/from-s3`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ s3Key, videoDuration: duration }),
+        });
+
+        if (!detectResponse.ok) {
+          const errorData = await detectResponse.json();
           throw new Error(errorData.error || "Failed to detect faces");
         }
 
-        const data = await response.json();
+        const data = await detectResponse.json();
 
         if (!data.segments || data.segments.length === 0) {
           faceSwapsSectionRef.current?.failOptimisticJob(tempId, "No faces detected");
@@ -304,6 +331,7 @@ function FaceSwapContent({
               onGenerate={handleGenerate}
               onAutoDetectAndGenerate={handleAutoDetectAndGenerate}
               showEditor={showEditor}
+              onToggleEditor={() => setShowEditor(false)}
             />
           </div>
         </div>

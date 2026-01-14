@@ -2,7 +2,8 @@ import * as Sentry from "@sentry/node";
 import { Request, Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { faceSwapService } from "../services/faceSwap.service";
-import { detectFaceSegmentsWithPadding } from "../services/faceDetection.service";
+import { detectFaceSegmentsWithPadding, detectFaceSegmentsFromS3Key } from "../services/faceDetection.service";
+import { s3Service } from "../services/s3.service";
 import { getVideoDuration } from "../services/videoEditor.service";
 import { generateJumbledMetadata } from "../utils/videoMetadata";
 import fs from "fs";
@@ -399,9 +400,97 @@ export const detectFaces = async (req: AuthRequest, res: Response) => {
   }
 };
 
+/**
+ * Get a presigned URL for uploading a video for face detection
+ */
+export const getDetectFacesUploadUrl = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { fileName, teamId } = req.body;
+
+    if (!fileName || !teamId) {
+      return res.status(400).json({ error: "Missing required fields: fileName and teamId" });
+    }
+
+    console.log(`[FACE-DETECT] Generating presigned upload URL for: ${fileName}`);
+
+    const { uploadUrl, s3Key } = await s3Service.getFaceDetectUploadUrl(
+      parseInt(teamId),
+      fileName
+    );
+
+    return res.status(200).json({
+      success: true,
+      uploadUrl,
+      s3Key,
+    });
+  } catch (error) {
+    console.error("[FACE-DETECT] Get upload URL error:", error);
+    Sentry.captureException(error);
+    return res.status(500).json({
+      error: error instanceof Error ? error.message : "Failed to get upload URL",
+    });
+  }
+};
+
+/**
+ * Detect faces from a video already uploaded to S3
+ */
+export const detectFacesFromS3 = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { s3Key, videoDuration } = req.body;
+
+    if (!s3Key || videoDuration === undefined) {
+      return res.status(400).json({ error: "Missing required fields: s3Key and videoDuration" });
+    }
+
+    const duration = parseFloat(videoDuration);
+    if (isNaN(duration) || duration <= 0) {
+      return res.status(400).json({ error: "Invalid videoDuration" });
+    }
+
+    // Validate video isn't too long (prevent abuse)
+    const MAX_DETECTION_DURATION = 300; // 5 minutes max
+    if (duration > MAX_DETECTION_DURATION) {
+      return res.status(400).json({
+        error: `Video too long for face detection. Maximum ${MAX_DETECTION_DURATION} seconds allowed.`,
+      });
+    }
+
+    console.log(`[FACE-DETECT] Starting detection from S3 key: ${s3Key}, duration: ${duration}s`);
+
+    // Run face detection via Lambda
+    const segments = await detectFaceSegmentsFromS3Key(s3Key, duration);
+
+    console.log(`[FACE-DETECT] Found ${segments.length} face segments`);
+
+    return res.status(200).json({
+      success: true,
+      segments,
+      videoDuration: duration,
+      segmentCount: segments.length,
+    });
+  } catch (error) {
+    console.error("[FACE-DETECT] Error:", error);
+    Sentry.captureException(error);
+    return res.status(500).json({
+      error: error instanceof Error ? error.message : "Failed to detect faces",
+    });
+  }
+};
+
 export const faceSwapController = {
   trimVideo,
   downloadFixed,
   downloadFixedPublic,
   detectFaces,
+  getDetectFacesUploadUrl,
+  detectFacesFromS3,
 };

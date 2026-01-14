@@ -14,6 +14,7 @@ interface GeneratePanelProps {
   onGenerate: () => void;
   onAutoDetectAndGenerate?: () => void;
   showEditor?: boolean;
+  onToggleEditor?: () => void;
 }
 
 export function GeneratePanel({
@@ -26,6 +27,7 @@ export function GeneratePanel({
   onGenerate,
   onAutoDetectAndGenerate,
   showEditor = false,
+  onToggleEditor,
 }: GeneratePanelProps) {
   const isValid = hasVideo && hasCharacter && segmentCount > 0 && totalDuration <= 50.01;
   const canAutoGenerate = hasVideo && hasCharacter;
@@ -125,6 +127,18 @@ export function GeneratePanel({
               endContent={<span className="px-1.5 py-0.5 text-xs bg-white/20 rounded-full">5 Credits</span>}
             >
               Auto-detect & Generate
+            </Button>
+          )}
+
+          {showEditor && onToggleEditor && (
+            <Button
+              className="w-full bg-purple-500/20 text-purple-400 font-medium"
+              size="lg"
+              variant="flat"
+              onPress={onToggleEditor}
+              startContent={<Icon icon="solar:face-scan-circle-bold" width={20} />}
+            >
+              Back to Auto-detect
             </Button>
           )}
 

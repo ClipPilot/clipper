@@ -16,18 +16,16 @@ const lambdaClient = new LambdaClient({
 
 const FACE_DETECT_LAMBDA = `clipster-face-detect-${process.env.NODE_ENV === "production" ? "prod" : "staging"}`;
 
-export async function detectFaceSegmentsWithPadding(
-  videoPath: string,
+/**
+ * Detect face segments from an S3 key (video already uploaded to S3)
+ */
+export async function detectFaceSegmentsFromS3Key(
+  s3Key: string,
   videoDuration: number
 ): Promise<FaceSegment[]> {
-  console.log(`[FACE-DETECT] Starting Lambda-based detection for ${videoPath}`);
+  console.log(`[FACE-DETECT] Starting Lambda-based detection for S3 key: ${s3Key}`);
 
   try {
-    const s3Key = `temp-face-detect/${Date.now()}_${path.basename(videoPath)}`;
-    console.log(`[FACE-DETECT] Uploading video to S3: ${s3Key}`);
-
-    await s3Service.uploadFile(videoPath, s3Key, "video/mp4");
-
     const s3Url = `s3://${config.aws.s3Bucket}/${s3Key}`;
     console.log(`[FACE-DETECT] Invoking Lambda with S3 URL: ${s3Url}`);
 
@@ -66,6 +64,7 @@ export async function detectFaceSegmentsWithPadding(
 
     console.log(`[FACE-DETECT] Lambda returned ${body.segments?.length || 0} segments`);
 
+    // Cleanup temp S3 file
     try {
       await s3Service.deleteObject(s3Key);
       console.log(`[FACE-DETECT] Cleaned up temp S3 file: ${s3Key}`);
@@ -75,6 +74,29 @@ export async function detectFaceSegmentsWithPadding(
     }
 
     return body.segments || [];
+  } catch (err) {
+    console.error(`[FACE-DETECT] Error:`, err);
+    throw err;
+  }
+}
+
+/**
+ * Legacy: Detect face segments from a local file path (uploads to S3 first)
+ */
+export async function detectFaceSegmentsWithPadding(
+  videoPath: string,
+  videoDuration: number
+): Promise<FaceSegment[]> {
+  console.log(`[FACE-DETECT] Starting Lambda-based detection for ${videoPath}`);
+
+  try {
+    const s3Key = `temp-face-detect/${Date.now()}_${path.basename(videoPath)}`;
+    console.log(`[FACE-DETECT] Uploading video to S3: ${s3Key}`);
+
+    await s3Service.uploadFile(videoPath, s3Key, "video/mp4");
+
+    // Use the S3 key-based detection (includes cleanup)
+    return await detectFaceSegmentsFromS3Key(s3Key, videoDuration);
   } catch (err) {
     console.error(`[FACE-DETECT] Error:`, err);
     throw err;
