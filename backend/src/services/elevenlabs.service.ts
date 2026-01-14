@@ -6,7 +6,7 @@ import os from "os";
 import { config } from "../config/env";
 import { s3Service } from "./s3.service";
 
-// Maximum audio duration to match Kling video clip limits (5-10 seconds)
+// Maximum audio duration to match Kling video clip limits (5-10 seconds). --TODO NEED TO FIGURE OUT HOW TO NATURALIZE THE VOICE AND NOT MAKE IT SOUDN SUDIO
 const MAX_AUDIO_DURATION_SECONDS = 10;
 
 let elevenLabsClient: ElevenLabsClient | null = null;
@@ -190,24 +190,42 @@ export async function generateSpeechForTargetDuration(
     ...ttsOptions
   } = options;
 
-  const targetDurationSeconds = Math.min(requestedDuration, MAX_AUDIO_DURATION_SECONDS);
+  const targetDurationSeconds = Math.min(
+    requestedDuration,
+    MAX_AUDIO_DURATION_SECONDS
+  );
   const strictMode = tolerancePercent === 0;
 
-  console.log(`[ElevenLabs] Generating speech with target: ${targetDurationSeconds}s (strict: ${strictMode})`);
+  console.log(
+    `[ElevenLabs] Generating speech with target: ${targetDurationSeconds}s (strict: ${strictMode})`
+  );
 
   const normalAudio = await generateSpeech(ttsOptions);
   let currentDuration = getAudioDuration(normalAudio);
-  console.log(`[ElevenLabs] Natural speech duration: ${currentDuration.toFixed(2)}s`);
+  console.log(
+    `[ElevenLabs] Natural speech duration: ${currentDuration.toFixed(2)}s`
+  );
 
   if (currentDuration <= targetDurationSeconds) {
-    return { audioBuffer: normalAudio, actualDuration: currentDuration, speedUsed: 1.0 };
+    return {
+      audioBuffer: normalAudio,
+      actualDuration: currentDuration,
+      speedUsed: 1.0,
+    };
   }
 
   if (!strictMode) {
-    const diffPercent = ((currentDuration - targetDurationSeconds) / targetDurationSeconds) * 100;
+    const diffPercent =
+      ((currentDuration - targetDurationSeconds) / targetDurationSeconds) * 100;
     if (diffPercent <= tolerancePercent) {
-      console.log(`[ElevenLabs] Duration within ${tolerancePercent}% tolerance`);
-      return { audioBuffer: normalAudio, actualDuration: currentDuration, speedUsed: 1.0 };
+      console.log(
+        `[ElevenLabs] Duration within ${tolerancePercent}% tolerance`
+      );
+      return {
+        audioBuffer: normalAudio,
+        actualDuration: currentDuration,
+        speedUsed: 1.0,
+      };
     }
   }
 
@@ -220,7 +238,9 @@ export async function generateSpeechForTargetDuration(
   while (currentDuration > targetDurationSeconds && attempts < maxAttempts) {
     attempts++;
     speed = Math.min(speed * 1.1, 2.0);
-    console.log(`[ElevenLabs] Attempt ${attempts}: Regenerating at ${speed.toFixed(2)}x speed`);
+    console.log(
+      `[ElevenLabs] Attempt ${attempts}: Regenerating at ${speed.toFixed(2)}x speed`
+    );
 
     audioBuffer = await generateSpeech({ ...ttsOptions, speed });
     currentDuration = getAudioDuration(audioBuffer);
@@ -230,7 +250,9 @@ export async function generateSpeechForTargetDuration(
   }
 
   if (currentDuration > targetDurationSeconds) {
-    console.log(`[ElevenLabs] Warning: Could not get under ${targetDurationSeconds}s, got ${currentDuration.toFixed(2)}s`);
+    console.log(
+      `[ElevenLabs] Warning: Could not get under ${targetDurationSeconds}s, got ${currentDuration.toFixed(2)}s`
+    );
   }
 
   return { audioBuffer, actualDuration: currentDuration, speedUsed: speed };
@@ -352,7 +374,10 @@ export async function textToDialogueForTargetDuration(
   } = options;
 
   // Cap target duration to MAX_AUDIO_DURATION_SECONDS to match Kling video limits
-  const targetDurationSeconds = Math.min(requestedDuration, MAX_AUDIO_DURATION_SECONDS);
+  const targetDurationSeconds = Math.min(
+    requestedDuration,
+    MAX_AUDIO_DURATION_SECONDS
+  );
   if (requestedDuration > MAX_AUDIO_DURATION_SECONDS) {
     console.log(
       `[ElevenLabs] Capping dialogue target from ${requestedDuration}s to ${MAX_AUDIO_DURATION_SECONDS}s (Kling video limit)`
@@ -437,11 +462,7 @@ export async function generateSoundEffect(
 ): Promise<Buffer> {
   const client = getClient();
 
-  const {
-    text,
-    durationSeconds,
-    promptInfluence = 0.3,
-  } = options;
+  const { text, durationSeconds, promptInfluence = 0.3 } = options;
 
   const clampedDuration = Math.max(0.5, Math.min(30, durationSeconds));
 

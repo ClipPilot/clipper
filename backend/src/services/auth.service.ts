@@ -215,9 +215,6 @@ class AuthService {
         supabaseUser.email
       );
     }
-
-    // Create Supabase session for frontend
-    // ! IMPORTANT: You do NOT refresh here — frontend already has tokens
     return {
       user: data.user,
       session: {

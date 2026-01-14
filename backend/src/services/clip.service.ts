@@ -1,8 +1,18 @@
-import { cutClip, mergeClips, addTextOverlay, addTextOverlayAtPosition, addPreviewWatermark } from "./videoEditor.service";
+import {
+  cutClip,
+  mergeClips,
+  addTextOverlay,
+  addTextOverlayAtPosition,
+  addPreviewWatermark,
+} from "./videoEditor.service";
 import path from "path";
 import fs from "fs";
 import { ClipSuggestions, BatchClipSuggestions } from "../types/ai.types";
-import { addCaptionsOverlay, TranscriptionWord, addCaptionsFromData } from "./captions.service";
+import {
+  addCaptionsOverlay,
+  TranscriptionWord,
+  addCaptionsFromData,
+} from "./captions.service";
 import { applyJumbledMetadata } from "../utils/videoMetadata";
 
 // Batch video source for multi-video clip creation
@@ -88,19 +98,30 @@ const generateCaptionsData = (
 
 const MIN_SEGMENT_DURATION = 0.25;
 
-const validateSegment = (segment: { start: number; end: number; text: string }, name: string) => {
-  if (typeof segment.start !== 'number' || typeof segment.end !== 'number') {
-    throw new Error(`${name}: Invalid timestamp types - start: ${typeof segment.start}, end: ${typeof segment.end}`);
+const validateSegment = (
+  segment: { start: number; end: number; text: string },
+  name: string
+) => {
+  if (typeof segment.start !== "number" || typeof segment.end !== "number") {
+    throw new Error(
+      `${name}: Invalid timestamp types - start: ${typeof segment.start}, end: ${typeof segment.end}`
+    );
   }
   if (segment.start < 0) {
-    throw new Error(`${name}: Start timestamp cannot be negative (${segment.start})`);
+    throw new Error(
+      `${name}: Start timestamp cannot be negative (${segment.start})`
+    );
   }
   if (segment.end <= segment.start) {
-    throw new Error(`${name}: End (${segment.end}) must be greater than start (${segment.start})`);
+    throw new Error(
+      `${name}: End (${segment.end}) must be greater than start (${segment.start})`
+    );
   }
   const duration = segment.end - segment.start;
   if (duration < MIN_SEGMENT_DURATION) {
-    throw new Error(`${name}: Segment too short (${duration.toFixed(2)}s) - minimum is ${MIN_SEGMENT_DURATION}s`);
+    throw new Error(
+      `${name}: Segment too short (${duration.toFixed(2)}s) - minimum is ${MIN_SEGMENT_DURATION}s`
+    );
   }
 };
 
@@ -116,12 +137,16 @@ export const createCombinedClipService = async (
   const tempFiles: string[] = [];
 
   // Log and validate all segments
-  console.log(`[Clip ${videoIndex}] Hook: ${clipData.hook.start}s - ${clipData.hook.end}s (${(clipData.hook.end - clipData.hook.start).toFixed(1)}s)`);
-  validateSegment(clipData.hook, 'Hook');
+  console.log(
+    `[Clip ${videoIndex}] Hook: ${clipData.hook.start}s - ${clipData.hook.end}s (${(clipData.hook.end - clipData.hook.start).toFixed(1)}s)`
+  );
+  validateSegment(clipData.hook, "Hook");
 
   for (let i = 0; i < clipData.main.length; i++) {
     const seg = clipData.main[i];
-    console.log(`[Clip ${videoIndex}] Main[${i}]: ${seg.start}s - ${seg.end}s (${(seg.end - seg.start).toFixed(1)}s)`);
+    console.log(
+      `[Clip ${videoIndex}] Main[${i}]: ${seg.start}s - ${seg.end}s (${(seg.end - seg.start).toFixed(1)}s)`
+    );
     validateSegment(seg, `Main[${i}]`);
   }
 
@@ -193,8 +218,6 @@ export const createCombinedClipService = async (
   fs.renameSync(metadataPath, finalPath);
 
   const watermarkedPath = path.join(outDir, `watermarked_${videoIndex}.mp4`);
-  // WATERMARK DISABLED - just copy the file
-  // await addPreviewWatermark(finalPath, watermarkedPath);
   fs.copyFileSync(finalPath, watermarkedPath);
 
   tempFiles.push(mergedPath);
@@ -239,12 +262,24 @@ export const createMultipleCombinedClipsService = async (
   options: ClipServiceOptions = {}
 ): Promise<ClipResult[]> => {
   const CONCURRENCY = 2;
-  console.log(`Creating ${clipDataArray.length} clips with concurrency of ${CONCURRENCY}...`);
+  console.log(
+    `Creating ${clipDataArray.length} clips with concurrency of ${CONCURRENCY}...`
+  );
 
-  return processWithConcurrency(clipDataArray, CONCURRENCY, async (clipData, i) => {
-    console.log(`Creating clip ${i + 1} of ${clipDataArray.length}...`);
-    return createCombinedClipService(videoPath, clipData, transcriptionWords, options, i);
-  });
+  return processWithConcurrency(
+    clipDataArray,
+    CONCURRENCY,
+    async (clipData, i) => {
+      console.log(`Creating clip ${i + 1} of ${clipDataArray.length}...`);
+      return createCombinedClipService(
+        videoPath,
+        clipData,
+        transcriptionWords,
+        options,
+        i
+      );
+    }
+  );
 };
 
 export const regenerateClipWithCaptions = async (
@@ -257,7 +292,13 @@ export const regenerateClipWithCaptions = async (
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
 
   const outputPath = path.join(outDir, `regenerated_${Date.now()}.mp4`);
-  await addCaptionsFromData(blankVideoPath, outputPath, captionsData, captionColor, captionFont);
+  await addCaptionsFromData(
+    blankVideoPath,
+    outputPath,
+    captionsData,
+    captionColor,
+    captionFont
+  );
 
   return outputPath;
 };
@@ -310,9 +351,13 @@ const generateBatchCaptionsData = (
 
   for (const segment of allSegments) {
     // Find the source video for this segment
-    const source = videoSources.find((v) => v.videoIndex === segment.sourceVideoIndex);
+    const source = videoSources.find(
+      (v) => v.videoIndex === segment.sourceVideoIndex
+    );
     if (!source) {
-      console.warn(`Source video ${segment.sourceVideoIndex} not found for segment, skipping captions`);
+      console.warn(
+        `Source video ${segment.sourceVideoIndex} not found for segment, skipping captions`
+      );
       offset += segment.end - segment.start;
       continue;
     }
@@ -361,24 +406,40 @@ export const createBatchCombinedClipService = async (
   const tempFiles: string[] = [];
 
   // Cut hook from its source video
-  const hookSource = videoSources.find((v) => v.videoIndex === clipData.hook.sourceVideoIndex);
+  const hookSource = videoSources.find(
+    (v) => v.videoIndex === clipData.hook.sourceVideoIndex
+  );
   if (!hookSource) {
-    throw new Error(`Source video ${clipData.hook.sourceVideoIndex} not found for hook`);
+    throw new Error(
+      `Source video ${clipData.hook.sourceVideoIndex} not found for hook`
+    );
   }
 
   const hookPath = path.join(outDir, `batch_hook_${outputIndex}_temp.mp4`);
-  await cutClip(hookSource.localPath, hookPath, clipData.hook.start, clipData.hook.end);
+  await cutClip(
+    hookSource.localPath,
+    hookPath,
+    clipData.hook.start,
+    clipData.hook.end
+  );
   tempFiles.push(hookPath);
 
   // Cut main segments from their respective source videos
   for (let i = 0; i < clipData.main.length; i++) {
     const mainClip = clipData.main[i];
-    const mainSource = videoSources.find((v) => v.videoIndex === mainClip.sourceVideoIndex);
+    const mainSource = videoSources.find(
+      (v) => v.videoIndex === mainClip.sourceVideoIndex
+    );
     if (!mainSource) {
-      throw new Error(`Source video ${mainClip.sourceVideoIndex} not found for main segment ${i}`);
+      throw new Error(
+        `Source video ${mainClip.sourceVideoIndex} not found for main segment ${i}`
+      );
     }
 
-    const mainPath = path.join(outDir, `batch_main_${outputIndex}_${i}_temp.mp4`);
+    const mainPath = path.join(
+      outDir,
+      `batch_main_${outputIndex}_${i}_temp.mp4`
+    );
     await cutClip(mainSource.localPath, mainPath, mainClip.start, mainClip.end);
     tempFiles.push(mainPath);
   }
@@ -391,7 +452,10 @@ export const createBatchCombinedClipService = async (
   fs.copyFileSync(mergedPath, blankPath);
 
   // Generate captions from the appropriate source transcriptions
-  const { captionsData, srtContent } = generateBatchCaptionsData(clipData, videoSources);
+  const { captionsData, srtContent } = generateBatchCaptionsData(
+    clipData,
+    videoSources
+  );
 
   const finalPath = path.join(outDir, `batch_combined_${outputIndex}.mp4`);
 
@@ -399,7 +463,10 @@ export const createBatchCombinedClipService = async (
 
   // Step 1: Apply heading (customText) if provided
   if (options.customText) {
-    const headingPath = path.join(outDir, `batch_heading_${outputIndex}_temp.mp4`);
+    const headingPath = path.join(
+      outDir,
+      `batch_heading_${outputIndex}_temp.mp4`
+    );
     const position = options.textPosition || "top";
     const mappedPosition = position === "middle" ? "center" : position;
     const fillColor = options.textColor || "#FFFFFF";
@@ -433,11 +500,17 @@ export const createBatchCombinedClipService = async (
   }
 
   // Step 3: Apply jumbled metadata to final video
-  const metadataPath = path.join(outDir, `batch_metadata_${outputIndex}_temp.mp4`);
+  const metadataPath = path.join(
+    outDir,
+    `batch_metadata_${outputIndex}_temp.mp4`
+  );
   await applyJumbledMetadata(finalPath, metadataPath);
   fs.renameSync(metadataPath, finalPath);
 
-  const watermarkedPath = path.join(outDir, `batch_watermarked_${outputIndex}.mp4`);
+  const watermarkedPath = path.join(
+    outDir,
+    `batch_watermarked_${outputIndex}.mp4`
+  );
   // WATERMARK DISABLED - just copy the file
   fs.copyFileSync(finalPath, watermarkedPath);
 
@@ -460,10 +533,16 @@ export const createMultipleBatchClipsService = async (
   options: ClipServiceOptions = {}
 ): Promise<ClipResult[]> => {
   const CONCURRENCY = 2;
-  console.log(`Creating ${clipDataArray.length} batch clips with concurrency of ${CONCURRENCY}...`);
+  console.log(
+    `Creating ${clipDataArray.length} batch clips with concurrency of ${CONCURRENCY}...`
+  );
 
-  return processWithConcurrency(clipDataArray, CONCURRENCY, async (clipData, i) => {
-    console.log(`Creating batch clip ${i + 1} of ${clipDataArray.length}...`);
-    return createBatchCombinedClipService(videoSources, clipData, options, i);
-  });
+  return processWithConcurrency(
+    clipDataArray,
+    CONCURRENCY,
+    async (clipData, i) => {
+      console.log(`Creating batch clip ${i + 1} of ${clipDataArray.length}...`);
+      return createBatchCombinedClipService(videoSources, clipData, options, i);
+    }
+  );
 };

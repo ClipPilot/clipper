@@ -31,6 +31,7 @@ import { ClipsToSaveSection } from "@/components/clips/ClipsToSaveSection";
 import { useUsageStatsRefresh } from "@/contexts/UsageStatsContext";
 import PendingClipsSection from "@/components/clips/PendingClipsSection";
 import NewClipsSection from "@/components/clips/NewClipsSection";
+import ClipSearch, { ClipSearchHandle } from "@/components/clips/ClipSearch";
 import ClipViewModal from "@/components/clips/ClipViewModal";
 import PreviewClipViewModal from "@/components/clips/PreviewClipViewModal";
 import { useSocket } from "@/hooks/useSocket";
@@ -107,6 +108,28 @@ function MyClipsPageContent() {
   } = useFolders();
 
   const { tags, loadTags, createTag, deleteTag, updateClipTags } = useTags();
+
+  // Search state - managed by ClipSearch component via callbacks
+  const [searchResults, setSearchResults] = useState<Clip[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchPagination, setSearchPagination] = useState({ total: 0, hasMore: false });
+  const [isSearchMode, setIsSearchMode] = useState(false);
+  const clipSearchRef = useRef<ClipSearchHandle>(null);
+
+  // Callbacks for ClipSearch component
+  const handleSearchResults = useCallback((
+    results: Clip[],
+    searching: boolean,
+    pagination: { total: number; hasMore: boolean }
+  ) => {
+    setSearchResults(results);
+    setIsSearching(searching);
+    setSearchPagination(pagination);
+  }, []);
+
+  const handleSearchModeChange = useCallback((mode: boolean) => {
+    setIsSearchMode(mode);
+  }, []);
 
   const {
     handleDropToSaved,
@@ -398,9 +421,21 @@ function MyClipsPageContent() {
         )}
 
         {activeTab === "library" && (
+          <div className="space-y-4">
+            {/* Search Component */}
+            {selectedTeam && (
+              <ClipSearch
+                ref={clipSearchRef}
+                teamId={selectedTeam.id}
+                tags={tags}
+                onSearchResults={handleSearchResults}
+                onSearchModeChange={handleSearchModeChange}
+              />
+            )}
+
           <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
             {/* Folder tree - hidden on mobile, shown on lg+ */}
-            {(selectedTeam?.plan === "scale" || selectedTeam?.plan === "enterprise" || folderTree.length > 0) && (
+            {!isSearchMode && (selectedTeam?.plan === "scale" || selectedTeam?.plan === "enterprise" || folderTree.length > 0) && (
               <div className="hidden lg:block">
                 <FolderTree
                   folders={folderTree}
@@ -418,7 +453,8 @@ function MyClipsPageContent() {
             )}
 
             <div className="flex-1 min-w-0">
-              {selectedFolderId !== null && (
+              {/* Show folder navigation only when not searching */}
+              {!isSearchMode && selectedFolderId !== null && (
                 <>
                   <FolderBreadcrumb path={folderPath} onNavigate={handleSelectFolder} />
                   {folderPath.length > 0 && folderPath[folderPath.length - 1]?.message && (
@@ -429,7 +465,8 @@ function MyClipsPageContent() {
                 </>
               )}
 
-              {selectedFolderId === null && (
+              {/* Show new clips section only when not searching */}
+              {!isSearchMode && selectedFolderId === null && (
                 <NewClipsSection
                   clips={newClips}
                   onDelete={(clipId) => deleteClip(clipId, triggerRefresh)}
@@ -440,18 +477,18 @@ function MyClipsPageContent() {
               )}
 
               <div
-                onDrop={handleDropToSaved}
-                onDragOver={handleDragOver}
+                onDrop={!isSearchMode ? handleDropToSaved : undefined}
+                onDragOver={!isSearchMode ? handleDragOver : undefined}
                 className="min-h-[200px]"
               >
                 <div className="flex items-center justify-between gap-2 mb-4">
                   <h2 className="text-base sm:text-xl font-bold text-text-primary flex items-center gap-2 min-w-0">
                     <Icon
-                      icon="solar:video-library-bold-duotone"
+                      icon={isSearchMode ? "solar:magnifer-bold-duotone" : "solar:video-library-bold-duotone"}
                       className="text-xl sm:text-2xl text-accent-400 flex-shrink-0"
                     />
                     <span className="truncate">
-                      {selectedFolderId === null ? "All Clips" : folderPath[folderPath.length - 1]?.name || "Clips"}
+                      {isSearchMode ? "Search Results" : selectedFolderId === null ? "All Clips" : folderPath[folderPath.length - 1]?.name || "Clips"}
                     </span>
                   </h2>
                   <div className="flex items-center gap-1 bg-surface-base border border-border-base rounded-lg p-1 flex-shrink-0">
@@ -475,7 +512,64 @@ function MyClipsPageContent() {
                     </Button>
                   </div>
                 </div>
-                {isLoadingClips ? (
+
+                {/* Search Results Display */}
+                {isSearchMode ? (
+                  isSearching && searchResults.length === 0 ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Icon
+                        icon="solar:loading-circle-bold"
+                        className="text-4xl animate-spin text-accent-400"
+                      />
+                    </div>
+                  ) : searchResults.length > 0 ? (
+                    <>
+                      <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" : "flex flex-col gap-2"}>
+                        {searchResults.map((clip) => (
+                          <ClipCard
+                            key={clip.id}
+                            clip={clip}
+                            viewMode={viewMode}
+                            onDelete={(clipId) => {
+                              deleteClip(clipId, triggerRefresh);
+                              setSearchResults(prev => prev.filter(c => c.id !== clipId));
+                            }}
+                            onView={() => openViewModal(clip)}
+                            onEdit={() => handleEditClip(clip)}
+                            isSelected={isViewModalOpen && selectedClip?.id === clip.id}
+                          />
+                        ))}
+                      </div>
+                      {searchPagination.hasMore && (
+                        <div className="flex justify-center py-8">
+                          <Button
+                            variant="flat"
+                            onPress={() => clipSearchRef.current?.loadMore()}
+                            isLoading={isSearching}
+                            className="bg-surface-base border border-border-base"
+                          >
+                            Load more results
+                          </Button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <Card className="bg-surface-base border border-border-base">
+                      <CardBody className="flex flex-col items-center justify-center py-16">
+                        <Icon
+                          icon="solar:magnifer-zoom-out-bold-duotone"
+                          className="text-6xl text-text-tertiary mb-4"
+                        />
+                        <p className="text-text-secondary text-center mb-2 text-lg">
+                          No clips found
+                        </p>
+                        <p className="text-text-tertiary text-center text-sm max-w-md">
+                          Try adjusting your search terms or removing some filters
+                        </p>
+                      </CardBody>
+                    </Card>
+                  )
+                ) : isLoadingClips ? (
                   <div className="flex items-center justify-center py-12">
                     <Icon
                       icon="solar:loading-circle-bold"
@@ -542,6 +636,7 @@ function MyClipsPageContent() {
                 )}
               </div>
             </div>
+          </div>
           </div>
         )}
       </div>
