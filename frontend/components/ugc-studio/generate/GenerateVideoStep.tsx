@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAtom, useAtomValue } from "jotai";
 import { useRouter } from "next/navigation";
 import {
@@ -19,34 +19,30 @@ import {
   scriptsAtom,
   selectedVariantIndexAtom,
   selectedVoiceAtom,
-  videoJobIdAtom,
   videoStatusAtom,
+  freshStartAtom,
 } from "@/store/ugc";
-import { ugcVideoAPI, VideoGenerationStatus } from "@/api/ugc/video";
+import { ugcVideoAPI } from "@/api/ugc/video";
 import { useUsageStats } from "@/hooks/useUsageStats";
-import { useUGCVideoSocket } from "@/hooks/useUGCVideoSocket";
-import { VideoLoadingAnimation } from "./VideoLoadingAnimation";
 
 interface GenerateVideoStepProps {
   teamId: number;
   scriptId: string;
 }
 
-type StepState = "ready" | "confirming" | "generating" | "finalizing";
+type StepState = "ready" | "confirming" | "generating";
 
 const GENERATE_CREDIT_COST = 15;
-const SCENE_EDIT_CREDIT_COST = 3;
-const FALLBACK_POLL_INTERVAL = 10000; // Fallback polling every 10s if socket fails
 
 export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) {
   const router = useRouter();
   const scripts = useAtomValue(scriptsAtom);
   const selectedVariantIndex = useAtomValue(selectedVariantIndexAtom);
   const selectedVoice = useAtomValue(selectedVoiceAtom);
-  const [jobId, setJobId] = useAtom(videoJobIdAtom);
-  const [videoStatus, setVideoStatus] = useAtom(videoStatusAtom);
+  const videoStatus = useAtomValue(videoStatusAtom);
+  const [freshStart, setFreshStart] = useAtom(freshStartAtom);
 
-  const { usageStats, refetch: refetchUsage } = useUsageStats(teamId);
+  const { usageStats } = useUsageStats(teamId);
 
   const [stepState, setStepState] = useState<StepState>("ready");
   const [error, setError] = useState<string | null>(null);
@@ -55,49 +51,18 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
   const scenes = currentScript?.scenes || [];
   const totalScenes = scenes.length;
 
-  // Track last socket update for fallback polling
-  const lastSocketUpdateRef = useRef<number>(0);
-
-  // Auto-finalize and redirect to edit when complete
-  const autoFinalizeAndRedirect = useCallback(async (completedJobId: string) => {
-    setStepState("finalizing");
-    try {
-      const response = await ugcVideoAPI.finalizeVideo({
-        jobId: completedJobId,
-        teamId,
-      });
-      router.push(`/dashboard/clips/${response.clipId}/edit`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to finalize video");
-      setStepState("ready");
-    }
-  }, [teamId, router]);
-
-  // Check for existing video on mount - but only if we haven't intentionally skipped
+  // Check for existing completed video on mount (not during fresh start)
   useEffect(() => {
-    // Check sessionStorage flag set by ScriptStep when loading saved script or creating new
-    const skipFlag = sessionStorage.getItem("skipLoadExistingVideo");
-    if (skipFlag === scriptId) {
-      sessionStorage.removeItem("skipLoadExistingVideo");
-      console.log("[GenerateVideoStep] Skipping existing video load for reused script");
-      return;
-    }
-
-    // Already have video status - auto-finalize and redirect
-    if (videoStatus?.status === "completed" && videoStatus.jobId) {
-      autoFinalizeAndRedirect(videoStatus.jobId);
-      return;
-    }
-
-    // Don't fetch if we already have status or are not in ready state
-    if (videoStatus !== null || stepState !== "ready") return;
+    if (stepState !== "ready") return;
+    if (freshStart) return;
+    if (videoStatus !== null) return;
 
     const checkExistingVideo = async () => {
       try {
         const existingVideo = await ugcVideoAPI.getScriptVideo(scriptId);
-        if (existingVideo && existingVideo.videoUrl) {
-          // Auto-finalize and redirect instead of showing preview
-          autoFinalizeAndRedirect(existingVideo.jobId);
+        if (existingVideo && existingVideo.jobId) {
+          // Redirect to the job status page
+          router.push(`/dashboard/ugc-studio/ai-video-creator/${existingVideo.jobId}`);
         }
       } catch {
         // No existing video - that's fine
@@ -105,66 +70,7 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
     };
 
     checkExistingVideo();
-  }, [scriptId, videoStatus, stepState, autoFinalizeAndRedirect]);
-
-  // Socket-based real-time updates
-  const handleSocketUpdate = useCallback((status: VideoGenerationStatus) => {
-    lastSocketUpdateRef.current = Date.now();
-    setVideoStatus(status);
-
-    if (status.status === "completed") {
-      refetchUsage();
-      // Auto-finalize and go directly to edit - skip preview
-      if (status.jobId) {
-        autoFinalizeAndRedirect(status.jobId);
-      }
-    } else if (status.status === "failed") {
-      setError(status.error || "Video generation failed");
-      setStepState("ready");
-    }
-  }, [setVideoStatus, refetchUsage, autoFinalizeAndRedirect]);
-
-  // Connect to socket when generating
-  useUGCVideoSocket({
-    teamId: stepState === "generating" ? teamId : undefined,
-    jobId: stepState === "generating" ? jobId : null,
-    onUpdate: handleSocketUpdate,
-  });
-
-  // Fallback polling if socket updates stop (only when generating)
-  useEffect(() => {
-    if (!jobId || stepState !== "generating") return;
-
-    let mounted = true;
-    const pollStatus = async () => {
-      // Skip if we received a socket update recently
-      const timeSinceLastUpdate = Date.now() - lastSocketUpdateRef.current;
-      if (timeSinceLastUpdate < FALLBACK_POLL_INTERVAL) {
-        return;
-      }
-
-      console.log("[GenerateVideoStep] Socket silent, falling back to polling");
-      try {
-        const status = await ugcVideoAPI.getVideoStatus(jobId);
-        if (!mounted) return;
-
-        handleSocketUpdate(status);
-      } catch (err) {
-        console.error("Failed to poll video status:", err);
-      }
-    };
-
-    // Initial fetch to get current state
-    pollStatus();
-
-    // Fallback polling at slower interval
-    const interval = setInterval(pollStatus, FALLBACK_POLL_INTERVAL);
-
-    return () => {
-      mounted = false;
-      clearInterval(interval);
-    };
-  }, [jobId, stepState, handleSocketUpdate]);
+  }, [scriptId, stepState, freshStart, videoStatus, router]);
 
   const handleGenerateClick = () => {
     if (!usageStats || usageStats.totalRemaining < GENERATE_CREDIT_COST) {
@@ -182,6 +88,7 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
 
     setError(null);
     setStepState("generating");
+    // Don't reset freshStart here - we're navigating away and it prevents race conditions
 
     try {
       const response = await ugcVideoAPI.generateVideo({
@@ -190,13 +97,9 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
         voiceId: selectedVoice.id,
       });
 
-      setJobId(response.jobId);
-      setVideoStatus({
-        jobId: response.jobId,
-        status: "queued",
-        progress: 0,
-        progressMessage: "Queued for video generation...",
-      });
+      // Reset freshStart now that we have a new video, then navigate
+      setFreshStart(false);
+      router.push(`/dashboard/ugc-studio/ai-video-creator/${response.jobId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start video generation");
       setStepState("ready");
@@ -241,27 +144,6 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
           </p>
         </CardBody>
       </Card>
-    );
-  }
-
-  // Generating or Finalizing state - show loading animation
-  if (stepState === "generating" || stepState === "finalizing") {
-    const finalizingStatus = stepState === "finalizing" ? {
-      jobId: jobId || "",
-      status: "completed" as const,
-      progress: 100,
-      progressMessage: "Finalizing and preparing editor...",
-    } : videoStatus;
-
-    return (
-      <VideoLoadingAnimation
-        status={finalizingStatus}
-        totalScenes={totalScenes}
-        onCancel={() => {
-          // Return to the AI Video Creator menu - job continues in background
-          router.push("/dashboard/ugc-studio/ai-video-creator");
-        }}
-      />
     );
   }
 

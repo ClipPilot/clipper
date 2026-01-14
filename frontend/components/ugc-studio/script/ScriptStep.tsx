@@ -2,13 +2,13 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useAtom } from "jotai";
-import { Card, CardBody, Button, Input, Textarea, Progress, Tabs, Tab } from "@heroui/react";
+import { Card, CardBody, Button, Input, Textarea, Progress, Tabs, Tab, Select, SelectItem, Tooltip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { ProductImageUploader } from "./ProductImageUploader";
 import { ScriptEditor } from "./ScriptEditor";
 import { ScriptVariantSelector } from "./ScriptVariantSelector";
 import { ugcScriptAPI } from "@/api/ugc";
-import { scriptIdAtom, scriptsAtom, selectedVariantIndexAtom, productImageKeysAtom, sceneImagesAtom, videoJobIdAtom, videoStatusAtom, videoPreviewUrlAtom } from "@/store/ugc";
+import { scriptIdAtom, scriptsAtom, selectedVariantIndexAtom, productImageKeysAtom, sceneImagesAtom, videoJobIdAtom, videoStatusAtom, videoPreviewUrlAtom, freshStartAtom } from "@/store/ugc";
 import { connectSocket, joinTeam, leaveTeam } from "@/lib/socket";
 import type { Character } from "../actors/types";
 import type { UGCScript, UGCScene, ProductImage, SceneType, ShotType, ScriptSummary } from "./types";
@@ -35,6 +35,7 @@ export function ScriptStep({
   const [, setVideoJobId] = useAtom(videoJobIdAtom);
   const [, setVideoStatus] = useAtom(videoStatusAtom);
   const [, setVideoPreviewUrl] = useAtom(videoPreviewUrlAtom);
+  const [, setFreshStart] = useAtom(freshStartAtom);
 
   const [phase, setPhase] = useState<ScriptPhase>("upload");
   const [productImages, setProductImages] = useState<ProductImage[]>([]);
@@ -92,16 +93,13 @@ export function ScriptStep({
     try {
       const response = await ugcScriptAPI.getFullScript(existingScript.id);
 
-      // Clear all previous generation state for fresh start
+      // Clear all previous generation state - fresh start with script text only
       setSceneImages({});
       setVideoJobId(null);
       setVideoStatus(null);
       setVideoPreviewUrl(null);
       setProductImageKeys([]);
-
-      // Set flags to skip loading saved data in subsequent steps
-      sessionStorage.setItem("skipLoadExistingVideo", existingScript.id);
-      sessionStorage.setItem("skipLoadSceneImages", existingScript.id);
+      setFreshStart(true); // Signal to other steps: only use script, nothing else
 
       setScripts(response.scripts);
       setScriptId(existingScript.id);
@@ -605,7 +603,25 @@ export function ScriptStep({
               {selectedStructureId === "custom" ? (
                 <div className="bg-surface-base rounded-lg p-4 border border-border-base space-y-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-text-primary">Build your structure:</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-text-primary">Build your structure:</p>
+                      <Tooltip
+                        content={
+                          <div className="max-w-xs p-2 text-xs space-y-2">
+                            <p className="font-medium">Shot Types:</p>
+                            <p><span className="text-green-400 font-medium">A-roll</span> — Primary footage of the speaker talking directly to camera. Use for hooks, testimonials, and CTAs.</p>
+                            <p><span className="text-blue-400 font-medium">B-roll</span> — Supplementary footage like product shots, demos, or cutaways. Use for demos and visual variety.</p>
+                            <p><span className="text-purple-400 font-medium">Mixed</span> — Combines both A-roll and B-roll in a single scene for dynamic transitions.</p>
+                          </div>
+                        }
+                        placement="right"
+                        classNames={{ content: "bg-surface-elevated border border-border-base" }}
+                      >
+                        <div className="cursor-help">
+                          <Icon icon="solar:info-circle-linear" className="text-text-muted" width={16} />
+                        </div>
+                      </Tooltip>
+                    </div>
                     <Button
                       size="sm"
                       variant="flat"
@@ -621,43 +637,87 @@ export function ScriptStep({
                     {customPattern.map((step, i) => (
                       <div key={i} className="flex items-center gap-2 bg-surface-elevated p-2 rounded-lg">
                         <span className="text-xs text-text-muted w-5">{i + 1}.</span>
-                        <select
-                          value={step.type}
-                          onChange={(e) => {
-                            const newPattern = [...customPattern];
-                            newPattern[i].type = e.target.value as SceneType;
-                            setCustomPattern(newPattern);
+                        <Select
+                          aria-label="Scene type"
+                          selectedKeys={[step.type]}
+                          onSelectionChange={(keys) => {
+                            const value = Array.from(keys)[0] as SceneType;
+                            if (value) {
+                              const newPattern = [...customPattern];
+                              newPattern[i].type = value;
+                              setCustomPattern(newPattern);
+                            }
                           }}
-                          className="flex-1 bg-surface-base border border-border-base rounded px-2 py-1 text-sm text-text-primary"
+                          size="sm"
+                          className="flex-1"
+                          classNames={{
+                            trigger: "bg-surface-base border-border-base min-h-8 h-8",
+                            value: "text-text-primary text-sm capitalize",
+                            popoverContent: "bg-surface-elevated border border-border-base",
+                          }}
                         >
                           {SCENE_TYPES.map((type) => (
-                            <option key={type} value={type} className="capitalize">{type}</option>
+                            <SelectItem key={type} textValue={type} className="capitalize">
+                              {type}
+                            </SelectItem>
                           ))}
-                        </select>
-                        <select
-                          value={step.shot}
-                          onChange={(e) => {
-                            const newPattern = [...customPattern];
-                            newPattern[i].shot = e.target.value as ShotType;
-                            setCustomPattern(newPattern);
+                        </Select>
+                        <Select
+                          aria-label="Shot type"
+                          selectedKeys={[step.shot]}
+                          onSelectionChange={(keys) => {
+                            const value = Array.from(keys)[0] as ShotType;
+                            if (value) {
+                              const newPattern = [...customPattern];
+                              newPattern[i].shot = value;
+                              setCustomPattern(newPattern);
+                            }
                           }}
-                          className={`w-24 border rounded px-2 py-1 text-sm ${
-                            step.shot === "a-roll" ? "bg-green-500/10 border-green-500/30 text-green-400" :
-                            step.shot === "b-roll" ? "bg-blue-500/10 border-blue-500/30 text-blue-400" :
-                            "bg-purple-500/10 border-purple-500/30 text-purple-400"
-                          }`}
+                          size="sm"
+                          className="w-28"
+                          classNames={{
+                            trigger: `min-h-8 h-8 ${
+                              step.shot === "a-roll" ? "bg-green-500/10 border-green-500/30" :
+                              step.shot === "b-roll" ? "bg-blue-500/10 border-blue-500/30" :
+                              "bg-purple-500/10 border-purple-500/30"
+                            }`,
+                            value: `text-sm ${
+                              step.shot === "a-roll" ? "text-green-400" :
+                              step.shot === "b-roll" ? "text-blue-400" :
+                              "text-purple-400"
+                            }`,
+                            popoverContent: "bg-surface-elevated border border-border-base",
+                          }}
                         >
-                          {SHOT_TYPES.map((shot) => (
-                            <option key={shot} value={shot}>{shot}</option>
-                          ))}
-                        </select>
-                        <button
-                          onClick={() => setCustomPattern(customPattern.filter((_, idx) => idx !== i))}
-                          disabled={customPattern.length <= 3}
-                          className="p-1 text-text-muted hover:text-red-400 disabled:opacity-30"
+                          <SelectItem key="a-roll" textValue="A-roll" className="text-green-400">
+                            <div className="flex items-center gap-2">
+                              <Icon icon="solar:user-speak-bold" width={14} />
+                              <span>A-roll</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem key="b-roll" textValue="B-roll" className="text-blue-400">
+                            <div className="flex items-center gap-2">
+                              <Icon icon="solar:videocamera-record-bold" width={14} />
+                              <span>B-roll</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem key="mixed" textValue="Mixed" className="text-purple-400">
+                            <div className="flex items-center gap-2">
+                              <Icon icon="solar:layers-bold" width={14} />
+                              <span>Mixed</span>
+                            </div>
+                          </SelectItem>
+                        </Select>
+                        <Button
+                          isIconOnly
+                          size="sm"
+                          variant="light"
+                          onPress={() => setCustomPattern(customPattern.filter((_, idx) => idx !== i))}
+                          isDisabled={customPattern.length <= 3}
+                          className="text-text-muted hover:text-red-400 min-w-7 w-7 h-7"
                         >
                           <Icon icon="solar:trash-bin-minimalistic-linear" width={16} />
-                        </button>
+                        </Button>
                       </div>
                     ))}
                   </div>

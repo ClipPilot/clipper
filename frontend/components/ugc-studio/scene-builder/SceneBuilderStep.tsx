@@ -9,6 +9,7 @@ import {
   selectedVariantIndexAtom,
   sceneImagesAtom,
   SceneImageState,
+  freshStartAtom,
 } from "@/store/ugc";
 import { sceneBuilderAPI } from "@/api/sceneBuilder";
 import { ugcScriptAPI } from "@/api/ugc";
@@ -33,6 +34,7 @@ export function SceneBuilderStep({
   const scripts = useAtomValue(scriptsAtom);
   const selectedVariantIndex = useAtomValue(selectedVariantIndexAtom);
   const [sceneImages, setSceneImages] = useAtom(sceneImagesAtom);
+  const freshStart = useAtomValue(freshStartAtom);
   const [loading, setLoading] = useState(true);
   const [generatingAll, setGeneratingAll] = useState(false);
 
@@ -65,28 +67,22 @@ export function SceneBuilderStep({
   const prevCharacterIdRef = useRef<number | null>(null);
   const hasTriggeredAutoGenerate = useRef(false);
 
-  // Load saved scene images on mount (unless character differs from script's original)
+  // Load saved scene images on mount (unless freshStart is true)
   useEffect(() => {
-    const loadSavedImages = async () => {
-      // Check if we should skip loading (e.g., user selected existing script for fresh start)
-      const skipFlag = sessionStorage.getItem("skipLoadSceneImages");
-      if (skipFlag === scriptId) {
-        sessionStorage.removeItem("skipLoadSceneImages");
-        console.log(
-          "[SceneBuilder] Skipping saved scene images for fresh start"
-        );
-        setLoading(false);
-        return;
-      }
+    // Fresh start = only use script text, don't load old images
+    if (freshStart) {
+      console.log("[SceneBuilder] Fresh start - skipping saved images");
+      setLoading(false);
+      return;
+    }
 
+    const loadSavedImages = async () => {
       // If character changed during session, clear existing images
       if (
         prevCharacterIdRef.current !== null &&
         prevCharacterIdRef.current !== characterId
       ) {
-        console.log(
-          "[SceneBuilder] Character changed during session, clearing scene images"
-        );
+        console.log("[SceneBuilder] Character changed, clearing images");
         setSceneImages({});
         setLoading(false);
         prevCharacterIdRef.current = characterId;
@@ -95,35 +91,18 @@ export function SceneBuilderStep({
       prevCharacterIdRef.current = characterId;
 
       try {
-        // First check if the script's original character matches the current selection
-        const scriptResponse = await ugcScriptAPI.getFullScript(scriptId);
-        if (
-          scriptResponse.success &&
-          scriptResponse.characterId &&
-          scriptResponse.characterId !== characterId
-        ) {
-          console.log(
-            "[SceneBuilder] Script character differs from selected character, skipping saved images"
-          );
-          setSceneImages({});
-          setLoading(false);
-          return;
-        }
-
-        // Load saved images only if character matches
         const response = await sceneBuilderAPI.getSceneImages(scriptId);
         if (response.success && response.sceneImages) {
           setSceneImages((prev) => {
             const newState: Record<string, SceneImageState> = { ...prev };
             Object.entries(response.sceneImages).forEach(
               ([sceneId, sceneImage]: [string, any]) => {
-                // Only update if not currently generating (preserve in-progress state)
                 const currentState = prev[sceneId];
                 if (
                   currentState?.status === "generating" ||
                   currentState?.status === "regenerating"
                 ) {
-                  return; // Keep generating status
+                  return;
                 }
                 newState[sceneId] = {
                   status: "completed",
@@ -143,21 +122,12 @@ export function SceneBuilderStep({
     };
 
     loadSavedImages();
-  }, [scriptId, characterId, setSceneImages]);
+  }, [scriptId, characterId, freshStart, setSceneImages]);
 
   // Auto-generate all scenes on first load if none have images yet
   useEffect(() => {
     if (loading || hasTriggeredAutoGenerate.current || generatingAll) return;
     if (scenes.length === 0) return;
-
-    // Check sessionStorage to see if we already triggered for this script (survives remounts)
-    const autoGenKey = `autoGen_${scriptId}`;
-    if (sessionStorage.getItem(autoGenKey)) {
-      console.log(
-        "[SceneBuilder] Auto-generate already triggered for this script"
-      );
-      return;
-    }
 
     // Check if any scenes already have images
     const hasAnyImages = scenes.some(
@@ -165,7 +135,7 @@ export function SceneBuilderStep({
     );
     if (hasAnyImages) return;
 
-    // Also check if any are currently generating
+    // Check if any are currently generating
     const anyGenerating = scenes.some((scene) => {
       const state = sceneImages[scene.id];
       return state?.status === "generating" || state?.status === "regenerating";
@@ -174,10 +144,9 @@ export function SceneBuilderStep({
 
     // Trigger auto-generation
     hasTriggeredAutoGenerate.current = true;
-    sessionStorage.setItem(autoGenKey, "true");
-    console.log("[SceneBuilder] Auto-generating all scene images on mount");
+    console.log("[SceneBuilder] Auto-generating all scene images");
     handleGenerateAll();
-  }, [loading, scenes, sceneImages, generatingAll, scriptId]);
+  }, [loading, scenes, sceneImages, generatingAll]);
 
   const handleGenerationStart = (sceneId: string, jobId: string) => {
     setSceneImages((prev) => ({
