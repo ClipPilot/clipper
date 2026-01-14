@@ -184,24 +184,38 @@ export const downloadFixed = async (req: AuthRequest, res: Response) => {
           ...generateJumbledMetadata(),
         ];
 
-    await new Promise<void>((resolve, reject) => {
-      ffmpeg(tempInputPath)
-        .outputOptions(ffmpegOptions)
-        .save(tempOutputPath)
-        .on("progress", (progress) => {
-          if (mode !== "remux" && progress.percent && Math.round(progress.percent) % 25 === 0) {
-            console.log(`[DOWNLOAD-FIXED] Processing: ${Math.round(progress.percent)}%`);
-          }
-        })
-        .on("end", () => {
-          console.log(`[DOWNLOAD-FIXED] Processing complete (mode=${mode || "full"})`);
-          resolve();
-        })
-        .on("error", (err) => {
-          console.error("[DOWNLOAD-FIXED] FFmpeg error:", err.message);
-          reject(err);
-        });
-    });
+    // Fallback options: simple copy without any metadata processing
+    const fallbackOptions = ["-c:v copy", "-c:a copy", "-movflags +faststart"];
+
+    const runFFmpeg = (options: string[], label: string): Promise<void> => {
+      return new Promise((resolve, reject) => {
+        ffmpeg(tempInputPath)
+          .outputOptions(options)
+          .save(tempOutputPath)
+          .on("progress", (progress) => {
+            if (mode !== "remux" && progress.percent && Math.round(progress.percent) % 25 === 0) {
+              console.log(`[DOWNLOAD-FIXED] ${label}: ${Math.round(progress.percent)}%`);
+            }
+          })
+          .on("end", () => {
+            console.log(`[DOWNLOAD-FIXED] ${label} complete`);
+            resolve();
+          })
+          .on("error", (err) => {
+            console.error(`[DOWNLOAD-FIXED] ${label} error:`, err.message);
+            reject(err);
+          });
+      });
+    };
+
+    try {
+      await runFFmpeg(ffmpegOptions, `Processing (mode=${mode || "full"})`);
+    } catch (firstError) {
+      console.log("[DOWNLOAD-FIXED] First attempt failed, trying fallback without metadata...");
+      // Clean up failed output if it exists
+      if (fs.existsSync(tempOutputPath)) fs.unlinkSync(tempOutputPath);
+      await runFFmpeg(fallbackOptions, "Fallback (no metadata)");
+    }
 
     const stats = fs.statSync(tempOutputPath);
 
@@ -307,13 +321,31 @@ export const downloadFixedPublic = async (req: Request, res: Response) => {
           ...generateJumbledMetadata(),
         ];
 
-    await new Promise<void>((resolve, reject) => {
-      ffmpeg(tempInputPath)
-        .outputOptions(ffmpegOptions)
-        .save(tempOutputPath)
-        .on("end", () => resolve())
-        .on("error", (err) => reject(err));
-    });
+    const fallbackOptions = ["-c:v copy", "-c:a copy", "-movflags +faststart"];
+
+    const runFFmpeg = (options: string[], label: string): Promise<void> => {
+      return new Promise((resolve, reject) => {
+        ffmpeg(tempInputPath)
+          .outputOptions(options)
+          .save(tempOutputPath)
+          .on("end", () => {
+            console.log(`[DOWNLOAD-FIXED-PUBLIC] ${label} complete`);
+            resolve();
+          })
+          .on("error", (err) => {
+            console.error(`[DOWNLOAD-FIXED-PUBLIC] ${label} error:`, err.message);
+            reject(err);
+          });
+      });
+    };
+
+    try {
+      await runFFmpeg(ffmpegOptions, `Processing (mode=${mode || "full"})`);
+    } catch (firstError) {
+      console.log("[DOWNLOAD-FIXED-PUBLIC] First attempt failed, trying fallback without metadata...");
+      if (fs.existsSync(tempOutputPath)) fs.unlinkSync(tempOutputPath);
+      await runFFmpeg(fallbackOptions, "Fallback (no metadata)");
+    }
 
     const stats = fs.statSync(tempOutputPath);
 
