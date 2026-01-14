@@ -72,11 +72,9 @@ export const FaceSwapJobCard = memo(
     };
 
     return (
-      <Card
-        className="bg-surface-base border border-border-base hover:border-accent-400/30 transition-colors cursor-pointer overflow-hidden"
-        onClick={onClick}
-      >
-        <CardBody className="p-2 sm:p-3">
+      <div onClick={onClick} className="cursor-pointer">
+        <Card className="bg-surface-base border border-border-base hover:border-accent-400/30 transition-colors overflow-hidden">
+          <CardBody className="p-2 sm:p-3">
           <div className="flex gap-2 sm:gap-3">
             <div className="w-16 h-12 sm:w-20 sm:h-14 md:w-24 md:h-16 rounded-lg bg-surface-elevated overflow-hidden flex-shrink-0">
               {job.status === "completed" && job.outputUrl ? (
@@ -128,38 +126,36 @@ export const FaceSwapJobCard = memo(
                 </div>
                 <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
                   {job.status === "completed" && job.outputUrl && (
-                    <Button
-                      size="sm"
-                      variant="flat"
-                      isIconOnly
-                      className="bg-accent-400/20 text-accent-400 min-w-6 w-6 h-6 sm:min-w-7 sm:w-7 sm:h-7"
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        handleDownload();
-                      }}
-                      isLoading={isDownloading}
-                    >
-                      {!isDownloading && (
-                        <Icon icon="solar:download-bold" className="text-xs sm:text-sm" />
-                      )}
-                    </Button>
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        size="sm"
+                        variant="flat"
+                        isIconOnly
+                        className="bg-accent-400/20 text-accent-400 min-w-6 w-6 h-6 sm:min-w-7 sm:w-7 sm:h-7"
+                        onPress={handleDownload}
+                        isLoading={isDownloading}
+                      >
+                        {!isDownloading && (
+                          <Icon icon="solar:download-bold" className="text-xs sm:text-sm" />
+                        )}
+                      </Button>
+                    </div>
                   )}
                   {onDelete && (
-                    <Button
-                      size="sm"
-                      variant="flat"
-                      isIconOnly
-                      className="bg-red-500/20 text-red-500 min-w-6 w-6 h-6 sm:min-w-7 sm:w-7 sm:h-7"
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        handleDelete();
-                      }}
-                      isLoading={isDeleting}
-                    >
-                      {!isDeleting && (
-                        <Icon icon="solar:trash-bin-trash-bold" className="text-xs sm:text-sm" />
-                      )}
-                    </Button>
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        size="sm"
+                        variant="flat"
+                        isIconOnly
+                        className="bg-red-500/20 text-red-500 min-w-6 w-6 h-6 sm:min-w-7 sm:w-7 sm:h-7"
+                        onPress={handleDelete}
+                        isLoading={isDeleting}
+                      >
+                        {!isDeleting && (
+                          <Icon icon="solar:trash-bin-trash-bold" className="text-xs sm:text-sm" />
+                        )}
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -194,7 +190,8 @@ export const FaceSwapJobCard = memo(
             </div>
           </div>
         </CardBody>
-      </Card>
+        </Card>
+      </div>
     );
   },
   (prev, next) =>

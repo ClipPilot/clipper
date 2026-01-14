@@ -17,8 +17,9 @@ interface MyFaceSwapsSectionProps {
 
 export interface MyFaceSwapsSectionRef {
   refetch: () => Promise<void>;
-  addOptimisticJob: (tempId: string) => void;
+  addOptimisticJob: (tempId: string, message?: string) => void;
   updateOptimisticJob: (tempId: string, realId: string) => void;
+  updateOptimisticJobStatus: (tempId: string, message: string) => void;
   failOptimisticJob: (tempId: string, errorMessage: string) => void;
 }
 
@@ -43,12 +44,12 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
   }, [teamId]);
 
   // Add an optimistic job with "uploading" status immediately
-  const addOptimisticJob = useCallback((tempId: string) => {
+  const addOptimisticJob = useCallback((tempId: string, message?: string) => {
     const optimisticJob: FaceSwapJob = {
       id: tempId,
       status: "uploading",
       progress: null,
-      progressMessage: "Uploading files...",
+      progressMessage: message || "Uploading files...",
       outputUrl: null,
       errorMessage: null,
       createdAt: new Date().toISOString(),
@@ -63,6 +64,17 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
       prev.map((job) =>
         job.id === tempId
           ? { ...job, id: realId, status: "queued", progressMessage: null }
+          : job
+      )
+    );
+  }, []);
+
+  // Update the progress message of an optimistic job
+  const updateOptimisticJobStatus = useCallback((tempId: string, message: string) => {
+    setJobs((prev) =>
+      prev.map((job) =>
+        job.id === tempId
+          ? { ...job, progressMessage: message }
           : job
       )
     );
@@ -83,8 +95,9 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
     refetch: fetchJobs,
     addOptimisticJob,
     updateOptimisticJob,
+    updateOptimisticJobStatus,
     failOptimisticJob,
-  }), [fetchJobs, addOptimisticJob, updateOptimisticJob, failOptimisticJob]);
+  }), [fetchJobs, addOptimisticJob, updateOptimisticJob, updateOptimisticJobStatus, failOptimisticJob]);
 
   useEffect(() => {
     fetchJobs();

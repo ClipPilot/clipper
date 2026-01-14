@@ -11,6 +11,7 @@ import {
   DropdownTrigger,
   DropdownMenu,
   DropdownItem,
+  Tooltip,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { EmotionSelector } from "./EmotionSelector";
@@ -125,45 +126,60 @@ export function SceneCard({
           </div>
 
           <div className="flex items-center gap-1">
-            <Dropdown>
-              <DropdownTrigger>
-                <Chip
-                  size="sm"
-                  variant="flat"
-                  className={`cursor-pointer hover:opacity-80 ${
-                    scene.shotType === "a-roll"
-                      ? "bg-blue-500/20 text-blue-400"
-                      : scene.shotType === "b-roll"
-                        ? "bg-amber-500/20 text-amber-400"
-                        : "bg-purple-500/20 text-purple-400"
-                  }`}
-                >
-                  {scene.shotType}
-                </Chip>
-              </DropdownTrigger>
-              <DropdownMenu
-                aria-label="Select shot type"
-                selectionMode="single"
-                selectedKeys={[scene.shotType]}
-                onAction={(key) => onUpdate({ shotType: key as ShotType })}
-                className="bg-surface-elevated"
-              >
-                {SHOT_TYPES.map((shotType) => (
-                  <DropdownItem
-                    key={shotType}
-                    className={`text-text-primary ${
-                      shotType === "a-roll"
-                        ? "text-blue-400"
-                        : shotType === "b-roll"
-                          ? "text-amber-400"
-                          : "text-purple-400"
-                    }`}
+            <Tooltip
+              isDisabled={scene.shotType !== "mixed"}
+              content={
+                <div className="max-w-xs p-1 text-xs">
+                  <p className="font-medium mb-1">Shot Types:</p>
+                  <p><span className="text-blue-400 font-medium">A-roll</span> — Primary footage of the speaker talking directly to camera</p>
+                  <p className="mt-1"><span className="text-amber-400 font-medium">B-roll</span> — Supplementary footage (product shots, demos, cutaways)</p>
+                </div>
+              }
+              placement="bottom"
+              classNames={{ content: "bg-surface-elevated border border-border-base" }}
+            >
+              <div>
+                <Dropdown>
+                  <DropdownTrigger>
+                    <Chip
+                      size="sm"
+                      variant="flat"
+                      className={`cursor-pointer hover:opacity-80 ${
+                        scene.shotType === "a-roll"
+                          ? "bg-blue-500/20 text-blue-400"
+                          : scene.shotType === "b-roll"
+                            ? "bg-amber-500/20 text-amber-400"
+                            : "bg-purple-500/20 text-purple-400"
+                      }`}
+                    >
+                      {scene.shotType}
+                    </Chip>
+                  </DropdownTrigger>
+                  <DropdownMenu
+                    aria-label="Select shot type"
+                    selectionMode="single"
+                    selectedKeys={[scene.shotType]}
+                    onAction={(key) => onUpdate({ shotType: key as ShotType })}
+                    className="bg-surface-elevated"
                   >
-                    {shotType}
-                  </DropdownItem>
-                ))}
-              </DropdownMenu>
-            </Dropdown>
+                    {SHOT_TYPES.map((shotType) => (
+                      <DropdownItem
+                        key={shotType}
+                        className={`text-text-primary ${
+                          shotType === "a-roll"
+                            ? "text-blue-400"
+                            : shotType === "b-roll"
+                              ? "text-amber-400"
+                              : "text-purple-400"
+                        }`}
+                      >
+                        {shotType}
+                      </DropdownItem>
+                    ))}
+                  </DropdownMenu>
+                </Dropdown>
+              </div>
+            </Tooltip>
             <Button
               isIconOnly
               size="sm"

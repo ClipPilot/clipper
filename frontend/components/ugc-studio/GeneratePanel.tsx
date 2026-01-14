@@ -12,6 +12,8 @@ interface GeneratePanelProps {
   swapType: SwapType;
   onSwapTypeChange: (type: SwapType) => void;
   onGenerate: () => void;
+  onAutoDetectAndGenerate?: () => void;
+  showEditor?: boolean;
 }
 
 export function GeneratePanel({
@@ -22,8 +24,11 @@ export function GeneratePanel({
   swapType,
   onSwapTypeChange,
   onGenerate,
+  onAutoDetectAndGenerate,
+  showEditor = false,
 }: GeneratePanelProps) {
   const isValid = hasVideo && hasCharacter && segmentCount > 0 && totalDuration <= 50.01;
+  const canAutoGenerate = hasVideo && hasCharacter;
 
   return (
     <Card className="bg-surface-base border border-border-base">
@@ -42,20 +47,29 @@ export function GeneratePanel({
                 Character uploaded
               </span>
             </div>
-            <div className="flex items-center gap-3">
-              <div
-                className={`w-2.5 h-2.5 rounded-full ${
-                  hasVideo && segmentCount > 0 && totalDuration <= 50.01 ? "bg-green-500" : "bg-surface-elevated"
-                }`}
-              />
-              <span
-                className={`text-sm ${
-                  hasVideo && segmentCount > 0 && totalDuration <= 50.01 ? "text-text-primary" : "text-text-tertiary"
-                }`}
-              >
-                {segmentCount} segment{segmentCount !== 1 ? "s" : ""} (≤50s)
-              </span>
-            </div>
+            {showEditor ? (
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-2.5 h-2.5 rounded-full ${
+                    hasVideo && segmentCount > 0 && totalDuration <= 50.01 ? "bg-green-500" : "bg-surface-elevated"
+                  }`}
+                />
+                <span
+                  className={`text-sm ${
+                    hasVideo && segmentCount > 0 && totalDuration <= 50.01 ? "text-text-primary" : "text-text-tertiary"
+                  }`}
+                >
+                  {segmentCount} segment{segmentCount !== 1 ? "s" : ""} (≤50s)
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <div className={`w-2.5 h-2.5 rounded-full ${hasVideo && hasCharacter ? "bg-purple-500" : "bg-surface-elevated"}`} />
+                <span className={`text-sm ${hasVideo && hasCharacter ? "text-purple-400" : "text-text-tertiary"}`}>
+                  Auto-detect faces on generate
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="p-3 bg-surface-elevated rounded-lg space-y-3">
@@ -101,16 +115,31 @@ export function GeneratePanel({
             </div>
           )}
 
-          <Button
-            className="w-full bg-accent-400 text-white font-semibold"
-            size="lg"
-            isDisabled={!isValid}
-            onPress={onGenerate}
-            startContent={<Icon icon="solar:magic-stick-3-bold-duotone" width={20} />}
-            endContent={<span className="px-1.5 py-0.5 text-xs bg-white/20 rounded-full">5 Credits</span>}
-          >
-            Generate
-          </Button>
+          {!showEditor && onAutoDetectAndGenerate && (
+            <Button
+              className="w-full bg-purple-500 text-white font-semibold"
+              size="lg"
+              isDisabled={!canAutoGenerate}
+              onPress={onAutoDetectAndGenerate}
+              startContent={<Icon icon="solar:face-scan-circle-bold" width={20} />}
+              endContent={<span className="px-1.5 py-0.5 text-xs bg-white/20 rounded-full">5 Credits</span>}
+            >
+              Auto-detect & Generate
+            </Button>
+          )}
+
+          {showEditor && (
+            <Button
+              className="w-full bg-accent-400 text-white font-semibold"
+              size="lg"
+              isDisabled={!isValid}
+              onPress={onGenerate}
+              startContent={<Icon icon="solar:magic-stick-3-bold-duotone" width={20} />}
+              endContent={<span className="px-1.5 py-0.5 text-xs bg-white/20 rounded-full">5 Credits</span>}
+            >
+              Generate
+            </Button>
+          )}
         </div>
       </CardBody>
     </Card>

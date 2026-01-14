@@ -12,6 +12,8 @@ interface VideoUploadCardProps {
   segments: VideoSegment[];
   onVideoChange: (video: UploadedFile | null, duration: number) => void;
   onSegmentsChange: (segments: VideoSegment[]) => void;
+  showEditor?: boolean;
+  onToggleEditor?: () => void;
 }
 
 export function VideoUploadCard({
@@ -20,6 +22,8 @@ export function VideoUploadCard({
   segments,
   onVideoChange,
   onSegmentsChange,
+  showEditor = false,
+  onToggleEditor,
 }: VideoUploadCardProps) {
   const videoInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -93,15 +97,65 @@ export function VideoUploadCard({
       </CardHeader>
       <CardBody className="pt-4">
         {video ? (
-          <MultiSegmentTrimmer
-            videoSrc={video.preview}
-            videoFile={video.file}
-            duration={videoDuration}
-            segments={segments}
-            onSegmentsChange={onSegmentsChange}
-            maxTotalDuration={50}
-            maxSegments={5}
-          />
+          <div className="space-y-4">
+            {!showEditor && (
+              <div className="space-y-3">
+                <div className="relative rounded-xl overflow-hidden bg-black aspect-video">
+                  <video
+                    src={video.preview}
+                    className="w-full h-full object-contain"
+                    controls
+                    playsInline
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-text-primary truncate">{video.file.name}</p>
+                    <p className="text-xs text-text-tertiary">
+                      {Math.round(videoDuration)}s • Ready for auto-detect
+                    </p>
+                  </div>
+                  {onToggleEditor && (
+                    <Button
+                      size="sm"
+                      variant="flat"
+                      className="bg-surface-elevated text-text-secondary"
+                      onPress={onToggleEditor}
+                      startContent={<Icon icon="solar:tuning-2-bold" width={16} />}
+                    >
+                      Manual Edit
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+            {showEditor && (
+              <>
+                {onToggleEditor && (
+                  <div className="flex justify-end">
+                    <Button
+                      size="sm"
+                      variant="flat"
+                      className="bg-surface-elevated text-text-secondary"
+                      onPress={onToggleEditor}
+                      startContent={<Icon icon="solar:minimize-square-bold" width={16} />}
+                    >
+                      Hide Editor
+                    </Button>
+                  </div>
+                )}
+                <MultiSegmentTrimmer
+                  videoSrc={video.preview}
+                  videoFile={video.file}
+                  duration={videoDuration}
+                  segments={segments}
+                  onSegmentsChange={onSegmentsChange}
+                  maxTotalDuration={50}
+                  maxSegments={5}
+                />
+              </>
+            )}
+          </div>
         ) : (
           <div
             className={`border-2 border-dashed rounded-xl p-12 transition-colors ${

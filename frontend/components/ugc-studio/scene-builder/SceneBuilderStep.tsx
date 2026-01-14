@@ -72,14 +72,21 @@ export function SceneBuilderStep({
       const skipFlag = sessionStorage.getItem("skipLoadSceneImages");
       if (skipFlag === scriptId) {
         sessionStorage.removeItem("skipLoadSceneImages");
-        console.log("[SceneBuilder] Skipping saved scene images for fresh start");
+        console.log(
+          "[SceneBuilder] Skipping saved scene images for fresh start"
+        );
         setLoading(false);
         return;
       }
 
       // If character changed during session, clear existing images
-      if (prevCharacterIdRef.current !== null && prevCharacterIdRef.current !== characterId) {
-        console.log("[SceneBuilder] Character changed during session, clearing scene images");
+      if (
+        prevCharacterIdRef.current !== null &&
+        prevCharacterIdRef.current !== characterId
+      ) {
+        console.log(
+          "[SceneBuilder] Character changed during session, clearing scene images"
+        );
         setSceneImages({});
         setLoading(false);
         prevCharacterIdRef.current = characterId;
@@ -90,8 +97,14 @@ export function SceneBuilderStep({
       try {
         // First check if the script's original character matches the current selection
         const scriptResponse = await ugcScriptAPI.getFullScript(scriptId);
-        if (scriptResponse.success && scriptResponse.characterId && scriptResponse.characterId !== characterId) {
-          console.log("[SceneBuilder] Script character differs from selected character, skipping saved images");
+        if (
+          scriptResponse.success &&
+          scriptResponse.characterId &&
+          scriptResponse.characterId !== characterId
+        ) {
+          console.log(
+            "[SceneBuilder] Script character differs from selected character, skipping saved images"
+          );
           setSceneImages({});
           setLoading(false);
           return;
@@ -106,7 +119,10 @@ export function SceneBuilderStep({
               ([sceneId, sceneImage]: [string, any]) => {
                 // Only update if not currently generating (preserve in-progress state)
                 const currentState = prev[sceneId];
-                if (currentState?.status === "generating" || currentState?.status === "regenerating") {
+                if (
+                  currentState?.status === "generating" ||
+                  currentState?.status === "regenerating"
+                ) {
                   return; // Keep generating status
                 }
                 newState[sceneId] = {
@@ -137,16 +153,20 @@ export function SceneBuilderStep({
     // Check sessionStorage to see if we already triggered for this script (survives remounts)
     const autoGenKey = `autoGen_${scriptId}`;
     if (sessionStorage.getItem(autoGenKey)) {
-      console.log("[SceneBuilder] Auto-generate already triggered for this script");
+      console.log(
+        "[SceneBuilder] Auto-generate already triggered for this script"
+      );
       return;
     }
 
     // Check if any scenes already have images
-    const hasAnyImages = scenes.some(scene => sceneImages[scene.id]?.selectedImageKey);
+    const hasAnyImages = scenes.some(
+      (scene) => sceneImages[scene.id]?.selectedImageKey
+    );
     if (hasAnyImages) return;
 
     // Also check if any are currently generating
-    const anyGenerating = scenes.some(scene => {
+    const anyGenerating = scenes.some((scene) => {
       const state = sceneImages[scene.id];
       return state?.status === "generating" || state?.status === "regenerating";
     });
@@ -341,7 +361,7 @@ export function SceneBuilderStep({
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button
+              {/* <Button
                 variant="bordered"
                 className="border-border-base text-text-secondary"
                 size="sm"
@@ -353,7 +373,7 @@ export function SceneBuilderStep({
                 }
               >
                 Generate All
-              </Button>
+              </Button> */}
               {onContinue && (
                 <Button
                   className="bg-accent-400 text-white font-semibold"
@@ -395,7 +415,10 @@ export function SceneBuilderStep({
                     | "completed"
                     | "failed",
                   progress: 0,
-                  progressMessage: sceneState.status === "regenerating" ? "Regenerating..." : "",
+                  progressMessage:
+                    sceneState.status === "regenerating"
+                      ? "Regenerating..."
+                      : "",
                   generatedImages: sceneState.generatedImages,
                 }
               : undefined;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button, addToast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAtomValue } from "jotai";
@@ -8,6 +8,8 @@ import { useRouter } from "next/navigation";
 import { selectedTeamAtom } from "@/store/auth";
 import { canAccessUGCStudio } from "@/lib/plans";
 import { faceSwapAPI } from "@/api/ugc/faceSwap";
+import { apiFetch } from "@/lib/apiClient";
+import API_URL from "@/config/constants";
 import {
   UploadedFile,
   SelectedCharacter,
@@ -45,6 +47,7 @@ function FaceSwapContent({
   const [videoDuration, setVideoDuration] = useState(0);
   const [segments, setSegments] = useState<VideoSegment[]>([]);
   const [swapType, setSwapType] = useState<SwapType>("face");
+  const [showEditor, setShowEditor] = useState(false);
   const faceSwapsSectionRef = useRef<MyFaceSwapsSectionRef>(null);
 
   const characterImage = selectedCharacter
@@ -127,6 +130,119 @@ function FaceSwapContent({
 
   const totalDuration = segments.reduce((sum, s) => sum + (s.end - s.start), 0);
 
+  const handleAutoDetectAndGenerate = useCallback(async () => {
+    if (!video?.file || !characterImage || !selectedTeam?.id) return;
+
+    const tempId = `temp-${Date.now()}`;
+    const videoFile = video.file;
+    const imageFile = characterImage.file;
+    const teamId = selectedTeam.id;
+    const duration = videoDuration;
+    const swap = swapType;
+    const videoToRevoke = video.preview;
+
+    // Immediately add to My Swaps and clear form
+    faceSwapsSectionRef.current?.addOptimisticJob(tempId, "Detecting faces...");
+    setVideo(null);
+    setSelectedCharacter(null);
+    setVideoDuration(0);
+    setSegments([]);
+
+    // Process everything in background
+    (async () => {
+      try {
+        // Step 1: Detect faces
+        const formData = new FormData();
+        formData.append("video", videoFile);
+
+        const response = await apiFetch(`${API_URL}/face-swap/detect-faces`, {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to detect faces");
+        }
+
+        const data = await response.json();
+
+        if (!data.segments || data.segments.length === 0) {
+          faceSwapsSectionRef.current?.failOptimisticJob(tempId, "No faces detected");
+          addToast({
+            title: "No faces detected",
+            description: "Could not find clear face segments. Try manual selection.",
+            color: "warning",
+          });
+          return;
+        }
+
+        // Step 2: Process segments
+        let selectedSegments: { start: number; end: number }[] = [];
+        let totalDur = 0;
+        const maxTotalDuration = 50;
+        const maxSegments = 5;
+
+        for (const seg of data.segments) {
+          if (selectedSegments.length >= maxSegments) break;
+          const segDuration = seg.end - seg.start;
+          if (totalDur + segDuration <= maxTotalDuration) {
+            selectedSegments.push({ start: seg.start, end: seg.end });
+            totalDur += segDuration;
+          } else if (totalDur < maxTotalDuration) {
+            const availableDuration = maxTotalDuration - totalDur;
+            if (availableDuration >= 0.5) {
+              selectedSegments.push({ start: seg.start, end: seg.start + availableDuration });
+            }
+            break;
+          }
+        }
+
+        if (selectedSegments.length === 0) {
+          faceSwapsSectionRef.current?.failOptimisticJob(tempId, "No usable segments");
+          addToast({
+            title: "No usable segments",
+            description: "Detected segments were too short.",
+            color: "warning",
+          });
+          return;
+        }
+
+        // Step 3: Update status and start upload
+        faceSwapsSectionRef.current?.updateOptimisticJobStatus(tempId, "Uploading...");
+
+        const result = await faceSwapAPI.createJob({
+          video: videoFile,
+          image: imageFile,
+          teamId,
+          segments: selectedSegments,
+          videoDuration: duration,
+          swapType: swap,
+          spliceWithOriginal: true,
+        });
+
+        faceSwapsSectionRef.current?.updateOptimisticJob(tempId, result.jobId);
+
+        addToast({
+          title: "Swap started!",
+          description: "Your video is being processed. This may take 20-40 minutes.",
+          color: "success",
+        });
+
+        if (videoToRevoke) URL.revokeObjectURL(videoToRevoke);
+      } catch (error) {
+        console.error("Auto-detect and generate error:", error);
+        const errorMessage = error instanceof Error ? error.message : "An error occurred";
+        faceSwapsSectionRef.current?.failOptimisticJob(tempId, errorMessage);
+        addToast({
+          title: "Failed",
+          description: errorMessage,
+          color: "danger",
+        });
+      }
+    })();
+  }, [video, characterImage, selectedTeam?.id, videoDuration, swapType]);
+
   return (
     <div className="min-h-screen bg-surface-dark p-6 lg:p-8">
       <div className="max-w-6xl mx-auto space-y-6">
@@ -157,6 +273,8 @@ function FaceSwapContent({
               segments={segments}
               onVideoChange={handleVideoChange}
               onSegmentsChange={setSegments}
+              showEditor={showEditor}
+              onToggleEditor={() => setShowEditor((v) => !v)}
             />
             {selectedTeam?.id && (
               <div className="space-y-4">
@@ -184,6 +302,8 @@ function FaceSwapContent({
               swapType={swapType}
               onSwapTypeChange={setSwapType}
               onGenerate={handleGenerate}
+              onAutoDetectAndGenerate={handleAutoDetectAndGenerate}
+              showEditor={showEditor}
             />
           </div>
         </div>
