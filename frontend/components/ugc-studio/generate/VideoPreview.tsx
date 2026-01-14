@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import {
   Card,
   CardBody,
@@ -40,6 +41,7 @@ export function VideoPreview({
   onRegenerate,
   isFinalizing,
 }: VideoPreviewProps) {
+  const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [editingSceneId, setEditingSceneId] = useState<string | null>(null);
@@ -48,6 +50,7 @@ export function VideoPreview({
   const [sceneError, setSceneError] = useState<string | null>(null);
 
   const { usageStats } = useUsageStats(teamId);
+  const isFinalized = !!videoStatus.clipId;
 
   const handlePlayPause = () => {
     if (videoRef.current) {
@@ -120,28 +123,32 @@ export function VideoPreview({
             Video Preview
           </h2>
           <p className="text-text-secondary text-sm">
-            Review your video and make any edits before finalizing
+            {isFinalized
+              ? "This video has been saved to your library"
+              : "Review your video and make any edits before finalizing"}
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Button
-            variant="bordered"
-            className="border-border-base text-text-secondary"
-            onPress={onRegenerate}
-            startContent={<Icon icon="solar:refresh-bold" width={16} />}
-          >
-            Regenerate
-          </Button>
+          {!isFinalized && (
+            <Button
+              variant="bordered"
+              className="border-border-base text-text-secondary"
+              onPress={onRegenerate}
+              startContent={<Icon icon="solar:refresh-bold" width={16} />}
+            >
+              Regenerate
+            </Button>
+          )}
           <Button
             className="bg-accent-400 text-white font-semibold"
-            onPress={onFinalize}
+            onPress={isFinalized ? () => router.push(`/dashboard/clips/${videoStatus.clipId}/edit`) : onFinalize}
             isLoading={isFinalizing}
             isDisabled={isFinalizing}
             startContent={
-              !isFinalizing && <Icon icon="solar:check-circle-bold" width={16} />
+              !isFinalizing && <Icon icon={isFinalized ? "solar:pen-bold" : "solar:check-circle-bold"} width={16} />
             }
           >
-            {isFinalizing ? "Finalizing..." : "Finalize & Save"}
+            {isFinalizing ? "Finalizing..." : isFinalized ? "Edit" : "Finalize & Save"}
           </Button>
         </div>
       </div>
@@ -233,122 +240,113 @@ export function VideoPreview({
                   </span>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Icon
-                  icon="solar:check-circle-bold"
-                  className="text-accent-400"
-                  width={16}
-                />
-                <span className="text-sm text-accent-400 font-medium">
-                  Ready to finalize
-                </span>
-              </div>
+              {!isFinalized && (
+                <div className="flex items-center gap-2">
+                  <Icon
+                    icon="solar:check-circle-bold"
+                    className="text-accent-400"
+                    width={16}
+                  />
+                  <span className="text-sm text-accent-400 font-medium">
+                    Ready to finalize
+                  </span>
+                </div>
+              )}
+              {isFinalized && (
+                <div className="flex items-center gap-2">
+                  <Icon
+                    icon="solar:verified-check-bold"
+                    className="text-green-400"
+                    width={16}
+                  />
+                  <span className="text-sm text-green-400 font-medium">
+                    Saved to library
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </CardBody>
       </Card>
 
-      {/* Scene breakdown - temporarily disabled
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-text-primary">
-            Scene Breakdown
-          </h3>
-          <p className="text-sm text-text-muted">
-            Edit a scene for {SCENE_EDIT_CREDIT_COST} credits
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {scenes.map((scene, index) => {
-            const sceneVideo = getSceneVideo(scene.id);
-
-            return (
-              <motion.div
-                key={scene.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <Card className="bg-surface-elevated border border-border-base overflow-hidden group hover:border-accent-400/50 transition-colors">
-                  <CardBody className="p-0">
-                    <div className="relative aspect-[9/16] bg-surface-base">
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-12 h-12 rounded-xl bg-accent-400/20 flex items-center justify-center">
-                          <Icon
-                            icon="solar:video-frame-bold-duotone"
-                            className="text-accent-400"
-                            width={24}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="absolute top-2 left-2 px-2 py-1 rounded-lg bg-black/60 backdrop-blur-sm">
-                        <span className="text-xs font-medium text-white">
-                          Scene {scene.sceneNumber}
-                        </span>
-                      </div>
-
-                      {(scene.estimatedDurationSeconds || (scene as any).durationSeconds) && (
-                        <div className="absolute bottom-2 right-2 px-2 py-1 rounded-lg bg-black/60 backdrop-blur-sm">
-                          <span className="text-xs text-white">
-                            {scene.estimatedDurationSeconds || (scene as any).durationSeconds}s
-                          </span>
-                        </div>
-                      )}
-
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                        <Button
-                          size="sm"
-                          className="bg-white/20 backdrop-blur-sm text-white border border-white/30"
-                          onPress={() => handleEditSceneClick(scene.id)}
-                          startContent={<Icon icon="solar:pen-bold" width={14} />}
-                        >
-                          Edit ({SCENE_EDIT_CREDIT_COST} cr)
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="p-3">
-                      <p className="text-sm text-text-primary font-medium truncate">
-                        {scene.action || `Scene ${scene.sceneNumber}`}
-                      </p>
-                      <p className="text-xs text-text-muted truncate mt-1">
-                        {scene.shotType} • {scene.emotion || "neutral"}
-                      </p>
-                    </div>
-                  </CardBody>
-                </Card>
-              </motion.div>
-            );
-          })}
-        </div>
-      </div>
-      */}
-
-      {/* What happens next */}
-      <Card className="bg-surface-elevated border border-border-base">
-        <CardBody className="p-4">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+      {/* Script used */}
+      {scenes.length > 0 && (
+        <Card className="bg-surface-elevated border border-border-base">
+          <CardBody className="p-4">
+            <div className="flex items-center gap-2 mb-4">
               <Icon
-                icon="solar:info-circle-bold-duotone"
-                className="text-blue-400"
+                icon="solar:document-text-bold-duotone"
+                className="text-accent-400"
                 width={20}
               />
+              <h3 className="text-lg font-semibold text-text-primary">
+                Script Used
+              </h3>
             </div>
-            <div>
-              <p className="text-sm font-medium text-text-primary mb-1">
-                What happens when you finalize?
-              </p>
-              <p className="text-xs text-text-secondary">
-                Your video will be saved to your &quot;My Clips&quot; library where you can
-                add captions, text overlays, and make further edits using the clip editor.
-              </p>
+            <div className="space-y-3">
+              {scenes.map((scene, index) => (
+                <motion.div
+                  key={scene.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="flex gap-3 p-3 rounded-lg bg-surface-base"
+                >
+                  <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-accent-400/20 flex items-center justify-center">
+                    <span className="text-xs font-bold text-accent-400">
+                      {scene.sceneNumber}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-medium text-text-muted uppercase">
+                        {scene.sceneType || "Scene"}
+                      </span>
+                      <span className="text-xs text-text-muted">•</span>
+                      <span className="text-xs text-text-muted">
+                        {scene.estimatedDurationSeconds || (scene as any).durationSeconds || 5}s
+                      </span>
+                    </div>
+                    <p className="text-sm text-text-primary leading-relaxed">
+                      "{scene.dialogue}"
+                    </p>
+                    {scene.action && (
+                      <p className="text-xs text-text-muted mt-1 italic">
+                        {scene.action}
+                      </p>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
             </div>
-          </div>
-        </CardBody>
-      </Card>
+          </CardBody>
+        </Card>
+      )}
+
+      {!isFinalized && (
+        <Card className="bg-surface-elevated border border-border-base">
+          <CardBody className="p-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+                <Icon
+                  icon="solar:info-circle-bold-duotone"
+                  className="text-blue-400"
+                  width={20}
+                />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-text-primary mb-1">
+                  What happens when you finalize?
+                </p>
+                <p className="text-xs text-text-secondary">
+                  Your video will be saved to your &quot;My Clips&quot; library where you can
+                  add captions, text overlays, and make further edits using the clip editor.
+                </p>
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+      )}
 
       {/* Edit Scene Confirmation Modal */}
       <Modal

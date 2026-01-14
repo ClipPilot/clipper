@@ -44,6 +44,7 @@ export interface VideoGenerationStatus {
   createdAt?: string;
   startedAt?: string;
   completedAt?: string;
+  clipId?: number | null;
 }
 
 export interface RegenerateSceneRequest {

@@ -343,6 +343,14 @@ export class UGCVideoController {
         response.finalVideoKey = job.final_video_key;
         response.totalDurationSeconds = job.total_duration_seconds;
         response.sceneVideos = job.scene_videos;
+
+        const [clipForJob] = await db
+          .select({ id: clips.id })
+          .from(clips)
+          .where(sql`${clips.clip_metadata}->>'generationJobId' = ${jobId}`)
+          .limit(1);
+
+        response.clipId = clipForJob?.id || null;
       }
 
       if (job.status === "failed") {
