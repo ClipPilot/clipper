@@ -207,20 +207,6 @@ export class UGCVideoController {
         return res.status(403).json({ error: "UGC Studio access required" });
       }
 
-      const UGC_VIDEO_CREDIT_COST = 10;
-      const usage = await getTeamUsage(teamId);
-      if (!usage) {
-        return res.status(404).json({ error: "Team usage stats not found" });
-      }
-      if (usage.totalRemaining < UGC_VIDEO_CREDIT_COST) {
-        return res.status(403).json({
-          error: `Insufficient credits. UGC video generation requires ${UGC_VIDEO_CREDIT_COST} credits, but you have ${usage.totalRemaining} remaining.`,
-          code: "INSUFFICIENT_CREDITS",
-          required: UGC_VIDEO_CREDIT_COST,
-          available: usage.totalRemaining,
-        });
-      }
-
       // Fetch the script to get scene data
       const [script] = await db
         .select()
@@ -244,6 +230,24 @@ export class UGCVideoController {
       if (!selectedScript?.scenes?.length) {
         return res.status(400).json({
           error: "No scenes found in the selected script variant",
+        });
+      }
+
+      // Calculate credit cost based on scene count (2 credits per scene)
+      const CREDIT_PER_SCENE = 2;
+      const sceneCount = selectedScript.scenes.length;
+      const creditCost = sceneCount * CREDIT_PER_SCENE;
+
+      const usage = await getTeamUsage(teamId);
+      if (!usage) {
+        return res.status(404).json({ error: "Team usage stats not found" });
+      }
+      if (usage.totalRemaining < creditCost) {
+        return res.status(403).json({
+          error: `Insufficient credits. This video (${sceneCount} scenes) requires ${creditCost} credits, but you have ${usage.totalRemaining} remaining.`,
+          code: "INSUFFICIENT_CREDITS",
+          required: creditCost,
+          available: usage.totalRemaining,
         });
       }
 
@@ -280,7 +284,7 @@ export class UGCVideoController {
         });
       }
 
-      await teamService.incrementTeamUsage(teamId, UGC_VIDEO_CREDIT_COST);
+      await teamService.incrementTeamUsage(teamId, creditCost);
 
       // Create the job record
       const [job] = await db
@@ -561,141 +565,6 @@ export class UGCVideoController {
     }
   }
 
-  /**
-   * Regenerate a single scene (costs 3 credits)
-   * This triggers a new video generation for the entire video with the scene re-rendered
-   */
-  async regenerateScene(req: AuthRequest, res: Response) {
-    try {
-      const { jobId, sceneId, teamId } = req.body;
-
-      if (!jobId || !sceneId || !teamId) {
-        return res.status(400).json({
-          error: "jobId, sceneId, and teamId are required",
-        });
-      }
-
-      if (!req.user?.dbUserId) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
-      const team = await teamService.getTeamById(teamId);
-      if (!team || !canAccessUGCStudio(team.plan)) {
-        return res.status(403).json({ error: "UGC Studio access required" });
-      }
-
-      // Get the original job
-      const [originalJob] = await db
-        .select()
-        .from(ugcVideoGenerationJobs)
-        .where(eq(ugcVideoGenerationJobs.id, jobId));
-
-      if (!originalJob) {
-        return res.status(404).json({ error: "Video job not found" });
-      }
-
-      if (originalJob.status !== "completed") {
-        return res.status(400).json({
-          error: "Original video must be completed before regenerating scenes",
-        });
-      }
-
-      // TODO: Implement credit deduction (3 credits)
-      // For now, we'll skip credit checking - this should be added
-
-      // Get the script and scene data
-      const [script] = await db
-        .select()
-        .from(ugcScripts)
-        .where(eq(ugcScripts.id, originalJob.script_id));
-
-      if (!script) {
-        return res.status(404).json({ error: "Script not found" });
-      }
-
-      const scriptsData = script.scripts_data as any[];
-      const selectedScript = scriptsData[script.selected_variant_index];
-
-      if (!selectedScript?.scenes?.length) {
-        return res.status(400).json({
-          error: "No scenes found in the script",
-        });
-      }
-
-      // Fetch all scene images for this script
-      const savedImages = await db
-        .select()
-        .from(sceneImages)
-        .where(eq(sceneImages.script_id, originalJob.script_id));
-
-      // Build scene video data, marking the target scene for regeneration
-      const scenes: GenerateUGCVideoJob["scenes"] = [];
-
-      for (const scene of selectedScript.scenes as SceneData[]) {
-        const savedImage = savedImages.find((img) => img.scene_id === scene.id);
-
-        if (!savedImage) {
-          return res.status(400).json({
-            error: `No image selected for scene ${scene.sceneNumber}`,
-          });
-        }
-
-        scenes.push({
-          sceneId: scene.id,
-          sceneNumber: scene.sceneNumber,
-          shotType: scene.shotType,
-          imageKey: savedImage.image_key,
-          dialogue: scene.dialogue,
-          duration: scene.durationSeconds || 5,
-          cinematicPrompt: scene.cinematicPrompt,
-          action: scene.action,
-          emotion: scene.emotion,
-          ambientSound: scene.ambientSound,
-          // Mark which scene to regenerate
-          regenerate: scene.id === sceneId,
-        });
-      }
-
-      // Create a new job record for the regeneration
-      const [newJob] = await db
-        .insert(ugcVideoGenerationJobs)
-        .values({
-          team_id: teamId,
-          user_id: req.user.dbUserId,
-          script_id: originalJob.script_id,
-          voice_id: originalJob.voice_id,
-          status: "queued",
-          progress: 0,
-          progress_message: `Regenerating scene...`,
-        })
-        .returning();
-
-      // Send to SQS
-      await sqsService.sendGenerateUGCVideoJob({
-        jobId: newJob.id,
-        teamId,
-        userId: req.user.dbUserId,
-        scriptId: originalJob.script_id,
-        voiceId: originalJob.voice_id,
-        scenes,
-        regenerateSceneId: sceneId,
-      });
-
-      return res.status(202).json({
-        success: true,
-        sceneJobId: newJob.id,
-        message: "Scene regeneration started. Poll for status.",
-      });
-    } catch (error) {
-      console.error("[UGC_VIDEO] Regenerate scene error:", error);
-      return res.status(500).json({
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to regenerate scene",
-      });
-    }
-  }
 }
 
 export const ugcVideoController = new UGCVideoController();

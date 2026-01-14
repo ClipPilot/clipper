@@ -108,15 +108,6 @@ export default function VideoJobPage() {
     }
   };
 
-  const handleRegenerate = () => {
-    // Redirect to shot-plan step so user can regenerate images without starting over
-    if (scriptId) {
-      router.push(`/dashboard/ugc-studio/ai-video-creator/create?scriptId=${scriptId}&step=shot-plan`);
-    } else {
-      router.push("/dashboard/ugc-studio/ai-video-creator/create");
-    }
-  };
-
   const handleBack = () => {
     router.push("/dashboard/ugc-studio/ai-video-creator");
   };
@@ -225,22 +216,13 @@ export default function VideoJobPage() {
               <p className="text-text-secondary text-sm mb-6">
                 {videoStatus.error || "An error occurred during video generation."}
               </p>
-              <div className="flex items-center justify-center gap-3">
-                <Button
-                  variant="bordered"
-                  className="border-border-base text-text-secondary"
-                  onPress={handleBack}
-                >
-                  Go Back
-                </Button>
-                <Button
-                  className="bg-accent-400 text-white font-semibold"
-                  onPress={handleRegenerate}
-                  startContent={<Icon icon="solar:refresh-bold" width={16} />}
-                >
-                  Try Again
-                </Button>
-              </div>
+              <Button
+                variant="bordered"
+                className="border-border-base text-text-secondary"
+                onPress={handleBack}
+              >
+                Go Back
+              </Button>
             </CardBody>
           </Card>
         </div>
@@ -310,7 +292,6 @@ export default function VideoJobPage() {
             teamId={selectedTeam.id}
             scriptId={scriptId || ""}
             onFinalize={handleFinalize}
-            onRegenerate={handleRegenerate}
             isFinalizing={isFinalizing}
           />
         </div>

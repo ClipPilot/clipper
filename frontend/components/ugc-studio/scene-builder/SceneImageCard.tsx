@@ -326,17 +326,17 @@ export function SceneImageCard({
           />
         </div>
 
-        {/* Scene direction */}
+        {/* Prompt */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <Icon icon="solar:pen-bold-duotone" className="text-text-muted" width={14} />
-            <span className="text-xs text-text-muted">Scene Direction (optional)</span>
+            <span className="text-xs text-text-muted">Prompt (optional)</span>
           </div>
           <Textarea
             value={localRefinement}
             onChange={(e) => setLocalRefinement(e.target.value)}
             onBlur={handleRefinementBlur}
-            placeholder="Add specific directions for this scene..."
+            placeholder="Add specific directions for this image..."
             minRows={2}
             classNames={{
               input: "bg-surface-base text-text-primary text-sm",

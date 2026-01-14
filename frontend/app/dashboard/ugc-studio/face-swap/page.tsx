@@ -10,9 +10,9 @@ import { canAccessUGCStudio } from "@/lib/plans";
 import { faceSwapAPI } from "@/api/ugc/faceSwap";
 import { apiFetch } from "@/lib/apiClient";
 import API_URL from "@/config/constants";
+import type { SelectedCharacter } from "@/components/ugc-studio/types";
 import {
   UploadedFile,
-  SelectedCharacter,
   VideoSegment,
   SwapType,
   ScalePlanRequired,
@@ -42,20 +42,19 @@ function FaceSwapContent({
   router: ReturnType<typeof useRouter>;
 }) {
   const [video, setVideo] = useState<UploadedFile | null>(null);
-  const [selectedCharacter, setSelectedCharacter] =
-    useState<SelectedCharacter | null>(null);
+  const [selectedCharacters, setSelectedCharacters] = useState<SelectedCharacter[]>([]);
   const [videoDuration, setVideoDuration] = useState(0);
   const [segments, setSegments] = useState<VideoSegment[]>([]);
   const [swapType, setSwapType] = useState<SwapType>("face");
   const [showEditor, setShowEditor] = useState(false);
   const faceSwapsSectionRef = useRef<MyFaceSwapsSectionRef>(null);
 
-  const characterImage = selectedCharacter
-    ? {
-        file: selectedCharacter.file || new File([], "example.jpg"),
-        preview: selectedCharacter.src,
-      }
-    : null;
+  // Get character files for API calls
+  const getCharacterFiles = () => {
+    return selectedCharacters
+      .filter((c) => c.file)
+      .map((c) => c.file as File);
+  };
 
   useEffect(() => {
     return () => {
@@ -72,30 +71,37 @@ function FaceSwapContent({
   };
 
   const handleGenerate = async () => {
-    if (!video || !characterImage || !selectedTeam?.id || segments.length === 0)
+    const characterFiles = getCharacterFiles();
+    if (!video || characterFiles.length === 0 || !selectedTeam?.id || segments.length === 0)
       return;
 
-    const tempId = `temp-${Date.now()}`;
-
     const videoFile = video.file;
-    const imageFile = characterImage.file;
     const teamId = selectedTeam.id;
     const segmentsData = segments.map((s) => ({ start: s.start, end: s.end }));
     const duration = videoDuration;
     const swap = swapType;
     const videoToRevoke = video.preview;
+    const characterCount = characterFiles.length;
+    const totalCredits = characterCount * 5;
 
-    faceSwapsSectionRef.current?.addOptimisticJob(tempId);
+    // Create temp IDs for each job
+    const tempIds = characterFiles.map((_, i) => `temp-${Date.now()}-${i}`);
 
+    // Add optimistic jobs for all characters
+    tempIds.forEach((tempId) => {
+      faceSwapsSectionRef.current?.addOptimisticJob(tempId);
+    });
+
+    // Clear form
     setVideo(null);
-    setSelectedCharacter(null);
+    setSelectedCharacters([]);
     setVideoDuration(0);
     setSegments([]);
 
     try {
-      const data = await faceSwapAPI.createJob({
+      const result = await faceSwapAPI.createMultipleJobs({
         video: videoFile,
-        image: imageFile,
+        images: characterFiles,
         teamId,
         segments: segmentsData,
         videoDuration: duration,
@@ -103,12 +109,16 @@ function FaceSwapContent({
         spliceWithOriginal: true,
       });
 
-      faceSwapsSectionRef.current?.updateOptimisticJob(tempId, data.jobId);
+      // Update each optimistic job with real ID
+      result.jobIds.forEach((jobId, i) => {
+        if (tempIds[i]) {
+          faceSwapsSectionRef.current?.updateOptimisticJob(tempIds[i], jobId);
+        }
+      });
 
       addToast({
-        title: "Swap started!",
-        description:
-          "Your video is being processed. This may take 20-40 minutes.",
+        title: `${characterCount} swap${characterCount > 1 ? "s" : ""} started!`,
+        description: `Processing ${characterCount} video${characterCount > 1 ? "s" : ""}. This may take 20-40 minutes each. (${totalCredits} credits)`,
         color: "success",
       });
 
@@ -118,10 +128,13 @@ function FaceSwapContent({
       const errorMessage =
         err instanceof Error ? err.message : "An error occurred";
 
-      faceSwapsSectionRef.current?.failOptimisticJob(tempId, errorMessage);
+      // Fail all optimistic jobs
+      tempIds.forEach((tempId) => {
+        faceSwapsSectionRef.current?.failOptimisticJob(tempId, errorMessage);
+      });
 
       addToast({
-        title: "Failed to start swap",
+        title: "Failed to start swaps",
         description: errorMessage,
         color: "danger",
       });
@@ -131,20 +144,31 @@ function FaceSwapContent({
   const totalDuration = segments.reduce((sum, s) => sum + (s.end - s.start), 0);
 
   const handleAutoDetectAndGenerate = useCallback(async () => {
-    if (!video?.file || !characterImage || !selectedTeam?.id) return;
+    const characterFiles = getCharacterFiles();
+    if (!video?.file || characterFiles.length === 0 || !selectedTeam?.id) return;
 
-    const tempId = `temp-${Date.now()}`;
     const videoFile = video.file;
-    const imageFile = characterImage.file;
     const teamId = selectedTeam.id;
     const duration = videoDuration;
     const swap = swapType;
     const videoToRevoke = video.preview;
+    const characterCount = characterFiles.length;
+    const totalCredits = characterCount * 5;
 
-    // Immediately add to My Swaps and clear form
-    faceSwapsSectionRef.current?.addOptimisticJob(tempId, "Detecting faces...");
+    // Create temp IDs for each job
+    const tempIds = characterFiles.map((_, i) => `temp-${Date.now()}-${i}`);
+
+    // Add optimistic jobs for all characters
+    tempIds.forEach((tempId, i) => {
+      faceSwapsSectionRef.current?.addOptimisticJob(
+        tempId,
+        i === 0 ? "Detecting faces..." : "Waiting..."
+      );
+    });
+
+    // Clear form
     setVideo(null);
-    setSelectedCharacter(null);
+    setSelectedCharacters([]);
     setVideoDuration(0);
     setSegments([]);
 
@@ -152,7 +176,9 @@ function FaceSwapContent({
     (async () => {
       try {
         // Step 1: Get presigned URL for S3 upload
-        faceSwapsSectionRef.current?.updateOptimisticJobStatus(tempId, "Uploading video...");
+        tempIds.forEach((tempId) => {
+          faceSwapsSectionRef.current?.updateOptimisticJobStatus(tempId, "Uploading video...");
+        });
 
         const uploadUrlResponse = await apiFetch(`${API_URL}/face-swap/detect-faces/upload-url`, {
           method: "POST",
@@ -179,7 +205,9 @@ function FaceSwapContent({
         }
 
         // Step 3: Detect faces from S3
-        faceSwapsSectionRef.current?.updateOptimisticJobStatus(tempId, "Detecting faces...");
+        tempIds.forEach((tempId) => {
+          faceSwapsSectionRef.current?.updateOptimisticJobStatus(tempId, "Detecting faces...");
+        });
 
         const detectResponse = await apiFetch(`${API_URL}/face-swap/detect-faces/from-s3`, {
           method: "POST",
@@ -195,7 +223,9 @@ function FaceSwapContent({
         const data = await detectResponse.json();
 
         if (!data.segments || data.segments.length === 0) {
-          faceSwapsSectionRef.current?.failOptimisticJob(tempId, "No faces detected");
+          tempIds.forEach((tempId) => {
+            faceSwapsSectionRef.current?.failOptimisticJob(tempId, "No faces detected");
+          });
           addToast({
             title: "No faces detected",
             description: "Could not find clear face segments. Try manual selection.",
@@ -204,7 +234,7 @@ function FaceSwapContent({
           return;
         }
 
-        // Step 2: Process segments
+        // Process segments
         let selectedSegments: { start: number; end: number }[] = [];
         let totalDur = 0;
         const maxTotalDuration = 50;
@@ -226,7 +256,9 @@ function FaceSwapContent({
         }
 
         if (selectedSegments.length === 0) {
-          faceSwapsSectionRef.current?.failOptimisticJob(tempId, "No usable segments");
+          tempIds.forEach((tempId) => {
+            faceSwapsSectionRef.current?.failOptimisticJob(tempId, "No usable segments");
+          });
           addToast({
             title: "No usable segments",
             description: "Detected segments were too short.",
@@ -235,12 +267,14 @@ function FaceSwapContent({
           return;
         }
 
-        // Step 3: Update status and start upload
-        faceSwapsSectionRef.current?.updateOptimisticJobStatus(tempId, "Uploading...");
+        // Step 4: Create multiple jobs
+        tempIds.forEach((tempId) => {
+          faceSwapsSectionRef.current?.updateOptimisticJobStatus(tempId, "Creating jobs...");
+        });
 
-        const result = await faceSwapAPI.createJob({
+        const result = await faceSwapAPI.createMultipleJobs({
           video: videoFile,
-          image: imageFile,
+          images: characterFiles,
           teamId,
           segments: selectedSegments,
           videoDuration: duration,
@@ -248,11 +282,16 @@ function FaceSwapContent({
           spliceWithOriginal: true,
         });
 
-        faceSwapsSectionRef.current?.updateOptimisticJob(tempId, result.jobId);
+        // Update each optimistic job with real ID
+        result.jobIds.forEach((jobId, i) => {
+          if (tempIds[i]) {
+            faceSwapsSectionRef.current?.updateOptimisticJob(tempIds[i], jobId);
+          }
+        });
 
         addToast({
-          title: "Swap started!",
-          description: "Your video is being processed. This may take 20-40 minutes.",
+          title: `${characterCount} swap${characterCount > 1 ? "s" : ""} started!`,
+          description: `Processing ${characterCount} video${characterCount > 1 ? "s" : ""}. This may take 20-40 minutes each. (${totalCredits} credits)`,
           color: "success",
         });
 
@@ -260,7 +299,9 @@ function FaceSwapContent({
       } catch (error) {
         console.error("Auto-detect and generate error:", error);
         const errorMessage = error instanceof Error ? error.message : "An error occurred";
-        faceSwapsSectionRef.current?.failOptimisticJob(tempId, errorMessage);
+        tempIds.forEach((tempId) => {
+          faceSwapsSectionRef.current?.failOptimisticJob(tempId, errorMessage);
+        });
         addToast({
           title: "Failed",
           description: errorMessage,
@@ -268,7 +309,7 @@ function FaceSwapContent({
         });
       }
     })();
-  }, [video, characterImage, selectedTeam?.id, videoDuration, swapType]);
+  }, [video, selectedCharacters, selectedTeam?.id, videoDuration, swapType]);
 
   return (
     <div className="min-h-screen bg-surface-dark p-6 lg:p-8">
@@ -318,12 +359,12 @@ function FaceSwapContent({
 
           <div className="space-y-6">
             <CharacterSelector
-              selectedCharacter={selectedCharacter}
-              onCharacterChange={setSelectedCharacter}
+              selectedCharacters={selectedCharacters}
+              onCharactersChange={setSelectedCharacters}
             />
             <GeneratePanel
               hasVideo={!!video}
-              hasCharacter={!!characterImage}
+              characterCount={selectedCharacters.length}
               segmentCount={segments.length}
               totalDuration={totalDuration}
               swapType={swapType}

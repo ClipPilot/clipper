@@ -6,19 +6,12 @@ import {
   Card,
   CardBody,
   Button,
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   Spinner,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { motion } from "framer-motion";
 import type { VideoGenerationStatus } from "@/api/ugc/video";
 import type { UGCScene } from "@/components/ugc-studio/script/types";
-import { useUsageStats } from "@/hooks/useUsageStats";
-import { ugcVideoAPI } from "@/api/ugc/video";
 
 interface VideoPreviewProps {
   videoStatus: VideoGenerationStatus;
@@ -26,11 +19,8 @@ interface VideoPreviewProps {
   teamId: number;
   scriptId: string;
   onFinalize: () => void;
-  onRegenerate: () => void;
   isFinalizing: boolean;
 }
-
-const SCENE_EDIT_CREDIT_COST = 3;
 
 export function VideoPreview({
   videoStatus,
@@ -38,18 +28,12 @@ export function VideoPreview({
   teamId,
   scriptId,
   onFinalize,
-  onRegenerate,
   isFinalizing,
 }: VideoPreviewProps) {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [editingSceneId, setEditingSceneId] = useState<string | null>(null);
-  const [showEditConfirm, setShowEditConfirm] = useState(false);
-  const [isRegeneratingScene, setIsRegeneratingScene] = useState(false);
-  const [sceneError, setSceneError] = useState<string | null>(null);
 
-  const { usageStats } = useUsageStats(teamId);
   const isFinalized = !!videoStatus.clipId;
 
   const handlePlayPause = () => {
@@ -63,55 +47,10 @@ export function VideoPreview({
     }
   };
 
-  const handleEditSceneClick = (sceneId: string) => {
-    if (!usageStats || usageStats.totalRemaining < SCENE_EDIT_CREDIT_COST) {
-      setSceneError(
-        `Not enough credits. You need ${SCENE_EDIT_CREDIT_COST} credits to edit a scene.`
-      );
-      return;
-    }
-    setEditingSceneId(sceneId);
-    setShowEditConfirm(true);
-    setSceneError(null);
-  };
-
-  const handleConfirmEditScene = async () => {
-    if (!editingSceneId || !videoStatus.jobId) return;
-
-    setIsRegeneratingScene(true);
-    setSceneError(null);
-
-    try {
-      await ugcVideoAPI.regenerateScene({
-        jobId: videoStatus.jobId,
-        sceneId: editingSceneId,
-        teamId,
-      });
-
-      // The scene regeneration will create a new job - for now, just close the modal
-      // In a full implementation, you'd poll for the scene regeneration status
-      setShowEditConfirm(false);
-      setEditingSceneId(null);
-
-      // Trigger a full regeneration since we need to reassemble the video
-      onRegenerate();
-    } catch (err) {
-      setSceneError(
-        err instanceof Error ? err.message : "Failed to regenerate scene"
-      );
-    } finally {
-      setIsRegeneratingScene(false);
-    }
-  };
-
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
-
-  const getSceneVideo = (sceneId: string) => {
-    return videoStatus.sceneVideos?.find((sv) => sv.sceneId === sceneId);
   };
 
   return (
@@ -129,16 +68,6 @@ export function VideoPreview({
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {!isFinalized && (
-            <Button
-              variant="bordered"
-              className="border-border-base text-text-secondary"
-              onPress={onRegenerate}
-              startContent={<Icon icon="solar:refresh-bold" width={16} />}
-            >
-              Regenerate
-            </Button>
-          )}
           <Button
             className="bg-accent-400 text-white font-semibold"
             onPress={isFinalized ? () => router.push(`/dashboard/clips/${videoStatus.clipId}/edit`) : onFinalize}
@@ -152,22 +81,6 @@ export function VideoPreview({
           </Button>
         </div>
       </div>
-
-      {/* Error alert */}
-      {sceneError && (
-        <Card className="bg-red-500/10 border border-red-500/30">
-          <CardBody className="p-4">
-            <div className="flex items-center gap-3">
-              <Icon
-                icon="solar:danger-triangle-bold"
-                className="text-red-400"
-                width={24}
-              />
-              <p className="text-red-400 text-sm">{sceneError}</p>
-            </div>
-          </CardBody>
-        </Card>
-      )}
 
       {/* Main video player */}
       <Card className="bg-surface-elevated border border-border-base overflow-hidden">
@@ -348,72 +261,6 @@ export function VideoPreview({
         </Card>
       )}
 
-      {/* Edit Scene Confirmation Modal */}
-      <Modal
-        isOpen={showEditConfirm}
-        onClose={() => {
-          setShowEditConfirm(false);
-          setEditingSceneId(null);
-        }}
-        classNames={{
-          base: "bg-surface-elevated border border-border-base",
-          header: "border-b border-border-base",
-          footer: "border-t border-border-base",
-        }}
-      >
-        <ModalContent>
-          <ModalHeader className="flex flex-col gap-1">
-            <span className="text-text-primary">Regenerate Scene</span>
-          </ModalHeader>
-          <ModalBody>
-            <div className="text-center py-4">
-              <div className="w-16 h-16 rounded-2xl bg-purple-500/20 flex items-center justify-center mx-auto mb-4">
-                <Icon
-                  icon="solar:refresh-bold-duotone"
-                  className="text-purple-400"
-                  width={32}
-                />
-              </div>
-              <p className="text-text-primary mb-2">
-                This will use{" "}
-                <span className="font-bold text-purple-400">
-                  {SCENE_EDIT_CREDIT_COST} credits
-                </span>
-              </p>
-              <p className="text-sm text-text-secondary">
-                The scene will be regenerated with new AI animation. This may take
-                a few minutes and the entire video will need to be reassembled.
-              </p>
-            </div>
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              variant="bordered"
-              className="border-border-base text-text-secondary"
-              onPress={() => {
-                setShowEditConfirm(false);
-                setEditingSceneId(null);
-              }}
-              isDisabled={isRegeneratingScene}
-            >
-              Cancel
-            </Button>
-            <Button
-              className="bg-purple-500 text-white font-semibold"
-              onPress={handleConfirmEditScene}
-              isLoading={isRegeneratingScene}
-              isDisabled={isRegeneratingScene}
-              startContent={
-                !isRegeneratingScene && (
-                  <Icon icon="solar:refresh-bold" width={16} />
-                )
-              }
-            >
-              {isRegeneratingScene ? "Regenerating..." : "Regenerate Scene"}
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
     </div>
   );
 }

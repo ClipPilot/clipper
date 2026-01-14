@@ -6,51 +6,69 @@ import { Icon } from "@iconify/react";
 import { EXAMPLE_CHARACTERS, SelectedCharacter } from "./types";
 
 interface CharacterSelectorProps {
-  selectedCharacter: SelectedCharacter | null;
-  onCharacterChange: (character: SelectedCharacter | null) => void;
+  selectedCharacters: SelectedCharacter[];
+  onCharactersChange: (characters: SelectedCharacter[]) => void;
+  maxSelections?: number;
 }
 
 export function CharacterSelector({
-  selectedCharacter,
-  onCharacterChange,
+  selectedCharacters,
+  onCharactersChange,
+  maxSelections = 10,
 }: CharacterSelectorProps) {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [loadingCharacterId, setLoadingCharacterId] = useState<string | null>(null);
 
-  const characterPreview = selectedCharacter?.src || null;
+  const canAddMore = selectedCharacters.length < maxSelections;
 
   const handleImageSelect = useCallback(
     (file: File) => {
+      if (!canAddMore) return;
+
       const validTypes = ["image/jpeg", "image/png", "image/webp"];
       if (!validTypes.includes(file.type)) return;
 
-      if (selectedCharacter?.type === "uploaded" && selectedCharacter.src) {
-        URL.revokeObjectURL(selectedCharacter.src);
-      }
-
       const preview = URL.createObjectURL(file);
-      onCharacterChange({ type: "uploaded", src: preview, file });
+      const newCharacter: SelectedCharacter = { type: "uploaded", src: preview, file };
+      onCharactersChange([...selectedCharacters, newCharacter]);
     },
-    [selectedCharacter, onCharacterChange]
+    [selectedCharacters, onCharactersChange, canAddMore]
   );
 
   const handleExampleSelect = async (id: string, src: string) => {
-    if (selectedCharacter?.type === "uploaded" && selectedCharacter.src) {
-      URL.revokeObjectURL(selectedCharacter.src);
-    }
+    if (!canAddMore) return;
+
+    // Check if this example is already selected
+    const alreadySelected = selectedCharacters.some(
+      (c) => c.type === "example" && c.src === src
+    );
+    if (alreadySelected) return;
+
     setLoadingCharacterId(id);
     try {
       const response = await fetch(src);
       const blob = await response.blob();
       const filename = src.split("/").pop() || "character.jpg";
       const file = new File([blob], filename, { type: blob.type });
-      onCharacterChange({ type: "example", src, file });
+      const newCharacter: SelectedCharacter = { type: "example", src, file };
+      onCharactersChange([...selectedCharacters, newCharacter]);
     } catch {
-      onCharacterChange({ type: "example", src });
+      const newCharacter: SelectedCharacter = { type: "example", src };
+      onCharactersChange([...selectedCharacters, newCharacter]);
     } finally {
       setLoadingCharacterId(null);
     }
+  };
+
+  const handleRemoveCharacter = (index: number) => {
+    const character = selectedCharacters[index];
+    // Revoke object URL if it was an uploaded file
+    if (character.type === "uploaded" && character.src) {
+      URL.revokeObjectURL(character.src);
+    }
+    const newCharacters = selectedCharacters.filter((_, i) => i !== index);
+    onCharactersChange(newCharacters);
   };
 
   const handleDrop = useCallback(
@@ -63,83 +81,118 @@ export function CharacterSelector({
     [handleImageSelect]
   );
 
-  const handleClear = () => {
-    if (selectedCharacter?.type === "uploaded" && selectedCharacter.src) {
-      URL.revokeObjectURL(selectedCharacter.src);
-    }
-    onCharacterChange(null);
+  const handleClearAll = () => {
+    // Revoke all uploaded file URLs
+    selectedCharacters.forEach((c) => {
+      if (c.type === "uploaded" && c.src) {
+        URL.revokeObjectURL(c.src);
+      }
+    });
+    onCharactersChange([]);
+  };
+
+  // Check if an example character is already selected
+  const isExampleSelected = (src: string) => {
+    return selectedCharacters.some((c) => c.type === "example" && c.src === src);
   };
 
   return (
     <Card className="bg-surface-base border border-border-base">
       <CardHeader className="pb-0">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-1">
           <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
             <Icon icon="solar:user-circle-bold-duotone" className="text-purple-500" width={22} />
           </div>
-          <div>
-            <h3 className="text-base font-semibold text-text-primary">Character Face</h3>
-            <p className="text-xs text-text-tertiary">Upload the face to swap</p>
+          <div className="flex-1">
+            <h3 className="text-base font-semibold text-text-primary">Character Faces</h3>
+            <p className="text-xs text-text-tertiary">
+              {selectedCharacters.length > 0
+                ? `${selectedCharacters.length}/${maxSelections} faces selected`
+                : "Select faces to swap (max 10)"}
+            </p>
           </div>
+          {selectedCharacters.length > 0 && (
+            <Button
+              size="sm"
+              variant="flat"
+              className="text-text-muted"
+              onPress={handleClearAll}
+            >
+              Clear all
+            </Button>
+          )}
         </div>
       </CardHeader>
       <CardBody className="pt-4 space-y-4">
-        {selectedCharacter && (
-          <div className="space-y-3">
-            <div className="relative rounded-xl overflow-hidden bg-surface-elevated aspect-square">
-              <img
-                src={characterPreview || ""}
-                alt="Character"
-                className="w-full h-full object-cover"
-              />
-              <Button
-                isIconOnly
-                size="sm"
-                variant="flat"
-                className="absolute top-2 right-2 bg-surface-base/80"
-                onPress={handleClear}
-              >
-                <Icon icon="solar:close-circle-bold" width={18} />
-              </Button>
+        {/* Selected characters grid */}
+        {selectedCharacters.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs text-text-tertiary">Selected faces</p>
+            <div className="grid grid-cols-5 gap-2">
+              {selectedCharacters.map((character, index) => (
+                <div
+                  key={`${character.src}-${index}`}
+                  className="relative aspect-square rounded-lg overflow-hidden bg-surface-elevated group"
+                >
+                  <img
+                    src={character.src}
+                    alt={`Character ${index + 1}`}
+                    className="w-full h-full object-cover"
+                  />
+                  <button
+                    onClick={() => handleRemoveCharacter(index)}
+                    className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Icon icon="solar:close-circle-bold" width={14} />
+                  </button>
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-1">
+                    <span className="text-[10px] text-white font-medium">
+                      {character.type === "uploaded" ? "Custom" : "Example"}
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
-            {selectedCharacter.type === "uploaded" && selectedCharacter.file && (
-              <div className="flex items-center justify-center gap-2 text-sm text-text-secondary">
-                <Icon icon="solar:gallery-bold-duotone" width={16} />
-                <span className="truncate">{selectedCharacter.file.name}</span>
-              </div>
-            )}
-            {selectedCharacter.type === "example" && (
-              <div className="flex items-center justify-center gap-2 text-sm text-text-secondary">
-                <Icon icon="solar:star-bold-duotone" width={16} />
-                <span>Example Character</span>
-              </div>
-            )}
           </div>
         )}
 
-        {!selectedCharacter && (
+        {/* Add more section - only show if can add more */}
+        {canAddMore && (
           <>
+            {selectedCharacters.length > 0 && (
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-px bg-border-base" />
+                <span className="text-xs text-text-muted">Add more</span>
+                <div className="flex-1 h-px bg-border-base" />
+              </div>
+            )}
+
             <div>
               <p className="text-xs text-text-tertiary mb-2">Choose an example</p>
               <div className="grid grid-cols-4 gap-2">
-                {EXAMPLE_CHARACTERS.map((char) => (
-                  <button
-                    key={char.id}
-                    onClick={() => handleExampleSelect(String(char.id), char.src)}
-                    disabled={loadingCharacterId !== null}
-                    className={`aspect-square rounded-lg overflow-hidden border-2 transition-all focus:outline-none ${
-                      loadingCharacterId === String(char.id)
-                        ? "border-purple-500 opacity-50"
-                        : "border-transparent hover:border-purple-500 hover:scale-105"
-                    }`}
-                  >
-                    <img
-                      src={char.src}
-                      alt={`Character ${char.id}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </button>
-                ))}
+                {EXAMPLE_CHARACTERS.map((char) => {
+                  const selected = isExampleSelected(char.src);
+                  return (
+                    <button
+                      key={char.id}
+                      onClick={() => handleExampleSelect(String(char.id), char.src)}
+                      disabled={loadingCharacterId !== null || selected}
+                      className={`aspect-square rounded-lg overflow-hidden border-2 transition-all focus:outline-none ${
+                        selected
+                          ? "border-green-500 opacity-50 cursor-not-allowed"
+                          : loadingCharacterId === String(char.id)
+                            ? "border-purple-500 opacity-50"
+                            : "border-transparent hover:border-purple-500 hover:scale-105"
+                      }`}
+                    >
+                      <img
+                        src={char.src}
+                        alt={`Character ${char.id}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -196,6 +249,16 @@ export function CharacterSelector({
               </div>
             </div>
           </>
+        )}
+
+        {/* Max reached message */}
+        {!canAddMore && (
+          <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+            <Icon icon="solar:info-circle-bold" className="text-amber-400" width={18} />
+            <span className="text-sm text-amber-400">
+              Maximum {maxSelections} faces reached
+            </span>
+          </div>
         )}
       </CardBody>
     </Card>

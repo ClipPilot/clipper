@@ -2,65 +2,27 @@ import { db, schema } from "../../db";
 import { eq } from "drizzle-orm";
 import { GenerateSceneImageJob } from "../../services/sqs.service";
 import { s3Service } from "../../services/s3.service";
-import { ENV } from "../../config/env";
+import { falImageService } from "../../services/falImage.service";
 
-let googleClient: any = null;
-
-const getGoogleClient = async () => {
-  if (!googleClient) {
-    const genai = await import("@google/genai");
-    googleClient = new genai.GoogleGenAI({ apiKey: ENV.GEMINI_API_KEY });
-  }
-  return googleClient;
-};
-
-interface ReferenceImageData {
-  mimeType: string;
-  base64: string;
-}
-
-const getMimeType = (key: string): string => {
-  const ext = key.toLowerCase().split(".").pop();
-  switch (ext) {
-    case "jpg":
-    case "jpeg":
-      return "image/jpeg";
-    case "png":
-      return "image/png";
-    case "webp":
-      return "image/webp";
-    case "gif":
-      return "image/gif";
-    default:
-      return "image/jpeg";
-  }
-};
-
-async function fetchReferenceImages(
-  imageKeys: string[]
-): Promise<ReferenceImageData[]> {
+/**
+ * Get presigned URLs for reference images (FAL needs public URLs)
+ */
+async function getReferenceImageUrls(imageKeys: string[]): Promise<string[]> {
   const MAX_REFERENCE_IMAGES = 5;
   const keysToFetch = imageKeys.slice(0, MAX_REFERENCE_IMAGES);
-
-  const results: ReferenceImageData[] = [];
+  const urls: string[] = [];
 
   for (const key of keysToFetch) {
     try {
-      const buffer = await s3Service.getImageAsBuffer(key);
-      results.push({
-        mimeType: getMimeType(key),
-        base64: buffer.toString("base64"),
-      });
-      console.log(`[SCENE_IMAGE] Fetched reference image: ${key}`);
+      const url = await s3Service.getPresignedUrl(key, 3600); // 1 hour expiry
+      urls.push(url);
+      console.log(`[SCENE_IMAGE] Got presigned URL for reference: ${key}`);
     } catch (error) {
-      console.error(
-        `[SCENE_IMAGE] Failed to fetch reference image ${key}:`,
-        error
-      );
+      console.error(`[SCENE_IMAGE] Failed to get URL for ${key}:`, error);
     }
   }
 
-  return results;
+  return urls;
 }
 
 /**
@@ -68,11 +30,19 @@ async function fetchReferenceImages(
  */
 function buildSceneImagePrompt(
   sceneData: GenerateSceneImageJob["sceneData"],
+  hasReferenceImages: boolean,
   userRefinement?: string
 ): string {
-  const parts: string[] = [
-    "REFERENCE IMAGES PROVIDED: Use the character reference image to maintain consistent identity. This must be the EXACT SAME person shown in the reference.",
-    "",
+  const parts: string[] = [];
+
+  if (hasReferenceImages) {
+    parts.push(
+      "REFERENCE IMAGES PROVIDED: Use the character reference image to maintain consistent identity. This must be the EXACT SAME person shown in the reference.",
+      ""
+    );
+  }
+
+  parts.push(
     "SCENE VISUAL DIRECTION:",
     sceneData.cinematicPrompt,
     "",
@@ -80,8 +50,8 @@ function buildSceneImagePrompt(
     `- Scene Type: ${sceneData.sceneType}`,
     `- Camera Angle: ${sceneData.cameraAngle}`,
     `- Emotion: ${sceneData.emotion}`,
-    `- Action: ${sceneData.action}`,
-  ];
+    `- Action: ${sceneData.action}`
+  );
 
   if (userRefinement) {
     parts.push("", `USER NOTES: ${userRefinement}`);
@@ -111,63 +81,41 @@ function buildSceneImagePrompt(
 }
 
 /**
- * Generate a single scene image variation
+ * Generate scene image using FAL AI
  */
 async function generateSingleImage(
-  ai: any,
   prompt: string,
   teamId: number,
   scriptId: string,
   sceneId: string,
   index: number,
-  referenceImages?: ReferenceImageData[]
+  referenceImageUrls?: string[]
 ): Promise<string | null> {
   try {
-    const contents: any[] = [];
-
-    // Add reference images first (character + product + supporting)
-    if (referenceImages && referenceImages.length > 0) {
-      for (const refImage of referenceImages) {
-        contents.push({
-          inlineData: {
-            mimeType: refImage.mimeType,
-            data: refImage.base64,
-          },
-        });
-      }
-    }
-
-    // Add the text prompt
-    contents.push({ text: prompt });
-
-    const response = await ai.models.generateContent({
-      model: "gemini-3-pro-image-preview",
-      contents: contents,
-      config: {
-        responseModalities: ["IMAGE"],
-        imageConfig: {
-          aspectRatio: "3:4",
-          imageSize: "1K", // Use 1K for cost savings (~$0.134 vs $0.24 for 4K)
-        },
-      },
+    const result = await falImageService.generateImageWithRetry({
+      prompt,
+      aspectRatio: "3:4",
+      imageUrls: referenceImageUrls,
     });
 
-    if (response.candidates?.[0]?.content?.parts) {
-      for (const part of response.candidates[0].content.parts) {
-        if (part.inlineData?.data) {
-          const buffer = Buffer.from(part.inlineData.data, "base64");
-          const s3Key = await s3Service.uploadSceneImage(
-            buffer,
-            teamId,
-            scriptId,
-            sceneId,
-            index
-          );
-          return s3Key;
-        }
-      }
+    // Download image from FAL URL and upload to S3
+    const response = await fetch(result.imageUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to download image from FAL: ${response.status}`);
     }
-    return null;
+
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    const s3Key = await s3Service.uploadSceneImage(
+      buffer,
+      teamId,
+      scriptId,
+      sceneId,
+      index
+    );
+
+    return s3Key;
   } catch (error) {
     console.error(`Failed to generate scene image variant ${index}:`, error);
     return null;
@@ -208,11 +156,10 @@ export async function processSceneImageJob(
   } = job;
 
   console.log(
-    `[SCENE_IMAGE] Starting generation for job ${jobId} (scene ${sceneNumber})`
+    `[SCENE_IMAGE] Starting FAL AI generation for job ${jobId} (scene ${sceneNumber})`
   );
 
   try {
-    // Update status to "generating"
     await db
       .update(schema.sceneImageGenerationJobs)
       .set({
@@ -223,9 +170,7 @@ export async function processSceneImageJob(
       })
       .where(eq(schema.sceneImageGenerationJobs.id, jobId));
 
-    const ai = await getGoogleClient();
-
-    // Collect all reference images
+    // Collect all reference image S3 keys
     const allReferenceKeys: string[] = [];
 
     // 1. Fetch character's primary image for identity consistency
@@ -249,7 +194,7 @@ export async function processSceneImageJob(
 
     // 2. Add product images for context
     if (productImageKeys && productImageKeys.length > 0) {
-      allReferenceKeys.push(...productImageKeys.slice(0, 2)); // Max 2 product images
+      allReferenceKeys.push(...productImageKeys.slice(0, 2));
       console.log(
         `[SCENE_IMAGE] Added ${Math.min(productImageKeys.length, 2)} product images`
       );
@@ -257,33 +202,36 @@ export async function processSceneImageJob(
 
     // 3. Add supporting images from user
     if (supportingImageKeys && supportingImageKeys.length > 0) {
-      allReferenceKeys.push(...supportingImageKeys.slice(0, 2)); // Max 2 supporting images
+      allReferenceKeys.push(...supportingImageKeys.slice(0, 2));
       console.log(
         `[SCENE_IMAGE] Added ${Math.min(supportingImageKeys.length, 2)} supporting images`
       );
     }
 
-    // Fetch reference images
-    await updateJobProgress(jobId, 10, "Loading reference images...");
-    const referenceImageData = await fetchReferenceImages(allReferenceKeys);
+    // Get presigned URLs for reference images (FAL needs public URLs)
+    await updateJobProgress(jobId, 10, "Preparing reference images...");
+    const referenceImageUrls = await getReferenceImageUrls(allReferenceKeys);
     console.log(
-      `[SCENE_IMAGE] Loaded ${referenceImageData.length} reference images`
+      `[SCENE_IMAGE] Got ${referenceImageUrls.length} reference image URLs`
     );
 
-    // Build the prompt using cinematicPrompt from OpenAI
-    const prompt = buildSceneImagePrompt(sceneData, userRefinement);
+    // Build the prompt
+    const prompt = buildSceneImagePrompt(
+      sceneData,
+      referenceImageUrls.length > 0,
+      userRefinement
+    );
 
-    await updateJobProgress(jobId, 30, "Generating scene image...");
+    await updateJobProgress(jobId, 30, "Generating scene image with FAL AI...");
 
-    // Generate single image (regenerate if you don't like it)
+    // Generate image using FAL (with or without reference images)
     const imageKey = await generateSingleImage(
-      ai,
       prompt,
       teamId,
       scriptId,
       sceneId,
       0,
-      referenceImageData
+      referenceImageUrls.length > 0 ? referenceImageUrls : undefined
     );
 
     if (!imageKey) {
@@ -293,7 +241,6 @@ export async function processSceneImageJob(
     const successfulImages = [imageKey];
     console.log(`[SCENE_IMAGE] Generated image for job ${jobId}`);
 
-    // Update job as completed
     await db
       .update(schema.sceneImageGenerationJobs)
       .set({

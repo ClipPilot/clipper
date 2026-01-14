@@ -6,7 +6,7 @@ import { SwapType } from "./types";
 
 interface GeneratePanelProps {
   hasVideo: boolean;
-  hasCharacter: boolean;
+  characterCount: number;
   segmentCount: number;
   totalDuration: number;
   swapType: SwapType;
@@ -19,7 +19,7 @@ interface GeneratePanelProps {
 
 export function GeneratePanel({
   hasVideo,
-  hasCharacter,
+  characterCount,
   segmentCount,
   totalDuration,
   swapType,
@@ -29,6 +29,8 @@ export function GeneratePanel({
   showEditor = false,
   onToggleEditor,
 }: GeneratePanelProps) {
+  const hasCharacter = characterCount > 0;
+  const creditCost = characterCount * 5;
   const isValid = hasVideo && hasCharacter && segmentCount > 0 && totalDuration <= 50.01;
   const canAutoGenerate = hasVideo && hasCharacter;
 
@@ -46,7 +48,9 @@ export function GeneratePanel({
             <div className="flex items-center gap-3">
               <div className={`w-2.5 h-2.5 rounded-full ${hasCharacter ? "bg-green-500" : "bg-surface-elevated"}`} />
               <span className={`text-sm ${hasCharacter ? "text-text-primary" : "text-text-tertiary"}`}>
-                Character uploaded
+                {characterCount > 0
+                  ? `${characterCount} face${characterCount > 1 ? "s" : ""} selected`
+                  : "Select character faces"}
               </span>
             </div>
             {showEditor ? (
@@ -124,7 +128,11 @@ export function GeneratePanel({
               isDisabled={!canAutoGenerate}
               onPress={onAutoDetectAndGenerate}
               startContent={<Icon icon="solar:face-scan-circle-bold" width={20} />}
-              endContent={<span className="px-1.5 py-0.5 text-xs bg-white/20 rounded-full">5 Credits</span>}
+              endContent={
+                <span className="px-1.5 py-0.5 text-xs bg-white/20 rounded-full">
+                  {creditCost > 0 ? `${creditCost} Credits` : "5 Credits"}
+                </span>
+              }
             >
               Auto-detect & Generate
             </Button>
@@ -149,7 +157,11 @@ export function GeneratePanel({
               isDisabled={!isValid}
               onPress={onGenerate}
               startContent={<Icon icon="solar:magic-stick-3-bold-duotone" width={20} />}
-              endContent={<span className="px-1.5 py-0.5 text-xs bg-white/20 rounded-full">5 Credits</span>}
+              endContent={
+                <span className="px-1.5 py-0.5 text-xs bg-white/20 rounded-full">
+                  {creditCost > 0 ? `${creditCost} Credits` : "5 Credits"}
+                </span>
+              }
             >
               Generate
             </Button>

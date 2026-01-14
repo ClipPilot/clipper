@@ -47,18 +47,6 @@ export interface VideoGenerationStatus {
   clipId?: number | null;
 }
 
-export interface RegenerateSceneRequest {
-  jobId: string;
-  sceneId: string;
-  teamId: number;
-}
-
-export interface RegenerateSceneResponse {
-  success: boolean;
-  sceneJobId: string;
-  message: string;
-}
-
 export interface FinalizeVideoRequest {
   jobId: string;
   teamId: number;
@@ -137,7 +125,7 @@ class UGCVideoAPI {
   }
 
   /**
-   * Start video generation (costs 15 credits)
+   * Start video generation (costs 2 credits per scene)
    */
   async generateVideo(data: GenerateUGCVideoRequest): Promise<GenerateUGCVideoResponse> {
     const response = await apiFetch(`${API_URL}/ugc-video/generate`, {
@@ -167,25 +155,6 @@ class UGCVideoAPI {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || "Failed to get video status");
-    }
-
-    return response.json();
-  }
-
-  /**
-   * Regenerate a single scene (costs 3 credits)
-   */
-  async regenerateScene(data: RegenerateSceneRequest): Promise<RegenerateSceneResponse> {
-    const response = await apiFetch(`${API_URL}/ugc-video/regenerate-scene`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Failed to regenerate scene");
     }
 
     return response.json();

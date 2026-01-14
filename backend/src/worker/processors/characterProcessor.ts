@@ -2,63 +2,28 @@ import { db, schema } from "../../db";
 import { eq } from "drizzle-orm";
 import { GenerateCharacterJob } from "../../services/sqs.service";
 import { s3Service } from "../../services/s3.service";
-import { ENV } from "../../config/env";
+import { falImageService } from "../../services/falImage.service";
 import { notifyCharacterGenerated } from "../notify";
 
-let googleClient: any = null;
-
-const getGoogleClient = async () => {
-  if (!googleClient) {
-    const genai = await import("@google/genai");
-    googleClient = new genai.GoogleGenAI({ apiKey: ENV.GEMINI_API_KEY });
-  }
-  return googleClient;
-};
-
-interface ReferenceImageData {
-  mimeType: string;
-  base64: string;
-}
-
-const getMimeType = (key: string): string => {
-  const ext = key.toLowerCase().split(".").pop();
-  switch (ext) {
-    case "jpg":
-    case "jpeg":
-      return "image/jpeg";
-    case "png":
-      return "image/png";
-    case "webp":
-      return "image/webp";
-    case "gif":
-      return "image/gif";
-    default:
-      return "image/jpeg";
-  }
-};
-
-async function fetchReferenceImages(
-  imageKeys: string[]
-): Promise<ReferenceImageData[]> {
-  const MAX_REFERENCE_IMAGES = 5; // Gemini limit for human reference images
+/**
+ * Get presigned URLs for reference images (FAL needs public URLs)
+ */
+async function getReferenceImageUrls(imageKeys: string[]): Promise<string[]> {
+  const MAX_REFERENCE_IMAGES = 5;
   const keysToFetch = imageKeys.slice(0, MAX_REFERENCE_IMAGES);
-
-  const results: ReferenceImageData[] = [];
+  const urls: string[] = [];
 
   for (const key of keysToFetch) {
     try {
-      const buffer = await s3Service.getImageAsBuffer(key);
-      results.push({
-        mimeType: getMimeType(key),
-        base64: buffer.toString("base64"),
-      });
-      console.log(`[CHARACTER] Fetched reference image: ${key}`);
+      const url = await s3Service.getPresignedUrl(key, 3600); // 1 hour expiry
+      urls.push(url);
+      console.log(`[CHARACTER] Got presigned URL for reference: ${key}`);
     } catch (error) {
-      console.error(`[CHARACTER] Failed to fetch reference image ${key}:`, error);
+      console.error(`[CHARACTER] Failed to get URL for ${key}:`, error);
     }
   }
 
-  return results;
+  return urls;
 }
 
 const buildCharacterPrompt = (
@@ -149,61 +114,38 @@ NEGATIVE: Do not include extra limbs, extra arms, extra hands, extra fingers, mi
 };
 
 async function generateSingleImage(
-  ai: any,
   prompt: string,
   teamId: number,
   jobId: string,
   index: number,
-  referenceImages?: ReferenceImageData[]
+  referenceImageUrls?: string[]
 ): Promise<string | null> {
   try {
-    // Build contents array with prompt and optional reference images
-    const contents: any[] = [];
-
-    // Add reference images first (Gemini works better with images before text)
-    if (referenceImages && referenceImages.length > 0) {
-      for (const refImage of referenceImages) {
-        contents.push({
-          inlineData: {
-            mimeType: refImage.mimeType,
-            data: refImage.base64,
-          },
-        });
-      }
-    }
-
-    // Add the text prompt
-    contents.push({ text: prompt });
-
-    const response = await ai.models.generateContent({
-      model: "gemini-3-pro-image-preview",
-      contents: contents,
-      config: {
-        responseModalities: ["IMAGE"],
-        imageConfig: {
-          aspectRatio: "3:4",
-          imageSize: "2K",
-        },
-      },
+    const result = await falImageService.generateImageWithRetry({
+      prompt,
+      aspectRatio: "3:4",
+      imageUrls: referenceImageUrls,
     });
 
-    if (response.candidates?.[0]?.content?.parts) {
-      for (const part of response.candidates[0].content.parts) {
-        if (part.inlineData?.data) {
-          const buffer = Buffer.from(part.inlineData.data, "base64");
-          const s3Key = await s3Service.uploadCharacterImage(
-            buffer,
-            teamId,
-            jobId,
-            index
-          );
-          return s3Key;
-        }
-      }
+    // Download image from FAL URL and upload to S3
+    const response = await fetch(result.imageUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to download image from FAL: ${response.status}`);
     }
-    return null;
+
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    const s3Key = await s3Service.uploadCharacterImage(
+      buffer,
+      teamId,
+      jobId,
+      index
+    );
+
+    return s3Key;
   } catch (error) {
-    console.error(`Failed to generate image variant ${index}:`, error);
+    console.error(`Failed to generate character image variant ${index}:`, error);
     return null;
   }
 }
@@ -227,7 +169,7 @@ export async function processCharacterJob(
 ): Promise<void> {
   const { jobId, teamId, userId, config, parentCharacterId } = job;
 
-  console.log(`[CHARACTER] Starting generation for job ${jobId}`);
+  console.log(`[CHARACTER] Starting FAL AI generation for job ${jobId}`);
 
   try {
     await db
@@ -240,19 +182,18 @@ export async function processCharacterJob(
       })
       .where(eq(schema.characterGenerationJobs.id, jobId));
 
-    const ai = await getGoogleClient();
     const isVariation = !!parentCharacterId;
 
-    // Fetch reference images if provided
-    let referenceImageData: ReferenceImageData[] = [];
+    // Get presigned URLs for reference images (FAL needs public URLs)
+    let referenceImageUrls: string[] = [];
     if (config.referenceImages && config.referenceImages.length > 0) {
-      await updateJobProgress(jobId, 5, "Loading reference images...");
-      console.log(`[CHARACTER] Fetching ${config.referenceImages.length} reference images`);
-      referenceImageData = await fetchReferenceImages(config.referenceImages);
-      console.log(`[CHARACTER] Successfully loaded ${referenceImageData.length} reference images`);
+      await updateJobProgress(jobId, 5, "Preparing reference images...");
+      console.log(`[CHARACTER] Getting presigned URLs for ${config.referenceImages.length} reference images`);
+      referenceImageUrls = await getReferenceImageUrls(config.referenceImages);
+      console.log(`[CHARACTER] Got ${referenceImageUrls.length} reference image URLs`);
     }
 
-    const hasReferenceImages = referenceImageData.length > 0;
+    const hasReferenceImages = referenceImageUrls.length > 0;
     const prompts = [0, 1, 2, 3].map((i) => {
       let prompt = buildCharacterPrompt(config, i, isVariation);
 
@@ -270,12 +211,12 @@ CRITICAL: Match the person's facial features, bone structure, and overall appear
     const basePrompt = prompts[0];
 
     const progressMsg = hasReferenceImages
-      ? `Generating 4 variants with ${referenceImageData.length} reference images...`
+      ? `Generating 4 variants with ${referenceImageUrls.length} reference images...`
       : "Generating 4 character variants...";
     await updateJobProgress(jobId, 10, progressMsg);
 
     const generationPromises = prompts.map((prompt, i) =>
-      generateSingleImage(ai, prompt, teamId, jobId, i, referenceImageData)
+      generateSingleImage(prompt, teamId, jobId, i, hasReferenceImages ? referenceImageUrls : undefined)
     );
 
     const results = await Promise.all(generationPromises);

@@ -32,7 +32,7 @@ interface GenerateVideoStepProps {
 
 type StepState = "ready" | "confirming" | "generating";
 
-const GENERATE_CREDIT_COST = 10;
+const CREDIT_PER_SCENE = 2;
 
 export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) {
   const router = useRouter();
@@ -50,6 +50,7 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
   const currentScript = scripts[selectedVariantIndex];
   const scenes = currentScript?.scenes || [];
   const totalScenes = scenes.length;
+  const creditCost = totalScenes * CREDIT_PER_SCENE;
 
   // Check for existing completed video on mount (not during fresh start)
   useEffect(() => {
@@ -73,8 +74,8 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
   }, [scriptId, stepState, freshStart, videoStatus, router]);
 
   const handleGenerateClick = () => {
-    if (!usageStats || usageStats.totalRemaining < GENERATE_CREDIT_COST) {
-      setError(`Not enough credits. You need ${GENERATE_CREDIT_COST} credits to generate a video.`);
+    if (!usageStats || usageStats.totalRemaining < creditCost) {
+      setError(`Not enough credits. You need ${creditCost} credits (${totalScenes} scenes × ${CREDIT_PER_SCENE} credits) to generate this video.`);
       return;
     }
     setStepState("confirming");
@@ -230,9 +231,12 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
               </div>
               <div>
                 <p className="text-lg font-bold text-text-primary">
-                  {GENERATE_CREDIT_COST} Credits
+                  {creditCost} Credits
                 </p>
                 <p className="text-sm text-text-secondary">
+                  {totalScenes} scenes × {CREDIT_PER_SCENE} credits each
+                </p>
+                <p className="text-xs text-text-muted mt-1">
                   {usageStats
                     ? `You have ${usageStats.totalRemaining} credits remaining`
                     : "Loading credits..."}
@@ -243,7 +247,7 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
               size="lg"
               className="bg-accent-400 text-white font-semibold px-8"
               onPress={handleGenerateClick}
-              isDisabled={!usageStats || usageStats.totalRemaining < GENERATE_CREDIT_COST}
+              isDisabled={!usageStats || usageStats.totalRemaining < creditCost}
               startContent={<Icon icon="solar:play-bold" width={20} />}
             >
               Generate Video
@@ -286,7 +290,7 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
                 <span className="text-xs font-bold text-accent-400">4</span>
               </div>
               <p className="text-sm text-text-secondary">
-                Preview your video and optionally edit individual scenes (3 credits each)
+                Preview your video and save it to your clip library for editing
               </p>
             </div>
           </div>
@@ -313,10 +317,13 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
                 <BrandLogo size={64} />
               </div>
               <p className="text-text-primary mb-2">
-                This will use <span className="font-bold text-accent-400">{GENERATE_CREDIT_COST} credits</span>
+                This will use <span className="font-bold text-accent-400">{creditCost} credits</span>
+              </p>
+              <p className="text-xs text-text-muted mb-2">
+                {totalScenes} scenes × {CREDIT_PER_SCENE} credits each
               </p>
               <p className="text-sm text-text-secondary">
-                You&apos;ll have {usageStats ? usageStats.totalRemaining - GENERATE_CREDIT_COST : 0} credits remaining
+                You&apos;ll have {usageStats ? usageStats.totalRemaining - creditCost : 0} credits remaining
               </p>
             </div>
           </ModalBody>
