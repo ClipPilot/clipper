@@ -338,11 +338,11 @@ export async function generateVideoForDuration(
     );
 
     const extendResult = await extendVideoWithRetry({
-      prompt: `Continue the scene naturally. ${prompt}`,
+      prompt: "Continue the scene naturally, maintaining the same style and motion.",
       videoUrl: currentVideoUrl,
       aspectRatio: "auto",
       generateAudio: false,
-      negativePrompt,
+      // Note: Don't pass negativePrompt for extensions - style is already set
     });
 
     currentVideoUrl = extendResult.videoUrl;
