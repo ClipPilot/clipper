@@ -275,6 +275,7 @@ export class UGCVideoController {
           sceneNumber: scene.sceneNumber,
           shotType: scene.shotType,
           imageKey: savedImage.image_key,
+          endImageKey: savedImage.end_image_key || undefined,
           dialogue: scene.dialogue,
           duration: scene.durationSeconds || 5,
           cinematicPrompt: scene.cinematicPrompt,

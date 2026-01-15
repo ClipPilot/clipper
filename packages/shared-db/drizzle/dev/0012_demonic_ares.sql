@@ -1,0 +1,1 @@
+ALTER TABLE "scene_images" ADD COLUMN "end_image_key" text;

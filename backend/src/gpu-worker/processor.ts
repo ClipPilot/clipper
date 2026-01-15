@@ -631,18 +631,30 @@ function findVideoOutput(outputs: WorkflowOutputs): ComfyOutput | null {
 
 async function downloadOutput(
   gpu: GpuConfig,
-  file: ComfyOutput
+  file: ComfyOutput,
+  retryCount = 0
 ): Promise<Buffer> {
+  const MAX_DOWNLOAD_RETRIES = 3;
   const url = new URL(`${gpu.url}/view`);
   url.searchParams.set("filename", file.filename);
   url.searchParams.set("type", file.type || "output");
   url.searchParams.set("subfolder", file.subfolder || "");
 
-  console.log(`[gpu-worker] Downloading: ${file.filename}`);
+  if (retryCount === 0) {
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+
+  console.log(`[gpu-worker] Downloading: ${file.filename}${retryCount > 0 ? ` (attempt ${retryCount + 1})` : ""}`);
   const res = await fetch(url);
 
   if (!res.ok) {
-    throw new Error(`Failed to download output: ${res.status}`);
+    if (retryCount < MAX_DOWNLOAD_RETRIES) {
+      const delay = Math.pow(2, retryCount) * 1000;
+      console.log(`[gpu-worker] Download failed (${res.status}), retrying in ${delay}ms...`);
+      await new Promise((r) => setTimeout(r, delay));
+      return downloadOutput(gpu, file, retryCount + 1);
+    }
+    throw new Error(`Failed to download output after ${MAX_DOWNLOAD_RETRIES} retries: ${res.status}`);
   }
 
   return Buffer.from(await res.arrayBuffer());

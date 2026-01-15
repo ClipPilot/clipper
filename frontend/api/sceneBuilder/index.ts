@@ -56,6 +56,7 @@ export interface SelectSceneImageRequest {
   sceneId: string;
   sceneNumber: number;
   imageKey: string;
+  endImageKey?: string;
   generationJobId?: string;
 }
 
@@ -65,8 +66,10 @@ export interface SceneImage {
   scene_id: string;
   scene_number: number;
   image_key: string;
+  end_image_key?: string;
   generation_job_id?: string;
   imageUrl: string;
+  endImageUrl?: string;
   created_at: string;
   updated_at: string;
 }

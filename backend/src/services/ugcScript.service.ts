@@ -18,11 +18,13 @@ import { db } from "../db";
 import { characters, ugcScripts } from "@clipper/shared-db";
 import { eq } from "drizzle-orm";
 
-const client = new OpenAI({
+export const openaiClient = new OpenAI({
   apiKey: ENV.OPENAI_API_KEY,
   timeout: 5 * 60 * 1000,
   maxRetries: 3,
 });
+
+const client = openaiClient;
 
 export interface GenerateScriptsParams {
   productImageUrls: string[];

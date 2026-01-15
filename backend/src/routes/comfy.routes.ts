@@ -152,4 +152,151 @@ router.patch(
   comfyController.updateJob.bind(comfyController)
 );
 
+/**
+ * @openapi
+ * /comfy/saved-faces/{teamId}:
+ *   get:
+ *     summary: Get all saved faces for a team
+ *     tags:
+ *       - Saved Faces
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The team ID to get saved faces for
+ *     responses:
+ *       200:
+ *         description: List of saved faces
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 faces:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       name:
+ *                         type: string
+ *                       imageUrl:
+ *                         type: string
+ *                         format: uri
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *       400:
+ *         description: Team ID required
+ *       500:
+ *         description: Failed to get saved faces
+ */
+router.get(
+  "/saved-faces/:teamId",
+  requireAuth,
+  comfyController.getSavedFaces.bind(comfyController)
+);
+
+/**
+ * @openapi
+ * /comfy/saved-faces:
+ *   post:
+ *     summary: Save a new face for a team
+ *     tags:
+ *       - Saved Faces
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - teamId
+ *               - name
+ *               - image
+ *             properties:
+ *               teamId:
+ *                 type: integer
+ *                 description: The team ID to save the face for
+ *               name:
+ *                 type: string
+ *                 description: Display name for the saved face
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *                 description: The face image file
+ *     responses:
+ *       201:
+ *         description: Face saved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 face:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     name:
+ *                       type: string
+ *                     imageUrl:
+ *                       type: string
+ *                       format: uri
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *       400:
+ *         description: Missing required fields (teamId, name, or image)
+ *       500:
+ *         description: Failed to save face
+ */
+router.post(
+  "/saved-faces",
+  requireAuth,
+  upload.single("image"),
+  comfyController.saveFace.bind(comfyController)
+);
+
+/**
+ * @openapi
+ * /comfy/saved-faces/{id}:
+ *   delete:
+ *     summary: Delete a saved face
+ *     tags:
+ *       - Saved Faces
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The saved face ID to delete
+ *     responses:
+ *       200:
+ *         description: Face deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Face deleted successfully
+ *       400:
+ *         description: Face ID required
+ *       404:
+ *         description: Face not found
+ *       500:
+ *         description: Failed to delete face
+ */
+router.delete(
+  "/saved-faces/:id",
+  requireAuth,
+  comfyController.deleteSavedFace.bind(comfyController)
+);
+
 export default router;

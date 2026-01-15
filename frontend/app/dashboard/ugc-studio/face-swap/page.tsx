@@ -260,6 +260,7 @@ function FaceSwapContent({
             <CharacterSelector
               selectedCharacters={selectedCharacters}
               onCharactersChange={setSelectedCharacters}
+              teamId={selectedTeam?.id}
             />
             <GeneratePanel
               hasVideo={!!video}

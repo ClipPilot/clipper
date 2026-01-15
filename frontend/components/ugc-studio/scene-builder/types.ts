@@ -25,6 +25,8 @@ export interface SceneBuilderScene extends UGCScene {
   userRefinement?: string;
   supportingImages?: SupportingImage[];
   generation?: SceneImageGeneration;
-  selectedImageKey?: string;
-  selectedImageIndex?: number;
+  startImageKey?: string;
+  startImageUrl?: string;
+  endImageKey?: string;
+  endImageUrl?: string;
 }

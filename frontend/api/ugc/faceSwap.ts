@@ -196,22 +196,49 @@ class FaceSwapAPI {
 
     console.log(`[FaceSwap] Uploading ${images.length} jobs with auto-detect...`);
 
-    const response = await apiFetch(`${this.baseUrl}/ugc-face-swap-upload`, {
-      method: "POST",
-      body: formData,
-    });
+    let lastError: Error | null = null;
+    const maxRetries = 5;
 
-    if (!response.ok) {
-      const error = await response
-        .json()
-        .catch(() => ({ error: "Unknown error" }));
-      throw new Error(error.error || "Failed to create jobs");
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        if (attempt > 0) {
+          const delay = Math.pow(2, attempt) * 1000;
+          console.log(`[FaceSwap] Retry ${attempt}/${maxRetries} in ${delay / 1000}s...`);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+
+        const response = await apiFetch(`${this.baseUrl}/ugc-face-swap-upload`, {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const error = await response
+            .json()
+            .catch(() => ({ error: "Unknown error" }));
+          const errorMsg = error.error || "Failed to create jobs";
+          if (response.status >= 400 && response.status < 500) {
+            throw new Error(errorMsg);
+          }
+          throw new Error(`Server error: ${errorMsg}`);
+        }
+
+        const result = await response.json();
+        console.log(`[FaceSwap] Server accepted ${result.jobIds.length} jobs with auto-detect - you can leave the page now!`);
+        return { jobIds: result.jobIds };
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error("Upload failed");
+        console.warn(`[FaceSwap] Attempt ${attempt + 1} failed:`, lastError.message);
+
+        if (lastError.message.includes("Insufficient credits") ||
+            lastError.message.includes("PLAN_REQUIRED") ||
+            lastError.message.includes("Unauthorized")) {
+          throw lastError;
+        }
+      }
     }
 
-    const result = await response.json();
-    console.log(`[FaceSwap] Server accepted ${result.jobIds.length} jobs with auto-detect - you can leave the page now!`);
-
-    return { jobIds: result.jobIds };
+    throw lastError || new Error("Upload failed after retries");
   }
 }
 

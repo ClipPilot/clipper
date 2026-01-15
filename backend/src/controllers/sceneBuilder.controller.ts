@@ -339,15 +339,16 @@ export class SceneBuilderController {
         .from(sceneImages)
         .where(eq(sceneImages.script_id, scriptId));
 
-      // Get presigned URLs for each image
       const imagesWithUrls = await Promise.all(
         images.map(async (img) => ({
           ...img,
           imageUrl: await s3Service.getPresignedUrl(img.image_key, 3600),
+          endImageUrl: img.end_image_key
+            ? await s3Service.getPresignedUrl(img.end_image_key, 3600)
+            : undefined,
         }))
       );
 
-      // Convert to a map by sceneId for easy lookup
       const sceneImagesMap: Record<string, any> = {};
       for (const img of imagesWithUrls) {
         sceneImagesMap[img.scene_id] = img;
@@ -371,7 +372,7 @@ export class SceneBuilderController {
    */
   async selectSceneImage(req: AuthRequest, res: Response) {
     try {
-      const { scriptId, sceneId, sceneNumber, imageKey, generationJobId } =
+      const { scriptId, sceneId, sceneNumber, imageKey, endImageKey, generationJobId } =
         req.body;
 
       if (!scriptId || !sceneId || !imageKey || sceneNumber === undefined) {
@@ -380,7 +381,6 @@ export class SceneBuilderController {
         });
       }
 
-      // Check if a scene image already exists
       const [existing] = await db
         .select()
         .from(sceneImages)
@@ -392,11 +392,11 @@ export class SceneBuilderController {
         );
 
       if (existing) {
-        // Update existing
         const [updated] = await db
           .update(sceneImages)
           .set({
             image_key: imageKey,
+            end_image_key: endImageKey || null,
             generation_job_id: generationJobId || null,
             updated_at: new Date(),
           })
@@ -408,7 +408,6 @@ export class SceneBuilderController {
           sceneImage: updated,
         });
       } else {
-        // Create new
         const [created] = await db
           .insert(sceneImages)
           .values({
@@ -416,6 +415,7 @@ export class SceneBuilderController {
             scene_id: sceneId,
             scene_number: sceneNumber,
             image_key: imageKey,
+            end_image_key: endImageKey || null,
             generation_job_id: generationJobId || null,
           })
           .returning();

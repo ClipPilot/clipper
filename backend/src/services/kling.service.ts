@@ -26,6 +26,7 @@ export const GENTLE_MOTION_MODIFIERS =
 
 export interface ImageToVideoOptions {
   imageUrl: string;
+  tailImageUrl?: string;
   prompt: string;
   duration?: KlingDuration;
   negativePrompt?: string;
@@ -101,6 +102,7 @@ export async function generateVideo(
 ): Promise<ImageToVideoResult> {
   const {
     imageUrl,
+    tailImageUrl,
     prompt,
     duration = 5,
     negativePrompt,
@@ -114,21 +116,27 @@ export async function generateVideo(
   }
 
   console.log(
-    `[Kling] Generating ${duration}s video from image (audio: ${generateAudio})`
+    `[Kling] Generating ${duration}s video from image (audio: ${generateAudio}, hasTail: ${!!tailImageUrl})`
   );
   console.log(`[Kling] Prompt: ${finalPrompt.substring(0, 150)}...`);
 
   try {
+    const input: Record<string, unknown> = {
+      prompt: finalPrompt,
+      start_image_url: imageUrl,
+      duration: String(duration) as "5" | "10",
+      negative_prompt: negativePrompt || PRODUCT_NEGATIVE_PROMPT,
+      generate_audio: generateAudio,
+    };
+
+    if (tailImageUrl) {
+      input.tail_image_url = tailImageUrl;
+    }
+
     const result = await fal.subscribe(
       "fal-ai/kling-video/v2.6/pro/image-to-video",
       {
-        input: {
-          prompt: finalPrompt,
-          start_image_url: imageUrl,
-          duration: String(duration) as "5" | "10",
-          negative_prompt: negativePrompt || PRODUCT_NEGATIVE_PROMPT,
-          generate_audio: generateAudio,
-        },
+        input,
         logs: true,
         onQueueUpdate: (update) => {
           if (update.status === "IN_PROGRESS" && update.logs) {
@@ -336,6 +344,107 @@ export async function generateAvatarWithRetry(
   throw lastError || new Error("Avatar generation failed after retries");
 }
 
+export interface ExtendVideoOptions {
+  videoUrl: string;
+  duration?: KlingDuration;
+}
+
+export interface ExtendVideoResult {
+  videoUrl: string;
+  requestId: string;
+}
+
+interface KlingExtendVideoResponse {
+  video: {
+    url: string;
+    file_size?: number;
+    file_name?: string;
+    content_type?: string;
+  };
+}
+
+export async function extendVideo(
+  options: ExtendVideoOptions
+): Promise<ExtendVideoResult> {
+  const { videoUrl, duration = 5 } = options;
+
+  console.log(`[Kling O1] Extending video by ${duration}s`);
+  console.log(`[Kling O1] Video URL: ${videoUrl.substring(0, 80)}...`);
+  console.log(`[Kling O1] Prompt: Based on @Video1, generate the next shot. keep the style of the video`);
+
+  try {
+    const result = await fal.subscribe(
+      "fal-ai/kling-video/o1/video-to-video/reference",
+      {
+        input: {
+          prompt: "Based on @Video1, generate the next shot. keep the style of the video",
+          video_url: videoUrl,
+          duration: String(duration) as "5" | "10",
+          aspect_ratio: "auto",
+        },
+        logs: true,
+        pollInterval: 3000,
+        onQueueUpdate: (update) => {
+          if (update.status === "IN_PROGRESS" && update.logs) {
+            update.logs.forEach((log) =>
+              console.log(`[Kling O1] ${log.message}`)
+            );
+          }
+        },
+      }
+    );
+
+    const data = result.data as KlingExtendVideoResponse;
+
+    if (!data?.video?.url) {
+      throw new Error("No video URL in Kling O1 extend response");
+    }
+
+    console.log(`[Kling O1] Extended video generated: ${data.video.url}`);
+
+    return {
+      videoUrl: data.video.url,
+      requestId: result.requestId,
+    };
+  } catch (error) {
+    console.error("[Kling O1] Video extension failed:", error);
+    throw error;
+  }
+}
+
+export async function extendVideoWithRetry(
+  options: ExtendVideoOptions,
+  maxRetries: number = 5
+): Promise<ExtendVideoResult> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await extendVideo(options);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      const isTimeout = lastError.message.includes("ETIMEDOUT") ||
+                        lastError.message.includes("fetch failed") ||
+                        lastError.message.includes("timeout");
+
+      console.warn(
+        `[Kling O1] Extend attempt ${attempt}/${maxRetries} failed:`,
+        lastError.message,
+        isTimeout ? "(network timeout)" : ""
+      );
+
+      if (attempt < maxRetries) {
+        const baseDelay = isTimeout ? 10000 : 2000;
+        const delay = baseDelay * attempt;
+        console.log(`[Kling O1] Retrying in ${delay / 1000}s...`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+  }
+
+  throw lastError || new Error("Video extension failed after retries");
+}
+
 export const klingService = {
   generateVideo,
   generateVideoWithRetry,
@@ -343,6 +452,8 @@ export const klingService = {
   applyLipsyncWithRetry,
   generateAvatar,
   generateAvatarWithRetry,
+  extendVideo,
+  extendVideoWithRetry,
   buildKlingPrompt,
   PRODUCT_NEGATIVE_PROMPT,
   PRODUCT_STABILITY_MODIFIERS,

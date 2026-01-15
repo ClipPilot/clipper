@@ -179,7 +179,6 @@ export interface GenerateScriptJob extends BaseJob {
   customPattern?: { type: string; shot: string }[];
 }
 
-// UGC video generation job payload
 export interface GenerateUGCVideoJob extends BaseJob {
   type: "generate-ugc-video";
   jobId: string;
@@ -190,15 +189,16 @@ export interface GenerateUGCVideoJob extends BaseJob {
     sceneNumber: number;
     shotType: "a-roll" | "b-roll" | "mixed";
     imageKey: string;
+    endImageKey?: string;
     dialogue: string;
     duration: number;
     cinematicPrompt: string;
     action: string;
     emotion: string;
-    ambientSound?: string | null; // Ambient sound effect for A-roll scenes
-    regenerate?: boolean; // Mark this scene for regeneration
+    ambientSound?: string | null;
+    regenerate?: boolean;
   }>;
-  regenerateSceneId?: string; // If set, only regenerate this scene
+  regenerateSceneId?: string;
 }
 
 export type VideoProcessingJob =

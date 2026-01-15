@@ -15,14 +15,15 @@ interface SceneImageCardProps {
   characterId: number;
   productImageKeys: string[];
   generation?: SceneImageGeneration;
-  selectedImageKey?: string;
-  selectedImageUrl?: string; // Direct URL for rendering (from API or generation)
-  selectedImageIndex?: number;
+  startImageKey?: string;
+  startImageUrl?: string;
+  endImageKey?: string;
+  endImageUrl?: string;
   userRefinement?: string;
   supportingImageKeys?: string[];
   onGenerationStart: (jobId: string) => void;
   onGenerationUpdate: (status: SceneImageGeneration) => void;
-  onImageSelect: (imageKey: string, index: number) => void;
+  onImagesSelect: (startKey: string, startUrl: string, endKey: string, endUrl: string) => void;
   onRefinementChange: (refinement: string) => void;
   onSupportingImagesChange: (keys: string[]) => void;
 }
@@ -34,14 +35,15 @@ export function SceneImageCard({
   characterId,
   productImageKeys,
   generation,
-  selectedImageKey,
-  selectedImageUrl,
-  selectedImageIndex,
+  startImageKey,
+  startImageUrl,
+  endImageKey,
+  endImageUrl,
   userRefinement,
   supportingImageKeys,
   onGenerationStart,
   onGenerationUpdate,
-  onImageSelect,
+  onImagesSelect,
   onRefinementChange,
   onSupportingImagesChange,
 }: SceneImageCardProps) {
@@ -53,10 +55,10 @@ export function SceneImageCard({
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const sceneConfig = SCENE_TYPE_CONFIG[scene.sceneType];
-  const hasSelectedImage = !!selectedImageKey;
-  const isComplete = hasSelectedImage;
+  const hasStartImage = !!startImageKey;
+  const hasEndImage = !!endImageKey;
+  const isComplete = hasStartImage && hasEndImage;
 
-  // Poll for generation status
   useEffect(() => {
     if (generation?.jobId && generation.status !== "completed" && generation.status !== "failed") {
       pollIntervalRef.current = setInterval(async () => {
@@ -84,20 +86,21 @@ export function SceneImageCard({
               clearInterval(pollIntervalRef.current);
               pollIntervalRef.current = null;
             }
-            // Auto-select the single generated image
-            if (status.images && status.images.length > 0) {
-              const image = status.images[0];
+            if (status.images && status.images.length >= 2) {
+              const startImg = status.images[0];
+              const endImg = status.images[1];
               try {
                 await sceneBuilderAPI.selectSceneImage({
                   scriptId,
                   sceneId: scene.id,
                   sceneNumber: scene.sceneNumber,
-                  imageKey: image.key,
+                  imageKey: startImg.key,
+                  endImageKey: endImg.key,
                   generationJobId: status.jobId,
                 });
-                onImageSelect(image.key, 0);
+                onImagesSelect(startImg.key, startImg.url, endImg.key, endImg.url);
               } catch (error) {
-                console.error("Failed to auto-select scene image:", error);
+                console.error("Failed to auto-select scene images:", error);
               }
             }
           } else if (status.status === "failed") {
@@ -119,7 +122,7 @@ export function SceneImageCard({
         pollIntervalRef.current = null;
       }
     };
-  }, [generation?.jobId, generation?.status, scriptId, scene.id, scene.sceneNumber, onImageSelect]);
+  }, [generation?.jobId, generation?.status, scriptId, scene.id, scene.sceneNumber, onImagesSelect]);
 
   const handleGenerate = async () => {
     setIsGenerating(true);
@@ -155,7 +158,35 @@ export function SceneImageCard({
   const isCurrentlyGenerating = isGenerating || generation?.status === "generating";
   const isRegenerating = generation?.status === "regenerating";
 
-  // Collapsed view
+  const renderFramePreview = (label: string, imageUrl?: string, imageKey?: string, frameIndex?: number) => {
+    const url = imageUrl || generation?.generatedImages?.[frameIndex || 0]?.url;
+    const hasImage = !!imageKey && !!url;
+
+    return (
+      <div className="flex flex-col items-center gap-1">
+        <span className="text-[10px] text-text-muted font-medium">{label}</span>
+        {hasImage ? (
+          <div
+            className="w-10 h-12 rounded-md overflow-hidden bg-surface-base relative ring-2 ring-accent-400 cursor-zoom-in hover:ring-accent-300 transition-all"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (url) setZoomImageUrl(url);
+            }}
+          >
+            <img src={url} alt={label} className="w-full h-full object-cover" />
+            <div className="absolute top-0.5 right-0.5 w-3 h-3 rounded-full bg-accent-400 flex items-center justify-center">
+              <Icon icon="solar:check-circle-bold" className="text-white" width={8} />
+            </div>
+          </div>
+        ) : (
+          <div className="w-10 h-12 rounded-md border-2 border-dashed border-border-base flex items-center justify-center">
+            <Icon icon="solar:gallery-add-bold-duotone" className="text-text-muted" width={14} />
+          </div>
+        )}
+      </div>
+    );
+  };
+
   if (!isExpanded) {
     return (
       <Card
@@ -208,34 +239,16 @@ export function SceneImageCard({
                   <Icon icon="solar:refresh-bold" className="animate-spin text-amber-400" width={14} />
                   <span className="text-xs font-medium text-amber-400">Regenerating</span>
                 </div>
-              ) : isComplete && selectedImageKey && (selectedImageUrl || generation?.generatedImages) ? (
-                <div
-                  className="w-10 h-12 rounded-md overflow-hidden bg-surface-base relative ring-2 ring-accent-400 cursor-zoom-in hover:ring-accent-300 transition-all"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const url = selectedImageUrl ||
-                      generation?.generatedImages?.find((img) => img.key === selectedImageKey)?.url ||
-                      generation?.generatedImages?.[selectedImageIndex || 0]?.url;
-                    if (url) setZoomImageUrl(url);
-                  }}
-                >
-                  <img
-                    src={
-                      selectedImageUrl ||
-                      generation?.generatedImages?.find((img) => img.key === selectedImageKey)?.url ||
-                      generation?.generatedImages?.[selectedImageIndex || 0]?.url
-                    }
-                    alt="Selected"
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-accent-400 flex items-center justify-center">
-                    <Icon icon="solar:check-circle-bold" className="text-white" width={10} />
-                  </div>
+              ) : isComplete ? (
+                <div className="flex items-center gap-2">
+                  {renderFramePreview("Start", startImageUrl, startImageKey, 0)}
+                  <Icon icon="solar:arrow-right-linear" className="text-text-muted" width={12} />
+                  {renderFramePreview("End", endImageUrl, endImageKey, 1)}
                 </div>
-              ) : generation?.status === "completed" && generation.generatedImages ? (
+              ) : generation?.status === "completed" && generation.generatedImages?.length === 2 ? (
                 <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-amber-500/20 border border-amber-500/30">
                   <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                  <span className="text-xs font-medium text-amber-400">Select image</span>
+                  <span className="text-xs font-medium text-amber-400">Select frames</span>
                 </div>
               ) : generation?.status === "generating" ? (
                 <div className="flex items-center gap-2 text-accent-400">
@@ -243,8 +256,10 @@ export function SceneImageCard({
                   <span className="text-xs">{generation.progress}%</span>
                 </div>
               ) : (
-                <div className="w-10 h-12 rounded-md border-2 border-dashed border-border-base flex items-center justify-center">
-                  <Icon icon="solar:gallery-add-bold-duotone" className="text-text-muted" width={16} />
+                <div className="flex items-center gap-2">
+                  {renderFramePreview("Start", undefined, undefined)}
+                  <Icon icon="solar:arrow-right-linear" className="text-text-muted" width={12} />
+                  {renderFramePreview("End", undefined, undefined)}
                 </div>
               )}
               <Icon icon="solar:alt-arrow-right-linear" className="text-text-muted" width={16} />
@@ -256,7 +271,6 @@ export function SceneImageCard({
           </p>
         </CardBody>
 
-        {/* Zoom Modal (collapsed view) */}
         <Modal
           isOpen={!!zoomImageUrl}
           onClose={() => setZoomImageUrl(null)}
@@ -293,7 +307,6 @@ export function SceneImageCard({
     );
   }
 
-  // Expanded view
   return (
     <Card className={`bg-surface-elevated border ${
       isRegenerating
@@ -303,7 +316,6 @@ export function SceneImageCard({
           : "border-accent-400/30"
     }`}>
       <CardBody className="p-4 space-y-4">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-text-primary">
@@ -343,20 +355,17 @@ export function SceneImageCard({
           </Button>
         </div>
 
-        {/* Dialogue */}
         <div className="bg-surface-base rounded-lg p-3">
           <p className="text-text-primary text-sm leading-relaxed">
             "{scene.dialogue}"
           </p>
         </div>
 
-        {/* Action */}
         <div className="flex items-center gap-2 text-sm text-text-secondary">
           <Icon icon="solar:running-bold" width={14} className="text-text-muted shrink-0" />
           <span>{scene.action}</span>
         </div>
 
-        {/* Supporting images */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <Icon icon="solar:gallery-bold-duotone" className="text-text-muted" width={14} />
@@ -370,7 +379,6 @@ export function SceneImageCard({
           />
         </div>
 
-        {/* Prompt */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <Icon icon="solar:pen-bold-duotone" className="text-text-muted" width={14} />
@@ -389,15 +397,13 @@ export function SceneImageCard({
           />
         </div>
 
-        {/* Regenerating status */}
         {isRegenerating && (
           <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
             <Icon icon="solar:refresh-bold" className="animate-spin text-amber-400" width={20} />
-            <span className="text-sm text-amber-400 font-medium">Regenerating image...</span>
+            <span className="text-sm text-amber-400 font-medium">Regenerating frames...</span>
           </div>
         )}
 
-        {/* Generation status or gallery */}
         {generation?.status === "generating" && (
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
@@ -422,69 +428,88 @@ export function SceneImageCard({
           </div>
         )}
 
-        {/* Show generated/selected image (hide when regenerating) */}
-        {!isRegenerating && (selectedImageUrl || (generation?.status === "completed" && generation.generatedImages?.[0])) && (
-          <div className="space-y-2">
+        {!isRegenerating && (startImageKey || endImageKey || (generation?.status === "completed" && generation.generatedImages?.length === 2)) && (
+          <div className="space-y-3">
             <div className="flex items-center gap-2 text-xs text-text-muted">
               <Icon icon="solar:gallery-check-bold" width={14} />
-              <span>Generated image (click to zoom)</span>
+              <span>Generated frames (click to zoom)</span>
             </div>
-            <div className="flex gap-3">
-              <div
-                className="w-24 h-32 rounded-lg overflow-hidden bg-surface-base ring-2 ring-accent-400 relative cursor-zoom-in hover:ring-accent-300 transition-all"
-                onClick={() => setZoomImageUrl(selectedImageUrl || generation?.generatedImages?.[0]?.url || null)}
-              >
-                <img
-                  src={selectedImageUrl || generation?.generatedImages?.[0]?.url}
-                  alt="Generated"
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-accent-400 flex items-center justify-center">
-                  <Icon icon="solar:check-circle-bold" className="text-white" width={12} />
+            <div className="flex items-center justify-center gap-6">
+              <div className="flex flex-col items-center gap-2">
+                <span className="text-xs font-medium text-text-secondary">Start Frame</span>
+                <div
+                  className="w-28 h-36 rounded-lg overflow-hidden bg-surface-base ring-2 ring-accent-400 relative cursor-zoom-in hover:ring-accent-300 transition-all"
+                  onClick={() => setZoomImageUrl(startImageUrl || generation?.generatedImages?.[0]?.url || null)}
+                >
+                  <img
+                    src={startImageUrl || generation?.generatedImages?.[0]?.url}
+                    alt="Start frame"
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-accent-400 flex items-center justify-center">
+                    <Icon icon="solar:check-circle-bold" className="text-white" width={12} />
+                  </div>
                 </div>
-                <div className="absolute bottom-1 left-1 w-5 h-5 rounded-full bg-black/50 flex items-center justify-center">
-                  <Icon icon="solar:magnifer-zoom-in-bold" className="text-white" width={12} />
+              </div>
+
+              <div className="flex flex-col items-center gap-2">
+                <Icon icon="solar:arrow-right-bold" className="text-text-muted" width={24} />
+                <span className="text-[10px] text-text-muted">Kling interpolates</span>
+              </div>
+
+              <div className="flex flex-col items-center gap-2">
+                <span className="text-xs font-medium text-text-secondary">End Frame</span>
+                <div
+                  className="w-28 h-36 rounded-lg overflow-hidden bg-surface-base ring-2 ring-accent-400 relative cursor-zoom-in hover:ring-accent-300 transition-all"
+                  onClick={() => setZoomImageUrl(endImageUrl || generation?.generatedImages?.[1]?.url || null)}
+                >
+                  <img
+                    src={endImageUrl || generation?.generatedImages?.[1]?.url}
+                    alt="End frame"
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-accent-400 flex items-center justify-center">
+                    <Icon icon="solar:check-circle-bold" className="text-white" width={12} />
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* Actions */}
         <div className="flex items-center justify-between pt-2 border-t border-border-base">
           <div className="flex items-center gap-2">
             {isComplete && !isRegenerating && (
               <span className="text-xs text-accent-400 flex items-center gap-1">
                 <Icon icon="solar:check-circle-bold" width={14} />
-                Image selected
+                Frames selected
               </span>
             )}
           </div>
           <Button
             className={
-              (generation?.status === "completed" || selectedImageUrl) && !isRegenerating
+              isComplete && !isRegenerating
                 ? "border-border-base text-text-secondary"
                 : "bg-accent-400 text-white"
             }
-            variant={(generation?.status === "completed" || selectedImageUrl) && !isRegenerating ? "bordered" : "solid"}
+            variant={isComplete && !isRegenerating ? "bordered" : "solid"}
             size="sm"
             onPress={handleGenerate}
             isLoading={isGenerating || generation?.status === "generating"}
             isDisabled={generation?.status === "generating" || isRegenerating}
             startContent={
-              !isRegenerating && (generation?.status === "completed" || selectedImageUrl) ? (
+              !isRegenerating && isComplete ? (
                 <Icon icon="solar:refresh-bold" width={14} />
               ) : !isRegenerating ? (
                 <Icon icon="solar:magic-stick-3-bold" width={14} />
               ) : null
             }
           >
-            {isRegenerating ? "Regenerating..." : (generation?.status === "completed" || selectedImageUrl) ? "Regenerate" : "Generate Image"}
+            {isRegenerating ? "Regenerating..." : isComplete ? "Regenerate" : "Generate Frames"}
           </Button>
         </div>
       </CardBody>
 
-      {/* Zoom Modal */}
       <Modal
         isOpen={!!zoomImageUrl}
         onClose={() => setZoomImageUrl(null)}

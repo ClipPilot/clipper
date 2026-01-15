@@ -4,9 +4,6 @@ import { GenerateSceneImageJob } from "../../services/sqs.service";
 import { s3Service } from "../../services/s3.service";
 import { falImageService } from "../../services/falImage.service";
 
-/**
- * Get presigned URLs for reference images (FAL needs public URLs)
- */
 async function getReferenceImageUrls(imageKeys: string[]): Promise<string[]> {
   const MAX_REFERENCE_IMAGES = 5;
   const keysToFetch = imageKeys.slice(0, MAX_REFERENCE_IMAGES);
@@ -37,9 +34,29 @@ Reality details: gentle 35mm film grain, light fingerprint smudge on lens glass,
 
 Styling: raw UGC realism, available indoor light, mixed color temperature, minimal depth blur, slight lens smudge, visible ISO noise, no cinematic polish, emphasis on authenticity and true iPhone capture.`;
 
+type FrameType = "start" | "end";
+
+const FRAME_GUIDANCE: Record<FrameType, string> = {
+  start: `FRAME TIMING: START OF SCENE
+- This is the OPENING FRAME of the video sequence
+- Capture the initial moment BEFORE the main action begins
+- Character is noticing, discovering, or about to engage with the product
+- Expression shows anticipation, curiosity, or initial reaction
+- Product positioning: just being introduced, held up, or revealed
+- Energy is building up, the story is about to unfold`,
+  end: `FRAME TIMING: END OF SCENE
+- This is the CLOSING FRAME of the video sequence
+- Capture the final moment AFTER the main action completes
+- Character has finished engaging with the product
+- Expression shows satisfaction, delight, or transformed state
+- Product positioning: in final resting position, showcased, or result visible
+- Energy has resolved, the moment feels complete and conclusive`,
+};
+
 function buildSceneImagePrompt(
   sceneData: GenerateSceneImageJob["sceneData"],
   hasReferenceImages: boolean,
+  frameType: FrameType,
   userRefinement?: string
 ): string {
   const parts: string[] = [];
@@ -52,6 +69,8 @@ function buildSceneImagePrompt(
   }
 
   parts.push(
+    FRAME_GUIDANCE[frameType],
+    "",
     "UGC IPHONE AUTHENTICITY STYLE:",
     UGC_IPHONE_STYLE,
     "",
@@ -95,9 +114,6 @@ function buildSceneImagePrompt(
   return parts.join("\n");
 }
 
-/**
- * Generate scene image using FAL AI
- */
 async function generateSingleImage(
   prompt: string,
   teamId: number,
@@ -151,9 +167,6 @@ async function updateJobProgress(
     .where(eq(schema.sceneImageGenerationJobs.id, jobId));
 }
 
-/**
- * Main processor for scene image generation jobs
- */
 export async function processSceneImageJob(
   job: GenerateSceneImageJob
 ): Promise<void> {
@@ -230,44 +243,41 @@ export async function processSceneImageJob(
       `[SCENE_IMAGE] Got ${referenceImageUrls.length} reference image URLs`
     );
 
-    // Build the prompt
-    const prompt = buildSceneImagePrompt(
-      sceneData,
-      referenceImageUrls.length > 0,
-      userRefinement
-    );
+    const hasReferences = referenceImageUrls.length > 0;
+    const refs = hasReferences ? referenceImageUrls : undefined;
 
-    await updateJobProgress(jobId, 30, "Generating scene image with FAL AI...");
+    await updateJobProgress(jobId, 20, "Generating start frame...");
+    const startPrompt = buildSceneImagePrompt(sceneData, hasReferences, "start", userRefinement);
+    const startKey = await generateSingleImage(startPrompt, teamId, scriptId, sceneId, 0, refs);
 
-    // Generate image using FAL (with or without reference images)
-    const imageKey = await generateSingleImage(
-      prompt,
-      teamId,
-      scriptId,
-      sceneId,
-      0,
-      referenceImageUrls.length > 0 ? referenceImageUrls : undefined
-    );
-
-    if (!imageKey) {
-      throw new Error("Failed to generate scene image");
+    if (!startKey) {
+      throw new Error("Failed to generate start frame");
     }
+    console.log(`[SCENE_IMAGE] Generated start frame for job ${jobId}`);
 
-    const successfulImages = [imageKey];
-    console.log(`[SCENE_IMAGE] Generated image for job ${jobId}`);
+    await updateJobProgress(jobId, 60, "Generating end frame...");
+    const endPrompt = buildSceneImagePrompt(sceneData, hasReferences, "end", userRefinement);
+    const endKey = await generateSingleImage(endPrompt, teamId, scriptId, sceneId, 1, refs);
+
+    if (!endKey) {
+      throw new Error("Failed to generate end frame");
+    }
+    console.log(`[SCENE_IMAGE] Generated end frame for job ${jobId}`);
+
+    const successfulImages = [startKey, endKey];
 
     await db
       .update(schema.sceneImageGenerationJobs)
       .set({
         status: "completed",
         progress: 100,
-        progress_message: "Image generated",
+        progress_message: "Start and end frames generated",
         generated_images: successfulImages,
         completed_at: new Date(),
       })
       .where(eq(schema.sceneImageGenerationJobs.id, jobId));
 
-    console.log(`[SCENE_IMAGE] Job ${jobId} completed successfully`);
+    console.log(`[SCENE_IMAGE] Job ${jobId} completed with ${successfulImages.length} frames`);
   } catch (error) {
     console.error(`[SCENE_IMAGE] Job ${jobId} failed:`, error);
 

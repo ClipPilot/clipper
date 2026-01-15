@@ -27,9 +27,10 @@ export interface FaceSwapJob {
 }
 
 export interface SelectedCharacter {
-  type: "example" | "uploaded";
+  type: "example" | "uploaded" | "saved";
   src: string;
   file?: File;
+  savedFaceId?: number;
 }
 
 export const EXAMPLE_CHARACTERS = [

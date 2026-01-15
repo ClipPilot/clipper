@@ -9,12 +9,11 @@ import {
   ShotType,
   PRODUCT_NEGATIVE_PROMPT,
 } from "./kling.service";
-import { veoService } from "./veo.service";
+import { openaiClient } from "./ugcScript.service";
 import { generateJumbledMetadataString } from "../utils/videoMetadata";
 
 const MAX_AUDIO_DURATION = 10;
 const KLING_VIDEO_DURATION = 10;
-const VEO_EXTEND_DURATION = 7;
 const PARALLEL_SCENES = 2;
 const AUDIO_SAMPLE_RATE = 44100;
 const AUDIO_CHANNELS = 2;
@@ -22,6 +21,45 @@ const AUDIO_BITRATE = "192k";
 const VIDEO_ENCODE_SETTINGS =
   "-c:v libx264 -preset fast -crf 23 -profile:v main -level 3.1 -pix_fmt yuv420p -r 30 -g 30 -keyint_min 30 -vsync cfr";
 const SPEECH_SPEED_BOOST = 1.12;
+
+async function shortenDialogue(
+  dialogue: string,
+  targetDurationSeconds: number,
+  currentDurationSeconds: number
+): Promise<string> {
+  const reductionPercent = Math.round(
+    ((currentDurationSeconds - targetDurationSeconds) / currentDurationSeconds) * 100
+  );
+
+  console.log(
+    `[OpenAI] Shortening dialogue by ~${reductionPercent}% (${currentDurationSeconds.toFixed(1)}s -> ${targetDurationSeconds}s)`
+  );
+
+  const response = await openaiClient.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [
+      {
+        role: "system",
+        content: `You are an expert UGC script editor. Your task is to shorten dialogue while preserving its impact, persuasiveness, and natural flow. Keep the same tone, style, and key selling points. Output ONLY the shortened dialogue, nothing else.`,
+      },
+      {
+        role: "user",
+        content: `Shorten this dialogue by approximately ${reductionPercent}% (from ${currentDurationSeconds.toFixed(1)} seconds to about ${targetDurationSeconds} seconds when spoken).
+
+Original dialogue:
+"${dialogue}"
+
+Shortened dialogue:`,
+      },
+    ],
+    temperature: 0.7,
+    max_tokens: 500,
+  });
+
+  const shortened = response.choices[0]?.message?.content?.trim() || dialogue;
+  console.log(`[OpenAI] Shortened: "${shortened.substring(0, 80)}..."`);
+  return shortened;
+}
 
 /**
  * Normalize a video clip to have consistent video and audio parameters.
@@ -96,6 +134,7 @@ export interface SceneVideoData {
   sceneNumber: number;
   shotType: ShotType;
   imageKey: string;
+  endImageKey?: string;
   dialogue: string;
   duration: number;
   cinematicPrompt: string;
@@ -247,7 +286,7 @@ async function generateDialogueAudio(
     );
   } else {
     console.log(
-      `[UGC Assembly] Scene ${sceneNumber}: B-roll audio ${finalDuration.toFixed(2)}s (Kling + Veo extend if >10s)`
+      `[UGC Assembly] Scene ${sceneNumber}: B-roll audio ${finalDuration.toFixed(2)}s`
     );
   }
 
@@ -519,16 +558,12 @@ async function processArollScene(
   };
 }
 
-// Veo B-roll prompt commented out - using Kling for all video generation
-// function buildVeoBrollPrompt(cinematicPrompt: string, action: string): string {
-//   return `${cinematicPrompt}. Smooth product showcase with subtle, slow camera movement. Professional product photography style with gentle rotation or reveal. Clean background, focused lighting. ${action}. Cinematic 9:16 vertical video. High quality. ${VEO_PRODUCT_STABILITY_MODIFIERS} ${VEO_GENTLE_MOTION_MODIFIERS}`;
-// }
-
 /**
- * Process B-Roll scene using Kling + Veo extension for product showcase shots
+ * Process B-Roll scene using Kling 2.6 for product showcase shots.
  * No lip-sync needed for B-roll (product shots, cutaways, etc.)
  *
- * Kling generates initial 10s video. If audio > 10s, Veo extends by 7s segments.
+ * If audio exceeds 10s, dialogue is shortened via OpenAI and regenerated.
+ * Kling 2.6 generates 10s video with optional tail_image for interpolation.
  * Final video is trimmed to match exact audio duration.
  */
 async function processBrollScene(
@@ -538,76 +573,65 @@ async function processBrollScene(
   voiceId: string,
   onProgress?: (message: string) => void
 ): Promise<ProcessedScene> {
-  const { sceneId, sceneNumber, shotType, imageKey, cinematicPrompt, dialogue, action, emotion } =
+  const { sceneId, sceneNumber, shotType, imageKey, endImageKey, cinematicPrompt, dialogue, action, emotion } =
     scene;
 
-  onProgress?.(`Scene ${sceneNumber}: Generating voiceover...`);
-  const {
-    audioPath,
-    audioKey,
-    duration: audioDuration,
-  } = await generateDialogueAudio(
-    voiceId,
-    dialogue,
-    teamId,
-    scriptId,
-    sceneNumber,
-    false
-  );
+  let currentDialogue = dialogue;
+  const MAX_SHORTEN_ATTEMPTS = 2;
 
-  console.log(
-    `[UGC Assembly] B-Roll Scene ${sceneNumber}: audio ${audioDuration.toFixed(2)}s`
-  );
+  onProgress?.(`Scene ${sceneNumber}: Generating voiceover...`);
+
+  let result = await generateDialogueAudio(voiceId, currentDialogue, teamId, scriptId, sceneNumber, false);
+  let { audioPath, audioKey, duration: audioDuration } = result;
+
+  console.log(`[UGC Assembly] B-Roll Scene ${sceneNumber}: audio ${audioDuration.toFixed(2)}s`);
+
+  for (let attempt = 1; attempt <= MAX_SHORTEN_ATTEMPTS && audioDuration > MAX_AUDIO_DURATION; attempt++) {
+    onProgress?.(`Scene ${sceneNumber}: Shortening dialogue...`);
+    console.log(
+      `[UGC Assembly] B-Roll Scene ${sceneNumber}: Audio too long (${audioDuration.toFixed(2)}s > ${MAX_AUDIO_DURATION}s), shortening dialogue (attempt ${attempt})`
+    );
+
+    currentDialogue = await shortenDialogue(currentDialogue, MAX_AUDIO_DURATION * 0.9, audioDuration);
+
+    if (fs.existsSync(audioPath)) {
+      fs.unlinkSync(audioPath);
+    }
+
+    result = await generateDialogueAudio(voiceId, currentDialogue, teamId, scriptId, sceneNumber, false);
+    audioPath = result.audioPath;
+    audioKey = result.audioKey;
+    audioDuration = result.duration;
+
+    console.log(`[UGC Assembly] B-Roll Scene ${sceneNumber}: audio ${audioDuration.toFixed(2)}s (attempt ${attempt + 1})`);
+  }
+
+  if (audioDuration > MAX_AUDIO_DURATION) {
+    console.warn(`[UGC Assembly] B-Roll Scene ${sceneNumber}: Could not shorten to ${MAX_AUDIO_DURATION}s, using ${audioDuration.toFixed(2)}s`);
+  }
 
   onProgress?.(`Scene ${sceneNumber}: Generating video with Kling...`);
   const imageUrl = await s3Service.getPresignedUrl(imageKey, 3600);
+  const tailImageUrl = endImageKey ? await s3Service.getPresignedUrl(endImageKey, 3600) : undefined;
   const prompt = buildKlingPrompt(cinematicPrompt, shotType, emotion, action);
 
   const { videoUrl: klingVideoUrl } = await klingService.generateVideoWithRetry({
     imageUrl,
+    tailImageUrl,
     prompt,
     duration: 10,
     negativePrompt: PRODUCT_NEGATIVE_PROMPT,
   });
 
-  let currentVideoUrl = klingVideoUrl;
-  let currentDuration = KLING_VIDEO_DURATION;
-  let extensionsUsed = 0;
-
   console.log(
-    `[UGC Assembly] B-Roll Scene ${sceneNumber}: Kling generated ${currentDuration}s video`
+    `[UGC Assembly] B-Roll Scene ${sceneNumber}: Kling generated 10s video`
   );
-
-  if (audioDuration > KLING_VIDEO_DURATION) {
-    onProgress?.(`Scene ${sceneNumber}: Extending video with Veo...`);
-
-    while (currentDuration < audioDuration) {
-      extensionsUsed++;
-      console.log(
-        `[UGC Assembly] B-Roll Scene ${sceneNumber}: Veo extension ${extensionsUsed} (${currentDuration}s -> ${currentDuration + VEO_EXTEND_DURATION}s)`
-      );
-
-      const extendResult = await veoService.extendVideoWithRetry({
-        prompt: "Continue the scene naturally, maintaining the same style and motion.",
-        videoUrl: currentVideoUrl,
-        aspectRatio: "auto",
-        generateAudio: false,
-      });
-
-      currentVideoUrl = extendResult.videoUrl;
-      currentDuration += VEO_EXTEND_DURATION;
-    }
-
-    console.log(
-      `[UGC Assembly] B-Roll Scene ${sceneNumber}: Extended to ${currentDuration}s (${extensionsUsed} extensions)`
-    );
-  }
 
   const silentVideoPath = path.join(
     OUTPUT_DIR,
     `silent_${sceneNumber}_${Date.now()}.mp4`
   );
-  await s3Service.downloadVideoFromUrl(currentVideoUrl, silentVideoPath);
+  await s3Service.downloadVideoFromUrl(klingVideoUrl, silentVideoPath);
 
   onProgress?.(`Scene ${sceneNumber}: Adding voiceover...`);
   const combinedPath = combineVideoAudio(

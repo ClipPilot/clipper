@@ -42,15 +42,13 @@ export function SceneBuilderStep({
   const scenes = currentScript?.scenes || [];
 
   const completedScenes = scenes.filter(
-    (scene) => sceneImages[scene.id]?.selectedImageKey
+    (scene) => sceneImages[scene.id]?.startImageKey && sceneImages[scene.id]?.endImageKey
   ).length;
   const totalScenes = scenes.length;
   const allComplete = completedScenes === totalScenes && totalScenes > 0;
   const progressPercent =
     totalScenes > 0 ? (completedScenes / totalScenes) * 100 : 0;
 
-  // Sync selected variant index to backend on mount
-  // This ensures the backend knows which variant we're working with
   useEffect(() => {
     const syncVariantIndex = async () => {
       try {
@@ -63,13 +61,10 @@ export function SceneBuilderStep({
     syncVariantIndex();
   }, [scriptId, selectedVariantIndex]);
 
-  // Track previous characterId to detect character changes during session
   const prevCharacterIdRef = useRef<number | null>(null);
   const hasTriggeredAutoGenerate = useRef(false);
 
-  // Load saved scene images on mount (unless freshStart is true)
   useEffect(() => {
-    // Fresh start = only use script text, don't load old images
     if (freshStart) {
       console.log("[SceneBuilder] Fresh start - skipping saved images");
       setLoading(false);
@@ -77,7 +72,6 @@ export function SceneBuilderStep({
     }
 
     const loadSavedImages = async () => {
-      // If character changed during session, clear existing images
       if (
         prevCharacterIdRef.current !== null &&
         prevCharacterIdRef.current !== characterId
@@ -106,8 +100,10 @@ export function SceneBuilderStep({
                 }
                 newState[sceneId] = {
                   status: "completed",
-                  selectedImageKey: sceneImage.image_key,
-                  selectedImageUrl: sceneImage.imageUrl,
+                  startImageKey: sceneImage.image_key,
+                  startImageUrl: sceneImage.imageUrl,
+                  endImageKey: sceneImage.end_image_key,
+                  endImageUrl: sceneImage.endImageUrl,
                 };
               }
             );
@@ -124,25 +120,21 @@ export function SceneBuilderStep({
     loadSavedImages();
   }, [scriptId, characterId, freshStart, setSceneImages]);
 
-  // Auto-generate all scenes on first load if none have images yet
   useEffect(() => {
     if (loading || hasTriggeredAutoGenerate.current || generatingAll) return;
     if (scenes.length === 0) return;
 
-    // Check if any scenes already have images
     const hasAnyImages = scenes.some(
-      (scene) => sceneImages[scene.id]?.selectedImageKey
+      (scene) => sceneImages[scene.id]?.startImageKey
     );
     if (hasAnyImages) return;
 
-    // Check if any are currently generating
     const anyGenerating = scenes.some((scene) => {
       const state = sceneImages[scene.id];
       return state?.status === "generating" || state?.status === "regenerating";
     });
     if (anyGenerating) return;
 
-    // Trigger auto-generation
     hasTriggeredAutoGenerate.current = true;
     console.log("[SceneBuilder] Auto-generating all scene images");
     handleGenerateAll();
@@ -174,17 +166,21 @@ export function SceneBuilderStep({
     }));
   };
 
-  const handleImageSelect = (
+  const handleImagesSelect = (
     sceneId: string,
-    imageKey: string,
-    index: number
+    startKey: string,
+    startUrl: string,
+    endKey: string,
+    endUrl: string
   ) => {
     setSceneImages((prev) => ({
       ...prev,
       [sceneId]: {
         ...prev[sceneId],
-        selectedImageKey: imageKey,
-        selectedImageIndex: index,
+        startImageKey: startKey,
+        startImageUrl: startUrl,
+        endImageKey: endKey,
+        endImageUrl: endUrl,
       },
     }));
   };
@@ -214,16 +210,16 @@ export function SceneBuilderStep({
 
     setGeneratingAll(true);
 
-    // Clear existing images and set regenerating state for all scenes
     setSceneImages((prev) => {
       const cleared: Record<string, SceneImageState> = {};
       for (const scene of scenes) {
         cleared[scene.id] = {
           ...prev[scene.id],
           status: "regenerating",
-          selectedImageKey: undefined,
-          selectedImageUrl: undefined,
-          selectedImageIndex: undefined,
+          startImageKey: undefined,
+          startImageUrl: undefined,
+          endImageKey: undefined,
+          endImageUrl: undefined,
           generatedImages: undefined,
         };
       }
@@ -286,17 +282,15 @@ export function SceneBuilderStep({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="text-center mb-6">
         <h2 className="text-2xl font-bold text-text-primary mb-2">
           Build Your Scenes
         </h2>
         <p className="text-text-secondary">
-          Generate AI images for each scene in your script
+          Generate start and end frames for each scene
         </p>
       </div>
 
-      {/* Progress summary */}
       <Card className="bg-surface-elevated border border-border-base">
         <CardBody className="p-4">
           <div className="flex items-center justify-between mb-3">
@@ -324,25 +318,12 @@ export function SceneBuilderStep({
                 </p>
                 <p className="text-xs text-text-muted">
                   {allComplete
-                    ? "All scenes have images selected!"
-                    : "Generate and select images for each scene. We will build the video after that."}
+                    ? "All scenes have frames selected!"
+                    : "Generate start & end frames for each scene. Kling will interpolate between them."}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {/* <Button
-                variant="bordered"
-                className="border-border-base text-text-secondary"
-                size="sm"
-                onPress={handleGenerateAll}
-                isLoading={generatingAll}
-                isDisabled={generatingAll}
-                startContent={
-                  <Icon icon="solar:magic-stick-3-bold" width={16} />
-                }
-              >
-                Generate All
-              </Button> */}
               {onContinue && (
                 <Button
                   className="bg-accent-400 text-white font-semibold"
@@ -367,7 +348,6 @@ export function SceneBuilderStep({
         </CardBody>
       </Card>
 
-      {/* Scene cards */}
       <div className="space-y-3">
         {scenes.map((scene) => {
           const sceneState = sceneImages[scene.id] || {
@@ -401,9 +381,10 @@ export function SceneBuilderStep({
               characterId={characterId}
               productImageKeys={productImageKeys}
               generation={generation}
-              selectedImageKey={sceneState.selectedImageKey}
-              selectedImageUrl={sceneState.selectedImageUrl}
-              selectedImageIndex={sceneState.selectedImageIndex}
+              startImageKey={sceneState.startImageKey}
+              startImageUrl={sceneState.startImageUrl}
+              endImageKey={sceneState.endImageKey}
+              endImageUrl={sceneState.endImageUrl}
               userRefinement={sceneState.userRefinement}
               supportingImageKeys={sceneState.supportingImageKeys}
               onGenerationStart={(jobId) =>
@@ -412,8 +393,8 @@ export function SceneBuilderStep({
               onGenerationUpdate={(gen) =>
                 handleGenerationUpdate(scene.id, gen)
               }
-              onImageSelect={(key, idx) =>
-                handleImageSelect(scene.id, key, idx)
+              onImagesSelect={(startKey, startUrl, endKey, endUrl) =>
+                handleImagesSelect(scene.id, startKey, startUrl, endKey, endUrl)
               }
               onRefinementChange={(ref) =>
                 handleRefinementChange(scene.id, ref)
@@ -426,7 +407,6 @@ export function SceneBuilderStep({
         })}
       </div>
 
-      {/* Bottom continue button for mobile */}
       {allComplete && onContinue && (
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-surface-dark/95 backdrop-blur-sm border-t border-border-base sm:hidden">
           <Button

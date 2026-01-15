@@ -12,21 +12,20 @@ export const scriptsAtom = atom<UGCScript[]>([]);
 export const selectedVariantIndexAtom = atom(0);
 export const productImageKeysAtom = atom<string[]>([]);
 
-// Scene Builder state
 export interface SceneImageState {
   status: "idle" | "generating" | "regenerating" | "completed" | "failed";
   jobId?: string;
   generatedImages?: { key: string; url: string; index: number }[];
-  selectedImageKey?: string;
-  selectedImageUrl?: string; // Direct URL for rendering (from API or generation)
-  selectedImageIndex?: number;
+  startImageKey?: string;
+  startImageUrl?: string;
+  endImageKey?: string;
+  endImageUrl?: string;
   userRefinement?: string;
   supportingImageKeys?: string[];
 }
 
 export const sceneImagesAtom = atom<Record<string, SceneImageState>>({});
 
-// Derived atom: check if all scenes have selected images
 export const allScenesCompleteAtom = atom((get) => {
   const scripts = get(scriptsAtom);
   const selectedIndex = get(selectedVariantIndexAtom);
@@ -36,7 +35,7 @@ export const allScenesCompleteAtom = atom((get) => {
   if (!currentScript || !currentScript.scenes) return false;
 
   return currentScript.scenes.every(
-    (scene) => sceneImages[scene.id]?.selectedImageKey
+    (scene) => sceneImages[scene.id]?.startImageKey && sceneImages[scene.id]?.endImageKey
   );
 });
 

@@ -559,7 +559,6 @@ export const sceneImageGenerationJobs = pgTable(
   })
 ).enableRLS();
 
-// Final selected images for each scene
 export const sceneImages = pgTable(
   "scene_images",
   {
@@ -568,6 +567,7 @@ export const sceneImages = pgTable(
     scene_id: varchar("scene_id", { length: 255 }).notNull(),
     scene_number: integer("scene_number").notNull(),
     image_key: text("image_key").notNull(),
+    end_image_key: text("end_image_key"),
     generation_job_id: uuid("generation_job_id"),
     prompt_used: text("prompt_used"),
     user_refinement: text("user_refinement"),
@@ -639,5 +639,22 @@ export const userPreferences = pgTable(
   },
   (table) => ({
     userIdx: index("user_preferences_user_id_idx").on(table.user_id),
+  })
+).enableRLS();
+
+export const savedFaces = pgTable(
+  "saved_faces",
+  {
+    id: serial("id").primaryKey(),
+    team_id: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 255 }).notNull(),
+    image_key: text("image_key").notNull(),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    teamIdx: index("saved_faces_team_id_idx").on(table.team_id),
   })
 ).enableRLS();

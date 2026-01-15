@@ -1,7 +1,7 @@
 import * as Sentry from "@sentry/node";
 import { Request, Response } from "express";
 import { db } from "../db";
-import { comfyJobs, clips } from "@clipper/shared-db/src/schema";
+import { comfyJobs, clips, savedFaces } from "@clipper/shared-db/src/schema";
 import { s3Service } from "../services/s3.service";
 import { gpuSqsService, SwapType } from "../services/gpuSqs.service";
 import { cutClip, getVideoDuration } from "../services/videoEditor.service";
@@ -1053,6 +1053,123 @@ export class ComfyController {
         }
       }
       console.log(`[comfy] Cleaned up ${filesToCleanup.length} temp files`);
+    }
+  }
+
+  async getSavedFaces(req: AuthRequest, res: Response) {
+    try {
+      const { teamId } = req.params;
+
+      if (!teamId) {
+        return res.status(400).json({ error: "Team ID required" });
+      }
+
+      const faces = await db
+        .select()
+        .from(savedFaces)
+        .where(eq(savedFaces.team_id, parseInt(teamId)))
+        .orderBy(desc(savedFaces.created_at));
+
+      const facesWithUrls = await Promise.all(
+        faces.map(async (face) => ({
+          id: face.id,
+          name: face.name,
+          imageUrl: await s3Service.getPresignedUrl(face.image_key, 3600),
+          createdAt: face.created_at,
+        }))
+      );
+
+      return res.status(200).json({ faces: facesWithUrls });
+    } catch (error) {
+      console.error("Get saved faces error:", error);
+      Sentry.captureException(error);
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to get saved faces",
+      });
+    }
+  }
+
+  async saveFace(req: AuthRequest, res: Response) {
+    try {
+      const { teamId, name } = req.body;
+      const file = req.file;
+
+      if (!teamId || !name) {
+        return res.status(400).json({ error: "teamId and name are required" });
+      }
+
+      if (!file) {
+        return res.status(400).json({ error: "Image file is required" });
+      }
+
+      const imageExt = path.extname(file.originalname) || ".jpg";
+      const imageS3Key = `saved-faces/${teamId}/${crypto.randomUUID()}${imageExt}`;
+
+      await s3Service.uploadBuffer(file.buffer, imageS3Key, file.mimetype);
+
+      const [newFace] = await db
+        .insert(savedFaces)
+        .values({
+          team_id: parseInt(teamId),
+          name,
+          image_key: imageS3Key,
+        })
+        .returning();
+
+      const imageUrl = await s3Service.getPresignedUrl(imageS3Key, 3600);
+
+      console.log(`[comfy] Saved face "${name}" for team ${teamId}`);
+
+      return res.status(201).json({
+        face: {
+          id: newFace.id,
+          name: newFace.name,
+          imageUrl,
+          createdAt: newFace.created_at,
+        },
+      });
+    } catch (error) {
+      console.error("Save face error:", error);
+      Sentry.captureException(error);
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to save face",
+      });
+    }
+  }
+
+  async deleteSavedFace(req: AuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({ error: "Face ID required" });
+      }
+
+      const [face] = await db
+        .select()
+        .from(savedFaces)
+        .where(eq(savedFaces.id, parseInt(id)));
+
+      if (!face) {
+        return res.status(404).json({ error: "Face not found" });
+      }
+
+      try {
+        await s3Service.deleteObject(face.image_key);
+      } catch (s3Error) {
+        console.warn(`[comfy] Failed to delete S3 object: ${s3Error}`);
+      }
+
+      await db.delete(savedFaces).where(eq(savedFaces.id, parseInt(id)));
+
+      console.log(`[comfy] Deleted saved face ${id}`);
+      return res.status(200).json({ message: "Face deleted successfully" });
+    } catch (error) {
+      console.error("Delete saved face error:", error);
+      Sentry.captureException(error);
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to delete face",
+      });
     }
   }
 }
