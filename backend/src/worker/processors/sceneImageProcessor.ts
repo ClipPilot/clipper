@@ -181,6 +181,7 @@ export async function processSceneImageJob(
     productImageKeys,
     userRefinement,
     supportingImageKeys,
+    frameIndex, // 0=start only, 1=end only, undefined=both
   } = job;
 
   console.log(
@@ -246,6 +247,39 @@ export async function processSceneImageJob(
     const hasReferences = referenceImageUrls.length > 0;
     const refs = hasReferences ? referenceImageUrls : undefined;
 
+    const successfulImages: string[] = [];
+
+    // Single frame mode (frameIndex = 0 or 1)
+    if (frameIndex !== undefined) {
+      const frameType = frameIndex === 0 ? "start" : "end";
+      const frameLabel = frameIndex === 0 ? "Start" : "End";
+
+      await updateJobProgress(jobId, 30, `Generating ${frameLabel.toLowerCase()} frame...`);
+      const prompt = buildSceneImagePrompt(sceneData, hasReferences, frameType, userRefinement);
+      const imageKey = await generateSingleImage(prompt, teamId, scriptId, sceneId, frameIndex, refs);
+
+      if (!imageKey) {
+        throw new Error(`Failed to generate ${frameLabel.toLowerCase()} frame`);
+      }
+      console.log(`[SCENE_IMAGE] Generated ${frameLabel.toLowerCase()} frame for job ${jobId}`);
+      successfulImages.push(imageKey);
+
+      await db
+        .update(schema.sceneImageGenerationJobs)
+        .set({
+          status: "completed",
+          progress: 100,
+          progress_message: `${frameLabel} frame generated`,
+          generated_images: successfulImages,
+          completed_at: new Date(),
+        })
+        .where(eq(schema.sceneImageGenerationJobs.id, jobId));
+
+      console.log(`[SCENE_IMAGE] Job ${jobId} completed with single ${frameLabel.toLowerCase()} frame`);
+      return;
+    }
+
+    // Both frames (default)
     await updateJobProgress(jobId, 20, "Generating start frame...");
     const startPrompt = buildSceneImagePrompt(sceneData, hasReferences, "start", userRefinement);
     const startKey = await generateSingleImage(startPrompt, teamId, scriptId, sceneId, 0, refs);
@@ -254,6 +288,7 @@ export async function processSceneImageJob(
       throw new Error("Failed to generate start frame");
     }
     console.log(`[SCENE_IMAGE] Generated start frame for job ${jobId}`);
+    successfulImages.push(startKey);
 
     await updateJobProgress(jobId, 60, "Generating end frame...");
     const endPrompt = buildSceneImagePrompt(sceneData, hasReferences, "end", userRefinement);
@@ -263,8 +298,7 @@ export async function processSceneImageJob(
       throw new Error("Failed to generate end frame");
     }
     console.log(`[SCENE_IMAGE] Generated end frame for job ${jobId}`);
-
-    const successfulImages = [startKey, endKey];
+    successfulImages.push(endKey);
 
     await db
       .update(schema.sceneImageGenerationJobs)

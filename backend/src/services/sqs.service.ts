@@ -163,6 +163,7 @@ export interface GenerateSceneImageJob extends BaseJob {
   productImageKeys: string[];
   userRefinement?: string;
   supportingImageKeys: string[];
+  frameIndex?: 0 | 1; // 0=start only, 1=end only, undefined=both
 }
 
 // Script generation job payload
@@ -400,6 +401,7 @@ class SQSService {
     productImageKeys: string[];
     userRefinement?: string;
     supportingImageKeys: string[];
+    frameIndex?: 0 | 1;
   }): Promise<string> {
     const job: GenerateSceneImageJob = {
       type: "generate-scene-image",
@@ -414,6 +416,7 @@ class SQSService {
       productImageKeys: params.productImageKeys,
       userRefinement: params.userRefinement,
       supportingImageKeys: params.supportingImageKeys,
+      frameIndex: params.frameIndex,
       createdAt: new Date().toISOString(),
     };
 

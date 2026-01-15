@@ -42,6 +42,7 @@ export class SceneBuilderController {
         characterId,
         userRefinement,
         supportingImageKeys,
+        frameIndex, // Optional: 0=start only, 1=end only, undefined=both
       } = req.body;
 
       if (!teamId || !scriptId || !sceneId || sceneNumber === undefined || !characterId) {
@@ -123,13 +124,16 @@ export class SceneBuilderController {
         productImageKeys: script.product_image_keys as string[],
         userRefinement: userRefinement || undefined,
         supportingImageKeys: supportingImageKeys || [],
+        frameIndex: frameIndex as 0 | 1 | undefined,
       });
 
+      const frameLabel = frameIndex === 0 ? "start frame" : frameIndex === 1 ? "end frame" : "both frames";
       return res.status(202).json({
         success: true,
         jobId: job.id,
         status: "queued",
-        message: "Scene image generation started. Poll for status.",
+        frameIndex,
+        message: `Scene ${frameLabel} generation started. Poll for status.`,
       });
     } catch (error) {
       console.error("[SCENE_BUILDER] Generate scene images error:", error);

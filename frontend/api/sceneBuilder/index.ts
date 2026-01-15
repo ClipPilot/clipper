@@ -9,6 +9,7 @@ export interface GenerateSceneImagesRequest {
   characterId: number;
   userRefinement?: string;
   supportingImageKeys?: string[];
+  frameIndex?: 0 | 1; // 0=start only, 1=end only, undefined=both
 }
 
 export interface GenerateSceneImagesResponse {
@@ -16,6 +17,7 @@ export interface GenerateSceneImagesResponse {
   jobId: string;
   status: string;
   message: string;
+  frameIndex?: 0 | 1;
 }
 
 export interface GenerateAllSceneImagesRequest {

@@ -11,6 +11,10 @@ import {
   Modal,
   ModalContent,
   ModalBody,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { SCENE_TYPE_CONFIG, type UGCScene } from "../script/types";
@@ -109,24 +113,49 @@ export function SceneImageCard({
               clearInterval(pollIntervalRef.current);
               pollIntervalRef.current = null;
             }
-            if (status.images && status.images.length >= 2) {
-              const startImg = status.images[0];
-              const endImg = status.images[1];
+            if (status.images && status.images.length > 0) {
               try {
-                await sceneBuilderAPI.selectSceneImage({
-                  scriptId,
-                  sceneId: scene.id,
-                  sceneNumber: scene.sceneNumber,
-                  imageKey: startImg.key,
-                  endImageKey: endImg.key,
-                  generationJobId: status.jobId,
-                });
-                onImagesSelect(
-                  startImg.key,
-                  startImg.url,
-                  endImg.key,
-                  endImg.url
-                );
+                // Handle single frame regeneration (1 image) or both frames (2 images)
+                if (status.images.length === 1) {
+                  // Single frame was regenerated - determine which one based on index
+                  const img = status.images[0];
+                  const isStartFrame = img.index === 0;
+
+                  await sceneBuilderAPI.selectSceneImage({
+                    scriptId,
+                    sceneId: scene.id,
+                    sceneNumber: scene.sceneNumber,
+                    imageKey: isStartFrame ? img.key : (startImageKey || img.key),
+                    endImageKey: isStartFrame ? endImageKey : img.key,
+                    generationJobId: status.jobId,
+                  });
+
+                  // Preserve the other frame, update only the regenerated one
+                  onImagesSelect(
+                    isStartFrame ? img.key : (startImageKey || ""),
+                    isStartFrame ? img.url : (startImageUrl || ""),
+                    isStartFrame ? (endImageKey || "") : img.key,
+                    isStartFrame ? (endImageUrl || "") : img.url
+                  );
+                } else {
+                  // Both frames regenerated
+                  const startImg = status.images[0];
+                  const endImg = status.images[1];
+                  await sceneBuilderAPI.selectSceneImage({
+                    scriptId,
+                    sceneId: scene.id,
+                    sceneNumber: scene.sceneNumber,
+                    imageKey: startImg.key,
+                    endImageKey: endImg.key,
+                    generationJobId: status.jobId,
+                  });
+                  onImagesSelect(
+                    startImg.key,
+                    startImg.url,
+                    endImg.key,
+                    endImg.url
+                  );
+                }
               } catch (error) {
                 console.error("Failed to auto-select scene images:", error);
               }
@@ -159,7 +188,7 @@ export function SceneImageCard({
     onImagesSelect,
   ]);
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (frameIndex?: 0 | 1) => {
     setIsGenerating(true);
     try {
       const response = await sceneBuilderAPI.generateSceneImages({
@@ -170,6 +199,7 @@ export function SceneImageCard({
         characterId,
         userRefinement: localRefinement || undefined,
         supportingImageKeys: supportingImageKeys,
+        frameIndex,
       });
 
       onGenerationStart(response.jobId);
@@ -619,31 +649,66 @@ export function SceneImageCard({
               </span>
             )}
           </div>
-          <Button
-            className={
-              isComplete && !isRegenerating
-                ? "border-border-base text-text-secondary"
-                : "bg-accent-400 text-white"
-            }
-            variant={isComplete && !isRegenerating ? "bordered" : "solid"}
-            size="sm"
-            onPress={handleGenerate}
-            isLoading={isGenerating || generation?.status === "generating"}
-            isDisabled={generation?.status === "generating" || isRegenerating}
-            startContent={
-              !isRegenerating && isComplete ? (
-                <Icon icon="solar:refresh-bold" width={14} />
-              ) : !isRegenerating ? (
-                <Icon icon="solar:magic-stick-3-bold" width={14} />
-              ) : null
-            }
-          >
-            {isRegenerating
-              ? "Regenerating..."
-              : isComplete
-                ? "Regenerate"
-                : "Generate Frames"}
-          </Button>
+          {isComplete && !isRegenerating ? (
+            <Dropdown>
+              <DropdownTrigger>
+                <Button
+                  className="border-border-base text-text-secondary"
+                  variant="bordered"
+                  size="sm"
+                  isLoading={isGenerating || generation?.status === "generating"}
+                  isDisabled={generation?.status === "generating" || isRegenerating}
+                  startContent={<Icon icon="solar:refresh-bold" width={14} />}
+                  endContent={<Icon icon="solar:alt-arrow-down-linear" width={12} />}
+                >
+                  Regenerate
+                </Button>
+              </DropdownTrigger>
+              <DropdownMenu
+                aria-label="Regenerate options"
+                onAction={(key) => {
+                  if (key === "start") handleGenerate(0);
+                  else if (key === "end") handleGenerate(1);
+                  else handleGenerate();
+                }}
+              >
+                <DropdownItem
+                  key="start"
+                  startContent={<Icon icon="solar:play-bold" width={14} />}
+                >
+                  Start Frame Only
+                </DropdownItem>
+                <DropdownItem
+                  key="end"
+                  startContent={<Icon icon="solar:stop-bold" width={14} />}
+                >
+                  End Frame Only
+                </DropdownItem>
+                <DropdownItem
+                  key="both"
+                  startContent={<Icon icon="solar:refresh-bold" width={14} />}
+                >
+                  Both Frames
+                </DropdownItem>
+              </DropdownMenu>
+            </Dropdown>
+          ) : (
+            <Button
+              className="bg-accent-400 text-white"
+              variant="solid"
+              size="sm"
+              onPress={() => handleGenerate()}
+              isLoading={isGenerating || generation?.status === "generating"}
+              isDisabled={generation?.status === "generating" || isRegenerating}
+              startContent={
+                !isRegenerating ? (
+                  <Icon icon="solar:magic-stick-3-bold" width={14} />
+                ) : null
+              }
+            >
+              {isRegenerating ? "Regenerating..." : "Generate Frames"}
+            </Button>
+          )}
         </div>
       </CardBody>
 
