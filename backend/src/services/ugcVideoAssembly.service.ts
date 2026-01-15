@@ -9,7 +9,12 @@ import {
   ShotType,
   PRODUCT_NEGATIVE_PROMPT,
 } from "./kling.service";
-import { veoService, VEO_DEFAULT_NEGATIVE_PROMPT } from "./veo.service";
+import {
+  veoService,
+  VEO_DEFAULT_NEGATIVE_PROMPT,
+  VEO_PRODUCT_STABILITY_MODIFIERS,
+  VEO_GENTLE_MOTION_MODIFIERS,
+} from "./veo.service";
 import { generateJumbledMetadataString } from "../utils/videoMetadata";
 
 const MAX_AUDIO_DURATION = 10;
@@ -512,9 +517,10 @@ async function processArollScene(
 /**
  * Build a prompt for Veo B-roll video generation
  * Focuses on smooth product showcases and cutaway shots
+ * Includes product stability and gentle motion modifiers for photorealistic output
  */
 function buildVeoBrollPrompt(cinematicPrompt: string, action: string): string {
-  return `${cinematicPrompt}. Smooth product showcase with subtle, slow camera movement. Professional product photography style with gentle rotation or reveal. Clean background, focused lighting. ${action}. Cinematic 9:16 vertical video. High quality, no text overlays, no watermarks.`;
+  return `${cinematicPrompt}. Smooth product showcase with subtle, slow camera movement. Professional product photography style with gentle rotation or reveal. Clean background, focused lighting. ${action}. Cinematic 9:16 vertical video. High quality. ${VEO_PRODUCT_STABILITY_MODIFIERS} ${VEO_GENTLE_MOTION_MODIFIERS}`;
 }
 
 /**

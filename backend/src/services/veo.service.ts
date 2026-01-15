@@ -13,6 +13,16 @@ export const VEO_DEFAULT_NEGATIVE_PROMPT =
   "unnatural poses, impossible anatomy, uncanny valley, mannequin-like, " +
   "glitching, artifacts, frame skipping, stuttering motion";
 
+export const VEO_PRODUCT_STABILITY_MODIFIERS =
+  "Preserve product shape and proportions. Maintain label text legibility. " +
+  "Keep product scale consistent throughout. Stable, smooth camera movement. " +
+  "No distortion or warping. No subtitles or text overlays. " +
+  "Phones have opaque solid backs with no screen bleed-through.";
+
+export const VEO_GENTLE_MOTION_MODIFIERS =
+  "Subtle, slow movement. Controlled and smooth. Micro-motion only. " +
+  "Maintain silhouette. Consistent scale throughout. Natural physics.";
+
 export type VeoAspectRatio = "16:9" | "9:16" | "auto";
 export type VeoDuration = "7s" | "8s";
 export type VeoResolution = "720p" | "1080p";
@@ -83,29 +93,39 @@ export async function referenceToVideo(
 
   console.log(`[Veo 3.1] Reference-to-video with ${imageUrls.length} images`);
   console.log(`[Veo 3.1] Prompt: ${prompt.substring(0, 150)}...`);
-  console.log(`[Veo 3.1] Settings: ${aspectRatio}, ${duration}, ${resolution}, audio=${generateAudio}`);
+  console.log(
+    `[Veo 3.1] Settings: ${aspectRatio}, ${duration}, ${resolution}, audio=${generateAudio}`
+  );
 
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = await (fal.subscribe as any)("fal-ai/veo3.1/reference-to-video", {
-      input: {
-        prompt,
-        image_urls: imageUrls,
-        aspect_ratio: aspectRatio,
-        duration,
-        resolution,
-        generate_audio: generateAudio,
-        ...(negativePrompt && { negative_prompt: negativePrompt }),
-        ...(seed !== undefined && { seed }),
-        auto_fix: autoFix,
-      },
-      logs: true,
-      onQueueUpdate: (update: { status: string; logs?: Array<{ message: string }> }) => {
-        if (update.status === "IN_PROGRESS" && update.logs) {
-          update.logs.forEach((log) => console.log(`[Veo 3.1] ${log.message}`));
-        }
-      },
-    });
+    const result = await (fal.subscribe as any)(
+      "fal-ai/veo3.1/reference-to-video",
+      {
+        input: {
+          prompt,
+          image_urls: imageUrls,
+          aspect_ratio: aspectRatio,
+          duration,
+          resolution,
+          generate_audio: generateAudio,
+          ...(negativePrompt && { negative_prompt: negativePrompt }),
+          ...(seed !== undefined && { seed }),
+          auto_fix: autoFix,
+        },
+        logs: true,
+        onQueueUpdate: (update: {
+          status: string;
+          logs?: Array<{ message: string }>;
+        }) => {
+          if (update.status === "IN_PROGRESS" && update.logs) {
+            update.logs.forEach((log) =>
+              console.log(`[Veo 3.1] ${log.message}`)
+            );
+          }
+        },
+      }
+    );
 
     const data = result.data as VeoVideoResponse;
 
@@ -163,9 +183,14 @@ export async function extendVideo(
         auto_fix: autoFix,
       },
       logs: true,
-      onQueueUpdate: (update: { status: string; logs?: Array<{ message: string }> }) => {
+      onQueueUpdate: (update: {
+        status: string;
+        logs?: Array<{ message: string }>;
+      }) => {
         if (update.status === "IN_PROGRESS" && update.logs) {
-          update.logs.forEach((log) => console.log(`[Veo 3.1 Extend] ${log.message}`));
+          update.logs.forEach((log) =>
+            console.log(`[Veo 3.1 Extend] ${log.message}`)
+          );
         }
       },
     });
@@ -287,7 +312,9 @@ export async function generateVideoForDuration(
     negativePrompt = VEO_DEFAULT_NEGATIVE_PROMPT,
   } = options;
 
-  console.log(`[Veo 3.1] Generating video for ${targetDuration.toFixed(2)}s target duration`);
+  console.log(
+    `[Veo 3.1] Generating video for ${targetDuration.toFixed(2)}s target duration`
+  );
 
   // Step 1: Generate initial 8s video
   const initialResult = await referenceToVideoWithRetry({
@@ -306,7 +333,9 @@ export async function generateVideoForDuration(
   // Step 2: Chain extend-video calls if needed
   while (currentDuration < targetDuration) {
     extensionsUsed++;
-    console.log(`[Veo 3.1] Extension ${extensionsUsed}: ${currentDuration}s -> ${currentDuration + VEO_EXTEND_DURATION}s`);
+    console.log(
+      `[Veo 3.1] Extension ${extensionsUsed}: ${currentDuration}s -> ${currentDuration + VEO_EXTEND_DURATION}s`
+    );
 
     const extendResult = await extendVideoWithRetry({
       prompt: `Continue the scene naturally. ${prompt}`,
@@ -320,7 +349,9 @@ export async function generateVideoForDuration(
     currentDuration += VEO_EXTEND_DURATION;
   }
 
-  console.log(`[Veo 3.1] Final video: ${currentDuration}s (${extensionsUsed} extensions)`);
+  console.log(
+    `[Veo 3.1] Final video: ${currentDuration}s (${extensionsUsed} extensions)`
+  );
 
   return {
     videoUrl: currentVideoUrl,
