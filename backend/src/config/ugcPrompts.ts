@@ -267,6 +267,45 @@ CRITICAL WORD LIMIT (MUST FOLLOW):
 
 For each scene, provide HYPER-DETAILED cinematicPrompts that read like professional film director shot notes. These prompts directly control the AI video generation quality.
 
+CRITICAL - TELL THE AI VIDEO GENERATOR EXACTLY WHAT TO CREATE:
+The "action" and "cinematicPrompt" fields are the ONLY instructions the video AI receives.
+If you write vague descriptions, you get vague/wrong videos. Be HYPER-SPECIFIC about:
+- EXACTLY what is happening on screen at every moment
+- EXACTLY what the actor is doing physically (specific gestures, movements, expressions)
+- EXACTLY what the product is doing (rotating, being held, being applied, etc.)
+- EXACTLY how the camera behaves (movement, angle changes, focus pulls)
+
+Think of it like directing an actor who can only follow literal instructions:
+BAD: "Actor shows excitement about the product"
+GOOD: "Actor holds product at chest height, eyes widen with genuine surprise, mouth opens into delighted smile, tilts product toward camera to show label while nodding enthusiastically"
+
+BAD: "Product demonstration shot"
+GOOD: "Close-up of fingers slowly unscrewing product cap, 2-second pause, then gently squeezing bottle to dispense cream onto fingertip, cream catches key light showing smooth texture"
+
+The video AI will generate EXACTLY what you describe - nothing more, nothing less. Describe the FULL visual narrative.
+
+===== CRITICAL: SCREENS, APPS & DIGITAL PRODUCTS =====
+
+AI video models CANNOT generate realistic interactive screens or apps being used.
+NEVER describe someone actively using, tapping, or scrolling through an app/screen.
+
+INSTEAD: Direct the actor to SHOW THE SCREEN to camera (the reference image will be composited in).
+
+MANDATORY PHRASING: When a scene involves a screen, you MUST include this exact phrase in the cinematicPrompt:
+"showing the screen but not using it"
+
+WRONG APPROACH (AI will generate gibberish screens):
+- "User scrolls through the app dashboard"
+- "Finger taps the checkout button"
+- "Actor demonstrates the app features"
+
+CORRECT APPROACH (explicitly state showing, not using):
+- "Actor holds phone toward camera, showing the screen but not using it, excited expression while gesturing at the display with other hand"
+- "Close-up of hand holding phone steady, showing the screen but not using it, screen facing camera while actor speaks"
+- "Actor turns phone to face camera, showing the screen but not using it, holds it still for 3 seconds, then looks back at camera impressed"
+
+The reference image of the app/screen will be fed to the video model - your job is to direct HOW the actor presents/shows that screen, not what's on it. Always include "showing the screen but not using it" so the AI knows to keep the screen static.
+
 REQUIRED ELEMENTS IN EVERY cinematicPrompt:
 1. SHOT TYPE & FRAMING: Exact camera position and what's in frame
 2. LIGHTING: Direction, quality, color temperature, shadows
@@ -275,6 +314,44 @@ REQUIRED ELEMENTS IN EVERY cinematicPrompt:
 5. ENVIRONMENT: Background elements, props, textures, depth
 6. PRODUCT POSITIONING: Where product is, how light hits it, prominence in frame
 7. MOOD/ATMOSPHERE: Overall visual feeling that matches the dialogue emotion
+
+===== CRITICAL: A-ROLL vs B-ROLL DISTINCTION =====
+
+The cinematicPrompt MUST be written completely differently based on shot type:
+
+**A-ROLL (Actor speaking to camera):**
+- Actor's FACE is the focus - describe expressions, eye contact, mouth movements
+- Actor is TALKING - lips moving, natural speech gestures
+- Frame includes actor's face prominently (close-up to medium shot)
+- Describe: facial expressions, head movements, hand gestures while speaking, body language
+- Actor looks AT CAMERA (direct address to viewer)
+
+A-ROLL cinematicPrompt example:
+"Medium close-up of ${characterName} speaking directly to camera with animated expression. Eyes bright and engaged, eyebrows raised with enthusiasm, mouth forming words clearly. Head tilts slightly for emphasis, one hand gestures near chest while speaking. Warm soft lighting from front-left, shallow depth of field blurs bedroom background."
+
+**B-ROLL (Product focus, NO actor face):**
+- Product is the HERO - actor's face should NOT be visible or be out of frame
+- NO LIP MOVEMENT - this is voiceover, actor is not speaking on screen
+- Show: hands, product close-ups, over-shoulder angles, tabletop shots
+- Actor can be present but ONLY showing hands/body, NOT face
+- Camera focuses on product details, textures, application, demonstration
+
+B-ROLL cinematicPrompt example:
+"Extreme close-up of hands holding product bottle, fingers slowly rotating it to reveal label. Soft key light catches glossy surface, creating highlight along edge. Shallow focus keeps background creamy and abstract. NO face visible - only manicured fingers and product against clean white surface. Slow 2-second rotation."
+
+**MIXED (Actor visible but NOT speaking to camera):**
+- Actor is in frame but NOT looking at camera
+- NO direct lip-sync - actor may be shown using product, looking at it, reacting
+- Over-shoulder shots, profile views, looking down at product
+- Actor's presence adds context but product/action is still the focus
+
+MIXED cinematicPrompt example:
+"Over-shoulder shot of ${characterName} looking down at product in hands, face visible in profile but NOT addressing camera. Soft smile of satisfaction as fingers trace the product label. Hair falls slightly forward, warm side lighting. Focus pulls from actor's profile to product in hands."
+
+CRITICAL RULE:
+- A-ROLL = face + talking to camera + lip sync required
+- B-ROLL = NO face OR face not talking + product focus + voiceover
+- MIXED = face visible but NOT talking to camera + product interaction
 
 ===== SCENE-TYPE SPECIFIC CINEMATIC GUIDANCE =====
 
@@ -340,42 +417,24 @@ Match these visual cues to the emotion field:
 - sincere: Soft direct eye contact, slight earnest head tilt, open palm gestures, vulnerable micro-nods
 - playful: Mischievous smirk, twinkling eyes, casual relaxed posture, teasing head movements
 
-===== DIGITAL PRODUCTS & APP SCREENS (CRITICAL) =====
+===== DIGITAL PRODUCTS & APP SCREENS (REMINDER) =====
 
-For apps, software, or digital products, cinematicPrompts MUST be EXTREMELY SPECIFIC about what's on screen.
-Vague descriptions = AI generates gibberish screens. Be precise about:
+REMEMBER: AI video models CANNOT generate realistic app screens or interactions.
+DO NOT describe UI elements, screen content, or user interactions.
 
-1. EXACT UI ELEMENTS visible:
-   - Button labels, navigation tabs, icons
-   - Specific text/numbers shown on screen
-   - Color scheme and layout structure
+The reference image of the screen will be composited in post-production.
+Your ONLY job is to describe HOW THE ACTOR PRESENTS the device:
 
-2. SCREEN STATE & CONTENT:
-   - What data is displayed (dashboard numbers, lists, feeds)
-   - Any notifications, popups, or highlights
-   - Progress indicators, charts, graphs
-
-3. USER INTERACTION:
-   - What the finger/cursor is tapping or hovering
-   - Which element is being selected or highlighted
-   - Animation or transition happening
-
-BAD APP cinematicPrompt examples:
-✗ "Shows the app interface" (too vague - AI will generate random UI gibberish)
-✗ "User scrolls through the app" (no specifics about what's on screen)
-✗ "The dashboard displays data" (what data? what layout?)
+ALWAYS include "showing the screen but not using it" in cinematicPrompts with screens.
 
 GOOD APP cinematicPrompt examples:
-✓ "Phone screen showing clean white fitness app dashboard. Large '2,847 steps' counter centered with circular progress ring at 65%. Three stat cards below: 'Calories: 342', 'Distance: 1.2mi', 'Active: 28min'. Green accent colors. Finger taps the steps counter, subtle ripple animation."
+✓ "Actor holds phone at chest height angled toward camera, showing the screen but not using it, eyes bright with excitement, free hand gestures toward the display"
+✓ "Medium shot of actor holding tablet steady, showing the screen but not using it, nodding approvingly while speaking to camera"
+✓ "Close-up of hands holding phone horizontally, showing the screen but not using it, thumbs visible on edges, screen fills frame"
+✓ "Actor turns laptop toward camera, showing the screen but not using it, leans back with satisfied smile, arms open in presenting gesture"
 
-✓ "Modern dark-mode finance app. Portfolio value '$12,458.32' prominently displayed with green +2.4% badge. Three stock ticker cards below: AAPL, TSLA, GOOGL with mini sparkline charts. Bottom navigation bar with Home, Search, Portfolio, Profile icons. Smooth scroll gesture reveals transaction history list."
-
-✓ "Minimalist meal planning app in light mode. Weekly calendar grid at top, Monday highlighted in blue. Below: 'Today's Meals' section with three cards showing breakfast (avocado toast photo), lunch (salad), dinner (empty + add button). Floating '+' button in bottom right pulses gently."
-
-✓ "Social media feed with clean card-based layout. Profile avatars on left, usernames in bold, timestamps in gray. Three visible posts with engagement metrics (likes, comments). Finger double-taps center post, heart animation bursts from touch point."
-
-For app B-ROLL scenes: describe the EXACT screen flow, transitions, and what makes the UI special.
-For app A-ROLL scenes: if showing phone screen, describe what's visible while actor talks.
+Focus on: actor's expression, body language, hand positioning, how they present/hold the device.
+DO NOT focus on: what's on the screen, UI elements, app features, tapping, scrolling.
 
 ===== OUTPUT FORMAT =====
 
