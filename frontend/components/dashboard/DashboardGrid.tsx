@@ -200,10 +200,10 @@ export function DashboardGrid() {
   };
 
   const quickActions = [
-    { id: "create", label: "Create Clip", icon: "solar:scissors-bold", href: "/dashboard/create", color: "#4F47E6", bg: "bg-[#4F47E6]/10" },
-    { id: "faceswap", label: "Face Swap", icon: "solar:face-scan-circle-bold", href: "/dashboard/ugc-studio/face-swap", color: "#EC4899", bg: "bg-pink-500/10" },
-    { id: "aivideo", label: "AI UGC Video", icon: "solar:magic-stick-3-bold", href: "/dashboard/ugc-studio/ai-video-creator", color: "#22C55E", bg: "bg-green-500/10" },
-    { id: "library", label: "My Library", icon: "solar:folder-bold", href: "/dashboard/clips", color: "#F59E0B", bg: "bg-amber-500/10" },
+    { id: "create", label: "Create Clip", description: "From long video", icon: "solar:scissors-bold", href: "/dashboard/create", color: "#4F47E6" },
+    { id: "faceswap", label: "Face Swap", description: "Swap faces in video", icon: "solar:face-scan-circle-bold", href: "/dashboard/ugc-studio/face-swap", color: "#EC4899" },
+    { id: "aivideo", label: "AI UGC Video", description: "Generate from script", icon: "solar:magic-stick-3-bold", href: "/dashboard/ugc-studio/ai-video-creator", color: "#22C55E" },
+    { id: "library", label: "My Library", description: "View saved clips", icon: "solar:folder-bold", href: "/dashboard/clips", color: "#F59E0B" },
   ];
 
   const renderWidget = (config: WidgetConfig) => {
@@ -397,19 +397,28 @@ export function DashboardGrid() {
         return (
           <Card className="bg-surface-base border border-border-base">
             <CardBody className="p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <Icon icon="solar:bolt-bold" width={20} className="text-purple-500" />
-                <span className="font-semibold text-text-primary">Quick Actions</span>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 {quickActions.map((action) => (
                   <button
                     key={action.id}
                     onClick={() => router.push(action.href)}
-                    className={`flex flex-col items-center justify-center p-4 rounded-xl ${action.bg} hover:scale-[1.02] transition-transform`}
+                    className="group flex items-center gap-3 p-4 rounded-xl bg-surface-hover/50 border border-transparent hover:border-border-base hover:bg-surface-hover transition-all text-left"
                   >
-                    <Icon icon={action.icon} width={28} style={{ color: action.color }} />
-                    <span className="text-xs font-medium text-text-primary mt-2">{action.label}</span>
+                    <div
+                      className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                      style={{ backgroundColor: `${action.color}15` }}
+                    >
+                      <Icon icon={action.icon} width={22} style={{ color: action.color }} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-text-primary truncate">{action.label}</p>
+                      <p className="text-xs text-text-tertiary">{action.description}</p>
+                    </div>
+                    <Icon
+                      icon="solar:arrow-right-linear"
+                      width={16}
+                      className="text-text-tertiary opacity-0 group-hover:opacity-100 transition-opacity ml-auto shrink-0"
+                    />
                   </button>
                 ))}
               </div>
