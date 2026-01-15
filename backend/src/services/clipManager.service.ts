@@ -3,8 +3,10 @@ import {
   clips,
   clipFolders,
   uploadedRawVideos,
+  clipTags,
+  tags,
 } from "@clipper/shared-db/src/schema";
-import { eq, and, desc, isNull, count, notInArray } from "drizzle-orm";
+import { eq, and, desc, isNull, count, notInArray, or, sql, inArray, gte, lte } from "drizzle-orm";
 import crypto from "crypto";
 
 export class ClipManagerService {
@@ -127,6 +129,7 @@ export class ClipManagerService {
     clipId: number,
     teamId: number,
     updates: {
+      title?: string;
       message?: string;
       clipScore?: number;
       folderId?: number | null;
@@ -137,6 +140,7 @@ export class ClipManagerService {
       updated_at: new Date(),
     };
 
+    if (updates.title !== undefined) updateData.title = updates.title;
     if (updates.message !== undefined) updateData.message = updates.message;
     if (updates.clipScore !== undefined)
       updateData.clip_score = updates.clipScore;
@@ -425,6 +429,129 @@ export class ClipManagerService {
     }
 
     return clip;
+  }
+
+  // Search clips with fuzzy matching and filters
+  async searchClips(params: {
+    teamId: number;
+    query?: string;
+    tagIds?: number[];
+    status?: string;
+    folderId?: number | null;
+    dateFrom?: Date;
+    dateTo?: Date;
+    limit?: number;
+    offset?: number;
+  }) {
+    const {
+      teamId,
+      query,
+      tagIds,
+      status,
+      folderId,
+      dateFrom,
+      dateTo,
+      limit = 20,
+      offset = 0,
+    } = params;
+
+    const conditions: any[] = [eq(clips.team_id, teamId)];
+
+    // Status filter - cast to enum type
+    if (status) {
+      conditions.push(eq(clips.status, status as "pending" | "completed" | "failed" | "rejected" | "expired"));
+    }
+
+    // Folder filter (folderId === null means unorganized)
+    if (folderId !== undefined) {
+      if (folderId === null) {
+        conditions.push(isNull(clips.folder_id));
+      } else {
+        conditions.push(eq(clips.folder_id, folderId));
+      }
+    }
+
+    // Date range filters
+    if (dateFrom) {
+      conditions.push(gte(clips.created_at, dateFrom));
+    }
+    if (dateTo) {
+      conditions.push(lte(clips.created_at, dateTo));
+    }
+
+    // Tag filter - clips must have ALL specified tags (AND logic)
+    if (tagIds && tagIds.length > 0) {
+      const tagSubquery = sql`(
+        SELECT COUNT(DISTINCT ct.tag_id)::int
+        FROM clip_tags ct
+        WHERE ct.clip_id = ${clips.id}
+        AND ct.tag_id = ANY(${tagIds})
+      ) = ${tagIds.length}`;
+      conditions.push(tagSubquery);
+    }
+
+    // Fuzzy search on title and message using pg_trgm
+    const minSimilarity = 0.15;
+    const searchTerm = query?.trim() || "";
+    let selectFields: any = { clip: clips };
+
+    if (searchTerm) {
+      const searchCondition = or(
+        sql`similarity(${clips.title}, ${searchTerm}) >= ${minSimilarity}`,
+        sql`similarity(${clips.message}, ${searchTerm}) >= ${minSimilarity}`,
+        sql`${clips.title} ILIKE ${'%' + searchTerm + '%'}`,
+        sql`${clips.message} ILIKE ${'%' + searchTerm + '%'}`
+      );
+      conditions.push(searchCondition);
+
+      selectFields.similarity_score = sql`GREATEST(
+        COALESCE(similarity(${clips.title}, ${searchTerm}), 0),
+        COALESCE(similarity(${clips.message}, ${searchTerm}), 0)
+      )`.as('similarity_score');
+    }
+
+    // Build final where clause
+    const whereClause = and(...conditions);
+
+    // Get total count
+    const [countResult] = await db
+      .select({ count: count() })
+      .from(clips)
+      .where(whereClause);
+    const total = countResult?.count || 0;
+
+    // Determine ordering
+    const orderByClause = searchTerm
+      ? [
+          sql`GREATEST(
+            COALESCE(similarity(${clips.title}, ${searchTerm}), 0),
+            COALESCE(similarity(${clips.message}, ${searchTerm}), 0)
+          ) DESC`,
+          desc(clips.updated_at),
+        ]
+      : [desc(clips.updated_at)];
+
+    // Get paginated results
+    const results = await db
+      .select(selectFields)
+      .from(clips)
+      .where(whereClause)
+      .orderBy(...orderByClause)
+      .limit(limit)
+      .offset(offset);
+
+    return {
+      clips: results.map((r: any) => ({
+        ...r.clip,
+        similarity_score: r.similarity_score ?? null,
+      })),
+      pagination: {
+        limit,
+        offset,
+        total,
+        hasMore: offset + results.length < total,
+      },
+    };
   }
 }
 

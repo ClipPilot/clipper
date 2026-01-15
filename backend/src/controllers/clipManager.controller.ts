@@ -5,16 +5,45 @@ import { s3Service } from "../services/s3.service";
 import { sqsService } from "../services/sqs.service";
 import { teamService } from "../services/team.service";
 import { tagService } from "../services/tag.service";
+import { userService } from "../services/user.service";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { getTeamUsage } from "../middleware/subscription.middleware";
 
+async function verifyTeamAccessOrFail(
+  req: AuthRequest,
+  teamId: number,
+  res: Response
+): Promise<{ id: number } | null> {
+  if (!req.user?.id) {
+    res.status(401).json({ error: "Authentication required" });
+    return null;
+  }
+
+  const user = await userService.getUserBySupabaseUid(req.user.id);
+  if (!user) {
+    res.status(401).json({ error: "User not found" });
+    return null;
+  }
+
+  const hasAccess = await teamService.verifyTeamAccess(teamId, user.id);
+  if (!hasAccess) {
+    res.status(403).json({ error: "Access denied to this team" });
+    return null;
+  }
+
+  return user;
+}
+
 export class ClipManagerController {
-  async getClips(req: Request, res: Response) {
+  async getClips(req: AuthRequest, res: Response) {
     try {
       const teamId = parseInt(req.params.teamId);
       if (isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid team ID" });
       }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
 
       const clips = await clipManagerService.getClipsByTeam(teamId);
 
@@ -47,12 +76,15 @@ export class ClipManagerController {
     }
   }
 
-  async getPendingClips(req: Request, res: Response) {
+  async getPendingClips(req: AuthRequest, res: Response) {
     try {
       const teamId = parseInt(req.params.teamId);
       if (isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid team ID" });
       }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
 
       const clips = await clipManagerService.getPendingClipsByTeam(teamId);
 
@@ -85,12 +117,15 @@ export class ClipManagerController {
     }
   }
 
-  async getCompletedClips(req: Request, res: Response) {
+  async getCompletedClips(req: AuthRequest, res: Response) {
     try {
       const teamId = parseInt(req.params.teamId);
       if (isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid team ID" });
       }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
 
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
       const offset = req.query.offset
@@ -146,7 +181,7 @@ export class ClipManagerController {
     }
   }
 
-  async getClip(req: Request, res: Response) {
+  async getClip(req: AuthRequest, res: Response) {
     try {
       const clipId = parseInt(req.params.clipId);
       const teamId = parseInt(req.params.teamId);
@@ -154,6 +189,9 @@ export class ClipManagerController {
       if (isNaN(clipId) || isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid clip ID or team ID" });
       }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
 
       const clip = await clipManagerService.getClipById(clipId, teamId);
 
@@ -200,15 +238,18 @@ export class ClipManagerController {
     }
   }
 
-  async updateClip(req: Request, res: Response) {
+  async updateClip(req: AuthRequest, res: Response) {
     try {
       const clipId = parseInt(req.params.clipId);
       const teamId = parseInt(req.params.teamId);
-      const { message, clipScore, folderId } = req.body;
+      const { message, clipScore, folderId, title } = req.body;
 
       if (isNaN(clipId) || isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid clip ID or team ID" });
       }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
 
       // Check if moving clip to a folder requires Scale plan
       if (folderId !== undefined && folderId !== null) {
@@ -222,6 +263,7 @@ export class ClipManagerController {
       }
 
       const updates: any = {};
+      if (title !== undefined) updates.title = title;
       if (message !== undefined) updates.message = message;
       if (clipScore !== undefined) updates.clipScore = clipScore;
       if (folderId !== undefined) updates.folderId = folderId;
@@ -246,7 +288,7 @@ export class ClipManagerController {
     }
   }
 
-  async getClipsByFolder(req: Request, res: Response) {
+  async getClipsByFolder(req: AuthRequest, res: Response) {
     try {
       const teamId = parseInt(req.params.teamId);
       const folderId = parseInt(req.params.folderId);
@@ -254,6 +296,9 @@ export class ClipManagerController {
       if (isNaN(teamId) || isNaN(folderId)) {
         return res.status(400).json({ error: "Invalid team ID or folder ID" });
       }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
 
       const clips = await clipManagerService.getClipsByFolder(teamId, folderId);
 
@@ -290,7 +335,7 @@ export class ClipManagerController {
     }
   }
 
-  async deleteClip(req: Request, res: Response) {
+  async deleteClip(req: AuthRequest, res: Response) {
     try {
       const clipId = parseInt(req.params.clipId);
       const teamId = parseInt(req.params.teamId);
@@ -298,6 +343,9 @@ export class ClipManagerController {
       if (isNaN(clipId) || isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid clip ID or team ID" });
       }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
 
       const clip = await clipManagerService.getClipById(clipId, teamId);
 
@@ -329,6 +377,9 @@ export class ClipManagerController {
       if (isNaN(clipId) || isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid clip ID or team ID" });
       }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
 
       if (!captionsData || !Array.isArray(captionsData)) {
         return res.status(400).json({ error: "Invalid captions data" });
@@ -391,6 +442,9 @@ export class ClipManagerController {
       if (isNaN(clipId) || isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid clip ID or team ID" });
       }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
 
       if (!text || typeof text !== "string") {
         return res.status(400).json({ error: "Text is required" });
@@ -458,6 +512,9 @@ export class ClipManagerController {
         return res.status(400).json({ error: "Invalid clip ID or team ID" });
       }
 
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
+
       const clip = await clipManagerService.getClipById(clipId, teamId);
 
       if (!clip.saved) {
@@ -513,6 +570,9 @@ export class ClipManagerController {
       if (isNaN(clipId) || isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid clip ID or team ID" });
       }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
 
       const clip = await clipManagerService.getClipById(clipId, teamId);
 
@@ -584,12 +644,15 @@ export class ClipManagerController {
     }
   }
 
-  async getUnsavedClips(req: Request, res: Response) {
+  async getUnsavedClips(req: AuthRequest, res: Response) {
     try {
       const teamId = parseInt(req.params.teamId);
       if (isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid team ID" });
       }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
 
       const clips = await clipManagerService.getUnsavedClipsByTeam(teamId);
 
@@ -634,12 +697,15 @@ export class ClipManagerController {
     }
   }
 
-  async getSavedClips(req: Request, res: Response) {
+  async getSavedClips(req: AuthRequest, res: Response) {
     try {
       const teamId = parseInt(req.params.teamId);
       if (isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid team ID" });
       }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
 
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
       const offset = req.query.offset
@@ -697,7 +763,7 @@ export class ClipManagerController {
     }
   }
 
-  async rejectClip(req: Request, res: Response) {
+  async rejectClip(req: AuthRequest, res: Response) {
     try {
       const clipId = parseInt(req.params.clipId);
       const teamId = parseInt(req.params.teamId);
@@ -705,6 +771,9 @@ export class ClipManagerController {
       if (isNaN(clipId) || isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid clip ID or team ID" });
       }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
 
       const clip = await clipManagerService.getClipById(clipId, teamId);
 
@@ -730,7 +799,7 @@ export class ClipManagerController {
     }
   }
 
-  async generateShareLink(req: Request, res: Response) {
+  async generateShareLink(req: AuthRequest, res: Response) {
     try {
       const clipId = parseInt(req.params.clipId);
       const teamId = parseInt(req.params.teamId);
@@ -738,6 +807,9 @@ export class ClipManagerController {
       if (isNaN(clipId) || isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid clip ID or team ID" });
       }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
 
       const clip = await clipManagerService.getClipById(clipId, teamId);
 
@@ -766,7 +838,7 @@ export class ClipManagerController {
     }
   }
 
-  async removeShareLink(req: Request, res: Response) {
+  async removeShareLink(req: AuthRequest, res: Response) {
     try {
       const clipId = parseInt(req.params.clipId);
       const teamId = parseInt(req.params.teamId);
@@ -774,6 +846,9 @@ export class ClipManagerController {
       if (isNaN(clipId) || isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid clip ID or team ID" });
       }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
 
       await clipManagerService.removeShareToken(clipId, teamId);
 
@@ -854,6 +929,128 @@ export class ClipManagerController {
       Sentry.captureException(error);
       return res.status(404).json({
         error: "Shared clip not found",
+      });
+    }
+  }
+  async searchClips(req: AuthRequest, res: Response) {
+    try {
+      const teamId = parseInt(req.query.teamId as string);
+      if (isNaN(teamId)) {
+        return res.status(400).json({ error: "Invalid team ID" });
+      }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
+
+      // Parse query parameters
+      const query = req.query.q as string | undefined;
+      const tagsParam = req.query.tags as string | undefined;
+      const status = req.query.status as string | undefined;
+      const folderIdParam = req.query.folderId as string | undefined;
+      const dateFromParam = req.query.from as string | undefined;
+      const dateToParam = req.query.to as string | undefined;
+      const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+      const offset = parseInt(req.query.offset as string) || 0;
+
+      // Parse tag IDs
+      let tagIds: number[] | undefined;
+      if (tagsParam) {
+        tagIds = tagsParam.split(",").map((id) => parseInt(id.trim())).filter((id) => !isNaN(id));
+        if (tagIds.length === 0) tagIds = undefined;
+      }
+
+      // Parse folder ID (special case: "null" means unorganized clips)
+      let folderId: number | null | undefined;
+      if (folderIdParam !== undefined) {
+        if (folderIdParam === "null" || folderIdParam === "") {
+          folderId = null;
+        } else {
+          const parsedFolderId = parseInt(folderIdParam);
+          if (!isNaN(parsedFolderId)) {
+            folderId = parsedFolderId;
+          }
+        }
+      }
+
+      // Parse dates
+      let dateFrom: Date | undefined;
+      let dateTo: Date | undefined;
+      if (dateFromParam) {
+        dateFrom = new Date(dateFromParam);
+        if (isNaN(dateFrom.getTime())) {
+          return res.status(400).json({ error: "Invalid 'from' date format" });
+        }
+      }
+      if (dateToParam) {
+        dateTo = new Date(dateToParam);
+        if (isNaN(dateTo.getTime())) {
+          return res.status(400).json({ error: "Invalid 'to' date format" });
+        }
+        dateTo.setHours(23, 59, 59, 999);
+      }
+
+      // Validate status
+      const validStatuses = ["pending", "completed", "failed", "rejected", "expired"];
+      if (status && !validStatuses.includes(status)) {
+        return res.status(400).json({
+          error: `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
+        });
+      }
+
+      // Call service
+      const result = await clipManagerService.searchClips({
+        teamId,
+        query,
+        tagIds,
+        status,
+        folderId,
+        dateFrom,
+        dateTo,
+        limit,
+        offset,
+      });
+
+      // Generate presigned URLs
+      const clipKeys = result.clips
+        .filter((clip: any) => clip.clip_path)
+        .map((clip: any) => clip.clip_path!);
+
+      const sourceKeys = result.clips
+        .filter((clip: any) => clip.source_video_path)
+        .map((clip: any) => clip.source_video_path!);
+
+      const allKeys = [...new Set([...clipKeys, ...sourceKeys])];
+      const presignedUrls = await s3Service.getMultiplePresignedUrls(allKeys);
+
+      // Fetch tags for all clips
+      const clipIds = result.clips.map((clip: any) => clip.id);
+      const tagsByClip = clipIds.length > 0 ? await tagService.getTagsForClips(clipIds) : {};
+
+      // Build response
+      const clipsWithUrls = result.clips.map((clip: any) => ({
+        ...clip,
+        clipUrl: clip.clip_path ? presignedUrls[clip.clip_path] : null,
+        sourceVideoUrl: clip.source_video_path ? presignedUrls[clip.source_video_path] : null,
+        tags: tagsByClip[clip.id] || [],
+      }));
+
+      return res.status(200).json({
+        clips: clipsWithUrls,
+        pagination: result.pagination,
+        query: query || null,
+        filters: {
+          tags: tagIds || null,
+          status: status || null,
+          folderId: folderId !== undefined ? folderId : null,
+          dateFrom: dateFromParam || null,
+          dateTo: dateToParam || null,
+        },
+      });
+    } catch (error) {
+      console.error("Search clips error:", error);
+      Sentry.captureException(error);
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to search clips",
       });
     }
   }

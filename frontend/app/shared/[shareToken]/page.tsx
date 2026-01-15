@@ -46,21 +46,13 @@ export default function SharedClipPage() {
   const handleDownload = async () => {
     if (!clip?.clipUrl || isDownloading) return;
 
-    // Only use download-fixed-public for ComfyUI outputs (UGC videos)
-    const isComfyOutput = clip.clipUrl.includes("comfy-outputs");
-
     setIsDownloading(true);
     try {
       const filename = `${clip.title || `clip_${clip.id}`}.mp4`.replace(/[^a-zA-Z0-9._-]/g, "_");
-      let response: Response;
-
-      if (isComfyOutput) {
-        const downloadUrl = `${API_URL}/face-swap/download-fixed-public?url=${encodeURIComponent(clip.clipUrl)}&filename=${encodeURIComponent(filename)}`;
-        response = await fetch(downloadUrl);
-        if (!response.ok) throw new Error("Download failed");
-      } else {
-        response = await fetch(clip.clipUrl);
-      }
+      // Always use download-fixed-public to apply fresh random metadata per download
+      const downloadUrl = `${API_URL}/face-swap/download-fixed-public?url=${encodeURIComponent(clip.clipUrl)}&filename=${encodeURIComponent(filename)}`;
+      const response = await fetch(downloadUrl);
+      if (!response.ok) throw new Error("Download failed");
 
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
@@ -119,10 +111,11 @@ export default function SharedClipPage() {
               <div className="flex items-center justify-center">
                 <div className="rounded-lg overflow-hidden bg-black w-full flex items-center justify-center">
                   <video
-                    src={clip.clipUrl}
+                    src={`${API_URL}/face-swap/download-fixed-public?url=${encodeURIComponent(clip.clipUrl)}&mode=remux`}
                     controls
                     autoPlay
                     playsInline
+                    preload="auto"
                     className="w-full max-h-[500px] object-contain"
                   />
                 </div>

@@ -4,6 +4,7 @@ import { AuthRequest } from "../middleware/auth.middleware";
 import { teamService } from "../services/team.service";
 import { userService } from "../services/user.service";
 import { clipManagerService } from "../services/clipManager.service";
+import { s3Service } from "../services/s3.service";
 import { PLAN_LIMITS } from "../config/stripe.config";
 
 export const getUserTeamsController = async (req: AuthRequest, res: Response) => {
@@ -385,6 +386,82 @@ export const createTeamController = async (req: AuthRequest, res: Response) => {
     Sentry.captureException(err);
     res.status(500).json({
       error: err instanceof Error ? err.message : "Failed to create team",
+    });
+  }
+};
+
+export const uploadTeamLogoController = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const teamId = parseInt(req.params.teamId);
+    if (isNaN(teamId)) {
+      return res.status(400).json({ error: "Invalid team ID" });
+    }
+
+    const user = await userService.getUserBySupabaseUid(req.user.id);
+    const membership = await teamService.getTeamMember(teamId, user.id);
+
+    if (!membership || membership.role !== "owner") {
+      return res.status(403).json({ error: "Only team owners can update the logo" });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    // Upload to S3
+    const logoKey = await s3Service.uploadTeamLogo(
+      req.file.buffer,
+      teamId,
+      req.file.mimetype
+    );
+
+    // Store the S3 key in database (not presigned URL)
+    const updatedTeam = await teamService.updateTeamLogo(teamId, logoKey);
+
+    // Generate a presigned URL for the response (1 hour)
+    const logoUrl = await s3Service.getPresignedUrl(logoKey, 3600);
+
+    res.json({ team: { ...updatedTeam, logo_url: logoUrl, role: membership.role } });
+  } catch (err) {
+    console.error("Error in uploadTeamLogoController:", err);
+    Sentry.captureException(err);
+    res.status(500).json({
+      error: err instanceof Error ? err.message : "Failed to upload logo",
+    });
+  }
+};
+
+export const removeTeamLogoController = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const teamId = parseInt(req.params.teamId);
+    if (isNaN(teamId)) {
+      return res.status(400).json({ error: "Invalid team ID" });
+    }
+
+    const user = await userService.getUserBySupabaseUid(req.user.id);
+    const membership = await teamService.getTeamMember(teamId, user.id);
+
+    if (!membership || membership.role !== "owner") {
+      return res.status(403).json({ error: "Only team owners can remove the logo" });
+    }
+
+    // Update team with null logo URL
+    const updatedTeam = await teamService.updateTeamLogo(teamId, null);
+
+    res.json({ team: { ...updatedTeam, role: membership.role } });
+  } catch (err) {
+    console.error("Error in removeTeamLogoController:", err);
+    Sentry.captureException(err);
+    res.status(500).json({
+      error: err instanceof Error ? err.message : "Failed to remove logo",
     });
   }
 };

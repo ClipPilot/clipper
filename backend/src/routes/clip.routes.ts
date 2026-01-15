@@ -494,7 +494,11 @@ router.post("/batch-submit", requireAuth, submitBatchClipJob);
  *       500:
  *         description: Server error
  */
-router.get("/teams/:teamId/clips", requireAuth, clipManagerController.getClips.bind(clipManagerController));
+router.get(
+  "/teams/:teamId/clips",
+  requireAuth,
+  clipManagerController.getClips.bind(clipManagerController)
+);
 
 /**
  * @openapi
@@ -530,7 +534,11 @@ router.get("/teams/:teamId/clips", requireAuth, clipManagerController.getClips.b
  *       500:
  *         description: Server error
  */
-router.get("/teams/:teamId/clips/pending", requireAuth, clipManagerController.getPendingClips.bind(clipManagerController));
+router.get(
+  "/teams/:teamId/clips/pending",
+  requireAuth,
+  clipManagerController.getPendingClips.bind(clipManagerController)
+);
 
 /**
  * @openapi
@@ -588,7 +596,11 @@ router.get("/teams/:teamId/clips/pending", requireAuth, clipManagerController.ge
  *       500:
  *         description: Server error
  */
-router.get("/teams/:teamId/clips/completed", requireAuth, clipManagerController.getCompletedClips.bind(clipManagerController));
+router.get(
+  "/teams/:teamId/clips/completed",
+  requireAuth,
+  clipManagerController.getCompletedClips.bind(clipManagerController)
+);
 
 /**
  * @openapi
@@ -638,7 +650,11 @@ router.get("/teams/:teamId/clips/completed", requireAuth, clipManagerController.
  *       500:
  *         description: Server error
  */
-router.get("/teams/:teamId/clips/unsaved", requireAuth, clipManagerController.getUnsavedClips.bind(clipManagerController));
+router.get(
+  "/teams/:teamId/clips/unsaved",
+  requireAuth,
+  clipManagerController.getUnsavedClips.bind(clipManagerController)
+);
 
 /**
  * @openapi
@@ -713,7 +729,11 @@ router.get("/teams/:teamId/clips/unsaved", requireAuth, clipManagerController.ge
  *       500:
  *         description: Server error
  */
-router.get("/teams/:teamId/clips/saved", requireAuth, clipManagerController.getSavedClips.bind(clipManagerController));
+router.get(
+  "/teams/:teamId/clips/saved",
+  requireAuth,
+  clipManagerController.getSavedClips.bind(clipManagerController)
+);
 
 /**
  * @openapi
@@ -749,7 +769,11 @@ router.get("/teams/:teamId/clips/saved", requireAuth, clipManagerController.getS
  *       404:
  *         description: Clip not found
  */
-router.get("/teams/:teamId/clips/:clipId", requireAuth, clipManagerController.getClip.bind(clipManagerController));
+router.get(
+  "/teams/:teamId/clips/:clipId",
+  requireAuth,
+  clipManagerController.getClip.bind(clipManagerController)
+);
 
 /**
  * @openapi
@@ -790,7 +814,12 @@ router.get("/teams/:teamId/clips/:clipId", requireAuth, clipManagerController.ge
  *       404:
  *         description: Clip not found
  */
-router.patch("/teams/:teamId/clips/:clipId", requireAuth, requireSeatAccess, clipManagerController.updateClip.bind(clipManagerController));
+router.patch(
+  "/teams/:teamId/clips/:clipId",
+  requireAuth,
+  requireSeatAccess,
+  clipManagerController.updateClip.bind(clipManagerController)
+);
 
 /**
  * @openapi
@@ -819,7 +848,12 @@ router.patch("/teams/:teamId/clips/:clipId", requireAuth, requireSeatAccess, cli
  *       404:
  *         description: Clip not found
  */
-router.delete("/teams/:teamId/clips/:clipId", requireAuth, requireSeatAccess, clipManagerController.deleteClip.bind(clipManagerController));
+router.delete(
+  "/teams/:teamId/clips/:clipId",
+  requireAuth,
+  requireSeatAccess,
+  clipManagerController.deleteClip.bind(clipManagerController)
+);
 
 /**
  * @openapi
@@ -850,7 +884,11 @@ router.delete("/teams/:teamId/clips/:clipId", requireAuth, requireSeatAccess, cl
  *       500:
  *         description: Server error
  */
-router.get("/teams/:teamId/folders/:folderId/clips", requireAuth, clipManagerController.getClipsByFolder.bind(clipManagerController));
+router.get(
+  "/teams/:teamId/folders/:folderId/clips",
+  requireAuth,
+  clipManagerController.getClipsByFolder.bind(clipManagerController)
+);
 
 /**
  * @openapi
@@ -927,7 +965,12 @@ router.get("/teams/:teamId/folders/:folderId/clips", requireAuth, clipManagerCon
  *       500:
  *         description: Server error
  */
-router.post("/teams/:teamId/clips/:clipId/captions", requireAuth, requireSeatAccess, clipManagerController.updateCaptions.bind(clipManagerController));
+router.post(
+  "/teams/:teamId/clips/:clipId/captions",
+  requireAuth,
+  requireSeatAccess,
+  clipManagerController.updateCaptions.bind(clipManagerController)
+);
 
 /**
  * @openapi
@@ -1006,7 +1049,12 @@ router.post("/teams/:teamId/clips/:clipId/captions", requireAuth, requireSeatAcc
  *       500:
  *         description: Server error
  */
-router.post("/teams/:teamId/clips/:clipId/text-overlay", requireAuth, requireSeatAccess, clipManagerController.updateTextOverlay.bind(clipManagerController));
+router.post(
+  "/teams/:teamId/clips/:clipId/text-overlay",
+  requireAuth,
+  requireSeatAccess,
+  clipManagerController.updateTextOverlay.bind(clipManagerController)
+);
 
 /**
  * @openapi
@@ -1076,7 +1124,12 @@ router.post("/teams/:teamId/clips/:clipId/text-overlay", requireAuth, requireSea
  *       500:
  *         description: Server error
  */
-router.post("/teams/:teamId/clips/:clipId/overlays", requireAuth, requireSeatAccess, clipManagerController.updateClipOverlays.bind(clipManagerController));
+router.post(
+  "/teams/:teamId/clips/:clipId/overlays",
+  requireAuth,
+  requireSeatAccess,
+  clipManagerController.updateClipOverlays.bind(clipManagerController)
+);
 
 /**
  * @openapi
@@ -1123,7 +1176,12 @@ router.post("/teams/:teamId/clips/:clipId/overlays", requireAuth, requireSeatAcc
  *       500:
  *         description: Server error
  */
-router.post("/teams/:teamId/clips/:clipId/save", requireAuth, requireSeatAccess, clipManagerController.saveClip.bind(clipManagerController));
+router.post(
+  "/teams/:teamId/clips/:clipId/save",
+  requireAuth,
+  requireSeatAccess,
+  clipManagerController.saveClip.bind(clipManagerController)
+);
 
 /**
  * @openapi
@@ -1165,7 +1223,12 @@ router.post("/teams/:teamId/clips/:clipId/save", requireAuth, requireSeatAccess,
  *       500:
  *         description: Server error
  */
-router.post("/teams/:teamId/clips/:clipId/reject", requireAuth, requireSeatAccess, clipManagerController.rejectClip.bind(clipManagerController));
+router.post(
+  "/teams/:teamId/clips/:clipId/reject",
+  requireAuth,
+  requireSeatAccess,
+  clipManagerController.rejectClip.bind(clipManagerController)
+);
 
 /**
  * @openapi
@@ -1210,7 +1273,12 @@ router.post("/teams/:teamId/clips/:clipId/reject", requireAuth, requireSeatAcces
  *       500:
  *         description: Server error
  */
-router.post("/teams/:teamId/clips/:clipId/share", requireAuth, requireSeatAccess, clipManagerController.generateShareLink.bind(clipManagerController));
+router.post(
+  "/teams/:teamId/clips/:clipId/share",
+  requireAuth,
+  requireSeatAccess,
+  clipManagerController.generateShareLink.bind(clipManagerController)
+);
 
 /**
  * @openapi
@@ -1243,7 +1311,12 @@ router.post("/teams/:teamId/clips/:clipId/share", requireAuth, requireSeatAccess
  *       500:
  *         description: Server error
  */
-router.delete("/teams/:teamId/clips/:clipId/share", requireAuth, requireSeatAccess, clipManagerController.removeShareLink.bind(clipManagerController));
+router.delete(
+  "/teams/:teamId/clips/:clipId/share",
+  requireAuth,
+  requireSeatAccess,
+  clipManagerController.removeShareLink.bind(clipManagerController)
+);
 
 /**
  * @openapi
@@ -1285,7 +1358,10 @@ router.delete("/teams/:teamId/clips/:clipId/share", requireAuth, requireSeatAcce
  *       404:
  *         description: Shared clip not found
  */
-router.get("/shared/:shareToken", clipManagerController.getSharedClip.bind(clipManagerController));
+router.get(
+  "/shared/:shareToken",
+  clipManagerController.getSharedClip.bind(clipManagerController)
+);
 
 /**
  * @swagger
@@ -1315,6 +1391,15 @@ router.get("/shared/:shareToken", clipManagerController.getSharedClip.bind(clipM
  *       404:
  *         description: Shared clip not found
  */
-router.get("/shared/:shareToken/download", clipManagerController.downloadSharedClip.bind(clipManagerController));
+router.get(
+  "/shared/:shareToken/download",
+  clipManagerController.downloadSharedClip.bind(clipManagerController)
+);
+
+router.get(
+  "/search-clips",
+  requireAuth,
+  clipManagerController.searchClips.bind(clipManagerController)
+);
 
 export default router;

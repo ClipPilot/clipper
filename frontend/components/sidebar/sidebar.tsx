@@ -13,7 +13,7 @@ import { useUsageStats } from "@/hooks/useUsageStats";
 import { useAtom } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
 import { useUsageStatsRefresh } from "@/contexts/UsageStatsContext";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 export type SidebarItem = {
   key: string;
@@ -32,11 +32,7 @@ export type SidebarProps = {
 const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
   ({ items, defaultSelectedKey, onSelect, canViewPricing = true }, ref) => {
     const router = useRouter();
-    const pathname = usePathname();
-    const isComingSoonSelected = pathname === "/dashboard/coming-soon";
-    const [selected, setSelected] = React.useState<React.Key>(
-      isComingSoonSelected ? "" : defaultSelectedKey
-    );
+    const [selected, setSelected] = React.useState<React.Key>(defaultSelectedKey);
     const [selectedTeam] = useAtom(selectedTeamAtom);
     const { refreshTrigger } = useUsageStatsRefresh();
     const { usageStats, isLoading, error, refetch } = useUsageStats(
@@ -44,12 +40,8 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
     );
 
     useEffect(() => {
-      if (isComingSoonSelected) {
-        setSelected("");
-      } else {
-        setSelected(defaultSelectedKey);
-      }
-    }, [defaultSelectedKey, isComingSoonSelected]);
+      setSelected(defaultSelectedKey);
+    }, [defaultSelectedKey]);
 
     useEffect(() => {
       if (refreshTrigger > 0) {
@@ -144,34 +136,6 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
           </Listbox>
         </div>
 
-        <div className="mt-auto px-4 pb-2">
-          <button
-            onClick={() => router.push("/dashboard/coming-soon")}
-            className={cn(
-              "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors cursor-pointer",
-              isComingSoonSelected
-                ? "bg-accent-400/10"
-                : "hover:bg-surface-elevated"
-            )}
-          >
-            <Icon
-              icon="solar:stars-bold-duotone"
-              className={
-                isComingSoonSelected ? "text-accent-400" : "text-text-primary"
-              }
-              width={20}
-            />
-            <span
-              className={cn(
-                "text-sm font-medium",
-                isComingSoonSelected ? "text-accent-400" : "text-text-primary"
-              )}
-            >
-              Coming Soon
-            </span>
-          </button>
-        </div>
-
         {canViewPricing && selectedTeam && (
           <div className="px-4 pb-3">
             <button
@@ -256,20 +220,32 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
                     onClick={() => router.push("/dashboard/pricing")}
                     className={cn(
                       "w-full flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors",
-                      plan === "scale"
-                        ? "bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20"
-                        : "bg-accent-400/10 border-accent-400/20 hover:bg-accent-400/20"
+                      plan === "enterprise"
+                        ? "bg-emerald-500/10 border-emerald-500/20 hover:bg-emerald-500/20"
+                        : plan === "scale"
+                          ? "bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20"
+                          : "bg-accent-400/10 border-accent-400/20 hover:bg-accent-400/20"
                     )}
                   >
                     <Icon
                       icon="solar:verified-check-bold"
-                      className={plan === "scale" ? "text-purple-500" : "text-accent-400"}
+                      className={
+                        plan === "enterprise"
+                          ? "text-emerald-500"
+                          : plan === "scale"
+                            ? "text-purple-500"
+                            : "text-accent-400"
+                      }
                       width={16}
                     />
                     <span
                       className={cn(
                         "text-xs font-medium",
-                        plan === "scale" ? "text-purple-500" : "text-accent-400"
+                        plan === "enterprise"
+                          ? "text-emerald-500"
+                          : plan === "scale"
+                            ? "text-purple-500"
+                            : "text-accent-400"
                       )}
                     >
                       Manage subscription

@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/node";
 import { Response } from "express";
+import { z } from "zod";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { s3Service } from "../services/s3.service";
 import { sqsService } from "../services/sqs.service";
@@ -7,6 +8,28 @@ import { teamService } from "../services/team.service";
 import { clipManagerService } from "../services/clipManager.service";
 import { PLAN_LIMITS } from "../config/stripe.config";
 import { PROMPT_TYPES, isValidPromptType } from "../constants/promptTypes";
+
+const hexColorRegex = /^#[0-9A-Fa-f]{6}$/;
+
+const clipJobSchema = z.object({
+  teamId: z.union([z.string(), z.number()]).transform(val => parseInt(String(val))),
+  s3Key: z.string().min(1).max(500),
+  originalFileName: z.string().max(255).optional(),
+  fileSize: z.number().optional(),
+  length: z.number().int().min(10).max(120).optional(),
+  hookLength: z.number().int().min(2).max(15).optional(),
+  numberOfVideos: z.union([z.string(), z.number()]).transform(val => parseInt(String(val)) || 1).default(1),
+  promptType: z.string().optional(),
+  customPrompt: z.string().max(2000).optional(),
+  textPrompt: z.string().max(2000).optional(),
+  customText: z.string().max(500).optional(),
+  textPosition: z.enum(["top", "middle", "bottom"]).optional(),
+  textColor: z.string().regex(hexColorRegex, "Invalid hex color").optional(),
+  textFont: z.string().max(100).optional(),
+  captions: z.boolean().optional(),
+  captionColor: z.string().regex(hexColorRegex, "Invalid hex color").optional(),
+  captionFont: z.string().max(100).optional(),
+});
 
 const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB chunks
 
@@ -144,8 +167,16 @@ export const submitClipJob = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
+    const parseResult = clipJobSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return res.status(400).json({
+        error: "Validation failed",
+        details: parseResult.error.issues.map(e => e.message).join(", ")
+      });
+    }
+
     const {
-      teamId,
+      teamId: parsedTeamId,
       s3Key,
       originalFileName,
       fileSize,
@@ -154,7 +185,7 @@ export const submitClipJob = async (req: AuthRequest, res: Response) => {
       promptType,
       customPrompt,
       textPrompt,
-      numberOfVideos = 1,
+      numberOfVideos: parsedNumberOfVideos,
       customText,
       textPosition,
       textColor,
@@ -162,14 +193,7 @@ export const submitClipJob = async (req: AuthRequest, res: Response) => {
       captions,
       captionColor,
       captionFont,
-    } = req.body;
-
-    if (!teamId || !s3Key) {
-      return res.status(400).json({ error: "Missing required fields: teamId, s3Key" });
-    }
-
-    const parsedTeamId = parseInt(teamId);
-    const parsedNumberOfVideos = parseInt(numberOfVideos) || 1;
+    } = parseResult.data;
 
     if (parsedNumberOfVideos < 1 || parsedNumberOfVideos > 25) {
       return res.status(400).json({ error: "Number of videos must be between 1 and 25" });
@@ -211,26 +235,13 @@ export const submitClipJob = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    if (length && (length < 10 || length > 120)) {
-      return res.status(400).json({ error: "Length must be between 10 and 120 seconds" });
-    }
-
-    if (hookLength && (hookLength < 2 || hookLength > 15)) {
-      return res.status(400).json({ error: "Hook length must be between 2 and 15 seconds" });
-    }
-
     if (promptType && !isValidPromptType(promptType)) {
       return res.status(400).json({ error: `Prompt type must be one of: ${PROMPT_TYPES.join(", ")}` });
-    }
-
-    if (textPosition && !["top", "middle", "bottom"].includes(textPosition)) {
-      return res.status(400).json({ error: 'Text position must be "top", "middle", or "bottom"' });
     }
 
     const userId = req.user.dbUserId;
     const pendingClips: any[] = [];
 
-    // Create raw video record to track the uploaded video
     const rawVideo = await clipManagerService.createRawVideo({
       teamId: parsedTeamId,
       videoPath: s3Key,
@@ -253,9 +264,9 @@ export const submitClipJob = async (req: AuthRequest, res: Response) => {
       userId,
       s3Key,
       options: {
-        length: length ? parseInt(length) : undefined,
-        hookLength: hookLength ? parseInt(hookLength) : undefined,
-        promptType,
+        length,
+        hookLength,
+        promptType: promptType as any,
         customPrompt,
         textPrompt,
         numberOfVideos: parsedNumberOfVideos,
@@ -263,12 +274,12 @@ export const submitClipJob = async (req: AuthRequest, res: Response) => {
         textPosition,
         textColor,
         textFont,
-        captions: captions === true || captions === "true",
+        captions: captions === true,
         captionColor,
         captionFont,
       },
       originalFileName,
-      fileSize: fileSize ? parseInt(fileSize) : undefined,
+      fileSize,
     });
 
     console.log(`Job sent to SQS with messageId: ${messageId}`);

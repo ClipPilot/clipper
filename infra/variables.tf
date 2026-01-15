@@ -117,7 +117,7 @@ variable "worker_min_capacity" {
 variable "worker_max_capacity" {
   description = "Maximum number of worker tasks"
   type        = number
-  default     = 10
+  default     = 15
 }
 
 variable "worker_messages_per_task" {
@@ -210,6 +210,19 @@ variable "admin_jwt_secret" {
 
 variable "sync_key" {
   description = "Sync key for service synchronization"
+  type        = string
+  sensitive   = true
+}
+
+# Video Generation Keys
+variable "elevenlabs_api_key" {
+  description = "ElevenLabs API Key for text-to-speech"
+  type        = string
+  sensitive   = true
+}
+
+variable "fal_key" {
+  description = "FAL API Key for AI video generation"
   type        = string
   sensitive   = true
 }

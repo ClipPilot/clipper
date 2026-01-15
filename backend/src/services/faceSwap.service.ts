@@ -4,6 +4,19 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 import { s3Service } from "./s3.service";
+import { applyJumbledMetadata } from "../utils/videoMetadata";
+
+// Mobile-compatible H.264 encoding settings
+const MOBILE_VIDEO_SETTINGS = [
+  "-profile:v main",
+  "-level 3.1",
+  "-pix_fmt yuv420p",
+  "-r 30",
+  "-g 30",
+  "-keyint_min 30",
+  "-vsync cfr",
+];
+
 
 interface TrimAndUploadParams {
   inputPath: string;
@@ -38,13 +51,12 @@ export const trimVideo = async (
         "-c:v libx264",
         "-preset fast",
         "-crf 23",
-        "-r 30",
+        ...MOBILE_VIDEO_SETTINGS,
         "-ar 48000",
         "-ac 2",
         "-c:a aac",
         "-b:a 128k",
         "-movflags +faststart",
-        "-map_metadata -1", // Strip all metadata
       ])
       .save(outputPath)
       .on("end", () => {

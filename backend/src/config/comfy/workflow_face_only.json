@@ -31,7 +31,7 @@
   },
   "227": {
     "inputs": {
-      "text": "face swap, transfer face identity from reference image to video,\nexact face from reference: same skin tone, same skin color, same ethnicity, same facial features,\nrealistic skin texture matching reference person exactly,\n\nFACE ONLY: swap only the face area (eyes, nose, mouth, cheeks, forehead, chin),\nkeep original hair from source video unchanged,\nkeep original body and clothing from source video unchanged,\nkeep original background from source video unchanged,\n\nhighly realistic, photorealistic face, natural skin texture,\nconsistent identity across all frames, temporal consistency,\nsharp focus, cinematic lighting, soft shadows,\nseamless face blend into source video\n",
+      "text": "face swap, transfer face identity from reference image to video,\nexact face from reference: same skin tone, same skin color, same ethnicity, same facial features,\nrealistic skin texture matching reference person exactly,\n\nmatch reference face exactly as shown in image,\nif reference has facial hair copy it exactly, if reference has no facial hair keep face clean,\n\nFACE ONLY: swap only the face area (eyes, nose, mouth, cheeks, forehead, chin),\nkeep original hair from source video unchanged,\nkeep original body and clothing from source video unchanged,\nkeep original background from source video unchanged,\n\nhighly realistic, photorealistic face, natural skin texture,\nconsistent identity across all frames, temporal consistency,\nsharp focus, cinematic lighting, soft shadows,\nseamless face blend into source video\n",
       "clip": ["224", 0]
     },
     "class_type": "CLIPTextEncode",
@@ -41,7 +41,7 @@
   },
   "228": {
     "inputs": {
-      "text": "wrong skin tone, wrong skin color, wrong ethnicity, skin color mismatch,\nface not matching reference, different face than reference,\n\nchanged hair, modified hair, different hairstyle, hair replacement,\nchanged clothing, modified clothes, clothing replacement,\nchanged background, modified background,\n\nworst quality, low quality, blurry, JPEG artifacts,\npoorly drawn face, facial distortion, asymmetrical face,\ndeformed, disfigured, unnatural skin,\n\ninconsistent face between frames, flickering face, morphing face,\nblur around face edges, visible seams, harsh edges,\n\npainting, illustration, artwork, cartoon, anime,\noverexposed, underexposed, wrong colors\n",
+      "text": "wrong skin tone, wrong skin color, wrong ethnicity, skin color mismatch,\nface not matching reference, different face than reference,\n\nfacial hair not matching reference, wrong facial hair,\n\nchanged hair, modified hair, different hairstyle, hair replacement,\nchanged clothing, modified clothes, clothing replacement,\nchanged background, modified background,\n\nworst quality, low quality, blurry, JPEG artifacts,\npoorly drawn face, facial distortion, asymmetrical face,\ndeformed, disfigured, unnatural skin,\n\ninconsistent face between frames, flickering face, morphing face,\nblur around face edges, visible seams, harsh edges,\n\npainting, illustration, artwork, cartoon, anime,\noverexposed, underexposed, wrong colors\n",
       "clip": ["224", 0]
     },
     "class_type": "CLIPTextEncode",

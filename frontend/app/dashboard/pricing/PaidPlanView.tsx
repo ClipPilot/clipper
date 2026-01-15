@@ -68,8 +68,9 @@ export function PaidPlanView({
   const isEnterprise = currentPlan === "enterprise";
   const isScale = currentPlan === "scale";
   const isStudio = currentPlan === "studio";
-  const canChangePlan = isOwner && !isEnterprise && onChangePlan;
-  const targetPlan = isScale ? "studio" : "scale";
+  // Only allow upgrades (Studio → Scale), not downgrades (Scale → Studio)
+  const canChangePlan = isOwner && isStudio && onChangePlan;
+  const targetPlan = "scale"; // Only upgrade path available
 
   const handleChangePlan = async () => {
     if (!onChangePlan) return;
@@ -268,12 +269,12 @@ export function PaidPlanView({
                   variant="flat"
                   color="default"
                   startContent={
-                    <Icon icon="solar:refresh-bold-duotone" width={20} />
+                    <Icon icon="solar:arrow-up-bold-duotone" width={20} />
                   }
                   onPress={() => setIsChangePlanModalOpen(true)}
                   className="text-text-secondary"
                 >
-                  Change Plan
+                  Upgrade Plan
                 </Button>
               )}
             </div>
@@ -377,7 +378,7 @@ export function PaidPlanView({
         )}
       </div>
 
-      {/* Change Plan Modal */}
+      {/* Upgrade Plan Modal */}
       <Modal
         isOpen={isChangePlanModalOpen}
         onClose={() => setIsChangePlanModalOpen(false)}
@@ -385,65 +386,41 @@ export function PaidPlanView({
       >
         <ModalContent className="bg-surface-base border border-border-accent">
           <ModalHeader className="pb-0">
-            <h3 className="text-xl font-bold text-text-primary">Change Your Plan</h3>
+            <h3 className="text-xl font-bold text-text-primary">Upgrade Your Plan</h3>
           </ModalHeader>
           <ModalBody className="py-6">
             <div className="space-y-6">
               {/* Plan Comparison Cards */}
               <div className="grid grid-cols-2 gap-4">
-                {/* Current Plan */}
+                {/* Current Plan - Studio */}
                 <div className="p-4 rounded-xl bg-surface-dark/30 border border-border-base">
                   <p className="text-xs text-text-tertiary uppercase tracking-wider mb-2">Current</p>
                   <div className="flex items-center gap-2 mb-3">
-                    <div className={cn(
-                      "w-8 h-8 rounded-lg flex items-center justify-center",
-                      isScale ? "bg-purple-500/20" : "bg-accent-400/20"
-                    )}>
-                      <Icon
-                        icon="solar:star-bold"
-                        className={isScale ? "text-purple-500" : "text-accent-400"}
-                        width={16}
-                      />
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-accent-400/20">
+                      <Icon icon="solar:star-bold" className="text-accent-400" width={16} />
                     </div>
-                    <span className="text-lg font-semibold text-text-primary capitalize">{currentPlan}</span>
+                    <span className="text-lg font-semibold text-text-primary">Studio</span>
                   </div>
                   <div className="space-y-1 text-sm text-text-secondary">
-                    <p>{isScale ? "1,000" : "400"} credits/month</p>
-                    <p>{isScale ? "Team seats included" : "Single seat"}</p>
-                    <p>{isScale ? "Folder management" : "No folders"}</p>
+                    <p>400 credits/month</p>
+                    <p>Single seat</p>
+                    <p>No folders</p>
                   </div>
                 </div>
 
-                {/* New Plan */}
-                <div className={cn(
-                  "p-4 rounded-xl border-2",
-                  targetPlan === "scale"
-                    ? "bg-purple-500/5 border-purple-500/30"
-                    : "bg-accent-400/5 border-accent-400/30"
-                )}>
-                  <p className="text-xs text-text-tertiary uppercase tracking-wider mb-2">New Plan</p>
+                {/* New Plan - Scale */}
+                <div className="p-4 rounded-xl border-2 bg-purple-500/5 border-purple-500/30">
+                  <p className="text-xs text-text-tertiary uppercase tracking-wider mb-2">Upgrade to</p>
                   <div className="flex items-center gap-2 mb-3">
-                    <div className={cn(
-                      "w-8 h-8 rounded-lg flex items-center justify-center",
-                      targetPlan === "scale" ? "bg-purple-500/20" : "bg-accent-400/20"
-                    )}>
-                      <Icon
-                        icon={targetPlan === "scale" ? "solar:star-bold" : "solar:star-bold"}
-                        className={targetPlan === "scale" ? "text-purple-500" : "text-accent-400"}
-                        width={16}
-                      />
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-purple-500/20">
+                      <Icon icon="solar:star-bold" className="text-purple-500" width={16} />
                     </div>
-                    <span className={cn(
-                      "text-lg font-semibold capitalize",
-                      targetPlan === "scale" ? "text-purple-500" : "text-accent-400"
-                    )}>
-                      {targetPlan}
-                    </span>
+                    <span className="text-lg font-semibold text-purple-500">Scale</span>
                   </div>
                   <div className="space-y-1 text-sm text-text-secondary">
-                    <p>{targetPlan === "scale" ? "1,000" : "400"} credits/month</p>
-                    <p>{targetPlan === "scale" ? "Team seats included" : "Single seat"}</p>
-                    <p>{targetPlan === "scale" ? "Folder management" : "No folders"}</p>
+                    <p>1,000 credits/month</p>
+                    <p>Team seats included</p>
+                    <p>Folder management</p>
                   </div>
                 </div>
               </div>
@@ -489,17 +466,12 @@ export function PaidPlanView({
               Cancel
             </Button>
             <Button
-              className={cn(
-                "font-semibold",
-                targetPlan === "scale"
-                  ? "bg-purple-500 text-white"
-                  : "bg-accent-400 text-white"
-              )}
+              className="font-semibold bg-purple-500 text-white"
               onPress={handleChangePlan}
               isLoading={loadingChangePlan}
               startContent={!loadingChangePlan && <Icon icon="solar:check-circle-bold" width={18} />}
             >
-              {isScale ? "Switch to Studio" : "Upgrade to Scale"}
+              Upgrade to Scale
             </Button>
           </ModalFooter>
         </ModalContent>

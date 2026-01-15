@@ -3,9 +3,8 @@
 import { useState, useCallback, useEffect, useImperativeHandle, forwardRef } from "react";
 import { Card, CardBody, Pagination, addToast } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { apiFetch } from "@/lib/apiClient";
-import API_URL from "@/config/constants";
 import { connectSocket, joinTeam, leaveTeam } from "@/lib/socket";
+import { faceSwapAPI } from "@/api/ugc/faceSwap";
 import { FaceSwapJob } from "./types";
 import { FaceSwapDetailModal } from "./FaceSwapDetailModal";
 import { FaceSwapJobCard } from "./FaceSwapJobCard";
@@ -18,8 +17,9 @@ interface MyFaceSwapsSectionProps {
 
 export interface MyFaceSwapsSectionRef {
   refetch: () => Promise<void>;
-  addOptimisticJob: (tempId: string) => void;
+  addOptimisticJob: (tempId: string, message?: string) => void;
   updateOptimisticJob: (tempId: string, realId: string) => void;
+  updateOptimisticJobStatus: (tempId: string, message: string) => void;
   failOptimisticJob: (tempId: string, errorMessage: string) => void;
 }
 
@@ -34,11 +34,8 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
 
   const fetchJobs = useCallback(async () => {
     try {
-      const response = await apiFetch(`${API_URL}/comfy/team/${teamId}/jobs`);
-      if (response.ok) {
-        const data = await response.json();
-        setJobs(data.jobs || []);
-      }
+      const data = await faceSwapAPI.getTeamJobs(teamId);
+      setJobs(data.jobs || []);
     } catch (err) {
       console.error("Failed to fetch jobs:", err);
     } finally {
@@ -47,12 +44,12 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
   }, [teamId]);
 
   // Add an optimistic job with "uploading" status immediately
-  const addOptimisticJob = useCallback((tempId: string) => {
+  const addOptimisticJob = useCallback((tempId: string, message?: string) => {
     const optimisticJob: FaceSwapJob = {
       id: tempId,
       status: "uploading",
       progress: null,
-      progressMessage: "Uploading files...",
+      progressMessage: message || "Uploading files...",
       outputUrl: null,
       errorMessage: null,
       createdAt: new Date().toISOString(),
@@ -67,6 +64,17 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
       prev.map((job) =>
         job.id === tempId
           ? { ...job, id: realId, status: "queued", progressMessage: null }
+          : job
+      )
+    );
+  }, []);
+
+  // Update the progress message of an optimistic job
+  const updateOptimisticJobStatus = useCallback((tempId: string, message: string) => {
+    setJobs((prev) =>
+      prev.map((job) =>
+        job.id === tempId
+          ? { ...job, progressMessage: message }
           : job
       )
     );
@@ -87,8 +95,9 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
     refetch: fetchJobs,
     addOptimisticJob,
     updateOptimisticJob,
+    updateOptimisticJobStatus,
     failOptimisticJob,
-  }), [fetchJobs, addOptimisticJob, updateOptimisticJob, failOptimisticJob]);
+  }), [fetchJobs, addOptimisticJob, updateOptimisticJob, updateOptimisticJobStatus, failOptimisticJob]);
 
   useEffect(() => {
     fetchJobs();
@@ -97,7 +106,6 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
     joinTeam(teamId);
 
     const handleJobUpdate = (update: FaceSwapJob | { id: string; status: "deleted" }) => {
-      // Handle deleted jobs from websocket
       if (update.status === "deleted") {
         setJobs((prev) => prev.filter((j) => j.id !== update.id));
         return;
@@ -105,6 +113,10 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
       setJobs((prev) => {
         const idx = prev.findIndex((j) => j.id === update.id);
         if (idx === -1) {
+          const hasOptimisticJob = prev.some((j) => j.status === "uploading" || j.status === "pending_upload");
+          if (hasOptimisticJob && (update.status === "queued" || update.status === "pending_upload")) {
+            return prev;
+          }
           return [update, ...prev];
         }
         const updated = [...prev];
@@ -128,7 +140,9 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
         updated &&
         (updated.status !== selectedJob.status ||
           updated.progress !== selectedJob.progress ||
-          updated.outputUrl !== selectedJob.outputUrl)
+          updated.outputUrl !== selectedJob.outputUrl ||
+          updated.clipId !== selectedJob.clipId ||
+          updated.title !== selectedJob.title)
       ) {
         setSelectedJob(updated);
       }
@@ -148,36 +162,38 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
 
   const handleDeleteJob = useCallback(async (jobId: string) => {
     try {
-      const response = await apiFetch(`${API_URL}/comfy/jobs/${jobId}`, {
-        method: "DELETE",
-      });
-      if (response.ok) {
-        setJobs((prev) => prev.filter((j) => j.id !== jobId));
-        // Close modal if the deleted job was being viewed
-        if (selectedJob?.id === jobId) {
-          setIsModalOpen(false);
-          setSelectedJob(null);
-        }
-        addToast({
-          title: "Job deleted",
-          description: "The face swap job has been deleted.",
-          color: "success",
-        });
-      } else {
-        const data = await response.json();
-        addToast({
-          title: "Delete failed",
-          description: data.error || "Failed to delete job.",
-          color: "danger",
-        });
+      await faceSwapAPI.deleteJob(jobId);
+      setJobs((prev) => prev.filter((j) => j.id !== jobId));
+      // Close modal if the deleted job was being viewed
+      if (selectedJob?.id === jobId) {
+        setIsModalOpen(false);
+        setSelectedJob(null);
       }
+      addToast({
+        title: "Job deleted",
+        description: "The swap job has been deleted.",
+        color: "success",
+      });
     } catch (err) {
       console.error("Failed to delete job:", err);
+      const errorMessage = err instanceof Error ? err.message : "Failed to delete job.";
       addToast({
         title: "Delete failed",
-        description: "An error occurred while deleting the job.",
+        description: errorMessage,
         color: "danger",
       });
+    }
+  }, [selectedJob]);
+
+  const handleTitleUpdate = useCallback((jobId: string, title: string) => {
+    setJobs((prev) =>
+      prev.map((job) =>
+        job.id === jobId ? { ...job, title } : job
+      )
+    );
+    // Also update selectedJob if it's the one being edited
+    if (selectedJob?.id === jobId) {
+      setSelectedJob((prev) => prev ? { ...prev, title } : null);
     }
   }, [selectedJob]);
 
@@ -202,9 +218,9 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
             icon="solar:mask-happly-bold-duotone"
             className="text-4xl text-text-tertiary mx-auto mb-3"
           />
-          <p className="text-text-secondary">No face swaps yet</p>
+          <p className="text-text-secondary">No swaps yet</p>
           <p className="text-xs text-text-tertiary mt-1">
-            Create your first face swap above
+            Create your first swap above
           </p>
         </CardBody>
       </Card>
@@ -242,6 +258,7 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onDelete={handleDeleteJob}
+        onTitleUpdate={handleTitleUpdate}
       />
     </>
   );

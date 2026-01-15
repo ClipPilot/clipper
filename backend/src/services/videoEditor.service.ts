@@ -37,6 +37,22 @@ const COMPRESSION_THRESHOLD = 200 * 1024 * 1024; // Only compress files > 200MB
 const TARGET_CRF = 23; // Quality level (18-28, lower = better quality, 23 is default/good)
 const MAX_BITRATE = 12000; // 12 Mbps max bitrate cap
 
+// Mobile-compatible H.264 encoding settings
+// profile:v main - Broad device support (especially older iOS/Android)
+// level 3.1 - Compatible with most mobile devices
+// pix_fmt yuv420p - Required for QuickTime/iOS playback
+// g/keyint_min 30 - Keyframe every second for smooth seeking
+// vsync cfr - Constant frame rate prevents mobile playback issues
+const MOBILE_VIDEO_SETTINGS = [
+  "-profile:v main",
+  "-level 3.1",
+  "-pix_fmt yuv420p",
+  "-r 30",
+  "-g 30",
+  "-keyint_min 30",
+  "-vsync cfr",
+];
+
 export const compressVideoForUpload = async (
   inputPath: string,
   outputPath: string
@@ -85,14 +101,17 @@ export const compressVideoForUpload = async (
       ffmpeg(inputPath)
         .outputOptions([
           "-c:v libx264",
-          "-preset fast", // Good balance of speed and quality
-          `-crf ${TARGET_CRF}`, // Quality-based encoding
+          "-preset fast",
+          `-crf ${TARGET_CRF}`,
           `-maxrate ${MAX_BITRATE}k`,
           `-bufsize ${MAX_BITRATE * 2}k`,
+          ...MOBILE_VIDEO_SETTINGS,
           "-c:a aac",
-          "-b:a 192k", // Higher audio quality
+          "-b:a 192k",
+          "-ar 48000",
+          "-ac 2",
           "-movflags +faststart",
-          "-map_metadata -1", // Strip all metadata
+          "-map_metadata", "-1",
         ])
         .save(outputPath)
         .on("progress", (progress) => {
@@ -232,13 +251,10 @@ export const cutClip = (
       .setDuration(duration)
       .outputOptions([
         "-c:v libx264",
-        "-preset ultrafast",
-        "-crf 28",
-        "-r 30",
+        "-preset fast",
+        "-crf 23",
+        ...MOBILE_VIDEO_SETTINGS,
         "-bf 0",
-        "-g 30",
-        "-force_key_frames 0",
-        "-vsync cfr",
         "-ar 48000",
         "-ac 2",
         "-c:a aac",
@@ -247,7 +263,8 @@ export const cutClip = (
         "aresample=async=1:first_pts=0",
         "-avoid_negative_ts make_zero",
         "-reset_timestamps 1",
-        "-map_metadata -1",
+        "-movflags +faststart",
+        "-map_metadata", "-1",
       ])
       .on("end", () => {
         if (!fs.existsSync(output)) {
@@ -305,22 +322,21 @@ const normalizeClip = (input: string, output: string): Promise<string> => {
     ffmpeg(input)
       .outputOptions([
         "-c:v libx264",
-        "-preset veryfast",
-        "-crf 18",
-        "-pix_fmt yuv420p",
-        "-r 30",
-        "-vsync cfr",
+        "-preset fast",
+        "-crf 23",
+        ...MOBILE_VIDEO_SETTINGS,
         "-bf 0",
-        "-g 30",
-        "-keyint_min 30",
         "-sc_threshold 0",
-        "-c:a copy",
+        "-c:a aac",
+        "-b:a 128k",
+        "-ar 48000",
+        "-ac 2",
         "-fflags +genpts+igndts",
         "-avoid_negative_ts make_zero",
         "-reset_timestamps 1",
         "-start_at_zero",
         "-movflags +faststart",
-        "-map_metadata -1", // Strip all metadata
+        "-map_metadata", "-1",
       ])
       .save(output)
       .on("end", () => {
@@ -368,7 +384,7 @@ export const mergeClipsGpu = async (clips: string[], outputPath: string) => {
         "-c copy",
         "-fflags +genpts",
         "-movflags +faststart",
-        "-map_metadata -1",
+        "-map_metadata", "-1",
       ])
       .save(outputPath)
       .on("end", () => {
@@ -475,32 +491,30 @@ export const mergeClips = async (clips: string[], outputPath: string) => {
           "-map [v]",
           "-map 0:a?",
           "-c:v libx264",
-          "-preset veryfast",
-          "-pix_fmt yuv420p",
-          "-r 30",
+          "-preset fast",
+          "-crf 23",
+          ...MOBILE_VIDEO_SETTINGS,
           "-bf 0",
-          "-vsync cfr",
           "-movflags +faststart",
           "-c:a aac",
           "-b:a 128k",
           "-ar 48000",
           "-ac 2",
-          "-map_metadata -1", // Strip all metadata
+          "-map_metadata", "-1",
         ]);
     } else {
       ffmpegCmd.outputOptions([
         "-c:v libx264",
-        "-preset veryfast",
-        "-pix_fmt yuv420p",
-        "-r 30",
+        "-preset fast",
+        "-crf 23",
+        ...MOBILE_VIDEO_SETTINGS,
         "-bf 0",
-        "-vsync cfr",
         "-movflags +faststart",
         "-c:a aac",
         "-b:a 128k",
         "-ar 48000",
         "-ac 2",
-        "-map_metadata -1", // Strip all metadata
+        "-map_metadata", "-1",
       ]);
     }
 
@@ -698,10 +712,14 @@ export const addTextOverlayAtPosition = async (
         .complexFilter([`overlay=${xPos}:${yPos}`])
         .outputOptions([
           "-c:v libx264",
-          "-preset ultrafast",
+          "-preset fast",
           "-crf 23",
-          "-c:a copy",
-          "-map_metadata -1", // Strip all metadata
+          ...MOBILE_VIDEO_SETTINGS,
+          "-c:a aac",
+          "-b:a 128k",
+          "-ar 48000",
+          "-movflags +faststart",
+          "-map_metadata", "-1",
         ])
         .save(outputPath)
         .on("end", () => {
@@ -758,10 +776,14 @@ export const addPreviewWatermark = async (
       ])
       .outputOptions([
         "-c:v libx264",
-        "-preset ultrafast",
+        "-preset fast",
         "-crf 23",
-        "-c:a copy",
-        "-map_metadata -1", // Strip all metadata
+        ...MOBILE_VIDEO_SETTINGS,
+        "-c:a aac",
+        "-b:a 128k",
+        "-ar 48000",
+        "-movflags +faststart",
+        "-map_metadata", "-1",
       ])
       .save(outputPath)
       .on("end", () => {
@@ -815,10 +837,14 @@ export const addTextOverlay = async (
         .complexFilter([`overlay=(W-w)/2:${yPosition}`])
         .outputOptions([
           "-c:v libx264",
-          "-preset ultrafast",
+          "-preset fast",
           "-crf 23",
-          "-c:a copy",
-          "-map_metadata -1", // Strip all metadata
+          ...MOBILE_VIDEO_SETTINGS,
+          "-c:a aac",
+          "-b:a 128k",
+          "-ar 48000",
+          "-movflags +faststart",
+          "-map_metadata", "-1",
         ])
         .save(outputPath)
         .on("end", () => {

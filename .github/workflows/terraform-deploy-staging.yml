@@ -100,6 +100,10 @@ jobs:
           # Sync
           sync_key            = "${{ secrets.SYNC_KEY }}"
 
+          # Video Gen Keys
+          elevenlabs_api_key = "${{ secrets.ELEVENLABS_API_KEY }}"
+          fal_key            = "${{ secrets.FAL_KEY }}"
+
           # Custom Domain
           api_domain          = "api-staging.cuttr.com"
           frontend_url        = "https://beta.cuttr.com"
@@ -220,6 +224,10 @@ jobs:
 
           # Sync
           sync_key            = "${{ secrets.SYNC_KEY }}"
+
+          # Video Gen Keys
+          elevenlabs_api_key = "${{ secrets.ELEVENLABS_API_KEY }}"
+          fal_key            = "${{ secrets.FAL_KEY }}"
 
           # Custom Domain
           api_domain          = "api-staging.cuttr.com"

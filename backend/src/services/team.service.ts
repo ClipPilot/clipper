@@ -3,6 +3,7 @@ import { db } from "../db";
 import { teams, teamMembers, users, usageStats, subscriptions } from "@clipper/shared-db/src/schema";
 import { eq, and, desc, count } from "drizzle-orm";
 import { PLAN_LIMITS, stripe } from "../config/stripe.config";
+import { s3Service } from "./s3.service";
 
 class TeamService {
   /**
@@ -16,6 +17,7 @@ class TeamService {
         type: teams.type,
         plan: teams.plan,
         teamSubscriptionId: teams.teamSubscrptionId,
+        logo_url: teams.logo_url,
         role: teamMembers.role,
         created_at: teams.created_at,
         updated_at: teams.updated_at,
@@ -25,7 +27,13 @@ class TeamService {
       .where(eq(teamMembers.user_id, userId))
       .orderBy(teams.created_at);
 
-    return userTeams;
+    // Generate presigned URLs for logos
+    return Promise.all(
+      userTeams.map(async (team) => ({
+        ...team,
+        logo_url: team.logo_url ? await s3Service.getPresignedUrl(team.logo_url, 3600) : null,
+      }))
+    );
   }
 
   /**
@@ -39,6 +47,7 @@ class TeamService {
         type: teams.type,
         plan: teams.plan,
         teamSubscriptionId: teams.teamSubscrptionId,
+        logo_url: teams.logo_url,
         role: teamMembers.role,
         created_at: teams.created_at,
         updated_at: teams.updated_at,
@@ -53,7 +62,11 @@ class TeamService {
       throw new Error("No default team found for user");
     }
 
-    return defaultTeam;
+    // Generate presigned URL for logo if exists
+    return {
+      ...defaultTeam,
+      logo_url: defaultTeam.logo_url ? await s3Service.getPresignedUrl(defaultTeam.logo_url, 3600) : null,
+    };
   }
 
   /**
@@ -88,6 +101,24 @@ class TeamService {
       .where(eq(teamMembers.team_id, teamId));
 
     return members;
+  }
+
+  /**
+   * Get a specific team member by team and user ID
+   */
+  async getTeamMember(teamId: number, userId: number) {
+    const [member] = await db
+      .select({
+        id: teamMembers.id,
+        userId: users.id,
+        role: teamMembers.role,
+      })
+      .from(teamMembers)
+      .innerJoin(users, eq(teamMembers.user_id, users.id))
+      .where(and(eq(teamMembers.team_id, teamId), eq(teamMembers.user_id, userId)))
+      .limit(1);
+
+    return member || null;
   }
 
   /**
@@ -189,6 +220,95 @@ class TeamService {
     }
 
     return { success: false, source: null };
+  }
+
+  /**
+   * Consume multiple credits from the team's quota.
+   * Order: Base plan credits first, then addon credits.
+   * Returns info about whether successful and breakdown of consumption.
+   */
+  async consumeMultiple(
+    teamId: number,
+    count: number
+  ): Promise<{
+    success: boolean;
+    consumed: number;
+    fromBase: number;
+    fromAddon: number;
+    remaining: { base: number; addon: number; total: number };
+  }> {
+    const stats = await this.getTeamUsageStats(teamId);
+    const [team] = await db
+      .select()
+      .from(teams)
+      .where(eq(teams.id, teamId))
+      .limit(1);
+
+    if (!team) {
+      return {
+        success: false,
+        consumed: 0,
+        fromBase: 0,
+        fromAddon: 0,
+        remaining: { base: 0, addon: 0, total: 0 },
+      };
+    }
+
+    const baseRemaining = Math.max(0, stats.limit - stats.clips_created);
+    const addonRemaining = team.addon_clips_remaining || 0;
+    const totalRemaining = baseRemaining + addonRemaining;
+
+    if (totalRemaining < count) {
+      return {
+        success: false,
+        consumed: 0,
+        fromBase: 0,
+        fromAddon: 0,
+        remaining: { base: baseRemaining, addon: addonRemaining, total: totalRemaining },
+      };
+    }
+
+    let fromBase = 0;
+    let fromAddon = 0;
+
+    if (count <= baseRemaining) {
+      fromBase = count;
+    } else {
+      fromBase = baseRemaining;
+      fromAddon = count - baseRemaining;
+    }
+
+    if (fromBase > 0) {
+      await db
+        .update(usageStats)
+        .set({
+          clips_created: stats.clips_created + fromBase,
+          updated_at: new Date(),
+        })
+        .where(eq(usageStats.id, stats.id));
+    }
+
+    if (fromAddon > 0) {
+      await db
+        .update(teams)
+        .set({
+          addon_clips_remaining: addonRemaining - fromAddon,
+          updated_at: new Date(),
+        })
+        .where(eq(teams.id, teamId));
+    }
+
+    return {
+      success: true,
+      consumed: count,
+      fromBase,
+      fromAddon,
+      remaining: {
+        base: baseRemaining - fromBase,
+        addon: addonRemaining - fromAddon,
+        total: totalRemaining - count,
+      },
+    };
   }
 
   /**
@@ -416,6 +536,19 @@ class TeamService {
     const [updated] = await db
       .update(teams)
       .set({ name, updated_at: new Date() })
+      .where(eq(teams.id, teamId))
+      .returning();
+
+    return updated;
+  }
+
+  /**
+   * Update team logo URL
+   */
+  async updateTeamLogo(teamId: number, logoUrl: string | null) {
+    const [updated] = await db
+      .update(teams)
+      .set({ logo_url: logoUrl, updated_at: new Date() })
       .where(eq(teams.id, teamId))
       .returning();
 

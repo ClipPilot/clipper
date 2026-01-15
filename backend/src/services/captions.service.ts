@@ -3,6 +3,18 @@ import path from "path";
 import ffmpeg from "fluent-ffmpeg";
 import { ClipSuggestions } from "../types/ai.types";
 
+// Mobile-compatible H.264 encoding settings
+const MOBILE_VIDEO_SETTINGS = [
+  "-profile:v main",
+  "-level 3.1",
+  "-pix_fmt yuv420p",
+  "-r 30",
+  "-g 30",
+  "-keyint_min 30",
+  "-vsync cfr",
+];
+
+
 export interface TranscriptionWord {
   start: number;
   end: number;
@@ -146,7 +158,16 @@ Format: Layer,Start,End,Style,Text
   return new Promise((resolve, reject) => {
     ffmpeg(inputPath)
       .videoFilters(`ass=${assPath}:fontsdir=${fontsDir}`)
-      .outputOptions(["-c:a copy", "-map_metadata -1"])
+      .outputOptions([
+        "-c:v libx264",
+        "-preset fast",
+        "-crf 23",
+        ...MOBILE_VIDEO_SETTINGS,
+        "-c:a aac",
+        "-b:a 128k",
+        "-ar 48000",
+        "-movflags +faststart",
+      ])
       .save(outputPath)
       .on("end", () => {
         fs.unlinkSync(assPath);
@@ -257,7 +278,16 @@ Format: Layer,Start,End,Style,Text
   return new Promise((resolve, reject) => {
     ffmpeg(inputPath)
       .videoFilters(`ass=${assPath}:fontsdir=${fontsDir}`)
-      .outputOptions(["-c:a copy", "-map_metadata -1"])
+      .outputOptions([
+        "-c:v libx264",
+        "-preset fast",
+        "-crf 23",
+        ...MOBILE_VIDEO_SETTINGS,
+        "-c:a aac",
+        "-b:a 128k",
+        "-ar 48000",
+        "-movflags +faststart",
+      ])
       .save(outputPath)
       .on("end", () => {
         fs.unlinkSync(assPath);

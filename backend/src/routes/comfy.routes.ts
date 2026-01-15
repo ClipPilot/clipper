@@ -2,51 +2,45 @@ import { Router } from "express";
 import multer from "multer";
 import { comfyController } from "../controllers/comfy.controller";
 import { requireAuth } from "../middleware/auth.middleware";
+import { faceSwapUpload } from "../config/multer";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
-/**
- * @openapi
- * /comfy/ugc-face-swap:
- *   post:
- *     summary: Queue a UGC face swap job
- *     description: Upload image and video, process through ComfyUI face swap. Videos split into 10s chunks, processed, then stitched. Max 30 seconds.
- *     tags:
- *       - ComfyUI
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             required:
- *               - teamId
- *               - image
- *               - video
- *             properties:
- *               teamId:
- *                 type: integer
- *               image:
- *                 type: string
- *                 format: binary
- *               video:
- *                 type: string
- *                 format: binary
- *     responses:
- *       202:
- *         description: Job queued
- *       400:
- *         description: Invalid input or video too long
- */
+const optionalMulter = upload.fields([
+  { name: "image", maxCount: 1 },
+  { name: "video", maxCount: 1 },
+]);
+
+const conditionalMulter = (req: any, res: any, next: any) => {
+  const contentType = req.headers["content-type"] || "";
+  if (contentType.includes("multipart/form-data")) {
+    return optionalMulter(req, res, next);
+  }
+  next();
+};
+
+router.post(
+  "/ugc-upload-urls",
+  requireAuth,
+  comfyController.getUGCUploadUrls.bind(comfyController)
+);
+
 router.post(
   "/ugc-face-swap",
   requireAuth,
-  upload.fields([
-    { name: "image", maxCount: 1 },
-    { name: "video", maxCount: 1 },
-  ]),
+  conditionalMulter,
   comfyController.createUGCFaceSwapJob.bind(comfyController)
+);
+
+router.post(
+  "/ugc-face-swap-upload",
+  requireAuth,
+  faceSwapUpload.fields([
+    { name: "video", maxCount: 1 },
+    { name: "images", maxCount: 10 },
+  ]),
+  comfyController.createUGCFaceSwapWithUpload.bind(comfyController)
 );
 
 /**
@@ -122,6 +116,187 @@ router.delete(
   "/jobs/:jobId",
   requireAuth,
   comfyController.deleteJob.bind(comfyController)
+);
+
+/**
+ * @openapi
+ * /comfy/jobs/{jobId}:
+ *   patch:
+ *     summary: Update a job (e.g., title)
+ *     tags:
+ *       - ComfyUI
+ *     parameters:
+ *       - in: path
+ *         name: jobId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Job updated
+ *       404:
+ *         description: Job not found
+ */
+router.patch(
+  "/jobs/:jobId",
+  requireAuth,
+  comfyController.updateJob.bind(comfyController)
+);
+
+/**
+ * @openapi
+ * /comfy/saved-faces/{teamId}:
+ *   get:
+ *     summary: Get all saved faces for a team
+ *     tags:
+ *       - Saved Faces
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The team ID to get saved faces for
+ *     responses:
+ *       200:
+ *         description: List of saved faces
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 faces:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       name:
+ *                         type: string
+ *                       imageUrl:
+ *                         type: string
+ *                         format: uri
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *       400:
+ *         description: Team ID required
+ *       500:
+ *         description: Failed to get saved faces
+ */
+router.get(
+  "/saved-faces/:teamId",
+  requireAuth,
+  comfyController.getSavedFaces.bind(comfyController)
+);
+
+/**
+ * @openapi
+ * /comfy/saved-faces:
+ *   post:
+ *     summary: Save a new face for a team
+ *     tags:
+ *       - Saved Faces
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - teamId
+ *               - name
+ *               - image
+ *             properties:
+ *               teamId:
+ *                 type: integer
+ *                 description: The team ID to save the face for
+ *               name:
+ *                 type: string
+ *                 description: Display name for the saved face
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *                 description: The face image file
+ *     responses:
+ *       201:
+ *         description: Face saved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 face:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     name:
+ *                       type: string
+ *                     imageUrl:
+ *                       type: string
+ *                       format: uri
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *       400:
+ *         description: Missing required fields (teamId, name, or image)
+ *       500:
+ *         description: Failed to save face
+ */
+router.post(
+  "/saved-faces",
+  requireAuth,
+  upload.single("image"),
+  comfyController.saveFace.bind(comfyController)
+);
+
+/**
+ * @openapi
+ * /comfy/saved-faces/{id}:
+ *   delete:
+ *     summary: Delete a saved face
+ *     tags:
+ *       - Saved Faces
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The saved face ID to delete
+ *     responses:
+ *       200:
+ *         description: Face deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Face deleted successfully
+ *       400:
+ *         description: Face ID required
+ *       404:
+ *         description: Face not found
+ *       500:
+ *         description: Failed to delete face
+ */
+router.delete(
+  "/saved-faces/:id",
+  requireAuth,
+  comfyController.deleteSavedFace.bind(comfyController)
 );
 
 export default router;

@@ -11,7 +11,11 @@ export type JobType =
   | "batch-clip-video"
   | "update-captions"
   | "text-overlay"
-  | "update-overlays";
+  | "update-overlays"
+  | "generate-character"
+  | "generate-scene-image"
+  | "generate-script"
+  | "generate-ugc-video";
 
 // Base job interface
 interface BaseJob {
@@ -113,12 +117,101 @@ export interface UpdateOverlaysJob extends BaseJob {
   };
 }
 
+// Character generation job payload
+export interface GenerateCharacterJob extends BaseJob {
+  type: "generate-character";
+  jobId: string;
+  config: {
+    gender: string;
+    ageRange: string;
+    appearance: {
+      hairColor: string;
+      hairStyle: string;
+      skinTone: string;
+      eyeColor: string;
+      bodyType: string;
+    };
+    style: {
+      outfit: string;
+      outfitCustom?: string;
+      setting: string;
+      cameraStyle?: string; // Deprecated - no longer used in UI
+      anythingElse?: string;
+    };
+    referenceImages?: string[];
+  };
+  parentCharacterId?: number;
+}
+
+// Scene image generation job payload
+export interface GenerateSceneImageJob extends BaseJob {
+  type: "generate-scene-image";
+  jobId: string;
+  scriptId: string;
+  sceneId: string;
+  sceneNumber: number;
+  characterId: number;
+  sceneData: {
+    sceneType: string;
+    action: string;
+    dialogue: string;
+    emotion: string;
+    shotType: string;
+    cameraAngle: string;
+    cinematicPrompt: string;
+  };
+  productImageKeys: string[];
+  userRefinement?: string;
+  supportingImageKeys: string[];
+  frameIndex?: 0 | 1; // 0=start only, 1=end only, undefined=both
+}
+
+// Script generation job payload
+export interface GenerateScriptJob extends BaseJob {
+  type: "generate-script";
+  jobId: string;
+  characterId: number;
+  productImageKeys: string[];
+  productName?: string;
+  scriptDirection?: string;
+  targetDuration: number;
+  numberOfVariations: number;
+  structureId: string;
+  customPattern?: { type: string; shot: string }[];
+}
+
+export interface GenerateUGCVideoJob extends BaseJob {
+  type: "generate-ugc-video";
+  jobId: string;
+  scriptId: string;
+  voiceId: string;
+  scenes: Array<{
+    sceneId: string;
+    sceneNumber: number;
+    shotType: "a-roll" | "b-roll" | "mixed";
+    imageKey: string;
+    endImageKey?: string;
+    dialogue: string;
+    duration: number;
+    cinematicPrompt: string;
+    action: string;
+    emotion: string;
+    ambientSound?: string | null;
+    regenerate?: boolean;
+  }>;
+  regenerateSceneId?: string;
+}
+
 export type VideoProcessingJob =
   | ClipVideoJob
   | BatchClipVideoJob
   | UpdateCaptionsJob
   | TextOverlayJob
-  | UpdateOverlaysJob;
+  | UpdateOverlaysJob
+  | GenerateCharacterJob
+  | GenerateSceneImageJob
+  | GenerateScriptJob
+  | GenerateUGCVideoJob;
 
 class SQSService {
   private queueUrl: string;
@@ -270,6 +363,116 @@ class SQSService {
       captionColor: params.captionColor,
       captionFont: params.captionFont,
       heading: params.heading,
+      createdAt: new Date().toISOString(),
+    };
+
+    return this.sendJob(job);
+  }
+
+  async sendGenerateCharacterJob(params: {
+    jobId: string;
+    teamId: number;
+    userId: number;
+    config: GenerateCharacterJob["config"];
+    parentCharacterId?: number;
+  }): Promise<string> {
+    const job: GenerateCharacterJob = {
+      type: "generate-character",
+      jobId: params.jobId,
+      teamId: params.teamId,
+      userId: params.userId,
+      config: params.config,
+      parentCharacterId: params.parentCharacterId,
+      createdAt: new Date().toISOString(),
+    };
+
+    return this.sendJob(job);
+  }
+
+  async sendGenerateSceneImageJob(params: {
+    jobId: string;
+    teamId: number;
+    userId: number;
+    scriptId: string;
+    sceneId: string;
+    sceneNumber: number;
+    characterId: number;
+    sceneData: GenerateSceneImageJob["sceneData"];
+    productImageKeys: string[];
+    userRefinement?: string;
+    supportingImageKeys: string[];
+    frameIndex?: 0 | 1;
+  }): Promise<string> {
+    const job: GenerateSceneImageJob = {
+      type: "generate-scene-image",
+      jobId: params.jobId,
+      teamId: params.teamId,
+      userId: params.userId,
+      scriptId: params.scriptId,
+      sceneId: params.sceneId,
+      sceneNumber: params.sceneNumber,
+      characterId: params.characterId,
+      sceneData: params.sceneData,
+      productImageKeys: params.productImageKeys,
+      userRefinement: params.userRefinement,
+      supportingImageKeys: params.supportingImageKeys,
+      frameIndex: params.frameIndex,
+      createdAt: new Date().toISOString(),
+    };
+
+    return this.sendJob(job);
+  }
+
+  async sendGenerateScriptJob(params: {
+    jobId: string;
+    teamId: number;
+    userId: number;
+    characterId: number;
+    productImageKeys: string[];
+    productName?: string;
+    scriptDirection?: string;
+    targetDuration: number;
+    numberOfVariations: number;
+    structureId: string;
+    customPattern?: { type: string; shot: string }[];
+  }): Promise<string> {
+    const job: GenerateScriptJob = {
+      type: "generate-script",
+      jobId: params.jobId,
+      teamId: params.teamId,
+      userId: params.userId,
+      characterId: params.characterId,
+      productImageKeys: params.productImageKeys,
+      productName: params.productName,
+      scriptDirection: params.scriptDirection,
+      targetDuration: params.targetDuration,
+      numberOfVariations: params.numberOfVariations,
+      structureId: params.structureId,
+      customPattern: params.customPattern,
+      createdAt: new Date().toISOString(),
+    };
+
+    return this.sendJob(job);
+  }
+
+  async sendGenerateUGCVideoJob(params: {
+    jobId: string;
+    teamId: number;
+    userId: number;
+    scriptId: string;
+    voiceId: string;
+    scenes: GenerateUGCVideoJob["scenes"];
+    regenerateSceneId?: string;
+  }): Promise<string> {
+    const job: GenerateUGCVideoJob = {
+      type: "generate-ugc-video",
+      jobId: params.jobId,
+      teamId: params.teamId,
+      userId: params.userId,
+      scriptId: params.scriptId,
+      voiceId: params.voiceId,
+      scenes: params.scenes,
+      regenerateSceneId: params.regenerateSceneId,
       createdAt: new Date().toISOString(),
     };
 

@@ -124,7 +124,7 @@ class ClipsAPI {
   async updateClip(
     teamId: number,
     clipId: number,
-    updates: { message?: string; clipScore?: number; folderId?: number | null }
+    updates: { title?: string; message?: string; clipScore?: number; folderId?: number | null }
   ): Promise<Clip> {
     const response = await apiFetch(
       `${API_URL}/clip-video/teams/${teamId}/clips/${clipId}`,
@@ -693,6 +693,52 @@ class ClipsAPI {
 
     const data = await response.json();
     return data.downloadUrl;
+  }
+
+  async searchClips(
+    teamId: number,
+    params: {
+      q?: string;
+      tags?: number[];
+      status?: string;
+      folderId?: number | null;
+      from?: string;
+      to?: string;
+      limit?: number;
+      offset?: number;
+    }
+  ): Promise<{
+    clips: Clip[];
+    pagination: { limit: number; offset: number; total: number; hasMore: boolean };
+    query: string | null;
+    filters: { tags: number[] | null; status: string | null; folderId: number | null };
+  }> {
+    const searchParams = new URLSearchParams();
+    searchParams.set("teamId", teamId.toString());
+
+    if (params.q) searchParams.set("q", params.q);
+    if (params.tags && params.tags.length > 0) searchParams.set("tags", params.tags.join(","));
+    if (params.status) searchParams.set("status", params.status);
+    if (params.folderId !== undefined) {
+      searchParams.set("folderId", params.folderId === null ? "null" : params.folderId.toString());
+    }
+    if (params.from) searchParams.set("from", params.from);
+    if (params.to) searchParams.set("to", params.to);
+    if (params.limit) searchParams.set("limit", params.limit.toString());
+    if (params.offset) searchParams.set("offset", params.offset.toString());
+
+    const response = await apiFetch(
+      `${API_URL}/clip-video/search-clips?${searchParams.toString()}`,
+      {
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to search clips");
+    }
+
+    return response.json();
   }
 }
 

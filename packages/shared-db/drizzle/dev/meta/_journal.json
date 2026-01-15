@@ -8,6 +8,90 @@
       "when": 1767754145453,
       "tag": "0000_absent_puppet_master",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1767847142781,
+      "tag": "0001_flimsy_wild_pack",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1767849184028,
+      "tag": "0002_dashing_molecule_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1767909824486,
+      "tag": "0003_late_moonstone",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1767978809704,
+      "tag": "0004_perfect_wolf_cub",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1767988388924,
+      "tag": "0005_neat_spitfire",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1768080265278,
+      "tag": "0006_smiling_gamma_corps",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1768338831069,
+      "tag": "0007_polite_galactus",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1768375187819,
+      "tag": "0008_right_fabian_cortez",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1768444172761,
+      "tag": "0009_fancy_kingpin",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1768498661478,
+      "tag": "0010_perpetual_tarantula",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1768504566009,
+      "tag": "0011_amused_stick",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1768507358425,
+      "tag": "0012_demonic_ares",
+      "breakpoints": true
     }
   ]
 }

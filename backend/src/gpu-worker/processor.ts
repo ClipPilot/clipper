@@ -30,6 +30,7 @@ import {
   generateSrtFromCaptions,
 } from "../services/captions.service";
 import { GpuJobMessage, SpliceSegmentInfo } from "../services/gpuSqs.service";
+import { applyJumbledMetadata } from "../utils/videoMetadata";
 
 const API_INTERNAL_URL =
   process.env.API_INTERNAL_URL || "http://localhost:3001";
@@ -630,18 +631,30 @@ function findVideoOutput(outputs: WorkflowOutputs): ComfyOutput | null {
 
 async function downloadOutput(
   gpu: GpuConfig,
-  file: ComfyOutput
+  file: ComfyOutput,
+  retryCount = 0
 ): Promise<Buffer> {
+  const MAX_DOWNLOAD_RETRIES = 3;
   const url = new URL(`${gpu.url}/view`);
   url.searchParams.set("filename", file.filename);
   url.searchParams.set("type", file.type || "output");
   url.searchParams.set("subfolder", file.subfolder || "");
 
-  console.log(`[gpu-worker] Downloading: ${file.filename}`);
+  if (retryCount === 0) {
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+
+  console.log(`[gpu-worker] Downloading: ${file.filename}${retryCount > 0 ? ` (attempt ${retryCount + 1})` : ""}`);
   const res = await fetch(url);
 
   if (!res.ok) {
-    throw new Error(`Failed to download output: ${res.status}`);
+    if (retryCount < MAX_DOWNLOAD_RETRIES) {
+      const delay = Math.pow(2, retryCount) * 1000;
+      console.log(`[gpu-worker] Download failed (${res.status}), retrying in ${delay}ms...`);
+      await new Promise((r) => setTimeout(r, delay));
+      return downloadOutput(gpu, file, retryCount + 1);
+    }
+    throw new Error(`Failed to download output after ${MAX_DOWNLOAD_RETRIES} retries: ${res.status}`);
   }
 
   return Buffer.from(await res.arrayBuffer());
@@ -965,7 +978,13 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
     //   }
     // }
 
-    // Step 11: Upload final video to S3
+    // Step 11: Apply jumbled metadata to final video
+    console.log(`[gpu-worker] Applying jumbled metadata...`);
+    const metadataOutputPath = path.join(outDir, `final_metadata_${Date.now()}.mp4`);
+    await applyJumbledMetadata(finalOutputPath, metadataOutputPath);
+    fs.renameSync(metadataOutputPath, finalOutputPath);
+
+    // Step 12: Upload final video to S3
     console.log(`[gpu-worker] Uploading final video to S3...`);
     await updateProgress(jobId, job.teamId, 95, "Uploading final video");
 
@@ -1058,7 +1077,7 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
           );
         }
 
-        // Send email notification
+        // Send UGC ready email notification
         const [user] = await db
           .select()
           .from(users)
@@ -1068,13 +1087,11 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
         if (user) {
           const frontendUrl =
             process.env.FRONTEND_URL || "https://platform.cuttr.com";
-          await emailNotiService.sendClipsReady(user.email, {
+          await emailNotiService.sendUgcReady(user.email, {
             userName: user.first_name || "there",
-            clipCount: 1,
-            sourceFileName: "UGC Face Swap",
-            clipsUrl: `${frontendUrl}/dashboard/ugc-studio`,
+            ugcUrl: `${frontendUrl}/dashboard/ugc-studio`,
           });
-          console.log(`[gpu-worker] Sent email notification to ${user.email}`);
+          console.log(`[gpu-worker] Sent UGC ready email to ${user.email}`);
         }
       }
     } catch (clipErr) {

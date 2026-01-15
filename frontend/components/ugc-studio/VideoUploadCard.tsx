@@ -12,6 +12,8 @@ interface VideoUploadCardProps {
   segments: VideoSegment[];
   onVideoChange: (video: UploadedFile | null, duration: number) => void;
   onSegmentsChange: (segments: VideoSegment[]) => void;
+  showEditor?: boolean;
+  onToggleEditor?: () => void;
 }
 
 export function VideoUploadCard({
@@ -20,6 +22,8 @@ export function VideoUploadCard({
   segments,
   onVideoChange,
   onSegmentsChange,
+  showEditor = false,
+  onToggleEditor,
 }: VideoUploadCardProps) {
   const videoInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -78,30 +82,68 @@ export function VideoUploadCard({
             <h3 className="text-base font-semibold text-text-primary">Video & Trim</h3>
             <p className="text-xs text-text-tertiary">Upload video and select clips (max 50s total)</p>
           </div>
-          {video && (
-            <Button
-              size="sm"
-              variant="flat"
-              className="bg-surface-elevated text-text-secondary"
-              onPress={handleClear}
-              startContent={<Icon icon="solar:refresh-bold" width={16} />}
-            >
-              Change Video
-            </Button>
-          )}
         </div>
       </CardHeader>
       <CardBody className="pt-4">
         {video ? (
-          <MultiSegmentTrimmer
-            videoSrc={video.preview}
-            videoFile={video.file}
-            duration={videoDuration}
-            segments={segments}
-            onSegmentsChange={onSegmentsChange}
-            maxTotalDuration={50}
-            maxSegments={5}
-          />
+          <div className="space-y-3">
+            {/* Video info bar - always visible */}
+            <div className="flex items-center justify-between gap-3 p-2 bg-surface-elevated rounded-lg">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-text-primary truncate">{video.file.name}</p>
+                <p className="text-xs text-text-tertiary">
+                  {Math.round(videoDuration)}s {!showEditor && "• Ready for auto-detect"}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {onToggleEditor && (
+                  <Button
+                    size="sm"
+                    variant="flat"
+                    className={showEditor ? "bg-purple-500/20 text-purple-400" : "bg-surface-base text-text-secondary"}
+                    onPress={onToggleEditor}
+                    startContent={<Icon icon={showEditor ? "solar:minimize-square-bold" : "solar:tuning-2-bold"} width={16} />}
+                  >
+                    {showEditor ? "Hide Editor" : "Manual Edit"}
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant="flat"
+                  className="bg-surface-base text-text-secondary"
+                  onPress={handleClear}
+                  startContent={<Icon icon="solar:refresh-bold" width={16} />}
+                >
+                  Change
+                </Button>
+              </div>
+            </div>
+
+            {/* Simple video player when not editing */}
+            {!showEditor && (
+              <div className="relative rounded-xl overflow-hidden bg-black aspect-video">
+                <video
+                  src={video.preview}
+                  className="w-full h-full object-contain"
+                  controls
+                  playsInline
+                />
+              </div>
+            )}
+
+            {/* Full editor when editing */}
+            {showEditor && (
+              <MultiSegmentTrimmer
+                videoSrc={video.preview}
+                videoFile={video.file}
+                duration={videoDuration}
+                segments={segments}
+                onSegmentsChange={onSegmentsChange}
+                maxTotalDuration={50}
+                maxSegments={5}
+              />
+            )}
+          </div>
         ) : (
           <div
             className={`border-2 border-dashed rounded-xl p-12 transition-colors ${

@@ -156,4 +156,69 @@ router.get("/download-fixed-public", faceSwapController.downloadFixedPublic);
  */
 router.post("/detect-faces", requireAuth, upload.single("video"), faceSwapController.detectFaces);
 
+/**
+ * @openapi
+ * /face-swap/detect-faces/upload-url:
+ *   post:
+ *     summary: Get presigned URL for uploading video for face detection
+ *     description: Returns a presigned S3 URL for direct video upload
+ *     tags: [Face Swap]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [fileName, teamId]
+ *             properties:
+ *               fileName:
+ *                 type: string
+ *               teamId:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Presigned URL generated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 uploadUrl:
+ *                   type: string
+ *                 s3Key:
+ *                   type: string
+ */
+router.post("/detect-faces/upload-url", requireAuth, faceSwapController.getDetectFacesUploadUrl);
+
+/**
+ * @openapi
+ * /face-swap/detect-faces/from-s3:
+ *   post:
+ *     summary: Detect faces from video already uploaded to S3
+ *     description: Runs face detection on a video that was uploaded via presigned URL
+ *     tags: [Face Swap]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [s3Key, videoDuration]
+ *             properties:
+ *               s3Key:
+ *                 type: string
+ *               videoDuration:
+ *                 type: number
+ *     responses:
+ *       200:
+ *         description: Face segments detected
+ */
+router.post("/detect-faces/from-s3", requireAuth, faceSwapController.detectFacesFromS3);
+
 export default router;

@@ -2,22 +2,26 @@ import * as Sentry from "@sentry/node";
 import jwt from "jsonwebtoken";
 import { Redis } from "ioredis";
 import { db } from "../db";
-import { teams, subscriptions, usageStats, teamMembers, users } from "@clipper/shared-db/src/schema";
+import {
+  teams,
+  subscriptions,
+  usageStats,
+  teamMembers,
+  users,
+} from "@clipper/shared-db/src/schema";
 import { eq, count, and, sql } from "drizzle-orm";
 import { stripe, ENTERPRISE_PRODUCT } from "../config/stripe.config";
 import { emailNotiService } from "./emailNoti.service";
 import adminConfig from "../config/admin.config.json";
 
-const ADMIN_JWT_SECRET = process.env.ADMIN_JWT_SECRET || "admin-secret-key-change-in-production";
-const TWO_FA_CODE_EXPIRY = 15 * 60; // 15 minutes in seconds
+const ADMIN_JWT_SECRET =
+  process.env.ADMIN_JWT_SECRET || "admin-secret-key-change-in-production";
+const TWO_FA_CODE_EXPIRY = 15 * 60;
 const TWO_FA_CODE_PREFIX = "admin_2fa:";
 const TWO_FA_RECIPIENT_EMAIL = "contact@cuttr.com";
-
-// Redis client for 2FA codes (optional - falls back to in-memory)
 let redisClient: Redis | null = null;
 const inMemory2FACodes = new Map<string, { code: string; expiresAt: number }>();
 
-// Initialize Redis if available
 const initRedis = async () => {
   const redisUrl = process.env.REDIS_URL;
   if (redisUrl && !redisClient) {
@@ -45,12 +49,17 @@ class AdminService {
   }
 
   generateToken(email: string): string {
-    return jwt.sign({ email, isAdmin: true }, ADMIN_JWT_SECRET, { expiresIn: "24h" });
+    return jwt.sign({ email, isAdmin: true }, ADMIN_JWT_SECRET, {
+      expiresIn: "24h",
+    });
   }
 
   verifyToken(token: string): { email: string; isAdmin: boolean } | null {
     try {
-      return jwt.verify(token, ADMIN_JWT_SECRET) as { email: string; isAdmin: boolean };
+      return jwt.verify(token, ADMIN_JWT_SECRET) as {
+        email: string;
+        isAdmin: boolean;
+      };
     } catch {
       return null;
     }
@@ -70,7 +79,7 @@ class AdminService {
     } else {
       inMemory2FACodes.set(key, {
         code,
-        expiresAt: Date.now() + (TWO_FA_CODE_EXPIRY * 1000),
+        expiresAt: Date.now() + TWO_FA_CODE_EXPIRY * 1000,
       });
     }
   }
@@ -82,14 +91,14 @@ class AdminService {
     if (redisClient) {
       const storedCode = await redisClient.get(key);
       if (storedCode === code) {
-        await redisClient.del(key); // Consume the code
+        await redisClient.del(key);
         return true;
       }
       return false;
     } else {
       const stored = inMemory2FACodes.get(key);
       if (stored && stored.code === code && stored.expiresAt > Date.now()) {
-        inMemory2FACodes.delete(key); // Consume the code
+        inMemory2FACodes.delete(key);
         return true;
       }
       return false;
@@ -103,7 +112,11 @@ class AdminService {
     await emailNotiService.sendAdmin2FACode(TWO_FA_RECIPIENT_EMAIL, { code });
   }
 
-  async getAllTeams(options?: { search?: string; limit?: number; offset?: number }) {
+  async getAllTeams(options?: {
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }) {
     const { search, limit = 50, offset = 0 } = options || {};
 
     let query = db
@@ -123,9 +136,7 @@ class AdminService {
       .offset(offset);
 
     // Get total count for pagination
-    const [{ total }] = await db
-      .select({ total: count() })
-      .from(teams);
+    const [{ total }] = await db.select({ total: count() }).from(teams);
 
     const allTeams = await query;
 
@@ -160,10 +171,7 @@ class AdminService {
           .from(teamMembers)
           .innerJoin(users, eq(teamMembers.user_id, users.id))
           .where(
-            and(
-              eq(teamMembers.team_id, team.id),
-              eq(teamMembers.role, "owner")
-            )
+            and(eq(teamMembers.team_id, team.id), eq(teamMembers.role, "owner"))
           )
           .limit(1);
 
@@ -200,7 +208,11 @@ class AdminService {
     };
   }
 
-  async createEnterprisePrice(monthlyAmountCents: number, teamId: number, teamName: string): Promise<string> {
+  async createEnterprisePrice(
+    monthlyAmountCents: number,
+    teamId: number,
+    teamName: string
+  ): Promise<string> {
     const price = await stripe.prices.create({
       unit_amount: monthlyAmountCents,
       currency: "usd",
@@ -222,10 +234,18 @@ class AdminService {
     monthlyPriceCents: number,
     customerEmail: string
   ): Promise<{ checkoutUrl: string; priceId: string }> {
-    const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
+    const [team] = await db
+      .select()
+      .from(teams)
+      .where(eq(teams.id, teamId))
+      .limit(1);
     if (!team) throw new Error("Team not found");
 
-    const priceId = await this.createEnterprisePrice(monthlyPriceCents, teamId, team.name);
+    const priceId = await this.createEnterprisePrice(
+      monthlyPriceCents,
+      teamId,
+      team.name
+    );
 
     await db
       .update(teams)
@@ -262,7 +282,11 @@ class AdminService {
   }
 
   async getTeamById(teamId: number) {
-    const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
+    const [team] = await db
+      .select()
+      .from(teams)
+      .where(eq(teams.id, teamId))
+      .limit(1);
     return team;
   }
 
@@ -271,8 +295,16 @@ class AdminService {
     clipLimit: number,
     monthlyPriceCents: number,
     customerEmail: string
-  ): Promise<{ checkoutUrl: string; priceId: string; cancelledSubscription: boolean }> {
-    const [team] = await db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
+  ): Promise<{
+    checkoutUrl: string;
+    priceId: string;
+    cancelledSubscription: boolean;
+  }> {
+    const [team] = await db
+      .select()
+      .from(teams)
+      .where(eq(teams.id, teamId))
+      .limit(1);
     if (!team) throw new Error("Team not found");
 
     let cancelledSubscription = false;
@@ -283,7 +315,11 @@ class AdminService {
       .where(eq(subscriptions.team_id, teamId))
       .limit(1);
 
-    if (existingSub && existingSub.stripe_subscription_id && existingSub.status === "active") {
+    if (
+      existingSub &&
+      existingSub.stripe_subscription_id &&
+      existingSub.status === "active"
+    ) {
       await stripe.subscriptions.cancel(existingSub.stripe_subscription_id);
 
       await db
@@ -294,7 +330,12 @@ class AdminService {
       cancelledSubscription = true;
     }
 
-    const result = await this.setupEnterprise(teamId, clipLimit, monthlyPriceCents, customerEmail);
+    const result = await this.setupEnterprise(
+      teamId,
+      clipLimit,
+      monthlyPriceCents,
+      customerEmail
+    );
 
     return {
       ...result,
