@@ -5,6 +5,14 @@ fal.config({
   credentials: config.fal.apiKey,
 });
 
+// Default negative prompt for photorealistic human movement
+export const VEO_DEFAULT_NEGATIVE_PROMPT =
+  "floating limbs, unnatural human movements, jerky motion, robotic movement, " +
+  "distorted faces, morphing faces, extra fingers, missing fingers, deformed hands, " +
+  "blurry, low quality, pixelated, watermark, text overlay, " +
+  "unnatural poses, impossible anatomy, uncanny valley, mannequin-like, " +
+  "glitching, artifacts, frame skipping, stuttering motion";
+
 export type VeoAspectRatio = "16:9" | "9:16" | "auto";
 export type VeoDuration = "7s" | "8s";
 export type VeoResolution = "720p" | "1080p";
@@ -276,7 +284,7 @@ export async function generateVideoForDuration(
     targetDuration,
     aspectRatio = "9:16",
     resolution = "720p",
-    negativePrompt,
+    negativePrompt = VEO_DEFAULT_NEGATIVE_PROMPT,
   } = options;
 
   console.log(`[Veo 3.1] Generating video for ${targetDuration.toFixed(2)}s target duration`);

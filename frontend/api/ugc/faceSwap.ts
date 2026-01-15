@@ -28,6 +28,48 @@ interface UploadUrlsResponse {
 class FaceSwapAPI {
   private baseUrl = `${API_URL}/c`;
 
+  private async uploadToS3WithRetry(
+    url: string,
+    file: File,
+    maxRetries: number = 3
+  ): Promise<void> {
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        if (attempt > 0) {
+          const delay = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
+          console.log(`[S3 Upload] Retry ${attempt}/${maxRetries} in ${delay / 1000}s...`);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+
+        const response = await fetch(url, {
+          method: "PUT",
+          body: file,
+          headers: {
+            "Content-Type": file.type || "application/octet-stream",
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`S3 upload failed: ${response.status}`);
+        }
+
+        return; // Success
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error("S3 upload failed");
+        console.warn(`[S3 Upload] Attempt ${attempt + 1} failed:`, lastError.message);
+
+        // Don't retry on 4xx errors (client errors)
+        if (lastError.message.includes("4")) {
+          throw lastError;
+        }
+      }
+    }
+
+    throw lastError || new Error("S3 upload failed after retries");
+  }
+
   private async getUploadUrls(
     teamId: number,
     videoFileName: string,
@@ -40,28 +82,19 @@ class FaceSwapAPI {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: "Unknown error" }));
+      const error = await response
+        .json()
+        .catch(() => ({ error: "Unknown error" }));
       throw new Error(error.error || "Failed to get upload URLs");
     }
 
     return response.json();
   }
 
-  private async uploadToS3(url: string, file: File): Promise<void> {
-    const response = await fetch(url, {
-      method: "PUT",
-      body: file,
-      headers: {
-        "Content-Type": file.type || "application/octet-stream",
-      },
-    });
 
-    if (!response.ok) {
-      throw new Error(`S3 upload failed: ${response.status}`);
-    }
-  }
-
-  async createJob(data: CreateFaceSwapRequest): Promise<CreateFaceSwapResponse> {
+  async createJob(
+    data: CreateFaceSwapRequest
+  ): Promise<CreateFaceSwapResponse> {
     const idempotencyKey = crypto.randomUUID();
     const MAX_RETRIES = 3;
     const RETRY_DELAY_MS = 2000;
@@ -70,8 +103,12 @@ class FaceSwapAPI {
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
         if (attempt > 0) {
-          console.log(`Retrying (attempt ${attempt + 1}/${MAX_RETRIES + 1})...`);
-          await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS * attempt));
+          console.log(
+            `Retrying (attempt ${attempt + 1}/${MAX_RETRIES + 1})...`
+          );
+          await new Promise((resolve) =>
+            setTimeout(resolve, RETRY_DELAY_MS * attempt)
+          );
         }
 
         console.log("[FaceSwap] Getting presigned upload URLs...");
@@ -82,10 +119,10 @@ class FaceSwapAPI {
         );
 
         console.log("[FaceSwap] Uploading video to S3...");
-        await this.uploadToS3(urls.video.uploadUrl, data.video);
+        await this.uploadToS3WithRetry(urls.video.uploadUrl, data.video);
 
         console.log("[FaceSwap] Uploading image to S3...");
-        await this.uploadToS3(urls.image.uploadUrl, data.image);
+        await this.uploadToS3WithRetry(urls.image.uploadUrl, data.image);
 
         console.log("[FaceSwap] Creating job with S3 keys...");
         const response = await apiFetch(`${this.baseUrl}/ugc-face-swap`, {
@@ -104,7 +141,9 @@ class FaceSwapAPI {
         });
 
         if (!response.ok) {
-          const error = await response.json().catch(() => ({ error: "Unknown error" }));
+          const error = await response
+            .json()
+            .catch(() => ({ error: "Unknown error" }));
           throw new Error(error.error || "Failed to create job");
         }
 
@@ -113,13 +152,18 @@ class FaceSwapAPI {
         const isNetworkError = err instanceof TypeError;
 
         if (isNetworkError) {
-          lastError = new Error("Network error - failed to connect. Retrying...");
+          lastError = new Error(
+            "Network error - failed to connect. Retrying..."
+          );
         } else {
           lastError = err instanceof Error ? err : new Error("Upload failed");
         }
 
         if (isNetworkError && attempt < MAX_RETRIES) {
-          console.warn(`Attempt ${attempt + 1} failed (network):`, lastError.message);
+          console.warn(
+            `Attempt ${attempt + 1} failed (network):`,
+            lastError.message
+          );
           continue;
         }
 
@@ -187,23 +231,31 @@ class FaceSwapAPI {
     swapType: SwapType;
     spliceWithOriginal?: boolean;
   }): Promise<{ jobIds: string[] }> {
-    const { video, images, teamId, segments, videoDuration, swapType, spliceWithOriginal } = data;
+    const {
+      video,
+      images,
+      teamId,
+      segments,
+      videoDuration,
+      swapType,
+      spliceWithOriginal,
+    } = data;
 
     if (images.length === 0) {
       throw new Error("At least one image is required");
     }
 
     console.log(`[FaceSwap] Creating ${images.length} jobs...`);
-
-    // Step 1: Get upload URL and upload video once (using first image to get URLs)
-    const firstUrls = await this.getUploadUrls(teamId, video.name, images[0].name);
+    const firstUrls = await this.getUploadUrls(
+      teamId,
+      video.name,
+      images[0].name
+    );
 
     console.log("[FaceSwap] Uploading video to S3...");
-    await this.uploadToS3(firstUrls.video.uploadUrl, video);
+    await this.uploadToS3WithRetry(firstUrls.video.uploadUrl, video);
 
     const videoS3Key = firstUrls.video.s3Key;
-
-    // Step 2: Upload all images and create jobs
     const jobIds: string[] = [];
 
     for (let i = 0; i < images.length; i++) {
@@ -213,15 +265,22 @@ class FaceSwapAPI {
       let imageS3Key: string;
 
       if (i === 0) {
-        // First image already has upload URL
-        console.log(`[FaceSwap] Uploading image ${i + 1}/${images.length} to S3...`);
-        await this.uploadToS3(firstUrls.image.uploadUrl, image);
+        console.log(
+          `[FaceSwap] Uploading image ${i + 1}/${images.length} to S3...`
+        );
+        await this.uploadToS3WithRetry(firstUrls.image.uploadUrl, image);
         imageS3Key = firstUrls.image.s3Key;
       } else {
         // Get new upload URL for additional images
-        const imageUrls = await this.getUploadUrls(teamId, video.name, image.name);
-        console.log(`[FaceSwap] Uploading image ${i + 1}/${images.length} to S3...`);
-        await this.uploadToS3(imageUrls.image.uploadUrl, image);
+        const imageUrls = await this.getUploadUrls(
+          teamId,
+          video.name,
+          image.name
+        );
+        console.log(
+          `[FaceSwap] Uploading image ${i + 1}/${images.length} to S3...`
+        );
+        await this.uploadToS3WithRetry(imageUrls.image.uploadUrl, image);
         imageS3Key = imageUrls.image.s3Key;
       }
 
@@ -243,7 +302,9 @@ class FaceSwapAPI {
       });
 
       if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: "Unknown error" }));
+        const error = await response
+          .json()
+          .catch(() => ({ error: "Unknown error" }));
         throw new Error(error.error || `Failed to create job ${i + 1}`);
       }
 
@@ -255,7 +316,10 @@ class FaceSwapAPI {
     return { jobIds };
   }
 
-  async detectFaces(videoFile: File): Promise<{ segments: Array<{ start: number; end: number }>; segmentCount: number }> {
+  async detectFaces(videoFile: File): Promise<{
+    segments: Array<{ start: number; end: number }>;
+    segmentCount: number;
+  }> {
     const formData = new FormData();
     formData.append("video", videoFile);
 
@@ -265,7 +329,9 @@ class FaceSwapAPI {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: "Failed to detect faces" }));
+      const errorData = await response
+        .json()
+        .catch(() => ({ error: "Failed to detect faces" }));
       throw new Error(errorData.error || "Failed to detect faces");
     }
 

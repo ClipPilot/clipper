@@ -220,6 +220,25 @@ resource "aws_s3_bucket_lifecycle_configuration" "videos" {
     }
   }
 
+  # UGC inputs (uploaded videos/images for face swap) → One Zone-IA after 30 days, delete after 90 days
+  rule {
+    id     = "lifecycle-ugc-inputs"
+    status = "Enabled"
+
+    filter {
+      prefix = "ugc-inputs/"
+    }
+
+    transition {
+      days          = 30
+      storage_class = "ONEZONE_IA"
+    }
+
+    expiration {
+      days = 90
+    }
+  }
+
   # UGC final videos → One Zone-IA after 30 days, NO EXPIRATION
   rule {
     id     = "archive-ugc-final-videos"

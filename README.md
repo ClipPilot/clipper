@@ -237,3 +237,5 @@ const items = await db.select().from(myNewTable);
 - The backend automatically switches database URLs based on `NODE_ENV`
 - Always test migrations in development before applying to staging/production
 - Keep your schema changes backward compatible when possible
+
+- To start workers, CD into backend and pnpm dev:worker
