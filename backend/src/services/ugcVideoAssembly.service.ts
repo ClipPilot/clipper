@@ -9,15 +9,12 @@ import {
   ShotType,
   PRODUCT_NEGATIVE_PROMPT,
 } from "./kling.service";
-import {
-  veoService,
-  VEO_DEFAULT_NEGATIVE_PROMPT,
-  VEO_PRODUCT_STABILITY_MODIFIERS,
-  VEO_GENTLE_MOTION_MODIFIERS,
-} from "./veo.service";
+import { veoService } from "./veo.service";
 import { generateJumbledMetadataString } from "../utils/videoMetadata";
 
 const MAX_AUDIO_DURATION = 10;
+const KLING_VIDEO_DURATION = 10;
+const VEO_EXTEND_DURATION = 7;
 const PARALLEL_SCENES = 2;
 const AUDIO_SAMPLE_RATE = 44100;
 const AUDIO_CHANNELS = 2;
@@ -197,16 +194,13 @@ function speedUpAudio(
   return { outputPath, finalDuration };
 }
 
-/**
- * Generate audio using ElevenLabs Dialogue API (expressive TTS).
- * Applies a speed boost for snappier pacing, then ensures max duration.
- */
 async function generateDialogueAudio(
   voiceId: string,
   text: string,
   teamId: number,
   scriptId: string,
-  sceneNumber: number
+  sceneNumber: number,
+  applySpeedLimits: boolean = true
 ): Promise<{ audioPath: string; audioKey: string; duration: number }> {
   console.log(
     `[UGC Assembly] Scene ${sceneNumber}: Generating dialogue audio...`
@@ -225,33 +219,44 @@ async function generateDialogueAudio(
     `dialogue_${sceneNumber}_${Date.now()}.mp3`
   );
   fs.writeFileSync(tempAudioPath, audioBuffer);
-  const boostedTargetDuration = actualDuration / SPEECH_SPEED_BOOST;
-  const speedResult = speedUpAudio(
-    tempAudioPath,
-    boostedTargetDuration,
-    sceneNumber
-  );
-  let finalAudioPath = speedResult.outputPath;
-  let finalDuration = speedResult.finalDuration;
-  if (finalDuration > MAX_AUDIO_DURATION) {
-    const trimResult = speedUpAudio(
-      finalAudioPath,
-      MAX_AUDIO_DURATION,
+
+  let finalAudioPath = tempAudioPath;
+  let finalDuration = actualDuration;
+
+  if (applySpeedLimits) {
+    const boostedTargetDuration = actualDuration / SPEECH_SPEED_BOOST;
+    const speedResult = speedUpAudio(
+      tempAudioPath,
+      boostedTargetDuration,
       sceneNumber
     );
-    finalAudioPath = trimResult.outputPath;
-    finalDuration = trimResult.finalDuration;
+    finalAudioPath = speedResult.outputPath;
+    finalDuration = speedResult.finalDuration;
+
+    if (finalDuration > MAX_AUDIO_DURATION) {
+      const trimResult = speedUpAudio(
+        finalAudioPath,
+        MAX_AUDIO_DURATION,
+        sceneNumber
+      );
+      finalAudioPath = trimResult.outputPath;
+      finalDuration = trimResult.finalDuration;
+    }
+    console.log(
+      `[UGC Assembly] Scene ${sceneNumber}: Audio with speed limits - ${finalDuration.toFixed(2)}s (${SPEECH_SPEED_BOOST}x boost)`
+    );
+  } else {
+    console.log(
+      `[UGC Assembly] Scene ${sceneNumber}: B-roll audio ${finalDuration.toFixed(2)}s (Kling + Veo extend if >10s)`
+    );
   }
+
   const audioBuffer2 = fs.readFileSync(finalAudioPath);
   const audioKey = await s3Service.uploadTTSAudio(
     audioBuffer2,
     teamId,
     scriptId,
     sceneNumber
-  );
-
-  console.log(
-    `[UGC Assembly] Scene ${sceneNumber}: Dialogue audio ready - ${finalDuration.toFixed(2)}s (${SPEECH_SPEED_BOOST}x boost)`
   );
 
   return { audioPath: finalAudioPath, audioKey, duration: finalDuration };
@@ -374,7 +379,6 @@ async function processArollScene(
     ambientSound,
   } = scene;
 
-  // Step 1: Generate dialogue audio with ElevenLabs
   onProgress?.(`Scene ${sceneNumber}: Generating dialogue...`);
   const {
     audioPath,
@@ -385,11 +389,12 @@ async function processArollScene(
     dialogue,
     teamId,
     scriptId,
-    sceneNumber
+    sceneNumber,
+    true
   );
 
   console.log(
-    `[UGC Assembly] A-Roll Scene ${sceneNumber}: Using Avatar v2 for better lip-sync`
+    `[UGC Assembly] A-Roll Scene ${sceneNumber}: Using Avatar v2 for lip-sync (audio: ${audioDuration.toFixed(2)}s)`
   );
 
   // Step 2: Get presigned URLs for image and audio
@@ -514,20 +519,16 @@ async function processArollScene(
   };
 }
 
-/**
- * Build a prompt for Veo B-roll video generation
- * Focuses on smooth product showcases and cutaway shots
- * Includes product stability and gentle motion modifiers for photorealistic output
- */
-function buildVeoBrollPrompt(cinematicPrompt: string, action: string): string {
-  return `${cinematicPrompt}. Smooth product showcase with subtle, slow camera movement. Professional product photography style with gentle rotation or reveal. Clean background, focused lighting. ${action}. Cinematic 9:16 vertical video. High quality. ${VEO_PRODUCT_STABILITY_MODIFIERS} ${VEO_GENTLE_MOTION_MODIFIERS}`;
-}
+// Veo B-roll prompt commented out - using Kling for all video generation
+// function buildVeoBrollPrompt(cinematicPrompt: string, action: string): string {
+//   return `${cinematicPrompt}. Smooth product showcase with subtle, slow camera movement. Professional product photography style with gentle rotation or reveal. Clean background, focused lighting. ${action}. Cinematic 9:16 vertical video. High quality. ${VEO_PRODUCT_STABILITY_MODIFIERS} ${VEO_GENTLE_MOTION_MODIFIERS}`;
+// }
 
 /**
- * Process B-Roll scene using Veo 3.1 with automatic chaining for longer durations
+ * Process B-Roll scene using Kling + Veo extension for product showcase shots
  * No lip-sync needed for B-roll (product shots, cutaways, etc.)
  *
- * Veo generates 8s initially, then chains 7s extensions as needed.
+ * Kling generates initial 10s video. If audio > 10s, Veo extends by 7s segments.
  * Final video is trimmed to match exact audio duration.
  */
 async function processBrollScene(
@@ -537,10 +538,9 @@ async function processBrollScene(
   voiceId: string,
   onProgress?: (message: string) => void
 ): Promise<ProcessedScene> {
-  const { sceneId, sceneNumber, imageKey, cinematicPrompt, dialogue, action } =
+  const { sceneId, sceneNumber, shotType, imageKey, cinematicPrompt, dialogue, action, emotion } =
     scene;
 
-  // Step 1: Generate dialogue audio with ElevenLabs
   onProgress?.(`Scene ${sceneNumber}: Generating voiceover...`);
   const {
     audioPath,
@@ -551,43 +551,64 @@ async function processBrollScene(
     dialogue,
     teamId,
     scriptId,
-    sceneNumber
+    sceneNumber,
+    false
   );
 
   console.log(
-    `[UGC Assembly] B-Roll Scene ${sceneNumber}: audio ${audioDuration.toFixed(2)}s -> Veo (auto-chain)`
+    `[UGC Assembly] B-Roll Scene ${sceneNumber}: audio ${audioDuration.toFixed(2)}s`
   );
 
-  // Step 2: Generate video with Veo (auto-chains for durations > 8s)
-  onProgress?.(`Scene ${sceneNumber}: Generating video with Veo...`);
+  onProgress?.(`Scene ${sceneNumber}: Generating video with Kling...`);
   const imageUrl = await s3Service.getPresignedUrl(imageKey, 3600);
-  const prompt = buildVeoBrollPrompt(cinematicPrompt, action);
+  const prompt = buildKlingPrompt(cinematicPrompt, shotType, emotion, action);
 
-  const {
-    videoUrl: silentVideoUrl,
-    generatedDuration,
-    extensionsUsed,
-  } = await veoService.generateVideoForDuration({
-    prompt,
+  const { videoUrl: klingVideoUrl } = await klingService.generateVideoWithRetry({
     imageUrl,
-    targetDuration: audioDuration,
-    aspectRatio: "9:16",
-    resolution: "720p",
-    negativePrompt: `${PRODUCT_NEGATIVE_PROMPT}, ${VEO_DEFAULT_NEGATIVE_PROMPT}`,
+    prompt,
+    duration: 10,
+    negativePrompt: PRODUCT_NEGATIVE_PROMPT,
   });
 
+  let currentVideoUrl = klingVideoUrl;
+  let currentDuration = KLING_VIDEO_DURATION;
+  let extensionsUsed = 0;
+
   console.log(
-    `[UGC Assembly] B-Roll Scene ${sceneNumber}: Veo generated ${generatedDuration}s (${extensionsUsed} extensions)`
+    `[UGC Assembly] B-Roll Scene ${sceneNumber}: Kling generated ${currentDuration}s video`
   );
 
-  // Step 3: Download silent video
+  if (audioDuration > KLING_VIDEO_DURATION) {
+    onProgress?.(`Scene ${sceneNumber}: Extending video with Veo...`);
+
+    while (currentDuration < audioDuration) {
+      extensionsUsed++;
+      console.log(
+        `[UGC Assembly] B-Roll Scene ${sceneNumber}: Veo extension ${extensionsUsed} (${currentDuration}s -> ${currentDuration + VEO_EXTEND_DURATION}s)`
+      );
+
+      const extendResult = await veoService.extendVideoWithRetry({
+        prompt: "Continue the scene naturally, maintaining the same style and motion.",
+        videoUrl: currentVideoUrl,
+        aspectRatio: "auto",
+        generateAudio: false,
+      });
+
+      currentVideoUrl = extendResult.videoUrl;
+      currentDuration += VEO_EXTEND_DURATION;
+    }
+
+    console.log(
+      `[UGC Assembly] B-Roll Scene ${sceneNumber}: Extended to ${currentDuration}s (${extensionsUsed} extensions)`
+    );
+  }
+
   const silentVideoPath = path.join(
     OUTPUT_DIR,
     `silent_${sceneNumber}_${Date.now()}.mp4`
   );
-  await s3Service.downloadVideoFromUrl(silentVideoUrl, silentVideoPath);
+  await s3Service.downloadVideoFromUrl(currentVideoUrl, silentVideoPath);
 
-  // Step 4: Combine video with audio track and trim to exact audio duration
   onProgress?.(`Scene ${sceneNumber}: Adding voiceover...`);
   const combinedPath = combineVideoAudio(
     silentVideoPath,
@@ -598,7 +619,6 @@ async function processBrollScene(
   if (fs.existsSync(silentVideoPath)) fs.unlinkSync(silentVideoPath);
   if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
 
-  // Step 5: Upload processed scene
   const videoBuffer = fs.readFileSync(combinedPath);
   const videoKey = await s3Service.uploadUGCSceneVideo(
     videoBuffer,

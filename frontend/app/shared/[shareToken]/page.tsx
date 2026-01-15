@@ -111,10 +111,11 @@ export default function SharedClipPage() {
               <div className="flex items-center justify-center">
                 <div className="rounded-lg overflow-hidden bg-black w-full flex items-center justify-center">
                   <video
-                    src={clip.clipUrl}
+                    src={`${API_URL}/face-swap/download-fixed-public?url=${encodeURIComponent(clip.clipUrl)}&mode=remux`}
                     controls
                     autoPlay
                     playsInline
+                    preload="auto"
                     className="w-full max-h-[500px] object-contain"
                   />
                 </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Card, CardBody, Button, Textarea, Chip, Progress } from "@heroui/react";
+import { Card, CardBody, Button, Textarea, Chip, Progress, Modal, ModalContent, ModalBody } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { SCENE_TYPE_CONFIG, type UGCScene } from "../script/types";
 import { SupportingImageUploader } from "./SupportingImageUploader";
@@ -49,6 +49,7 @@ export function SceneImageCard({
   const [localRefinement, setLocalRefinement] = useState(userRefinement || "");
   const [supportingImages, setSupportingImages] = useState<SupportingImage[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const sceneConfig = SCENE_TYPE_CONFIG[scene.sceneType];
@@ -208,7 +209,16 @@ export function SceneImageCard({
                   <span className="text-xs font-medium text-amber-400">Regenerating</span>
                 </div>
               ) : isComplete && selectedImageKey && (selectedImageUrl || generation?.generatedImages) ? (
-                <div className="w-10 h-12 rounded-md overflow-hidden bg-surface-base relative ring-2 ring-accent-400">
+                <div
+                  className="w-10 h-12 rounded-md overflow-hidden bg-surface-base relative ring-2 ring-accent-400 cursor-zoom-in hover:ring-accent-300 transition-all"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const url = selectedImageUrl ||
+                      generation?.generatedImages?.find((img) => img.key === selectedImageKey)?.url ||
+                      generation?.generatedImages?.[selectedImageIndex || 0]?.url;
+                    if (url) setZoomImageUrl(url);
+                  }}
+                >
                   <img
                     src={
                       selectedImageUrl ||
@@ -245,6 +255,40 @@ export function SceneImageCard({
             "{scene.dialogue}"
           </p>
         </CardBody>
+
+        {/* Zoom Modal (collapsed view) */}
+        <Modal
+          isOpen={!!zoomImageUrl}
+          onClose={() => setZoomImageUrl(null)}
+          size="4xl"
+          classNames={{
+            backdrop: "bg-black/80",
+            base: "bg-transparent shadow-none",
+            body: "p-0",
+          }}
+        >
+          <ModalContent>
+            <ModalBody>
+              <div className="relative flex items-center justify-center">
+                <Button
+                  isIconOnly
+                  className="absolute top-2 right-2 z-10 bg-black/50 text-white"
+                  variant="flat"
+                  onPress={() => setZoomImageUrl(null)}
+                >
+                  <Icon icon="solar:close-circle-bold" width={24} />
+                </Button>
+                {zoomImageUrl && (
+                  <img
+                    src={zoomImageUrl}
+                    alt="Zoomed view"
+                    className="max-h-[85vh] max-w-full object-contain rounded-lg"
+                  />
+                )}
+              </div>
+            </ModalBody>
+          </ModalContent>
+        </Modal>
       </Card>
     );
   }
@@ -383,10 +427,13 @@ export function SceneImageCard({
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-xs text-text-muted">
               <Icon icon="solar:gallery-check-bold" width={14} />
-              <span>Generated image</span>
+              <span>Generated image (click to zoom)</span>
             </div>
             <div className="flex gap-3">
-              <div className="w-24 h-32 rounded-lg overflow-hidden bg-surface-base ring-2 ring-accent-400 relative">
+              <div
+                className="w-24 h-32 rounded-lg overflow-hidden bg-surface-base ring-2 ring-accent-400 relative cursor-zoom-in hover:ring-accent-300 transition-all"
+                onClick={() => setZoomImageUrl(selectedImageUrl || generation?.generatedImages?.[0]?.url || null)}
+              >
                 <img
                   src={selectedImageUrl || generation?.generatedImages?.[0]?.url}
                   alt="Generated"
@@ -394,6 +441,9 @@ export function SceneImageCard({
                 />
                 <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-accent-400 flex items-center justify-center">
                   <Icon icon="solar:check-circle-bold" className="text-white" width={12} />
+                </div>
+                <div className="absolute bottom-1 left-1 w-5 h-5 rounded-full bg-black/50 flex items-center justify-center">
+                  <Icon icon="solar:magnifer-zoom-in-bold" className="text-white" width={12} />
                 </div>
               </div>
             </div>
@@ -433,6 +483,40 @@ export function SceneImageCard({
           </Button>
         </div>
       </CardBody>
+
+      {/* Zoom Modal */}
+      <Modal
+        isOpen={!!zoomImageUrl}
+        onClose={() => setZoomImageUrl(null)}
+        size="4xl"
+        classNames={{
+          backdrop: "bg-black/80",
+          base: "bg-transparent shadow-none",
+          body: "p-0",
+        }}
+      >
+        <ModalContent>
+          <ModalBody>
+            <div className="relative flex items-center justify-center">
+              <Button
+                isIconOnly
+                className="absolute top-2 right-2 z-10 bg-black/50 text-white"
+                variant="flat"
+                onPress={() => setZoomImageUrl(null)}
+              >
+                <Icon icon="solar:close-circle-bold" width={24} />
+              </Button>
+              {zoomImageUrl && (
+                <img
+                  src={zoomImageUrl}
+                  alt="Zoomed view"
+                  className="max-h-[85vh] max-w-full object-contain rounded-lg"
+                />
+              )}
+            </div>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </Card>
   );
 }
