@@ -327,7 +327,7 @@ The cinematicPrompt MUST be written completely differently based on shot type:
 - Actor looks AT CAMERA (direct address to viewer)
 
 A-ROLL cinematicPrompt example:
-"Medium close-up of ${characterName} speaking directly to camera with animated expression. Eyes bright and engaged, eyebrows raised with enthusiasm, mouth forming words clearly. Head tilts slightly for emphasis, one hand gestures near chest while speaking. Warm soft lighting from front-left, shallow depth of field blurs bedroom background."
+"Medium close-up of actor speaking directly to camera with animated expression. Eyes bright and engaged, eyebrows raised with enthusiasm, mouth forming words clearly. Head tilts slightly for emphasis, one hand gestures near chest while speaking. Warm soft lighting from front-left, shallow depth of field blurs bedroom background."
 
 **B-ROLL (Product focus, NO actor face):**
 - Product is the HERO - actor's face should NOT be visible or be out of frame
@@ -346,7 +346,7 @@ B-ROLL cinematicPrompt example:
 - Actor's presence adds context but product/action is still the focus
 
 MIXED cinematicPrompt example:
-"Over-shoulder shot of ${characterName} looking down at product in hands, face visible in profile but NOT addressing camera. Soft smile of satisfaction as fingers trace the product label. Hair falls slightly forward, warm side lighting. Focus pulls from actor's profile to product in hands."
+"Over-shoulder shot of actor looking down at product in hands, face visible in profile but NOT addressing camera. Soft smile of satisfaction as fingers trace the product label. Hair falls slightly forward, warm side lighting. Focus pulls from actor's profile to product in hands."
 
 CRITICAL RULE:
 - A-ROLL = face + talking to camera + lip sync required
