@@ -265,30 +265,80 @@ CRITICAL WORD LIMIT (MUST FOLLOW):
 
 ===== CINEMATIC PROMPTS (CRITICAL FOR VIDEO QUALITY) =====
 
-For each scene, provide DETAILED cinematicPrompts that read like film director notes:
+For each scene, provide HYPER-DETAILED cinematicPrompts that read like professional film director shot notes. These prompts directly control the AI video generation quality.
 
-1. ACTION: Specific physical movement (not generic)
-   ✗ BAD: "holds product"
-   ✓ GOOD: "slowly rotates product in hand, catching the light on the label"
+REQUIRED ELEMENTS IN EVERY cinematicPrompt:
+1. SHOT TYPE & FRAMING: Exact camera position and what's in frame
+2. LIGHTING: Direction, quality, color temperature, shadows
+3. CAMERA MOVEMENT: Specific motion (or "locked static shot")
+4. ACTOR PHYSICALITY: Micro-expressions, body language, hand positions, eye direction
+5. ENVIRONMENT: Background elements, props, textures, depth
+6. PRODUCT POSITIONING: Where product is, how light hits it, prominence in frame
+7. MOOD/ATMOSPHERE: Overall visual feeling that matches the dialogue emotion
 
-2. CINEMATIC PROMPT must include ALL of these elements:
-   - SHOT TYPE: "Extreme close-up on hands" / "Medium shot, waist up" / "POV selfie angle"
-   - LIGHTING: "Warm golden hour glow from left" / "Soft diffused bathroom light" / "Dramatic single-source lamp"
-   - MOVEMENT: "Subtle push-in zoom" / "Gentle handheld sway" / "Static locked frame" / "Slow pan right"
-   - EXPRESSION: Specific micro-expressions, not just emotions
-   - ENVIRONMENT: Specific props, colors, textures in background
-   - PRODUCT: Exact positioning and how light interacts with it
+===== SCENE-TYPE SPECIFIC CINEMATIC GUIDANCE =====
 
-EXAMPLE cinematicPrompts by shot type:
+HOOK SCENES (Maximum visual impact - make viewers STOP scrolling):
+- Camera: Dynamic angle, slight low-angle for confidence, or dramatic close-up
+- Expression: Eyes wide with surprise, raised eyebrows, knowing smirk, or "wait til you hear this" energy
+- Body: Leaning toward camera, animated hand near face, attention-grabbing gesture
+- Lighting: Dramatic contrast, single key light, or eye-catching color accent
+- Movement: Quick push-in zoom to build urgency, or locked frame for intensity
+Example: "Tight close-up, chin to forehead. ${config.characterName}'s eyes widen with genuine surprise, eyebrows shooting up, mouth forming excited gasp. Single warm key light from upper left creating dramatic cheekbone shadows. Subtle 1-second push-in zoom. Background falls to deep shadow. Hand rises into frame from below, fingers splayed in 'stop everything' gesture."
 
-A-ROLL (talking head):
-"Medium selfie shot, phone at eye level. ${config.characterName} in natural bedroom lighting from window behind camera. Animated hand gestures while speaking, eyebrows raised in surprise. Unmade bed and fairy lights softly blurred in background. Subtle forward lean toward camera, authentic handheld micro-shake."
+PROBLEM SCENES (Show genuine frustration/relatability):
+- Camera: Medium shot to capture defeated body language, or close-up for emotional authenticity
+- Expression: Furrowed brow, eye roll, exasperated exhale, "I'm so done" face, tension in jaw
+- Body: Slumped shoulders, head shake, rubbing temples, hands thrown up in defeat
+- Lighting: Slightly flat or harsh to feel "real" and unpolished
+- Movement: Gentle handheld sway for authenticity
+Example: "Medium shot, waist up. ${config.characterName} with visibly slumped shoulders, head tilting back in exasperation, eyes closing briefly in frustration before opening with 'you know what I mean' look directly at camera. Soft overhead lighting creating slight shadows under eyes. Hands gesture outward in defeat. Messy bathroom counter with failed products blurred in background. Authentic handheld micro-movement."
 
-B-ROLL (product focus):
-"Macro close-up of product texture. Fingers slowly trace across surface, catching warm side-light. Shallow depth of field, creamy bokeh. Slow 2-second push-in. Clean marble surface underneath, morning light creating soft shadows."
+SOLUTION SCENES (Transformation moment - relief and excitement):
+- Camera: Start medium, may push in to emphasize the "aha moment"
+- Expression: Tension melting from face, eyes brightening, genuine smile breaking through, relief visible
+- Body: Shoulders dropping and relaxing, posture opening up, confident head position
+- Lighting: Warmer, more flattering than problem scene - visual shift to positivity
+- Movement: Slow push-in as realization hits, or smooth reveal
+Example: "Medium shot transitioning to close-up via slow push-in. ${config.characterName}'s expression transforms - jaw tension releases, eyes brighten with genuine relief, corners of mouth lifting into authentic smile. Warm golden-hour side light replacing earlier flat lighting. Shoulders visibly drop and relax. One hand comes to chest in 'finally' gesture. Background softens with warmer color grade."
 
-MIXED (action without talking):
-"Over-shoulder view of ${config.characterName} applying product to face in bathroom mirror. Soft ring light illumination. Focus pulls from mirror reflection to product in hand. Steam from recent shower adds atmosphere. Natural, unhurried movements."
+DEMO/B-ROLL SCENES (Product as hero - cinematic showcase):
+- Camera: Close-ups, macro details, overhead flat-lays, slow orbiting shots
+- Lighting: Professional product photography lighting - key light, fill, rim light
+- Product: Sharp focus, texture visible, label readable, premium presentation
+- Movement: Slow deliberate motion - gentle rotation, careful pour, satisfying application
+- Background: Clean, complementary, shallow depth of field with creamy bokeh
+Example: "Extreme macro close-up of product texture. Two fingers slowly rotate bottle, catching rim light that creates golden edge highlights. Soft key light from 45-degrees illuminates label text clearly. Shallow depth of field renders background as smooth cream bokeh. Slow 3-second clockwise rotation revealing ingredient list. Clean white marble surface beneath with subtle shadow grounding product."
+
+TESTIMONIAL SCENES (Authentic storytelling - speaking from experience):
+- Camera: Intimate medium or close-up, straight-on for trust
+- Expression: Genuine micro-expressions, emotional fluctuations, conversational eye contact breaks
+- Body: Natural gestures, slight nods when making points, comfortable posture
+- Lighting: Soft, flattering, natural feeling - like FaceTime with a friend
+- Movement: Mostly static or gentle drift, authentic handheld feel
+Example: "Close-up, shoulders and face. ${config.characterName} with soft genuine smile, eyes occasionally glancing down in thought before returning to camera with conviction. Natural window light from right creating soft wrap-around illumination. Slight contemplative head tilts while speaking. Occasional small nods emphasizing key points. Warm neutral background, plant leaves softly out of focus."
+
+CTA SCENES (Confident invitation - make them want to take action):
+- Camera: Medium or close-up, slightly lower angle for confidence
+- Expression: Warm inviting smile, direct eye contact, encouraging and approachable
+- Body: Open posture, slight forward lean, welcoming gesture, confident head position
+- Lighting: Bright, energetic, flattering
+- Movement: Subtle push-in for emphasis, or locked confident frame
+Example: "Medium-close shot with slight low angle for confidence. ${config.characterName} with warm genuine smile reaching eyes, direct unwavering eye contact with camera. Bright ring light creating catch-lights in eyes and even flattering illumination. Slight forward lean conveying enthusiasm. One hand gestures toward camera in inviting 'join me' motion. Clean bright background with product visible at edge of frame."
+
+===== EMOTION-SPECIFIC MICRO-EXPRESSIONS =====
+
+Match these visual cues to the emotion field:
+- excited: Bright wide eyes, raised cheeks, teeth-showing smile, animated eyebrows, energetic posture
+- curious: Slightly raised single eyebrow, head tilted, focused narrowed gaze, parted lips, forward lean
+- surprised: Widened eyes, both eyebrows up, mouth slightly open "O", head pulled back momentarily
+- frustrated: Furrowed brow, tightened jaw, eye roll or squint, tense shoulders, exasperated exhale
+- relieved: Relaxed forehead, soft exhale, shoulders dropping, gentle smile emerging, tension leaving face
+- confident: Direct steady gaze, slight chin lift, controlled small smile, squared relaxed shoulders
+- friendly: Warm crinkled-eye smile, open approachable posture, welcoming soft gestures
+- urgent: Intense focused eyes, leaning forward, emphatic hand movements, serious furrowed expression
+- sincere: Soft direct eye contact, slight earnest head tilt, open palm gestures, vulnerable micro-nods
+- playful: Mischievous smirk, twinkling eyes, casual relaxed posture, teasing head movements
 
 ===== DIGITAL PRODUCTS & APP SCREENS (CRITICAL) =====
 
