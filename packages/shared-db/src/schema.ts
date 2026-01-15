@@ -622,3 +622,21 @@ export const ugcVideoGenerationJobs = pgTable(
     createdAtIdx: index("ugc_video_jobs_created_at_idx").on(table.created_at),
   })
 ).enableRLS();
+
+export const userPreferences = pgTable(
+  "user_preferences",
+  {
+    id: serial("id").primaryKey(),
+    user_id: integer("user_id")
+      .notNull()
+      .unique()
+      .references(() => users.id, { onDelete: "cascade" }),
+    dashboard_layout: jsonb("dashboard_layout"),
+    widget_colors: jsonb("widget_colors"),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    userIdx: index("user_preferences_user_id_idx").on(table.user_id),
+  })
+).enableRLS();

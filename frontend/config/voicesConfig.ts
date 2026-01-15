@@ -186,7 +186,7 @@ export const voicesConfig: Voice[] = [
     name: "Lee",
     id: "SqCSDxrBEryj0R52Snkg",
     previewFile: "/voices/lee.mp3",
-    gender: "male",
+    gender: "female",
     description: "Normal Female Voice",
   },
   {

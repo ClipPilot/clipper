@@ -64,6 +64,13 @@
       "when": 1768375187819,
       "tag": "0008_right_fabian_cortez",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1768444172761,
+      "tag": "0009_fancy_kingpin",
+      "breakpoints": true
     }
   ]
 }
