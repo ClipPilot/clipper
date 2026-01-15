@@ -13,12 +13,12 @@ export const PRODUCT_NEGATIVE_PROMPT =
   "stretching, proportion change, shape shifting, logo distortion, " +
   "text overlay, subtitles, captions, floating text, graphic overlays, " +
   "watermark, low quality, blurry, out of focus, " +
-  "phone screen on back, screen through phone, transparent phone, glitchy phone display";
+  "phone screen on back, screen through phone, transparent phone, glitchy phone display, distortion of text on phone, blurry text on phone display, warped text in phone. Change of text on screen";
 
 export const PRODUCT_STABILITY_MODIFIERS =
   "Preserve product shape. Maintain label text. Keep proportions identical. " +
   "Stable camera movement. No distortion. No subtitles or text overlays. " +
-  "Phones have opaque solid backs with no screen bleed-through.";
+  "Phones have opaque solid backs with no screen bleed-through. Text on phones or items must remain clear, static, and legible throughout the video";
 
 export const GENTLE_MOTION_MODIFIERS =
   "Subtle movement. Slow and controlled. Micro-motion only. " +
@@ -113,25 +113,30 @@ export async function generateVideo(
     finalPrompt = `${prompt}. The person speaks naturally and says "${dialogue}"`;
   }
 
-  console.log(`[Kling] Generating ${duration}s video from image (audio: ${generateAudio})`);
+  console.log(
+    `[Kling] Generating ${duration}s video from image (audio: ${generateAudio})`
+  );
   console.log(`[Kling] Prompt: ${finalPrompt.substring(0, 150)}...`);
 
   try {
-    const result = await fal.subscribe("fal-ai/kling-video/v2.6/pro/image-to-video", {
-      input: {
-        prompt: finalPrompt,
-        start_image_url: imageUrl,
-        duration: String(duration) as "5" | "10",
-        negative_prompt: negativePrompt || PRODUCT_NEGATIVE_PROMPT,
-        generate_audio: generateAudio,
-      },
-      logs: true,
-      onQueueUpdate: (update) => {
-        if (update.status === "IN_PROGRESS" && update.logs) {
-          update.logs.forEach((log) => console.log(`[Kling] ${log.message}`));
-        }
-      },
-    });
+    const result = await fal.subscribe(
+      "fal-ai/kling-video/v2.6/pro/image-to-video",
+      {
+        input: {
+          prompt: finalPrompt,
+          start_image_url: imageUrl,
+          duration: String(duration) as "5" | "10",
+          negative_prompt: negativePrompt || PRODUCT_NEGATIVE_PROMPT,
+          generate_audio: generateAudio,
+        },
+        logs: true,
+        onQueueUpdate: (update) => {
+          if (update.status === "IN_PROGRESS" && update.logs) {
+            update.logs.forEach((log) => console.log(`[Kling] ${log.message}`));
+          }
+        },
+      }
+    );
 
     const data = result.data as KlingImageToVideoResponse;
 
@@ -159,18 +164,23 @@ export async function applyLipsync(
   console.log(`[Kling] Applying lipsync to video`);
 
   try {
-    const result = await fal.subscribe("fal-ai/kling-video/lipsync/audio-to-video", {
-      input: {
-        video_url: videoUrl,
-        audio_url: audioUrl,
-      },
-      logs: true,
-      onQueueUpdate: (update) => {
-        if (update.status === "IN_PROGRESS" && update.logs) {
-          update.logs.forEach((log) => console.log(`[Kling Lipsync] ${log.message}`));
-        }
-      },
-    });
+    const result = await fal.subscribe(
+      "fal-ai/kling-video/lipsync/audio-to-video",
+      {
+        input: {
+          video_url: videoUrl,
+          audio_url: audioUrl,
+        },
+        logs: true,
+        onQueueUpdate: (update) => {
+          if (update.status === "IN_PROGRESS" && update.logs) {
+            update.logs.forEach((log) =>
+              console.log(`[Kling Lipsync] ${log.message}`)
+            );
+          }
+        },
+      }
+    );
 
     const data = result.data as KlingLipsyncResponse;
 
@@ -274,7 +284,9 @@ export async function generateAvatar(
       logs: true,
       onQueueUpdate: (update) => {
         if (update.status === "IN_PROGRESS" && update.logs) {
-          update.logs.forEach((log) => console.log(`[Kling Avatar v2] ${log.message}`));
+          update.logs.forEach((log) =>
+            console.log(`[Kling Avatar v2] ${log.message}`)
+          );
         }
       },
     });

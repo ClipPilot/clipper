@@ -48,6 +48,7 @@ export const gpuPodStatusEnum = pgEnum("gpu_pod_status", [
 ]);
 
 export const comfyJobStatusEnum = pgEnum("comfy_job_status", [
+  "pending_upload",
   "queued",
   "running",
   "completed",

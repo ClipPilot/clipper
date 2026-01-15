@@ -71,6 +71,13 @@
       "when": 1768444172761,
       "tag": "0009_fancy_kingpin",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1768498661478,
+      "tag": "0010_perpetual_tarantula",
+      "breakpoints": true
     }
   ]
 }

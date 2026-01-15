@@ -14,7 +14,7 @@ export interface SpliceSegment {
 
 export interface FaceSwapJob {
   id: string;
-  status: "uploading" | "queued" | "running" | "completed" | "failed";
+  status: "uploading" | "pending_upload" | "queued" | "running" | "completed" | "failed";
   progress: number | null;
   progressMessage: string | null;
   outputUrl: string | null;
@@ -55,6 +55,7 @@ export function getStatusColor(status: FaceSwapJob["status"]) {
       return "danger";
     case "running":
     case "uploading":
+    case "pending_upload":
       return "primary";
     default:
       return "default";
@@ -70,6 +71,7 @@ export function getStatusIcon(status: FaceSwapJob["status"]) {
     case "running":
       return "solar:refresh-circle-bold-duotone";
     case "uploading":
+    case "pending_upload":
       return "solar:upload-bold-duotone";
     default:
       return "solar:clock-circle-bold";

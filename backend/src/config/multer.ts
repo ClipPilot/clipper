@@ -87,3 +87,55 @@ export const imageUpload = multer({
     fileSize: 5 * 1024 * 1024, // 5MB max for images
   },
 });
+
+const faceSwapFileFilter = (
+  req: Express.Request,
+  file: Express.Multer.File,
+  cb: multer.FileFilterCallback
+) => {
+  if (file.fieldname === "video") {
+    const allowedVideoMimes = [
+      "video/mp4",
+      "video/quicktime",
+      "video/webm",
+      "video/x-msvideo",
+    ];
+    if (allowedVideoMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Invalid video type. Only mp4, mov, webm, avi are allowed."));
+    }
+  } else if (file.fieldname === "images") {
+    const allowedImageMimes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/webp",
+    ];
+    if (allowedImageMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Invalid image type. Only jpg, png, webp are allowed."));
+    }
+  } else {
+    cb(new Error("Unexpected field"));
+  }
+};
+
+export const faceSwapUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, uploadsDir);
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+      const prefix = file.fieldname === "video" ? "faceswap-video" : "faceswap-image";
+      cb(null, `${prefix}-${uniqueSuffix}${path.extname(file.originalname)}`);
+    },
+  }),
+  fileFilter: faceSwapFileFilter,
+  limits: {
+    fileSize: 100 * 1024 * 1024, // 100MB max per file
+    files: 11, // 1 video + up to 10 images
+  },
+});

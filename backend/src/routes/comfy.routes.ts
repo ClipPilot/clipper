@@ -2,6 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 import { comfyController } from "../controllers/comfy.controller";
 import { requireAuth } from "../middleware/auth.middleware";
+import { faceSwapUpload } from "../config/multer";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -30,6 +31,16 @@ router.post(
   requireAuth,
   conditionalMulter,
   comfyController.createUGCFaceSwapJob.bind(comfyController)
+);
+
+router.post(
+  "/ugc-face-swap-upload",
+  requireAuth,
+  faceSwapUpload.fields([
+    { name: "video", maxCount: 1 },
+    { name: "images", maxCount: 10 },
+  ]),
+  comfyController.createUGCFaceSwapWithUpload.bind(comfyController)
 );
 
 /**

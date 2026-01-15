@@ -8,8 +8,6 @@ import { useRouter } from "next/navigation";
 import { selectedTeamAtom } from "@/store/auth";
 import { canAccessUGCStudio } from "@/lib/plans";
 import { faceSwapAPI } from "@/api/ugc/faceSwap";
-import { apiFetch } from "@/lib/apiClient";
-import API_URL from "@/config/constants";
 import type { SelectedCharacter } from "@/components/ugc-studio/types";
 import {
   UploadedFile,
@@ -161,10 +159,11 @@ function FaceSwapContent({
     const characterCount = characterFiles.length;
     const totalCredits = characterCount * 5;
     const tempIds = characterFiles.map((_, i) => `temp-${Date.now()}-${i}`);
+
     tempIds.forEach((tempId, i) => {
       faceSwapsSectionRef.current?.addOptimisticJob(
         tempId,
-        i === 0 ? "Detecting faces..." : "Waiting..."
+        i === 0 ? "Uploading..." : "Waiting..."
       );
     });
 
@@ -173,184 +172,42 @@ function FaceSwapContent({
     setVideoDuration(0);
     setSegments([]);
 
-    (async () => {
-      try {
-        tempIds.forEach((tempId) => {
-          faceSwapsSectionRef.current?.updateOptimisticJobStatus(
-            tempId,
-            "Uploading video..."
-          );
-        });
+    try {
+      const result = await faceSwapAPI.createMultipleJobsAutoDetect({
+        video: videoFile,
+        images: characterFiles,
+        teamId,
+        videoDuration: duration,
+        swapType: swap,
+        spliceWithOriginal: true,
+      });
 
-        const uploadUrlResponse = await apiFetch(
-          `${API_URL}/face-swap/detect-faces/upload-url`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ fileName: videoFile.name, teamId }),
-          }
-        );
-
-        if (!uploadUrlResponse.ok) {
-          const errorData = await uploadUrlResponse.json();
-          throw new Error(errorData.error || "Failed to get upload URL");
+      result.jobIds.forEach((jobId, i) => {
+        if (tempIds[i]) {
+          faceSwapsSectionRef.current?.updateOptimisticJob(tempIds[i], jobId);
         }
+      });
 
-        const { uploadUrl, s3Key } = await uploadUrlResponse.json();
+      addToast({
+        title: `${characterCount} swap${characterCount > 1 ? "s" : ""} started!`,
+        description: `Processing ${characterCount} video${characterCount > 1 ? "s" : ""}. Face detection and swap will run in background. (${totalCredits} credits)`,
+        color: "success",
+      });
 
-        // Step 2: Upload video directly to S3 with retry
-        const uploadWithRetry = async (maxRetries = 3) => {
-          let lastError: Error | null = null;
-          for (let attempt = 0; attempt <= maxRetries; attempt++) {
-            try {
-              if (attempt > 0) {
-                const delay = Math.pow(2, attempt) * 1000;
-                console.log(`[S3 Upload] Retry ${attempt}/${maxRetries} in ${delay / 1000}s...`);
-                await new Promise((resolve) => setTimeout(resolve, delay));
-              }
-              const s3Response = await fetch(uploadUrl, {
-                method: "PUT",
-                body: videoFile,
-                headers: { "Content-Type": "video/mp4" },
-              });
-              if (!s3Response.ok) {
-                throw new Error(`S3 upload failed: ${s3Response.status}`);
-              }
-              return;
-            } catch (err) {
-              lastError = err instanceof Error ? err : new Error("S3 upload failed");
-              console.warn(`[S3 Upload] Attempt ${attempt + 1} failed:`, lastError.message);
-              if (lastError.message.includes("4")) throw lastError;
-            }
-          }
-          throw lastError || new Error("S3 upload failed after retries");
-        };
-
-        await uploadWithRetry();
-
-        // Step 3: Detect faces from S3
-        tempIds.forEach((tempId) => {
-          faceSwapsSectionRef.current?.updateOptimisticJobStatus(
-            tempId,
-            "Detecting faces..."
-          );
-        });
-
-        const detectResponse = await apiFetch(
-          `${API_URL}/face-swap/detect-faces/from-s3`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ s3Key, videoDuration: duration }),
-          }
-        );
-
-        if (!detectResponse.ok) {
-          const errorData = await detectResponse.json();
-          throw new Error(errorData.error || "Failed to detect faces");
-        }
-
-        const data = await detectResponse.json();
-
-        if (!data.segments || data.segments.length === 0) {
-          tempIds.forEach((tempId) => {
-            faceSwapsSectionRef.current?.failOptimisticJob(
-              tempId,
-              "No faces detected"
-            );
-          });
-          addToast({
-            title: "No faces detected",
-            description:
-              "Could not find clear face segments. Try manual selection.",
-            color: "warning",
-          });
-          return;
-        }
-
-        // Process segments
-        let selectedSegments: { start: number; end: number }[] = [];
-        let totalDur = 0;
-        const maxTotalDuration = 50;
-        const maxSegments = 5;
-
-        for (const seg of data.segments) {
-          if (selectedSegments.length >= maxSegments) break;
-          const segDuration = seg.end - seg.start;
-          if (totalDur + segDuration <= maxTotalDuration) {
-            selectedSegments.push({ start: seg.start, end: seg.end });
-            totalDur += segDuration;
-          } else if (totalDur < maxTotalDuration) {
-            const availableDuration = maxTotalDuration - totalDur;
-            if (availableDuration >= 0.5) {
-              selectedSegments.push({
-                start: seg.start,
-                end: seg.start + availableDuration,
-              });
-            }
-            break;
-          }
-        }
-
-        if (selectedSegments.length === 0) {
-          tempIds.forEach((tempId) => {
-            faceSwapsSectionRef.current?.failOptimisticJob(
-              tempId,
-              "No usable segments"
-            );
-          });
-          addToast({
-            title: "No usable segments",
-            description: "Detected segments were too short.",
-            color: "warning",
-          });
-          return;
-        }
-
-        tempIds.forEach((tempId) => {
-          faceSwapsSectionRef.current?.updateOptimisticJobStatus(
-            tempId,
-            "Creating jobs..."
-          );
-        });
-
-        const result = await faceSwapAPI.createMultipleJobs({
-          video: videoFile,
-          images: characterFiles,
-          teamId,
-          segments: selectedSegments,
-          videoDuration: duration,
-          swapType: swap,
-          spliceWithOriginal: true,
-        });
-
-        result.jobIds.forEach((jobId, i) => {
-          if (tempIds[i]) {
-            faceSwapsSectionRef.current?.updateOptimisticJob(tempIds[i], jobId);
-          }
-        });
-
-        addToast({
-          title: `${characterCount} swap${characterCount > 1 ? "s" : ""} started!`,
-          description: `Processing ${characterCount} video${characterCount > 1 ? "s" : ""}. This may take 20-40 minutes each. (${totalCredits} credits)`,
-          color: "success",
-        });
-
-        if (videoToRevoke) URL.revokeObjectURL(videoToRevoke);
-      } catch (error) {
-        console.error("Auto-detect and generate error:", error);
-        const errorMessage =
-          error instanceof Error ? error.message : "An error occurred";
-        tempIds.forEach((tempId) => {
-          faceSwapsSectionRef.current?.failOptimisticJob(tempId, errorMessage);
-        });
-        addToast({
-          title: "Failed",
-          description: errorMessage,
-          color: "danger",
-        });
-      }
-    })();
+      if (videoToRevoke) URL.revokeObjectURL(videoToRevoke);
+    } catch (error) {
+      console.error("Auto-detect and generate error:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "An error occurred";
+      tempIds.forEach((tempId) => {
+        faceSwapsSectionRef.current?.failOptimisticJob(tempId, errorMessage);
+      });
+      addToast({
+        title: "Failed",
+        description: errorMessage,
+        color: "danger",
+      });
+    }
   }, [video, selectedCharacters, selectedTeam?.id, videoDuration, swapType]);
 
   return (

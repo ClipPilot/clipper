@@ -113,8 +113,8 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
       setJobs((prev) => {
         const idx = prev.findIndex((j) => j.id === update.id);
         if (idx === -1) {
-          const hasOptimisticJob = prev.some((j) => j.status === "uploading");
-          if (hasOptimisticJob && update.status === "queued") {
+          const hasOptimisticJob = prev.some((j) => j.status === "uploading" || j.status === "pending_upload");
+          if (hasOptimisticJob && (update.status === "queued" || update.status === "pending_upload")) {
             return prev;
           }
           return [update, ...prev];

@@ -1,0 +1,1 @@
+ALTER TYPE "public"."comfy_job_status" ADD VALUE 'pending_upload' BEFORE 'queued';

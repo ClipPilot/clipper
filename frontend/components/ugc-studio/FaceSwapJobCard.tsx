@@ -92,7 +92,7 @@ export const FaceSwapJobCard = memo(
                 <div className="w-full h-full flex items-center justify-center">
                   <Icon
                     icon={getStatusIcon(job.status)}
-                    className={`text-lg sm:text-xl ${job.status === "running" ? "animate-spin text-accent-400" : job.status === "uploading" ? "animate-pulse text-accent-400" : "text-text-tertiary"}`}
+                    className={`text-lg sm:text-xl ${job.status === "running" ? "animate-spin text-accent-400" : (job.status === "uploading" || job.status === "pending_upload") ? "animate-pulse text-accent-400" : "text-text-tertiary"}`}
                   />
                 </div>
               )}
@@ -177,7 +177,7 @@ export const FaceSwapJobCard = memo(
               {job.status === "queued" && (
                 <p className="text-[9px] sm:text-[10px] md:text-xs text-text-tertiary">Queuing Job.</p>
               )}
-              {job.status === "uploading" && (
+              {(job.status === "uploading" || job.status === "pending_upload") && (
                 <p className="text-[9px] sm:text-[10px] md:text-xs text-accent-400">
                   {job.progressMessage || "Uploading files..."}
                 </p>
