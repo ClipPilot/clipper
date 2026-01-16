@@ -323,6 +323,36 @@ Shot on virtual 50mm lens equivalent with f/1.8 depth of field creating signific
 7. For complex movements, break them into sequential steps
 8. Weight critical elements with emphasis: "++genuine surprised expression++"
 
+===== PRODUCT & OBJECT CONSISTENCY (CRITICAL) =====
+
+AI video models can struggle with keeping products, text, and objects consistent throughout a shot. Use these techniques to maximize consistency:
+
+**PRODUCT CONSISTENCY:**
+- ALWAYS include: "product maintains identical shape, color, and proportions throughout entire shot"
+- Specify the product's exact position relative to the actor: "bottle held at chest height, label facing camera at 15-degree angle"
+- Describe how the product STAYS consistent: "same bottle, same label, same cap throughout - no morphing or changing"
+- For product rotations, specify: "smooth rotation maintaining exact product dimensions and label clarity"
+- Include in NEGATIVE: "no warping of product shape, no morphing of bottle proportions, no changing label design"
+
+**TEXT & LABEL LEGIBILITY:**
+- When showing product labels, specify: "label text remains sharp, readable, and consistent throughout"
+- Include: "brand name and product text stay crisp and unchanged - no blurring or morphing of letters"
+- For close-ups: "text on product maintains exact font, size, and spacing throughout the entire shot"
+- Include in NEGATIVE: "no garbled text, no changing letters, no blurry or morphing typography"
+
+**PHONE & DEVICE CONSISTENCY:**
+- ALWAYS specify phone color and model consistency: "black iPhone held steady, same device throughout entire shot"
+- Include: "phone screen remains flat, rectangular, with consistent bezel proportions - no warping"
+- For screen-facing shots: "device held perfectly still, screen facing camera at consistent angle, no tilting or rotation"
+- Specify hand position: "fingers grip phone edges consistently, same grip throughout"
+- Include in NEGATIVE: "no warping of phone shape, no bending screen, no changing device proportions, no morphing bezels"
+
+**EXAMPLE PRODUCT-FOCUSED NEGATIVE SECTION:**
+"NEGATIVE: No morphing of product shape or proportions, no changing label text or design, no warping bottle dimensions, no blurry or garbled typography, no inconsistent product colors, product maintains exact identical appearance from first frame to last frame, no extra fingers or hands, no distorted grip, maintains same product-to-hand scale relationship throughout."
+
+**EXAMPLE PHONE-FOCUSED NEGATIVE SECTION:**
+"NEGATIVE: No warping of phone shape, no bending or curving screen, no changing bezel proportions, phone maintains exact rectangular shape throughout, no morphing device, no inconsistent phone color, screen stays flat and consistent, same device from start to finish, no extra fingers, grip remains identical throughout shot."
+
 ===== CRITICAL - TELL THE AI VIDEO GENERATOR EXACTLY WHAT TO CREATE =====
 
 The "action" and "cinematicPrompt" fields are the ONLY instructions the video AI receives.
@@ -362,6 +392,24 @@ CORRECT APPROACH (explicitly state showing, not using):
 - "Actor turns phone to face camera, showing the screen but not using it, holds it still for 3 seconds, then looks back at camera impressed"
 
 The reference image of the app/screen will be fed to the video model - your job is to direct HOW the actor presents/shows that screen, not what's on it. Always include "showing the screen but not using it" so the AI knows to keep the screen static.
+
+**PHONE/DEVICE CONSISTENCY IN CINEMATICPROMPT (CRITICAL):**
+When any scene involves a phone or device, ALWAYS include these elements:
+
+1. SPECIFY DEVICE DETAILS: "black iPhone" or "white smartphone" - be consistent across all scenes
+2. SPECIFY GRIP: "fingers grip phone edges at consistent position throughout"
+3. SPECIFY STILLNESS: "device held perfectly still, no tilting, no rotation, no movement"
+4. SPECIFY SCREEN STATE: "screen remains flat, rectangular, with consistent proportions"
+5. INCLUDE DEVICE NEGATIVES: "no warping of phone shape, no bending screen, no changing device proportions, no morphing bezels, phone maintains exact rectangular shape throughout, same device from start to finish"
+
+EXAMPLE PHONE-FOCUSED cinematicPrompt:
+"Medium shot of ${config.characterName} holding black iPhone at chest height with both hands, screen facing camera at consistent angle, showing the screen but not using it. Phone is held perfectly still with fingers gripping edges at consistent position - thumbs on front bezel, four fingers wrapped around back. Device remains flat, rectangular, with consistent bezel proportions throughout. Actor's expression is excited, eyes bright, occasionally glancing down at phone then back to camera.
+
+Actor holds phone steady for 3 full seconds, no tilting, no rotation, device position unchanging. Free hand may gesture toward the screen without touching it. Phone screen stays flat and facing camera throughout entire shot. Same black iPhone, same grip, same angle from first frame to last.
+
+Soft natural lighting from window camera-right illuminates actor's face while phone screen faces camera directly. Background is clean home environment with shallow depth of field.
+
+Shot on virtual 35mm lens equivalent with f/2.4. UGC authentic aesthetic. NEGATIVE: No warping of phone shape, no bending or curving screen, no changing bezel proportions, phone maintains exact rectangular shape throughout, no morphing device, no inconsistent phone color, screen stays flat and consistent, same device from start to finish, no extra fingers, grip remains identical throughout shot, no screen glare obscuring display, no finger movements on screen."
 
 REQUIRED ELEMENTS IN EVERY cinematicPrompt:
 1. SHOT TYPE & FRAMING: Exact camera position and what's in frame
@@ -412,53 +460,85 @@ CRITICAL RULE:
 
 ===== SCENE-TYPE SPECIFIC CINEMATIC GUIDANCE =====
 
-HOOK SCENES (Maximum visual impact - make viewers STOP scrolling):
-- Camera: Dynamic angle, slight low-angle for confidence, or dramatic close-up
-- Expression: Eyes wide with surprise, raised eyebrows, knowing smirk, or "wait til you hear this" energy
-- Body: Leaning toward camera, animated hand near face, attention-grabbing gesture
-- Lighting: Dramatic contrast, single key light, or eye-catching color accent
-- Movement: Quick push-in zoom to build urgency, or locked frame for intensity
-Example: "Tight close-up, chin to forehead. ${config.characterName}'s eyes widen with genuine surprise, eyebrows shooting up, mouth forming excited gasp. Single warm key light from upper left creating dramatic cheekbone shadows. Subtle 1-second push-in zoom. Background falls to deep shadow. Hand rises into frame from below, fingers splayed in 'stop everything' gesture."
+Each scene type below includes guidance AND a full multi-paragraph example. Your cinematicPrompts MUST follow this multi-paragraph format.
 
-PROBLEM SCENES (Show genuine frustration/relatability):
-- Camera: Medium shot to capture defeated body language, or close-up for emotional authenticity
-- Expression: Furrowed brow, eye roll, exasperated exhale, "I'm so done" face, tension in jaw
-- Body: Slumped shoulders, head shake, rubbing temples, hands thrown up in defeat
-- Lighting: Slightly flat or harsh to feel "real" and unpolished
-- Movement: Gentle handheld sway for authenticity
-Example: "Medium shot, waist up. ${config.characterName} with visibly slumped shoulders, head tilting back in exasperation, eyes closing briefly in frustration before opening with 'you know what I mean' look directly at camera. Soft overhead lighting creating slight shadows under eyes. Hands gesture outward in defeat. Messy bathroom counter with failed products blurred in background. Authentic handheld micro-movement."
+----- HOOK SCENES (Maximum visual impact - make viewers STOP scrolling) -----
+Goals: Dynamic angle, dramatic lighting, attention-grabbing expressions, urgency-building movement
+Key elements: Eyes wide with surprise, raised eyebrows, knowing smirk, leaning toward camera, animated gestures
 
-SOLUTION SCENES (Transformation moment - relief and excitement):
-- Camera: Start medium, may push in to emphasize the "aha moment"
-- Expression: Tension melting from face, eyes brightening, genuine smile breaking through, relief visible
-- Body: Shoulders dropping and relaxing, posture opening up, confident head position
-- Lighting: Warmer, more flattering than problem scene - visual shift to positivity
-- Movement: Slow push-in as realization hits, or smooth reveal
-Example: "Medium shot transitioning to close-up via slow push-in. ${config.characterName}'s expression transforms - jaw tension releases, eyes brighten with genuine relief, corners of mouth lifting into authentic smile. Warm golden-hour side light replacing earlier flat lighting. Shoulders visibly drop and relax. One hand comes to chest in 'finally' gesture. Background softens with warmer color grade."
+EXAMPLE HOOK cinematicPrompt:
+"Tight close-up framing from chin to top of forehead, shot in a modern minimalist space with dramatic single-source lighting from upper camera-left at 45 degrees. Warm tungsten key light at 3200K creates bold cheekbone shadows and nose shadow falling to the right. Background falls into deep shadow with only hints of room texture visible. Slight lens vignette adds intensity to the edges of frame.
 
-DEMO/B-ROLL SCENES (Product as hero - cinematic showcase):
-- Camera: Close-ups, macro details, overhead flat-lays, slow orbiting shots
-- Lighting: Professional product photography lighting - key light, fill, rim light
-- Product: Sharp focus, texture visible, label readable, premium presentation
-- Movement: Slow deliberate motion - gentle rotation, careful pour, satisfying application
-- Background: Clean, complementary, shallow depth of field with creamy bokeh
-Example: "Extreme macro close-up of product texture. Two fingers slowly rotate bottle, catching rim light that creates golden edge highlights. Soft key light from 45-degrees illuminates label text clearly. Shallow depth of field renders background as smooth cream bokeh. Slow 3-second clockwise rotation revealing ingredient list. Clean white marble surface beneath with subtle shadow grounding product."
+${config.characterName}'s face fills the frame with intense presence. Eyes widen dramatically with genuine surprise, pupils visibly dilating, bright catch-lights from the key source in both eyes. Eyebrows shoot upward creating deep horizontal forehead furrows. Mouth transitions from neutral to excited open gasp over 0.5 seconds, revealing authentic shock. Skin texture fully visible - natural pores across nose and cheeks, subtle shine on forehead catching the warm light. Expression reads as 'wait until you hear this' energy.
 
-TESTIMONIAL SCENES (Authentic storytelling - speaking from experience):
-- Camera: Intimate medium or close-up, straight-on for trust
-- Expression: Genuine micro-expressions, emotional fluctuations, conversational eye contact breaks
-- Body: Natural gestures, slight nods when making points, comfortable posture
-- Lighting: Soft, flattering, natural feeling - like FaceTime with a friend
-- Movement: Mostly static or gentle drift, authentic handheld feel
-Example: "Close-up, shoulders and face. ${config.characterName} with soft genuine smile, eyes occasionally glancing down in thought before returning to camera with conviction. Natural window light from right creating soft wrap-around illumination. Slight contemplative head tilts while speaking. Occasional small nods emphasizing key points. Warm neutral background, plant leaves softly out of focus."
+Camera executes quick 1-second push-in zoom from close-up to extreme close-up, building urgency and pulling viewer deeper into the moment. Push-in is confident and deliberate. Subject maintains locked eye contact with lens throughout. At 1.5-second mark, one hand rises into lower frame from below, fingers splayed wide in a 'stop everything' gesture, motion smooth but energetic. Subtle micro-head-tilt forward adds intensity.
 
-CTA SCENES (Confident invitation - make them want to take action):
-- Camera: Medium or close-up, slightly lower angle for confidence
-- Expression: Warm inviting smile, direct eye contact, encouraging and approachable
-- Body: Open posture, slight forward lean, welcoming gesture, confident head position
-- Lighting: Bright, energetic, flattering
-- Movement: Subtle push-in for emphasis, or locked confident frame
-Example: "Medium-close shot with slight low angle for confidence. ${config.characterName} with warm genuine smile reaching eyes, direct unwavering eye contact with camera. Bright ring light creating catch-lights in eyes and even flattering illumination. Slight forward lean conveying enthusiasm. One hand gestures toward camera in inviting 'join me' motion. Clean bright background with product visible at edge of frame."
+Shot on virtual 85mm portrait lens equivalent with f/1.4 creating razor-thin depth of field. High contrast dramatic lighting style reminiscent of modern YouTube thumbnails. Visible film grain around ISO 800 for texture. NEGATIVE: No soft focus, no beauty mode smoothing, no dutch angle, no multiple light sources, no distracting background elements, maintains exact facial structure throughout, no morphing or warping of features."
+
+----- PROBLEM SCENES (Show genuine frustration/relatability) -----
+Goals: Capture defeated body language, authentic frustration, relatable 'you know what I mean' energy
+Key elements: Furrowed brow, eye roll, exasperated exhale, slumped shoulders, hands in defeat
+
+EXAMPLE PROBLEM cinematicPrompt:
+"Medium shot framing from waist up, set in a cluttered bathroom environment suggesting daily frustration. Flat overhead fluorescent lighting mixed with harsh mirror light creates unflattering shadows under eyes and emphasizes tired expression. Color temperature is cool and clinical around 5500K. Background shows slightly messy counter with various failed products visible but blurred, adding to the 'tried everything' narrative. No depth glamour - this is reality.
+
+${config.characterName} positioned center frame with visibly slumped shoulders, posture conveying defeat. Head tilts back in exasperation, eyes closing briefly for 1 second showing genuine frustration, then opening with a knowing 'you understand, right?' direct look at camera. Furrowed brow creates tension lines between eyebrows. Jaw slightly clenched showing stress. Exhale visible as shoulders drop further. Skin appears slightly dull under the harsh lighting - intentionally unflattering to sell the struggle. Hair is slightly disheveled, adding authenticity.
+
+Camera has subtle authentic handheld micro-movement throughout - gentle 2-3 pixel sway that reads as 'shot on phone' documentary feel. At 2-second mark, hands enter frame from sides and gesture outward in classic 'I give up' motion, palms up, fingers spread. Head shakes slowly side to side twice. Eyes may briefly roll upward before returning to camera contact. Movement feels natural and unrehearsed.
+
+Shot on virtual 28mm wide lens equivalent, f/4.0 keeping more of the cluttered background in acceptable focus to establish environment. Slightly desaturated color grade suggesting mundane daily struggle. Visible sensor noise suggesting low-light phone capture. Documentary handheld aesthetic. NEGATIVE: No glamorous lighting, no beauty filters, no perfect skin, no overly dramatic acting, maintains natural authentic vibe, no artificial smoothness, keeps consistent defeated posture throughout."
+
+----- SOLUTION SCENES (Transformation moment - relief and excitement) -----
+Goals: Show visible transformation, tension releasing, authentic relief, 'finally found it' energy
+Key elements: Tension melting away, eyes brightening, genuine smile breaking through, posture opening up
+
+EXAMPLE SOLUTION cinematicPrompt:
+"Medium shot transitioning to close-up, environment shifts to warmer more inviting space. Soft golden-hour side light from camera-right at around 3500K creates warm wrap-around illumination with gentle shadows. Fill light from left prevents harsh contrast. Background is clean and slightly brighter than previous problem scene, suggesting hope. Atmosphere feels lighter and more optimistic through color temperature shift alone.
+
+${config.characterName}'s expression undergoes visible transformation over 2-3 seconds. Starting position shows residual tension in jaw and forehead from previous frustration. At 1-second mark, jaw tension visibly releases, face softens. At 2-second mark, eyes brighten noticeably - almost sparkle effect from catch-lights, eyebrows lift gently in pleasant surprise. Mouth corners lift into authentic smile that reaches the eyes (duchenne smile with crow's feet). Shoulders visibly drop 1-2 inches as physical tension releases. Posture opens up, chest lifts slightly with hope.
+
+Camera executes slow 2.5-second push-in from medium shot to close-up, timing the arrival at close-up to coincide with the full smile breakthrough. Push-in is smooth and gentle, not jarring. At 3-second mark, one hand comes to chest in classic 'finally' gesture of relief, palm flat against heart. Small authentic nod of self-validation. Movement is naturalistic and unrehearsed feeling.
+
+Shot on virtual 50mm lens equivalent with f/2.0 for flattering portrait depth. Warmer color grade than problem scene - this is the visual turning point. Subtle lens flare from the golden side light adds cinematic hope. Natural skin texture visible but lighting is more forgiving. NEGATIVE: No over-the-top fake excitement, no theatrical expressions, maintains authentic relief rather than performative joy, no sudden lighting changes, smooth continuous transformation, keeps facial features consistent throughout."
+
+----- DEMO/B-ROLL SCENES (Product as hero - cinematic showcase) -----
+Goals: Product photography quality, professional lighting, texture and detail focus, premium presentation
+Key elements: Macro details, slow rotation, rim lighting, shallow depth of field, clean backgrounds
+
+EXAMPLE DEMO B-ROLL cinematicPrompt:
+"Extreme close-up macro shot of product taking up 70% of frame, set against clean white marble surface with subtle gray veining visible. Three-point product photography lighting: key light from 45-degrees camera-left creating dimension, fill from right at 50% intensity preventing harsh shadows, rim light from behind creating golden edge highlight that separates product from background. Color temperature balanced at 5000K for accurate product colors. Shallow depth of field renders marble texture as soft gradient.
+
+Product bottle is the absolute hero - label facing camera at 15-degree angle for optimal readability while showing dimensional form. Glossy surface catches key light with specular highlight running diagonally across bottle. Texture of product material fully visible - if matte, show subtle surface grain; if glossy, show pristine reflections. Cap detail visible and sharp. Label text is crisp, readable, and remains consistent - brand name and product text stay sharp throughout. Any embossed text or design elements catching rim light for emphasis. Product appears premium, desirable, tactile. ++Product maintains identical shape, color, proportions, and label design throughout entire shot++.
+
+Two fingers enter frame from bottom-left, gently gripping product at base with consistent grip position throughout. Over 3 seconds, fingers execute slow clockwise rotation revealing different angles - front label, then side with ingredient list, then back to front. Rotation is smooth and deliberate, approximately 180 degrees total, maintaining exact product dimensions throughout the turn. As product rotates, rim light catches different edges creating moving highlight that guides eye. At 2.5-second mark, slight tilt toward camera showing top/cap detail before settling back. Same bottle, same label, same cap from first frame to last.
+
+Shot on virtual 100mm macro lens equivalent with f/2.8 creating professional product photography depth of field. Clean color science with accurate product representation. Subtle shadow beneath product grounds it on surface. Studio photography aesthetic but with slight lifestyle warmth. NEGATIVE: No face or person visible beyond hands, no cluttered background, no harsh unflattering shadows on product, no fingerprints or smudges visible, no dust particles, no label reflections obscuring text, no morphing of product shape or proportions, no changing label text or design, no warping bottle dimensions, no blurry or garbled typography, no inconsistent product colors, product maintains exact identical appearance from first frame to last frame, no extra fingers, maintains same product-to-hand scale relationship throughout."
+
+----- TESTIMONIAL SCENES (Authentic storytelling - speaking from experience) -----
+Goals: Intimate trust-building, genuine micro-expressions, conversational authenticity
+Key elements: Natural gestures, thoughtful pauses, direct eye contact, soft flattering light
+
+EXAMPLE TESTIMONIAL cinematicPrompt:
+"Close-up framing showing shoulders and face, creating intimate conversational distance like FaceTime with a trusted friend. Soft natural window light from camera-right creates gentle wrap-around illumination with smooth gradient shadows. Light quality is diffused and forgiving - late afternoon through sheer curtains. Warm color temperature around 4500K mixing daylight and interior warmth. Background is personal but uncluttered - soft warm neutral tones with perhaps a plant or bookshelf edge visible in creamy bokeh.
+
+${config.characterName} is positioned using rule of thirds, face slightly angled toward the key light for dimension. Expression is soft and genuine - the face of someone sharing real experience, not performing. Eyes occasionally break from camera contact at 2-second mark, glancing down-left as if accessing memory or finding the right words, then returning to camera with renewed conviction. Soft authentic smile that comes and goes naturally with the emotional content. Micro-expressions fluctuate - brief moments of vulnerability, then confidence, then warmth. Skin texture is natural with soft lighting being forgiving but not artificially smooth.
+
+Camera is mostly static with subtle organic drift - gentle 1-2 pixel movement suggesting handheld authenticity without being distracting. Subject makes small natural nods when emphasizing key points at approximately 3-second mark. Head tilts slightly in contemplation, then straightens with conviction. Hands may gesture gently into lower frame for emphasis but don't dominate. Blink rate is natural. Everything reads as unrehearsed genuine conversation.
+
+Shot on virtual 50mm lens equivalent with f/2.2 for flattering portrait depth while maintaining some environmental context. Color grade is warm and inviting. Soft film grain around ISO 400. Slight vignette draws focus to face. Natural lighting aesthetic. NEGATIVE: No performative expressions, no perfect skin, no artificial catch-lights, no theatrical gestures, no rapid movements, maintains authentic conversational energy throughout, no morphing of features between expressions."
+
+----- CTA SCENES (Confident invitation - make them want to take action) -----
+Goals: Confident approachability, direct invitation, energetic positivity, clear call to action energy
+Key elements: Warm inviting smile, unwavering eye contact, open body language, forward energy
+
+EXAMPLE CTA cinematicPrompt:
+"Medium-close shot with camera positioned at slight low angle (15 degrees below eye line) creating subtle confidence and authority for the subject. Bright, energetic lighting setup with ring light or large softbox creating even flattering illumination with minimal shadows. Bright catch-lights in both eyes creating engaged, alive appearance. Color temperature around 5500K - clean and vibrant. Background is clean and bright, potentially with product visible at edge of frame for final association. Environment suggests positivity and action.
+
+${config.characterName} radiates warm confident energy. Smile is genuine and reaches the eyes - crow's feet visible, cheeks lifted, teeth showing naturally. Direct unwavering eye contact with camera creates connection and trust. Posture is open and slightly forward-leaning, conveying enthusiasm and invitation. Shoulders are back and relaxed showing confidence without tension. Face is angled straight to camera for maximum directness. Expression says 'I want you to experience this too' - generous, not salesy.
+
+Camera may execute subtle 1-second push-in for emphasis during the key CTA moment, or remain locked in confident static frame. At 2-second mark, one hand gestures toward camera in welcoming 'join me' motion - palm slightly up, fingers together, movement smooth and inviting rather than pointing or demanding. Slight forward head movement accompanying gesture adds conviction. Small authentic nod at the end sealing the invitation. Energy builds subtly through the shot.
+
+Shot on virtual 35mm lens equivalent with f/2.8 for engaging perspective that includes environment while maintaining flattering depth. Bright, energetic color grade with lifted shadows. Clean modern aesthetic. Professional but approachable lighting. Slight lens flare acceptable for energy. NEGATIVE: No aggressive or pushy expressions, no over-the-top enthusiasm, no pointing directly at camera, maintains warm approachable energy rather than salesy pressure, no harsh shadows, keeps consistent inviting expression throughout."
 
 ===== EMOTION-SPECIFIC MICRO-EXPRESSIONS =====
 
@@ -606,19 +686,29 @@ TTS SAFETY:
 - Keep sentences under 20 words
 - TOTAL dialogue: 25-50 words MAX (critical for audio timing)
 
-CINEMATIC PROMPT REQUIREMENTS:
-- Include specific shot type, lighting, camera movement
-- Describe micro-expressions, not just emotions
-- Detail product positioning and how light hits it
-- Mention environment props and textures
-- Make it read like film director notes
+CINEMATIC PROMPT REQUIREMENTS (MUST BE 3-5 PARAGRAPHS):
+The cinematicPrompt feeds directly into Kling 2.6 Pro video AI. It MUST contain:
+
+PARAGRAPH 1 - SCENE SETTING: Environment, lighting direction/quality/color temperature, atmosphere, background depth
+PARAGRAPH 2 - SUBJECT DESCRIPTION: Actor expressions, micro-movements, skin texture, body positioning OR product details, materials, reflections
+PARAGRAPH 3 - MOTION DIRECTIVES: Camera movement with timing ("slow 2-second push-in"), subject animation, environmental motion
+PARAGRAPH 4 - TECHNICAL STYLE & NEGATIVES: Virtual lens specs (e.g., "50mm f/2.0"), style reference, and NEGATIVE elements to avoid
+
+Example structure for a-roll:
+"[Setting paragraph with lighting, environment, color temperature...]
+
+[Subject paragraph with expression details, micro-movements, positioning...]
+
+[Motion paragraph with camera movement timing, subject actions, gestures...]
+
+Shot on virtual [lens] with f/[aperture]. [Style reference]. NEGATIVE: No [unwanted elements], maintains exact appearance throughout, no morphing..."
 
 Create a new version that:
 - Keeps the same scene type and approximate duration
 - Uses a completely different approach/angle
 - Has STRONGER emotional impact than the original
 - Includes a SPECIFIC action (not "holds product" but "slowly rotates product, catching the light")
-- Includes a DETAILED cinematicPrompt like a film director would write
+- Includes a DETAILED 3-5 paragraph cinematicPrompt following the structure above
 
 Return the regenerated scene with all fields (id, sceneNumber, sceneType, action, dialogue, emotion, estimatedDurationSeconds, shotType, cameraAngle, customCameraAngle, cinematicPrompt, cameraDirection).`;
 };
