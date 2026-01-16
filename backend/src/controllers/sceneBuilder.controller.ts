@@ -42,7 +42,7 @@ export class SceneBuilderController {
         characterId,
         userRefinement,
         supportingImageKeys,
-        frameIndex, // Optional: 0=start only, 1=end only, undefined=both
+        frameIndex,
       } = req.body;
 
       if (!teamId || !scriptId || !sceneId || sceneNumber === undefined || !characterId) {
@@ -307,11 +307,15 @@ export class SceneBuilderController {
           imageKeys.map((key) => s3Service.getPresignedUrl(key, 3600))
         );
 
-        response.images = imageKeys.map((key, i) => ({
-          key,
-          url: imageUrls[i],
-          index: i,
-        }));
+        response.images = imageKeys.map((key, i) => {
+          const variantMatch = key.match(/variant_(\d+)/);
+          const frameIndex = variantMatch ? parseInt(variantMatch[1], 10) : i;
+          return {
+            key,
+            url: imageUrls[i],
+            index: frameIndex,
+          };
+        });
       }
 
       if (job.status === "failed") {

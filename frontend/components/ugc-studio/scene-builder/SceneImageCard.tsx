@@ -72,6 +72,7 @@ export function SceneImageCard({
     []
   );
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generatingFrame, setGeneratingFrame] = useState<0 | 1 | "both" | null>(null);
   const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -109,15 +110,14 @@ export function SceneImageCard({
 
           if (status.status === "completed") {
             setIsGenerating(false);
+            setGeneratingFrame(null);
             if (pollIntervalRef.current) {
               clearInterval(pollIntervalRef.current);
               pollIntervalRef.current = null;
             }
             if (status.images && status.images.length > 0) {
               try {
-                // Handle single frame regeneration (1 image) or both frames (2 images)
                 if (status.images.length === 1) {
-                  // Single frame was regenerated - determine which one based on index
                   const img = status.images[0];
                   const isStartFrame = img.index === 0;
 
@@ -130,7 +130,6 @@ export function SceneImageCard({
                     generationJobId: status.jobId,
                   });
 
-                  // Preserve the other frame, update only the regenerated one
                   onImagesSelect(
                     isStartFrame ? img.key : (startImageKey || ""),
                     isStartFrame ? img.url : (startImageUrl || ""),
@@ -138,7 +137,6 @@ export function SceneImageCard({
                     isStartFrame ? (endImageUrl || "") : img.url
                   );
                 } else {
-                  // Both frames regenerated
                   const startImg = status.images[0];
                   const endImg = status.images[1];
                   await sceneBuilderAPI.selectSceneImage({
@@ -162,6 +160,7 @@ export function SceneImageCard({
             }
           } else if (status.status === "failed") {
             setIsGenerating(false);
+            setGeneratingFrame(null);
             if (pollIntervalRef.current) {
               clearInterval(pollIntervalRef.current);
               pollIntervalRef.current = null;
@@ -190,6 +189,7 @@ export function SceneImageCard({
 
   const handleGenerate = async (frameIndex?: 0 | 1) => {
     setIsGenerating(true);
+    setGeneratingFrame(frameIndex ?? "both");
     try {
       const response = await sceneBuilderAPI.generateSceneImages({
         teamId,
@@ -206,6 +206,7 @@ export function SceneImageCard({
     } catch (error) {
       console.error("Failed to start generation:", error);
       setIsGenerating(false);
+      setGeneratingFrame(null);
     }
   };
 
@@ -574,8 +575,13 @@ export function SceneImageCard({
                     Start Frame
                   </span>
                   <div
-                    className="w-28 h-36 rounded-lg overflow-hidden bg-surface-base ring-2 ring-accent-400 relative cursor-zoom-in hover:ring-accent-300 transition-all"
+                    className={`w-28 h-36 rounded-lg overflow-hidden bg-surface-base ring-2 relative transition-all ${
+                      generatingFrame === 0 || generatingFrame === "both"
+                        ? "ring-blue-500 animate-pulse"
+                        : "ring-accent-400 cursor-zoom-in hover:ring-accent-300"
+                    }`}
                     onClick={() =>
+                      generatingFrame !== 0 && generatingFrame !== "both" &&
                       setZoomImageUrl(
                         startImageUrl ||
                           generation?.generatedImages?.[0]?.url ||
@@ -588,15 +594,27 @@ export function SceneImageCard({
                         startImageUrl || generation?.generatedImages?.[0]?.url
                       }
                       alt="Start frame"
-                      className="w-full h-full object-cover"
+                      className={`w-full h-full object-cover ${
+                        generatingFrame === 0 || generatingFrame === "both" ? "opacity-50" : ""
+                      }`}
                     />
-                    <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-accent-400 flex items-center justify-center">
-                      <Icon
-                        icon="solar:check-circle-bold"
-                        className="text-white"
-                        width={12}
-                      />
-                    </div>
+                    {(generatingFrame === 0 || generatingFrame === "both") ? (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                        <Icon
+                          icon="solar:refresh-bold"
+                          className="text-white animate-spin"
+                          width={24}
+                        />
+                      </div>
+                    ) : (
+                      <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-accent-400 flex items-center justify-center">
+                        <Icon
+                          icon="solar:check-circle-bold"
+                          className="text-white"
+                          width={12}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -613,8 +631,13 @@ export function SceneImageCard({
                     End Frame
                   </span>
                   <div
-                    className="w-28 h-36 rounded-lg overflow-hidden bg-surface-base ring-2 ring-accent-400 relative cursor-zoom-in hover:ring-accent-300 transition-all"
+                    className={`w-28 h-36 rounded-lg overflow-hidden bg-surface-base ring-2 relative transition-all ${
+                      generatingFrame === 1 || generatingFrame === "both"
+                        ? "ring-blue-500 animate-pulse"
+                        : "ring-accent-400 cursor-zoom-in hover:ring-accent-300"
+                    }`}
                     onClick={() =>
+                      generatingFrame !== 1 && generatingFrame !== "both" &&
                       setZoomImageUrl(
                         endImageUrl ||
                           generation?.generatedImages?.[1]?.url ||
@@ -625,15 +648,27 @@ export function SceneImageCard({
                     <img
                       src={endImageUrl || generation?.generatedImages?.[1]?.url}
                       alt="End frame"
-                      className="w-full h-full object-cover"
+                      className={`w-full h-full object-cover ${
+                        generatingFrame === 1 || generatingFrame === "both" ? "opacity-50" : ""
+                      }`}
                     />
-                    <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-accent-400 flex items-center justify-center">
-                      <Icon
-                        icon="solar:check-circle-bold"
-                        className="text-white"
-                        width={12}
-                      />
-                    </div>
+                    {(generatingFrame === 1 || generatingFrame === "both") ? (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                        <Icon
+                          icon="solar:refresh-bold"
+                          className="text-white animate-spin"
+                          width={24}
+                        />
+                      </div>
+                    ) : (
+                      <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-accent-400 flex items-center justify-center">
+                        <Icon
+                          icon="solar:check-circle-bold"
+                          className="text-white"
+                          width={12}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
