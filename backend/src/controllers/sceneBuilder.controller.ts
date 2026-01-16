@@ -42,6 +42,10 @@ export class SceneBuilderController {
         characterId,
         userRefinement,
         supportingImageKeys,
+        // Advanced options
+        generateEndFrame,
+        customStartImageKey,
+        customEndImageKey,
       } = req.body;
 
       if (!teamId || !scriptId || !sceneId || sceneNumber === undefined || !characterId) {
@@ -118,6 +122,10 @@ export class SceneBuilderController {
         productImageKeys: script.product_image_keys as string[],
         userRefinement: userRefinement || undefined,
         supportingImageKeys: supportingImageKeys || [],
+        // Advanced options
+        generateEndFrame: generateEndFrame || false,
+        customStartImageKey: customStartImageKey || undefined,
+        customEndImageKey: customEndImageKey || undefined,
       });
 
       return res.status(202).json({
@@ -149,6 +157,9 @@ export class SceneBuilderController {
           sceneNumber: number;
           userRefinement?: string;
           supportingImageKeys?: string[];
+          generateEndFrame?: boolean;
+          customStartImageKey?: string;
+          customEndImageKey?: string;
         }>;
       };
 
@@ -238,6 +249,9 @@ export class SceneBuilderController {
           productImageKeys: script.product_image_keys as string[],
           userRefinement: sceneRequest.userRefinement,
           supportingImageKeys: sceneRequest.supportingImageKeys || [],
+          generateEndFrame: sceneRequest.generateEndFrame || false,
+          customStartImageKey: sceneRequest.customStartImageKey || undefined,
+          customEndImageKey: sceneRequest.customEndImageKey || undefined,
         });
 
         jobIds.push(job.id);

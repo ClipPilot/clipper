@@ -1,5 +1,9 @@
 import { fal } from "@fal-ai/client";
 import { config } from "../config/env";
+import { openaiClient } from "./ugcScript.service";
+
+// Kling prompt length limit
+export const KLING_MAX_PROMPT_LENGTH = 2500;
 
 fal.config({
   credentials: config.fal.apiKey,
@@ -40,6 +44,7 @@ export const GENTLE_MOTION_MODIFIERS =
 
 export interface ImageToVideoOptions {
   imageUrl: string;
+  tailImageUrl?: string; // Optional end frame for better video interpolation
   prompt: string;
   duration?: KlingDuration;
   negativePrompt?: string;
@@ -93,6 +98,83 @@ interface KlingLipsyncResponse {
   };
 }
 
+/**
+ * Iteratively shortens until under the limit while preserving key instructions.
+ * Uses OpenAI responses API (same pattern as aiSuggestions.service.ts)
+ */
+export async function shortenPromptIfNeeded(
+  prompt: string,
+  maxLength: number = KLING_MAX_PROMPT_LENGTH
+): Promise<string> {
+  if (prompt.length <= maxLength) {
+    return prompt;
+  }
+
+  console.log(
+    `[Kling] Prompt too long (${prompt.length}/${maxLength}), shortening with gpt...`
+  );
+
+  let currentPrompt = prompt;
+  let attempts = 0;
+  const maxAttempts = 3;
+
+  while (currentPrompt.length > maxLength && attempts < maxAttempts) {
+    attempts++;
+    const targetLength = Math.floor(maxLength * 0.9); // Aim for 90% of max to have buffer
+
+    const systemPrompt = `You are a prompt shortening assistant. Your job is to shorten video generation prompts while preserving the most critical elements.
+
+CRITICAL RULES TO ALWAYS PRESERVE:
+1. Any rules about NOT adding text, captions, or subtitles
+2. Any rules about keeping phone/device screens unchanged
+3. Any rules about not adding extra elements
+4. The core action/scene description
+5. Character emotions and expressions
+
+WHAT TO SHORTEN:
+- Remove redundant adjectives
+- Combine similar instructions
+- Remove less critical modifiers
+- Simplify sentence structure
+
+Target length: ${targetLength} characters (current: ${currentPrompt.length})
+Return ONLY the shortened prompt, nothing else.`;
+
+    try {
+      const response = await openaiClient.responses.create({
+        model: "gpt-5-mini",
+        instructions: systemPrompt,
+        input: currentPrompt,
+      });
+
+      const shortened = response.output_text?.trim();
+      if (shortened && shortened.length < currentPrompt.length) {
+        currentPrompt = shortened;
+        console.log(
+          `[Kling] Shortened to ${currentPrompt.length} chars (attempt ${attempts})`
+        );
+      } else {
+        console.warn(
+          `[Kling] Shortening attempt ${attempts} did not reduce length`
+        );
+        break;
+      }
+    } catch (error) {
+      console.error(`[Kling] Prompt shortening failed:`, error);
+      break;
+    }
+  }
+
+  if (currentPrompt.length > maxLength) {
+    console.warn(
+      `[Kling] Could not shorten prompt below ${maxLength}, truncating...`
+    );
+    currentPrompt = currentPrompt.substring(0, maxLength - 3) + "...";
+  }
+
+  return currentPrompt;
+}
+
 export function buildKlingPrompt(
   cinematicPrompt: string,
   shotType: ShotType,
@@ -118,6 +200,7 @@ export async function generateVideo(
 ): Promise<ImageToVideoResult> {
   const {
     imageUrl,
+    tailImageUrl,
     prompt,
     duration = 5,
     negativePrompt,
@@ -130,16 +213,29 @@ export async function generateVideo(
     finalPrompt = `${prompt}. The person speaks naturally and says "${dialogue}"`;
   }
 
+  // Shorten prompt if it exceeds Kling's limit
+  finalPrompt = await shortenPromptIfNeeded(finalPrompt);
+
   const finalNegativePrompt = negativePrompt || PRODUCT_NEGATIVE_PROMPT;
 
-  console.log(`[Kling] Generating ${duration}s video from image (audio: ${generateAudio})`);
-  console.log(`[Kling] Prompt (${finalPrompt.length} chars): ${finalPrompt.substring(0, 200)}...`);
-  console.log(`[Kling] Negative prompt (${finalNegativePrompt.length} chars): ${finalNegativePrompt.substring(0, 100)}...`);
+  console.log(
+    `[Kling] Generating ${duration}s video from image (audio: ${generateAudio})`
+  );
+  console.log(
+    `[Kling] Prompt (${finalPrompt.length} chars): ${finalPrompt.substring(0, 200)}...`
+  );
+  console.log(
+    `[Kling] Negative prompt (${finalNegativePrompt.length} chars): ${finalNegativePrompt.substring(0, 100)}...`
+  );
+  if (tailImageUrl) {
+    console.log(`[Kling] Using end frame (tail image) for interpolation`);
+  }
 
   try {
     const input: Record<string, unknown> = {
       prompt: finalPrompt,
       start_image_url: imageUrl,
+      ...(tailImageUrl && { tail_image_url: tailImageUrl }),
       duration: String(duration) as "5" | "10",
       negative_prompt: finalNegativePrompt,
       generate_audio: generateAudio,
@@ -382,14 +478,17 @@ export async function extendVideo(
 
   console.log(`[Kling O1] Extending video by ${duration}s`);
   console.log(`[Kling O1] Video URL: ${videoUrl.substring(0, 80)}...`);
-  console.log(`[Kling O1] Prompt: Based on @Video1, generate the next shot. keep the style of the video`);
+  console.log(
+    `[Kling O1] Prompt: Based on @Video1, generate the next shot. keep the style of the video`
+  );
 
   try {
     const result = await fal.subscribe(
       "fal-ai/kling-video/o1/video-to-video/reference",
       {
         input: {
-          prompt: "Based on @Video1, generate the next shot. keep the style of the video",
+          prompt:
+            "Based on @Video1, generate the next shot. keep the style of the video",
           video_url: videoUrl,
           duration: String(duration) as "5" | "10",
           aspect_ratio: "auto",
@@ -435,9 +534,10 @@ export async function extendVideoWithRetry(
       return await extendVideo(options);
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
-      const isTimeout = lastError.message.includes("ETIMEDOUT") ||
-                        lastError.message.includes("fetch failed") ||
-                        lastError.message.includes("timeout");
+      const isTimeout =
+        lastError.message.includes("ETIMEDOUT") ||
+        lastError.message.includes("fetch failed") ||
+        lastError.message.includes("timeout");
 
       console.warn(
         `[Kling O1] Extend attempt ${attempt}/${maxRetries} failed:`,
@@ -467,7 +567,9 @@ export const klingService = {
   extendVideo,
   extendVideoWithRetry,
   buildKlingPrompt,
+  shortenPromptIfNeeded,
   PRODUCT_NEGATIVE_PROMPT,
   PRODUCT_STABILITY_MODIFIERS,
   GENTLE_MOTION_MODIFIERS,
+  KLING_MAX_PROMPT_LENGTH,
 };

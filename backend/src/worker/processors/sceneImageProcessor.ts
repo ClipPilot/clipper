@@ -34,10 +34,13 @@ Reality details: gentle 35mm film grain, light fingerprint smudge on lens glass,
 
 Styling: raw UGC realism, available indoor light, mixed color temperature, minimal depth blur, slight lens smudge, visible ISO noise, no cinematic polish, emphasis on authenticity and true iPhone capture.`;
 
+type FrameType = "start" | "end";
+
 function buildSceneImagePrompt(
   sceneData: GenerateSceneImageJob["sceneData"],
   hasReferenceImages: boolean,
-  userRefinement?: string
+  userRefinement?: string,
+  frameType: FrameType = "start"
 ): string {
   const parts: string[] = [];
 
@@ -61,6 +64,28 @@ function buildSceneImagePrompt(
     `- Emotion: ${sceneData.emotion}`,
     `- Action: ${sceneData.action}`
   );
+
+  // Add frame-specific instructions for start vs end frame
+  if (frameType === "start") {
+    parts.push(
+      "",
+      "FRAME TIMING: START FRAME",
+      "- This is the BEGINNING moment of the scene",
+      "- Character is about to begin the action, initial anticipation",
+      "- Product/device in starting position",
+      "- Expression shows initial emotion before transformation"
+    );
+  } else {
+    parts.push(
+      "",
+      "FRAME TIMING: END FRAME",
+      "- This is the FINAL moment of the scene",
+      "- Action has been completed, result is visible",
+      "- Product/device in final position after interaction",
+      "- Expression shows satisfied/transformed emotion after the action",
+      "- Keep the SAME camera angle, framing, and setting as start frame"
+    );
+  }
 
   if (userRefinement) {
     parts.push("", `USER NOTES: ${userRefinement}`);
@@ -120,10 +145,16 @@ export async function processSceneImageJob(
     productImageKeys,
     userRefinement,
     supportingImageKeys,
+    generateEndFrame,
+    customStartImageKey,
+    customEndImageKey,
   } = job;
 
   console.log(
     `[SCENE_IMAGE] Starting FAL AI generation for job ${jobId} (scene ${sceneNumber})`
+  );
+  console.log(
+    `[SCENE_IMAGE] Options: generateEndFrame=${generateEndFrame}, customStart=${!!customStartImageKey}, customEnd=${!!customEndImageKey}`
   );
 
   try {
@@ -137,88 +168,168 @@ export async function processSceneImageJob(
       })
       .where(eq(schema.sceneImageGenerationJobs.id, jobId));
 
-    const allReferenceKeys: string[] = [];
+    const generatedImages: string[] = [];
 
-    if (characterId) {
-      const [character] = await db
-        .select()
-        .from(schema.characters)
-        .where(eq(schema.characters.id, characterId));
+    // If user uploaded a custom start image, use that instead of generating
+    if (customStartImageKey) {
+      console.log(`[SCENE_IMAGE] Using custom start image: ${customStartImageKey}`);
+      generatedImages.push(customStartImageKey);
+      await updateJobProgress(jobId, 40, "Using custom start image...");
+    } else {
+      // Generate start image
+      const allReferenceKeys: string[] = [];
 
-      if (character) {
-        const characterImages = character.character_images as string[];
-        const primaryIndex = character.primary_image_index || 0;
-        if (characterImages[primaryIndex]) {
-          allReferenceKeys.push(characterImages[primaryIndex]);
-          console.log(
-            `[SCENE_IMAGE] Added character reference: ${characterImages[primaryIndex]}`
-          );
+      if (characterId) {
+        const [character] = await db
+          .select()
+          .from(schema.characters)
+          .where(eq(schema.characters.id, characterId));
+
+        if (character) {
+          const characterImages = character.character_images as string[];
+          const primaryIndex = character.primary_image_index || 0;
+          if (characterImages[primaryIndex]) {
+            allReferenceKeys.push(characterImages[primaryIndex]);
+            console.log(
+              `[SCENE_IMAGE] Added character reference: ${characterImages[primaryIndex]}`
+            );
+          }
         }
       }
-    }
 
-    if (productImageKeys && productImageKeys.length > 0) {
-      allReferenceKeys.push(...productImageKeys.slice(0, 2));
+      if (productImageKeys && productImageKeys.length > 0) {
+        allReferenceKeys.push(...productImageKeys.slice(0, 2));
+        console.log(
+          `[SCENE_IMAGE] Added ${Math.min(productImageKeys.length, 2)} product images`
+        );
+      }
+
+      if (supportingImageKeys && supportingImageKeys.length > 0) {
+        allReferenceKeys.push(...supportingImageKeys.slice(0, 2));
+        console.log(
+          `[SCENE_IMAGE] Added ${Math.min(supportingImageKeys.length, 2)} supporting images`
+        );
+      }
+
+      await updateJobProgress(jobId, 10, "Preparing reference images...");
+      const referenceImageUrls = await getReferenceImageUrls(allReferenceKeys);
       console.log(
-        `[SCENE_IMAGE] Added ${Math.min(productImageKeys.length, 2)} product images`
+        `[SCENE_IMAGE] Got ${referenceImageUrls.length} reference image URLs`
       );
-    }
 
-    if (supportingImageKeys && supportingImageKeys.length > 0) {
-      allReferenceKeys.push(...supportingImageKeys.slice(0, 2));
-      console.log(
-        `[SCENE_IMAGE] Added ${Math.min(supportingImageKeys.length, 2)} supporting images`
+      const hasReferences = referenceImageUrls.length > 0;
+      const refs = hasReferences ? referenceImageUrls : undefined;
+
+      await updateJobProgress(jobId, 30, "Generating start frame...");
+      const startPrompt = buildSceneImagePrompt(sceneData, hasReferences, userRefinement, "start");
+
+      const startResult = await falImageService.generateImageWithRetry({
+        prompt: startPrompt,
+        aspectRatio: "3:4",
+        imageUrls: refs,
+      });
+
+      const startResponse = await fetch(startResult.imageUrl);
+      if (!startResponse.ok) {
+        throw new Error(`Failed to download start image from FAL: ${startResponse.status}`);
+      }
+
+      const startBuffer = Buffer.from(await startResponse.arrayBuffer());
+      const startImageKey = await s3Service.uploadSceneImage(
+        startBuffer,
+        teamId,
+        scriptId,
+        sceneId,
+        0 // variant 0 = start frame
       );
+
+      console.log(`[SCENE_IMAGE] Generated start frame for job ${jobId}: ${startImageKey}`);
+      generatedImages.push(startImageKey);
     }
 
-    await updateJobProgress(jobId, 10, "Preparing reference images...");
-    const referenceImageUrls = await getReferenceImageUrls(allReferenceKeys);
-    console.log(
-      `[SCENE_IMAGE] Got ${referenceImageUrls.length} reference image URLs`
-    );
+    // Handle end frame if requested
+    if (generateEndFrame || customEndImageKey) {
+      if (customEndImageKey) {
+        console.log(`[SCENE_IMAGE] Using custom end image: ${customEndImageKey}`);
+        generatedImages.push(customEndImageKey);
+        await updateJobProgress(jobId, 80, "Using custom end image...");
+      } else {
+        await updateJobProgress(jobId, 60, "Generating end frame...");
 
-    const hasReferences = referenceImageUrls.length > 0;
-    const refs = hasReferences ? referenceImageUrls : undefined;
+        const endReferenceKeys: string[] = [];
 
-    await updateJobProgress(jobId, 30, "Generating scene image...");
-    const prompt = buildSceneImagePrompt(sceneData, hasReferences, userRefinement);
+        // Add start frame as primary reference for consistency
+        const startFrameKey = generatedImages[0];
+        if (startFrameKey) {
+          endReferenceKeys.push(startFrameKey);
+          console.log(`[SCENE_IMAGE] Using start frame as reference for end frame: ${startFrameKey}`);
+        }
 
-    const result = await falImageService.generateImageWithRetry({
-      prompt,
-      aspectRatio: "3:4",
-      imageUrls: refs,
-    });
+        if (characterId) {
+          const [character] = await db
+            .select()
+            .from(schema.characters)
+            .where(eq(schema.characters.id, characterId));
 
-    const response = await fetch(result.imageUrl);
-    if (!response.ok) {
-      throw new Error(`Failed to download image from FAL: ${response.status}`);
+          if (character) {
+            const characterImages = character.character_images as string[];
+            const primaryIndex = character.primary_image_index || 0;
+            if (characterImages[primaryIndex]) {
+              endReferenceKeys.push(characterImages[primaryIndex]);
+            }
+          }
+        }
+
+        if (productImageKeys && productImageKeys.length > 0) {
+          endReferenceKeys.push(...productImageKeys.slice(0, 2));
+        }
+
+        if (supportingImageKeys && supportingImageKeys.length > 0) {
+          endReferenceKeys.push(...supportingImageKeys.slice(0, 2));
+        }
+
+        const endReferenceUrls = await getReferenceImageUrls(endReferenceKeys);
+        const endPrompt = buildSceneImagePrompt(sceneData, true, userRefinement, "end");
+
+        const endResult = await falImageService.generateImageWithRetry({
+          prompt: endPrompt,
+          aspectRatio: "3:4",
+          imageUrls: endReferenceUrls,
+        });
+
+        const endResponse = await fetch(endResult.imageUrl);
+        if (!endResponse.ok) {
+          throw new Error(`Failed to download end image from FAL: ${endResponse.status}`);
+        }
+
+        const endBuffer = Buffer.from(await endResponse.arrayBuffer());
+        const endImageKey = await s3Service.uploadSceneImage(
+          endBuffer,
+          teamId,
+          scriptId,
+          sceneId,
+          1
+        );
+
+        console.log(`[SCENE_IMAGE] Generated end frame for job ${jobId}: ${endImageKey}`);
+        generatedImages.push(endImageKey);
+      }
     }
-
-    const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    const imageKey = await s3Service.uploadSceneImage(
-      buffer,
-      teamId,
-      scriptId,
-      sceneId,
-      0
-    );
-
-    console.log(`[SCENE_IMAGE] Generated scene image for job ${jobId}: ${imageKey}`);
 
     await db
       .update(schema.sceneImageGenerationJobs)
       .set({
         status: "completed",
         progress: 100,
-        progress_message: "Scene image generated",
-        generated_images: [imageKey],
+        progress_message: generateEndFrame || customEndImageKey
+          ? "Start and end frames generated"
+          : "Scene image generated",
+        generated_images: generatedImages,
         completed_at: new Date(),
       })
       .where(eq(schema.sceneImageGenerationJobs.id, jobId));
 
-    console.log(`[SCENE_IMAGE] Job ${jobId} completed`);
+    console.log(`[SCENE_IMAGE] Job ${jobId} completed with ${generatedImages.length} image(s)`);
   } catch (error) {
     console.error(`[SCENE_IMAGE] Job ${jobId} failed:`, error);
 

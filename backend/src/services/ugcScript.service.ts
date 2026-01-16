@@ -109,14 +109,14 @@ class UGCScriptService {
       input: [
         {
           role: "user",
-          content: [
-            ...imageContent,
-            { type: "input_text", text: prompt },
-          ],
+          content: [...imageContent, { type: "input_text", text: prompt }],
         },
       ],
       text: {
-        format: zodTextFormat(GenerateUGCScriptResponseSchema, "ugc_script_response"),
+        format: zodTextFormat(
+          GenerateUGCScriptResponseSchema,
+          "ugc_script_response"
+        ),
       },
     });
 
@@ -187,7 +187,9 @@ Return a JSON object with a "descriptions" array of strings, one description per
     if (config.eyeColor) parts.push(`${config.eyeColor} eyes`);
     if (config.bodyType) parts.push(`${config.bodyType} build`);
 
-    return parts.length > 0 ? parts.join(", ") : "No specific appearance details";
+    return parts.length > 0
+      ? parts.join(", ")
+      : "No specific appearance details";
   }
 
   async storeFullScripts(
@@ -212,7 +214,9 @@ Return a JSON object with a "descriptions" array of strings, one description per
       })
       .returning({ id: ugcScripts.id });
 
-    console.log(`[UGC_SCRIPT] Stored scripts for team ${teamId}, scriptId: ${inserted.id}`);
+    console.log(
+      `[UGC_SCRIPT] Stored scripts for team ${teamId}, scriptId: ${inserted.id}`
+    );
     return inserted.id;
   }
 
@@ -292,7 +296,7 @@ Return a JSON object with a "descriptions" array of strings, one description per
     );
 
     const response = await client.responses.parse({
-      model: "gpt-4o-mini",
+      model: "gpt-5-mini",
       input: [{ role: "user", content: prompt }],
       text: {
         format: zodTextFormat(UGCSceneSchema, "regenerated_scene"),

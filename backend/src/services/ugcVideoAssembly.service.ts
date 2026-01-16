@@ -28,7 +28,9 @@ async function shortenDialogue(
   currentDurationSeconds: number
 ): Promise<string> {
   const reductionPercent = Math.round(
-    ((currentDurationSeconds - targetDurationSeconds) / currentDurationSeconds) * 100
+    ((currentDurationSeconds - targetDurationSeconds) /
+      currentDurationSeconds) *
+      100
   );
 
   console.log(
@@ -36,7 +38,7 @@ async function shortenDialogue(
   );
 
   const response = await openaiClient.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: "gpt-5-mini",
     messages: [
       {
         role: "system",
@@ -52,8 +54,6 @@ Original dialogue:
 Shortened dialogue:`,
       },
     ],
-    temperature: 0.7,
-    max_tokens: 500,
   });
 
   const shortened = response.choices[0]?.message?.content?.trim() || dialogue;
@@ -134,6 +134,7 @@ export interface SceneVideoData {
   sceneNumber: number;
   shotType: ShotType;
   imageKey: string;
+  endImageKey?: string;
   dialogue: string;
   duration: number;
   cinematicPrompt: string;
@@ -572,53 +573,105 @@ async function processBrollScene(
   voiceId: string,
   onProgress?: (message: string) => void
 ): Promise<ProcessedScene> {
-  const { sceneId, sceneNumber, shotType, imageKey, cinematicPrompt, dialogue, action, emotion } =
-    scene;
+  const {
+    sceneId,
+    sceneNumber,
+    shotType,
+    imageKey,
+    endImageKey,
+    cinematicPrompt,
+    dialogue,
+    action,
+    emotion,
+  } = scene;
 
   let currentDialogue = dialogue;
   const MAX_SHORTEN_ATTEMPTS = 2;
 
   onProgress?.(`Scene ${sceneNumber}: Generating voiceover...`);
 
-  let result = await generateDialogueAudio(voiceId, currentDialogue, teamId, scriptId, sceneNumber, false);
+  let result = await generateDialogueAudio(
+    voiceId,
+    currentDialogue,
+    teamId,
+    scriptId,
+    sceneNumber,
+    false
+  );
   let { audioPath, audioKey, duration: audioDuration } = result;
 
-  console.log(`[UGC Assembly] B-Roll Scene ${sceneNumber}: audio ${audioDuration.toFixed(2)}s`);
+  console.log(
+    `[UGC Assembly] B-Roll Scene ${sceneNumber}: audio ${audioDuration.toFixed(2)}s`
+  );
 
-  for (let attempt = 1; attempt <= MAX_SHORTEN_ATTEMPTS && audioDuration > MAX_AUDIO_DURATION; attempt++) {
+  for (
+    let attempt = 1;
+    attempt <= MAX_SHORTEN_ATTEMPTS && audioDuration > MAX_AUDIO_DURATION;
+    attempt++
+  ) {
     onProgress?.(`Scene ${sceneNumber}: Shortening dialogue...`);
     console.log(
       `[UGC Assembly] B-Roll Scene ${sceneNumber}: Audio too long (${audioDuration.toFixed(2)}s > ${MAX_AUDIO_DURATION}s), shortening dialogue (attempt ${attempt})`
     );
 
-    currentDialogue = await shortenDialogue(currentDialogue, MAX_AUDIO_DURATION * 0.9, audioDuration);
+    currentDialogue = await shortenDialogue(
+      currentDialogue,
+      MAX_AUDIO_DURATION * 0.9,
+      audioDuration
+    );
 
     if (fs.existsSync(audioPath)) {
       fs.unlinkSync(audioPath);
     }
 
-    result = await generateDialogueAudio(voiceId, currentDialogue, teamId, scriptId, sceneNumber, false);
+    result = await generateDialogueAudio(
+      voiceId,
+      currentDialogue,
+      teamId,
+      scriptId,
+      sceneNumber,
+      false
+    );
     audioPath = result.audioPath;
     audioKey = result.audioKey;
     audioDuration = result.duration;
 
-    console.log(`[UGC Assembly] B-Roll Scene ${sceneNumber}: audio ${audioDuration.toFixed(2)}s (attempt ${attempt + 1})`);
+    console.log(
+      `[UGC Assembly] B-Roll Scene ${sceneNumber}: audio ${audioDuration.toFixed(2)}s (attempt ${attempt + 1})`
+    );
   }
 
   if (audioDuration > MAX_AUDIO_DURATION) {
-    console.warn(`[UGC Assembly] B-Roll Scene ${sceneNumber}: Could not shorten to ${MAX_AUDIO_DURATION}s, using ${audioDuration.toFixed(2)}s`);
+    console.warn(
+      `[UGC Assembly] B-Roll Scene ${sceneNumber}: Could not shorten to ${MAX_AUDIO_DURATION}s, using ${audioDuration.toFixed(2)}s`
+    );
   }
 
   onProgress?.(`Scene ${sceneNumber}: Generating video with Kling...`);
   const imageUrl = await s3Service.getPresignedUrl(imageKey, 3600);
+
+  // Get end frame URL for better video interpolation (Kling 2.6 tail_image_url)
+  const tailImageUrl = endImageKey
+    ? await s3Service.getPresignedUrl(endImageKey, 3600)
+    : undefined;
+
+  if (tailImageUrl) {
+    console.log(
+      `[UGC Assembly] B-Roll Scene ${sceneNumber}: Using end frame for video interpolation`
+    );
+  }
+
   const prompt = buildKlingPrompt(cinematicPrompt, shotType, emotion, action);
 
-  const { videoUrl: klingVideoUrl } = await klingService.generateVideoWithRetry({
-    imageUrl,
-    prompt,
-    duration: 10,
-    negativePrompt: PRODUCT_NEGATIVE_PROMPT,
-  });
+  const { videoUrl: klingVideoUrl } = await klingService.generateVideoWithRetry(
+    {
+      imageUrl,
+      tailImageUrl,
+      prompt,
+      duration: 10,
+      negativePrompt: PRODUCT_NEGATIVE_PROMPT,
+    }
+  );
 
   console.log(
     `[UGC Assembly] B-Roll Scene ${sceneNumber}: Kling generated 10s video`

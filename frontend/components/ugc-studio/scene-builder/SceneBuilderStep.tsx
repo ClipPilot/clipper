@@ -199,6 +199,33 @@ export function SceneBuilderStep({
     }));
   };
 
+  const handleCustomImageChange = (
+    sceneId: string,
+    type: "start" | "end",
+    key: string | undefined,
+    url: string | undefined
+  ) => {
+    setSceneImages((prev) => ({
+      ...prev,
+      [sceneId]: {
+        ...prev[sceneId],
+        ...(type === "start"
+          ? { customStartImageKey: key, customStartImageUrl: url }
+          : { customEndImageKey: key, customEndImageUrl: url }),
+      },
+    }));
+  };
+
+  const handleUseEndFrameChange = (sceneId: string, useEndFrame: boolean) => {
+    setSceneImages((prev) => ({
+      ...prev,
+      [sceneId]: {
+        ...prev[sceneId],
+        useEndFrame,
+      },
+    }));
+  };
+
   const handleGenerateAll = async () => {
     if (scenes.length === 0) return;
 
@@ -228,6 +255,9 @@ export function SceneBuilderStep({
           sceneNumber: scene.sceneNumber,
           userRefinement: sceneImages[scene.id]?.userRefinement,
           supportingImageKeys: sceneImages[scene.id]?.supportingImageKeys,
+          generateEndFrame: sceneImages[scene.id]?.useEndFrame,
+          customStartImageKey: sceneImages[scene.id]?.customStartImageKey,
+          customEndImageKey: sceneImages[scene.id]?.customEndImageKey,
         })),
       });
 
@@ -377,6 +407,11 @@ export function SceneBuilderStep({
               imageUrl={sceneState.imageUrl}
               userRefinement={sceneState.userRefinement}
               supportingImageKeys={sceneState.supportingImageKeys}
+              useEndFrame={sceneState.useEndFrame}
+              customStartImageKey={sceneState.customStartImageKey}
+              customStartImageUrl={sceneState.customStartImageUrl}
+              customEndImageKey={sceneState.customEndImageKey}
+              customEndImageUrl={sceneState.customEndImageUrl}
               onGenerationStart={(jobId) =>
                 handleGenerationStart(scene.id, jobId)
               }
@@ -391,6 +426,12 @@ export function SceneBuilderStep({
               }
               onSupportingImagesChange={(keys) =>
                 handleSupportingImagesChange(scene.id, keys)
+              }
+              onUseEndFrameChange={(useEndFrame) =>
+                handleUseEndFrameChange(scene.id, useEndFrame)
+              }
+              onCustomImageChange={(type, key, url) =>
+                handleCustomImageChange(scene.id, type, key, url)
               }
             />
           );

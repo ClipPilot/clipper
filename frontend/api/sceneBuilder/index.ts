@@ -1,6 +1,12 @@
 import API_URL from "@/config/constants";
 import { apiFetch } from "@/lib/apiClient";
 
+export interface AdvancedSceneOptions {
+  generateEndFrame?: boolean;
+  customStartImageKey?: string;
+  customEndImageKey?: string;
+}
+
 export interface GenerateSceneImagesRequest {
   teamId: number;
   scriptId: string;
@@ -9,6 +15,10 @@ export interface GenerateSceneImagesRequest {
   characterId: number;
   userRefinement?: string;
   supportingImageKeys?: string[];
+  // Advanced options
+  generateEndFrame?: boolean;
+  customStartImageKey?: string;
+  customEndImageKey?: string;
 }
 
 export interface GenerateSceneImagesResponse {
@@ -27,6 +37,9 @@ export interface GenerateAllSceneImagesRequest {
     sceneNumber: number;
     userRefinement?: string;
     supportingImageKeys?: string[];
+    generateEndFrame?: boolean;
+    customStartImageKey?: string;
+    customEndImageKey?: string;
   }>;
 }
 

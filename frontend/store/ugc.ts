@@ -20,6 +20,13 @@ export interface SceneImageState {
   imageUrl?: string;
   userRefinement?: string;
   supportingImageKeys?: string[];
+  // Per-scene advanced options
+  useEndFrame?: boolean; // Generate/use end frame for this scene
+  // Custom uploaded images (skip generation)
+  customStartImageKey?: string;
+  customStartImageUrl?: string;
+  customEndImageKey?: string;
+  customEndImageUrl?: string;
 }
 
 export const sceneImagesAtom = atom<Record<string, SceneImageState>>({});

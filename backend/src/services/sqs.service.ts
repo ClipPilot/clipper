@@ -163,6 +163,10 @@ export interface GenerateSceneImageJob extends BaseJob {
   productImageKeys: string[];
   userRefinement?: string;
   supportingImageKeys: string[];
+  // Advanced options
+  generateEndFrame?: boolean; // Generate both start and end frame for video interpolation
+  customStartImageKey?: string; // User-uploaded start image (skip generation)
+  customEndImageKey?: string; // User-uploaded end image
 }
 
 // Script generation job payload
@@ -399,6 +403,10 @@ class SQSService {
     productImageKeys: string[];
     userRefinement?: string;
     supportingImageKeys: string[];
+    // Advanced options
+    generateEndFrame?: boolean;
+    customStartImageKey?: string;
+    customEndImageKey?: string;
   }): Promise<string> {
     const job: GenerateSceneImageJob = {
       type: "generate-scene-image",
@@ -413,6 +421,10 @@ class SQSService {
       productImageKeys: params.productImageKeys,
       userRefinement: params.userRefinement,
       supportingImageKeys: params.supportingImageKeys,
+      // Advanced options
+      generateEndFrame: params.generateEndFrame,
+      customStartImageKey: params.customStartImageKey,
+      customEndImageKey: params.customEndImageKey,
       createdAt: new Date().toISOString(),
     };
 
