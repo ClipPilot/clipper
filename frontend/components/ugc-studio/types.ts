@@ -31,6 +31,7 @@ export interface SelectedCharacter {
   src: string;
   file?: File;
   savedFaceId?: number;
+  imageKey?: string;
 }
 
 export const EXAMPLE_CHARACTERS = [

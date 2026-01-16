@@ -11,7 +11,7 @@ import {
 import { eq } from "drizzle-orm";
 import { KlingFaceSwapJob } from "../../services/sqs.service";
 import { s3Service } from "../../services/s3.service";
-import { klingProMotionWithRetry } from "../../services/kling.service";
+import { klingProMotionWithRetry, PRO_MOTION_PROMPT } from "../../services/kling.service";
 import { cutClip, mergeClipsGpu } from "../../services/videoEditor.service";
 import { ComfyJobUpdate } from "../../services/socket.service";
 import { teamService } from "../../services/team.service";
@@ -223,6 +223,7 @@ export async function processKlingFaceSwapJob(
         const result = await klingProMotionWithRetry({
           imageUrl,
           videoUrl: chunkUrl,
+          prompt: PRO_MOTION_PROMPT,
           keepOriginalSound: true,
           characterOrientation: "video",
         });

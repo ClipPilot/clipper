@@ -4,6 +4,7 @@ import { apiFetch } from "@/lib/apiClient";
 export interface SavedFace {
   id: number;
   name: string;
+  imageKey: string;
   imageUrl: string;
   createdAt: string;
 }

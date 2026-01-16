@@ -49,9 +49,16 @@ function FaceSwapContent({
   const [showEditor, setShowEditor] = useState(false);
   const faceSwapsSectionRef = useRef<MyFaceSwapsSectionRef>(null);
 
-  // Get character files for API calls
-  const getCharacterFiles = () => {
-    return selectedCharacters.filter((c) => c.file).map((c) => c.file as File);
+  // Get character images for API calls (either File or imageKey for saved faces)
+  const getCharacterImages = (): Array<File | { imageKey: string }> => {
+    return selectedCharacters
+      .filter((c) => c.file || c.imageKey)
+      .map((c) => {
+        if (c.imageKey) {
+          return { imageKey: c.imageKey };
+        }
+        return c.file as File;
+      });
   };
 
   useEffect(() => {
@@ -69,10 +76,10 @@ function FaceSwapContent({
   };
 
   const handleGenerate = async () => {
-    const characterFiles = getCharacterFiles();
+    const characterImages = getCharacterImages();
     if (
       !video ||
-      characterFiles.length === 0 ||
+      characterImages.length === 0 ||
       !selectedTeam?.id ||
       segments.length === 0
     )
@@ -84,11 +91,11 @@ function FaceSwapContent({
     const duration = videoDuration;
     const swap = swapType;
     const videoToRevoke = video.preview;
-    const characterCount = characterFiles.length;
+    const characterCount = characterImages.length;
     const totalCredits = characterCount * 5;
 
     // Create temp IDs for each job
-    const tempIds = characterFiles.map((_, i) => `temp-${Date.now()}-${i}`);
+    const tempIds = characterImages.map((_, i) => `temp-${Date.now()}-${i}`);
 
     // Add optimistic jobs for all characters
     tempIds.forEach((tempId) => {
@@ -104,7 +111,7 @@ function FaceSwapContent({
     try {
       const result = await faceSwapAPI.createMultipleJobs({
         video: videoFile,
-        images: characterFiles,
+        images: characterImages,
         teamId,
         segments: segmentsData,
         videoDuration: duration,
@@ -147,8 +154,8 @@ function FaceSwapContent({
   const totalDuration = segments.reduce((sum, s) => sum + (s.end - s.start), 0);
 
   const handleAutoDetectAndGenerate = useCallback(async () => {
-    const characterFiles = getCharacterFiles();
-    if (!video?.file || characterFiles.length === 0 || !selectedTeam?.id)
+    const characterImages = getCharacterImages();
+    if (!video?.file || characterImages.length === 0 || !selectedTeam?.id)
       return;
 
     const videoFile = video.file;
@@ -156,9 +163,9 @@ function FaceSwapContent({
     const duration = videoDuration;
     const swap = swapType;
     const videoToRevoke = video.preview;
-    const characterCount = characterFiles.length;
+    const characterCount = characterImages.length;
     const totalCredits = characterCount * 5;
-    const tempIds = characterFiles.map((_, i) => `temp-${Date.now()}-${i}`);
+    const tempIds = characterImages.map((_, i) => `temp-${Date.now()}-${i}`);
 
     tempIds.forEach((tempId, i) => {
       faceSwapsSectionRef.current?.addOptimisticJob(
@@ -175,7 +182,7 @@ function FaceSwapContent({
     try {
       const result = await faceSwapAPI.createMultipleJobsAutoDetect({
         video: videoFile,
-        images: characterFiles,
+        images: characterImages,
         teamId,
         videoDuration: duration,
         swapType: swap,

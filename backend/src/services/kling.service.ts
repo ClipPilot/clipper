@@ -1,6 +1,22 @@
 import { fal } from "@fal-ai/client";
 import { config } from "../config/env";
 import { openaiClient } from "./ugcScript.service";
+import {
+  PRODUCT_NEGATIVE_PROMPT,
+  NO_TEXT_OVERLAY_DIRECTIVE,
+  PRODUCT_STABILITY_MODIFIERS,
+  GENTLE_MOTION_MODIFIERS,
+  PRO_MOTION_PROMPT,
+} from "./klingPrompts";
+
+// Re-export prompts for backward compatibility
+export {
+  PRODUCT_NEGATIVE_PROMPT,
+  NO_TEXT_OVERLAY_DIRECTIVE,
+  PRODUCT_STABILITY_MODIFIERS,
+  GENTLE_MOTION_MODIFIERS,
+  PRO_MOTION_PROMPT,
+} from "./klingPrompts";
 
 // Kling prompt length limit
 export const KLING_MAX_PROMPT_LENGTH = 2500;
@@ -12,36 +28,6 @@ fal.config({
 export type ShotType = "a-roll" | "b-roll" | "mixed";
 export type KlingDuration = 5 | 10;
 export type CharacterOrientation = "image" | "video";
-
-export const PRODUCT_NEGATIVE_PROMPT =
-  "text, captions, subtitles, text overlay, floating text, title card, caption bar, subtitle bar, " +
-  "burned-in text, on-screen text, watermark, logo overlay, graphic overlay, lower third, " +
-  "any added text, like headings or captions, AI-generated captions, auto-captions, " +
-  "distortion, warping, morphing, blur, stretching, proportion change, shape shifting, " +
-  "changing phone screen, morphing phone, warped phone, bent phone, phone screen changing, " +
-  "screen content changing, different screen content, glitchy screen, transparent phone, " +
-  "phone screen on back, screen through phone, blurry phone screen, " +
-  "low quality, blurry, out of focus, extra elements, added elements";
-
-// CRITICAL: This gets appended to ALL prompts to prevent AI from adding anything extra
-export const NO_TEXT_OVERLAY_DIRECTIVE =
-  "ABSOLUTE RULES: " +
-  "1) NEVER add text, captions, subtitles, or any on-screen text - the video must have ZERO text overlays. " +
-  "2) NEVER change what is shown on any phone or device screen - screen content must stay EXACTLY the same throughout. " +
-  "3) NEVER add elements not described - generate ONLY what is explicitly written in this prompt, nothing more. " +
-  "4) Phone/device shape must stay perfectly rectangular with consistent proportions - no warping or bending. " +
-  "This is a raw video file that will have text added later - DO NOT pre-add any text.";
-
-export const PRODUCT_STABILITY_MODIFIERS =
-  "Phone and device screens must remain FROZEN and UNCHANGED throughout - exact same content from first to last frame. " +
-  "Phone shape stays perfectly rectangular, no warping, no bending, consistent bezels. " +
-  "Product shapes, labels, and proportions stay identical throughout. " +
-  "NEVER add captions, subtitles, or any text overlays to the video.";
-
-export const GENTLE_MOTION_MODIFIERS =
-  "Subtle movement only. Slow and controlled. Micro-motion only. " +
-  "Maintain exact silhouette. Keep scale consistent. " +
-  "Do not add ANY elements not explicitly described. No text. No captions.";
 
 export interface ImageToVideoOptions {
   imageUrl: string;
@@ -707,5 +693,6 @@ export const klingService = {
   PRODUCT_NEGATIVE_PROMPT,
   PRODUCT_STABILITY_MODIFIERS,
   GENTLE_MOTION_MODIFIERS,
+  PRO_MOTION_PROMPT,
   KLING_MAX_PROMPT_LENGTH,
 };

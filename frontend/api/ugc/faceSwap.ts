@@ -87,7 +87,7 @@ class FaceSwapAPI {
 
   async createMultipleJobs(data: {
     video: File;
-    images: File[];
+    images: Array<File | { imageKey: string }>;
     teamId: number;
     segments: Array<{ start: number; end: number }>;
     videoDuration: number;
@@ -113,9 +113,20 @@ class FaceSwapAPI {
     // Build FormData for server upload
     const formData = new FormData();
     formData.append("video", video);
-    images.forEach((image) => {
-      formData.append("images", image);
+
+    // Separate files and imageKeys
+    const imageKeys: string[] = [];
+    images.forEach((image, index) => {
+      if (image instanceof File) {
+        formData.append("images", image);
+        imageKeys.push(""); // Empty string means use uploaded file
+      } else {
+        // For saved faces, pass the S3 key instead
+        imageKeys.push(image.imageKey);
+      }
     });
+    formData.append("imageKeys", JSON.stringify(imageKeys));
+
     formData.append("teamId", teamId.toString());
     formData.append("segments", JSON.stringify(segments));
     formData.append("videoDuration", videoDuration.toString());
@@ -168,7 +179,7 @@ class FaceSwapAPI {
 
   async createMultipleJobsAutoDetect(data: {
     video: File;
-    images: File[];
+    images: Array<File | { imageKey: string }>;
     teamId: number;
     videoDuration: number;
     swapType: SwapType;
@@ -184,9 +195,20 @@ class FaceSwapAPI {
 
     const formData = new FormData();
     formData.append("video", video);
+
+    // Separate files and imageKeys
+    const imageKeys: string[] = [];
     images.forEach((image) => {
-      formData.append("images", image);
+      if (image instanceof File) {
+        formData.append("images", image);
+        imageKeys.push(""); // Empty string means use uploaded file
+      } else {
+        // For saved faces, pass the S3 key instead
+        imageKeys.push(image.imageKey);
+      }
     });
+    formData.append("imageKeys", JSON.stringify(imageKeys));
+
     formData.append("teamId", teamId.toString());
     formData.append("videoDuration", videoDuration.toString());
     formData.append("swapType", swapType);
