@@ -26,7 +26,6 @@ export const GENTLE_MOTION_MODIFIERS =
 
 export interface ImageToVideoOptions {
   imageUrl: string;
-  tailImageUrl?: string;
   prompt: string;
   duration?: KlingDuration;
   negativePrompt?: string;
@@ -102,7 +101,6 @@ export async function generateVideo(
 ): Promise<ImageToVideoResult> {
   const {
     imageUrl,
-    tailImageUrl,
     prompt,
     duration = 5,
     negativePrompt,
@@ -115,9 +113,7 @@ export async function generateVideo(
     finalPrompt = `${prompt}. The person speaks naturally and says "${dialogue}"`;
   }
 
-  console.log(
-    `[Kling] Generating ${duration}s video from image (audio: ${generateAudio}, hasTail: ${!!tailImageUrl})`
-  );
+  console.log(`[Kling] Generating ${duration}s video from image (audio: ${generateAudio})`);
   console.log(`[Kling] Prompt: ${finalPrompt.substring(0, 150)}...`);
 
   try {
@@ -128,10 +124,6 @@ export async function generateVideo(
       negative_prompt: negativePrompt || PRODUCT_NEGATIVE_PROMPT,
       generate_audio: generateAudio,
     };
-
-    if (tailImageUrl) {
-      input.tail_image_url = tailImageUrl;
-    }
 
     const result = await fal.subscribe(
       "fal-ai/kling-video/v2.6/pro/image-to-video",

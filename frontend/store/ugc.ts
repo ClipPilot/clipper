@@ -16,10 +16,8 @@ export interface SceneImageState {
   status: "idle" | "generating" | "regenerating" | "completed" | "failed";
   jobId?: string;
   generatedImages?: { key: string; url: string; index: number }[];
-  startImageKey?: string;
-  startImageUrl?: string;
-  endImageKey?: string;
-  endImageUrl?: string;
+  imageKey?: string;
+  imageUrl?: string;
   userRefinement?: string;
   supportingImageKeys?: string[];
 }
@@ -35,7 +33,7 @@ export const allScenesCompleteAtom = atom((get) => {
   if (!currentScript || !currentScript.scenes) return false;
 
   return currentScript.scenes.every(
-    (scene) => sceneImages[scene.id]?.startImageKey && sceneImages[scene.id]?.endImageKey
+    (scene) => sceneImages[scene.id]?.imageKey
   );
 });
 

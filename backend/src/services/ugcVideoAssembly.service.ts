@@ -134,7 +134,6 @@ export interface SceneVideoData {
   sceneNumber: number;
   shotType: ShotType;
   imageKey: string;
-  endImageKey?: string;
   dialogue: string;
   duration: number;
   cinematicPrompt: string;
@@ -563,7 +562,7 @@ async function processArollScene(
  * No lip-sync needed for B-roll (product shots, cutaways, etc.)
  *
  * If audio exceeds 10s, dialogue is shortened via OpenAI and regenerated.
- * Kling 2.6 generates 10s video with optional tail_image for interpolation.
+ * Kling 2.6 generates 10s video from a single reference image.
  * Final video is trimmed to match exact audio duration.
  */
 async function processBrollScene(
@@ -573,7 +572,7 @@ async function processBrollScene(
   voiceId: string,
   onProgress?: (message: string) => void
 ): Promise<ProcessedScene> {
-  const { sceneId, sceneNumber, shotType, imageKey, endImageKey, cinematicPrompt, dialogue, action, emotion } =
+  const { sceneId, sceneNumber, shotType, imageKey, cinematicPrompt, dialogue, action, emotion } =
     scene;
 
   let currentDialogue = dialogue;
@@ -612,12 +611,10 @@ async function processBrollScene(
 
   onProgress?.(`Scene ${sceneNumber}: Generating video with Kling...`);
   const imageUrl = await s3Service.getPresignedUrl(imageKey, 3600);
-  const tailImageUrl = endImageKey ? await s3Service.getPresignedUrl(endImageKey, 3600) : undefined;
   const prompt = buildKlingPrompt(cinematicPrompt, shotType, emotion, action);
 
   const { videoUrl: klingVideoUrl } = await klingService.generateVideoWithRetry({
     imageUrl,
-    tailImageUrl,
     prompt,
     duration: 10,
     negativePrompt: PRODUCT_NEGATIVE_PROMPT,

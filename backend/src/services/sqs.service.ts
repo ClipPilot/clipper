@@ -163,7 +163,6 @@ export interface GenerateSceneImageJob extends BaseJob {
   productImageKeys: string[];
   userRefinement?: string;
   supportingImageKeys: string[];
-  frameIndex?: 0 | 1;
 }
 
 // Script generation job payload
@@ -190,7 +189,6 @@ export interface GenerateUGCVideoJob extends BaseJob {
     sceneNumber: number;
     shotType: "a-roll" | "b-roll" | "mixed";
     imageKey: string;
-    endImageKey?: string;
     dialogue: string;
     duration: number;
     cinematicPrompt: string;
@@ -401,7 +399,6 @@ class SQSService {
     productImageKeys: string[];
     userRefinement?: string;
     supportingImageKeys: string[];
-    frameIndex?: 0 | 1;
   }): Promise<string> {
     const job: GenerateSceneImageJob = {
       type: "generate-scene-image",
@@ -416,7 +413,6 @@ class SQSService {
       productImageKeys: params.productImageKeys,
       userRefinement: params.userRefinement,
       supportingImageKeys: params.supportingImageKeys,
-      frameIndex: params.frameIndex,
       createdAt: new Date().toISOString(),
     };
 

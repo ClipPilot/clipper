@@ -9,7 +9,6 @@ export interface GenerateSceneImagesRequest {
   characterId: number;
   userRefinement?: string;
   supportingImageKeys?: string[];
-  frameIndex?: 0 | 1;
 }
 
 export interface GenerateSceneImagesResponse {
@@ -17,7 +16,6 @@ export interface GenerateSceneImagesResponse {
   jobId: string;
   status: string;
   message: string;
-  frameIndex?: 0 | 1;
 }
 
 export interface GenerateAllSceneImagesRequest {
@@ -58,7 +56,6 @@ export interface SelectSceneImageRequest {
   sceneId: string;
   sceneNumber: number;
   imageKey: string;
-  endImageKey?: string;
   generationJobId?: string;
 }
 
@@ -68,10 +65,8 @@ export interface SceneImage {
   scene_id: string;
   scene_number: number;
   image_key: string;
-  end_image_key?: string;
   generation_job_id?: string;
   imageUrl: string;
-  endImageUrl?: string;
   created_at: string;
   updated_at: string;
 }
