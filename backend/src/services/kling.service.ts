@@ -1,6 +1,10 @@
 import { fal } from "@fal-ai/client";
 import { config } from "../config/env";
 import { openaiClient } from "./ugcScript.service";
+import {
+  generateGroundedCinematicSystemPrompt,
+  generateGroundedCinematicUserPrompt,
+} from "../config/groundedPrompts";
 
 // Kling prompt length limit
 export const KLING_MAX_PROMPT_LENGTH = 2500;
@@ -105,6 +109,16 @@ export interface MotionControlResult {
   requestId: string;
 }
 
+// Grounded prompt generation options
+export interface GroundedPromptOptions {
+  originalCinematicPrompt: string;
+  startImageUrl: string;
+  endImageUrl?: string;
+  shotType: ShotType;
+  emotion: string;
+  action: string;
+}
+
 // Internal response types
 interface KlingVideoResponse {
   video: {
@@ -198,6 +212,106 @@ Return ONLY the shortened prompt, nothing else.`;
   return currentPrompt;
 }
 
+/**
+ * Generates a new cinematic prompt that is grounded in the actual generated images.
+ * This prevents the video AI from doing "weird things" when the original prompt
+ * doesn't perfectly match what the image generator created.
+ *
+ * Flow: originalPrompt -> images -> groundedPrompt -> video
+ * This ensures the video prompt describes what the images ACTUALLY show.
+ */
+export async function generateGroundedCinematicPrompt(
+  options: GroundedPromptOptions
+): Promise<string> {
+  const {
+    originalCinematicPrompt,
+    startImageUrl,
+    endImageUrl,
+    shotType,
+    emotion,
+    action,
+  } = options;
+
+  console.log(
+    `[Kling] Generating grounded cinematic prompt for ${shotType} scene...`
+  );
+
+  const promptConfig = {
+    originalCinematicPrompt,
+    shotType,
+    emotion,
+    action,
+    hasEndImage: !!endImageUrl,
+  };
+
+  const systemPrompt = generateGroundedCinematicSystemPrompt(promptConfig);
+  const userPrompt = generateGroundedCinematicUserPrompt(promptConfig);
+
+  // Build image content array using the same pattern as other services
+  const imageContent: Array<{
+    type: "input_image";
+    image_url: string;
+    detail: "high" | "low";
+  }> = [
+    {
+      type: "input_image",
+      image_url: startImageUrl,
+      detail: "high",
+    },
+  ];
+
+  if (endImageUrl) {
+    imageContent.push({
+      type: "input_image",
+      image_url: endImageUrl,
+      detail: "high",
+    });
+  }
+
+  try {
+    const response = await openaiClient.responses.create({
+      model: "gpt-5.2",
+      instructions: systemPrompt,
+      input: [
+        {
+          role: "user",
+          content: [...imageContent, { type: "input_text", text: userPrompt }],
+        },
+      ],
+      text: { format: { type: "json_object" } },
+    });
+
+    const outputText = response.output_text || "{}";
+    let groundedPrompt: string;
+
+    try {
+      const parsed = JSON.parse(outputText);
+      groundedPrompt = parsed.groundedPrompt || originalCinematicPrompt;
+    } catch {
+      // If JSON parsing fails, use the raw output if it looks like a prompt
+      groundedPrompt =
+        outputText.length > 100 ? outputText : originalCinematicPrompt;
+    }
+
+    console.log(
+      `[Kling] Grounded prompt generated (${groundedPrompt.length} chars)`
+    );
+
+    // Apply shortening if needed to ensure it fits within Kling's limit
+    const finalPrompt = await shortenPromptIfNeeded(groundedPrompt);
+
+    console.log(
+      `[Kling] Grounded prompt final (${finalPrompt.length} chars): ${finalPrompt.substring(0, 200)}...`
+    );
+
+    return finalPrompt;
+  } catch (error) {
+    console.error("[Kling] Failed to generate grounded prompt:", error);
+    console.log("[Kling] Falling back to original cinematic prompt");
+    return originalCinematicPrompt;
+  }
+}
+
 export function buildKlingPrompt(
   cinematicPrompt: string,
   shotType: ShotType,
@@ -207,7 +321,7 @@ export function buildKlingPrompt(
   let basePrompt: string;
 
   if (shotType === "a-roll") {
-    basePrompt = `${cinematicPrompt}. The person speaks naturally to camera with ${emotion} expression. Subtle, realistic lip movements - not exaggerated. Natural micro-expressions, gentle head movements, relaxed eye contact. Authentic UGC-style, conversational and relaxed. ${GENTLE_MOTION_MODIFIERS}`;
+    basePrompt = `Ensure there is no added text, captions or subtitles to the video. ${cinematicPrompt}.The person speaks naturally to camera with ${emotion} expression. Subtle, realistic lip movements - not exaggerated. Natural micro-expressions, gentle head movements, relaxed eye contact. Authentic UGC-style, conversational and relaxed. ${GENTLE_MOTION_MODIFIERS}`;
   } else if (shotType === "b-roll") {
     basePrompt = `${cinematicPrompt}. Smooth product showcase with subtle, slow camera movement. Professional product photography style with gentle rotation or reveal. Clean background, focused lighting on product. ${PRODUCT_STABILITY_MODIFIERS} ${GENTLE_MOTION_MODIFIERS}`;
   } else {
@@ -636,6 +750,7 @@ export const klingService = {
   extendVideoWithRetry,
   buildKlingPrompt,
   shortenPromptIfNeeded,
+  generateGroundedCinematicPrompt,
   klingProMotion,
   PRODUCT_NEGATIVE_PROMPT,
   PRODUCT_STABILITY_MODIFIERS,

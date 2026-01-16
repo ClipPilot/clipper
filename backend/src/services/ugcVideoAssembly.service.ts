@@ -6,6 +6,7 @@ import { elevenLabsService } from "./elevenlabs.service";
 import {
   klingService,
   buildKlingPrompt,
+  generateGroundedCinematicPrompt,
   ShotType,
   PRODUCT_NEGATIVE_PROMPT,
 } from "./kling.service";
@@ -441,8 +442,18 @@ async function processArollScene(
   const imageUrl = await s3Service.getPresignedUrl(imageKey, 3600);
   const audioUrl = await s3Service.getPresignedUrl(audioKey, 3600);
 
-  // Step 3: Generate video with Avatar v2 (single-step, optimized for talking heads)
-  const prompt = buildKlingPrompt(cinematicPrompt, shotType, emotion, action);
+  // Step 3: Generate grounded cinematic prompt based on actual image
+  onProgress?.(`Scene ${sceneNumber}: Analyzing image for video prompt...`);
+  const groundedCinematicPrompt = await generateGroundedCinematicPrompt({
+    originalCinematicPrompt: cinematicPrompt,
+    startImageUrl: imageUrl,
+    shotType,
+    emotion,
+    action,
+  });
+
+  // Step 4: Generate video with Avatar v2 (single-step, optimized for talking heads)
+  const prompt = buildKlingPrompt(groundedCinematicPrompt, shotType, emotion, action);
   const { videoUrl: avatarVideoUrl } =
     await klingService.generateAvatarWithRetry({
       imageUrl,
@@ -661,7 +672,18 @@ async function processBrollScene(
     );
   }
 
-  const prompt = buildKlingPrompt(cinematicPrompt, shotType, emotion, action);
+  // Generate grounded cinematic prompt based on actual image(s)
+  onProgress?.(`Scene ${sceneNumber}: Analyzing image for video prompt...`);
+  const groundedCinematicPrompt = await generateGroundedCinematicPrompt({
+    originalCinematicPrompt: cinematicPrompt,
+    startImageUrl: imageUrl,
+    endImageUrl: tailImageUrl,
+    shotType,
+    emotion,
+    action,
+  });
+
+  const prompt = buildKlingPrompt(groundedCinematicPrompt, shotType, emotion, action);
 
   const { videoUrl: klingVideoUrl } = await klingService.generateVideoWithRetry(
     {
