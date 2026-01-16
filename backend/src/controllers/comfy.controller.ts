@@ -30,7 +30,7 @@ const KLING_CHUNK_LEEWAY = 5;
 type SwapType = "face" | "full";
 
 function canUseKlingProMotion(segments: SegmentInput[]): boolean {
-  return segments.every((seg) => seg.end - seg.start >= MIN_SEGMENT_FOR_KLING);
+  return segments.every((seg) => seg.end - seg.start > MIN_SEGMENT_FOR_KLING);
 }
 
 const idempotencyCache = new Map<string, { jobId: string; expiresAt: number }>();

@@ -22,7 +22,8 @@ import {
   generateSrtFromCaptions,
 } from "../../services/captions.service";
 
-const API_INTERNAL_URL = process.env.API_INTERNAL_URL || "http://localhost:3001";
+const API_INTERNAL_URL =
+  process.env.API_INTERNAL_URL || "http://localhost:3001";
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || "";
 const UGC_CREDIT_COST = 5;
 const CHUNK_DURATION = 25;
@@ -35,7 +36,10 @@ interface SpliceSegmentInfo {
   end: number;
 }
 
-async function emitJobUpdate(teamId: number, job: ComfyJobUpdate): Promise<void> {
+async function emitJobUpdate(
+  teamId: number,
+  job: ComfyJobUpdate
+): Promise<void> {
   try {
     const response = await fetch(
       `${API_INTERNAL_URL}/internal/notify/comfy-job-update`,
@@ -49,10 +53,15 @@ async function emitJobUpdate(teamId: number, job: ComfyJobUpdate): Promise<void>
       }
     );
     if (!response.ok) {
-      console.error(`[kling-face-swap] Failed to emit job update: ${response.status}`);
+      console.error(
+        `[kling-face-swap] Failed to emit job update: ${response.status}`
+      );
     }
   } catch (err) {
-    console.error(`[kling-face-swap] Error emitting job update:`, (err as Error).message);
+    console.error(
+      `[kling-face-swap] Error emitting job update:`,
+      (err as Error).message
+    );
   }
 }
 
@@ -126,7 +135,9 @@ function getChunkCount(duration: number): number {
   return count;
 }
 
-export async function processKlingFaceSwapJob(job: KlingFaceSwapJob): Promise<void> {
+export async function processKlingFaceSwapJob(
+  job: KlingFaceSwapJob
+): Promise<void> {
   const {
     jobId,
     teamId,
@@ -181,23 +192,23 @@ export async function processKlingFaceSwapJob(job: KlingFaceSwapJob): Promise<vo
         throw new Error(`Failed to download chunk ${i}`);
       }
     }
-    console.log(`[kling-face-swap] Downloaded ${chunkLocalPaths.length} chunks`);
+    console.log(
+      `[kling-face-swap] Downloaded ${chunkLocalPaths.length} chunks`
+    );
 
     await updateProgress(
       jobId,
       teamId,
       15,
-      `Processing ${chunkLocalPaths.length} video segments with Kling`
+      `Processing ${chunkLocalPaths.length} video segments`
     );
 
     const imageUrl = await s3Service.getPresignedUrl(imageS3Key, 3600);
-
-    console.log(`[kling-face-swap] Processing ${chunkLocalPaths.length} chunks in parallel...`);
     await updateProgress(
       jobId,
       teamId,
       20,
-      `Processing ${chunkLocalPaths.length} segments with Kling (parallel)`
+      `Processing ${chunkLocalPaths.length} segments`
     );
 
     const chunkPromises = chunkLocalPaths.map(async (chunkPath, i) => {
@@ -235,18 +246,29 @@ export async function processKlingFaceSwapJob(job: KlingFaceSwapJob): Promise<vo
     results.sort((a, b) => a.index - b.index);
     const processedChunkPaths = results.map((r) => r.path);
 
-    console.log(`[kling-face-swap] All ${processedChunkPaths.length} chunks processed successfully`);
+    console.log(
+      `[kling-face-swap] All ${processedChunkPaths.length} chunks processed successfully`
+    );
 
     console.log(`[kling-face-swap] Stitching final video...`);
     await updateProgress(jobId, teamId, 85, "Stitching video segments");
 
     let finalOutputPath = path.join(outDir, `final_${Date.now()}.mp4`);
     await mergeClipsGpu(processedChunkPaths, finalOutputPath);
-    console.log(`[kling-face-swap] Stitched ${processedChunkPaths.length} chunks`);
+    console.log(
+      `[kling-face-swap] Stitched ${processedChunkPaths.length} chunks`
+    );
 
     if (spliceMode && spliceMetadata && originalVideoS3Key) {
-      console.log(`[kling-face-swap] Splice mode enabled, assembling full video...`);
-      await updateProgress(jobId, teamId, 90, "Assembling final video with splice");
+      console.log(
+        `[kling-face-swap] Splice mode enabled, assembling full video...`
+      );
+      await updateProgress(
+        jobId,
+        teamId,
+        90,
+        "Assembling final video with splice"
+      );
 
       const originalPath = path.join(outDir, `original_${Date.now()}.mp4`);
       await s3Service.downloadFile(originalVideoS3Key, originalPath);
@@ -278,7 +300,9 @@ export async function processKlingFaceSwapJob(job: KlingFaceSwapJob): Promise<vo
             await mergeClipsGpu(chunksForSegment, segPath);
           }
         } else {
-          console.log(`[kling-face-swap] Splice segment ${i}: ORIGINAL ${seg.start}-${seg.end}s`);
+          console.log(
+            `[kling-face-swap] Splice segment ${i}: ORIGINAL ${seg.start}-${seg.end}s`
+          );
           await cutClip(originalPath, segPath, seg.start, seg.end);
         }
         spliceSegmentPaths.push(segPath);
@@ -292,13 +316,17 @@ export async function processKlingFaceSwapJob(job: KlingFaceSwapJob): Promise<vo
           start: seg.start,
           end: seg.end,
         });
-        console.log(`[kling-face-swap] Uploaded segment ${i} to S3: ${segS3Key}`);
+        console.log(
+          `[kling-face-swap] Uploaded segment ${i} to S3: ${segS3Key}`
+        );
       }
 
       const splicedPath = path.join(outDir, `spliced_final_${Date.now()}.mp4`);
       await mergeClipsGpu(spliceSegmentPaths, splicedPath);
       finalOutputPath = splicedPath;
-      console.log(`[kling-face-swap] Spliced ${spliceSegmentPaths.length} segments into full video`);
+      console.log(
+        `[kling-face-swap] Spliced ${spliceSegmentPaths.length} segments into full video`
+      );
 
       await db
         .update(comfyJobs)
@@ -356,18 +384,27 @@ export async function processKlingFaceSwapJob(job: KlingFaceSwapJob): Promise<vo
         console.log(`[kling-face-swap] Created clip ${clip.id} in library`);
 
         try {
-          const tempDir = path.join(process.cwd(), "output", `transcribe-${Date.now()}`);
+          const tempDir = path.join(
+            process.cwd(),
+            "output",
+            `transcribe-${Date.now()}`
+          );
           fs.mkdirSync(tempDir, { recursive: true });
           const tempVideoPath = path.join(tempDir, "video.mp4");
 
           await s3Service.downloadFile(s3Key, tempVideoPath);
           const transcriptionData = await transcribeVideoService(tempVideoPath);
-          const words = transcriptionData.results.channels[0].alternatives[0].words;
+          const words =
+            transcriptionData.results.channels[0].alternatives[0].words;
           const captionsData = convertWordsToCaptionEntries(words);
           const srtContent = generateSrtFromCaptions(captionsData);
           const srtPath = path.join(tempDir, `captions_${clip.id}.srt`);
           fs.writeFileSync(srtPath, srtContent);
-          const srtS3Key = await s3Service.uploadSrtFile(srtPath, teamId, clip.id);
+          const srtS3Key = await s3Service.uploadSrtFile(
+            srtPath,
+            teamId,
+            clip.id
+          );
 
           await db
             .update(clips)
@@ -380,7 +417,10 @@ export async function processKlingFaceSwapJob(job: KlingFaceSwapJob): Promise<vo
           fs.rmSync(tempDir, { recursive: true, force: true });
           console.log(`[kling-face-swap] Added captions to clip ${clip.id}`);
         } catch (transcribeErr) {
-          console.error(`[kling-face-swap] Transcription failed:`, (transcribeErr as Error).message);
+          console.error(
+            `[kling-face-swap] Transcription failed:`,
+            (transcribeErr as Error).message
+          );
         }
 
         const [user] = await db
@@ -390,26 +430,41 @@ export async function processKlingFaceSwapJob(job: KlingFaceSwapJob): Promise<vo
           .limit(1);
 
         if (user) {
-          const frontendUrl = process.env.FRONTEND_URL || "https://platform.cuttr.com";
+          const frontendUrl =
+            process.env.FRONTEND_URL || "https://platform.cuttr.com";
           await emailNotiService.sendUgcReady(user.email, {
             userName: user.first_name || "there",
             ugcUrl: `${frontendUrl}/dashboard/ugc-studio`,
           });
-          console.log(`[kling-face-swap] Sent UGC ready email to ${user.email}`);
+          console.log(
+            `[kling-face-swap] Sent UGC ready email to ${user.email}`
+          );
         }
       }
     } catch (clipErr) {
-      console.error(`[kling-face-swap] Failed to create clip or notify:`, (clipErr as Error).message);
+      console.error(
+        `[kling-face-swap] Failed to create clip or notify:`,
+        (clipErr as Error).message
+      );
     }
   } catch (err) {
     console.error(`[kling-face-swap] Job failed:`, (err as Error).message);
     Sentry.captureException(err);
 
-    await completeJob(jobId, teamId, false, undefined, undefined, (err as Error).message);
+    await completeJob(
+      jobId,
+      teamId,
+      false,
+      undefined,
+      undefined,
+      (err as Error).message
+    );
 
     try {
       await teamService.decrementTeamUsage(teamId, UGC_CREDIT_COST);
-      console.log(`[kling-face-swap] Refunded ${UGC_CREDIT_COST} credits to team ${teamId}`);
+      console.log(
+        `[kling-face-swap] Refunded ${UGC_CREDIT_COST} credits to team ${teamId}`
+      );
     } catch (refundErr) {
       console.error(`[kling-face-swap] Failed to refund credits:`, refundErr);
     }
