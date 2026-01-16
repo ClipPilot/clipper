@@ -450,7 +450,7 @@ export function SceneImageCard({
           </div>
         )}
 
-        {(imageKey || (generation?.status === "completed" && generation.generatedImages?.length > 0)) && (
+        {(imageKey || (generation?.status === "completed" && (generation.generatedImages?.length ?? 0) > 0)) && (
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-xs text-text-muted">
               <Icon icon="solar:gallery-check-bold" width={14} />
