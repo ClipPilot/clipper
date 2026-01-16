@@ -15,7 +15,7 @@ export type KlingDuration = 5 | 10;
 export const PRODUCT_NEGATIVE_PROMPT =
   "text, captions, subtitles, text overlay, floating text, title card, caption bar, subtitle bar, " +
   "burned-in text, on-screen text, watermark, logo overlay, graphic overlay, lower third, " +
-  "any added text, generated text, AI-generated captions, auto-captions, " +
+  "any added text, like headings or captions, AI-generated captions, auto-captions, " +
   "distortion, warping, morphing, blur, stretching, proportion change, shape shifting, " +
   "changing phone screen, morphing phone, warped phone, bent phone, phone screen changing, " +
   "screen content changing, different screen content, glitchy screen, transparent phone, " +
@@ -73,6 +73,7 @@ export interface AvatarOptions {
   imageUrl: string;
   audioUrl: string;
   prompt?: string; // Optional text guidance
+  negativePrompt?: string; // Prevent unwanted elements like subtitles
 }
 
 export interface AvatarResult {
@@ -379,23 +380,31 @@ interface KlingAvatarResponse {
   };
 }
 
-// Kling Avatar v2 Pro - optimized single-step talking head generation
-// Uses image + audio to generate video with built-in lip sync (better quality than 2-step process)
 export async function generateAvatar(
   options: AvatarOptions
 ): Promise<AvatarResult> {
-  const { imageUrl, audioUrl, prompt } = options;
+  const { imageUrl, audioUrl, prompt, negativePrompt } = options;
+
+  const avoidElements = negativePrompt || PRODUCT_NEGATIVE_PROMPT;
+  let finalPrompt = prompt
+    ? `${prompt}. DO NOT INCLUDE ANY OF THESE: ${avoidElements}`
+    : `DO NOT INCLUDE ANY OF THESE: ${avoidElements}. Ensure added text like headings and captions are NOT included in this video`;
+
+  finalPrompt = await shortenPromptIfNeeded(finalPrompt);
 
   console.log(`[Kling Avatar v2] Generating talking head video`);
   console.log(`[Kling Avatar v2] Image: ${imageUrl.substring(0, 80)}...`);
   console.log(`[Kling Avatar v2] Audio: ${audioUrl.substring(0, 80)}...`);
+  console.log(
+    `[Kling Avatar v2] Prompt (${finalPrompt.length} chars): ${finalPrompt.substring(0, 100)}...`
+  );
 
   try {
     const result = await fal.subscribe("fal-ai/kling-video/ai-avatar/v2/pro", {
       input: {
         image_url: imageUrl,
         audio_url: audioUrl,
-        ...(prompt && { prompt }),
+        prompt: finalPrompt,
       },
       logs: true,
       onQueueUpdate: (update) => {
