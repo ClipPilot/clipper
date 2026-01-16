@@ -181,11 +181,11 @@ export async function processSceneImageJob(
     productImageKeys,
     userRefinement,
     supportingImageKeys,
-    frameIndex, // 0=start only, 1=end only, undefined=both
+    frameIndex,
   } = job;
 
   console.log(
-    `[SCENE_IMAGE] Starting FAL AI generation for job ${jobId} (scene ${sceneNumber})`
+    `[SCENE_IMAGE] Starting FAL AI generation for job ${jobId} (scene ${sceneNumber}, frameIndex: ${frameIndex})`
   );
 
   try {
@@ -249,7 +249,6 @@ export async function processSceneImageJob(
 
     const successfulImages: string[] = [];
 
-    // Single frame mode (frameIndex = 0 or 1)
     if (frameIndex !== undefined) {
       const frameType = frameIndex === 0 ? "start" : "end";
       const frameLabel = frameIndex === 0 ? "Start" : "End";
@@ -279,7 +278,6 @@ export async function processSceneImageJob(
       return;
     }
 
-    // Both frames (default)
     await updateJobProgress(jobId, 20, "Generating start frame...");
     const startPrompt = buildSceneImagePrompt(sceneData, hasReferences, "start", userRefinement);
     const startKey = await generateSingleImage(startPrompt, teamId, scriptId, sceneId, 0, refs);
