@@ -4,6 +4,7 @@ import { db } from "../db";
 import { comfyJobs, clips, savedFaces } from "@clipper/shared-db/src/schema";
 import { s3Service } from "../services/s3.service";
 import { sqsService } from "../services/sqs.service";
+import { gpuSqsService } from "../services/gpuSqs.service";
 import { cutClip, getVideoDuration } from "../services/videoEditor.service";
 import { createSceneAwareChunks } from "../services/sceneChunker.service";
 import { detectFaceSegmentsWithPadding } from "../services/faceDetection.service";
@@ -19,11 +20,18 @@ import "multer";
 import { TEMP_DIR } from "../utils/tempCleanup";
 
 const UGC_CREDIT_COST = 5;
-const CHUNK_DURATION = 25;
-const CHUNK_LEEWAY = 5; // Allow up to 5 extra seconds to avoid tiny leftover chunks
+const MIN_SEGMENT_FOR_KLING = 3;
 
-// Legacy type for backwards compatibility with existing API requests
+const GPU_CHUNK_DURATION = 10;
+const GPU_CHUNK_LEEWAY = 1;
+const KLING_CHUNK_DURATION = 25;
+const KLING_CHUNK_LEEWAY = 5;
+
 type SwapType = "face" | "full";
+
+function canUseKlingProMotion(segments: SegmentInput[]): boolean {
+  return segments.every((seg) => seg.end - seg.start >= MIN_SEGMENT_FOR_KLING);
+}
 
 const idempotencyCache = new Map<string, { jobId: string; expiresAt: number }>();
 const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
@@ -256,16 +264,20 @@ export class ComfyController {
       await teamService.incrementTeamUsage(parseInt(teamId), UGC_CREDIT_COST);
       console.log(`[comfy] Charged ${UGC_CREDIT_COST} credits upfront to team ${teamId}`);
 
-      // Scene-aware chunking: detect scene boundaries and combine to ~10s chunks
-      // Falls back to blind 10s chunking if scene detection fails
+      const useKling = canUseKlingProMotion(sortedSegments);
+      const chunkDuration = useKling ? KLING_CHUNK_DURATION : GPU_CHUNK_DURATION;
+      const chunkLeeway = useKling ? KLING_CHUNK_LEEWAY : GPU_CHUNK_LEEWAY;
+
+      console.log(`[comfy] Routing to ${useKling ? "Kling" : "GPU"} (chunk: ${chunkDuration}s)`);
+
       for (let i = 0; i < segments.length; i++) {
         const segPath = path.join(TEMP_DIR, `${crypto.randomUUID()}_segment_${i}.mp4`);
         await cutClip(tempVideoPath, segPath, segments[i].start, segments[i].end);
         segmentPaths.push(segPath);
 
         const segmentChunks = await createSceneAwareChunks(segPath, TEMP_DIR, {
-          targetDuration: CHUNK_DURATION,
-          leeway: CHUNK_LEEWAY,
+          targetDuration: chunkDuration,
+          leeway: chunkLeeway,
         });
 
         chunkPaths.push(...segmentChunks);
@@ -320,20 +332,36 @@ export class ComfyController {
 
       console.log(`[comfy] Created job record in DB: ${jobId}`);
 
-      await sqsService.sendKlingFaceSwapJob({
-        jobId,
-        teamId: parseInt(teamId),
-        userId: req.user!.dbUserId,
-        imageS3Key,
-        chunkS3Keys,
-        originalVideoS3Key,
-        segments: sortedSegments,
-        videoDuration,
-        spliceMode: isSpliceMode,
-        spliceMetadata: spliceMetadata || undefined,
-      });
-
-      console.log(`[comfy] Sent job to worker queue: ${jobId}`);
+      if (useKling) {
+        await sqsService.sendKlingFaceSwapJob({
+          jobId,
+          teamId: parseInt(teamId),
+          userId: req.user!.dbUserId,
+          imageS3Key,
+          chunkS3Keys,
+          originalVideoS3Key,
+          segments: sortedSegments,
+          videoDuration,
+          spliceMode: isSpliceMode,
+          spliceMetadata: spliceMetadata || undefined,
+        });
+        console.log(`[comfy] Sent job to Kling worker queue: ${jobId}`);
+      } else {
+        await gpuSqsService.sendFaceSwapJob({
+          jobId,
+          teamId: parseInt(teamId),
+          userId: req.user!.dbUserId,
+          imageS3Key,
+          chunkS3Keys,
+          originalVideoS3Key,
+          segments: sortedSegments,
+          videoDuration,
+          spliceMode: isSpliceMode,
+          spliceMetadata: spliceMetadata || undefined,
+          swapType,
+        });
+        console.log(`[comfy] Sent job to GPU worker queue (segment < ${MIN_SEGMENT_FOR_KLING}s): ${jobId}`);
+      }
 
       emitComfyJobUpdate(parseInt(teamId), {
         id: jobId,
@@ -892,14 +920,20 @@ export class ComfyController {
         }
       }
 
+      const useKling = canUseKlingProMotion(segments);
+      const chunkDuration = useKling ? KLING_CHUNK_DURATION : GPU_CHUNK_DURATION;
+      const chunkLeeway = useKling ? KLING_CHUNK_LEEWAY : GPU_CHUNK_LEEWAY;
+
+      console.log(`[comfy] Routing to ${useKling ? "Kling" : "GPU"} (chunk: ${chunkDuration}s)`);
+
       for (let i = 0; i < segments.length; i++) {
         const segPath = path.join(TEMP_DIR, `${crypto.randomUUID()}_segment_${i}.mp4`);
         await cutClip(videoPath, segPath, segments[i].start, segments[i].end);
         segmentPaths.push(segPath);
 
         const segmentChunks = await createSceneAwareChunks(segPath, TEMP_DIR, {
-          targetDuration: CHUNK_DURATION,
-          leeway: CHUNK_LEEWAY,
+          targetDuration: chunkDuration,
+          leeway: chunkLeeway,
         });
 
         chunkPaths.push(...segmentChunks);
@@ -954,18 +988,36 @@ export class ComfyController {
             })
             .where(eq(comfyJobs.id, jobId));
 
-          await sqsService.sendKlingFaceSwapJob({
-            jobId,
-            teamId,
-            userId,
-            imageS3Key,
-            chunkS3Keys,
-            originalVideoS3Key,
-            segments,
-            videoDuration,
-            spliceMode: isSpliceMode,
-            spliceMetadata: spliceMetadata || undefined,
-          });
+          if (useKling) {
+            await sqsService.sendKlingFaceSwapJob({
+              jobId,
+              teamId,
+              userId,
+              imageS3Key,
+              chunkS3Keys,
+              originalVideoS3Key,
+              segments,
+              videoDuration,
+              spliceMode: isSpliceMode,
+              spliceMetadata: spliceMetadata || undefined,
+            });
+            console.log(`[comfy] Job ${jobId} sent to Kling worker queue`);
+          } else {
+            await gpuSqsService.sendFaceSwapJob({
+              jobId,
+              teamId,
+              userId,
+              imageS3Key,
+              chunkS3Keys,
+              originalVideoS3Key,
+              segments,
+              videoDuration,
+              spliceMode: isSpliceMode,
+              spliceMetadata: spliceMetadata || undefined,
+              swapType,
+            });
+            console.log(`[comfy] Job ${jobId} sent to GPU worker queue (segment < ${MIN_SEGMENT_FOR_KLING}s)`);
+          }
 
           emitComfyJobUpdate(teamId, {
             id: jobId,

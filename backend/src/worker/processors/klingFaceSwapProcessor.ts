@@ -12,11 +12,7 @@ import { eq } from "drizzle-orm";
 import { KlingFaceSwapJob } from "../../services/sqs.service";
 import { s3Service } from "../../services/s3.service";
 import { klingProMotionWithRetry } from "../../services/kling.service";
-import {
-  cutClip,
-  mergeClipsGpu,
-  extractFirstFrame,
-} from "../../services/videoEditor.service";
+import { cutClip, mergeClipsGpu } from "../../services/videoEditor.service";
 import { ComfyJobUpdate } from "../../services/socket.service";
 import { teamService } from "../../services/team.service";
 import { emailNotiService } from "../../services/emailNoti.service";
@@ -151,7 +147,6 @@ export async function processKlingFaceSwapJob(job: KlingFaceSwapJob): Promise<vo
   try {
     console.log(`[kling-face-swap] Starting job: ${jobId}`);
 
-    // Update status to running
     await db
       .update(comfyJobs)
       .set({
@@ -172,12 +167,10 @@ export async function processKlingFaceSwapJob(job: KlingFaceSwapJob): Promise<vo
       finishedAt: null,
     });
 
-    // Download reference image
     await updateProgress(jobId, teamId, 10, "Downloading files from S3");
     await s3Service.downloadFile(imageS3Key, localImagePath);
     console.log(`[kling-face-swap] Downloaded reference image`);
 
-    // Download all chunks
     const chunkLocalPaths: string[] = [];
     for (let i = 0; i < chunkS3Keys.length; i++) {
       const chunkPath = path.join(outDir, `chunk_${i}.mp4`);
@@ -197,61 +190,53 @@ export async function processKlingFaceSwapJob(job: KlingFaceSwapJob): Promise<vo
       `Processing ${chunkLocalPaths.length} video segments with Kling`
     );
 
-    // Get presigned URL for reference image (once for all chunks)
     const imageUrl = await s3Service.getPresignedUrl(imageS3Key, 3600);
 
-    const processedChunkPaths: string[] = [];
-    let goldenReferencePath: string | null = null;
-    let currentImageUrl = imageUrl;
+    console.log(`[kling-face-swap] Processing ${chunkLocalPaths.length} chunks in parallel...`);
+    await updateProgress(
+      jobId,
+      teamId,
+      20,
+      `Processing ${chunkLocalPaths.length} segments with Kling (parallel)`
+    );
 
-    // Process each chunk with Kling Pro Motion
-    for (let i = 0; i < chunkLocalPaths.length; i++) {
-      const chunkPath = chunkLocalPaths[i];
-      console.log(`[kling-face-swap] Processing chunk ${i + 1}/${chunkLocalPaths.length}...`);
-
-      // Upload chunk temporarily to get a presigned URL
+    const chunkPromises = chunkLocalPaths.map(async (chunkPath, i) => {
       const tempChunkKey = `temp-kling/${teamId}/${jobId}/chunk_${i}_${Date.now()}.mp4`;
-      await s3Service.uploadFile(chunkPath, tempChunkKey, "video/mp4");
-      const chunkUrl = await s3Service.getPresignedUrl(tempChunkKey, 3600);
 
-      // Call Kling Pro Motion API (with retry for network timeouts)
-      const result = await klingProMotionWithRetry({
-        imageUrl: currentImageUrl,
-        videoUrl: chunkUrl,
-        keepOriginalSound: true,
-        characterOrientation: "video",
-      });
+      try {
+        await s3Service.uploadFile(chunkPath, tempChunkKey, "video/mp4");
+        const chunkUrl = await s3Service.getPresignedUrl(tempChunkKey, 3600);
 
-      // Download processed video
-      const processedPath = path.join(outDir, `processed_${i}.mp4`);
-      await s3Service.downloadVideoFromUrl(result.videoUrl, processedPath);
-      processedChunkPaths.push(processedPath);
+        console.log(`[kling-face-swap] Chunk ${i + 1}: Calling Kling API...`);
 
-      // Extract golden reference from first chunk for consistency
-      if (i === 0 && chunkLocalPaths.length > 1) {
-        goldenReferencePath = path.join(outDir, `golden_reference.jpg`);
-        await extractFirstFrame(processedPath, goldenReferencePath);
-        // Upload golden reference and get presigned URL for subsequent chunks
-        const goldenRefKey = `temp-kling/${teamId}/${jobId}/golden_reference.jpg`;
-        await s3Service.uploadFile(goldenReferencePath, goldenRefKey, "image/jpeg");
-        currentImageUrl = await s3Service.getPresignedUrl(goldenRefKey, 3600);
-        console.log(`[kling-face-swap] Extracted golden reference from chunk 1`);
+        const result = await klingProMotionWithRetry({
+          imageUrl,
+          videoUrl: chunkUrl,
+          keepOriginalSound: true,
+          characterOrientation: "video",
+        });
+
+        const processedPath = path.join(outDir, `processed_${i}.mp4`);
+        await s3Service.downloadVideoFromUrl(result.videoUrl, processedPath);
+
+        console.log(`[kling-face-swap] Chunk ${i + 1}: Complete`);
+
+        await s3Service.deleteObject(tempChunkKey).catch(() => {});
+
+        return { index: i, path: processedPath };
+      } catch (error) {
+        await s3Service.deleteObject(tempChunkKey).catch(() => {});
+        throw new Error(`Chunk ${i + 1} failed: ${(error as Error).message}`);
       }
+    });
 
-      // Clean up temp chunk from S3
-      await s3Service.deleteObject(tempChunkKey).catch(() => {});
+    const results = await Promise.all(chunkPromises);
 
-      const chunkProgress = Math.round(20 + ((i + 1) / chunkLocalPaths.length) * 60);
-      await updateProgress(
-        jobId,
-        teamId,
-        chunkProgress,
-        `Processing: ${i + 1}/${chunkLocalPaths.length} segments complete`
-      );
-      console.log(`[kling-face-swap] Chunk ${i + 1} processed successfully`);
-    }
+    results.sort((a, b) => a.index - b.index);
+    const processedChunkPaths = results.map((r) => r.path);
 
-    // Merge all processed chunks
+    console.log(`[kling-face-swap] All ${processedChunkPaths.length} chunks processed successfully`);
+
     console.log(`[kling-face-swap] Stitching final video...`);
     await updateProgress(jobId, teamId, 85, "Stitching video segments");
 
@@ -259,7 +244,6 @@ export async function processKlingFaceSwapJob(job: KlingFaceSwapJob): Promise<vo
     await mergeClipsGpu(processedChunkPaths, finalOutputPath);
     console.log(`[kling-face-swap] Stitched ${processedChunkPaths.length} chunks`);
 
-    // Handle splice mode if enabled
     if (spliceMode && spliceMetadata && originalVideoS3Key) {
       console.log(`[kling-face-swap] Splice mode enabled, assembling full video...`);
       await updateProgress(jobId, teamId, 90, "Assembling final video with splice");
@@ -299,7 +283,6 @@ export async function processKlingFaceSwapJob(job: KlingFaceSwapJob): Promise<vo
         }
         spliceSegmentPaths.push(segPath);
 
-        // Upload segment to S3
         const segBuffer = fs.readFileSync(segPath);
         const segS3Key = `comfy-outputs/${teamId}/${jobId}/segment_${i}_${seg.type}.mp4`;
         await s3Service.uploadBuffer(segBuffer, segS3Key, "video/mp4");
@@ -317,7 +300,6 @@ export async function processKlingFaceSwapJob(job: KlingFaceSwapJob): Promise<vo
       finalOutputPath = splicedPath;
       console.log(`[kling-face-swap] Spliced ${spliceSegmentPaths.length} segments into full video`);
 
-      // Update job with splice segment info
       await db
         .update(comfyJobs)
         .set({
@@ -329,7 +311,6 @@ export async function processKlingFaceSwapJob(job: KlingFaceSwapJob): Promise<vo
         .where(eq(comfyJobs.id, jobId));
     }
 
-    // Upload final video to S3
     console.log(`[kling-face-swap] Uploading final video to S3...`);
     await updateProgress(jobId, teamId, 95, "Uploading final video");
 
@@ -337,13 +318,11 @@ export async function processKlingFaceSwapJob(job: KlingFaceSwapJob): Promise<vo
     const s3Key = `comfy-outputs/${teamId}/${jobId}/final.mp4`;
     await s3Service.uploadBuffer(finalBuffer, s3Key, "video/mp4");
 
-    // Complete the job
     const outputUrl = await s3Service.getPresignedUrl(s3Key, 3600);
     await completeJob(jobId, teamId, true, s3Key, outputUrl);
 
     console.log(`[kling-face-swap] Job ${jobId} completed successfully!`);
 
-    // Create clip record and send notifications
     try {
       const [member] = await db
         .select({ userId: teamMembers.user_id })
@@ -376,7 +355,6 @@ export async function processKlingFaceSwapJob(job: KlingFaceSwapJob): Promise<vo
           .returning();
         console.log(`[kling-face-swap] Created clip ${clip.id} in library`);
 
-        // Transcribe and add captions
         try {
           const tempDir = path.join(process.cwd(), "output", `transcribe-${Date.now()}`);
           fs.mkdirSync(tempDir, { recursive: true });
@@ -405,7 +383,6 @@ export async function processKlingFaceSwapJob(job: KlingFaceSwapJob): Promise<vo
           console.error(`[kling-face-swap] Transcription failed:`, (transcribeErr as Error).message);
         }
 
-        // Send UGC ready email notification
         const [user] = await db
           .select()
           .from(users)
@@ -430,7 +407,6 @@ export async function processKlingFaceSwapJob(job: KlingFaceSwapJob): Promise<vo
 
     await completeJob(jobId, teamId, false, undefined, undefined, (err as Error).message);
 
-    // Refund credits on failure
     try {
       await teamService.decrementTeamUsage(teamId, UGC_CREDIT_COST);
       console.log(`[kling-face-swap] Refunded ${UGC_CREDIT_COST} credits to team ${teamId}`);
@@ -440,7 +416,6 @@ export async function processKlingFaceSwapJob(job: KlingFaceSwapJob): Promise<vo
 
     throw err;
   } finally {
-    // Cleanup local files
     if (fs.existsSync(outDir)) {
       fs.rmSync(outDir, { recursive: true, force: true });
       console.log(`[kling-face-swap] Cleaned up temp directory: ${outDir}`);
