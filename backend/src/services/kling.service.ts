@@ -1,5 +1,9 @@
 import { fal } from "@fal-ai/client";
 import { config } from "../config/env";
+import { openaiClient } from "./ugcScript.service";
+
+// Kling prompt length limit
+export const KLING_MAX_PROMPT_LENGTH = 2500;
 
 fal.config({
   credentials: config.fal.apiKey,
@@ -7,26 +11,41 @@ fal.config({
 
 export type ShotType = "a-roll" | "b-roll" | "mixed";
 export type KlingDuration = 5 | 10;
+export type CharacterOrientation = "image" | "video";
 
 export const PRODUCT_NEGATIVE_PROMPT =
-  "distortion, warping, morphing, blur, text change, label deformation, " +
-  "stretching, proportion change, shape shifting, logo distortion, " +
-  "text overlay, subtitles, captions, floating text, graphic overlays, " +
-  "watermark, low quality, blurry, out of focus, " +
-  "phone screen on back, screen through phone, transparent phone, glitchy phone display, distortion of text on phone, blurry text on phone display, warped text in phone. Change of text on screen";
+  "text, captions, subtitles, text overlay, floating text, title card, caption bar, subtitle bar, " +
+  "burned-in text, on-screen text, watermark, logo overlay, graphic overlay, lower third, " +
+  "any added text, like headings or captions, AI-generated captions, auto-captions, " +
+  "distortion, warping, morphing, blur, stretching, proportion change, shape shifting, " +
+  "changing phone screen, morphing phone, warped phone, bent phone, phone screen changing, " +
+  "screen content changing, different screen content, glitchy screen, transparent phone, " +
+  "phone screen on back, screen through phone, blurry phone screen, " +
+  "low quality, blurry, out of focus, extra elements, added elements";
+
+// CRITICAL: This gets appended to ALL prompts to prevent AI from adding anything extra
+export const NO_TEXT_OVERLAY_DIRECTIVE =
+  "ABSOLUTE RULES: " +
+  "1) NEVER add text, captions, subtitles, or any on-screen text - the video must have ZERO text overlays. " +
+  "2) NEVER change what is shown on any phone or device screen - screen content must stay EXACTLY the same throughout. " +
+  "3) NEVER add elements not described - generate ONLY what is explicitly written in this prompt, nothing more. " +
+  "4) Phone/device shape must stay perfectly rectangular with consistent proportions - no warping or bending. " +
+  "This is a raw video file that will have text added later - DO NOT pre-add any text.";
 
 export const PRODUCT_STABILITY_MODIFIERS =
-  "Preserve product shape. Maintain label text. Keep proportions identical. " +
-  "Stable camera movement. No distortion. No subtitles or text overlays. " +
-  "Phones have opaque solid backs with no screen bleed-through. Text on phones or items must remain clear, static, and legible throughout the video";
+  "Phone and device screens must remain FROZEN and UNCHANGED throughout - exact same content from first to last frame. " +
+  "Phone shape stays perfectly rectangular, no warping, no bending, consistent bezels. " +
+  "Product shapes, labels, and proportions stay identical throughout. " +
+  "NEVER add captions, subtitles, or any text overlays to the video.";
 
 export const GENTLE_MOTION_MODIFIERS =
-  "Subtle movement. Slow and controlled. Micro-motion only. " +
-  "Maintain silhouette. Keep scale consistent.";
+  "Subtle movement only. Slow and controlled. Micro-motion only. " +
+  "Maintain exact silhouette. Keep scale consistent. " +
+  "Do not add ANY elements not explicitly described. No text. No captions.";
 
 export interface ImageToVideoOptions {
   imageUrl: string;
-  tailImageUrl?: string;
+  tailImageUrl?: string; // Optional end frame for better video interpolation
   prompt: string;
   duration?: KlingDuration;
   negativePrompt?: string;
@@ -55,6 +74,7 @@ export interface AvatarOptions {
   imageUrl: string;
   audioUrl: string;
   prompt?: string; // Optional text guidance
+  negativePrompt?: string; // Prevent unwanted elements like subtitles
 }
 
 export interface AvatarResult {
@@ -62,7 +82,31 @@ export interface AvatarResult {
   requestId: string;
 }
 
-interface KlingImageToVideoResponse {
+export interface ExtendVideoOptions {
+  videoUrl: string;
+  duration?: KlingDuration;
+}
+
+export interface ExtendVideoResult {
+  videoUrl: string;
+  requestId: string;
+}
+
+export interface MotionControlOptions {
+  imageUrl: string;
+  videoUrl: string;
+  prompt?: string;
+  keepOriginalSound?: boolean;
+  characterOrientation?: CharacterOrientation;
+}
+
+export interface MotionControlResult {
+  videoUrl: string;
+  requestId: string;
+}
+
+// Internal response types
+interface KlingVideoResponse {
   video: {
     url: string;
     file_size?: number;
@@ -71,13 +115,87 @@ interface KlingImageToVideoResponse {
   };
 }
 
-interface KlingLipsyncResponse {
-  video: {
-    url: string;
-    file_size?: number;
-    file_name?: string;
-    content_type?: string;
-  };
+type KlingImageToVideoResponse = KlingVideoResponse;
+type KlingLipsyncResponse = KlingVideoResponse;
+type KlingAvatarResponse = KlingVideoResponse;
+type KlingExtendVideoResponse = KlingVideoResponse;
+type KlingMotionControlResponse = KlingVideoResponse;
+
+/**
+ * Iteratively shortens until under the limit while preserving key instructions.
+ * Uses OpenAI responses API (same pattern as aiSuggestions.service.ts)
+ */
+export async function shortenPromptIfNeeded(
+  prompt: string,
+  maxLength: number = KLING_MAX_PROMPT_LENGTH
+): Promise<string> {
+  if (prompt.length <= maxLength) {
+    return prompt;
+  }
+
+  console.log(
+    `[Kling] Prompt too long (${prompt.length}/${maxLength}), shortening with gpt...`
+  );
+
+  let currentPrompt = prompt;
+  let attempts = 0;
+  const maxAttempts = 3;
+
+  while (currentPrompt.length > maxLength && attempts < maxAttempts) {
+    attempts++;
+    const targetLength = Math.floor(maxLength * 0.9); // Aim for 90% of max to have buffer
+
+    const systemPrompt = `You are a prompt shortening assistant. Your job is to shorten video generation prompts while preserving the most critical elements.
+
+CRITICAL RULES TO ALWAYS PRESERVE:
+1. Any rules about NOT adding text, captions, or subtitles
+2. Any rules about keeping phone/device screens unchanged
+3. Any rules about not adding extra elements
+4. The core action/scene description
+5. Character emotions and expressions
+
+WHAT TO SHORTEN:
+- Remove redundant adjectives
+- Combine similar instructions
+- Remove less critical modifiers
+- Simplify sentence structure
+
+Target length: ${targetLength} characters (current: ${currentPrompt.length})
+Return ONLY the shortened prompt, nothing else.`;
+
+    try {
+      const response = await openaiClient.responses.create({
+        model: "gpt-5-mini",
+        instructions: systemPrompt,
+        input: currentPrompt,
+      });
+
+      const shortened = response.output_text?.trim();
+      if (shortened && shortened.length < currentPrompt.length) {
+        currentPrompt = shortened;
+        console.log(
+          `[Kling] Shortened to ${currentPrompt.length} chars (attempt ${attempts})`
+        );
+      } else {
+        console.warn(
+          `[Kling] Shortening attempt ${attempts} did not reduce length`
+        );
+        break;
+      }
+    } catch (error) {
+      console.error(`[Kling] Prompt shortening failed:`, error);
+      break;
+    }
+  }
+
+  if (currentPrompt.length > maxLength) {
+    console.warn(
+      `[Kling] Could not shorten prompt below ${maxLength}, truncating...`
+    );
+    currentPrompt = currentPrompt.substring(0, maxLength - 3) + "...";
+  }
+
+  return currentPrompt;
 }
 
 export function buildKlingPrompt(
@@ -86,15 +204,18 @@ export function buildKlingPrompt(
   emotion: string,
   action: string
 ): string {
+  let basePrompt: string;
+
   if (shotType === "a-roll") {
-    return `${cinematicPrompt}. The person speaks naturally to camera with ${emotion} expression. Subtle, realistic lip movements - not exaggerated. Natural micro-expressions, gentle head movements, relaxed eye contact. Authentic UGC-style, conversational and relaxed. ${GENTLE_MOTION_MODIFIERS}`;
+    basePrompt = `${cinematicPrompt}. The person speaks naturally to camera with ${emotion} expression. Subtle, realistic lip movements - not exaggerated. Natural micro-expressions, gentle head movements, relaxed eye contact. Authentic UGC-style, conversational and relaxed. ${GENTLE_MOTION_MODIFIERS}`;
+  } else if (shotType === "b-roll") {
+    basePrompt = `${cinematicPrompt}. Smooth product showcase with subtle, slow camera movement. Professional product photography style with gentle rotation or reveal. Clean background, focused lighting on product. ${PRODUCT_STABILITY_MODIFIERS} ${GENTLE_MOTION_MODIFIERS}`;
+  } else {
+    basePrompt = `${cinematicPrompt}. Person performs action: ${action}. Natural body movement, ${emotion} expression, hands interacting with product. No talking, action-focused. ${PRODUCT_STABILITY_MODIFIERS}`;
   }
 
-  if (shotType === "b-roll") {
-    return `${cinematicPrompt}. Smooth product showcase with subtle, slow camera movement. Professional product photography style with gentle rotation or reveal. Clean background, focused lighting on product. ${PRODUCT_STABILITY_MODIFIERS} ${GENTLE_MOTION_MODIFIERS}`;
-  }
-
-  return `${cinematicPrompt}. Person performs action: ${action}. Natural body movement, ${emotion} expression, hands interacting with product. No talking, action-focused. ${PRODUCT_STABILITY_MODIFIERS}`;
+  // Append critical no-text directive to ALL prompts
+  return `${basePrompt} ${NO_TEXT_OVERLAY_DIRECTIVE}`;
 }
 
 export async function generateVideo(
@@ -115,23 +236,33 @@ export async function generateVideo(
     finalPrompt = `${prompt}. The person speaks naturally and says "${dialogue}"`;
   }
 
+  // Shorten prompt if it exceeds Kling's limit
+  finalPrompt = await shortenPromptIfNeeded(finalPrompt);
+
+  const finalNegativePrompt = negativePrompt || PRODUCT_NEGATIVE_PROMPT;
+
   console.log(
-    `[Kling] Generating ${duration}s video from image (audio: ${generateAudio}, hasTail: ${!!tailImageUrl})`
+    `[Kling] Generating ${duration}s video from image (audio: ${generateAudio})`
   );
-  console.log(`[Kling] Prompt: ${finalPrompt.substring(0, 150)}...`);
+  console.log(
+    `[Kling] Prompt (${finalPrompt.length} chars): ${finalPrompt.substring(0, 200)}...`
+  );
+  console.log(
+    `[Kling] Negative prompt (${finalNegativePrompt.length} chars): ${finalNegativePrompt.substring(0, 100)}...`
+  );
+  if (tailImageUrl) {
+    console.log(`[Kling] Using end frame (tail image) for interpolation`);
+  }
 
   try {
     const input: Record<string, unknown> = {
       prompt: finalPrompt,
       start_image_url: imageUrl,
+      ...(tailImageUrl && { tail_image_url: tailImageUrl }),
       duration: String(duration) as "5" | "10",
-      negative_prompt: negativePrompt || PRODUCT_NEGATIVE_PROMPT,
+      negative_prompt: finalNegativePrompt,
       generate_audio: generateAudio,
     };
-
-    if (tailImageUrl) {
-      input.tail_image_url = tailImageUrl;
-    }
 
     const result = await fal.subscribe(
       "fal-ai/kling-video/v2.6/pro/image-to-video",
@@ -262,32 +393,31 @@ export async function applyLipsyncWithRetry(
   throw lastError || new Error("Lipsync failed after retries");
 }
 
-interface KlingAvatarResponse {
-  video: {
-    url: string;
-    file_size?: number;
-    file_name?: string;
-    content_type?: string;
-  };
-}
-
-// Kling Avatar v2 Pro - optimized single-step talking head generation
-// Uses image + audio to generate video with built-in lip sync (better quality than 2-step process)
 export async function generateAvatar(
   options: AvatarOptions
 ): Promise<AvatarResult> {
-  const { imageUrl, audioUrl, prompt } = options;
+  const { imageUrl, audioUrl, prompt, negativePrompt } = options;
+
+  const avoidElements = negativePrompt || PRODUCT_NEGATIVE_PROMPT;
+  let finalPrompt = prompt
+    ? `${prompt}. DO NOT INCLUDE ANY OF THESE: ${avoidElements}`
+    : `DO NOT INCLUDE ANY OF THESE: ${avoidElements}. Ensure added text like headings and captions are NOT included in this video. `;
+
+  finalPrompt = await shortenPromptIfNeeded(finalPrompt);
 
   console.log(`[Kling Avatar v2] Generating talking head video`);
   console.log(`[Kling Avatar v2] Image: ${imageUrl.substring(0, 80)}...`);
   console.log(`[Kling Avatar v2] Audio: ${audioUrl.substring(0, 80)}...`);
+  console.log(
+    `[Kling Avatar v2] Prompt (${finalPrompt.length} chars): ${finalPrompt.substring(0, 100)}...`
+  );
 
   try {
     const result = await fal.subscribe("fal-ai/kling-video/ai-avatar/v2/pro", {
       input: {
         image_url: imageUrl,
         audio_url: audioUrl,
-        ...(prompt && { prompt }),
+        prompt: finalPrompt,
       },
       logs: true,
       onQueueUpdate: (update) => {
@@ -344,25 +474,6 @@ export async function generateAvatarWithRetry(
   throw lastError || new Error("Avatar generation failed after retries");
 }
 
-export interface ExtendVideoOptions {
-  videoUrl: string;
-  duration?: KlingDuration;
-}
-
-export interface ExtendVideoResult {
-  videoUrl: string;
-  requestId: string;
-}
-
-interface KlingExtendVideoResponse {
-  video: {
-    url: string;
-    file_size?: number;
-    file_name?: string;
-    content_type?: string;
-  };
-}
-
 export async function extendVideo(
   options: ExtendVideoOptions
 ): Promise<ExtendVideoResult> {
@@ -370,14 +481,17 @@ export async function extendVideo(
 
   console.log(`[Kling O1] Extending video by ${duration}s`);
   console.log(`[Kling O1] Video URL: ${videoUrl.substring(0, 80)}...`);
-  console.log(`[Kling O1] Prompt: Based on @Video1, generate the next shot. keep the style of the video`);
+  console.log(
+    `[Kling O1] Prompt: Based on @Video1, generate the next shot. keep the style of the video`
+  );
 
   try {
     const result = await fal.subscribe(
       "fal-ai/kling-video/o1/video-to-video/reference",
       {
         input: {
-          prompt: "Based on @Video1, generate the next shot. keep the style of the video",
+          prompt:
+            "Based on @Video1, generate the next shot. keep the style of the video",
           video_url: videoUrl,
           duration: String(duration) as "5" | "10",
           aspect_ratio: "auto",
@@ -423,9 +537,10 @@ export async function extendVideoWithRetry(
       return await extendVideo(options);
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
-      const isTimeout = lastError.message.includes("ETIMEDOUT") ||
-                        lastError.message.includes("fetch failed") ||
-                        lastError.message.includes("timeout");
+      const isTimeout =
+        lastError.message.includes("ETIMEDOUT") ||
+        lastError.message.includes("fetch failed") ||
+        lastError.message.includes("timeout");
 
       console.warn(
         `[Kling O1] Extend attempt ${attempt}/${maxRetries} failed:`,
@@ -445,6 +560,71 @@ export async function extendVideoWithRetry(
   throw lastError || new Error("Video extension failed after retries");
 }
 
+export async function klingProMotion(
+  options: MotionControlOptions
+): Promise<MotionControlResult> {
+  const {
+    imageUrl,
+    videoUrl,
+    prompt,
+    keepOriginalSound = true,
+    characterOrientation = "video",
+  } = options;
+
+  console.log(
+    `[Kling Pro Motion] Generating motion control video (orientation: ${characterOrientation})`
+  );
+  console.log(`[Kling Pro Motion] Image: ${imageUrl.substring(0, 80)}...`);
+  console.log(`[Kling Pro Motion] Video: ${videoUrl.substring(0, 80)}...`);
+  if (prompt) {
+    console.log(`[Kling Pro Motion] Prompt: ${prompt.substring(0, 100)}...`);
+  }
+
+  try {
+    const input: Record<string, unknown> = {
+      image_url: imageUrl,
+      video_url: videoUrl,
+      character_orientation: characterOrientation,
+      keep_original_sound: keepOriginalSound,
+    };
+
+    if (prompt) {
+      input.prompt = prompt;
+    }
+
+    const result = await fal.subscribe(
+      "fal-ai/kling-video/v2.6/pro/motion-control",
+      {
+        input,
+        logs: true,
+        onQueueUpdate: (update) => {
+          if (update.status === "IN_PROGRESS" && update.logs) {
+            update.logs.forEach((log) =>
+              console.log(`[Kling Pro Motion] ${log.message}`)
+            );
+          }
+        },
+      }
+    );
+
+    const data = result.data as KlingMotionControlResponse;
+
+    if (!data?.video?.url) {
+      throw new Error("No video URL in Kling Motion Control response");
+    }
+
+    console.log(`[Kling Pro Motion] Video generated: ${data.video.url}`);
+
+    return {
+      videoUrl: data.video.url,
+      requestId: result.requestId,
+    };
+  } catch (error) {
+    console.error("[Kling Pro Motion] Generation failed:", error);
+    throw error;
+  }
+}
+
 export const klingService = {
   generateVideo,
   generateVideoWithRetry,
@@ -455,7 +635,10 @@ export const klingService = {
   extendVideo,
   extendVideoWithRetry,
   buildKlingPrompt,
+  shortenPromptIfNeeded,
+  klingProMotion,
   PRODUCT_NEGATIVE_PROMPT,
   PRODUCT_STABILITY_MODIFIERS,
   GENTLE_MOTION_MODIFIERS,
+  KLING_MAX_PROMPT_LENGTH,
 };

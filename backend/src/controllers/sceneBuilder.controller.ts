@@ -42,7 +42,10 @@ export class SceneBuilderController {
         characterId,
         userRefinement,
         supportingImageKeys,
-        frameIndex, // Optional: 0=start only, 1=end only, undefined=both
+        // Advanced options
+        generateEndFrame,
+        customStartImageKey,
+        customEndImageKey,
       } = req.body;
 
       if (!teamId || !scriptId || !sceneId || sceneNumber === undefined || !characterId) {
@@ -60,7 +63,6 @@ export class SceneBuilderController {
         return res.status(403).json({ error: "UGC Studio access required" });
       }
 
-      // Fetch the script to get scene data and character
       const [script] = await db
         .select()
         .from(ugcScripts)
@@ -70,7 +72,6 @@ export class SceneBuilderController {
         return res.status(404).json({ error: "Script not found" });
       }
 
-      // Get the scene data from the selected variant
       const scriptsData = script.scripts_data as any[];
       const selectedScript = scriptsData[script.selected_variant_index];
       const sceneData = selectedScript?.scenes?.find(
@@ -81,10 +82,8 @@ export class SceneBuilderController {
         return res.status(404).json({ error: "Scene not found in script" });
       }
 
-      // Build the prompt using cinematicPrompt from OpenAI
       const prompt = this.buildScenePrompt(sceneData, userRefinement);
 
-      // Create the job record
       const [job] = await db
         .insert(sceneImageGenerationJobs)
         .values({
@@ -103,7 +102,6 @@ export class SceneBuilderController {
         })
         .returning();
 
-      // Send to SQS
       await sqsService.sendGenerateSceneImageJob({
         jobId: job.id,
         teamId,
@@ -124,16 +122,17 @@ export class SceneBuilderController {
         productImageKeys: script.product_image_keys as string[],
         userRefinement: userRefinement || undefined,
         supportingImageKeys: supportingImageKeys || [],
-        frameIndex: frameIndex as 0 | 1 | undefined,
+        // Advanced options
+        generateEndFrame: generateEndFrame || false,
+        customStartImageKey: customStartImageKey || undefined,
+        customEndImageKey: customEndImageKey || undefined,
       });
 
-      const frameLabel = frameIndex === 0 ? "start frame" : frameIndex === 1 ? "end frame" : "both frames";
       return res.status(202).json({
         success: true,
         jobId: job.id,
         status: "queued",
-        frameIndex,
-        message: `Scene ${frameLabel} generation started. Poll for status.`,
+        message: "Scene image generation started. Poll for status.",
       });
     } catch (error) {
       console.error("[SCENE_BUILDER] Generate scene images error:", error);
@@ -158,6 +157,9 @@ export class SceneBuilderController {
           sceneNumber: number;
           userRefinement?: string;
           supportingImageKeys?: string[];
+          generateEndFrame?: boolean;
+          customStartImageKey?: string;
+          customEndImageKey?: string;
         }>;
       };
 
@@ -247,6 +249,9 @@ export class SceneBuilderController {
           productImageKeys: script.product_image_keys as string[],
           userRefinement: sceneRequest.userRefinement,
           supportingImageKeys: sceneRequest.supportingImageKeys || [],
+          generateEndFrame: sceneRequest.generateEndFrame || false,
+          customStartImageKey: sceneRequest.customStartImageKey || undefined,
+          customEndImageKey: sceneRequest.customEndImageKey || undefined,
         });
 
         jobIds.push(job.id);
@@ -307,11 +312,15 @@ export class SceneBuilderController {
           imageKeys.map((key) => s3Service.getPresignedUrl(key, 3600))
         );
 
-        response.images = imageKeys.map((key, i) => ({
-          key,
-          url: imageUrls[i],
-          index: i,
-        }));
+        response.images = imageKeys.map((key, i) => {
+          const variantMatch = key.match(/variant_(\d+)/);
+          const frameIndex = variantMatch ? parseInt(variantMatch[1], 10) : i;
+          return {
+            key,
+            url: imageUrls[i],
+            index: frameIndex,
+          };
+        });
       }
 
       if (job.status === "failed") {
@@ -347,9 +356,6 @@ export class SceneBuilderController {
         images.map(async (img) => ({
           ...img,
           imageUrl: await s3Service.getPresignedUrl(img.image_key, 3600),
-          endImageUrl: img.end_image_key
-            ? await s3Service.getPresignedUrl(img.end_image_key, 3600)
-            : undefined,
         }))
       );
 
@@ -376,7 +382,7 @@ export class SceneBuilderController {
    */
   async selectSceneImage(req: AuthRequest, res: Response) {
     try {
-      const { scriptId, sceneId, sceneNumber, imageKey, endImageKey, generationJobId } =
+      const { scriptId, sceneId, sceneNumber, imageKey, generationJobId } =
         req.body;
 
       if (!scriptId || !sceneId || !imageKey || sceneNumber === undefined) {
@@ -400,7 +406,6 @@ export class SceneBuilderController {
           .update(sceneImages)
           .set({
             image_key: imageKey,
-            end_image_key: endImageKey || null,
             generation_job_id: generationJobId || null,
             updated_at: new Date(),
           })
@@ -419,7 +424,6 @@ export class SceneBuilderController {
             scene_id: sceneId,
             scene_number: sceneNumber,
             image_key: imageKey,
-            end_image_key: endImageKey || null,
             generation_job_id: generationJobId || null,
           })
           .returning();

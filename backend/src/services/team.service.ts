@@ -79,7 +79,11 @@ class TeamService {
       throw new Error("Team not found");
     }
 
-    return team;
+    // Generate presigned URL for logo if exists
+    return {
+      ...team,
+      logo_url: team.logo_url ? await s3Service.getPresignedUrl(team.logo_url, 3600) : null,
+    };
   }
 
   /**

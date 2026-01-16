@@ -42,7 +42,7 @@ export function SceneBuilderStep({
   const scenes = currentScript?.scenes || [];
 
   const completedScenes = scenes.filter(
-    (scene) => sceneImages[scene.id]?.startImageKey && sceneImages[scene.id]?.endImageKey
+    (scene) => sceneImages[scene.id]?.imageKey
   ).length;
   const totalScenes = scenes.length;
   const allComplete = completedScenes === totalScenes && totalScenes > 0;
@@ -100,10 +100,8 @@ export function SceneBuilderStep({
                 }
                 newState[sceneId] = {
                   status: "completed",
-                  startImageKey: sceneImage.image_key,
-                  startImageUrl: sceneImage.imageUrl,
-                  endImageKey: sceneImage.end_image_key,
-                  endImageUrl: sceneImage.endImageUrl,
+                  imageKey: sceneImage.image_key,
+                  imageUrl: sceneImage.imageUrl,
                 };
               }
             );
@@ -125,7 +123,7 @@ export function SceneBuilderStep({
     if (scenes.length === 0) return;
 
     const hasAnyImages = scenes.some(
-      (scene) => sceneImages[scene.id]?.startImageKey
+      (scene) => sceneImages[scene.id]?.imageKey
     );
     if (hasAnyImages) return;
 
@@ -166,21 +164,17 @@ export function SceneBuilderStep({
     }));
   };
 
-  const handleImagesSelect = (
+  const handleImageSelect = (
     sceneId: string,
-    startKey: string,
-    startUrl: string,
-    endKey: string,
-    endUrl: string
+    key: string,
+    url: string
   ) => {
     setSceneImages((prev) => ({
       ...prev,
       [sceneId]: {
         ...prev[sceneId],
-        startImageKey: startKey,
-        startImageUrl: startUrl,
-        endImageKey: endKey,
-        endImageUrl: endUrl,
+        imageKey: key,
+        imageUrl: url,
       },
     }));
   };
@@ -205,6 +199,33 @@ export function SceneBuilderStep({
     }));
   };
 
+  const handleCustomImageChange = (
+    sceneId: string,
+    type: "start" | "end",
+    key: string | undefined,
+    url: string | undefined
+  ) => {
+    setSceneImages((prev) => ({
+      ...prev,
+      [sceneId]: {
+        ...prev[sceneId],
+        ...(type === "start"
+          ? { customStartImageKey: key, customStartImageUrl: url }
+          : { customEndImageKey: key, customEndImageUrl: url }),
+      },
+    }));
+  };
+
+  const handleUseEndFrameChange = (sceneId: string, useEndFrame: boolean) => {
+    setSceneImages((prev) => ({
+      ...prev,
+      [sceneId]: {
+        ...prev[sceneId],
+        useEndFrame,
+      },
+    }));
+  };
+
   const handleGenerateAll = async () => {
     if (scenes.length === 0) return;
 
@@ -216,10 +237,8 @@ export function SceneBuilderStep({
         cleared[scene.id] = {
           ...prev[scene.id],
           status: "regenerating",
-          startImageKey: undefined,
-          startImageUrl: undefined,
-          endImageKey: undefined,
-          endImageUrl: undefined,
+          imageKey: undefined,
+          imageUrl: undefined,
           generatedImages: undefined,
         };
       }
@@ -236,6 +255,9 @@ export function SceneBuilderStep({
           sceneNumber: scene.sceneNumber,
           userRefinement: sceneImages[scene.id]?.userRefinement,
           supportingImageKeys: sceneImages[scene.id]?.supportingImageKeys,
+          generateEndFrame: sceneImages[scene.id]?.useEndFrame,
+          customStartImageKey: sceneImages[scene.id]?.customStartImageKey,
+          customEndImageKey: sceneImages[scene.id]?.customEndImageKey,
         })),
       });
 
@@ -287,7 +309,7 @@ export function SceneBuilderStep({
           Build Your Scenes
         </h2>
         <p className="text-text-secondary">
-          Generate start and end frames for each scene
+          Generate reference images for each scene
         </p>
       </div>
 
@@ -318,8 +340,8 @@ export function SceneBuilderStep({
                 </p>
                 <p className="text-xs text-text-muted">
                   {allComplete
-                    ? "All scenes have frames selected!"
-                    : "Generate start & end frames for each scene. Kling will interpolate between them."}
+                    ? "All scenes have images ready!"
+                    : "Generate a reference image for each scene."}
                 </p>
               </div>
             </div>
@@ -381,26 +403,35 @@ export function SceneBuilderStep({
               characterId={characterId}
               productImageKeys={productImageKeys}
               generation={generation}
-              startImageKey={sceneState.startImageKey}
-              startImageUrl={sceneState.startImageUrl}
-              endImageKey={sceneState.endImageKey}
-              endImageUrl={sceneState.endImageUrl}
+              imageKey={sceneState.imageKey}
+              imageUrl={sceneState.imageUrl}
               userRefinement={sceneState.userRefinement}
               supportingImageKeys={sceneState.supportingImageKeys}
+              useEndFrame={sceneState.useEndFrame}
+              customStartImageKey={sceneState.customStartImageKey}
+              customStartImageUrl={sceneState.customStartImageUrl}
+              customEndImageKey={sceneState.customEndImageKey}
+              customEndImageUrl={sceneState.customEndImageUrl}
               onGenerationStart={(jobId) =>
                 handleGenerationStart(scene.id, jobId)
               }
               onGenerationUpdate={(gen) =>
                 handleGenerationUpdate(scene.id, gen)
               }
-              onImagesSelect={(startKey, startUrl, endKey, endUrl) =>
-                handleImagesSelect(scene.id, startKey, startUrl, endKey, endUrl)
+              onImageSelect={(key, url) =>
+                handleImageSelect(scene.id, key, url)
               }
               onRefinementChange={(ref) =>
                 handleRefinementChange(scene.id, ref)
               }
               onSupportingImagesChange={(keys) =>
                 handleSupportingImagesChange(scene.id, keys)
+              }
+              onUseEndFrameChange={(useEndFrame) =>
+                handleUseEndFrameChange(scene.id, useEndFrame)
+              }
+              onCustomImageChange={(type, key, url) =>
+                handleCustomImageChange(scene.id, type, key, url)
               }
             />
           );

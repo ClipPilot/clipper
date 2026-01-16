@@ -163,7 +163,10 @@ export interface GenerateSceneImageJob extends BaseJob {
   productImageKeys: string[];
   userRefinement?: string;
   supportingImageKeys: string[];
-  frameIndex?: 0 | 1; // 0=start only, 1=end only, undefined=both
+  // Advanced options
+  generateEndFrame?: boolean; // Generate both start and end frame for video interpolation
+  customStartImageKey?: string; // User-uploaded start image (skip generation)
+  customEndImageKey?: string; // User-uploaded end image
 }
 
 // Script generation job payload
@@ -190,7 +193,6 @@ export interface GenerateUGCVideoJob extends BaseJob {
     sceneNumber: number;
     shotType: "a-roll" | "b-roll" | "mixed";
     imageKey: string;
-    endImageKey?: string;
     dialogue: string;
     duration: number;
     cinematicPrompt: string;
@@ -401,7 +403,10 @@ class SQSService {
     productImageKeys: string[];
     userRefinement?: string;
     supportingImageKeys: string[];
-    frameIndex?: 0 | 1;
+    // Advanced options
+    generateEndFrame?: boolean;
+    customStartImageKey?: string;
+    customEndImageKey?: string;
   }): Promise<string> {
     const job: GenerateSceneImageJob = {
       type: "generate-scene-image",
@@ -416,7 +421,10 @@ class SQSService {
       productImageKeys: params.productImageKeys,
       userRefinement: params.userRefinement,
       supportingImageKeys: params.supportingImageKeys,
-      frameIndex: params.frameIndex,
+      // Advanced options
+      generateEndFrame: params.generateEndFrame,
+      customStartImageKey: params.customStartImageKey,
+      customEndImageKey: params.customEndImageKey,
       createdAt: new Date().toISOString(),
     };
 
