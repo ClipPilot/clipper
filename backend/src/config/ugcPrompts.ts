@@ -263,11 +263,68 @@ CRITICAL WORD LIMIT (MUST FOLLOW):
    - Keep sentences under 20 words for natural breath pacing
    - TOTAL dialogue per scene: 25-50 words MAX
 
-===== CINEMATIC PROMPTS (CRITICAL FOR VIDEO QUALITY) =====
+===== CINEMATIC PROMPTS (CRITICAL FOR KLING 2.6 VIDEO QUALITY) =====
 
-For each scene, provide HYPER-DETAILED cinematicPrompts that read like professional film director shot notes. These prompts directly control the AI video generation quality.
+IMPORTANT: cinematicPrompt must be MULTIPLE DETAILED PARAGRAPHS (3-5 paragraphs minimum). These prompts feed directly into Kling 2.6 Pro for AI video generation. The more detailed and structured, the better the video output.
 
-CRITICAL - TELL THE AI VIDEO GENERATOR EXACTLY WHAT TO CREATE:
+The video AI converts your written descriptions into footage with controlled camera movements, lighting, and animations. Vague prompts = mediocre output. Structured, detailed prompts = professional results.
+
+===== REQUIRED CINEMATICPROMPT STRUCTURE (FOLLOW THIS EXACTLY) =====
+
+Each cinematicPrompt MUST contain these 4 components as separate paragraphs:
+
+**PARAGRAPH 1 - SCENE SETTING:**
+Describe the environment, lighting conditions, and atmosphere in vivid detail.
+- Lighting direction, quality, color temperature (e.g., "warm golden-hour side light from camera-left")
+- Environment textures and depth (e.g., "clean white marble surface with subtle shadows")
+- Atmospheric elements (e.g., "soft bokeh background with creamy out-of-focus highlights")
+- Time of day cues, natural vs artificial light mix
+
+**PARAGRAPH 2 - SUBJECT DESCRIPTION:**
+Detail the main subject (actor or product) with hyper-specific attributes.
+- For actor: exact expression, micro-movements, skin texture catching light, eye direction, body positioning
+- For product: material finish, how light reflects off surfaces, label visibility, texture details
+- Clothing/styling details that affect the visual
+- Physical relationship between subject and environment
+
+**PARAGRAPH 3 - MOTION DIRECTIVES:**
+Explicitly describe ALL movement - this is what makes video different from photos.
+- Camera movement: "slow 2-second push-in" / "gentle lateral tracking right to left" / "locked static shot"
+- Subject animation: "fingers slowly rotate bottle clockwise" / "eyebrows raise gradually" / "shoulders visibly relax"
+- Environmental motion: "subtle hair movement from soft breeze" / "product steam rising gently"
+- Timing cues: "holds position for 2 beats, then transitions"
+
+**PARAGRAPH 4 - TECHNICAL STYLE & NEGATIVE GUIDANCE:**
+Include filmmaking terminology and what to AVOID.
+- Virtual camera specs: "Shot on 35mm lens equivalent, f/2.8 depth of field, slight anamorphic characteristics"
+- Style reference: "UGC iPhone aesthetic with natural sensor noise" / "cinematic shallow DOF" / "documentary handheld feel"
+- NEGATIVE ELEMENTS (what NOT to generate): "No harsh shadows, no unnatural skin smoothing, no warped proportions, no text overlays, no multiple subjects, maintains exact appearance throughout"
+
+===== EXAMPLE MULTI-PARAGRAPH CINEMATICPROMPT =====
+
+For a HOOK scene (a-roll), the cinematicPrompt should look like:
+
+"Tight medium close-up framing from chin to top of head, shot in a clean modern bathroom with soft diffused window light from camera-right creating gentle wrap-around illumination. Warm color temperature around 5000K with subtle cool fill from the left. Background shows blurred bathroom tiles with creamy bokeh, depth suggesting small intimate space. Slight lens vignette at edges for authentic UGC feel.
+
+${config.characterName} positioned slightly off-center using rule of thirds, face angled 15 degrees toward the key light. Eyes are wide with genuine surprise, pupils dilated, catch-lights visible in both eyes from the window source. Eyebrows raised high creating horizontal forehead lines. Mouth transitions from neutral to excited open smile over 1 second, showing authentic micro-expression of discovery. Skin texture visible with natural pores and subtle oil on T-zone catching the light. Hair frames face naturally with a few strands catching rim light.
+
+Camera executes slow 1.5-second push-in from medium close-up to tight close-up, creating urgency and drawing viewer in. Push-in is smooth and deliberate, not jarring. Subject maintains eye contact with camera throughout. Subtle head movement - small nod beginning at the 2-second mark for emphasis. One hand rises into lower frame at the end, fingers splayed in 'stop everything' gesture, motion smooth and deliberate.
+
+Shot on virtual 50mm lens equivalent with f/1.8 depth of field creating significant background separation. UGC iPhone aesthetic with visible but subtle sensor grain in the midtones, approximately ISO 400-600 look. Natural color grading, not oversaturated. Slight chromatic aberration at frame edges for authenticity. NEGATIVE: No beauty filter smoothing, no artificial bokeh shapes, no dutch angle, no rapid movements, no morphing of facial features, maintains consistent facial structure throughout the entire shot, no cartoon or illustration qualities."
+
+===== CRITICAL RULES FOR CINEMATICPROMPT =====
+
+1. ALWAYS write 3-5 paragraphs minimum - single sentences will produce poor results
+2. ALWAYS include specific motion directives - video needs movement instructions
+3. ALWAYS include NEGATIVE guidance at the end to prevent common AI artifacts
+4. Use filmmaking terminology - the model responds to cinematography vocabulary
+5. Include timing cues like "over 2 seconds" or "holds for 1 beat"
+6. Specify "maintains exact appearance throughout" to prevent morphing
+7. For complex movements, break them into sequential steps
+8. Weight critical elements with emphasis: "++genuine surprised expression++"
+
+===== CRITICAL - TELL THE AI VIDEO GENERATOR EXACTLY WHAT TO CREATE =====
+
 The "action" and "cinematicPrompt" fields are the ONLY instructions the video AI receives.
 If you write vague descriptions, you get vague/wrong videos. Be HYPER-SPECIFIC about:
 - EXACTLY what is happening on screen at every moment
