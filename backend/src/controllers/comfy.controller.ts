@@ -3,7 +3,7 @@ import { Request, Response } from "express";
 import { db } from "../db";
 import { comfyJobs, clips, savedFaces } from "@clipper/shared-db/src/schema";
 import { s3Service } from "../services/s3.service";
-import { gpuSqsService, SwapType } from "../services/gpuSqs.service";
+import { sqsService } from "../services/sqs.service";
 import { cutClip, getVideoDuration } from "../services/videoEditor.service";
 import { createSceneAwareChunks } from "../services/sceneChunker.service";
 import { detectFaceSegmentsWithPadding } from "../services/faceDetection.service";
@@ -19,8 +19,11 @@ import "multer";
 import { TEMP_DIR } from "../utils/tempCleanup";
 
 const UGC_CREDIT_COST = 5;
-const CHUNK_DURATION = 10;
-const CHUNK_LEEWAY = 1; // Allow up to 1 extra second to avoid tiny leftover chunks
+const CHUNK_DURATION = 25;
+const CHUNK_LEEWAY = 5; // Allow up to 5 extra seconds to avoid tiny leftover chunks
+
+// Legacy type for backwards compatibility with existing API requests
+type SwapType = "face" | "full";
 
 const idempotencyCache = new Map<string, { jobId: string; expiresAt: number }>();
 const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
@@ -311,13 +314,13 @@ export class ComfyController {
           spliceMode: isSpliceMode,
           spliceMetadata: spliceMetadata || undefined,
           progress: 0,
-          progressMessage: "Waiting for GPU worker",
+          progressMessage: "Waiting for worker",
           createdAt: now,
         });
 
       console.log(`[comfy] Created job record in DB: ${jobId}`);
 
-      await gpuSqsService.sendFaceSwapJob({
+      await sqsService.sendKlingFaceSwapJob({
         jobId,
         teamId: parseInt(teamId),
         userId: req.user!.dbUserId,
@@ -328,16 +331,15 @@ export class ComfyController {
         videoDuration,
         spliceMode: isSpliceMode,
         spliceMetadata: spliceMetadata || undefined,
-        swapType,
       });
 
-      console.log(`[comfy] Sent job to GPU SQS queue: ${jobId}`);
+      console.log(`[comfy] Sent job to worker queue: ${jobId}`);
 
       emitComfyJobUpdate(parseInt(teamId), {
         id: jobId,
         status: "queued",
         progress: 0,
-        progressMessage: "Waiting for GPU worker",
+        progressMessage: "Waiting for worker",
         outputUrl: null,
         errorMessage: null,
         createdAt: now.toISOString(),
@@ -948,11 +950,11 @@ export class ComfyController {
               originalVideoS3Key,
               spliceMode: isSpliceMode,
               spliceMetadata: spliceMetadata || undefined,
-              progressMessage: "Waiting for GPU worker",
+              progressMessage: "Waiting for worker",
             })
             .where(eq(comfyJobs.id, jobId));
 
-          await gpuSqsService.sendFaceSwapJob({
+          await sqsService.sendKlingFaceSwapJob({
             jobId,
             teamId,
             userId,
@@ -963,14 +965,13 @@ export class ComfyController {
             videoDuration,
             spliceMode: isSpliceMode,
             spliceMetadata: spliceMetadata || undefined,
-            swapType,
           });
 
           emitComfyJobUpdate(teamId, {
             id: jobId,
             status: "queued",
             progress: 0,
-            progressMessage: "Waiting for GPU worker",
+            progressMessage: "Waiting for worker",
             outputUrl: null,
             errorMessage: null,
             createdAt: new Date().toISOString(),
