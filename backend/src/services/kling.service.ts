@@ -9,20 +9,34 @@ export type ShotType = "a-roll" | "b-roll" | "mixed";
 export type KlingDuration = 5 | 10;
 
 export const PRODUCT_NEGATIVE_PROMPT =
-  "distortion, warping, morphing, blur, text change, label deformation, " +
-  "stretching, proportion change, shape shifting, logo distortion, " +
-  "text overlay, subtitles, captions, floating text, graphic overlays, " +
-  "watermark, low quality, blurry, out of focus, " +
-  "phone screen on back, screen through phone, transparent phone, glitchy phone display, distortion of text on phone, blurry text on phone display, warped text in phone. Change of text on screen";
+  "text, captions, subtitles, text overlay, floating text, title card, caption bar, subtitle bar, " +
+  "burned-in text, on-screen text, watermark, logo overlay, graphic overlay, lower third, " +
+  "any added text, generated text, AI-generated captions, auto-captions, " +
+  "distortion, warping, morphing, blur, stretching, proportion change, shape shifting, " +
+  "changing phone screen, morphing phone, warped phone, bent phone, phone screen changing, " +
+  "screen content changing, different screen content, glitchy screen, transparent phone, " +
+  "phone screen on back, screen through phone, blurry phone screen, " +
+  "low quality, blurry, out of focus, extra elements, added elements";
+
+// CRITICAL: This gets appended to ALL prompts to prevent AI from adding anything extra
+export const NO_TEXT_OVERLAY_DIRECTIVE =
+  "ABSOLUTE RULES: " +
+  "1) NEVER add text, captions, subtitles, or any on-screen text - the video must have ZERO text overlays. " +
+  "2) NEVER change what is shown on any phone or device screen - screen content must stay EXACTLY the same throughout. " +
+  "3) NEVER add elements not described - generate ONLY what is explicitly written in this prompt, nothing more. " +
+  "4) Phone/device shape must stay perfectly rectangular with consistent proportions - no warping or bending. " +
+  "This is a raw video file that will have text added later - DO NOT pre-add any text.";
 
 export const PRODUCT_STABILITY_MODIFIERS =
-  "Preserve product shape. Maintain label text. Keep proportions identical. " +
-  "Stable camera movement. No distortion. No subtitles or text overlays. " +
-  "Phones have opaque solid backs with no screen bleed-through. Text on phones or items must remain clear, static, and legible throughout the video";
+  "Phone and device screens must remain FROZEN and UNCHANGED throughout - exact same content from first to last frame. " +
+  "Phone shape stays perfectly rectangular, no warping, no bending, consistent bezels. " +
+  "Product shapes, labels, and proportions stay identical throughout. " +
+  "NEVER add captions, subtitles, or any text overlays to the video.";
 
 export const GENTLE_MOTION_MODIFIERS =
-  "Subtle movement. Slow and controlled. Micro-motion only. " +
-  "Maintain silhouette. Keep scale consistent.";
+  "Subtle movement only. Slow and controlled. Micro-motion only. " +
+  "Maintain exact silhouette. Keep scale consistent. " +
+  "Do not add ANY elements not explicitly described. No text. No captions.";
 
 export interface ImageToVideoOptions {
   imageUrl: string;
@@ -85,15 +99,18 @@ export function buildKlingPrompt(
   emotion: string,
   action: string
 ): string {
+  let basePrompt: string;
+
   if (shotType === "a-roll") {
-    return `${cinematicPrompt}. The person speaks naturally to camera with ${emotion} expression. Subtle, realistic lip movements - not exaggerated. Natural micro-expressions, gentle head movements, relaxed eye contact. Authentic UGC-style, conversational and relaxed. ${GENTLE_MOTION_MODIFIERS}`;
+    basePrompt = `${cinematicPrompt}. The person speaks naturally to camera with ${emotion} expression. Subtle, realistic lip movements - not exaggerated. Natural micro-expressions, gentle head movements, relaxed eye contact. Authentic UGC-style, conversational and relaxed. ${GENTLE_MOTION_MODIFIERS}`;
+  } else if (shotType === "b-roll") {
+    basePrompt = `${cinematicPrompt}. Smooth product showcase with subtle, slow camera movement. Professional product photography style with gentle rotation or reveal. Clean background, focused lighting on product. ${PRODUCT_STABILITY_MODIFIERS} ${GENTLE_MOTION_MODIFIERS}`;
+  } else {
+    basePrompt = `${cinematicPrompt}. Person performs action: ${action}. Natural body movement, ${emotion} expression, hands interacting with product. No talking, action-focused. ${PRODUCT_STABILITY_MODIFIERS}`;
   }
 
-  if (shotType === "b-roll") {
-    return `${cinematicPrompt}. Smooth product showcase with subtle, slow camera movement. Professional product photography style with gentle rotation or reveal. Clean background, focused lighting on product. ${PRODUCT_STABILITY_MODIFIERS} ${GENTLE_MOTION_MODIFIERS}`;
-  }
-
-  return `${cinematicPrompt}. Person performs action: ${action}. Natural body movement, ${emotion} expression, hands interacting with product. No talking, action-focused. ${PRODUCT_STABILITY_MODIFIERS}`;
+  // Append critical no-text directive to ALL prompts
+  return `${basePrompt} ${NO_TEXT_OVERLAY_DIRECTIVE}`;
 }
 
 export async function generateVideo(
@@ -113,15 +130,18 @@ export async function generateVideo(
     finalPrompt = `${prompt}. The person speaks naturally and says "${dialogue}"`;
   }
 
+  const finalNegativePrompt = negativePrompt || PRODUCT_NEGATIVE_PROMPT;
+
   console.log(`[Kling] Generating ${duration}s video from image (audio: ${generateAudio})`);
-  console.log(`[Kling] Prompt: ${finalPrompt.substring(0, 150)}...`);
+  console.log(`[Kling] Prompt (${finalPrompt.length} chars): ${finalPrompt.substring(0, 200)}...`);
+  console.log(`[Kling] Negative prompt (${finalNegativePrompt.length} chars): ${finalNegativePrompt.substring(0, 100)}...`);
 
   try {
     const input: Record<string, unknown> = {
       prompt: finalPrompt,
       start_image_url: imageUrl,
       duration: String(duration) as "5" | "10",
-      negative_prompt: negativePrompt || PRODUCT_NEGATIVE_PROMPT,
+      negative_prompt: finalNegativePrompt,
       generate_audio: generateAudio,
     };
 
