@@ -11,6 +11,7 @@ fal.config({
 
 export type ShotType = "a-roll" | "b-roll" | "mixed";
 export type KlingDuration = 5 | 10;
+export type CharacterOrientation = "image" | "video";
 
 export const PRODUCT_NEGATIVE_PROMPT =
   "text, captions, subtitles, text overlay, floating text, title card, caption bar, subtitle bar, " +
@@ -81,7 +82,31 @@ export interface AvatarResult {
   requestId: string;
 }
 
-interface KlingImageToVideoResponse {
+export interface ExtendVideoOptions {
+  videoUrl: string;
+  duration?: KlingDuration;
+}
+
+export interface ExtendVideoResult {
+  videoUrl: string;
+  requestId: string;
+}
+
+export interface MotionControlOptions {
+  imageUrl: string;
+  videoUrl: string;
+  prompt?: string;
+  keepOriginalSound?: boolean;
+  characterOrientation?: CharacterOrientation;
+}
+
+export interface MotionControlResult {
+  videoUrl: string;
+  requestId: string;
+}
+
+// Internal response types
+interface KlingVideoResponse {
   video: {
     url: string;
     file_size?: number;
@@ -90,14 +115,11 @@ interface KlingImageToVideoResponse {
   };
 }
 
-interface KlingLipsyncResponse {
-  video: {
-    url: string;
-    file_size?: number;
-    file_name?: string;
-    content_type?: string;
-  };
-}
+type KlingImageToVideoResponse = KlingVideoResponse;
+type KlingLipsyncResponse = KlingVideoResponse;
+type KlingAvatarResponse = KlingVideoResponse;
+type KlingExtendVideoResponse = KlingVideoResponse;
+type KlingMotionControlResponse = KlingVideoResponse;
 
 /**
  * Iteratively shortens until under the limit while preserving key instructions.
@@ -371,15 +393,6 @@ export async function applyLipsyncWithRetry(
   throw lastError || new Error("Lipsync failed after retries");
 }
 
-interface KlingAvatarResponse {
-  video: {
-    url: string;
-    file_size?: number;
-    file_name?: string;
-    content_type?: string;
-  };
-}
-
 export async function generateAvatar(
   options: AvatarOptions
 ): Promise<AvatarResult> {
@@ -388,7 +401,7 @@ export async function generateAvatar(
   const avoidElements = negativePrompt || PRODUCT_NEGATIVE_PROMPT;
   let finalPrompt = prompt
     ? `${prompt}. DO NOT INCLUDE ANY OF THESE: ${avoidElements}`
-    : `DO NOT INCLUDE ANY OF THESE: ${avoidElements}. Ensure added text like headings and captions are NOT included in this video`;
+    : `DO NOT INCLUDE ANY OF THESE: ${avoidElements}. Ensure added text like headings and captions are NOT included in this video. `;
 
   finalPrompt = await shortenPromptIfNeeded(finalPrompt);
 
@@ -459,25 +472,6 @@ export async function generateAvatarWithRetry(
   }
 
   throw lastError || new Error("Avatar generation failed after retries");
-}
-
-export interface ExtendVideoOptions {
-  videoUrl: string;
-  duration?: KlingDuration;
-}
-
-export interface ExtendVideoResult {
-  videoUrl: string;
-  requestId: string;
-}
-
-interface KlingExtendVideoResponse {
-  video: {
-    url: string;
-    file_size?: number;
-    file_name?: string;
-    content_type?: string;
-  };
 }
 
 export async function extendVideo(
@@ -566,6 +560,71 @@ export async function extendVideoWithRetry(
   throw lastError || new Error("Video extension failed after retries");
 }
 
+export async function klingProMotion(
+  options: MotionControlOptions
+): Promise<MotionControlResult> {
+  const {
+    imageUrl,
+    videoUrl,
+    prompt,
+    keepOriginalSound = true,
+    characterOrientation = "video",
+  } = options;
+
+  console.log(
+    `[Kling Pro Motion] Generating motion control video (orientation: ${characterOrientation})`
+  );
+  console.log(`[Kling Pro Motion] Image: ${imageUrl.substring(0, 80)}...`);
+  console.log(`[Kling Pro Motion] Video: ${videoUrl.substring(0, 80)}...`);
+  if (prompt) {
+    console.log(`[Kling Pro Motion] Prompt: ${prompt.substring(0, 100)}...`);
+  }
+
+  try {
+    const input: Record<string, unknown> = {
+      image_url: imageUrl,
+      video_url: videoUrl,
+      character_orientation: characterOrientation,
+      keep_original_sound: keepOriginalSound,
+    };
+
+    if (prompt) {
+      input.prompt = prompt;
+    }
+
+    const result = await fal.subscribe(
+      "fal-ai/kling-video/v2.6/pro/motion-control",
+      {
+        input,
+        logs: true,
+        onQueueUpdate: (update) => {
+          if (update.status === "IN_PROGRESS" && update.logs) {
+            update.logs.forEach((log) =>
+              console.log(`[Kling Pro Motion] ${log.message}`)
+            );
+          }
+        },
+      }
+    );
+
+    const data = result.data as KlingMotionControlResponse;
+
+    if (!data?.video?.url) {
+      throw new Error("No video URL in Kling Motion Control response");
+    }
+
+    console.log(`[Kling Pro Motion] Video generated: ${data.video.url}`);
+
+    return {
+      videoUrl: data.video.url,
+      requestId: result.requestId,
+    };
+  } catch (error) {
+    console.error("[Kling Pro Motion] Generation failed:", error);
+    throw error;
+  }
+}
+
 export const klingService = {
   generateVideo,
   generateVideoWithRetry,
@@ -577,6 +636,7 @@ export const klingService = {
   extendVideoWithRetry,
   buildKlingPrompt,
   shortenPromptIfNeeded,
+  klingProMotion,
   PRODUCT_NEGATIVE_PROMPT,
   PRODUCT_STABILITY_MODIFIERS,
   GENTLE_MOTION_MODIFIERS,
