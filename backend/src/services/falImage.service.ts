@@ -1,16 +1,21 @@
 import { fal } from "@fal-ai/client";
 import { config } from "../config/env";
 
-let falConfigured = false;
+fal.config({
+  credentials: config.fal.apiKey,
+});
 
-function ensureFalConfigured() {
-  if (!falConfigured) {
-    fal.config({ credentials: config.fal.apiKey });
-    falConfigured = true;
-  }
-}
-
-export type AspectRatio = "21:9" | "16:9" | "3:2" | "4:3" | "5:4" | "1:1" | "4:5" | "3:4" | "2:3" | "9:16";
+export type AspectRatio =
+  | "21:9"
+  | "16:9"
+  | "3:2"
+  | "4:3"
+  | "5:4"
+  | "1:1"
+  | "4:5"
+  | "3:4"
+  | "2:3"
+  | "9:16";
 
 export interface GenerateImageOptions {
   prompt: string;
@@ -43,13 +48,16 @@ interface FalImageResponse {
  * Generate image using FAL AI's nano-banana-pro model (text-to-image)
  * Use this when NO reference images are provided
  */
-export async function generateImage(options: GenerateImageOptions): Promise<GenerateImageResult> {
-  ensureFalConfigured();
+export async function generateImage(
+  options: GenerateImageOptions,
+): Promise<GenerateImageResult> {
   const { prompt, aspectRatio = "3:4", numImages = 1 } = options;
 
-  console.log(`[FAL_IMAGE] Text-to-image with aspect ratio ${aspectRatio}, resolution 1K`);
+  console.log(
+    `[FAL_IMAGE] Text-to-image with aspect ratio ${aspectRatio}, resolution 1K`,
+  );
 
-  const result = await fal.subscribe("fal-ai/nano-banana-pro", {
+  const result = (await fal.subscribe("fal-ai/nano-banana-pro", {
     input: {
       prompt,
       num_images: numImages,
@@ -61,12 +69,14 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
     logs: true,
     onQueueUpdate: (update) => {
       if (update.status === "IN_PROGRESS" && update.logs) {
-        update.logs.map((log: { message: string }) => log.message).forEach((msg: string) => {
-          console.log(`[FAL_IMAGE] ${msg}`);
-        });
+        update.logs
+          .map((log: { message: string }) => log.message)
+          .forEach((msg: string) => {
+            console.log(`[FAL_IMAGE] ${msg}`);
+          });
       }
     },
-  }) as { data: FalImageResponse };
+  })) as { data: FalImageResponse };
 
   if (!result.data?.images?.[0]?.url) {
     throw new Error("FAL AI did not return an image");
@@ -84,14 +94,15 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
  * The reference images guide the generation to maintain consistency
  */
 export async function generateImageWithReferences(
-  options: GenerateImageWithReferencesOptions
+  options: GenerateImageWithReferencesOptions,
 ): Promise<GenerateImageResult> {
-  ensureFalConfigured();
   const { prompt, imageUrls, aspectRatio = "3:4", numImages = 1 } = options;
 
-  console.log(`[FAL_IMAGE] Image-to-image with ${imageUrls.length} reference images, aspect ratio ${aspectRatio}, resolution 1K`);
+  console.log(
+    `[FAL_IMAGE] Image-to-image with ${imageUrls.length} reference images, aspect ratio ${aspectRatio}, resolution 1K`,
+  );
 
-  const result = await fal.subscribe("fal-ai/nano-banana-pro/edit", {
+  const result = (await fal.subscribe("fal-ai/nano-banana-pro/edit", {
     input: {
       prompt,
       image_urls: imageUrls,
@@ -104,12 +115,14 @@ export async function generateImageWithReferences(
     logs: true,
     onQueueUpdate: (update) => {
       if (update.status === "IN_PROGRESS" && update.logs) {
-        update.logs.map((log: { message: string }) => log.message).forEach((msg: string) => {
-          console.log(`[FAL_IMAGE] ${msg}`);
-        });
+        update.logs
+          .map((log: { message: string }) => log.message)
+          .forEach((msg: string) => {
+            console.log(`[FAL_IMAGE] ${msg}`);
+          });
       }
     },
-  }) as { data: FalImageResponse };
+  })) as { data: FalImageResponse };
 
   if (!result.data?.images?.[0]?.url) {
     throw new Error("FAL AI did not return an image");
@@ -128,7 +141,7 @@ export async function generateImageWithReferences(
  */
 export async function generateImageWithRetry(
   options: GenerateImageOptions & { imageUrls?: string[] },
-  maxRetries: number = 3
+  maxRetries: number = 3,
 ): Promise<GenerateImageResult> {
   let lastError: Error | null = null;
 
@@ -146,7 +159,10 @@ export async function generateImageWithRetry(
       }
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
-      console.error(`[FAL_IMAGE] Attempt ${attempt}/${maxRetries} failed:`, lastError.message);
+      console.error(
+        `[FAL_IMAGE] Attempt ${attempt}/${maxRetries} failed:`,
+        lastError.message,
+      );
 
       if (attempt < maxRetries) {
         const delay = Math.pow(2, attempt) * 1000;
