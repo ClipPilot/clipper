@@ -125,33 +125,70 @@ def detect_faces_in_frame(net, frame_path: str) -> bool:
     (h, w) = image.shape[:2]
     frame_area = w * h
 
-    blob = cv2.dnn.blobFromImage(
-        cv2.resize(image, (300, 300)),
-        1.0,
-        (300, 300),
-        (104.0, 177.0, 123.0)
-    )
+    # Multi-scale detection for better small face detection (full body shots)
+    scales_to_try = [
+        ('full_300', 300, None),  # Full frame at 300x300 (standard)
+    ]
 
-    net.setInput(blob)
-    detections = net.forward()
+    # For larger frames, try 500x500 blob for better small face detection
+    if min(h, w) >= 500:
+        scales_to_try.append(('full_500', 500, None))
 
-    for i in range(detections.shape[2]):
-        confidence = detections[0, 0, i, 2]
+    # Center crop - useful for TikTok style videos where subject is centered
+    if h > 400 and w > 400:
+        crop_h = int(h * 0.6)
+        crop_w = int(w * 0.6)
+        y_start = (h - crop_h) // 2
+        x_start = (w - crop_w) // 2
+        scales_to_try.append(('center_crop', 300, (x_start, y_start, x_start + crop_w, y_start + crop_h)))
 
-        if confidence < FACE_CONFIG['min_confidence']:
-            continue
+    # For portrait video, add upper portion crop where face usually is
+    if h > w * 1.5:
+        upper_h = int(h * 0.5)
+        scales_to_try.append(('upper_crop', 300, (0, 0, w, upper_h)))
 
-        box = detections[0, 0, i, 3:7] * [w, h, w, h]
-        (startX, startY, endX, endY) = box.astype("int")
+    for scale_name, blob_size, crop_region in scales_to_try:
+        if crop_region:
+            x1, y1, x2, y2 = crop_region
+            roi = image[y1:y2, x1:x2]
+            roi_h, roi_w = roi.shape[:2]
+            roi_area = roi_w * roi_h
+        else:
+            roi = image
+            roi_h, roi_w = h, w
+            roi_area = frame_area
 
-        face_width = endX - startX
-        face_height = endY - startY
-        face_area = face_width * face_height
-        face_size_percent = face_area / frame_area
+        blob = cv2.dnn.blobFromImage(
+            cv2.resize(roi, (blob_size, blob_size)),
+            1.0,
+            (blob_size, blob_size),
+            (104.0, 177.0, 123.0)
+        )
 
-        if (FACE_CONFIG['min_face_size_percent'] <= face_size_percent <=
-            FACE_CONFIG['max_face_size_percent']):
-            return True
+        net.setInput(blob)
+        detections = net.forward()
+
+        for i in range(detections.shape[2]):
+            confidence = detections[0, 0, i, 2]
+
+            if confidence < FACE_CONFIG['min_confidence']:
+                continue
+
+            box = detections[0, 0, i, 3:7] * [roi_w, roi_h, roi_w, roi_h]
+            (startX, startY, endX, endY) = box.astype("int")
+
+            face_width = endX - startX
+            face_height = endY - startY
+            face_area = face_width * face_height
+            face_size_percent = face_area / roi_area
+
+            # For cropped regions, allow smaller faces since we're zoomed in
+            min_size = FACE_CONFIG['min_face_size_percent']
+            if crop_region:
+                min_size = min_size * 0.5
+
+            if min_size <= face_size_percent <= FACE_CONFIG['max_face_size_percent']:
+                return True
 
     return False
 

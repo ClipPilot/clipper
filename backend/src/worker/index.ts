@@ -30,6 +30,7 @@ import { processCharacterJob } from "./processors/characterProcessor";
 import { processSceneImageJob } from "./processors/sceneImageProcessor";
 import { processScriptJob } from "./processors/scriptProcessor";
 import { processUGCVideoJob } from "./processors/ugcVideoProcessor";
+import { processKlingFaceSwapJob } from "./processors/klingFaceSwapProcessor";
 import {
   VideoProcessingJob,
   ClipVideoJob,
@@ -41,6 +42,7 @@ import {
   GenerateSceneImageJob,
   GenerateScriptJob,
   GenerateUGCVideoJob,
+  KlingFaceSwapJob,
 } from "../services/sqs.service";
 
 const sqsClient = new SQSClient({
@@ -151,6 +153,9 @@ async function processMessage(job: VideoProcessingJob, receiptHandle: string): P
         break;
       case "generate-ugc-video":
         await processUGCVideoJob(job as GenerateUGCVideoJob);
+        break;
+      case "kling-face-swap":
+        await processKlingFaceSwapJob(job as KlingFaceSwapJob);
         break;
       default:
         console.error(`Unknown job type: ${(job as any).type}`);

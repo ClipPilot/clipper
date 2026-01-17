@@ -15,7 +15,8 @@ export type JobType =
   | "generate-character"
   | "generate-scene-image"
   | "generate-script"
-  | "generate-ugc-video";
+  | "generate-ugc-video"
+  | "kling-face-swap";
 
 // Base job interface
 interface BaseJob {
@@ -204,6 +205,21 @@ export interface GenerateUGCVideoJob extends BaseJob {
   regenerateSceneId?: string;
 }
 
+export interface KlingFaceSwapJob extends BaseJob {
+  type: "kling-face-swap";
+  jobId: string;
+  imageS3Key: string;
+  chunkS3Keys: string[];
+  originalVideoS3Key?: string;
+  segments: Array<{ start: number; end: number }>;
+  videoDuration: number;
+  spliceMode: boolean;
+  spliceMetadata?: {
+    videoDuration: number;
+    segments: Array<{ start: number; end: number; type: string }>;
+  };
+}
+
 export type VideoProcessingJob =
   | ClipVideoJob
   | BatchClipVideoJob
@@ -213,7 +229,8 @@ export type VideoProcessingJob =
   | GenerateCharacterJob
   | GenerateSceneImageJob
   | GenerateScriptJob
-  | GenerateUGCVideoJob;
+  | GenerateUGCVideoJob
+  | KlingFaceSwapJob;
 
 class SQSService {
   private queueUrl: string;
@@ -481,6 +498,36 @@ class SQSService {
       voiceId: params.voiceId,
       scenes: params.scenes,
       regenerateSceneId: params.regenerateSceneId,
+      createdAt: new Date().toISOString(),
+    };
+
+    return this.sendJob(job);
+  }
+
+  async sendKlingFaceSwapJob(params: {
+    jobId: string;
+    teamId: number;
+    userId: number;
+    imageS3Key: string;
+    chunkS3Keys: string[];
+    originalVideoS3Key?: string;
+    segments: Array<{ start: number; end: number }>;
+    videoDuration: number;
+    spliceMode: boolean;
+    spliceMetadata?: KlingFaceSwapJob["spliceMetadata"];
+  }): Promise<string> {
+    const job: KlingFaceSwapJob = {
+      type: "kling-face-swap",
+      jobId: params.jobId,
+      teamId: params.teamId,
+      userId: params.userId,
+      imageS3Key: params.imageS3Key,
+      chunkS3Keys: params.chunkS3Keys,
+      originalVideoS3Key: params.originalVideoS3Key,
+      segments: params.segments,
+      videoDuration: params.videoDuration,
+      spliceMode: params.spliceMode,
+      spliceMetadata: params.spliceMetadata,
       createdAt: new Date().toISOString(),
     };
 

@@ -98,7 +98,7 @@ export function CharacterSelector({
     }
   };
 
-  const handleSavedFaceSelect = async (face: SavedFace) => {
+  const handleSavedFaceSelect = (face: SavedFace) => {
     if (!canAddMore) return;
 
     const alreadySelected = selectedCharacters.some(
@@ -106,19 +106,14 @@ export function CharacterSelector({
     );
     if (alreadySelected) return;
 
-    setLoadingCharacterId(String(face.id));
-    try {
-      const response = await fetch(face.imageUrl);
-      const blob = await response.blob();
-      const file = new File([blob], `${face.name}.jpg`, { type: blob.type });
-      const newCharacter: SelectedCharacter = { type: "saved", src: face.imageUrl, file, savedFaceId: face.id };
-      onCharactersChange([...selectedCharacters, newCharacter]);
-    } catch {
-      const newCharacter: SelectedCharacter = { type: "saved", src: face.imageUrl, savedFaceId: face.id };
-      onCharactersChange([...selectedCharacters, newCharacter]);
-    } finally {
-      setLoadingCharacterId(null);
-    }
+    // Use imageKey directly - no need to fetch the image, backend already has it in S3
+    const newCharacter: SelectedCharacter = {
+      type: "saved",
+      src: face.imageUrl,
+      savedFaceId: face.id,
+      imageKey: face.imageKey,
+    };
+    onCharactersChange([...selectedCharacters, newCharacter]);
   };
 
   const handleDeleteSavedFace = async (face: SavedFace, e: React.MouseEvent) => {

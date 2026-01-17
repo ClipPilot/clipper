@@ -3,11 +3,13 @@ import { Request, Response } from "express";
 import { db } from "../db";
 import { comfyJobs, clips, savedFaces } from "@clipper/shared-db/src/schema";
 import { s3Service } from "../services/s3.service";
-import { gpuSqsService, SwapType } from "../services/gpuSqs.service";
+import { sqsService } from "../services/sqs.service";
+import { gpuSqsService } from "../services/gpuSqs.service";
 import { cutClip, getVideoDuration } from "../services/videoEditor.service";
 import { createSceneAwareChunks } from "../services/sceneChunker.service";
 import { detectFaceSegmentsWithPadding } from "../services/faceDetection.service";
 import { emitComfyJobUpdate } from "../services/socket.service";
+import { poseGenerationService } from "../services/poseGeneration.service";
 import { getTeamUsage } from "../middleware/subscription.middleware";
 import { teamService } from "../services/team.service";
 import { canAccessUGCStudio } from "../utils/plans";
@@ -19,8 +21,12 @@ import "multer";
 import { TEMP_DIR } from "../utils/tempCleanup";
 
 const UGC_CREDIT_COST = 5;
-const CHUNK_DURATION = 10;
-const CHUNK_LEEWAY = 1; // Allow up to 1 extra second to avoid tiny leftover chunks
+const MIN_SEGMENT_DURATION = 3;
+
+const GPU_CHUNK_DURATION = 10;
+const GPU_CHUNK_LEEWAY = 1;
+const KLING_CHUNK_DURATION = 25;
+const KLING_CHUNK_LEEWAY = 5;
 
 const idempotencyCache = new Map<string, { jobId: string; expiresAt: number }>();
 const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
@@ -49,6 +55,7 @@ interface SpliceSegment {
   start: number;
   end: number;
   type: "processed" | "original";
+  chunkCount?: number;
 }
 
 function calculateSpliceSegments(
@@ -133,11 +140,9 @@ export class ComfyController {
         endTime,
         segments: segmentsRaw,
         videoDuration: videoDurationRaw,
-        swapType: swapTypeRaw,
         videoS3Key: videoS3KeyInput,
         imageS3Key: imageS3KeyInput,
       } = req.body;
-      const swapType: SwapType = swapTypeRaw === "full" ? "full" : "face";
       const videoDuration = parseFloat(videoDurationRaw) || 0;
 
       if (!teamId) {
@@ -253,28 +258,44 @@ export class ComfyController {
       await teamService.incrementTeamUsage(parseInt(teamId), UGC_CREDIT_COST);
       console.log(`[comfy] Charged ${UGC_CREDIT_COST} credits upfront to team ${teamId}`);
 
-      // Scene-aware chunking: detect scene boundaries and combine to ~10s chunks
-      // Falls back to blind 10s chunking if scene detection fails
+      const chunkDuration = KLING_CHUNK_DURATION;
+      const chunkLeeway = KLING_CHUNK_LEEWAY;
+
+      console.log(`[comfy] Routing to Kling (chunk: ${chunkDuration}s)`);
+
+      const chunkCountsPerSegment: number[] = [];
+
       for (let i = 0; i < segments.length; i++) {
         const segPath = path.join(TEMP_DIR, `${crypto.randomUUID()}_segment_${i}.mp4`);
         await cutClip(tempVideoPath, segPath, segments[i].start, segments[i].end);
         segmentPaths.push(segPath);
 
         const segmentChunks = await createSceneAwareChunks(segPath, TEMP_DIR, {
-          targetDuration: CHUNK_DURATION,
-          leeway: CHUNK_LEEWAY,
+          targetDuration: chunkDuration,
+          leeway: chunkLeeway,
         });
 
+        chunkCountsPerSegment.push(segmentChunks.length);
         chunkPaths.push(...segmentChunks);
       }
 
-      console.log(`[comfy] Split ${segments.length} segments into ${chunkPaths.length} chunks`);
+      console.log(`[comfy] Split ${segments.length} segments into ${chunkPaths.length} chunks (per segment: ${chunkCountsPerSegment.join(", ")})`);
 
       const spliceWithOriginal = req.body.spliceWithOriginal === "true" || req.body.spliceWithOriginal === true;
       const isSpliceMode = (segments.length >= 2 || spliceWithOriginal) && videoDuration > 0;
-      const spliceMetadata = isSpliceMode
-        ? { videoDuration, segments: calculateSpliceSegments(segments, videoDuration) }
-        : null;
+
+      let spliceMetadata: { videoDuration: number; segments: SpliceSegment[] } | null = null;
+      if (isSpliceMode) {
+        const spliceSegments = calculateSpliceSegments(segments, videoDuration);
+        let processedSegmentIndex = 0;
+        for (const seg of spliceSegments) {
+          if (seg.type === "processed") {
+            seg.chunkCount = chunkCountsPerSegment[processedSegmentIndex];
+            processedSegmentIndex++;
+          }
+        }
+        spliceMetadata = { videoDuration, segments: spliceSegments };
+      }
 
       const uploads: Promise<string>[] = [];
       const chunkS3Keys: string[] = [];
@@ -311,13 +332,13 @@ export class ComfyController {
           spliceMode: isSpliceMode,
           spliceMetadata: spliceMetadata || undefined,
           progress: 0,
-          progressMessage: "Waiting for GPU worker",
+          progressMessage: "Waiting for worker",
           createdAt: now,
         });
 
       console.log(`[comfy] Created job record in DB: ${jobId}`);
 
-      await gpuSqsService.sendFaceSwapJob({
+      await sqsService.sendKlingFaceSwapJob({
         jobId,
         teamId: parseInt(teamId),
         userId: req.user!.dbUserId,
@@ -328,16 +349,14 @@ export class ComfyController {
         videoDuration,
         spliceMode: isSpliceMode,
         spliceMetadata: spliceMetadata || undefined,
-        swapType,
       });
-
-      console.log(`[comfy] Sent job to GPU SQS queue: ${jobId}`);
+      console.log(`[comfy] Sent job to Kling worker queue: ${jobId}`);
 
       emitComfyJobUpdate(parseInt(teamId), {
         id: jobId,
         status: "queued",
         progress: 0,
-        progressMessage: "Waiting for GPU worker",
+        progressMessage: "Waiting for worker",
         outputUrl: null,
         errorMessage: null,
         createdAt: now.toISOString(),
@@ -626,13 +645,20 @@ export class ComfyController {
         teamId,
         segments: segmentsRaw,
         videoDuration: videoDurationRaw,
-        swapType: swapTypeRaw,
         idempotencyKey,
         spliceWithOriginal,
         autoDetect: autoDetectRaw,
+        imageKeys: imageKeysRaw,
       } = req.body;
 
       const autoDetect = autoDetectRaw === "true" || autoDetectRaw === true;
+
+      // Parse imageKeys - array where empty string means use uploaded file, otherwise use S3 key
+      const imageKeys: string[] = imageKeysRaw
+        ? typeof imageKeysRaw === "string"
+          ? JSON.parse(imageKeysRaw)
+          : imageKeysRaw
+        : [];
 
       const files = req.files as {
         video?: Express.Multer.File[];
@@ -643,8 +669,30 @@ export class ComfyController {
         return res.status(400).json({ error: "Video file is required" });
       }
 
-      if (!files?.images?.length) {
+      // Determine total jobs and build image sources
+      // imageKeys[i] = "" means use uploaded file, otherwise use the S3 key
+      const totalJobs = imageKeys.length > 0 ? imageKeys.length : files?.images?.length || 0;
+
+      if (totalJobs === 0) {
         return res.status(400).json({ error: "At least one image is required" });
+      }
+
+      // Build imageSources array: either file path or S3 key for each job
+      const uploadedFiles = files?.images || [];
+      let uploadedFileIndex = 0;
+      const imageSources: Array<{ type: "file" | "s3key"; value: string }> = [];
+
+      for (let i = 0; i < totalJobs; i++) {
+        if (imageKeys.length > 0 && imageKeys[i] && imageKeys[i] !== "") {
+          // Use existing S3 key
+          imageSources.push({ type: "s3key", value: imageKeys[i] });
+        } else if (uploadedFiles[uploadedFileIndex]) {
+          // Use uploaded file
+          imageSources.push({ type: "file", value: uploadedFiles[uploadedFileIndex].path });
+          uploadedFileIndex++;
+        } else {
+          return res.status(400).json({ error: `Missing image for job ${i + 1}` });
+        }
       }
 
       if (!teamId) {
@@ -699,10 +747,10 @@ export class ComfyController {
         });
       }
 
-      const totalCreditCost = files.images.length * UGC_CREDIT_COST;
+      const totalCreditCost = totalJobs * UGC_CREDIT_COST;
       if (usage.totalRemaining < totalCreditCost) {
         return res.status(403).json({
-          error: `Insufficient credits. ${files.images.length} face swaps require ${totalCreditCost} credits, but you have ${usage.totalRemaining} remaining.`,
+          error: `Insufficient credits. ${totalJobs} face swaps require ${totalCreditCost} credits, but you have ${usage.totalRemaining} remaining.`,
           code: "INSUFFICIENT_CREDITS",
         });
       }
@@ -724,7 +772,7 @@ export class ComfyController {
       const jobIds: string[] = [];
       const now = new Date();
 
-      for (let i = 0; i < files.images.length; i++) {
+      for (let i = 0; i < totalJobs; i++) {
         const jobId = crypto.randomUUID();
         jobIds.push(jobId);
 
@@ -768,17 +816,15 @@ export class ComfyController {
       });
 
       const videoDuration = parseFloat(videoDurationRaw) || 0;
-      const swapType: SwapType = swapTypeRaw === "full" ? "full" : "face";
 
       this.processBackgroundUpload({
         jobIds,
         teamId: parseInt(teamId),
         userId: req.user!.dbUserId,
         videoPath: files.video[0].path,
-        imagePaths: files.images.map((f) => f.path),
+        imageSources,
         segments: sortedSegments,
         videoDuration,
-        swapType,
         spliceWithOriginal: spliceWithOriginal === "true" || spliceWithOriginal === true,
         autoDetect,
       }).catch((err) => {
@@ -799,10 +845,9 @@ export class ComfyController {
     teamId: number;
     userId: number;
     videoPath: string;
-    imagePaths: string[];
+    imageSources: Array<{ type: "file" | "s3key"; value: string }>;
     segments: SegmentInput[];
     videoDuration: number;
-    swapType: SwapType;
     spliceWithOriginal: boolean;
     autoDetect: boolean;
   }) {
@@ -811,8 +856,7 @@ export class ComfyController {
       teamId,
       userId,
       videoPath,
-      imagePaths,
-      swapType,
+      imageSources,
       spliceWithOriginal,
       autoDetect,
     } = params;
@@ -873,6 +917,11 @@ export class ComfyController {
           throw new Error("No usable face segments found");
         }
 
+        const shortSegments = selectedSegments.filter((seg) => seg.end - seg.start < MIN_SEGMENT_DURATION);
+        if (shortSegments.length > 0) {
+          throw new Error(`Detected segments are too short. All face segments must be at least ${MIN_SEGMENT_DURATION} seconds long.`);
+        }
+
         segments = selectedSegments.sort((a, b) => a.start - b.start);
         console.log(`[comfy] Using ${segments.length} segments (${totalDur.toFixed(1)}s total)`);
 
@@ -890,20 +939,28 @@ export class ComfyController {
         }
       }
 
+      const chunkDuration = KLING_CHUNK_DURATION;
+      const chunkLeeway = KLING_CHUNK_LEEWAY;
+
+      console.log(`[comfy] Routing to Kling (chunk: ${chunkDuration}s)`);
+
+      const chunkCountsPerSegment: number[] = [];
+
       for (let i = 0; i < segments.length; i++) {
         const segPath = path.join(TEMP_DIR, `${crypto.randomUUID()}_segment_${i}.mp4`);
         await cutClip(videoPath, segPath, segments[i].start, segments[i].end);
         segmentPaths.push(segPath);
 
         const segmentChunks = await createSceneAwareChunks(segPath, TEMP_DIR, {
-          targetDuration: CHUNK_DURATION,
-          leeway: CHUNK_LEEWAY,
+          targetDuration: chunkDuration,
+          leeway: chunkLeeway,
         });
 
+        chunkCountsPerSegment.push(segmentChunks.length);
         chunkPaths.push(...segmentChunks);
       }
 
-      console.log(`[comfy] Split ${segments.length} segments into ${chunkPaths.length} chunks`);
+      console.log(`[comfy] Split ${segments.length} segments into ${chunkPaths.length} chunks (per segment: ${chunkCountsPerSegment.join(", ")})`);
 
       const chunkS3Keys: string[] = [];
       for (let i = 0; i < chunkPaths.length; i++) {
@@ -925,19 +982,37 @@ export class ComfyController {
         console.log(`[comfy] Uploaded original video for splice mode`);
       }
 
-      const spliceMetadata = isSpliceMode
-        ? { videoDuration, segments: calculateSpliceSegments(segments, videoDuration) }
-        : null;
+      let spliceMetadata: { videoDuration: number; segments: SpliceSegment[] } | null = null;
+      if (isSpliceMode) {
+        const spliceSegments = calculateSpliceSegments(segments, videoDuration);
+        let processedSegmentIndex = 0;
+        for (const seg of spliceSegments) {
+          if (seg.type === "processed") {
+            seg.chunkCount = chunkCountsPerSegment[processedSegmentIndex];
+            processedSegmentIndex++;
+          }
+        }
+        spliceMetadata = { videoDuration, segments: spliceSegments };
+      }
 
-      for (let i = 0; i < imagePaths.length; i++) {
+      for (let i = 0; i < imageSources.length; i++) {
         const jobId = jobIds[i];
-        const imagePath = imagePaths[i];
+        const imageSource = imageSources[i];
 
         try {
-          const imageBuffer = fs.readFileSync(imagePath);
-          const imageExt = path.extname(imagePath) || ".jpg";
-          const imageS3Key = `ugc-inputs/${teamId}/${crypto.randomUUID()}${imageExt}`;
-          await s3Service.uploadBuffer(imageBuffer, imageS3Key, "image/jpeg");
+          let imageS3Key: string;
+
+          if (imageSource.type === "s3key") {
+            // Use existing S3 key (saved face)
+            imageS3Key = imageSource.value;
+            console.log(`[comfy] Using existing S3 key for job ${i}: ${imageS3Key}`);
+          } else {
+            // Upload file to S3
+            const imageBuffer = fs.readFileSync(imageSource.value);
+            const imageExt = path.extname(imageSource.value) || ".jpg";
+            imageS3Key = `ugc-inputs/${teamId}/${crypto.randomUUID()}${imageExt}`;
+            await s3Service.uploadBuffer(imageBuffer, imageS3Key, "image/jpeg");
+          }
 
           await db
             .update(comfyJobs)
@@ -948,11 +1023,11 @@ export class ComfyController {
               originalVideoS3Key,
               spliceMode: isSpliceMode,
               spliceMetadata: spliceMetadata || undefined,
-              progressMessage: "Waiting for GPU worker",
+              progressMessage: "Waiting for worker",
             })
             .where(eq(comfyJobs.id, jobId));
 
-          await gpuSqsService.sendFaceSwapJob({
+          await sqsService.sendKlingFaceSwapJob({
             jobId,
             teamId,
             userId,
@@ -963,14 +1038,14 @@ export class ComfyController {
             videoDuration,
             spliceMode: isSpliceMode,
             spliceMetadata: spliceMetadata || undefined,
-            swapType,
           });
+          console.log(`[comfy] Job ${jobId} sent to Kling worker queue`);
 
           emitComfyJobUpdate(teamId, {
             id: jobId,
             status: "queued",
             progress: 0,
-            progressMessage: "Waiting for GPU worker",
+            progressMessage: "Waiting for worker",
             outputUrl: null,
             errorMessage: null,
             createdAt: new Date().toISOString(),
@@ -1041,8 +1116,11 @@ export class ComfyController {
       await teamService.decrementTeamUsage(teamId, totalRefund);
       console.log(`[comfy] Refunded ${totalRefund} credits for all failed jobs`);
     } finally {
-      // Cleanup temp files
-      const filesToCleanup = [videoPath, ...imagePaths, ...segmentPaths, ...chunkPaths];
+      // Cleanup temp files (only file paths, not S3 keys)
+      const imageFilePaths = imageSources
+        .filter((s) => s.type === "file")
+        .map((s) => s.value);
+      const filesToCleanup = [videoPath, ...imageFilePaths, ...segmentPaths, ...chunkPaths];
       for (const filePath of filesToCleanup) {
         if (fs.existsSync(filePath)) {
           try {
@@ -1074,6 +1152,7 @@ export class ComfyController {
         faces.map(async (face) => ({
           id: face.id,
           name: face.name,
+          imageKey: face.image_key,
           imageUrl: await s3Service.getPresignedUrl(face.image_key, 3600),
           createdAt: face.created_at,
         }))
@@ -1124,6 +1203,7 @@ export class ComfyController {
         face: {
           id: newFace.id,
           name: newFace.name,
+          imageKey: imageS3Key,
           imageUrl,
           createdAt: newFace.created_at,
         },
@@ -1169,6 +1249,78 @@ export class ComfyController {
       Sentry.captureException(error);
       return res.status(500).json({
         error: error instanceof Error ? error.message : "Failed to delete face",
+      });
+    }
+  }
+
+  async generatePose(req: AuthRequest, res: Response) {
+    try {
+      const { teamId, videoFrameBase64, characterImageKey } = req.body;
+      const file = req.file;
+
+      if (!teamId) {
+        return res.status(400).json({ error: "teamId is required" });
+      }
+
+      if (!videoFrameBase64) {
+        return res.status(400).json({ error: "videoFrameBase64 is required" });
+      }
+
+      if (!characterImageKey && !file) {
+        return res.status(400).json({ error: "Either characterImageKey or image file is required" });
+      }
+
+      const usage = await getTeamUsage(parseInt(teamId));
+      if (!usage) {
+        return res.status(404).json({ error: "Team usage stats not found" });
+      }
+
+      if (!canAccessUGCStudio(usage.plan)) {
+        return res.status(403).json({
+          error: "UGC Studio is only available on Studio, Scale, and Enterprise plans.",
+          code: "PLAN_REQUIRED",
+        });
+      }
+
+      console.log(`[comfy] Generating pose for team ${teamId}`);
+
+      // Upload video frame to S3
+      const frameBuffer = Buffer.from(
+        videoFrameBase64.replace(/^data:image\/\w+;base64,/, ""),
+        "base64"
+      );
+      const frameS3Key = `pose-generation/${teamId}/${crypto.randomUUID()}_frame.png`;
+      await s3Service.uploadBuffer(frameBuffer, frameS3Key, "image/png");
+      const videoFrameUrl = await s3Service.getPresignedUrl(frameS3Key, 3600);
+
+      // Get character image URL (either from S3 key or uploaded file)
+      let faceImageUrl: string;
+      if (characterImageKey) {
+        faceImageUrl = await s3Service.getPresignedUrl(characterImageKey, 3600);
+      } else if (file) {
+        const imageS3Key = `pose-generation/${teamId}/${crypto.randomUUID()}_face.${path.extname(file.originalname) || "jpg"}`;
+        await s3Service.uploadBuffer(file.buffer, imageS3Key, file.mimetype);
+        faceImageUrl = await s3Service.getPresignedUrl(imageS3Key, 3600);
+      } else {
+        return res.status(400).json({ error: "No character image provided" });
+      }
+
+      // Generate pose using FAL AI
+      const result = await poseGenerationService.generatePose({
+        faceImageUrl,
+        videoFrameUrl,
+      });
+
+      console.log(`[comfy] Pose generation complete for team ${teamId}`);
+
+      return res.status(200).json({
+        imageUrl: result.imageUrl,
+      });
+    } catch (error) {
+      console.error("Generate pose error:", error);
+      Sentry.captureException(error);
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to generate pose",
       });
     }
   }

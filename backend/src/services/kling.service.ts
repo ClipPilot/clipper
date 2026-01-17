@@ -2,9 +2,25 @@ import { fal } from "@fal-ai/client";
 import { config } from "../config/env";
 import { openaiClient } from "./ugcScript.service";
 import {
+  PRODUCT_NEGATIVE_PROMPT,
+  NO_TEXT_OVERLAY_DIRECTIVE,
+  PRODUCT_STABILITY_MODIFIERS,
+  GENTLE_MOTION_MODIFIERS,
+  PRO_MOTION_PROMPT,
+} from "./klingPrompts";
+import {
   generateGroundedCinematicSystemPrompt,
   generateGroundedCinematicUserPrompt,
 } from "../config/groundedPrompts";
+
+// Re-export prompts for backward compatibility
+export {
+  PRODUCT_NEGATIVE_PROMPT,
+  NO_TEXT_OVERLAY_DIRECTIVE,
+  PRODUCT_STABILITY_MODIFIERS,
+  GENTLE_MOTION_MODIFIERS,
+  PRO_MOTION_PROMPT,
+} from "./klingPrompts";
 
 // Kling prompt length limit
 export const KLING_MAX_PROMPT_LENGTH = 2500;
@@ -16,36 +32,6 @@ fal.config({
 export type ShotType = "a-roll" | "b-roll" | "mixed";
 export type KlingDuration = 5 | 10;
 export type CharacterOrientation = "image" | "video";
-
-export const PRODUCT_NEGATIVE_PROMPT =
-  "text, captions, subtitles, text overlay, floating text, title card, caption bar, subtitle bar, " +
-  "burned-in text, on-screen text, watermark, logo overlay, graphic overlay, lower third, " +
-  "any added text, like headings or captions, AI-generated captions, auto-captions, " +
-  "distortion, warping, morphing, blur, stretching, proportion change, shape shifting, " +
-  "changing phone screen, morphing phone, warped phone, bent phone, phone screen changing, " +
-  "screen content changing, different screen content, glitchy screen, transparent phone, " +
-  "phone screen on back, screen through phone, blurry phone screen, " +
-  "low quality, blurry, out of focus, extra elements, added elements";
-
-// CRITICAL: This gets appended to ALL prompts to prevent AI from adding anything extra
-export const NO_TEXT_OVERLAY_DIRECTIVE =
-  "ABSOLUTE RULES: " +
-  "1) NEVER add text, captions, subtitles, or any on-screen text - the video must have ZERO text overlays. " +
-  "2) NEVER change what is shown on any phone or device screen - screen content must stay EXACTLY the same throughout. " +
-  "3) NEVER add elements not described - generate ONLY what is explicitly written in this prompt, nothing more. " +
-  "4) Phone/device shape must stay perfectly rectangular with consistent proportions - no warping or bending. " +
-  "This is a raw video file that will have text added later - DO NOT pre-add any text.";
-
-export const PRODUCT_STABILITY_MODIFIERS =
-  "Phone and device screens must remain FROZEN and UNCHANGED throughout - exact same content from first to last frame. " +
-  "Phone shape stays perfectly rectangular, no warping, no bending, consistent bezels. " +
-  "Product shapes, labels, and proportions stay identical throughout. " +
-  "NEVER add captions, subtitles, or any text overlays to the video.";
-
-export const GENTLE_MOTION_MODIFIERS =
-  "Subtle movement only. Slow and controlled. Micro-motion only. " +
-  "Maintain exact silhouette. Keep scale consistent. " +
-  "Do not add ANY elements not explicitly described. No text. No captions.";
 
 export interface ImageToVideoOptions {
   imageUrl: string;
@@ -694,49 +680,115 @@ export async function klingProMotion(
     console.log(`[Kling Pro Motion] Prompt: ${prompt.substring(0, 100)}...`);
   }
 
-  try {
-    const input: Record<string, unknown> = {
-      image_url: imageUrl,
-      video_url: videoUrl,
-      character_orientation: characterOrientation,
-      keep_original_sound: keepOriginalSound,
-    };
+  const input: Record<string, unknown> = {
+    image_url: imageUrl,
+    video_url: videoUrl,
+    character_orientation: characterOrientation,
+    keep_original_sound: keepOriginalSound,
+  };
 
-    if (prompt) {
-      input.prompt = prompt;
+  if (prompt) {
+    input.prompt = prompt;
+  }
+
+  // Step 1: Submit the request to the queue
+  const { request_id } = await fal.queue.submit(
+    "fal-ai/kling-video/v2.6/pro/motion-control",
+    { input }
+  );
+
+  console.log(`[Kling Pro Motion] Request submitted: ${request_id}`);
+
+  // Step 2: Poll for status until complete
+  const POLL_INTERVAL = 5000; // 5 seconds between polls
+  const MAX_WAIT_TIME = 40 * 60 * 1000; // 40 minutes max (Kling can take a while for longer videos)
+  const startTime = Date.now();
+
+  while (true) {
+    const elapsed = Date.now() - startTime;
+    if (elapsed > MAX_WAIT_TIME) {
+      throw new Error(`Kling Pro Motion timed out after ${MAX_WAIT_TIME / 1000}s`);
     }
 
-    const result = await fal.subscribe(
+    // Check status with a short timeout per request
+    const status = await fal.queue.status(
       "fal-ai/kling-video/v2.6/pro/motion-control",
-      {
-        input,
-        logs: true,
-        onQueueUpdate: (update) => {
-          if (update.status === "IN_PROGRESS" && update.logs) {
-            update.logs.forEach((log) =>
-              console.log(`[Kling Pro Motion] ${log.message}`)
-            );
-          }
-        },
-      }
+      { requestId: request_id, logs: true }
     );
 
-    const data = result.data as KlingMotionControlResponse;
-
-    if (!data?.video?.url) {
-      throw new Error("No video URL in Kling Motion Control response");
+    if (status.status === "COMPLETED") {
+      console.log(`[Kling Pro Motion] Request completed after ${Math.round(elapsed / 1000)}s`);
+      break;
     }
 
-    console.log(`[Kling Pro Motion] Video generated: ${data.video.url}`);
+    // Log progress if available
+    if (status.status === "IN_PROGRESS" && status.logs) {
+      status.logs.forEach((log: { message: string }) =>
+        console.log(`[Kling Pro Motion] ${log.message}`)
+      );
+    }
 
-    return {
-      videoUrl: data.video.url,
-      requestId: result.requestId,
-    };
-  } catch (error) {
-    console.error("[Kling Pro Motion] Generation failed:", error);
-    throw error;
+    console.log(
+      `[Kling Pro Motion] Status: ${status.status} (${Math.round(elapsed / 1000)}s elapsed)`
+    );
+
+    // Wait before next poll
+    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL));
   }
+
+  // Step 3: Get the result
+  const result = await fal.queue.result(
+    "fal-ai/kling-video/v2.6/pro/motion-control",
+    { requestId: request_id }
+  );
+
+  const data = result.data as KlingMotionControlResponse;
+
+  if (!data?.video?.url) {
+    throw new Error("No video URL in Kling Motion Control response");
+  }
+
+  console.log(`[Kling Pro Motion] Video generated: ${data.video.url}`);
+
+  return {
+    videoUrl: data.video.url,
+    requestId: request_id,
+  };
+}
+
+export async function klingProMotionWithRetry(
+  options: MotionControlOptions,
+  maxRetries: number = 3
+): Promise<MotionControlResult> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await klingProMotion(options);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      const isTimeout =
+        lastError.message.includes("ETIMEDOUT") ||
+        lastError.message.includes("fetch failed") ||
+        lastError.message.includes("timeout");
+
+      console.warn(
+        `[Kling Pro Motion] Attempt ${attempt}/${maxRetries} failed:`,
+        lastError.message,
+        isTimeout ? "(network timeout)" : ""
+      );
+
+      if (attempt < maxRetries) {
+        // Longer delays for timeouts since Kling takes 3-5+ minutes per chunk
+        const baseDelay = isTimeout ? 15000 : 5000;
+        const delay = baseDelay * attempt;
+        console.log(`[Kling Pro Motion] Retrying in ${delay / 1000}s...`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+  }
+
+  throw lastError || new Error("Pro Motion generation failed after retries");
 }
 
 export const klingService = {
@@ -752,8 +804,10 @@ export const klingService = {
   shortenPromptIfNeeded,
   generateGroundedCinematicPrompt,
   klingProMotion,
+  klingProMotionWithRetry,
   PRODUCT_NEGATIVE_PROMPT,
   PRODUCT_STABILITY_MODIFIERS,
   GENTLE_MOTION_MODIFIERS,
+  PRO_MOTION_PROMPT,
   KLING_MAX_PROMPT_LENGTH,
 };
