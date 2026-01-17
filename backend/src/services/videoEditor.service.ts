@@ -363,16 +363,12 @@ export const mergeClipsGpu = async (clips: string[], outputPath: string) => {
     );
   }
 
-  const normalizedClips: string[] = [];
-  for (let i = 0; i < clips.length; i++) {
-    const normPath = clips[i].replace(/\.mp4$/, `_norm.mp4`);
-    await normalizeClip(clips[i], normPath);
-    normalizedClips.push(normPath);
-  }
-
+  // Skip individual normalization - we'll re-encode in the final merge
+  // This ensures keyframes are properly aligned across segment boundaries
+  // which fixes mobile playback issues (pausing at segment joins)
   return new Promise((resolve, reject) => {
     const listPath = outputPath + ".txt";
-    const content = normalizedClips
+    const content = clips
       .map((c) => `file '${c.replace(/'/g, "'\\''")}'`)
       .join("\n");
     fs.writeFileSync(listPath, content);
@@ -381,15 +377,25 @@ export const mergeClipsGpu = async (clips: string[], outputPath: string) => {
       .input(listPath)
       .inputOptions(["-f concat", "-safe 0"])
       .outputOptions([
-        "-c copy",
+        // Re-encode to ensure consistent keyframes across all segments
+        "-c:v libx264",
+        "-preset fast",
+        "-crf 23",
+        ...MOBILE_VIDEO_SETTINGS,
+        "-bf 0",
+        "-sc_threshold 0",
+        "-c:a aac",
+        "-b:a 128k",
+        "-ar 48000",
+        "-ac 2",
         "-fflags +genpts",
+        "-avoid_negative_ts make_zero",
         "-movflags +faststart",
         "-map_metadata", "-1",
       ])
       .save(outputPath)
       .on("end", () => {
         fs.unlinkSync(listPath);
-        normalizedClips.forEach((c) => fs.existsSync(c) && fs.unlinkSync(c));
         const finalStats = fs.statSync(outputPath);
         console.log(
           `[MERGE-GPU] Success: ${outputPath} (${(finalStats.size / 1024 / 1024).toFixed(2)}MB)`
@@ -398,7 +404,6 @@ export const mergeClipsGpu = async (clips: string[], outputPath: string) => {
       })
       .on("error", (err) => {
         console.error(`[MERGE-GPU] Failed: ${err.message}`);
-        normalizedClips.forEach((c) => fs.existsSync(c) && fs.unlinkSync(c));
         reject(err);
       });
   });
