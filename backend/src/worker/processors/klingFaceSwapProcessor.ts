@@ -36,6 +36,13 @@ interface SpliceSegmentInfo {
   end: number;
 }
 
+interface SpliceMetadataSegment {
+  start: number;
+  end: number;
+  type: "processed" | "original";
+  chunkCount?: number;
+}
+
 async function emitJobUpdate(
   teamId: number,
   job: ComfyJobUpdate
@@ -277,14 +284,14 @@ export async function processKlingFaceSwapJob(
 
       const spliceSegmentPaths: string[] = [];
       let processedIndex = 0;
+      const typedSegments = spliceMetadata.segments as SpliceMetadataSegment[];
 
-      for (let i = 0; i < spliceMetadata.segments.length; i++) {
-        const seg = spliceMetadata.segments[i];
+      for (let i = 0; i < typedSegments.length; i++) {
+        const seg = typedSegments[i];
         const segPath = path.join(outDir, `splice_seg_${i}.mp4`);
 
         if (seg.type === "processed") {
-          const duration = seg.end - seg.start;
-          const numChunks = getChunkCount(duration);
+          const numChunks = seg.chunkCount ?? getChunkCount(seg.end - seg.start);
           const chunksForSegment = processedChunkPaths.slice(
             processedIndex,
             processedIndex + numChunks
@@ -292,14 +299,15 @@ export async function processKlingFaceSwapJob(
           processedIndex += numChunks;
 
           console.log(
-            `[kling-face-swap] Splice segment ${i}: PROCESSED ${seg.start}-${seg.end}s (${duration}s) using ${numChunks} chunks`
+            `[kling-face-swap] Splice segment ${i}: PROCESSED ${seg.start}-${seg.end}s using ${numChunks} chunks (from ${seg.chunkCount !== undefined ? "metadata" : "calculation"})`
           );
 
-          if (chunksForSegment.length === 1) {
-            fs.copyFileSync(chunksForSegment[0], segPath);
-          } else {
-            await mergeClipsGpu(chunksForSegment, segPath);
+          if (chunksForSegment.length === 0) {
+            console.error(`[kling-face-swap] ERROR: No chunks available for segment ${i}! ProcessedIndex: ${processedIndex - numChunks}, TotalChunks: ${processedChunkPaths.length}`);
+            throw new Error(`No chunks available for processed segment ${i}`);
           }
+
+          await mergeClipsGpu(chunksForSegment, segPath);
         } else {
           console.log(
             `[kling-face-swap] Splice segment ${i}: ORIGINAL ${seg.start}-${seg.end}s`

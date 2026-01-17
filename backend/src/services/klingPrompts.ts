@@ -34,7 +34,6 @@ export const GENTLE_MOTION_MODIFIERS =
   "Do not add ANY elements not explicitly described. No text. No captions.";
 
 export const PRO_MOTION_PROMPT =
-  "Smooth, subtle, natural movements. No speed up, no slow motion, maintain original video speed. " +
-  "Keep motion fluid and realistic. No jerky or abrupt movements. " +
-  "Preserve natural timing and pacing from the reference video. " +
-  "No artificial acceleration or deceleration of any movements.";
+  "Smooth, natural movements matching the reference video. " +
+  "Small subtle hand movements, gentle and relaxed. " +
+  "Maintain original video speed and timing. Keep motion fluid and realistic.";

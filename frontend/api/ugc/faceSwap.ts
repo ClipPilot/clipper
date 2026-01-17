@@ -1,6 +1,6 @@
 import API_URL from "@/config/constants";
 import { apiFetch } from "@/lib/apiClient";
-import type { FaceSwapJob, SwapType } from "@/components/ugc-studio/types";
+import type { FaceSwapJob } from "@/components/ugc-studio/types";
 
 export interface CreateFaceSwapRequest {
   video: File;
@@ -8,7 +8,6 @@ export interface CreateFaceSwapRequest {
   teamId: number;
   segments: Array<{ start: number; end: number }>;
   videoDuration: number;
-  swapType: SwapType;
   spliceWithOriginal?: boolean;
 }
 
@@ -20,19 +19,26 @@ export interface GetTeamJobsResponse {
   jobs: FaceSwapJob[];
 }
 
+export interface GeneratePoseRequest {
+  teamId: number;
+  videoFrame: string; // base64 data URL
+  characterImage: File | { imageKey: string };
+}
+
+export interface GeneratePoseResponse {
+  imageUrl: string;
+}
+
 class FaceSwapAPI {
   private baseUrl = `${API_URL}/c`;
 
-  async createJob(
-    data: CreateFaceSwapRequest
-  ): Promise<CreateFaceSwapResponse> {
+  async createJob(data: CreateFaceSwapRequest): Promise<CreateFaceSwapResponse> {
     const result = await this.createMultipleJobs({
       video: data.video,
       images: [data.image],
       teamId: data.teamId,
       segments: data.segments,
       videoDuration: data.videoDuration,
-      swapType: data.swapType,
       spliceWithOriginal: data.spliceWithOriginal,
     });
 
@@ -85,24 +91,46 @@ class FaceSwapAPI {
     return response.blob();
   }
 
+  async generatePose(data: GeneratePoseRequest): Promise<GeneratePoseResponse> {
+    const { teamId, videoFrame, characterImage } = data;
+
+    const formData = new FormData();
+    formData.append("teamId", teamId.toString());
+    formData.append("videoFrameBase64", videoFrame);
+
+    if (characterImage instanceof File) {
+      formData.append("image", characterImage);
+    } else {
+      formData.append("characterImageKey", characterImage.imageKey);
+    }
+
+    console.log(`[FaceSwap] Generating pose for team ${teamId}...`);
+
+    const response = await apiFetch(`${this.baseUrl}/generate-pose`, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: "Unknown error" }));
+      throw new Error(error.error || "Failed to generate pose");
+    }
+
+    const result = await response.json();
+    console.log(`[FaceSwap] Pose generated successfully`);
+
+    return result;
+  }
+
   async createMultipleJobs(data: {
     video: File;
     images: Array<File | { imageKey: string }>;
     teamId: number;
     segments: Array<{ start: number; end: number }>;
     videoDuration: number;
-    swapType: SwapType;
     spliceWithOriginal?: boolean;
   }): Promise<{ jobIds: string[] }> {
-    const {
-      video,
-      images,
-      teamId,
-      segments,
-      videoDuration,
-      swapType,
-      spliceWithOriginal,
-    } = data;
+    const { video, images, teamId, segments, videoDuration, spliceWithOriginal } = data;
 
     if (images.length === 0) {
       throw new Error("At least one image is required");
@@ -110,18 +138,15 @@ class FaceSwapAPI {
 
     const idempotencyKey = crypto.randomUUID();
 
-    // Build FormData for server upload
     const formData = new FormData();
     formData.append("video", video);
 
-    // Separate files and imageKeys
     const imageKeys: string[] = [];
-    images.forEach((image, index) => {
+    images.forEach((image) => {
       if (image instanceof File) {
         formData.append("images", image);
-        imageKeys.push(""); // Empty string means use uploaded file
+        imageKeys.push("");
       } else {
-        // For saved faces, pass the S3 key instead
         imageKeys.push(image.imageKey);
       }
     });
@@ -130,7 +155,6 @@ class FaceSwapAPI {
     formData.append("teamId", teamId.toString());
     formData.append("segments", JSON.stringify(segments));
     formData.append("videoDuration", videoDuration.toString());
-    formData.append("swapType", swapType);
     formData.append("spliceWithOriginal", String(spliceWithOriginal ?? true));
     formData.append("idempotencyKey", idempotencyKey);
 
@@ -139,18 +163,15 @@ class FaceSwapAPI {
     const response = await apiFetch(`${this.baseUrl}/ugc-face-swap-upload`, {
       method: "POST",
       body: formData,
-      // No Content-Type header - browser sets it with boundary for multipart
     });
 
     if (!response.ok) {
-      const error = await response
-        .json()
-        .catch(() => ({ error: "Unknown error" }));
+      const error = await response.json().catch(() => ({ error: "Unknown error" }));
       throw new Error(error.error || "Failed to create jobs");
     }
 
     const result = await response.json();
-    console.log(`[FaceSwap] Server accepted ${result.jobIds.length} jobs - you can leave the page now!`);
+    console.log(`[FaceSwap] Server accepted ${result.jobIds.length} jobs`);
 
     return { jobIds: result.jobIds };
   }
@@ -168,9 +189,7 @@ class FaceSwapAPI {
     });
 
     if (!response.ok) {
-      const errorData = await response
-        .json()
-        .catch(() => ({ error: "Failed to detect faces" }));
+      const errorData = await response.json().catch(() => ({ error: "Failed to detect faces" }));
       throw new Error(errorData.error || "Failed to detect faces");
     }
 
@@ -182,10 +201,9 @@ class FaceSwapAPI {
     images: Array<File | { imageKey: string }>;
     teamId: number;
     videoDuration: number;
-    swapType: SwapType;
     spliceWithOriginal?: boolean;
   }): Promise<{ jobIds: string[] }> {
-    const { video, images, teamId, videoDuration, swapType, spliceWithOriginal } = data;
+    const { video, images, teamId, videoDuration, spliceWithOriginal } = data;
 
     if (images.length === 0) {
       throw new Error("At least one image is required");
@@ -196,14 +214,12 @@ class FaceSwapAPI {
     const formData = new FormData();
     formData.append("video", video);
 
-    // Separate files and imageKeys
     const imageKeys: string[] = [];
     images.forEach((image) => {
       if (image instanceof File) {
         formData.append("images", image);
-        imageKeys.push(""); // Empty string means use uploaded file
+        imageKeys.push("");
       } else {
-        // For saved faces, pass the S3 key instead
         imageKeys.push(image.imageKey);
       }
     });
@@ -211,7 +227,6 @@ class FaceSwapAPI {
 
     formData.append("teamId", teamId.toString());
     formData.append("videoDuration", videoDuration.toString());
-    formData.append("swapType", swapType);
     formData.append("spliceWithOriginal", String(spliceWithOriginal ?? true));
     formData.append("autoDetect", "true");
     formData.append("idempotencyKey", idempotencyKey);
@@ -235,9 +250,7 @@ class FaceSwapAPI {
         });
 
         if (!response.ok) {
-          const error = await response
-            .json()
-            .catch(() => ({ error: "Unknown error" }));
+          const error = await response.json().catch(() => ({ error: "Unknown error" }));
           const errorMsg = error.error || "Failed to create jobs";
           if (response.status >= 400 && response.status < 500) {
             throw new Error(errorMsg);
@@ -246,15 +259,17 @@ class FaceSwapAPI {
         }
 
         const result = await response.json();
-        console.log(`[FaceSwap] Server accepted ${result.jobIds.length} jobs with auto-detect - you can leave the page now!`);
+        console.log(`[FaceSwap] Server accepted ${result.jobIds.length} jobs with auto-detect`);
         return { jobIds: result.jobIds };
       } catch (err) {
         lastError = err instanceof Error ? err : new Error("Upload failed");
         console.warn(`[FaceSwap] Attempt ${attempt + 1} failed:`, lastError.message);
 
-        if (lastError.message.includes("Insufficient credits") ||
-            lastError.message.includes("PLAN_REQUIRED") ||
-            lastError.message.includes("Unauthorized")) {
+        if (
+          lastError.message.includes("Insufficient credits") ||
+          lastError.message.includes("PLAN_REQUIRED") ||
+          lastError.message.includes("Unauthorized")
+        ) {
           throw lastError;
         }
       }

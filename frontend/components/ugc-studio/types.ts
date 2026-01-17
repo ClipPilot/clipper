@@ -1,5 +1,3 @@
-export type SwapType = "face" | "full";
-
 export interface UploadedFile {
   file: File;
   preview: string;
