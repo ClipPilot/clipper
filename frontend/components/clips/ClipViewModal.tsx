@@ -171,10 +171,20 @@ export default function ClipViewModal({
     if (!clip.clipUrl || isDownloading) return;
 
     setIsDownloading(true);
-    addToast({ title: "Preparing your video for download...", color: "primary" });
+    const filename = `clip_${clip.id}.mp4`;
+
     try {
-      const filename = `clip_${clip.id}.mp4`;
-      const blob = await faceSwapAPI.downloadVideo(clip.clipUrl, filename);
+      let blob: Blob;
+
+      if (clip.source === "ugc" || clip.source === "faceswap") {
+        addToast({ title: "Preparing your video for download...", color: "primary" });
+        blob = await faceSwapAPI.downloadVideo(clip.clipUrl, filename);
+      } else {
+        const response = await fetch(clip.clipUrl);
+        if (!response.ok) throw new Error("Failed to download video");
+        blob = await response.blob();
+      }
+
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;

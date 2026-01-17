@@ -36,4 +36,5 @@ export const GENTLE_MOTION_MODIFIERS =
 export const PRO_MOTION_PROMPT =
   "Smooth, natural movements matching the reference video. " +
   "Small subtle hand movements, gentle and relaxed. " +
+  "If the person picks up or holds any item, replicate that exact same item in their hands. " +
   "Maintain original video speed and timing. Keep motion fluid and realistic.";
