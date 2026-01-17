@@ -1,9 +1,14 @@
 import { fal } from "@fal-ai/client";
 import { config } from "../config/env";
 
-fal.config({
-  credentials: config.fal.apiKey,
-});
+let falConfigured = false;
+
+function ensureFalConfigured() {
+  if (!falConfigured) {
+    fal.config({ credentials: config.fal.apiKey });
+    falConfigured = true;
+  }
+}
 
 export type AspectRatio = "21:9" | "16:9" | "3:2" | "4:3" | "5:4" | "1:1" | "4:5" | "3:4" | "2:3" | "9:16";
 
@@ -39,6 +44,7 @@ interface FalImageResponse {
  * Use this when NO reference images are provided
  */
 export async function generateImage(options: GenerateImageOptions): Promise<GenerateImageResult> {
+  ensureFalConfigured();
   const { prompt, aspectRatio = "3:4", numImages = 1 } = options;
 
   console.log(`[FAL_IMAGE] Text-to-image with aspect ratio ${aspectRatio}, resolution 1K`);
@@ -80,6 +86,7 @@ export async function generateImage(options: GenerateImageOptions): Promise<Gene
 export async function generateImageWithReferences(
   options: GenerateImageWithReferencesOptions
 ): Promise<GenerateImageResult> {
+  ensureFalConfigured();
   const { prompt, imageUrls, aspectRatio = "3:4", numImages = 1 } = options;
 
   console.log(`[FAL_IMAGE] Image-to-image with ${imageUrls.length} reference images, aspect ratio ${aspectRatio}, resolution 1K`);
