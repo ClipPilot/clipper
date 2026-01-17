@@ -14,6 +14,7 @@ import { openaiClient } from "./ugcScript.service";
 import { generateJumbledMetadataString } from "../utils/videoMetadata";
 
 const MAX_AUDIO_DURATION = 10;
+const MAX_AROLL_BEFORE_SHORTEN = 12; // If A-roll audio exceeds this, shorten dialogue instead of speeding up
 const KLING_VIDEO_DURATION = 10;
 const PARALLEL_SCENES = 2;
 const AUDIO_SAMPLE_RATE = 44100;
@@ -38,13 +39,10 @@ async function shortenDialogue(
     `[OpenAI] Shortening dialogue by ~${reductionPercent}% (${currentDurationSeconds.toFixed(1)}s -> ${targetDurationSeconds}s)`
   );
 
-  const response = await openaiClient.chat.completions.create({
-    model: "gpt-5-mini",
-    messages: [
-      {
-        role: "system",
-        content: `You are an expert UGC script editor. Your task is to shorten dialogue while preserving its impact, persuasiveness, and natural flow. Keep the same tone, style, and key selling points. Output ONLY the shortened dialogue, nothing else.`,
-      },
+  const response = await openaiClient.responses.create({
+    model: "gpt-5.2",
+    instructions: `You are an expert UGC script editor. Your task is to shorten dialogue while preserving its impact, persuasiveness, and natural flow. Keep the same tone, style, and key selling points. Output ONLY the shortened dialogue, nothing else.`,
+    input: [
       {
         role: "user",
         content: `Shorten this dialogue by approximately ${reductionPercent}% (from ${currentDurationSeconds.toFixed(1)} seconds to about ${targetDurationSeconds} seconds when spoken).
@@ -57,75 +55,42 @@ Shortened dialogue:`,
     ],
   });
 
-  const shortened = response.choices[0]?.message?.content?.trim() || dialogue;
+  const shortened = response.output_text?.trim() || dialogue;
   console.log(`[OpenAI] Shortened: "${shortened.substring(0, 80)}..."`);
   return shortened;
 }
 
 /**
- * Normalize a video clip to have consistent video and audio parameters.
- * This is CRITICAL for proper concatenation - all clips must have identical streams.
- * Uses mobile-compatible H.264 settings for smooth playback on all devices.
- */
-function normalizeClipForMerge(inputPath: string, sceneNumber: number): string {
-  const outputPath = path.join(
-    OUTPUT_DIR,
-    `normalized_${sceneNumber}_${Date.now()}.mp4`
-  );
-  const cmd = `ffmpeg -y -i "${inputPath}" \
-    ${VIDEO_ENCODE_SETTINGS} \
-    -c:a aac -ar ${AUDIO_SAMPLE_RATE} -ac ${AUDIO_CHANNELS} -b:a ${AUDIO_BITRATE} \
-    -avoid_negative_ts make_zero -fflags +genpts \
-    "${outputPath}"`;
-
-  console.log(
-    `[FFmpeg] Normalizing scene ${sceneNumber} for merge (mobile-compatible)...`
-  );
-  execSync(cmd, { stdio: "pipe" });
-
-  return outputPath;
-}
-
-/**
- * Merge multiple video clips with properly normalized audio.
- * All clips are first normalized to identical parameters, then concatenated.
+ * Merge multiple video clips with re-encoding for consistent keyframes.
+ * Re-encodes during concatenation to ensure smooth mobile playback
+ * (fixes pausing at segment boundaries caused by keyframe misalignment).
  */
 function mergeUGCClips(clips: string[], outputPath: string): void {
   console.log(`[MERGE] Merging ${clips.length} UGC clips...`);
 
-  // Step 1: Normalize all clips to consistent format
-  const normalizedPaths: string[] = [];
-  for (let i = 0; i < clips.length; i++) {
-    const normalizedPath = normalizeClipForMerge(clips[i], i + 1);
-    normalizedPaths.push(normalizedPath);
-    const duration = getMediaDuration(normalizedPath);
-    console.log(`[MERGE] Normalized clip ${i + 1}: ${duration.toFixed(2)}s`);
-  }
-
-  // Step 2: Create concat list file
+  // Create concat list file directly from input clips
+  // We'll re-encode during merge to ensure consistent keyframes
   const listPath = path.join(OUTPUT_DIR, `concat_list_${Date.now()}.txt`);
-  const listContent = normalizedPaths
+  const listContent = clips
     .map((p) => `file '${p.replace(/'/g, "'\\''")}'`)
     .join("\n");
   fs.writeFileSync(listPath, listContent);
 
-  // Step 3: Concatenate using concat demuxer with stream copy (safe because all normalized)
-  // Add jumbled metadata to prevent duplicate detection on social platforms
+  // Re-encode during concatenation to ensure consistent keyframes across all segments
+  // This fixes mobile playback issues (pausing at segment joins)
   const cmd = `ffmpeg -y -f concat -safe 0 -i "${listPath}" \
-    -c copy -movflags +faststart \
+    ${VIDEO_ENCODE_SETTINGS} \
+    -c:a aac -ar ${AUDIO_SAMPLE_RATE} -ac ${AUDIO_CHANNELS} -b:a ${AUDIO_BITRATE} \
+    -fflags +genpts -avoid_negative_ts make_zero \
+    -movflags +faststart \
     ${generateJumbledMetadataString()} \
     "${outputPath}"`;
 
-  console.log(
-    `[MERGE] Concatenating ${normalizedPaths.length} normalized clips...`
-  );
+  console.log(`[MERGE] Re-encoding ${clips.length} clips for mobile playback...`);
   execSync(cmd, { stdio: "pipe" });
 
-  // Step 4: Cleanup normalized files and list
+  // Cleanup list file
   fs.unlinkSync(listPath);
-  for (const normPath of normalizedPaths) {
-    if (fs.existsSync(normPath)) fs.unlinkSync(normPath);
-  }
 
   console.log(`[MERGE] Complete: ${outputPath}`);
 }
@@ -419,19 +384,79 @@ async function processArollScene(
     ambientSound,
   } = scene;
 
+  let currentDialogue = dialogue;
+  const MAX_SHORTEN_ATTEMPTS = 2;
+
+  // Step 1: Generate initial audio WITHOUT speed limits to check natural duration
   onProgress?.(`Scene ${sceneNumber}: Generating dialogue...`);
-  const {
-    audioPath,
-    audioKey,
-    duration: audioDuration,
-  } = await generateDialogueAudio(
+  let { audioPath, audioKey, duration: audioDuration } = await generateDialogueAudio(
     voiceId,
-    dialogue,
+    currentDialogue,
     teamId,
     scriptId,
     sceneNumber,
-    true
+    false // No speed limits yet - check natural duration first
   );
+
+  console.log(
+    `[UGC Assembly] A-Roll Scene ${sceneNumber}: Initial audio duration: ${audioDuration.toFixed(2)}s`
+  );
+
+  // Step 2: If audio > 12 seconds, shorten dialogue with AI instead of aggressive speed-up
+  for (
+    let attempt = 1;
+    attempt <= MAX_SHORTEN_ATTEMPTS && audioDuration > MAX_AROLL_BEFORE_SHORTEN;
+    attempt++
+  ) {
+    onProgress?.(`Scene ${sceneNumber}: Shortening dialogue...`);
+    console.log(
+      `[UGC Assembly] A-Roll Scene ${sceneNumber}: Audio too long (${audioDuration.toFixed(2)}s > ${MAX_AROLL_BEFORE_SHORTEN}s), shortening dialogue (attempt ${attempt})`
+    );
+
+    currentDialogue = await shortenDialogue(
+      currentDialogue,
+      MAX_AUDIO_DURATION * 0.95, // Target ~9.5s to leave room for speed boost
+      audioDuration
+    );
+
+    if (fs.existsSync(audioPath)) {
+      fs.unlinkSync(audioPath);
+    }
+
+    const result = await generateDialogueAudio(
+      voiceId,
+      currentDialogue,
+      teamId,
+      scriptId,
+      sceneNumber,
+      false // Still no speed limits
+    );
+    audioPath = result.audioPath;
+    audioKey = result.audioKey;
+    audioDuration = result.duration;
+
+    console.log(
+      `[UGC Assembly] A-Roll Scene ${sceneNumber}: Shortened audio: ${audioDuration.toFixed(2)}s (attempt ${attempt})`
+    );
+  }
+
+  // Step 3: Now apply speed limits (1.12x boost + trim to 10s if needed)
+  if (audioDuration > MAX_AUDIO_DURATION) {
+    if (fs.existsSync(audioPath)) {
+      fs.unlinkSync(audioPath);
+    }
+    const result = await generateDialogueAudio(
+      voiceId,
+      currentDialogue,
+      teamId,
+      scriptId,
+      sceneNumber,
+      true // Apply speed limits now
+    );
+    audioPath = result.audioPath;
+    audioKey = result.audioKey;
+    audioDuration = result.duration;
+  }
 
   console.log(
     `[UGC Assembly] A-Roll Scene ${sceneNumber}: Using Avatar v2 for lip-sync (audio: ${audioDuration.toFixed(2)}s)`
@@ -615,14 +640,15 @@ async function processBrollScene(
     `[UGC Assembly] B-Roll Scene ${sceneNumber}: audio ${audioDuration.toFixed(2)}s`
   );
 
+  // If audio > 12 seconds, shorten dialogue with AI instead of using overly long audio
   for (
     let attempt = 1;
-    attempt <= MAX_SHORTEN_ATTEMPTS && audioDuration > MAX_AUDIO_DURATION;
+    attempt <= MAX_SHORTEN_ATTEMPTS && audioDuration > MAX_AROLL_BEFORE_SHORTEN;
     attempt++
   ) {
     onProgress?.(`Scene ${sceneNumber}: Shortening dialogue...`);
     console.log(
-      `[UGC Assembly] B-Roll Scene ${sceneNumber}: Audio too long (${audioDuration.toFixed(2)}s > ${MAX_AUDIO_DURATION}s), shortening dialogue (attempt ${attempt})`
+      `[UGC Assembly] B-Roll Scene ${sceneNumber}: Audio too long (${audioDuration.toFixed(2)}s > ${MAX_AROLL_BEFORE_SHORTEN}s), shortening dialogue (attempt ${attempt})`
     );
 
     currentDialogue = await shortenDialogue(
@@ -652,9 +678,9 @@ async function processBrollScene(
     );
   }
 
-  if (audioDuration > MAX_AUDIO_DURATION) {
+  if (audioDuration > MAX_AROLL_BEFORE_SHORTEN) {
     console.warn(
-      `[UGC Assembly] B-Roll Scene ${sceneNumber}: Could not shorten to ${MAX_AUDIO_DURATION}s, using ${audioDuration.toFixed(2)}s`
+      `[UGC Assembly] B-Roll Scene ${sceneNumber}: Could not shorten to ${MAX_AROLL_BEFORE_SHORTEN}s, using ${audioDuration.toFixed(2)}s`
     );
   }
 

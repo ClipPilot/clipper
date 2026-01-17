@@ -321,7 +321,7 @@ export function buildKlingPrompt(
   let basePrompt: string;
 
   if (shotType === "a-roll") {
-    basePrompt = `Ensure there is no added text, captions or subtitles to the video. ${cinematicPrompt}.The person speaks naturally to camera with ${emotion} expression. Subtle, realistic lip movements - not exaggerated. Natural micro-expressions, gentle head movements, relaxed eye contact. Authentic UGC-style, conversational and relaxed. ${GENTLE_MOTION_MODIFIERS}`;
+    basePrompt = `ZERO on-screen text. No captions. No subtitles. No graphics. No overlays. ${cinematicPrompt}.The person speaks naturally to camera with ${emotion} expression. Subtle, realistic lip movements - not exaggerated. Natural micro-expressions, gentle head movements, relaxed eye contact. Authentic UGC-style, conversational and relaxed. ${GENTLE_MOTION_MODIFIERS}`;
   } else if (shotType === "b-roll") {
     basePrompt = `${cinematicPrompt}. Smooth product showcase with subtle, slow camera movement. Professional product photography style with gentle rotation or reveal. Clean background, focused lighting on product. ${PRODUCT_STABILITY_MODIFIERS} ${GENTLE_MOTION_MODIFIERS}`;
   } else {
