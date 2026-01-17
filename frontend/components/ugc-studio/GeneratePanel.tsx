@@ -15,7 +15,8 @@ interface GeneratePanelProps {
   onToggleEditor?: () => void;
   onGeneratePose?: () => void;
   isGeneratingPose?: boolean;
-  generatedPoseUrl?: string | null;
+  generatedPoses?: Map<number, { url: string; file: File }>;
+  currentPoseIndex?: number | null;
   onClearPose?: () => void;
 }
 
@@ -30,16 +31,19 @@ export function GeneratePanel({
   onToggleEditor,
   onGeneratePose,
   isGeneratingPose = false,
-  generatedPoseUrl,
+  generatedPoses = new Map(),
+  currentPoseIndex,
   onClearPose,
 }: GeneratePanelProps) {
-  const [isZoomOpen, setIsZoomOpen] = useState(false);
+  const [zoomPoseIndex, setZoomPoseIndex] = useState<number | null>(null);
 
   const hasCharacter = characterCount > 0;
   const creditCost = characterCount * 5;
-  const hasPose = !!generatedPoseUrl;
+  const posesCount = generatedPoses.size;
+  const allPosesGenerated = posesCount === characterCount && characterCount > 0;
+  const hasSomePoses = posesCount > 0;
   const poseRequired = !!onGeneratePose; // If pose feature is enabled, it's required
-  const poseReady = hasPose && !isGeneratingPose; // Pose exists and not currently regenerating
+  const poseReady = allPosesGenerated && !isGeneratingPose; // All poses exist and not currently regenerating
   const isValid = hasVideo && hasCharacter && segmentCount > 0 && totalDuration <= 50.01 && (!poseRequired || poseReady);
   const canAutoGenerate = hasVideo && hasCharacter && (!poseRequired || poseReady);
   const canGeneratePose = hasVideo && hasCharacter && !isGeneratingPose;
@@ -65,9 +69,13 @@ export function GeneratePanel({
             </div>
             {poseRequired && (
               <div className="flex items-center gap-3">
-                <div className={`w-2.5 h-2.5 rounded-full ${hasPose ? "bg-green-500" : "bg-surface-elevated"}`} />
-                <span className={`text-sm ${hasPose ? "text-text-primary" : "text-text-tertiary"}`}>
-                  {hasPose ? "Pose generated" : "Generate pose match"}
+                <div className={`w-2.5 h-2.5 rounded-full ${allPosesGenerated ? "bg-green-500" : hasSomePoses ? "bg-yellow-500" : "bg-surface-elevated"}`} />
+                <span className={`text-sm ${allPosesGenerated ? "text-text-primary" : hasSomePoses ? "text-yellow-400" : "text-text-tertiary"}`}>
+                  {allPosesGenerated
+                    ? `${posesCount} pose${posesCount > 1 ? "s" : ""} generated`
+                    : hasSomePoses
+                      ? `${posesCount}/${characterCount} poses generated`
+                      : "Generate pose match"}
                 </span>
               </div>
             )}
@@ -116,49 +124,60 @@ export function GeneratePanel({
                 <span className="text-sm font-medium text-orange-400">Pose Match</span>
               </div>
               <p className="text-xs text-text-secondary">
-                Generate a preview of your character in the video&apos;s pose for better face swap results.
+                Generate a preview of your character{characterCount > 1 ? "s" : ""} in the video&apos;s pose for better face swap results.
               </p>
 
-              {generatedPoseUrl ? (
+              {hasSomePoses ? (
                 <div className="space-y-3">
-                  <button
-                    type="button"
-                    onClick={() => !isGeneratingPose && setIsZoomOpen(true)}
-                    className={`relative w-full rounded-lg overflow-hidden border-2 transition-all ${
-                      isGeneratingPose
-                        ? "border-orange-500/30 cursor-wait"
-                        : "border-green-500/40 cursor-zoom-in hover:border-green-500/60"
-                    }`}
-                  >
-                    <Image
-                      src={generatedPoseUrl}
-                      alt="Generated pose"
-                      className={`w-full h-auto max-h-52 object-contain transition-all ${
-                        isGeneratingPose ? "opacity-50 blur-[1px]" : ""
-                      }`}
-                    />
-                    {isGeneratingPose ? (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40">
-                        <Spinner size="lg" color="warning" />
-                        <span className="text-sm text-white mt-3 font-medium">Regenerating pose...</span>
+                  {/* Pose display - horizontal scroll for multiple 9:16 images */}
+                  <div className={`flex gap-2 ${posesCount > 1 ? "overflow-x-auto pb-2 -mx-1 px-1" : "justify-center"}`}>
+                    {Array.from(generatedPoses.entries()).map(([index, pose]) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => !isGeneratingPose && setZoomPoseIndex(index)}
+                        className={`relative rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${
+                          isGeneratingPose && currentPoseIndex === index
+                            ? "border-orange-500/30 cursor-wait"
+                            : "border-green-500/40 cursor-zoom-in hover:border-green-500/60"
+                        }`}
+                        style={{ width: posesCount > 1 ? "100px" : "140px" }}
+                      >
+                        <Image
+                          src={pose.url}
+                          alt={`Generated pose ${index + 1}`}
+                          className={`w-full h-auto object-cover transition-all ${
+                            isGeneratingPose && currentPoseIndex === index ? "opacity-50 blur-[1px]" : ""
+                          }`}
+                          style={{ aspectRatio: "9/16" }}
+                        />
+                        <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-green-500 rounded-full flex items-center gap-1 shadow-lg">
+                          <span className="text-[10px] text-white font-semibold">#{index + 1}</span>
+                        </div>
+                      </button>
+                    ))}
+                    {/* Show placeholder for poses being generated */}
+                    {isGeneratingPose && currentPoseIndex !== null && !generatedPoses.has(currentPoseIndex) && (
+                      <div
+                        className="relative rounded-lg overflow-hidden border-2 border-orange-500/30 bg-surface-elevated flex-shrink-0 flex flex-col items-center justify-center"
+                        style={{ width: posesCount > 0 ? "100px" : "140px", aspectRatio: "9/16" }}
+                      >
+                        <Spinner size="md" color="warning" />
+                        <span className="text-xs text-orange-400 mt-2">#{currentPoseIndex + 1}</span>
                       </div>
-                    ) : (
-                      <>
-                        <div className="absolute top-2 left-2 px-2 py-1 bg-green-500 rounded-full flex items-center gap-1.5 shadow-lg">
-                          <Icon icon="solar:check-circle-bold" width={14} className="text-white" />
-                          <span className="text-xs text-white font-semibold">Ready</span>
-                        </div>
-                        <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/60 rounded-full flex items-center gap-1">
-                          <Icon icon="solar:magnifer-bold" width={12} className="text-white/80" />
-                          <span className="text-[10px] text-white/80">Click to zoom</span>
-                        </div>
-                      </>
                     )}
-                  </button>
-                  {!isGeneratingPose && (
+                  </div>
+
+                  {isGeneratingPose && (
+                    <p className="text-xs text-orange-400 flex items-center gap-1.5">
+                      <Spinner size="sm" color="warning" />
+                      Generating pose {(currentPoseIndex ?? 0) + 1} of {characterCount}...
+                    </p>
+                  )}
+                  {!isGeneratingPose && allPosesGenerated && (
                     <p className="text-xs text-green-400 flex items-center gap-1.5">
                       <Icon icon="solar:check-circle-bold" width={14} />
-                      This posed image will be used for face swap
+                      {posesCount > 1 ? "These posed images" : "This posed image"} will be used for face swap
                     </p>
                   )}
                   <div className="flex gap-2">
@@ -170,7 +189,7 @@ export function GeneratePanel({
                       onPress={onGeneratePose}
                       startContent={!isGeneratingPose && <Icon icon="solar:refresh-bold" width={14} />}
                     >
-                      {isGeneratingPose ? "Generating..." : "Regenerate"}
+                      {isGeneratingPose ? "Generating..." : "Regenerate All"}
                     </Button>
                     <Button
                       className="bg-surface-elevated text-text-secondary"
@@ -186,8 +205,8 @@ export function GeneratePanel({
 
                   {/* Zoom Modal */}
                   <Modal
-                    isOpen={isZoomOpen}
-                    onClose={() => setIsZoomOpen(false)}
+                    isOpen={zoomPoseIndex !== null}
+                    onClose={() => setZoomPoseIndex(null)}
                     size="3xl"
                     backdrop="blur"
                     classNames={{
@@ -198,17 +217,19 @@ export function GeneratePanel({
                     <ModalContent>
                       <ModalBody>
                         <div className="relative">
-                          <Image
-                            src={generatedPoseUrl}
-                            alt="Generated pose - zoomed"
-                            className="w-full h-auto max-h-[80vh] object-contain rounded-lg"
-                          />
+                          {zoomPoseIndex !== null && generatedPoses.get(zoomPoseIndex) && (
+                            <Image
+                              src={generatedPoses.get(zoomPoseIndex)!.url}
+                              alt={`Generated pose ${zoomPoseIndex + 1} - zoomed`}
+                              className="w-full h-auto max-h-[80vh] object-contain rounded-lg"
+                            />
+                          )}
                           <Button
                             isIconOnly
                             className="absolute top-2 right-2 bg-black/60 text-white"
                             size="sm"
                             variant="flat"
-                            onPress={() => setIsZoomOpen(false)}
+                            onPress={() => setZoomPoseIndex(null)}
                           >
                             <Icon icon="solar:close-circle-bold" width={20} />
                           </Button>
@@ -227,7 +248,11 @@ export function GeneratePanel({
                   onPress={onGeneratePose}
                   startContent={!isGeneratingPose && <Icon icon="solar:body-bold" width={16} />}
                 >
-                  {isGeneratingPose ? "Generating..." : "Generate Pose"}
+                  {isGeneratingPose
+                    ? `Generating ${(currentPoseIndex ?? 0) + 1}/${characterCount}...`
+                    : characterCount > 1
+                      ? `Generate ${characterCount} Poses`
+                      : "Generate Pose"}
                 </Button>
               )}
             </div>

@@ -13,7 +13,6 @@ import {
   generateGroundedCinematicUserPrompt,
 } from "../config/groundedPrompts";
 
-// Re-export prompts for backward compatibility
 export {
   PRODUCT_NEGATIVE_PROMPT,
   NO_TEXT_OVERLAY_DIRECTIVE,
@@ -22,7 +21,6 @@ export {
   PRO_MOTION_PROMPT,
 } from "./klingPrompts";
 
-// Kling prompt length limit
 export const KLING_MAX_PROMPT_LENGTH = 2500;
 
 fal.config({
@@ -127,14 +125,14 @@ type KlingMotionControlResponse = KlingVideoResponse;
  */
 export async function shortenPromptIfNeeded(
   prompt: string,
-  maxLength: number = KLING_MAX_PROMPT_LENGTH
+  maxLength: number = KLING_MAX_PROMPT_LENGTH,
 ): Promise<string> {
   if (prompt.length <= maxLength) {
     return prompt;
   }
 
   console.log(
-    `[Kling] Prompt too long (${prompt.length}/${maxLength}), shortening with gpt...`
+    `[Kling] Prompt too long (${prompt.length}/${maxLength}), shortening with gpt...`,
   );
 
   let currentPrompt = prompt;
@@ -174,11 +172,11 @@ Return ONLY the shortened prompt, nothing else.`;
       if (shortened && shortened.length < currentPrompt.length) {
         currentPrompt = shortened;
         console.log(
-          `[Kling] Shortened to ${currentPrompt.length} chars (attempt ${attempts})`
+          `[Kling] Shortened to ${currentPrompt.length} chars (attempt ${attempts})`,
         );
       } else {
         console.warn(
-          `[Kling] Shortening attempt ${attempts} did not reduce length`
+          `[Kling] Shortening attempt ${attempts} did not reduce length`,
         );
         break;
       }
@@ -190,7 +188,7 @@ Return ONLY the shortened prompt, nothing else.`;
 
   if (currentPrompt.length > maxLength) {
     console.warn(
-      `[Kling] Could not shorten prompt below ${maxLength}, truncating...`
+      `[Kling] Could not shorten prompt below ${maxLength}, truncating...`,
     );
     currentPrompt = currentPrompt.substring(0, maxLength - 3) + "...";
   }
@@ -207,7 +205,7 @@ Return ONLY the shortened prompt, nothing else.`;
  * This ensures the video prompt describes what the images ACTUALLY show.
  */
 export async function generateGroundedCinematicPrompt(
-  options: GroundedPromptOptions
+  options: GroundedPromptOptions,
 ): Promise<string> {
   const {
     originalCinematicPrompt,
@@ -219,7 +217,7 @@ export async function generateGroundedCinematicPrompt(
   } = options;
 
   console.log(
-    `[Kling] Generating grounded cinematic prompt for ${shotType} scene...`
+    `[Kling] Generating grounded cinematic prompt for ${shotType} scene...`,
   );
 
   const promptConfig = {
@@ -280,14 +278,14 @@ export async function generateGroundedCinematicPrompt(
     }
 
     console.log(
-      `[Kling] Grounded prompt generated (${groundedPrompt.length} chars)`
+      `[Kling] Grounded prompt generated (${groundedPrompt.length} chars)`,
     );
 
     // Apply shortening if needed to ensure it fits within Kling's limit
     const finalPrompt = await shortenPromptIfNeeded(groundedPrompt);
 
     console.log(
-      `[Kling] Grounded prompt final (${finalPrompt.length} chars): ${finalPrompt.substring(0, 200)}...`
+      `[Kling] Grounded prompt final (${finalPrompt.length} chars): ${finalPrompt.substring(0, 200)}...`,
     );
 
     return finalPrompt;
@@ -302,7 +300,7 @@ export function buildKlingPrompt(
   cinematicPrompt: string,
   shotType: ShotType,
   emotion: string,
-  action: string
+  action: string,
 ): string {
   let basePrompt: string;
 
@@ -319,7 +317,7 @@ export function buildKlingPrompt(
 }
 
 export async function generateVideo(
-  options: ImageToVideoOptions
+  options: ImageToVideoOptions,
 ): Promise<ImageToVideoResult> {
   const {
     imageUrl,
@@ -342,13 +340,13 @@ export async function generateVideo(
   const finalNegativePrompt = negativePrompt || PRODUCT_NEGATIVE_PROMPT;
 
   console.log(
-    `[Kling] Generating ${duration}s video from image (audio: ${generateAudio})`
+    `[Kling] Generating ${duration}s video from image (audio: ${generateAudio})`,
   );
   console.log(
-    `[Kling] Prompt (${finalPrompt.length} chars): ${finalPrompt.substring(0, 200)}...`
+    `[Kling] Prompt (${finalPrompt.length} chars): ${finalPrompt.substring(0, 200)}...`,
   );
   console.log(
-    `[Kling] Negative prompt (${finalNegativePrompt.length} chars): ${finalNegativePrompt.substring(0, 100)}...`
+    `[Kling] Negative prompt (${finalNegativePrompt.length} chars): ${finalNegativePrompt.substring(0, 100)}...`,
   );
   if (tailImageUrl) {
     console.log(`[Kling] Using end frame (tail image) for interpolation`);
@@ -374,7 +372,7 @@ export async function generateVideo(
             update.logs.forEach((log) => console.log(`[Kling] ${log.message}`));
           }
         },
-      }
+      },
     );
 
     const data = result.data as KlingImageToVideoResponse;
@@ -396,7 +394,7 @@ export async function generateVideo(
 }
 
 export async function applyLipsync(
-  options: LipsyncOptions
+  options: LipsyncOptions,
 ): Promise<LipsyncResult> {
   const { videoUrl, audioUrl } = options;
 
@@ -414,11 +412,11 @@ export async function applyLipsync(
         onQueueUpdate: (update) => {
           if (update.status === "IN_PROGRESS" && update.logs) {
             update.logs.forEach((log) =>
-              console.log(`[Kling Lipsync] ${log.message}`)
+              console.log(`[Kling Lipsync] ${log.message}`),
             );
           }
         },
-      }
+      },
     );
 
     const data = result.data as KlingLipsyncResponse;
@@ -441,7 +439,7 @@ export async function applyLipsync(
 
 export async function generateVideoWithRetry(
   options: ImageToVideoOptions,
-  maxRetries: number = 3
+  maxRetries: number = 3,
 ): Promise<ImageToVideoResult> {
   let lastError: Error | null = null;
 
@@ -452,7 +450,7 @@ export async function generateVideoWithRetry(
       lastError = error instanceof Error ? error : new Error(String(error));
       console.warn(
         `[Kling] Video generation attempt ${attempt}/${maxRetries} failed:`,
-        lastError.message
+        lastError.message,
       );
 
       if (attempt < maxRetries) {
@@ -468,7 +466,7 @@ export async function generateVideoWithRetry(
 
 export async function applyLipsyncWithRetry(
   options: LipsyncOptions,
-  maxRetries: number = 3
+  maxRetries: number = 3,
 ): Promise<LipsyncResult> {
   let lastError: Error | null = null;
 
@@ -479,7 +477,7 @@ export async function applyLipsyncWithRetry(
       lastError = error instanceof Error ? error : new Error(String(error));
       console.warn(
         `[Kling] Lipsync attempt ${attempt}/${maxRetries} failed:`,
-        lastError.message
+        lastError.message,
       );
 
       if (attempt < maxRetries) {
@@ -494,7 +492,7 @@ export async function applyLipsyncWithRetry(
 }
 
 export async function generateAvatar(
-  options: AvatarOptions
+  options: AvatarOptions,
 ): Promise<AvatarResult> {
   const { imageUrl, audioUrl, prompt, negativePrompt } = options;
 
@@ -509,7 +507,7 @@ export async function generateAvatar(
   console.log(`[Kling Avatar v2] Image: ${imageUrl.substring(0, 80)}...`);
   console.log(`[Kling Avatar v2] Audio: ${audioUrl.substring(0, 80)}...`);
   console.log(
-    `[Kling Avatar v2] Prompt (${finalPrompt.length} chars): ${finalPrompt.substring(0, 100)}...`
+    `[Kling Avatar v2] Prompt (${finalPrompt.length} chars): ${finalPrompt.substring(0, 100)}...`,
   );
 
   try {
@@ -523,7 +521,7 @@ export async function generateAvatar(
       onQueueUpdate: (update) => {
         if (update.status === "IN_PROGRESS" && update.logs) {
           update.logs.forEach((log) =>
-            console.log(`[Kling Avatar v2] ${log.message}`)
+            console.log(`[Kling Avatar v2] ${log.message}`),
           );
         }
       },
@@ -549,7 +547,7 @@ export async function generateAvatar(
 
 export async function generateAvatarWithRetry(
   options: AvatarOptions,
-  maxRetries: number = 3
+  maxRetries: number = 3,
 ): Promise<AvatarResult> {
   let lastError: Error | null = null;
 
@@ -560,7 +558,7 @@ export async function generateAvatarWithRetry(
       lastError = error instanceof Error ? error : new Error(String(error));
       console.warn(
         `[Kling Avatar v2] Attempt ${attempt}/${maxRetries} failed:`,
-        lastError.message
+        lastError.message,
       );
 
       if (attempt < maxRetries) {
@@ -575,14 +573,14 @@ export async function generateAvatarWithRetry(
 }
 
 export async function extendVideo(
-  options: ExtendVideoOptions
+  options: ExtendVideoOptions,
 ): Promise<ExtendVideoResult> {
   const { videoUrl, duration = 5 } = options;
 
   console.log(`[Kling O1] Extending video by ${duration}s`);
   console.log(`[Kling O1] Video URL: ${videoUrl.substring(0, 80)}...`);
   console.log(
-    `[Kling O1] Prompt: Based on @Video1, generate the next shot. keep the style of the video`
+    `[Kling O1] Prompt: Based on @Video1, generate the next shot. keep the style of the video`,
   );
 
   try {
@@ -601,11 +599,11 @@ export async function extendVideo(
         onQueueUpdate: (update) => {
           if (update.status === "IN_PROGRESS" && update.logs) {
             update.logs.forEach((log) =>
-              console.log(`[Kling O1] ${log.message}`)
+              console.log(`[Kling O1] ${log.message}`),
             );
           }
         },
-      }
+      },
     );
 
     const data = result.data as KlingExtendVideoResponse;
@@ -628,7 +626,7 @@ export async function extendVideo(
 
 export async function extendVideoWithRetry(
   options: ExtendVideoOptions,
-  maxRetries: number = 5
+  maxRetries: number = 5,
 ): Promise<ExtendVideoResult> {
   let lastError: Error | null = null;
 
@@ -645,7 +643,7 @@ export async function extendVideoWithRetry(
       console.warn(
         `[Kling O1] Extend attempt ${attempt}/${maxRetries} failed:`,
         lastError.message,
-        isTimeout ? "(network timeout)" : ""
+        isTimeout ? "(network timeout)" : "",
       );
 
       if (attempt < maxRetries) {
@@ -661,7 +659,7 @@ export async function extendVideoWithRetry(
 }
 
 export async function klingProMotion(
-  options: MotionControlOptions
+  options: MotionControlOptions,
 ): Promise<MotionControlResult> {
   const {
     imageUrl,
@@ -672,7 +670,7 @@ export async function klingProMotion(
   } = options;
 
   console.log(
-    `[Kling Pro Motion] Generating motion control video (orientation: ${characterOrientation})`
+    `[Kling Pro Motion] Generating motion control video (orientation: ${characterOrientation})`,
   );
   console.log(`[Kling Pro Motion] Image: ${imageUrl.substring(0, 80)}...`);
   console.log(`[Kling Pro Motion] Video: ${videoUrl.substring(0, 80)}...`);
@@ -694,7 +692,7 @@ export async function klingProMotion(
   // Step 1: Submit the request to the queue
   const { request_id } = await fal.queue.submit(
     "fal-ai/kling-video/v2.6/pro/motion-control",
-    { input }
+    { input },
   );
 
   console.log(`[Kling Pro Motion] Request submitted: ${request_id}`);
@@ -707,29 +705,33 @@ export async function klingProMotion(
   while (true) {
     const elapsed = Date.now() - startTime;
     if (elapsed > MAX_WAIT_TIME) {
-      throw new Error(`Kling Pro Motion timed out after ${MAX_WAIT_TIME / 1000}s`);
+      throw new Error(
+        `Kling Pro Motion timed out after ${MAX_WAIT_TIME / 1000}s`,
+      );
     }
 
     // Check status with a short timeout per request
     const status = await fal.queue.status(
       "fal-ai/kling-video/v2.6/pro/motion-control",
-      { requestId: request_id, logs: true }
+      { requestId: request_id, logs: true },
     );
 
     if (status.status === "COMPLETED") {
-      console.log(`[Kling Pro Motion] Request completed after ${Math.round(elapsed / 1000)}s`);
+      console.log(
+        `[Kling Pro Motion] Request completed after ${Math.round(elapsed / 1000)}s`,
+      );
       break;
     }
 
     // Log progress if available
     if (status.status === "IN_PROGRESS" && status.logs) {
       status.logs.forEach((log: { message: string }) =>
-        console.log(`[Kling Pro Motion] ${log.message}`)
+        console.log(`[Kling Pro Motion] ${log.message}`),
       );
     }
 
     console.log(
-      `[Kling Pro Motion] Status: ${status.status} (${Math.round(elapsed / 1000)}s elapsed)`
+      `[Kling Pro Motion] Status: ${status.status} (${Math.round(elapsed / 1000)}s elapsed)`,
     );
 
     // Wait before next poll
@@ -739,7 +741,7 @@ export async function klingProMotion(
   // Step 3: Get the result
   const result = await fal.queue.result(
     "fal-ai/kling-video/v2.6/pro/motion-control",
-    { requestId: request_id }
+    { requestId: request_id },
   );
 
   const data = result.data as KlingMotionControlResponse;
@@ -758,7 +760,7 @@ export async function klingProMotion(
 
 export async function klingProMotionWithRetry(
   options: MotionControlOptions,
-  maxRetries: number = 3
+  maxRetries: number = 3,
 ): Promise<MotionControlResult> {
   let lastError: Error | null = null;
 
@@ -775,7 +777,7 @@ export async function klingProMotionWithRetry(
       console.warn(
         `[Kling Pro Motion] Attempt ${attempt}/${maxRetries} failed:`,
         lastError.message,
-        isTimeout ? "(network timeout)" : ""
+        isTimeout ? "(network timeout)" : "",
       );
 
       if (attempt < maxRetries) {

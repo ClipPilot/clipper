@@ -9,7 +9,8 @@ import { cutClip, getVideoDuration } from "../services/videoEditor.service";
 import { createSceneAwareChunks } from "../services/sceneChunker.service";
 import { detectFaceSegmentsWithPadding } from "../services/faceDetection.service";
 import { emitComfyJobUpdate } from "../services/socket.service";
-import { poseGenerationService } from "../services/poseGeneration.service";
+import { falImageService } from "../services/falImage.service";
+import { POSE_GENERATION_PROMPT } from "../config/ugcPrompts";
 import { getTeamUsage } from "../middleware/subscription.middleware";
 import { teamService } from "../services/team.service";
 import { canAccessUGCStudio } from "../utils/plans";
@@ -1305,10 +1306,13 @@ export class ComfyController {
         return res.status(400).json({ error: "No character image provided" });
       }
 
-      // Generate pose using FAL AI
-      const result = await poseGenerationService.generatePose({
-        faceImageUrl,
-        videoFrameUrl,
+      // Generate pose using FAL AI (character first, pose reference second)
+      console.log(`[comfy] Generating pose with nano-banana-pro - character first, pose reference second`);
+      const result = await falImageService.generateImageWithReferences({
+        prompt: POSE_GENERATION_PROMPT,
+        imageUrls: [faceImageUrl, videoFrameUrl],
+        aspectRatio: "auto",
+        numImages: 1,
       });
 
       console.log(`[comfy] Pose generation complete for team ${teamId}`);

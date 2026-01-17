@@ -47,16 +47,21 @@ function FaceSwapContent({
   const [segments, setSegments] = useState<VideoSegment[]>([]);
   const [showEditor, setShowEditor] = useState(false);
   const [isGeneratingPose, setIsGeneratingPose] = useState(false);
-  const [generatedPoseUrl, setGeneratedPoseUrl] = useState<string | null>(null);
-  const [generatedPoseFile, setGeneratedPoseFile] = useState<File | null>(null);
+  const [currentPoseIndex, setCurrentPoseIndex] = useState<number | null>(null);
+  // Track poses per character - indexed by character position
+  const [generatedPoses, setGeneratedPoses] = useState<
+    Map<number, { url: string; file: File }>
+  >(new Map());
   const faceSwapsSectionRef = useRef<MyFaceSwapsSectionRef>(null);
 
   const getCharacterImages = (): Array<File | { imageKey: string }> => {
     return selectedCharacters
       .filter((c) => c.file || c.imageKey)
       .map((c, index) => {
-        if (index === 0 && generatedPoseFile) {
-          return generatedPoseFile;
+        // Use generated pose if available for this character
+        const pose = generatedPoses.get(index);
+        if (pose) {
+          return pose.file;
         }
         if (c.imageKey) {
           return { imageKey: c.imageKey };
@@ -77,16 +82,16 @@ function FaceSwapContent({
   ) => {
     setVideo(newVideo);
     setVideoDuration(duration);
-    // Clear pose when video changes
-    setGeneratedPoseUrl(null);
-    setGeneratedPoseFile(null);
+    // Clear poses when video changes
+    setGeneratedPoses(new Map());
+    setCurrentPoseIndex(null);
   };
 
   const handleCharactersChange = (characters: SelectedCharacter[]) => {
     setSelectedCharacters(characters);
-    // Clear pose when characters change
-    setGeneratedPoseUrl(null);
-    setGeneratedPoseFile(null);
+    // Clear poses when characters change
+    setGeneratedPoses(new Map());
+    setCurrentPoseIndex(null);
   };
 
   const handleGenerate = async () => {
@@ -120,8 +125,8 @@ function FaceSwapContent({
     setSelectedCharacters([]);
     setVideoDuration(0);
     setSegments([]);
-    setGeneratedPoseUrl(null);
-    setGeneratedPoseFile(null);
+    setGeneratedPoses(new Map());
+    setCurrentPoseIndex(null);
 
     try {
       const result = await faceSwapAPI.createMultipleJobs({
@@ -191,8 +196,8 @@ function FaceSwapContent({
     setSelectedCharacters([]);
     setVideoDuration(0);
     setSegments([]);
-    setGeneratedPoseUrl(null);
-    setGeneratedPoseFile(null);
+    setGeneratedPoses(new Map());
+    setCurrentPoseIndex(null);
 
     try {
       const result = await faceSwapAPI.createMultipleJobsAutoDetect({
@@ -229,7 +234,7 @@ function FaceSwapContent({
         color: "danger",
       });
     }
-  }, [video, selectedCharacters, selectedTeam?.id, videoDuration, generatedPoseFile]);
+  }, [video, selectedCharacters, selectedTeam?.id, videoDuration, generatedPoses]);
 
   const handleGeneratePose = useCallback(async () => {
     if (!video?.preview || selectedCharacters.length === 0 || !selectedTeam?.id) {
@@ -237,37 +242,46 @@ function FaceSwapContent({
     }
 
     setIsGeneratingPose(true);
+
     try {
-      // Extract first frame from video
+      // Extract first frame from video once
       const frameDataUrl = await extractFirstFrame(video.preview);
+      const newPoses = new Map(generatedPoses);
 
-      // Get the first selected character
-      const character = selectedCharacters[0];
-      const characterImage = character.imageKey
-        ? { imageKey: character.imageKey }
-        : character.file!;
+      // Generate pose for each selected character
+      for (let i = 0; i < selectedCharacters.length; i++) {
+        const character = selectedCharacters[i];
+        if (!character.file && !character.imageKey) continue;
 
-      // Call API
-      const result = await faceSwapAPI.generatePose({
-        teamId: selectedTeam.id,
-        videoFrame: frameDataUrl,
-        characterImage,
-      });
+        setCurrentPoseIndex(i);
 
-      // Fetch the generated image and store as File for face swap
-      const response = await fetch(result.imageUrl);
-      if (!response.ok) {
-        throw new Error("Failed to download generated pose image");
+        const characterImage = character.imageKey
+          ? { imageKey: character.imageKey }
+          : character.file!;
+
+        // Call API for this character
+        const result = await faceSwapAPI.generatePose({
+          teamId: selectedTeam.id,
+          videoFrame: frameDataUrl,
+          characterImage,
+        });
+
+        // Fetch the generated image and store as File for face swap
+        const response = await fetch(result.imageUrl);
+        if (!response.ok) {
+          throw new Error(`Failed to download generated pose image for character ${i + 1}`);
+        }
+        const blob = await response.blob();
+        const file = new File([blob], `posed-character-${i}.png`, { type: "image/png" });
+
+        newPoses.set(i, { url: result.imageUrl, file });
+        setGeneratedPoses(new Map(newPoses));
       }
-      const blob = await response.blob();
-      const file = new File([blob], "posed-character.png", { type: "image/png" });
 
-      setGeneratedPoseUrl(result.imageUrl);
-      setGeneratedPoseFile(file);
-
+      setCurrentPoseIndex(null);
       addToast({
-        title: "Pose generated!",
-        description: "This pose will be used when you generate the face swap",
+        title: `${selectedCharacters.length} pose${selectedCharacters.length > 1 ? "s" : ""} generated!`,
+        description: "These poses will be used when you generate the face swap",
         color: "success",
       });
     } catch (error) {
@@ -279,12 +293,13 @@ function FaceSwapContent({
       });
     } finally {
       setIsGeneratingPose(false);
+      setCurrentPoseIndex(null);
     }
-  }, [video, selectedCharacters, selectedTeam?.id]);
+  }, [video, selectedCharacters, selectedTeam?.id, generatedPoses]);
 
   const handleClearPose = useCallback(() => {
-    setGeneratedPoseUrl(null);
-    setGeneratedPoseFile(null);
+    setGeneratedPoses(new Map());
+    setCurrentPoseIndex(null);
   }, []);
 
   return (
@@ -350,7 +365,8 @@ function FaceSwapContent({
               onToggleEditor={() => setShowEditor(false)}
               onGeneratePose={handleGeneratePose}
               isGeneratingPose={isGeneratingPose}
-              generatedPoseUrl={generatedPoseUrl}
+              generatedPoses={generatedPoses}
+              currentPoseIndex={currentPoseIndex}
               onClearPose={handleClearPose}
             />
           </div>
