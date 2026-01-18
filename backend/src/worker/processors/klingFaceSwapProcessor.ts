@@ -194,7 +194,7 @@ export async function processKlingFaceSwapJob(
       finishedAt: null,
     });
 
-    await updateProgress(jobId, teamId, 10, "Downloading files from S3");
+    await updateProgress(jobId, teamId, 10, "Downloading files.");
     await s3Service.downloadFile(imageS3Key, localImagePath);
     console.log(`[kling-face-swap] Downloaded reference image`);
 
@@ -212,7 +212,7 @@ export async function processKlingFaceSwapJob(
       `[kling-face-swap] Downloaded ${chunkLocalPaths.length} chunks`,
     );
 
-    await updateProgress(jobId, teamId, 15, `Generating pose reference image`);
+    await updateProgress(jobId, teamId, 15, `Generating`);
 
     const frameOutputPath = path.join(outDir, `frame_${Date.now()}.jpg`);
     await extractFirstFrame(chunkLocalPaths[0], frameOutputPath);
@@ -222,15 +222,12 @@ export async function processKlingFaceSwapJob(
     await s3Service.uploadFile(frameOutputPath, frameS3Key, "image/jpeg");
     const frameUrl = await s3Service.getPresignedUrl(frameS3Key, 3600);
     const faceImageUrl = await s3Service.getPresignedUrl(imageS3Key, 3600);
-
-    console.log(`[kling-face-swap] Generating pose image with FAL AI...`);
     const poseResult = await falImageService.generateImageWithReferences({
       prompt: POSE_GENERATION_PROMPT,
       imageUrls: [faceImageUrl, frameUrl],
       aspectRatio: "auto",
       numImages: 1,
     });
-    console.log(`[kling-face-swap] Pose image generated successfully`);
 
     const poseImagePath = path.join(outDir, `pose_${Date.now()}.png`);
     const poseResponse = await fetch(poseResult.imageUrl);
@@ -244,12 +241,7 @@ export async function processKlingFaceSwapJob(
 
     await s3Service.deleteObject(frameS3Key).catch(() => {});
 
-    await updateProgress(
-      jobId,
-      teamId,
-      20,
-      `Processing ${chunkLocalPaths.length} segments`,
-    );
+    await updateProgress(jobId, teamId, 20, `Processing video`);
 
     const chunkPromises = chunkLocalPaths.map(async (chunkPath, i) => {
       const tempChunkKey = `temp-kling/${teamId}/${jobId}/chunk_${i}_${Date.now()}.mp4`;
@@ -294,7 +286,7 @@ export async function processKlingFaceSwapJob(
     await s3Service.deleteObject(poseS3Key).catch(() => {});
 
     console.log(`[kling-face-swap] Stitching final video...`);
-    await updateProgress(jobId, teamId, 85, "Stitching video segments");
+    await updateProgress(jobId, teamId, 85, "Combining");
 
     let finalOutputPath = path.join(outDir, `final_${Date.now()}.mp4`);
     await mergeClipsGpu(processedChunkPaths, finalOutputPath);
@@ -306,12 +298,7 @@ export async function processKlingFaceSwapJob(
       console.log(
         `[kling-face-swap] Splice mode enabled, assembling full video...`,
       );
-      await updateProgress(
-        jobId,
-        teamId,
-        90,
-        "Assembling final video with splice",
-      );
+      await updateProgress(jobId, teamId, 90, "Assembling final video");
 
       const originalPath = path.join(outDir, `original_${Date.now()}.mp4`);
       await s3Service.downloadFile(originalVideoS3Key, originalPath);
@@ -387,7 +374,7 @@ export async function processKlingFaceSwapJob(
     }
 
     console.log(`[kling-face-swap] Uploading final video to S3...`);
-    await updateProgress(jobId, teamId, 95, "Uploading final video");
+    await updateProgress(jobId, teamId, 95, "Uploading.");
 
     const finalBuffer = fs.readFileSync(finalOutputPath);
     const s3Key = `comfy-outputs/${teamId}/${jobId}/final.mp4`;
