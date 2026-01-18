@@ -5,7 +5,12 @@ import { requireAuth } from "../middleware/auth.middleware";
 import { faceSwapUpload } from "../config/multer";
 
 const router = Router();
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fieldSize: 50 * 1024 * 1024, // 50MB max for field values (needed for base64 encoded images)
+  },
+});
 
 const optionalMulter = upload.fields([
   { name: "image", maxCount: 1 },
