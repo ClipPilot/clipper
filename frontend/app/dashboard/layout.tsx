@@ -164,10 +164,11 @@ export default function DashboardLayout({
 
   // Use startsWith for nested routes (e.g., /dashboard/ugc-studio/face-swap should highlight ugc-studio)
   // Sort by href length descending to match most specific route first
+  // Return empty string for pages not in sidebar (e.g., referrals, usage) so nothing is highlighted
   const currentKey =
     [...sidebarItems]
       .sort((a, b) => (b.href?.length || 0) - (a.href?.length || 0))
-      .find((item) => item.href && pathname.startsWith(item.href))?.key || "home";
+      .find((item) => item.href && pathname.startsWith(item.href))?.key || "";
 
   return (
     <UsageStatsProvider>

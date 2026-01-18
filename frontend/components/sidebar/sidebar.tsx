@@ -88,9 +88,8 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
           <Listbox
             ref={ref}
             aria-label="Navigation"
-            selectedKeys={[selected] as unknown as Selection}
+            selectedKeys={selected ? [selected] as unknown as Selection : []}
             selectionMode="single"
-            disallowEmptySelection
             variant="flat"
             onSelectionChange={(keys) => {
               const key = Array.from(keys)[0];

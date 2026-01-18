@@ -6,7 +6,8 @@ const options: swaggerJsdoc.Options = {
     info: {
       title: "AI Video Clipper API",
       version: "1.0.0",
-      description: "API for automatically generating short-form video clips from long-form content using AI",
+      description:
+        "API for automatically generating short-form video clips from long-form content using AI",
     },
     servers: [
       {
@@ -207,15 +208,15 @@ const options: swaggerJsdoc.Options = {
           properties: {
             clipsCreated: {
               type: "integer",
-              description: "Number of clips created this period",
+              description: "Number of credits used this period",
             },
             limit: {
               type: "integer",
-              description: "Maximum clips allowed per period",
+              description: "Maximum credits allowed per period",
             },
             remaining: {
               type: "integer",
-              description: "Remaining clips this period",
+              description: "Remaining credits this period",
             },
             resetsDate: {
               type: "string",
@@ -416,7 +417,7 @@ const options: swaggerJsdoc.Options = {
             },
             clips_created: {
               type: "integer",
-              description: "Clips created this period",
+              description: "Credits Used this period",
             },
             clips_limit: {
               type: "integer",
@@ -453,7 +454,12 @@ const options: swaggerJsdoc.Options = {
         },
         EnterpriseSetupRequest: {
           type: "object",
-          required: ["teamId", "clipLimit", "monthlyPriceCents", "customerEmail"],
+          required: [
+            "teamId",
+            "clipLimit",
+            "monthlyPriceCents",
+            "customerEmail",
+          ],
           properties: {
             teamId: {
               type: "string",

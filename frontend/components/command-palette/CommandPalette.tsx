@@ -182,13 +182,17 @@ export function CommandPalette() {
             className="fixed inset-0 bg-black/60 backdrop-blur-md"
             onClick={handleClose}
           />
-          <div className="fixed inset-0 flex items-start justify-center pt-[15vh] px-4">
+          <div
+            className="fixed inset-0 flex items-start justify-center pt-[15vh] px-4"
+            onClick={handleClose}
+          >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: -10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: -10 }}
               transition={{ duration: 0.15, ease: "easeOut" }}
               className="w-full max-w-2xl"
+              onClick={(e) => e.stopPropagation()}
             >
               <Cmdk
                 className="bg-surface-base/95 backdrop-blur-xl border border-border-accent rounded-2xl shadow-2xl overflow-hidden"
