@@ -52,10 +52,19 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
     if (!clip.clipUrl || isDownloading) return;
 
     setIsDownloading(true);
-    addToast({ title: "Preparing your video for download...", color: "primary" });
     try {
       const filename = `${clip.title || `clip-${clip.id}`}.mp4`;
-      const blob = await faceSwapAPI.downloadVideo(clip.clipUrl, filename);
+      let blob: Blob;
+      const isFaceSwap = clip.clip_metadata?.type === "face-swap";
+
+      if (isFaceSwap) {
+        blob = await faceSwapAPI.downloadVideo(clip.clipUrl, filename);
+      } else {
+        const response = await fetch(clip.clipUrl);
+        if (!response.ok) throw new Error("Failed to download video");
+        blob = await response.blob();
+      }
+
       const blobUrl = URL.createObjectURL(blob);
 
       const link = document.createElement("a");
@@ -68,6 +77,11 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
       URL.revokeObjectURL(blobUrl);
     } catch (error) {
       console.error("Failed to download clip:", error);
+      addToast({
+        title: "Download failed",
+        description: "Failed to download the video. Please try again.",
+        color: "danger",
+      });
     } finally {
       setIsDownloading(false);
     }

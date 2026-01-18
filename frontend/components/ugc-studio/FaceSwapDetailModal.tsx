@@ -43,8 +43,8 @@ export function FaceSwapDetailModal({
   onDelete,
   onTitleUpdate,
 }: FaceSwapDetailModalProps) {
-  const [isDownloading, setIsDownloading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [showSegments, setShowSegments] = useState(false);
   const [activeSegmentIndex, setActiveSegmentIndex] = useState<number | null>(
     null
@@ -100,15 +100,14 @@ export function FaceSwapDetailModal({
     if (!job?.outputUrl || isDownloading) return;
 
     setIsDownloading(true);
-    addToast({ title: "Preparing your video for download...", color: "primary" });
     try {
-      const filename = `face-swap-${job.id}.mp4`;
-      const blob = await faceSwapAPI.downloadVideo(job.outputUrl, filename);
+      const response = await fetch(job.outputUrl);
+      const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
 
       const link = document.createElement("a");
       link.href = blobUrl;
-      link.download = filename;
+      link.download = `face-swap-${job.id}.mp4`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -451,9 +450,7 @@ export function FaceSwapDetailModal({
                   onPress={handleDownload}
                   isLoading={isDownloading}
                   startContent={
-                    !isDownloading && (
-                      <Icon icon="solar:download-bold" width={18} />
-                    )
+                    !isDownloading && <Icon icon="solar:download-bold" width={18} />
                   }
                 >
                   {isDownloading ? "Downloading..." : "Download Video"}

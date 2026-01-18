@@ -19,16 +19,6 @@ export interface GetTeamJobsResponse {
   jobs: FaceSwapJob[];
 }
 
-export interface GeneratePoseRequest {
-  teamId: number;
-  videoFrame: string; // base64 data URL
-  characterImage: File | { imageKey: string };
-}
-
-export interface GeneratePoseResponse {
-  imageUrl: string;
-}
-
 class FaceSwapAPI {
   private baseUrl = `${API_URL}/c`;
 
@@ -89,37 +79,6 @@ class FaceSwapAPI {
     }
 
     return response.blob();
-  }
-
-  async generatePose(data: GeneratePoseRequest): Promise<GeneratePoseResponse> {
-    const { teamId, videoFrame, characterImage } = data;
-
-    const formData = new FormData();
-    formData.append("teamId", teamId.toString());
-    formData.append("videoFrameBase64", videoFrame);
-
-    if (characterImage instanceof File) {
-      formData.append("image", characterImage);
-    } else {
-      formData.append("characterImageKey", characterImage.imageKey);
-    }
-
-    console.log(`[FaceSwap] Generating pose for team ${teamId}...`);
-
-    const response = await apiFetch(`${this.baseUrl}/generate-pose`, {
-      method: "POST",
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: "Unknown error" }));
-      throw new Error(error.error || "Failed to generate pose");
-    }
-
-    const result = await response.json();
-    console.log(`[FaceSwap] Pose generated successfully`);
-
-    return result;
   }
 
   async createMultipleJobs(data: {

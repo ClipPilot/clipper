@@ -175,9 +175,9 @@ export default function ClipViewModal({
 
     try {
       let blob: Blob;
+      const isFaceSwap = clip.clip_metadata?.type === "face-swap";
 
-      if (clip.source === "ugc" || clip.source === "faceswap") {
-        addToast({ title: "Preparing your video for download...", color: "primary" });
+      if (isFaceSwap) {
         blob = await faceSwapAPI.downloadVideo(clip.clipUrl, filename);
       } else {
         const response = await fetch(clip.clipUrl);
@@ -195,6 +195,11 @@ export default function ClipViewModal({
       document.body.removeChild(a);
     } catch (error) {
       console.error("Download failed:", error);
+      addToast({
+        title: "Download failed",
+        description: "Failed to download the video. Please try again.",
+        color: "danger",
+      });
     } finally {
       setIsDownloading(false);
     }

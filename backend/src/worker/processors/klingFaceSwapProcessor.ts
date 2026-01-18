@@ -12,7 +12,7 @@ import { eq } from "drizzle-orm";
 import { KlingFaceSwapJob } from "../../services/sqs.service";
 import { s3Service } from "../../services/s3.service";
 import { klingProMotionWithRetry, PRO_MOTION_PROMPT } from "../../services/kling.service";
-import { cutClip, mergeClipsGpu } from "../../services/videoEditor.service";
+import { cutClip, mergeClipsGpu, extractFirstFrame } from "../../services/videoEditor.service";
 import { ComfyJobUpdate } from "../../services/socket.service";
 import { teamService } from "../../services/team.service";
 import { emailNotiService } from "../../services/emailNoti.service";
@@ -21,6 +21,8 @@ import {
   convertWordsToCaptionEntries,
   generateSrtFromCaptions,
 } from "../../services/captions.service";
+import { falImageService } from "../../services/falImage.service";
+import { POSE_GENERATION_PROMPT } from "../../config/ugcPrompts";
 
 const API_INTERNAL_URL =
   process.env.API_INTERNAL_URL || "http://localhost:3001";
@@ -207,10 +209,39 @@ export async function processKlingFaceSwapJob(
       jobId,
       teamId,
       15,
-      `Processing ${chunkLocalPaths.length} video segments`
+      `Generating pose reference image`
     );
 
-    const imageUrl = await s3Service.getPresignedUrl(imageS3Key, 3600);
+    const frameOutputPath = path.join(outDir, `frame_${Date.now()}.jpg`);
+    await extractFirstFrame(chunkLocalPaths[0], frameOutputPath);
+    console.log(`[kling-face-swap] Extracted first frame from video`);
+
+    const frameS3Key = `temp-kling/${teamId}/${jobId}/frame_${Date.now()}.jpg`;
+    await s3Service.uploadFile(frameOutputPath, frameS3Key, "image/jpeg");
+    const frameUrl = await s3Service.getPresignedUrl(frameS3Key, 3600);
+    const faceImageUrl = await s3Service.getPresignedUrl(imageS3Key, 3600);
+
+    console.log(`[kling-face-swap] Generating pose image with FAL AI...`);
+    const poseResult = await falImageService.generateImageWithReferences({
+      prompt: POSE_GENERATION_PROMPT,
+      imageUrls: [faceImageUrl, frameUrl],
+      aspectRatio: "auto",
+      numImages: 1,
+    });
+    console.log(`[kling-face-swap] Pose image generated successfully`);
+
+    const poseImagePath = path.join(outDir, `pose_${Date.now()}.png`);
+    const poseResponse = await fetch(poseResult.imageUrl);
+    const poseBuffer = Buffer.from(await poseResponse.arrayBuffer());
+    fs.writeFileSync(poseImagePath, poseBuffer);
+
+    const poseS3Key = `temp-kling/${teamId}/${jobId}/pose_${Date.now()}.png`;
+    await s3Service.uploadBuffer(poseBuffer, poseS3Key, "image/png");
+    const imageUrl = await s3Service.getPresignedUrl(poseS3Key, 3600);
+    console.log(`[kling-face-swap] Uploaded pose image to S3`);
+
+    await s3Service.deleteObject(frameS3Key).catch(() => {});
+
     await updateProgress(
       jobId,
       teamId,
@@ -257,6 +288,8 @@ export async function processKlingFaceSwapJob(
     console.log(
       `[kling-face-swap] All ${processedChunkPaths.length} chunks processed successfully`
     );
+
+    await s3Service.deleteObject(poseS3Key).catch(() => {});
 
     console.log(`[kling-face-swap] Stitching final video...`);
     await updateProgress(jobId, teamId, 85, "Stitching video segments");
