@@ -23,6 +23,7 @@ FACE_CONFIG = {
     'merge_gap': 0.3,
     'padding': 0.0,  # No padding - edge refinement provides precise boundaries
     'max_workers': 6,
+    'frame_offset': 2,  # Number of frames to offset start (earlier) and end (later)
 }
 
 FRAME_ACCURATE_CONFIG = {
@@ -35,6 +36,7 @@ FRAME_ACCURATE_CONFIG = {
     'merge_gap': 0.15,
     'padding': 0.0,
     'max_workers': 8,
+    'frame_offset': 2,  # Number of frames to offset start (earlier) and end (later)
 }
 
 PROTOTXT_URL = "https://raw.githubusercontent.com/opencv/opencv/master/samples/dnn/face_detector/deploy.prototxt"
@@ -451,6 +453,36 @@ def validate_segment_starts(
     return validated
 
 
+def apply_frame_offset(
+    segments: List[Dict[str, float]],
+    video_duration: float,
+    native_fps: float,
+    frame_offset: int = 2
+) -> List[Dict[str, float]]:
+    """
+    Apply a frame offset to segment boundaries.
+    Subtracts frames from start (earlier) and adds frames to end (later).
+    This provides a small buffer around detected face segments.
+    """
+    if not segments or frame_offset <= 0:
+        return segments
+
+    time_offset = frame_offset / native_fps
+    print(f"[FRAME-OFFSET] Applying {frame_offset} frame offset ({time_offset:.4f}s at {native_fps} FPS)")
+
+    offset_segments = []
+    for seg in segments:
+        new_start = max(0, seg['start'] - time_offset)
+        new_end = min(video_duration, seg['end'] + time_offset)
+        offset_segments.append({
+            'start': round(new_start, 3),
+            'end': round(new_end, 3)
+        })
+
+    print(f"[FRAME-OFFSET] Applied offset to {len(offset_segments)} segments")
+    return offset_segments
+
+
 def pad_segments(
     segments: List[Dict[str, float]],
     video_duration: float,
@@ -669,10 +701,19 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 native_fps
             )
 
-            log_remaining_time("Validation complete - padding segments")
+            log_remaining_time("Validation complete - applying frame offset")
+
+            offset_segments = apply_frame_offset(
+                validated_segments,
+                video_duration,
+                native_fps,
+                config.get('frame_offset', 2)
+            )
+
+            log_remaining_time("Frame offset applied - padding segments")
 
             segments = pad_segments(
-                validated_segments,
+                offset_segments,
                 video_duration,
                 config['padding']
             )
