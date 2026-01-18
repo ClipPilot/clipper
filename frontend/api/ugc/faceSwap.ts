@@ -17,6 +17,9 @@ export interface CreateFaceSwapResponse {
 
 export interface GetTeamJobsResponse {
   jobs: FaceSwapJob[];
+  total: number;
+  limit: number;
+  offset: number;
 }
 
 class FaceSwapAPI {
@@ -35,8 +38,13 @@ class FaceSwapAPI {
     return { jobId: result.jobIds[0] };
   }
 
-  async getTeamJobs(teamId: number): Promise<GetTeamJobsResponse> {
-    const response = await apiFetch(`${this.baseUrl}/team/${teamId}/jobs`);
+  async getTeamJobs(teamId: number, options?: { limit?: number; offset?: number }): Promise<GetTeamJobsResponse> {
+    const params = new URLSearchParams();
+    if (options?.limit) params.set("limit", options.limit.toString());
+    if (options?.offset) params.set("offset", options.offset.toString());
+
+    const url = `${this.baseUrl}/team/${teamId}/jobs${params.toString() ? `?${params}` : ""}`;
+    const response = await apiFetch(url);
 
     if (!response.ok) {
       const error = await response.json();

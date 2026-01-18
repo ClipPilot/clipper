@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useImperativeHandle, forwardRef } from "react";
+import { useState, useCallback, useEffect, useImperativeHandle, forwardRef, useRef } from "react";
 import { Card, CardBody, Pagination, addToast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { connectSocket, joinTeam, leaveTeam } from "@/lib/socket";
@@ -27,21 +27,30 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
   teamId,
 }, ref) {
   const [jobs, setJobs] = useState<FaceSwapJob[]>([]);
+  const [optimisticJobs, setOptimisticJobs] = useState<FaceSwapJob[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalJobs, setTotalJobs] = useState(0);
   const [selectedJob, setSelectedJob] = useState<FaceSwapJob | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const fetchingRef = useRef(false);
 
-  const fetchJobs = useCallback(async () => {
+  const fetchJobs = useCallback(async (page: number = currentPage) => {
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
+
     try {
-      const data = await faceSwapAPI.getTeamJobs(teamId);
+      const offset = (page - 1) * JOBS_PER_PAGE;
+      const data = await faceSwapAPI.getTeamJobs(teamId, { limit: JOBS_PER_PAGE, offset });
       setJobs(data.jobs || []);
+      setTotalJobs(data.total || 0);
     } catch (err) {
       console.error("Failed to fetch jobs:", err);
     } finally {
       setIsLoading(false);
+      fetchingRef.current = false;
     }
-  }, [teamId]);
+  }, [teamId, currentPage]);
 
   // Add an optimistic job with "uploading" status immediately
   const addOptimisticJob = useCallback((tempId: string, message?: string) => {
@@ -55,12 +64,13 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
       createdAt: new Date().toISOString(),
       finishedAt: null,
     };
-    setJobs((prev) => [optimisticJob, ...prev]);
+    setOptimisticJobs((prev) => [optimisticJob, ...prev]);
+    setTotalJobs((prev) => prev + 1);
   }, []);
 
   // Update the optimistic job with the real ID and queued status
   const updateOptimisticJob = useCallback((tempId: string, realId: string) => {
-    setJobs((prev) =>
+    setOptimisticJobs((prev) =>
       prev.map((job) =>
         job.id === tempId
           ? { ...job, id: realId, status: "queued", progressMessage: null }
@@ -71,7 +81,7 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
 
   // Update the progress message of an optimistic job
   const updateOptimisticJobStatus = useCallback((tempId: string, message: string) => {
-    setJobs((prev) =>
+    setOptimisticJobs((prev) =>
       prev.map((job) =>
         job.id === tempId
           ? { ...job, progressMessage: message }
@@ -82,7 +92,7 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
 
   // Mark the optimistic job as failed if the API call fails
   const failOptimisticJob = useCallback((tempId: string, errorMessage: string) => {
-    setJobs((prev) =>
+    setOptimisticJobs((prev) =>
       prev.map((job) =>
         job.id === tempId
           ? { ...job, status: "failed", errorMessage }
@@ -91,37 +101,56 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
     );
   }, []);
 
+  const refetch = useCallback(async () => {
+    await fetchJobs(currentPage);
+  }, [fetchJobs, currentPage]);
+
   useImperativeHandle(ref, () => ({
-    refetch: fetchJobs,
+    refetch,
     addOptimisticJob,
     updateOptimisticJob,
     updateOptimisticJobStatus,
     failOptimisticJob,
-  }), [fetchJobs, addOptimisticJob, updateOptimisticJob, updateOptimisticJobStatus, failOptimisticJob]);
+  }), [refetch, addOptimisticJob, updateOptimisticJob, updateOptimisticJobStatus, failOptimisticJob]);
 
+  // Fetch when page changes
   useEffect(() => {
-    fetchJobs();
+    fetchJobs(currentPage);
+  }, [currentPage, teamId]);
 
+  // Initial fetch and socket setup
+  useEffect(() => {
     const socket = connectSocket();
     joinTeam(teamId);
 
     const handleJobUpdate = (update: FaceSwapJob | { id: string; status: "deleted" }) => {
       if (update.status === "deleted") {
         setJobs((prev) => prev.filter((j) => j.id !== update.id));
+        setOptimisticJobs((prev) => prev.filter((j) => j.id !== update.id));
+        setTotalJobs((prev) => Math.max(0, prev - 1));
         return;
       }
+
+      // Check if this is an optimistic job being updated
+      setOptimisticJobs((prev) => {
+        const idx = prev.findIndex((j) => j.id === update.id);
+        if (idx !== -1) {
+          const updated = [...prev];
+          updated[idx] = { ...updated[idx], ...update };
+          return updated;
+        }
+        return prev;
+      });
+
+      // Also update in the main jobs list if present
       setJobs((prev) => {
         const idx = prev.findIndex((j) => j.id === update.id);
-        if (idx === -1) {
-          const hasOptimisticJob = prev.some((j) => j.status === "uploading" || j.status === "pending_upload");
-          if (hasOptimisticJob && (update.status === "queued" || update.status === "pending_upload")) {
-            return prev;
-          }
-          return [update, ...prev];
+        if (idx !== -1) {
+          const updated = [...prev];
+          updated[idx] = { ...updated[idx], ...update };
+          return updated;
         }
-        const updated = [...prev];
-        updated[idx] = { ...updated[idx], ...update };
-        return updated;
+        return prev;
       });
     };
 
@@ -131,11 +160,12 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
       socket.off("comfy-job-update", handleJobUpdate);
       leaveTeam(teamId);
     };
-  }, [teamId, fetchJobs]);
+  }, [teamId]);
 
   useEffect(() => {
+    const allJobs = [...optimisticJobs, ...jobs];
     if (selectedJob && isModalOpen) {
-      const updated = jobs.find((j) => j.id === selectedJob.id);
+      const updated = allJobs.find((j) => j.id === selectedJob.id);
       if (
         updated &&
         (updated.status !== selectedJob.status ||
@@ -147,13 +177,16 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
         setSelectedJob(updated);
       }
     }
-  }, [jobs, selectedJob, isModalOpen]);
+  }, [jobs, optimisticJobs, selectedJob, isModalOpen]);
 
-  const totalPages = Math.ceil(jobs.length / JOBS_PER_PAGE);
-  const paginatedJobs = jobs.slice(
-    (currentPage - 1) * JOBS_PER_PAGE,
-    currentPage * JOBS_PER_PAGE
-  );
+  // Combine optimistic jobs (only on page 1) with fetched jobs
+  const displayJobs = currentPage === 1
+    ? [...optimisticJobs, ...jobs].slice(0, JOBS_PER_PAGE)
+    : jobs;
+
+  // Calculate total pages including optimistic jobs
+  const totalWithOptimistic = totalJobs + optimisticJobs.length;
+  const totalPages = Math.ceil(totalWithOptimistic / JOBS_PER_PAGE);
 
   const handleJobClick = (job: FaceSwapJob) => {
     setSelectedJob(job);
@@ -164,6 +197,8 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
     try {
       await faceSwapAPI.deleteJob(jobId);
       setJobs((prev) => prev.filter((j) => j.id !== jobId));
+      setOptimisticJobs((prev) => prev.filter((j) => j.id !== jobId));
+      setTotalJobs((prev) => Math.max(0, prev - 1));
       // Close modal if the deleted job was being viewed
       if (selectedJob?.id === jobId) {
         setIsModalOpen(false);
@@ -191,11 +226,20 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
         job.id === jobId ? { ...job, title } : job
       )
     );
+    setOptimisticJobs((prev) =>
+      prev.map((job) =>
+        job.id === jobId ? { ...job, title } : job
+      )
+    );
     // Also update selectedJob if it's the one being edited
     if (selectedJob?.id === jobId) {
       setSelectedJob((prev) => prev ? { ...prev, title } : null);
     }
   }, [selectedJob]);
+
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page);
+  }, []);
 
   if (isLoading) {
     return (
@@ -210,7 +254,7 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
     );
   }
 
-  if (jobs.length === 0) {
+  if (totalWithOptimistic === 0) {
     return (
       <Card className="bg-surface-base border border-border-base">
         <CardBody className="p-8 text-center">
@@ -231,7 +275,7 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
     <>
       <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {paginatedJobs.map((job) => (
+          {displayJobs.map((job) => (
             <FaceSwapJobCard
               key={job.id}
               job={job}
@@ -245,11 +289,11 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
             <Pagination
               total={totalPages}
               page={currentPage}
-              onChange={setCurrentPage}
+              onChange={handlePageChange}
               color="primary"
               size="sm"
               showControls
-              siblings={3}
+              siblings={2}
               boundaries={1}
             />
           </div>

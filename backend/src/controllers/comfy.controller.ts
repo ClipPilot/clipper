@@ -465,10 +465,19 @@ export class ComfyController {
   async getTeamJobs(req: Request, res: Response) {
     try {
       const { teamId } = req.params;
+      const limit = Math.min(parseInt(req.query.limit as string) || 6, 50);
+      const offset = parseInt(req.query.offset as string) || 0;
 
       if (!teamId) {
         return res.status(400).json({ error: "Team ID required" });
       }
+
+      // Get total count
+      const [countResult] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(comfyJobs)
+        .where(eq(comfyJobs.teamId, parseInt(teamId)));
+      const total = Number(countResult?.count || 0);
 
       const jobs = await db
         .select({
@@ -491,7 +500,8 @@ export class ComfyController {
         )
         .where(eq(comfyJobs.teamId, parseInt(teamId)))
         .orderBy(desc(comfyJobs.createdAt))
-        .limit(20);
+        .limit(limit)
+        .offset(offset);
 
       const jobsWithUrls = await Promise.all(
         jobs.map(async (job) => {
@@ -520,7 +530,7 @@ export class ComfyController {
         })
       );
 
-      return res.status(200).json({ jobs: jobsWithUrls });
+      return res.status(200).json({ jobs: jobsWithUrls, total, limit, offset });
     } catch (error) {
       console.error("Get team jobs error:", error);
       Sentry.captureException(error);

@@ -230,9 +230,10 @@ resource "aws_appautoscaling_policy" "gpu_worker_step_scaling_down" {
     cooldown                = 120
     metric_aggregation_type = "Average"
 
-    # No bounds = triggers for any breach value when alarm fires
+    # Upper bound of 1 means: trigger when breach is in range (-∞, 1), which includes 0
     step_adjustment {
-      scaling_adjustment = var.gpu_worker_min_capacity
+      metric_interval_upper_bound = 1
+      scaling_adjustment          = var.gpu_worker_min_capacity
     }
   }
 }
