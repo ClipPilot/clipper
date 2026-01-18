@@ -111,7 +111,7 @@ variable "worker_memory" {
 variable "worker_min_capacity" {
   description = "Minimum number of worker tasks"
   type        = number
-  default     = 1
+  default     = 2
 }
 
 variable "worker_max_capacity" {
@@ -123,7 +123,7 @@ variable "worker_max_capacity" {
 variable "worker_messages_per_task" {
   description = "Target number of SQS messages per worker task for scaling"
   type        = number
-  default     = 1
+  default     = 2
 }
 
 # GPU Worker Configuration

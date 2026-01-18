@@ -205,7 +205,7 @@ resource "aws_appautoscaling_policy" "worker_sqs_scaling" {
 
   target_tracking_scaling_policy_configuration {
     target_value       = var.worker_messages_per_task
-    scale_in_cooldown  = 300 # 5 minutes before scaling down (task protection prevents killing busy workers)
+    scale_in_cooldown  = 120 # 2 minutes before scaling down
     scale_out_cooldown = 30  # 30 seconds before scaling up (fast response)
 
     customized_metric_specification {
@@ -218,110 +218,5 @@ resource "aws_appautoscaling_policy" "worker_sqs_scaling" {
         value = aws_sqs_queue.video_processing.name
       }
     }
-  }
-}
-
-# Step scaling for rapid scale-up when queue builds up
-resource "aws_appautoscaling_policy" "worker_step_scaling" {
-  name               = "${var.project_name}-worker-step-scaling-${var.environment}"
-  policy_type        = "StepScaling"
-  resource_id        = aws_appautoscaling_target.worker.resource_id
-  scalable_dimension = aws_appautoscaling_target.worker.scalable_dimension
-  service_namespace  = aws_appautoscaling_target.worker.service_namespace
-
-  step_scaling_policy_configuration {
-    adjustment_type         = "ChangeInCapacity"
-    cooldown                = 30
-    metric_aggregation_type = "Average"
-
-    # 1 visible message → add 1 worker
-    step_adjustment {
-      metric_interval_lower_bound = 0
-      metric_interval_upper_bound = 2
-      scaling_adjustment          = 1
-    }
-
-    # 2-3 visible messages → add 2 workers
-    step_adjustment {
-      metric_interval_lower_bound = 2
-      metric_interval_upper_bound = 4
-      scaling_adjustment          = 2
-    }
-
-    # 4+ visible messages → add 3 workers
-    step_adjustment {
-      metric_interval_lower_bound = 4
-      scaling_adjustment          = 3
-    }
-  }
-}
-
-# CloudWatch alarm to trigger step scaling
-resource "aws_cloudwatch_metric_alarm" "worker_queue_high" {
-  alarm_name          = "${var.project_name}-worker-queue-high-${var.environment}"
-  comparison_operator = "GreaterThanOrEqualToThreshold"
-  evaluation_periods  = 1
-  metric_name         = "ApproximateNumberOfMessagesVisible"
-  namespace           = "AWS/SQS"
-  period              = 10
-  statistic           = "Average"
-  threshold           = 1
-  alarm_description   = "Trigger step scaling when messages are waiting (workers busy)"
-  treat_missing_data  = "notBreaching"
-
-  dimensions = {
-    QueueName = aws_sqs_queue.video_processing.name
-  }
-
-  alarm_actions = [aws_appautoscaling_policy.worker_step_scaling.arn]
-
-  tags = {
-    Name = "${var.project_name}-worker-queue-alarm-${var.environment}"
-  }
-}
-
-# Step scaling policy for scale-DOWN when queue is empty
-resource "aws_appautoscaling_policy" "worker_step_scaling_down" {
-  name               = "${var.project_name}-worker-step-scaling-down-${var.environment}"
-  policy_type        = "StepScaling"
-  resource_id        = aws_appautoscaling_target.worker.resource_id
-  scalable_dimension = aws_appautoscaling_target.worker.scalable_dimension
-  service_namespace  = aws_appautoscaling_target.worker.service_namespace
-
-  step_scaling_policy_configuration {
-    adjustment_type         = "ExactCapacity"
-    cooldown                = 120 # 2 minutes before another scale-down
-    metric_aggregation_type = "Average"
-
-    # When alarm triggers (queue empty), scale to minimum
-    # Lower bound of 0 with no upper = triggers for breach >= 0 (which is always true when alarm fires)
-    step_adjustment {
-      metric_interval_lower_bound = 0
-      scaling_adjustment          = var.worker_min_capacity
-    }
-  }
-}
-
-# CloudWatch alarm to trigger scale-DOWN when queue is empty
-resource "aws_cloudwatch_metric_alarm" "worker_queue_empty" {
-  alarm_name          = "${var.project_name}-worker-queue-empty-${var.environment}"
-  comparison_operator = "LessThanOrEqualToThreshold"
-  evaluation_periods  = 3 # Queue must be empty for 3 consecutive periods
-  metric_name         = "ApproximateNumberOfMessagesVisible"
-  namespace           = "AWS/SQS"
-  period              = 60 # Check every minute
-  statistic           = "Maximum" # Use Maximum to ensure queue was truly empty
-  threshold           = 0
-  alarm_description   = "Trigger scale-down when queue is empty for 3 minutes"
-  treat_missing_data  = "breaching" # Treat missing data as queue being empty
-
-  dimensions = {
-    QueueName = aws_sqs_queue.video_processing.name
-  }
-
-  alarm_actions = [aws_appautoscaling_policy.worker_step_scaling_down.arn]
-
-  tags = {
-    Name = "${var.project_name}-worker-queue-empty-alarm-${var.environment}"
   }
 }
