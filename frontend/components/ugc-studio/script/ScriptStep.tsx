@@ -63,6 +63,9 @@ export function ScriptStep({
   const [isLoadingExisting, setIsLoadingExisting] = useState(false);
   const [isLoadingScript, setIsLoadingScript] = useState(false);
   const [activeTab, setActiveTab] = useState<"new" | "existing">("new");
+  const [hasMoreScripts, setHasMoreScripts] = useState(false);
+  const [isLoadingMoreScripts, setIsLoadingMoreScripts] = useState(false);
+  const SCRIPTS_PAGE_SIZE = 10;
 
   const clearVideoState = useCallback(() => {
     setSceneImages({});
@@ -76,8 +79,9 @@ export function ScriptStep({
     const fetchExistingScripts = async () => {
       setIsLoadingExisting(true);
       try {
-        const response = await ugcScriptAPI.listScripts(teamId, { limit: 20 });
+        const response = await ugcScriptAPI.listScripts(teamId, { limit: SCRIPTS_PAGE_SIZE });
         setExistingScripts(response.scripts);
+        setHasMoreScripts(response.hasMore);
       } catch (err) {
         console.error("Failed to fetch existing scripts:", err);
       } finally {
@@ -86,6 +90,23 @@ export function ScriptStep({
     };
     fetchExistingScripts();
   }, [teamId]);
+
+  const loadMoreScripts = async () => {
+    if (isLoadingMoreScripts || !hasMoreScripts) return;
+    setIsLoadingMoreScripts(true);
+    try {
+      const response = await ugcScriptAPI.listScripts(teamId, {
+        limit: SCRIPTS_PAGE_SIZE,
+        offset: existingScripts.length,
+      });
+      setExistingScripts((prev) => [...prev, ...response.scripts]);
+      setHasMoreScripts(response.hasMore);
+    } catch (err) {
+      console.error("Failed to load more scripts:", err);
+    } finally {
+      setIsLoadingMoreScripts(false);
+    }
+  };
 
   const handleLoadExistingScript = async (existingScript: ScriptSummary) => {
     setIsLoadingScript(true);
@@ -539,6 +560,19 @@ export function ScriptStep({
                     </CardBody>
                   </Card>
                 ))}
+                {hasMoreScripts && (
+                  <div className="flex justify-center pt-4">
+                    <Button
+                      variant="flat"
+                      className="bg-surface-elevated text-text-secondary"
+                      onPress={loadMoreScripts}
+                      isLoading={isLoadingMoreScripts}
+                      startContent={!isLoadingMoreScripts && <Icon icon="solar:arrow-down-bold" width={16} />}
+                    >
+                      {isLoadingMoreScripts ? "Loading..." : "Load More"}
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </div>

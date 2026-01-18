@@ -1,5 +1,3 @@
-export type SwapType = "face" | "full";
-
 export interface UploadedFile {
   file: File;
   preview: string;
@@ -31,6 +29,7 @@ export interface SelectedCharacter {
   src: string;
   file?: File;
   savedFaceId?: number;
+  imageKey?: string;
 }
 
 export const EXAMPLE_CHARACTERS = [

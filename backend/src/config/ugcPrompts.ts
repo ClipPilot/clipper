@@ -1,3 +1,13 @@
+/**
+ * Pose Generation Prompt
+ * Used with nano-banana-pro/edit model to generate a character in a specific pose
+ *
+ * Image order expected by the model:
+ * - First image: The character/person to pose (keeps their face, clothes, identity)
+ * - Second image: The pose reference (extracts pose, body position, background context)
+ */
+export const POSE_GENERATION_PROMPT = `Place the person from the first image into the exact same pose as the second image. Match the pose, body position, and background from the second image exactly. Keep the person's face, identity, and clothes from the first image. The person should be looking directly at the camera with natural eye contact. High quality, no text or captions.`;
+
 export interface ScriptStructurePattern {
   type: string;
   shot: string;

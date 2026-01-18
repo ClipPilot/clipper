@@ -174,6 +174,10 @@ resource "aws_ecs_task_definition" "backend" {
       {
         name      = "SYNC_KEY"
         valueFrom = aws_secretsmanager_secret.sync_key.arn
+      },
+      {
+        name      = "FAL_KEY"
+        valueFrom = aws_secretsmanager_secret.fal_key.arn
       }
     ]
 

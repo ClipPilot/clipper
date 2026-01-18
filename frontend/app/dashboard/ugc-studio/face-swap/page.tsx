@@ -8,11 +8,11 @@ import { useRouter } from "next/navigation";
 import { selectedTeamAtom } from "@/store/auth";
 import { canAccessUGCStudio } from "@/lib/plans";
 import { faceSwapAPI } from "@/api/ugc/faceSwap";
+import { extractFirstFrame } from "@/lib/videoUtils";
 import type { SelectedCharacter } from "@/components/ugc-studio/types";
 import {
   UploadedFile,
   VideoSegment,
-  SwapType,
   ScalePlanRequired,
   VideoUploadCard,
   CharacterSelector,
@@ -45,13 +45,29 @@ function FaceSwapContent({
   >([]);
   const [videoDuration, setVideoDuration] = useState(0);
   const [segments, setSegments] = useState<VideoSegment[]>([]);
-  const [swapType, setSwapType] = useState<SwapType>("face");
   const [showEditor, setShowEditor] = useState(false);
+  const [isGeneratingPose, setIsGeneratingPose] = useState(false);
+  const [currentPoseIndex, setCurrentPoseIndex] = useState<number | null>(null);
+  // Track poses per character - indexed by character position
+  const [generatedPoses, setGeneratedPoses] = useState<
+    Map<number, { url: string; file: File }>
+  >(new Map());
   const faceSwapsSectionRef = useRef<MyFaceSwapsSectionRef>(null);
 
-  // Get character files for API calls
-  const getCharacterFiles = () => {
-    return selectedCharacters.filter((c) => c.file).map((c) => c.file as File);
+  const getCharacterImages = (): Array<File | { imageKey: string }> => {
+    return selectedCharacters
+      .filter((c) => c.file || c.imageKey)
+      .map((c, index) => {
+        // Use generated pose if available for this character
+        const pose = generatedPoses.get(index);
+        if (pose) {
+          return pose.file;
+        }
+        if (c.imageKey) {
+          return { imageKey: c.imageKey };
+        }
+        return c.file as File;
+      });
   };
 
   useEffect(() => {
@@ -66,13 +82,23 @@ function FaceSwapContent({
   ) => {
     setVideo(newVideo);
     setVideoDuration(duration);
+    // Clear poses when video changes
+    setGeneratedPoses(new Map());
+    setCurrentPoseIndex(null);
+  };
+
+  const handleCharactersChange = (characters: SelectedCharacter[]) => {
+    setSelectedCharacters(characters);
+    // Clear poses when characters change
+    setGeneratedPoses(new Map());
+    setCurrentPoseIndex(null);
   };
 
   const handleGenerate = async () => {
-    const characterFiles = getCharacterFiles();
+    const characterImages = getCharacterImages();
     if (
       !video ||
-      characterFiles.length === 0 ||
+      characterImages.length === 0 ||
       !selectedTeam?.id ||
       segments.length === 0
     )
@@ -82,13 +108,12 @@ function FaceSwapContent({
     const teamId = selectedTeam.id;
     const segmentsData = segments.map((s) => ({ start: s.start, end: s.end }));
     const duration = videoDuration;
-    const swap = swapType;
     const videoToRevoke = video.preview;
-    const characterCount = characterFiles.length;
+    const characterCount = characterImages.length;
     const totalCredits = characterCount * 5;
 
     // Create temp IDs for each job
-    const tempIds = characterFiles.map((_, i) => `temp-${Date.now()}-${i}`);
+    const tempIds = characterImages.map((_, i) => `temp-${Date.now()}-${i}`);
 
     // Add optimistic jobs for all characters
     tempIds.forEach((tempId) => {
@@ -100,15 +125,16 @@ function FaceSwapContent({
     setSelectedCharacters([]);
     setVideoDuration(0);
     setSegments([]);
+    setGeneratedPoses(new Map());
+    setCurrentPoseIndex(null);
 
     try {
       const result = await faceSwapAPI.createMultipleJobs({
         video: videoFile,
-        images: characterFiles,
+        images: characterImages,
         teamId,
         segments: segmentsData,
         videoDuration: duration,
-        swapType: swap,
         spliceWithOriginal: true,
       });
 
@@ -147,18 +173,17 @@ function FaceSwapContent({
   const totalDuration = segments.reduce((sum, s) => sum + (s.end - s.start), 0);
 
   const handleAutoDetectAndGenerate = useCallback(async () => {
-    const characterFiles = getCharacterFiles();
-    if (!video?.file || characterFiles.length === 0 || !selectedTeam?.id)
+    const characterImages = getCharacterImages();
+    if (!video?.file || characterImages.length === 0 || !selectedTeam?.id)
       return;
 
     const videoFile = video.file;
     const teamId = selectedTeam.id;
     const duration = videoDuration;
-    const swap = swapType;
     const videoToRevoke = video.preview;
-    const characterCount = characterFiles.length;
+    const characterCount = characterImages.length;
     const totalCredits = characterCount * 5;
-    const tempIds = characterFiles.map((_, i) => `temp-${Date.now()}-${i}`);
+    const tempIds = characterImages.map((_, i) => `temp-${Date.now()}-${i}`);
 
     tempIds.forEach((tempId, i) => {
       faceSwapsSectionRef.current?.addOptimisticJob(
@@ -171,14 +196,15 @@ function FaceSwapContent({
     setSelectedCharacters([]);
     setVideoDuration(0);
     setSegments([]);
+    setGeneratedPoses(new Map());
+    setCurrentPoseIndex(null);
 
     try {
       const result = await faceSwapAPI.createMultipleJobsAutoDetect({
         video: videoFile,
-        images: characterFiles,
+        images: characterImages,
         teamId,
         videoDuration: duration,
-        swapType: swap,
         spliceWithOriginal: true,
       });
 
@@ -208,7 +234,73 @@ function FaceSwapContent({
         color: "danger",
       });
     }
-  }, [video, selectedCharacters, selectedTeam?.id, videoDuration, swapType]);
+  }, [video, selectedCharacters, selectedTeam?.id, videoDuration, generatedPoses]);
+
+  const handleGeneratePose = useCallback(async () => {
+    if (!video?.preview || selectedCharacters.length === 0 || !selectedTeam?.id) {
+      return;
+    }
+
+    setIsGeneratingPose(true);
+
+    try {
+      // Extract first frame from video once
+      const frameDataUrl = await extractFirstFrame(video.preview);
+      const newPoses = new Map(generatedPoses);
+
+      // Generate pose for each selected character
+      for (let i = 0; i < selectedCharacters.length; i++) {
+        const character = selectedCharacters[i];
+        if (!character.file && !character.imageKey) continue;
+
+        setCurrentPoseIndex(i);
+
+        const characterImage = character.imageKey
+          ? { imageKey: character.imageKey }
+          : character.file!;
+
+        // Call API for this character
+        const result = await faceSwapAPI.generatePose({
+          teamId: selectedTeam.id,
+          videoFrame: frameDataUrl,
+          characterImage,
+        });
+
+        // Fetch the generated image and store as File for face swap
+        const response = await fetch(result.imageUrl);
+        if (!response.ok) {
+          throw new Error(`Failed to download generated pose image for character ${i + 1}`);
+        }
+        const blob = await response.blob();
+        const file = new File([blob], `posed-character-${i}.png`, { type: "image/png" });
+
+        newPoses.set(i, { url: result.imageUrl, file });
+        setGeneratedPoses(new Map(newPoses));
+      }
+
+      setCurrentPoseIndex(null);
+      addToast({
+        title: `${selectedCharacters.length} pose${selectedCharacters.length > 1 ? "s" : ""} generated!`,
+        description: "These poses will be used when you generate the face swap",
+        color: "success",
+      });
+    } catch (error) {
+      console.error("Generate pose error:", error);
+      addToast({
+        title: "Failed to generate pose",
+        description: error instanceof Error ? error.message : "An error occurred",
+        color: "danger",
+      });
+    } finally {
+      setIsGeneratingPose(false);
+      setCurrentPoseIndex(null);
+    }
+  }, [video, selectedCharacters, selectedTeam?.id, generatedPoses]);
+
+  const handleClearPose = useCallback(() => {
+    setGeneratedPoses(new Map());
+    setCurrentPoseIndex(null);
+  }, []);
 
   return (
     <div className="min-h-screen bg-surface-dark p-6 lg:p-8">
@@ -259,7 +351,7 @@ function FaceSwapContent({
           <div className="space-y-6">
             <CharacterSelector
               selectedCharacters={selectedCharacters}
-              onCharactersChange={setSelectedCharacters}
+              onCharactersChange={handleCharactersChange}
               teamId={selectedTeam?.id}
             />
             <GeneratePanel
@@ -267,12 +359,15 @@ function FaceSwapContent({
               characterCount={selectedCharacters.length}
               segmentCount={segments.length}
               totalDuration={totalDuration}
-              swapType={swapType}
-              onSwapTypeChange={setSwapType}
               onGenerate={handleGenerate}
               onAutoDetectAndGenerate={handleAutoDetectAndGenerate}
               showEditor={showEditor}
               onToggleEditor={() => setShowEditor(false)}
+              onGeneratePose={handleGeneratePose}
+              isGeneratingPose={isGeneratingPose}
+              generatedPoses={generatedPoses}
+              currentPoseIndex={currentPoseIndex}
+              onClearPose={handleClearPose}
             />
           </div>
         </div>

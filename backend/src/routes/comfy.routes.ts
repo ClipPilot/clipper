@@ -5,7 +5,12 @@ import { requireAuth } from "../middleware/auth.middleware";
 import { faceSwapUpload } from "../config/multer";
 
 const router = Router();
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fieldSize: 50 * 1024 * 1024, // 50MB max for field values (needed for base64 encoded images)
+  },
+});
 
 const optionalMulter = upload.fields([
   { name: "image", maxCount: 1 },
@@ -297,6 +302,63 @@ router.delete(
   "/saved-faces/:id",
   requireAuth,
   comfyController.deleteSavedFace.bind(comfyController)
+);
+
+/**
+ * @openapi
+ * /comfy/generate-pose:
+ *   post:
+ *     summary: Generate a posed image using FAL AI
+ *     description: Takes a video frame and character face, generates an image with the face in the video's pose
+ *     tags:
+ *       - Pose Generation
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - teamId
+ *               - videoFrameBase64
+ *             properties:
+ *               teamId:
+ *                 type: integer
+ *                 description: The team ID
+ *               videoFrameBase64:
+ *                 type: string
+ *                 description: Base64 encoded video frame image
+ *               characterImageKey:
+ *                 type: string
+ *                 description: S3 key of the character image (for saved faces)
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *                 description: Character face image file (alternative to characterImageKey)
+ *     responses:
+ *       200:
+ *         description: Pose generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 imageUrl:
+ *                   type: string
+ *                   format: uri
+ *                   description: URL of the generated pose image
+ *       400:
+ *         description: Missing required fields
+ *       403:
+ *         description: Plan required or insufficient access
+ *       500:
+ *         description: Failed to generate pose
+ */
+router.post(
+  "/generate-pose",
+  requireAuth,
+  upload.single("image"),
+  comfyController.generatePose.bind(comfyController)
 );
 
 export default router;

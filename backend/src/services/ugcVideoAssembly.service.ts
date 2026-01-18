@@ -684,7 +684,7 @@ async function processBrollScene(
     );
   }
 
-  onProgress?.(`Scene ${sceneNumber}: Generating video with Kling...`);
+  onProgress?.(`Scene ${sceneNumber}: Generating video...`);
   const imageUrl = await s3Service.getPresignedUrl(imageKey, 3600);
 
   // Get end frame URL for better video interpolation (Kling 2.6 tail_image_url)
