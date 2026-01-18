@@ -294,9 +294,9 @@ resource "aws_appautoscaling_policy" "worker_step_scaling_down" {
     metric_aggregation_type = "Average"
 
     # When alarm triggers (queue empty), scale to minimum
-    # Upper bound of 1 means: trigger when breach is in range (-∞, 1), which includes 0
+    # Lower bound of 0 with no upper = triggers for breach >= 0 (which is always true when alarm fires)
     step_adjustment {
-      metric_interval_upper_bound = 1
+      metric_interval_lower_bound = 0
       scaling_adjustment          = var.worker_min_capacity
     }
   }
