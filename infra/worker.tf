@@ -279,3 +279,48 @@ resource "aws_cloudwatch_metric_alarm" "worker_queue_high" {
     Name = "${var.project_name}-worker-queue-alarm-${var.environment}"
   }
 }
+
+# Step scaling policy for scale-DOWN when queue is empty
+resource "aws_appautoscaling_policy" "worker_step_scaling_down" {
+  name               = "${var.project_name}-worker-step-scaling-down-${var.environment}"
+  policy_type        = "StepScaling"
+  resource_id        = aws_appautoscaling_target.worker.resource_id
+  scalable_dimension = aws_appautoscaling_target.worker.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.worker.service_namespace
+
+  step_scaling_policy_configuration {
+    adjustment_type         = "ExactCapacity"
+    cooldown                = 120 # 2 minutes before another scale-down
+    metric_aggregation_type = "Average"
+
+    # When alarm triggers (queue empty), scale to minimum
+    step_adjustment {
+      metric_interval_upper_bound = 0
+      scaling_adjustment          = var.worker_min_capacity
+    }
+  }
+}
+
+# CloudWatch alarm to trigger scale-DOWN when queue is empty
+resource "aws_cloudwatch_metric_alarm" "worker_queue_empty" {
+  alarm_name          = "${var.project_name}-worker-queue-empty-${var.environment}"
+  comparison_operator = "LessThanOrEqualToThreshold"
+  evaluation_periods  = 3 # Queue must be empty for 3 consecutive periods
+  metric_name         = "ApproximateNumberOfMessagesVisible"
+  namespace           = "AWS/SQS"
+  period              = 60 # Check every minute
+  statistic           = "Average"
+  threshold           = 0
+  alarm_description   = "Trigger scale-down when queue is empty for 3 minutes"
+  treat_missing_data  = "breaching" # Treat missing data as queue being empty
+
+  dimensions = {
+    QueueName = aws_sqs_queue.video_processing.name
+  }
+
+  alarm_actions = [aws_appautoscaling_policy.worker_step_scaling_down.arn]
+
+  tags = {
+    Name = "${var.project_name}-worker-queue-empty-alarm-${var.environment}"
+  }
+}

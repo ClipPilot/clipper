@@ -216,3 +216,47 @@ resource "aws_appautoscaling_policy" "gpu_worker_sqs_scaling" {
     }
   }
 }
+
+# Step scaling policy for scale-DOWN when GPU queue is empty
+resource "aws_appautoscaling_policy" "gpu_worker_step_scaling_down" {
+  name               = "${var.project_name}-gpu-worker-step-scaling-down-${var.environment}"
+  policy_type        = "StepScaling"
+  resource_id        = aws_appautoscaling_target.gpu_worker.resource_id
+  scalable_dimension = aws_appautoscaling_target.gpu_worker.scalable_dimension
+  service_namespace  = aws_appautoscaling_target.gpu_worker.service_namespace
+
+  step_scaling_policy_configuration {
+    adjustment_type         = "ExactCapacity"
+    cooldown                = 120
+    metric_aggregation_type = "Average"
+
+    step_adjustment {
+      metric_interval_upper_bound = 0
+      scaling_adjustment          = var.gpu_worker_min_capacity
+    }
+  }
+}
+
+# CloudWatch alarm to trigger GPU worker scale-DOWN when queue is empty
+resource "aws_cloudwatch_metric_alarm" "gpu_worker_queue_empty" {
+  alarm_name          = "${var.project_name}-gpu-worker-queue-empty-${var.environment}"
+  comparison_operator = "LessThanOrEqualToThreshold"
+  evaluation_periods  = 3
+  metric_name         = "ApproximateNumberOfMessagesVisible"
+  namespace           = "AWS/SQS"
+  period              = 60
+  statistic           = "Average"
+  threshold           = 0
+  alarm_description   = "Trigger scale-down when GPU queue is empty for 3 minutes"
+  treat_missing_data  = "breaching"
+
+  dimensions = {
+    QueueName = aws_sqs_queue.gpu_processing.name
+  }
+
+  alarm_actions = [aws_appautoscaling_policy.gpu_worker_step_scaling_down.arn]
+
+  tags = {
+    Name = "${var.project_name}-gpu-worker-queue-empty-alarm-${var.environment}"
+  }
+}
