@@ -52,6 +52,7 @@ export const upload = multer({
   fileFilter,
   limits: {
     fileSize: 10 * 1024 * 1024 * 1024, // 10GB max file size (increased for large video files)
+    fieldSize: 50 * 1024 * 1024, // 50MB max for field values (needed for base64 encoded images)
   },
 });
 
