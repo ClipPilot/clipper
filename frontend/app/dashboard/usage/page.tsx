@@ -2,7 +2,15 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Card, CardBody, Button, Spinner, Tabs, Tab, Progress } from "@heroui/react";
+import {
+  Card,
+  CardBody,
+  Button,
+  Spinner,
+  Tabs,
+  Tab,
+  Progress,
+} from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useAtomValue } from "jotai";
 import { useRouter } from "next/navigation";
@@ -13,7 +21,7 @@ type Period = "day" | "week" | "month";
 
 function generateMockHistory(
   stats: TeamUsageStats | null,
-  period: Period
+  period: Period,
 ): UsageHistoryEntry[] {
   if (!stats) return [];
 
@@ -26,8 +34,8 @@ function generateMockHistory(
     period === "day"
       ? 24 * 60 * 60 * 1000
       : period === "week"
-      ? 7 * 24 * 60 * 60 * 1000
-      : 30 * 24 * 60 * 60 * 1000;
+        ? 7 * 24 * 60 * 60 * 1000
+        : 30 * 24 * 60 * 60 * 1000;
 
   // Distribute usage across periods with weighted randomness
   const weights = Array.from({ length: count }, () => Math.random() + 0.2);
@@ -77,16 +85,17 @@ export default function UsagePage() {
 
   const history = useMemo(
     () => generateMockHistory(usageStats, period),
-    [usageStats, period]
+    [usageStats, period],
   );
 
   const usagePercentage = usageStats
-    ? ((usageStats.clipsCreated / usageStats.baseLimit) * 100)
+    ? (usageStats.clipsCreated / usageStats.baseLimit) * 100
     : 0;
 
-  const generationPercentage = usageStats && usageStats.generationLimit > 0
-    ? ((usageStats.clipsGenerated / usageStats.generationLimit) * 100)
-    : 0;
+  const generationPercentage =
+    usageStats && usageStats.generationLimit > 0
+      ? (usageStats.clipsGenerated / usageStats.generationLimit) * 100
+      : 0;
 
   const getProgressColor = (percentage: number) => {
     if (percentage >= 90) return "danger";
@@ -94,12 +103,15 @@ export default function UsagePage() {
     return "success";
   };
 
-  const maxHistoryValue = Math.max(...history.map(h => h.creditsUsed), 1);
+  const maxHistoryValue = Math.max(...history.map((h) => h.creditsUsed), 1);
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     if (period === "month") {
-      return date.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
+      return date.toLocaleDateString("en-US", {
+        month: "short",
+        year: "2-digit",
+      });
     }
     if (period === "week") {
       return `Week of ${date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
@@ -141,10 +153,15 @@ export default function UsagePage() {
             onClick={() => router.back()}
             className="p-2 rounded-xl bg-surface-elevated hover:bg-surface-elevated/80 transition-colors"
           >
-            <Icon icon="solar:arrow-left-linear" className="text-xl text-text-secondary" />
+            <Icon
+              icon="solar:arrow-left-linear"
+              className="text-xl text-text-secondary"
+            />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-text-primary">Usage & Analytics</h1>
+            <h1 className="text-2xl font-bold text-text-primary">
+              Usage & Analytics
+            </h1>
             <p className="text-text-secondary text-sm">
               Track your credits, generations, and usage patterns
             </p>
@@ -161,11 +178,11 @@ export default function UsagePage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
           {
-            icon: "solar:scissors-bold-duotone",
+            icon: "solar:credit-card-bold-duotone",
             color: "blue",
             label: "This period",
             value: usageStats?.clipsCreated || 0,
-            title: "Clips Created",
+            title: "Credits used",
           },
           {
             icon: "solar:wallet-bold-duotone",
@@ -204,12 +221,21 @@ export default function UsagePage() {
             <Card className="bg-surface-elevated border border-border-base hover:border-border-accent transition-colors">
               <CardBody className="p-5">
                 <div className="flex items-start justify-between mb-3">
-                  <div className={`p-2.5 rounded-xl bg-gradient-to-br from-${stat.color}-500/20 to-${stat.color}-600/10`}>
-                    <Icon icon={stat.icon} className={`text-2xl text-${stat.color}-400`} />
+                  <div
+                    className={`p-2.5 rounded-xl bg-gradient-to-br from-${stat.color}-500/20 to-${stat.color}-600/10`}
+                  >
+                    <Icon
+                      icon={stat.icon}
+                      className={`text-2xl text-${stat.color}-400`}
+                    />
                   </div>
-                  <span className="text-xs text-text-tertiary">{stat.label}</span>
+                  <span className="text-xs text-text-tertiary">
+                    {stat.label}
+                  </span>
                 </div>
-                <p className={`${stat.isDate ? "text-xl" : "text-3xl"} font-bold text-text-primary mb-1`}>
+                <p
+                  className={`${stat.isDate ? "text-xl" : "text-3xl"} font-bold text-text-primary mb-1`}
+                >
                   {stat.value}
                 </p>
                 <p className="text-sm text-text-secondary">{stat.title}</p>
@@ -229,7 +255,9 @@ export default function UsagePage() {
           <Card className="bg-surface-elevated border border-border-base">
             <CardBody className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-text-primary">Credits Usage</h3>
+                <h3 className="text-lg font-semibold text-text-primary">
+                  Credits Usage
+                </h3>
                 <span className="text-sm text-text-secondary">
                   {usageStats?.clipsCreated || 0} / {usageStats?.baseLimit || 0}
                 </span>
@@ -243,11 +271,15 @@ export default function UsagePage() {
               <div className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-surface-base" />
-                  <span className="text-text-secondary">Base: {usageStats?.baseRemaining || 0}</span>
+                  <span className="text-text-secondary">
+                    Base: {usageStats?.baseRemaining || 0}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-accent-400" />
-                  <span className="text-text-secondary">Bonus: {usageStats?.addonRemaining || 0}</span>
+                  <span className="text-text-secondary">
+                    Bonus: {usageStats?.addonRemaining || 0}
+                  </span>
                 </div>
               </div>
             </CardBody>
@@ -262,7 +294,9 @@ export default function UsagePage() {
           <Card className="bg-surface-elevated border border-border-base">
             <CardBody className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-text-primary">AI Generations</h3>
+                <h3 className="text-lg font-semibold text-text-primary">
+                  AI Generations
+                </h3>
                 <span className="text-sm text-text-secondary">
                   {usageStats?.clipsGenerated || 0}
                   {usageStats?.generationLimit && usageStats.generationLimit > 0
@@ -271,13 +305,24 @@ export default function UsagePage() {
                 </span>
               </div>
               <Progress
-                value={usageStats?.generationLimit === -1 ? 10 : Math.min(generationPercentage, 100)}
-                color={usageStats?.generationLimit === -1 ? "primary" : getProgressColor(generationPercentage)}
+                value={
+                  usageStats?.generationLimit === -1
+                    ? 10
+                    : Math.min(generationPercentage, 100)
+                }
+                color={
+                  usageStats?.generationLimit === -1
+                    ? "primary"
+                    : getProgressColor(generationPercentage)
+                }
                 className="mb-4"
                 size="lg"
               />
               <div className="flex items-center gap-2 text-sm text-text-secondary">
-                <Icon icon="solar:info-circle-linear" className="text-text-tertiary" />
+                <Icon
+                  icon="solar:info-circle-linear"
+                  className="text-text-tertiary"
+                />
                 {usageStats?.generationLimit === -1
                   ? "Unlimited AI generations with your plan"
                   : `${usageStats?.generationsRemaining || 0} generations remaining`}
@@ -296,7 +341,9 @@ export default function UsagePage() {
         <Card className="bg-surface-elevated border border-border-base">
           <CardBody className="p-6">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-text-primary">Usage History</h3>
+              <h3 className="text-lg font-semibold text-text-primary">
+                Usage History
+              </h3>
               <Tabs
                 selectedKey={period}
                 onSelectionChange={(key) => setPeriod(key as Period)}
@@ -314,14 +361,17 @@ export default function UsagePage() {
               </Tabs>
             </div>
 
-            {history.length === 0 || (usageStats?.clipsCreated === 0) ? (
+            {history.length === 0 || usageStats?.clipsCreated === 0 ? (
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 className="flex flex-col items-center justify-center h-64 text-center"
               >
                 <div className="w-16 h-16 rounded-2xl bg-surface-base flex items-center justify-center mb-4">
-                  <Icon icon="solar:chart-2-bold-duotone" className="text-3xl text-text-tertiary" />
+                  <Icon
+                    icon="solar:chart-2-bold-duotone"
+                    className="text-3xl text-text-tertiary"
+                  />
                 </div>
                 <p className="text-text-secondary mb-2">No usage history yet</p>
                 <p className="text-sm text-text-tertiary">
@@ -344,20 +394,31 @@ export default function UsagePage() {
                     <div className="flex-1 h-8 bg-surface-base rounded-lg overflow-hidden">
                       <motion.div
                         initial={{ width: 0 }}
-                        animate={{ width: `${Math.max((entry.creditsUsed / maxHistoryValue) * 100, 2)}%` }}
-                        transition={{ duration: 0.6, delay: 0.6 + index * 0.04, ease: "easeOut" }}
+                        animate={{
+                          width: `${Math.max((entry.creditsUsed / maxHistoryValue) * 100, 2)}%`,
+                        }}
+                        transition={{
+                          duration: 0.6,
+                          delay: 0.6 + index * 0.04,
+                          ease: "easeOut",
+                        }}
                         className="h-full bg-gradient-to-r from-accent-400 to-accent-500 rounded-lg flex items-center justify-end pr-2"
                       >
-                        {entry.creditsUsed > 0 && (entry.creditsUsed / maxHistoryValue) > 0.15 && (
-                          <span className="text-xs font-medium text-white">{entry.creditsUsed}</span>
-                        )}
+                        {entry.creditsUsed > 0 &&
+                          entry.creditsUsed / maxHistoryValue > 0.15 && (
+                            <span className="text-xs font-medium text-white">
+                              {entry.creditsUsed}
+                            </span>
+                          )}
                       </motion.div>
                     </div>
                     <div className="w-24 text-right">
                       <span className="text-sm font-medium text-text-primary">
                         {entry.creditsUsed}
                       </span>
-                      <span className="text-xs text-text-tertiary ml-1">credits</span>
+                      <span className="text-xs text-text-tertiary ml-1">
+                        credits
+                      </span>
                     </div>
                   </motion.div>
                 ))}
