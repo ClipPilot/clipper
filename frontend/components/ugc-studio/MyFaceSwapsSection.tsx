@@ -249,6 +249,8 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
               color="primary"
               size="sm"
               showControls
+              siblings={3}
+              boundaries={1}
             />
           </div>
         )}
