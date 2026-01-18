@@ -310,7 +310,7 @@ resource "aws_cloudwatch_metric_alarm" "worker_queue_empty" {
   metric_name         = "ApproximateNumberOfMessagesVisible"
   namespace           = "AWS/SQS"
   period              = 60 # Check every minute
-  statistic           = "Average"
+  statistic           = "Maximum" # Use Maximum to ensure queue was truly empty
   threshold           = 0
   alarm_description   = "Trigger scale-down when queue is empty for 3 minutes"
   treat_missing_data  = "breaching" # Treat missing data as queue being empty

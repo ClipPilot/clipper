@@ -246,7 +246,7 @@ resource "aws_cloudwatch_metric_alarm" "gpu_worker_queue_empty" {
   metric_name         = "ApproximateNumberOfMessagesVisible"
   namespace           = "AWS/SQS"
   period              = 60
-  statistic           = "Average"
+  statistic           = "Maximum" # Use Maximum to ensure queue was truly empty the whole period
   threshold           = 0
   alarm_description   = "Trigger scale-down when GPU queue is empty for 3 minutes"
   treat_missing_data  = "breaching"
