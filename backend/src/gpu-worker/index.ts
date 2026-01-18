@@ -38,7 +38,7 @@ const ecsClient = new ECSClient({
 const QUEUE_URL = config.aws.gpuSqsQueueUrl;
 const VISIBILITY_TIMEOUT = 1800;
 const HEARTBEAT_INTERVAL = 300000;
-const TASK_PROTECTION_MINUTES = 30; // Protect task for up to 30 minutes (safety net)
+const TASK_PROTECTION_MINUTES = 60; // Protect task for up to 60 minutes (safety net)
 
 let isShuttingDown = false;
 let activeJobCount = 0;

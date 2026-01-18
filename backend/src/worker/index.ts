@@ -56,7 +56,7 @@ const ecsClient = new ECSClient({
 const QUEUE_URL = config.aws.sqsQueueUrl;
 const VISIBILITY_TIMEOUT = 900; // 15 minutes
 const HEARTBEAT_INTERVAL = 300000; // 5 minutes - extend visibility before it expires
-const TASK_PROTECTION_MINUTES = 30; // Protect task for up to 30 minutes (safety net)
+const TASK_PROTECTION_MINUTES = 60; // Protect task for up to 60 minutes (safety net)
 const MAX_CONCURRENT_JOBS = 5; // Process up to 5 jobs concurrently
 
 let isShuttingDown = false;
