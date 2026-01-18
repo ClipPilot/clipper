@@ -11,7 +11,6 @@ import {
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { FaceSwapJob, getStatusColor, getStatusIcon } from "./types";
-import { faceSwapAPI } from "@/api/ugc/faceSwap";
 
 interface FaceSwapJobCardProps {
   job: FaceSwapJob;
@@ -22,8 +21,8 @@ interface FaceSwapJobCardProps {
 export const FaceSwapJobCard = memo(
   function FaceSwapJobCard({ job, onClick, onDelete }: FaceSwapJobCardProps) {
     const videoRef = useRef<HTMLVideoElement>(null);
-    const [isDownloading, setIsDownloading] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isDownloading, setIsDownloading] = useState(false);
 
     const handleDelete = async () => {
       if (isDeleting || !onDelete) return;
@@ -40,15 +39,14 @@ export const FaceSwapJobCard = memo(
       if (!job.outputUrl || isDownloading) return;
 
       setIsDownloading(true);
-      addToast({ title: "Preparing your video for download...", color: "primary" });
       try {
-        const filename = `face-swap-${job.id}.mp4`;
-        const blob = await faceSwapAPI.downloadVideo(job.outputUrl, filename);
+        const response = await fetch(job.outputUrl);
+        const blob = await response.blob();
         const blobUrl = URL.createObjectURL(blob);
 
         const link = document.createElement("a");
         link.href = blobUrl;
-        link.download = filename;
+        link.download = `face-swap-${job.id}.mp4`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
