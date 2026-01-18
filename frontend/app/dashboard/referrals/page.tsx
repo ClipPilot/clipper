@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { motion } from "framer-motion";
 import {
   Card,
   CardBody,
@@ -160,18 +161,32 @@ export default function ReferralsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-dark p-6 lg:p-8">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+      className="min-h-screen bg-surface-dark p-6 lg:p-8"
+    >
       <div className="max-w-5xl mx-auto space-y-8">
-        <div>
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+        >
           <h1 className="text-2xl font-bold text-text-primary">
             Referral Program
           </h1>
           <p className="text-text-secondary mt-1">
             Earn rewards by referring others to Cuttr
           </p>
-        </div>
+        </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+          className="grid grid-cols-1 md:grid-cols-3 gap-4"
+        >
           <Card className="bg-surface-base border border-border-base">
             <CardBody className="p-5">
               <div className="flex items-center gap-3 mb-3">
@@ -231,8 +246,13 @@ export default function ReferralsPage() {
               </p>
             </CardBody>
           </Card>
-        </div>
+        </motion.div>
 
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.3 }}
+        >
         <Card className="bg-surface-base border border-border-base">
           <CardHeader className="flex flex-row items-center gap-3 pb-0">
             <Icon
@@ -295,7 +315,13 @@ export default function ReferralsPage() {
             </div>
           </CardBody>
         </Card>
+        </motion.div>
 
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.4 }}
+        >
         <Card className="bg-surface-base border border-border-base">
           <CardHeader className="flex flex-row items-center gap-3 pb-0">
             <Icon
@@ -361,7 +387,13 @@ export default function ReferralsPage() {
             )}
           </CardBody>
         </Card>
+        </motion.div>
 
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.5 }}
+        >
         <Card className="bg-surface-base border border-border-base">
           <CardHeader className="flex flex-row items-center gap-3 pb-0">
             <Icon
@@ -454,7 +486,8 @@ export default function ReferralsPage() {
             )}
           </CardBody>
         </Card>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   );
 }

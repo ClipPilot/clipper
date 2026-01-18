@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { motion } from "framer-motion";
 import {
   Card,
   CardBody,
@@ -63,17 +64,31 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-surface-dark p-6 lg:p-8">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+      className="min-h-screen bg-surface-dark p-6 lg:p-8"
+    >
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Header */}
-        <div>
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+        >
           <h1 className="text-2xl font-bold text-text-primary">Settings</h1>
           <p className="text-text-secondary mt-1">
             Manage your account and preferences
           </p>
-        </div>
+        </motion.div>
 
         {/* Profile Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+        >
         <Card className="bg-surface-base border border-border-base">
           <CardHeader className="flex flex-row items-center gap-3 pb-0">
             <Icon
@@ -168,8 +183,14 @@ export default function SettingsPage() {
             </div>
           </CardBody>
         </Card>
+        </motion.div>
 
         {/* Notifications Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.3 }}
+        >
         <Card className="bg-surface-base border border-border-base">
           <CardHeader className="flex flex-row items-center gap-3 pb-0">
             <Icon
@@ -222,8 +243,14 @@ export default function SettingsPage() {
             </div>
           </CardBody>
         </Card>
+        </motion.div>
 
         {/* Danger Zone */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.4 }}
+        >
         <Card className="bg-surface-base border border-red-500/30">
           <CardHeader className="flex flex-row items-center gap-3 pb-0">
             <Icon
@@ -257,7 +284,8 @@ export default function SettingsPage() {
             </div>
           </CardBody>
         </Card>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   );
 }

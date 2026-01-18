@@ -31,6 +31,21 @@ export interface TeamUsageStats {
   remaining: number;
 }
 
+export interface UsageHistoryEntry {
+  date: string;
+  clipsCreated: number;
+  creditsUsed: number;
+  generationsUsed: number;
+}
+
+export interface UsageHistoryResponse {
+  history: UsageHistoryEntry[];
+  period: "day" | "week" | "month";
+  totalClips: number;
+  totalCredits: number;
+  totalGenerations: number;
+}
+
 export interface TeamMember {
   id: number;
   userId: number;
@@ -116,6 +131,28 @@ class TeamAPI {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.message || "Failed to get team usage stats");
+    }
+
+    return await response.json();
+  }
+
+  async getUsageHistory(
+    teamId: number,
+    period: "day" | "week" | "month" = "day",
+    limit: number = 30
+  ): Promise<UsageHistoryResponse> {
+    const response = await apiFetch(
+      `${API_URL}/teams/${teamId}/usage-history?period=${period}&limit=${limit}`,
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Failed to get usage history");
     }
 
     return await response.json();

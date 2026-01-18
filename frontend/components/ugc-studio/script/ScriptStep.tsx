@@ -560,20 +560,20 @@ export function ScriptStep({
                     </CardBody>
                   </Card>
                 ))}
+                {hasMoreScripts && (
+                  <div className="flex justify-center pt-4">
+                    <Button
+                      variant="flat"
+                      className="bg-surface-elevated text-text-secondary"
+                      onPress={loadMoreScripts}
+                      isLoading={isLoadingMoreScripts}
+                      startContent={!isLoadingMoreScripts && <Icon icon="solar:arrow-down-bold" width={16} />}
+                    >
+                      {isLoadingMoreScripts ? "Loading..." : "Load More"}
+                    </Button>
+                  </div>
+                )}
               </div>
-              {hasMoreScripts && (
-                <div className="flex justify-center pt-4">
-                  <Button
-                    variant="flat"
-                    className="bg-surface-elevated text-text-secondary"
-                    onPress={loadMoreScripts}
-                    isLoading={isLoadingMoreScripts}
-                    startContent={!isLoadingMoreScripts && <Icon icon="solar:arrow-down-bold" width={16} />}
-                  >
-                    {isLoadingMoreScripts ? "Loading..." : "Load More"}
-                  </Button>
-                </div>
-              )}
             )}
           </div>
         ) : (

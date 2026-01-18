@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 import { Provider as JotaiProvider } from "jotai";
 import { AuthProvider } from "@/components/auth-provider";
+import { CommandPaletteProvider } from "@/components/command-palette";
 
 export interface ProvidersProps {
   children: React.ReactNode;
@@ -30,7 +31,9 @@ export function Providers({ children, themeProps }: ProvidersProps) {
       <AuthProvider>
         <NextThemesProvider {...themeProps}>
           <HeroUIProvider navigate={router.push}>
-            {children}
+            <CommandPaletteProvider>
+              {children}
+            </CommandPaletteProvider>
           </HeroUIProvider>
         </NextThemesProvider>
       </AuthProvider>

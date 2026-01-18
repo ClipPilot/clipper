@@ -3,6 +3,7 @@
 import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAtom, useAtomValue } from "jotai";
+import { motion } from "framer-motion";
 import { userAtom, selectedTeamAtom } from "@/store/auth";
 import { Button, Card, CardBody } from "@heroui/react";
 import { Icon } from "@iconify/react";
@@ -59,9 +60,19 @@ export default function DashboardPage() {
   const currentPlan = selectedTeam?.plan || "free";
 
   return (
-    <div className="min-h-screen bg-surface-dark p-6 lg:p-8">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+      className="min-h-screen bg-surface-dark p-6 lg:p-8"
+    >
       <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+        >
           <div>
             <h1 className="text-2xl lg:text-3xl font-bold text-text-primary">
               {getGreeting()}, {user?.firstName || "there"}
@@ -70,43 +81,55 @@ export default function DashboardPage() {
               Here&apos;s what&apos;s happening with your clips
             </p>
           </div>
-        </div>
+        </motion.div>
 
-        <DashboardGrid />
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+        >
+          <DashboardGrid />
+        </motion.div>
 
         {currentPlan === "free" && (
-          <Card className="bg-gradient-to-br from-accent-400/10 to-purple-500/10 border border-accent-400/20">
-            <CardBody className="p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-accent-400/20 flex items-center justify-center">
-                    <Icon
-                      icon="solar:rocket-bold-duotone"
-                      className="text-accent-400"
-                      width={26}
-                    />
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.3 }}
+          >
+            <Card className="bg-gradient-to-br from-accent-400/10 to-purple-500/10 border border-accent-400/20">
+              <CardBody className="p-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-accent-400/20 flex items-center justify-center">
+                      <Icon
+                        icon="solar:rocket-bold-duotone"
+                        className="text-accent-400"
+                        width={26}
+                      />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-text-primary">
+                        Upgrade to Pro
+                      </h3>
+                      <p className="text-sm text-text-secondary">
+                        Unlock unlimited generations and more credits
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-text-primary">
-                      Upgrade to Pro
-                    </h3>
-                    <p className="text-sm text-text-secondary">
-                      Unlock unlimited generations and more credits
-                    </p>
-                  </div>
+                  <Button
+                    className="bg-accent-400 text-white font-semibold"
+                    endContent={<Icon icon="solar:arrow-right-bold" width={18} />}
+                    onPress={() => router.push("/dashboard/pricing")}
+                  >
+                    View Plans
+                  </Button>
                 </div>
-                <Button
-                  className="bg-accent-400 text-white font-semibold"
-                  endContent={<Icon icon="solar:arrow-right-bold" width={18} />}
-                  onPress={() => router.push("/dashboard/pricing")}
-                >
-                  View Plans
-                </Button>
-              </div>
-            </CardBody>
-          </Card>
+              </CardBody>
+            </Card>
+          </motion.div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }

@@ -157,7 +157,7 @@ export function GeneratePanel({
                       </button>
                     ))}
                     {/* Show placeholder for poses being generated */}
-                    {isGeneratingPose && currentPoseIndex !== null && !generatedPoses.has(currentPoseIndex) && (
+                    {isGeneratingPose && currentPoseIndex != null && !generatedPoses.has(currentPoseIndex) && (
                       <div
                         className="relative rounded-lg overflow-hidden border-2 border-orange-500/30 bg-surface-elevated flex-shrink-0 flex flex-col items-center justify-center"
                         style={{ width: posesCount > 0 ? "100px" : "140px", aspectRatio: "9/16" }}
