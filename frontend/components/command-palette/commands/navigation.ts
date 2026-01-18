@@ -1,0 +1,86 @@
+import { Command } from "./types";
+
+export function createNavigationCommands(navigate: (path: string) => void): Command[] {
+  return [
+    {
+      id: "nav-home",
+      label: "Home",
+      icon: "solar:home-2-bold-duotone",
+      group: "navigation",
+      keywords: ["dashboard", "main"],
+      action: () => navigate("/dashboard"),
+    },
+    {
+      id: "nav-create-clip",
+      label: "Create Clip",
+      icon: "solar:scissors-bold-duotone",
+      group: "navigation",
+      keywords: ["new", "upload", "video"],
+      action: () => navigate("/dashboard/create-clip"),
+    },
+    {
+      id: "nav-clips",
+      label: "My Clips",
+      icon: "solar:video-library-bold-duotone",
+      group: "navigation",
+      keywords: ["library", "videos", "saved"],
+      action: () => navigate("/dashboard/clips"),
+    },
+    {
+      id: "nav-ugc-studio",
+      label: "UGC Studio",
+      icon: "solar:video-frame-play-vertical-bold-duotone",
+      group: "navigation",
+      keywords: ["creator", "content"],
+      action: () => navigate("/dashboard/ugc-studio"),
+    },
+    {
+      id: "nav-face-swap",
+      label: "Face Swap",
+      icon: "solar:face-scan-circle-bold-duotone",
+      group: "navigation",
+      keywords: ["ugc", "avatar"],
+      action: () => navigate("/dashboard/ugc-studio/face-swap"),
+    },
+    {
+      id: "nav-ai-video",
+      label: "AI Video Creator",
+      icon: "solar:magic-stick-3-bold-duotone",
+      group: "navigation",
+      keywords: ["ugc", "generate", "ai"],
+      action: () => navigate("/dashboard/ugc-studio/ai-video-creator"),
+    },
+    {
+      id: "nav-pricing",
+      label: "Pricing",
+      icon: "solar:wallet-bold-duotone",
+      group: "navigation",
+      keywords: ["plans", "subscription", "upgrade"],
+      action: () => navigate("/dashboard/pricing"),
+    },
+    {
+      id: "nav-settings",
+      label: "Settings",
+      icon: "solar:settings-bold-duotone",
+      group: "navigation",
+      keywords: ["preferences", "account"],
+      action: () => navigate("/dashboard/settings"),
+    },
+    {
+      id: "nav-referrals",
+      label: "Referrals",
+      icon: "solar:money-bag-bold-duotone",
+      group: "navigation",
+      keywords: ["invite", "earn", "share"],
+      action: () => navigate("/dashboard/referrals"),
+    },
+    {
+      id: "nav-contact",
+      label: "Contact Support",
+      icon: "solar:chat-round-dots-bold-duotone",
+      group: "navigation",
+      keywords: ["help", "support", "contact", "bug", "issue"],
+      action: () => window.open("https://cuttr.com/contact", "_blank"),
+    },
+  ];
+}

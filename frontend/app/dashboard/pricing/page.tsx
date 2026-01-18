@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, Suspense } from "react";
+import { motion } from "framer-motion";
 import { useSearchParams } from "next/navigation";
 import { Link, Spacer, addToast, Input, Button, Chip } from "@heroui/react";
 import { Icon } from "@iconify/react";
@@ -246,7 +247,12 @@ function PricingContent() {
   }
 
   return (
-    <div className="relative mx-auto flex max-w-7xl flex-col items-center px-4 py-12 lg:py-24">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+      className="relative mx-auto flex max-w-7xl flex-col items-center px-4 py-12 lg:py-24"
+    >
       <div
         aria-hidden="true"
         className="pointer-events-none fixed inset-x-0 top-0 z-0 h-full w-full transform-gpu overflow-hidden blur-3xl"
@@ -260,7 +266,12 @@ function PricingContent() {
         />
       </div>
 
-      <div className="relative z-10 flex max-w-xl flex-col text-center xl:translate-x-[12.5%]">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1 }}
+        className="relative z-10 flex max-w-xl flex-col text-center xl:translate-x-[12.5%]"
+      >
         <h2 className="text-accent-400 text-sm font-medium uppercase tracking-wider">
           Pricing
         </h2>
@@ -272,11 +283,16 @@ function PricingContent() {
         <p className="text-lg text-text-secondary">
           Generate unlimited clips. Only pay for what you save.
         </p>
-      </div>
+      </motion.div>
 
       <Spacer y={8} />
 
-      <div className="relative z-10 w-full max-w-md xl:translate-x-[12.5%]">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.2 }}
+        className="relative z-10 w-full max-w-md xl:translate-x-[12.5%]"
+      >
         {appliedReferral ? (
           <div className="flex items-center justify-center gap-3 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
             <Icon
@@ -363,11 +379,16 @@ function PricingContent() {
             />
           </button>
         )}
-      </div>
+      </motion.div>
 
       <Spacer y={8} />
 
-      <div className="relative z-10 mx-auto grid max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:hidden items-stretch">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.3 }}
+        className="relative z-10 mx-auto grid max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:hidden items-stretch"
+      >
         {tiers.map((tier) => (
           <PricingTierCard
             key={tier.key}
@@ -378,7 +399,7 @@ function PricingContent() {
             onUpgrade={() => handleUpgrade(tier)}
           />
         ))}
-      </div>
+      </motion.div>
 
       <PricingTable
         tiers={tiers}
@@ -391,7 +412,12 @@ function PricingContent() {
 
       <Spacer y={12} />
 
-      <div className="relative z-10 flex py-2">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.5 }}
+        className="relative z-10 flex py-2"
+      >
         <p className="text-text-tertiary">
           Questions about pricing?{" "}
           <Link
@@ -402,8 +428,8 @@ function PricingContent() {
             Contact us
           </Link>
         </p>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
