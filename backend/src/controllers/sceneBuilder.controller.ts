@@ -155,6 +155,14 @@ export class SceneBuilderController {
         scenes: Array<{
           sceneId: string;
           sceneNumber: number;
+          // Scene content passed from frontend (preferred - avoids stale DB reads)
+          sceneType?: string;
+          dialogue?: string;
+          action?: string;
+          emotion?: string;
+          shotType?: string;
+          cameraAngle?: string;
+          // Optional refinements
           userRefinement?: string;
           supportingImageKeys?: string[];
           generateEndFrame?: boolean;
@@ -178,7 +186,7 @@ export class SceneBuilderController {
         return res.status(403).json({ error: "UGC Studio access required" });
       }
 
-      // Fetch the script
+      // Fetch script from DB as fallback (only used if scene data not passed)
       const [script] = await db
         .select()
         .from(ugcScripts)
@@ -195,15 +203,41 @@ export class SceneBuilderController {
 
       // Create jobs for each scene
       for (const sceneRequest of scenes) {
-        const sceneData = selectedScript?.scenes?.find(
-          (s: SceneData) => s.id === sceneRequest.sceneId
-        ) as SceneData | undefined;
+        // Use scene data passed from frontend if available (fresher than DB)
+        // Fall back to DB data for backwards compatibility
+        let sceneData: SceneData;
 
-        if (!sceneData) {
-          console.warn(
-            `[SCENE_BUILDER] Scene ${sceneRequest.sceneId} not found, skipping`
+        if (sceneRequest.sceneType && sceneRequest.dialogue && sceneRequest.action && sceneRequest.emotion) {
+          // Use passed data (avoids stale DB reads)
+          sceneData = {
+            id: sceneRequest.sceneId,
+            sceneNumber: sceneRequest.sceneNumber,
+            sceneType: sceneRequest.sceneType,
+            dialogue: sceneRequest.dialogue,
+            action: sceneRequest.action,
+            emotion: sceneRequest.emotion,
+            shotType: sceneRequest.shotType || "a-roll",
+            cameraAngle: sceneRequest.cameraAngle || "pov-selfie",
+          } as SceneData;
+          console.log(
+            `[SCENE_BUILDER] Scene ${sceneRequest.sceneId}: Using frontend data (dialogue: "${sceneData.dialogue.substring(0, 50)}...")`
           );
-          continue;
+        } else {
+          // Fallback to DB data
+          const dbSceneData = selectedScript?.scenes?.find(
+            (s: SceneData) => s.id === sceneRequest.sceneId
+          ) as SceneData | undefined;
+
+          if (!dbSceneData) {
+            console.warn(
+              `[SCENE_BUILDER] Scene ${sceneRequest.sceneId} not found, skipping`
+            );
+            continue;
+          }
+          sceneData = dbSceneData;
+          console.log(
+            `[SCENE_BUILDER] Scene ${sceneRequest.sceneId}: Using DB fallback data`
+          );
         }
 
         const prompt = this.buildScenePrompt(

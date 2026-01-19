@@ -253,6 +253,14 @@ export function SceneBuilderStep({
         scenes: scenes.map((scene) => ({
           sceneId: scene.id,
           sceneNumber: scene.sceneNumber,
+          // Pass full scene data to avoid stale DB reads
+          sceneType: scene.sceneType,
+          dialogue: scene.dialogue,
+          action: scene.action,
+          emotion: scene.emotion,
+          shotType: scene.shotType,
+          cameraAngle: scene.cameraAngle,
+          // Optional refinements
           userRefinement: sceneImages[scene.id]?.userRefinement,
           supportingImageKeys: sceneImages[scene.id]?.supportingImageKeys,
           generateEndFrame: sceneImages[scene.id]?.useEndFrame,

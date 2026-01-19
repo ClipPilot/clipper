@@ -50,7 +50,7 @@ class AdminService {
 
   generateToken(email: string): string {
     return jwt.sign({ email, isAdmin: true }, ADMIN_JWT_SECRET, {
-      expiresIn: "24h",
+      expiresIn: "7d",
     });
   }
 

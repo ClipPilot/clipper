@@ -35,6 +35,14 @@ export interface GenerateAllSceneImagesRequest {
   scenes: Array<{
     sceneId: string;
     sceneNumber: number;
+    // Scene content - use this instead of re-fetching from DB
+    sceneType: string;
+    dialogue: string;
+    action: string;
+    emotion: string;
+    shotType?: string;
+    cameraAngle?: string;
+    // Optional refinements
     userRefinement?: string;
     supportingImageKeys?: string[];
     generateEndFrame?: boolean;

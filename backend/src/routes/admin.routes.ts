@@ -17,7 +17,7 @@ const router = Router();
 
 const adminAuthLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 3,
+  max: 10,
   message: { error: "Too many login attempts, please try again in 15 minutes" },
   standardHeaders: true,
   legacyHeaders: false,
