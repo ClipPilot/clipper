@@ -3,7 +3,6 @@ import { config } from "../config/env";
 import { openaiClient } from "./ugcScript.service";
 import {
   PRODUCT_NEGATIVE_PROMPT,
-  NO_TEXT_OVERLAY_DIRECTIVE,
   PRODUCT_STABILITY_MODIFIERS,
   GENTLE_MOTION_MODIFIERS,
   PRO_MOTION_PROMPT,
@@ -15,7 +14,6 @@ import {
 
 export {
   PRODUCT_NEGATIVE_PROMPT,
-  NO_TEXT_OVERLAY_DIRECTIVE,
   PRODUCT_STABILITY_MODIFIERS,
   GENTLE_MOTION_MODIFIERS,
   PRO_MOTION_PROMPT,
@@ -305,15 +303,14 @@ export function buildKlingPrompt(
   let basePrompt: string;
 
   if (shotType === "a-roll") {
-    basePrompt = `ZERO on-screen text. No captions. No subtitles. No graphics. No overlays. ${cinematicPrompt}.The person speaks naturally to camera with ${emotion} expression. Subtle, realistic lip movements - not exaggerated. Natural micro-expressions, gentle head movements, relaxed eye contact. Authentic UGC-style, conversational and relaxed. ${GENTLE_MOTION_MODIFIERS}`;
+    basePrompt = `${cinematicPrompt}. The person speaks naturally to camera with ${emotion} expression. Subtle, realistic lip movements - not exaggerated. Natural micro-expressions, gentle head movements, relaxed eye contact. Authentic UGC-style, conversational and relaxed. ${GENTLE_MOTION_MODIFIERS}`;
   } else if (shotType === "b-roll") {
     basePrompt = `${cinematicPrompt}. Smooth product showcase with subtle, slow camera movement. Professional product photography style with gentle rotation or reveal. Clean background, focused lighting on product. ${PRODUCT_STABILITY_MODIFIERS} ${GENTLE_MOTION_MODIFIERS}`;
   } else {
-    basePrompt = `${cinematicPrompt}. Person performs action: ${action}. Natural body movement, ${emotion} expression, hands interacting with product. No talking, action-focused. ${PRODUCT_STABILITY_MODIFIERS}`;
+    basePrompt = `${cinematicPrompt}. Person performs action: ${action}. Natural body movement, ${emotion} expression, hands interacting with product. Action-focused. ${PRODUCT_STABILITY_MODIFIERS}`;
   }
 
-  // Append critical no-text directive to ALL prompts
-  return `${basePrompt} ${NO_TEXT_OVERLAY_DIRECTIVE}`;
+  return basePrompt;
 }
 
 export async function generateVideo(

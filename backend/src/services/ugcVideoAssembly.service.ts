@@ -10,12 +10,10 @@ import {
   ShotType,
   PRODUCT_NEGATIVE_PROMPT,
 } from "./kling.service";
-import { openaiClient } from "./ugcScript.service";
 import { generateJumbledMetadataString } from "../utils/videoMetadata";
 
-const MAX_AUDIO_DURATION = 10;
-const MAX_AROLL_BEFORE_SHORTEN = 12; // If A-roll audio exceeds this, shorten dialogue instead of speeding up
-const KLING_VIDEO_DURATION = 10;
+const MAX_KLING_VIDEO_DURATION = 10; // Kling generates 10s videos
+const KLING_EXTENSION_DURATION = 5; // Extend in 5s increments
 const PARALLEL_SCENES = 2;
 const AUDIO_SAMPLE_RATE = 44100;
 const AUDIO_CHANNELS = 2;
@@ -24,40 +22,29 @@ const VIDEO_ENCODE_SETTINGS =
   "-c:v libx264 -preset fast -crf 23 -profile:v main -level 3.1 -pix_fmt yuv420p -r 30 -g 30 -keyint_min 30 -vsync cfr";
 const SPEECH_SPEED_BOOST = 1.12;
 
-async function shortenDialogue(
-  dialogue: string,
-  targetDurationSeconds: number,
-  currentDurationSeconds: number
-): Promise<string> {
-  const reductionPercent = Math.round(
-    ((currentDurationSeconds - targetDurationSeconds) /
-      currentDurationSeconds) *
-      100
+/**
+ * Extract the last frame from a video as a PNG image.
+ * Used for video extension - the last frame becomes the start frame for continuation.
+ */
+function extractLastFrame(videoPath: string, sceneNumber: number): string {
+  const outputPath = path.join(
+    OUTPUT_DIR,
+    `lastframe_${sceneNumber}_${Date.now()}.png`
   );
+
+  // Get video duration first
+  const duration = getMediaDuration(videoPath);
+
+  // Extract frame at duration - 0.1s to ensure we get the last frame
+  const timestamp = Math.max(0, duration - 0.1);
+  const cmd = `ffmpeg -y -ss ${timestamp.toFixed(3)} -i "${videoPath}" -vframes 1 -q:v 2 "${outputPath}"`;
 
   console.log(
-    `[OpenAI] Shortening dialogue by ~${reductionPercent}% (${currentDurationSeconds.toFixed(1)}s -> ${targetDurationSeconds}s)`
+    `[FFmpeg] Scene ${sceneNumber}: Extracting last frame at ${timestamp.toFixed(2)}s`
   );
+  execSync(cmd, { stdio: "pipe" });
 
-  const response = await openaiClient.responses.create({
-    model: "gpt-5.2",
-    instructions: `You are an expert UGC script editor. Your task is to shorten dialogue while preserving its impact, persuasiveness, and natural flow. Keep the same tone, style, and key selling points. Output ONLY the shortened dialogue, nothing else.`,
-    input: [
-      {
-        role: "user",
-        content: `Shorten this dialogue by approximately ${reductionPercent}% (from ${currentDurationSeconds.toFixed(1)} seconds to about ${targetDurationSeconds} seconds when spoken).
-
-Original dialogue:
-"${dialogue}"
-
-Shortened dialogue:`,
-      },
-    ],
-  });
-
-  const shortened = response.output_text?.trim() || dialogue;
-  console.log(`[OpenAI] Shortened: "${shortened.substring(0, 80)}..."`);
-  return shortened;
+  return outputPath;
 }
 
 /**
@@ -199,23 +186,27 @@ function speedUpAudio(
   return { outputPath, finalDuration };
 }
 
+/**
+ * Generate dialogue audio with ElevenLabs and apply 1.12x speedup.
+ * Returns audio that may exceed 10s - caller handles video extension if needed.
+ */
 async function generateDialogueAudio(
   voiceId: string,
   text: string,
   teamId: number,
   scriptId: string,
-  sceneNumber: number,
-  applySpeedLimits: boolean = true
+  sceneNumber: number
 ): Promise<{ audioPath: string; audioKey: string; duration: number }> {
   console.log(
     `[UGC Assembly] Scene ${sceneNumber}: Generating dialogue audio...`
   );
 
+  // Generate audio with ElevenLabs (natural speed, allow longer audio)
   const { audioBuffer, actualDuration } =
     await elevenLabsService.textToDialogueForTargetDuration({
       voiceId,
       text,
-      targetDurationSeconds: MAX_AUDIO_DURATION,
+      targetDurationSeconds: 15, // Allow longer audio, we'll extend video if needed
       tolerancePercent: 50,
     });
 
@@ -225,37 +216,19 @@ async function generateDialogueAudio(
   );
   fs.writeFileSync(tempAudioPath, audioBuffer);
 
-  let finalAudioPath = tempAudioPath;
-  let finalDuration = actualDuration;
+  // Always apply 1.12x speedup
+  const boostedTargetDuration = actualDuration / SPEECH_SPEED_BOOST;
+  const { outputPath: finalAudioPath, finalDuration } = speedUpAudio(
+    tempAudioPath,
+    boostedTargetDuration,
+    sceneNumber
+  );
 
-  if (applySpeedLimits) {
-    const boostedTargetDuration = actualDuration / SPEECH_SPEED_BOOST;
-    const speedResult = speedUpAudio(
-      tempAudioPath,
-      boostedTargetDuration,
-      sceneNumber
-    );
-    finalAudioPath = speedResult.outputPath;
-    finalDuration = speedResult.finalDuration;
+  console.log(
+    `[UGC Assembly] Scene ${sceneNumber}: Audio ${actualDuration.toFixed(2)}s -> ${finalDuration.toFixed(2)}s (${SPEECH_SPEED_BOOST}x speed)`
+  );
 
-    if (finalDuration > MAX_AUDIO_DURATION) {
-      const trimResult = speedUpAudio(
-        finalAudioPath,
-        MAX_AUDIO_DURATION,
-        sceneNumber
-      );
-      finalAudioPath = trimResult.outputPath;
-      finalDuration = trimResult.finalDuration;
-    }
-    console.log(
-      `[UGC Assembly] Scene ${sceneNumber}: Audio with speed limits - ${finalDuration.toFixed(2)}s (${SPEECH_SPEED_BOOST}x boost)`
-    );
-  } else {
-    console.log(
-      `[UGC Assembly] Scene ${sceneNumber}: B-roll audio ${finalDuration.toFixed(2)}s`
-    );
-  }
-
+  // Upload the sped-up audio
   const audioBuffer2 = fs.readFileSync(finalAudioPath);
   const audioKey = await s3Service.uploadTTSAudio(
     audioBuffer2,
@@ -300,6 +273,107 @@ function trimVideoToAudio(
   execSync(cmd, { stdio: "pipe" });
 
   return outputPath;
+}
+
+/**
+ * Extend a video to match target duration using Kling's last-frame continuation.
+ * If video is shorter than target, extracts last frame and generates continuation segments.
+ *
+ * Process:
+ * 1. Generate initial 10s video
+ * 2. If audio > 10s, extract last frame
+ * 3. Use last frame as start reference to generate 5s continuation with same prompt
+ * 4. Merge videos seamlessly
+ * 5. Trim to exact target duration
+ */
+async function extendVideoToMatchAudio(
+  initialVideoPath: string,
+  targetDuration: number,
+  prompt: string,
+  sceneNumber: number,
+  teamId: number
+): Promise<string> {
+  let currentVideoPath = initialVideoPath;
+  let currentDuration = getMediaDuration(initialVideoPath);
+
+  console.log(
+    `[Video Extension] Scene ${sceneNumber}: Video ${currentDuration.toFixed(2)}s, target ${targetDuration.toFixed(2)}s`
+  );
+
+  // If video is already long enough, just return it
+  if (currentDuration >= targetDuration) {
+    return currentVideoPath;
+  }
+
+  const videosToMerge: string[] = [currentVideoPath];
+
+  // Keep extending until we have enough video
+  while (currentDuration < targetDuration) {
+    const neededDuration = targetDuration - currentDuration;
+    // Use 5s extensions (Kling minimum)
+    const extensionDuration = neededDuration > 5 ? 10 : 5;
+
+    console.log(
+      `[Video Extension] Scene ${sceneNumber}: Extending by ${extensionDuration}s (need ${neededDuration.toFixed(2)}s more)`
+    );
+
+    // Extract last frame from current video
+    const lastFramePath = extractLastFrame(currentVideoPath, sceneNumber);
+
+    // Upload last frame to S3 for Kling
+    const lastFrameBuffer = fs.readFileSync(lastFramePath);
+    const lastFrameKey = `teams/${teamId}/ugc/extension-frames/frame_${sceneNumber}_${Date.now()}.png`;
+    await s3Service.uploadBuffer(lastFrameBuffer, lastFrameKey, "image/png");
+    const lastFrameUrl = await s3Service.getPresignedUrl(lastFrameKey, 3600);
+
+    // Generate extension video using last frame as start reference
+    const { videoUrl: extensionVideoUrl } =
+      await klingService.generateVideoWithRetry({
+        imageUrl: lastFrameUrl,
+        prompt: `Continue the scene naturally and seamlessly. ${prompt}`,
+        duration: extensionDuration as 5 | 10,
+        negativePrompt: PRODUCT_NEGATIVE_PROMPT,
+      });
+
+    // Download extension video
+    const extensionVideoPath = path.join(
+      OUTPUT_DIR,
+      `extension_${sceneNumber}_${Date.now()}.mp4`
+    );
+    await s3Service.downloadVideoFromUrl(extensionVideoUrl, extensionVideoPath);
+
+    // Cleanup last frame
+    if (fs.existsSync(lastFramePath)) fs.unlinkSync(lastFramePath);
+
+    videosToMerge.push(extensionVideoPath);
+    currentDuration += extensionDuration;
+    currentVideoPath = extensionVideoPath;
+
+    console.log(
+      `[Video Extension] Scene ${sceneNumber}: Now have ${currentDuration.toFixed(2)}s of video`
+    );
+  }
+
+  // Merge all video segments if we have multiple
+  if (videosToMerge.length > 1) {
+    const mergedPath = path.join(
+      OUTPUT_DIR,
+      `merged_extended_${sceneNumber}_${Date.now()}.mp4`
+    );
+    mergeUGCClips(videosToMerge, mergedPath);
+
+    // Cleanup individual segments (except original which may still be needed)
+    for (let i = 1; i < videosToMerge.length; i++) {
+      if (fs.existsSync(videosToMerge[i])) fs.unlinkSync(videosToMerge[i]);
+    }
+
+    console.log(
+      `[Video Extension] Scene ${sceneNumber}: Merged ${videosToMerge.length} segments`
+    );
+    return mergedPath;
+  }
+
+  return currentVideoPath;
 }
 
 /**
@@ -362,7 +436,8 @@ function mixAmbientAudio(
 
 /**
  * Process A-Roll scene using Kling Avatar v2 (optimized for talking heads).
- * Single-step: image + audio → video with built-in lip-sync (better quality than 2-step).
+ * Single-step: image + audio → video with built-in lip-sync.
+ * If audio > 10s, extends video using last-frame continuation technique.
  * Optionally mixes in ambient sound effects for realistic background audio.
  */
 async function processArollScene(
@@ -384,90 +459,21 @@ async function processArollScene(
     ambientSound,
   } = scene;
 
-  let currentDialogue = dialogue;
-  const MAX_SHORTEN_ATTEMPTS = 2;
-
-  // Step 1: Generate initial audio WITHOUT speed limits to check natural duration
+  // Step 1: Generate audio with 1.12x speedup
   onProgress?.(`Scene ${sceneNumber}: Generating dialogue...`);
-  let { audioPath, audioKey, duration: audioDuration } = await generateDialogueAudio(
-    voiceId,
-    currentDialogue,
-    teamId,
-    scriptId,
-    sceneNumber,
-    false // No speed limits yet - check natural duration first
-  );
+  const { audioPath, audioKey, duration: audioDuration } =
+    await generateDialogueAudio(voiceId, dialogue, teamId, scriptId, sceneNumber);
 
   console.log(
-    `[UGC Assembly] A-Roll Scene ${sceneNumber}: Initial audio duration: ${audioDuration.toFixed(2)}s`
+    `[UGC Assembly] A-Roll Scene ${sceneNumber}: Audio duration: ${audioDuration.toFixed(2)}s`
   );
 
-  // Step 2: If audio > 12 seconds, shorten dialogue with AI instead of aggressive speed-up
-  for (
-    let attempt = 1;
-    attempt <= MAX_SHORTEN_ATTEMPTS && audioDuration > MAX_AROLL_BEFORE_SHORTEN;
-    attempt++
-  ) {
-    onProgress?.(`Scene ${sceneNumber}: Shortening dialogue...`);
-    console.log(
-      `[UGC Assembly] A-Roll Scene ${sceneNumber}: Audio too long (${audioDuration.toFixed(2)}s > ${MAX_AROLL_BEFORE_SHORTEN}s), shortening dialogue (attempt ${attempt})`
-    );
-
-    currentDialogue = await shortenDialogue(
-      currentDialogue,
-      MAX_AUDIO_DURATION * 0.95, // Target ~9.5s to leave room for speed boost
-      audioDuration
-    );
-
-    if (fs.existsSync(audioPath)) {
-      fs.unlinkSync(audioPath);
-    }
-
-    const result = await generateDialogueAudio(
-      voiceId,
-      currentDialogue,
-      teamId,
-      scriptId,
-      sceneNumber,
-      false // Still no speed limits
-    );
-    audioPath = result.audioPath;
-    audioKey = result.audioKey;
-    audioDuration = result.duration;
-
-    console.log(
-      `[UGC Assembly] A-Roll Scene ${sceneNumber}: Shortened audio: ${audioDuration.toFixed(2)}s (attempt ${attempt})`
-    );
-  }
-
-  // Step 3: Now apply speed limits (1.12x boost + trim to 10s if needed)
-  if (audioDuration > MAX_AUDIO_DURATION) {
-    if (fs.existsSync(audioPath)) {
-      fs.unlinkSync(audioPath);
-    }
-    const result = await generateDialogueAudio(
-      voiceId,
-      currentDialogue,
-      teamId,
-      scriptId,
-      sceneNumber,
-      true // Apply speed limits now
-    );
-    audioPath = result.audioPath;
-    audioKey = result.audioKey;
-    audioDuration = result.duration;
-  }
-
-  console.log(
-    `[UGC Assembly] A-Roll Scene ${sceneNumber}: Using Avatar v2 for lip-sync (audio: ${audioDuration.toFixed(2)}s)`
-  );
-
-  // Step 2: Get presigned URLs for image and audio
+  // Step 2: Get presigned URLs
   onProgress?.(`Scene ${sceneNumber}: Generating video with lip-sync...`);
   const imageUrl = await s3Service.getPresignedUrl(imageKey, 3600);
   const audioUrl = await s3Service.getPresignedUrl(audioKey, 3600);
 
-  // Step 3: Generate grounded cinematic prompt based on actual image
+  // Step 3: Generate grounded cinematic prompt
   onProgress?.(`Scene ${sceneNumber}: Analyzing image for video prompt...`);
   const groundedCinematicPrompt = await generateGroundedCinematicPrompt({
     originalCinematicPrompt: cinematicPrompt,
@@ -477,7 +483,7 @@ async function processArollScene(
     action,
   });
 
-  // Step 4: Generate video with Avatar v2 (single-step, optimized for talking heads)
+  // Step 4: Generate video with Avatar v2 (lip-sync)
   const prompt = buildKlingPrompt(groundedCinematicPrompt, shotType, emotion, action);
   const { videoUrl: avatarVideoUrl } =
     await klingService.generateAvatarWithRetry({
@@ -486,28 +492,40 @@ async function processArollScene(
       prompt,
     });
 
-  // Step 4: Download avatar video
+  // Step 5: Download avatar video
   const avatarVideoPath = path.join(
     OUTPUT_DIR,
     `avatar_${sceneNumber}_${Date.now()}.mp4`
   );
   await s3Service.downloadVideoFromUrl(avatarVideoUrl, avatarVideoPath);
 
-  // Step 5: Trim video to match audio duration exactly
-  let processedVideoPath = trimVideoToAudio(
-    avatarVideoPath,
-    audioDuration,
-    sceneNumber
-  );
-
-  if (
-    fs.existsSync(avatarVideoPath) &&
-    avatarVideoPath !== processedVideoPath
-  ) {
-    fs.unlinkSync(avatarVideoPath);
+  // Step 6: Extend video if audio > 10s using last-frame continuation
+  let processedVideoPath = avatarVideoPath;
+  if (audioDuration > MAX_KLING_VIDEO_DURATION) {
+    onProgress?.(`Scene ${sceneNumber}: Extending video to match audio...`);
+    console.log(
+      `[UGC Assembly] A-Roll Scene ${sceneNumber}: Audio ${audioDuration.toFixed(2)}s > ${MAX_KLING_VIDEO_DURATION}s, extending video`
+    );
+    processedVideoPath = await extendVideoToMatchAudio(
+      avatarVideoPath,
+      audioDuration,
+      prompt,
+      sceneNumber,
+      teamId
+    );
+    if (fs.existsSync(avatarVideoPath) && avatarVideoPath !== processedVideoPath) {
+      fs.unlinkSync(avatarVideoPath);
+    }
   }
 
-  // Step 6: Generate and mix ambient sound effect (if provided)
+  // Step 7: Trim video to exact audio duration
+  const trimmedPath = trimVideoToAudio(processedVideoPath, audioDuration, sceneNumber);
+  if (fs.existsSync(processedVideoPath) && processedVideoPath !== trimmedPath) {
+    fs.unlinkSync(processedVideoPath);
+  }
+  processedVideoPath = trimmedPath;
+
+  // Step 8: Mix ambient sound if provided
   console.log(
     `[UGC Assembly] Scene ${sceneNumber}: ambientSound field = "${ambientSound || "NOT SET"}"`
   );
@@ -538,10 +556,7 @@ async function processArollScene(
         ambientAudioPath,
         sceneNumber
       );
-      if (
-        fs.existsSync(processedVideoPath) &&
-        processedVideoPath !== mixedVideoPath
-      ) {
+      if (fs.existsSync(processedVideoPath) && processedVideoPath !== mixedVideoPath) {
         fs.unlinkSync(processedVideoPath);
       }
       if (fs.existsSync(ambientAudioPath)) {
@@ -557,7 +572,6 @@ async function processArollScene(
         `[UGC Assembly] Scene ${sceneNumber}: Ambient audio generation failed:`,
         error
       );
-      // Continue without ambient sound if it fails
     }
   } else {
     console.log(
@@ -570,7 +584,7 @@ async function processArollScene(
     fs.unlinkSync(audioPath);
   }
 
-  // Step 7: Upload processed scene
+  // Step 9: Upload processed scene
   const videoBuffer = fs.readFileSync(processedVideoPath);
   const videoKey = await s3Service.uploadUGCSceneVideo(
     videoBuffer,
@@ -581,7 +595,7 @@ async function processArollScene(
   );
 
   console.log(
-    `[UGC Assembly] A-Roll Scene ${sceneNumber} complete (Avatar v2): ${audioDuration.toFixed(2)}s`
+    `[UGC Assembly] A-Roll Scene ${sceneNumber} complete: ${audioDuration.toFixed(2)}s`
   );
 
   return {
@@ -598,7 +612,7 @@ async function processArollScene(
  * Process B-Roll scene using Kling 2.6 for product showcase shots.
  * No lip-sync needed for B-roll (product shots, cutaways, etc.)
  *
- * If audio exceeds 10s, dialogue is shortened via OpenAI and regenerated.
+ * If audio > 10s, extends video using last-frame continuation technique.
  * Kling 2.6 generates 10s video from a single reference image.
  * Final video is trimmed to match exact audio duration.
  */
@@ -621,73 +635,19 @@ async function processBrollScene(
     emotion,
   } = scene;
 
-  let currentDialogue = dialogue;
-  const MAX_SHORTEN_ATTEMPTS = 2;
-
+  // Step 1: Generate audio with 1.12x speedup
   onProgress?.(`Scene ${sceneNumber}: Generating voiceover...`);
-
-  let result = await generateDialogueAudio(
-    voiceId,
-    currentDialogue,
-    teamId,
-    scriptId,
-    sceneNumber,
-    false
-  );
-  let { audioPath, audioKey, duration: audioDuration } = result;
+  const { audioPath, audioKey, duration: audioDuration } =
+    await generateDialogueAudio(voiceId, dialogue, teamId, scriptId, sceneNumber);
 
   console.log(
-    `[UGC Assembly] B-Roll Scene ${sceneNumber}: audio ${audioDuration.toFixed(2)}s`
+    `[UGC Assembly] B-Roll Scene ${sceneNumber}: Audio duration: ${audioDuration.toFixed(2)}s`
   );
 
-  // If audio > 12 seconds, shorten dialogue with AI instead of using overly long audio
-  for (
-    let attempt = 1;
-    attempt <= MAX_SHORTEN_ATTEMPTS && audioDuration > MAX_AROLL_BEFORE_SHORTEN;
-    attempt++
-  ) {
-    onProgress?.(`Scene ${sceneNumber}: Shortening dialogue...`);
-    console.log(
-      `[UGC Assembly] B-Roll Scene ${sceneNumber}: Audio too long (${audioDuration.toFixed(2)}s > ${MAX_AROLL_BEFORE_SHORTEN}s), shortening dialogue (attempt ${attempt})`
-    );
-
-    currentDialogue = await shortenDialogue(
-      currentDialogue,
-      MAX_AUDIO_DURATION * 0.9,
-      audioDuration
-    );
-
-    if (fs.existsSync(audioPath)) {
-      fs.unlinkSync(audioPath);
-    }
-
-    result = await generateDialogueAudio(
-      voiceId,
-      currentDialogue,
-      teamId,
-      scriptId,
-      sceneNumber,
-      false
-    );
-    audioPath = result.audioPath;
-    audioKey = result.audioKey;
-    audioDuration = result.duration;
-
-    console.log(
-      `[UGC Assembly] B-Roll Scene ${sceneNumber}: audio ${audioDuration.toFixed(2)}s (attempt ${attempt + 1})`
-    );
-  }
-
-  if (audioDuration > MAX_AROLL_BEFORE_SHORTEN) {
-    console.warn(
-      `[UGC Assembly] B-Roll Scene ${sceneNumber}: Could not shorten to ${MAX_AROLL_BEFORE_SHORTEN}s, using ${audioDuration.toFixed(2)}s`
-    );
-  }
-
+  // Step 2: Get presigned URLs
   onProgress?.(`Scene ${sceneNumber}: Generating video...`);
   const imageUrl = await s3Service.getPresignedUrl(imageKey, 3600);
 
-  // Get end frame URL for better video interpolation (Kling 2.6 tail_image_url)
   const tailImageUrl = endImageKey
     ? await s3Service.getPresignedUrl(endImageKey, 3600)
     : undefined;
@@ -698,7 +658,7 @@ async function processBrollScene(
     );
   }
 
-  // Generate grounded cinematic prompt based on actual image(s)
+  // Step 3: Generate grounded cinematic prompt
   onProgress?.(`Scene ${sceneNumber}: Analyzing image for video prompt...`);
   const groundedCinematicPrompt = await generateGroundedCinematicPrompt({
     originalCinematicPrompt: cinematicPrompt,
@@ -711,15 +671,14 @@ async function processBrollScene(
 
   const prompt = buildKlingPrompt(groundedCinematicPrompt, shotType, emotion, action);
 
-  const { videoUrl: klingVideoUrl } = await klingService.generateVideoWithRetry(
-    {
-      imageUrl,
-      tailImageUrl,
-      prompt,
-      duration: 10,
-      negativePrompt: PRODUCT_NEGATIVE_PROMPT,
-    }
-  );
+  // Step 4: Generate initial 10s video with Kling 2.6
+  const { videoUrl: klingVideoUrl } = await klingService.generateVideoWithRetry({
+    imageUrl,
+    tailImageUrl,
+    prompt,
+    duration: 10,
+    negativePrompt: PRODUCT_NEGATIVE_PROMPT,
+  });
 
   console.log(
     `[UGC Assembly] B-Roll Scene ${sceneNumber}: Kling generated 10s video`
@@ -731,16 +690,41 @@ async function processBrollScene(
   );
   await s3Service.downloadVideoFromUrl(klingVideoUrl, silentVideoPath);
 
+  // Step 5: Extend video if audio > 10s using last-frame continuation
+  let processedVideoPath = silentVideoPath;
+  if (audioDuration > MAX_KLING_VIDEO_DURATION) {
+    onProgress?.(`Scene ${sceneNumber}: Extending video to match audio...`);
+    console.log(
+      `[UGC Assembly] B-Roll Scene ${sceneNumber}: Audio ${audioDuration.toFixed(2)}s > ${MAX_KLING_VIDEO_DURATION}s, extending video`
+    );
+    processedVideoPath = await extendVideoToMatchAudio(
+      silentVideoPath,
+      audioDuration,
+      prompt,
+      sceneNumber,
+      teamId
+    );
+    if (fs.existsSync(silentVideoPath) && silentVideoPath !== processedVideoPath) {
+      fs.unlinkSync(silentVideoPath);
+    }
+  }
+
+  // Step 6: Combine video with audio and trim to exact duration
   onProgress?.(`Scene ${sceneNumber}: Adding voiceover...`);
   const combinedPath = combineVideoAudio(
-    silentVideoPath,
+    processedVideoPath,
     audioPath,
     audioDuration,
     sceneNumber
   );
-  if (fs.existsSync(silentVideoPath)) fs.unlinkSync(silentVideoPath);
-  if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
+  if (fs.existsSync(processedVideoPath) && processedVideoPath !== combinedPath) {
+    fs.unlinkSync(processedVideoPath);
+  }
+  if (fs.existsSync(audioPath)) {
+    fs.unlinkSync(audioPath);
+  }
 
+  // Step 7: Upload processed scene
   const videoBuffer = fs.readFileSync(combinedPath);
   const videoKey = await s3Service.uploadUGCSceneVideo(
     videoBuffer,
