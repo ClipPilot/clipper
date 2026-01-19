@@ -36,5 +36,7 @@ export const GENTLE_MOTION_MODIFIERS =
 export const PRO_MOTION_PROMPT =
   "Smooth, natural movements matching the reference video. " +
   "Small subtle hand movements, gentle and relaxed. " +
+  "Hands must have exactly 5 fingers each - no deformed, extra, or missing fingers. " +
+  "Hand movements should be smooth and natural with proper finger articulation. " +
   "If the person picks up or holds any item, replicate that exact same item in their hands. " +
   "Maintain original video speed and timing. Keep motion fluid and realistic.";
