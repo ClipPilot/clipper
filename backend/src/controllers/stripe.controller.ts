@@ -102,8 +102,17 @@ export const handleWebhook = async (req: Request, res: Response) => {
   try {
     switch (event.type) {
       case "checkout.session.completed":
-        // Handle one-time addon purchases
         await stripeService.handleCheckoutCompleted(event.data.object);
+        break;
+
+      case "checkout.session.async_payment_succeeded":
+        console.log("[Webhook] ACH payment succeeded for session:", event.data.object.id);
+        await stripeService.handleCheckoutCompleted(event.data.object);
+        break;
+
+      case "checkout.session.async_payment_failed":
+        console.log("[Webhook] ACH payment failed for session:", event.data.object.id);
+        await stripeService.handleAsyncPaymentFailed(event.data.object);
         break;
 
       case "customer.subscription.created":

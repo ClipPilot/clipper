@@ -578,8 +578,23 @@ class StripeService {
   }
 
   async handleCheckoutCompleted(session: any): Promise<void> {
+    // Handle subscription checkout (give immediate access even for ACH)
+    if (session.mode === "subscription") {
+      await this.handleSubscriptionCheckout(session);
+      return;
+    }
+
     // Only handle addon purchases (one-time payments)
     if (session.metadata?.type !== "addon") {
+      return;
+    }
+
+    // For ACH/bank transfers, payment_status is "unpaid" initially
+    // Only process when payment is confirmed (async_payment_succeeded will call this again)
+    if (session.payment_status !== "paid") {
+      console.log(
+        `[Checkout] Skipping addon - payment not yet confirmed (status: ${session.payment_status})`
+      );
       return;
     }
 
@@ -623,6 +638,169 @@ class StripeService {
     console.log(
       `Added ${addonClips} addon clips to team ${teamId}. New addon total: ${newAddonTotal}`
     );
+  }
+
+  async handleSubscriptionCheckout(session: any): Promise<void> {
+    const teamId = session.metadata?.teamId ? parseInt(session.metadata.teamId) : null;
+    const isPaid = session.payment_status === "paid";
+    const priceId = session.line_items?.data?.[0]?.price?.id || session.metadata?.priceId;
+    const metadataPlan = session.metadata?.plan;
+
+    // Determine plan from metadata (enterprise) or price ID (studio/scale)
+    const plan = metadataPlan === "enterprise" ? "enterprise" : getPlanFromPriceId(priceId);
+
+    console.log(
+      `[Subscription Checkout] Team: ${teamId}, Plan: ${plan}, Payment: ${session.payment_status}, Session: ${session.id}`
+    );
+
+    if (!teamId) {
+      console.error("[Subscription Checkout] No teamId in session metadata");
+      return;
+    }
+
+    if (!plan) {
+      console.log("[Subscription Checkout] Could not determine plan, letting subscription.created handle it");
+      return;
+    }
+
+    const [team] = await db
+      .select()
+      .from(teams)
+      .where(eq(teams.id, teamId))
+      .limit(1);
+
+    if (!team) {
+      console.error(`[Subscription Checkout] Team ${teamId} not found`);
+      return;
+    }
+
+    // If already on a paid plan (subscription.created may have fired), skip
+    if (team.plan !== "free" && team.plan === plan) {
+      console.log(`[Subscription Checkout] Team ${teamId} already on ${plan}, skipping`);
+      return;
+    }
+
+    // Determine clips limit based on plan
+    const clipsLimit =
+      plan === "enterprise" && team.enterprise_clip_limit
+        ? team.enterprise_clip_limit
+        : getClipsLimitForPlan(plan);
+
+    const periodEnd = new Date();
+    periodEnd.setMonth(periodEnd.getMonth() + 1);
+
+    // Activate plan immediately (even for ACH with pending payment)
+    await db
+      .update(teams)
+      .set({
+        plan,
+        updated_at: new Date(),
+      })
+      .where(eq(teams.id, teamId));
+
+    await db
+      .update(usageStats)
+      .set({
+        limit: clipsLimit,
+        clips_created: 0,
+        resets_date: periodEnd,
+        updated_at: new Date(),
+      })
+      .where(eq(usageStats.team_id, teamId));
+
+    console.log(
+      `[Subscription Checkout] Team ${teamId} activated on ${plan} with ${clipsLimit} clips (payment ${isPaid ? "confirmed" : "pending ACH"})`
+    );
+
+    // Send welcome email
+    try {
+      const owner = await this.getTeamOwner(teamId);
+      if (owner) {
+        await emailNotiService.sendSubscriptionWelcome(owner.email, {
+          userName: owner.firstName,
+          planName: plan.charAt(0).toUpperCase() + plan.slice(1),
+          teamName: team.name,
+          clipsLimit,
+          dashboardUrl: `${FRONTEND_URL}/dashboard`,
+        });
+      }
+    } catch (emailError) {
+      console.error("[Subscription Checkout] Failed to send welcome email:", emailError);
+      Sentry.captureException(emailError);
+    }
+  }
+
+  async handleAsyncPaymentFailed(session: any): Promise<void> {
+    const teamId = session.metadata?.teamId ? parseInt(session.metadata.teamId) : null;
+    const customerEmail = session.customer_details?.email;
+    const amount = session.amount_total
+      ? `$${(session.amount_total / 100).toFixed(2)}`
+      : "your payment";
+    const isSubscription = session.mode === "subscription";
+
+    console.error(
+      `[ACH Payment Failed] Team: ${teamId}, Email: ${customerEmail}, Subscription: ${isSubscription}, Session: ${session.id}`
+    );
+
+    if (!teamId) {
+      console.error("[ACH Payment Failed] No teamId in session metadata");
+      return;
+    }
+
+    try {
+      const [team] = await db
+        .select()
+        .from(teams)
+        .where(eq(teams.id, teamId))
+        .limit(1);
+
+      if (!team) {
+        console.error(`[ACH Payment Failed] Team ${teamId} not found`);
+        return;
+      }
+
+      // Revoke plan access if this was a subscription ACH payment that failed
+      if (isSubscription && team.plan !== "free") {
+        console.log(`[ACH Payment Failed] Revoking ${team.plan} access for team ${teamId}`);
+
+        await db
+          .update(teams)
+          .set({
+            plan: "free",
+            updated_at: new Date(),
+          })
+          .where(eq(teams.id, teamId));
+
+        await db
+          .update(usageStats)
+          .set({
+            limit: 3,
+            updated_at: new Date(),
+          })
+          .where(eq(usageStats.team_id, teamId));
+
+        console.log(`[ACH Payment Failed] Team ${teamId} reverted to free plan`);
+      }
+
+      const owner = await this.getTeamOwner(teamId);
+      if (!owner) {
+        console.error(`[ACH Payment Failed] No owner found for team ${teamId}`);
+        return;
+      }
+
+      await emailNotiService.sendPaymentFailed(owner.email, {
+        userName: owner.firstName,
+        teamName: team.name,
+        amount,
+        retryDate: "N/A (ACH bank transfer failed)",
+        updatePaymentUrl: `${FRONTEND_URL}/dashboard/settings`,
+      });
+
+      console.log(`[ACH Payment Failed] Notification sent to ${owner.email}`);
+    } catch (error) {
+      console.error("[ACH Payment Failed] Error sending notification:", error);
+      Sentry.captureException(error);
+    }
   }
 
   async getTeamSubscription(teamId: number) {

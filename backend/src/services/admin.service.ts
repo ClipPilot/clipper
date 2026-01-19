@@ -278,6 +278,7 @@ class AdminService {
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: "subscription",
+      payment_method_types: ["card", "us_bank_account"],
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${process.env.FRONTEND_URL || "https://platform.cuttr.com"}/dashboard?enterprise=success`,
       cancel_url: `${process.env.FRONTEND_URL || "https://platform.cuttr.com"}/dashboard?enterprise=canceled`,
