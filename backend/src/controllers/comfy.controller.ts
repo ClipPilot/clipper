@@ -129,7 +129,7 @@ export class ComfyController {
   }
 
   async createUGCFaceSwapJob(req: AuthRequest, res: Response) {
-    const MAX_VIDEO_DURATION = 50;
+    const MAX_VIDEO_DURATION = 300;
     let tempVideoPath: string | null = null;
     const segmentPaths: string[] = [];
     const chunkPaths: string[] = [];
@@ -649,7 +649,7 @@ export class ComfyController {
   }
 
   async createUGCFaceSwapWithUpload(req: AuthRequest, res: Response) {
-    const MAX_VIDEO_DURATION = 50;
+    const MAX_VIDEO_DURATION = 300;
 
     try {
       const {
@@ -876,7 +876,7 @@ export class ComfyController {
 
     const segmentPaths: string[] = [];
     const chunkPaths: string[] = [];
-    const MAX_VIDEO_DURATION = 50;
+    const MAX_VIDEO_DURATION = 300;
 
     try {
       console.log(`[comfy] Starting background upload for ${jobIds.length} jobs (autoDetect=${autoDetect})`);

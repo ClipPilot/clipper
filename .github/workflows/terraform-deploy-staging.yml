@@ -55,6 +55,10 @@ jobs:
       - name: Terraform Init
         run: terraform init -backend-config="key=staging/terraform.tfstate"
 
+      - name: Import existing ECR repos (if not in state)
+        run: |
+          terraform import aws_ecr_repository.gpu_worker clipster-gpu-worker-staging || true
+
       - name: Terraform Validate
         run: terraform validate
 
@@ -182,6 +186,10 @@ jobs:
 
       - name: Terraform Init
         run: terraform init -backend-config="key=staging/terraform.tfstate"
+
+      - name: Import existing ECR repos (if not in state)
+        run: |
+          terraform import aws_ecr_repository.gpu_worker clipster-gpu-worker-staging || true
 
       - name: Create terraform.tfvars from secrets
         run: |

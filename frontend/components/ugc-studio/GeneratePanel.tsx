@@ -26,7 +26,7 @@ export function GeneratePanel({
 }: GeneratePanelProps) {
   const hasCharacter = characterCount > 0;
   const creditCost = characterCount * 5;
-  const isValid = hasVideo && hasCharacter && segmentCount > 0 && totalDuration <= 50.01;
+  const isValid = hasVideo && hasCharacter && segmentCount > 0 && totalDuration <= 300.01;
   const canAutoGenerate = hasVideo && hasCharacter;
 
   return (
@@ -52,15 +52,15 @@ export function GeneratePanel({
               <div className="flex items-center gap-3">
                 <div
                   className={`w-2.5 h-2.5 rounded-full ${
-                    hasVideo && segmentCount > 0 && totalDuration <= 50.01 ? "bg-green-500" : "bg-surface-elevated"
+                    hasVideo && segmentCount > 0 && totalDuration <= 300.01 ? "bg-green-500" : "bg-surface-elevated"
                   }`}
                 />
                 <span
                   className={`text-sm ${
-                    hasVideo && segmentCount > 0 && totalDuration <= 50.01 ? "text-text-primary" : "text-text-tertiary"
+                    hasVideo && segmentCount > 0 && totalDuration <= 300.01 ? "text-text-primary" : "text-text-tertiary"
                   }`}
                 >
-                  {segmentCount} segment{segmentCount !== 1 ? "s" : ""} (≤50s)
+                  {segmentCount} segment{segmentCount !== 1 ? "s" : ""} (≤5min)
                 </span>
               </div>
             ) : (

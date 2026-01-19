@@ -1,6 +1,24 @@
 # Worker ECS Infrastructure
 # Dedicated worker service for processing video jobs from SQS
 
+# ECR Repository for GPU Worker (kept for existing images, no longer actively used)
+resource "aws_ecr_repository" "gpu_worker" {
+  name                 = "${var.project_name}-gpu-worker-${var.environment}"
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  tags = {
+    Name = "${var.project_name}-gpu-worker-ecr-${var.environment}"
+  }
+}
+
 # ECR Repository for Worker
 resource "aws_ecr_repository" "worker" {
   name                 = "${var.project_name}-worker-${var.environment}"
