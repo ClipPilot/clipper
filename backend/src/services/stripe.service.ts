@@ -174,6 +174,24 @@ class StripeService {
       JSON.stringify(subscription, null, 2)
     );
 
+    const previousSubToCancel = subscription.metadata?.cancel_previous_subscription;
+    if (previousSubToCancel) {
+      try {
+        console.log(`Cancelling previous subscription ${previousSubToCancel} after Enterprise upgrade`);
+        await stripe.subscriptions.cancel(previousSubToCancel);
+
+        await db
+          .update(subscriptions)
+          .set({ status: "canceled", updated_at: new Date() })
+          .where(eq(subscriptions.stripe_subscription_id, previousSubToCancel));
+
+        console.log(`Successfully cancelled previous subscription ${previousSubToCancel}`);
+      } catch (cancelError: any) {
+        console.error(`Failed to cancel previous subscription ${previousSubToCancel}:`, cancelError.message);
+        Sentry.captureException(cancelError);
+      }
+    }
+
     // Try to get teamId from metadata, or fall back to looking up by customer
     let teamId = parseInt(subscription.metadata?.teamId);
 

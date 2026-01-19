@@ -126,28 +126,3 @@ output "youtube_lambda_function_name" {
   value       = aws_lambda_function.youtube_downloader.function_name
 }
 
-# GPU Worker outputs
-output "gpu_worker_ecr_repository_url" {
-  description = "URL of the ECR repository for GPU worker"
-  value       = aws_ecr_repository.gpu_worker.repository_url
-}
-
-output "gpu_worker_service_name" {
-  description = "Name of the GPU worker ECS service"
-  value       = aws_ecs_service.gpu_worker.name
-}
-
-output "gpu_sqs_queue_url" {
-  description = "URL of the GPU processing SQS queue"
-  value       = aws_sqs_queue.gpu_processing.url
-}
-
-output "gpu_sqs_queue_arn" {
-  description = "ARN of the GPU processing SQS queue"
-  value       = aws_sqs_queue.gpu_processing.arn
-}
-
-output "gpu_sqs_local_dev_queue_url" {
-  description = "URL of the local dev GPU processing queue (for running gpu-worker locally)"
-  value       = aws_sqs_queue.gpu_processing_local_dev.url
-}

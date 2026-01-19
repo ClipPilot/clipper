@@ -126,31 +126,6 @@ variable "worker_messages_per_task" {
   default     = 2
 }
 
-# GPU Worker Configuration
-variable "gpu_worker_cpu" {
-  description = "CPU units for GPU worker container (1024 = 1 vCPU)"
-  type        = number
-  default     = 1024 # 1 vCPU (low CPU, network-bound)
-}
-
-variable "gpu_worker_memory" {
-  description = "Memory for GPU worker container in MB"
-  type        = number
-  default     = 2048 # 2 GB
-}
-
-variable "gpu_worker_min_capacity" {
-  description = "Minimum number of GPU worker tasks (should match GPU count in gpus.config.json)"
-  type        = number
-  default     = 2
-}
-
-variable "gpu_worker_max_capacity" {
-  description = "Maximum number of GPU worker tasks (should match GPU count in gpus.config.json)"
-  type        = number
-  default     = 2
-}
-
 variable "internal_api_key" {
   description = "Internal API key for worker to API communication"
   type        = string

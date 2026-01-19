@@ -187,7 +187,7 @@ export async function changePlan(req: AdminRequest, res: Response) {
         success: true,
         checkoutUrl: result.checkoutUrl,
         priceId: result.priceId,
-        cancelledSubscription: result.cancelledSubscription,
+        hasPreviousSubscription: result.hasPreviousSubscription,
       });
     }
 

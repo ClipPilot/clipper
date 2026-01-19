@@ -148,35 +148,84 @@ class TeamService {
    */
   async incrementTeamUsage(teamId: number, count: number = 1) {
     const stats = await this.getTeamUsageStats(teamId);
+    const [team] = await db
+      .select()
+      .from(teams)
+      .where(eq(teams.id, teamId))
+      .limit(1);
 
-    await db
-      .update(usageStats)
-      .set({
-        clips_created: stats.clips_created + count,
-        updated_at: new Date(),
-      })
-      .where(eq(usageStats.id, stats.id));
+    const baseRemaining = Math.max(0, stats.limit - stats.clips_created);
+    const addonRemaining = team?.addon_clips_remaining || 0;
+
+    let fromBase = 0;
+    let fromAddon = 0;
+
+    if (count <= baseRemaining) {
+      fromBase = count;
+    } else {
+      fromBase = baseRemaining;
+      fromAddon = count - baseRemaining;
+    }
+
+    if (fromBase > 0) {
+      await db
+        .update(usageStats)
+        .set({
+          clips_created: stats.clips_created + fromBase,
+          updated_at: new Date(),
+        })
+        .where(eq(usageStats.id, stats.id));
+    }
+
+    if (fromAddon > 0 && team) {
+      await db
+        .update(teams)
+        .set({
+          addon_clips_remaining: Math.max(0, addonRemaining - fromAddon),
+          updated_at: new Date(),
+        })
+        .where(eq(teams.id, teamId));
+    }
+
+    console.log(`[team-service] Charged ${count} credits to team ${teamId} (base: ${fromBase}, addon: ${fromAddon})`);
   }
 
   /**
    * Decrement team usage (refund credits)
-   * Used when a job fails after upfront charging
    */
   async decrementTeamUsage(teamId: number, count: number = 1) {
     const stats = await this.getTeamUsageStats(teamId);
+    const [team] = await db
+      .select()
+      .from(teams)
+      .where(eq(teams.id, teamId))
+      .limit(1);
 
-    // Don't go below 0
-    const newCount = Math.max(0, stats.clips_created - count);
+    const refundableToBase = Math.min(count, stats.clips_created);
+    const refundToAddon = count - refundableToBase;
 
-    await db
-      .update(usageStats)
-      .set({
-        clips_created: newCount,
-        updated_at: new Date(),
-      })
-      .where(eq(usageStats.id, stats.id));
+    if (refundableToBase > 0) {
+      await db
+        .update(usageStats)
+        .set({
+          clips_created: stats.clips_created - refundableToBase,
+          updated_at: new Date(),
+        })
+        .where(eq(usageStats.id, stats.id));
+    }
 
-    console.log(`[team-service] Refunded ${count} credits to team ${teamId} (${stats.clips_created} -> ${newCount})`);
+    if (refundToAddon > 0 && team) {
+      const currentAddon = team.addon_clips_remaining || 0;
+      await db
+        .update(teams)
+        .set({
+          addon_clips_remaining: currentAddon + refundToAddon,
+          updated_at: new Date(),
+        })
+        .where(eq(teams.id, teamId));
+    }
+
+    console.log(`[team-service] Refunded ${count} credits to team ${teamId} (base: ${refundableToBase}, addon: ${refundToAddon})`);
   }
 
   /**

@@ -117,8 +117,7 @@ resource "aws_iam_role_policy" "ecs_task_sqs" {
         "sqs:GetQueueAttributes"
       ]
       Resource = [
-        aws_sqs_queue.video_processing.arn,
-        aws_sqs_queue.gpu_processing.arn
+        aws_sqs_queue.video_processing.arn
       ]
     }]
   })
@@ -217,95 +216,4 @@ resource "aws_iam_role_policy" "ecs_worker_task_protection" {
   })
 }
 
-# ─────────────────────────────────────────────────────────────
-# GPU Worker IAM
-# ─────────────────────────────────────────────────────────────
-
-resource "aws_iam_role" "ecs_gpu_worker_task" {
-  name = "${var.project_name}-ecs-gpu-worker-task-role-${var.environment}"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Action = "sts:AssumeRole"
-      Effect = "Allow"
-      Principal = {
-        Service = "ecs-tasks.amazonaws.com"
-      }
-    }]
-  })
-
-  tags = {
-    Name = "${var.project_name}-ecs-gpu-worker-task-role-${var.environment}"
-  }
-}
-
-resource "aws_iam_role_policy" "ecs_gpu_worker_s3" {
-  name = "${var.project_name}-ecs-gpu-worker-s3-${var.environment}"
-  role = aws_iam_role.ecs_gpu_worker_task.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Action = [
-        "s3:GetObject",
-        "s3:PutObject",
-        "s3:DeleteObject",
-        "s3:ListBucket"
-      ]
-      Resource = concat(
-        [local.s3_bucket_arn, "${local.s3_bucket_arn}/*"],
-        var.environment == "staging" ? [
-          "arn:aws:s3:::${var.project_name}-videos-prod-${data.aws_caller_identity.current.account_id}",
-          "arn:aws:s3:::${var.project_name}-videos-prod-${data.aws_caller_identity.current.account_id}/*"
-        ] : []
-      )
-    }]
-  })
-}
-
-resource "aws_iam_role_policy" "ecs_gpu_worker_sqs" {
-  name = "${var.project_name}-ecs-gpu-worker-sqs-${var.environment}"
-  role = aws_iam_role.ecs_gpu_worker_task.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Action = [
-        "sqs:ReceiveMessage",
-        "sqs:DeleteMessage",
-        "sqs:GetQueueUrl",
-        "sqs:GetQueueAttributes",
-        "sqs:ChangeMessageVisibility"
-      ]
-      Resource = [
-        aws_sqs_queue.gpu_processing.arn
-      ]
-    }]
-  })
-}
-
-resource "aws_iam_role_policy" "ecs_gpu_worker_task_protection" {
-  name = "${var.project_name}-ecs-gpu-worker-task-protection-${var.environment}"
-  role = aws_iam_role.ecs_gpu_worker_task.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Action = [
-        "ecs:UpdateTaskProtection",
-        "ecs:GetTaskProtection"
-      ]
-      Resource = "*"
-      Condition = {
-        ArnEquals = {
-          "ecs:cluster" = aws_ecs_cluster.main.arn
-        }
-      }
-    }]
-  })
-}
 
