@@ -45,6 +45,7 @@ function FaceSwapContent({
   const [videoDuration, setVideoDuration] = useState(0);
   const [segments, setSegments] = useState<VideoSegment[]>([]);
   const [showEditor, setShowEditor] = useState(false);
+  const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
   const faceSwapsSectionRef = useRef<MyFaceSwapsSectionRef>(null);
 
   const getCharacterImages = (): Array<File | { imageKey: string }> => {
@@ -113,6 +114,7 @@ function FaceSwapContent({
         segments: segmentsData,
         videoDuration: duration,
         spliceWithOriginal: true,
+        folderId: selectedFolderId,
       });
 
       result.jobIds.forEach((jobId, i) => {
@@ -179,6 +181,7 @@ function FaceSwapContent({
         teamId,
         videoDuration: duration,
         spliceWithOriginal: true,
+        folderId: selectedFolderId,
       });
 
       result.jobIds.forEach((jobId, i) => {
@@ -270,6 +273,9 @@ function FaceSwapContent({
               onAutoDetectAndGenerate={handleAutoDetectAndGenerate}
               showEditor={showEditor}
               onToggleEditor={() => setShowEditor(false)}
+              teamId={selectedTeam?.id}
+              selectedFolderId={selectedFolderId}
+              onFolderSelect={setSelectedFolderId}
             />
           </div>
         </div>

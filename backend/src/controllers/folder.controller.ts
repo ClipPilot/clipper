@@ -95,11 +95,11 @@ export class FolderController {
         return res.status(400).json({ error: "Invalid team ID" });
       }
 
-      // Check if team is on Scale plan
+      // Check if team is on Scale or Enterprise plan
       const team = await teamService.getTeamById(teamId);
-      if (team.plan !== "scale") {
+      if (team.plan !== "scale" && team.plan !== "enterprise") {
         return res.status(403).json({
-          error: "Folder management requires a Scale plan. Please upgrade to create folders.",
+          error: "Folder management requires a Scale or Enterprise plan. Please upgrade to create folders.",
         });
       }
 
@@ -138,11 +138,11 @@ export class FolderController {
         return res.status(400).json({ error: "Invalid folder ID or team ID" });
       }
 
-      // Check if team is on Scale plan
+      // Check if team is on Scale or Enterprise plan
       const team = await teamService.getTeamById(teamId);
-      if (team.plan !== "scale") {
+      if (team.plan !== "scale" && team.plan !== "enterprise") {
         return res.status(403).json({
-          error: "Folder management requires a Scale plan. Please upgrade to modify folders.",
+          error: "Folder management requires a Scale or Enterprise plan. Please upgrade to modify folders.",
         });
       }
 
@@ -180,11 +180,11 @@ export class FolderController {
         return res.status(400).json({ error: "Invalid folder ID or team ID" });
       }
 
-      // Check if team is on Scale plan
+      // Check if team is on Scale or Enterprise plan
       const team = await teamService.getTeamById(teamId);
-      if (team.plan !== "scale") {
+      if (team.plan !== "scale" && team.plan !== "enterprise") {
         return res.status(403).json({
-          error: "Folder management requires a Scale plan. Please upgrade to move folders.",
+          error: "Folder management requires a Scale or Enterprise plan. Please upgrade to move folders.",
         });
       }
 
@@ -220,11 +220,11 @@ export class FolderController {
         return res.status(400).json({ error: "Invalid folder ID or team ID" });
       }
 
-      // Check if team is on Scale plan
+      // Check if team is on Scale or Enterprise plan
       const team = await teamService.getTeamById(teamId);
-      if (team.plan !== "scale") {
+      if (team.plan !== "scale" && team.plan !== "enterprise") {
         return res.status(403).json({
-          error: "Folder management requires a Scale plan. Please upgrade to delete folders.",
+          error: "Folder management requires a Scale or Enterprise plan. Please upgrade to delete folders.",
         });
       }
 

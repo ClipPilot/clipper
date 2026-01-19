@@ -12,13 +12,14 @@ import { Icon } from "@iconify/react";
 import { motion } from "framer-motion";
 import type { VideoGenerationStatus } from "@/api/ugc/video";
 import type { UGCScene } from "@/components/ugc-studio/script/types";
+import { FolderSelector } from "@/components/clips";
 
 interface VideoPreviewProps {
   videoStatus: VideoGenerationStatus;
   scenes: UGCScene[];
   teamId: number;
   scriptId: string;
-  onFinalize: () => void;
+  onFinalize: (folderId: number | null) => void;
   isFinalizing: boolean;
 }
 
@@ -33,6 +34,7 @@ export function VideoPreview({
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
 
   const isFinalized = !!videoStatus.clipId;
 
@@ -70,7 +72,7 @@ export function VideoPreview({
         <div className="flex items-center gap-3">
           <Button
             className="bg-accent-400 text-white font-semibold"
-            onPress={isFinalized ? () => router.push(`/dashboard/clips/${videoStatus.clipId}/edit`) : onFinalize}
+            onPress={isFinalized ? () => router.push(`/dashboard/clips/${videoStatus.clipId}/edit`) : () => onFinalize(selectedFolderId)}
             isLoading={isFinalizing}
             isDisabled={isFinalizing}
             startContent={
@@ -237,28 +239,57 @@ export function VideoPreview({
       )}
 
       {!isFinalized && (
-        <Card className="bg-surface-elevated border border-border-base">
-          <CardBody className="p-4">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0">
-                <Icon
-                  icon="solar:info-circle-bold-duotone"
-                  className="text-blue-400"
-                  width={20}
-                />
+        <>
+          {/* Folder Selection */}
+          <Card className="bg-surface-elevated border border-border-base">
+            <CardBody className="p-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-accent-400/20 flex items-center justify-center flex-shrink-0">
+                  <Icon
+                    icon="solar:folder-bold-duotone"
+                    className="text-accent-400"
+                    width={20}
+                  />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-text-primary mb-2">
+                    Save to folder (optional)
+                  </p>
+                  <FolderSelector
+                    teamId={teamId}
+                    selectedFolderId={selectedFolderId}
+                    onFolderSelect={setSelectedFolderId}
+                    placeholder="Root (no folder)"
+                    size="sm"
+                  />
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-medium text-text-primary mb-1">
-                  What happens when you finalize?
-                </p>
-                <p className="text-xs text-text-secondary">
-                  Your video will be saved to your &quot;My Clips&quot; library where you can
-                  add captions, text overlays, and make further edits using the clip editor.
-                </p>
+            </CardBody>
+          </Card>
+
+          <Card className="bg-surface-elevated border border-border-base">
+            <CardBody className="p-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+                  <Icon
+                    icon="solar:info-circle-bold-duotone"
+                    className="text-blue-400"
+                    width={20}
+                  />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-text-primary mb-1">
+                    What happens when you finalize?
+                  </p>
+                  <p className="text-xs text-text-secondary">
+                    Your video will be saved to your &quot;My Clips&quot; library where you can
+                    add captions, text overlays, and make further edits using the clip editor.
+                  </p>
+                </div>
               </div>
-            </div>
-          </CardBody>
-        </Card>
+            </CardBody>
+          </Card>
+        </>
       )}
 
     </div>

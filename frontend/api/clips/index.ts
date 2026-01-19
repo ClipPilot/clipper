@@ -135,11 +135,12 @@ class ClipsAPI {
       }
     );
 
+    const data = await response.json();
+
     if (!response.ok) {
-      throw new Error("Failed to update clip");
+      throw new Error(data.error || "Failed to update clip");
     }
 
-    const data = await response.json();
     return data.clip;
   }
 
@@ -249,11 +250,12 @@ class ClipsAPI {
       }
     );
 
+    const result = await response.json();
+
     if (!response.ok) {
-      throw new Error("Failed to create folder");
+      throw new Error(result.error || "Failed to create folder");
     }
 
-    const result = await response.json();
     return result.folder;
   }
 
@@ -287,11 +289,12 @@ class ClipsAPI {
       }
     );
 
+    const data = await response.json();
+
     if (!response.ok) {
-      throw new Error("Failed to move folder");
+      throw new Error(data.error || "Failed to move folder");
     }
 
-    const data = await response.json();
     return data.folder;
   }
 
@@ -325,11 +328,12 @@ class ClipsAPI {
       }
     );
 
+    const data = await response.json();
+
     if (!response.ok) {
-      throw new Error("Failed to update folder");
+      throw new Error(data.error || "Failed to update folder");
     }
 
-    const data = await response.json();
     return data.folder;
   }
 
@@ -343,7 +347,8 @@ class ClipsAPI {
     );
 
     if (!response.ok) {
-      throw new Error("Failed to delete folder");
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error || "Failed to delete folder");
     }
   }
 

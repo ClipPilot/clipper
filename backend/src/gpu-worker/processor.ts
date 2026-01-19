@@ -1025,6 +1025,7 @@ export async function processGpuJob(job: GpuJobMessage): Promise<void> {
           .values({
             team_id: job.teamId,
             generated_by_user_id: member.userId,
+            folder_id: job.folderId || null,
             clip_path: outputS3Key,
             blank_video_path: outputS3Key,
             source_video_path: job.chunkS3Keys[0],

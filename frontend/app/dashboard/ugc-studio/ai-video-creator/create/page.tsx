@@ -22,7 +22,7 @@ const STEPS: { id: WizardStep; label: string; icon: string }[] = [
   { id: "character", label: "Character", icon: "solar:user-circle-bold-duotone" },
   { id: "script", label: "Script", icon: "solar:document-text-bold-duotone" },
   { id: "audio", label: "Audio", icon: "solar:soundwave-bold-duotone" },
-  { id: "shot-plan", label: "Shot Plan", icon: "solar:clapperboard-bold-duotone" },
+  { id: "shot-plan", label: "Storyboard", icon: "solar:clapperboard-bold-duotone" },
   { id: "generate", label: "Generate", icon: "solar:video-frame-play-bold-duotone" },
 ];
 

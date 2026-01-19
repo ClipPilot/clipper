@@ -29,6 +29,7 @@ export interface GpuJobMessage {
   swapType: SwapType;
   createdAt: string;
   spliceSegmentS3Keys?: SpliceSegmentInfo[];
+  folderId?: number;
 }
 
 const sqsClient = new SQSClient({

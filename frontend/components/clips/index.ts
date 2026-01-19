@@ -5,4 +5,5 @@ export { CreateFolderModal } from "./CreateFolderModal";
 export { FolderTree } from "./FolderTree";
 export { FolderTreeItem } from "./FolderTreeItem";
 export { FolderBreadcrumb } from "./FolderBreadcrumb";
+export { FolderSelector } from "./FolderSelector";
 

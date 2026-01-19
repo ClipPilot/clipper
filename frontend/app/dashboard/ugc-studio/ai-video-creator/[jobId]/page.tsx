@@ -88,7 +88,7 @@ export default function VideoJobPage() {
     onUpdate: handleSocketUpdate,
   });
 
-  const handleFinalize = async () => {
+  const handleFinalize = async (folderId: number | null) => {
     if (!selectedTeam?.id) return;
 
     setIsFinalizing(true);
@@ -98,6 +98,7 @@ export default function VideoJobPage() {
       const response = await ugcVideoAPI.finalizeVideo({
         jobId,
         teamId: selectedTeam.id,
+        folderId: folderId ?? undefined,
       });
 
       // Redirect to clip edit page

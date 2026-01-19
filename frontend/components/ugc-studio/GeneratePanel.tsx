@@ -2,6 +2,7 @@
 
 import { Button, Card, CardBody } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import { FolderSelector } from "@/components/clips";
 
 interface GeneratePanelProps {
   hasVideo: boolean;
@@ -12,6 +13,10 @@ interface GeneratePanelProps {
   onAutoDetectAndGenerate?: () => void;
   showEditor?: boolean;
   onToggleEditor?: () => void;
+  // Folder selection
+  teamId?: number;
+  selectedFolderId?: number | null;
+  onFolderSelect?: (folderId: number | null) => void;
 }
 
 export function GeneratePanel({
@@ -23,6 +28,9 @@ export function GeneratePanel({
   onAutoDetectAndGenerate,
   showEditor = false,
   onToggleEditor,
+  teamId,
+  selectedFolderId,
+  onFolderSelect,
 }: GeneratePanelProps) {
   const hasCharacter = characterCount > 0;
   const creditCost = characterCount * 5;
@@ -84,6 +92,18 @@ export function GeneratePanel({
               <li>Ensure good lighting on the face</li>
             </ul>
           </div>
+
+          {/* Folder Selection */}
+          {teamId && onFolderSelect && (
+            <FolderSelector
+              teamId={teamId}
+              selectedFolderId={selectedFolderId ?? null}
+              onFolderSelect={onFolderSelect}
+              label="Save to folder"
+              placeholder="Root (no folder)"
+              size="sm"
+            />
+          )}
 
           {segmentCount >= 2 && (
             <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg space-y-1">

@@ -441,7 +441,7 @@ export class UGCVideoController {
    */
   async finalizeVideo(req: AuthRequest, res: Response) {
     try {
-      const { jobId, teamId } = req.body;
+      const { jobId, teamId, folderId } = req.body;
 
       if (!jobId || !teamId) {
         return res.status(400).json({
@@ -533,6 +533,7 @@ export class UGCVideoController {
         .values({
           team_id: teamId,
           generated_by_user_id: req.user.dbUserId,
+          folder_id: folderId || null,
           clip_path: job.final_video_key,
           blank_video_path: job.final_video_key,
           captions_data: captionsData.length > 0 ? captionsData : null,

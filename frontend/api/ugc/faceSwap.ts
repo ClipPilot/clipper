@@ -96,8 +96,9 @@ class FaceSwapAPI {
     segments: Array<{ start: number; end: number }>;
     videoDuration: number;
     spliceWithOriginal?: boolean;
+    folderId?: number | null;
   }): Promise<{ jobIds: string[] }> {
-    const { video, images, teamId, segments, videoDuration, spliceWithOriginal } = data;
+    const { video, images, teamId, segments, videoDuration, spliceWithOriginal, folderId } = data;
 
     if (images.length === 0) {
       throw new Error("At least one image is required");
@@ -124,6 +125,9 @@ class FaceSwapAPI {
     formData.append("videoDuration", videoDuration.toString());
     formData.append("spliceWithOriginal", String(spliceWithOriginal ?? true));
     formData.append("idempotencyKey", idempotencyKey);
+    if (folderId != null) {
+      formData.append("folderId", folderId.toString());
+    }
 
     console.log(`[FaceSwap] Uploading ${images.length} jobs to server...`);
 
@@ -169,8 +173,9 @@ class FaceSwapAPI {
     teamId: number;
     videoDuration: number;
     spliceWithOriginal?: boolean;
+    folderId?: number | null;
   }): Promise<{ jobIds: string[] }> {
-    const { video, images, teamId, videoDuration, spliceWithOriginal } = data;
+    const { video, images, teamId, videoDuration, spliceWithOriginal, folderId } = data;
 
     if (images.length === 0) {
       throw new Error("At least one image is required");
@@ -197,6 +202,9 @@ class FaceSwapAPI {
     formData.append("spliceWithOriginal", String(spliceWithOriginal ?? true));
     formData.append("autoDetect", "true");
     formData.append("idempotencyKey", idempotencyKey);
+    if (folderId != null) {
+      formData.append("folderId", folderId.toString());
+    }
 
     console.log(`[FaceSwap] Uploading ${images.length} jobs with auto-detect...`);
 
