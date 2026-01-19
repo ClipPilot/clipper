@@ -281,6 +281,7 @@ class AdminService {
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${process.env.FRONTEND_URL || "https://platform.cuttr.com"}/dashboard?enterprise=success`,
       cancel_url: `${process.env.FRONTEND_URL || "https://platform.cuttr.com"}/dashboard?enterprise=canceled`,
+      allow_promotion_codes: true,
       metadata,
       subscription_data: {
         metadata,
