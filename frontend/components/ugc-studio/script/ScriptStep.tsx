@@ -57,6 +57,7 @@ export function ScriptStep({
   const [progressMessage, setProgressMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pendingScriptId, setPendingScriptId] = useState<string | null>(null);
+  const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Existing scripts state
   const [existingScripts, setExistingScripts] = useState<ScriptSummary[]>([]);
@@ -147,7 +148,31 @@ export function ScriptStep({
     }
   }, [scriptId, setSelectedVariantIndex]);
 
-  // WebSocket listener for real-time script updates
+  const pollScriptStatus = useCallback(async (scriptIdToPoll: string) => {
+    try {
+      const response = await ugcScriptAPI.getFullScript(scriptIdToPoll);
+      if (response.success && response.scripts && response.scripts.length > 0) {
+        setScripts(response.scripts);
+        setScriptId(scriptIdToPoll);
+        setProductImageKeys(productImages.map((img) => img.key));
+        clearVideoState();
+        setPhase("editing");
+        setIsGenerating(false);
+        setPendingScriptId(null);
+        setGenerationProgress(100);
+        setProgressMessage("Complete!");
+        if (pollTimeoutRef.current) {
+          clearTimeout(pollTimeoutRef.current);
+          pollTimeoutRef.current = null;
+        }
+        return true;
+      }
+    } catch (err) {
+      console.log("[ScriptStep] Polling: script not ready yet");
+    }
+    return false;
+  }, [productImages, setScripts, setScriptId, setProductImageKeys, clearVideoState]);
+
   useEffect(() => {
     const socket = connectSocket();
     joinTeam(teamId);
@@ -162,13 +187,16 @@ export function ScriptStep({
     }
 
     const handleScriptUpdate = (update: ScriptJobUpdate) => {
-      // Only handle updates for our pending script
       if (!pendingScriptId || update.scriptId !== pendingScriptId) return;
 
       setGenerationProgress(update.progress);
       setProgressMessage(update.progressMessage);
 
       if (update.status === "completed" && update.scripts) {
+        if (pollTimeoutRef.current) {
+          clearTimeout(pollTimeoutRef.current);
+          pollTimeoutRef.current = null;
+        }
         setScripts(update.scripts);
         setScriptId(update.scriptId);
         setProductImageKeys(productImages.map((img) => img.key));
@@ -177,10 +205,28 @@ export function ScriptStep({
         setIsGenerating(false);
         setPendingScriptId(null);
       } else if (update.status === "failed") {
+        if (pollTimeoutRef.current) {
+          clearTimeout(pollTimeoutRef.current);
+          pollTimeoutRef.current = null;
+        }
         setError(update.error || "Script generation failed");
         setPhase("upload");
         setIsGenerating(false);
         setPendingScriptId(null);
+      } else if (update.progress >= 90 && !pollTimeoutRef.current) {
+        pollTimeoutRef.current = setTimeout(async () => {
+          const scriptId = pendingScriptId;
+          if (scriptId) {
+            const success = await pollScriptStatus(scriptId);
+            if (!success) {
+              pollTimeoutRef.current = setTimeout(() => {
+                if (pendingScriptId) {
+                  pollScriptStatus(pendingScriptId);
+                }
+              }, 2000);
+            }
+          }
+        }, 3000);
       }
     };
 
@@ -189,8 +235,12 @@ export function ScriptStep({
     return () => {
       socket.off("script-job-update", handleScriptUpdate);
       leaveTeam(teamId);
+      if (pollTimeoutRef.current) {
+        clearTimeout(pollTimeoutRef.current);
+        pollTimeoutRef.current = null;
+      }
     };
-  }, [teamId, pendingScriptId, productImages, setScripts, setScriptId, setProductImageKeys, clearVideoState]);
+  }, [teamId, pendingScriptId, productImages, setScripts, setScriptId, setProductImageKeys, clearVideoState, pollScriptStatus]);
 
   const handleGenerate = async () => {
     if (!scriptDirection.trim()) {
