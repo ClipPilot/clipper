@@ -19,6 +19,7 @@ function ChangePlanModal({ team, onClose, onSuccess }: ChangePlanModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [checkoutUrl, setCheckoutUrl] = useState("");
+  const [copied, setCopied] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,6 +47,8 @@ function ChangePlanModal({ team, onClose, onSuccess }: ChangePlanModalProps) {
 
   const handleCopyUrl = () => {
     navigator.clipboard.writeText(checkoutUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -81,9 +84,22 @@ function ChangePlanModal({ team, onClose, onSuccess }: ChangePlanModalProps) {
                 />
                 <button
                   onClick={handleCopyUrl}
-                  className="px-3 py-2 rounded-lg bg-emerald text-black text-sm font-medium hover:bg-emerald-light transition-colors"
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                    copied
+                      ? "bg-emerald-light text-black"
+                      : "bg-emerald text-black hover:bg-emerald-light"
+                  }`}
                 >
-                  Copy
+                  {copied ? (
+                    <span className="flex items-center gap-1">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Copied!
+                    </span>
+                  ) : (
+                    "Copy"
+                  )}
                 </button>
               </div>
             </div>
