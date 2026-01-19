@@ -62,7 +62,7 @@ export interface ChangePlanResult {
   success: boolean;
   checkoutUrl: string;
   priceId: string;
-  cancelledSubscription: boolean;
+  hasPreviousSubscription: boolean;
 }
 
 export interface AdminReferral {

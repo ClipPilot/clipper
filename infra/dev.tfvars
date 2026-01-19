@@ -4,10 +4,6 @@
 environment = "dev"
 node_env    = "development"
 
-# GPU Worker - minimal for dev
-gpu_worker_min_capacity = 1
-gpu_worker_max_capacity = 1
-
 # Worker - minimal for dev
 worker_min_capacity = 1
 worker_max_capacity = 2

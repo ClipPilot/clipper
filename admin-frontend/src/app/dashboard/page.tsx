@@ -57,7 +57,7 @@ function ChangePlanModal({ team, onClose, onSuccess }: ChangePlanModalProps) {
         <p className="text-sm text-text-secondary mb-4">
           {team.name} • Current plan: <span className="capitalize">{team.plan}</span>
           {team.plan !== "free" && (
-            <span className="text-yellow-400 ml-2">(subscription will be cancelled)</span>
+            <span className="text-blue-400 ml-2">(will switch after payment)</span>
           )}
         </p>
 

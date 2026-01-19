@@ -232,7 +232,8 @@ class AdminService {
     teamId: number,
     clipLimit: number,
     monthlyPriceCents: number,
-    customerEmail: string
+    customerEmail: string,
+    previousSubscriptionId?: string
   ): Promise<{ checkoutUrl: string; priceId: string }> {
     const [team] = await db
       .select()
@@ -266,15 +267,23 @@ class AdminService {
         .where(eq(teams.id, teamId));
     }
 
+    const metadata: Record<string, string> = {
+      teamId: teamId.toString(),
+      plan: "enterprise",
+    };
+    if (previousSubscriptionId) {
+      metadata.cancel_previous_subscription = previousSubscriptionId;
+    }
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${process.env.FRONTEND_URL || "https://platform.cuttr.com"}/dashboard?enterprise=success`,
       cancel_url: `${process.env.FRONTEND_URL || "https://platform.cuttr.com"}/dashboard?enterprise=canceled`,
-      metadata: { teamId: teamId.toString(), plan: "enterprise" },
+      metadata,
       subscription_data: {
-        metadata: { teamId: teamId.toString(), plan: "enterprise" },
+        metadata,
       },
     });
 
@@ -298,7 +307,7 @@ class AdminService {
   ): Promise<{
     checkoutUrl: string;
     priceId: string;
-    cancelledSubscription: boolean;
+    hasPreviousSubscription: boolean;
   }> {
     const [team] = await db
       .select()
@@ -307,39 +316,28 @@ class AdminService {
       .limit(1);
     if (!team) throw new Error("Team not found");
 
-    let cancelledSubscription = false;
-
     const [existingSub] = await db
       .select()
       .from(subscriptions)
       .where(eq(subscriptions.team_id, teamId))
       .limit(1);
 
-    if (
-      existingSub &&
-      existingSub.stripe_subscription_id &&
-      existingSub.status === "active"
-    ) {
-      await stripe.subscriptions.cancel(existingSub.stripe_subscription_id);
-
-      await db
-        .update(subscriptions)
-        .set({ status: "canceled", updated_at: new Date() })
-        .where(eq(subscriptions.team_id, teamId));
-
-      cancelledSubscription = true;
-    }
+    const previousSubscriptionId =
+      existingSub?.stripe_subscription_id && existingSub.status === "active"
+        ? existingSub.stripe_subscription_id
+        : undefined;
 
     const result = await this.setupEnterprise(
       teamId,
       clipLimit,
       monthlyPriceCents,
-      customerEmail
+      customerEmail,
+      previousSubscriptionId
     );
 
     return {
       ...result,
-      cancelledSubscription,
+      hasPreviousSubscription: !!previousSubscriptionId,
     };
   }
 }

@@ -112,6 +112,10 @@ jobs:
           shared_s3_bucket    = "clipster-videos-prod-${{ secrets.AWS_ACCOUNT_ID }}"
           EOF
 
+      - name: Import existing ECR repos (if not in state)
+        run: |
+          terraform import aws_ecr_repository.gpu_worker clipster-gpu-worker-staging || true
+
       - name: Terraform Plan
         id: plan
         run: terraform plan -no-color -out=tfplan
@@ -236,6 +240,10 @@ jobs:
           # Use prod S3 bucket so staging can access the same clips
           shared_s3_bucket    = "clipster-videos-prod-${{ secrets.AWS_ACCOUNT_ID }}"
           EOF
+
+      - name: Import existing ECR repos (if not in state)
+        run: |
+          terraform import aws_ecr_repository.gpu_worker clipster-gpu-worker-staging || true
 
       - name: Download Terraform Plan
         uses: actions/download-artifact@v4
