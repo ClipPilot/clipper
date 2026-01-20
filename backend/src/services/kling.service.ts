@@ -5,6 +5,7 @@ import {
   PRODUCT_NEGATIVE_PROMPT,
   PRODUCT_STABILITY_MODIFIERS,
   GENTLE_MOTION_MODIFIERS,
+  BROLL_MOTION_MODIFIERS,
   PRO_MOTION_PROMPT,
 } from "./klingPrompts";
 import {
@@ -16,6 +17,7 @@ export {
   PRODUCT_NEGATIVE_PROMPT,
   PRODUCT_STABILITY_MODIFIERS,
   GENTLE_MOTION_MODIFIERS,
+  BROLL_MOTION_MODIFIERS,
   PRO_MOTION_PROMPT,
 } from "./klingPrompts";
 
@@ -116,6 +118,50 @@ type KlingLipsyncResponse = KlingVideoResponse;
 type KlingAvatarResponse = KlingVideoResponse;
 type KlingExtendVideoResponse = KlingVideoResponse;
 type KlingMotionControlResponse = KlingVideoResponse;
+
+/**
+ * Rewrites a prompt that caused a 422 error to be more compatible with Kling.
+ * Removes potentially problematic content while preserving core intent.
+ */
+export async function rewritePromptFor422(
+  prompt: string,
+  errorMessage?: string,
+): Promise<string> {
+  console.log(`[Kling] Rewriting prompt after 422 error...`);
+
+  const systemPrompt = `You are a video prompt rewriting assistant. A video generation API rejected the following prompt with a 422 error. Rewrite it to be simpler and more compatible.
+
+RULES:
+1. Keep the core scene description and action
+2. Remove any potentially problematic content (violence, explicit content, copyrighted characters)
+3. Simplify complex instructions
+4. Remove redundant or conflicting directions
+5. Keep it under 2000 characters
+6. Make it more generic/safe while preserving the intent
+
+${errorMessage ? `Error hint: ${errorMessage}` : ""}
+
+Return ONLY the rewritten prompt, nothing else.`;
+
+  try {
+    const response = await openaiClient.responses.create({
+      model: "gpt-5-mini",
+      instructions: systemPrompt,
+      input: prompt,
+    });
+
+    const rewritten = response.output_text?.trim();
+    if (rewritten && rewritten.length > 0) {
+      console.log(`[Kling] Prompt rewritten (${rewritten.length} chars)`);
+      return rewritten;
+    }
+  } catch (error) {
+    console.error(`[Kling] Prompt rewrite failed:`, error);
+  }
+
+  // Fallback: just simplify by taking first part
+  return prompt.substring(0, 1500);
+}
 
 /**
  * Iteratively shortens until under the limit while preserving key instructions.
@@ -294,6 +340,15 @@ export async function generateGroundedCinematicPrompt(
   }
 }
 
+/**
+ * Builds Kling prompt optimized for image-to-video generation.
+ *
+ * Key principles from Kling 2.6 Pro best practices:
+ * - Focus on MOTION instructions (scene is already in the image)
+ * - Use "++" for emphasis on critical elements
+ * - One clear action, one camera movement
+ * - Add rigidity language to prevent morphing
+ */
 export function buildKlingPrompt(
   cinematicPrompt: string,
   shotType: ShotType,
@@ -303,11 +358,14 @@ export function buildKlingPrompt(
   let basePrompt: string;
 
   if (shotType === "a-roll") {
-    basePrompt = `${cinematicPrompt}. The person speaks naturally to camera with ${emotion} expression. Subtle, realistic lip movements - not exaggerated. Natural micro-expressions, gentle head movements, relaxed eye contact. Authentic UGC-style, conversational and relaxed. ${GENTLE_MOTION_MODIFIERS}`;
+    // A-roll: Focus on natural speaking motion, subtle movements
+    basePrompt = `${cinematicPrompt}. ++Person speaks naturally to camera++, subtle lip movements, ${emotion} expression. Gentle head micro-movements, relaxed eye contact with lens. ++Face maintains exact appearance throughout++ - no morphing. ${GENTLE_MOTION_MODIFIERS}`;
   } else if (shotType === "b-roll") {
-    basePrompt = `${cinematicPrompt}. Smooth product showcase with subtle, slow camera movement. Professional product photography style with gentle rotation or reveal. Clean background, focused lighting on product. ${PRODUCT_STABILITY_MODIFIERS} ${GENTLE_MOTION_MODIFIERS}`;
+    // B-roll: Focus on product motion and camera movement
+    basePrompt = `${cinematicPrompt}. Smooth camera glide showcasing product. ++Product remains solid and unchanged++ - no warping or morphing. ${BROLL_MOTION_MODIFIERS}`;
   } else {
-    basePrompt = `${cinematicPrompt}. Person performs action: ${action}. Natural body movement, ${emotion} expression, hands interacting with product. Action-focused. ${PRODUCT_STABILITY_MODIFIERS}`;
+    // Mixed: Person interacting with product, not speaking to camera
+    basePrompt = `${cinematicPrompt}. Person performs: ${action}. Natural body motion, ${emotion} expression. ++Hands have 5 fingers each++ - no extra or missing. ++Product stays solid throughout++. ${GENTLE_MOTION_MODIFIERS}`;
   }
 
   return basePrompt;
@@ -439,16 +497,36 @@ export async function generateVideoWithRetry(
   maxRetries: number = 3,
 ): Promise<ImageToVideoResult> {
   let lastError: Error | null = null;
+  let currentOptions = { ...options };
+  let promptRewriteAttempts = 0;
+  const maxPromptRewrites = 2;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      return await generateVideo(options);
+      return await generateVideo(currentOptions);
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
+      const errorMessage = lastError.message || String(error);
+      const is422 = errorMessage.includes("422") || errorMessage.includes("Unprocessable");
+
       console.warn(
         `[Kling] Video generation attempt ${attempt}/${maxRetries} failed:`,
-        lastError.message,
+        errorMessage,
+        is422 ? "(422 - will try rewriting prompt)" : "",
       );
+
+      // For 422 errors, try rewriting the prompt with OpenAI
+      if (is422 && promptRewriteAttempts < maxPromptRewrites) {
+        promptRewriteAttempts++;
+        console.log(
+          `[Kling] 422 error - rewriting prompt (attempt ${promptRewriteAttempts}/${maxPromptRewrites})`,
+        );
+        const rewrittenPrompt = await rewritePromptFor422(
+          currentOptions.prompt,
+          errorMessage,
+        );
+        currentOptions = { ...currentOptions, prompt: rewrittenPrompt };
+      }
 
       if (attempt < maxRetries) {
         const delay = Math.pow(2, attempt) * 1000;
@@ -801,6 +879,7 @@ export const klingService = {
   extendVideoWithRetry,
   buildKlingPrompt,
   shortenPromptIfNeeded,
+  rewritePromptFor422,
   generateGroundedCinematicPrompt,
   klingProMotion,
   klingProMotionWithRetry,

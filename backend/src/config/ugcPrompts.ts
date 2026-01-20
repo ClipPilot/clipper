@@ -35,9 +35,7 @@ const SCRIPT_STRUCTURES: Record<string, { name: string; pattern: ScriptStructure
     pattern: [
       { type: "hook", shot: "a-roll", duration: "2-4s" },
       { type: "problem", shot: "a-roll", duration: "4-6s" },
-      { type: "demo", shot: "b-roll", duration: "2-4s" },
-      { type: "demo", shot: "b-roll", duration: "2-4s" },
-      { type: "solution", shot: "a-roll", duration: "4-6s" },
+      { type: "demo", shot: "b-roll", duration: "3-5s" },
       { type: "cta", shot: "a-roll", duration: "3-5s" },
     ],
   },
@@ -45,20 +43,19 @@ const SCRIPT_STRUCTURES: Record<string, { name: string; pattern: ScriptStructure
     name: "Problem → Solution",
     pattern: [
       { type: "hook", shot: "a-roll", duration: "2-4s" },
-      { type: "problem", shot: "a-roll", duration: "5-7s" },
-      { type: "solution", shot: "mixed", duration: "3-5s" },
-      { type: "demo", shot: "b-roll", duration: "2-4s" },
-      { type: "cta", shot: "a-roll", duration: "3-5s" },
+      { type: "problem", shot: "a-roll", duration: "4-6s" },
+      { type: "solution", shot: "mixed", duration: "4-6s" },
+      { type: "testimonial", shot: "a-roll", duration: "4-5s" },
+      { type: "cta", shot: "a-roll", duration: "3-4s" },
     ],
   },
   storytelling: {
     name: "Story Arc",
     pattern: [
       { type: "hook", shot: "a-roll", duration: "2-4s" },
-      { type: "problem", shot: "a-roll", duration: "4-6s" },
-      { type: "problem", shot: "b-roll", duration: "2-3s" },
+      { type: "problem", shot: "b-roll", duration: "3-4s" },
       { type: "solution", shot: "a-roll", duration: "4-6s" },
-      { type: "testimonial", shot: "a-roll", duration: "4-6s" },
+      { type: "testimonial", shot: "a-roll", duration: "4-5s" },
       { type: "cta", shot: "a-roll", duration: "3-4s" },
     ],
   },
@@ -70,10 +67,8 @@ const SCRIPT_STRUCTURES: Record<string, { name: string; pattern: ScriptStructure
     name: "Unboxing Reveal",
     pattern: [
       { type: "hook", shot: "a-roll", duration: "2-4s" },
-      { type: "demo", shot: "b-roll", duration: "2-4s" },
+      { type: "demo", shot: "b-roll", duration: "3-5s" },
       { type: "solution", shot: "a-roll", duration: "4-6s" },
-      { type: "demo", shot: "b-roll", duration: "2-4s" },
-      { type: "testimonial", shot: "a-roll", duration: "4-5s" },
       { type: "cta", shot: "a-roll", duration: "3-4s" },
     ],
   },
@@ -81,10 +76,8 @@ const SCRIPT_STRUCTURES: Record<string, { name: string; pattern: ScriptStructure
     name: "Quick Tutorial",
     pattern: [
       { type: "hook", shot: "a-roll", duration: "2-4s" },
-      { type: "demo", shot: "mixed", duration: "3-5s" },
-      { type: "demo", shot: "b-roll", duration: "2-4s" },
-      { type: "demo", shot: "mixed", duration: "3-5s" },
-      { type: "solution", shot: "a-roll", duration: "4-5s" },
+      { type: "demo", shot: "mixed", duration: "4-6s" },
+      { type: "demo", shot: "b-roll", duration: "3-5s" },
       { type: "cta", shot: "a-roll", duration: "3-4s" },
     ],
   },
@@ -379,57 +372,50 @@ GOOD: "Actor holds product at chest height, eyes widen with surprise, slight smi
 BAD: "Product demonstration shot"
 GOOD: "Close-up of hands holding bottle, slowly rotating it to show label"
 
-===== CRITICAL: B-ROLL SCENE OPTIONS =====
+===== CRITICAL: B-ROLL SCENES - PREFER MULTI-SHOT =====
 
-B-roll scenes can be either SINGLE-SHOT or MULTI-SHOT MONTAGE:
+B-roll scenes should use MULTIPLE QUICK SHOTS (2-3 clips) for dynamic pacing. This creates more engaging, fast-paced content.
 
-**OPTION 1: SINGLE-SHOT B-ROLL (default)**
-Use the main "action" and "cinematicPrompt" fields. Keep it to ONE simple action.
-- Duration: 2-4 seconds
-- bRollShots: null or omit
+**PREFERRED: MULTI-SHOT B-ROLL (use this most of the time)**
+Use "bRollShots" array to create 2-3 quick cuts that play under ONE continuous voiceover.
 
-GOOD single-shot examples:
-- "Hands slowly rotating bottle to reveal label"
-- "Fingers gently squeezing bottle, cream dispensing"
-- "Close-up of product label"
-
-BAD (too complex for single shot):
-- "Fingers unscrew cap, pause, then squeeze to dispense cream"
-
-**OPTION 2: MULTI-SHOT MONTAGE B-ROLL (for longer voiceovers)**
-When the dialogue/voiceover is longer (40-50 words), use "bRollShots" array to create a montage of 2-4 quick cuts that play under ONE continuous voiceover.
-
-When to use bRollShots:
-- Voiceover is too long for one static shot (6+ seconds of audio)
-- You want dynamic visual pacing with quick cuts
-- Showing multiple aspects of the product in sequence
+When to use bRollShots (MOST B-ROLL SHOULD USE THIS):
+- Creates dynamic visual pacing with quick cuts
+- Shows multiple angles/aspects of the product
+- Keeps viewers engaged with visual variety
+- Duration 4+ seconds
 
 bRollShots structure:
 {
   "bRollShots": [
     { "action": "Close-up of product packaging", "cinematicPrompt": "...", "durationSeconds": 2 },
     { "action": "Hands opening the box", "cinematicPrompt": "...", "durationSeconds": 2 },
-    { "action": "Product revealed on surface", "cinematicPrompt": "...", "durationSeconds": 3 }
+    { "action": "Product revealed on surface", "cinematicPrompt": "...", "durationSeconds": 2 }
   ]
 }
 
 Rules for bRollShots:
-- Each shot: 1-4 seconds, ONE simple action
+- Each shot: 1-3 seconds, ONE simple action (fast pacing!)
 - Total duration of all shots = estimatedDurationSeconds
 - The main "action" and "cinematicPrompt" are ignored when bRollShots is provided
-- Minimum 2 shots, maximum 4 shots
+- Use 2-3 shots for variety
 - The single voiceover (dialogue field) plays continuously over all shots
 
-Example B-roll montage scene:
+Example B-roll multi-shot scene:
 {
-  "dialogue": "[excited] Look at this packaging... the attention to detail is insane. And when you open it up, this is what you get",
-  "estimatedDurationSeconds": 7,
+  "dialogue": "[excited] Look at this packaging... the attention to detail is insane",
+  "estimatedDurationSeconds": 6,
   "bRollShots": [
     { "action": "Close-up of sealed product box", "cinematicPrompt": "...", "durationSeconds": 2 },
     { "action": "Hands lifting lid off box", "cinematicPrompt": "...", "durationSeconds": 2 },
-    { "action": "Product sitting in box, revealed", "cinematicPrompt": "...", "durationSeconds": 3 }
+    { "action": "Product sitting in box, revealed", "cinematicPrompt": "...", "durationSeconds": 2 }
   ]
 }
+
+**ALTERNATIVE: SINGLE-SHOT B-ROLL (only for very short 2-3s scenes)**
+Only use single-shot when duration is very short (2-3 seconds) and one simple action is enough.
+- bRollShots: null
+- Keep to ONE simple action in the main "action" field
 
 ===== CRITICAL: SCREENS, APPS & DIGITAL PRODUCTS =====
 
@@ -678,13 +664,13 @@ Examples based on setting:
 
 For b-roll and mixed scenes: set ambientSound to null (voiceover only, no background)
 
-OPTIONAL - bRollShots field (FOR B-ROLL MONTAGE SEQUENCES):
-- Use when b-roll dialogue is longer (6+ seconds / 40+ words) and needs visual variety
-- Provide an array of 2-4 quick shots that share the same voiceover
-- Each shot needs: action, cinematicPrompt, durationSeconds (1-4s each)
+bRollShots field (PREFERRED FOR B-ROLL - USE MULTI-SHOT):
+- Use for most b-roll scenes to create dynamic quick-cut pacing
+- Provide an array of 2-3 quick shots that share the same voiceover
+- Each shot needs: action, cinematicPrompt, durationSeconds (1-3s each)
 - Total duration of all bRollShots should equal estimatedDurationSeconds
 - When bRollShots is provided, the main action/cinematicPrompt are ignored
-- For short b-roll (2-4 seconds), use single-shot (set bRollShots to null)
+- Only skip bRollShots for very short 2-3 second single-action b-roll
 
 DURATION RULES:
 - estimatedDurationSeconds MUST be a NUMBER (integer), not a range or text
@@ -710,8 +696,8 @@ Score 95+ means: irresistible hook, perfect pacing, genuine emotion, share-worth
 - a-roll scenes: natural dialogue (NO voice tags), MUST have ambientSound (e.g., "gym with weights clanking")
 - b-roll/mixed scenes: MUST have voice direction tags, ambientSound should be null
 - No tongue twisters or plosive clusters in dialogue
-- SINGLE-SHOT B-ROLL: ONE simple action, 2-4 seconds, bRollShots should be null
-- MONTAGE B-ROLL: Use bRollShots array (2-4 shots) for longer voiceovers, each shot 1-4 seconds with ONE action
+- B-ROLL PREFERENCE: Use bRollShots array with 2-3 quick shots (1-3 seconds each) for dynamic pacing
+- SINGLE-SHOT B-ROLL: Only for very short 2-3 second scenes, bRollShots should be null
 - Each individual shot's action is SPECIFIC but SIMPLE - no multi-step sequences per shot
 - VERIFY: Every a-roll scene has a non-null ambientSound describing background audio
 - VERIFY: No scene exceeds 50 words - if content is longer, split into multiple scenes

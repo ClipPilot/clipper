@@ -332,6 +332,16 @@ export function SceneImageCard({
               >
                 {scene.shotType}
               </Chip>
+              {scene.bRollShots && scene.bRollShots.length > 0 && (
+                <Chip
+                  size="sm"
+                  variant="flat"
+                  className="bg-amber-500/30 text-amber-300"
+                  startContent={<Icon icon="solar:video-library-bold" width={10} />}
+                >
+                  {scene.bRollShots.length} shots
+                </Chip>
+              )}
               <span className="text-xs text-text-muted shrink-0">
                 {scene.estimatedDurationSeconds}s
               </span>
@@ -433,6 +443,16 @@ export function SceneImageCard({
             >
               {scene.shotType}
             </Chip>
+            {scene.bRollShots && scene.bRollShots.length > 0 && (
+              <Chip
+                size="sm"
+                variant="flat"
+                className="bg-amber-500/30 text-amber-300"
+                startContent={<Icon icon="solar:video-library-bold" width={10} />}
+              >
+                {scene.bRollShots.length} shots
+              </Chip>
+            )}
             <span className="text-xs text-text-muted">
               {scene.estimatedDurationSeconds}s
             </span>
@@ -645,7 +665,7 @@ export function SceneImageCard({
                 </div>
               </div>
 
-              {(generation?.generatedImages?.length ?? 0) > 1 && (
+              {(generation?.generatedImages?.length ?? 0) > 1 && !scene.bRollShots && (
                 <div className="flex flex-col items-center gap-2">
                   <span className="text-xs font-medium text-text-secondary">End Frame</span>
                   <div
@@ -664,6 +684,55 @@ export function SceneImageCard({
                 </div>
               )}
             </div>
+
+            {scene.bRollShots && scene.bRollShots.length > 0 && (
+              <div className="space-y-2 pt-3 border-t border-border-base">
+                <div className="flex items-center gap-2 text-xs text-amber-400">
+                  <Icon icon="solar:video-library-bold" width={14} />
+                  <span className="font-medium">B-Roll Shots ({scene.bRollShots.length})</span>
+                </div>
+                <div className="flex items-start gap-3 overflow-x-auto pb-2">
+                  {scene.bRollShots.map((shot, idx) => {
+                    const shotImage = generation?.generatedImages?.[idx];
+                    return (
+                      <div key={idx} className="flex flex-col items-center gap-1.5 min-w-[80px]">
+                        <div
+                          className={`w-16 h-20 rounded-lg overflow-hidden bg-surface-base ring-2 relative transition-all ${
+                            shotImage?.url
+                              ? "ring-amber-400 cursor-zoom-in hover:ring-amber-300"
+                              : "ring-border-base"
+                          }`}
+                          onClick={() => shotImage?.url && setZoomImageUrl(shotImage.url)}
+                        >
+                          {shotImage?.url ? (
+                            <>
+                              <img
+                                src={shotImage.url}
+                                alt={`Shot ${idx + 1}`}
+                                className="w-full h-full object-cover"
+                              />
+                              <div className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-amber-400 flex items-center justify-center">
+                                <span className="text-[8px] font-bold text-white">{idx + 1}</span>
+                              </div>
+                            </>
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Icon icon="solar:gallery-add-bold-duotone" className="text-text-muted" width={18} />
+                            </div>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-text-muted text-center line-clamp-2 max-w-[80px]">
+                          {shot.action}
+                        </span>
+                        <span className="text-[9px] text-amber-400 font-medium">
+                          {shot.durationSeconds}s
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
