@@ -28,6 +28,12 @@ export interface GenerateSceneImagesResponse {
   message: string;
 }
 
+export interface BRollShotData {
+  action: string;
+  cinematicPrompt: string;
+  durationSeconds: number;
+}
+
 export interface GenerateAllSceneImagesRequest {
   teamId: number;
   scriptId: string;
@@ -42,6 +48,7 @@ export interface GenerateAllSceneImagesRequest {
     emotion: string;
     shotType?: string;
     cameraAngle?: string;
+    bRollShots?: BRollShotData[];
     // Optional refinements
     userRefinement?: string;
     supportingImageKeys?: string[];
