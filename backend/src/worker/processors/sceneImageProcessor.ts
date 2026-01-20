@@ -36,10 +36,20 @@ Styling: raw UGC realism, available indoor light, mixed color temperature, minim
 
 type FrameType = "start" | "end";
 
+// Scene types that should show the product prominently
+const PRODUCT_VISIBLE_SCENE_TYPES = ["solution", "demo", "cta", "testimonial"];
+
+// Helper to check if a scene type should include product reference images
+function shouldIncludeProductImages(sceneType: string): boolean {
+  return PRODUCT_VISIBLE_SCENE_TYPES.includes(sceneType.toLowerCase());
+}
+
+
 interface BRollShotData {
   action: string;
   cinematicPrompt: string;
   durationSeconds: number;
+  productImageNeeded: boolean;
 }
 
 function buildBRollShotPrompt(
@@ -48,13 +58,23 @@ function buildBRollShotPrompt(
   totalShots: number,
   sceneData: GenerateSceneImageJob["sceneData"],
   hasReferenceImages: boolean,
+  productName?: string,
   userRefinement?: string
 ): string {
   const parts: string[] = [];
 
   if (hasReferenceImages) {
+    const productDesc = productName ? `"${productName}"` : "the product";
     parts.push(
-      "REFERENCE IMAGES PROVIDED: Use the product reference images to maintain consistent visual identity. Feature the product prominently as shown in references.",
+      `REFERENCE IMAGES PROVIDED: Use the product reference images to maintain consistent visual identity. Feature ${productDesc} prominently as shown in references. The product must look EXACTLY like the reference images.`,
+      ""
+    );
+  }
+
+  if (productName) {
+    parts.push(
+      `PRODUCT: ${productName}`,
+      `Generate a B-roll shot featuring "${productName}" - ensure the product is clearly identifiable and matches the reference images.`,
       ""
     );
   }
@@ -102,14 +122,28 @@ function buildBRollShotPrompt(
 function buildSceneImagePrompt(
   sceneData: GenerateSceneImageJob["sceneData"],
   hasReferenceImages: boolean,
+  hasProductImages: boolean,
+  productName?: string,
   userRefinement?: string,
   frameType: FrameType = "start"
 ): string {
   const parts: string[] = [];
 
   if (hasReferenceImages) {
+    const refDescription = hasProductImages && productName
+      ? `Use the character reference image to maintain consistent identity. This must be the EXACT SAME person shown in the reference - same face, same features, same person. Also use the product reference images to accurately depict "${productName}".`
+      : "Use the character reference image to maintain consistent identity. This must be the EXACT SAME person shown in the reference - same face, same features, same person.";
     parts.push(
-      "REFERENCE IMAGES PROVIDED: Use the character reference image to maintain consistent identity. This must be the EXACT SAME person shown in the reference - same face, same features, same person.",
+      `REFERENCE IMAGES PROVIDED: ${refDescription}`,
+      ""
+    );
+  }
+
+  // Add explicit product context for product-focused scenes
+  if (hasProductImages && productName) {
+    parts.push(
+      `PRODUCT FEATURED: "${productName}"`,
+      `This scene should prominently feature the product "${productName}" as shown in the reference images. The product must be clearly visible and accurately depicted.`,
       ""
     );
   }
@@ -206,6 +240,7 @@ export async function processSceneImageJob(
     characterId,
     sceneData,
     productImageKeys,
+    productName,
     userRefinement,
     supportingImageKeys,
     generateEndFrame,
@@ -213,6 +248,9 @@ export async function processSceneImageJob(
     customEndImageKey,
     bRollShots,
   } = job;
+
+  // Determine if this scene type should include product reference images
+  const includeProductImages = shouldIncludeProductImages(sceneData.sceneType);
 
   console.log(
     `[SCENE_IMAGE] Starting FAL AI generation for job ${jobId} (scene ${sceneNumber})`
@@ -239,23 +277,13 @@ export async function processSceneImageJob(
 
       const generatedImages: string[] = [];
 
-      const allReferenceKeys: string[] = [];
-      if (productImageKeys && productImageKeys.length > 0) {
-        allReferenceKeys.push(...productImageKeys.slice(0, 3));
-        console.log(
-          `[SCENE_IMAGE] Added ${Math.min(productImageKeys.length, 3)} product images for B-roll`
-        );
-      }
-      if (supportingImageKeys && supportingImageKeys.length > 0) {
-        allReferenceKeys.push(...supportingImageKeys.slice(0, 2));
-        console.log(
-          `[SCENE_IMAGE] Added ${Math.min(supportingImageKeys.length, 2)} supporting images for B-roll`
-        );
-      }
-
-      const referenceImageUrls = await getReferenceImageUrls(allReferenceKeys);
-      const hasReferences = referenceImageUrls.length > 0;
-      const refs = hasReferences ? referenceImageUrls : undefined;
+      // Pre-fetch reference URLs for product and supporting images
+      const productReferenceUrls = productImageKeys && productImageKeys.length > 0
+        ? await getReferenceImageUrls(productImageKeys.slice(0, 3))
+        : [];
+      const supportingReferenceUrls = supportingImageKeys && supportingImageKeys.length > 0
+        ? await getReferenceImageUrls(supportingImageKeys.slice(0, 2))
+        : [];
 
       for (let i = 0; i < bRollShots.length; i++) {
         const shot = bRollShots[i];
@@ -267,12 +295,36 @@ export async function processSceneImageJob(
           `Generating B-roll shot ${i + 1} of ${bRollShots.length}...`
         );
 
+        // Use the AI-determined productImageNeeded flag (default to true for backwards compatibility)
+        const shotNeedsProduct = shot.productImageNeeded ?? true;
+        const shotReferenceUrls: string[] = [];
+
+        if (shotNeedsProduct && productReferenceUrls.length > 0) {
+          shotReferenceUrls.push(...productReferenceUrls);
+          console.log(
+            `[SCENE_IMAGE] Shot ${i + 1}: Including product images (productImageNeeded=true)`
+          );
+        } else if (productReferenceUrls.length > 0) {
+          console.log(
+            `[SCENE_IMAGE] Shot ${i + 1}: Skipping product images (productImageNeeded=false)`
+          );
+        }
+
+        // Always include supporting images if available
+        if (supportingReferenceUrls.length > 0) {
+          shotReferenceUrls.push(...supportingReferenceUrls);
+        }
+
+        const hasReferences = shotReferenceUrls.length > 0;
+        const refs = hasReferences ? shotReferenceUrls : undefined;
+
         const shotPrompt = buildBRollShotPrompt(
           shot,
           i,
           bRollShots.length,
           sceneData,
-          hasReferences,
+          hasReferences && shotNeedsProduct,
+          shotNeedsProduct ? productName : undefined,
           userRefinement
         );
 
@@ -354,10 +406,16 @@ export async function processSceneImageJob(
         }
       }
 
-      if (productImageKeys && productImageKeys.length > 0) {
+      // Only include product images for scene types where product should be visible
+      const hasProductInScene = includeProductImages && productImageKeys && productImageKeys.length > 0;
+      if (hasProductInScene) {
         allReferenceKeys.push(...productImageKeys.slice(0, 2));
         console.log(
-          `[SCENE_IMAGE] Added ${Math.min(productImageKeys.length, 2)} product images`
+          `[SCENE_IMAGE] Added ${Math.min(productImageKeys.length, 2)} product images for ${sceneData.sceneType} scene`
+        );
+      } else if (productImageKeys && productImageKeys.length > 0) {
+        console.log(
+          `[SCENE_IMAGE] Skipping product images for ${sceneData.sceneType} scene (product not visible in this scene type)`
         );
       }
 
@@ -378,7 +436,7 @@ export async function processSceneImageJob(
       const refs = hasReferences ? referenceImageUrls : undefined;
 
       await updateJobProgress(jobId, 30, "Generating start frame...");
-      const startPrompt = buildSceneImagePrompt(sceneData, hasReferences, userRefinement, "start");
+      const startPrompt = buildSceneImagePrompt(sceneData, hasReferences, hasProductInScene, productName, userRefinement, "start");
 
       const startResult = await falImageService.generateImageWithRetry({
         prompt: startPrompt,
@@ -437,7 +495,9 @@ export async function processSceneImageJob(
           }
         }
 
-        if (productImageKeys && productImageKeys.length > 0) {
+        // Only include product images for scene types where product should be visible
+        const hasProductInEndFrame = includeProductImages && productImageKeys && productImageKeys.length > 0;
+        if (hasProductInEndFrame) {
           endReferenceKeys.push(...productImageKeys.slice(0, 2));
         }
 
@@ -446,7 +506,7 @@ export async function processSceneImageJob(
         }
 
         const endReferenceUrls = await getReferenceImageUrls(endReferenceKeys);
-        const endPrompt = buildSceneImagePrompt(sceneData, true, userRefinement, "end");
+        const endPrompt = buildSceneImagePrompt(sceneData, true, hasProductInEndFrame, productName, userRefinement, "end");
 
         const endResult = await falImageService.generateImageWithRetry({
           prompt: endPrompt,

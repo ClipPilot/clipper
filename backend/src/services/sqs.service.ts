@@ -162,6 +162,7 @@ export interface GenerateSceneImageJob extends BaseJob {
     cinematicPrompt: string;
   };
   productImageKeys: string[];
+  productName?: string;
   userRefinement?: string;
   supportingImageKeys: string[];
   // Advanced options
@@ -172,6 +173,7 @@ export interface GenerateSceneImageJob extends BaseJob {
     action: string;
     cinematicPrompt: string;
     durationSeconds: number;
+    productImageNeeded: boolean;
   }>;
 }
 
@@ -430,6 +432,7 @@ class SQSService {
     characterId: number;
     sceneData: GenerateSceneImageJob["sceneData"];
     productImageKeys: string[];
+    productName?: string;
     userRefinement?: string;
     supportingImageKeys: string[];
     // Advanced options
@@ -449,6 +452,7 @@ class SQSService {
       characterId: params.characterId,
       sceneData: params.sceneData,
       productImageKeys: params.productImageKeys,
+      productName: params.productName,
       userRefinement: params.userRefinement,
       supportingImageKeys: params.supportingImageKeys,
       // Advanced options

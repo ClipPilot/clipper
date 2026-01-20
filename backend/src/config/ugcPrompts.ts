@@ -372,50 +372,81 @@ GOOD: "Actor holds product at chest height, eyes widen with surprise, slight smi
 BAD: "Product demonstration shot"
 GOOD: "Close-up of hands holding bottle, slowly rotating it to show label"
 
-===== CRITICAL: B-ROLL SCENES - PREFER MULTI-SHOT =====
+===== CRITICAL: B-ROLL SCENES =====
 
-B-roll scenes should use MULTIPLE QUICK SHOTS (2-3 clips) for dynamic pacing. This creates more engaging, fast-paced content.
+B-roll scenes can use as many shots as needed (1, 2, 3, 4, etc). Use your judgment based on what the scene requires!
 
-**PREFERRED: MULTI-SHOT B-ROLL (use this most of the time)**
-Use "bRollShots" array to create 2-3 quick cuts that play under ONE continuous voiceover.
+**B-ROLL SHOTS**
+Use "bRollShots" array with quick cuts that play under ONE continuous voiceover.
 
-When to use bRollShots (MOST B-ROLL SHOULD USE THIS):
-- Creates dynamic visual pacing with quick cuts
-- Shows multiple angles/aspects of the product
-- Keeps viewers engaged with visual variety
-- Duration 4+ seconds
+When to use multiple shots:
+- Unboxing sequences (box → opening → reveal)
+- Before/after transformations
+- Multi-angle product showcases
+- Duration 4+ seconds with natural cut points
 
-bRollShots structure:
+When to use SINGLE shot (just 1 item in bRollShots):
+- Simple product closeup
+- One clear action (hands holding product)
+- Short 2-4 second scenes
+- The scene only needs one visual
+
+CRITICAL - productImageNeeded field (DEPENDS ON SCENE TYPE):
+
+**PROBLEM scenes** → productImageNeeded: FALSE for ALL shots
+- Show the struggle, frustration, "before" state
+- No product yet - they haven't discovered it!
+- Examples: tired hands, messy desk, frustrated expression, chaotic morning
+
+**HOOK scenes** → productImageNeeded: FALSE usually
+- Grab attention with relatable moments or intrigue
+- Product typically not shown yet
+- Examples: shocked face, "wait what?" moment, relatable scenario
+
+**SOLUTION/DEMO/CTA scenes** → productImageNeeded: TRUE where product appears
+- This is where the product shines
+- Show the product being used, held, displayed
+- Examples: unboxing, product closeup, hands holding product, product on clean surface
+
+**TESTIMONIAL scenes** → Mixed, depends on the shot
+- Could show product OR just the satisfied result/lifestyle
+
+Think about the STORY: Would the product logically appear in this moment of the narrative?
+
+Example - Problem scene B-roll (NO product needed):
 {
+  "dialogue": "[frustrated] I was so tired of dealing with this every single day...",
+  "estimatedDurationSeconds": 4,
   "bRollShots": [
-    { "action": "Close-up of product packaging", "cinematicPrompt": "...", "durationSeconds": 2 },
-    { "action": "Hands opening the box", "cinematicPrompt": "...", "durationSeconds": 2 },
-    { "action": "Product revealed on surface", "cinematicPrompt": "...", "durationSeconds": 2 }
+    { "action": "Tired hands rubbing face", "cinematicPrompt": "...", "durationSeconds": 2, "productImageNeeded": false },
+    { "action": "Messy desk with scattered papers", "cinematicPrompt": "...", "durationSeconds": 2, "productImageNeeded": false }
+  ]
+}
+
+Example - Demo scene B-roll (mixed):
+{
+  "dialogue": "[excited] And then I found this game-changer...",
+  "estimatedDurationSeconds": 5,
+  "bRollShots": [
+    { "action": "Soft morning light through window", "cinematicPrompt": "...", "durationSeconds": 2, "productImageNeeded": false },
+    { "action": "Product sitting elegantly on clean surface", "cinematicPrompt": "...", "durationSeconds": 3, "productImageNeeded": true }
+  ]
+}
+
+Example - Single shot B-roll (just one shot is fine!):
+{
+  "dialogue": "[whispering] Look at this quality...",
+  "estimatedDurationSeconds": 3,
+  "bRollShots": [
+    { "action": "Close-up of product texture", "cinematicPrompt": "...", "durationSeconds": 3, "productImageNeeded": true }
   ]
 }
 
 Rules for bRollShots:
-- Each shot: 1-3 seconds, ONE simple action (fast pacing!)
+- Use as many shots as the scene needs (1, 2, 3, 4, etc)
+- Each shot: 1-4 seconds, ONE simple action
 - Total duration of all shots = estimatedDurationSeconds
-- The main "action" and "cinematicPrompt" are ignored when bRollShots is provided
-- Use 2-3 shots for variety
 - The single voiceover (dialogue field) plays continuously over all shots
-
-Example B-roll multi-shot scene:
-{
-  "dialogue": "[excited] Look at this packaging... the attention to detail is insane",
-  "estimatedDurationSeconds": 6,
-  "bRollShots": [
-    { "action": "Close-up of sealed product box", "cinematicPrompt": "...", "durationSeconds": 2 },
-    { "action": "Hands lifting lid off box", "cinematicPrompt": "...", "durationSeconds": 2 },
-    { "action": "Product sitting in box, revealed", "cinematicPrompt": "...", "durationSeconds": 2 }
-  ]
-}
-
-**ALTERNATIVE: SINGLE-SHOT B-ROLL (only for very short 2-3s scenes)**
-Only use single-shot when duration is very short (2-3 seconds) and one simple action is enough.
-- bRollShots: null
-- Keep to ONE simple action in the main "action" field
 
 ===== CRITICAL: SCREENS, APPS & DIGITAL PRODUCTS =====
 
@@ -664,13 +695,13 @@ Examples based on setting:
 
 For b-roll and mixed scenes: set ambientSound to null (voiceover only, no background)
 
-bRollShots field (PREFERRED FOR B-ROLL - USE MULTI-SHOT):
-- Use for most b-roll scenes to create dynamic quick-cut pacing
-- Provide an array of 2-3 quick shots that share the same voiceover
-- Each shot needs: action, cinematicPrompt, durationSeconds (1-3s each)
+bRollShots field (FOR ALL B-ROLL SCENES):
+- Provide an array of shots (1, 2, 3, 4, etc - as many as the scene needs)
+- Each shot needs: action, cinematicPrompt, durationSeconds (1-4s each), productImageNeeded (boolean)
+- productImageNeeded depends on SCENE TYPE:
+  * PROBLEM/HOOK scenes: usually ALL false (no product yet in the story)
+  * SOLUTION/DEMO/CTA scenes: true where product is shown
 - Total duration of all bRollShots should equal estimatedDurationSeconds
-- When bRollShots is provided, the main action/cinematicPrompt are ignored
-- Only skip bRollShots for very short 2-3 second single-action b-roll
 
 DURATION RULES:
 - estimatedDurationSeconds MUST be a NUMBER (integer), not a range or text
@@ -696,8 +727,8 @@ Score 95+ means: irresistible hook, perfect pacing, genuine emotion, share-worth
 - a-roll scenes: natural dialogue (NO voice tags), MUST have ambientSound (e.g., "gym with weights clanking")
 - b-roll/mixed scenes: MUST have voice direction tags, ambientSound should be null
 - No tongue twisters or plosive clusters in dialogue
-- B-ROLL PREFERENCE: Use bRollShots array with 2-3 quick shots (1-3 seconds each) for dynamic pacing
-- SINGLE-SHOT B-ROLL: Only for very short 2-3 second scenes, bRollShots should be null
+- B-ROLL: Use bRollShots array with as many shots as needed (1, 2, 3, 4, etc)
+- productImageNeeded based on scene type: PROBLEM/HOOK = false, SOLUTION/DEMO/CTA = true where product shown
 - Each individual shot's action is SPECIFIC but SIMPLE - no multi-step sequences per shot
 - VERIFY: Every a-roll scene has a non-null ambientSound describing background audio
 - VERIFY: No scene exceeds 50 words - if content is longer, split into multiple scenes

@@ -114,6 +114,7 @@ export function SceneCard({
       action: "Product showcase",
       cinematicPrompt: "Close-up shot of the product",
       durationSeconds: 3,
+      productImageNeeded: true, // Default to showing product for new B-roll shots
     };
     const currentShots = scene.bRollShots || [];
     onUpdate({ bRollShots: [...currentShots, newShot] });
@@ -417,10 +418,7 @@ export function SceneCard({
                               <span className="text-xs font-medium text-amber-400">Shot {idx + 1}</span>
                               <span className="text-xs text-text-muted">{shot.durationSeconds}s</span>
                             </div>
-                            <p className="text-sm text-text-primary mb-1">{shot.action}</p>
-                            <p className="text-xs text-text-secondary italic line-clamp-2">
-                              {shot.cinematicPrompt}
-                            </p>
+                            <p className="text-sm text-text-primary">{shot.action}</p>
                           </div>
                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <Icon icon="solar:pen-2-linear" width={12} className="text-text-muted" />

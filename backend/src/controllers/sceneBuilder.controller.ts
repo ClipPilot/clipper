@@ -20,6 +20,7 @@ interface BRollShotData {
   action: string;
   cinematicPrompt: string;
   durationSeconds: number;
+  productImageNeeded: boolean;
 }
 
 interface SceneData {
@@ -127,6 +128,7 @@ export class SceneBuilderController {
           cinematicPrompt: sceneData.cinematicPrompt,
         },
         productImageKeys: script.product_image_keys as string[],
+        productName: script.product_name || undefined,
         userRefinement: userRefinement || undefined,
         supportingImageKeys: supportingImageKeys || [],
         // Advanced options
@@ -294,6 +296,7 @@ export class SceneBuilderController {
             cinematicPrompt: sceneData.cinematicPrompt,
           },
           productImageKeys: script.product_image_keys as string[],
+          productName: script.product_name || undefined,
           userRefinement: sceneRequest.userRefinement,
           supportingImageKeys: sceneRequest.supportingImageKeys || [],
           generateEndFrame: sceneRequest.generateEndFrame || false,

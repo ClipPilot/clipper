@@ -25,6 +25,7 @@ interface BRollShotData {
   action: string;
   cinematicPrompt: string;
   durationSeconds: number;
+  productImageNeeded: boolean;
 }
 
 interface SceneData {
