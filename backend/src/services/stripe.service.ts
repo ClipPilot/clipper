@@ -15,7 +15,7 @@ import {
   teamMembers,
   users,
 } from "@clipper/shared-db/src/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, not } from "drizzle-orm";
 import { emailNotiService } from "./emailNoti.service";
 import { referralService } from "./referral.service";
 
@@ -33,7 +33,7 @@ class StripeService {
       .from(teamMembers)
       .innerJoin(users, eq(teamMembers.user_id, users.id))
       .where(
-        and(eq(teamMembers.team_id, teamId), eq(teamMembers.role, "owner"))
+        and(eq(teamMembers.team_id, teamId), eq(teamMembers.role, "owner")),
       )
       .limit(1);
     return owner;
@@ -55,7 +55,7 @@ class StripeService {
         // Customer doesn't exist (likely test/prod environment mismatch)
         if (error.code === "resource_missing") {
           console.log(
-            `Stripe customer ${team.stripe_customer_id} not found, creating new customer for team ${teamId}`
+            `Stripe customer ${team.stripe_customer_id} not found, creating new customer for team ${teamId}`,
           );
           // Clear the invalid customer ID and fall through to create a new one
           await db
@@ -86,7 +86,7 @@ class StripeService {
     priceId: string,
     email: string,
     successUrl: string,
-    cancelUrl: string
+    cancelUrl: string,
   ): Promise<string> {
     const customerId = await this.getOrCreateCustomer(teamId, email);
 
@@ -131,7 +131,7 @@ class StripeService {
 
   async createPortalSession(
     teamId: number,
-    returnUrl: string
+    returnUrl: string,
   ): Promise<string> {
     const [team] = await db
       .select()
@@ -154,7 +154,7 @@ class StripeService {
           .set({ stripe_customer_id: null, updated_at: new Date() })
           .where(eq(teams.id, teamId));
         throw new Error(
-          "Your billing profile was reset. Please subscribe again from the pricing page."
+          "Your billing profile was reset. Please subscribe again from the pricing page.",
         );
       }
       throw error;
@@ -171,13 +171,16 @@ class StripeService {
   async handleSubscriptionCreated(subscription: any): Promise<void> {
     console.log(
       "handleSubscriptionCreated called with:",
-      JSON.stringify(subscription, null, 2)
+      JSON.stringify(subscription, null, 2),
     );
 
-    const previousSubToCancel = subscription.metadata?.cancel_previous_subscription;
+    const previousSubToCancel =
+      subscription.metadata?.cancel_previous_subscription;
     if (previousSubToCancel) {
       try {
-        console.log(`Cancelling previous subscription ${previousSubToCancel} after Enterprise upgrade`);
+        console.log(
+          `Cancelling previous subscription ${previousSubToCancel} after Enterprise upgrade`,
+        );
         await stripe.subscriptions.cancel(previousSubToCancel);
 
         await db
@@ -185,9 +188,14 @@ class StripeService {
           .set({ status: "canceled", updated_at: new Date() })
           .where(eq(subscriptions.stripe_subscription_id, previousSubToCancel));
 
-        console.log(`Successfully cancelled previous subscription ${previousSubToCancel}`);
+        console.log(
+          `Successfully cancelled previous subscription ${previousSubToCancel}`,
+        );
       } catch (cancelError: any) {
-        console.error(`Failed to cancel previous subscription ${previousSubToCancel}:`, cancelError.message);
+        console.error(
+          `Failed to cancel previous subscription ${previousSubToCancel}:`,
+          cancelError.message,
+        );
         Sentry.captureException(cancelError);
       }
     }
@@ -205,7 +213,7 @@ class StripeService {
 
       if (!team) {
         console.error(
-          `No team found for subscription ${subscription.id}, customer ${subscription.customer}`
+          `No team found for subscription ${subscription.id}, customer ${subscription.customer}`,
         );
         return;
       }
@@ -217,15 +225,12 @@ class StripeService {
       console.error(`No price found in subscription ${subscription.id}`);
       return;
     }
-
-    // Check metadata for enterprise plan (dynamic prices aren't in getPlanFromPriceId)
     const metadataPlan = subscription.metadata?.plan;
     const plan =
       metadataPlan === "enterprise"
         ? "enterprise"
         : getPlanFromPriceId(priceId);
 
-    // Get dates from subscription items (Stripe puts them there, not at root level)
     const subscriptionItem = subscription.items?.data?.[0];
     const periodStartTs =
       subscriptionItem?.current_period_start ||
@@ -234,7 +239,7 @@ class StripeService {
     const periodEndTs = subscriptionItem?.current_period_end;
 
     console.log(
-      `Period timestamps - start: ${periodStartTs} (type: ${typeof periodStartTs}), end: ${periodEndTs} (type: ${typeof periodEndTs})`
+      `Period timestamps - start: ${periodStartTs} (type: ${typeof periodStartTs}), end: ${periodEndTs} (type: ${typeof periodEndTs})`,
     );
 
     if (!periodStartTs || !periodEndTs) {
@@ -242,15 +247,14 @@ class StripeService {
       return;
     }
 
-    // Handle both Unix timestamps (numbers) and Date strings
     const parseDate = (val: any): Date => {
       if (typeof val === "number") {
-        return new Date(val * 1000); // Unix timestamp in seconds
+        return new Date(val * 1000);
       }
       if (val instanceof Date) {
         return val;
       }
-      return new Date(val); // Try parsing as string
+      return new Date(val);
     };
 
     const periodStart = parseDate(periodStartTs);
@@ -259,12 +263,11 @@ class StripeService {
     // Validate parsed dates
     if (isNaN(periodStart.getTime()) || isNaN(periodEnd.getTime())) {
       console.error(
-        `Invalid period dates in subscription ${subscription.id}: start=${periodStart}, end=${periodEnd}`
+        `Invalid period dates in subscription ${subscription.id}: start=${periodStart}, end=${periodEnd}`,
       );
       return;
     }
 
-    // Check if subscription already exists (upsert logic)
     const [existingSub] = await db
       .select()
       .from(subscriptions)
@@ -326,7 +329,7 @@ class StripeService {
       .where(eq(usageStats.team_id, teamId));
 
     console.log(
-      `Subscription ${subscription.id} created/updated for team ${teamId}, plan: ${plan}, clips: ${clipsLimit}`
+      `Subscription ${subscription.id} created/updated for team ${teamId}, plan: ${plan}, clips: ${clipsLimit}`,
     );
 
     try {
@@ -386,7 +389,7 @@ class StripeService {
 
     if (!periodStartTs || !periodEndTs) {
       console.error(
-        `Missing period dates in subscription update ${subscription.id}`
+        `Missing period dates in subscription update ${subscription.id}`,
       );
       return;
     }
@@ -417,7 +420,7 @@ class StripeService {
 
     if (plan === "free" && team && team.plan !== "free") {
       console.log(
-        `Unrecognized price ID ${priceId}, preserving existing plan: ${team.plan}`
+        `Unrecognized price ID ${priceId}, preserving existing plan: ${team.plan}`,
       );
       plan = team.plan;
     }
@@ -432,7 +435,7 @@ class StripeService {
     // Validate parsed dates
     if (isNaN(newPeriodStart.getTime()) || isNaN(newPeriodEnd.getTime())) {
       console.error(
-        `Invalid period dates in subscription update ${subscription.id}`
+        `Invalid period dates in subscription update ${subscription.id}`,
       );
       return;
     }
@@ -475,7 +478,7 @@ class StripeService {
           await referralService.applyBonusClipsOnRenewal(existingSub.team_id);
         if (bonusClipsApplied > 0) {
           console.log(
-            `Applied ${bonusClipsApplied} referral bonus clips to team ${existingSub.team_id}`
+            `Applied ${bonusClipsApplied} referral bonus clips to team ${existingSub.team_id}`,
           );
         }
       } catch (refError) {
@@ -485,16 +488,16 @@ class StripeService {
 
       try {
         const percentOff = await referralService.getAccumulatedPercentOff(
-          existingSub.team_id
+          existingSub.team_id,
         );
         if (percentOff > 0 && team?.stripe_customer_id) {
           await this.applyReferralDiscountToSubscription(
             team.stripe_customer_id,
             subscription.id,
-            percentOff
+            percentOff,
           );
           console.log(
-            `Applied ${percentOff}% referral discount to team ${existingSub.team_id}`
+            `Applied ${percentOff}% referral discount to team ${existingSub.team_id}`,
           );
         }
       } catch (discountError) {
@@ -512,7 +515,7 @@ class StripeService {
     }
 
     console.log(
-      `Subscription ${subscription.id} updated for team ${existingSub.team_id}`
+      `Subscription ${subscription.id} updated for team ${existingSub.team_id}`,
     );
   }
 
@@ -529,6 +532,25 @@ class StripeService {
       .update(subscriptions)
       .set({ status: "canceled", updated_at: new Date() })
       .where(eq(subscriptions.stripe_subscription_id, subscription.id));
+
+    const [otherSubscription] = await db
+      .select()
+      .from(subscriptions)
+      .where(
+        and(
+          eq(subscriptions.team_id, existingSub.team_id),
+          not(eq(subscriptions.stripe_subscription_id, subscription.id)),
+          not(eq(subscriptions.status, "canceled")),
+        ),
+      )
+      .limit(1);
+
+    if (otherSubscription) {
+      console.log(
+        `[Subscription Deleted] Team ${existingSub.team_id} has another subscription (${otherSubscription.stripe_subscription_id}, status: ${otherSubscription.status}), not downgrading to free`,
+      );
+      return;
+    }
 
     await db
       .update(teams)
@@ -560,7 +582,7 @@ class StripeService {
                 month: "long",
                 day: "numeric",
                 year: "numeric",
-              }
+              },
             )
           : "soon";
 
@@ -578,7 +600,23 @@ class StripeService {
   }
 
   async handleCheckoutCompleted(session: any): Promise<void> {
+    // Handle subscription checkout (give immediate access even for ACH)
+    if (session.mode === "subscription") {
+      await this.handleSubscriptionCheckout(session);
+      return;
+    }
+
+    // Only handle addon purchases (one-time payments)
     if (session.metadata?.type !== "addon") {
+      return;
+    }
+
+    // For ACH/bank transfers, payment_status is "unpaid" initially
+    // Only process when payment is confirmed (async_payment_succeeded will call this again)
+    if (session.payment_status !== "paid") {
+      console.log(
+        `[Checkout] Skipping addon - payment not yet confirmed (status: ${session.payment_status})`,
+      );
       return;
     }
 
@@ -620,8 +658,190 @@ class StripeService {
       .where(eq(teams.id, teamId));
 
     console.log(
-      `Added ${addonClips} addon clips to team ${teamId}. New addon total: ${newAddonTotal}`
+      `Added ${addonClips} addon clips to team ${teamId}. New addon total: ${newAddonTotal}`,
     );
+  }
+
+  async handleSubscriptionCheckout(session: any): Promise<void> {
+    const teamId = session.metadata?.teamId
+      ? parseInt(session.metadata.teamId)
+      : null;
+    const isPaid = session.payment_status === "paid";
+    const priceId =
+      session.line_items?.data?.[0]?.price?.id || session.metadata?.priceId;
+    const metadataPlan = session.metadata?.plan;
+
+    // Determine plan from metadata (enterprise) or price ID (studio/scale)
+    const plan =
+      metadataPlan === "enterprise"
+        ? "enterprise"
+        : getPlanFromPriceId(priceId);
+
+    console.log(
+      `[Subscription Checkout] Team: ${teamId}, Plan: ${plan}, Payment: ${session.payment_status}, Session: ${session.id}`,
+    );
+
+    if (!teamId) {
+      console.error("[Subscription Checkout] No teamId in session metadata");
+      return;
+    }
+
+    if (!plan) {
+      console.log(
+        "[Subscription Checkout] Could not determine plan, letting subscription.created handle it",
+      );
+      return;
+    }
+
+    const [team] = await db
+      .select()
+      .from(teams)
+      .where(eq(teams.id, teamId))
+      .limit(1);
+
+    if (!team) {
+      console.error(`[Subscription Checkout] Team ${teamId} not found`);
+      return;
+    }
+
+    // If already on a paid plan (subscription.created may have fired), skip
+    if (team.plan !== "free" && team.plan === plan) {
+      console.log(
+        `[Subscription Checkout] Team ${teamId} already on ${plan}, skipping`,
+      );
+      return;
+    }
+
+    // Determine clips limit based on plan
+    const clipsLimit =
+      plan === "enterprise" && team.enterprise_clip_limit
+        ? team.enterprise_clip_limit
+        : getClipsLimitForPlan(plan);
+
+    const periodEnd = new Date();
+    periodEnd.setMonth(periodEnd.getMonth() + 1);
+
+    // Activate plan immediately (even for ACH with pending payment)
+    await db
+      .update(teams)
+      .set({
+        plan,
+        updated_at: new Date(),
+      })
+      .where(eq(teams.id, teamId));
+
+    await db
+      .update(usageStats)
+      .set({
+        limit: clipsLimit,
+        clips_created: 0,
+        resets_date: periodEnd,
+        updated_at: new Date(),
+      })
+      .where(eq(usageStats.team_id, teamId));
+
+    console.log(
+      `[Subscription Checkout] Team ${teamId} activated on ${plan} with ${clipsLimit} clips (payment ${isPaid ? "confirmed" : "pending ACH"})`,
+    );
+
+    // Send welcome email
+    try {
+      const owner = await this.getTeamOwner(teamId);
+      if (owner) {
+        await emailNotiService.sendSubscriptionWelcome(owner.email, {
+          userName: owner.firstName,
+          planName: plan.charAt(0).toUpperCase() + plan.slice(1),
+          teamName: team.name,
+          clipsLimit,
+          dashboardUrl: `${FRONTEND_URL}/dashboard`,
+        });
+      }
+    } catch (emailError) {
+      console.error(
+        "[Subscription Checkout] Failed to send welcome email:",
+        emailError,
+      );
+      Sentry.captureException(emailError);
+    }
+  }
+
+  async handleAsyncPaymentFailed(session: any): Promise<void> {
+    const teamId = session.metadata?.teamId
+      ? parseInt(session.metadata.teamId)
+      : null;
+    const customerEmail = session.customer_details?.email;
+    const amount = session.amount_total
+      ? `$${(session.amount_total / 100).toFixed(2)}`
+      : "your payment";
+    const isSubscription = session.mode === "subscription";
+
+    console.error(
+      `[ACH Payment Failed] Team: ${teamId}, Email: ${customerEmail}, Subscription: ${isSubscription}, Session: ${session.id}`,
+    );
+
+    if (!teamId) {
+      console.error("[ACH Payment Failed] No teamId in session metadata");
+      return;
+    }
+
+    try {
+      const [team] = await db
+        .select()
+        .from(teams)
+        .where(eq(teams.id, teamId))
+        .limit(1);
+
+      if (!team) {
+        console.error(`[ACH Payment Failed] Team ${teamId} not found`);
+        return;
+      }
+
+      // Revoke plan access if this was a subscription ACH payment that failed
+      if (isSubscription && team.plan !== "free") {
+        console.log(
+          `[ACH Payment Failed] Revoking ${team.plan} access for team ${teamId}`,
+        );
+
+        await db
+          .update(teams)
+          .set({
+            plan: "free",
+            updated_at: new Date(),
+          })
+          .where(eq(teams.id, teamId));
+
+        await db
+          .update(usageStats)
+          .set({
+            limit: 3,
+            updated_at: new Date(),
+          })
+          .where(eq(usageStats.team_id, teamId));
+
+        console.log(
+          `[ACH Payment Failed] Team ${teamId} reverted to free plan`,
+        );
+      }
+
+      const owner = await this.getTeamOwner(teamId);
+      if (!owner) {
+        console.error(`[ACH Payment Failed] No owner found for team ${teamId}`);
+        return;
+      }
+
+      await emailNotiService.sendPaymentFailed(owner.email, {
+        userName: owner.firstName,
+        teamName: team.name,
+        amount,
+        retryDate: "N/A (ACH bank transfer failed)",
+        updatePaymentUrl: `${FRONTEND_URL}/dashboard/settings`,
+      });
+
+      console.log(`[ACH Payment Failed] Notification sent to ${owner.email}`);
+    } catch (error) {
+      console.error("[ACH Payment Failed] Error sending notification:", error);
+      Sentry.captureException(error);
+    }
   }
 
   async getTeamSubscription(teamId: number) {
@@ -644,7 +864,7 @@ class StripeService {
 
   async changePlan(
     teamId: number,
-    newPriceId: string
+    newPriceId: string,
   ): Promise<{
     success: boolean;
     effectiveDate: Date;
@@ -663,7 +883,7 @@ class StripeService {
 
     // Get the current subscription from Stripe to find the item ID
     const stripeSubscription = await stripe.subscriptions.retrieve(
-      sub.stripe_subscription_id
+      sub.stripe_subscription_id,
     );
     const subscriptionItemId = stripeSubscription.items.data[0]?.id;
 
@@ -687,7 +907,7 @@ class StripeService {
     const effectiveDate = sub.current_period_end || new Date();
 
     console.log(
-      `Plan change scheduled for team ${teamId}: ${sub.plan} -> ${newPlan}, effective ${effectiveDate}`
+      `Plan change scheduled for team ${teamId}: ${sub.plan} -> ${newPlan}, effective ${effectiveDate}`,
     );
 
     return {
@@ -700,7 +920,7 @@ class StripeService {
   async applyReferralDiscountToSubscription(
     customerId: string,
     subscriptionId: string,
-    percentOff: number
+    percentOff: number,
   ): Promise<void> {
     const couponId = `referral_${customerId}_${Math.round(percentOff)}`;
 
@@ -755,7 +975,7 @@ class StripeService {
                 month: "long",
                 day: "numeric",
                 year: "numeric",
-              }
+              },
             )
           : "N/A";
 
@@ -806,7 +1026,7 @@ class StripeService {
                 month: "long",
                 day: "numeric",
                 year: "numeric",
-              }
+              },
             )
           : "soon";
 
@@ -829,7 +1049,7 @@ export const stripeService = new StripeService();
 
 export async function applyReferralDiscount(
   teamId: number,
-  percentOff: number
+  percentOff: number,
 ): Promise<void> {
   const [team] = await db
     .select()
@@ -856,7 +1076,7 @@ export async function applyReferralDiscount(
   await stripeService.applyReferralDiscountToSubscription(
     team.stripe_customer_id,
     sub.stripe_subscription_id,
-    percentOff
+    percentOff,
   );
 
   console.log(`Applied ${percentOff}% discount to team ${teamId} subscription`);
