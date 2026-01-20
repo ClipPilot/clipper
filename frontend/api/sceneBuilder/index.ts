@@ -48,7 +48,7 @@ export interface GenerateAllSceneImagesRequest {
     emotion: string;
     shotType?: string;
     cameraAngle?: string;
-    bRollShots?: BRollShotData[];
+    bRollShots?: BRollShotData[] | null;
     // Optional refinements
     userRefinement?: string;
     supportingImageKeys?: string[];

@@ -351,7 +351,7 @@ export function SceneBuilderStep({
           emotion: scene.emotion,
           shotType: scene.shotType,
           cameraAngle: scene.cameraAngle,
-          bRollShots: scene.bRollShots ?? undefined,
+          bRollShots: scene.bRollShots ?? null,
           // Optional refinements
           userRefinement: sceneImages[scene.id]?.userRefinement,
           supportingImageKeys: sceneImages[scene.id]?.supportingImageKeys,

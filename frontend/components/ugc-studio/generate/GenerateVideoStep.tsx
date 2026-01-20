@@ -205,18 +205,6 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
               </div>
             </div>
 
-            {/* Estimated Duration */}
-            <div className="flex items-center gap-3 p-3 bg-surface-base rounded-xl">
-              <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
-                <Icon icon="solar:clock-circle-bold-duotone" className="text-blue-400" width={20} />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-text-primary">Estimated Duration</p>
-                <p className="text-xs text-text-secondary">
-                  {Math.ceil(scenes.reduce((acc, s) => acc + (s.estimatedDurationSeconds || (s as any).durationSeconds || 5), 0))} seconds
-                </p>
-              </div>
-            </div>
           </div>
         </CardBody>
       </Card>

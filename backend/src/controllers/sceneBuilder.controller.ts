@@ -217,8 +217,13 @@ export class SceneBuilderController {
         // Fall back to DB data for backwards compatibility
         let sceneData: SceneData;
 
+        // Always get DB data to ensure we have bRollShots
+        const dbSceneData = selectedScript?.scenes?.find(
+          (s: SceneData) => s.id === sceneRequest.sceneId
+        ) as SceneData | undefined;
+
         if (sceneRequest.sceneType && sceneRequest.dialogue && sceneRequest.action && sceneRequest.emotion) {
-          // Use passed data (avoids stale DB reads)
+          // Use passed data (avoids stale DB reads), but fall back to DB for bRollShots if not provided
           sceneData = {
             id: sceneRequest.sceneId,
             sceneNumber: sceneRequest.sceneNumber,
@@ -228,18 +233,14 @@ export class SceneBuilderController {
             emotion: sceneRequest.emotion,
             shotType: sceneRequest.shotType || "a-roll",
             cameraAngle: sceneRequest.cameraAngle || "pov-selfie",
-            cinematicPrompt: sceneRequest.cinematicPrompt || "",
-            bRollShots: sceneRequest.bRollShots,
+            cinematicPrompt: sceneRequest.cinematicPrompt || dbSceneData?.cinematicPrompt || "",
+            bRollShots: sceneRequest.bRollShots || dbSceneData?.bRollShots || null,
           } as SceneData;
           console.log(
             `[SCENE_BUILDER] Scene ${sceneRequest.sceneId}: Using frontend data (dialogue: "${sceneData.dialogue.substring(0, 50)}..."${sceneData.bRollShots ? `, bRollShots: ${sceneData.bRollShots.length}` : ""})`
           );
         } else {
           // Fallback to DB data
-          const dbSceneData = selectedScript?.scenes?.find(
-            (s: SceneData) => s.id === sceneRequest.sceneId
-          ) as SceneData | undefined;
-
           if (!dbSceneData) {
             console.warn(
               `[SCENE_BUILDER] Scene ${sceneRequest.sceneId} not found, skipping`
