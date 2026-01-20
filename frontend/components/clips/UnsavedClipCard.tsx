@@ -64,7 +64,7 @@ export const UnsavedClipCard: React.FC<UnsavedClipCardProps> = ({
   return (
     <Card className="bg-surface-base border border-border-accent overflow-hidden">
       <CardBody className="p-0 cursor-pointer" onClick={handleCardClick}>
-        <div className="aspect-[9/16] max-h-[280px] sm:max-h-[400px]">
+        <div className="aspect-[9/16]">
           {clip.clipUrl ? (
             <SecureVideoPlayer
               ref={videoRef}

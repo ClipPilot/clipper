@@ -400,10 +400,11 @@ export default function ClipViewModal({
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-[600px]">
-            <div className="flex items-center justify-center">
+            <div className="flex items-center justify-center isolate">
               {clip.clipUrl ? (
                 <div className="rounded-lg overflow-hidden bg-black w-full h-full flex items-center justify-center relative z-10">
                   <video
+                    key={`clip-video-${clip.id}-${clip.clipUrl}`}
                     src={clip.clipUrl}
                     controls
                     controlsList="nodownload noremoteplayback"

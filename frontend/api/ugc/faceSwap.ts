@@ -243,6 +243,7 @@ class FaceSwapAPI {
         if (
           lastError.message.includes("Insufficient credits") ||
           lastError.message.includes("PLAN_REQUIRED") ||
+          lastError.message.includes("only available on") ||
           lastError.message.includes("Unauthorized")
         ) {
           throw lastError;
