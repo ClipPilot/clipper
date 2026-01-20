@@ -49,6 +49,8 @@ interface SceneImageCardProps {
   onSupportingImagesChange: (keys: string[]) => void;
   onUseEndFrameChange: (useEndFrame: boolean) => void;
   onCustomImageChange: (type: "start" | "end", key: string | undefined, url: string | undefined) => void;
+  /** When true, always shows expanded view (used in storyboard mode) */
+  isStoryboardMode?: boolean;
 }
 
 export function SceneImageCard({
@@ -74,8 +76,10 @@ export function SceneImageCard({
   onSupportingImagesChange,
   onUseEndFrameChange,
   onCustomImageChange,
+  isStoryboardMode = false,
 }: SceneImageCardProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  // In storyboard mode, always show expanded view
+  const [isExpanded, setIsExpanded] = useState(isStoryboardMode);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [localRefinement, setLocalRefinement] = useState(userRefinement || "");
   const [supportingImages, setSupportingImages] = useState<SupportingImage[]>(
@@ -288,7 +292,8 @@ export function SceneImageCard({
     );
   };
 
-  if (!isExpanded) {
+  // In storyboard mode, skip collapsed view entirely
+  if (!isExpanded && !isStoryboardMode) {
     return (
       <Card
         isPressable
@@ -432,14 +437,17 @@ export function SceneImageCard({
               {scene.estimatedDurationSeconds}s
             </span>
           </div>
-          <Button
-            isIconOnly
-            size="sm"
-            variant="light"
-            onPress={() => setIsExpanded(false)}
-          >
-            <Icon icon="solar:alt-arrow-up-linear" width={16} />
-          </Button>
+          {/* Hide collapse button in storyboard mode - use timeline for navigation */}
+          {!isStoryboardMode && (
+            <Button
+              isIconOnly
+              size="sm"
+              variant="light"
+              onPress={() => setIsExpanded(false)}
+            >
+              <Icon icon="solar:alt-arrow-up-linear" width={16} />
+            </Button>
+          )}
         </div>
 
         <div className="bg-surface-base rounded-lg p-3">

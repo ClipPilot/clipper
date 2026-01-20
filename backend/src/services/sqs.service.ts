@@ -229,6 +229,7 @@ export interface KlingFaceSwapJob extends BaseJob {
     videoDuration: number;
     segments: Array<{ start: number; end: number; type: string }>;
   };
+  folderId?: number;
 }
 
 export type VideoProcessingJob =
@@ -528,6 +529,7 @@ class SQSService {
     videoDuration: number;
     spliceMode: boolean;
     spliceMetadata?: KlingFaceSwapJob["spliceMetadata"];
+    folderId?: number;
   }): Promise<string> {
     const job: KlingFaceSwapJob = {
       type: "kling-face-swap",
@@ -541,6 +543,7 @@ class SQSService {
       videoDuration: params.videoDuration,
       spliceMode: params.spliceMode,
       spliceMetadata: params.spliceMetadata,
+      folderId: params.folderId,
       createdAt: new Date().toISOString(),
     };
 

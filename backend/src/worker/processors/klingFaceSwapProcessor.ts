@@ -406,6 +406,7 @@ export async function processKlingFaceSwapJob(
           .values({
             team_id: teamId,
             generated_by_user_id: member.userId,
+            folder_id: job.folderId || null,
             clip_path: s3Key,
             blank_video_path: s3Key,
             source_video_path: chunkS3Keys[0],

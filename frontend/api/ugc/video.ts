@@ -50,6 +50,7 @@ export interface VideoGenerationStatus {
 export interface FinalizeVideoRequest {
   jobId: string;
   teamId: number;
+  folderId?: number;
 }
 
 export interface FinalizeVideoResponse {

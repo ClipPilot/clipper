@@ -2,6 +2,7 @@
 
 import { useCallback, useRef } from "react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { addToast } from "@heroui/react";
 import { selectedTeamAtom } from "@/store/auth";
 import {
   pendingClipsAtom,
@@ -185,8 +186,19 @@ export function useClipsData() {
         if (selectedFolderId !== folderId) {
           setSavedClips((prev) => prev.filter((c) => c.id !== clipId));
         }
-      } catch (error) {
+        addToast({
+          title: "Clip moved",
+          description: folderId ? "Clip moved to folder" : "Clip moved to root",
+          color: "success",
+        });
+      } catch (error: any) {
         console.error("Failed to move clip:", error);
+        const errorMessage = error?.message || "Failed to move clip to folder";
+        addToast({
+          title: "Failed to move clip",
+          description: errorMessage,
+          color: "danger",
+        });
       }
     },
     [selectedTeam?.id, selectedFolderId, setSavedClips]
@@ -291,8 +303,18 @@ export function useFolders() {
       try {
         await clipsAPI.createFolder(selectedTeam.id, data);
         await loadFolders();
-      } catch (error) {
+        addToast({
+          title: "Folder created",
+          description: `Folder "${data.name}" created successfully`,
+          color: "success",
+        });
+      } catch (error: any) {
         console.error("Failed to create folder:", error);
+        addToast({
+          title: "Failed to create folder",
+          description: error?.message || "Failed to create folder",
+          color: "danger",
+        });
         throw error;
       }
     },

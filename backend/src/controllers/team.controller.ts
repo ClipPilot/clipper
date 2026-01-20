@@ -159,11 +159,11 @@ export const addTeamMemberController = async (req: AuthRequest, res: Response) =
       return res.status(400).json({ error: "Email is required" });
     }
 
-    // Check if team is on Scale plan (only Scale allows team members)
+    // Check if team is on Scale or Enterprise plan (only Scale/Enterprise allows team members)
     const team = await teamService.getTeamById(teamId);
-    if (team.plan !== "scale") {
+    if (team.plan !== "scale" && team.plan !== "enterprise") {
       return res.status(403).json({
-        error: "Team collaboration requires a Scale plan. Please upgrade to invite team members.",
+        error: "Team collaboration requires a Scale or Enterprise plan. Please upgrade to invite team members.",
       });
     }
 
