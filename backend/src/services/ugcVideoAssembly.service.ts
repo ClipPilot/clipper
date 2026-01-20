@@ -9,6 +9,7 @@ import {
   generateGroundedCinematicPrompt,
   ShotType,
   PRODUCT_NEGATIVE_PROMPT,
+  SCREEN_STABILITY_MODIFIERS,
 } from "./kling.service";
 import { generateJumbledMetadataString } from "../utils/videoMetadata";
 
@@ -322,7 +323,7 @@ async function extendVideoToMatchAudio(
     const { videoUrl: extensionVideoUrl } =
       await klingService.generateVideoWithRetry({
         imageUrl: lastFrameUrl,
-        prompt: `Continue the scene naturally and seamlessly. ${prompt}`,
+        prompt: `Continue the scene naturally and seamlessly. ${SCREEN_STABILITY_MODIFIERS} ${prompt}`,
         duration: extensionDuration as 5 | 10,
         negativePrompt: PRODUCT_NEGATIVE_PROMPT,
       });
