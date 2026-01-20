@@ -12,8 +12,8 @@ import {
 } from "./kling.service";
 import { generateJumbledMetadataString } from "../utils/videoMetadata";
 
-const MAX_KLING_VIDEO_DURATION = 10; // Kling generates 10s videos
-const KLING_EXTENSION_DURATION = 5; // Extend in 5s increments
+const MAX_KLING_VIDEO_DURATION = 10;
+const KLING_EXTENSION_DURATION = 5;
 const PARALLEL_SCENES = 2;
 const AUDIO_SAMPLE_RATE = 44100;
 const AUDIO_CHANNELS = 2;
@@ -29,18 +29,14 @@ const SPEECH_SPEED_BOOST = 1.12;
 function extractLastFrame(videoPath: string, sceneNumber: number): string {
   const outputPath = path.join(
     OUTPUT_DIR,
-    `lastframe_${sceneNumber}_${Date.now()}.png`
+    `lastframe_${sceneNumber}_${Date.now()}.png`,
   );
-
-  // Get video duration first
   const duration = getMediaDuration(videoPath);
-
-  // Extract frame at duration - 0.1s to ensure we get the last frame
   const timestamp = Math.max(0, duration - 0.1);
   const cmd = `ffmpeg -y -ss ${timestamp.toFixed(3)} -i "${videoPath}" -vframes 1 -q:v 2 "${outputPath}"`;
 
   console.log(
-    `[FFmpeg] Scene ${sceneNumber}: Extracting last frame at ${timestamp.toFixed(2)}s`
+    `[FFmpeg] Scene ${sceneNumber}: Extracting last frame at ${timestamp.toFixed(2)}s`,
   );
   execSync(cmd, { stdio: "pipe" });
 
@@ -53,18 +49,11 @@ function extractLastFrame(videoPath: string, sceneNumber: number): string {
  * (fixes pausing at segment boundaries caused by keyframe misalignment).
  */
 function mergeUGCClips(clips: string[], outputPath: string): void {
-  console.log(`[MERGE] Merging ${clips.length} UGC clips...`);
-
-  // Create concat list file directly from input clips
-  // We'll re-encode during merge to ensure consistent keyframes
   const listPath = path.join(OUTPUT_DIR, `concat_list_${Date.now()}.txt`);
   const listContent = clips
     .map((p) => `file '${p.replace(/'/g, "'\\''")}'`)
     .join("\n");
   fs.writeFileSync(listPath, listContent);
-
-  // Re-encode during concatenation to ensure consistent keyframes across all segments
-  // This fixes mobile playback issues (pausing at segment joins)
   const cmd = `ffmpeg -y -f concat -safe 0 -i "${listPath}" \
     ${VIDEO_ENCODE_SETTINGS} \
     -c:a aac -ar ${AUDIO_SAMPLE_RATE} -ac ${AUDIO_CHANNELS} -b:a ${AUDIO_BITRATE} \
@@ -73,12 +62,11 @@ function mergeUGCClips(clips: string[], outputPath: string): void {
     ${generateJumbledMetadataString()} \
     "${outputPath}"`;
 
-  console.log(`[MERGE] Re-encoding ${clips.length} clips for mobile playback...`);
+  console.log(
+    `[MERGE] Re-encoding ${clips.length} clips for mobile playback...`,
+  );
   execSync(cmd, { stdio: "pipe" });
-
-  // Cleanup list file
   fs.unlinkSync(listPath);
-
   console.log(`[MERGE] Complete: ${outputPath}`);
 }
 
@@ -137,7 +125,7 @@ function getMediaDuration(filePath: string): number {
   try {
     const result = execSync(
       `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${filePath}"`,
-      { encoding: "utf-8" }
+      { encoding: "utf-8" },
     );
     return parseFloat(result.trim());
   } catch (error) {
@@ -153,7 +141,7 @@ function getMediaDuration(filePath: string): number {
 function speedUpAudio(
   inputPath: string,
   targetDuration: number,
-  sceneNumber: number
+  sceneNumber: number,
 ): { outputPath: string; finalDuration: number } {
   const currentDuration = getMediaDuration(inputPath);
 
@@ -163,7 +151,7 @@ function speedUpAudio(
 
   const speedFactor = currentDuration / targetDuration;
   console.log(
-    `[FFmpeg] Scene ${sceneNumber}: Speeding up audio ${currentDuration.toFixed(2)}s -> ${targetDuration}s (${speedFactor.toFixed(2)}x)`
+    `[FFmpeg] Scene ${sceneNumber}: Speeding up audio ${currentDuration.toFixed(2)}s -> ${targetDuration}s (${speedFactor.toFixed(2)}x)`,
   );
   let atempoFilters: string[] = [];
   let remainingSpeed = speedFactor;
@@ -177,7 +165,7 @@ function speedUpAudio(
   const filterChain = atempoFilters.join(",");
   const outputPath = path.join(
     OUTPUT_DIR,
-    `audio_speed_${sceneNumber}_${Date.now()}.mp3`
+    `audio_speed_${sceneNumber}_${Date.now()}.mp3`,
   );
 
   const cmd = `ffmpeg -y -i "${inputPath}" -filter:a "${filterChain}" -vn "${outputPath}"`;
@@ -185,7 +173,7 @@ function speedUpAudio(
 
   const finalDuration = getMediaDuration(outputPath);
   console.log(
-    `[FFmpeg] Scene ${sceneNumber}: Audio sped up to ${finalDuration.toFixed(2)}s`
+    `[FFmpeg] Scene ${sceneNumber}: Audio sped up to ${finalDuration.toFixed(2)}s`,
   );
   if (inputPath !== outputPath && fs.existsSync(inputPath)) {
     fs.unlinkSync(inputPath);
@@ -203,46 +191,43 @@ async function generateDialogueAudio(
   text: string,
   teamId: number,
   scriptId: string,
-  sceneNumber: number
+  sceneNumber: number,
 ): Promise<{ audioPath: string; audioKey: string; duration: number }> {
   console.log(
-    `[UGC Assembly] Scene ${sceneNumber}: Generating dialogue audio...`
+    `[UGC Assembly] Scene ${sceneNumber}: Generating dialogue audio...`,
   );
 
-  // Generate audio with ElevenLabs (natural speed, allow longer audio)
   const { audioBuffer, actualDuration } =
     await elevenLabsService.textToDialogueForTargetDuration({
       voiceId,
       text,
-      targetDurationSeconds: 15, // Allow longer audio, we'll extend video if needed
+      targetDurationSeconds: 12,
       tolerancePercent: 50,
     });
 
   const tempAudioPath = path.join(
     OUTPUT_DIR,
-    `dialogue_${sceneNumber}_${Date.now()}.mp3`
+    `dialogue_${sceneNumber}_${Date.now()}.mp3`,
   );
   fs.writeFileSync(tempAudioPath, audioBuffer);
 
-  // Always apply 1.12x speedup
+  // Always apply 1.12x speedup so it sounds like a fast paced ad
   const boostedTargetDuration = actualDuration / SPEECH_SPEED_BOOST;
   const { outputPath: finalAudioPath, finalDuration } = speedUpAudio(
     tempAudioPath,
     boostedTargetDuration,
-    sceneNumber
+    sceneNumber,
   );
 
   console.log(
-    `[UGC Assembly] Scene ${sceneNumber}: Audio ${actualDuration.toFixed(2)}s -> ${finalDuration.toFixed(2)}s (${SPEECH_SPEED_BOOST}x speed)`
+    `[UGC Assembly] Scene ${sceneNumber}: Audio ${actualDuration.toFixed(2)}s -> ${finalDuration.toFixed(2)}s (${SPEECH_SPEED_BOOST}x speed)`,
   );
-
-  // Upload the sped-up audio
   const audioBuffer2 = fs.readFileSync(finalAudioPath);
   const audioKey = await s3Service.uploadTTSAudio(
     audioBuffer2,
     teamId,
     scriptId,
-    sceneNumber
+    sceneNumber,
   );
 
   return { audioPath: finalAudioPath, audioKey, duration: finalDuration };
@@ -255,28 +240,27 @@ async function generateDialogueAudio(
 function trimVideoToAudio(
   videoPath: string,
   audioDuration: number,
-  sceneNumber: number
+  sceneNumber: number,
 ): string {
   const videoDuration = getMediaDuration(videoPath);
 
   if (videoDuration < audioDuration) {
     console.warn(
-      `[FFmpeg] Scene ${sceneNumber}: Video (${videoDuration.toFixed(2)}s) shorter than audio (${audioDuration.toFixed(2)}s)!`
+      `[FFmpeg] Scene ${sceneNumber}: Video (${videoDuration.toFixed(2)}s) shorter than audio (${audioDuration.toFixed(2)}s)!`,
     );
   }
 
   const outputPath = path.join(
     OUTPUT_DIR,
-    `trimmed_${sceneNumber}_${Date.now()}.mp4`
+    `trimmed_${sceneNumber}_${Date.now()}.mp4`,
   );
 
-  // Trim to exact duration with mobile-compatible encoding
   const cmd = `ffmpeg -y -i "${videoPath}" -t ${audioDuration.toFixed(3)} \
     ${VIDEO_ENCODE_SETTINGS} \
     -c:a aac -ar ${AUDIO_SAMPLE_RATE} -ac ${AUDIO_CHANNELS} -b:a ${AUDIO_BITRATE} \
     -avoid_negative_ts make_zero "${outputPath}"`;
   console.log(
-    `[FFmpeg] Scene ${sceneNumber}: Trimming video to ${audioDuration.toFixed(2)}s`
+    `[FFmpeg] Scene ${sceneNumber}: Trimming video to ${audioDuration.toFixed(2)}s`,
   );
   execSync(cmd, { stdio: "pipe" });
 
@@ -299,13 +283,13 @@ async function extendVideoToMatchAudio(
   targetDuration: number,
   prompt: string,
   sceneNumber: number,
-  teamId: number
+  teamId: number,
 ): Promise<string> {
   let currentVideoPath = initialVideoPath;
   let currentDuration = getMediaDuration(initialVideoPath);
 
   console.log(
-    `[Video Extension] Scene ${sceneNumber}: Video ${currentDuration.toFixed(2)}s, target ${targetDuration.toFixed(2)}s`
+    `[Video Extension] Scene ${sceneNumber}: Video ${currentDuration.toFixed(2)}s, target ${targetDuration.toFixed(2)}s`,
   );
 
   // If video is already long enough, just return it
@@ -322,7 +306,7 @@ async function extendVideoToMatchAudio(
     const extensionDuration = neededDuration > 5 ? 10 : 5;
 
     console.log(
-      `[Video Extension] Scene ${sceneNumber}: Extending by ${extensionDuration}s (need ${neededDuration.toFixed(2)}s more)`
+      `[Video Extension] Scene ${sceneNumber}: Extending by ${extensionDuration}s (need ${neededDuration.toFixed(2)}s more)`,
     );
 
     // Extract last frame from current video
@@ -346,7 +330,7 @@ async function extendVideoToMatchAudio(
     // Download extension video
     const extensionVideoPath = path.join(
       OUTPUT_DIR,
-      `extension_${sceneNumber}_${Date.now()}.mp4`
+      `extension_${sceneNumber}_${Date.now()}.mp4`,
     );
     await s3Service.downloadVideoFromUrl(extensionVideoUrl, extensionVideoPath);
 
@@ -358,25 +342,22 @@ async function extendVideoToMatchAudio(
     currentVideoPath = extensionVideoPath;
 
     console.log(
-      `[Video Extension] Scene ${sceneNumber}: Now have ${currentDuration.toFixed(2)}s of video`
+      `[Video Extension] Scene ${sceneNumber}: Now have ${currentDuration.toFixed(2)}s of video`,
     );
   }
-
-  // Merge all video segments if we have multiple
   if (videosToMerge.length > 1) {
     const mergedPath = path.join(
       OUTPUT_DIR,
-      `merged_extended_${sceneNumber}_${Date.now()}.mp4`
+      `merged_extended_${sceneNumber}_${Date.now()}.mp4`,
     );
     mergeUGCClips(videosToMerge, mergedPath);
 
-    // Cleanup individual segments (except original which may still be needed)
     for (let i = 1; i < videosToMerge.length; i++) {
       if (fs.existsSync(videosToMerge[i])) fs.unlinkSync(videosToMerge[i]);
     }
 
     console.log(
-      `[Video Extension] Scene ${sceneNumber}: Merged ${videosToMerge.length} segments`
+      `[Video Extension] Scene ${sceneNumber}: Merged ${videosToMerge.length} segments`,
     );
     return mergedPath;
   }
@@ -392,18 +373,18 @@ function combineVideoAudio(
   videoPath: string,
   audioPath: string,
   audioDuration: number,
-  sceneNumber: number
+  sceneNumber: number,
 ): string {
   const outputPath = path.join(
     OUTPUT_DIR,
-    `combined_${sceneNumber}_${Date.now()}.mp4`
+    `combined_${sceneNumber}_${Date.now()}.mp4`,
   );
   const cmd = `ffmpeg -y -i "${videoPath}" -i "${audioPath}" -t ${audioDuration.toFixed(3)} \
     ${VIDEO_ENCODE_SETTINGS} \
     -c:a aac -ar ${AUDIO_SAMPLE_RATE} -ac ${AUDIO_CHANNELS} -b:a ${AUDIO_BITRATE} \
     -map 0:v:0 -map 1:a:0 -avoid_negative_ts make_zero "${outputPath}"`;
   console.log(
-    `[FFmpeg] Scene ${sceneNumber}: Combining video + audio (${audioDuration.toFixed(2)}s)`
+    `[FFmpeg] Scene ${sceneNumber}: Combining video + audio (${audioDuration.toFixed(2)}s)`,
   );
   execSync(cmd, { stdio: "pipe" });
 
@@ -419,11 +400,11 @@ function mixAmbientAudio(
   videoPath: string,
   ambientAudioPath: string,
   sceneNumber: number,
-  ambientVolume: number = 0.35
+  ambientVolume: number = 0.35,
 ): string {
   const outputPath = path.join(
     OUTPUT_DIR,
-    `ambient_mixed_${sceneNumber}_${Date.now()}.mp4`
+    `ambient_mixed_${sceneNumber}_${Date.now()}.mp4`,
   );
   const videoDuration = getMediaDuration(videoPath);
   const cmd = `ffmpeg -y -i "${videoPath}" -stream_loop -1 -i "${ambientAudioPath}" \
@@ -435,7 +416,7 @@ function mixAmbientAudio(
     "${outputPath}"`;
 
   console.log(
-    `[FFmpeg] Scene ${sceneNumber}: Mixing ambient audio at ${(ambientVolume * 100).toFixed(0)}% volume`
+    `[FFmpeg] Scene ${sceneNumber}: Mixing ambient audio at ${(ambientVolume * 100).toFixed(0)}% volume`,
   );
   execSync(cmd, { stdio: "pipe" });
 
@@ -453,7 +434,7 @@ async function processArollScene(
   teamId: number,
   scriptId: string,
   voiceId: string,
-  onProgress?: (message: string) => void
+  onProgress?: (message: string) => void,
 ): Promise<ProcessedScene> {
   const {
     sceneId,
@@ -466,23 +447,27 @@ async function processArollScene(
     emotion,
     ambientSound,
   } = scene;
-
-  // Step 1: Generate audio with 1.12x speedup
   onProgress?.(`Scene ${sceneNumber}: Generating dialogue...`);
-  const { audioPath, audioKey, duration: audioDuration } =
-    await generateDialogueAudio(voiceId, dialogue, teamId, scriptId, sceneNumber);
-
-  console.log(
-    `[UGC Assembly] A-Roll Scene ${sceneNumber}: Audio duration: ${audioDuration.toFixed(2)}s`
+  const {
+    audioPath,
+    audioKey,
+    duration: audioDuration,
+  } = await generateDialogueAudio(
+    voiceId,
+    dialogue,
+    teamId,
+    scriptId,
+    sceneNumber,
   );
 
-  // Step 2: Get presigned URLs
-  onProgress?.(`Scene ${sceneNumber}: Generating video with lip-sync...`);
+  console.log(
+    `[UGC Assembly] A-Roll Scene ${sceneNumber}: Audio duration: ${audioDuration.toFixed(2)}s`,
+  );
+  onProgress?.(`Scene ${sceneNumber}: Generating video`);
   const imageUrl = await s3Service.getPresignedUrl(imageKey, 3600);
   const audioUrl = await s3Service.getPresignedUrl(audioKey, 3600);
 
-  // Step 3: Generate grounded cinematic prompt
-  onProgress?.(`Scene ${sceneNumber}: Analyzing image for video prompt...`);
+  onProgress?.(`Scene ${sceneNumber}: Analyzing...`);
   const groundedCinematicPrompt = await generateGroundedCinematicPrompt({
     originalCinematicPrompt: cinematicPrompt,
     startImageUrl: imageUrl,
@@ -492,42 +477,52 @@ async function processArollScene(
   });
 
   // Step 4: Generate video with Avatar v2 (lip-sync)
-  const prompt = buildKlingPrompt(groundedCinematicPrompt, shotType, emotion, action);
+  const prompt = buildKlingPrompt(
+    groundedCinematicPrompt,
+    shotType,
+    emotion,
+    action,
+  );
   const { videoUrl: avatarVideoUrl } =
     await klingService.generateAvatarWithRetry({
       imageUrl,
       audioUrl,
       prompt,
     });
-
-  // Step 5: Download avatar video
   const avatarVideoPath = path.join(
     OUTPUT_DIR,
-    `avatar_${sceneNumber}_${Date.now()}.mp4`
+    `avatar_${sceneNumber}_${Date.now()}.mp4`,
   );
   await s3Service.downloadVideoFromUrl(avatarVideoUrl, avatarVideoPath);
 
   // Step 6: Extend video if audio > 10s using last-frame continuation
   let processedVideoPath = avatarVideoPath;
   if (audioDuration > MAX_KLING_VIDEO_DURATION) {
-    onProgress?.(`Scene ${sceneNumber}: Extending video to match audio...`);
+    onProgress?.(`Scene ${sceneNumber}: Building Video...`);
     console.log(
-      `[UGC Assembly] A-Roll Scene ${sceneNumber}: Audio ${audioDuration.toFixed(2)}s > ${MAX_KLING_VIDEO_DURATION}s, extending video`
+      `[UGC Assembly] A-Roll Scene ${sceneNumber}: Audio ${audioDuration.toFixed(2)}s > ${MAX_KLING_VIDEO_DURATION}s, extending video`,
     );
     processedVideoPath = await extendVideoToMatchAudio(
       avatarVideoPath,
       audioDuration,
       prompt,
       sceneNumber,
-      teamId
+      teamId,
     );
-    if (fs.existsSync(avatarVideoPath) && avatarVideoPath !== processedVideoPath) {
+    if (
+      fs.existsSync(avatarVideoPath) &&
+      avatarVideoPath !== processedVideoPath
+    ) {
       fs.unlinkSync(avatarVideoPath);
     }
   }
 
   // Step 7: Trim video to exact audio duration
-  const trimmedPath = trimVideoToAudio(processedVideoPath, audioDuration, sceneNumber);
+  const trimmedPath = trimVideoToAudio(
+    processedVideoPath,
+    audioDuration,
+    sceneNumber,
+  );
   if (fs.existsSync(processedVideoPath) && processedVideoPath !== trimmedPath) {
     fs.unlinkSync(processedVideoPath);
   }
@@ -535,13 +530,13 @@ async function processArollScene(
 
   // Step 8: Mix ambient sound if provided
   console.log(
-    `[UGC Assembly] Scene ${sceneNumber}: ambientSound field = "${ambientSound || "NOT SET"}"`
+    `[UGC Assembly] Scene ${sceneNumber}: ambientSound field = "${ambientSound || "NOT SET"}"`,
   );
 
   if (ambientSound && ambientSound.trim()) {
     onProgress?.(`Scene ${sceneNumber}: Adding ambient audio...`);
     console.log(
-      `[UGC Assembly] Scene ${sceneNumber}: Generating ambient sound: "${ambientSound}"`
+      `[UGC Assembly] Scene ${sceneNumber}: Generating ambient sound: "${ambientSound}"`,
     );
 
     try {
@@ -552,19 +547,22 @@ async function processArollScene(
       });
 
       console.log(
-        `[UGC Assembly] Scene ${sceneNumber}: Ambient audio generated (${(ambientBuffer.length / 1024).toFixed(1)}KB)`
+        `[UGC Assembly] Scene ${sceneNumber}: Ambient audio generated (${(ambientBuffer.length / 1024).toFixed(1)}KB)`,
       );
       const ambientAudioPath = path.join(
         OUTPUT_DIR,
-        `ambient_${sceneNumber}_${Date.now()}.mp3`
+        `ambient_${sceneNumber}_${Date.now()}.mp3`,
       );
       fs.writeFileSync(ambientAudioPath, ambientBuffer);
       const mixedVideoPath = mixAmbientAudio(
         processedVideoPath,
         ambientAudioPath,
-        sceneNumber
+        sceneNumber,
       );
-      if (fs.existsSync(processedVideoPath) && processedVideoPath !== mixedVideoPath) {
+      if (
+        fs.existsSync(processedVideoPath) &&
+        processedVideoPath !== mixedVideoPath
+      ) {
         fs.unlinkSync(processedVideoPath);
       }
       if (fs.existsSync(ambientAudioPath)) {
@@ -573,17 +571,17 @@ async function processArollScene(
 
       processedVideoPath = mixedVideoPath;
       console.log(
-        `[UGC Assembly] Scene ${sceneNumber}: Ambient audio mixed successfully at 35% volume`
+        `[UGC Assembly] Scene ${sceneNumber}: Ambient audio mixed successfully at 35% volume`,
       );
     } catch (error) {
       console.error(
         `[UGC Assembly] Scene ${sceneNumber}: Ambient audio generation failed:`,
-        error
+        error,
       );
     }
   } else {
     console.log(
-      `[UGC Assembly] Scene ${sceneNumber}: No ambient sound configured, skipping`
+      `[UGC Assembly] Scene ${sceneNumber}: No ambient sound configured, skipping`,
     );
   }
 
@@ -599,11 +597,11 @@ async function processArollScene(
     teamId,
     scriptId,
     sceneNumber,
-    "processed"
+    "processed",
   );
 
   console.log(
-    `[UGC Assembly] A-Roll Scene ${sceneNumber} complete: ${audioDuration.toFixed(2)}s`
+    `[UGC Assembly] A-Roll Scene ${sceneNumber} complete: ${audioDuration.toFixed(2)}s`,
   );
 
   return {
@@ -633,7 +631,7 @@ async function processBrollScene(
   teamId: number,
   scriptId: string,
   voiceId: string,
-  onProgress?: (message: string) => void
+  onProgress?: (message: string) => void,
 ): Promise<ProcessedScene> {
   const {
     sceneId,
@@ -649,38 +647,47 @@ async function processBrollScene(
   } = scene;
 
   onProgress?.(`Scene ${sceneNumber}: Generating voiceover...`);
-  const { audioPath, audioKey, duration: audioDuration } =
-    await generateDialogueAudio(voiceId, dialogue, teamId, scriptId, sceneNumber);
+  const {
+    audioPath,
+    audioKey,
+    duration: audioDuration,
+  } = await generateDialogueAudio(
+    voiceId,
+    dialogue,
+    teamId,
+    scriptId,
+    sceneNumber,
+  );
 
   console.log(
-    `[UGC Assembly] B-Roll Scene ${sceneNumber}: Audio duration: ${audioDuration.toFixed(2)}s`
+    `[UGC Assembly] B-Roll Scene ${sceneNumber}: Audio duration: ${audioDuration.toFixed(2)}s`,
   );
 
   let processedVideoPath: string;
 
   if (bRollShots && bRollShots.length > 0) {
     console.log(
-      `[UGC Assembly] B-Roll Scene ${sceneNumber}: Processing ${bRollShots.length}-shot montage`
+      `[UGC Assembly] B-Roll Scene ${sceneNumber}: Processing ${bRollShots.length}-shot montage`,
     );
 
     const shotVideoPaths: string[] = [];
     const totalMontageTargetDuration = bRollShots.reduce(
       (sum, shot) => sum + shot.durationSeconds,
-      0
+      0,
     );
 
     console.log(
-      `[UGC Assembly] Montage target: ${totalMontageTargetDuration}s from ${bRollShots.length} shots, audio: ${audioDuration.toFixed(2)}s`
+      `[UGC Assembly] Montage target: ${totalMontageTargetDuration}s from ${bRollShots.length} shots, audio: ${audioDuration.toFixed(2)}s`,
     );
 
     for (let i = 0; i < bRollShots.length; i++) {
       const shot = bRollShots[i];
       onProgress?.(
-        `Scene ${sceneNumber}: Generating montage shot ${i + 1}/${bRollShots.length}...`
+        `Scene ${sceneNumber}: Generating montage shot ${i + 1}/${bRollShots.length}...`,
       );
 
       console.log(
-        `[UGC Assembly] Montage shot ${i + 1}: "${shot.action.substring(0, 40)}..." (${shot.durationSeconds}s)`
+        `[UGC Assembly] Montage shot ${i + 1}: "${shot.action.substring(0, 40)}..." (${shot.durationSeconds}s)`,
       );
 
       const shotImageUrl = await s3Service.getPresignedUrl(shot.imageKey, 3600);
@@ -697,7 +704,7 @@ async function processBrollScene(
         groundedPrompt,
         "b-roll" as ShotType,
         emotion,
-        shot.action
+        shot.action,
       );
 
       const { videoUrl: shotVideoUrl } =
@@ -710,13 +717,13 @@ async function processBrollScene(
 
       const shotVideoPath = path.join(
         OUTPUT_DIR,
-        `montage_shot_${sceneNumber}_${i}_${Date.now()}.mp4`
+        `montage_shot_${sceneNumber}_${i}_${Date.now()}.mp4`,
       );
       await s3Service.downloadVideoFromUrl(shotVideoUrl, shotVideoPath);
 
       const trimmedShotPath = path.join(
         OUTPUT_DIR,
-        `montage_trimmed_${sceneNumber}_${i}_${Date.now()}.mp4`
+        `montage_trimmed_${sceneNumber}_${i}_${Date.now()}.mp4`,
       );
       const trimCmd = `ffmpeg -y -i "${shotVideoPath}" -t ${shot.durationSeconds.toFixed(3)} \
         ${VIDEO_ENCODE_SETTINGS} \
@@ -729,14 +736,14 @@ async function processBrollScene(
 
       shotVideoPaths.push(trimmedShotPath);
       console.log(
-        `[UGC Assembly] Montage shot ${i + 1} complete: ${shot.durationSeconds}s`
+        `[UGC Assembly] Montage shot ${i + 1} complete: ${shot.durationSeconds}s`,
       );
     }
 
-    onProgress?.(`Scene ${sceneNumber}: Concatenating montage shots...`);
+    onProgress?.(`Scene ${sceneNumber}: Concatenating shots...`);
     const concatenatedPath = path.join(
       OUTPUT_DIR,
-      `montage_concat_${sceneNumber}_${Date.now()}.mp4`
+      `montage_concat_${sceneNumber}_${Date.now()}.mp4`,
     );
     mergeUGCClips(shotVideoPaths, concatenatedPath);
 
@@ -748,7 +755,7 @@ async function processBrollScene(
 
     processedVideoPath = concatenatedPath;
     console.log(
-      `[UGC Assembly] Montage concatenated: ${getMediaDuration(concatenatedPath).toFixed(2)}s`
+      `[UGC Assembly] Montage concatenated: ${getMediaDuration(concatenatedPath).toFixed(2)}s`,
     );
   } else {
     onProgress?.(`Scene ${sceneNumber}: Generating video...`);
@@ -760,11 +767,11 @@ async function processBrollScene(
 
     if (tailImageUrl) {
       console.log(
-        `[UGC Assembly] B-Roll Scene ${sceneNumber}: Using end frame for video interpolation`
+        `[UGC Assembly] B-Roll Scene ${sceneNumber}: Using end frame for video interpolation`,
       );
     }
 
-    onProgress?.(`Scene ${sceneNumber}: Analyzing image for video prompt...`);
+    onProgress?.(`Scene ${sceneNumber}: Analyzing ...`);
     const groundedCinematicPrompt = await generateGroundedCinematicPrompt({
       originalCinematicPrompt: cinematicPrompt,
       startImageUrl: imageUrl,
@@ -778,7 +785,7 @@ async function processBrollScene(
       groundedCinematicPrompt,
       shotType,
       emotion,
-      action
+      action,
     );
 
     const { videoUrl: klingVideoUrl } =
@@ -791,27 +798,27 @@ async function processBrollScene(
       });
 
     console.log(
-      `[UGC Assembly] B-Roll Scene ${sceneNumber}: Kling generated 10s video`
+      `[UGC Assembly] B-Roll Scene ${sceneNumber}: Kling generated 10s video`,
     );
 
     const silentVideoPath = path.join(
       OUTPUT_DIR,
-      `silent_${sceneNumber}_${Date.now()}.mp4`
+      `silent_${sceneNumber}_${Date.now()}.mp4`,
     );
     await s3Service.downloadVideoFromUrl(klingVideoUrl, silentVideoPath);
 
     processedVideoPath = silentVideoPath;
     if (audioDuration > MAX_KLING_VIDEO_DURATION) {
-      onProgress?.(`Scene ${sceneNumber}: Extending video to match audio...`);
+      onProgress?.(`Scene ${sceneNumber}: Building Video...`);
       console.log(
-        `[UGC Assembly] B-Roll Scene ${sceneNumber}: Audio ${audioDuration.toFixed(2)}s > ${MAX_KLING_VIDEO_DURATION}s, extending video`
+        `[UGC Assembly] B-Roll Scene ${sceneNumber}: Audio ${audioDuration.toFixed(2)}s > ${MAX_KLING_VIDEO_DURATION}s, extending video`,
       );
       processedVideoPath = await extendVideoToMatchAudio(
         silentVideoPath,
         audioDuration,
         prompt,
         sceneNumber,
-        teamId
+        teamId,
       );
       if (
         fs.existsSync(silentVideoPath) &&
@@ -827,9 +834,12 @@ async function processBrollScene(
     processedVideoPath,
     audioPath,
     audioDuration,
-    sceneNumber
+    sceneNumber,
   );
-  if (fs.existsSync(processedVideoPath) && processedVideoPath !== combinedPath) {
+  if (
+    fs.existsSync(processedVideoPath) &&
+    processedVideoPath !== combinedPath
+  ) {
     fs.unlinkSync(processedVideoPath);
   }
   if (fs.existsSync(audioPath)) {
@@ -843,11 +853,11 @@ async function processBrollScene(
     teamId,
     scriptId,
     sceneNumber,
-    "processed"
+    "processed",
   );
 
   console.log(
-    `[UGC Assembly] B-Roll Scene ${sceneNumber} complete: ${audioDuration.toFixed(2)}s`
+    `[UGC Assembly] B-Roll Scene ${sceneNumber} complete: ${audioDuration.toFixed(2)}s`,
   );
 
   return {
@@ -865,7 +875,7 @@ async function processScene(
   teamId: number,
   scriptId: string,
   voiceId: string,
-  onProgress?: (message: string) => void
+  onProgress?: (message: string) => void,
 ): Promise<ProcessedScene> {
   if (scene.shotType === "a-roll") {
     return processArollScene(scene, teamId, scriptId, voiceId, onProgress);
@@ -878,17 +888,17 @@ async function processScenesBatch(
   teamId: number,
   scriptId: string,
   voiceId: string,
-  onProgress?: (message: string) => void
+  onProgress?: (message: string) => void,
 ): Promise<ProcessedScene[]> {
   return Promise.all(
     scenes.map((scene) =>
-      processScene(scene, teamId, scriptId, voiceId, onProgress)
-    )
+      processScene(scene, teamId, scriptId, voiceId, onProgress),
+    ),
   );
 }
 
 export async function assembleUGCVideo(
-  options: AssemblyOptions
+  options: AssemblyOptions,
 ): Promise<AssemblyResult> {
   const { teamId, scriptId, voiceId, scenes, onProgress } = options;
 
@@ -897,11 +907,11 @@ export async function assembleUGCVideo(
 
   // CRITICAL: Sort scenes by sceneNumber before processing
   const sortedScenes = [...scenes].sort(
-    (a, b) => a.sceneNumber - b.sceneNumber
+    (a, b) => a.sceneNumber - b.sceneNumber,
   );
 
   console.log(
-    `[UGC Assembly] Starting assembly of ${totalScenes} scenes in order: ${sortedScenes.map((s) => s.sceneNumber).join(", ")}`
+    `[UGC Assembly] Starting assembly of ${totalScenes} scenes in order: ${sortedScenes.map((s) => s.sceneNumber).join(", ")}`,
   );
   for (let i = 0; i < sortedScenes.length; i += PARALLEL_SCENES) {
     const batch = sortedScenes.slice(i, i + PARALLEL_SCENES);
@@ -916,7 +926,7 @@ export async function assembleUGCVideo(
       teamId,
       scriptId,
       voiceId,
-      (msg) => onProgress?.(baseProgress, msg)
+      (msg) => onProgress?.(baseProgress, msg),
     );
     processedScenes.push(...batchResults);
   }
@@ -925,23 +935,23 @@ export async function assembleUGCVideo(
 
   // CRITICAL: Sort processed scenes by sceneNumber before merging
   const sortedProcessed = processedScenes.sort(
-    (a, b) => a.sceneNumber - b.sceneNumber
+    (a, b) => a.sceneNumber - b.sceneNumber,
   );
   const videoPaths = sortedProcessed.map((s) => s.localVideoPath);
 
   console.log(
-    `[UGC Assembly] Merging ${videoPaths.length} scenes in order: ${sortedProcessed.map((s) => s.sceneNumber).join(", ")}`
+    `[UGC Assembly] Merging ${videoPaths.length} scenes in order: ${sortedProcessed.map((s) => s.sceneNumber).join(", ")}`,
   );
   for (const scene of sortedProcessed) {
     const duration = getMediaDuration(scene.localVideoPath);
     console.log(
-      `[UGC Assembly] Scene ${scene.sceneNumber}: ${duration.toFixed(2)}s - ${scene.localVideoPath}`
+      `[UGC Assembly] Scene ${scene.sceneNumber}: ${duration.toFixed(2)}s - ${scene.localVideoPath}`,
     );
   }
 
   const finalLocalPath = path.join(
     OUTPUT_DIR,
-    `final_${scriptId}_${Date.now()}.mp4`
+    `final_${scriptId}_${Date.now()}.mp4`,
   );
   mergeUGCClips(videoPaths, finalLocalPath);
 
@@ -953,7 +963,7 @@ export async function assembleUGCVideo(
   const finalVideoKey = await s3Service.uploadUGCFinalVideoFromFile(
     finalLocalPath,
     teamId,
-    scriptId
+    scriptId,
   );
   const totalDuration = sortedProcessed.reduce((sum, s) => sum + s.duration, 0);
 
@@ -971,7 +981,7 @@ export async function assembleUGCVideo(
   onProgress?.(100, "Complete!");
 
   console.log(
-    `[UGC Assembly] Video assembly complete: ${totalDuration.toFixed(2)}s total`
+    `[UGC Assembly] Video assembly complete: ${totalDuration.toFixed(2)}s total`,
   );
 
   return { finalVideoKey, totalDuration, sceneVideos: sortedProcessed };
