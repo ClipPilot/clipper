@@ -102,7 +102,6 @@ export const handleWebhook = async (req: Request, res: Response) => {
   try {
     switch (event.type) {
       case "checkout.session.completed":
-        // Handle one-time addon purchases
         await stripeService.handleCheckoutCompleted(event.data.object);
         break;
 

@@ -16,6 +16,12 @@ interface AuthRequest extends Request {
   user?: { id: string; email: string; dbUserId: number };
 }
 
+interface BRollShotData {
+  action: string;
+  cinematicPrompt: string;
+  durationSeconds: number;
+}
+
 interface SceneData {
   id: string;
   sceneNumber: number;
@@ -26,6 +32,7 @@ interface SceneData {
   shotType: string;
   cameraAngle: string;
   cinematicPrompt: string;
+  bRollShots?: BRollShotData[] | null;
 }
 
 export class SceneBuilderController {
@@ -126,6 +133,7 @@ export class SceneBuilderController {
         generateEndFrame: generateEndFrame || false,
         customStartImageKey: customStartImageKey || undefined,
         customEndImageKey: customEndImageKey || undefined,
+        bRollShots: sceneData.bRollShots || undefined,
       });
 
       return res.status(202).json({
@@ -162,12 +170,14 @@ export class SceneBuilderController {
           emotion?: string;
           shotType?: string;
           cameraAngle?: string;
+          cinematicPrompt?: string;
           // Optional refinements
           userRefinement?: string;
           supportingImageKeys?: string[];
           generateEndFrame?: boolean;
           customStartImageKey?: string;
           customEndImageKey?: string;
+          bRollShots?: BRollShotData[];
         }>;
       };
 
@@ -218,9 +228,11 @@ export class SceneBuilderController {
             emotion: sceneRequest.emotion,
             shotType: sceneRequest.shotType || "a-roll",
             cameraAngle: sceneRequest.cameraAngle || "pov-selfie",
+            cinematicPrompt: sceneRequest.cinematicPrompt || "",
+            bRollShots: sceneRequest.bRollShots,
           } as SceneData;
           console.log(
-            `[SCENE_BUILDER] Scene ${sceneRequest.sceneId}: Using frontend data (dialogue: "${sceneData.dialogue.substring(0, 50)}...")`
+            `[SCENE_BUILDER] Scene ${sceneRequest.sceneId}: Using frontend data (dialogue: "${sceneData.dialogue.substring(0, 50)}..."${sceneData.bRollShots ? `, bRollShots: ${sceneData.bRollShots.length}` : ""})`
           );
         } else {
           // Fallback to DB data
@@ -286,6 +298,7 @@ export class SceneBuilderController {
           generateEndFrame: sceneRequest.generateEndFrame || false,
           customStartImageKey: sceneRequest.customStartImageKey || undefined,
           customEndImageKey: sceneRequest.customEndImageKey || undefined,
+          bRollShots: sceneData.bRollShots || undefined,
         });
 
         jobIds.push(job.id);

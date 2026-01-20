@@ -82,6 +82,13 @@ function mergeUGCClips(clips: string[], outputPath: string): void {
   console.log(`[MERGE] Complete: ${outputPath}`);
 }
 
+export interface BRollShotVideoData {
+  action: string;
+  cinematicPrompt: string;
+  durationSeconds: number;
+  imageKey: string;
+}
+
 export interface SceneVideoData {
   sceneId: string;
   sceneNumber: number;
@@ -94,6 +101,7 @@ export interface SceneVideoData {
   action: string;
   emotion: string;
   ambientSound?: string | null;
+  bRollShots?: BRollShotVideoData[];
 }
 
 export interface ProcessedScene {
@@ -612,8 +620,12 @@ async function processArollScene(
  * Process B-Roll scene using Kling 2.6 for product showcase shots.
  * No lip-sync needed for B-roll (product shots, cutaways, etc.)
  *
- * If audio > 10s, extends video using last-frame continuation technique.
- * Kling 2.6 generates 10s video from a single reference image.
+ * Supports two modes:
+ * 1. Single-shot: Standard B-roll with one image → one video
+ * 2. Multi-shot montage: bRollShots array → N short videos → concatenated with single voiceover
+ *
+ * If audio > 10s (single-shot mode), extends video using last-frame continuation technique.
+ * Kling 2.6 generates up to 10s video from a single reference image.
  * Final video is trimmed to match exact audio duration.
  */
 async function processBrollScene(
@@ -633,9 +645,9 @@ async function processBrollScene(
     dialogue,
     action,
     emotion,
+    bRollShots,
   } = scene;
 
-  // Step 1: Generate audio with 1.12x speedup
   onProgress?.(`Scene ${sceneNumber}: Generating voiceover...`);
   const { audioPath, audioKey, duration: audioDuration } =
     await generateDialogueAudio(voiceId, dialogue, teamId, scriptId, sceneNumber);
@@ -644,72 +656,172 @@ async function processBrollScene(
     `[UGC Assembly] B-Roll Scene ${sceneNumber}: Audio duration: ${audioDuration.toFixed(2)}s`
   );
 
-  // Step 2: Get presigned URLs
-  onProgress?.(`Scene ${sceneNumber}: Generating video...`);
-  const imageUrl = await s3Service.getPresignedUrl(imageKey, 3600);
+  let processedVideoPath: string;
 
-  const tailImageUrl = endImageKey
-    ? await s3Service.getPresignedUrl(endImageKey, 3600)
-    : undefined;
-
-  if (tailImageUrl) {
+  if (bRollShots && bRollShots.length > 0) {
     console.log(
-      `[UGC Assembly] B-Roll Scene ${sceneNumber}: Using end frame for video interpolation`
+      `[UGC Assembly] B-Roll Scene ${sceneNumber}: Processing ${bRollShots.length}-shot montage`
     );
-  }
 
-  // Step 3: Generate grounded cinematic prompt
-  onProgress?.(`Scene ${sceneNumber}: Analyzing image for video prompt...`);
-  const groundedCinematicPrompt = await generateGroundedCinematicPrompt({
-    originalCinematicPrompt: cinematicPrompt,
-    startImageUrl: imageUrl,
-    endImageUrl: tailImageUrl,
-    shotType,
-    emotion,
-    action,
-  });
+    const shotVideoPaths: string[] = [];
+    const totalMontageTargetDuration = bRollShots.reduce(
+      (sum, shot) => sum + shot.durationSeconds,
+      0
+    );
 
-  const prompt = buildKlingPrompt(groundedCinematicPrompt, shotType, emotion, action);
-
-  // Step 4: Generate initial 10s video with Kling 2.6
-  const { videoUrl: klingVideoUrl } = await klingService.generateVideoWithRetry({
-    imageUrl,
-    tailImageUrl,
-    prompt,
-    duration: 10,
-    negativePrompt: PRODUCT_NEGATIVE_PROMPT,
-  });
-
-  console.log(
-    `[UGC Assembly] B-Roll Scene ${sceneNumber}: Kling generated 10s video`
-  );
-
-  const silentVideoPath = path.join(
-    OUTPUT_DIR,
-    `silent_${sceneNumber}_${Date.now()}.mp4`
-  );
-  await s3Service.downloadVideoFromUrl(klingVideoUrl, silentVideoPath);
-
-  // Step 5: Extend video if audio > 10s using last-frame continuation
-  let processedVideoPath = silentVideoPath;
-  if (audioDuration > MAX_KLING_VIDEO_DURATION) {
-    onProgress?.(`Scene ${sceneNumber}: Extending video to match audio...`);
     console.log(
-      `[UGC Assembly] B-Roll Scene ${sceneNumber}: Audio ${audioDuration.toFixed(2)}s > ${MAX_KLING_VIDEO_DURATION}s, extending video`
+      `[UGC Assembly] Montage target: ${totalMontageTargetDuration}s from ${bRollShots.length} shots, audio: ${audioDuration.toFixed(2)}s`
     );
-    processedVideoPath = await extendVideoToMatchAudio(
-      silentVideoPath,
-      audioDuration,
-      prompt,
-      sceneNumber,
-      teamId
+
+    for (let i = 0; i < bRollShots.length; i++) {
+      const shot = bRollShots[i];
+      onProgress?.(
+        `Scene ${sceneNumber}: Generating montage shot ${i + 1}/${bRollShots.length}...`
+      );
+
+      console.log(
+        `[UGC Assembly] Montage shot ${i + 1}: "${shot.action.substring(0, 40)}..." (${shot.durationSeconds}s)`
+      );
+
+      const shotImageUrl = await s3Service.getPresignedUrl(shot.imageKey, 3600);
+
+      const groundedPrompt = await generateGroundedCinematicPrompt({
+        originalCinematicPrompt: shot.cinematicPrompt,
+        startImageUrl: shotImageUrl,
+        shotType: "b-roll" as ShotType,
+        emotion,
+        action: shot.action,
+      });
+
+      const shotPrompt = buildKlingPrompt(
+        groundedPrompt,
+        "b-roll" as ShotType,
+        emotion,
+        shot.action
+      );
+
+      const { videoUrl: shotVideoUrl } =
+        await klingService.generateVideoWithRetry({
+          imageUrl: shotImageUrl,
+          prompt: shotPrompt,
+          duration: 5,
+          negativePrompt: PRODUCT_NEGATIVE_PROMPT,
+        });
+
+      const shotVideoPath = path.join(
+        OUTPUT_DIR,
+        `montage_shot_${sceneNumber}_${i}_${Date.now()}.mp4`
+      );
+      await s3Service.downloadVideoFromUrl(shotVideoUrl, shotVideoPath);
+
+      const trimmedShotPath = path.join(
+        OUTPUT_DIR,
+        `montage_trimmed_${sceneNumber}_${i}_${Date.now()}.mp4`
+      );
+      const trimCmd = `ffmpeg -y -i "${shotVideoPath}" -t ${shot.durationSeconds.toFixed(3)} \
+        ${VIDEO_ENCODE_SETTINGS} \
+        -an -avoid_negative_ts make_zero "${trimmedShotPath}"`;
+      execSync(trimCmd, { stdio: "pipe" });
+
+      if (fs.existsSync(shotVideoPath)) {
+        fs.unlinkSync(shotVideoPath);
+      }
+
+      shotVideoPaths.push(trimmedShotPath);
+      console.log(
+        `[UGC Assembly] Montage shot ${i + 1} complete: ${shot.durationSeconds}s`
+      );
+    }
+
+    onProgress?.(`Scene ${sceneNumber}: Concatenating montage shots...`);
+    const concatenatedPath = path.join(
+      OUTPUT_DIR,
+      `montage_concat_${sceneNumber}_${Date.now()}.mp4`
     );
-    if (fs.existsSync(silentVideoPath) && silentVideoPath !== processedVideoPath) {
-      fs.unlinkSync(silentVideoPath);
+    mergeUGCClips(shotVideoPaths, concatenatedPath);
+
+    for (const shotPath of shotVideoPaths) {
+      if (fs.existsSync(shotPath)) {
+        fs.unlinkSync(shotPath);
+      }
+    }
+
+    processedVideoPath = concatenatedPath;
+    console.log(
+      `[UGC Assembly] Montage concatenated: ${getMediaDuration(concatenatedPath).toFixed(2)}s`
+    );
+  } else {
+    onProgress?.(`Scene ${sceneNumber}: Generating video...`);
+    const imageUrl = await s3Service.getPresignedUrl(imageKey, 3600);
+
+    const tailImageUrl = endImageKey
+      ? await s3Service.getPresignedUrl(endImageKey, 3600)
+      : undefined;
+
+    if (tailImageUrl) {
+      console.log(
+        `[UGC Assembly] B-Roll Scene ${sceneNumber}: Using end frame for video interpolation`
+      );
+    }
+
+    onProgress?.(`Scene ${sceneNumber}: Analyzing image for video prompt...`);
+    const groundedCinematicPrompt = await generateGroundedCinematicPrompt({
+      originalCinematicPrompt: cinematicPrompt,
+      startImageUrl: imageUrl,
+      endImageUrl: tailImageUrl,
+      shotType,
+      emotion,
+      action,
+    });
+
+    const prompt = buildKlingPrompt(
+      groundedCinematicPrompt,
+      shotType,
+      emotion,
+      action
+    );
+
+    const { videoUrl: klingVideoUrl } =
+      await klingService.generateVideoWithRetry({
+        imageUrl,
+        tailImageUrl,
+        prompt,
+        duration: 10,
+        negativePrompt: PRODUCT_NEGATIVE_PROMPT,
+      });
+
+    console.log(
+      `[UGC Assembly] B-Roll Scene ${sceneNumber}: Kling generated 10s video`
+    );
+
+    const silentVideoPath = path.join(
+      OUTPUT_DIR,
+      `silent_${sceneNumber}_${Date.now()}.mp4`
+    );
+    await s3Service.downloadVideoFromUrl(klingVideoUrl, silentVideoPath);
+
+    processedVideoPath = silentVideoPath;
+    if (audioDuration > MAX_KLING_VIDEO_DURATION) {
+      onProgress?.(`Scene ${sceneNumber}: Extending video to match audio...`);
+      console.log(
+        `[UGC Assembly] B-Roll Scene ${sceneNumber}: Audio ${audioDuration.toFixed(2)}s > ${MAX_KLING_VIDEO_DURATION}s, extending video`
+      );
+      processedVideoPath = await extendVideoToMatchAudio(
+        silentVideoPath,
+        audioDuration,
+        prompt,
+        sceneNumber,
+        teamId
+      );
+      if (
+        fs.existsSync(silentVideoPath) &&
+        silentVideoPath !== processedVideoPath
+      ) {
+        fs.unlinkSync(silentVideoPath);
+      }
     }
   }
 
-  // Step 6: Combine video with audio and trim to exact duration
   onProgress?.(`Scene ${sceneNumber}: Adding voiceover...`);
   const combinedPath = combineVideoAudio(
     processedVideoPath,

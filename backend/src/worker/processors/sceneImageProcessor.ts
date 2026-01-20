@@ -36,6 +36,69 @@ Styling: raw UGC realism, available indoor light, mixed color temperature, minim
 
 type FrameType = "start" | "end";
 
+interface BRollShotData {
+  action: string;
+  cinematicPrompt: string;
+  durationSeconds: number;
+}
+
+function buildBRollShotPrompt(
+  shot: BRollShotData,
+  shotIndex: number,
+  totalShots: number,
+  sceneData: GenerateSceneImageJob["sceneData"],
+  hasReferenceImages: boolean,
+  userRefinement?: string
+): string {
+  const parts: string[] = [];
+
+  if (hasReferenceImages) {
+    parts.push(
+      "REFERENCE IMAGES PROVIDED: Use the product reference images to maintain consistent visual identity. Feature the product prominently as shown in references.",
+      ""
+    );
+  }
+
+  parts.push(
+    "B-ROLL PRODUCT SHOT:",
+    `Shot ${shotIndex + 1} of ${totalShots} in montage sequence`,
+    "",
+    "SHOT VISUAL DIRECTION:",
+    shot.cinematicPrompt,
+    "",
+    "SHOT CONTEXT:",
+    `- Shot Type: B-Roll Product Shot`,
+    `- Action: ${shot.action}`,
+    `- Duration: ${shot.durationSeconds} seconds`,
+    `- Scene Type: ${sceneData.sceneType}`,
+    `- Camera Angle: ${sceneData.cameraAngle}`
+  );
+
+  if (userRefinement) {
+    parts.push("", `USER NOTES: ${userRefinement}`);
+  }
+
+  parts.push(
+    "",
+    "CRITICAL OUTPUT FORMAT:",
+    "- Generate EXACTLY ONE single image, NOT a collage, grid, matrix, or multiple images combined",
+    "- The output must be a single photograph-style image",
+    "- Do NOT create side-by-side comparisons, before/after layouts, or any multi-panel arrangements",
+    "",
+    "TECHNICAL REQUIREMENTS:",
+    "- Photorealistic quality, clean product photography",
+    "- Vertical 9:16 aspect ratio for social media",
+    "- Professional but authentic aesthetic - NOT overly polished stock imagery",
+    "- Product should be clearly visible and the focal point",
+    "- Natural or softbox lighting with proper shadows",
+    "- Clean, uncluttered composition",
+    "",
+    "NEGATIVE: blurry, out of focus, watermarks, text overlays, deformed products, unrealistic colors, oversaturated images, collages, grids, multiple images, split images, hands holding product unless specified, human faces unless specified"
+  );
+
+  return parts.join("\n");
+}
+
 function buildSceneImagePrompt(
   sceneData: GenerateSceneImageJob["sceneData"],
   hasReferenceImages: boolean,
@@ -148,13 +211,14 @@ export async function processSceneImageJob(
     generateEndFrame,
     customStartImageKey,
     customEndImageKey,
+    bRollShots,
   } = job;
 
   console.log(
     `[SCENE_IMAGE] Starting FAL AI generation for job ${jobId} (scene ${sceneNumber})`
   );
   console.log(
-    `[SCENE_IMAGE] Options: generateEndFrame=${generateEndFrame}, customStart=${!!customStartImageKey}, customEnd=${!!customEndImageKey}`
+    `[SCENE_IMAGE] Options: generateEndFrame=${generateEndFrame}, customStart=${!!customStartImageKey}, customEnd=${!!customEndImageKey}, bRollShots=${bRollShots?.length || 0}`
   );
 
   try {
@@ -167,6 +231,99 @@ export async function processSceneImageJob(
         progress_message: "Starting image generation...",
       })
       .where(eq(schema.sceneImageGenerationJobs.id, jobId));
+
+    if (bRollShots && bRollShots.length > 0) {
+      console.log(
+        `[SCENE_IMAGE] Generating ${bRollShots.length} B-roll montage images for job ${jobId}`
+      );
+
+      const generatedImages: string[] = [];
+
+      const allReferenceKeys: string[] = [];
+      if (productImageKeys && productImageKeys.length > 0) {
+        allReferenceKeys.push(...productImageKeys.slice(0, 3));
+        console.log(
+          `[SCENE_IMAGE] Added ${Math.min(productImageKeys.length, 3)} product images for B-roll`
+        );
+      }
+      if (supportingImageKeys && supportingImageKeys.length > 0) {
+        allReferenceKeys.push(...supportingImageKeys.slice(0, 2));
+        console.log(
+          `[SCENE_IMAGE] Added ${Math.min(supportingImageKeys.length, 2)} supporting images for B-roll`
+        );
+      }
+
+      const referenceImageUrls = await getReferenceImageUrls(allReferenceKeys);
+      const hasReferences = referenceImageUrls.length > 0;
+      const refs = hasReferences ? referenceImageUrls : undefined;
+
+      for (let i = 0; i < bRollShots.length; i++) {
+        const shot = bRollShots[i];
+        const progressPercent = Math.round(((i + 1) / bRollShots.length) * 80);
+
+        await updateJobProgress(
+          jobId,
+          progressPercent,
+          `Generating B-roll shot ${i + 1} of ${bRollShots.length}...`
+        );
+
+        const shotPrompt = buildBRollShotPrompt(
+          shot,
+          i,
+          bRollShots.length,
+          sceneData,
+          hasReferences,
+          userRefinement
+        );
+
+        console.log(
+          `[SCENE_IMAGE] Generating B-roll shot ${i + 1}: "${shot.action.substring(0, 50)}..."`
+        );
+
+        const result = await falImageService.generateImageWithRetry({
+          prompt: shotPrompt,
+          aspectRatio: "3:4",
+          imageUrls: refs,
+        });
+
+        const response = await fetch(result.imageUrl);
+        if (!response.ok) {
+          throw new Error(
+            `Failed to download B-roll shot ${i + 1} from FAL: ${response.status}`
+          );
+        }
+
+        const buffer = Buffer.from(await response.arrayBuffer());
+        const imageKey = await s3Service.uploadSceneImage(
+          buffer,
+          teamId,
+          scriptId,
+          sceneId,
+          i
+        );
+
+        console.log(
+          `[SCENE_IMAGE] Generated B-roll shot ${i + 1} for job ${jobId}: ${imageKey}`
+        );
+        generatedImages.push(imageKey);
+      }
+
+      await db
+        .update(schema.sceneImageGenerationJobs)
+        .set({
+          status: "completed",
+          progress: 100,
+          progress_message: `${bRollShots.length} B-roll montage shots generated`,
+          generated_images: generatedImages,
+          completed_at: new Date(),
+        })
+        .where(eq(schema.sceneImageGenerationJobs.id, jobId));
+
+      console.log(
+        `[SCENE_IMAGE] Job ${jobId} completed with ${generatedImages.length} B-roll shot image(s)`
+      );
+      return;
+    }
 
     const generatedImages: string[] = [];
 

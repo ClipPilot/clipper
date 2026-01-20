@@ -21,6 +21,12 @@ interface AuthRequest extends Request {
   user?: { id: string; email: string; dbUserId: number };
 }
 
+interface BRollShotData {
+  action: string;
+  cinematicPrompt: string;
+  durationSeconds: number;
+}
+
 interface SceneData {
   id: string;
   sceneNumber: number;
@@ -33,6 +39,7 @@ interface SceneData {
   cinematicPrompt: string;
   durationSeconds: number;
   ambientSound?: string | null;
+  bRollShots?: BRollShotData[] | null;
 }
 
 export class UGCVideoController {
@@ -270,7 +277,7 @@ export class UGCVideoController {
           });
         }
 
-        scenes.push({
+        const sceneData: GenerateUGCVideoJob["scenes"][number] = {
           sceneId: scene.id,
           sceneNumber: scene.sceneNumber,
           shotType: scene.shotType,
@@ -281,7 +288,29 @@ export class UGCVideoController {
           action: scene.action,
           emotion: scene.emotion,
           ambientSound: scene.ambientSound,
-        });
+        };
+
+        if (scene.bRollShots && scene.bRollShots.length > 0 && scene.shotType === "b-roll") {
+          const baseKey = savedImage.image_key;
+
+          sceneData.bRollShots = scene.bRollShots.map((shot, index) => {
+            const shotImageKey = baseKey.replace(/variant_\d+/, `variant_${index}`);
+
+            return {
+              action: shot.action,
+              cinematicPrompt: shot.cinematicPrompt,
+              durationSeconds: shot.durationSeconds,
+              imageKey: shotImageKey,
+            };
+          });
+
+          console.log(
+            `[UGC_VIDEO] Scene ${scene.sceneNumber}: Built ${sceneData.bRollShots.length}-shot montage with keys:`,
+            sceneData.bRollShots.map((s) => s.imageKey)
+          );
+        }
+
+        scenes.push(sceneData);
       }
 
       await teamService.incrementTeamUsage(teamId, creditCost);

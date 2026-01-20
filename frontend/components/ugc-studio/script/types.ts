@@ -37,6 +37,12 @@ export type Emotion = (typeof EMOTIONS)[number];
 export type ShotType = (typeof SHOT_TYPES)[number];
 export type CameraAngle = (typeof CAMERA_ANGLES)[number];
 
+export interface BRollShot {
+  action: string;
+  cinematicPrompt: string;
+  durationSeconds: number;
+}
+
 export interface UGCScene {
   id: string;
   sceneNumber: number;
@@ -49,6 +55,7 @@ export interface UGCScene {
   cameraAngle: CameraAngle;
   customCameraAngle?: string;
   ambientSound?: string;
+  bRollShots?: BRollShot[] | null;
 }
 
 export interface UGCScript {
@@ -251,8 +258,8 @@ export const SCRIPT_STRUCTURES: ScriptStructure[] = [
     pattern: [
       { type: "hook", shot: "a-roll", duration: "2-4s" },
       { type: "problem", shot: "a-roll", duration: "4-6s" },
-      { type: "demo", shot: "b-roll", duration: "4-6s" },
-      { type: "demo", shot: "b-roll", duration: "4-6s" },
+      { type: "demo", shot: "b-roll", duration: "2-4s" },
+      { type: "demo", shot: "b-roll", duration: "2-4s" },
       { type: "solution", shot: "a-roll", duration: "4-6s" },
       { type: "cta", shot: "a-roll", duration: "3-5s" },
     ],
@@ -265,9 +272,9 @@ export const SCRIPT_STRUCTURES: ScriptStructure[] = [
     description: "Hook into pain point, then reveal the fix",
     pattern: [
       { type: "hook", shot: "a-roll", duration: "2-4s" },
-      { type: "problem", shot: "a-roll", duration: "6-8s" },
-      { type: "solution", shot: "mixed", duration: "4-6s" },
-      { type: "demo", shot: "b-roll", duration: "6-8s" },
+      { type: "problem", shot: "a-roll", duration: "5-7s" },
+      { type: "solution", shot: "mixed", duration: "3-5s" },
+      { type: "demo", shot: "b-roll", duration: "2-4s" },
       { type: "cta", shot: "a-roll", duration: "3-5s" },
     ],
     bestFor: ["Pain point products", "Tech gadgets", "Health supplements"],
@@ -278,9 +285,9 @@ export const SCRIPT_STRUCTURES: ScriptStructure[] = [
     name: "Story Arc",
     description: "Personal journey with emotional build",
     pattern: [
-      { type: "hook", shot: "a-roll", duration: "3-4s" },
-      { type: "problem", shot: "a-roll", duration: "5-7s" },
-      { type: "problem", shot: "b-roll", duration: "3-5s" },
+      { type: "hook", shot: "a-roll", duration: "2-4s" },
+      { type: "problem", shot: "a-roll", duration: "4-6s" },
+      { type: "problem", shot: "b-roll", duration: "2-3s" },
       { type: "solution", shot: "a-roll", duration: "4-6s" },
       { type: "testimonial", shot: "a-roll", duration: "4-6s" },
       { type: "cta", shot: "a-roll", duration: "3-4s" },
@@ -302,9 +309,9 @@ export const SCRIPT_STRUCTURES: ScriptStructure[] = [
     description: "Build anticipation with product reveal",
     pattern: [
       { type: "hook", shot: "a-roll", duration: "2-4s" },
-      { type: "demo", shot: "b-roll", duration: "5-7s" },
+      { type: "demo", shot: "b-roll", duration: "2-4s" },
       { type: "solution", shot: "a-roll", duration: "4-6s" },
-      { type: "demo", shot: "b-roll", duration: "5-7s" },
+      { type: "demo", shot: "b-roll", duration: "2-4s" },
       { type: "testimonial", shot: "a-roll", duration: "4-5s" },
       { type: "cta", shot: "a-roll", duration: "3-4s" },
     ],
@@ -317,9 +324,9 @@ export const SCRIPT_STRUCTURES: ScriptStructure[] = [
     description: "How-to format with clear steps",
     pattern: [
       { type: "hook", shot: "a-roll", duration: "2-4s" },
-      { type: "demo", shot: "mixed", duration: "6-8s" },
-      { type: "demo", shot: "b-roll", duration: "5-7s" },
-      { type: "demo", shot: "mixed", duration: "5-7s" },
+      { type: "demo", shot: "mixed", duration: "3-5s" },
+      { type: "demo", shot: "b-roll", duration: "2-4s" },
+      { type: "demo", shot: "mixed", duration: "3-5s" },
       { type: "solution", shot: "a-roll", duration: "4-5s" },
       { type: "cta", shot: "a-roll", duration: "3-4s" },
     ],

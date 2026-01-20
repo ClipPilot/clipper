@@ -578,7 +578,6 @@ class StripeService {
   }
 
   async handleCheckoutCompleted(session: any): Promise<void> {
-    // Only handle addon purchases (one-time payments)
     if (session.metadata?.type !== "addon") {
       return;
     }
