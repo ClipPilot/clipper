@@ -177,7 +177,7 @@ export function SceneBuilderStep({
         try {
           const status = await sceneBuilderAPI.getGenerationStatus(state.jobId);
 
-          if (status.status === "completed" && (status.images?.length ?? 0) > 0) {
+          if (status.status === "completed" && status.images && status.images.length > 0) {
             const img = status.images[0];
             // Auto-select the first image
             try {
