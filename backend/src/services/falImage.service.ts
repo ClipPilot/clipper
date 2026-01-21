@@ -91,15 +91,17 @@ export async function generateImage(
  * The reference images guide the generation to maintain consistency
  */
 export async function generateImageWithReferences(
-  options: GenerateImageWithReferencesOptions,
+  options: GenerateImageWithReferencesOptions & { usePro?: boolean },
 ): Promise<GenerateImageResult> {
-  const { prompt, imageUrls, aspectRatio = "3:4", numImages = 1 } = options;
+  const { prompt, imageUrls, aspectRatio = "3:4", numImages = 1, usePro = false } = options;
+
+  const model = usePro ? "fal-ai/nano-banana-pro/edit" : "fal-ai/nano-banana/edit";
 
   console.log(
-    `[FAL_IMAGE] Image-to-image with ${imageUrls.length} reference images, aspect ratio ${aspectRatio}`,
+    `[FAL_IMAGE] Image-to-image with ${imageUrls.length} reference images, aspect ratio ${aspectRatio}, model: ${model}`,
   );
 
-  const result = (await fal.subscribe("fal-ai/nano-banana/edit", {
+  const result = (await fal.subscribe(model, {
     input: {
       prompt,
       image_urls: imageUrls,
@@ -133,9 +135,10 @@ export async function generateImageWithReferences(
 /**
  * Generate image with retry logic - automatically chooses the right endpoint
  * based on whether reference images are provided
+ * @param usePro - Use nano-banana-pro/edit for better instruction following (recommended for regenerations)
  */
 export async function generateImageWithRetry(
-  options: GenerateImageOptions & { imageUrls?: string[] },
+  options: GenerateImageOptions & { imageUrls?: string[]; usePro?: boolean },
   maxRetries: number = 3,
 ): Promise<GenerateImageResult> {
   let lastError: Error | null = null;
@@ -148,6 +151,7 @@ export async function generateImageWithRetry(
           imageUrls: options.imageUrls,
           aspectRatio: options.aspectRatio,
           numImages: options.numImages,
+          usePro: options.usePro,
         });
       } else {
         return await generateImage(options);
