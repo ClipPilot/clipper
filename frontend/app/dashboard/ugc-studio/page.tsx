@@ -55,7 +55,7 @@ export default function UGCStudioPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.2 }}
-          className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8"
         >
           <FeatureCard
             icon="solar:mask-happly-bold-duotone"
@@ -84,6 +84,19 @@ export default function UGCStudioPage() {
             onPress={() =>
               router.push("/dashboard/ugc-studio/ai-video-creator")
             }
+          />
+          <FeatureCard
+            icon="solar:copy-bold-duotone"
+            title="Ad Clone"
+            description="Clone winning ads with your own product. Upload a reference ad, your product, and let AI recreate it for your brand."
+            gradient="from-orange-500/20 via-amber-500/10 to-transparent"
+            iconColor="text-orange-400"
+            features={[
+              "Clone any ad style",
+              "Your product placement",
+              "AI-powered recreation",
+            ]}
+            onPress={() => router.push("/dashboard/ugc-studio/ad-clone")}
           />
         </motion.div>
 
