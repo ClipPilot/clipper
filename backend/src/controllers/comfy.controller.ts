@@ -1330,6 +1330,7 @@ export class ComfyController {
         imageUrls: [faceImageUrl, videoFrameUrl],
         aspectRatio: "auto",
         numImages: 1,
+        usePro: true,
       });
 
       console.log(`[comfy] Pose generation complete for team ${teamId}`);

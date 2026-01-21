@@ -135,7 +135,6 @@ export async function generateImageWithReferences(
 /**
  * Generate image with retry logic - automatically chooses the right endpoint
  * based on whether reference images are provided
- * @param usePro - Use nano-banana-pro/edit for better instruction following (recommended for regenerations)
  */
 export async function generateImageWithRetry(
   options: GenerateImageOptions & { imageUrls?: string[]; usePro?: boolean },

@@ -568,7 +568,7 @@ export async function processSceneImageJob(
           prompt: shotPrompt,
           aspectRatio: "3:4",
           imageUrls: refs,
-          usePro: isSingleShotRegen, // Use nano-banana-pro for regenerations (better instruction following)
+          usePro: isSingleShotRegen,
         });
 
         const response = await fetch(result.imageUrl);
