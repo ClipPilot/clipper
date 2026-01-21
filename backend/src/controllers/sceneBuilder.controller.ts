@@ -20,6 +20,7 @@ interface BRollShotData {
   action: string;
   cinematicPrompt: string;
   durationSeconds: number;
+  productImageNeeded: boolean;
 }
 
 interface SceneData {
@@ -49,10 +50,11 @@ export class SceneBuilderController {
         characterId,
         userRefinement,
         supportingImageKeys,
-        // Advanced options
         generateEndFrame,
         customStartImageKey,
         customEndImageKey,
+        singleBRollShotIndex,
+        existingBRollImages,
       } = req.body;
 
       if (!teamId || !scriptId || !sceneId || sceneNumber === undefined || !characterId) {
@@ -87,6 +89,18 @@ export class SceneBuilderController {
 
       if (!sceneData) {
         return res.status(404).json({ error: "Scene not found in script" });
+      }
+
+      const [existingImage] = await db
+        .select()
+        .from(sceneImages)
+        .where(and(eq(sceneImages.script_id, scriptId), eq(sceneImages.scene_id, sceneId)))
+        .limit(1);
+
+      if (!existingImage) {
+        const creditCost = sceneData.bRollShots?.length || 2;
+        await teamService.incrementTeamUsage(teamId, creditCost);
+        console.log(`[SCENE_BUILDER] Charged ${creditCost} credits to team ${teamId}`);
       }
 
       const prompt = this.buildScenePrompt(sceneData, userRefinement);
@@ -127,20 +141,24 @@ export class SceneBuilderController {
           cinematicPrompt: sceneData.cinematicPrompt,
         },
         productImageKeys: script.product_image_keys as string[],
+        productName: script.product_name || undefined,
         userRefinement: userRefinement || undefined,
         supportingImageKeys: supportingImageKeys || [],
-        // Advanced options
         generateEndFrame: generateEndFrame || false,
         customStartImageKey: customStartImageKey || undefined,
         customEndImageKey: customEndImageKey || undefined,
         bRollShots: sceneData.bRollShots || undefined,
+        singleBRollShotIndex,
+        existingBRollImages: existingBRollImages || undefined,
       });
 
       return res.status(202).json({
         success: true,
         jobId: job.id,
         status: "queued",
-        message: "Scene image generation started. Poll for status.",
+        message: singleBRollShotIndex !== undefined
+          ? `Regenerating shot ${singleBRollShotIndex + 1}. Poll for status.`
+          : "Scene image generation started. Poll for status.",
       });
     } catch (error) {
       console.error("[SCENE_BUILDER] Generate scene images error:", error);
@@ -294,6 +312,7 @@ export class SceneBuilderController {
             cinematicPrompt: sceneData.cinematicPrompt,
           },
           productImageKeys: script.product_image_keys as string[],
+          productName: script.product_name || undefined,
           userRefinement: sceneRequest.userRefinement,
           supportingImageKeys: sceneRequest.supportingImageKeys || [],
           generateEndFrame: sceneRequest.generateEndFrame || false,

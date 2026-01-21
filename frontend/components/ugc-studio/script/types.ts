@@ -41,6 +41,7 @@ export interface BRollShot {
   action: string;
   cinematicPrompt: string;
   durationSeconds: number;
+  productImageNeeded: boolean;
 }
 
 export interface UGCScene {

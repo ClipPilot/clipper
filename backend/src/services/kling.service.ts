@@ -6,6 +6,7 @@ import {
   PRODUCT_STABILITY_MODIFIERS,
   GENTLE_MOTION_MODIFIERS,
   BROLL_MOTION_MODIFIERS,
+  SCREEN_STABILITY_MODIFIERS,
   PRO_MOTION_PROMPT,
 } from "./klingPrompts";
 import {
@@ -18,6 +19,7 @@ export {
   PRODUCT_STABILITY_MODIFIERS,
   GENTLE_MOTION_MODIFIERS,
   BROLL_MOTION_MODIFIERS,
+  SCREEN_STABILITY_MODIFIERS,
   PRO_MOTION_PROMPT,
 } from "./klingPrompts";
 
@@ -361,11 +363,11 @@ export function buildKlingPrompt(
     // A-roll: Focus on natural speaking motion, subtle movements
     basePrompt = `${cinematicPrompt}. ++Person speaks naturally to camera++, subtle lip movements, ${emotion} expression. Gentle head micro-movements, relaxed eye contact with lens. ++Face maintains exact appearance throughout++ - no morphing. ${GENTLE_MOTION_MODIFIERS}`;
   } else if (shotType === "b-roll") {
-    // B-roll: Focus on product motion and camera movement
-    basePrompt = `${cinematicPrompt}. Smooth camera glide showcasing product. ++Product remains solid and unchanged++ - no warping or morphing. ${BROLL_MOTION_MODIFIERS}`;
+    // B-roll: Focus on product motion and camera movement, always include screen stability
+    basePrompt = `${cinematicPrompt}. Smooth camera glide showcasing product. ++Product remains solid and unchanged++ - no warping or morphing. ${SCREEN_STABILITY_MODIFIERS} ${BROLL_MOTION_MODIFIERS}`;
   } else {
     // Mixed: Person interacting with product, not speaking to camera
-    basePrompt = `${cinematicPrompt}. Person performs: ${action}. Natural body motion, ${emotion} expression. ++Hands have 5 fingers each++ - no extra or missing. ++Product stays solid throughout++. ${GENTLE_MOTION_MODIFIERS}`;
+    basePrompt = `${cinematicPrompt}. Person performs: ${action}. Natural body motion, ${emotion} expression. ++Hands have 5 fingers each++ - no extra or missing. ++Product stays solid throughout++. ${SCREEN_STABILITY_MODIFIERS} ${GENTLE_MOTION_MODIFIERS}`;
   }
 
   return basePrompt;

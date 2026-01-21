@@ -5,26 +5,18 @@ import {
   Card,
   CardBody,
   Button,
-  Textarea,
   Chip,
   Progress,
   Modal,
   ModalContent,
   ModalBody,
-  Switch,
   Input,
-  Dropdown,
-  DropdownTrigger,
-  DropdownMenu,
-  DropdownItem,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { SCENE_TYPE_CONFIG, type UGCScene } from "../script/types";
 import { SupportingImageUploader } from "./SupportingImageUploader";
 import { sceneBuilderAPI } from "@/api/sceneBuilder";
 import type { SupportingImage, SceneImageGeneration } from "./types";
-
-type RegenerateMode = "both" | "start" | "end";
 
 interface SceneImageCardProps {
   scene: UGCScene;
@@ -80,14 +72,13 @@ export function SceneImageCard({
 }: SceneImageCardProps) {
   // In storyboard mode, always show expanded view
   const [isExpanded, setIsExpanded] = useState(isStoryboardMode);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [localRefinement, setLocalRefinement] = useState(userRefinement || "");
   const [supportingImages, setSupportingImages] = useState<SupportingImage[]>(
     []
   );
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isGeneratingEndFrame, setIsGeneratingEndFrame] = useState(false);
   const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null);
+  const [selectedBRollIndex, setSelectedBRollIndex] = useState<number | null>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const sceneConfig = SCENE_TYPE_CONFIG[scene.sceneType];
@@ -122,7 +113,6 @@ export function SceneImageCard({
 
           if (status.status === "completed") {
             setIsGenerating(false);
-            setIsGeneratingEndFrame(false);
             if (pollIntervalRef.current) {
               clearInterval(pollIntervalRef.current);
               pollIntervalRef.current = null;
@@ -144,7 +134,6 @@ export function SceneImageCard({
             }
           } else if (status.status === "failed") {
             setIsGenerating(false);
-            setIsGeneratingEndFrame(false);
             if (pollIntervalRef.current) {
               clearInterval(pollIntervalRef.current);
               pollIntervalRef.current = null;
@@ -171,15 +160,12 @@ export function SceneImageCard({
     onImageSelect,
   ]);
 
-  const handleGenerate = async (mode: RegenerateMode = "both") => {
-    if (mode === "end") {
-      setIsGeneratingEndFrame(true);
-    } else {
-      setIsGenerating(true);
-    }
+  const handleGenerate = async (singleShotIndex?: number) => {
+    setIsGenerating(true);
 
-    // Determine what to keep vs regenerate based on mode
-    const existingEndFrame = generation?.generatedImages?.[1]?.key;
+    const existingImages = singleShotIndex !== undefined && generation?.generatedImages
+      ? generation.generatedImages.map((img) => img.key)
+      : undefined;
 
     const requestData = {
       teamId,
@@ -189,11 +175,9 @@ export function SceneImageCard({
       characterId,
       userRefinement: localRefinement || undefined,
       supportingImageKeys: supportingImageKeys,
-      generateEndFrame: mode === "both" ? useEndFrame : mode === "end",
-      // When regenerating end only, keep the existing start image
-      customStartImageKey: mode === "end" ? imageKey : customStartImageKey,
-      // When regenerating start only, keep the existing end image
-      customEndImageKey: mode === "start" ? existingEndFrame : customEndImageKey,
+      generateEndFrame: false,
+      singleBRollShotIndex: singleShotIndex,
+      existingBRollImages: existingImages,
     };
 
     try {
@@ -202,29 +186,6 @@ export function SceneImageCard({
     } catch (error) {
       console.error("Failed to start generation:", error);
       setIsGenerating(false);
-      setIsGeneratingEndFrame(false);
-    }
-  };
-
-  const handleUseEndFrameToggle = async (enabled: boolean) => {
-    onUseEndFrameChange(enabled);
-
-    if (enabled) {
-      // Auto-generate end frame if start exists and no end frame yet
-      if (imageKey && !customEndImageKey && (generation?.generatedImages?.length ?? 0) < 2) {
-        handleGenerate("end");
-      }
-    } else {
-      // Clear end frame data when disabled
-      onCustomImageChange("end", undefined, undefined);
-
-      // Remove end frame from generated images if it exists
-      if (generation?.generatedImages && generation.generatedImages.length > 1) {
-        onGenerationUpdate({
-          ...generation,
-          generatedImages: [generation.generatedImages[0]], // Keep only start frame
-        });
-      }
     }
   };
 
@@ -508,99 +469,7 @@ export function SceneImageCard({
           />
         </div>
 
-        <div className="border border-border-base rounded-lg overflow-hidden">
-          <button
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            className="w-full flex items-center justify-between p-2 bg-surface-base hover:bg-surface-elevated transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              <Icon icon="solar:settings-bold-duotone" className="text-text-muted" width={14} />
-              <span className="text-xs font-medium text-text-primary">Advanced</span>
-              {(useEndFrame || customStartImageKey || customEndImageKey) && (
-                <span className="text-[10px] text-accent-400 bg-accent-400/10 px-1.5 py-0.5 rounded">Active</span>
-              )}
-            </div>
-            <Icon icon={showAdvanced ? "solar:alt-arrow-up-linear" : "solar:alt-arrow-down-linear"} className="text-text-muted" width={14} />
-          </button>
-
-          {showAdvanced && (
-            <div className="p-3 space-y-3 border-t border-border-base">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Icon icon="solar:video-frame-play-horizontal-bold-duotone" className="text-text-muted" width={14} />
-                  <span className="text-xs text-text-primary">Use End Frame</span>
-                </div>
-                <Switch
-                  isSelected={useEndFrame || false}
-                  onValueChange={handleUseEndFrameToggle}
-                  isDisabled={isGeneratingEndFrame}
-                  size="sm"
-                  classNames={{ wrapper: "group-data-[selected=true]:bg-accent-400" }}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center gap-1.5">
-                  <Icon icon="solar:gallery-add-bold" className="text-text-muted" width={12} />
-                  <span className="text-[10px] text-text-muted">Custom images (upload your own)</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex flex-col items-center gap-1">
-                    <span className="text-[10px] text-text-muted">Start</span>
-                  {customStartImageUrl ? (
-                    <div className="relative group">
-                      <div
-                        className="w-12 h-14 rounded-md overflow-hidden bg-surface-elevated cursor-zoom-in ring-2 ring-accent-400"
-                        onClick={() => setZoomImageUrl(customStartImageUrl)}
-                      >
-                        <img src={customStartImageUrl} alt="Start" className="w-full h-full object-cover" />
-                      </div>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleCustomImageRemove("start"); }}
-                        className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Icon icon="solar:close-circle-bold" width={10} />
-                      </button>
-                    </div>
-                  ) : (
-                    <label className="w-12 h-14 rounded-md border-2 border-dashed border-border-base flex flex-col items-center justify-center cursor-pointer hover:border-accent-400/50 transition-colors">
-                      <Icon icon="solar:upload-bold" className="text-text-muted" width={12} />
-                      <input type="file" accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleCustomImageUpload("start", file); }} />
-                    </label>
-                  )}
-                </div>
-
-                {useEndFrame && (
-                  <div className="flex flex-col items-center gap-1">
-                    <span className="text-[10px] text-text-muted">End</span>
-                    {customEndImageUrl ? (
-                      <div className="relative group">
-                        <div
-                          className="w-12 h-14 rounded-md overflow-hidden bg-surface-elevated cursor-zoom-in ring-2 ring-accent-400"
-                          onClick={() => setZoomImageUrl(customEndImageUrl)}
-                        >
-                          <img src={customEndImageUrl} alt="End" className="w-full h-full object-cover" />
-                        </div>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleCustomImageRemove("end"); }}
-                          className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <Icon icon="solar:close-circle-bold" width={10} />
-                        </button>
-                      </div>
-                    ) : (
-                      <label className="w-12 h-14 rounded-md border-2 border-dashed border-border-base flex flex-col items-center justify-center cursor-pointer hover:border-accent-400/50 transition-colors">
-                        <Icon icon="solar:upload-bold" className="text-text-muted" width={12} />
-                        <input type="file" accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleCustomImageUpload("end", file); }} />
-                      </label>
-                    )}
-                  </div>
-                )}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+        {/* Advanced options hidden - keeping code for future use */}
 
         {generation?.status === "generating" && (
           <div className="space-y-2">
@@ -630,109 +499,130 @@ export function SceneImageCard({
           </div>
         )}
 
-        {(imageKey || (generation?.status === "completed" && (generation.generatedImages?.length ?? 0) > 0)) && (
+        {/* B-Roll Shots Display - shown for B-roll scenes */}
+        {scene.bRollShots && scene.bRollShots.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs text-amber-400">
+                <Icon icon="solar:video-library-bold" width={14} />
+                <span className="font-medium">B-Roll Shots ({scene.bRollShots.length})</span>
+              </div>
+              <span className="text-[10px] text-text-muted">Click to select, double-click to zoom</span>
+            </div>
+            <div className="space-y-2">
+              {scene.bRollShots.map((shot, idx) => {
+                const shotImage = generation?.generatedImages?.[idx];
+                const isSelected = selectedBRollIndex === idx;
+                return (
+                  <div
+                    key={idx}
+                    className={`flex items-start gap-3 p-2 rounded-lg border transition-all cursor-pointer ${
+                      isSelected
+                        ? "bg-amber-500/10 border-amber-400"
+                        : "bg-surface-base border-border-base hover:border-amber-400/50"
+                    }`}
+                    onClick={() => setSelectedBRollIndex(isSelected ? null : idx)}
+                  >
+                    <div
+                      className={`w-16 h-20 rounded-lg overflow-hidden ring-2 relative transition-all shrink-0 ${
+                        shotImage?.url
+                          ? isSelected ? "ring-amber-400" : "ring-amber-400/50"
+                          : "ring-border-base bg-surface-elevated"
+                      }`}
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        if (shotImage?.url) setZoomImageUrl(shotImage.url);
+                      }}
+                    >
+                      {shotImage?.url ? (
+                        <>
+                          <img
+                            src={shotImage.url}
+                            alt={`Shot ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-amber-400 flex items-center justify-center">
+                            <span className="text-[9px] font-bold text-white">{idx + 1}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center gap-1">
+                          <Icon icon="solar:gallery-add-bold-duotone" className="text-text-muted" width={16} />
+                          <span className="text-[9px] text-text-muted">{idx + 1}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] font-medium text-amber-400">Shot {idx + 1}</span>
+                        <span className="text-[10px] text-text-muted">{shot.durationSeconds}s</span>
+                      </div>
+                      <p className="text-xs text-text-secondary line-clamp-2">{shot.action}</p>
+                    </div>
+                    {isSelected && (
+                      <div className="flex gap-1 shrink-0">
+                        {shotImage?.url && (
+                          <Button
+                            isIconOnly
+                            size="sm"
+                            variant="flat"
+                            className="bg-amber-500/20 text-amber-400"
+                            onPress={() => setZoomImageUrl(shotImage.url)}
+                          >
+                            <Icon icon="solar:magnifer-zoom-in-bold" width={14} />
+                          </Button>
+                        )}
+                        <Button
+                          isIconOnly
+                          size="sm"
+                          variant="flat"
+                          className="bg-blue-500/20 text-blue-400"
+                          isLoading={isCurrentlyGenerating}
+                          isDisabled={isCurrentlyGenerating}
+                          onPress={() => handleGenerate(idx)}
+                        >
+                          <Icon icon="solar:refresh-bold" width={14} />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Regular scene image display - for non-B-roll scenes */}
+        {!scene.bRollShots && (imageKey || (generation?.status === "completed" && (generation.generatedImages?.length ?? 0) > 0)) && (
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-xs text-text-muted">
               <Icon icon="solar:gallery-check-bold" width={14} />
-              <span>Generated {(generation?.generatedImages?.length ?? 0) > 1 ? "frames" : "image"} (click to zoom)</span>
+              <span>Generated image (click to zoom)</span>
             </div>
-            <div className="flex items-center justify-center gap-4">
-              <div className="flex flex-col items-center gap-2">
-                <span className="text-xs font-medium text-text-secondary">
-                  {useEndFrame || (generation?.generatedImages?.length ?? 0) > 1 ? "Start Frame" : "Scene Image"}
-                </span>
-                <div
-                  className={`w-24 h-32 rounded-lg overflow-hidden bg-surface-base ring-2 relative transition-all ${
-                    isGenerating
-                      ? "ring-blue-500 animate-pulse"
-                      : "ring-accent-400 cursor-zoom-in hover:ring-accent-300"
-                  }`}
-                  onClick={() =>
-                    !isGenerating &&
-                    setZoomImageUrl(imageUrl || generation?.generatedImages?.[0]?.url || null)
-                  }
-                >
-                  <img
-                    src={imageUrl || generation?.generatedImages?.[0]?.url}
-                    alt="Start frame"
-                    className={`w-full h-full object-cover ${isGenerating ? "opacity-50" : ""}`}
-                  />
-                  {!isGenerating && (
-                    <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-accent-400 flex items-center justify-center">
-                      <Icon icon="solar:check-circle-bold" className="text-white" width={10} />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {(generation?.generatedImages?.length ?? 0) > 1 && !scene.bRollShots && (
-                <div className="flex flex-col items-center gap-2">
-                  <span className="text-xs font-medium text-text-secondary">End Frame</span>
-                  <div
-                    className="w-24 h-32 rounded-lg overflow-hidden bg-surface-base ring-2 ring-accent-400 cursor-zoom-in hover:ring-accent-300 relative transition-all"
-                    onClick={() => setZoomImageUrl(generation?.generatedImages?.[1]?.url || null)}
-                  >
-                    <img
-                      src={generation?.generatedImages?.[1]?.url}
-                      alt="End frame"
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-accent-400 flex items-center justify-center">
-                      <Icon icon="solar:check-circle-bold" className="text-white" width={10} />
-                    </div>
+            <div className="flex items-center justify-center">
+              <div
+                className={`w-28 h-36 rounded-lg overflow-hidden bg-surface-base ring-2 relative transition-all ${
+                  isGenerating
+                    ? "ring-blue-500 animate-pulse"
+                    : "ring-accent-400 cursor-zoom-in hover:ring-accent-300"
+                }`}
+                onClick={() =>
+                  !isGenerating &&
+                  setZoomImageUrl(imageUrl || generation?.generatedImages?.[0]?.url || null)
+                }
+              >
+                <img
+                  src={imageUrl || generation?.generatedImages?.[0]?.url}
+                  alt="Scene image"
+                  className={`w-full h-full object-cover ${isGenerating ? "opacity-50" : ""}`}
+                />
+                {!isGenerating && (
+                  <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-accent-400 flex items-center justify-center">
+                    <Icon icon="solar:check-circle-bold" className="text-white" width={10} />
                   </div>
-                </div>
-              )}
-            </div>
-
-            {scene.bRollShots && scene.bRollShots.length > 0 && (
-              <div className="space-y-2 pt-3 border-t border-border-base">
-                <div className="flex items-center gap-2 text-xs text-amber-400">
-                  <Icon icon="solar:video-library-bold" width={14} />
-                  <span className="font-medium">B-Roll Shots ({scene.bRollShots.length})</span>
-                </div>
-                <div className="flex items-start gap-3 overflow-x-auto pb-2">
-                  {scene.bRollShots.map((shot, idx) => {
-                    const shotImage = generation?.generatedImages?.[idx];
-                    return (
-                      <div key={idx} className="flex flex-col items-center gap-1.5 min-w-[80px]">
-                        <div
-                          className={`w-16 h-20 rounded-lg overflow-hidden bg-surface-base ring-2 relative transition-all ${
-                            shotImage?.url
-                              ? "ring-amber-400 cursor-zoom-in hover:ring-amber-300"
-                              : "ring-border-base"
-                          }`}
-                          onClick={() => shotImage?.url && setZoomImageUrl(shotImage.url)}
-                        >
-                          {shotImage?.url ? (
-                            <>
-                              <img
-                                src={shotImage.url}
-                                alt={`Shot ${idx + 1}`}
-                                className="w-full h-full object-cover"
-                              />
-                              <div className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-amber-400 flex items-center justify-center">
-                                <span className="text-[8px] font-bold text-white">{idx + 1}</span>
-                              </div>
-                            </>
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Icon icon="solar:gallery-add-bold-duotone" className="text-text-muted" width={18} />
-                            </div>
-                          )}
-                        </div>
-                        <span className="text-[10px] text-text-muted text-center line-clamp-2 max-w-[80px]">
-                          {shot.action}
-                        </span>
-                        <span className="text-[9px] text-amber-400 font-medium">
-                          {shot.durationSeconds}s
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         )}
 
@@ -741,74 +631,30 @@ export function SceneImageCard({
             {hasImage && (
               <span className="text-xs text-accent-400 flex items-center gap-1">
                 <Icon icon="solar:check-circle-bold" width={14} />
-                Image ready
+                {scene.bRollShots ? `${generation?.generatedImages?.length || 0} shots ready` : "Image ready"}
               </span>
             )}
           </div>
 
-          {/* Show dropdown when both frames exist, otherwise show simple button */}
-          {hasImage && (generation?.generatedImages?.length ?? 0) > 1 ? (
-            <Dropdown>
-              <DropdownTrigger>
-                <Button
-                  className="border-border-base text-text-secondary"
-                  variant="bordered"
-                  size="sm"
-                  isLoading={isGenerating || isGeneratingEndFrame || generation?.status === "generating"}
-                  isDisabled={generation?.status === "generating"}
-                  endContent={<Icon icon="solar:alt-arrow-down-linear" width={14} />}
-                  startContent={<Icon icon="solar:refresh-bold" width={14} />}
-                >
-                  Regenerate
-                </Button>
-              </DropdownTrigger>
-              <DropdownMenu
-                aria-label="Regenerate options"
-                onAction={(key) => handleGenerate(key as RegenerateMode)}
-              >
-                <DropdownItem
-                  key="start"
-                  startContent={<Icon icon="solar:play-bold" width={14} />}
-                  description="Keep end frame, regenerate start"
-                >
-                  Start Frame
-                </DropdownItem>
-                <DropdownItem
-                  key="end"
-                  startContent={<Icon icon="solar:stop-bold" width={14} />}
-                  description="Keep start frame, regenerate end"
-                >
-                  End Frame
-                </DropdownItem>
-                <DropdownItem
-                  key="both"
-                  startContent={<Icon icon="solar:restart-bold" width={14} />}
-                  description="Regenerate both frames"
-                  className="text-warning"
-                >
-                  Both Frames
-                </DropdownItem>
-              </DropdownMenu>
-            </Dropdown>
-          ) : (
-            <Button
-              className={hasImage ? "border-border-base text-text-secondary" : "bg-accent-400 text-white"}
-              variant={hasImage ? "bordered" : "solid"}
-              size="sm"
-              onPress={() => handleGenerate("both")}
-              isLoading={isGenerating || generation?.status === "generating"}
-              isDisabled={generation?.status === "generating"}
-              startContent={
-                hasImage ? (
-                  <Icon icon="solar:refresh-bold" width={14} />
-                ) : (
-                  <Icon icon="solar:magic-stick-3-bold" width={14} />
-                )
-              }
-            >
-              {hasImage ? "Regenerate" : "Generate Image"}
-            </Button>
-          )}
+          <Button
+            className={hasImage ? "border-border-base text-text-secondary" : "bg-accent-400 text-white"}
+            variant={hasImage ? "bordered" : "solid"}
+            size="sm"
+            onPress={() => handleGenerate()}
+            isLoading={isGenerating || generation?.status === "generating"}
+            isDisabled={generation?.status === "generating"}
+            startContent={
+              hasImage ? (
+                <Icon icon="solar:refresh-bold" width={14} />
+              ) : (
+                <Icon icon="solar:magic-stick-3-bold" width={14} />
+              )
+            }
+          >
+            {hasImage
+              ? (scene.bRollShots ? "Regenerate All" : "Regenerate")
+              : (scene.bRollShots ? "Generate Shots" : "Generate Image")}
+          </Button>
         </div>
       </CardBody>
 

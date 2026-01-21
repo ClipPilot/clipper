@@ -38,6 +38,7 @@ export const BRollShotSchema = z.object({
   action: z.string().describe("Simple, single action for this shot"),
   cinematicPrompt: z.string().describe("Cinematic prompt for this specific shot"),
   durationSeconds: z.number().min(1).max(4).describe("Duration of this shot (1-4 seconds)"),
+  productImageNeeded: z.boolean().describe("Whether this shot should include/show the product. Set to true for product closeups, unboxing, demos. Set to false for lifestyle, mood, reaction, or 'before' shots where product shouldn't appear."),
 });
 
 export const UGCSceneSchema = z.object({
@@ -79,11 +80,10 @@ export const UGCSceneSchema = z.object({
     .describe("REQUIRED for a-roll scenes: ambient background audio description (e.g., 'gym with weights clanking', 'quiet bedroom ambience'). Set to null for b-roll/mixed scenes."),
   bRollShots: z
     .array(BRollShotSchema)
-    .min(2)
-    .max(4)
+    .min(1)
     .nullable()
     .optional()
-    .describe("For B-roll montage sequences: 2-4 quick shots that share the same voiceover. When provided, these shots replace the main action/cinematicPrompt. Each shot should be 1-4 seconds with ONE simple action."),
+    .describe("For B-roll scenes: shots that share the same voiceover. Use as many as the scene needs (1, 2, 3, 4, etc). Each shot has productImageNeeded to control whether product reference is used."),
 });
 
 export const UGCScriptSchema = z.object({

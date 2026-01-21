@@ -35,6 +35,12 @@ export const BROLL_MOTION_MODIFIERS =
   "++Product remains solid and unchanged throughout++ - no morphing or warping. " +
   "One clear motion direction. Keep product sharp and in focus.";
 
+export const SCREEN_STABILITY_MODIFIERS =
+  "++Phone, device, and on-screen content maintain exact appearance throughout++. " +
+  "Screen stays flat, rectangular, frozen - NO screen content changes, NO morphing. " +
+  "Hands hold device steady with consistent grip. ++Text/UI on screen remains crisp and unchanged++. " +
+  "Device proportions stay locked - no warping, no bending, no shape shifting.";
+
 export const PRO_MOTION_PROMPT =
   "Smooth natural movements matching reference video exactly. " +
   "++Hands have exactly 5 fingers each++ - no extra, missing, or deformed fingers. " +

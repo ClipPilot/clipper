@@ -162,6 +162,7 @@ export interface GenerateSceneImageJob extends BaseJob {
     cinematicPrompt: string;
   };
   productImageKeys: string[];
+  productName?: string;
   userRefinement?: string;
   supportingImageKeys: string[];
   // Advanced options
@@ -172,7 +173,10 @@ export interface GenerateSceneImageJob extends BaseJob {
     action: string;
     cinematicPrompt: string;
     durationSeconds: number;
+    productImageNeeded: boolean;
   }>;
+  singleBRollShotIndex?: number;
+  existingBRollImages?: string[];
 }
 
 // Script generation job payload
@@ -430,13 +434,15 @@ class SQSService {
     characterId: number;
     sceneData: GenerateSceneImageJob["sceneData"];
     productImageKeys: string[];
+    productName?: string;
     userRefinement?: string;
     supportingImageKeys: string[];
-    // Advanced options
     generateEndFrame?: boolean;
     customStartImageKey?: string;
     customEndImageKey?: string;
     bRollShots?: GenerateSceneImageJob["bRollShots"];
+    singleBRollShotIndex?: number;
+    existingBRollImages?: string[];
   }): Promise<string> {
     const job: GenerateSceneImageJob = {
       type: "generate-scene-image",
@@ -449,13 +455,15 @@ class SQSService {
       characterId: params.characterId,
       sceneData: params.sceneData,
       productImageKeys: params.productImageKeys,
+      productName: params.productName,
       userRefinement: params.userRefinement,
       supportingImageKeys: params.supportingImageKeys,
-      // Advanced options
       generateEndFrame: params.generateEndFrame,
       customStartImageKey: params.customStartImageKey,
       customEndImageKey: params.customEndImageKey,
       bRollShots: params.bRollShots,
+      singleBRollShotIndex: params.singleBRollShotIndex,
+      existingBRollImages: params.existingBRollImages,
       createdAt: new Date().toISOString(),
     };
 

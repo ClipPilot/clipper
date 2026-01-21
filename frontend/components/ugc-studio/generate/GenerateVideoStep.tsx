@@ -32,7 +32,17 @@ interface GenerateVideoStepProps {
 
 type StepState = "ready" | "confirming" | "generating";
 
-const CREDIT_PER_SCENE = 2;
+function calculateCreditCost(scenes: Array<{ shotType: string; bRollShots?: unknown[] | null }>) {
+  let total = 0;
+  for (const scene of scenes) {
+    if (scene.shotType === "b-roll" && scene.bRollShots?.length) {
+      total += scene.bRollShots.length;
+    } else {
+      total += 2;
+    }
+  }
+  return total;
+}
 
 export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) {
   const router = useRouter();
@@ -50,7 +60,7 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
   const currentScript = scripts[selectedVariantIndex];
   const scenes = currentScript?.scenes || [];
   const totalScenes = scenes.length;
-  const creditCost = totalScenes * CREDIT_PER_SCENE;
+  const creditCost = calculateCreditCost(scenes);
 
   // Check for existing completed video on mount (not during fresh start)
   useEffect(() => {
@@ -75,7 +85,7 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
 
   const handleGenerateClick = () => {
     if (!usageStats || usageStats.totalRemaining < creditCost) {
-      setError(`Not enough credits. You need ${creditCost} credits (${totalScenes} scenes × ${CREDIT_PER_SCENE} credits) to generate this video.`);
+      setError(`Not enough credits. You need ${creditCost} credits to generate this video.`);
       return;
     }
     setStepState("confirming");
@@ -222,7 +232,7 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
                   {creditCost} Credits
                 </p>
                 <p className="text-sm text-text-secondary">
-                  {totalScenes} scenes × {CREDIT_PER_SCENE} credits each
+                  {totalScenes} scenes • 2 per A-roll, 1 per B-roll shot
                 </p>
                 <p className="text-xs text-text-muted mt-1">
                   {usageStats
@@ -308,7 +318,7 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
                 This will use <span className="font-bold text-accent-400">{creditCost} credits</span>
               </p>
               <p className="text-xs text-text-muted mb-2">
-                {totalScenes} scenes × {CREDIT_PER_SCENE} credits each
+                {totalScenes} scenes • 2 per A-roll, 1 per B-roll shot
               </p>
               <p className="text-sm text-text-secondary">
                 You&apos;ll have {usageStats ? usageStats.totalRemaining - creditCost : 0} credits remaining
