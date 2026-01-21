@@ -175,6 +175,8 @@ export interface GenerateSceneImageJob extends BaseJob {
     durationSeconds: number;
     productImageNeeded: boolean;
   }>;
+  singleBRollShotIndex?: number;
+  existingBRollImages?: string[];
 }
 
 // Script generation job payload
@@ -435,11 +437,12 @@ class SQSService {
     productName?: string;
     userRefinement?: string;
     supportingImageKeys: string[];
-    // Advanced options
     generateEndFrame?: boolean;
     customStartImageKey?: string;
     customEndImageKey?: string;
     bRollShots?: GenerateSceneImageJob["bRollShots"];
+    singleBRollShotIndex?: number;
+    existingBRollImages?: string[];
   }): Promise<string> {
     const job: GenerateSceneImageJob = {
       type: "generate-scene-image",
@@ -455,11 +458,12 @@ class SQSService {
       productName: params.productName,
       userRefinement: params.userRefinement,
       supportingImageKeys: params.supportingImageKeys,
-      // Advanced options
       generateEndFrame: params.generateEndFrame,
       customStartImageKey: params.customStartImageKey,
       customEndImageKey: params.customEndImageKey,
       bRollShots: params.bRollShots,
+      singleBRollShotIndex: params.singleBRollShotIndex,
+      existingBRollImages: params.existingBRollImages,
       createdAt: new Date().toISOString(),
     };
 

@@ -247,6 +247,8 @@ export async function processSceneImageJob(
     customStartImageKey,
     customEndImageKey,
     bRollShots,
+    singleBRollShotIndex,
+    existingBRollImages,
   } = job;
 
   // Determine if this scene type should include product reference images
@@ -256,7 +258,7 @@ export async function processSceneImageJob(
     `[SCENE_IMAGE] Starting FAL AI generation for job ${jobId} (scene ${sceneNumber})`
   );
   console.log(
-    `[SCENE_IMAGE] Options: generateEndFrame=${generateEndFrame}, customStart=${!!customStartImageKey}, customEnd=${!!customEndImageKey}, bRollShots=${bRollShots?.length || 0}`
+    `[SCENE_IMAGE] Options: generateEndFrame=${generateEndFrame}, customStart=${!!customStartImageKey}, customEnd=${!!customEndImageKey}, bRollShots=${bRollShots?.length || 0}, singleShotIdx=${singleBRollShotIndex ?? "all"}`
   );
 
   try {
@@ -271,13 +273,50 @@ export async function processSceneImageJob(
       .where(eq(schema.sceneImageGenerationJobs.id, jobId));
 
     if (bRollShots && bRollShots.length > 0) {
-      console.log(
-        `[SCENE_IMAGE] Generating ${bRollShots.length} B-roll montage images for job ${jobId}`
-      );
+      const isSingleShotRegen = singleBRollShotIndex !== undefined && singleBRollShotIndex >= 0;
 
-      const generatedImages: string[] = [];
+      if (isSingleShotRegen) {
+        console.log(
+          `[SCENE_IMAGE] Regenerating single B-roll shot ${singleBRollShotIndex + 1} of ${bRollShots.length} for job ${jobId}`
+        );
+      } else {
+        console.log(
+          `[SCENE_IMAGE] Generating ${bRollShots.length} B-roll montage images for job ${jobId}`
+        );
+      }
 
-      // Pre-fetch reference URLs for product and supporting images
+      const generatedImages: string[] = isSingleShotRegen && existingBRollImages
+        ? [...existingBRollImages]
+        : [];
+
+      let characterReferenceUrl: string | null = null;
+      if (characterId) {
+        const [character] = await db
+          .select()
+          .from(schema.characters)
+          .where(eq(schema.characters.id, characterId));
+
+        if (character) {
+          const characterImages = character.character_images as string[];
+          const primaryIndex = character.primary_image_index || 0;
+          if (characterImages && characterImages[primaryIndex]) {
+            const urls = await getReferenceImageUrls([characterImages[primaryIndex]]);
+            if (urls.length > 0) {
+              characterReferenceUrl = urls[0];
+              console.log(`[SCENE_IMAGE] B-roll: Character reference loaded: ${characterImages[primaryIndex]}`);
+            } else {
+              console.warn(`[SCENE_IMAGE] B-roll: Failed to get URL for character image`);
+            }
+          } else {
+            console.warn(`[SCENE_IMAGE] B-roll: Character has no images at index ${primaryIndex}`);
+          }
+        } else {
+          console.warn(`[SCENE_IMAGE] B-roll: Character ${characterId} not found`);
+        }
+      } else {
+        console.warn(`[SCENE_IMAGE] B-roll: No characterId provided`);
+      }
+
       const productReferenceUrls = productImageKeys && productImageKeys.length > 0
         ? await getReferenceImageUrls(productImageKeys.slice(0, 3))
         : [];
@@ -286,31 +325,41 @@ export async function processSceneImageJob(
         : [];
 
       for (let i = 0; i < bRollShots.length; i++) {
+        if (isSingleShotRegen && i !== singleBRollShotIndex) {
+          continue;
+        }
+
         const shot = bRollShots[i];
-        const progressPercent = Math.round(((i + 1) / bRollShots.length) * 80);
+        const progressPercent = isSingleShotRegen
+          ? 50
+          : Math.round(((i + 1) / bRollShots.length) * 80);
 
         await updateJobProgress(
           jobId,
           progressPercent,
-          `Generating B-roll shot ${i + 1} of ${bRollShots.length}...`
+          isSingleShotRegen
+            ? `Regenerating shot ${i + 1}...`
+            : `Generating B-roll shot ${i + 1} of ${bRollShots.length}...`
         );
 
-        // Use the AI-determined productImageNeeded flag (default to true for backwards compatibility)
         const shotNeedsProduct = shot.productImageNeeded ?? true;
         const shotReferenceUrls: string[] = [];
+
+        if (characterReferenceUrl) {
+          shotReferenceUrls.push(characterReferenceUrl);
+        }
 
         if (shotNeedsProduct && productReferenceUrls.length > 0) {
           shotReferenceUrls.push(...productReferenceUrls);
           console.log(
-            `[SCENE_IMAGE] Shot ${i + 1}: Including product images (productImageNeeded=true)`
+            `[SCENE_IMAGE] Shot ${i + 1}: Including character + product images`
           );
-        } else if (productReferenceUrls.length > 0) {
+        } else {
           console.log(
-            `[SCENE_IMAGE] Shot ${i + 1}: Skipping product images (productImageNeeded=false)`
+            `[SCENE_IMAGE] Shot ${i + 1}: Including character only (productImageNeeded=false)`
           );
         }
 
-        // Always include supporting images if available
         if (supportingReferenceUrls.length > 0) {
           shotReferenceUrls.push(...supportingReferenceUrls);
         }
@@ -357,7 +406,12 @@ export async function processSceneImageJob(
         console.log(
           `[SCENE_IMAGE] Generated B-roll shot ${i + 1} for job ${jobId}: ${imageKey}`
         );
-        generatedImages.push(imageKey);
+
+        if (isSingleShotRegen) {
+          generatedImages[i] = imageKey;
+        } else {
+          generatedImages.push(imageKey);
+        }
       }
 
       await db
@@ -365,14 +419,16 @@ export async function processSceneImageJob(
         .set({
           status: "completed",
           progress: 100,
-          progress_message: `${bRollShots.length} B-roll montage shots generated`,
+          progress_message: isSingleShotRegen
+            ? `Shot ${singleBRollShotIndex! + 1} regenerated`
+            : `${bRollShots.length} B-roll montage shots generated`,
           generated_images: generatedImages,
           completed_at: new Date(),
         })
         .where(eq(schema.sceneImageGenerationJobs.id, jobId));
 
       console.log(
-        `[SCENE_IMAGE] Job ${jobId} completed with ${generatedImages.length} B-roll shot image(s)`
+        `[SCENE_IMAGE] Job ${jobId} completed${isSingleShotRegen ? ` (single shot ${singleBRollShotIndex! + 1})` : ""} with ${generatedImages.length} B-roll shot image(s)`
       );
       return;
     }

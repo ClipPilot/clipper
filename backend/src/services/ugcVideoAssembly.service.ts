@@ -135,6 +135,28 @@ function getMediaDuration(filePath: string): number {
   }
 }
 
+function calculateMontageShots(
+  audioDuration: number,
+  numShots: number,
+): Array<{ kling: 5 | 10; trim: number }> {
+  const perShotDuration = audioDuration / numShots;
+  const results: Array<{ kling: 5 | 10; trim: number }> = [];
+
+  let remaining = audioDuration;
+
+  for (let i = 0; i < numShots; i++) {
+    const isLast = i === numShots - 1;
+    const targetTrim = isLast ? remaining : perShotDuration;
+    const klingDuration: 5 | 10 = targetTrim > 5 ? 10 : 5;
+    const actualTrim = Math.min(targetTrim, klingDuration);
+
+    results.push({ kling: klingDuration, trim: actualTrim });
+    remaining -= actualTrim;
+  }
+
+  return results;
+}
+
 /**
  * Speed up audio using FFmpeg atempo filter to fit within max duration.
  * atempo supports 0.5x to 2.0x, so we chain filters if needed for higher speeds.
@@ -648,7 +670,7 @@ async function processBrollScene(
   } = scene;
 
   onProgress?.(`Scene ${sceneNumber}: Generating voiceover...`);
-  const {
+  let {
     audioPath,
     audioKey,
     duration: audioDuration,
@@ -671,24 +693,25 @@ async function processBrollScene(
       `[UGC Assembly] B-Roll Scene ${sceneNumber}: Processing ${bRollShots.length}-shot montage`,
     );
 
-    const shotVideoPaths: string[] = [];
-    const totalMontageTargetDuration = bRollShots.reduce(
-      (sum, shot) => sum + shot.durationSeconds,
-      0,
-    );
+    const numShots = bRollShots.length;
+    const shotDurations = calculateMontageShots(audioDuration, numShots);
 
     console.log(
-      `[UGC Assembly] Montage target: ${totalMontageTargetDuration}s from ${bRollShots.length} shots, audio: ${audioDuration.toFixed(2)}s`,
+      `[UGC Assembly] Montage: ${numShots} shots, audio ${audioDuration.toFixed(2)}s → durations: [${shotDurations.map(d => d.trim + 's').join(', ')}]`,
     );
+
+    const shotVideoPaths: string[] = [];
 
     for (let i = 0; i < bRollShots.length; i++) {
       const shot = bRollShots[i];
+      const { kling: klingDuration, trim: trimDuration } = shotDurations[i];
+
       onProgress?.(
         `Scene ${sceneNumber}: Generating montage shot ${i + 1}/${bRollShots.length}...`,
       );
 
       console.log(
-        `[UGC Assembly] Montage shot ${i + 1}: "${shot.action.substring(0, 40)}..." (${shot.durationSeconds}s)`,
+        `[UGC Assembly] Montage shot ${i + 1}: "${shot.action.substring(0, 40)}..." (kling: ${klingDuration}s, trim: ${trimDuration}s)`,
       );
 
       const shotImageUrl = await s3Service.getPresignedUrl(shot.imageKey, 3600);
@@ -712,7 +735,7 @@ async function processBrollScene(
         await klingService.generateVideoWithRetry({
           imageUrl: shotImageUrl,
           prompt: shotPrompt,
-          duration: 5,
+          duration: klingDuration as 5 | 10,
           negativePrompt: PRODUCT_NEGATIVE_PROMPT,
         });
 
@@ -726,7 +749,7 @@ async function processBrollScene(
         OUTPUT_DIR,
         `montage_trimmed_${sceneNumber}_${i}_${Date.now()}.mp4`,
       );
-      const trimCmd = `ffmpeg -y -i "${shotVideoPath}" -t ${shot.durationSeconds.toFixed(3)} \
+      const trimCmd = `ffmpeg -y -i "${shotVideoPath}" -t ${trimDuration.toFixed(3)} \
         ${VIDEO_ENCODE_SETTINGS} \
         -an -avoid_negative_ts make_zero "${trimmedShotPath}"`;
       execSync(trimCmd, { stdio: "pipe" });
@@ -737,7 +760,7 @@ async function processBrollScene(
 
       shotVideoPaths.push(trimmedShotPath);
       console.log(
-        `[UGC Assembly] Montage shot ${i + 1} complete: ${shot.durationSeconds}s`,
+        `[UGC Assembly] Montage shot ${i + 1} complete: ${trimDuration}s`,
       );
     }
 
@@ -759,6 +782,23 @@ async function processBrollScene(
       `[UGC Assembly] Montage concatenated: ${getMediaDuration(concatenatedPath).toFixed(2)}s`,
     );
   } else {
+    let finalAudioPath = audioPath;
+    let finalAudioDuration = audioDuration;
+
+    if (audioDuration > MAX_KLING_VIDEO_DURATION) {
+      const targetDuration = 7;
+      console.log(
+        `[UGC Assembly] B-Roll Scene ${sceneNumber}: Audio ${audioDuration.toFixed(2)}s > 10s, speeding up to ~${targetDuration}s`,
+      );
+      const { outputPath, finalDuration } = speedUpAudio(audioPath, targetDuration, sceneNumber);
+      finalAudioPath = outputPath;
+      finalAudioDuration = finalDuration;
+
+      if (fs.existsSync(audioPath) && audioPath !== finalAudioPath) {
+        fs.unlinkSync(audioPath);
+      }
+    }
+
     onProgress?.(`Scene ${sceneNumber}: Generating video...`);
     const imageUrl = await s3Service.getPresignedUrl(imageKey, 3600);
 
@@ -809,25 +849,8 @@ async function processBrollScene(
     await s3Service.downloadVideoFromUrl(klingVideoUrl, silentVideoPath);
 
     processedVideoPath = silentVideoPath;
-    if (audioDuration > MAX_KLING_VIDEO_DURATION) {
-      onProgress?.(`Scene ${sceneNumber}: Building Video...`);
-      console.log(
-        `[UGC Assembly] B-Roll Scene ${sceneNumber}: Audio ${audioDuration.toFixed(2)}s > ${MAX_KLING_VIDEO_DURATION}s, extending video`,
-      );
-      processedVideoPath = await extendVideoToMatchAudio(
-        silentVideoPath,
-        audioDuration,
-        prompt,
-        sceneNumber,
-        teamId,
-      );
-      if (
-        fs.existsSync(silentVideoPath) &&
-        silentVideoPath !== processedVideoPath
-      ) {
-        fs.unlinkSync(silentVideoPath);
-      }
-    }
+    audioPath = finalAudioPath;
+    audioDuration = finalAudioDuration;
   }
 
   onProgress?.(`Scene ${sceneNumber}: Adding voiceover...`);

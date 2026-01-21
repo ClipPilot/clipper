@@ -15,10 +15,11 @@ export interface GenerateSceneImagesRequest {
   characterId: number;
   userRefinement?: string;
   supportingImageKeys?: string[];
-  // Advanced options
   generateEndFrame?: boolean;
   customStartImageKey?: string;
   customEndImageKey?: string;
+  singleBRollShotIndex?: number;
+  existingBRollImages?: string[];
 }
 
 export interface GenerateSceneImagesResponse {

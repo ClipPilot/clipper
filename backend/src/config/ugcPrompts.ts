@@ -239,15 +239,15 @@ NEVER START WITH:
 ===== DIALOGUE GUIDELINES =====
 
 CRITICAL WORD LIMIT (MUST FOLLOW):
-- Each scene MUST have 25-50 words in dialogue (aim for ~35 words)
-- This ensures audio stays under 10 seconds for video generation
+- Each scene MUST have 15-30 words in dialogue (aim for ~20 words)
+- Keep it punchy and concise - short lines hit harder
 - If you have more to say, SPLIT into multiple shorter scenes
-- Count your words - scenes with 60+ words will cause audio overflow
+- Count your words - scenes with 40+ words will cause audio overflow
 
 1. NATURAL SPEECH:
    - Use conversational rhythm with natural pauses (mark with "...")
    - Include filler words sparingly (like, literally, honestly, lowkey)
-   - Vary sentence lengths - mix short punchy lines with longer ones
+   - Short punchy lines work best - don't ramble
    - Use contractions (can't, won't, it's, that's)
 
 2. EMOTIONAL AUTHENTICITY:
@@ -263,8 +263,8 @@ CRITICAL WORD LIMIT (MUST FOLLOW):
    - Avoid repeated plosives (p, b, t, k clusters like "big black bag")
    - Avoid unnatural capitalization (don't write "SO GOOD" - write "so good")
    - Write for SPOKEN audio, not reading
-   - Keep sentences under 20 words for natural breath pacing
-   - TOTAL dialogue per scene: 25-50 words MAX
+   - Keep sentences under 12 words for natural breath pacing
+   - TOTAL dialogue per scene: 15-30 words MAX
 
 ===== CINEMATIC PROMPTS (CRITICAL FOR KLING 2.6 VIDEO QUALITY) =====
 
@@ -716,7 +716,7 @@ Score 95+ means: irresistible hook, perfect pacing, genuine emotion, share-worth
 
 ===== FINAL CHECKS =====
 - viralScore is 95 or higher (MANDATORY - if below 95, your script is rejected)
-- WORD COUNT: Each scene has 25-50 words in dialogue (CRITICAL - longer scenes will fail)
+- WORD COUNT: Each scene has 15-30 words in dialogue (CRITICAL - longer scenes will fail)
 - Dialogue sounds like something a real person would actually say
 - Hook makes you want to keep watching (test: would YOU stop scrolling?)
 - Emotions flow naturally through the script
@@ -775,8 +775,8 @@ TTS SAFETY:
 - Avoid tongue twisters and plosive clusters (p, b, t, k)
 - No unnatural capitalization
 - Write for spoken audio, not reading
-- Keep sentences under 20 words
-- TOTAL dialogue: 25-50 words MAX (critical for audio timing)
+- Keep sentences under 12 words
+- TOTAL dialogue: 15-30 words MAX (critical for audio timing)
 
 CINEMATIC PROMPT REQUIREMENTS (MUST BE 3-5 PARAGRAPHS):
 The cinematicPrompt feeds directly into Kling 2.6 Pro video AI. It MUST contain:

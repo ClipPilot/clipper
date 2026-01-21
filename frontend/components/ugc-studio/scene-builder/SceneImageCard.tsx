@@ -160,8 +160,12 @@ export function SceneImageCard({
     onImageSelect,
   ]);
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (singleShotIndex?: number) => {
     setIsGenerating(true);
+
+    const existingImages = singleShotIndex !== undefined && generation?.generatedImages
+      ? generation.generatedImages.map((img) => img.key)
+      : undefined;
 
     const requestData = {
       teamId,
@@ -172,6 +176,8 @@ export function SceneImageCard({
       userRefinement: localRefinement || undefined,
       supportingImageKeys: supportingImageKeys,
       generateEndFrame: false,
+      singleBRollShotIndex: singleShotIndex,
+      existingBRollImages: existingImages,
     };
 
     try {
@@ -553,18 +559,31 @@ export function SceneImageCard({
                       </div>
                       <p className="text-xs text-text-secondary line-clamp-2">{shot.action}</p>
                     </div>
-                    {isSelected && shotImage?.url && (
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="flat"
-                        className="bg-amber-500/20 text-amber-400 shrink-0"
-                        onPress={(e) => {
-                          setZoomImageUrl(shotImage.url);
-                        }}
-                      >
-                        <Icon icon="solar:magnifer-zoom-in-bold" width={14} />
-                      </Button>
+                    {isSelected && (
+                      <div className="flex gap-1 shrink-0">
+                        {shotImage?.url && (
+                          <Button
+                            isIconOnly
+                            size="sm"
+                            variant="flat"
+                            className="bg-amber-500/20 text-amber-400"
+                            onPress={() => setZoomImageUrl(shotImage.url)}
+                          >
+                            <Icon icon="solar:magnifer-zoom-in-bold" width={14} />
+                          </Button>
+                        )}
+                        <Button
+                          isIconOnly
+                          size="sm"
+                          variant="flat"
+                          className="bg-blue-500/20 text-blue-400"
+                          isLoading={isCurrentlyGenerating}
+                          isDisabled={isCurrentlyGenerating}
+                          onPress={() => handleGenerate(idx)}
+                        >
+                          <Icon icon="solar:refresh-bold" width={14} />
+                        </Button>
+                      </div>
                     )}
                   </div>
                 );
