@@ -114,6 +114,7 @@ function MyClipsPageContent() {
   const [isSearching, setIsSearching] = useState(false);
   const [searchPagination, setSearchPagination] = useState({ total: 0, hasMore: false });
   const [isSearchMode, setIsSearchMode] = useState(false);
+  const [isMobileFolderOpen, setIsMobileFolderOpen] = useState(false);
   const clipSearchRef = useRef<ClipSearchHandle>(null);
 
   // Callbacks for ClipSearch component
@@ -255,8 +256,8 @@ function MyClipsPageContent() {
   };
 
   const handleOpenCreateFolder = (parentFolderId?: number | null) => {
-    // Only Scale plan has folder management
-    if (selectedTeam?.plan !== "scale") {
+    // Scale and Enterprise plans have folder management
+    if (selectedTeam?.plan !== "scale" && selectedTeam?.plan !== "enterprise") {
       return;
     }
     setCreateFolderParentId(parentFolderId || null);
@@ -432,6 +433,44 @@ function MyClipsPageContent() {
                 onSearchModeChange={handleSearchModeChange}
               />
             )}
+
+          {/* Mobile folder toggle button */}
+          {!isSearchMode && (selectedTeam?.plan === "scale" || selectedTeam?.plan === "enterprise" || folderTree.length > 0) && (
+            <div className="lg:hidden">
+              <Button
+                className="w-full bg-surface-base border border-border-base justify-between"
+                variant="flat"
+                onPress={() => setIsMobileFolderOpen(!isMobileFolderOpen)}
+                startContent={<Icon icon="solar:folder-bold-duotone" className="text-accent-400" width={18} />}
+                endContent={<Icon icon={isMobileFolderOpen ? "solar:alt-arrow-up-linear" : "solar:alt-arrow-down-linear"} width={16} />}
+              >
+                <span className="flex-1 text-left text-text-primary">
+                  {selectedFolderId === null ? "All Folders" : folderPath[folderPath.length - 1]?.name || "Folder"}
+                </span>
+              </Button>
+
+              {/* Mobile folder tree dropdown */}
+              {isMobileFolderOpen && (
+                <div className="mt-2 bg-surface-base border border-border-base rounded-lg p-3 max-h-64 overflow-y-auto">
+                  <FolderTree
+                    folders={folderTree}
+                    selectedFolderId={selectedFolderId}
+                    isCollapsed={false}
+                    isReadOnly={selectedTeam?.plan !== "scale" && selectedTeam?.plan !== "enterprise"}
+                    onSelectFolder={(folderId) => {
+                      handleSelectFolder(folderId);
+                      setIsMobileFolderOpen(false);
+                    }}
+                    onToggleCollapse={() => {}}
+                    onMoveClip={moveClipToFolder}
+                    onMoveFolder={moveFolder}
+                    onCreateFolder={handleOpenCreateFolder}
+                    onDeleteFolder={deleteFolder}
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
             {/* Folder tree - hidden on mobile, shown on lg+ */}

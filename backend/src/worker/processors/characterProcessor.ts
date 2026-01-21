@@ -125,6 +125,7 @@ async function generateSingleImage(
       prompt,
       aspectRatio: "3:4",
       imageUrls: referenceImageUrls,
+      usePro: true,
     });
 
     // Download image from FAL URL and upload to S3

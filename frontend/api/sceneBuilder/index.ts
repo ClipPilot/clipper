@@ -15,10 +15,11 @@ export interface GenerateSceneImagesRequest {
   characterId: number;
   userRefinement?: string;
   supportingImageKeys?: string[];
-  // Advanced options
   generateEndFrame?: boolean;
   customStartImageKey?: string;
   customEndImageKey?: string;
+  singleBRollShotIndex?: number;
+  existingBRollImages?: string[];
 }
 
 export interface GenerateSceneImagesResponse {
@@ -26,6 +27,12 @@ export interface GenerateSceneImagesResponse {
   jobId: string;
   status: string;
   message: string;
+}
+
+export interface BRollShotData {
+  action: string;
+  cinematicPrompt: string;
+  durationSeconds: number;
 }
 
 export interface GenerateAllSceneImagesRequest {
@@ -42,6 +49,7 @@ export interface GenerateAllSceneImagesRequest {
     emotion: string;
     shotType?: string;
     cameraAngle?: string;
+    bRollShots?: BRollShotData[] | null;
     // Optional refinements
     userRefinement?: string;
     supportingImageKeys?: string[];

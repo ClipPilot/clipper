@@ -37,7 +37,7 @@ class TeamInviteService {
     }
 
     if (team.type === "personal" && !canInviteMembers(team.plan)) {
-      throw new Error("Cannot invite members to personal workspaces. Upgrade to Scale plan to invite team members.");
+      throw new Error("Cannot invite members to personal workspaces. Upgrade to Scale or Enterprise plan to invite team members.");
     }
 
     const [existingUser] = await db

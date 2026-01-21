@@ -57,6 +57,7 @@ export function ScriptStep({
   const [progressMessage, setProgressMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pendingScriptId, setPendingScriptId] = useState<string | null>(null);
+  const [isSavingBRoll, setIsSavingBRoll] = useState(false);
   const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Existing scripts state
@@ -921,6 +922,7 @@ export function ScriptStep({
 
       <ScriptEditor
         script={scripts[selectedVariantIndex]}
+        scriptId={scriptId || ""}
         character={selectedCharacter}
         selectedActorImageUrl={actorImages[selectedActorImageIndex]}
         onSceneUpdate={handleSceneUpdate}
@@ -928,6 +930,7 @@ export function ScriptStep({
         onAddScene={handleAddScene}
         onRemoveScene={handleRemoveScene}
         onRegenerateScene={handleRegenerateScene}
+        onSavingStateChange={setIsSavingBRoll}
       />
 
       {error && (
@@ -952,6 +955,7 @@ export function ScriptStep({
           className="bg-accent-400 text-white font-semibold"
           onPress={handleContinue}
           isLoading={isSaving}
+          isDisabled={isSavingBRoll}
           endContent={!isSaving && <Icon icon="solar:arrow-right-linear" width={16} />}
         >
           {isSaving ? "Saving..." : "Continue to Audio"}

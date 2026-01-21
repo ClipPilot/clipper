@@ -32,7 +32,9 @@ interface GenerateVideoStepProps {
 
 type StepState = "ready" | "confirming" | "generating";
 
-const CREDIT_PER_SCENE = 2;
+function calculateCreditCost(scenes: Array<{ shotType: string; bRollShots?: unknown[] | null }>) {
+  return scenes.length * 2;
+}
 
 export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) {
   const router = useRouter();
@@ -50,7 +52,7 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
   const currentScript = scripts[selectedVariantIndex];
   const scenes = currentScript?.scenes || [];
   const totalScenes = scenes.length;
-  const creditCost = totalScenes * CREDIT_PER_SCENE;
+  const creditCost = calculateCreditCost(scenes);
 
   // Check for existing completed video on mount (not during fresh start)
   useEffect(() => {
@@ -75,7 +77,7 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
 
   const handleGenerateClick = () => {
     if (!usageStats || usageStats.totalRemaining < creditCost) {
-      setError(`Not enough credits. You need ${creditCost} credits (${totalScenes} scenes × ${CREDIT_PER_SCENE} credits) to generate this video.`);
+      setError(`Not enough credits. You need ${creditCost} credits to generate this video.`);
       return;
     }
     setStepState("confirming");
@@ -205,18 +207,6 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
               </div>
             </div>
 
-            {/* Estimated Duration */}
-            <div className="flex items-center gap-3 p-3 bg-surface-base rounded-xl">
-              <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
-                <Icon icon="solar:clock-circle-bold-duotone" className="text-blue-400" width={20} />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-text-primary">Estimated Duration</p>
-                <p className="text-xs text-text-secondary">
-                  {Math.ceil(scenes.reduce((acc, s) => acc + (s.estimatedDurationSeconds || (s as any).durationSeconds || 5), 0))} seconds
-                </p>
-              </div>
-            </div>
           </div>
         </CardBody>
       </Card>
@@ -234,7 +224,7 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
                   {creditCost} Credits
                 </p>
                 <p className="text-sm text-text-secondary">
-                  {totalScenes} scenes × {CREDIT_PER_SCENE} credits each
+                  {totalScenes} scenes • 2 credits per scene
                 </p>
                 <p className="text-xs text-text-muted mt-1">
                   {usageStats
@@ -320,7 +310,7 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
                 This will use <span className="font-bold text-accent-400">{creditCost} credits</span>
               </p>
               <p className="text-xs text-text-muted mb-2">
-                {totalScenes} scenes × {CREDIT_PER_SCENE} credits each
+                {totalScenes} scenes • 2 credits per scene
               </p>
               <p className="text-sm text-text-secondary">
                 You&apos;ll have {usageStats ? usageStats.totalRemaining - creditCost : 0} credits remaining

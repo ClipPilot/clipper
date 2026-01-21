@@ -35,9 +35,7 @@ const SCRIPT_STRUCTURES: Record<string, { name: string; pattern: ScriptStructure
     pattern: [
       { type: "hook", shot: "a-roll", duration: "2-4s" },
       { type: "problem", shot: "a-roll", duration: "4-6s" },
-      { type: "demo", shot: "b-roll", duration: "4-6s" },
-      { type: "demo", shot: "b-roll", duration: "4-6s" },
-      { type: "solution", shot: "a-roll", duration: "4-6s" },
+      { type: "demo", shot: "b-roll", duration: "3-5s" },
       { type: "cta", shot: "a-roll", duration: "3-5s" },
     ],
   },
@@ -45,20 +43,19 @@ const SCRIPT_STRUCTURES: Record<string, { name: string; pattern: ScriptStructure
     name: "Problem → Solution",
     pattern: [
       { type: "hook", shot: "a-roll", duration: "2-4s" },
-      { type: "problem", shot: "a-roll", duration: "6-8s" },
+      { type: "problem", shot: "a-roll", duration: "4-6s" },
       { type: "solution", shot: "mixed", duration: "4-6s" },
-      { type: "demo", shot: "b-roll", duration: "6-8s" },
-      { type: "cta", shot: "a-roll", duration: "3-5s" },
+      { type: "testimonial", shot: "a-roll", duration: "4-5s" },
+      { type: "cta", shot: "a-roll", duration: "3-4s" },
     ],
   },
   storytelling: {
     name: "Story Arc",
     pattern: [
-      { type: "hook", shot: "a-roll", duration: "3-4s" },
-      { type: "problem", shot: "a-roll", duration: "5-7s" },
-      { type: "problem", shot: "b-roll", duration: "3-5s" },
+      { type: "hook", shot: "a-roll", duration: "2-4s" },
+      { type: "problem", shot: "b-roll", duration: "3-4s" },
       { type: "solution", shot: "a-roll", duration: "4-6s" },
-      { type: "testimonial", shot: "a-roll", duration: "4-6s" },
+      { type: "testimonial", shot: "a-roll", duration: "4-5s" },
       { type: "cta", shot: "a-roll", duration: "3-4s" },
     ],
   },
@@ -70,10 +67,8 @@ const SCRIPT_STRUCTURES: Record<string, { name: string; pattern: ScriptStructure
     name: "Unboxing Reveal",
     pattern: [
       { type: "hook", shot: "a-roll", duration: "2-4s" },
-      { type: "demo", shot: "b-roll", duration: "5-7s" },
+      { type: "demo", shot: "b-roll", duration: "3-5s" },
       { type: "solution", shot: "a-roll", duration: "4-6s" },
-      { type: "demo", shot: "b-roll", duration: "5-7s" },
-      { type: "testimonial", shot: "a-roll", duration: "4-5s" },
       { type: "cta", shot: "a-roll", duration: "3-4s" },
     ],
   },
@@ -81,10 +76,8 @@ const SCRIPT_STRUCTURES: Record<string, { name: string; pattern: ScriptStructure
     name: "Quick Tutorial",
     pattern: [
       { type: "hook", shot: "a-roll", duration: "2-4s" },
-      { type: "demo", shot: "mixed", duration: "6-8s" },
-      { type: "demo", shot: "b-roll", duration: "5-7s" },
-      { type: "demo", shot: "mixed", duration: "5-7s" },
-      { type: "solution", shot: "a-roll", duration: "4-5s" },
+      { type: "demo", shot: "mixed", duration: "4-6s" },
+      { type: "demo", shot: "b-roll", duration: "3-5s" },
       { type: "cta", shot: "a-roll", duration: "3-4s" },
     ],
   },
@@ -246,15 +239,15 @@ NEVER START WITH:
 ===== DIALOGUE GUIDELINES =====
 
 CRITICAL WORD LIMIT (MUST FOLLOW):
-- Each scene MUST have 25-50 words in dialogue (aim for ~35 words)
-- This ensures audio stays under 10 seconds for video generation
+- Each scene MUST have 15-30 words in dialogue (aim for ~20 words)
+- Keep it punchy and concise - short lines hit harder
 - If you have more to say, SPLIT into multiple shorter scenes
-- Count your words - scenes with 60+ words will cause audio overflow
+- Count your words - scenes with 40+ words will cause audio overflow
 
 1. NATURAL SPEECH:
    - Use conversational rhythm with natural pauses (mark with "...")
    - Include filler words sparingly (like, literally, honestly, lowkey)
-   - Vary sentence lengths - mix short punchy lines with longer ones
+   - Short punchy lines work best - don't ramble
    - Use contractions (can't, won't, it's, that's)
 
 2. EMOTIONAL AUTHENTICITY:
@@ -270,8 +263,8 @@ CRITICAL WORD LIMIT (MUST FOLLOW):
    - Avoid repeated plosives (p, b, t, k clusters like "big black bag")
    - Avoid unnatural capitalization (don't write "SO GOOD" - write "so good")
    - Write for SPOKEN audio, not reading
-   - Keep sentences under 20 words for natural breath pacing
-   - TOTAL dialogue per scene: 25-50 words MAX
+   - Keep sentences under 12 words for natural breath pacing
+   - TOTAL dialogue per scene: 15-30 words MAX
 
 ===== CINEMATIC PROMPTS (CRITICAL FOR KLING 2.6 VIDEO QUALITY) =====
 
@@ -374,12 +367,86 @@ If you write vague descriptions, you get vague/wrong videos. Be HYPER-SPECIFIC a
 
 Think of it like directing an actor who can only follow literal instructions:
 BAD: "Actor shows excitement about the product"
-GOOD: "Actor holds product at chest height, eyes widen with genuine surprise, mouth opens into delighted smile, tilts product toward camera to show label while nodding enthusiastically"
+GOOD: "Actor holds product at chest height, eyes widen with surprise, slight smile forming"
 
 BAD: "Product demonstration shot"
-GOOD: "Close-up of fingers slowly unscrewing product cap, 2-second pause, then gently squeezing bottle to dispense cream onto fingertip, cream catches key light showing smooth texture"
+GOOD: "Close-up of hands holding bottle, slowly rotating it to show label"
 
-The video AI will generate EXACTLY what you describe - nothing more, nothing less. Describe the FULL visual narrative.
+===== CRITICAL: B-ROLL SCENES =====
+
+B-roll scenes can use as many shots as needed (1, 2, 3, 4, etc). Use your judgment based on what the scene requires!
+
+**B-ROLL SHOTS**
+Use "bRollShots" array with quick cuts that play under ONE continuous voiceover.
+
+When to use multiple shots:
+- Unboxing sequences (box → opening → reveal)
+- Before/after transformations
+- Multi-angle product showcases
+- Duration 4+ seconds with natural cut points
+
+When to use SINGLE shot (just 1 item in bRollShots):
+- Simple product closeup
+- One clear action (hands holding product)
+- Short 2-4 second scenes
+- The scene only needs one visual
+
+CRITICAL - productImageNeeded field (DEPENDS ON SCENE TYPE):
+
+**PROBLEM scenes** → productImageNeeded: FALSE for ALL shots
+- Show the struggle, frustration, "before" state
+- No product yet - they haven't discovered it!
+- Examples: tired hands, messy desk, frustrated expression, chaotic morning
+
+**HOOK scenes** → productImageNeeded: FALSE usually
+- Grab attention with relatable moments or intrigue
+- Product typically not shown yet
+- Examples: shocked face, "wait what?" moment, relatable scenario
+
+**SOLUTION/DEMO/CTA scenes** → productImageNeeded: TRUE where product appears
+- This is where the product shines
+- Show the product being used, held, displayed
+- Examples: unboxing, product closeup, hands holding product, product on clean surface
+
+**TESTIMONIAL scenes** → Mixed, depends on the shot
+- Could show product OR just the satisfied result/lifestyle
+
+Think about the STORY: Would the product logically appear in this moment of the narrative?
+
+Example - Problem scene B-roll (NO product needed):
+{
+  "dialogue": "[frustrated] I was so tired of dealing with this every single day...",
+  "estimatedDurationSeconds": 4,
+  "bRollShots": [
+    { "action": "Tired hands rubbing face", "cinematicPrompt": "...", "durationSeconds": 2, "productImageNeeded": false },
+    { "action": "Messy desk with scattered papers", "cinematicPrompt": "...", "durationSeconds": 2, "productImageNeeded": false }
+  ]
+}
+
+Example - Demo scene B-roll (mixed):
+{
+  "dialogue": "[excited] And then I found this game-changer...",
+  "estimatedDurationSeconds": 5,
+  "bRollShots": [
+    { "action": "Soft morning light through window", "cinematicPrompt": "...", "durationSeconds": 2, "productImageNeeded": false },
+    { "action": "Product sitting elegantly on clean surface", "cinematicPrompt": "...", "durationSeconds": 3, "productImageNeeded": true }
+  ]
+}
+
+Example - Single shot B-roll (just one shot is fine!):
+{
+  "dialogue": "[whispering] Look at this quality...",
+  "estimatedDurationSeconds": 3,
+  "bRollShots": [
+    { "action": "Close-up of product texture", "cinematicPrompt": "...", "durationSeconds": 3, "productImageNeeded": true }
+  ]
+}
+
+Rules for bRollShots:
+- Use as many shots as the scene needs (1, 2, 3, 4, etc)
+- Each shot: 1-4 seconds, ONE simple action
+- Total duration of all shots = estimatedDurationSeconds
+- The single voiceover (dialogue field) plays continuously over all shots
 
 ===== CRITICAL: SCREENS, APPS & DIGITAL PRODUCTS =====
 
@@ -511,18 +578,22 @@ Camera executes slow 2.5-second push-in from medium shot to close-up, timing the
 
 Shot on virtual 50mm lens equivalent with f/2.0 for flattering portrait depth. Warmer color grade than problem scene - this is the visual turning point. Subtle lens flare from the golden side light adds cinematic hope. Natural skin texture visible but lighting is more forgiving. NEGATIVE: No over-the-top fake excitement, no theatrical expressions, maintains authentic relief rather than performative joy, no sudden lighting changes, smooth continuous transformation, keeps facial features consistent throughout."
 
------ DEMO/B-ROLL SCENES (Product as hero - cinematic showcase) -----
-Goals: Product photography quality, professional lighting, texture and detail focus, premium presentation
-Key elements: Macro details, slow rotation, rim lighting, shallow depth of field, clean backgrounds
+----- DEMO/B-ROLL SCENES (Product as hero - fast, punchy cuts) -----
+Goals: Quick product showcase, clean visuals, ONE simple action per scene
+Key elements: Clean backgrounds, good lighting, simple motion, 2-4 second duration
+
+CRITICAL B-ROLL RULE: ONE simple action per scene. Keep it fast and punchy.
+- Scene 1: "Hands holding product, slight rotation" (2-3s)
+- Scene 2: "Close-up of label" (2s)
+- Scene 3: "Product being placed on surface" (2s)
+Split complex demos into multiple quick B-roll scenes rather than one long complex scene.
 
 EXAMPLE DEMO B-ROLL cinematicPrompt:
-"Extreme close-up macro shot of product taking up 70% of frame, set against clean white marble surface with subtle gray veining visible. Three-point product photography lighting: key light from 45-degrees camera-left creating dimension, fill from right at 50% intensity preventing harsh shadows, rim light from behind creating golden edge highlight that separates product from background. Color temperature balanced at 5000K for accurate product colors. Shallow depth of field renders marble texture as soft gradient.
+"Close-up of product bottle against clean white surface. Soft key light from camera-left creates gentle highlights on the glossy surface. Label facing camera, text crisp and readable. Shallow depth of field blurs background to creamy gradient.
 
-Product bottle is the absolute hero - label facing camera at 15-degree angle for optimal readability while showing dimensional form. Glossy surface catches key light with specular highlight running diagonally across bottle. Texture of product material fully visible - if matte, show subtle surface grain; if glossy, show pristine reflections. Cap detail visible and sharp. Label text is crisp, readable, and remains consistent - brand name and product text stay sharp throughout. Any embossed text or design elements catching rim light for emphasis. Product appears premium, desirable, tactile. ++Product maintains identical shape, color, proportions, and label design throughout entire shot++.
+Two hands enter frame holding product at base. Simple slow rotation showing the label - just one smooth 90-degree turn over 2 seconds. Movement is steady and deliberate. Product maintains consistent shape and proportions throughout.
 
-Two fingers enter frame from bottom-left, gently gripping product at base with consistent grip position throughout. Over 3 seconds, fingers execute slow clockwise rotation revealing different angles - front label, then side with ingredient list, then back to front. Rotation is smooth and deliberate, approximately 180 degrees total, maintaining exact product dimensions throughout the turn. As product rotates, rim light catches different edges creating moving highlight that guides eye. At 2.5-second mark, slight tilt toward camera showing top/cap detail before settling back. Same bottle, same label, same cap from first frame to last.
-
-Shot on virtual 100mm macro lens equivalent with f/2.8 creating professional product photography depth of field. Clean color science with accurate product representation. Subtle shadow beneath product grounds it on surface. Studio photography aesthetic but with slight lifestyle warmth. NEGATIVE: No face or person visible beyond hands, no cluttered background, no harsh unflattering shadows on product, no fingerprints or smudges visible, no dust particles, no label reflections obscuring text, no morphing of product shape or proportions, no changing label text or design, no warping bottle dimensions, no blurry or garbled typography, no inconsistent product colors, product maintains exact identical appearance from first frame to last frame, no extra fingers, maintains same product-to-hand scale relationship throughout."
+Shot on virtual 85mm lens with f/2.8 depth of field. Clean product photography aesthetic. NEGATIVE: No face visible, no complex multi-step actions, no morphing of product shape, label stays consistent, no extra fingers."
 
 ----- TESTIMONIAL SCENES (Authentic storytelling - speaking from experience) -----
 Goals: Intimate trust-building, genuine micro-expressions, conversational authenticity
@@ -624,6 +695,14 @@ Examples based on setting:
 
 For b-roll and mixed scenes: set ambientSound to null (voiceover only, no background)
 
+bRollShots field (FOR ALL B-ROLL SCENES):
+- Provide an array of shots (1, 2, 3, 4, etc - as many as the scene needs)
+- Each shot needs: action, cinematicPrompt, durationSeconds (1-4s each), productImageNeeded (boolean)
+- productImageNeeded depends on SCENE TYPE:
+  * PROBLEM/HOOK scenes: usually ALL false (no product yet in the story)
+  * SOLUTION/DEMO/CTA scenes: true where product is shown
+- Total duration of all bRollShots should equal estimatedDurationSeconds
+
 DURATION RULES:
 - estimatedDurationSeconds MUST be a NUMBER (integer), not a range or text
 - Example: use 4 not "3-5s" or "about 4 seconds"
@@ -637,20 +716,23 @@ Score 95+ means: irresistible hook, perfect pacing, genuine emotion, share-worth
 
 ===== FINAL CHECKS =====
 - viralScore is 95 or higher (MANDATORY - if below 95, your script is rejected)
-- WORD COUNT: Each scene has 25-50 words in dialogue (CRITICAL - longer scenes will fail)
+- WORD COUNT: Each scene has 15-30 words in dialogue (CRITICAL - longer scenes will fail)
 - Dialogue sounds like something a real person would actually say
 - Hook makes you want to keep watching (test: would YOU stop scrolling?)
 - Emotions flow naturally through the script
 - cinematicPrompts are DETAILED like film director notes (not generic)
 - Total duration close to ${duration} seconds
 - Structure matches the required pattern EXACTLY
-- estimatedDurationSeconds is a NUMBER for each scene (max 10 seconds per scene)
+- estimatedDurationSeconds is a NUMBER for each scene (a-roll: max 8s, single-shot b-roll: max 4s, montage b-roll: max 10s)
 - a-roll scenes: natural dialogue (NO voice tags), MUST have ambientSound (e.g., "gym with weights clanking")
 - b-roll/mixed scenes: MUST have voice direction tags, ambientSound should be null
 - No tongue twisters or plosive clusters in dialogue
-- Each scene's action is SPECIFIC, not generic ("rotates product slowly" not "holds product")
+- B-ROLL: Use bRollShots array with as many shots as needed (1, 2, 3, 4, etc)
+- productImageNeeded based on scene type: PROBLEM/HOOK = false, SOLUTION/DEMO/CTA = true where product shown
+- Each individual shot's action is SPECIFIC but SIMPLE - no multi-step sequences per shot
 - VERIFY: Every a-roll scene has a non-null ambientSound describing background audio
 - VERIFY: No scene exceeds 50 words - if content is longer, split into multiple scenes
+- VERIFY: If bRollShots is used, total duration of shots = estimatedDurationSeconds
 `;
 };
 
@@ -693,8 +775,8 @@ TTS SAFETY:
 - Avoid tongue twisters and plosive clusters (p, b, t, k)
 - No unnatural capitalization
 - Write for spoken audio, not reading
-- Keep sentences under 20 words
-- TOTAL dialogue: 25-50 words MAX (critical for audio timing)
+- Keep sentences under 12 words
+- TOTAL dialogue: 15-30 words MAX (critical for audio timing)
 
 CINEMATIC PROMPT REQUIREMENTS (MUST BE 3-5 PARAGRAPHS):
 The cinematicPrompt feeds directly into Kling 2.6 Pro video AI. It MUST contain:
@@ -717,7 +799,9 @@ Create a new version that:
 - Keeps the same scene type and approximate duration
 - Uses a completely different approach/angle
 - Has STRONGER emotional impact than the original
-- Includes a SPECIFIC action (not "holds product" but "slowly rotates product, catching the light")
+- For B-ROLL: ONE simple action only (e.g., "hands rotating product" NOT "picks up, rotates, shows label, sets down")
+- For B-ROLL: Keep duration 2-4 seconds - fast and punchy
+- Includes a SPECIFIC but SIMPLE action - avoid multi-step sequences
 - Includes a DETAILED 3-5 paragraph cinematicPrompt following the structure above
 
 Return the regenerated scene with all fields (id, sceneNumber, sceneType, action, dialogue, emotion, estimatedDurationSeconds, shotType, cameraAngle, customCameraAngle, cinematicPrompt, cameraDirection).`;

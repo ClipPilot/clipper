@@ -25,18 +25,21 @@ export function generateGroundedCinematicSystemPrompt(
         ? `Product shot. Describe: product shape, colors, materials, any visible labels/text.`
         : `Actor with product. Describe: body position, hands, how they hold/interact with product.`;
 
-  return `Write a SHORT video prompt (under 800 chars) for Kling 2.6 describing the image.
+  return `Write a SHORT video prompt (under 800 chars) for Kling 2.6 Pro image-to-video.
 
 ${subjectFocus}
 
-FOCUS ON:
-1. Subject appearance exactly as shown (what to KEEP UNCHANGED)
-2. Action: ${action} with ${emotion} emotion
-3. Gentle motion (slow camera push-in, subtle movements)
+RULES (Kling 2.6 best practices):
+1. Focus on MOTION not scene description (image provides the scene)
+2. Use ++emphasis++ on critical elements that must stay unchanged
+3. One clear action, one camera movement
+4. Action: ${action} with ${emotion} emotion
+5. Motion: smooth gentle movement (slow push-in or subtle drift)
 
-SKIP: Long background descriptions, lighting details, technical camera specs.
+FORMAT YOUR PROMPT LIKE:
+"[Brief subject description]. ++Subject maintains exact appearance throughout++. [Motion instruction]. [Camera movement]. NEGATIVE: no morphing, no distortion, no extra fingers."
 
-END WITH: "NEGATIVE: no distortion, no morphing, subject maintains exact appearance throughout."
+SKIP: Long paragraphs, complex lighting, technical camera specs.
 
 OUTPUT: { "groundedPrompt": "..." } - Keep under 800 characters.`;
 }

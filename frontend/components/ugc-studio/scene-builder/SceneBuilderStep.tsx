@@ -14,6 +14,8 @@ import {
 import { sceneBuilderAPI } from "@/api/sceneBuilder";
 import { ugcScriptAPI } from "@/api/ugc";
 import { SceneImageCard } from "./SceneImageCard";
+import { StoryboardThumbnail } from "./StoryboardThumbnail";
+import { SCENE_TYPE_CONFIG } from "../script/types";
 import type { SceneImageGeneration } from "./types";
 
 interface SceneBuilderStepProps {
@@ -37,6 +39,7 @@ export function SceneBuilderStep({
   const freshStart = useAtomValue(freshStartAtom);
   const [loading, setLoading] = useState(true);
   const [generatingAll, setGeneratingAll] = useState(false);
+  const [selectedSceneId, setSelectedSceneId] = useState<string | null>(null);
 
   const currentScript = scripts[selectedVariantIndex];
   const scenes = currentScript?.scenes || [];
@@ -102,6 +105,8 @@ export function SceneBuilderStep({
                   status: "completed",
                   imageKey: sceneImage.image_key,
                   imageUrl: sceneImage.imageUrl,
+                  // Load generatedImages for B-roll scenes to enable single shot regeneration
+                  generatedImages: sceneImage.generatedImages,
                 };
               }
             );
@@ -117,6 +122,13 @@ export function SceneBuilderStep({
 
     loadSavedImages();
   }, [scriptId, characterId, freshStart, setSceneImages]);
+
+  // Auto-select first scene when scenes are loaded
+  useEffect(() => {
+    if (!loading && scenes.length > 0 && !selectedSceneId) {
+      setSelectedSceneId(scenes[0].id);
+    }
+  }, [loading, scenes, selectedSceneId]);
 
   useEffect(() => {
     if (loading || hasTriggeredAutoGenerate.current || generatingAll) return;
@@ -137,6 +149,87 @@ export function SceneBuilderStep({
     console.log("[SceneBuilder] Auto-generating all scene images");
     handleGenerateAll();
   }, [loading, scenes, sceneImages, generatingAll]);
+
+  // Global polling for all generating scenes (so timeline thumbnails update)
+  const globalPollRef = useRef<NodeJS.Timeout | null>(null);
+  const sceneImagesRef = useRef(sceneImages);
+  sceneImagesRef.current = sceneImages;
+
+  useEffect(() => {
+    // Start a single polling interval that checks all generating scenes
+    if (globalPollRef.current) return; // Already polling
+
+    globalPollRef.current = setInterval(async () => {
+      const currentSceneImages = sceneImagesRef.current;
+
+      // Find all scenes that are generating
+      const generatingEntries = Object.entries(currentSceneImages).filter(
+        ([_, state]) =>
+          state?.jobId &&
+          (state.status === "generating" || state.status === "regenerating")
+      );
+
+      if (generatingEntries.length === 0) return;
+
+      for (const [sceneId, state] of generatingEntries) {
+        if (!state?.jobId) continue;
+        const scene = scenes.find((s) => s.id === sceneId);
+        if (!scene) continue;
+
+        try {
+          const status = await sceneBuilderAPI.getGenerationStatus(state.jobId);
+
+          if (status.status === "completed" && status.images && status.images.length > 0) {
+            const img = status.images[0];
+            // Auto-select the first image
+            try {
+              await sceneBuilderAPI.selectSceneImage({
+                scriptId,
+                sceneId: scene.id,
+                sceneNumber: scene.sceneNumber,
+                imageKey: img.key,
+                generationJobId: status.jobId,
+              });
+            } catch (e) {
+              console.error("Failed to auto-select scene image:", e);
+            }
+
+            setSceneImages((prev) => ({
+              ...prev,
+              [scene.id]: {
+                ...prev[scene.id],
+                status: "completed",
+                imageKey: img.key,
+                imageUrl: img.url,
+                generatedImages: status.images?.map((i) => ({
+                  key: i.key,
+                  url: i.url,
+                  index: i.index,
+                })),
+              },
+            }));
+          } else if (status.status === "failed") {
+            setSceneImages((prev) => ({
+              ...prev,
+              [scene.id]: {
+                ...prev[scene.id],
+                status: "failed",
+              },
+            }));
+          }
+        } catch (error) {
+          console.error(`Failed to poll scene ${scene.id}:`, error);
+        }
+      }
+    }, 2000);
+
+    return () => {
+      if (globalPollRef.current) {
+        clearInterval(globalPollRef.current);
+        globalPollRef.current = null;
+      }
+    };
+  }, [scenes, scriptId, setSceneImages]);
 
   const handleGenerationStart = (sceneId: string, jobId: string) => {
     setSceneImages((prev) => ({
@@ -159,7 +252,9 @@ export function SceneBuilderStep({
         ...prev[sceneId],
         status: generation.status,
         jobId: generation.jobId,
-        generatedImages: generation.generatedImages,
+        // Only update generatedImages if new value exists, otherwise preserve existing
+        // This prevents wiping out existing images during polling before completion
+        generatedImages: generation.generatedImages ?? prev[sceneId]?.generatedImages,
       },
     }));
   };
@@ -226,6 +321,30 @@ export function SceneBuilderStep({
     }));
   };
 
+  const handleCustomBRollImageChange = (
+    sceneId: string,
+    shotIndex: number,
+    key: string | undefined,
+    url: string | undefined
+  ) => {
+    setSceneImages((prev) => {
+      const currentCustomImages = prev[sceneId]?.customBRollImages || {};
+      const newCustomImages = key && url
+        ? { ...currentCustomImages, [shotIndex]: { key, url } }
+        : Object.fromEntries(
+            Object.entries(currentCustomImages).filter(([idx]) => parseInt(idx) !== shotIndex)
+          );
+
+      return {
+        ...prev,
+        [sceneId]: {
+          ...prev[sceneId],
+          customBRollImages: Object.keys(newCustomImages).length > 0 ? newCustomImages : undefined,
+        },
+      };
+    });
+  };
+
   const handleGenerateAll = async () => {
     if (scenes.length === 0) return;
 
@@ -260,6 +379,7 @@ export function SceneBuilderStep({
           emotion: scene.emotion,
           shotType: scene.shotType,
           cameraAngle: scene.cameraAngle,
+          bRollShots: scene.bRollShots ?? null,
           // Optional refinements
           userRefinement: sceneImages[scene.id]?.userRefinement,
           supportingImageKeys: sceneImages[scene.id]?.supportingImageKeys,
@@ -314,7 +434,7 @@ export function SceneBuilderStep({
     <div className="space-y-6">
       <div className="text-center mb-6">
         <h2 className="text-2xl font-bold text-text-primary mb-2">
-          Build Your Scenes
+          Storyboard
         </h2>
         <p className="text-text-secondary">
           Generate reference images for each scene
@@ -378,73 +498,132 @@ export function SceneBuilderStep({
         </CardBody>
       </Card>
 
-      <div className="space-y-3">
-        {scenes.map((scene) => {
-          const sceneState = sceneImages[scene.id] || {
-            status: "idle" as const,
-          };
-          const generation: SceneImageGeneration | undefined =
-            sceneState.jobId || sceneState.status === "regenerating"
-              ? {
-                  jobId: sceneState.jobId || "",
-                  status: sceneState.status as
-                    | "queued"
-                    | "generating"
-                    | "regenerating"
-                    | "completed"
-                    | "failed",
-                  progress: 0,
-                  progressMessage:
-                    sceneState.status === "regenerating"
-                      ? "Regenerating..."
-                      : "",
-                  generatedImages: sceneState.generatedImages,
-                }
-              : undefined;
+      {/* Horizontal Storyboard Timeline */}
+      <div className="bg-surface-elevated border border-border-base rounded-xl p-4">
+        <div className="flex items-center gap-2 mb-4">
+          <Icon icon="solar:video-frame-play-horizontal-bold-duotone" className="text-accent-400" width={18} />
+          <span className="text-sm font-medium text-text-primary">Timeline</span>
+          <span className="text-xs text-text-muted ml-auto">
+            Click a scene to edit
+          </span>
+        </div>
 
-          return (
-            <SceneImageCard
-              key={scene.id}
-              scene={scene}
-              teamId={teamId}
-              scriptId={scriptId}
-              characterId={characterId}
-              productImageKeys={productImageKeys}
-              generation={generation}
-              imageKey={sceneState.imageKey}
-              imageUrl={sceneState.imageUrl}
-              userRefinement={sceneState.userRefinement}
-              supportingImageKeys={sceneState.supportingImageKeys}
-              useEndFrame={sceneState.useEndFrame}
-              customStartImageKey={sceneState.customStartImageKey}
-              customStartImageUrl={sceneState.customStartImageUrl}
-              customEndImageKey={sceneState.customEndImageKey}
-              customEndImageUrl={sceneState.customEndImageUrl}
-              onGenerationStart={(jobId) =>
-                handleGenerationStart(scene.id, jobId)
-              }
-              onGenerationUpdate={(gen) =>
-                handleGenerationUpdate(scene.id, gen)
-              }
-              onImageSelect={(key, url) =>
-                handleImageSelect(scene.id, key, url)
-              }
-              onRefinementChange={(ref) =>
-                handleRefinementChange(scene.id, ref)
-              }
-              onSupportingImagesChange={(keys) =>
-                handleSupportingImagesChange(scene.id, keys)
-              }
-              onUseEndFrameChange={(useEndFrame) =>
-                handleUseEndFrameChange(scene.id, useEndFrame)
-              }
-              onCustomImageChange={(type, key, url) =>
-                handleCustomImageChange(scene.id, type, key, url)
-              }
-            />
-          );
-        })}
+        <div className="overflow-x-auto py-2 -mx-2 px-4">
+          <div className="flex items-stretch gap-4 min-w-min">
+            {scenes.map((scene, index) => {
+              const sceneState = sceneImages[scene.id] || { status: "idle" as const };
+              const isSelected = selectedSceneId === scene.id;
+              const isGenerating = sceneState.status === "generating" || sceneState.status === "regenerating";
+              const hasImage = !!sceneState.imageKey;
+              const sceneConfig = SCENE_TYPE_CONFIG[scene.sceneType];
+
+              // Always prefer generatedImages[0] when available (most up-to-date after regeneration)
+              // Falls back to imageUrl which may be stale after single-shot/single-scene regeneration
+              const displayImageUrl = sceneState.generatedImages?.[0]?.url || sceneState.imageUrl;
+
+              return (
+                <div key={scene.id} className="flex items-center gap-3">
+                  <StoryboardThumbnail
+                    scene={scene}
+                    sceneConfig={sceneConfig}
+                    imageUrl={displayImageUrl}
+                    isSelected={isSelected}
+                    isGenerating={isGenerating}
+                    hasImage={hasImage}
+                    progress={
+                      sceneState.status === "generating" || sceneState.status === "regenerating"
+                        ? 50
+                        : undefined
+                    }
+                    onClick={() => setSelectedSceneId(scene.id)}
+                  />
+                  {/* Connector line between scenes */}
+                  {index < scenes.length - 1 && (
+                    <div className="flex items-center">
+                      <div className="w-6 h-0.5 bg-border-base" />
+                      <Icon icon="solar:alt-arrow-right-linear" className="text-text-muted" width={12} />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
+
+      {/* Selected Scene Detail Panel */}
+      {selectedSceneId && (() => {
+        const scene = scenes.find(s => s.id === selectedSceneId);
+        if (!scene) return null;
+
+        const sceneState = sceneImages[scene.id] || { status: "idle" as const };
+        // Create generation object if there's an active job, OR if we have generatedImages to preserve
+        const generation: SceneImageGeneration | undefined =
+          sceneState.jobId || sceneState.status === "regenerating" || sceneState.generatedImages?.length
+            ? {
+                jobId: sceneState.jobId || "",
+                status: sceneState.status as
+                  | "queued"
+                  | "generating"
+                  | "regenerating"
+                  | "completed"
+                  | "failed",
+                progress: 0,
+                progressMessage:
+                  sceneState.status === "regenerating"
+                    ? "Regenerating..."
+                    : "",
+                generatedImages: sceneState.generatedImages,
+              }
+            : undefined;
+
+        return (
+          <SceneImageCard
+            key={scene.id}
+            scene={scene}
+            teamId={teamId}
+            scriptId={scriptId}
+            characterId={characterId}
+            productImageKeys={productImageKeys}
+            generation={generation}
+            imageKey={sceneState.imageKey}
+            imageUrl={sceneState.imageUrl}
+            userRefinement={sceneState.userRefinement}
+            supportingImageKeys={sceneState.supportingImageKeys}
+            useEndFrame={sceneState.useEndFrame}
+            customStartImageKey={sceneState.customStartImageKey}
+            customStartImageUrl={sceneState.customStartImageUrl}
+            customEndImageKey={sceneState.customEndImageKey}
+            customEndImageUrl={sceneState.customEndImageUrl}
+            onGenerationStart={(jobId) =>
+              handleGenerationStart(scene.id, jobId)
+            }
+            onGenerationUpdate={(gen) =>
+              handleGenerationUpdate(scene.id, gen)
+            }
+            onImageSelect={(key, url) =>
+              handleImageSelect(scene.id, key, url)
+            }
+            onRefinementChange={(ref) =>
+              handleRefinementChange(scene.id, ref)
+            }
+            onSupportingImagesChange={(keys) =>
+              handleSupportingImagesChange(scene.id, keys)
+            }
+            onUseEndFrameChange={(useEndFrame) =>
+              handleUseEndFrameChange(scene.id, useEndFrame)
+            }
+            onCustomImageChange={(type, key, url) =>
+              handleCustomImageChange(scene.id, type, key, url)
+            }
+            customBRollImages={sceneState.customBRollImages}
+            onCustomBRollImageChange={(shotIndex, key, url) =>
+              handleCustomBRollImageChange(scene.id, shotIndex, key, url)
+            }
+            isStoryboardMode={true}
+          />
+        );
+      })()}
 
       {allComplete && onContinue && (
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-surface-dark/95 backdrop-blur-sm border-t border-border-base sm:hidden">

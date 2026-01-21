@@ -16,6 +16,13 @@ interface AuthRequest extends Request {
   user?: { id: string; email: string; dbUserId: number };
 }
 
+interface BRollShotData {
+  action: string;
+  cinematicPrompt: string;
+  durationSeconds: number;
+  productImageNeeded: boolean;
+}
+
 interface SceneData {
   id: string;
   sceneNumber: number;
@@ -26,6 +33,7 @@ interface SceneData {
   shotType: string;
   cameraAngle: string;
   cinematicPrompt: string;
+  bRollShots?: BRollShotData[] | null;
 }
 
 export class SceneBuilderController {
@@ -42,10 +50,11 @@ export class SceneBuilderController {
         characterId,
         userRefinement,
         supportingImageKeys,
-        // Advanced options
         generateEndFrame,
         customStartImageKey,
         customEndImageKey,
+        singleBRollShotIndex,
+        existingBRollImages,
       } = req.body;
 
       if (!teamId || !scriptId || !sceneId || sceneNumber === undefined || !characterId) {
@@ -80,6 +89,18 @@ export class SceneBuilderController {
 
       if (!sceneData) {
         return res.status(404).json({ error: "Scene not found in script" });
+      }
+
+      const [existingImage] = await db
+        .select()
+        .from(sceneImages)
+        .where(and(eq(sceneImages.script_id, scriptId), eq(sceneImages.scene_id, sceneId)))
+        .limit(1);
+
+      if (!existingImage) {
+        const creditCost = 2;
+        await teamService.incrementTeamUsage(teamId, creditCost);
+        console.log(`[SCENE_BUILDER] Charged ${creditCost} credits to team ${teamId}`);
       }
 
       const prompt = this.buildScenePrompt(sceneData, userRefinement);
@@ -120,19 +141,24 @@ export class SceneBuilderController {
           cinematicPrompt: sceneData.cinematicPrompt,
         },
         productImageKeys: script.product_image_keys as string[],
+        productName: script.product_name || undefined,
         userRefinement: userRefinement || undefined,
         supportingImageKeys: supportingImageKeys || [],
-        // Advanced options
         generateEndFrame: generateEndFrame || false,
         customStartImageKey: customStartImageKey || undefined,
         customEndImageKey: customEndImageKey || undefined,
+        bRollShots: sceneData.bRollShots || undefined,
+        singleBRollShotIndex,
+        existingBRollImages: existingBRollImages || undefined,
       });
 
       return res.status(202).json({
         success: true,
         jobId: job.id,
         status: "queued",
-        message: "Scene image generation started. Poll for status.",
+        message: singleBRollShotIndex !== undefined
+          ? `Regenerating shot ${singleBRollShotIndex + 1}. Poll for status.`
+          : "Scene image generation started. Poll for status.",
       });
     } catch (error) {
       console.error("[SCENE_BUILDER] Generate scene images error:", error);
@@ -162,12 +188,14 @@ export class SceneBuilderController {
           emotion?: string;
           shotType?: string;
           cameraAngle?: string;
+          cinematicPrompt?: string;
           // Optional refinements
           userRefinement?: string;
           supportingImageKeys?: string[];
           generateEndFrame?: boolean;
           customStartImageKey?: string;
           customEndImageKey?: string;
+          bRollShots?: BRollShotData[];
         }>;
       };
 
@@ -207,8 +235,13 @@ export class SceneBuilderController {
         // Fall back to DB data for backwards compatibility
         let sceneData: SceneData;
 
+        // Always get DB data to ensure we have bRollShots
+        const dbSceneData = selectedScript?.scenes?.find(
+          (s: SceneData) => s.id === sceneRequest.sceneId
+        ) as SceneData | undefined;
+
         if (sceneRequest.sceneType && sceneRequest.dialogue && sceneRequest.action && sceneRequest.emotion) {
-          // Use passed data (avoids stale DB reads)
+          // Use passed data (avoids stale DB reads), but fall back to DB for bRollShots if not provided
           sceneData = {
             id: sceneRequest.sceneId,
             sceneNumber: sceneRequest.sceneNumber,
@@ -218,16 +251,14 @@ export class SceneBuilderController {
             emotion: sceneRequest.emotion,
             shotType: sceneRequest.shotType || "a-roll",
             cameraAngle: sceneRequest.cameraAngle || "pov-selfie",
+            cinematicPrompt: sceneRequest.cinematicPrompt || dbSceneData?.cinematicPrompt || "",
+            bRollShots: sceneRequest.bRollShots || dbSceneData?.bRollShots || null,
           } as SceneData;
           console.log(
-            `[SCENE_BUILDER] Scene ${sceneRequest.sceneId}: Using frontend data (dialogue: "${sceneData.dialogue.substring(0, 50)}...")`
+            `[SCENE_BUILDER] Scene ${sceneRequest.sceneId}: Using frontend data (dialogue: "${sceneData.dialogue.substring(0, 50)}..."${sceneData.bRollShots ? `, bRollShots: ${sceneData.bRollShots.length}` : ""})`
           );
         } else {
           // Fallback to DB data
-          const dbSceneData = selectedScript?.scenes?.find(
-            (s: SceneData) => s.id === sceneRequest.sceneId
-          ) as SceneData | undefined;
-
           if (!dbSceneData) {
             console.warn(
               `[SCENE_BUILDER] Scene ${sceneRequest.sceneId} not found, skipping`
@@ -281,11 +312,13 @@ export class SceneBuilderController {
             cinematicPrompt: sceneData.cinematicPrompt,
           },
           productImageKeys: script.product_image_keys as string[],
+          productName: script.product_name || undefined,
           userRefinement: sceneRequest.userRefinement,
           supportingImageKeys: sceneRequest.supportingImageKeys || [],
           generateEndFrame: sceneRequest.generateEndFrame || false,
           customStartImageKey: sceneRequest.customStartImageKey || undefined,
           customEndImageKey: sceneRequest.customEndImageKey || undefined,
+          bRollShots: sceneData.bRollShots || undefined,
         });
 
         jobIds.push(job.id);
@@ -386,11 +419,46 @@ export class SceneBuilderController {
         .from(sceneImages)
         .where(eq(sceneImages.script_id, scriptId));
 
+      // Also get the generation jobs to retrieve generatedImages for B-roll scenes
+      const jobs = await db
+        .select()
+        .from(sceneImageGenerationJobs)
+        .where(eq(sceneImageGenerationJobs.script_id, scriptId));
+
+      // Create a map of sceneId -> latest completed job
+      const latestJobsByScene: Record<string, typeof jobs[0]> = {};
+      for (const job of jobs) {
+        if (job.status === "completed" && job.generated_images) {
+          const existing = latestJobsByScene[job.scene_id];
+          if (!existing || (job.completed_at && existing.completed_at && job.completed_at > existing.completed_at)) {
+            latestJobsByScene[job.scene_id] = job;
+          }
+        }
+      }
+
       const imagesWithUrls = await Promise.all(
-        images.map(async (img) => ({
-          ...img,
-          imageUrl: await s3Service.getPresignedUrl(img.image_key, 3600),
-        }))
+        images.map(async (img) => {
+          const job = latestJobsByScene[img.scene_id];
+          const generatedImageKeys = job?.generated_images as string[] | undefined;
+
+          // Get presigned URLs for all generated images (for B-roll scenes with multiple shots)
+          let generatedImages: { key: string; url: string; index: number }[] | undefined;
+          if (generatedImageKeys && generatedImageKeys.length >= 1) {
+            generatedImages = await Promise.all(
+              generatedImageKeys.map(async (key, index) => ({
+                key,
+                url: await s3Service.getPresignedUrl(key, 3600),
+                index,
+              }))
+            );
+          }
+
+          return {
+            ...img,
+            imageUrl: await s3Service.getPresignedUrl(img.image_key, 3600),
+            generatedImages,
+          };
+        })
       );
 
       const sceneImagesMap: Record<string, any> = {};

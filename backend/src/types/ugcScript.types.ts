@@ -34,6 +34,13 @@ export const CAMERA_ANGLES = [
   "custom",
 ] as const;
 
+export const BRollShotSchema = z.object({
+  action: z.string().describe("Simple, single action for this shot"),
+  cinematicPrompt: z.string().describe("Cinematic prompt for this specific shot"),
+  durationSeconds: z.number().min(1).max(4).describe("Duration of this shot (1-4 seconds)"),
+  productImageNeeded: z.boolean().describe("Whether this shot should include/show the product. Set to true for product closeups, unboxing, demos. Set to false for lifestyle, mood, reaction, or 'before' shots where product shouldn't appear."),
+});
+
 export const UGCSceneSchema = z.object({
   id: z.string().describe("Unique identifier for the scene"),
   sceneNumber: z.number().min(1).describe("Scene sequence number"),
@@ -42,7 +49,7 @@ export const UGCSceneSchema = z.object({
     .describe("Type of scene in the UGC script structure"),
   action: z
     .string()
-    .describe("What the character is physically doing in this scene"),
+    .describe("What the character is physically doing in this scene (for single-shot scenes)"),
   dialogue: z.string().describe("What the actor says in this scene"),
   emotion: z.enum(EMOTIONS).describe("Emotional delivery style"),
   estimatedDurationSeconds: z
@@ -62,7 +69,7 @@ export const UGCSceneSchema = z.object({
     .describe("Custom camera angle description when cameraAngle is 'custom'"),
   cinematicPrompt: z
     .string()
-    .describe("Detailed cinematic/video generation prompt"),
+    .describe("Detailed cinematic/video generation prompt (for single-shot scenes)"),
   cameraDirection: z
     .string()
     .nullable()
@@ -71,6 +78,12 @@ export const UGCSceneSchema = z.object({
     .string()
     .nullable()
     .describe("REQUIRED for a-roll scenes: ambient background audio description (e.g., 'gym with weights clanking', 'quiet bedroom ambience'). Set to null for b-roll/mixed scenes."),
+  bRollShots: z
+    .array(BRollShotSchema)
+    .min(1)
+    .nullable()
+    .optional()
+    .describe("For B-roll scenes: shots that share the same voiceover. Use as many as the scene needs (1, 2, 3, 4, etc). Each shot has productImageNeeded to control whether product reference is used."),
 });
 
 export const UGCScriptSchema = z.object({
@@ -116,6 +129,7 @@ export type SceneType = (typeof SCENE_TYPES)[number];
 export type Emotion = (typeof EMOTIONS)[number];
 export type ShotType = (typeof SHOT_TYPES)[number];
 export type CameraAngle = (typeof CAMERA_ANGLES)[number];
+export type BRollShot = z.infer<typeof BRollShotSchema>;
 export type UGCScene = z.infer<typeof UGCSceneSchema>;
 export type UGCScript = z.infer<typeof UGCScriptSchema>;
 export type GenerateUGCScriptResponse = z.infer<

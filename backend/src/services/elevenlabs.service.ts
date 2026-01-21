@@ -40,7 +40,7 @@ function getAudioDuration(audioBuffer: Buffer): number {
     fs.writeFileSync(tempPath, audioBuffer);
     const result = execSync(
       `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${tempPath}"`,
-      { encoding: "utf-8" }
+      { encoding: "utf-8" },
     );
     return parseFloat(result.trim());
   } finally {
@@ -49,7 +49,7 @@ function getAudioDuration(audioBuffer: Buffer): number {
 }
 
 export async function generateSpeech(
-  options: TextToSpeechOptions
+  options: TextToSpeechOptions,
 ): Promise<Buffer> {
   const client = getClient();
 
@@ -63,7 +63,7 @@ export async function generateSpeech(
 
   const speedInfo = speed ? ` at ${speed}x speed` : "";
   console.log(
-    `[ElevenLabs] Generating speech for ${text.length} chars with voice ${voiceId}${speedInfo}`
+    `[ElevenLabs] Generating speech for ${text.length} chars with voice ${voiceId}${speedInfo}`,
   );
 
   try {
@@ -79,7 +79,7 @@ export async function generateSpeech(
 
     const audioStream = await client.textToSpeech.convert(
       voiceId,
-      requestOptions
+      requestOptions,
     );
 
     const chunks: Uint8Array[] = [];
@@ -89,7 +89,7 @@ export async function generateSpeech(
     const audioBuffer = Buffer.concat(chunks);
 
     console.log(
-      `[ElevenLabs] Generated ${(audioBuffer.length / 1024).toFixed(1)}KB of audio`
+      `[ElevenLabs] Generated ${(audioBuffer.length / 1024).toFixed(1)}KB of audio`,
     );
 
     return audioBuffer;
@@ -106,7 +106,7 @@ export interface GenerateAndUploadOptions extends TextToSpeechOptions {
 }
 
 export async function generateSpeechAndUpload(
-  options: GenerateAndUploadOptions
+  options: GenerateAndUploadOptions,
 ): Promise<{ s3Key: string; durationMs?: number }> {
   const { teamId, scriptId, sceneNumber, ...ttsOptions } = options;
   const audioBuffer = await generateSpeech(ttsOptions);
@@ -114,11 +114,11 @@ export async function generateSpeechAndUpload(
     audioBuffer,
     teamId,
     scriptId,
-    sceneNumber
+    sceneNumber,
   );
 
   console.log(
-    `[ElevenLabs] Generated and uploaded scene ${sceneNumber} audio: ${s3Key}`
+    `[ElevenLabs] Generated and uploaded scene ${sceneNumber} audio: ${s3Key}`,
   );
 
   return { s3Key };
@@ -132,14 +132,14 @@ export interface SpeechToSpeechOptions {
 }
 
 export async function speechToSpeech(
-  options: SpeechToSpeechOptions
+  options: SpeechToSpeechOptions,
 ): Promise<Buffer> {
   const client = getClient();
 
   const { voiceId, audioBuffer, modelId = "eleven_english_sts_v2" } = options;
 
   console.log(
-    `[ElevenLabs] Converting speech to voice ${voiceId} (${(audioBuffer.length / 1024).toFixed(1)}KB input)`
+    `[ElevenLabs] Converting speech to voice ${voiceId} (${(audioBuffer.length / 1024).toFixed(1)}KB input)`,
   );
 
   try {
@@ -162,7 +162,7 @@ export async function speechToSpeech(
     const convertedBuffer = Buffer.concat(chunks);
 
     console.log(
-      `[ElevenLabs] Speech converted: ${(convertedBuffer.length / 1024).toFixed(1)}KB output`
+      `[ElevenLabs] Speech converted: ${(convertedBuffer.length / 1024).toFixed(1)}KB output`,
     );
 
     return convertedBuffer;
@@ -182,7 +182,7 @@ export interface GenerateSpeechForDurationOptions extends TextToSpeechOptions {
  * When tolerancePercent is 0, strictly enforces max duration with iterative speed adjustment.
  */
 export async function generateSpeechForTargetDuration(
-  options: GenerateSpeechForDurationOptions
+  options: GenerateSpeechForDurationOptions,
 ): Promise<{ audioBuffer: Buffer; actualDuration: number; speedUsed: number }> {
   const {
     targetDurationSeconds: requestedDuration,
@@ -192,18 +192,18 @@ export async function generateSpeechForTargetDuration(
 
   const targetDurationSeconds = Math.min(
     requestedDuration,
-    MAX_AUDIO_DURATION_SECONDS
+    MAX_AUDIO_DURATION_SECONDS,
   );
   const strictMode = tolerancePercent === 0;
 
   console.log(
-    `[ElevenLabs] Generating speech with target: ${targetDurationSeconds}s (strict: ${strictMode})`
+    `[ElevenLabs] Generating speech with target: ${targetDurationSeconds}s (strict: ${strictMode})`,
   );
 
   const normalAudio = await generateSpeech(ttsOptions);
   let currentDuration = getAudioDuration(normalAudio);
   console.log(
-    `[ElevenLabs] Natural speech duration: ${currentDuration.toFixed(2)}s`
+    `[ElevenLabs] Natural speech duration: ${currentDuration.toFixed(2)}s`,
   );
 
   if (currentDuration <= targetDurationSeconds) {
@@ -219,7 +219,7 @@ export async function generateSpeechForTargetDuration(
       ((currentDuration - targetDurationSeconds) / targetDurationSeconds) * 100;
     if (diffPercent <= tolerancePercent) {
       console.log(
-        `[ElevenLabs] Duration within ${tolerancePercent}% tolerance`
+        `[ElevenLabs] Duration within ${tolerancePercent}% tolerance`,
       );
       return {
         audioBuffer: normalAudio,
@@ -239,7 +239,7 @@ export async function generateSpeechForTargetDuration(
     attempts++;
     speed = Math.min(speed * 1.1, 2.0);
     console.log(
-      `[ElevenLabs] Attempt ${attempts}: Regenerating at ${speed.toFixed(2)}x speed`
+      `[ElevenLabs] Attempt ${attempts}: Regenerating at ${speed.toFixed(2)}x speed`,
     );
 
     audioBuffer = await generateSpeech({ ...ttsOptions, speed });
@@ -251,7 +251,7 @@ export async function generateSpeechForTargetDuration(
 
   if (currentDuration > targetDurationSeconds) {
     console.log(
-      `[ElevenLabs] Warning: Could not get under ${targetDurationSeconds}s, got ${currentDuration.toFixed(2)}s`
+      `[ElevenLabs] Warning: Could not get under ${targetDurationSeconds}s, got ${currentDuration.toFixed(2)}s`,
     );
   }
 
@@ -268,7 +268,7 @@ export interface GenerateAndUploadForDurationOptions extends GenerateSpeechForDu
  * Generate speech matching target duration and upload to S3
  */
 export async function generateSpeechAndUploadForDuration(
-  options: GenerateAndUploadForDurationOptions
+  options: GenerateAndUploadForDurationOptions,
 ): Promise<{ s3Key: string; actualDuration: number; speedUsed: number }> {
   const { teamId, scriptId, sceneNumber, ...genOptions } = options;
 
@@ -279,11 +279,11 @@ export async function generateSpeechAndUploadForDuration(
     audioBuffer,
     teamId,
     scriptId,
-    sceneNumber
+    sceneNumber,
   );
 
   console.log(
-    `[ElevenLabs] Generated and uploaded scene ${sceneNumber} audio: ${s3Key} (${actualDuration.toFixed(2)}s at ${speedUsed.toFixed(2)}x)`
+    `[ElevenLabs] Generated and uploaded scene ${sceneNumber} audio: ${s3Key} (${actualDuration.toFixed(2)}s at ${speedUsed.toFixed(2)}x)`,
   );
 
   return { s3Key, actualDuration, speedUsed };
@@ -306,7 +306,7 @@ export interface TextToDialogueOptions {
  * Perfect for B-roll voiceovers with emotional expression.
  */
 export async function textToDialogue(
-  options: TextToDialogueOptions
+  options: TextToDialogueOptions,
 ): Promise<Buffer> {
   const client = getClient();
 
@@ -318,7 +318,7 @@ export async function textToDialogue(
 
   const totalChars = inputs.reduce((sum, i) => sum + i.text.length, 0);
   console.log(
-    `[ElevenLabs] Generating dialogue for ${inputs.length} input(s), ${totalChars} total chars`
+    `[ElevenLabs] Generating dialogue for ${inputs.length} input(s), ${totalChars} total chars`,
   );
 
   try {
@@ -338,7 +338,7 @@ export async function textToDialogue(
     const audioBuffer = Buffer.concat(chunks);
 
     console.log(
-      `[ElevenLabs] Generated dialogue: ${(audioBuffer.length / 1024).toFixed(1)}KB of audio`
+      `[ElevenLabs] Generated dialogue: ${(audioBuffer.length / 1024).toFixed(1)}KB of audio`,
     );
 
     return audioBuffer;
@@ -362,7 +362,7 @@ export interface TextToDialogueForDurationOptions {
  * Uses voice direction tags for expressive B-roll voiceovers.
  */
 export async function textToDialogueForTargetDuration(
-  options: TextToDialogueForDurationOptions
+  options: TextToDialogueForDurationOptions,
 ): Promise<{ audioBuffer: Buffer; actualDuration: number }> {
   const {
     text,
@@ -373,19 +373,18 @@ export async function textToDialogueForTargetDuration(
     outputFormat,
   } = options;
 
-  // Cap target duration to MAX_AUDIO_DURATION_SECONDS to match Kling video limits
   const targetDurationSeconds = Math.min(
     requestedDuration,
-    MAX_AUDIO_DURATION_SECONDS
+    MAX_AUDIO_DURATION_SECONDS,
   );
   if (requestedDuration > MAX_AUDIO_DURATION_SECONDS) {
     console.log(
-      `[ElevenLabs] Capping dialogue target from ${requestedDuration}s to ${MAX_AUDIO_DURATION_SECONDS}s (Kling video limit)`
+      `[ElevenLabs] Capping dialogue target from ${requestedDuration}s to ${MAX_AUDIO_DURATION_SECONDS}s (Kling video limit)`,
     );
   }
 
   console.log(
-    `[ElevenLabs] Generating dialogue with target duration: ${targetDurationSeconds}s`
+    `[ElevenLabs] Generating dialogue with target duration: ${targetDurationSeconds}s`,
   );
 
   const audioBuffer = await textToDialogue({
@@ -395,16 +394,13 @@ export async function textToDialogueForTargetDuration(
   });
 
   const actualDuration = getAudioDuration(audioBuffer);
-  console.log(
-    `[ElevenLabs] Dialogue duration: ${actualDuration.toFixed(2)}s (target: ${targetDurationSeconds}s)`
-  );
 
   const durationDiff = Math.abs(actualDuration - targetDurationSeconds);
   const diffPercent = (durationDiff / targetDurationSeconds) * 100;
 
   if (diffPercent > tolerancePercent) {
     console.log(
-      `[ElevenLabs] Warning: Dialogue duration ${actualDuration.toFixed(2)}s is ${diffPercent.toFixed(1)}% off target ${targetDurationSeconds}s`
+      `[ElevenLabs] Warning: Dialogue duration ${actualDuration.toFixed(2)}s is ${diffPercent.toFixed(1)}% off target ${targetDurationSeconds}s`,
     );
   }
 
@@ -426,7 +422,7 @@ export interface GenerateDialogueAndUploadOptions {
  * Uses Text-to-Dialogue API for B-roll with voice direction tags.
  */
 export async function generateDialogueAndUpload(
-  options: GenerateDialogueAndUploadOptions
+  options: GenerateDialogueAndUploadOptions,
 ): Promise<{ s3Key: string; actualDuration: number }> {
   const { teamId, scriptId, sceneNumber, ...dialogueOptions } = options;
 
@@ -437,11 +433,11 @@ export async function generateDialogueAndUpload(
     audioBuffer,
     teamId,
     scriptId,
-    sceneNumber
+    sceneNumber,
   );
 
   console.log(
-    `[ElevenLabs] Generated and uploaded dialogue scene ${sceneNumber}: ${s3Key} (${actualDuration.toFixed(2)}s)`
+    `[ElevenLabs] Generated and uploaded dialogue scene ${sceneNumber}: ${s3Key} (${actualDuration.toFixed(2)}s)`,
   );
 
   return { s3Key, actualDuration };
@@ -458,7 +454,7 @@ export interface GenerateSoundEffectOptions {
  * Used for A-roll scenes to add realistic background audio.
  */
 export async function generateSoundEffect(
-  options: GenerateSoundEffectOptions
+  options: GenerateSoundEffectOptions,
 ): Promise<Buffer> {
   const client = getClient();
 
@@ -467,7 +463,7 @@ export async function generateSoundEffect(
   const clampedDuration = Math.max(0.5, Math.min(30, durationSeconds));
 
   console.log(
-    `[ElevenLabs] Generating sound effect: "${text}" (${clampedDuration}s)`
+    `[ElevenLabs] Generating sound effect: "${text}" (${clampedDuration}s)`,
   );
 
   try {
@@ -484,7 +480,7 @@ export async function generateSoundEffect(
     const audioBuffer = Buffer.concat(chunks);
 
     console.log(
-      `[ElevenLabs] Generated sound effect: ${(audioBuffer.length / 1024).toFixed(1)}KB of audio`
+      `[ElevenLabs] Generated sound effect: ${(audioBuffer.length / 1024).toFixed(1)}KB of audio`,
     );
 
     return audioBuffer;

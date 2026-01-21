@@ -37,6 +37,13 @@ export type Emotion = (typeof EMOTIONS)[number];
 export type ShotType = (typeof SHOT_TYPES)[number];
 export type CameraAngle = (typeof CAMERA_ANGLES)[number];
 
+export interface BRollShot {
+  action: string;
+  cinematicPrompt: string;
+  durationSeconds: number;
+  productImageNeeded: boolean;
+}
+
 export interface UGCScene {
   id: string;
   sceneNumber: number;
@@ -49,6 +56,7 @@ export interface UGCScene {
   cameraAngle: CameraAngle;
   customCameraAngle?: string;
   ambientSound?: string;
+  bRollShots?: BRollShot[] | null;
 }
 
 export interface UGCScript {
@@ -247,13 +255,11 @@ export const SCRIPT_STRUCTURES: ScriptStructure[] = [
   {
     id: "classic",
     name: "Classic UGC",
-    description: "Hook → A-Roll → B-Roll → B-Roll → A-Roll → CTA",
+    description: "Hook → Problem → Demo → CTA",
     pattern: [
       { type: "hook", shot: "a-roll", duration: "2-4s" },
       { type: "problem", shot: "a-roll", duration: "4-6s" },
-      { type: "demo", shot: "b-roll", duration: "4-6s" },
-      { type: "demo", shot: "b-roll", duration: "4-6s" },
-      { type: "solution", shot: "a-roll", duration: "4-6s" },
+      { type: "demo", shot: "b-roll", duration: "3-5s" },
       { type: "cta", shot: "a-roll", duration: "3-5s" },
     ],
     bestFor: ["Product demos", "Before/After", "Skincare"],
@@ -262,13 +268,13 @@ export const SCRIPT_STRUCTURES: ScriptStructure[] = [
   {
     id: "problem-solution",
     name: "Problem → Solution",
-    description: "Hook into pain point, then reveal the fix",
+    description: "Deep pain point, then reveal with proof",
     pattern: [
       { type: "hook", shot: "a-roll", duration: "2-4s" },
-      { type: "problem", shot: "a-roll", duration: "6-8s" },
+      { type: "problem", shot: "a-roll", duration: "4-6s" },
       { type: "solution", shot: "mixed", duration: "4-6s" },
-      { type: "demo", shot: "b-roll", duration: "6-8s" },
-      { type: "cta", shot: "a-roll", duration: "3-5s" },
+      { type: "testimonial", shot: "a-roll", duration: "4-5s" },
+      { type: "cta", shot: "a-roll", duration: "3-4s" },
     ],
     bestFor: ["Pain point products", "Tech gadgets", "Health supplements"],
     icon: "solar:lightbulb-bolt-bold-duotone",
@@ -276,13 +282,12 @@ export const SCRIPT_STRUCTURES: ScriptStructure[] = [
   {
     id: "storytelling",
     name: "Story Arc",
-    description: "Personal journey with emotional build",
+    description: "Visual journey with transformation",
     pattern: [
-      { type: "hook", shot: "a-roll", duration: "3-4s" },
-      { type: "problem", shot: "a-roll", duration: "5-7s" },
-      { type: "problem", shot: "b-roll", duration: "3-5s" },
+      { type: "hook", shot: "a-roll", duration: "2-4s" },
+      { type: "problem", shot: "b-roll", duration: "3-4s" },
       { type: "solution", shot: "a-roll", duration: "4-6s" },
-      { type: "testimonial", shot: "a-roll", duration: "4-6s" },
+      { type: "testimonial", shot: "a-roll", duration: "4-5s" },
       { type: "cta", shot: "a-roll", duration: "3-4s" },
     ],
     bestFor: ["Lifestyle products", "Transformation stories", "Emotional appeals"],
@@ -302,10 +307,8 @@ export const SCRIPT_STRUCTURES: ScriptStructure[] = [
     description: "Build anticipation with product reveal",
     pattern: [
       { type: "hook", shot: "a-roll", duration: "2-4s" },
-      { type: "demo", shot: "b-roll", duration: "5-7s" },
+      { type: "demo", shot: "b-roll", duration: "3-5s" },
       { type: "solution", shot: "a-roll", duration: "4-6s" },
-      { type: "demo", shot: "b-roll", duration: "5-7s" },
-      { type: "testimonial", shot: "a-roll", duration: "4-5s" },
       { type: "cta", shot: "a-roll", duration: "3-4s" },
     ],
     bestFor: ["Subscription boxes", "Premium products", "New launches"],
@@ -317,10 +320,8 @@ export const SCRIPT_STRUCTURES: ScriptStructure[] = [
     description: "How-to format with clear steps",
     pattern: [
       { type: "hook", shot: "a-roll", duration: "2-4s" },
-      { type: "demo", shot: "mixed", duration: "6-8s" },
-      { type: "demo", shot: "b-roll", duration: "5-7s" },
-      { type: "demo", shot: "mixed", duration: "5-7s" },
-      { type: "solution", shot: "a-roll", duration: "4-5s" },
+      { type: "demo", shot: "mixed", duration: "4-6s" },
+      { type: "demo", shot: "b-roll", duration: "3-5s" },
       { type: "cta", shot: "a-roll", duration: "3-4s" },
     ],
     bestFor: ["Beauty products", "Tech tutorials", "DIY products"],

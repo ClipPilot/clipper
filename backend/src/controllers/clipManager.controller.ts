@@ -251,13 +251,13 @@ export class ClipManagerController {
       const user = await verifyTeamAccessOrFail(req, teamId, res);
       if (!user) return;
 
-      // Check if moving clip to a folder requires Scale plan
+      // Check if moving clip to a folder requires Scale or Enterprise plan
       if (folderId !== undefined && folderId !== null) {
         const team = await teamService.getTeamById(teamId);
-        if (team.plan !== "scale") {
+        if (team.plan !== "scale" && team.plan !== "enterprise") {
           return res.status(403).json({
             error:
-              "Moving clips to folders requires a Scale plan. Please upgrade to organize clips into folders.",
+              "Moving clips to folders requires a Scale or Enterprise plan. Please upgrade to organize clips into folders.",
           });
         }
       }

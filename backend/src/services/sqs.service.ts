@@ -162,12 +162,21 @@ export interface GenerateSceneImageJob extends BaseJob {
     cinematicPrompt: string;
   };
   productImageKeys: string[];
+  productName?: string;
   userRefinement?: string;
   supportingImageKeys: string[];
   // Advanced options
   generateEndFrame?: boolean; // Generate both start and end frame for video interpolation
   customStartImageKey?: string; // User-uploaded start image (skip generation)
-  customEndImageKey?: string; // User-uploaded end image
+  customEndImageKey?: string;
+  bRollShots?: Array<{
+    action: string;
+    cinematicPrompt: string;
+    durationSeconds: number;
+    productImageNeeded: boolean;
+  }>;
+  singleBRollShotIndex?: number;
+  existingBRollImages?: string[];
 }
 
 // Script generation job payload
@@ -201,6 +210,12 @@ export interface GenerateUGCVideoJob extends BaseJob {
     emotion: string;
     ambientSound?: string | null;
     regenerate?: boolean;
+    bRollShots?: Array<{
+      action: string;
+      cinematicPrompt: string;
+      durationSeconds: number;
+      imageKey: string;
+    }>;
   }>;
   regenerateSceneId?: string;
 }
@@ -218,6 +233,7 @@ export interface KlingFaceSwapJob extends BaseJob {
     videoDuration: number;
     segments: Array<{ start: number; end: number; type: string }>;
   };
+  folderId?: number;
 }
 
 export type VideoProcessingJob =
@@ -418,12 +434,15 @@ class SQSService {
     characterId: number;
     sceneData: GenerateSceneImageJob["sceneData"];
     productImageKeys: string[];
+    productName?: string;
     userRefinement?: string;
     supportingImageKeys: string[];
-    // Advanced options
     generateEndFrame?: boolean;
     customStartImageKey?: string;
     customEndImageKey?: string;
+    bRollShots?: GenerateSceneImageJob["bRollShots"];
+    singleBRollShotIndex?: number;
+    existingBRollImages?: string[];
   }): Promise<string> {
     const job: GenerateSceneImageJob = {
       type: "generate-scene-image",
@@ -436,12 +455,15 @@ class SQSService {
       characterId: params.characterId,
       sceneData: params.sceneData,
       productImageKeys: params.productImageKeys,
+      productName: params.productName,
       userRefinement: params.userRefinement,
       supportingImageKeys: params.supportingImageKeys,
-      // Advanced options
       generateEndFrame: params.generateEndFrame,
       customStartImageKey: params.customStartImageKey,
       customEndImageKey: params.customEndImageKey,
+      bRollShots: params.bRollShots,
+      singleBRollShotIndex: params.singleBRollShotIndex,
+      existingBRollImages: params.existingBRollImages,
       createdAt: new Date().toISOString(),
     };
 
@@ -515,6 +537,7 @@ class SQSService {
     videoDuration: number;
     spliceMode: boolean;
     spliceMetadata?: KlingFaceSwapJob["spliceMetadata"];
+    folderId?: number;
   }): Promise<string> {
     const job: KlingFaceSwapJob = {
       type: "kling-face-swap",
@@ -528,6 +551,7 @@ class SQSService {
       videoDuration: params.videoDuration,
       spliceMode: params.spliceMode,
       spliceMetadata: params.spliceMetadata,
+      folderId: params.folderId,
       createdAt: new Date().toISOString(),
     };
 

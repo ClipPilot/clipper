@@ -6,3 +6,6 @@ backend/.DS_Store
 backend/.DS_Store
 backend/.DS_Store
 .VSCodeCounter
+.claude
+.vscode
+.claude/agents
