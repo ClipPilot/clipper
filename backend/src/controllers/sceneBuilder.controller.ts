@@ -419,11 +419,46 @@ export class SceneBuilderController {
         .from(sceneImages)
         .where(eq(sceneImages.script_id, scriptId));
 
+      // Also get the generation jobs to retrieve generatedImages for B-roll scenes
+      const jobs = await db
+        .select()
+        .from(sceneImageGenerationJobs)
+        .where(eq(sceneImageGenerationJobs.script_id, scriptId));
+
+      // Create a map of sceneId -> latest completed job
+      const latestJobsByScene: Record<string, typeof jobs[0]> = {};
+      for (const job of jobs) {
+        if (job.status === "completed" && job.generated_images) {
+          const existing = latestJobsByScene[job.scene_id];
+          if (!existing || (job.completed_at && existing.completed_at && job.completed_at > existing.completed_at)) {
+            latestJobsByScene[job.scene_id] = job;
+          }
+        }
+      }
+
       const imagesWithUrls = await Promise.all(
-        images.map(async (img) => ({
-          ...img,
-          imageUrl: await s3Service.getPresignedUrl(img.image_key, 3600),
-        }))
+        images.map(async (img) => {
+          const job = latestJobsByScene[img.scene_id];
+          const generatedImageKeys = job?.generated_images as string[] | undefined;
+
+          // Get presigned URLs for all generated images (for B-roll scenes with multiple shots)
+          let generatedImages: { key: string; url: string; index: number }[] | undefined;
+          if (generatedImageKeys && generatedImageKeys.length >= 1) {
+            generatedImages = await Promise.all(
+              generatedImageKeys.map(async (key, index) => ({
+                key,
+                url: await s3Service.getPresignedUrl(key, 3600),
+                index,
+              }))
+            );
+          }
+
+          return {
+            ...img,
+            imageUrl: await s3Service.getPresignedUrl(img.image_key, 3600),
+            generatedImages,
+          };
+        })
       );
 
       const sceneImagesMap: Record<string, any> = {};

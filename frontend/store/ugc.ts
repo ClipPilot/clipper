@@ -27,6 +27,8 @@ export interface SceneImageState {
   customStartImageUrl?: string;
   customEndImageKey?: string;
   customEndImageUrl?: string;
+  // Custom uploaded B-roll shot images (override generated images)
+  customBRollImages?: Record<number, { key: string; url: string }>;
 }
 
 export const sceneImagesAtom = atom<Record<string, SceneImageState>>({});

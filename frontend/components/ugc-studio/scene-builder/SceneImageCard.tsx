@@ -34,6 +34,7 @@ interface SceneImageCardProps {
   customStartImageUrl?: string;
   customEndImageKey?: string;
   customEndImageUrl?: string;
+  customBRollImages?: Record<number, { key: string; url: string }>;
   onGenerationStart: (jobId: string) => void;
   onGenerationUpdate: (status: SceneImageGeneration) => void;
   onImageSelect: (key: string, url: string) => void;
@@ -41,6 +42,7 @@ interface SceneImageCardProps {
   onSupportingImagesChange: (keys: string[]) => void;
   onUseEndFrameChange: (useEndFrame: boolean) => void;
   onCustomImageChange: (type: "start" | "end", key: string | undefined, url: string | undefined) => void;
+  onCustomBRollImageChange?: (shotIndex: number, key: string | undefined, url: string | undefined) => void;
   /** When true, always shows expanded view (used in storyboard mode) */
   isStoryboardMode?: boolean;
 }
@@ -61,6 +63,7 @@ export function SceneImageCard({
   customStartImageUrl,
   customEndImageKey,
   customEndImageUrl,
+  customBRollImages,
   onGenerationStart,
   onGenerationUpdate,
   onImageSelect,
@@ -68,6 +71,7 @@ export function SceneImageCard({
   onSupportingImagesChange,
   onUseEndFrameChange,
   onCustomImageChange,
+  onCustomBRollImageChange,
   isStoryboardMode = false,
 }: SceneImageCardProps) {
   // In storyboard mode, always show expanded view
@@ -76,9 +80,12 @@ export function SceneImageCard({
   const [supportingImages, setSupportingImages] = useState<SupportingImage[]>(
     []
   );
+  const [supportingImagesInitialized, setSupportingImagesInitialized] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null);
   const [selectedBRollIndex, setSelectedBRollIndex] = useState<number | null>(null);
+  // Track which specific shot is regenerating (null = all shots or none)
+  const [regeneratingShotIndex, setRegeneratingShotIndex] = useState<number | null>(null);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const sceneConfig = SCENE_TYPE_CONFIG[scene.sceneType];
@@ -113,6 +120,7 @@ export function SceneImageCard({
 
           if (status.status === "completed") {
             setIsGenerating(false);
+            setRegeneratingShotIndex(null);
             if (pollIntervalRef.current) {
               clearInterval(pollIntervalRef.current);
               pollIntervalRef.current = null;
@@ -134,6 +142,7 @@ export function SceneImageCard({
             }
           } else if (status.status === "failed") {
             setIsGenerating(false);
+            setRegeneratingShotIndex(null);
             if (pollIntervalRef.current) {
               clearInterval(pollIntervalRef.current);
               pollIntervalRef.current = null;
@@ -162,10 +171,45 @@ export function SceneImageCard({
 
   const handleGenerate = async (singleShotIndex?: number) => {
     setIsGenerating(true);
+    // Track which specific shot is being regenerated (null means all)
+    setRegeneratingShotIndex(singleShotIndex ?? null);
 
-    const existingImages = singleShotIndex !== undefined && generation?.generatedImages
-      ? generation.generatedImages.map((img) => img.key)
-      : undefined;
+    // Build existing images array, merging custom images with generated images
+    let existingImages: string[] | undefined;
+
+    console.log(`[SceneImageCard] handleGenerate called with singleShotIndex=${singleShotIndex}`);
+    console.log(`[SceneImageCard] generation object:`, generation);
+    console.log(`[SceneImageCard] generation?.generatedImages:`, generation?.generatedImages);
+    console.log(`[SceneImageCard] customBRollImages:`, customBRollImages);
+    console.log(`[SceneImageCard] supportingImageKeys (from props):`, supportingImageKeys);
+    console.log(`[SceneImageCard] supportingImages (local state):`, supportingImages);
+    console.log(`[SceneImageCard] localRefinement:`, localRefinement);
+
+    if (singleShotIndex !== undefined && scene.bRollShots) {
+      existingImages = scene.bRollShots.map((_, idx) => {
+        // Use custom image if available, otherwise use generated image
+        const customImage = customBRollImages?.[idx];
+        const generatedImage = generation?.generatedImages?.[idx];
+        const key = customImage?.key || generatedImage?.key || "";
+        console.log(`[SceneImageCard] Shot ${idx}: customKey=${customImage?.key}, generatedKey=${generatedImage?.key}, using=${key}`);
+        return key;
+      }).filter(Boolean);
+
+      // Only pass if we have some existing images to preserve
+      if (existingImages.length === 0) {
+        console.warn(`[SceneImageCard] WARNING: No existing images found! Will regenerate ALL shots.`);
+        existingImages = undefined;
+      } else {
+        console.log(`[SceneImageCard] Single shot regen: idx=${singleShotIndex}, preserving ${existingImages.length} existing images`);
+      }
+    }
+
+    // Use local supportingImages state if available (more up-to-date), fall back to props
+    const currentSupportingKeys = supportingImages.length > 0
+      ? supportingImages.map(img => img.key)
+      : supportingImageKeys;
+
+    console.log(`[SceneImageCard] Using supportingImageKeys:`, currentSupportingKeys);
 
     const requestData = {
       teamId,
@@ -174,7 +218,7 @@ export function SceneImageCard({
       sceneNumber: scene.sceneNumber,
       characterId,
       userRefinement: localRefinement || undefined,
-      supportingImageKeys: supportingImageKeys,
+      supportingImageKeys: currentSupportingKeys,
       generateEndFrame: false,
       singleBRollShotIndex: singleShotIndex,
       existingBRollImages: existingImages,
@@ -186,6 +230,7 @@ export function SceneImageCard({
     } catch (error) {
       console.error("Failed to start generation:", error);
       setIsGenerating(false);
+      setRegeneratingShotIndex(null);
     }
   };
 
@@ -200,6 +245,30 @@ export function SceneImageCard({
 
   const handleCustomImageRemove = (type: "start" | "end") => {
     onCustomImageChange(type, undefined, undefined);
+  };
+
+  const bRollFileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingShotIndex, setUploadingShotIndex] = useState<number | null>(null);
+
+  const handleBRollImageUpload = async (shotIndex: number, file: File) => {
+    if (!onCustomBRollImageChange) return;
+    setUploadingShotIndex(shotIndex);
+    try {
+      const { key, url } = await sceneBuilderAPI.uploadSupportingImage(teamId, file);
+      onCustomBRollImageChange(shotIndex, key, url);
+    } catch (error) {
+      console.error(`Failed to upload custom B-roll image for shot ${shotIndex}:`, error);
+    } finally {
+      setUploadingShotIndex(null);
+    }
+  };
+
+  const handleBRollFileSelect = (e: React.ChangeEvent<HTMLInputElement>, shotIndex: number) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleBRollImageUpload(shotIndex, file);
+    }
+    e.target.value = "";
   };
 
   const handleSupportingImagesChange = (images: SupportingImage[]) => {
@@ -511,8 +580,18 @@ export function SceneImageCard({
             </div>
             <div className="space-y-2">
               {scene.bRollShots.map((shot, idx) => {
-                const shotImage = generation?.generatedImages?.[idx];
+                const generatedImage = generation?.generatedImages?.[idx];
+                const customImage = customBRollImages?.[idx];
+                // Custom image takes priority over generated
+                const shotImage = customImage || generatedImage;
+                const isCustom = !!customImage;
                 const isSelected = selectedBRollIndex === idx;
+                const isUploadingThis = uploadingShotIndex === idx;
+                // Only show this shot as regenerating if it's the specific shot being regenerated
+                // OR if all shots are regenerating (regeneratingShotIndex === null and isGenerating)
+                const isShotRegenerating = isCurrentlyGenerating && (
+                  regeneratingShotIndex === null || regeneratingShotIndex === idx
+                );
                 return (
                   <div
                     key={idx}
@@ -525,24 +604,37 @@ export function SceneImageCard({
                   >
                     <div
                       className={`w-16 h-20 rounded-lg overflow-hidden ring-2 relative transition-all shrink-0 ${
-                        shotImage?.url
-                          ? isSelected ? "ring-amber-400" : "ring-amber-400/50"
-                          : "ring-border-base bg-surface-elevated"
+                        isShotRegenerating
+                          ? "ring-blue-400 animate-pulse"
+                          : shotImage?.url
+                            ? isCustom
+                              ? isSelected ? "ring-green-400" : "ring-green-400/50"
+                              : isSelected ? "ring-amber-400" : "ring-amber-400/50"
+                            : "ring-border-base bg-surface-elevated"
                       }`}
                       onDoubleClick={(e) => {
                         e.stopPropagation();
-                        if (shotImage?.url) setZoomImageUrl(shotImage.url);
+                        if (shotImage?.url && !isShotRegenerating) setZoomImageUrl(shotImage.url);
                       }}
                     >
-                      {shotImage?.url ? (
+                      {isShotRegenerating ? (
+                        <div className="w-full h-full flex flex-col items-center justify-center gap-1 bg-blue-500/20">
+                          <Icon icon="solar:refresh-bold" className="text-blue-400 animate-spin" width={16} />
+                          <span className="text-[9px] text-blue-400">Regenerating</span>
+                        </div>
+                      ) : shotImage?.url ? (
                         <>
                           <img
                             src={shotImage.url}
                             alt={`Shot ${idx + 1}`}
                             className="w-full h-full object-cover"
                           />
-                          <div className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-amber-400 flex items-center justify-center">
-                            <span className="text-[9px] font-bold text-white">{idx + 1}</span>
+                          <div className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full flex items-center justify-center ${isCustom ? "bg-green-400" : "bg-amber-400"}`}>
+                            {isCustom ? (
+                              <Icon icon="solar:upload-bold" className="text-white" width={8} />
+                            ) : (
+                              <span className="text-[9px] font-bold text-white">{idx + 1}</span>
+                            )}
                           </div>
                         </>
                       ) : (
@@ -556,6 +648,11 @@ export function SceneImageCard({
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-[10px] font-medium text-amber-400">Shot {idx + 1}</span>
                         <span className="text-[10px] text-text-muted">{shot.durationSeconds}s</span>
+                        {isCustom && (
+                          <Chip size="sm" className="bg-green-500/20 text-green-400 h-4 text-[9px]">
+                            Custom
+                          </Chip>
+                        )}
                       </div>
                       <p className="text-xs text-text-secondary line-clamp-2">{shot.action}</p>
                     </div>
@@ -572,12 +669,41 @@ export function SceneImageCard({
                             <Icon icon="solar:magnifer-zoom-in-bold" width={14} />
                           </Button>
                         )}
+                        {/* Upload custom image button */}
+                        <Button
+                          isIconOnly
+                          size="sm"
+                          variant="flat"
+                          className={isCustom ? "bg-green-500/20 text-green-400" : "bg-purple-500/20 text-purple-400"}
+                          isLoading={isUploadingThis}
+                          onPress={() => {
+                            const input = document.createElement("input");
+                            input.type = "file";
+                            input.accept = "image/*";
+                            input.onchange = (e) => handleBRollFileSelect(e as any, idx);
+                            input.click();
+                          }}
+                        >
+                          <Icon icon="solar:upload-bold" width={14} />
+                        </Button>
+                        {/* Remove custom image button */}
+                        {isCustom && onCustomBRollImageChange && (
+                          <Button
+                            isIconOnly
+                            size="sm"
+                            variant="flat"
+                            className="bg-red-500/20 text-red-400"
+                            onPress={() => onCustomBRollImageChange(idx, undefined, undefined)}
+                          >
+                            <Icon icon="solar:trash-bin-trash-bold" width={14} />
+                          </Button>
+                        )}
                         <Button
                           isIconOnly
                           size="sm"
                           variant="flat"
                           className="bg-blue-500/20 text-blue-400"
-                          isLoading={isCurrentlyGenerating}
+                          isLoading={isShotRegenerating}
                           isDisabled={isCurrentlyGenerating}
                           onPress={() => handleGenerate(idx)}
                         >

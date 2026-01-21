@@ -46,4 +46,5 @@ export const PRO_MOTION_PROMPT =
   "++Hands have exactly 5 fingers each++ - no extra, missing, or deformed fingers. " +
   "Gentle relaxed hand movements with proper finger articulation. " +
   "++Subject maintains exact appearance throughout++ - same face, same clothes, no morphing. " +
-  "Replicate held items exactly as shown. Fluid realistic motion at original speed.";
+  "Replicate held items exactly as shown. Fluid realistic motion at original speed." +
+  "Do not render any hands or fingers that are not present in the reference video.";

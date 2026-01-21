@@ -73,6 +73,13 @@ function buildCharacterDescription(appearance: CharacterAppearance): string {
   return parts.join(', ');
 }
 
+interface ImagePositions {
+  supportingCount: number;
+  hasOriginal: boolean;
+  hasCharacter: boolean;
+  productCount: number;
+}
+
 function buildBRollShotPrompt(
   shot: BRollShotData,
   shotIndex: number,
@@ -81,27 +88,102 @@ function buildBRollShotPrompt(
   hasReferenceImages: boolean,
   productName?: string,
   userRefinement?: string,
-  characterAppearance?: CharacterAppearance
+  characterAppearance?: CharacterAppearance,
+  imagePositions?: ImagePositions
 ): string {
   const parts: string[] = [];
 
-  if (hasReferenceImages) {
-    const productDesc = productName ? `"${productName}"` : "the product";
-    const characterDesc = characterAppearance ? buildCharacterDescription(characterAppearance) : null;
+  // Build reference image position guide if we have images
+  if (imagePositions && hasReferenceImages) {
+    let position = 1;
+    const positionGuide: string[] = ["*** REFERENCE IMAGE GUIDE (in order of priority): ***"];
 
-    let refText = `REFERENCE IMAGES PROVIDED: Use the product reference images to maintain consistent visual identity. Feature ${productDesc} prominently as shown in references. The product must look EXACTLY like the reference images.`;
-
-    if (characterDesc) {
-      refText += ` If any person or hands are shown, they MUST match the character exactly: ${characterDesc}. Maintain the same race, skin color, and physical features throughout.`;
+    if (imagePositions.supportingCount > 0) {
+      for (let i = 0; i < imagePositions.supportingCount; i++) {
+        positionGuide.push(`Image ${position}: USER'S REFERENCE IMAGE - This is the MOST IMPORTANT image. Replicate its visual style, composition, colors, and details EXACTLY.`);
+        position++;
+      }
     }
 
-    parts.push(refText, "");
+    if (imagePositions.hasOriginal) {
+      positionGuide.push(`Image ${position}: ORIGINAL IMAGE - Create a variation of this, keeping similar composition but with changes based on user instructions.`);
+      position++;
+    }
+
+    if (imagePositions.hasCharacter) {
+      positionGuide.push(`Image ${position}: CHARACTER REFERENCE - Match this person's appearance if any hands/person shown.`);
+      position++;
+    }
+
+    if (imagePositions.productCount > 0) {
+      for (let i = 0; i < imagePositions.productCount; i++) {
+        positionGuide.push(`Image ${position}: PRODUCT REFERENCE - Use for product visual consistency.`);
+        position++;
+      }
+    }
+
+    positionGuide.push("");
+    parts.push(...positionGuide);
+  }
+
+  // USER INSTRUCTIONS ARE HIGHEST PRIORITY - add them at the very top if provided
+  if (userRefinement) {
+    parts.push(
+      "*** HIGHEST PRIORITY - USER INSTRUCTIONS (MUST FOLLOW): ***",
+      userRefinement,
+      "",
+      "The above user instructions override any conflicting guidance below. Follow them exactly.",
+      ""
+    );
+  }
+
+  // SUPPORTING IMAGES are second highest priority
+  if (imagePositions?.supportingCount && imagePositions.supportingCount > 0) {
+    parts.push(
+      "*** CRITICAL - USER'S REFERENCE IMAGE (Image 1): ***",
+      "The FIRST reference image is provided by the user. This is your PRIMARY visual guide.",
+      "You MUST replicate the visual style, composition, layout, colors, and specific details shown in this image.",
+      "This image shows EXACTLY what the user wants - match it as closely as possible.",
+      "If this is an app screenshot or product screen, replicate that EXACT screen.",
+      ""
+    );
+  }
+
+  // Original image for variations
+  if (imagePositions?.hasOriginal) {
+    const originalPos = (imagePositions?.supportingCount || 0) + 1;
+    parts.push(
+      `*** VARIATION MODE (Image ${originalPos}): ***`,
+      "Create a VARIATION of the original image provided.",
+      "Keep the same general composition and style, but generate a new version with subtle differences.",
+      "The result should look like a different take/angle of the same scene.",
+      ""
+    );
+  }
+
+  if (hasReferenceImages) {
+    const characterDesc = characterAppearance ? buildCharacterDescription(characterAppearance) : null;
+
+    if (characterDesc) {
+      parts.push(
+        `CHARACTER REFERENCE: If any person or hands are shown, they MUST match: ${characterDesc}. Maintain the same race, skin color, and physical features.`,
+        ""
+      );
+    }
+
+    if (productName) {
+      const productDesc = `"${productName}"`;
+      parts.push(
+        `PRODUCT REFERENCE: Use the product reference images to maintain consistent visual identity. Feature ${productDesc} as shown in references.`,
+        ""
+      );
+    }
   }
 
   if (productName) {
     parts.push(
       `PRODUCT: ${productName}`,
-      `Generate a B-roll shot featuring "${productName}" - ensure the product is clearly identifiable and matches the reference images.`,
+      `Generate a B-roll shot featuring "${productName}" - ensure the product is clearly identifiable.`,
       ""
     );
   }
@@ -120,10 +202,6 @@ function buildBRollShotPrompt(
     `- Scene Type: ${sceneData.sceneType}`,
     `- Camera Angle: ${sceneData.cameraAngle}`
   );
-
-  if (userRefinement) {
-    parts.push("", `USER NOTES: ${userRefinement}`);
-  }
 
   parts.push(
     "",
@@ -153,7 +231,8 @@ function buildSceneImagePrompt(
   productName?: string,
   userRefinement?: string,
   frameType: FrameType = "start",
-  characterAppearance?: CharacterAppearance
+  characterAppearance?: CharacterAppearance,
+  hasSupportingImages?: boolean
 ): string {
   const parts: string[] = [];
 
@@ -169,6 +248,14 @@ function buildSceneImagePrompt(
 
     parts.push(
       `REFERENCE IMAGES PROVIDED: ${refDescription}`,
+      ""
+    );
+  }
+
+  // Add supporting images context if provided
+  if (hasSupportingImages) {
+    parts.push(
+      `SUPPORTING REFERENCE IMAGES: Use the additional supporting reference images to guide visual style, composition, and scene details. Replicate key elements, layouts, or visual references from these images where appropriate.`,
       ""
     );
   }
@@ -309,13 +396,22 @@ export async function processSceneImageJob(
     if (bRollShots && bRollShots.length > 0) {
       const isSingleShotRegen = singleBRollShotIndex !== undefined && singleBRollShotIndex >= 0;
 
+      console.log(
+        `[SCENE_IMAGE] B-Roll generation: singleBRollShotIndex=${singleBRollShotIndex}, existingBRollImages=${JSON.stringify(existingBRollImages)}`
+      );
+
       if (isSingleShotRegen) {
         console.log(
-          `[SCENE_IMAGE] Regenerating single B-roll shot ${singleBRollShotIndex + 1} of ${bRollShots.length} for job ${jobId}`
+          `[SCENE_IMAGE] SINGLE SHOT REGEN: Regenerating ONLY shot ${singleBRollShotIndex + 1} of ${bRollShots.length} for job ${jobId}`
         );
+        if (!existingBRollImages || existingBRollImages.length === 0) {
+          console.warn(
+            `[SCENE_IMAGE] WARNING: Single shot regen requested but no existingBRollImages provided! Will regenerate ALL shots.`
+          );
+        }
       } else {
         console.log(
-          `[SCENE_IMAGE] Generating ${bRollShots.length} B-roll montage images for job ${jobId}`
+          `[SCENE_IMAGE] FULL REGEN: Generating ALL ${bRollShots.length} B-roll montage images for job ${jobId}`
         );
       }
 
@@ -367,9 +463,30 @@ export async function processSceneImageJob(
       const productReferenceUrls = productImageKeys && productImageKeys.length > 0
         ? await getReferenceImageUrls(productImageKeys.slice(0, 3))
         : [];
+
+      console.log(`[SCENE_IMAGE] supportingImageKeys received:`, supportingImageKeys);
       const supportingReferenceUrls = supportingImageKeys && supportingImageKeys.length > 0
         ? await getReferenceImageUrls(supportingImageKeys.slice(0, 2))
         : [];
+      console.log(`[SCENE_IMAGE] supportingReferenceUrls (${supportingReferenceUrls.length}):`, supportingReferenceUrls.length > 0 ? 'URLs obtained' : 'NONE');
+
+      // Get URLs for existing images (to use as reference when regenerating for variations)
+      const existingImageUrls: (string | null)[] = [];
+      if (existingBRollImages && existingBRollImages.length > 0) {
+        for (const key of existingBRollImages) {
+          if (key) {
+            try {
+              const url = await s3Service.getPresignedUrl(key, 3600);
+              existingImageUrls.push(url);
+            } catch (e) {
+              existingImageUrls.push(null);
+            }
+          } else {
+            existingImageUrls.push(null);
+          }
+        }
+        console.log(`[SCENE_IMAGE] Got ${existingImageUrls.filter(u => u).length} existing image URLs for variation-based regeneration`);
+      }
 
       for (let i = 0; i < bRollShots.length; i++) {
         if (isSingleShotRegen && i !== singleBRollShotIndex) {
@@ -392,6 +509,20 @@ export async function processSceneImageJob(
         const shotNeedsProduct = shot.productImageNeeded ?? true;
         const shotReferenceUrls: string[] = [];
 
+        // PRIORITY ORDER: Supporting images first (most important), then original image, then character, then product
+        // Supporting images are the PRIMARY reference - add them FIRST
+        if (supportingReferenceUrls.length > 0) {
+          shotReferenceUrls.push(...supportingReferenceUrls);
+          console.log(`[SCENE_IMAGE] Shot ${i + 1}: Adding supporting images as PRIMARY reference`);
+        }
+
+        // Add original image as reference for variation-based regeneration
+        const originalImageUrl = existingImageUrls[i];
+        if (originalImageUrl) {
+          shotReferenceUrls.push(originalImageUrl);
+          console.log(`[SCENE_IMAGE] Shot ${i + 1}: Adding original image as variation reference`);
+        }
+
         if (characterReferenceUrl) {
           shotReferenceUrls.push(characterReferenceUrl);
         }
@@ -399,35 +530,40 @@ export async function processSceneImageJob(
         if (shotNeedsProduct && productReferenceUrls.length > 0) {
           shotReferenceUrls.push(...productReferenceUrls);
           console.log(
-            `[SCENE_IMAGE] Shot ${i + 1}: Including character + product images`
+            `[SCENE_IMAGE] Shot ${i + 1}: Including product images`
           );
-        } else {
-          console.log(
-            `[SCENE_IMAGE] Shot ${i + 1}: Including character only (productImageNeeded=false)`
-          );
-        }
-
-        if (supportingReferenceUrls.length > 0) {
-          shotReferenceUrls.push(...supportingReferenceUrls);
         }
 
         const hasReferences = shotReferenceUrls.length > 0;
         const refs = hasReferences ? shotReferenceUrls : undefined;
+
+        // Build image positions for the prompt to tell AI which image is which
+        const imagePositions: ImagePositions = {
+          supportingCount: supportingReferenceUrls.length,
+          hasOriginal: !!originalImageUrl,
+          hasCharacter: !!characterReferenceUrl,
+          productCount: (shotNeedsProduct && productReferenceUrls.length > 0) ? productReferenceUrls.length : 0,
+        };
 
         const shotPrompt = buildBRollShotPrompt(
           shot,
           i,
           bRollShots.length,
           sceneData,
-          hasReferences && shotNeedsProduct,
+          hasReferences,
           shotNeedsProduct ? productName : undefined,
           userRefinement,
-          characterAppearance
+          characterAppearance,
+          imagePositions
         );
 
         console.log(
           `[SCENE_IMAGE] Generating B-roll shot ${i + 1}: "${shot.action.substring(0, 50)}..."`
         );
+        console.log(`[SCENE_IMAGE] Shot ${i + 1} reference URLs count: ${refs?.length || 0}, imagePositions:`, imagePositions);
+        if (imagePositions.supportingCount > 0) {
+          console.log(`[SCENE_IMAGE] Shot ${i + 1} PROMPT includes ${imagePositions.supportingCount} supporting image(s) as PRIMARY reference`);
+        }
 
         const result = await falImageService.generateImageWithRetry({
           prompt: shotPrompt,
@@ -536,7 +672,8 @@ export async function processSceneImageJob(
         );
       }
 
-      if (supportingImageKeys && supportingImageKeys.length > 0) {
+      const hasSupportingImages = supportingImageKeys && supportingImageKeys.length > 0;
+      if (hasSupportingImages) {
         allReferenceKeys.push(...supportingImageKeys.slice(0, 2));
         console.log(
           `[SCENE_IMAGE] Added ${Math.min(supportingImageKeys.length, 2)} supporting images`
@@ -553,7 +690,7 @@ export async function processSceneImageJob(
       const refs = hasReferences ? referenceImageUrls : undefined;
 
       await updateJobProgress(jobId, 30, "Generating start frame...");
-      const startPrompt = buildSceneImagePrompt(sceneData, hasReferences, hasProductInScene, productName, userRefinement, "start", characterAppearance);
+      const startPrompt = buildSceneImagePrompt(sceneData, hasReferences, hasProductInScene, productName, userRefinement, "start", characterAppearance, hasSupportingImages);
 
       const startResult = await falImageService.generateImageWithRetry({
         prompt: startPrompt,
@@ -632,12 +769,13 @@ export async function processSceneImageJob(
           endReferenceKeys.push(...productImageKeys.slice(0, 2));
         }
 
-        if (supportingImageKeys && supportingImageKeys.length > 0) {
+        const hasSupportingInEndFrame = supportingImageKeys && supportingImageKeys.length > 0;
+        if (hasSupportingInEndFrame) {
           endReferenceKeys.push(...supportingImageKeys.slice(0, 2));
         }
 
         const endReferenceUrls = await getReferenceImageUrls(endReferenceKeys);
-        const endPrompt = buildSceneImagePrompt(sceneData, true, hasProductInEndFrame, productName, userRefinement, "end", characterAppearance);
+        const endPrompt = buildSceneImagePrompt(sceneData, true, hasProductInEndFrame, productName, userRefinement, "end", characterAppearance, hasSupportingInEndFrame);
 
         const endResult = await falImageService.generateImageWithRetry({
           prompt: endPrompt,
