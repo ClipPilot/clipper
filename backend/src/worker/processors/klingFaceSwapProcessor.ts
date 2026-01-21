@@ -218,7 +218,7 @@ export async function processKlingFaceSwapJob(
     await extractFirstFrame(chunkLocalPaths[0], frameOutputPath);
     console.log(`[kling-face-swap] Extracted first frame from video`);
 
-    const frameS3Key = `temp-kling/${teamId}/${jobId}/frame_${Date.now()}.jpg`;
+    const frameS3Key = `face-swap-assets/${teamId}/${jobId}/frame_${Date.now()}.jpg`;
     await s3Service.uploadFile(frameOutputPath, frameS3Key, "image/jpeg");
     const frameUrl = await s3Service.getPresignedUrl(frameS3Key, 3600);
     const faceImageUrl = await s3Service.getPresignedUrl(imageS3Key, 3600);
@@ -234,17 +234,15 @@ export async function processKlingFaceSwapJob(
     const poseBuffer = Buffer.from(await poseResponse.arrayBuffer());
     fs.writeFileSync(poseImagePath, poseBuffer);
 
-    const poseS3Key = `temp-kling/${teamId}/${jobId}/pose_${Date.now()}.png`;
+    const poseS3Key = `face-swap-assets/${teamId}/${jobId}/pose_${Date.now()}.png`;
     await s3Service.uploadBuffer(poseBuffer, poseS3Key, "image/png");
     const imageUrl = await s3Service.getPresignedUrl(poseS3Key, 3600);
-    console.log(`[kling-face-swap] Uploaded pose image to S3`);
-
-    await s3Service.deleteObject(frameS3Key).catch(() => {});
+    console.log(`[kling-face-swap] Uploaded pose image to S3: ${poseS3Key}`);
 
     await updateProgress(jobId, teamId, 20, `Processing video`);
 
     const chunkPromises = chunkLocalPaths.map(async (chunkPath, i) => {
-      const tempChunkKey = `temp-kling/${teamId}/${jobId}/chunk_${i}_${Date.now()}.mp4`;
+      const tempChunkKey = `face-swap-assets/${teamId}/${jobId}/chunk_${i}_${Date.now()}.mp4`;
 
       try {
         await s3Service.uploadFile(chunkPath, tempChunkKey, "video/mp4");
@@ -282,8 +280,6 @@ export async function processKlingFaceSwapJob(
     console.log(
       `[kling-face-swap] All ${processedChunkPaths.length} chunks processed successfully`,
     );
-
-    await s3Service.deleteObject(poseS3Key).catch(() => {});
 
     console.log(`[kling-face-swap] Stitching final video...`);
     await updateProgress(jobId, teamId, 85, "Combining");
