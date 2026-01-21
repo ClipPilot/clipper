@@ -227,6 +227,7 @@ export async function processKlingFaceSwapJob(
       imageUrls: [faceImageUrl, frameUrl],
       aspectRatio: "auto",
       numImages: 1,
+      usePro: true, // Use nano-banana-pro for better pose/face mapping
     });
 
     const poseImagePath = path.join(outDir, `pose_${Date.now()}.png`);
