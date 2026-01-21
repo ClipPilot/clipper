@@ -86,88 +86,17 @@ export function SceneImageCard({
   const [selectedBRollIndex, setSelectedBRollIndex] = useState<number | null>(null);
   // Track which specific shot is regenerating (null = all shots or none)
   const [regeneratingShotIndex, setRegeneratingShotIndex] = useState<number | null>(null);
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const sceneConfig = SCENE_TYPE_CONFIG[scene.sceneType];
   const hasImage = !!imageKey;
 
+  // Reset local generating state when generation completes (global polling handles the actual polling)
   useEffect(() => {
-    if (
-      generation?.jobId &&
-      generation.status !== "completed" &&
-      generation.status !== "failed"
-    ) {
-      pollIntervalRef.current = setInterval(async () => {
-        try {
-          const status = await sceneBuilderAPI.getGenerationStatus(
-            generation.jobId
-          );
-
-          const updatedGeneration: SceneImageGeneration = {
-            jobId: status.jobId,
-            status: status.status,
-            progress: status.progress,
-            progressMessage: status.progressMessage,
-            generatedImages: status.images?.map((img) => ({
-              key: img.key,
-              url: img.url,
-              index: img.index,
-            })),
-            error: status.error,
-          };
-
-          onGenerationUpdate(updatedGeneration);
-
-          if (status.status === "completed") {
-            setIsGenerating(false);
-            setRegeneratingShotIndex(null);
-            if (pollIntervalRef.current) {
-              clearInterval(pollIntervalRef.current);
-              pollIntervalRef.current = null;
-            }
-            if (status.images && status.images.length > 0) {
-              try {
-                const img = status.images[0];
-                await sceneBuilderAPI.selectSceneImage({
-                  scriptId,
-                  sceneId: scene.id,
-                  sceneNumber: scene.sceneNumber,
-                  imageKey: img.key,
-                  generationJobId: status.jobId,
-                });
-                onImageSelect(img.key, img.url);
-              } catch (error) {
-                console.error("Failed to auto-select scene image:", error);
-              }
-            }
-          } else if (status.status === "failed") {
-            setIsGenerating(false);
-            setRegeneratingShotIndex(null);
-            if (pollIntervalRef.current) {
-              clearInterval(pollIntervalRef.current);
-              pollIntervalRef.current = null;
-            }
-          }
-        } catch (error) {
-          console.error("Failed to poll generation status:", error);
-        }
-      }, 2000);
+    if (generation?.status === "completed" || generation?.status === "failed") {
+      setIsGenerating(false);
+      setRegeneratingShotIndex(null);
     }
-
-    return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-        pollIntervalRef.current = null;
-      }
-    };
-  }, [
-    generation?.jobId,
-    generation?.status,
-    scriptId,
-    scene.id,
-    scene.sceneNumber,
-    onImageSelect,
-  ]);
+  }, [generation?.status]);
 
   const handleGenerate = async (singleShotIndex?: number) => {
     setIsGenerating(true);
