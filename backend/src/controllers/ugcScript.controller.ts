@@ -178,6 +178,32 @@ export class UGCScriptController {
     }
   }
 
+  async regenerateBRollPrompt(req: AuthRequest, res: Response) {
+    try {
+      const { scriptId, sceneId, bRollShotIndex, newAction } = req.body;
+
+      if (!scriptId || !sceneId || bRollShotIndex === undefined || !newAction) {
+        return res.status(400).json({
+          error: "scriptId, sceneId, bRollShotIndex, and newAction are required"
+        });
+      }
+
+      await ugcScriptService.regenerateBRollPrompt({
+        scriptId,
+        sceneId,
+        bRollShotIndex,
+        newAction,
+      });
+
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      console.error("[UGC_SCRIPT] Regenerate B-roll prompt error:", error);
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to regenerate B-roll prompt",
+      });
+    }
+  }
+
   async getUploadUrl(req: AuthRequest, res: Response) {
     try {
       const { teamId, fileName, contentType } = req.body;

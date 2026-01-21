@@ -52,6 +52,27 @@ interface BRollShotData {
   productImageNeeded: boolean;
 }
 
+interface CharacterAppearance {
+  gender?: string | null;
+  ageRange?: string | null;
+  skinTone?: string | null;
+  hairColor?: string | null;
+  hairStyle?: string | null;
+  eyeColor?: string | null;
+  bodyType?: string | null;
+}
+
+function buildCharacterDescription(appearance: CharacterAppearance): string {
+  const parts: string[] = [];
+  if (appearance.gender) parts.push(appearance.gender);
+  if (appearance.ageRange) parts.push(`${appearance.ageRange} years old`);
+  if (appearance.skinTone) parts.push(`${appearance.skinTone} skin tone`);
+  if (appearance.hairColor) parts.push(`${appearance.hairColor} hair`);
+  if (appearance.eyeColor) parts.push(`${appearance.eyeColor} eyes`);
+  if (appearance.bodyType) parts.push(`${appearance.bodyType} build`);
+  return parts.join(', ');
+}
+
 function buildBRollShotPrompt(
   shot: BRollShotData,
   shotIndex: number,
@@ -59,16 +80,22 @@ function buildBRollShotPrompt(
   sceneData: GenerateSceneImageJob["sceneData"],
   hasReferenceImages: boolean,
   productName?: string,
-  userRefinement?: string
+  userRefinement?: string,
+  characterAppearance?: CharacterAppearance
 ): string {
   const parts: string[] = [];
 
   if (hasReferenceImages) {
     const productDesc = productName ? `"${productName}"` : "the product";
-    parts.push(
-      `REFERENCE IMAGES PROVIDED: Use the product reference images to maintain consistent visual identity. Feature ${productDesc} prominently as shown in references. The product must look EXACTLY like the reference images.`,
-      ""
-    );
+    const characterDesc = characterAppearance ? buildCharacterDescription(characterAppearance) : null;
+
+    let refText = `REFERENCE IMAGES PROVIDED: Use the product reference images to maintain consistent visual identity. Feature ${productDesc} prominently as shown in references. The product must look EXACTLY like the reference images.`;
+
+    if (characterDesc) {
+      refText += ` If any person or hands are shown, they MUST match the character exactly: ${characterDesc}. Maintain the same race, skin color, and physical features throughout.`;
+    }
+
+    parts.push(refText, "");
   }
 
   if (productName) {
@@ -125,14 +152,21 @@ function buildSceneImagePrompt(
   hasProductImages: boolean,
   productName?: string,
   userRefinement?: string,
-  frameType: FrameType = "start"
+  frameType: FrameType = "start",
+  characterAppearance?: CharacterAppearance
 ): string {
   const parts: string[] = [];
 
   if (hasReferenceImages) {
-    const refDescription = hasProductImages && productName
+    const characterDesc = characterAppearance ? buildCharacterDescription(characterAppearance) : null;
+    let refDescription = hasProductImages && productName
       ? `Use the character reference image to maintain consistent identity. This must be the EXACT SAME person shown in the reference - same face, same features, same person. Also use the product reference images to accurately depict "${productName}".`
       : "Use the character reference image to maintain consistent identity. This must be the EXACT SAME person shown in the reference - same face, same features, same person.";
+
+    if (characterDesc) {
+      refDescription += ` CHARACTER APPEARANCE: ${characterDesc}. CRITICAL: Maintain the same race, skin color, and physical features throughout - do not change the character's ethnicity or appearance.`;
+    }
+
     parts.push(
       `REFERENCE IMAGES PROVIDED: ${refDescription}`,
       ""
@@ -290,6 +324,7 @@ export async function processSceneImageJob(
         : [];
 
       let characterReferenceUrl: string | null = null;
+      let characterAppearance: CharacterAppearance | undefined;
       if (characterId) {
         const [character] = await db
           .select()
@@ -309,6 +344,18 @@ export async function processSceneImageJob(
             }
           } else {
             console.warn(`[SCENE_IMAGE] B-roll: Character has no images at index ${primaryIndex}`);
+          }
+          const appearanceConfig = character.appearance_config as Record<string, string> | null;
+          if (appearanceConfig) {
+            characterAppearance = {
+              gender: character.gender,
+              ageRange: character.age_range,
+              skinTone: appearanceConfig.skinTone,
+              hairColor: appearanceConfig.hairColor,
+              hairStyle: appearanceConfig.hairStyle,
+              eyeColor: appearanceConfig.eyeColor,
+              bodyType: appearanceConfig.bodyType,
+            };
           }
         } else {
           console.warn(`[SCENE_IMAGE] B-roll: Character ${characterId} not found`);
@@ -374,7 +421,8 @@ export async function processSceneImageJob(
           sceneData,
           hasReferences && shotNeedsProduct,
           shotNeedsProduct ? productName : undefined,
-          userRefinement
+          userRefinement,
+          characterAppearance
         );
 
         console.log(
@@ -434,6 +482,7 @@ export async function processSceneImageJob(
     }
 
     const generatedImages: string[] = [];
+    let characterAppearance: CharacterAppearance | undefined;
 
     // If user uploaded a custom start image, use that instead of generating
     if (customStartImageKey) {
@@ -458,6 +507,18 @@ export async function processSceneImageJob(
             console.log(
               `[SCENE_IMAGE] Added character reference: ${characterImages[primaryIndex]}`
             );
+          }
+          const appearanceConfig = character.appearance_config as Record<string, string> | null;
+          if (appearanceConfig) {
+            characterAppearance = {
+              gender: character.gender,
+              ageRange: character.age_range,
+              skinTone: appearanceConfig.skinTone,
+              hairColor: appearanceConfig.hairColor,
+              hairStyle: appearanceConfig.hairStyle,
+              eyeColor: appearanceConfig.eyeColor,
+              bodyType: appearanceConfig.bodyType,
+            };
           }
         }
       }
@@ -492,7 +553,7 @@ export async function processSceneImageJob(
       const refs = hasReferences ? referenceImageUrls : undefined;
 
       await updateJobProgress(jobId, 30, "Generating start frame...");
-      const startPrompt = buildSceneImagePrompt(sceneData, hasReferences, hasProductInScene, productName, userRefinement, "start");
+      const startPrompt = buildSceneImagePrompt(sceneData, hasReferences, hasProductInScene, productName, userRefinement, "start", characterAppearance);
 
       const startResult = await falImageService.generateImageWithRetry({
         prompt: startPrompt,
@@ -548,6 +609,20 @@ export async function processSceneImageJob(
             if (characterImages[primaryIndex]) {
               endReferenceKeys.push(characterImages[primaryIndex]);
             }
+            if (!characterAppearance) {
+              const appearanceConfig = character.appearance_config as Record<string, string> | null;
+              if (appearanceConfig) {
+                characterAppearance = {
+                  gender: character.gender,
+                  ageRange: character.age_range,
+                  skinTone: appearanceConfig.skinTone,
+                  hairColor: appearanceConfig.hairColor,
+                  hairStyle: appearanceConfig.hairStyle,
+                  eyeColor: appearanceConfig.eyeColor,
+                  bodyType: appearanceConfig.bodyType,
+                };
+              }
+            }
           }
         }
 
@@ -562,7 +637,7 @@ export async function processSceneImageJob(
         }
 
         const endReferenceUrls = await getReferenceImageUrls(endReferenceKeys);
-        const endPrompt = buildSceneImagePrompt(sceneData, true, hasProductInEndFrame, productName, userRefinement, "end");
+        const endPrompt = buildSceneImagePrompt(sceneData, true, hasProductInEndFrame, productName, userRefinement, "end", characterAppearance);
 
         const endResult = await falImageService.generateImageWithRetry({
           prompt: endPrompt,

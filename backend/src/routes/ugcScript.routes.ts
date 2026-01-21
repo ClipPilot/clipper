@@ -17,6 +17,12 @@ router.post(
 );
 
 router.post(
+  "/regenerate-broll-prompt",
+  requireAuth,
+  ugcScriptController.regenerateBRollPrompt.bind(ugcScriptController)
+);
+
+router.post(
   "/upload-product-image",
   requireAuth,
   ugcScriptController.getUploadUrl.bind(ugcScriptController)
