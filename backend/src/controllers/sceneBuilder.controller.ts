@@ -98,7 +98,7 @@ export class SceneBuilderController {
         .limit(1);
 
       if (!existingImage) {
-        const creditCost = sceneData.bRollShots?.length || 2;
+        const creditCost = 2;
         await teamService.incrementTeamUsage(teamId, creditCost);
         console.log(`[SCENE_BUILDER] Charged ${creditCost} credits to team ${teamId}`);
       }

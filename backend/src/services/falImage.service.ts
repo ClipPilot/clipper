@@ -45,7 +45,7 @@ interface FalImageResponse {
 }
 
 /**
- * Generate image using FAL AI's nano-banana-pro model (text-to-image)
+ * Generate image using FAL AI's nano-banana model (text-to-image)
  * Use this when NO reference images are provided
  */
 export async function generateImage(
@@ -53,16 +53,13 @@ export async function generateImage(
 ): Promise<GenerateImageResult> {
   const { prompt, aspectRatio = "3:4", numImages = 1 } = options;
 
-  console.log(
-    `[FAL_IMAGE] Text-to-image with aspect ratio ${aspectRatio}, resolution 1K`,
-  );
+  console.log(`[FAL_IMAGE] Text-to-image with aspect ratio ${aspectRatio}`);
 
-  const result = (await fal.subscribe("fal-ai/nano-banana-pro", {
+  const result = (await fal.subscribe("fal-ai/nano-banana", {
     input: {
       prompt,
       num_images: numImages,
       aspect_ratio: aspectRatio,
-      resolution: "1K",
       output_format: "png",
       limit_generations: true,
     },
@@ -89,7 +86,7 @@ export async function generateImage(
 }
 
 /**
- * Generate image using FAL AI's nano-banana-pro/edit model (image-to-image)
+ * Generate image using FAL AI's nano-banana/edit model (image-to-image)
  * Use this when reference images ARE provided
  * The reference images guide the generation to maintain consistency
  */
@@ -99,16 +96,15 @@ export async function generateImageWithReferences(
   const { prompt, imageUrls, aspectRatio = "3:4", numImages = 1 } = options;
 
   console.log(
-    `[FAL_IMAGE] Image-to-image with ${imageUrls.length} reference images, aspect ratio ${aspectRatio}, resolution 1K`,
+    `[FAL_IMAGE] Image-to-image with ${imageUrls.length} reference images, aspect ratio ${aspectRatio}`,
   );
 
-  const result = (await fal.subscribe("fal-ai/nano-banana-pro/edit", {
+  const result = (await fal.subscribe("fal-ai/nano-banana/edit", {
     input: {
       prompt,
       image_urls: imageUrls,
       num_images: numImages,
       aspect_ratio: aspectRatio,
-      resolution: "1K",
       output_format: "png",
       limit_generations: true,
     },
@@ -137,7 +133,6 @@ export async function generateImageWithReferences(
 /**
  * Generate image with retry logic - automatically chooses the right endpoint
  * based on whether reference images are provided
- * Resolution is always 1K
  */
 export async function generateImageWithRetry(
   options: GenerateImageOptions & { imageUrls?: string[] },
