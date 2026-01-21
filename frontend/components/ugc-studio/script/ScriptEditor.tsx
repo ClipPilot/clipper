@@ -9,6 +9,7 @@ import type { Character } from "../actors/types";
 
 interface ScriptEditorProps {
   script: UGCScript;
+  scriptId: string;
   character: Character;
   selectedActorImageUrl?: string;
   onSceneUpdate: (sceneIndex: number, updates: Partial<UGCScene>) => void;
@@ -16,10 +17,12 @@ interface ScriptEditorProps {
   onAddScene: (afterIndex: number) => void;
   onRemoveScene: (sceneIndex: number) => void;
   onRegenerateScene: (sceneIndex: number) => Promise<void>;
+  onSavingStateChange?: (isSaving: boolean) => void;
 }
 
 export function ScriptEditor({
   script,
+  scriptId,
   character,
   selectedActorImageUrl,
   onSceneUpdate,
@@ -27,6 +30,7 @@ export function ScriptEditor({
   onAddScene,
   onRemoveScene,
   onRegenerateScene,
+  onSavingStateChange,
 }: ScriptEditorProps) {
   const actorImageUrl = selectedActorImageUrl || character.primaryImageUrl || character.imageUrls?.[0];
   const [regeneratingScene, setRegeneratingScene] = useState<number | null>(null);
@@ -95,6 +99,7 @@ export function ScriptEditor({
           <div key={scene.id} className="relative">
             <SceneCard
               scene={scene}
+              scriptId={scriptId}
               index={index}
               totalScenes={script.scenes.length}
               onUpdate={(updates) => onSceneUpdate(index, updates)}
@@ -104,6 +109,7 @@ export function ScriptEditor({
               onRemove={() => onRemoveScene(index)}
               onRegenerate={() => handleRegenerate(index)}
               isRegenerating={regeneratingScene === index}
+              onSavingStateChange={onSavingStateChange}
             />
             {index < script.scenes.length - 1 && (
               <div className="flex justify-center my-1">

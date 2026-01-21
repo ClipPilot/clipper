@@ -16,6 +16,7 @@ import {
 import { Icon } from "@iconify/react";
 import { EmotionSelector } from "./EmotionSelector";
 import { CameraAngleSelector } from "./CameraAngleSelector";
+import { ugcScriptAPI } from "@/api/ugc";
 import {
   SCENE_TYPE_CONFIG,
   SCENE_TYPES,
@@ -30,6 +31,7 @@ import {
 
 interface SceneCardProps {
   scene: UGCScene;
+  scriptId: string;
   index: number;
   totalScenes: number;
   onUpdate: (updates: Partial<UGCScene>) => void;
@@ -39,10 +41,12 @@ interface SceneCardProps {
   onRemove: () => void;
   onRegenerate: () => void;
   isRegenerating?: boolean;
+  onSavingStateChange?: (isSaving: boolean) => void;
 }
 
 export function SceneCard({
   scene,
+  scriptId,
   index,
   totalScenes,
   onUpdate,
@@ -52,6 +56,7 @@ export function SceneCard({
   onRemove,
   onRegenerate,
   isRegenerating,
+  onSavingStateChange,
 }: SceneCardProps) {
   const [isEditingDialogue, setIsEditingDialogue] = useState(false);
   const [editedDialogue, setEditedDialogue] = useState(scene.dialogue);
@@ -59,6 +64,7 @@ export function SceneCard({
   const [editedAction, setEditedAction] = useState(scene.action);
   const [editingBRollIndex, setEditingBRollIndex] = useState<number | null>(null);
   const [editedBRollShot, setEditedBRollShot] = useState<BRollShot | null>(null);
+  const [savingBRollIndex, setSavingBRollIndex] = useState<number | null>(null);
 
   const sceneConfig = SCENE_TYPE_CONFIG[scene.sceneType];
   const canRemove = totalScenes > 3;
@@ -94,10 +100,32 @@ export function SceneCard({
     }
   };
 
-  const handleSaveBRoll = () => {
+  const handleSaveBRoll = async () => {
     if (editingBRollIndex !== null && editedBRollShot && scene.bRollShots) {
+      const currentIndex = editingBRollIndex;
+      const originalShot = scene.bRollShots[currentIndex];
+      const actionChanged = originalShot.action !== editedBRollShot.action;
+
+      if (actionChanged) {
+        setSavingBRollIndex(currentIndex);
+        onSavingStateChange?.(true);
+        try {
+          await ugcScriptAPI.regenerateBRollPrompt({
+            scriptId,
+            sceneId: scene.id,
+            bRollShotIndex: currentIndex,
+            newAction: editedBRollShot.action,
+          });
+        } catch (error) {
+          console.error("Failed to regenerate B-roll prompt:", error);
+        } finally {
+          setSavingBRollIndex(null);
+          onSavingStateChange?.(false);
+        }
+      }
+
       const newBRollShots = [...scene.bRollShots];
-      newBRollShots[editingBRollIndex] = editedBRollShot;
+      newBRollShots[currentIndex] = editedBRollShot;
       onUpdate({ bRollShots: newBRollShots });
     }
     setEditingBRollIndex(null);
@@ -341,29 +369,10 @@ export function SceneCard({
             {scene.bRollShots && scene.bRollShots.length > 0 ? (
               <div className="space-y-2">
                 {scene.bRollShots.map((shot, idx) => (
-                  <div key={idx} className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3">
+                  <div key={idx} className={`bg-amber-500/5 rounded-lg p-3 ${savingBRollIndex === idx ? "border-2 border-amber-500 animate-pulse" : "border border-amber-500/20"}`}>
                     {editingBRollIndex === idx && editedBRollShot ? (
                       <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-medium text-amber-400">Shot {idx + 1}</span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-text-muted">Duration:</span>
-                            <input
-                              type="number"
-                              min={1}
-                              max={15}
-                              value={editedBRollShot.durationSeconds}
-                              onChange={(e) =>
-                                setEditedBRollShot({
-                                  ...editedBRollShot,
-                                  durationSeconds: parseInt(e.target.value) || 3,
-                                })
-                              }
-                              className="w-14 bg-surface-base border border-border-base rounded px-2 py-1 text-xs text-text-primary"
-                            />
-                            <span className="text-xs text-text-muted">s</span>
-                          </div>
-                        </div>
+                        <span className="text-xs font-medium text-amber-400">Shot {idx + 1}</span>
                         <div>
                           <label className="text-xs text-text-muted mb-1 block">Action</label>
                           <Textarea
@@ -379,31 +388,17 @@ export function SceneCard({
                             }}
                           />
                         </div>
-                        <div>
-                          <label className="text-xs text-text-muted mb-1 block">Visual Direction</label>
-                          <Textarea
-                            value={editedBRollShot.cinematicPrompt}
-                            onChange={(e) =>
-                              setEditedBRollShot({ ...editedBRollShot, cinematicPrompt: e.target.value })
-                            }
-                            placeholder="Describe the visual style, framing, lighting..."
-                            minRows={2}
-                            classNames={{
-                              input: "bg-surface-base text-text-primary text-sm",
-                              inputWrapper: "bg-surface-base border-border-base",
-                            }}
-                          />
-                        </div>
                         <div className="flex justify-end gap-2">
-                          <Button size="sm" variant="flat" onPress={handleCancelBRollEdit}>
+                          <Button size="sm" variant="flat" onPress={handleCancelBRollEdit} isDisabled={savingBRollIndex === editingBRollIndex}>
                             Cancel
                           </Button>
                           <Button
                             size="sm"
                             className="bg-amber-500 text-white"
                             onPress={handleSaveBRoll}
+                            isLoading={savingBRollIndex === editingBRollIndex}
                           >
-                            Save
+                            {savingBRollIndex === editingBRollIndex ? "Regenerating direction..." : "Save"}
                           </Button>
                         </div>
                       </div>

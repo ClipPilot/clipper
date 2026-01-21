@@ -52,6 +52,13 @@ export interface RegenerateSceneParams {
   regenerationType: "dialogue" | "full";
 }
 
+export interface RegenerateBRollPromptParams {
+  scriptId: string;
+  sceneId: string;
+  bRollShotIndex: number;
+  newAction: string;
+}
+
 class UGCScriptService {
   async getCharacterById(characterId: number) {
     const [character] = await db
@@ -322,6 +329,55 @@ Return a JSON object with a "descriptions" array of strings, one description per
       .where(eq(ugcScripts.id, scriptId));
 
     return newScene;
+  }
+
+  async regenerateBRollPrompt(params: RegenerateBRollPromptParams): Promise<string> {
+    const { scriptId, sceneId, bRollShotIndex, newAction } = params;
+
+    const existing = await this.getFullScript(scriptId);
+    if (!existing) {
+      throw new Error("Script not found");
+    }
+
+    const { scripts, selectedVariantIndex } = existing;
+    const currentScript = scripts[selectedVariantIndex];
+    const scene = currentScript.scenes.find((s) => s.id === sceneId);
+    if (!scene) {
+      throw new Error("Scene not found");
+    }
+
+    if (!scene.bRollShots || !scene.bRollShots[bRollShotIndex]) {
+      throw new Error("B-roll shot not found");
+    }
+
+    const prompt = `Generate a detailed cinematicPrompt for a B-roll shot with this action: "${newAction}"
+
+The cinematicPrompt should be 2-3 paragraphs describing:
+1. Visual composition, lighting, and framing
+2. Camera movement and timing
+3. Technical style and what to avoid
+
+Keep it professional and suitable for AI video generation. Return ONLY the cinematicPrompt text, no JSON or extra formatting.`;
+
+    const response = await client.responses.create({
+      model: "gpt-5-mini",
+      input: [{ role: "user", content: prompt }],
+    });
+
+    const newCinematicPrompt = response.output_text?.trim() || scene.bRollShots[bRollShotIndex].cinematicPrompt;
+
+    scene.bRollShots[bRollShotIndex].action = newAction;
+    scene.bRollShots[bRollShotIndex].cinematicPrompt = newCinematicPrompt;
+
+    await db
+      .update(ugcScripts)
+      .set({
+        scripts_data: scripts,
+        updated_at: new Date(),
+      })
+      .where(eq(ugcScripts.id, scriptId));
+
+    return newCinematicPrompt;
   }
 
   stripCinematicPrompts(script: UGCScript): ClientUGCScript {
