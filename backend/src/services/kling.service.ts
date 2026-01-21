@@ -509,7 +509,8 @@ export async function generateVideoWithRetry(
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
       const errorMessage = lastError.message || String(error);
-      const is422 = errorMessage.includes("422") || errorMessage.includes("Unprocessable");
+      const is422 =
+        errorMessage.includes("422") || errorMessage.includes("Unprocessable");
 
       console.warn(
         `[Kling] Video generation attempt ${attempt}/${maxRetries} failed:`,
@@ -746,15 +747,6 @@ export async function klingProMotion(
     characterOrientation = "video",
   } = options;
 
-  console.log(
-    `[Kling Pro Motion] Generating motion control video (orientation: ${characterOrientation})`,
-  );
-  console.log(`[Kling Pro Motion] Image: ${imageUrl.substring(0, 80)}...`);
-  console.log(`[Kling Pro Motion] Video: ${videoUrl.substring(0, 80)}...`);
-  if (prompt) {
-    console.log(`[Kling Pro Motion] Prompt: ${prompt.substring(0, 100)}...`);
-  }
-
   const input: Record<string, unknown> = {
     image_url: imageUrl,
     video_url: videoUrl,
@@ -772,11 +764,9 @@ export async function klingProMotion(
     { input },
   );
 
-  console.log(`[Kling Pro Motion] Request submitted: ${request_id}`);
-
   // Step 2: Poll for status until complete
-  const POLL_INTERVAL = 5000; // 5 seconds between polls
-  const MAX_WAIT_TIME = 40 * 60 * 1000; // 40 minutes max (Kling can take a while for longer videos)
+  const POLL_INTERVAL = 5000;
+  const MAX_WAIT_TIME = 40 * 60 * 1000; // 40 minutes max
   const startTime = Date.now();
 
   while (true) {
@@ -786,8 +776,6 @@ export async function klingProMotion(
         `Kling Pro Motion timed out after ${MAX_WAIT_TIME / 1000}s`,
       );
     }
-
-    // Check status with a short timeout per request
     const status = await fal.queue.status(
       "fal-ai/kling-video/v2.6/pro/motion-control",
       { requestId: request_id, logs: true },
@@ -799,19 +787,11 @@ export async function klingProMotion(
       );
       break;
     }
-
-    // Log progress if available
     if (status.status === "IN_PROGRESS" && status.logs) {
       status.logs.forEach((log: { message: string }) =>
         console.log(`[Kling Pro Motion] ${log.message}`),
       );
     }
-
-    console.log(
-      `[Kling Pro Motion] Status: ${status.status} (${Math.round(elapsed / 1000)}s elapsed)`,
-    );
-
-    // Wait before next poll
     await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL));
   }
 
@@ -858,7 +838,6 @@ export async function klingProMotionWithRetry(
       );
 
       if (attempt < maxRetries) {
-        // Longer delays for timeouts since Kling takes 3-5+ minutes per chunk
         const baseDelay = isTimeout ? 15000 : 5000;
         const delay = baseDelay * attempt;
         console.log(`[Kling Pro Motion] Retrying in ${delay / 1000}s...`);

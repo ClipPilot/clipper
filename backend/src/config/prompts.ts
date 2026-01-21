@@ -1,7 +1,3 @@
-/**
- * AI Prompts for different clip generation styles
- */
-
 import { PromptType } from "../constants/promptTypes";
 
 export interface PromptConfig {
@@ -11,7 +7,6 @@ export interface PromptConfig {
   transcriptObject: string;
   numberOfVideos?: number;
   userTextPrompt?: string;
-  // Batch processing fields
   isBatch?: boolean;
   batchTranscripts?: Array<{
     videoIndex: number;
@@ -568,7 +563,7 @@ Here is the transcript object: ${transcriptObject}
 export const generatePrompt = (
   type: PromptType,
   config: PromptConfig,
-  customInstructions?: string
+  customInstructions?: string,
 ): string => {
   let basePrompt: string;
 
@@ -596,13 +591,17 @@ export const generatePrompt = (
 export const generateBatchPrompt = (
   type: PromptType,
   config: PromptConfig,
-  customInstructions?: string
+  customInstructions?: string,
 ): string => {
   // Generate base prompt first
   let basePrompt = generatePrompt(type, config, customInstructions);
 
   // If batch mode with multiple transcripts, append batch addon
-  if (config.isBatch && config.batchTranscripts && config.batchTranscripts.length > 1) {
+  if (
+    config.isBatch &&
+    config.batchTranscripts &&
+    config.batchTranscripts.length > 1
+  ) {
     // Format the video list with all transcripts
     const videoList = config.batchTranscripts
       .map((bt) => {
@@ -621,7 +620,10 @@ ${bt.transcriptObject}
       .join("\n");
 
     // Replace placeholder and append batch addon
-    const batchAddon = BATCH_ADDON_TEMPLATE.replace("{{VIDEO_LIST}}", videoList);
+    const batchAddon = BATCH_ADDON_TEMPLATE.replace(
+      "{{VIDEO_LIST}}",
+      videoList,
+    );
     basePrompt = basePrompt + "\n\n" + batchAddon;
   }
 
