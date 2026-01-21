@@ -47,4 +47,5 @@ export const PRO_MOTION_PROMPT =
   "Hands remain relaxed and stable, minimal finger articulation. " +
   "Subject maintains exact appearance throughout - consistent face, clothing, no morphing. " +
   "Replicate held items exactly as shown. Fluid realistic motion at original speed. " +
+  "match the exact pose and actions of the person in the reference video. " +
   "High quality, sharp details, professional video.";
