@@ -11,6 +11,7 @@ import {
   PRODUCT_NEGATIVE_PROMPT,
   SCREEN_STABILITY_MODIFIERS,
 } from "./kling.service";
+import { openaiClient } from "./ugcScript.service";
 import { generateJumbledMetadataString } from "../../utils/videoMetadata";
 
 const MAX_KLING_VIDEO_DURATION = 10;
@@ -22,6 +23,61 @@ const AUDIO_BITRATE = "192k";
 const VIDEO_ENCODE_SETTINGS =
   "-c:v libx264 -preset fast -crf 23 -profile:v main -level 3.1 -pix_fmt yuv420p -r 30 -g 30 -keyint_min 30 -vsync cfr";
 const SPEECH_SPEED_BOOST = 1.12;
+
+function applySpeedBoost(
+  inputPath: string,
+  sceneNumber: number,
+): { outputPath: string; finalDuration: number } {
+  const currentDuration = getMediaDuration(inputPath);
+  const targetDuration = currentDuration / SPEECH_SPEED_BOOST;
+
+  console.log(
+    `[FFmpeg] Scene ${sceneNumber}: Applying ${SPEECH_SPEED_BOOST}x speed boost (${currentDuration.toFixed(2)}s -> ${targetDuration.toFixed(2)}s)`,
+  );
+
+  const outputPath = path.join(
+    OUTPUT_DIR,
+    `audio_boosted_${sceneNumber}_${Date.now()}.mp3`,
+  );
+
+  const cmd = `ffmpeg -y -i "${inputPath}" -filter:a "atempo=${SPEECH_SPEED_BOOST}" -vn "${outputPath}"`;
+  execSync(cmd, { stdio: "pipe" });
+
+  const finalDuration = getMediaDuration(outputPath);
+
+  if (inputPath !== outputPath && fs.existsSync(inputPath)) {
+    fs.unlinkSync(inputPath);
+  }
+
+  return { outputPath, finalDuration };
+}
+
+async function shortenDialogueText(
+  originalText: string,
+  currentDurationSeconds: number,
+  targetDurationSeconds: number,
+  sceneNumber: number,
+): Promise<string> {
+  const reductionRatio = targetDurationSeconds / currentDurationSeconds;
+  const targetCharCount = Math.floor(originalText.length * reductionRatio * 0.9);
+
+  console.log(
+    `[UGC Assembly] Scene ${sceneNumber}: Shortening dialogue from ${originalText.length} chars to ~${targetCharCount} chars`,
+  );
+
+  const response = await openaiClient.responses.create({
+    model: "gpt-4o-mini",
+    instructions: `You are a dialogue editor for video ads. Shorten the following script dialogue to approximately ${targetCharCount} characters while preserving the key message and tone. Keep it natural and punchy for a video ad. Return ONLY the shortened text, no quotes or explanation.`,
+    input: originalText,
+  });
+
+  const shortenedText = response.output_text.trim();
+  console.log(
+    `[UGC Assembly] Scene ${sceneNumber}: Shortened dialogue: "${shortenedText.substring(0, 50)}..." (${shortenedText.length} chars)`,
+  );
+
+  return shortenedText;
+}
 
 /**
  * Extract the last frame from a video as a PNG image.
@@ -157,58 +213,6 @@ function calculateMontageShots(
   return results;
 }
 
-/**
- * Speed up audio using FFmpeg atempo filter to fit within max duration.
- * atempo supports 0.5x to 2.0x, so we chain filters if needed for higher speeds.
- */
-function speedUpAudio(
-  inputPath: string,
-  targetDuration: number,
-  sceneNumber: number,
-): { outputPath: string; finalDuration: number } {
-  const currentDuration = getMediaDuration(inputPath);
-
-  if (currentDuration <= targetDuration) {
-    return { outputPath: inputPath, finalDuration: currentDuration };
-  }
-
-  const speedFactor = currentDuration / targetDuration;
-  console.log(
-    `[FFmpeg] Scene ${sceneNumber}: Speeding up audio ${currentDuration.toFixed(2)}s -> ${targetDuration}s (${speedFactor.toFixed(2)}x)`,
-  );
-  let atempoFilters: string[] = [];
-  let remainingSpeed = speedFactor;
-
-  while (remainingSpeed > 1.0) {
-    const thisSpeed = Math.min(remainingSpeed, 2.0);
-    atempoFilters.push(`atempo=${thisSpeed.toFixed(4)}`);
-    remainingSpeed = remainingSpeed / thisSpeed;
-  }
-
-  const filterChain = atempoFilters.join(",");
-  const outputPath = path.join(
-    OUTPUT_DIR,
-    `audio_speed_${sceneNumber}_${Date.now()}.mp3`,
-  );
-
-  const cmd = `ffmpeg -y -i "${inputPath}" -filter:a "${filterChain}" -vn "${outputPath}"`;
-  execSync(cmd, { stdio: "pipe" });
-
-  const finalDuration = getMediaDuration(outputPath);
-  console.log(
-    `[FFmpeg] Scene ${sceneNumber}: Audio sped up to ${finalDuration.toFixed(2)}s`,
-  );
-  if (inputPath !== outputPath && fs.existsSync(inputPath)) {
-    fs.unlinkSync(inputPath);
-  }
-
-  return { outputPath, finalDuration };
-}
-
-/**
- * Generate dialogue audio with ElevenLabs and apply 1.12x speedup.
- * Returns audio that may exceed 10s - caller handles video extension if needed.
- */
 async function generateDialogueAudio(
   voiceId: string,
   text: string,
@@ -230,30 +234,25 @@ async function generateDialogueAudio(
 
   const tempAudioPath = path.join(
     OUTPUT_DIR,
-    `dialogue_${sceneNumber}_${Date.now()}.mp3`,
+    `dialogue_raw_${sceneNumber}_${Date.now()}.mp3`,
   );
   fs.writeFileSync(tempAudioPath, audioBuffer);
 
-  // Always apply 1.12x speedup so it sounds like a fast paced ad
-  const boostedTargetDuration = actualDuration / SPEECH_SPEED_BOOST;
-  const { outputPath: finalAudioPath, finalDuration } = speedUpAudio(
-    tempAudioPath,
-    boostedTargetDuration,
-    sceneNumber,
-  );
+  const { outputPath: audioPath, finalDuration } = applySpeedBoost(tempAudioPath, sceneNumber);
 
   console.log(
-    `[UGC Assembly] Scene ${sceneNumber}: Audio ${actualDuration.toFixed(2)}s -> ${finalDuration.toFixed(2)}s (${SPEECH_SPEED_BOOST}x speed)`,
+    `[UGC Assembly] Scene ${sceneNumber}: Audio ${actualDuration.toFixed(2)}s -> ${finalDuration.toFixed(2)}s (${SPEECH_SPEED_BOOST}x)`,
   );
-  const audioBuffer2 = fs.readFileSync(finalAudioPath);
+
+  const boostedBuffer = fs.readFileSync(audioPath);
   const audioKey = await s3Service.uploadTTSAudio(
-    audioBuffer2,
+    boostedBuffer,
     teamId,
     scriptId,
     sceneNumber,
   );
 
-  return { audioPath: finalAudioPath, audioKey, duration: finalDuration };
+  return { audioPath, audioKey, duration: finalDuration };
 }
 
 /**
@@ -782,21 +781,48 @@ async function processBrollScene(
       `[UGC Assembly] Montage concatenated: ${getMediaDuration(concatenatedPath).toFixed(2)}s`,
     );
   } else {
-    let finalAudioPath = audioPath;
-    let finalAudioDuration = audioDuration;
+    const MAX_SHORTEN_ATTEMPTS = 3;
+    let shortenAttempts = 0;
+    let currentDialogue = dialogue;
 
-    if (audioDuration > MAX_KLING_VIDEO_DURATION) {
-      const targetDuration = 7;
+    while (audioDuration > MAX_KLING_VIDEO_DURATION && shortenAttempts < MAX_SHORTEN_ATTEMPTS) {
+      shortenAttempts++;
       console.log(
-        `[UGC Assembly] B-Roll Scene ${sceneNumber}: Audio ${audioDuration.toFixed(2)}s > 10s, speeding up to ~${targetDuration}s`,
+        `[UGC Assembly] B-Roll Scene ${sceneNumber}: Audio ${audioDuration.toFixed(2)}s > ${MAX_KLING_VIDEO_DURATION}s, shortening text (attempt ${shortenAttempts}/${MAX_SHORTEN_ATTEMPTS})`,
       );
-      const { outputPath, finalDuration } = speedUpAudio(audioPath, targetDuration, sceneNumber);
-      finalAudioPath = outputPath;
-      finalAudioDuration = finalDuration;
 
-      if (fs.existsSync(audioPath) && audioPath !== finalAudioPath) {
+      const targetDuration = 8;
+      currentDialogue = await shortenDialogueText(
+        currentDialogue,
+        audioDuration,
+        targetDuration,
+        sceneNumber,
+      );
+
+      if (fs.existsSync(audioPath)) {
         fs.unlinkSync(audioPath);
       }
+
+      const regenerated = await generateDialogueAudio(
+        voiceId,
+        currentDialogue,
+        teamId,
+        scriptId,
+        sceneNumber,
+      );
+      audioPath = regenerated.audioPath;
+      audioKey = regenerated.audioKey;
+      audioDuration = regenerated.duration;
+
+      console.log(
+        `[UGC Assembly] B-Roll Scene ${sceneNumber}: Regenerated audio duration: ${audioDuration.toFixed(2)}s`,
+      );
+    }
+
+    if (audioDuration > MAX_KLING_VIDEO_DURATION) {
+      console.warn(
+        `[UGC Assembly] B-Roll Scene ${sceneNumber}: Audio still ${audioDuration.toFixed(2)}s after ${MAX_SHORTEN_ATTEMPTS} shortening attempts, proceeding anyway`,
+      );
     }
 
     onProgress?.(`Scene ${sceneNumber}: Generating video...`);
@@ -849,8 +875,6 @@ async function processBrollScene(
     await s3Service.downloadVideoFromUrl(klingVideoUrl, silentVideoPath);
 
     processedVideoPath = silentVideoPath;
-    audioPath = finalAudioPath;
-    audioDuration = finalAudioDuration;
   }
 
   onProgress?.(`Scene ${sceneNumber}: Adding voiceover...`);
