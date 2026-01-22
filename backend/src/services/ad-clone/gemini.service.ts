@@ -1,5 +1,5 @@
 import * as Sentry from "@sentry/node";
-import { ENV } from "../config/env";
+import { ENV } from "../../config/env";
 import fs from "fs";
 import { execSync } from "child_process";
 

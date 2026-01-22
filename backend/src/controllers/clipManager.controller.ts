@@ -1,6 +1,6 @@
 import * as Sentry from "@sentry/node";
 import { Request, Response } from "express";
-import { clipManagerService } from "../services/clipManager.service";
+import { clipManagerService } from "../services/clips/clipManager.service";
 import { s3Service } from "../services/s3.service";
 import { sqsService } from "../services/sqs.service";
 import { teamService } from "../services/team.service";

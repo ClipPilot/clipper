@@ -1,8 +1,8 @@
 import * as Sentry from "@sentry/node";
 import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
-import { s3Service } from "./s3.service";
-import { config } from "../config/env";
-import { getVideoDuration } from "./videoEditor.service";
+import { s3Service } from "../s3.service";
+import { config } from "../../config/env";
+import { getVideoDuration } from "../clips/videoEditor.service";
 import path from "path";
 
 export interface FaceSegment {

@@ -14,21 +14,21 @@ import { s3Service } from "../../services/s3.service";
 import {
   klingProMotionWithRetry,
   PRO_MOTION_PROMPT,
-} from "../../services/kling.service";
+} from "../../services/ai-ugc/kling.service";
 import {
   cutClip,
   mergeClipsGpu,
   extractFirstFrame,
-} from "../../services/videoEditor.service";
+} from "../../services/clips/videoEditor.service";
 import { ComfyJobUpdate } from "../../services/socket.service";
 import { teamService } from "../../services/team.service";
 import { emailNotiService } from "../../services/emailNoti.service";
-import { transcribeVideoService } from "../../services/transcription.service";
+import { transcribeVideoService } from "../../services/clips/transcription.service";
 import {
   convertWordsToCaptionEntries,
   generateSrtFromCaptions,
-} from "../../services/captions.service";
-import { falImageService } from "../../services/falImage.service";
+} from "../../services/clips/captions.service";
+import { falImageService } from "../../services/ai-ugc/falImage.service";
 import { POSE_GENERATION_PROMPT } from "../../config/ugcPrompts";
 
 const API_INTERNAL_URL =

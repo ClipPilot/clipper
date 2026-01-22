@@ -1,5 +1,5 @@
 import { fal } from "@fal-ai/client";
-import { config } from "../config/env";
+import { config } from "../../config/env";
 
 fal.config({
   credentials: config.fal.apiKey,

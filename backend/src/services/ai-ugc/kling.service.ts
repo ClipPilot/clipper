@@ -1,6 +1,6 @@
 import { fal } from "@fal-ai/client";
-import { config } from "../config/env";
-import { openaiClient } from "./ugcScript.service";
+import { config } from "../../config/env";
+import { openaiClient } from "../openai.service";
 import {
   PRODUCT_NEGATIVE_PROMPT,
   PRODUCT_STABILITY_MODIFIERS,
@@ -12,7 +12,7 @@ import {
 import {
   generateGroundedCinematicSystemPrompt,
   generateGroundedCinematicUserPrompt,
-} from "../config/groundedPrompts";
+} from "../../config/groundedPrompts";
 
 export {
   PRODUCT_NEGATIVE_PROMPT,

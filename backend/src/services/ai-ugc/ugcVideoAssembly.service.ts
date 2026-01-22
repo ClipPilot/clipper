@@ -1,7 +1,7 @@
 import path from "path";
 import fs from "fs";
 import { execSync } from "child_process";
-import { s3Service } from "./s3.service";
+import { s3Service } from "../s3.service";
 import { elevenLabsService } from "./elevenlabs.service";
 import {
   klingService,
@@ -11,7 +11,7 @@ import {
   PRODUCT_NEGATIVE_PROMPT,
   SCREEN_STABILITY_MODIFIERS,
 } from "./kling.service";
-import { generateJumbledMetadataString } from "../utils/videoMetadata";
+import { generateJumbledMetadataString } from "../../utils/videoMetadata";
 
 const MAX_KLING_VIDEO_DURATION = 10;
 const KLING_EXTENSION_DURATION = 5;

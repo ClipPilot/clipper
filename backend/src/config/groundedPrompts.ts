@@ -1,4 +1,4 @@
-import { ShotType } from "../services/kling.service";
+import { ShotType } from "../services/ai-ugc/kling.service";
 
 export interface GroundedCinematicPromptConfig {
   originalCinematicPrompt: string;

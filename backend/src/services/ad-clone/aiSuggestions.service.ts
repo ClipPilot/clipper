@@ -1,7 +1,5 @@
 import * as Sentry from "@sentry/node";
-import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
-import { ENV } from "../config/env";
 import { SyncPrerecordedResponse } from "@deepgram/sdk";
 import {
   ClipSuggestionsSchema,
@@ -9,23 +7,18 @@ import {
   ClipSuggestions,
   BatchClipSuggestions,
   MultipleBatchClipSuggestionsSchema,
-} from "../types/ai.types";
+} from "../../types/ai.types";
 import z from "zod";
-import { generatePrompt, generateBatchPrompt } from "../config/prompts";
+import { generatePrompt, generateBatchPrompt } from "../../config/prompts";
 import fs from "fs";
-import { PromptType } from "../constants/promptTypes";
+import { PromptType } from "../../constants/promptTypes";
 import {
   getGeminiClient,
   getGeminiHelpers,
   uploadVideoToGemini,
   cleanupGeminiResources,
 } from "./gemini.service";
-
-const client = new OpenAI({
-  apiKey: ENV.OPENAI_API_KEY,
-  timeout: 10 * 60 * 1000,
-  maxRetries: 3,
-});
+import { openaiClient as client } from "../openai.service";
 
 export interface ClipGenerationOptions {
   length?: number;

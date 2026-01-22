@@ -2,13 +2,13 @@ import * as Sentry from "@sentry/node";
 import fs from "fs";
 import path from "path";
 import { ClipVideoJob } from "../../services/sqs.service";
-import { transcribeVideoService } from "../../services/transcription.service";
+import { transcribeVideoService } from "../../services/clips/transcription.service";
 import {
   generateClipSuggestionsService,
   ClipGenerationOptions,
-} from "../../services/aiSuggestions.service";
-import { createCombinedClipService } from "../../services/clip.service";
-import { clipManagerService } from "../../services/clipManager.service";
+} from "../../services/ad-clone/aiSuggestions.service";
+import { createCombinedClipService } from "../../services/clips/clip.service";
+import { clipManagerService } from "../../services/clips/clipManager.service";
 import { s3Service } from "../../services/s3.service";
 import { extractThumbnail } from "../../utils/extractThumbnail";
 import { notifyClipsRefresh } from "../notify";

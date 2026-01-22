@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { s3Service } from "../services/s3.service";
 import { sqsService } from "../services/sqs.service";
-import { ugcScriptService } from "../services/ugcScript.service";
+import { ugcScriptService } from "../services/ai-ugc/ugcScript.service";
 import { teamService } from "../services/team.service";
 import { canAccessUGCStudio } from "../utils/plans";
 import { db } from "../db";

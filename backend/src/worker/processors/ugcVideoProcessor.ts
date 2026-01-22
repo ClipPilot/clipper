@@ -4,7 +4,7 @@ import { GenerateUGCVideoJob } from "../../services/sqs.service";
 import {
   assembleUGCVideo,
   SceneVideoData,
-} from "../../services/ugcVideoAssembly.service";
+} from "../../services/ai-ugc/ugcVideoAssembly.service";
 import { notifyUGCVideoJobUpdate, UGCVideoJobUpdate } from "../notify";
 
 /**
