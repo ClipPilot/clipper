@@ -68,6 +68,7 @@ export async function processSceneImageJob(
     bRollShots,
     singleBRollShotIndex,
     existingBRollImages,
+    previousArollImageKey,
   } = job;
 
   const includeProductImages = shouldIncludeProductImages(sceneData.sceneType);
@@ -277,6 +278,11 @@ export async function processSceneImageJob(
       await updateJobProgress(jobId, 40, "Using custom start image...");
     } else {
       const allReferenceKeys: string[] = [];
+
+      if (previousArollImageKey) {
+        allReferenceKeys.push(previousArollImageKey);
+        console.log(`[SCENE_IMAGE] Using previous A-roll image for visual consistency`);
+      }
 
       if (characterId) {
         const [character] = await db

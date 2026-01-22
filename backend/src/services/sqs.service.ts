@@ -177,6 +177,7 @@ export interface GenerateSceneImageJob extends BaseJob {
   }>;
   singleBRollShotIndex?: number;
   existingBRollImages?: string[];
+  previousArollImageKey?: string;
 }
 
 // Script generation job payload
@@ -443,6 +444,7 @@ class SQSService {
     bRollShots?: GenerateSceneImageJob["bRollShots"];
     singleBRollShotIndex?: number;
     existingBRollImages?: string[];
+    previousArollImageKey?: string;
   }): Promise<string> {
     const job: GenerateSceneImageJob = {
       type: "generate-scene-image",
@@ -464,6 +466,7 @@ class SQSService {
       bRollShots: params.bRollShots,
       singleBRollShotIndex: params.singleBRollShotIndex,
       existingBRollImages: params.existingBRollImages,
+      previousArollImageKey: params.previousArollImageKey,
       createdAt: new Date().toISOString(),
     };
 

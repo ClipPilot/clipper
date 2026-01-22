@@ -16,6 +16,105 @@ interface AuthRequest extends Request {
   user?: { id: string; email: string; dbUserId: number };
 }
 
+interface ArollChainInfo {
+  isPartOfChain: boolean;
+  chainIndex: number;
+  previousSceneIndex: number | null;
+}
+
+function detectArollChains(
+  scenes: Array<{ sceneNumber: number; shotType?: string }>
+): Map<number, ArollChainInfo> {
+  const chainMap = new Map<number, ArollChainInfo>();
+
+  if (scenes.length === 0) return chainMap;
+
+  const indexedScenes = scenes.map((scene, idx) => ({
+    ...scene,
+    originalIndex: idx,
+  }));
+
+  indexedScenes.sort((a, b) => a.sceneNumber - b.sceneNumber);
+
+  let chainIndex = 0;
+  let previousArollIndex: number | null = null;
+
+  for (const scene of indexedScenes) {
+    const isAroll = scene.shotType === "a-roll";
+
+    if (isAroll) {
+      if (previousArollIndex !== null) {
+        chainMap.set(scene.originalIndex, {
+          isPartOfChain: true,
+          chainIndex: chainIndex,
+          previousSceneIndex: previousArollIndex,
+        });
+
+        const prevInfo = chainMap.get(previousArollIndex);
+        if (prevInfo && !prevInfo.isPartOfChain) {
+          chainMap.set(previousArollIndex, {
+            ...prevInfo,
+            isPartOfChain: true,
+          });
+        }
+
+        chainIndex++;
+      } else {
+        chainMap.set(scene.originalIndex, {
+          isPartOfChain: false,
+          chainIndex: 0,
+          previousSceneIndex: null,
+        });
+        chainIndex = 1;
+      }
+
+      previousArollIndex = scene.originalIndex;
+    } else {
+      previousArollIndex = null;
+      chainIndex = 0;
+    }
+  }
+
+  return chainMap;
+}
+
+async function waitForJobCompletion(
+  jobId: string,
+  maxWaitMs: number = 300000, // 5 minutes max
+  pollIntervalMs: number = 2000
+): Promise<string | null> {
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < maxWaitMs) {
+    const [job] = await db
+      .select()
+      .from(sceneImageGenerationJobs)
+      .where(eq(sceneImageGenerationJobs.id, jobId));
+
+    if (!job) {
+      console.error(`[SCENE_BUILDER] Job ${jobId} not found while polling`);
+      return null;
+    }
+
+    if (job.status === "completed" && job.generated_images) {
+      const images = job.generated_images as string[];
+      // Return the first (primary) generated image
+      return images[0] || null;
+    }
+
+    if (job.status === "failed") {
+      console.error(`[SCENE_BUILDER] Job ${jobId} failed: ${job.error_message}`);
+      return null;
+    }
+
+    // Wait before next poll
+    await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+  }
+
+  console.error(`[SCENE_BUILDER] Job ${jobId} timed out after ${maxWaitMs}ms`);
+  return null;
+}
+
 interface BRollShotData {
   action: string;
   cinematicPrompt: string;
@@ -105,6 +204,34 @@ export class SceneBuilderController {
 
       const prompt = this.buildScenePrompt(sceneData, userRefinement);
 
+      let previousArollImageKey: string | undefined;
+      if (sceneData.shotType === "a-roll") {
+        const allScenes = selectedScript?.scenes as SceneData[] || [];
+        const previousScene = allScenes.find(
+          (s: SceneData) => s.sceneNumber === sceneNumber - 1
+        );
+
+        if (previousScene?.shotType === "a-roll") {
+          const [prevSceneImage] = await db
+            .select()
+            .from(sceneImages)
+            .where(
+              and(
+                eq(sceneImages.script_id, scriptId),
+                eq(sceneImages.scene_id, previousScene.id)
+              )
+            )
+            .limit(1);
+
+          if (prevSceneImage?.image_key) {
+            previousArollImageKey = prevSceneImage.image_key;
+            console.log(
+              `[SCENE_BUILDER] Scene ${sceneNumber}: Using previous A-roll image for consistency`
+            );
+          }
+        }
+      }
+
       const [job] = await db
         .insert(sceneImageGenerationJobs)
         .values({
@@ -150,6 +277,7 @@ export class SceneBuilderController {
         bRollShots: sceneData.bRollShots || undefined,
         singleBRollShotIndex,
         existingBRollImages: existingBRollImages || undefined,
+        previousArollImageKey,
       });
 
       return res.status(202).json({
@@ -231,6 +359,12 @@ export class SceneBuilderController {
       const BATCH_SIZE = 2;
       const DELAY_BETWEEN_BATCHES_MS = 1000;
 
+      // Detect A-roll chains for visual consistency
+      const arollChains = detectArollChains(scenes);
+
+      // Track generated image keys for A-roll chaining
+      const generatedImageKeys: Map<number, string> = new Map();
+
       for (let idx = 0; idx < scenes.length; idx++) {
         const sceneRequest = scenes[idx];
         // Use scene data passed from frontend if available (fresher than DB)
@@ -296,6 +430,20 @@ export class SceneBuilderController {
           })
           .returning();
 
+        // Check if this scene is part of an A-roll chain
+        const chainInfo = arollChains.get(idx);
+        let previousArollImageKey: string | undefined;
+
+        if (chainInfo?.isPartOfChain && chainInfo.previousSceneIndex !== null) {
+          // Get the previous A-roll's generated image key
+          previousArollImageKey = generatedImageKeys.get(chainInfo.previousSceneIndex) || undefined;
+          if (previousArollImageKey) {
+            console.log(
+              `[SCENE_BUILDER] Scene ${sceneRequest.sceneNumber}: Using previous A-roll image as reference for visual consistency`
+            );
+          }
+        }
+
         await sqsService.sendGenerateSceneImageJob({
           jobId: job.id,
           teamId,
@@ -321,11 +469,35 @@ export class SceneBuilderController {
           customStartImageKey: sceneRequest.customStartImageKey || undefined,
           customEndImageKey: sceneRequest.customEndImageKey || undefined,
           bRollShots: sceneData.bRollShots || undefined,
+          previousArollImageKey,
         });
 
         jobIds.push(job.id);
 
-        if ((idx + 1) % BATCH_SIZE === 0 && idx < scenes.length - 1) {
+        // If this is an A-roll that starts or continues a chain, wait for completion
+        // so the next A-roll can use this image as a reference
+        const nextChainInfo = arollChains.get(idx + 1);
+        const needsToWaitForChain =
+          chainInfo?.isPartOfChain &&
+          nextChainInfo?.isPartOfChain &&
+          nextChainInfo.previousSceneIndex === idx;
+
+        if (needsToWaitForChain) {
+          console.log(
+            `[SCENE_BUILDER] Scene ${sceneRequest.sceneNumber}: Waiting for completion (next scene needs this as reference)...`
+          );
+          const generatedKey = await waitForJobCompletion(job.id);
+          if (generatedKey) {
+            generatedImageKeys.set(idx, generatedKey);
+            console.log(
+              `[SCENE_BUILDER] Scene ${sceneRequest.sceneNumber}: Completed, image key stored for chaining`
+            );
+          } else {
+            console.warn(
+              `[SCENE_BUILDER] Scene ${sceneRequest.sceneNumber}: Failed or timed out, chain will continue without reference`
+            );
+          }
+        } else if ((idx + 1) % BATCH_SIZE === 0 && idx < scenes.length - 1) {
           console.log(`[SCENE_BUILDER] Batch ${Math.floor(idx / BATCH_SIZE) + 1} queued, waiting ${DELAY_BETWEEN_BATCHES_MS}ms before next batch...`);
           await new Promise((resolve) => setTimeout(resolve, DELAY_BETWEEN_BATCHES_MS));
         }
