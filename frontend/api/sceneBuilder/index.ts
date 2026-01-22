@@ -252,6 +252,26 @@ class SceneBuilderAPI {
   }
 
   /**
+   * Cancel a stuck or generating job
+   */
+  async cancelJob(jobId: string): Promise<{ success: boolean; message: string }> {
+    const response = await apiFetch(
+      `${API_URL}/scene-builder/cancel-job/${jobId}`,
+      {
+        method: "POST",
+        credentials: "include",
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to cancel job");
+    }
+
+    return response.json();
+  }
+
+  /**
    * Upload a supporting image
    */
   async uploadSupportingImage(

@@ -228,9 +228,11 @@ export class SceneBuilderController {
       const selectedScript = scriptsData[script.selected_variant_index];
 
       const jobIds: string[] = [];
+      const BATCH_SIZE = 2;
+      const DELAY_BETWEEN_BATCHES_MS = 1000;
 
-      // Create jobs for each scene
-      for (const sceneRequest of scenes) {
+      for (let idx = 0; idx < scenes.length; idx++) {
+        const sceneRequest = scenes[idx];
         // Use scene data passed from frontend if available (fresher than DB)
         // Fall back to DB data for backwards compatibility
         let sceneData: SceneData;
@@ -322,6 +324,11 @@ export class SceneBuilderController {
         });
 
         jobIds.push(job.id);
+
+        if ((idx + 1) % BATCH_SIZE === 0 && idx < scenes.length - 1) {
+          console.log(`[SCENE_BUILDER] Batch ${Math.floor(idx / BATCH_SIZE) + 1} queued, waiting ${DELAY_BETWEEN_BATCHES_MS}ms before next batch...`);
+          await new Promise((resolve) => setTimeout(resolve, DELAY_BETWEEN_BATCHES_MS));
+        }
       }
 
       return res.status(202).json({
@@ -542,6 +549,51 @@ export class SceneBuilderController {
           error instanceof Error
             ? error.message
             : "Failed to select scene image",
+      });
+    }
+  }
+
+  /**
+   * Cancel a stuck or generating job - allows user to retry
+   */
+  async cancelJob(req: AuthRequest, res: Response) {
+    try {
+      const jobId = req.params.jobId;
+
+      if (!jobId) {
+        return res.status(400).json({ error: "jobId is required" });
+      }
+
+      const [job] = await db
+        .select()
+        .from(sceneImageGenerationJobs)
+        .where(eq(sceneImageGenerationJobs.id, jobId));
+
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+
+      if (job.status === "completed") {
+        return res.status(400).json({ error: "Cannot cancel a completed job" });
+      }
+
+      await db
+        .update(sceneImageGenerationJobs)
+        .set({
+          status: "failed",
+          error_message: "Cancelled by user",
+          completed_at: new Date(),
+        })
+        .where(eq(sceneImageGenerationJobs.id, jobId));
+
+      return res.status(200).json({
+        success: true,
+        message: "Job cancelled successfully",
+      });
+    } catch (error) {
+      console.error("[SCENE_BUILDER] Cancel job error:", error);
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to cancel job",
       });
     }
   }

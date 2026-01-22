@@ -37,6 +37,7 @@ interface SceneImageCardProps {
   customBRollImages?: Record<number, { key: string; url: string }>;
   onGenerationStart: (jobId: string) => void;
   onGenerationUpdate: (status: SceneImageGeneration) => void;
+  onGenerationCancel: () => void;
   onImageSelect: (key: string, url: string) => void;
   onRefinementChange: (refinement: string) => void;
   onSupportingImagesChange: (keys: string[]) => void;
@@ -66,6 +67,7 @@ export function SceneImageCard({
   customBRollImages,
   onGenerationStart,
   onGenerationUpdate,
+  onGenerationCancel,
   onImageSelect,
   onRefinementChange,
   onSupportingImagesChange,
@@ -208,6 +210,18 @@ export function SceneImageCard({
   const handleRefinementBlur = () => {
     if (localRefinement !== userRefinement) {
       onRefinementChange(localRefinement);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!generation?.jobId) return;
+    try {
+      await sceneBuilderAPI.cancelJob(generation.jobId);
+      setIsGenerating(false);
+      setRegeneratingShotIndex(null);
+      onGenerationCancel();
+    } catch (error) {
+      console.error("Failed to cancel job:", error);
     }
   };
 
@@ -475,9 +489,20 @@ export function SceneImageCard({
               <span className="text-text-secondary">
                 {generation.progressMessage}
               </span>
-              <span className="text-accent-400 font-medium">
-                {generation.progress}%
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-accent-400 font-medium">
+                  {generation.progress}%
+                </span>
+                <Button
+                  size="sm"
+                  variant="flat"
+                  className="bg-red-500/20 text-red-400 h-6 min-w-0 px-2"
+                  onPress={handleCancel}
+                  startContent={<Icon icon="solar:close-circle-bold" width={12} />}
+                >
+                  Cancel
+                </Button>
+              </div>
             </div>
             <Progress
               value={generation.progress}
@@ -491,9 +516,20 @@ export function SceneImageCard({
         )}
 
         {generation?.status === "failed" && (
-          <div className="flex items-center gap-2 text-red-400 text-sm">
-            <Icon icon="solar:danger-triangle-bold" width={16} />
-            <span>{generation.error || "Generation failed"}</span>
+          <div className="flex items-center justify-between p-2 rounded-lg bg-red-500/10 border border-red-500/30">
+            <div className="flex items-center gap-2 text-red-400 text-sm">
+              <Icon icon="solar:danger-triangle-bold" width={16} />
+              <span>{generation.error || "Generation failed"}</span>
+            </div>
+            <Button
+              size="sm"
+              variant="flat"
+              className="bg-red-500/20 text-red-400 h-7"
+              onPress={() => handleGenerate()}
+              startContent={<Icon icon="solar:refresh-bold" width={14} />}
+            >
+              Try Again
+            </Button>
           </div>
         )}
 
