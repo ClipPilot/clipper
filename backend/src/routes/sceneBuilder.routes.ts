@@ -154,6 +154,37 @@ router.get(
 
 /**
  * @openapi
+ * /scene-builder/cancel-job/{jobId}:
+ *   post:
+ *     summary: Cancel a generating or stuck job
+ *     description: Marks a job as failed so the user can retry generation
+ *     tags:
+ *       - Scene Builder
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: jobId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Job cancelled successfully
+ *       400:
+ *         description: Cannot cancel completed job
+ *       404:
+ *         description: Job not found
+ */
+router.post(
+  "/cancel-job/:jobId",
+  requireAuth,
+  sceneBuilderController.cancelJob.bind(sceneBuilderController)
+);
+
+/**
+ * @openapi
  * /scene-builder/script/{scriptId}/scene-images:
  *   get:
  *     summary: Get all saved scene images for a script

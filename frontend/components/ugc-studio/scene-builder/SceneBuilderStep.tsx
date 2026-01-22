@@ -345,6 +345,17 @@ export function SceneBuilderStep({
     });
   };
 
+  const handleGenerationCancel = (sceneId: string) => {
+    setSceneImages((prev) => ({
+      ...prev,
+      [sceneId]: {
+        ...prev[sceneId],
+        status: "failed",
+        jobId: undefined,
+      },
+    }));
+  };
+
   const handleGenerateAll = async () => {
     if (scenes.length === 0) return;
 
@@ -600,6 +611,9 @@ export function SceneBuilderStep({
             }
             onGenerationUpdate={(gen) =>
               handleGenerationUpdate(scene.id, gen)
+            }
+            onGenerationCancel={() =>
+              handleGenerationCancel(scene.id)
             }
             onImageSelect={(key, url) =>
               handleImageSelect(scene.id, key, url)

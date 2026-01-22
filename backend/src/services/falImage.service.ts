@@ -5,6 +5,17 @@ fal.config({
   credentials: config.fal.apiKey,
 });
 
+const FAL_TIMEOUT_MS = 300000; // 5 minutes max per image generation
+
+function withTimeout<T>(promise: Promise<T>, ms: number, operation: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`${operation} timed out after ${ms / 1000}s`)), ms)
+    ),
+  ]);
+}
+
 export type AspectRatio =
   | "21:9"
   | "16:9"
@@ -55,25 +66,29 @@ export async function generateImage(
 
   console.log(`[FAL_IMAGE] Text-to-image with aspect ratio ${aspectRatio}`);
 
-  const result = (await fal.subscribe("fal-ai/nano-banana", {
-    input: {
-      prompt,
-      num_images: numImages,
-      aspect_ratio: aspectRatio,
-      output_format: "png",
-      limit_generations: true,
-    },
-    logs: true,
-    onQueueUpdate: (update) => {
-      if (update.status === "IN_PROGRESS" && update.logs) {
-        update.logs
-          .map((log: { message: string }) => log.message)
-          .forEach((msg: string) => {
-            console.log(`[FAL_IMAGE] ${msg}`);
-          });
-      }
-    },
-  })) as { data: FalImageResponse };
+  const result = (await withTimeout(
+    fal.subscribe("fal-ai/nano-banana", {
+      input: {
+        prompt,
+        num_images: numImages,
+        aspect_ratio: aspectRatio,
+        output_format: "png",
+        limit_generations: true,
+      },
+      logs: true,
+      onQueueUpdate: (update) => {
+        if (update.status === "IN_PROGRESS" && update.logs) {
+          update.logs
+            .map((log: { message: string }) => log.message)
+            .forEach((msg: string) => {
+              console.log(`[FAL_IMAGE] ${msg}`);
+            });
+        }
+      },
+    }),
+    FAL_TIMEOUT_MS,
+    "FAL text-to-image"
+  )) as { data: FalImageResponse };
 
   if (!result.data?.images?.[0]?.url) {
     throw new Error("FAL AI did not return an image");
@@ -101,26 +116,30 @@ export async function generateImageWithReferences(
     `[FAL_IMAGE] Image-to-image with ${imageUrls.length} reference images, aspect ratio ${aspectRatio}, model: ${model}`,
   );
 
-  const result = (await fal.subscribe(model, {
-    input: {
-      prompt,
-      image_urls: imageUrls,
-      num_images: numImages,
-      aspect_ratio: aspectRatio,
-      output_format: "png",
-      limit_generations: true,
-    },
-    logs: true,
-    onQueueUpdate: (update) => {
-      if (update.status === "IN_PROGRESS" && update.logs) {
-        update.logs
-          .map((log: { message: string }) => log.message)
-          .forEach((msg: string) => {
-            console.log(`[FAL_IMAGE] ${msg}`);
-          });
-      }
-    },
-  })) as { data: FalImageResponse };
+  const result = (await withTimeout(
+    fal.subscribe(model, {
+      input: {
+        prompt,
+        image_urls: imageUrls,
+        num_images: numImages,
+        aspect_ratio: aspectRatio,
+        output_format: "png",
+        limit_generations: true,
+      },
+      logs: true,
+      onQueueUpdate: (update) => {
+        if (update.status === "IN_PROGRESS" && update.logs) {
+          update.logs
+            .map((log: { message: string }) => log.message)
+            .forEach((msg: string) => {
+              console.log(`[FAL_IMAGE] ${msg}`);
+            });
+        }
+      },
+    }),
+    FAL_TIMEOUT_MS,
+    "FAL image-to-image"
+  )) as { data: FalImageResponse };
 
   if (!result.data?.images?.[0]?.url) {
     throw new Error("FAL AI did not return an image");
