@@ -7,18 +7,18 @@ import {
   ClipSuggestions,
   BatchClipSuggestions,
   MultipleBatchClipSuggestionsSchema,
-} from "../../types/ai.types";
+} from "../types/ai.types";
 import z from "zod";
-import { generatePrompt, generateBatchPrompt } from "../../config/prompts";
+import { generatePrompt, generateBatchPrompt } from "../config/prompts";
 import fs from "fs";
-import { PromptType } from "../../constants/promptTypes";
+import { PromptType } from "../constants/promptTypes";
 import {
   getGeminiClient,
   getGeminiHelpers,
   uploadVideoToGemini,
   cleanupGeminiResources,
-} from "./gemini.service";
-import { openaiClient as client } from "../openai.service";
+} from "./ad-clone/gemini.service";
+import { openaiClient as client } from "./openai.service";
 
 export interface ClipGenerationOptions {
   length?: number;

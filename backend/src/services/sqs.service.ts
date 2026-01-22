@@ -16,7 +16,9 @@ export type JobType =
   | "generate-scene-image"
   | "generate-script"
   | "generate-ugc-video"
-  | "kling-face-swap";
+  | "kling-face-swap"
+  | "ad-clone-analyze"
+  | "ad-clone-generate-script";
 
 // Base job interface
 interface BaseJob {
@@ -237,6 +239,17 @@ export interface KlingFaceSwapJob extends BaseJob {
   folderId?: number;
 }
 
+export interface AdCloneAnalyzeJob extends BaseJob {
+  type: "ad-clone-analyze";
+  projectId: string;
+}
+
+export interface AdCloneGenerateScriptJob extends BaseJob {
+  type: "ad-clone-generate-script";
+  projectId: string;
+  characterId: number;
+}
+
 export type VideoProcessingJob =
   | ClipVideoJob
   | BatchClipVideoJob
@@ -247,7 +260,9 @@ export type VideoProcessingJob =
   | GenerateSceneImageJob
   | GenerateScriptJob
   | GenerateUGCVideoJob
-  | KlingFaceSwapJob;
+  | KlingFaceSwapJob
+  | AdCloneAnalyzeJob
+  | AdCloneGenerateScriptJob;
 
 class SQSService {
   private queueUrl: string;
@@ -511,8 +526,11 @@ class SQSService {
     userId: number;
     scriptId: string;
     voiceId: string;
-    scenes: GenerateUGCVideoJob["scenes"];
+    scenes?: GenerateUGCVideoJob["scenes"];
     regenerateSceneId?: string;
+    characterId?: number;
+    productImageKeys?: string[];
+    adCloneProjectId?: string;
   }): Promise<string> {
     const job: GenerateUGCVideoJob = {
       type: "generate-ugc-video",
@@ -521,7 +539,7 @@ class SQSService {
       userId: params.userId,
       scriptId: params.scriptId,
       voiceId: params.voiceId,
-      scenes: params.scenes,
+      scenes: params.scenes || [],
       regenerateSceneId: params.regenerateSceneId,
       createdAt: new Date().toISOString(),
     };
@@ -555,6 +573,40 @@ class SQSService {
       spliceMode: params.spliceMode,
       spliceMetadata: params.spliceMetadata,
       folderId: params.folderId,
+      createdAt: new Date().toISOString(),
+    };
+
+    return this.sendJob(job);
+  }
+
+  async sendAdCloneAnalyzeJob(params: {
+    projectId: string;
+    teamId: number;
+    userId: number;
+  }): Promise<string> {
+    const job: AdCloneAnalyzeJob = {
+      type: "ad-clone-analyze",
+      projectId: params.projectId,
+      teamId: params.teamId,
+      userId: params.userId,
+      createdAt: new Date().toISOString(),
+    };
+
+    return this.sendJob(job);
+  }
+
+  async sendAdCloneGenerateScriptJob(params: {
+    projectId: string;
+    teamId: number;
+    userId: number;
+    characterId: number;
+  }): Promise<string> {
+    const job: AdCloneGenerateScriptJob = {
+      type: "ad-clone-generate-script",
+      projectId: params.projectId,
+      teamId: params.teamId,
+      userId: params.userId,
+      characterId: params.characterId,
       createdAt: new Date().toISOString(),
     };
 

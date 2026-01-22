@@ -59,7 +59,7 @@
     "swagger-ui-express": "^5.0.1",
     "ws": "^8.18.3",
     "zod": "^4.1.13",
-    "zod-to-json-schema": "^3.25.0"
+    "zod-to-json-schema": "^3.25.1"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

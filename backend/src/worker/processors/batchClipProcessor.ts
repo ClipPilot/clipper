@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import { BatchClipVideoJob } from "../../services/sqs.service";
 import { transcribeMultipleVideosService } from "../../services/clips/transcription.service";
-import { generateBatchClipSuggestionsService } from "../../services/ad-clone/aiSuggestions.service";
+import { generateBatchClipSuggestionsService } from "../../services/aiSuggestions.service";
 import {
   createBatchCombinedClipService,
   BatchVideoSource,

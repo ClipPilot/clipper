@@ -6,7 +6,7 @@ import { transcribeVideoService } from "../../services/clips/transcription.servi
 import {
   generateClipSuggestionsService,
   ClipGenerationOptions,
-} from "../../services/ad-clone/aiSuggestions.service";
+} from "../../services/aiSuggestions.service";
 import { createCombinedClipService } from "../../services/clips/clip.service";
 import { clipManagerService } from "../../services/clips/clipManager.service";
 import { s3Service } from "../../services/s3.service";

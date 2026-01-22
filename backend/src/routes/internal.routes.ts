@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { emitClipsRefresh, emitClipUpdate, emitComfyJobUpdate, ComfyJobUpdate, emitScriptJobUpdate, ScriptJobUpdate, emitUGCVideoJobUpdate, UGCVideoJobUpdate } from "../services/socket.service";
+import { emitClipsRefresh, emitClipUpdate, emitComfyJobUpdate, ComfyJobUpdate, emitScriptJobUpdate, ScriptJobUpdate, emitUGCVideoJobUpdate, UGCVideoJobUpdate, emitAdCloneJobUpdate, AdCloneJobUpdate } from "../services/socket.service";
 
 const router = Router();
 
@@ -170,6 +170,81 @@ router.post("/notify/ugc-video-job-update", validateInternalKey, (req: Request, 
 
   emitUGCVideoJobUpdate(teamId, update);
   console.log(`[INTERNAL] Emitted ugc-video-job-update for team ${teamId}, job ${update.jobId}`);
+
+  return res.status(200).json({ success: true });
+});
+
+/**
+ * @openapi
+ * /internal/notify/ad-clone-job-update:
+ *   post:
+ *     summary: Trigger ad clone job update notification
+ *     description: |
+ *       Internal endpoint used by the worker to notify clients of ad clone job
+ *       progress updates. Emits a WebSocket event with analysis/script status.
+ *     tags:
+ *       - Internal
+ *     security:
+ *       - internalApiKey: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - teamId
+ *               - update
+ *             properties:
+ *               teamId:
+ *                 type: integer
+ *                 description: The team ID to notify
+ *               update:
+ *                 type: object
+ *                 required:
+ *                   - projectId
+ *                   - status
+ *                   - progress
+ *                   - progressMessage
+ *                 properties:
+ *                   projectId:
+ *                     type: string
+ *                     format: uuid
+ *                   status:
+ *                     type: string
+ *                     enum: [analyzing, analysis_complete, generating_script, script_generated, generating_video, completed, failed]
+ *                   progress:
+ *                     type: integer
+ *                     minimum: 0
+ *                     maximum: 100
+ *                   progressMessage:
+ *                     type: string
+ *                   analysis:
+ *                     type: object
+ *                     description: Video analysis result (when status is analysis_complete)
+ *                   scripts:
+ *                     type: array
+ *                     description: Generated scripts (when status is script_generated)
+ *                   error:
+ *                     type: string
+ *                     description: Error message (when status is failed)
+ *     responses:
+ *       200:
+ *         description: Notification sent successfully
+ *       400:
+ *         description: Missing teamId or update
+ *       401:
+ *         description: Invalid internal API key
+ */
+router.post("/notify/ad-clone-job-update", validateInternalKey, (req: Request, res: Response) => {
+  const { teamId, update } = req.body as { teamId: number; update: AdCloneJobUpdate };
+
+  if (!teamId || !update) {
+    return res.status(400).json({ error: "teamId and update are required" });
+  }
+
+  emitAdCloneJobUpdate(teamId, update);
+  console.log(`[INTERNAL] Emitted ad-clone-job-update for team ${teamId}, project ${update.projectId}`);
 
   return res.status(200).json({ success: true });
 });

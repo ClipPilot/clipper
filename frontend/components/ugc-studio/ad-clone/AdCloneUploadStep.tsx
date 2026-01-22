@@ -2,7 +2,7 @@
 
 import { useRef, useState, useCallback } from "react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { Card, CardBody, Button, Input, Textarea } from "@heroui/react";
+import { Card, CardBody, Button, Input, Textarea, Progress } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import {
   adCloneVideoAtom,
@@ -11,26 +11,48 @@ import {
   adCloneProductDescriptionAtom,
   adCloneAdDirectionAtom,
   adCloneCanProceedAtom,
+  adCloneProgressAtom,
+  adCloneProgressMessageAtom,
+  adCloneErrorAtom,
   resetAdCloneAtom,
 } from "@/store/adClone";
 
 interface AdCloneUploadStepProps {
   teamId: number;
+  onContinue?: () => Promise<void> | void;
 }
 
-export function AdCloneUploadStep({ teamId }: AdCloneUploadStepProps) {
+export function AdCloneUploadStep({ teamId, onContinue }: AdCloneUploadStepProps) {
   const [video, setVideo] = useAtom(adCloneVideoAtom);
   const [productImage, setProductImage] = useAtom(adCloneProductImageAtom);
   const [productName, setProductName] = useAtom(adCloneProductNameAtom);
   const [productDescription, setProductDescription] = useAtom(adCloneProductDescriptionAtom);
   const [adDirection, setAdDirection] = useAtom(adCloneAdDirectionAtom);
   const canProceed = useAtomValue(adCloneCanProceedAtom);
+  const progress = useAtomValue(adCloneProgressAtom);
+  const progressMessage = useAtomValue(adCloneProgressMessageAtom);
+  const error = useAtomValue(adCloneErrorAtom);
   const resetAdClone = useSetAtom(resetAdCloneAtom);
 
+  const [isUploading, setIsUploading] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [videoDragging, setVideoDragging] = useState(false);
   const [imageDragging, setImageDragging] = useState(false);
+
+  const handleContinue = useCallback(async () => {
+    if (typeof onContinue !== "function") return;
+    setIsUploading(true);
+    setLocalError(null);
+    try {
+      await onContinue();
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : "Upload failed";
+      setLocalError(errorMsg);
+      setIsUploading(false);
+    }
+  }, [onContinue]);
 
   const handleVideoSelect = useCallback(
     (file: File) => {
@@ -312,23 +334,60 @@ export function AdCloneUploadStep({ teamId }: AdCloneUploadStepProps) {
         </CardBody>
       </Card>
 
+      {(localError || error) && (
+        <Card className="bg-red-500/10 border border-red-500/30">
+          <CardBody className="p-4">
+            <div className="flex items-center gap-3">
+              <Icon icon="solar:danger-triangle-bold" className="text-red-400" width={24} />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-red-400">Error</p>
+                <p className="text-sm text-red-300">{localError || error}</p>
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+      )}
+
+      {isUploading && (
+        <Card className="bg-surface-elevated border border-border-base">
+          <CardBody className="p-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <Icon icon="solar:upload-bold-duotone" className="text-orange-500 animate-pulse" width={24} />
+              <span className="text-sm font-medium text-text-primary">
+                {progressMessage || "Processing..."}
+              </span>
+            </div>
+            <Progress
+              value={progress}
+              className="w-full"
+              classNames={{
+                indicator: "bg-orange-500",
+                track: "bg-surface-base",
+              }}
+            />
+          </CardBody>
+        </Card>
+      )}
+
       <div className="flex items-center justify-between">
         <Button
           variant="flat"
           className="bg-surface-base text-text-secondary"
           onPress={() => resetAdClone()}
+          isDisabled={isUploading}
           startContent={<Icon icon="solar:restart-bold" width={18} />}
         >
           Reset All
         </Button>
         <Button
-          color="primary"
           size="lg"
-          isDisabled={!canProceed}
-          className="px-8"
-          endContent={<Icon icon="solar:arrow-right-linear" width={18} />}
+          isDisabled={!canProceed || isUploading}
+          isLoading={isUploading}
+          onPress={handleContinue}
+          className="px-8 bg-orange-500 text-white"
+          endContent={!isUploading ? <Icon icon="solar:arrow-right-linear" width={18} /> : undefined}
         >
-          Continue
+          {isUploading ? "Uploading..." : "Continue"}
         </Button>
       </div>
     </div>

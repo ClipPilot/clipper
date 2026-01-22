@@ -7,7 +7,7 @@ import { Icon } from "@iconify/react";
 import { selectedTeamAtom } from "@/store/auth";
 import { canAccessUGCStudio } from "@/lib/plans";
 import { ScalePlanRequired } from "@/components/ugc-studio";
-import { AdCloneUploadStep } from "@/components/ugc-studio/ad-clone/AdCloneUploadStep";
+import { AdCloneWizard } from "@/components/ugc-studio/ad-clone/AdCloneWizard";
 
 export default function AdClonePage() {
   const selectedTeam = useAtomValue(selectedTeamAtom);
@@ -19,7 +19,7 @@ export default function AdClonePage() {
 
   return (
     <div className="min-h-screen bg-surface-dark p-6 lg:p-8">
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-5xl mx-auto space-y-6">
         <div className="flex items-center gap-4">
           <Button
             variant="light"
@@ -37,7 +37,7 @@ export default function AdClonePage() {
           </div>
         </div>
 
-        <AdCloneUploadStep teamId={selectedTeam.id} />
+        <AdCloneWizard teamId={selectedTeam.id} />
       </div>
     </div>
   );
