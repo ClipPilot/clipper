@@ -43,7 +43,9 @@ export const SCREEN_STABILITY_MODIFIERS =
 
 export const PRO_MOTION_PROMPT =
   "Smooth natural movements matching reference video exactly. " +
-  "++Hands have exactly 5 fingers each++ - no extra, missing, or deformed fingers. " +
-  "Gentle relaxed hand movements with proper finger articulation. " +
-  "++Subject maintains exact appearance throughout++ - same face, same clothes, no morphing. " +
-  "Replicate held items exactly as shown. Fluid realistic motion at original speed.";
+  "Anatomically correct hands with natural finger positioning. " +
+  "Hands remain relaxed and stable, minimal finger articulation. " +
+  "Subject maintains exact appearance throughout - consistent face, clothing, no morphing. " +
+  "Replicate held items exactly as shown. Fluid realistic motion at original speed. " +
+  "match the exact pose and actions of the person in the reference video. " +
+  "High quality, sharp details, professional video.";

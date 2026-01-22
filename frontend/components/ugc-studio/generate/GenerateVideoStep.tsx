@@ -33,15 +33,7 @@ interface GenerateVideoStepProps {
 type StepState = "ready" | "confirming" | "generating";
 
 function calculateCreditCost(scenes: Array<{ shotType: string; bRollShots?: unknown[] | null }>) {
-  let total = 0;
-  for (const scene of scenes) {
-    if (scene.shotType === "b-roll" && scene.bRollShots?.length) {
-      total += scene.bRollShots.length;
-    } else {
-      total += 2;
-    }
-  }
-  return total;
+  return scenes.length * 2;
 }
 
 export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) {
@@ -232,7 +224,7 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
                   {creditCost} Credits
                 </p>
                 <p className="text-sm text-text-secondary">
-                  {totalScenes} scenes • 2 per A-roll, 1 per B-roll shot
+                  {totalScenes} scenes • 2 credits per scene
                 </p>
                 <p className="text-xs text-text-muted mt-1">
                   {usageStats
@@ -318,7 +310,7 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
                 This will use <span className="font-bold text-accent-400">{creditCost} credits</span>
               </p>
               <p className="text-xs text-text-muted mb-2">
-                {totalScenes} scenes • 2 per A-roll, 1 per B-roll shot
+                {totalScenes} scenes • 2 credits per scene
               </p>
               <p className="text-sm text-text-secondary">
                 You&apos;ll have {usageStats ? usageStats.totalRemaining - creditCost : 0} credits remaining

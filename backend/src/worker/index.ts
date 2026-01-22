@@ -44,6 +44,8 @@ import {
   GenerateUGCVideoJob,
   KlingFaceSwapJob,
 } from "../services/sqs.service";
+import { db, schema } from "../db";
+import { eq } from "drizzle-orm";
 
 const sqsClient = new SQSClient({
   region: config.aws.region,
@@ -169,13 +171,33 @@ async function processMessage(job: VideoProcessingJob, receiptHandle: string): P
   }
 }
 
+async function markJobFailed(job: VideoProcessingJob, errorMessage: string): Promise<void> {
+  try {
+    if (job.type === "generate-scene-image") {
+      const sceneJob = job as GenerateSceneImageJob;
+      await db
+        .update(schema.sceneImageGenerationJobs)
+        .set({
+          status: "failed",
+          error_message: errorMessage,
+          completed_at: new Date(),
+        })
+        .where(eq(schema.sceneImageGenerationJobs.id, sceneJob.jobId));
+      console.log(`[Worker] Marked scene image job ${sceneJob.jobId} as failed`);
+    }
+  } catch (dbError) {
+    console.error("[Worker] Failed to mark job as failed in DB:", dbError);
+  }
+}
+
 async function handleMessage(message: { Body: string; ReceiptHandle: string }): Promise<void> {
   activeJobs++;
+  let job: VideoProcessingJob | null = null;
   try {
-    const job: VideoProcessingJob = JSON.parse(message.Body);
-    console.log(`[Worker] Starting job: ${job.type} for team ${job.teamId} (active: ${activeJobs})`);
+    job = JSON.parse(message.Body);
+    console.log(`[Worker] Starting job: ${job!.type} for team ${job!.teamId} (active: ${activeJobs})`);
 
-    await processMessage(job, message.ReceiptHandle);
+    await processMessage(job!, message.ReceiptHandle);
 
     await sqsClient.send(
       new DeleteMessageCommand({
@@ -183,9 +205,21 @@ async function handleMessage(message: { Body: string; ReceiptHandle: string }): 
         ReceiptHandle: message.ReceiptHandle,
       })
     );
-    console.log(`[Worker] Completed job: ${job.type} (active: ${activeJobs - 1})`);
+    console.log(`[Worker] Completed job: ${job!.type} (active: ${activeJobs - 1})`);
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.error("[Worker] Error processing message:", error);
+
+    if (job) {
+      await markJobFailed(job, errorMessage);
+    }
+
+    await sqsClient.send(
+      new DeleteMessageCommand({
+        QueueUrl: QUEUE_URL,
+        ReceiptHandle: message.ReceiptHandle,
+      })
+    );
   } finally {
     activeJobs--;
   }

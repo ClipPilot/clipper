@@ -105,6 +105,8 @@ export function SceneBuilderStep({
                   status: "completed",
                   imageKey: sceneImage.image_key,
                   imageUrl: sceneImage.imageUrl,
+                  // Load generatedImages for B-roll scenes to enable single shot regeneration
+                  generatedImages: sceneImage.generatedImages,
                 };
               }
             );
@@ -250,7 +252,9 @@ export function SceneBuilderStep({
         ...prev[sceneId],
         status: generation.status,
         jobId: generation.jobId,
-        generatedImages: generation.generatedImages,
+        // Only update generatedImages if new value exists, otherwise preserve existing
+        // This prevents wiping out existing images during polling before completion
+        generatedImages: generation.generatedImages ?? prev[sceneId]?.generatedImages,
       },
     }));
   };
@@ -313,6 +317,41 @@ export function SceneBuilderStep({
       [sceneId]: {
         ...prev[sceneId],
         useEndFrame,
+      },
+    }));
+  };
+
+  const handleCustomBRollImageChange = (
+    sceneId: string,
+    shotIndex: number,
+    key: string | undefined,
+    url: string | undefined
+  ) => {
+    setSceneImages((prev) => {
+      const currentCustomImages = prev[sceneId]?.customBRollImages || {};
+      const newCustomImages = key && url
+        ? { ...currentCustomImages, [shotIndex]: { key, url } }
+        : Object.fromEntries(
+            Object.entries(currentCustomImages).filter(([idx]) => parseInt(idx) !== shotIndex)
+          );
+
+      return {
+        ...prev,
+        [sceneId]: {
+          ...prev[sceneId],
+          customBRollImages: Object.keys(newCustomImages).length > 0 ? newCustomImages : undefined,
+        },
+      };
+    });
+  };
+
+  const handleGenerationCancel = (sceneId: string) => {
+    setSceneImages((prev) => ({
+      ...prev,
+      [sceneId]: {
+        ...prev[sceneId],
+        status: "failed",
+        jobId: undefined,
       },
     }));
   };
@@ -489,12 +528,16 @@ export function SceneBuilderStep({
               const hasImage = !!sceneState.imageKey;
               const sceneConfig = SCENE_TYPE_CONFIG[scene.sceneType];
 
+              // Always prefer generatedImages[0] when available (most up-to-date after regeneration)
+              // Falls back to imageUrl which may be stale after single-shot/single-scene regeneration
+              const displayImageUrl = sceneState.generatedImages?.[0]?.url || sceneState.imageUrl;
+
               return (
                 <div key={scene.id} className="flex items-center gap-3">
                   <StoryboardThumbnail
                     scene={scene}
                     sceneConfig={sceneConfig}
-                    imageUrl={sceneState.imageUrl}
+                    imageUrl={displayImageUrl}
                     isSelected={isSelected}
                     isGenerating={isGenerating}
                     hasImage={hasImage}
@@ -525,8 +568,9 @@ export function SceneBuilderStep({
         if (!scene) return null;
 
         const sceneState = sceneImages[scene.id] || { status: "idle" as const };
+        // Create generation object if there's an active job, OR if we have generatedImages to preserve
         const generation: SceneImageGeneration | undefined =
-          sceneState.jobId || sceneState.status === "regenerating"
+          sceneState.jobId || sceneState.status === "regenerating" || sceneState.generatedImages?.length
             ? {
                 jobId: sceneState.jobId || "",
                 status: sceneState.status as
@@ -568,6 +612,9 @@ export function SceneBuilderStep({
             onGenerationUpdate={(gen) =>
               handleGenerationUpdate(scene.id, gen)
             }
+            onGenerationCancel={() =>
+              handleGenerationCancel(scene.id)
+            }
             onImageSelect={(key, url) =>
               handleImageSelect(scene.id, key, url)
             }
@@ -582,6 +629,10 @@ export function SceneBuilderStep({
             }
             onCustomImageChange={(type, key, url) =>
               handleCustomImageChange(scene.id, type, key, url)
+            }
+            customBRollImages={sceneState.customBRollImages}
+            onCustomBRollImageChange={(shotIndex, key, url) =>
+              handleCustomBRollImageChange(scene.id, shotIndex, key, url)
             }
             isStoryboardMode={true}
           />
