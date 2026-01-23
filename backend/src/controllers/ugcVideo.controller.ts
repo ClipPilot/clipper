@@ -13,8 +13,8 @@ import { sqsService, GenerateUGCVideoJob } from "../services/sqs.service";
 import { teamService } from "../services/team.service";
 import { canAccessUGCStudio } from "../utils/plans";
 import { eq, and, desc, count, sql } from "drizzle-orm";
-import { transcribeVideoService } from "../services/transcription.service";
-import { convertWordsToCaptionEntries, CaptionEntry } from "../services/captions.service";
+import { transcribeVideoService } from "../services/clips/transcription.service";
+import { convertWordsToCaptionEntries, CaptionEntry } from "../services/clips/captions.service";
 import { getTeamUsage } from "../middleware/subscription.middleware";
 
 interface AuthRequest extends Request {

@@ -391,6 +391,7 @@ function MyClipsPageContent() {
             <PendingClipsSection
               clips={pendingClips}
               onClipClick={(clip: any) => openViewModal(clip)}
+              onCancel={(clipId) => deleteClip(clipId, triggerRefresh)}
             />
 
             <ClipsToSaveSection

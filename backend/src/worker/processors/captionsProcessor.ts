@@ -2,8 +2,8 @@ import * as Sentry from "@sentry/node";
 import fs from "fs";
 import path from "path";
 import { UpdateCaptionsJob } from "../../services/sqs.service";
-import { regenerateClipWithCaptions } from "../../services/clip.service";
-import { clipManagerService } from "../../services/clipManager.service";
+import { regenerateClipWithCaptions } from "../../services/clips/clip.service";
+import { clipManagerService } from "../../services/clips/clipManager.service";
 import { s3Service } from "../../services/s3.service";
 import { notifyClipsRefresh } from "../notify";
 

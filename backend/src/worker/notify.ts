@@ -78,3 +78,17 @@ export interface UGCVideoJobUpdate {
 export async function notifyUGCVideoJobUpdate(teamId: number, update: UGCVideoJobUpdate): Promise<void> {
   await callNotifyEndpoint("/internal/notify/ugc-video-job-update", { teamId, update });
 }
+
+export interface AdCloneJobUpdate {
+  projectId: string;
+  status: string;
+  progress: number;
+  progressMessage: string;
+  analysis?: any;
+  scripts?: any[];
+  error?: string;
+}
+
+export async function notifyAdCloneJobUpdate(teamId: number, update: AdCloneJobUpdate): Promise<void> {
+  await callNotifyEndpoint("/internal/notify/ad-clone-job-update", { teamId, update });
+}

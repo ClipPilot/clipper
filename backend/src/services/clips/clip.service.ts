@@ -7,13 +7,13 @@ import {
 } from "./videoEditor.service";
 import path from "path";
 import fs from "fs";
-import { ClipSuggestions, BatchClipSuggestions } from "../types/ai.types";
+import { ClipSuggestions, BatchClipSuggestions } from "../../types/ai.types";
 import {
   addCaptionsOverlay,
   TranscriptionWord,
   addCaptionsFromData,
 } from "./captions.service";
-import { applyJumbledMetadata } from "../utils/videoMetadata";
+import { applyJumbledMetadata } from "../../utils/videoMetadata";
 
 // Batch video source for multi-video clip creation
 export interface BatchVideoSource {

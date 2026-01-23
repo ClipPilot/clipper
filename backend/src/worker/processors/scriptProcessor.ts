@@ -1,11 +1,9 @@
-import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import { randomUUID } from "crypto";
 import { db, schema } from "../../db";
 import { eq } from "drizzle-orm";
 import { GenerateScriptJob } from "../../services/sqs.service";
 import { s3Service } from "../../services/s3.service";
-import { ENV } from "../../config/env";
 import {
   generateUGCScriptPrompt,
   UGCScriptPromptConfig,
@@ -15,12 +13,7 @@ import {
   UGCScript,
 } from "../../types/ugcScript.types";
 import { notifyScriptJobUpdate } from "../notify";
-
-const client = new OpenAI({
-  apiKey: ENV.OPENAI_API_KEY,
-  timeout: 5 * 60 * 1000,
-  maxRetries: 3,
-});
+import { openaiClient as client } from "../../services/openai.service";
 
 async function updateJobProgress(
   jobId: string,

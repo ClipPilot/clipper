@@ -3,8 +3,8 @@ import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
 import os from "os";
-import { config } from "../config/env";
-import { s3Service } from "./s3.service";
+import { config } from "../../config/env";
+import { s3Service } from "../s3.service";
 
 // Maximum audio duration to match Kling video clip limits (5-10 seconds). --TODO NEED TO FIGURE OUT HOW TO NATURALIZE THE VOICE AND NOT MAKE IT SOUDN SUDIO
 const MAX_AUDIO_DURATION_SECONDS = 10;

@@ -7,7 +7,7 @@ import {
   CharacterConfig,
   AppearanceConfig,
   StyleConfig,
-} from "../services/characterGeneration.service";
+} from "../services/ai-ugc/characterGeneration.service";
 import { canAccessUGCStudio } from "../utils/plans";
 import { teamService } from "../services/team.service";
 import { eq, desc, and, sql } from "drizzle-orm";

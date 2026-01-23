@@ -2,11 +2,11 @@ import * as Sentry from "@sentry/node";
 import fs from "fs";
 import path from "path";
 import { UpdateOverlaysJob } from "../../services/sqs.service";
-import { clipManagerService } from "../../services/clipManager.service";
+import { clipManagerService } from "../../services/clips/clipManager.service";
 import { s3Service } from "../../services/s3.service";
 import { notifyClipsRefresh } from "../notify";
-import { addCaptionsFromData, CaptionEntry } from "../../services/captions.service";
-import { regenerateClipWithTextOverlay } from "../../services/clip.service";
+import { addCaptionsFromData, CaptionEntry } from "../../services/clips/captions.service";
+import { regenerateClipWithTextOverlay } from "../../services/clips/clip.service";
 
 export async function processOverlaysJob(job: UpdateOverlaysJob): Promise<void> {
   const { clipId, teamId, captionsEnabled, captionsData, captionColor, captionFont, heading } = job;

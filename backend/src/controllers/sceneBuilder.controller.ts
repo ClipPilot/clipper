@@ -5,6 +5,7 @@ import {
   sceneImages,
   ugcScripts,
   characters,
+  adCloneProjects,
 } from "@clipper/shared-db/src/schema";
 import { s3Service } from "../services/s3.service";
 import { sqsService } from "../services/sqs.service";
@@ -171,17 +172,42 @@ export class SceneBuilderController {
         return res.status(403).json({ error: "UGC Studio access required" });
       }
 
+      // First try ugcScripts table, then fall back to adCloneProjects
+      let scriptsData: any[] | null = null;
+      let selectedVariantIndex = 0;
+      let productImageKeys: string[] = [];
+      let productName: string | null = null;
+
       const [script] = await db
         .select()
         .from(ugcScripts)
         .where(eq(ugcScripts.id, scriptId));
 
-      if (!script) {
+      if (script) {
+        scriptsData = script.scripts_data as any[];
+        selectedVariantIndex = script.selected_variant_index;
+        productImageKeys = (script.product_image_keys as string[]) || [];
+        productName = script.product_name;
+      } else {
+        // Check if scriptId is actually an ad clone project ID
+        const [adCloneProject] = await db
+          .select()
+          .from(adCloneProjects)
+          .where(eq(adCloneProjects.id, scriptId));
+
+        if (adCloneProject && adCloneProject.adapted_scripts) {
+          scriptsData = adCloneProject.adapted_scripts as any[];
+          selectedVariantIndex = adCloneProject.selected_variant_index ?? 0;
+          productImageKeys = (adCloneProject.product_image_keys as string[]) || [];
+          productName = adCloneProject.product_name;
+        }
+      }
+
+      if (!scriptsData) {
         return res.status(404).json({ error: "Script not found" });
       }
 
-      const scriptsData = script.scripts_data as any[];
-      const selectedScript = scriptsData[script.selected_variant_index];
+      const selectedScript = scriptsData[selectedVariantIndex];
       const sceneData = selectedScript?.scenes?.find(
         (s: SceneData) => s.id === sceneId
       ) as SceneData | undefined;
@@ -267,8 +293,8 @@ export class SceneBuilderController {
           cameraAngle: sceneData.cameraAngle,
           cinematicPrompt: sceneData.cinematicPrompt,
         },
-        productImageKeys: script.product_image_keys as string[],
-        productName: script.product_name || undefined,
+        productImageKeys,
+        productName: productName || undefined,
         userRefinement: userRefinement || undefined,
         supportingImageKeys: supportingImageKeys || [],
         generateEndFrame: generateEndFrame || false,
@@ -343,17 +369,42 @@ export class SceneBuilderController {
       }
 
       // Fetch script from DB as fallback (only used if scene data not passed)
+      // First try ugcScripts table, then fall back to adCloneProjects
+      let scriptsData: any[] | null = null;
+      let selectedVariantIndex = 0;
+      let productImageKeys: string[] = [];
+      let productName: string | null = null;
+
       const [script] = await db
         .select()
         .from(ugcScripts)
         .where(eq(ugcScripts.id, scriptId));
 
-      if (!script) {
+      if (script) {
+        scriptsData = script.scripts_data as any[];
+        selectedVariantIndex = script.selected_variant_index;
+        productImageKeys = (script.product_image_keys as string[]) || [];
+        productName = script.product_name;
+      } else {
+        // Check if scriptId is actually an ad clone project ID
+        const [adCloneProject] = await db
+          .select()
+          .from(adCloneProjects)
+          .where(eq(adCloneProjects.id, scriptId));
+
+        if (adCloneProject && adCloneProject.adapted_scripts) {
+          scriptsData = adCloneProject.adapted_scripts as any[];
+          selectedVariantIndex = adCloneProject.selected_variant_index ?? 0;
+          productImageKeys = (adCloneProject.product_image_keys as string[]) || [];
+          productName = adCloneProject.product_name;
+        }
+      }
+
+      if (!scriptsData) {
         return res.status(404).json({ error: "Script not found" });
       }
 
-      const scriptsData = script.scripts_data as any[];
-      const selectedScript = scriptsData[script.selected_variant_index];
+      const selectedScript = scriptsData[selectedVariantIndex];
 
       const jobIds: string[] = [];
       const BATCH_SIZE = 2;
@@ -461,8 +512,8 @@ export class SceneBuilderController {
             cameraAngle: sceneData.cameraAngle,
             cinematicPrompt: sceneData.cinematicPrompt,
           },
-          productImageKeys: script.product_image_keys as string[],
-          productName: script.product_name || undefined,
+          productImageKeys,
+          productName: productName || undefined,
           userRefinement: sceneRequest.userRefinement,
           supportingImageKeys: sceneRequest.supportingImageKeys || [],
           generateEndFrame: sceneRequest.generateEndFrame || false,

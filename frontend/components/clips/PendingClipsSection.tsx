@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useEffect, useState } from "react";
-import { Card, CardBody, Progress } from "@heroui/react";
+import { Card, CardBody, Progress, Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 
 interface Clip {
@@ -16,6 +16,7 @@ interface Clip {
 interface PendingClipsSectionProps {
   clips: Clip[];
   onClipClick: (clip: Clip) => void;
+  onCancel?: (clipId: number) => void;
 }
 
 function VideoThumbnail({ videoUrl, isEdit }: { videoUrl: string; isEdit?: boolean }) {
@@ -30,11 +31,11 @@ function VideoThumbnail({ videoUrl, isEdit }: { videoUrl: string; isEdit?: boole
   }, [videoUrl]);
 
   return (
-    <div className="relative w-full aspect-[9/16] bg-surface-elevated rounded-lg overflow-hidden">
+    <div className="relative w-full aspect-[9/16] bg-black rounded-lg overflow-hidden">
       <video
         ref={videoRef}
         src={videoUrl}
-        className={`w-full h-full object-cover transition-opacity duration-300 ${
+        className={`w-full h-full object-contain transition-opacity duration-300 ${
           isLoaded ? "opacity-100" : "opacity-0"
         }`}
         muted
@@ -123,7 +124,25 @@ function PlaceholderThumbnail({ isEdit }: { isEdit?: boolean }) {
 export default function PendingClipsSection({
   clips,
   onClipClick,
+  onCancel,
 }: PendingClipsSectionProps) {
+  const [cancellingIds, setCancellingIds] = useState<Set<number>>(new Set());
+
+  const handleCancel = async (e: React.MouseEvent, clipId: number) => {
+    e.stopPropagation();
+    if (!onCancel) return;
+
+    setCancellingIds(prev => new Set(prev).add(clipId));
+    try {
+      await onCancel(clipId);
+    } finally {
+      setCancellingIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(clipId);
+        return newSet;
+      });
+    }
+  };
   if (clips.length === 0) return null;
 
   const newClips = clips.filter((c) => !c.saved);
@@ -159,10 +178,26 @@ export default function PendingClipsSection({
                   ) : (
                     <PlaceholderThumbnail isEdit={false} />
                   )}
-                  <div className="mt-2 text-center">
+                  <div className="mt-2 flex items-center justify-between">
                     <p className="text-xs text-text-tertiary">
                       Started {new Date(clip.created_at).toLocaleTimeString()}
                     </p>
+                    {onCancel && (
+                      <Button
+                        size="sm"
+                        variant="flat"
+                        color="danger"
+                        isIconOnly
+                        isLoading={cancellingIds.has(clip.id)}
+                        onPress={(e) => handleCancel(e as unknown as React.MouseEvent, clip.id)}
+                        className="min-w-6 w-6 h-6"
+                        title="Cancel processing"
+                      >
+                        {!cancellingIds.has(clip.id) && (
+                          <Icon icon="solar:close-circle-bold" className="text-sm" />
+                        )}
+                      </Button>
+                    )}
                   </div>
                 </CardBody>
               </Card>
@@ -198,10 +233,26 @@ export default function PendingClipsSection({
                   ) : (
                     <PlaceholderThumbnail isEdit={true} />
                   )}
-                  <div className="mt-2 text-center">
+                  <div className="mt-2 flex items-center justify-between">
                     <p className="text-xs text-text-tertiary">
                       Editing since {new Date(clip.updated_at).toLocaleTimeString()}
                     </p>
+                    {onCancel && (
+                      <Button
+                        size="sm"
+                        variant="flat"
+                        color="danger"
+                        isIconOnly
+                        isLoading={cancellingIds.has(clip.id)}
+                        onPress={(e) => handleCancel(e as unknown as React.MouseEvent, clip.id)}
+                        className="min-w-6 w-6 h-6"
+                        title="Cancel editing"
+                      >
+                        {!cancellingIds.has(clip.id) && (
+                          <Icon icon="solar:close-circle-bold" className="text-sm" />
+                        )}
+                      </Button>
+                    )}
                   </div>
                 </CardBody>
               </Card>

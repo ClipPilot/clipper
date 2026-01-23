@@ -3,8 +3,8 @@ import ffmpeg from "fluent-ffmpeg";
 import fs from "fs";
 import path from "path";
 import os from "os";
-import { s3Service } from "./s3.service";
-import { applyJumbledMetadata } from "../utils/videoMetadata";
+import { s3Service } from "../s3.service";
+import { applyJumbledMetadata } from "../../utils/videoMetadata";
 
 // Mobile-compatible H.264 encoding settings
 const MOBILE_VIDEO_SETTINGS = [

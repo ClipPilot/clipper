@@ -582,6 +582,61 @@ class S3Service {
       image: { uploadUrl: imageUrl, s3Key: imageKey },
     };
   }
+
+  async getAdCloneUploadUrls(
+    teamId: number,
+    projectId: string,
+    videoFileName: string,
+    productImageFileNames: string[]
+  ): Promise<{
+    video: { uploadUrl: string; s3Key: string };
+    productImages: { uploadUrl: string; s3Key: string }[];
+  }> {
+    const sanitizedVideoName = videoFileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const timestamp = Date.now();
+
+    const videoKey = `ad-clone/${teamId}/${projectId}/reference_${timestamp}_${sanitizedVideoName}`;
+
+    const videoCommand = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: videoKey,
+      ContentType: "video/mp4",
+    });
+
+    const videoUrl = await getSignedUrl(s3Client, videoCommand, { expiresIn: 3600 });
+
+    const productImagePromises = productImageFileNames.map(async (fileName, index) => {
+      const sanitizedName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const imageKey = `ad-clone/${teamId}/${projectId}/product_${timestamp}_${index}_${sanitizedName}`;
+
+      const imageCommand = new PutObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: imageKey,
+        ContentType: "image/jpeg",
+      });
+
+      const uploadUrl = await getSignedUrl(s3Client, imageCommand, { expiresIn: 3600 });
+      return { uploadUrl, s3Key: imageKey };
+    });
+
+    const productImages = await Promise.all(productImagePromises);
+
+    return {
+      video: { uploadUrl: videoUrl, s3Key: videoKey },
+      productImages,
+    };
+  }
+
+  async uploadAdCloneFinalVideo(
+    filePath: string,
+    teamId: number,
+    projectId: string
+  ): Promise<string> {
+    const key = `ad-clone/${teamId}/${projectId}/final/${projectId}_${Date.now()}.mp4`;
+    await this.uploadFile(filePath, key, "video/mp4");
+    console.log(`[S3] Uploaded Ad Clone final video: ${key}`);
+    return key;
+  }
 }
 
 export const s3Service = new S3Service();

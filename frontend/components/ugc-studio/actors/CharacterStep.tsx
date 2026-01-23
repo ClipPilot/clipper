@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   Tabs,
   Tab,
@@ -28,15 +29,18 @@ interface CharacterStepProps {
   selectedCharacter: Character | null;
   onCharacterSelect: (character: Character | null) => void;
   onContinue?: () => void;
+  showCreateTab?: boolean;
 }
 
 export function CharacterStep({
   selectedCharacter,
   onCharacterSelect,
   onContinue,
+  showCreateTab = false,
 }: CharacterStepProps) {
+  const router = useRouter();
   const { selectedTeam, isLoading: teamsLoading } = useTeams();
-  const [activeTab, setActiveTab] = useState<CharacterSource>("create-new");
+  const [activeTab, setActiveTab] = useState<CharacterSource>(showCreateTab ? "create-new" : "my-actors");
   const [myActors, setMyActors] = useState<Character[]>([]);
   const [communityActors, setCommunityActors] = useState<Character[]>([]);
   const [loading, setLoading] = useState(false);
@@ -203,7 +207,9 @@ export function CharacterStep({
           Choose Your Actor
         </h2>
         <p className="text-text-secondary text-sm sm:text-base">
-          Create a new AI actor or select from your library
+          {showCreateTab
+            ? "Create a new AI actor or select from your library"
+            : "Select an actor from your library or the community"}
         </p>
       </div>
 
@@ -298,25 +304,27 @@ export function CharacterStep({
         }}
         fullWidth
       >
-        <Tab
-          key="create-new"
-          title={
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <Icon
-                icon="solar:magic-stick-3-bold-duotone"
-                className="w-4 h-4 sm:w-[18px] sm:h-[18px]"
+        {showCreateTab && (
+          <Tab
+            key="create-new"
+            title={
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Icon
+                  icon="solar:magic-stick-3-bold-duotone"
+                  className="w-4 h-4 sm:w-[18px] sm:h-[18px]"
+                />
+                <span className="hidden xs:inline sm:inline">Create New</span>
+              </div>
+            }
+          >
+            <div className="pt-6 sm:pt-8">
+              <CreateCharacterFlow
+                teamId={teamId}
+                onCharacterCreated={handleCharacterCreated}
               />
-              <span className="hidden xs:inline sm:inline">Create New</span>
             </div>
-          }
-        >
-          <div className="pt-6 sm:pt-8">
-            <CreateCharacterFlow
-              teamId={teamId}
-              onCharacterCreated={handleCharacterCreated}
-            />
-          </div>
-        </Tab>
+          </Tab>
+        )}
 
         <Tab
           key="my-actors"
@@ -427,7 +435,11 @@ export function CharacterStep({
                     startContent={
                       <Icon icon="solar:magic-stick-3-bold" width={18} />
                     }
-                    onPress={() => setActiveTab("create-new")}
+                    onPress={() =>
+                      showCreateTab
+                        ? setActiveTab("create-new")
+                        : router.push("/dashboard/ugc-studio/characters")
+                    }
                   >
                     Create Your First Actor
                   </Button>

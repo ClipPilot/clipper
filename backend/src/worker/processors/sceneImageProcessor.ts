@@ -2,7 +2,7 @@ import { db, schema } from "../../db";
 import { eq } from "drizzle-orm";
 import { GenerateSceneImageJob } from "../../services/sqs.service";
 import { s3Service } from "../../services/s3.service";
-import { falImageService } from "../../services/falImage.service";
+import { falImageService } from "../../services/ai-ugc/falImage.service";
 import {
   CharacterAppearance,
   ImagePositions,

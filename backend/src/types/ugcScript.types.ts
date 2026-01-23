@@ -22,7 +22,7 @@ export const EMOTIONS = [
   "playful",
 ] as const;
 
-export const SHOT_TYPES = ["a-roll", "b-roll", "mixed"] as const;
+export const SHOT_TYPES = ["a-roll", "b-roll"] as const;
 
 export const CAMERA_ANGLES = [
   "pov-selfie",
@@ -35,8 +35,8 @@ export const CAMERA_ANGLES = [
 ] as const;
 
 export const BRollShotSchema = z.object({
-  action: z.string().describe("Simple, single action for this shot"),
-  cinematicPrompt: z.string().describe("Cinematic prompt for this specific shot"),
+  action: z.string().describe("Simple, single action for this shot. NEVER mention on-screen text, captions, or graphics."),
+  cinematicPrompt: z.string().describe("Cinematic prompt for this specific shot. No text/caption mentions."),
   durationSeconds: z.number().min(1).max(4).describe("Duration of this shot (1-4 seconds)"),
   productImageNeeded: z.boolean().describe("Whether this shot should include/show the product. Set to true for product closeups, unboxing, demos. Set to false for lifestyle, mood, reaction, or 'before' shots where product shouldn't appear."),
 });
@@ -49,7 +49,7 @@ export const UGCSceneSchema = z.object({
     .describe("Type of scene in the UGC script structure"),
   action: z
     .string()
-    .describe("What the character is physically doing in this scene (for single-shot scenes)"),
+    .describe("What the character is physically doing in this scene. NEVER mention on-screen text, captions, titles, or graphics - only describe physical actions and visuals."),
   dialogue: z.string().describe("What the actor says in this scene"),
   emotion: z.enum(EMOTIONS).describe("Emotional delivery style"),
   estimatedDurationSeconds: z
@@ -59,7 +59,7 @@ export const UGCSceneSchema = z.object({
     .describe("Estimated duration for natural pacing"),
   shotType: z
     .enum(SHOT_TYPES)
-    .describe("A-roll (actor talking), B-roll (product shots), or mixed"),
+    .describe("A-roll (actor talking) or B-roll (product shots)"),
   cameraAngle: z
     .enum(CAMERA_ANGLES)
     .describe("Camera angle/perspective for the shot"),
@@ -69,7 +69,7 @@ export const UGCSceneSchema = z.object({
     .describe("Custom camera angle description when cameraAngle is 'custom'"),
   cinematicPrompt: z
     .string()
-    .describe("Detailed cinematic/video generation prompt (for single-shot scenes)"),
+    .describe("Detailed cinematic/video generation prompt. NEVER mention on-screen text, captions, titles, or graphics - only describe visuals and actions."),
   cameraDirection: z
     .string()
     .nullable()
@@ -77,13 +77,13 @@ export const UGCSceneSchema = z.object({
   ambientSound: z
     .string()
     .nullable()
-    .describe("REQUIRED for a-roll scenes: ambient background audio description (e.g., 'gym with weights clanking', 'quiet bedroom ambience'). Set to null for b-roll/mixed scenes."),
+    .describe("REQUIRED for a-roll scenes ONLY: short natural background sound (5-15 words). Examples: 'quiet room tone with subtle air conditioning hum', 'soft indoor ambience with distant muffled sounds'. NO music, NO dramatic sounds, NO production elements. Set to null for b-roll scenes."),
   bRollShots: z
     .array(BRollShotSchema)
     .min(1)
     .nullable()
     .optional()
-    .describe("For B-roll scenes: shots that share the same voiceover. Use as many as the scene needs (1, 2, 3, 4, etc). Each shot has productImageNeeded to control whether product reference is used."),
+    .describe("For B-roll PRODUCT DEMO scenes only: multi-shot sequences for unboxing, product showcases, demos. Do NOT use for person-focused b-roll scenes. Each shot has productImageNeeded to control whether product reference is used."),
 });
 
 export const UGCScriptSchema = z.object({

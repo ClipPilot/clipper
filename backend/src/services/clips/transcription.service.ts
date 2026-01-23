@@ -1,11 +1,8 @@
 import fs from "fs";
-import OpenAI from "openai";
-import { ENV } from "../config/env";
-import { extractAudio } from "../utils/extractAudio";
-import { deepgram } from "../config/deepgram";
+import { extractAudio } from "../../utils/extractAudio";
+import { deepgram } from "../../config/deepgram";
 import { SyncPrerecordedResponse } from "@deepgram/sdk";
-
-const client = new OpenAI({ apiKey: ENV.OPENAI_API_KEY });
+import { openaiClient as client } from "../openai.service";
 
 // Batch transcription result interface
 export interface BatchTranscriptionResult {

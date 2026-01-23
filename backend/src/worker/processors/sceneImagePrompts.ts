@@ -186,6 +186,12 @@ export function buildBRollShotPrompt(
     "- The output must be a single photograph-style image",
     "- Do NOT create side-by-side comparisons, before/after layouts, or any multi-panel arrangements",
     "",
+    "ABSOLUTELY NO TEXT OR CAPTIONS:",
+    "- Do NOT add any text, captions, titles, subtitles, labels, or written words to the image",
+    "- Do NOT add watermarks, logos, brand names, or any typography",
+    "- Do NOT include speech bubbles, thought bubbles, or text boxes",
+    "- The image must be purely visual with ZERO text elements",
+    "",
     "TECHNICAL REQUIREMENTS:",
     "- Photorealistic quality, clean product photography",
     "- Vertical 9:16 aspect ratio for social media",
@@ -194,7 +200,7 @@ export function buildBRollShotPrompt(
     "- Natural or softbox lighting with proper shadows",
     "- Clean, uncluttered composition",
     "",
-    "NEGATIVE: blurry, out of focus, watermarks, text overlays, deformed products, unrealistic colors, oversaturated images, collages, grids, multiple images, split images, hands holding product unless specified, human faces unless specified",
+    "NEGATIVE: blurry, out of focus, watermarks, text overlays, text, captions, titles, subtitles, labels, written words, typography, logos, brand names, speech bubbles, deformed products, unrealistic colors, oversaturated images, collages, grids, multiple images, split images, hands holding product unless specified, human faces unless specified",
   );
 
   return parts.join("\n");
@@ -289,6 +295,12 @@ export function buildSceneImagePrompt(
     "- The output must be a single photograph-style image as if taken by an iPhone camera",
     "- Do NOT create side-by-side comparisons, before/after layouts, or any multi-panel arrangements",
     "",
+    "ABSOLUTELY NO TEXT OR CAPTIONS:",
+    "- Do NOT add any text, captions, titles, subtitles, labels, or written words to the image",
+    "- Do NOT add watermarks, logos, brand names, or any typography",
+    "- Do NOT include speech bubbles, thought bubbles, or text boxes",
+    "- The image must be purely visual with ZERO text elements",
+    "",
     "TECHNICAL REQUIREMENTS:",
     "- Photorealistic quality, indistinguishable from a real iPhone photograph",
     "- UGC/social media authentic aesthetic - NOT professional studio lighting",
@@ -302,7 +314,7 @@ export function buildSceneImagePrompt(
     "- Exactly two arms, exactly two hands with five fingers each",
     "- Natural body positioning and limb placement",
     "",
-    "NEGATIVE: extra limbs, extra arms, extra hands, extra fingers, missing limbs, deformed hands, fused fingers, too many fingers, mutated hands, malformed limbs, bad anatomy, distorted body parts, unnatural arm positions, floating limbs, disconnected limbs, cartoon style, illustration, watermarks, text overlays, deformed features, unnatural colors, oversaturated images, collages, grids, multiple images, split images, side-by-side images, matrix layouts, photo grids, studio lighting, professional photography, perfect skin, airbrushed, beauty filter, cinematic lighting, dramatic shadows",
+    "NEGATIVE: extra limbs, extra arms, extra hands, extra fingers, missing limbs, deformed hands, fused fingers, too many fingers, mutated hands, malformed limbs, bad anatomy, distorted body parts, unnatural arm positions, floating limbs, disconnected limbs, cartoon style, illustration, watermarks, text overlays, text, captions, titles, subtitles, labels, written words, typography, logos, brand names, speech bubbles, deformed features, unnatural colors, oversaturated images, collages, grids, multiple images, split images, side-by-side images, matrix layouts, photo grids, studio lighting, professional photography, perfect skin, airbrushed, beauty filter, cinematic lighting, dramatic shadows",
   );
 
   return parts.join("\n");
