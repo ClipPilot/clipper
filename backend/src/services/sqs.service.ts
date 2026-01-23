@@ -18,7 +18,8 @@ export type JobType =
   | "generate-ugc-video"
   | "kling-face-swap"
   | "ad-clone-analyze"
-  | "ad-clone-generate-script";
+  | "ad-clone-generate-script"
+  | "ad-clone-analyze-and-script";
 
 // Base job interface
 interface BaseJob {
@@ -250,6 +251,11 @@ export interface AdCloneGenerateScriptJob extends BaseJob {
   characterId: number;
 }
 
+export interface AdCloneAnalyzeAndScriptJob extends BaseJob {
+  type: "ad-clone-analyze-and-script";
+  projectId: string;
+}
+
 export type VideoProcessingJob =
   | ClipVideoJob
   | BatchClipVideoJob
@@ -262,7 +268,8 @@ export type VideoProcessingJob =
   | GenerateUGCVideoJob
   | KlingFaceSwapJob
   | AdCloneAnalyzeJob
-  | AdCloneGenerateScriptJob;
+  | AdCloneGenerateScriptJob
+  | AdCloneAnalyzeAndScriptJob;
 
 class SQSService {
   private queueUrl: string;
@@ -607,6 +614,22 @@ class SQSService {
       teamId: params.teamId,
       userId: params.userId,
       characterId: params.characterId,
+      createdAt: new Date().toISOString(),
+    };
+
+    return this.sendJob(job);
+  }
+
+  async sendAdCloneAnalyzeAndScriptJob(params: {
+    projectId: string;
+    teamId: number;
+    userId: number;
+  }): Promise<string> {
+    const job: AdCloneAnalyzeAndScriptJob = {
+      type: "ad-clone-analyze-and-script",
+      projectId: params.projectId,
+      teamId: params.teamId,
+      userId: params.userId,
       createdAt: new Date().toISOString(),
     };
 

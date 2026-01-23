@@ -1,6 +1,6 @@
 import { db } from "../../db";
 import { adCloneProjects, characters } from "@clipper/shared-db";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { s3Service } from "../s3.service";
 import {
   uploadVideoToGemini,
@@ -79,6 +79,30 @@ class AdCloneService {
     return this.mapDbToProject(project);
   }
 
+  async listProjects(
+    teamId: number,
+    limit = 20,
+    offset = 0
+  ): Promise<{ projects: AdCloneProject[]; total: number }> {
+    const projects = await db
+      .select()
+      .from(adCloneProjects)
+      .where(eq(adCloneProjects.team_id, teamId))
+      .orderBy(desc(adCloneProjects.created_at))
+      .limit(limit)
+      .offset(offset);
+
+    const [countResult] = await db
+      .select({ count: db.$count(adCloneProjects) })
+      .from(adCloneProjects)
+      .where(eq(adCloneProjects.team_id, teamId));
+
+    return {
+      projects: projects.map((p) => this.mapDbToProject(p)),
+      total: countResult?.count ?? 0,
+    };
+  }
+
   async updateProjectStatus(
     projectId: string,
     status: AdCloneProjectStatus,
@@ -93,6 +117,19 @@ class AdCloneService {
         progress,
         progress_message: progressMessage || null,
         error_message: errorMessage || null,
+        updated_at: new Date(),
+      })
+      .where(eq(adCloneProjects.id, projectId));
+  }
+
+  async updateCharacterId(
+    projectId: string,
+    characterId: number
+  ): Promise<void> {
+    await db
+      .update(adCloneProjects)
+      .set({
+        character_id: characterId,
         updated_at: new Date(),
       })
       .where(eq(adCloneProjects.id, projectId));
@@ -210,7 +247,7 @@ class AdCloneService {
 
   async generateAdaptedScript(
     projectId: string,
-    characterId: number
+    characterId?: number
   ): Promise<UGCScript> {
     const project = await this.getProject(projectId);
     if (!project) {
@@ -221,20 +258,24 @@ class AdCloneService {
       throw new Error("Video analysis not complete");
     }
 
-    const [character] = await db
-      .select()
-      .from(characters)
-      .where(eq(characters.id, characterId))
-      .limit(1);
+    let character: any = null;
+    if (characterId) {
+      const [foundCharacter] = await db
+        .select()
+        .from(characters)
+        .where(eq(characters.id, characterId))
+        .limit(1);
 
-    if (!character) {
-      throw new Error("Character not found");
+      if (!foundCharacter) {
+        throw new Error("Character not found");
+      }
+      character = foundCharacter;
     }
 
     await db
       .update(adCloneProjects)
       .set({
-        character_id: characterId,
+        ...(characterId && { character_id: characterId }),
         status: "generating_script",
         progress: 10,
         progress_message: "Generating adapted script...",
@@ -255,13 +296,15 @@ class AdCloneService {
         productImageKeys: project.productImageKeys,
         productName: project.productName || "Product",
         productDescription: project.productDescription || "",
-        character: {
-          id: character.id,
-          name: character.name,
-          gender: character.gender,
-          age_range: character.age_range,
-          appearance_config: character.appearance_config,
-        },
+        ...(character && {
+          character: {
+            id: character.id,
+            name: character.name,
+            gender: character.gender,
+            age_range: character.age_range,
+            appearance_config: character.appearance_config,
+          },
+        }),
         adDirection: project.adDirection || undefined,
       });
 

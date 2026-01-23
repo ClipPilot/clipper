@@ -96,14 +96,13 @@ export function useAdClone(teamId: number | undefined) {
 
       // Auto-advance step based on status
       switch (update.status) {
-        case "analysis_complete":
-          setStep("analysis");
-          break;
         case "script_generated":
+          // Combined analyze+script is done, stay on script step to review
           setStep("script");
           break;
         case "completed":
-          setStep("preview");
+          // Video generation complete, stay on generate step (which shows preview)
+          setStep("generate");
           break;
         case "failed":
           setError(update.error || "An error occurred");
@@ -231,13 +230,35 @@ export function useAdClone(teamId: number | undefined) {
     setError(null);
     setProgress(0);
     setProgressMessage("Starting analysis...");
-    setStep("analyzing");
+    setStep("script");
     setStatus("analyzing");
 
     try {
       await adCloneAPI.startAnalysis(pid, teamId);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Failed to start analysis";
+      setError(errorMsg);
+      setStatus("failed");
+      throw err;
+    }
+  }, [teamId, projectId, setError, setProgress, setProgressMessage, setStep, setStatus]);
+
+  const startAnalyzeAndScript = useCallback(async (overrideProjectId?: string) => {
+    const pid = overrideProjectId || projectId;
+    if (!teamId || !pid) {
+      throw new Error("Missing required data");
+    }
+
+    setError(null);
+    setProgress(0);
+    setProgressMessage("Starting analysis...");
+    setStep("script");
+    setStatus("analyzing");
+
+    try {
+      await adCloneAPI.startAnalyzeAndScript(pid, teamId);
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : "Failed to start processing";
       setError(errorMsg);
       setStatus("failed");
       throw err;
@@ -290,7 +311,7 @@ export function useAdClone(teamId: number | undefined) {
   );
 
   const generateVideo = useCallback(async () => {
-    if (!teamId || !projectId || !voiceId) {
+    if (!teamId || !projectId || !voiceId || !characterId) {
       throw new Error("Missing required data");
     }
 
@@ -301,7 +322,7 @@ export function useAdClone(teamId: number | undefined) {
     setStatus("generating_video");
 
     try {
-      const result = await adCloneAPI.generateVideo(projectId, { teamId, voiceId });
+      const result = await adCloneAPI.generateVideo(projectId, { teamId, voiceId, characterId });
       setVideoJobId(result.videoJobId);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Failed to generate video";
@@ -309,7 +330,7 @@ export function useAdClone(teamId: number | undefined) {
       setStatus("failed");
       throw err;
     }
-  }, [teamId, projectId, voiceId, setError, setProgress, setProgressMessage, setStep, setStatus, setVideoJobId]);
+  }, [teamId, projectId, voiceId, characterId, setError, setProgress, setProgressMessage, setStep, setStatus, setVideoJobId]);
 
   const pollStatus = useCallback(async () => {
     if (!projectId) return null;
@@ -372,20 +393,14 @@ export function useAdClone(teamId: number | undefined) {
             setStep("upload");
             break;
           case "analyzing":
-            setStep("analyzing");
-            break;
           case "analysis_complete":
-            setStep("analysis");
-            break;
           case "generating_script":
           case "script_generated":
             setStep("script");
             break;
           case "generating_video":
-            setStep("generate");
-            break;
           case "completed":
-            setStep("preview");
+            setStep("generate");
             break;
           case "failed":
             setError("Project failed");
@@ -442,6 +457,7 @@ export function useAdClone(teamId: number | undefined) {
     // Actions
     createProject,
     startAnalysis,
+    startAnalyzeAndScript,
     generateScript,
     updateScript,
     generateVideo,

@@ -1,52 +1,49 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { Progress, Button, Card, CardBody } from "@heroui/react";
+import { useCallback } from "react";
+import { useAtom, useAtomValue } from "jotai";
+import { Button, Card, CardBody } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import {
   adCloneStepAtom,
   adCloneCanProceedAtom,
-  adCloneProgressAtom,
-  adCloneProgressMessageAtom,
   adCloneErrorAtom,
   adCloneStatusAtom,
+  adCloneCharacterIdAtom,
+  adCloneVoiceIdAtom,
   AdCloneStep,
 } from "@/store/adClone";
 import { useAdClone } from "@/hooks/useAdClone";
 import { AdCloneUploadStep } from "./AdCloneUploadStep";
-import { AdCloneAnalyzingStep } from "./AdCloneAnalyzingStep";
-import { AdCloneAnalysisStep } from "./AdCloneAnalysisStep";
-import { AdCloneCharacterStep } from "./AdCloneCharacterStep";
 import { AdCloneScriptStep } from "./AdCloneScriptStep";
+import { AdCloneStoryboardStep } from "./AdCloneStoryboardStep";
+import { AdCloneCharacterVoiceStep } from "./AdCloneCharacterVoiceStep";
 import { AdCloneGenerateStep } from "./AdCloneGenerateStep";
 
 interface AdCloneWizardProps {
   teamId: number;
 }
 
+// Character+Voice comes before Storyboard because scene image generation needs characterId
 const STEPS: { key: AdCloneStep; label: string; icon: string }[] = [
   { key: "upload", label: "Upload", icon: "solar:upload-bold-duotone" },
-  { key: "analyzing", label: "Analyzing", icon: "solar:cpu-bolt-bold-duotone" },
-  { key: "analysis", label: "Review", icon: "solar:magnifer-bold-duotone" },
-  { key: "character", label: "Character", icon: "solar:user-rounded-bold-duotone" },
   { key: "script", label: "Script", icon: "solar:document-text-bold-duotone" },
+  { key: "character", label: "Character & Voice", icon: "solar:user-speak-bold-duotone" },
+  { key: "storyboard", label: "Storyboard", icon: "solar:gallery-bold-duotone" },
   { key: "generate", label: "Generate", icon: "solar:clapperboard-play-bold-duotone" },
-  { key: "preview", label: "Preview", icon: "solar:play-circle-bold-duotone" },
 ];
 
 export function AdCloneWizard({ teamId }: AdCloneWizardProps) {
   const [step, setStep] = useAtom(adCloneStepAtom);
   const canProceed = useAtomValue(adCloneCanProceedAtom);
-  const progress = useAtomValue(adCloneProgressAtom);
-  const progressMessage = useAtomValue(adCloneProgressMessageAtom);
   const error = useAtomValue(adCloneErrorAtom);
   const status = useAtomValue(adCloneStatusAtom);
+  const characterId = useAtomValue(adCloneCharacterIdAtom);
+  const voiceId = useAtomValue(adCloneVoiceIdAtom);
 
   const {
     createProject,
-    startAnalysis,
-    generateScript,
+    startAnalyzeAndScript,
     generateVideo,
     reset,
   } = useAdClone(teamId);
@@ -59,16 +56,16 @@ export function AdCloneWizard({ teamId }: AdCloneWizardProps) {
         case "upload":
           const newProjectId = await createProject();
           if (newProjectId) {
-            await startAnalysis(newProjectId);
+            await startAnalyzeAndScript(newProjectId);
           }
           break;
-        case "analysis":
+        case "script":
           setStep("character");
           break;
         case "character":
-          await generateScript();
+          setStep("storyboard");
           break;
-        case "script":
+        case "storyboard":
           setStep("generate");
           break;
         case "generate":
@@ -80,43 +77,40 @@ export function AdCloneWizard({ teamId }: AdCloneWizardProps) {
     } catch (err) {
       console.error("Step action failed:", err);
     }
-  }, [step, createProject, startAnalysis, generateScript, generateVideo, setStep]);
+  }, [step, createProject, startAnalyzeAndScript, generateVideo, setStep]);
 
   const handleBack = useCallback(() => {
     switch (step) {
-      case "analysis":
+      case "script":
         setStep("upload");
         break;
       case "character":
-        setStep("analysis");
+        setStep("script");
         break;
-      case "script":
+      case "storyboard":
         setStep("character");
         break;
       case "generate":
-        setStep("script");
+        setStep("storyboard");
         break;
       default:
         break;
     }
   }, [step, setStep]);
 
-  const canGoBack = ["analysis", "character", "script", "generate"].includes(step);
+  const canGoBack = ["script", "storyboard", "character", "generate"].includes(step);
 
   const renderStepContent = () => {
     switch (step) {
       case "upload":
         return <AdCloneUploadStep teamId={teamId} onContinue={handleContinue} />;
-      case "analyzing":
-        return <AdCloneAnalyzingStep />;
-      case "analysis":
-        return <AdCloneAnalysisStep />;
-      case "character":
-        return <AdCloneCharacterStep teamId={teamId} />;
       case "script":
-        return <AdCloneScriptStep />;
+        return <AdCloneScriptStep teamId={teamId} />;
+      case "storyboard":
+        return <AdCloneStoryboardStep teamId={teamId} />;
+      case "character":
+        return <AdCloneCharacterVoiceStep teamId={teamId} />;
       case "generate":
-      case "preview":
         return <AdCloneGenerateStep teamId={teamId} />;
       default:
         return null;
@@ -208,7 +202,7 @@ export function AdCloneWizard({ teamId }: AdCloneWizardProps) {
       {renderStepContent()}
 
       {/* Navigation */}
-      {!["upload", "analyzing", "generate", "preview"].includes(step) && (
+      {!["upload", "generate"].includes(step) && status !== "analyzing" && status !== "generating_script" && (
         <div className="flex items-center justify-between">
           {canGoBack ? (
             <Button
@@ -224,15 +218,12 @@ export function AdCloneWizard({ teamId }: AdCloneWizardProps) {
           )}
           <Button
             size="lg"
-            isDisabled={
-              (step === "upload" && !canProceed) ||
-              (step === "script" && status === "generating_script")
-            }
+            isDisabled={step === "character" && (!characterId || !voiceId)}
             onPress={handleContinue}
             className="px-8 bg-orange-500 text-white"
             endContent={<Icon icon="solar:arrow-right-linear" width={18} />}
           >
-            {step === "script" ? "Generate Video" : "Continue"}
+            Continue
           </Button>
         </div>
       )}

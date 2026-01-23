@@ -16,7 +16,7 @@ export interface AdaptScriptParams {
   productImageKeys: string[];
   productName: string;
   productDescription: string;
-  character: {
+  character?: {
     id: number;
     name: string;
     gender: string | null;
@@ -48,17 +48,17 @@ class ScriptAdaptationService {
 
     const imageDescriptions = await this.analyzeProductImages(productImageUrls);
 
-    const appearanceDesc = this.formatAppearanceConfig(
-      character.appearance_config
-    );
+    const appearanceDesc = character
+      ? this.formatAppearanceConfig(character.appearance_config)
+      : "Will be determined when character is selected";
 
     const adaptationConfig: ScriptAdaptationConfig = {
       productName,
       productDescription,
       productImageDescriptions: imageDescriptions,
-      characterName: character.name,
-      characterGender: character.gender || "unspecified",
-      characterAgeRange: character.age_range || "25-35",
+      characterName: character?.name || "The Presenter",
+      characterGender: character?.gender || "unspecified",
+      characterAgeRange: character?.age_range || "25-35",
       characterAppearance: appearanceDesc,
       adDirection,
     };

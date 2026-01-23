@@ -133,6 +133,28 @@ class AdCloneAPI {
     return response.json();
   }
 
+  async startAnalyzeAndScript(
+    projectId: string,
+    teamId: number
+  ): Promise<{ success: boolean; projectId: string; status: string }> {
+    const response = await apiFetch(
+      `${API_URL}/ad-clone/${projectId}/analyze-and-script`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ teamId }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to start processing");
+    }
+
+    return response.json();
+  }
+
   async getAnalysis(
     projectId: string
   ): Promise<{
@@ -204,7 +226,7 @@ class AdCloneAPI {
 
   async generateVideo(
     projectId: string,
-    data: { teamId: number; voiceId: string }
+    data: { teamId: number; voiceId: string; characterId: number }
   ): Promise<{
     success: boolean;
     projectId: string;
@@ -272,6 +294,72 @@ class AdCloneAPI {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || "Failed to delete project");
+    }
+
+    return response.json();
+  }
+
+  async listProjects(
+    teamId: number,
+    limit = 20,
+    offset = 0
+  ): Promise<{
+    success: boolean;
+    projects: Array<{
+      id: string;
+      productName: string | null;
+      status: AdCloneProjectStatus;
+      progress: number;
+      progressMessage: string | null;
+      thumbnailUrl?: string;
+      finalVideoUrl?: string;
+      createdAt: string;
+      updatedAt: string;
+    }>;
+    total: number;
+    limit: number;
+    offset: number;
+  }> {
+    const params = new URLSearchParams({
+      teamId: teamId.toString(),
+      limit: limit.toString(),
+      offset: offset.toString(),
+    });
+
+    const response = await apiFetch(
+      `${API_URL}/ad-clone/projects?${params}`,
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to list projects");
+    }
+
+    return response.json();
+  }
+
+  async finalizeProject(
+    projectId: string,
+    data: { teamId: number; folderId?: number }
+  ): Promise<{ success: boolean; clipId: number; message: string }> {
+    const response = await apiFetch(
+      `${API_URL}/ad-clone/${projectId}/finalize`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(data),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to finalize project");
     }
 
     return response.json();

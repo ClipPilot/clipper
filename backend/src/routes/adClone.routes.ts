@@ -42,6 +42,41 @@ router.post(
 
 /**
  * @openapi
+ * /ad-clone/projects:
+ *   get:
+ *     summary: List all Ad Clone projects for a team
+ *     tags:
+ *       - Ad Clone
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: teamId
+ *         in: query
+ *         required: true
+ *         schema:
+ *           type: number
+ *       - name: limit
+ *         in: query
+ *         schema:
+ *           type: number
+ *           default: 20
+ *       - name: offset
+ *         in: query
+ *         schema:
+ *           type: number
+ *           default: 0
+ *     responses:
+ *       200:
+ *         description: List of projects
+ */
+router.get(
+  "/projects",
+  requireAuth,
+  adCloneController.listProjects.bind(adCloneController)
+);
+
+/**
+ * @openapi
  * /ad-clone/upload-urls:
  *   post:
  *     summary: Get presigned upload URLs for video and product images
@@ -154,6 +189,43 @@ router.post(
   "/:projectId/analyze",
   requireAuth,
   adCloneController.startAnalysis.bind(adCloneController)
+);
+
+/**
+ * @openapi
+ * /ad-clone/{projectId}/analyze-and-script:
+ *   post:
+ *     summary: Start combined video analysis and script generation
+ *     description: Chains video analysis with script generation in a single workflow. Progress updates show both phases (0-50% analyze, 50-100% script).
+ *     tags:
+ *       - Ad Clone
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: projectId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - teamId
+ *             properties:
+ *               teamId:
+ *                 type: number
+ *     responses:
+ *       202:
+ *         description: Combined analysis and script generation started
+ */
+router.post(
+  "/:projectId/analyze-and-script",
+  requireAuth,
+  adCloneController.startAnalyzeAndScript.bind(adCloneController)
 );
 
 /**
@@ -295,6 +367,46 @@ router.post(
   "/:projectId/generate-video",
   requireAuth,
   adCloneController.generateVideo.bind(adCloneController)
+);
+
+/**
+ * @openapi
+ * /ad-clone/{projectId}/finalize:
+ *   post:
+ *     summary: Finalize project and save to clips library
+ *     description: Saves the completed video to the clips library with ad-clone metadata
+ *     tags:
+ *       - Ad Clone
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: projectId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - teamId
+ *             properties:
+ *               teamId:
+ *                 type: number
+ *               folderId:
+ *                 type: number
+ *                 description: Optional folder ID to save the clip to
+ *     responses:
+ *       200:
+ *         description: Project finalized and saved to library
+ */
+router.post(
+  "/:projectId/finalize",
+  requireAuth,
+  adCloneController.finalizeProject.bind(adCloneController)
 );
 
 /**

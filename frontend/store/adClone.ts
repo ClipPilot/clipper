@@ -15,12 +15,10 @@ export interface AdCloneProduct {
 
 export type AdCloneStep =
   | "upload"
-  | "analyzing"
-  | "analysis"
-  | "character"
-  | "script"
-  | "generate"
-  | "preview";
+  | "script"       // Combined: analyzing + script generation
+  | "storyboard"   // New: scene image preview
+  | "character"    // Combined: character + voice selection
+  | "generate";    // Video generation + preview
 
 export type AdCloneProjectStatus =
   | "uploading"
@@ -99,6 +97,16 @@ export const adCloneAnalysisAtom = atom<VideoAnalysis | null>(null);
 // Script state atoms
 export const adCloneScriptsAtom = atom<any[] | null>(null);
 export const adCloneSelectedVariantAtom = atom(0);
+
+// Storyboard state atoms
+export interface SceneImage {
+  sceneId: string;
+  imageUrl: string | null;
+  status: "pending" | "generating" | "completed" | "failed";
+  error?: string;
+}
+export const adCloneSceneImagesAtom = atom<SceneImage[]>([]);
+export const adCloneStoryboardJobIdAtom = atom<string | null>(null);
 
 // Character selection atom
 export const adCloneCharacterIdAtom = atom<number | null>(null);
@@ -181,6 +189,10 @@ export const resetAdCloneAtom = atom(null, (get, set) => {
   // Reset script state
   set(adCloneScriptsAtom, null);
   set(adCloneSelectedVariantAtom, 0);
+
+  // Reset storyboard state
+  set(adCloneSceneImagesAtom, []);
+  set(adCloneStoryboardJobIdAtom, null);
 
   // Reset character/voice selection
   set(adCloneCharacterIdAtom, null);

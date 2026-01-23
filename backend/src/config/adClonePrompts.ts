@@ -68,12 +68,12 @@ For EACH distinct scene/shot, extract:
   - "cta" = Call to action
 - **shotType**: What type of shot is this?
   - "a-roll" = Person speaking directly to camera (talking head, lip-sync required)
-  - "b-roll" = Product shots, cutaways, demos WITHOUT person speaking on screen
-  - "mixed" = Person visible but NOT speaking to camera (using product, over-shoulder)
+  - "b-roll" = Product shots, cutaways, demos WITHOUT person speaking on screen (includes shots where person is visible but NOT speaking)
 - **transcribedDialogue**: EXACT transcription of any speech in this scene (null if no speech)
 - **actionDescription**: Precisely what is happening visually - be HYPER-SPECIFIC
   - GOOD: "Woman holds small pink bottle at chest height, rotates it 90 degrees to show label, then brings it closer to camera"
   - BAD: "Shows product"
+  - NEVER mention on-screen text, captions, titles, or graphics in action descriptions (we generate those separately)
 - **settingDescription**: The environment, background, lighting conditions
 - **emotionalTone**: The feeling/emotion being conveyed (excited, frustrated, relieved, etc.)
 - **cameraAngle**: The camera perspective
@@ -94,8 +94,7 @@ For EACH distinct scene/shot, extract:
 
 2. **SHOT TYPE DETERMINES SCENE TYPE**:
    - If the PRIMARY content is someone speaking to camera = a-roll (even if there are brief cutaways)
-   - If the PRIMARY content is product/visuals with voiceover = b-roll
-   - If person is visible doing something but not speaking directly = mixed
+   - If the PRIMARY content is product/visuals with voiceover = b-roll (includes person visible but NOT speaking to camera)
 
 3. **CONSOLIDATE, DON'T FRAGMENT**:
    - Quick cuts within a segment = ONE scene with multiple shots noted in actionDescription
@@ -141,7 +140,7 @@ DO NOT:
 - Remove scenes
 - Significantly change scene durations (±0.5s max)
 - Change the emotional arc
-- Change shot types (a-roll stays a-roll, b-roll stays b-roll)
+- Change shot types (a-roll stays a-roll, b-roll stays b-roll - only use these two types)
 - Change camera angles unless absolutely necessary
 - "Improve" or "enhance" the original - CLONE it
 
@@ -217,25 +216,86 @@ Each scene must have:
 - id: Unique identifier (e.g., "scene-1", "scene-2")
 - sceneNumber: Sequential number
 - sceneType: SAME as original scene
-- shotType: SAME as original scene (a-roll/b-roll/mixed)
+- shotType: SAME as original scene (a-roll/b-roll)
 - cameraAngle: SAME as original scene
 - estimatedDurationSeconds: MATCHING original (±0.5s)
 - dialogue: Adapted for new product
 - emotion: SAME as original scene
-- action: Adapted action description
+- action: Adapted action description (NO on-screen text mentions - see rules below)
 - cinematicPrompt: Detailed 3-5 paragraph prompt
-- ambientSound: For a-roll scenes only (matching original environment)
-- bRollShots: For b-roll scenes (matching original shot count)
+- ambientSound: For a-roll scenes only - short natural background sounds (see examples below)
+- bRollShots: For b-roll scenes (PRODUCT DEMOS ONLY - see rules below)
+
+===== ACTION DESCRIPTION RULES (CRITICAL) =====
+The "action" field describes what happens VISUALLY in the scene for image generation.
+
+NEVER include in action descriptions:
+- "On-screen text introduces..."
+- "Text overlay shows..."
+- "Caption appears..."
+- "Title card displays..."
+- Any mention of text, graphics, captions, or overlays
+
+GOOD action examples:
+- "Person holds smartphone at eye level, scrolls through app, then looks up at camera with surprised expression"
+- "Close-up of product bottle on marble counter, hand enters frame and picks it up"
+- "Person applies cream to face in circular motions, looking at mirror"
+
+BAD action examples:
+- "On-screen text introduces the method name" (NO - we add text separately)
+- "Caption shows product benefits" (NO)
+- "Title card with brand logo" (NO)
+
+===== B-ROLL RULES (CRITICAL) =====
+B-roll scenes use bRollShots array for PRODUCT DEMOS ONLY.
+
+WHEN TO USE bRollShots (multi-shot):
+- Product unboxing with multiple angles
+- Product demo showing different features
+- Before/after product comparison shots
+- Product close-ups from various angles
+
+WHEN NOT TO USE bRollShots (single shot):
+- Person doing an action (even if not speaking to camera)
+- Lifestyle shots with person visible
+- Any shot where a person is the main subject
+
+If a person appears in b-roll with dialogue:
+- This is NARRATION/VOICEOVER (audio plays over the visuals)
+- The person is NOT lip-syncing - they may be doing an action while voiceover plays
+- Set shotType: "b-roll" and do NOT use bRollShots if person is main subject
+
+===== AMBIENT SOUND RULES (CRITICAL) =====
+For a-roll scenes ONLY, provide a SHORT ambient sound description (5-15 words max).
+This creates realistic background audio matching the scene environment.
+
+GOOD ambient sounds (natural, subtle):
+- "quiet room tone with subtle air conditioning hum"
+- "soft indoor ambience with distant muffled sounds"
+- "light bedroom atmosphere with gentle room tone"
+- "home interior with quiet refrigerator hum"
+- "living room ambience with soft background noise"
+
+BAD ambient sounds (avoid these - too specific or weird):
+- "dramatic cinematic score" (NO music)
+- "whooshing transitions" (NO sound effects)
+- "bass drops and builds" (NO production elements)
+- "mysterious ethereal tones" (NO artistic sounds)
+- Any sound describing music, beats, or production audio
+
+For b-roll scenes: set ambientSound to null (voiceover only)
 
 ===== FINAL CHECKS =====
 Before submitting, verify:
 □ Scene count matches original exactly
 □ Scene types match original in same order
-□ Shot types (a-roll/b-roll/mixed) match original
+□ Shot types (a-roll/b-roll only) match original
 □ Total duration within ±2 seconds of original
 □ Dialogue word count similar to original per scene
 □ Camera angles preserved from original
 □ Emotional arc maintained
 □ Hook strategy preserved
-□ CTA approach preserved`;
+□ CTA approach preserved
+□ All a-roll scenes have natural ambient sounds (no music, no production sounds)
+□ All b-roll scenes have ambientSound set to null`;
 };

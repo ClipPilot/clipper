@@ -34,6 +34,7 @@ import { processKlingFaceSwapJob } from "./processors/klingFaceSwapProcessor";
 import {
   processAdCloneAnalyzeJob,
   processAdCloneGenerateScriptJob,
+  processAdCloneAnalyzeAndScriptJob,
 } from "./processors/adCloneProcessor";
 import {
   VideoProcessingJob,
@@ -49,6 +50,7 @@ import {
   KlingFaceSwapJob,
   AdCloneAnalyzeJob,
   AdCloneGenerateScriptJob,
+  AdCloneAnalyzeAndScriptJob,
 } from "../services/sqs.service";
 import { db, schema } from "../db";
 import { eq } from "drizzle-orm";
@@ -170,6 +172,9 @@ async function processMessage(job: VideoProcessingJob, receiptHandle: string): P
         break;
       case "ad-clone-generate-script":
         await processAdCloneGenerateScriptJob(job as AdCloneGenerateScriptJob);
+        break;
+      case "ad-clone-analyze-and-script":
+        await processAdCloneAnalyzeAndScriptJob(job as AdCloneAnalyzeAndScriptJob);
         break;
       default:
         console.error(`Unknown job type: ${(job as any).type}`);

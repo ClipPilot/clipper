@@ -15,15 +15,12 @@ import {
 import {
   SCENE_TYPE_CONFIG,
   EMOTION_CONFIG,
-  CAMERA_ANGLE_CONFIG,
   SCENE_TYPES,
   EMOTIONS,
-  CAMERA_ANGLES,
   type UGCScene,
   type UGCScript,
   type SceneType,
   type Emotion,
-  type CameraAngle,
 } from "../script/types";
 
 const SHOT_TYPE_COLORS: Record<string, string> = {
@@ -55,22 +52,16 @@ function SceneEditor({ scene, index, totalScenes, onUpdate, onMoveUp, onMoveDown
           </div>
 
           <div className="flex-1 min-w-0 space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 flex-wrap">
-                <Chip size="sm" className={sceneTypeConfig.color} startContent={<Icon icon={sceneTypeConfig.icon} width={12} />}>
-                  {sceneTypeConfig.label}
-                </Chip>
-                <Chip size="sm" className={SHOT_TYPE_COLORS[scene.shotType] || SHOT_TYPE_COLORS["a-roll"]}>
-                  {scene.shotType}
-                </Chip>
-                <Chip size="sm" className={emotionConfig.color}>
-                  {emotionConfig.emoji} {emotionConfig.label}
-                </Chip>
-              </div>
-              <div className="flex items-center gap-1 text-sm text-text-tertiary">
-                <Icon icon="solar:clock-circle-bold" width={14} />
-                <span>{scene.estimatedDurationSeconds}s</span>
-              </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Chip size="sm" className={sceneTypeConfig.color} startContent={<Icon icon={sceneTypeConfig.icon} width={12} />}>
+                {sceneTypeConfig.label}
+              </Chip>
+              <Chip size="sm" className={SHOT_TYPE_COLORS[scene.shotType] || SHOT_TYPE_COLORS["a-roll"]}>
+                {scene.shotType}
+              </Chip>
+              <Chip size="sm" className={emotionConfig.color}>
+                {emotionConfig.emoji} {emotionConfig.label}
+              </Chip>
             </div>
 
             <div className="p-3 bg-surface-base rounded-lg">
@@ -91,19 +82,28 @@ function SceneEditor({ scene, index, totalScenes, onUpdate, onMoveUp, onMoveDown
               )}
             </div>
 
-            <div className="flex items-center gap-2 text-xs text-text-tertiary">
-              <Icon icon={CAMERA_ANGLE_CONFIG[scene.cameraAngle as CameraAngle]?.icon || "solar:camera-bold"} width={14} />
-              <span>{CAMERA_ANGLE_CONFIG[scene.cameraAngle as CameraAngle]?.label || scene.cameraAngle}</span>
-              {scene.action && (
-                <>
-                  <span className="text-text-muted">•</span>
-                  <span>{scene.action}</span>
-                </>
-              )}
-            </div>
+            {scene.action && (
+              <div className="p-3 bg-surface-base rounded-lg">
+                <p className="text-xs text-text-tertiary mb-1">Shot Plan</p>
+                {isExpanded ? (
+                  <Textarea
+                    size="sm"
+                    minRows={2}
+                    value={scene.action}
+                    onValueChange={(value) => onUpdate({ action: value })}
+                    classNames={{
+                      inputWrapper: "bg-surface-elevated border-border-base",
+                      input: "text-text-primary text-sm",
+                    }}
+                  />
+                ) : (
+                  <p className="text-sm text-text-secondary">{scene.action}</p>
+                )}
+              </div>
+            )}
 
             {isExpanded && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2 border-t border-border-base">
+              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border-base">
                 <Select
                   label="Scene Type"
                   size="sm"
@@ -143,38 +143,6 @@ function SceneEditor({ scene, index, totalScenes, onUpdate, onMoveUp, onMoveDown
                     </SelectItem>
                   ))}
                 </Select>
-
-                <Select
-                  label="Camera Angle"
-                  size="sm"
-                  selectedKeys={[scene.cameraAngle]}
-                  onSelectionChange={(keys) => {
-                    const value = Array.from(keys)[0] as CameraAngle;
-                    if (value) onUpdate({ cameraAngle: value });
-                  }}
-                  classNames={{
-                    trigger: "bg-surface-base border-border-base min-h-9",
-                    value: "text-text-primary text-xs",
-                  }}
-                >
-                  {CAMERA_ANGLES.map((angle) => (
-                    <SelectItem key={angle} textValue={CAMERA_ANGLE_CONFIG[angle].label}>
-                      {CAMERA_ANGLE_CONFIG[angle].label}
-                    </SelectItem>
-                  ))}
-                </Select>
-
-                <div>
-                  <label className="text-xs text-text-tertiary block mb-1">Duration (s)</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={30}
-                    value={scene.estimatedDurationSeconds}
-                    onChange={(e) => onUpdate({ estimatedDurationSeconds: parseInt(e.target.value) || 5 })}
-                    className="w-full h-9 px-3 text-sm bg-surface-base border border-border-base rounded-lg text-text-primary"
-                  />
-                </div>
               </div>
             )}
           </div>
@@ -216,7 +184,11 @@ function SceneEditor({ scene, index, totalScenes, onUpdate, onMoveUp, onMoveDown
   );
 }
 
-export function AdCloneScriptStep() {
+interface AdCloneScriptStepProps {
+  teamId: number;
+}
+
+export function AdCloneScriptStep({ teamId }: AdCloneScriptStepProps) {
   const [scripts, setScripts] = useAtom(adCloneScriptsAtom);
   const [selectedVariant, setSelectedVariant] = useAtom(adCloneSelectedVariantAtom);
   const status = useAtomValue(adCloneStatusAtom);
@@ -267,7 +239,15 @@ export function AdCloneScriptStep() {
     [scripts, selectedScript, selectedVariant, setScripts]
   );
 
-  if (status === "generating_script") {
+  // Combined loading state for analyze + script generation
+  if (status === "analyzing" || status === "generating_script") {
+    const isAnalyzing = status === "analyzing";
+    const stages = [
+      { label: "Analyzing video structure", status: progress >= 50 ? "done" : isAnalyzing ? "active" : "pending" },
+      { label: "Extracting scenes & dialogue", status: progress >= 40 ? "done" : progress >= 20 ? "active" : "pending" },
+      { label: "Generating adapted script", status: progress >= 100 ? "done" : progress >= 50 ? "active" : "pending" },
+    ];
+
     return (
       <Card className="bg-surface-base border border-border-base">
         <CardBody className="p-8">
@@ -277,16 +257,22 @@ export function AdCloneScriptStep() {
                 <Spinner size="lg" color="warning" />
               </div>
               <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-surface-base border-2 border-orange-500 flex items-center justify-center">
-                <Icon icon="solar:document-text-bold-duotone" className="text-orange-500" width={18} />
+                <Icon
+                  icon={isAnalyzing ? "solar:cpu-bolt-bold-duotone" : "solar:document-text-bold-duotone"}
+                  className="text-orange-500"
+                  width={18}
+                />
               </div>
             </div>
 
             <div className="space-y-2">
               <h2 className="text-xl font-semibold text-text-primary">
-                Adapting Script
+                {isAnalyzing ? "Analyzing Reference Video" : "Generating Script"}
               </h2>
               <p className="text-text-secondary">
-                Creating a script that matches the original ad structure with your product...
+                {isAnalyzing
+                  ? "Breaking down the video structure for faithful recreation..."
+                  : "Creating a script that matches the original with your product..."}
               </p>
             </div>
 
@@ -301,6 +287,41 @@ export function AdCloneScriptStep() {
                 {progressMessage || `${progress}% complete`}
               </p>
             </div>
+
+            <Card className="bg-surface-elevated border border-border-base w-full max-w-md">
+              <CardBody className="p-4">
+                <div className="space-y-3">
+                  {stages.map((stage, idx) => (
+                    <div key={idx} className="flex items-center gap-3">
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
+                        stage.status === "done"
+                          ? "bg-green-500/20 text-green-400"
+                          : stage.status === "active"
+                            ? "bg-orange-500/20 text-orange-500"
+                            : "bg-surface-base text-text-muted"
+                      }`}>
+                        {stage.status === "done" ? (
+                          <Icon icon="solar:check-circle-bold" width={16} />
+                        ) : stage.status === "active" ? (
+                          <Spinner size="sm" color="warning" />
+                        ) : (
+                          <span className="text-xs font-bold">{idx + 1}</span>
+                        )}
+                      </div>
+                      <p className={`text-sm ${
+                        stage.status === "done"
+                          ? "text-green-400"
+                          : stage.status === "active"
+                            ? "text-text-primary"
+                            : "text-text-muted"
+                      }`}>
+                        {stage.label}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </CardBody>
+            </Card>
           </div>
         </CardBody>
       </Card>
@@ -313,7 +334,7 @@ export function AdCloneScriptStep() {
         <CardBody className="p-8 text-center">
           <Icon icon="solar:danger-triangle-bold-duotone" className="text-yellow-400 mx-auto mb-4" width={48} />
           <h3 className="text-lg font-semibold text-text-primary mb-2">No Script Available</h3>
-          <p className="text-text-secondary">Please go back and select a character to generate the script.</p>
+          <p className="text-text-secondary">Script generation hasn&apos;t completed yet or encountered an error.</p>
         </CardBody>
       </Card>
     );

@@ -1,16 +1,13 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useState, useRef } from "react";
+import { useAtomValue } from "jotai";
 import { useRouter } from "next/navigation";
 import {
   Card,
   CardBody,
-  CardHeader,
   Button,
   Spinner,
-  Tabs,
-  Tab,
   Chip,
   Modal,
   ModalContent,
@@ -30,136 +27,15 @@ import {
   adCloneCharacterIdAtom,
   adCloneProjectIdAtom,
 } from "@/store/adClone";
-import { voicesConfig, type Voice } from "@/config/voicesConfig";
-import { VoiceCard } from "../voice/VoiceCard";
+import { voicesConfig } from "@/config/voicesConfig";
 import { useAdClone } from "@/hooks/useAdClone";
 import { useUsageStats } from "@/hooks/useUsageStats";
 import { FolderSelector } from "@/components/clips";
 import { BrandLogo } from "@/components/brand-logo";
 import type { UGCScript, UGCScene } from "../script/types";
 
-type GenderFilter = "all" | "male" | "female";
-
 interface AdCloneGenerateStepProps {
   teamId: number;
-}
-
-function VoiceSelectorInline({
-  selectedVoice,
-  onVoiceChange,
-}: {
-  selectedVoice: Voice | null;
-  onVoiceChange: (voice: Voice | null) => void;
-}) {
-  const [filter, setFilter] = useState<GenderFilter>("all");
-  const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
-  const [playbackProgress, setPlaybackProgress] = useState(0);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  const filteredVoices =
-    filter === "all" ? voicesConfig : voicesConfig.filter((v) => v.gender === filter);
-
-  const handlePlayToggle = useCallback(
-    (voice: Voice) => {
-      if (playingVoiceId === voice.id) {
-        audioRef.current?.pause();
-        setPlayingVoiceId(null);
-        setPlaybackProgress(0);
-        return;
-      }
-
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-        audioRef.current.src = voice.previewFile;
-        audioRef.current.load();
-
-        audioRef.current
-          .play()
-          .then(() => {
-            setPlayingVoiceId(voice.id);
-            setPlaybackProgress(0);
-          })
-          .catch((err) => {
-            console.error("Audio playback failed:", err);
-            setPlayingVoiceId(null);
-          });
-      }
-    },
-    [playingVoiceId]
-  );
-
-  const handleSelect = useCallback(
-    (voice: Voice) => {
-      onVoiceChange(selectedVoice?.id === voice.id ? null : voice);
-    },
-    [selectedVoice, onVoiceChange]
-  );
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const handleEnded = () => {
-      setPlayingVoiceId(null);
-      setPlaybackProgress(0);
-    };
-    const handleTimeUpdate = () => {
-      if (audio.duration) {
-        setPlaybackProgress(audio.currentTime / audio.duration);
-      }
-    };
-
-    audio.addEventListener("ended", handleEnded);
-    audio.addEventListener("timeupdate", handleTimeUpdate);
-    return () => {
-      audio.removeEventListener("ended", handleEnded);
-      audio.removeEventListener("timeupdate", handleTimeUpdate);
-    };
-  }, []);
-
-  return (
-    <Card className="bg-surface-base border border-border-base">
-      <CardHeader className="pb-0 flex-col items-start gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center">
-            <Icon icon="solar:microphone-3-bold-duotone" className="text-orange-500" width={22} />
-          </div>
-          <div>
-            <h3 className="text-base font-semibold text-text-primary">Select Voice</h3>
-            <p className="text-xs text-text-tertiary">Choose the AI voice for your cloned ad</p>
-          </div>
-        </div>
-        <Tabs
-          selectedKey={filter}
-          onSelectionChange={(key) => setFilter(key as GenderFilter)}
-          size="sm"
-          variant="light"
-          classNames={{ tabList: "gap-2", tab: "px-3", cursor: "bg-orange-500/20" }}
-        >
-          <Tab key="all" title="All" />
-          <Tab key="male" title="Male" />
-          <Tab key="female" title="Female" />
-        </Tabs>
-      </CardHeader>
-      <CardBody className="pt-4">
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {filteredVoices.map((voice) => (
-            <VoiceCard
-              key={voice.id}
-              voice={voice}
-              isSelected={selectedVoice?.id === voice.id}
-              isPlaying={playingVoiceId === voice.id}
-              progress={playingVoiceId === voice.id ? playbackProgress : 0}
-              onSelect={() => handleSelect(voice)}
-              onPlayToggle={() => handlePlayToggle(voice)}
-            />
-          ))}
-        </div>
-        <audio ref={audioRef} className="hidden" preload="none" />
-      </CardBody>
-    </Card>
-  );
 }
 
 function GeneratingState({
@@ -373,7 +249,7 @@ function VideoPreviewState({
 }
 
 export function AdCloneGenerateStep({ teamId }: AdCloneGenerateStepProps) {
-  const [voiceId, setVoiceId] = useAtom(adCloneVoiceIdAtom);
+  const voiceId = useAtomValue(adCloneVoiceIdAtom);
   const status = useAtomValue(adCloneStatusAtom);
   const progress = useAtomValue(adCloneProgressAtom);
   const progressMessage = useAtomValue(adCloneProgressMessageAtom);
@@ -393,13 +269,9 @@ export function AdCloneGenerateStep({ teamId }: AdCloneGenerateStepProps) {
   const scenes = selectedScript?.scenes || [];
   const creditCost = scenes.length * 2;
 
-  const handleVoiceChange = (voice: Voice | null) => {
-    setVoiceId(voice?.id ?? null);
-  };
-
   const handleGenerateClick = () => {
-    if (!voiceId) {
-      setError("Please select a voice first");
+    if (!voiceId || !characterId) {
+      setError("Please go back and select a character and voice first");
       return;
     }
     if (!usageStats || usageStats.totalRemaining < creditCost) {
@@ -409,6 +281,8 @@ export function AdCloneGenerateStep({ teamId }: AdCloneGenerateStepProps) {
     setShowConfirm(true);
   };
 
+  const router = useRouter();
+
   const handleConfirmGenerate = async () => {
     setShowConfirm(false);
     setError(null);
@@ -416,19 +290,13 @@ export function AdCloneGenerateStep({ teamId }: AdCloneGenerateStepProps) {
 
     try {
       await generateVideo();
+      // Redirect to project page to show progress
+      router.push(`/dashboard/ugc-studio/ad-clone/${projectId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start video generation");
       setIsGenerating(false);
     }
   };
-
-  if (status === "completed" && finalVideoUrl) {
-    return <VideoPreviewState videoUrl={finalVideoUrl} scenes={scenes} teamId={teamId} />;
-  }
-
-  if (status === "generating_video" || isGenerating) {
-    return <GeneratingState progress={progress} progressMessage={progressMessage} />;
-  }
 
   if (!selectedScript || scenes.length === 0) {
     return (
@@ -451,7 +319,7 @@ export function AdCloneGenerateStep({ teamId }: AdCloneGenerateStepProps) {
           Generate Your Cloned Ad
         </h2>
         <p className="text-text-secondary">
-          Select a voice and create your AI-generated video
+          Review your selections and create your AI-generated video
         </p>
       </div>
 
@@ -465,8 +333,6 @@ export function AdCloneGenerateStep({ teamId }: AdCloneGenerateStepProps) {
           </CardBody>
         </Card>
       )}
-
-      <VoiceSelectorInline selectedVoice={selectedVoice} onVoiceChange={handleVoiceChange} />
 
       <Card className="bg-surface-elevated border border-border-base">
         <CardBody className="p-5">
@@ -525,7 +391,7 @@ export function AdCloneGenerateStep({ teamId }: AdCloneGenerateStepProps) {
               size="lg"
               className="bg-orange-500 text-white font-semibold px-8"
               onPress={handleGenerateClick}
-              isDisabled={!voiceId || !usageStats || usageStats.totalRemaining < creditCost}
+              isDisabled={!voiceId || !characterId || !usageStats || usageStats.totalRemaining < creditCost}
               startContent={<Icon icon="solar:play-bold" width={20} />}
             >
               Generate Video

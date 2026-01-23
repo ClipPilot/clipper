@@ -11,7 +11,7 @@ import {
   PRODUCT_NEGATIVE_PROMPT,
   SCREEN_STABILITY_MODIFIERS,
 } from "./kling.service";
-import { openaiClient } from "./ugcScript.service";
+import { openaiClient } from "../openai.service";
 import { generateJumbledMetadataString } from "../../utils/videoMetadata";
 
 const MAX_KLING_VIDEO_DURATION = 10;

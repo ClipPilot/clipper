@@ -1,13 +1,17 @@
 import { Request, Response } from "express";
+import path from "path";
+import fs from "fs";
 import { adCloneService } from "../services/ad-clone/adclone.service";
 import { sqsService, GenerateUGCVideoJob } from "../services/sqs.service";
 import { teamService } from "../services/team.service";
 import { canAccessUGCStudio } from "../utils/plans";
 import { db } from "../db";
-import { adCloneProjects, ugcScripts, sceneImages, characters } from "@clipper/shared-db";
+import { adCloneProjects, ugcScripts, sceneImages, characters, clips, ugcVideoGenerationJobs } from "@clipper/shared-db";
 import { eq } from "drizzle-orm";
 import { s3Service } from "../services/s3.service";
 import { getTeamUsage } from "../middleware/subscription.middleware";
+import { transcribeVideoService } from "../services/clips/transcription.service";
+import { convertWordsToCaptionEntries, CaptionEntry } from "../services/clips/captions.service";
 
 interface AuthRequest extends Request {
   user?: { id: string; email: string; dbUserId: number };
@@ -162,6 +166,52 @@ export class AdCloneController {
     }
   }
 
+  async startAnalyzeAndScript(req: AuthRequest, res: Response) {
+    try {
+      const { projectId } = req.params;
+      const { teamId } = req.body;
+
+      if (!projectId || !teamId) {
+        return res.status(400).json({ error: "projectId and teamId are required" });
+      }
+
+      if (!req.user?.dbUserId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const project = await adCloneService.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      if (project.teamId !== teamId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      if (!project.referenceVideoKey) {
+        return res.status(400).json({ error: "Reference video not uploaded" });
+      }
+
+      await sqsService.sendAdCloneAnalyzeAndScriptJob({
+        projectId,
+        teamId,
+        userId: req.user.dbUserId,
+      });
+
+      return res.status(202).json({
+        success: true,
+        projectId,
+        status: "analyzing",
+        message: "Analysis and script generation started. Poll for status.",
+      });
+    } catch (error) {
+      console.error("[AD_CLONE] Start analyze and script error:", error);
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to start processing",
+      });
+    }
+  }
+
   async getAnalysis(req: AuthRequest, res: Response) {
     try {
       const { projectId } = req.params;
@@ -264,17 +314,20 @@ export class AdCloneController {
   async generateVideo(req: AuthRequest, res: Response) {
     try {
       const { projectId } = req.params;
-      const { teamId, voiceId } = req.body;
+      const { teamId, voiceId, characterId } = req.body;
 
-      if (!projectId || !teamId || !voiceId) {
+      if (!projectId || !teamId || !voiceId || !characterId) {
         return res.status(400).json({
-          error: "projectId, teamId, and voiceId are required",
+          error: "projectId, teamId, voiceId, and characterId are required",
         });
       }
 
       if (!req.user?.dbUserId) {
         return res.status(401).json({ error: "Authentication required" });
       }
+
+      // Save characterId to project before validation
+      await adCloneService.updateCharacterId(projectId, characterId);
 
       const project = await adCloneService.getProject(projectId);
       if (!project) {
@@ -337,42 +390,55 @@ export class AdCloneController {
         });
       }
 
-      // Build scenes array for video generation
-      const scenes: GenerateUGCVideoJob["scenes"] = selectedScript.scenes.map((scene: any) => {
-        // Use character image for a-roll, product image for b-roll
-        const imageKey = scene.shotType === "b-roll" && productImage
-          ? productImage
-          : primaryCharacterImage;
+      const savedImages = await db
+        .select()
+        .from(sceneImages)
+        .where(eq(sceneImages.script_id, projectId));
+
+      const scenes: GenerateUGCVideoJob["scenes"] = [];
+
+      for (const scene of selectedScript.scenes as any[]) {
+        const savedImage = savedImages.find((img) => img.scene_id === scene.id);
+
+        if (!savedImage) {
+          return res.status(400).json({
+            error: `No image found for scene ${scene.sceneNumber}. Please generate storyboard images first.`,
+          });
+        }
+
+        const cinematicPrompt = scene.cinematicPrompt || `${scene.action}. ${scene.emotion} expression. ${scene.shotType === "a-roll" ? "Person speaks naturally to camera." : "Product shot with smooth motion."}`;
 
         const sceneData: GenerateUGCVideoJob["scenes"][number] = {
           sceneId: scene.id,
           sceneNumber: scene.sceneNumber,
           shotType: scene.shotType,
-          imageKey,
+          imageKey: savedImage.image_key,
           dialogue: scene.dialogue,
           duration: scene.estimatedDurationSeconds || 5,
-          cinematicPrompt: scene.cinematicPrompt || scene.action,
+          cinematicPrompt,
           action: scene.action,
           emotion: scene.emotion,
-          ambientSound: scene.ambientSound || null,
+          ambientSound: scene.ambientSound,
         };
 
-        // Handle b-roll shots (montage)
         if (scene.bRollShots && scene.bRollShots.length > 0 && scene.shotType === "b-roll") {
-          sceneData.bRollShots = scene.bRollShots.map((shot: any) => ({
-            action: shot.action,
-            cinematicPrompt: shot.cinematicPrompt,
-            durationSeconds: shot.durationSeconds,
-            imageKey: shot.productImageNeeded && productImage ? productImage : primaryCharacterImage,
-          }));
+          const baseKey = savedImage.image_key;
+
+          sceneData.bRollShots = scene.bRollShots.map((shot: any, index: number) => {
+            const shotImageKey = baseKey.replace(/variant_\d+/, `variant_${index}`);
+            const shotCinematicPrompt = shot.cinematicPrompt || `${shot.action}. Product shot with smooth camera motion.`;
+            return {
+              action: shot.action,
+              cinematicPrompt: shotCinematicPrompt,
+              durationSeconds: shot.durationSeconds,
+              imageKey: shotImageKey,
+            };
+          });
         }
 
-        return sceneData;
-      });
+        scenes.push(sceneData);
+      }
 
-      console.log(`[AD_CLONE] Building video job with ${scenes.length} scenes`);
-
-      // Increment usage
       await teamService.incrementTeamUsage(teamId, creditCost);
 
       const [scriptRecord] = await db
@@ -389,8 +455,21 @@ export class AdCloneController {
         })
         .returning();
 
+      const [job] = await db
+        .insert(ugcVideoGenerationJobs)
+        .values({
+          team_id: teamId,
+          user_id: req.user.dbUserId,
+          script_id: scriptRecord.id,
+          voice_id: voiceId,
+          status: "queued",
+          progress: 0,
+          progress_message: "Queued for video generation...",
+        })
+        .returning();
+
       await sqsService.sendGenerateUGCVideoJob({
-        jobId: scriptRecord.id,
+        jobId: job.id,
         teamId,
         userId: req.user.dbUserId,
         scriptId: scriptRecord.id,
@@ -398,14 +477,13 @@ export class AdCloneController {
         scenes,
       });
 
-      await adCloneService.setVideoJobId(projectId, scriptRecord.id);
+      await adCloneService.setVideoJobId(projectId, job.id);
 
       return res.status(202).json({
         success: true,
         projectId,
-        videoJobId: scriptRecord.id,
+        videoJobId: job.id,
         status: "generating_video",
-        message: "Video generation started. Poll for status.",
       });
     } catch (error) {
       console.error("[AD_CLONE] Generate video error:", error);
@@ -423,41 +501,76 @@ export class AdCloneController {
         return res.status(400).json({ error: "projectId is required" });
       }
 
-      const project = await adCloneService.getProject(projectId);
+      let project = await adCloneService.getProject(projectId);
       if (!project) {
         return res.status(404).json({ error: "Project not found" });
       }
 
-      const response: any = {
-        success: true,
-        projectId: project.id,
-        status: project.status,
-        progress: project.progress,
-        progressMessage: project.progressMessage,
-        createdAt: project.createdAt,
-        updatedAt: project.updatedAt,
-      };
+      // Check if video job has completed and update ad clone project accordingly
+      if (project.videoJobId && project.status === "generating_video") {
+        const [videoJob] = await db
+          .select()
+          .from(ugcVideoGenerationJobs)
+          .where(eq(ugcVideoGenerationJobs.id, project.videoJobId))
+          .limit(1);
 
-      if (project.status === "analysis_complete" || project.videoAnalysis) {
-        response.hasAnalysis = true;
-      }
-
-      if (project.status === "script_generated" || project.adaptedScripts) {
-        response.hasScript = true;
-        if (project.adaptedScripts) {
-          response.script = project.adaptedScripts[project.selectedVariantIndex];
+        if (videoJob) {
+          if (videoJob.status === "completed" && videoJob.final_video_key) {
+            // Update ad clone project with the final video
+            await adCloneService.setFinalVideo(projectId, videoJob.final_video_key);
+            // Refresh project data
+            project = await adCloneService.getProject(projectId);
+          } else if (videoJob.status === "failed") {
+            // Update ad clone project as failed
+            await adCloneService.updateProjectStatus(
+              projectId,
+              "failed",
+              0,
+              "Video generation failed",
+              videoJob.error_message || "Unknown error"
+            );
+            project = await adCloneService.getProject(projectId);
+          } else if (videoJob.status === "generating" || videoJob.status === "queued") {
+            // Update progress from video job
+            project = {
+              ...project,
+              progress: videoJob.progress || 0,
+              progressMessage: videoJob.progress_message || (videoJob.status === "queued" ? "Video generation queued..." : "Generating video..."),
+            };
+          }
         }
       }
 
-      if (project.status === "completed" && project.finalVideoKey) {
+      const response: any = {
+        success: true,
+        projectId: project!.id,
+        status: project!.status,
+        progress: project!.progress,
+        progressMessage: project!.progressMessage,
+        createdAt: project!.createdAt,
+        updatedAt: project!.updatedAt,
+      };
+
+      if (project!.status === "analysis_complete" || project!.videoAnalysis) {
+        response.hasAnalysis = true;
+      }
+
+      if (project!.status === "script_generated" || project!.adaptedScripts) {
+        response.hasScript = true;
+        if (project!.adaptedScripts) {
+          response.script = project!.adaptedScripts[project!.selectedVariantIndex];
+        }
+      }
+
+      if (project!.status === "completed" && project!.finalVideoKey) {
         response.finalVideoUrl = await s3Service.getPresignedUrl(
-          project.finalVideoKey,
+          project!.finalVideoKey,
           3600
         );
       }
 
-      if (project.status === "failed") {
-        response.error = project.errorMessage;
+      if (project!.status === "failed") {
+        response.error = project!.errorMessage;
       }
 
       return res.status(200).json(response);
@@ -557,6 +670,172 @@ export class AdCloneController {
       console.error("[AD_CLONE] Delete project error:", error);
       return res.status(500).json({
         error: error instanceof Error ? error.message : "Failed to delete project",
+      });
+    }
+  }
+
+  async listProjects(req: AuthRequest, res: Response) {
+    try {
+      const { teamId } = req.query;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const offset = parseInt(req.query.offset as string) || 0;
+
+      if (!teamId) {
+        return res.status(400).json({ error: "teamId is required" });
+      }
+
+      const team = await teamService.getTeamById(Number(teamId));
+      if (!team || !canAccessUGCStudio(team.plan)) {
+        return res.status(403).json({ error: "UGC Studio access required" });
+      }
+
+      const { projects, total } = await adCloneService.listProjects(
+        Number(teamId),
+        limit,
+        offset
+      );
+
+      const projectsWithUrls = await Promise.all(
+        projects.map(async (project) => {
+          const result: any = {
+            id: project.id,
+            productName: project.productName,
+            status: project.status,
+            progress: project.progress,
+            progressMessage: project.progressMessage,
+            createdAt: project.createdAt,
+            updatedAt: project.updatedAt,
+          };
+
+          if (project.productImageKeys.length > 0) {
+            result.thumbnailUrl = await s3Service.getPresignedUrl(
+              project.productImageKeys[0],
+              3600
+            );
+          }
+
+          if (project.finalVideoKey) {
+            result.finalVideoUrl = await s3Service.getPresignedUrl(
+              project.finalVideoKey,
+              3600
+            );
+          }
+
+          return result;
+        })
+      );
+
+      return res.status(200).json({
+        success: true,
+        projects: projectsWithUrls,
+        total,
+        limit,
+        offset,
+      });
+    } catch (error) {
+      console.error("[AD_CLONE] List projects error:", error);
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to list projects",
+      });
+    }
+  }
+
+  async finalizeProject(req: AuthRequest, res: Response) {
+    try {
+      const { projectId } = req.params;
+      const { teamId, folderId } = req.body;
+
+      if (!projectId || !teamId) {
+        return res.status(400).json({ error: "projectId and teamId are required" });
+      }
+
+      if (!req.user?.dbUserId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const project = await adCloneService.getProject(projectId);
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+
+      if (project.teamId !== teamId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      if (project.status !== "completed" || !project.finalVideoKey) {
+        return res.status(400).json({ error: "Project video not completed" });
+      }
+
+      const selectedScript = project.adaptedScripts?.[project.selectedVariantIndex];
+
+      let captionsData: CaptionEntry[] = [];
+      const tempDir = path.join(process.cwd(), "output", "temp-transcribe");
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+
+      const tempVideoPath = path.join(tempDir, `adclone_finalize_${projectId}_${Date.now()}.mp4`);
+
+      try {
+        console.log("[AD_CLONE] Downloading video for transcription...");
+        await s3Service.downloadVideoFromUrl(
+          await s3Service.getPresignedUrl(project.finalVideoKey, 300),
+          tempVideoPath
+        );
+
+        console.log("[AD_CLONE] Transcribing video with Deepgram...");
+        const transcription = await transcribeVideoService(tempVideoPath);
+
+        const words = transcription?.results?.channels?.[0]?.alternatives?.[0]?.words || [];
+
+        if (words.length > 0) {
+          console.log(`[AD_CLONE] Got ${words.length} words from transcription`);
+          captionsData = convertWordsToCaptionEntries(words, 4);
+          console.log(`[AD_CLONE] Created ${captionsData.length} caption entries`);
+        } else {
+          console.log("[AD_CLONE] No words found in transcription");
+        }
+      } catch (transcribeError) {
+        console.error("[AD_CLONE] Transcription failed, proceeding without captions:", transcribeError);
+      } finally {
+        if (fs.existsSync(tempVideoPath)) {
+          fs.unlinkSync(tempVideoPath);
+        }
+      }
+
+      const clipMetadata = {
+        type: "ad-clone",
+        projectId: project.id,
+        scriptId: project.videoJobId,
+        generationJobId: project.videoJobId,
+        referenceVideoKey: project.referenceVideoKey,
+        productName: project.productName,
+        scenes: selectedScript?.scenes?.length || 0,
+      };
+
+      const [clip] = await db
+        .insert(clips)
+        .values({
+          team_id: teamId,
+          generated_by_user_id: req.user.dbUserId,
+          folder_id: folderId || null,
+          clip_path: project.finalVideoKey,
+          blank_video_path: project.finalVideoKey,
+          captions_data: captionsData.length > 0 ? captionsData : null,
+          status: "completed",
+          saved: true,
+          clip_metadata: clipMetadata,
+        })
+        .returning();
+
+      return res.status(200).json({
+        success: true,
+        clipId: clip.id,
+      });
+    } catch (error) {
+      console.error("[AD_CLONE] Finalize project error:", error);
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to finalize project",
       });
     }
   }
