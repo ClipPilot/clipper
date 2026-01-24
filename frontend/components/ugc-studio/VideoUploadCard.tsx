@@ -48,7 +48,7 @@ export function VideoUploadCard({
         }
         const newVideo = { file, preview };
         onVideoChange(newVideo, dur);
-        const initialEnd = Math.min(dur, 50);
+        const initialEnd = Math.min(dur, 60);
         onSegmentsChange([{ id: crypto.randomUUID(), start: 0, end: initialEnd }]);
       };
     },
@@ -80,7 +80,7 @@ export function VideoUploadCard({
           </div>
           <div className="flex-1">
             <h3 className="text-base font-semibold text-text-primary">Video & Trim</h3>
-            <p className="text-xs text-text-tertiary">Upload video and select clips (max 50s total)</p>
+            <p className="text-xs text-text-tertiary">Upload video and select clips (max 60s total)</p>
           </div>
         </div>
       </CardHeader>
@@ -139,7 +139,7 @@ export function VideoUploadCard({
                 duration={videoDuration}
                 segments={segments}
                 onSegmentsChange={onSegmentsChange}
-                maxTotalDuration={50}
+                maxTotalDuration={60}
                 maxSegments={5}
               />
             )}
