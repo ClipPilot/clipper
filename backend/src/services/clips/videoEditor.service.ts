@@ -316,6 +316,39 @@ export const extractAudio = (
   });
 };
 
+export const replaceAudioInVideo = (
+  videoPath: string,
+  audioPath: string,
+  outputPath: string
+): Promise<string> => {
+  console.log(`[REPLACE-AUDIO] Replacing audio in ${videoPath} with ${audioPath}`);
+  return new Promise((resolve, reject) => {
+    ffmpeg()
+      .input(videoPath)
+      .input(audioPath)
+      .outputOptions([
+        "-c:v copy",
+        "-c:a aac",
+        "-ar 44100",
+        "-ac 2",
+        "-b:a 192k",
+        "-map 0:v:0",
+        "-map 1:a:0",
+        "-shortest",
+      ])
+      .output(outputPath)
+      .on("end", () => {
+        console.log(`[REPLACE-AUDIO] Audio replaced, saved to ${outputPath}`);
+        resolve(outputPath);
+      })
+      .on("error", (err) => {
+        console.error(`[REPLACE-AUDIO] Failed: ${err.message}`);
+        reject(err);
+      })
+      .run();
+  });
+};
+
 const normalizeClip = (input: string, output: string): Promise<string> => {
   console.log(`[NORMALIZE] Processing: ${input}`);
   return new Promise((resolve, reject) => {

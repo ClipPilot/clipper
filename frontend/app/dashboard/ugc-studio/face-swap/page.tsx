@@ -9,6 +9,8 @@ import { selectedTeamAtom } from "@/store/auth";
 import { canAccessUGCStudio } from "@/lib/plans";
 import { faceSwapAPI } from "@/api/ugc/faceSwap";
 import type { SelectedCharacter } from "@/components/ugc-studio/types";
+import type { Voice } from "@/config/voicesConfig";
+import { VoiceSelector } from "@/components/ugc-studio/voice";
 import {
   UploadedFile,
   VideoSegment,
@@ -46,6 +48,7 @@ function FaceSwapContent({
   const [segments, setSegments] = useState<VideoSegment[]>([]);
   const [showEditor, setShowEditor] = useState(false);
   const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
+  const [selectedVoice, setSelectedVoice] = useState<Voice | null>(null);
   const faceSwapsSectionRef = useRef<MyFaceSwapsSectionRef>(null);
 
   const getCharacterImages = (): Array<File | { imageKey: string }> => {
@@ -115,6 +118,7 @@ function FaceSwapContent({
         videoDuration: duration,
         spliceWithOriginal: true,
         folderId: selectedFolderId,
+        voiceId: selectedVoice?.id,
       });
 
       result.jobIds.forEach((jobId, i) => {
@@ -182,6 +186,7 @@ function FaceSwapContent({
         videoDuration: duration,
         spliceWithOriginal: true,
         folderId: selectedFolderId,
+        voiceId: selectedVoice?.id,
       });
 
       result.jobIds.forEach((jobId, i) => {
@@ -210,7 +215,7 @@ function FaceSwapContent({
         color: "danger",
       });
     }
-  }, [video, selectedCharacters, selectedTeam?.id, videoDuration]);
+  }, [video, selectedCharacters, selectedTeam?.id, videoDuration, selectedVoice, selectedFolderId]);
 
   return (
     <div className="min-h-screen bg-surface-dark p-6 lg:p-8">
@@ -264,6 +269,13 @@ function FaceSwapContent({
               onCharactersChange={handleCharactersChange}
               teamId={selectedTeam?.id}
             />
+
+            <VoiceSelector
+              selectedVoice={selectedVoice}
+              onVoiceChange={setSelectedVoice}
+              faceSwap
+            />
+
             <GeneratePanel
               hasVideo={!!video}
               characterCount={selectedCharacters.length}

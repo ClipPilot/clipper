@@ -199,7 +199,7 @@ export function AdCloneScriptStep({ teamId }: AdCloneScriptStepProps) {
   const selectedScript = useAtomValue(adCloneSelectedScriptAtom) as UGCScript | null;
   const projectId = useAtomValue(adCloneProjectIdAtom);
 
-  const { generateScript } = useAdClone(teamId, projectId || undefined);
+  const { generateScript } = useAdClone(teamId);
   const [isRegenerating, setIsRegenerating] = useState(false);
 
   const handleRegenerateScript = useCallback(async () => {

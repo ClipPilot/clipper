@@ -112,6 +112,7 @@ export function FolderSelector({
   const [folderTree, setFolderTree] = useState<FolderTreeNode[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasFetched, setHasFetched] = useState(false);
   const { isOpen: isCreateModalOpen, onOpen: openCreateModal, onClose: closeCreateModal } = useDisclosure();
 
   const fetchFolders = useCallback(async () => {
@@ -124,6 +125,7 @@ export function FolderSelector({
       ]);
       setFolderTree(tree);
       setFolders(allFolders);
+      setHasFetched(true);
     } catch (error) {
       console.error("Failed to fetch folders:", error);
     } finally {
@@ -132,10 +134,10 @@ export function FolderSelector({
   }, [teamId]);
 
   useEffect(() => {
-    if (isOpen && folderTree.length === 0 && !isLoading) {
+    if (isOpen && !hasFetched && !isLoading) {
       fetchFolders();
     }
-  }, [isOpen, fetchFolders, folderTree.length, isLoading]);
+  }, [isOpen, fetchFolders, hasFetched, isLoading]);
 
   const selectedFolder = folders.find((f) => f.id === selectedFolderId);
 
