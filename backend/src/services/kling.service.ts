@@ -29,26 +29,6 @@ fal.config({
   credentials: config.fal.apiKey,
 });
 
-/**
- * Converts a URL to a base64 data URI by fetching the content and encoding it.
- * Used to bypass FAL download issues with presigned S3 URLs.
- */
-async function urlToBase64DataUri(url: string): Promise<string> {
-  console.log(`[Kling] Converting URL to base64 data URI...`);
-  const response = await fetch(url);
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch image for base64 conversion: ${response.status}`);
-  }
-
-  const contentType = response.headers.get("content-type") || "image/png";
-  const buffer = await response.arrayBuffer();
-  const base64 = Buffer.from(buffer).toString("base64");
-
-  console.log(`[Kling] Converted to base64 (${Math.round(base64.length / 1024)}KB, ${contentType})`);
-  return `data:${contentType};base64,${base64}`;
-}
-
 export type ShotType = "a-roll" | "b-roll" | "mixed";
 export type KlingDuration = 5 | 10;
 export type CharacterOrientation = "image" | "video";
@@ -521,25 +501,7 @@ export async function generateVideoWithRetry(
   let lastError: Error | null = null;
   let promptRewriteAttempts = 0;
   const maxPromptRewrites = 2;
-
-  // Always convert URLs to base64 upfront to avoid FAL download issues with presigned URLs
-  console.log(`[Kling] Converting image URLs to base64 for reliable delivery...`);
   let currentOptions = { ...options };
-  try {
-    const base64ImageUrl = await urlToBase64DataUri(options.imageUrl);
-    let base64TailImageUrl: string | undefined;
-    if (options.tailImageUrl) {
-      base64TailImageUrl = await urlToBase64DataUri(options.tailImageUrl);
-    }
-    currentOptions = {
-      ...currentOptions,
-      imageUrl: base64ImageUrl,
-      tailImageUrl: base64TailImageUrl,
-    };
-  } catch (conversionError) {
-    console.warn(`[Kling] Base64 conversion failed, using original URLs:`, conversionError);
-    // Fall back to original URLs if conversion fails
-  }
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
@@ -584,22 +546,7 @@ export async function applyLipsyncWithRetry(
   maxRetries: number = 3,
 ): Promise<LipsyncResult> {
   let lastError: Error | null = null;
-
-  // Always convert URLs to base64 upfront to avoid FAL download issues with presigned URLs
-  console.log(`[Kling Lipsync] Converting URLs to base64 for reliable delivery...`);
-  let currentOptions = { ...options };
-  try {
-    const base64VideoUrl = await urlToBase64DataUri(options.videoUrl);
-    const base64AudioUrl = await urlToBase64DataUri(options.audioUrl);
-    currentOptions = {
-      ...currentOptions,
-      videoUrl: base64VideoUrl,
-      audioUrl: base64AudioUrl,
-    };
-  } catch (conversionError) {
-    console.warn(`[Kling Lipsync] Base64 conversion failed, using original URLs:`, conversionError);
-    // Fall back to original URLs if conversion fails
-  }
+  const currentOptions = { ...options };
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
@@ -681,22 +628,7 @@ export async function generateAvatarWithRetry(
   maxRetries: number = 3,
 ): Promise<AvatarResult> {
   let lastError: Error | null = null;
-
-  // Always convert URLs to base64 upfront to avoid FAL download issues with presigned URLs
-  console.log(`[Kling Avatar v2] Converting URLs to base64 for reliable delivery...`);
-  let currentOptions = { ...options };
-  try {
-    const base64ImageUrl = await urlToBase64DataUri(options.imageUrl);
-    const base64AudioUrl = await urlToBase64DataUri(options.audioUrl);
-    currentOptions = {
-      ...currentOptions,
-      imageUrl: base64ImageUrl,
-      audioUrl: base64AudioUrl,
-    };
-  } catch (conversionError) {
-    console.warn(`[Kling Avatar v2] Base64 conversion failed, using original URLs:`, conversionError);
-    // Fall back to original URLs if conversion fails
-  }
+  const currentOptions = { ...options };
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
@@ -776,18 +708,7 @@ export async function extendVideoWithRetry(
   maxRetries: number = 5,
 ): Promise<ExtendVideoResult> {
   let lastError: Error | null = null;
-
-  // Convert video URL to base64 to avoid FAL download issues with presigned URLs
-  // Skip for very large files to avoid memory issues
-  console.log(`[Kling O1] Converting video URL to base64 for reliable delivery...`);
-  let currentOptions = { ...options };
-  try {
-    const base64VideoUrl = await urlToBase64DataUri(options.videoUrl);
-    currentOptions = { ...currentOptions, videoUrl: base64VideoUrl };
-  } catch (conversionError) {
-    console.warn(`[Kling O1] Base64 conversion failed, using original URL:`, conversionError);
-    // Fall back to original URL if conversion fails
-  }
+  const currentOptions = { ...options };
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
@@ -922,22 +843,7 @@ export async function klingProMotionWithRetry(
   maxRetries: number = 3,
 ): Promise<MotionControlResult> {
   let lastError: Error | null = null;
-
-  // Convert URLs to base64 to avoid FAL download issues with presigned URLs
-  console.log(`[Kling Pro Motion] Converting URLs to base64 for reliable delivery...`);
-  let currentOptions = { ...options };
-  try {
-    const base64ImageUrl = await urlToBase64DataUri(options.imageUrl);
-    const base64VideoUrl = await urlToBase64DataUri(options.videoUrl);
-    currentOptions = {
-      ...currentOptions,
-      imageUrl: base64ImageUrl,
-      videoUrl: base64VideoUrl,
-    };
-  } catch (conversionError) {
-    console.warn(`[Kling Pro Motion] Base64 conversion failed, using original URLs:`, conversionError);
-    // Fall back to original URLs if conversion fails
-  }
+  const currentOptions = { ...options };
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
