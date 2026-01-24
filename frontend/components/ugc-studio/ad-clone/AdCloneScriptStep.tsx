@@ -11,7 +11,9 @@ import {
   adCloneProgressAtom,
   adCloneProgressMessageAtom,
   adCloneSelectedScriptAtom,
+  adCloneProjectIdAtom,
 } from "@/store/adClone";
+import { useAdClone } from "@/hooks/useAdClone";
 import {
   SCENE_TYPE_CONFIG,
   EMOTION_CONFIG,
@@ -195,6 +197,21 @@ export function AdCloneScriptStep({ teamId }: AdCloneScriptStepProps) {
   const progress = useAtomValue(adCloneProgressAtom);
   const progressMessage = useAtomValue(adCloneProgressMessageAtom);
   const selectedScript = useAtomValue(adCloneSelectedScriptAtom) as UGCScript | null;
+  const projectId = useAtomValue(adCloneProjectIdAtom);
+
+  const { generateScript } = useAdClone(teamId, projectId || undefined);
+  const [isRegenerating, setIsRegenerating] = useState(false);
+
+  const handleRegenerateScript = useCallback(async () => {
+    setIsRegenerating(true);
+    try {
+      await generateScript();
+    } catch (error) {
+      console.error("Failed to regenerate script:", error);
+    } finally {
+      setIsRegenerating(false);
+    }
+  }, [generateScript]);
 
   const handleSceneUpdate = useCallback(
     (sceneIndex: number, updates: Partial<UGCScene>) => {
@@ -368,6 +385,17 @@ export function AdCloneScriptStep({ teamId }: AdCloneScriptStepProps) {
               >
                 {selectedScript.viralScore} viral
               </Chip>
+              <Button
+                size="sm"
+                variant="flat"
+                color="warning"
+                startContent={<Icon icon="solar:refresh-bold" width={16} />}
+                onPress={handleRegenerateScript}
+                isLoading={isRegenerating}
+                isDisabled={isRegenerating}
+              >
+                Regenerate
+              </Button>
             </div>
           </div>
 

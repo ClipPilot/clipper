@@ -153,7 +153,7 @@ Format: Layer,Start,End,Style,Text
 
   fs.writeFileSync(assPath, ass);
 
-  const fontsDir = path.resolve(__dirname, "../fonts");
+  const fontsDir = path.resolve(__dirname, "../../fonts");
 
   return new Promise((resolve, reject) => {
     ffmpeg(inputPath)
@@ -273,7 +273,7 @@ Format: Layer,Start,End,Style,Text
 
   fs.writeFileSync(assPath, ass);
 
-  const fontsDir = path.resolve(__dirname, "../fonts");
+  const fontsDir = path.resolve(__dirname, "../../fonts");
 
   return new Promise((resolve, reject) => {
     ffmpeg(inputPath)

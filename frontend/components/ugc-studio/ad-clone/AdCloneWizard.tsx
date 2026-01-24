@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useAtom, useAtomValue } from "jotai";
 import { Button, Card, CardBody } from "@heroui/react";
 import { Icon } from "@iconify/react";
@@ -106,6 +106,13 @@ export function AdCloneWizard({ teamId }: AdCloneWizardProps) {
   }, [step, setStep]);
 
   const canGoBack = ["script", "storyboard", "character", "generate"].includes(step);
+
+  // Auto-scroll to top when reaching character/voice step
+  useEffect(() => {
+    if (step === "character") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [step]);
 
   const renderStepContent = () => {
     switch (step) {

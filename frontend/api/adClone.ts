@@ -182,7 +182,7 @@ class AdCloneAPI {
 
   async generateScript(
     projectId: string,
-    data: { teamId: number; characterId: number }
+    data: { teamId: number; characterId?: number }
   ): Promise<{ success: boolean; projectId: string; status: string }> {
     const response = await apiFetch(
       `${API_URL}/ad-clone/${projectId}/generate-script`,

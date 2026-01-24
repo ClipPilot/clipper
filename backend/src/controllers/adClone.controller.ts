@@ -244,9 +244,9 @@ export class AdCloneController {
       const { projectId } = req.params;
       const { teamId, characterId } = req.body;
 
-      if (!projectId || !teamId || !characterId) {
+      if (!projectId || !teamId) {
         return res.status(400).json({
-          error: "projectId, teamId, and characterId are required",
+          error: "projectId and teamId are required",
         });
       }
 
@@ -271,7 +271,7 @@ export class AdCloneController {
         projectId,
         teamId,
         userId: req.user.dbUserId,
-        characterId,
+        characterId: characterId || undefined,
       });
 
       return res.status(202).json({
@@ -468,6 +468,10 @@ export class AdCloneController {
         })
         .returning();
 
+      const baseSpeed = project.videoAnalysis?.recommendedTTSSpeed || 1.0;
+      const audioSpeedup = project.videoAnalysis?.estimatedAudioSpeedMultiplier || 1.0;
+      const finalTTSSpeed = Math.min(baseSpeed * audioSpeedup, 2.0);
+
       await sqsService.sendGenerateUGCVideoJob({
         jobId: job.id,
         teamId,
@@ -475,6 +479,7 @@ export class AdCloneController {
         scriptId: scriptRecord.id,
         voiceId,
         scenes,
+        ttsSpeed: finalTTSSpeed,
       });
 
       await adCloneService.setVideoJobId(projectId, job.id);

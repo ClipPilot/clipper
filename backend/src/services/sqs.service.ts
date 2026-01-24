@@ -222,6 +222,7 @@ export interface GenerateUGCVideoJob extends BaseJob {
     }>;
   }>;
   regenerateSceneId?: string;
+  ttsSpeed?: number;
 }
 
 export interface KlingFaceSwapJob extends BaseJob {
@@ -248,7 +249,7 @@ export interface AdCloneAnalyzeJob extends BaseJob {
 export interface AdCloneGenerateScriptJob extends BaseJob {
   type: "ad-clone-generate-script";
   projectId: string;
-  characterId: number;
+  characterId?: number;
 }
 
 export interface AdCloneAnalyzeAndScriptJob extends BaseJob {
@@ -538,6 +539,7 @@ class SQSService {
     characterId?: number;
     productImageKeys?: string[];
     adCloneProjectId?: string;
+    ttsSpeed?: number;
   }): Promise<string> {
     const job: GenerateUGCVideoJob = {
       type: "generate-ugc-video",
@@ -548,6 +550,7 @@ class SQSService {
       voiceId: params.voiceId,
       scenes: params.scenes || [],
       regenerateSceneId: params.regenerateSceneId,
+      ttsSpeed: params.ttsSpeed,
       createdAt: new Date().toISOString(),
     };
 
@@ -606,7 +609,7 @@ class SQSService {
     projectId: string;
     teamId: number;
     userId: number;
-    characterId: number;
+    characterId?: number;
   }): Promise<string> {
     const job: AdCloneGenerateScriptJob = {
       type: "ad-clone-generate-script",

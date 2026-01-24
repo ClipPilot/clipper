@@ -266,7 +266,7 @@ export function useAdClone(teamId: number | undefined) {
   }, [teamId, projectId, setError, setProgress, setProgressMessage, setStep, setStatus]);
 
   const generateScript = useCallback(async () => {
-    if (!teamId || !projectId || !characterId) {
+    if (!teamId || !projectId) {
       throw new Error("Missing required data");
     }
 
@@ -277,7 +277,7 @@ export function useAdClone(teamId: number | undefined) {
     setStatus("generating_script");
 
     try {
-      await adCloneAPI.generateScript(projectId, { teamId, characterId });
+      await adCloneAPI.generateScript(projectId, { teamId, characterId: characterId || undefined });
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Failed to generate script";
       setError(errorMsg);

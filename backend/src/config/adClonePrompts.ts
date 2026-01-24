@@ -52,7 +52,39 @@ DO NOT split every camera cut into a separate scene. Instead, GROUP related shot
 - Pacing assessment (slow, moderate, fast, varied)
 - Key strengths (what makes this ad effective?)
 
-**2. SCENE-BY-SCENE BREAKDOWN:**
+**2. VOICE DELIVERY ANALYSIS (CRITICAL FOR TTS MATCHING):**
+Analyze the speaker's voice delivery style to enable faithful TTS recreation:
+
+- **speakerPace**: How fast does the speaker talk? (slow, moderate, fast, varied)
+- **speakerEnergy**: What's their energy level? (calm, conversational, energetic, intense)
+- **speakerStyle**: What's their speaking personality? (casual, professional, enthusiastic, intimate, authoritative)
+- **speakerWPM**: Estimate their words per minute (typical range: 120-180 WPM)
+- **speakerCharacteristics**: Array of notable voice traits, such as:
+  - "uses filler words like 'um' and 'like'"
+  - "upward inflection at end of sentences"
+  - "breathless excitement"
+  - "drawn out vowels"
+  - "rapid-fire delivery"
+  - "dramatic pauses for emphasis"
+  - "whisper-to-shout dynamics"
+  - "sarcastic undertones"
+- **recommendedTTSSpeed**: Based on their pace, what ElevenLabs speed multiplier would match them? (0.7 = slow, 1.0 = normal, 1.3 = fast, 1.5 = very fast)
+
+**3. AUDIO SPEED-UP DETECTION (CRITICAL):**
+Many social media ads artificially speed up audio by 1.25x-1.5x for pacing. Detect if this video's audio has been sped up:
+
+Signs of artificially sped-up audio:
+- WPM significantly higher than natural speech (>180-200 WPM)
+- Pitch sounds slightly higher than natural (mild "chipmunk" effect)
+- Unnatural lack of pauses between words/sentences
+- Compressed/rushed feel despite speaker seeming calm
+- Words blend together unnaturally
+
+Set these fields:
+- **audioSpeedupDetected**: true if audio appears artificially sped up, false if natural
+- **estimatedAudioSpeedMultiplier**: If detected, estimate the speed factor (1.0 = normal, 1.25 = common, 1.5 = aggressive). If not detected, set to 1.0.
+
+**4. SCENE-BY-SCENE BREAKDOWN:**
 For EACH distinct scene/shot, extract:
 
 - **sceneNumber**: Sequential number starting from 1
@@ -87,6 +119,15 @@ For EACH distinct scene/shot, extract:
 - **cameraMovement**: Any camera motion (static, pan left, zoom in, tracking, etc.) - null if static
 - **productMentions**: Array of any products shown or mentioned in this scene
 - **visualElements**: Array of notable visual elements (text overlays, graphics, props, etc.)
+- **voicePace**: Speaking pace in THIS scene (slow, moderate, fast, varied) - null if no speech
+- **voiceEnergy**: Energy level in THIS scene (calm, conversational, energetic, intense) - null if no speech
+- **voiceTags**: Array of ElevenLabs-compatible audio tags that describe HOW the speaker delivers this scene. Examples:
+  - Emotional: "excited", "nervous", "frustrated", "calm", "sarcastic"
+  - Delivery: "whispers", "shouts", "speaking softly", "rushed", "deliberate"
+  - Reactions: "laughs", "sighs", "gasps", "breathes"
+  - Pacing: "fast-paced", "slows down", "pause", "drawn out", "hesitates"
+- **voicePausePattern**: Notable pausing patterns (e.g., "dramatic pauses before key points", null if nothing notable)
+- **voiceEmphasis**: Words or phrases that are emphasized (e.g., "stresses 'amazing'", null if nothing notable)
 
 ===== CRITICAL RULES FOR FAITHFUL RECREATION =====
 
@@ -107,14 +148,31 @@ For EACH distinct scene/shot, extract:
 
 6. **TRANSCRIBE THE FULL DIALOGUE**: Combine all dialogue within a scene into one transcription, noting any pauses or transitions.
 
+7. **VOICE DELIVERY IS CRITICAL**: For each scene with speech, analyze HOW the person speaks:
+   - Are they whispering, speaking normally, or shouting?
+   - Are they rushed/excited or slow/deliberate?
+   - Do they pause dramatically or speak rapid-fire?
+   - What emotional undertones are in their voice?
+   - This enables our TTS to MATCH their delivery style exactly.
+
 ===== OUTPUT REQUIREMENTS =====
 
 Return a complete VideoAnalysis object with:
 - All top-level video metadata
+- voiceDeliveryAnalysis object with overall voice characteristics and recommendedTTSSpeed
 - Complete scenes array with every scene analyzed
-- Each scene must have ALL required fields filled
+- Each scene must have ALL required fields filled, including voiceDelivery for scenes with speech
 
-The goal is that someone reading your analysis could recreate this EXACT video structure, timing, and feel - just with a different product swapped in.`;
+The goal is that someone reading your analysis could recreate this EXACT video structure, timing, feel, AND VOICE DELIVERY - just with a different product swapped in.`;
+
+export interface VoiceDeliveryConfig {
+  overallPace: string;
+  overallEnergy: string;
+  deliveryStyle: string;
+  estimatedWPM: number;
+  notableCharacteristics: string[];
+  recommendedTTSSpeed: number;
+}
 
 export interface ScriptAdaptationConfig {
   productName: string;
@@ -125,6 +183,7 @@ export interface ScriptAdaptationConfig {
   characterAgeRange: string;
   characterAppearance: string;
   adDirection?: string;
+  voiceDelivery?: VoiceDeliveryConfig;
 }
 
 export const generateScriptAdaptationPrompt = (
@@ -152,6 +211,26 @@ DO:
 - Preserve the hook strategy
 - Preserve the CTA approach
 
+===== CRITICAL: SCRIPT MUST MAKE SENSE =====
+While cloning the structure, the CONTENT must be sensible and compelling for the NEW product:
+
+1. **Product-Appropriate Claims**: Adapt benefits/claims to match what the NEW product actually does
+   - If original says "clears acne in 2 weeks" for skincare, adapt to relevant claims for YOUR product
+   - Don't copy claims that don't apply - rewrite them to be truthful for the new product
+
+2. **Logical Flow**: The script must tell a coherent story
+   - Problem → Solution → Demo → Results should flow naturally
+   - Each scene should logically connect to the next
+   - The hook should relate to the actual product being sold
+
+3. **Natural Dialogue**: The speaker should sound like they're genuinely talking about THIS product
+   - Avoid awkward phrasing from forcing the original structure
+   - If the original says "I put it on my face" but your product is a supplement, adapt appropriately
+   - Make it sound like authentic UGC, not a forced template
+
+4. **Compelling CTA**: The call-to-action should make sense for how/where this product is sold
+   - Adapt "link in bio" / "use my code" / "click below" to match the actual sales channel
+
 ===== NEW PRODUCT INFORMATION =====
 Product Name: ${config.productName}
 Description: ${config.productDescription}
@@ -163,7 +242,31 @@ Gender: ${config.characterGender}
 Age Range: ${config.characterAgeRange}
 Appearance: ${config.characterAppearance}
 
-${config.adDirection ? `===== ADDITIONAL DIRECTION =====\n${config.adDirection}\n\nIMPORTANT: This direction should be applied WITHIN the existing structure, not used to change the structure.` : ""}
+${config.adDirection ? `===== ADDITIONAL DIRECTION =====\n${config.adDirection}\n\nIMPORTANT: This direction should be applied WITHIN the existing structure, not used to change the structure.\n` : ""}
+${config.voiceDelivery ? `===== VOICE DELIVERY STYLE (CRITICAL FOR TTS) =====
+The original speaker's delivery style MUST be matched in the adapted script using ElevenLabs audio tags.
+
+**Original Speaker Analysis:**
+- Speaking Pace: ${config.voiceDelivery.overallPace}
+- Energy Level: ${config.voiceDelivery.overallEnergy}
+- Delivery Style: ${config.voiceDelivery.deliveryStyle}
+- Estimated WPM: ${config.voiceDelivery.estimatedWPM}
+- Notable Characteristics: ${config.voiceDelivery.notableCharacteristics.join(", ")}
+- Recommended TTS Speed: ${config.voiceDelivery.recommendedTTSSpeed}x
+
+**YOUR TASK:** Embed ElevenLabs audio tags in the dialogue to match this delivery style.
+
+Available Audio Tags (use in square brackets at appropriate points in dialogue):
+- Emotional: [excited], [nervous], [frustrated], [calm], [sarcastic], [curious], [cheerful]
+- Delivery: [whispers], [shouts], [speaking softly], [rushed], [deliberate], [fast-paced]
+- Reactions: [laughs], [sighs], [gasps], [breathes], [exhales]
+- Pacing: [slows down], [pause], [drawn out], [hesitates], [stammers]
+
+Example tagged dialogue:
+- "[excited] Oh my god, you guys! [pause] This product literally changed my life!"
+- "[whispers] Okay so here's the secret... [normal] It's this amazing serum!"
+- "[fast-paced] I've tried everything - creams, serums, treatments - [slows down] but nothing worked until I found this."
+` : ""}
 
 ===== ADAPTATION RULES =====
 
@@ -173,13 +276,16 @@ ${config.adDirection ? `===== ADDITIONAL DIRECTION =====\n${config.adDirection}\
 - Original scene types and shot types must be preserved exactly
 - Never merge scenes or split scenes
 
-**2. DIALOGUE ADAPTATION:**
+**2. DIALOGUE ADAPTATION (WITH VOICE DELIVERY MATCHING):**
 - Keep the SAME structure and rhythm
 - Replace product mentions naturally
 - Maintain filler words, pauses, natural speech patterns
 - Keep similar word count per scene (±5 words)
-- A-roll: Natural conversational dialogue (no voice tags)
-- B-roll/Mixed: Add voice direction tags ([whispering], [excited], etc.)
+- **CRITICAL: Use ElevenLabs audio tags to match the original speaker's delivery**
+- Look at each scene's voiceDelivery.voiceTags and incorporate those tags into dialogue
+- A-roll: Include audio tags matching the scene's energy/pace (e.g., "[excited] Oh wow!" or "[pause] And then...")
+- B-roll: Include audio tags for voiceover style (e.g., "[whispers] Here's the secret..." or "[fast-paced] Try it now!")
+- Match the original speaker's notable characteristics (rapid-fire? dramatic pauses? whisper-to-shout?)
 
 **3. TIMING PRECISION:**
 - estimatedDurationSeconds must be a NUMBER (not a range)

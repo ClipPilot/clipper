@@ -621,7 +621,7 @@ export function AdCloneStoryboardStep({
                     isSelected={isSelected}
                     isGenerating={isGenerating}
                     hasImage={hasImage}
-                    progress={isGenerating ? 50 : undefined}
+                    progress={undefined}
                     onClick={() => setSelectedSceneId(scene.id)}
                   />
                   {index < scenes.length - 1 && (

@@ -61,6 +61,14 @@ class ScriptAdaptationService {
       characterAgeRange: character?.age_range || "25-35",
       characterAppearance: appearanceDesc,
       adDirection,
+      voiceDelivery: videoAnalysis.speakerPace ? {
+        overallPace: videoAnalysis.speakerPace,
+        overallEnergy: videoAnalysis.speakerEnergy,
+        deliveryStyle: videoAnalysis.speakerStyle,
+        estimatedWPM: videoAnalysis.speakerWPM,
+        notableCharacteristics: videoAnalysis.speakerCharacteristics,
+        recommendedTTSSpeed: videoAnalysis.recommendedTTSSpeed,
+      } : undefined,
     };
 
     const systemPrompt = generateScriptAdaptationPrompt(adaptationConfig);
@@ -139,6 +147,19 @@ class ScriptAdaptationService {
     }
     lines.push("");
 
+    if (analysis.speakerPace) {
+      lines.push("=== VOICE DELIVERY ANALYSIS ===");
+      lines.push(`Overall Pace: ${analysis.speakerPace}`);
+      lines.push(`Overall Energy: ${analysis.speakerEnergy}`);
+      lines.push(`Delivery Style: ${analysis.speakerStyle}`);
+      lines.push(`Estimated WPM: ${analysis.speakerWPM}`);
+      lines.push(`Recommended TTS Speed: ${analysis.recommendedTTSSpeed}x`);
+      if (analysis.speakerCharacteristics?.length > 0) {
+        lines.push(`Notable Characteristics: ${analysis.speakerCharacteristics.join(", ")}`);
+      }
+      lines.push("");
+    }
+
     lines.push("=== KEY STRENGTHS ===");
     analysis.keyStrengths.forEach((strength, i) => {
       lines.push(`${i + 1}. ${strength}`);
@@ -166,6 +187,18 @@ class ScriptAdaptationService {
       }
       if (scene.visualElements.length > 0) {
         lines.push(`Visuals: ${scene.visualElements.join(", ")}`);
+      }
+      if (scene.voicePace) {
+        lines.push(`Voice Delivery: pace=${scene.voicePace}, energy=${scene.voiceEnergy}`);
+        if (scene.voiceTags?.length > 0) {
+          lines.push(`Voice Tags to Use: [${scene.voiceTags.join("], [")}]`);
+        }
+        if (scene.voicePausePattern) {
+          lines.push(`Pause Pattern: ${scene.voicePausePattern}`);
+        }
+        if (scene.voiceEmphasis) {
+          lines.push(`Emphasis: ${scene.voiceEmphasis}`);
+        }
       }
     });
 
