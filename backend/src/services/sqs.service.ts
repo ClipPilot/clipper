@@ -239,6 +239,7 @@ export interface KlingFaceSwapJob extends BaseJob {
     segments: Array<{ start: number; end: number; type: string }>;
   };
   folderId?: number;
+  voiceId?: string;
 }
 
 export interface AdCloneAnalyzeJob extends BaseJob {
@@ -569,6 +570,7 @@ class SQSService {
     spliceMode: boolean;
     spliceMetadata?: KlingFaceSwapJob["spliceMetadata"];
     folderId?: number;
+    voiceId?: string;
   }): Promise<string> {
     const job: KlingFaceSwapJob = {
       type: "kling-face-swap",
@@ -583,6 +585,7 @@ class SQSService {
       spliceMode: params.spliceMode,
       spliceMetadata: params.spliceMetadata,
       folderId: params.folderId,
+      voiceId: params.voiceId,
       createdAt: new Date().toISOString(),
     };
 

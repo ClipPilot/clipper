@@ -19,7 +19,10 @@ import {
   cutClip,
   mergeClipsGpu,
   extractFirstFrame,
+  extractAudio,
+  replaceAudioInVideo,
 } from "../../services/clips/videoEditor.service";
+import { speechToSpeech } from "../../services/ai-ugc/elevenlabs.service";
 import { ComfyJobUpdate } from "../../services/socket.service";
 import { teamService } from "../../services/team.service";
 import { emailNotiService } from "../../services/emailNoti.service";
@@ -163,6 +166,7 @@ export async function processKlingFaceSwapJob(
     originalVideoS3Key,
     spliceMode,
     spliceMetadata,
+    voiceId,
   } = job;
 
   const outDir = path.join(process.cwd(), "output", `kling-swap-${Date.now()}`);
@@ -368,6 +372,54 @@ export async function processKlingFaceSwapJob(
           },
         })
         .where(eq(comfyJobs.id, jobId));
+    }
+
+    // Speech-to-Speech voice conversion if voiceId is provided
+    if (voiceId) {
+      console.log(`[kling-face-swap] Voice conversion requested with voiceId: ${voiceId}`);
+      await updateProgress(jobId, teamId, 92, "Converting voice...");
+
+      try {
+        // Extract audio from the final video
+        const extractedAudioPath = path.join(outDir, `extracted_audio_${Date.now()}.wav`);
+        await extractAudio(finalOutputPath, extractedAudioPath);
+        console.log(`[kling-face-swap] Extracted audio from video`);
+
+        // Convert to MP3 for ElevenLabs (it expects mp3/mpeg format)
+        const mp3AudioPath = path.join(outDir, `audio_for_sts_${Date.now()}.mp3`);
+        await new Promise<void>((resolve, reject) => {
+          const { execSync } = require("child_process");
+          try {
+            execSync(`ffmpeg -y -i "${extractedAudioPath}" -acodec libmp3lame -ar 44100 -ac 2 -b:a 192k "${mp3AudioPath}"`, { stdio: "pipe" });
+            resolve();
+          } catch (err) {
+            reject(err);
+          }
+        });
+
+        // Read the audio and send to ElevenLabs Speech-to-Speech
+        const audioBuffer = fs.readFileSync(mp3AudioPath);
+        const convertedAudioBuffer = await speechToSpeech({
+          voiceId,
+          audioBuffer,
+        });
+        console.log(`[kling-face-swap] Voice converted successfully (${(convertedAudioBuffer.length / 1024).toFixed(1)}KB)`);
+
+        // Save the converted audio
+        const convertedAudioPath = path.join(outDir, `converted_audio_${Date.now()}.mp3`);
+        fs.writeFileSync(convertedAudioPath, convertedAudioBuffer);
+
+        // Replace audio in the video
+        const voiceConvertedVideoPath = path.join(outDir, `voice_converted_${Date.now()}.mp4`);
+        await replaceAudioInVideo(finalOutputPath, convertedAudioPath, voiceConvertedVideoPath);
+        console.log(`[kling-face-swap] Audio replaced in video`);
+
+        // Update finalOutputPath to use the voice-converted video
+        finalOutputPath = voiceConvertedVideoPath;
+      } catch (voiceErr) {
+        console.error(`[kling-face-swap] Voice conversion failed, using original audio:`, (voiceErr as Error).message);
+        // Continue with original audio if voice conversion fails
+      }
     }
 
     console.log(`[kling-face-swap] Uploading final video to S3...`);
