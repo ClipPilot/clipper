@@ -15,3 +15,8 @@ README.md
 .idea
 coverage
 .nyc_output
+
+.env*
+.flaskenv*
+!.env.project
+!.env.vault

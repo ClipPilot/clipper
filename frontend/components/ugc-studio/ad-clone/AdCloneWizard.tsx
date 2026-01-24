@@ -11,6 +11,7 @@ import {
   adCloneStatusAtom,
   adCloneCharacterIdAtom,
   adCloneVoiceIdAtom,
+  adCloneSelectedScriptAtom,
   AdCloneStep,
 } from "@/store/adClone";
 import { useAdClone } from "@/hooks/useAdClone";
@@ -40,11 +41,13 @@ export function AdCloneWizard({ teamId }: AdCloneWizardProps) {
   const status = useAtomValue(adCloneStatusAtom);
   const characterId = useAtomValue(adCloneCharacterIdAtom);
   const voiceId = useAtomValue(adCloneVoiceIdAtom);
+  const selectedScript = useAtomValue(adCloneSelectedScriptAtom);
 
   const {
     createProject,
     startAnalyzeAndScript,
     generateVideo,
+    updateScript,
     reset,
   } = useAdClone(teamId);
 
@@ -60,6 +63,10 @@ export function AdCloneWizard({ teamId }: AdCloneWizardProps) {
           }
           break;
         case "script":
+          // Save the edited script to database before proceeding
+          if (selectedScript) {
+            await updateScript(selectedScript);
+          }
           setStep("character");
           break;
         case "character":
@@ -77,7 +84,7 @@ export function AdCloneWizard({ teamId }: AdCloneWizardProps) {
     } catch (err) {
       console.error("Step action failed:", err);
     }
-  }, [step, createProject, startAnalyzeAndScript, generateVideo, setStep]);
+  }, [step, createProject, startAnalyzeAndScript, generateVideo, updateScript, selectedScript, setStep]);
 
   const handleBack = useCallback(() => {
     switch (step) {
