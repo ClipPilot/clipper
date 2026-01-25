@@ -35,6 +35,12 @@ export function AdCloneProjectsSection({ teamId }: AdCloneProjectsSectionProps) 
     try {
       const offset = (currentPage - 1) * PROJECTS_PER_PAGE;
       const response = await adCloneAPI.listProjects(teamId, PROJECTS_PER_PAGE, offset);
+
+      if (response.projects.length === 0 && currentPage > 1) {
+        setCurrentPage(1);
+        return;
+      }
+
       setProjects(
         response.projects.map((p) => ({
           id: p.id,
@@ -102,7 +108,7 @@ export function AdCloneProjectsSection({ teamId }: AdCloneProjectsSectionProps) 
     }
   };
 
-  const totalPages = Math.ceil(total / PROJECTS_PER_PAGE);
+  const totalPages = Math.max(1, Math.ceil(total / PROJECTS_PER_PAGE));
 
   if (isLoading) {
     return (
@@ -145,7 +151,7 @@ export function AdCloneProjectsSection({ teamId }: AdCloneProjectsSectionProps) 
           />
         ))}
       </div>
-      {totalPages > 1 && (
+      {totalPages > 1 && projects.length > 0 && (
         <div className="flex justify-center pt-4">
           <Pagination
             total={totalPages}

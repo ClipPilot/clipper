@@ -23,6 +23,9 @@ export default function AdCloneCreatePage() {
   const projectIdToResume = searchParams.get("projectId");
 
   useEffect(() => {
+    setIsLoading(true);
+    resetAdClone();
+
     const init = async () => {
       if (projectIdToResume) {
         try {
@@ -31,8 +34,6 @@ export default function AdCloneCreatePage() {
           console.error("Failed to load project:", err);
           resetAdClone();
         }
-      } else {
-        resetAdClone();
       }
       setIsLoading(false);
     };

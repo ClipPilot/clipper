@@ -53,9 +53,9 @@ interface AdCloneSocketUpdate {
 export function useAdClone(teamId: number | undefined) {
   const video = useAtomValue(adCloneVideoAtom);
   const productImage = useAtomValue(adCloneProductImageAtom);
-  const productName = useAtomValue(adCloneProductNameAtom);
-  const productDescription = useAtomValue(adCloneProductDescriptionAtom);
-  const adDirection = useAtomValue(adCloneAdDirectionAtom);
+  const [productName, setProductName] = useAtom(adCloneProductNameAtom);
+  const [productDescription, setProductDescription] = useAtom(adCloneProductDescriptionAtom);
+  const [adDirection, setAdDirection] = useAtom(adCloneAdDirectionAtom);
 
   const [projectId, setProjectId] = useAtom(adCloneProjectIdAtom);
   const [status, setStatus] = useAtom(adCloneStatusAtom);
@@ -370,6 +370,16 @@ export function useAdClone(teamId: number | undefined) {
         setProgress(result.project.progress);
         setProgressMessage(result.project.progressMessage || "");
 
+        if (result.project.productName) {
+          setProductName(result.project.productName);
+        }
+        if (result.project.productDescription) {
+          setProductDescription(result.project.productDescription);
+        }
+        if (result.project.adDirection) {
+          setAdDirection(result.project.adDirection);
+        }
+
         if (result.analysis) {
           setAnalysis(result.analysis);
         }
@@ -387,7 +397,6 @@ export function useAdClone(teamId: number | undefined) {
           setFinalVideoUrl(result.project.finalVideoUrl);
         }
 
-        // Set appropriate step based on status
         switch (result.project.status) {
           case "uploading":
             setStep("upload");
@@ -403,6 +412,7 @@ export function useAdClone(teamId: number | undefined) {
             setStep("generate");
             break;
           case "failed":
+            setStep("storyboard");
             setError("Project failed");
             break;
         }
@@ -419,6 +429,9 @@ export function useAdClone(teamId: number | undefined) {
       setStatus,
       setProgress,
       setProgressMessage,
+      setProductName,
+      setProductDescription,
+      setAdDirection,
       setAnalysis,
       setScripts,
       setSelectedVariant,
