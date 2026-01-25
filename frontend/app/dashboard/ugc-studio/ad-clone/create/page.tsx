@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { Card, CardBody, Button, Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -11,7 +11,7 @@ import { canAccessUGCStudio } from "@/lib/plans";
 import { AdCloneWizard } from "@/components/ugc-studio/ad-clone/AdCloneWizard";
 import { useAdClone } from "@/hooks/useAdClone";
 
-export default function AdCloneCreatePage() {
+function AdCloneCreateContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedTeam = useAtomValue(selectedTeamAtom);
@@ -105,5 +105,19 @@ export default function AdCloneCreatePage() {
         <AdCloneWizard teamId={selectedTeam.id} />
       </div>
     </div>
+  );
+}
+
+export default function AdCloneCreatePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-surface-dark flex items-center justify-center">
+          <Spinner size="lg" color="warning" />
+        </div>
+      }
+    >
+      <AdCloneCreateContent />
+    </Suspense>
   );
 }
