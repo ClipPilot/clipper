@@ -404,8 +404,14 @@ export function useAdClone(teamId: number | undefined) {
           case "analyzing":
           case "analysis_complete":
           case "generating_script":
-          case "script_generated":
             setStep("script");
+            break;
+          case "script_generated":
+            if (!result.project.characterId) {
+              setStep("script");
+            } else {
+              setStep("generate");
+            }
             break;
           case "generating_video":
           case "completed":
