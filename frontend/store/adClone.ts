@@ -30,6 +30,15 @@ export type AdCloneProjectStatus =
   | "completed"
   | "failed";
 
+export const RESUMABLE_STATUSES: AdCloneProjectStatus[] = [
+  "uploading",
+  "analyzing",
+  "analysis_complete",
+  "generating_script",
+  "script_generated",
+  "failed",
+];
+
 export interface AnalyzedScene {
   sceneNumber: number;
   startTime: number;

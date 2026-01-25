@@ -7,7 +7,7 @@ import { Icon } from "@iconify/react";
 import { adCloneAPI } from "@/api/adClone";
 import { connectSocket, joinTeam, leaveTeam } from "@/lib/socket";
 import { AdCloneProjectCard, AdCloneProject } from "./AdCloneProjectCard";
-import type { AdCloneProjectStatus } from "@/store/adClone";
+import { RESUMABLE_STATUSES, type AdCloneProjectStatus } from "@/store/adClone";
 
 const PROJECTS_PER_PAGE = 12;
 
@@ -95,7 +95,11 @@ export function AdCloneProjectsSection({ teamId }: AdCloneProjectsSectionProps) 
   }, [teamId, fetchProjects]);
 
   const handleProjectClick = (project: AdCloneProject) => {
-    router.push(`/dashboard/ugc-studio/ad-clone/${project.id}`);
+    if (RESUMABLE_STATUSES.includes(project.status)) {
+      router.push(`/dashboard/ugc-studio/ad-clone/create?projectId=${project.id}`);
+    } else {
+      router.push(`/dashboard/ugc-studio/ad-clone/${project.id}`);
+    }
   };
 
   const totalPages = Math.ceil(total / PROJECTS_PER_PAGE);
