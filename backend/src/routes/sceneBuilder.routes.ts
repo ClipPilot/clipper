@@ -292,4 +292,39 @@ router.post(
   sceneBuilderController.getUploadUrl.bind(sceneBuilderController)
 );
 
+/**
+ * @openapi
+ * /scene-builder/upload-to-key:
+ *   post:
+ *     summary: Get presigned URL to upload to a specific S3 key
+ *     description: Returns a presigned S3 URL for uploading to replace an existing image (e.g., custom B-roll)
+ *     tags:
+ *       - Scene Builder
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - s3Key
+ *             properties:
+ *               s3Key:
+ *                 type: string
+ *                 description: The exact S3 key to upload to
+ *               contentType:
+ *                 type: string
+ *                 default: image/jpeg
+ *     responses:
+ *       200:
+ *         description: Presigned URL generated
+ */
+router.post(
+  "/upload-to-key",
+  requireAuth,
+  sceneBuilderController.getUploadUrlForKey.bind(sceneBuilderController)
+);
+
 export default router;

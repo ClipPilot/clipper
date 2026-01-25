@@ -852,6 +852,37 @@ export class SceneBuilderController {
   }
 
   /**
+   * Get presigned upload URL for replacing an existing image (e.g., custom B-roll)
+   * This allows uploading to a specific S3 key to replace the generated image
+   */
+  async getUploadUrlForKey(req: AuthRequest, res: Response) {
+    try {
+      const { s3Key, contentType } = req.body;
+
+      if (!s3Key) {
+        return res.status(400).json({ error: "s3Key is required" });
+      }
+
+      const uploadUrl = await s3Service.getPresignedUploadUrlForKey(
+        s3Key,
+        contentType || "image/jpeg"
+      );
+
+      return res.status(200).json({
+        success: true,
+        uploadUrl,
+        s3Key,
+      });
+    } catch (error) {
+      console.error("[SCENE_BUILDER] Get upload URL for key error:", error);
+      return res.status(500).json({
+        error:
+          error instanceof Error ? error.message : "Failed to get upload URL",
+      });
+    }
+  }
+
+  /**
    * Build the scene image prompt using cinematicPrompt from script
    */
   private buildScenePrompt(

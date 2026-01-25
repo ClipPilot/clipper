@@ -1,7 +1,15 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
-import { Card, CardBody, CardHeader, Tabs, Tab, Button, useDisclosure } from "@heroui/react";
+import {
+  Card,
+  CardBody,
+  CardHeader,
+  Tabs,
+  Tab,
+  Button,
+  useDisclosure,
+} from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { voicesConfig, type Voice } from "@/config/voicesConfig";
 import { VoiceCard } from "./VoiceCard";
@@ -14,12 +22,20 @@ interface VoiceSelectorProps {
   faceSwap?: boolean;
 }
 
-export function VoiceSelector({ selectedVoice, onVoiceChange, faceSwap }: VoiceSelectorProps) {
+export function VoiceSelector({
+  selectedVoice,
+  onVoiceChange,
+  faceSwap,
+}: VoiceSelectorProps) {
   const [filter, setFilter] = useState<GenderFilter>("all");
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
   const [playbackProgress, setPlaybackProgress] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const { isOpen: isSidebarOpen, onOpen: openSidebar, onClose: closeSidebar } = useDisclosure();
+  const {
+    isOpen: isSidebarOpen,
+    onOpen: openSidebar,
+    onClose: closeSidebar,
+  } = useDisclosure();
   const [isAnimating, setIsAnimating] = useState(false);
 
   // Handle animation state when sidebar opens
@@ -43,39 +59,48 @@ export function VoiceSelector({ selectedVoice, onVoiceChange, faceSwap }: VoiceS
   }, [closeSidebar]);
 
   const filteredVoices =
-    filter === "all" ? voicesConfig : voicesConfig.filter((v) => v.gender === filter);
+    filter === "all"
+      ? voicesConfig
+      : voicesConfig.filter((v) => v.gender === filter);
 
-  const handlePlayToggle = useCallback((voice: Voice) => {
-    if (playingVoiceId === voice.id) {
-      audioRef.current?.pause();
-      setPlayingVoiceId(null);
-      setPlaybackProgress(0);
-      return;
-    }
+  const handlePlayToggle = useCallback(
+    (voice: Voice) => {
+      if (playingVoiceId === voice.id) {
+        audioRef.current?.pause();
+        setPlayingVoiceId(null);
+        setPlaybackProgress(0);
+        return;
+      }
 
-    if (audioRef.current) {
-      // Stop any currently playing audio first
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
+      if (audioRef.current) {
+        // Stop any currently playing audio first
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
 
-      audioRef.current.src = voice.previewFile;
-      audioRef.current.load(); // Ensure the new source is loaded
+        audioRef.current.src = voice.previewFile;
+        audioRef.current.load(); // Ensure the new source is loaded
 
-      audioRef.current.play()
-        .then(() => {
-          setPlayingVoiceId(voice.id);
-          setPlaybackProgress(0);
-        })
-        .catch((err) => {
-          console.error("[VoiceSelector] Audio playback failed:", err);
-          setPlayingVoiceId(null);
-        });
-    }
-  }, [playingVoiceId]);
+        audioRef.current
+          .play()
+          .then(() => {
+            setPlayingVoiceId(voice.id);
+            setPlaybackProgress(0);
+          })
+          .catch((err) => {
+            console.error("[VoiceSelector] Audio playback failed:", err);
+            setPlayingVoiceId(null);
+          });
+      }
+    },
+    [playingVoiceId],
+  );
 
-  const handleSelect = useCallback((voice: Voice) => {
-    onVoiceChange(selectedVoice?.id === voice.id ? null : voice);
-  }, [selectedVoice, onVoiceChange]);
+  const handleSelect = useCallback(
+    (voice: Voice) => {
+      onVoiceChange(selectedVoice?.id === voice.id ? null : voice);
+    },
+    [selectedVoice, onVoiceChange],
+  );
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -113,13 +138,21 @@ export function VoiceSelector({ selectedVoice, onVoiceChange, faceSwap }: VoiceS
         onSelectionChange={(key) => setFilter(key as GenderFilter)}
         size="sm"
         variant="light"
-        classNames={{ tabList: "gap-2", tab: "px-3", cursor: "bg-accent-400/20" }}
+        classNames={{
+          tabList: "gap-2",
+          tab: "px-3",
+          cursor: "bg-accent-400/20",
+        }}
       >
         <Tab key="all" title="All" />
         <Tab key="male" title="Male" />
         <Tab key="female" title="Female" />
       </Tabs>
-      <div className={faceSwap ? "flex flex-col gap-2 mt-4" : "grid grid-cols-2 gap-2 mt-4"}>
+      <div
+        className={
+          faceSwap ? "flex flex-col gap-2 mt-4" : "grid grid-cols-2 gap-2 mt-4"
+        }
+      >
         {filteredVoices.map((voice) => (
           <VoiceCard
             key={voice.id}
@@ -149,15 +182,23 @@ export function VoiceSelector({ selectedVoice, onVoiceChange, faceSwap }: VoiceS
           startContent={
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-accent-400/20 flex items-center justify-center">
-                <Icon icon="solar:microphone-3-bold-duotone" className="text-accent-400" width={18} />
+                <Icon
+                  icon="solar:microphone-3-bold-duotone"
+                  className="text-accent-400"
+                  width={18}
+                />
               </div>
               <span className="text-text-primary">
-                {selectedVoice ? selectedVoice.name : "Select Voice"}
+                {selectedVoice ? selectedVoice.name : "Select Voice (Optional)"}
               </span>
             </div>
           }
           endContent={
-            <Icon icon="solar:alt-arrow-right-linear" className="text-text-muted" width={18} />
+            <Icon
+              icon="solar:alt-arrow-right-linear"
+              className="text-text-muted"
+              width={18}
+            />
           }
         />
 
@@ -182,11 +223,19 @@ export function VoiceSelector({ selectedVoice, onVoiceChange, faceSwap }: VoiceS
               <div className="flex items-center justify-between p-4 border-b border-border-base">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-accent-400/20 flex items-center justify-center">
-                    <Icon icon="solar:microphone-3-bold-duotone" className="text-accent-400" width={22} />
+                    <Icon
+                      icon="solar:microphone-3-bold-duotone"
+                      className="text-accent-400"
+                      width={22}
+                    />
                   </div>
                   <div>
-                    <h3 className="text-base font-semibold text-text-primary">Select Voice</h3>
-                    <p className="text-xs text-text-tertiary">Choose the AI voice</p>
+                    <h3 className="text-base font-semibold text-text-primary">
+                      Select Voice
+                    </h3>
+                    <p className="text-xs text-text-tertiary">
+                      Choose the AI voice
+                    </p>
                   </div>
                 </div>
                 <Button
@@ -195,7 +244,11 @@ export function VoiceSelector({ selectedVoice, onVoiceChange, faceSwap }: VoiceS
                   size="sm"
                   onPress={handleCloseSidebar}
                 >
-                  <Icon icon="solar:close-circle-bold" className="text-text-muted" width={20} />
+                  <Icon
+                    icon="solar:close-circle-bold"
+                    className="text-text-muted"
+                    width={20}
+                  />
                 </Button>
               </div>
 
@@ -215,11 +268,19 @@ export function VoiceSelector({ selectedVoice, onVoiceChange, faceSwap }: VoiceS
       <CardHeader className="pb-0 flex-col items-start gap-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-accent-400/20 flex items-center justify-center">
-            <Icon icon="solar:microphone-3-bold-duotone" className="text-accent-400" width={22} />
+            <Icon
+              icon="solar:microphone-3-bold-duotone"
+              className="text-accent-400"
+              width={22}
+            />
           </div>
           <div>
-            <h3 className="text-base font-semibold text-text-primary">Select Voice</h3>
-            <p className="text-xs text-text-tertiary">Choose the AI voice for your video</p>
+            <h3 className="text-base font-semibold text-text-primary">
+              Select Voice
+            </h3>
+            <p className="text-xs text-text-tertiary">
+              Choose the AI voice for your video
+            </p>
           </div>
         </div>
         <Tabs
@@ -227,7 +288,11 @@ export function VoiceSelector({ selectedVoice, onVoiceChange, faceSwap }: VoiceS
           onSelectionChange={(key) => setFilter(key as GenderFilter)}
           size="sm"
           variant="light"
-          classNames={{ tabList: "gap-2", tab: "px-3", cursor: "bg-accent-400/20" }}
+          classNames={{
+            tabList: "gap-2",
+            tab: "px-3",
+            cursor: "bg-accent-400/20",
+          }}
         >
           <Tab key="all" title="All" />
           <Tab key="male" title="Male" />

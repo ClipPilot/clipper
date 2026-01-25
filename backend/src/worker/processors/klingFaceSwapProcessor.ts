@@ -403,22 +403,13 @@ export async function processKlingFaceSwapJob(
           voiceId,
           audioBuffer,
         });
-        console.log(`[kling-face-swap] Voice converted successfully (${(convertedAudioBuffer.length / 1024).toFixed(1)}KB)`);
-
-        // Save the converted audio
         const convertedAudioPath = path.join(outDir, `converted_audio_${Date.now()}.mp3`);
         fs.writeFileSync(convertedAudioPath, convertedAudioBuffer);
-
-        // Replace audio in the video
         const voiceConvertedVideoPath = path.join(outDir, `voice_converted_${Date.now()}.mp4`);
         await replaceAudioInVideo(finalOutputPath, convertedAudioPath, voiceConvertedVideoPath);
-        console.log(`[kling-face-swap] Audio replaced in video`);
-
-        // Update finalOutputPath to use the voice-converted video
         finalOutputPath = voiceConvertedVideoPath;
       } catch (voiceErr) {
         console.error(`[kling-face-swap] Voice conversion failed, using original audio:`, (voiceErr as Error).message);
-        // Continue with original audio if voice conversion fails
       }
     }
 
