@@ -204,6 +204,13 @@
       "when": 1768516048805,
       "tag": "0028_mysterious_vanisher",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1769393895853,
+      "tag": "0029_confused_calypso",
+      "breakpoints": true
     }
   ]
 }
