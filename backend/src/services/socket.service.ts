@@ -153,3 +153,23 @@ export const emitAdCloneJobUpdate = (teamId: number, update: AdCloneJobUpdate) =
     console.log(`[SOCKET] Emitted ad-clone-job-update to team-${teamId}:`, update.projectId, update.status, update.progress);
   }
 };
+
+export interface NewAnnouncement {
+  id: number;
+  title: string;
+  priority: "info" | "warning" | "critical";
+  published_at: Date | null;
+}
+
+export const emitNewAnnouncement = (announcement: NewAnnouncement) => {
+  if (io) {
+    // Broadcast to ALL connected clients (not team-specific)
+    io.emit("new-announcement", {
+      id: announcement.id,
+      title: announcement.title,
+      priority: announcement.priority,
+      published_at: announcement.published_at,
+    });
+    console.log(`[SOCKET] Broadcast new announcement: ${announcement.id}`);
+  }
+};
