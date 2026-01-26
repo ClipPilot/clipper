@@ -153,7 +153,7 @@ export default function PreviewClipViewModal({
         <ModalBody>
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
             {/* Video Player - takes 3 columns */}
-            <div className="lg:col-span-3 flex items-center justify-center">
+            <div className="lg:col-span-3 flex items-center justify-center isolate">
               {clip.clipUrl ? (
                 <div
                   className="relative bg-black rounded-lg overflow-hidden w-full group"
@@ -161,6 +161,7 @@ export default function PreviewClipViewModal({
                   style={{ userSelect: "none" }}
                 >
                   <video
+                    key={`preview-video-${clip.id}-${clip.clipUrl}`}
                     ref={videoRef}
                     src={clip.clipUrl}
                     className="w-full max-h-[500px] object-contain"

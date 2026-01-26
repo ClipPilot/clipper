@@ -2,13 +2,13 @@ import * as Sentry from "@sentry/node";
 import fs from "fs";
 import path from "path";
 import { BatchClipVideoJob } from "../../services/sqs.service";
-import { transcribeMultipleVideosService } from "../../services/transcription.service";
+import { transcribeMultipleVideosService } from "../../services/clips/transcription.service";
 import { generateBatchClipSuggestionsService } from "../../services/aiSuggestions.service";
 import {
   createBatchCombinedClipService,
   BatchVideoSource,
-} from "../../services/clip.service";
-import { clipManagerService } from "../../services/clipManager.service";
+} from "../../services/clips/clip.service";
+import { clipManagerService } from "../../services/clips/clipManager.service";
 import { s3Service } from "../../services/s3.service";
 import { extractThumbnail } from "../../utils/extractThumbnail";
 import { notifyClipsRefresh } from "../notify";

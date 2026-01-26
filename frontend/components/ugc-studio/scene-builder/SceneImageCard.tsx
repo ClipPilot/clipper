@@ -185,8 +185,16 @@ export function SceneImageCard({
     if (!onCustomBRollImageChange) return;
     setUploadingShotIndex(shotIndex);
     try {
-      const { key, url } = await sceneBuilderAPI.uploadSupportingImage(teamId, file);
-      onCustomBRollImageChange(shotIndex, key, url);
+      const baseKey = generation?.generatedImages?.[0]?.key;
+
+      if (baseKey) {
+        const targetKey = baseKey.replace(/variant_\d+/, `variant_${shotIndex}`);
+        const { key, url } = await sceneBuilderAPI.uploadToKey(targetKey, file);
+        onCustomBRollImageChange(shotIndex, key, url);
+      } else {
+        const { key, url } = await sceneBuilderAPI.uploadSupportingImage(teamId, file);
+        onCustomBRollImageChange(shotIndex, key, url);
+      }
     } catch (error) {
       console.error(`Failed to upload custom B-roll image for shot ${shotIndex}:`, error);
     } finally {

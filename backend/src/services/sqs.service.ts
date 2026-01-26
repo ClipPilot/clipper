@@ -16,7 +16,10 @@ export type JobType =
   | "generate-scene-image"
   | "generate-script"
   | "generate-ugc-video"
-  | "kling-face-swap";
+  | "kling-face-swap"
+  | "ad-clone-analyze"
+  | "ad-clone-generate-script"
+  | "ad-clone-analyze-and-script";
 
 // Base job interface
 interface BaseJob {
@@ -219,6 +222,7 @@ export interface GenerateUGCVideoJob extends BaseJob {
     }>;
   }>;
   regenerateSceneId?: string;
+  ttsSpeed?: number;
 }
 
 export interface KlingFaceSwapJob extends BaseJob {
@@ -235,6 +239,23 @@ export interface KlingFaceSwapJob extends BaseJob {
     segments: Array<{ start: number; end: number; type: string }>;
   };
   folderId?: number;
+  voiceId?: string;
+}
+
+export interface AdCloneAnalyzeJob extends BaseJob {
+  type: "ad-clone-analyze";
+  projectId: string;
+}
+
+export interface AdCloneGenerateScriptJob extends BaseJob {
+  type: "ad-clone-generate-script";
+  projectId: string;
+  characterId?: number;
+}
+
+export interface AdCloneAnalyzeAndScriptJob extends BaseJob {
+  type: "ad-clone-analyze-and-script";
+  projectId: string;
 }
 
 export type VideoProcessingJob =
@@ -247,7 +268,10 @@ export type VideoProcessingJob =
   | GenerateSceneImageJob
   | GenerateScriptJob
   | GenerateUGCVideoJob
-  | KlingFaceSwapJob;
+  | KlingFaceSwapJob
+  | AdCloneAnalyzeJob
+  | AdCloneGenerateScriptJob
+  | AdCloneAnalyzeAndScriptJob;
 
 class SQSService {
   private queueUrl: string;
@@ -511,8 +535,12 @@ class SQSService {
     userId: number;
     scriptId: string;
     voiceId: string;
-    scenes: GenerateUGCVideoJob["scenes"];
+    scenes?: GenerateUGCVideoJob["scenes"];
     regenerateSceneId?: string;
+    characterId?: number;
+    productImageKeys?: string[];
+    adCloneProjectId?: string;
+    ttsSpeed?: number;
   }): Promise<string> {
     const job: GenerateUGCVideoJob = {
       type: "generate-ugc-video",
@@ -521,8 +549,9 @@ class SQSService {
       userId: params.userId,
       scriptId: params.scriptId,
       voiceId: params.voiceId,
-      scenes: params.scenes,
+      scenes: params.scenes || [],
       regenerateSceneId: params.regenerateSceneId,
+      ttsSpeed: params.ttsSpeed,
       createdAt: new Date().toISOString(),
     };
 
@@ -541,6 +570,7 @@ class SQSService {
     spliceMode: boolean;
     spliceMetadata?: KlingFaceSwapJob["spliceMetadata"];
     folderId?: number;
+    voiceId?: string;
   }): Promise<string> {
     const job: KlingFaceSwapJob = {
       type: "kling-face-swap",
@@ -555,6 +585,57 @@ class SQSService {
       spliceMode: params.spliceMode,
       spliceMetadata: params.spliceMetadata,
       folderId: params.folderId,
+      voiceId: params.voiceId,
+      createdAt: new Date().toISOString(),
+    };
+
+    return this.sendJob(job);
+  }
+
+  async sendAdCloneAnalyzeJob(params: {
+    projectId: string;
+    teamId: number;
+    userId: number;
+  }): Promise<string> {
+    const job: AdCloneAnalyzeJob = {
+      type: "ad-clone-analyze",
+      projectId: params.projectId,
+      teamId: params.teamId,
+      userId: params.userId,
+      createdAt: new Date().toISOString(),
+    };
+
+    return this.sendJob(job);
+  }
+
+  async sendAdCloneGenerateScriptJob(params: {
+    projectId: string;
+    teamId: number;
+    userId: number;
+    characterId?: number;
+  }): Promise<string> {
+    const job: AdCloneGenerateScriptJob = {
+      type: "ad-clone-generate-script",
+      projectId: params.projectId,
+      teamId: params.teamId,
+      userId: params.userId,
+      characterId: params.characterId,
+      createdAt: new Date().toISOString(),
+    };
+
+    return this.sendJob(job);
+  }
+
+  async sendAdCloneAnalyzeAndScriptJob(params: {
+    projectId: string;
+    teamId: number;
+    userId: number;
+  }): Promise<string> {
+    const job: AdCloneAnalyzeAndScriptJob = {
+      type: "ad-clone-analyze-and-script",
+      projectId: params.projectId,
+      teamId: params.teamId,
+      userId: params.userId,
       createdAt: new Date().toISOString(),
     };
 

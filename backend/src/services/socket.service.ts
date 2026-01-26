@@ -136,3 +136,20 @@ export const emitUGCVideoJobUpdate = (teamId: number, update: UGCVideoJobUpdate)
     console.log(`[SOCKET] Emitted ugc-video-job-update to team-${teamId}:`, update.jobId, update.status, update.progress);
   }
 };
+
+export interface AdCloneJobUpdate {
+  projectId: string;
+  status: string;
+  progress: number;
+  progressMessage: string;
+  analysis?: any;
+  scripts?: any[];
+  error?: string;
+}
+
+export const emitAdCloneJobUpdate = (teamId: number, update: AdCloneJobUpdate) => {
+  if (io) {
+    io.to(`team-${teamId}`).emit("ad-clone-job-update", update);
+    console.log(`[SOCKET] Emitted ad-clone-job-update to team-${teamId}:`, update.projectId, update.status, update.progress);
+  }
+};

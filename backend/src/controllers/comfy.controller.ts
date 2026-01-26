@@ -5,11 +5,11 @@ import { comfyJobs, clips, savedFaces } from "@clipper/shared-db/src/schema";
 import { s3Service } from "../services/s3.service";
 import { sqsService } from "../services/sqs.service";
 import { gpuSqsService } from "../services/gpuSqs.service";
-import { cutClip, getVideoDuration } from "../services/videoEditor.service";
-import { createSceneAwareChunks } from "../services/sceneChunker.service";
-import { detectFaceSegmentsWithPadding } from "../services/faceDetection.service";
+import { cutClip, getVideoDuration } from "../services/clips/videoEditor.service";
+import { createSceneAwareChunks } from "../services/ai-ugc/sceneChunker.service";
+import { detectFaceSegmentsWithPadding } from "../services/face-swap/faceDetection.service";
 import { emitComfyJobUpdate } from "../services/socket.service";
-import { falImageService } from "../services/falImage.service";
+import { falImageService } from "../services/ai-ugc/falImage.service";
 import { POSE_GENERATION_PROMPT } from "../config/ugcPrompts";
 import { getTeamUsage } from "../middleware/subscription.middleware";
 import { teamService } from "../services/team.service";
@@ -661,6 +661,7 @@ export class ComfyController {
         autoDetect: autoDetectRaw,
         imageKeys: imageKeysRaw,
         folderId: folderIdRaw,
+        voiceId,
       } = req.body;
 
       const folderId = folderIdRaw ? parseInt(folderIdRaw) : undefined;
@@ -842,6 +843,7 @@ export class ComfyController {
         spliceWithOriginal: spliceWithOriginal === "true" || spliceWithOriginal === true,
         autoDetect,
         folderId,
+        voiceId: voiceId || undefined,
       }).catch((err) => {
         console.error("[comfy] Background upload failed:", err);
         Sentry.captureException(err);
@@ -866,6 +868,7 @@ export class ComfyController {
     spliceWithOriginal: boolean;
     autoDetect: boolean;
     folderId?: number;
+    voiceId?: string;
   }) {
     const {
       jobIds,
@@ -876,6 +879,7 @@ export class ComfyController {
       spliceWithOriginal,
       autoDetect,
       folderId,
+      voiceId,
     } = params;
 
     let { segments, videoDuration } = params;
@@ -1056,6 +1060,7 @@ export class ComfyController {
             spliceMode: isSpliceMode,
             spliceMetadata: spliceMetadata || undefined,
             folderId,
+            voiceId,
           });
           console.log(`[comfy] Job ${jobId} sent to Kling worker queue`);
 

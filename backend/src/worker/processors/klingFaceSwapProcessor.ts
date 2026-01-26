@@ -14,21 +14,24 @@ import { s3Service } from "../../services/s3.service";
 import {
   klingProMotionWithRetry,
   PRO_MOTION_PROMPT,
-} from "../../services/kling.service";
+} from "../../services/ai-ugc/kling.service";
 import {
   cutClip,
   mergeClipsGpu,
   extractFirstFrame,
-} from "../../services/videoEditor.service";
+  extractAudio,
+  replaceAudioInVideo,
+} from "../../services/clips/videoEditor.service";
+import { speechToSpeech } from "../../services/ai-ugc/elevenlabs.service";
 import { ComfyJobUpdate } from "../../services/socket.service";
 import { teamService } from "../../services/team.service";
 import { emailNotiService } from "../../services/emailNoti.service";
-import { transcribeVideoService } from "../../services/transcription.service";
+import { transcribeVideoService } from "../../services/clips/transcription.service";
 import {
   convertWordsToCaptionEntries,
   generateSrtFromCaptions,
-} from "../../services/captions.service";
-import { falImageService } from "../../services/falImage.service";
+} from "../../services/clips/captions.service";
+import { falImageService } from "../../services/ai-ugc/falImage.service";
 import { POSE_GENERATION_PROMPT } from "../../config/ugcPrompts";
 
 const API_INTERNAL_URL =
@@ -163,6 +166,7 @@ export async function processKlingFaceSwapJob(
     originalVideoS3Key,
     spliceMode,
     spliceMetadata,
+    voiceId,
   } = job;
 
   const outDir = path.join(process.cwd(), "output", `kling-swap-${Date.now()}`);
@@ -368,6 +372,45 @@ export async function processKlingFaceSwapJob(
           },
         })
         .where(eq(comfyJobs.id, jobId));
+    }
+
+    // Speech-to-Speech voice conversion if voiceId is provided
+    if (voiceId) {
+      console.log(`[kling-face-swap] Voice conversion requested with voiceId: ${voiceId}`);
+      await updateProgress(jobId, teamId, 92, "Converting voice...");
+
+      try {
+        // Extract audio from the final video
+        const extractedAudioPath = path.join(outDir, `extracted_audio_${Date.now()}.wav`);
+        await extractAudio(finalOutputPath, extractedAudioPath);
+        console.log(`[kling-face-swap] Extracted audio from video`);
+
+        // Convert to MP3 for ElevenLabs (it expects mp3/mpeg format)
+        const mp3AudioPath = path.join(outDir, `audio_for_sts_${Date.now()}.mp3`);
+        await new Promise<void>((resolve, reject) => {
+          const { execSync } = require("child_process");
+          try {
+            execSync(`ffmpeg -y -i "${extractedAudioPath}" -acodec libmp3lame -ar 44100 -ac 2 -b:a 192k "${mp3AudioPath}"`, { stdio: "pipe" });
+            resolve();
+          } catch (err) {
+            reject(err);
+          }
+        });
+
+        // Read the audio and send to ElevenLabs Speech-to-Speech
+        const audioBuffer = fs.readFileSync(mp3AudioPath);
+        const convertedAudioBuffer = await speechToSpeech({
+          voiceId,
+          audioBuffer,
+        });
+        const convertedAudioPath = path.join(outDir, `converted_audio_${Date.now()}.mp3`);
+        fs.writeFileSync(convertedAudioPath, convertedAudioBuffer);
+        const voiceConvertedVideoPath = path.join(outDir, `voice_converted_${Date.now()}.mp4`);
+        await replaceAudioInVideo(finalOutputPath, convertedAudioPath, voiceConvertedVideoPath);
+        finalOutputPath = voiceConvertedVideoPath;
+      } catch (voiceErr) {
+        console.error(`[kling-face-swap] Voice conversion failed, using original audio:`, (voiceErr as Error).message);
+      }
     }
 
     console.log(`[kling-face-swap] Uploading final video to S3...`);

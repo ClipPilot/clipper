@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import ffmpeg from "fluent-ffmpeg";
-import { ClipSuggestions } from "../types/ai.types";
+import { ClipSuggestions } from "../../types/ai.types";
 
 // Mobile-compatible H.264 encoding settings
 const MOBILE_VIDEO_SETTINGS = [
@@ -153,7 +153,7 @@ Format: Layer,Start,End,Style,Text
 
   fs.writeFileSync(assPath, ass);
 
-  const fontsDir = path.resolve(__dirname, "../fonts");
+  const fontsDir = path.resolve(__dirname, "../../fonts");
 
   return new Promise((resolve, reject) => {
     ffmpeg(inputPath)
@@ -273,7 +273,7 @@ Format: Layer,Start,End,Style,Text
 
   fs.writeFileSync(assPath, ass);
 
-  const fontsDir = path.resolve(__dirname, "../fonts");
+  const fontsDir = path.resolve(__dirname, "../../fonts");
 
   return new Promise((resolve, reject) => {
     ffmpeg(inputPath)

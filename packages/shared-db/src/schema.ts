@@ -592,6 +592,17 @@ export const ugcVideoJobStatusEnum = pgEnum("ugc_video_job_status", [
   "failed",
 ]);
 
+export const adCloneProjectStatusEnum = pgEnum("ad_clone_project_status", [
+  "uploading",
+  "analyzing",
+  "analysis_complete",
+  "generating_script",
+  "script_generated",
+  "generating_video",
+  "completed",
+  "failed",
+]);
+
 export const ugcVideoGenerationJobs = pgTable(
   "ugc_video_generation_jobs",
   {
@@ -621,6 +632,46 @@ export const ugcVideoGenerationJobs = pgTable(
     scriptIdx: index("ugc_video_jobs_script_id_idx").on(table.script_id),
     statusIdx: index("ugc_video_jobs_status_idx").on(table.status),
     createdAtIdx: index("ugc_video_jobs_created_at_idx").on(table.created_at),
+  })
+).enableRLS();
+
+export const adCloneProjects = pgTable(
+  "ad_clone_projects",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    team_id: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    user_id: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    reference_video_key: text("reference_video_key"),
+    product_image_keys: jsonb("product_image_keys").notNull(),
+    product_name: varchar("product_name", { length: 255 }),
+    product_description: text("product_description"),
+    ad_direction: text("ad_direction"),
+    gemini_file_name: text("gemini_file_name"),
+    gemini_file_uri: text("gemini_file_uri"),
+    video_analysis: jsonb("video_analysis"),
+    adapted_scripts: jsonb("adapted_scripts"),
+    selected_variant_index: integer("selected_variant_index").notNull().default(0),
+    character_id: integer("character_id").references(() => characters.id, {
+      onDelete: "set null",
+    }),
+    status: adCloneProjectStatusEnum("status").notNull().default("uploading"),
+    progress: integer("progress").notNull().default(0),
+    progress_message: text("progress_message"),
+    error_message: text("error_message"),
+    final_video_key: text("final_video_key"),
+    video_job_id: uuid("video_job_id"),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    teamIdx: index("ad_clone_projects_team_id_idx").on(table.team_id),
+    userIdx: index("ad_clone_projects_user_id_idx").on(table.user_id),
+    statusIdx: index("ad_clone_projects_status_idx").on(table.status),
+    createdAtIdx: index("ad_clone_projects_created_at_idx").on(table.created_at),
   })
 ).enableRLS();
 

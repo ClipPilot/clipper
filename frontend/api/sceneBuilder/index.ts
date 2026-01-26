@@ -295,6 +295,46 @@ class SceneBuilderAPI {
       url: URL.createObjectURL(file),
     };
   }
+
+  /**
+   * Upload a file to a specific S3 key (for replacing existing images like custom B-roll)
+   */
+  async uploadToKey(
+    s3Key: string,
+    file: File
+  ): Promise<{ key: string; url: string }> {
+    const response = await apiFetch(
+      `${API_URL}/scene-builder/upload-to-key`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ s3Key, contentType: file.type }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to get upload URL");
+    }
+
+    const { uploadUrl } = await response.json();
+
+    const uploadResponse = await fetch(uploadUrl, {
+      method: "PUT",
+      body: file,
+      headers: { "Content-Type": file.type },
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error("Failed to upload image to specified key");
+    }
+
+    return {
+      key: s3Key,
+      url: URL.createObjectURL(file),
+    };
+  }
 }
 
 export const sceneBuilderAPI = new SceneBuilderAPI();

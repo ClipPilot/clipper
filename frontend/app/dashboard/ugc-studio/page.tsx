@@ -24,7 +24,7 @@ export default function UGCStudioPage() {
       transition={{ duration: 0.4 }}
       className="min-h-screen bg-surface-dark"
     >
-      <div className="max-w-5xl mx-auto px-6 py-12 lg:py-16">
+      <div className="max-w-6xl mx-auto px-6 py-12 lg:py-16">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -55,7 +55,7 @@ export default function UGCStudioPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.2 }}
-          className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8"
         >
           <FeatureCard
             icon="solar:mask-happly-bold-duotone"
@@ -85,13 +85,83 @@ export default function UGCStudioPage() {
               router.push("/dashboard/ugc-studio/ai-video-creator")
             }
           />
+          <FeatureCard
+            icon="solar:copy-bold-duotone"
+            title="Ad Clone"
+            description="Clone winning ads with your own product. Upload a reference ad, your product, and let AI recreate it for your brand."
+            gradient="from-orange-500/20 via-amber-500/10 to-transparent"
+            iconColor="text-orange-400"
+            features={[
+              "Clone any ad style",
+              "Your product placement",
+              "AI-powered recreation",
+            ]}
+            onPress={() => router.push("/dashboard/ugc-studio/ad-clone")}
+          />
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.3 }}
+          className="mt-10"
+        >
+          <Card
+            className="bg-surface-base border border-border-base overflow-hidden hover:border-emerald-500/40 hover:shadow-lg hover:shadow-emerald-500/5 cursor-pointer group transition-all duration-300"
+            isPressable
+            onPress={() => router.push("/dashboard/ugc-studio/characters")}
+          >
+            <CardBody className="p-0">
+              <div className="flex flex-col md:flex-row">
+                <div className="md:w-48 h-32 md:h-auto bg-gradient-to-br from-emerald-500/20 via-green-500/10 to-transparent flex items-center justify-center">
+                  <div className="w-16 h-16 rounded-2xl bg-surface-base/80 backdrop-blur flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                    <Icon
+                      icon="solar:user-plus-rounded-bold-duotone"
+                      className="text-emerald-400"
+                      width={36}
+                    />
+                  </div>
+                </div>
+                <div className="flex-1 p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-xl font-semibold text-text-primary mb-1">
+                      Characters
+                    </h3>
+                    <p className="text-sm text-text-secondary max-w-lg">
+                      Create and manage your AI actors. Build a library of unique characters to use across all your UGC videos.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 text-sm text-text-secondary">
+                      <span className="flex items-center gap-1.5">
+                        <Icon icon="solar:star-bold" className="text-amber-400" width={16} />
+                        1 credit per actor
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <Icon icon="solar:users-group-rounded-bold" className="text-emerald-400" width={16} />
+                        Share with community
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-emerald-400 font-medium whitespace-nowrap">
+                      <span>Manage Actors</span>
+                      <Icon
+                        icon="solar:arrow-right-linear"
+                        width={16}
+                        className="group-hover:translate-x-1 transition-transform"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
         </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.4 }}
-          className="mt-16 text-center"
+          className="mt-12 text-center"
         >
           <p className="text-text-tertiary text-sm">
             More AI creation tools coming soon

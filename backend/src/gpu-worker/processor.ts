@@ -19,16 +19,16 @@ import {
   mergeClipsGpu,
   extractFirstFrame,
   // extractAudio, // Only used for sync.so lip sync
-} from "../services/videoEditor.service";
+} from "../services/clips/videoEditor.service";
 // import { syncService } from "../services/sync.service";
 import { ComfyJobUpdate } from "../services/socket.service";
 import { teamService } from "../services/team.service";
 import { emailNotiService } from "../services/emailNoti.service";
-import { transcribeVideoService } from "../services/transcription.service";
+import { transcribeVideoService } from "../services/clips/transcription.service";
 import {
   convertWordsToCaptionEntries,
   generateSrtFromCaptions,
-} from "../services/captions.service";
+} from "../services/clips/captions.service";
 import { GpuJobMessage, SpliceSegmentInfo } from "../services/gpuSqs.service";
 import { applyJumbledMetadata } from "../utils/videoMetadata";
 

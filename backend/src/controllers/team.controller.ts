@@ -3,7 +3,7 @@ import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { teamService } from "../services/team.service";
 import { userService } from "../services/user.service";
-import { clipManagerService } from "../services/clipManager.service";
+import { clipManagerService } from "../services/clips/clipManager.service";
 import { s3Service } from "../services/s3.service";
 import { PLAN_LIMITS } from "../config/stripe.config";
 

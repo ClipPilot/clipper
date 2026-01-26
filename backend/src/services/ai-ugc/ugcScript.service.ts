@@ -1,28 +1,21 @@
-import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import { randomUUID } from "crypto";
-import { ENV } from "../config/env";
 import {
   generateUGCScriptPrompt,
   generateSceneRegenerationPrompt,
   UGCScriptPromptConfig,
-} from "../config/ugcPrompts";
+} from "../../config/ugcPrompts";
 import {
   GenerateUGCScriptResponseSchema,
   UGCScript,
   UGCScene,
   UGCSceneSchema,
   ClientUGCScript,
-} from "../types/ugcScript.types";
-import { db } from "../db";
+} from "../../types/ugcScript.types";
+import { db } from "../../db";
 import { characters, ugcScripts } from "@clipper/shared-db";
 import { eq } from "drizzle-orm";
-
-export const openaiClient = new OpenAI({
-  apiKey: ENV.OPENAI_API_KEY,
-  timeout: 5 * 60 * 1000,
-  maxRetries: 3,
-});
+import { openaiClient } from "../openai.service";
 
 const client = openaiClient;
 

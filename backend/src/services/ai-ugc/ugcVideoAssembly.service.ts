@@ -1,7 +1,7 @@
 import path from "path";
 import fs from "fs";
 import { execSync } from "child_process";
-import { s3Service } from "./s3.service";
+import { s3Service } from "../s3.service";
 import { elevenLabsService } from "./elevenlabs.service";
 import {
   klingService,
@@ -11,8 +11,8 @@ import {
   PRODUCT_NEGATIVE_PROMPT,
   SCREEN_STABILITY_MODIFIERS,
 } from "./kling.service";
-import { openaiClient } from "./ugcScript.service";
-import { generateJumbledMetadataString } from "../utils/videoMetadata";
+import { openaiClient } from "../openai.service";
+import { generateJumbledMetadataString } from "../../utils/videoMetadata";
 
 const MAX_KLING_VIDEO_DURATION = 10;
 const KLING_EXTENSION_DURATION = 5;
@@ -22,17 +22,18 @@ const AUDIO_CHANNELS = 2;
 const AUDIO_BITRATE = "192k";
 const VIDEO_ENCODE_SETTINGS =
   "-c:v libx264 -preset fast -crf 23 -profile:v main -level 3.1 -pix_fmt yuv420p -r 30 -g 30 -keyint_min 30 -vsync cfr";
-const SPEECH_SPEED_BOOST = 1.12;
+const SPEECH_SPEED_BOOST = 1.25;
 
 function applySpeedBoost(
   inputPath: string,
   sceneNumber: number,
+  speedBoost: number = SPEECH_SPEED_BOOST,
 ): { outputPath: string; finalDuration: number } {
   const currentDuration = getMediaDuration(inputPath);
-  const targetDuration = currentDuration / SPEECH_SPEED_BOOST;
+  const targetDuration = currentDuration / speedBoost;
 
   console.log(
-    `[FFmpeg] Scene ${sceneNumber}: Applying ${SPEECH_SPEED_BOOST}x speed boost (${currentDuration.toFixed(2)}s -> ${targetDuration.toFixed(2)}s)`,
+    `[FFmpeg] Scene ${sceneNumber}: Applying ${speedBoost}x speed boost (${currentDuration.toFixed(2)}s -> ${targetDuration.toFixed(2)}s)`,
   );
 
   const outputPath = path.join(
@@ -40,7 +41,7 @@ function applySpeedBoost(
     `audio_boosted_${sceneNumber}_${Date.now()}.mp3`,
   );
 
-  const cmd = `ffmpeg -y -i "${inputPath}" -filter:a "atempo=${SPEECH_SPEED_BOOST}" -vn "${outputPath}"`;
+  const cmd = `ffmpeg -y -i "${inputPath}" -filter:a "atempo=${speedBoost}" -vn "${outputPath}"`;
   execSync(cmd, { stdio: "pipe" });
 
   const finalDuration = getMediaDuration(outputPath);
@@ -164,6 +165,8 @@ export interface AssemblyOptions {
   voiceId: string;
   scenes: SceneVideoData[];
   onProgress?: (progress: number, message: string) => void;
+  /** Recommended TTS speed multiplier from voice delivery analysis (0.7-1.5, default 1.0) */
+  ttsSpeed?: number;
 }
 
 export interface AssemblyResult {
@@ -219,6 +222,7 @@ async function generateDialogueAudio(
   teamId: number,
   scriptId: string,
   sceneNumber: number,
+  speedBoost: number = SPEECH_SPEED_BOOST,
 ): Promise<{ audioPath: string; audioKey: string; duration: number }> {
   console.log(
     `[UGC Assembly] Scene ${sceneNumber}: Generating dialogue audio...`,
@@ -238,10 +242,10 @@ async function generateDialogueAudio(
   );
   fs.writeFileSync(tempAudioPath, audioBuffer);
 
-  const { outputPath: audioPath, finalDuration } = applySpeedBoost(tempAudioPath, sceneNumber);
+  const { outputPath: audioPath, finalDuration } = applySpeedBoost(tempAudioPath, sceneNumber, speedBoost);
 
   console.log(
-    `[UGC Assembly] Scene ${sceneNumber}: Audio ${actualDuration.toFixed(2)}s -> ${finalDuration.toFixed(2)}s (${SPEECH_SPEED_BOOST}x)`,
+    `[UGC Assembly] Scene ${sceneNumber}: Audio ${actualDuration.toFixed(2)}s -> ${finalDuration.toFixed(2)}s (${speedBoost}x)`,
   );
 
   const boostedBuffer = fs.readFileSync(audioPath);
@@ -457,6 +461,7 @@ async function processArollScene(
   scriptId: string,
   voiceId: string,
   onProgress?: (message: string) => void,
+  speedBoost: number = SPEECH_SPEED_BOOST,
 ): Promise<ProcessedScene> {
   const {
     sceneId,
@@ -480,6 +485,7 @@ async function processArollScene(
     teamId,
     scriptId,
     sceneNumber,
+    speedBoost,
   );
 
   console.log(
@@ -654,6 +660,7 @@ async function processBrollScene(
   scriptId: string,
   voiceId: string,
   onProgress?: (message: string) => void,
+  speedBoost: number = SPEECH_SPEED_BOOST,
 ): Promise<ProcessedScene> {
   const {
     sceneId,
@@ -679,6 +686,7 @@ async function processBrollScene(
     teamId,
     scriptId,
     sceneNumber,
+    speedBoost,
   );
 
   console.log(
@@ -809,6 +817,7 @@ async function processBrollScene(
         teamId,
         scriptId,
         sceneNumber,
+        speedBoost,
       );
       audioPath = regenerated.audioPath;
       audioKey = regenerated.audioKey;
@@ -924,11 +933,12 @@ async function processScene(
   scriptId: string,
   voiceId: string,
   onProgress?: (message: string) => void,
+  speedBoost: number = SPEECH_SPEED_BOOST,
 ): Promise<ProcessedScene> {
   if (scene.shotType === "a-roll") {
-    return processArollScene(scene, teamId, scriptId, voiceId, onProgress);
+    return processArollScene(scene, teamId, scriptId, voiceId, onProgress, speedBoost);
   }
-  return processBrollScene(scene, teamId, scriptId, voiceId, onProgress);
+  return processBrollScene(scene, teamId, scriptId, voiceId, onProgress, speedBoost);
 }
 
 async function processScenesBatch(
@@ -937,10 +947,11 @@ async function processScenesBatch(
   scriptId: string,
   voiceId: string,
   onProgress?: (message: string) => void,
+  speedBoost: number = SPEECH_SPEED_BOOST,
 ): Promise<ProcessedScene[]> {
   return Promise.all(
     scenes.map((scene) =>
-      processScene(scene, teamId, scriptId, voiceId, onProgress),
+      processScene(scene, teamId, scriptId, voiceId, onProgress, speedBoost),
     ),
   );
 }
@@ -948,7 +959,11 @@ async function processScenesBatch(
 export async function assembleUGCVideo(
   options: AssemblyOptions,
 ): Promise<AssemblyResult> {
-  const { teamId, scriptId, voiceId, scenes, onProgress } = options;
+  const { teamId, scriptId, voiceId, scenes, onProgress, ttsSpeed } = options;
+
+  // Use provided ttsSpeed or fall back to default SPEECH_SPEED_BOOST
+  const effectiveSpeedBoost = ttsSpeed ?? SPEECH_SPEED_BOOST;
+  console.log(`[UGC Assembly] Using TTS speed boost: ${effectiveSpeedBoost}x`);
 
   const totalScenes = scenes.length;
   const processedScenes: ProcessedScene[] = [];
@@ -975,6 +990,7 @@ export async function assembleUGCVideo(
       scriptId,
       voiceId,
       (msg) => onProgress?.(baseProgress, msg),
+      effectiveSpeedBoost,
     );
     processedScenes.push(...batchResults);
   }

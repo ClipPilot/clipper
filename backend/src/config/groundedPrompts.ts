@@ -1,4 +1,4 @@
-import { ShotType } from "../services/kling.service";
+import { ShotType } from "../services/ai-ugc/kling.service";
 
 export interface GroundedCinematicPromptConfig {
   originalCinematicPrompt: string;
@@ -16,7 +16,7 @@ export interface GroundedCinematicPromptConfig {
 export function generateGroundedCinematicSystemPrompt(
   config: GroundedCinematicPromptConfig
 ): string {
-  const { shotType, emotion, action } = config;
+  const { originalCinematicPrompt, shotType, emotion, action } = config;
 
   const subjectFocus =
     shotType === "a-roll"
@@ -27,6 +27,9 @@ export function generateGroundedCinematicSystemPrompt(
 
   return `Write a SHORT video prompt (under 800 chars) for Kling 2.6 Pro image-to-video.
 
+ORIGINAL DIRECTION TO INCORPORATE:
+${originalCinematicPrompt}
+
 ${subjectFocus}
 
 RULES (Kling 2.6 best practices):
@@ -35,6 +38,7 @@ RULES (Kling 2.6 best practices):
 3. One clear action, one camera movement
 4. Action: ${action} with ${emotion} emotion
 5. Motion: smooth gentle movement (slow push-in or subtle drift)
+6. Incorporate key elements from the ORIGINAL DIRECTION above
 
 FORMAT YOUR PROMPT LIKE:
 "[Brief subject description]. ++Subject maintains exact appearance throughout++. [Motion instruction]. [Camera movement]. NEGATIVE: no morphing, no distortion, no extra fingers."

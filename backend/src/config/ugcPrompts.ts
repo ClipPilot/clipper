@@ -372,24 +372,34 @@ GOOD: "Actor holds product at chest height, eyes widen with surprise, slight smi
 BAD: "Product demonstration shot"
 GOOD: "Close-up of hands holding bottle, slowly rotating it to show label"
 
+NEVER include in action or cinematicPrompt:
+- "On-screen text introduces..."
+- "Text overlay shows..."
+- "Caption appears..."
+- Any mention of text, titles, graphics, or captions (we add those separately)
+
 ===== CRITICAL: B-ROLL SCENES =====
 
-B-roll scenes can use as many shots as needed (1, 2, 3, 4, etc). Use your judgment based on what the scene requires!
+B-roll = visuals that play under voiceover narration (NOT lip-synced dialogue).
 
-**B-ROLL SHOTS**
-Use "bRollShots" array with quick cuts that play under ONE continuous voiceover.
-
-When to use multiple shots:
+**B-ROLL MULTI-SHOT (bRollShots array) - PRODUCT DEMOS ONLY**
+Use multiple shots ONLY for product-focused sequences:
 - Unboxing sequences (box → opening → reveal)
-- Before/after transformations
+- Product demos showing different features/angles
+- Before/after product comparison
 - Multi-angle product showcases
-- Duration 4+ seconds with natural cut points
 
-When to use SINGLE shot (just 1 item in bRollShots):
+**B-ROLL SINGLE SHOT - USE WHEN:**
+- Person is visible doing an action (not speaking to camera)
+- Lifestyle shots where person is the subject
+- Any scene where a PERSON is the main focus (even if not talking)
 - Simple product closeup
-- One clear action (hands holding product)
 - Short 2-4 second scenes
-- The scene only needs one visual
+
+IMPORTANT: If a person appears in b-roll with dialogue:
+- The dialogue is VOICEOVER/NARRATION playing over the visuals
+- The person is NOT lip-syncing - they're doing an action while audio plays
+- Do NOT use bRollShots for person-focused scenes
 
 CRITICAL - productImageNeeded field (DEPENDS ON SCENE TYPE):
 
@@ -683,17 +693,25 @@ CRITICAL - ambientSound field (REQUIRED FOR ALL A-ROLL SCENES):
 - This creates realistic background audio that matches the environment
 - Keep descriptions short (5-15 words) for best audio generation
 - Match the environment from cinematicPrompt
+- MUST be natural, subtle, continuous background sounds
 
-Examples based on setting:
-- Bedroom/home: "quiet bedroom ambience with subtle room tone and distant muffled sounds"
-- Gym/fitness: "gym ambience with clanking weights, distant music, and echoing voices"
-- Coffee shop: "busy coffee shop chatter, espresso machine hissing, cups clinking"
-- Beach: "soft ocean waves lapping, distant seagulls, light breeze"
-- Office: "office ambience with keyboard typing, air conditioning hum, distant chatter"
-- Outdoor/park: "outdoor park sounds with birds chirping, leaves rustling, distant traffic"
-- Kitchen: "kitchen ambience with subtle refrigerator hum, pots and pans"
+GOOD ambient sounds (natural, loopable):
+- "quiet room tone with subtle air conditioning hum"
+- "soft indoor ambience with gentle room atmosphere"
+- "light bedroom sounds with distant muffled noise"
+- "calm home interior with subtle background hum"
+- "office ambience with soft keyboard typing and air conditioning"
+- "outdoor park with birds chirping and light wind"
 
-For b-roll and mixed scenes: set ambientSound to null (voiceover only, no background)
+BAD ambient sounds (AVOID THESE):
+- ANY mention of "music", "beats", "melody", "soundtrack"
+- "dramatic sounds" or "cinematic tones"
+- "whooshing", "transitions", "builds"
+- "mysterious" or "ethereal" sounds
+- Sound effects that have clear beginnings/endings
+- Anything that sounds like production audio, not natural ambience
+
+For b-roll scenes: set ambientSound to null (voiceover only, no background)
 
 bRollShots field (FOR ALL B-ROLL SCENES):
 - Provide an array of shots (1, 2, 3, 4, etc - as many as the scene needs)

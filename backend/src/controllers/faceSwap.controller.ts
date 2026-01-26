@@ -1,10 +1,10 @@
 import * as Sentry from "@sentry/node";
 import { Request, Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
-import { faceSwapService } from "../services/faceSwap.service";
-import { detectFaceSegmentsWithPadding, detectFaceSegmentsFromS3Key } from "../services/faceDetection.service";
+import { faceSwapService } from "../services/face-swap/faceSwap.service";
+import { detectFaceSegmentsWithPadding, detectFaceSegmentsFromS3Key } from "../services/face-swap/faceDetection.service";
 import { s3Service } from "../services/s3.service";
-import { getVideoDuration } from "../services/videoEditor.service";
+import { getVideoDuration } from "../services/clips/videoEditor.service";
 import { generateJumbledMetadata } from "../utils/videoMetadata";
 import fs from "fs";
 import path from "path";

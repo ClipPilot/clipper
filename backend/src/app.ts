@@ -19,6 +19,7 @@ import ugcScriptRoutes from "./routes/ugcScript.routes";
 import sceneBuilderRoutes from "./routes/sceneBuilder.routes";
 import ugcVideoRoutes from "./routes/ugcVideo.routes";
 import userPreferencesRoutes from "./routes/userPreferences.routes";
+import adCloneRoutes from "./routes/adClone.routes";
 import { swaggerSpec } from "./config/swagger";
 
 const app = express();
@@ -72,6 +73,7 @@ app.use("/api/ugc", ugcScriptRoutes);
 app.use("/api/scene-builder", sceneBuilderRoutes);
 app.use("/api/ugc-video", ugcVideoRoutes);
 app.use("/api/user/preferences", userPreferencesRoutes);
+app.use("/api/ad-clone", adCloneRoutes);
 
 // Sentry test route
 app.get("/debug-sentry", function mainHandler(req, res) {

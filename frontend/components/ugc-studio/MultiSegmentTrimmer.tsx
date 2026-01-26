@@ -38,7 +38,7 @@ export function MultiSegmentTrimmer({
   duration,
   segments,
   onSegmentsChange,
-  maxTotalDuration = 50,
+  maxTotalDuration = 60,
   maxSegments = 5,
 }: MultiSegmentTrimmerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);

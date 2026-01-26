@@ -4,7 +4,7 @@ import { GenerateUGCVideoJob } from "../../services/sqs.service";
 import {
   assembleUGCVideo,
   SceneVideoData,
-} from "../../services/ugcVideoAssembly.service";
+} from "../../services/ai-ugc/ugcVideoAssembly.service";
 import { notifyUGCVideoJobUpdate, UGCVideoJobUpdate } from "../notify";
 
 /**
@@ -44,7 +44,7 @@ async function updateJobProgress(
 export async function processUGCVideoJob(
   job: GenerateUGCVideoJob
 ): Promise<void> {
-  const { jobId, teamId, userId, scriptId, voiceId, scenes } = job;
+  const { jobId, teamId, userId, scriptId, voiceId, scenes, ttsSpeed } = job;
 
   console.log(
     `[UGC_VIDEO] Starting video generation for job ${jobId} (script ${scriptId})`
@@ -99,6 +99,7 @@ export async function processUGCVideoJob(
       scriptId,
       voiceId,
       scenes: sceneVideoData,
+      ttsSpeed, // Pass through TTS speed from voice delivery analysis
       onProgress: (progress, message) => {
         // Parse scene number from message if possible
         const sceneMatch = message.match(/scene (\d+)/i);

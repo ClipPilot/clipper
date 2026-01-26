@@ -5,7 +5,7 @@ import { AuthRequest } from "../middleware/auth.middleware";
 import { s3Service } from "../services/s3.service";
 import { sqsService } from "../services/sqs.service";
 import { teamService } from "../services/team.service";
-import { clipManagerService } from "../services/clipManager.service";
+import { clipManagerService } from "../services/clips/clipManager.service";
 import { PLAN_LIMITS } from "../config/stripe.config";
 import { PROMPT_TYPES, isValidPromptType } from "../constants/promptTypes";
 
