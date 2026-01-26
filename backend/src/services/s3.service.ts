@@ -208,6 +208,16 @@ class S3Service {
     }
   }
 
+  async getObject(key: string, range?: string) {
+    const command = new GetObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: key,
+      ...(range ? { Range: range } : {}),
+    });
+
+    return await s3Client.send(command);
+  }
+
   async getPresignedUrl(key: string, expiresIn: number = 3600): Promise<string> {
     const command = new GetObjectCommand({
       Bucket: BUCKET_NAME,

@@ -11,9 +11,11 @@ import {
   Progress,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import { useVideoStream } from "@/hooks/useVideoStream";
 
 interface Clip {
   id: number;
+  team_id?: number;
   clip_score?: number;
   message?: string;
   prompt?: string;
@@ -43,15 +45,14 @@ export default function PreviewClipViewModal({
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const { blobUrl } = useVideoStream({
+    isOpen,
+    clipId: clip.id,
+    teamId: clip.team_id,
+    clipUrl: clip.clipUrl,
+  });
 
-  // Auto-play when modal opens
-  useEffect(() => {
-    if (isOpen && videoRef.current) {
-      videoRef.current.play().catch(() => {});
-    }
-  }, [isOpen]);
-
-  // Reset state when modal closes
+  // Reset playback state when modal closes
   useEffect(() => {
     if (!isOpen) {
       setIsPlaying(false);
@@ -160,60 +161,73 @@ export default function PreviewClipViewModal({
                   onContextMenu={handleContextMenu}
                   style={{ userSelect: "none" }}
                 >
-                  <video
-                    key={`preview-video-${clip.id}-${clip.clipUrl}`}
-                    ref={videoRef}
-                    src={clip.clipUrl}
-                    className="w-full max-h-[500px] object-contain"
-                    playsInline
-                    onTimeUpdate={handleTimeUpdate}
-                    onLoadedMetadata={handleLoadedMetadata}
-                    onPlay={() => setIsPlaying(true)}
-                    onPause={() => setIsPlaying(false)}
-                    onEnded={() => setIsPlaying(false)}
-                    controlsList="nodownload noremoteplayback"
-                    disablePictureInPicture
-                  />
+                  {blobUrl ? (
+                    <>
+                      <video
+                        key={`preview-video-${clip.id}`}
+                        ref={videoRef}
+                        src={blobUrl}
+                        autoPlay
+                        className="w-full max-h-[500px] object-contain"
+                        playsInline
+                        onTimeUpdate={handleTimeUpdate}
+                        onLoadedMetadata={handleLoadedMetadata}
+                        onPlay={() => setIsPlaying(true)}
+                        onPause={() => setIsPlaying(false)}
+                        onEnded={() => setIsPlaying(false)}
+                        controlsList="nodownload noremoteplayback"
+                        disablePictureInPicture
+                      />
 
-                  {/* Play/Pause overlay */}
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                    <button
-                      onClick={togglePlay}
-                      className="w-16 h-16 rounded-full bg-white/90 hover:bg-white flex items-center justify-center transition-colors"
-                    >
+                      {/* Play/Pause overlay */}
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                        <button
+                          onClick={togglePlay}
+                          className="w-16 h-16 rounded-full bg-white/90 hover:bg-white flex items-center justify-center transition-colors"
+                        >
+                          <Icon
+                            icon={
+                              isPlaying ? "solar:pause-bold" : "solar:play-bold"
+                            }
+                            className="text-3xl text-black ml-1"
+                          />
+                        </button>
+                      </div>
+
+                      {/* Progress bar */}
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                        <div
+                          className="w-full h-1 bg-white/30 rounded-full cursor-pointer mb-2"
+                          onClick={handleSeek}
+                        >
+                          <div
+                            className="h-full bg-accent-400 rounded-full transition-all"
+                            style={{
+                              width: `${(currentTime / duration) * 100 || 0}%`,
+                            }}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between text-white text-xs">
+                          <span>{formatTime(currentTime)}</span>
+                          <span>{formatTime(duration)}</span>
+                        </div>
+                      </div>
+
+                      {/* Preview badge */}
+                      <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded flex items-center gap-1 z-10">
+                        <Icon icon="solar:eye-bold" className="text-sm" />
+                        <span>Preview</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="w-full h-[400px] flex flex-col items-center justify-center gap-3">
                       <Icon
-                        icon={
-                          isPlaying ? "solar:pause-bold" : "solar:play-bold"
-                        }
-                        className="text-3xl text-black ml-1"
+                        icon="solar:spinner-bold"
+                        className="text-4xl text-text-tertiary animate-spin"
                       />
-                    </button>
-                  </div>
-
-                  {/* Progress bar */}
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                    <div
-                      className="w-full h-1 bg-white/30 rounded-full cursor-pointer mb-2"
-                      onClick={handleSeek}
-                    >
-                      <div
-                        className="h-full bg-accent-400 rounded-full transition-all"
-                        style={{
-                          width: `${(currentTime / duration) * 100 || 0}%`,
-                        }}
-                      />
+                      <p className="text-sm text-text-tertiary">Loading video...</p>
                     </div>
-                    <div className="flex items-center justify-between text-white text-xs">
-                      <span>{formatTime(currentTime)}</span>
-                      <span>{formatTime(duration)}</span>
-                    </div>
-                  </div>
-
-                  {/* Preview badge */}
-                  <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded flex items-center gap-1 z-10">
-                    <Icon icon="solar:eye-bold" className="text-sm" />
-                    <span>Preview</span>
-                  </div>
+                  )}
                 </div>
               ) : (
                 <div className="rounded-lg bg-surface-elevated w-full h-[400px] flex items-center justify-center">
@@ -295,8 +309,8 @@ export default function PreviewClipViewModal({
                   />
                   <div>
                     <p className="text-sm text-text-secondary">
-                      This is a preview with a watermark. Save the clip to
-                      download the clean version without the watermark.
+                      This is a preview clip which you cannot download. Save the clip to
+                      download it.
                     </p>
                   </div>
                 </div>
