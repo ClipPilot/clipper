@@ -15,6 +15,7 @@ import {
   numeric,
   decimal,
   real,
+  unique,
 } from "drizzle-orm/pg-core";
 
 // Enums
@@ -392,6 +393,18 @@ export const affiliateStatusEnum = pgEnum("affiliate_status", [
   "churned",
 ]);
 
+export const announcementPriorityEnum = pgEnum("announcement_priority", [
+  "info",
+  "warning",
+  "critical",
+]);
+
+export const announcementStatusEnum = pgEnum("announcement_status", [
+  "draft",
+  "published",
+  "archived",
+]);
+
 export const referrals = pgTable("referrals", {
   id: serial("id").primaryKey(),
   referral_code_id: integer("referral_code_id")
@@ -707,5 +720,51 @@ export const savedFaces = pgTable(
   },
   (table) => ({
     teamIdx: index("saved_faces_team_id_idx").on(table.team_id),
+  })
+).enableRLS();
+
+export const announcements = pgTable(
+  "announcements",
+  {
+    id: serial("id").primaryKey(),
+    title: varchar("title", { length: 255 }).notNull(),
+    content: text("content").notNull(),
+    priority: announcementPriorityEnum("priority").notNull().default("info"),
+    status: announcementStatusEnum("status").notNull().default("draft"),
+    icon: varchar("icon", { length: 100 }),
+    action_label: varchar("action_label", { length: 50 }),
+    action_url: text("action_url"),
+    created_by_admin_email: varchar("created_by_admin_email", { length: 255 }).notNull(),
+    published_at: timestamp("published_at"),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    statusIdx: index("announcements_status_idx").on(table.status),
+    publishedAtIdx: index("announcements_published_at_idx").on(table.published_at),
+  })
+).enableRLS();
+
+export const userAnnouncementDismissals = pgTable(
+  "user_announcement_dismissals",
+  {
+    id: serial("id").primaryKey(),
+    user_id: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    announcement_id: integer("announcement_id")
+      .notNull()
+      .references(() => announcements.id, { onDelete: "cascade" }),
+    dismissed_at: timestamp("dismissed_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    userAnnouncementUnique: unique("user_announcement_unique").on(
+      table.user_id,
+      table.announcement_id
+    ),
+    userIdIdx: index("user_announcement_dismissals_user_id_idx").on(table.user_id),
+    announcementIdIdx: index("user_announcement_dismissals_announcement_id_idx").on(
+      table.announcement_id
+    ),
   })
 ).enableRLS();

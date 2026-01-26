@@ -29,6 +29,10 @@ import Image from "next/image";
 import { UsageStatsProvider } from "@/contexts/UsageStatsContext";
 import CuttrLogo from "@/public/branding/cuttr_logo.png";
 import { useTheme } from "next-themes";
+import NotificationBellButton from "@/components/announcements/NotificationBellButton";
+import AnnouncementInboxModal from "@/components/announcements/AnnouncementInboxModal";
+import AnnouncementPopupModal from "@/components/announcements/AnnouncementPopupModal";
+import { useAnnouncements } from "@/hooks/useAnnouncements";
 
 const baseSidebarItems: SidebarItem[] = [
   {
@@ -81,6 +85,7 @@ export default function DashboardLayout({
   const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
   const [isCreateTeamOpen, setIsCreateTeamOpen] = useState(false);
   const [isManageTeamOpen, setIsManageTeamOpen] = useState(false);
+  const { fetchUnread } = useAnnouncements();
 
   // Only show pricing to owners and managers
   const canViewPricing =
@@ -162,6 +167,11 @@ export default function DashboardLayout({
     };
   }, [isResizing]);
 
+  // Fetch announcements on mount
+  useEffect(() => {
+    fetchUnread();
+  }, [fetchUnread]);
+
   // Use startsWith for nested routes (e.g., /dashboard/ugc-studio/face-swap should highlight ugc-studio)
   // Sort by href length descending to match most specific route first
   // Return empty string for pages not in sidebar (e.g., referrals, usage) so nothing is highlighted
@@ -187,18 +197,21 @@ export default function DashboardLayout({
                 className="object-contain"
                 unoptimized
               />
-              <Button
-                isIconOnly
-                size="sm"
-                variant="light"
-                className="text-text-secondary hover:text-text-primary"
-                onPress={() => setTheme(theme === "dark" ? "light" : "dark")}
-              >
-                <Icon
-                  icon={theme === "dark" ? "solar:sun-bold-duotone" : "solar:moon-bold-duotone"}
-                  width={20}
-                />
-              </Button>
+              <div className="flex items-center gap-1">
+                <NotificationBellButton />
+                <Button
+                  isIconOnly
+                  size="sm"
+                  variant="light"
+                  className="text-text-secondary hover:text-text-primary"
+                  onPress={() => setTheme(theme === "dark" ? "light" : "dark")}
+                >
+                  <Icon
+                    icon={theme === "dark" ? "solar:sun-bold-duotone" : "solar:moon-bold-duotone"}
+                    width={20}
+                  />
+                </Button>
+              </div>
             </div>
 
             <Popover
@@ -353,6 +366,9 @@ export default function DashboardLayout({
         <main className="flex-1 overflow-auto">{children}</main>
         <ToastProvider placement="top-right" />
       </div>
+
+      <AnnouncementInboxModal />
+      <AnnouncementPopupModal />
 
       <CreateTeamModal
         isOpen={isCreateTeamOpen}

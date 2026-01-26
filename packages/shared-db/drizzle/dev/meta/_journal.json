@@ -99,6 +99,13 @@
       "when": 1769098373773,
       "tag": "0013_naive_starhawk",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1769445958010,
+      "tag": "0014_hot_vulcan",
+      "breakpoints": true
     }
   ]
 }

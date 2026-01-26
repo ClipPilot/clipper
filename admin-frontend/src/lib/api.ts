@@ -107,6 +107,35 @@ export interface AffiliatesResponse {
   affiliates: AdminAffiliate[];
 }
 
+export interface Announcement {
+  id: number;
+  title: string;
+  content: string;
+  priority: "info" | "warning" | "critical";
+  status: "draft" | "published" | "archived";
+  icon?: string;
+  action_label?: string;
+  action_url?: string;
+  created_by_admin_email: string;
+  published_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AnnouncementsResponse {
+  announcements: Announcement[];
+  total: number;
+}
+
+export interface CreateAnnouncementData {
+  title: string;
+  content: string;
+  priority?: "info" | "warning" | "critical";
+  icon?: string;
+  action_label?: string;
+  action_url?: string;
+}
+
 export interface LoginResponse {
   message: string;
   email: string;
@@ -231,6 +260,69 @@ export const adminAPI = {
 
   async getAffiliates(): Promise<AffiliatesResponse> {
     const response = await fetch(`${API_URL}/admin/affiliates`, {
+      headers: { ...getAuthHeaders() },
+    });
+    return handleResponse(response);
+  },
+
+  // Announcements
+  async getAnnouncements(options?: { status?: string; limit?: number; offset?: number }): Promise<AnnouncementsResponse> {
+    const params = new URLSearchParams();
+    if (options?.status) params.set("status", options.status);
+    if (options?.limit) params.set("limit", options.limit.toString());
+    if (options?.offset) params.set("offset", options.offset.toString());
+
+    const queryString = params.toString();
+    const url = `${API_URL}/announcements/admin${queryString ? `?${queryString}` : ""}`;
+
+    const response = await fetch(url, {
+      headers: { ...getAuthHeaders() },
+    });
+    return handleResponse(response);
+  },
+
+  async getAnnouncement(id: number): Promise<{ announcement: Announcement }> {
+    const response = await fetch(`${API_URL}/announcements/admin/${id}`, {
+      headers: { ...getAuthHeaders() },
+    });
+    return handleResponse(response);
+  },
+
+  async createAnnouncement(data: CreateAnnouncementData): Promise<{ announcement: Announcement }> {
+    const response = await fetch(`${API_URL}/announcements/admin`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response);
+  },
+
+  async updateAnnouncement(id: number, data: Partial<CreateAnnouncementData>): Promise<{ announcement: Announcement }> {
+    const response = await fetch(`${API_URL}/announcements/admin/${id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response);
+  },
+
+  async deleteAnnouncement(id: number): Promise<{ success: boolean; message: string }> {
+    const response = await fetch(`${API_URL}/announcements/admin/${id}`, {
+      method: "DELETE",
+      headers: { ...getAuthHeaders() },
+    });
+    return handleResponse(response);
+  },
+
+  async publishAnnouncement(id: number): Promise<{ announcement: Announcement }> {
+    const response = await fetch(`${API_URL}/announcements/admin/${id}/publish`, {
+      method: "POST",
       headers: { ...getAuthHeaders() },
     });
     return handleResponse(response);
