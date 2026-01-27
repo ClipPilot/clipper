@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useAtom, useAtomValue } from "jotai";
-import { Card, CardBody, Chip, Button, Textarea, Select, SelectItem, Spinner, Accordion, AccordionItem } from "@heroui/react";
+import { Card, CardBody, Chip, Button, Textarea, Select, SelectItem, Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import {
   adCloneScriptsAtom,
@@ -35,18 +35,38 @@ interface SceneEditorProps {
   scene: UGCScene;
   index: number;
   totalScenes: number;
+  defaultEditing?: boolean;
   onUpdate: (updates: Partial<UGCScene>) => void;
+  onRevert: (snapshot: UGCScene) => void;
+  onRemove: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
 }
 
-function SceneEditor({ scene, index, totalScenes, onUpdate, onMoveUp, onMoveDown }: SceneEditorProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+function SceneEditor({ scene, index, totalScenes, defaultEditing, onUpdate, onRevert, onRemove, onMoveUp, onMoveDown }: SceneEditorProps) {
+  const [isEditing, setIsEditing] = useState(defaultEditing ?? false);
+  const [snapshot, setSnapshot] = useState<UGCScene | null>(defaultEditing ? { ...scene } : null);
   const sceneTypeConfig = SCENE_TYPE_CONFIG[scene.sceneType as SceneType] || SCENE_TYPE_CONFIG.demo;
   const emotionConfig = EMOTION_CONFIG[scene.emotion as Emotion] || EMOTION_CONFIG.friendly;
 
+  const handleStartEdit = () => {
+    setSnapshot({ ...scene });
+    setIsEditing(true);
+  };
+
+  const handleConfirmEdit = () => {
+    setSnapshot(null);
+    setIsEditing(false);
+  };
+
+  const handleCancelEdit = () => {
+    if (snapshot) onRevert(snapshot);
+    setSnapshot(null);
+    setIsEditing(false);
+  };
+
   return (
-    <Card className="bg-surface-elevated border border-border-base">
+    <Card className={`bg-surface-elevated border ${isEditing ? "border-orange-500/50" : "border-border-base"}`}>
       <CardBody className="p-4">
         <div className="flex items-start gap-3">
           <div className="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center shrink-0">
@@ -68,7 +88,7 @@ function SceneEditor({ scene, index, totalScenes, onUpdate, onMoveUp, onMoveDown
 
             <div className="p-3 bg-surface-base rounded-lg">
               <p className="text-xs text-text-tertiary mb-1">Dialogue</p>
-              {isExpanded ? (
+              {isEditing ? (
                 <Textarea
                   size="sm"
                   minRows={2}
@@ -80,14 +100,14 @@ function SceneEditor({ scene, index, totalScenes, onUpdate, onMoveUp, onMoveDown
                   }}
                 />
               ) : (
-                <p className="text-sm text-text-primary italic">"{scene.dialogue}"</p>
+                <p className="text-sm text-text-primary italic">&ldquo;{scene.dialogue}&rdquo;</p>
               )}
             </div>
 
-            {scene.action && (
+            {(scene.action || isEditing) && (
               <div className="p-3 bg-surface-base rounded-lg">
                 <p className="text-xs text-text-tertiary mb-1">Shot Plan</p>
-                {isExpanded ? (
+                {isEditing ? (
                   <Textarea
                     size="sm"
                     minRows={2}
@@ -104,7 +124,7 @@ function SceneEditor({ scene, index, totalScenes, onUpdate, onMoveUp, onMoveDown
               </div>
             )}
 
-            {isExpanded && (
+            {isEditing && (
               <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border-base">
                 <Select
                   label="Scene Type"
@@ -150,35 +170,70 @@ function SceneEditor({ scene, index, totalScenes, onUpdate, onMoveUp, onMoveDown
           </div>
 
           <div className="flex flex-col gap-1 shrink-0">
-            <Button
-              isIconOnly
-              size="sm"
-              variant="flat"
-              className="text-text-secondary"
-              isDisabled={index === 0}
-              onPress={onMoveUp}
-            >
-              <Icon icon="solar:arrow-up-linear" width={16} />
-            </Button>
-            <Button
-              isIconOnly
-              size="sm"
-              variant="flat"
-              className="text-text-secondary"
-              isDisabled={index === totalScenes - 1}
-              onPress={onMoveDown}
-            >
-              <Icon icon="solar:arrow-down-linear" width={16} />
-            </Button>
-            <Button
-              isIconOnly
-              size="sm"
-              variant="flat"
-              className={isExpanded ? "text-orange-500" : "text-text-secondary"}
-              onPress={() => setIsExpanded(!isExpanded)}
-            >
-              <Icon icon={isExpanded ? "solar:minimize-bold" : "solar:pen-bold"} width={16} />
-            </Button>
+            {isEditing ? (
+              <>
+                <Button
+                  isIconOnly
+                  size="sm"
+                  variant="flat"
+                  className="bg-green-500/20 text-green-400 hover:bg-green-500/30"
+                  onPress={handleConfirmEdit}
+                >
+                  <Icon icon="solar:check-circle-bold" width={16} />
+                </Button>
+                <Button
+                  isIconOnly
+                  size="sm"
+                  variant="flat"
+                  className="text-text-secondary hover:text-red-400"
+                  onPress={handleCancelEdit}
+                >
+                  <Icon icon="solar:close-circle-bold" width={16} />
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  isIconOnly
+                  size="sm"
+                  variant="flat"
+                  className="text-text-secondary hover:text-text-primary"
+                  isDisabled={index === 0}
+                  onPress={onMoveUp}
+                >
+                  <Icon icon="solar:arrow-up-linear" width={16} />
+                </Button>
+                <Button
+                  isIconOnly
+                  size="sm"
+                  variant="flat"
+                  className="text-text-secondary hover:text-text-primary"
+                  isDisabled={index === totalScenes - 1}
+                  onPress={onMoveDown}
+                >
+                  <Icon icon="solar:arrow-down-linear" width={16} />
+                </Button>
+                <Button
+                  isIconOnly
+                  size="sm"
+                  variant="flat"
+                  className="text-text-secondary hover:text-orange-400"
+                  onPress={handleStartEdit}
+                >
+                  <Icon icon="solar:pen-bold" width={16} />
+                </Button>
+                <Button
+                  isIconOnly
+                  size="sm"
+                  variant="flat"
+                  className="text-text-secondary hover:text-red-400"
+                  isDisabled={totalScenes <= 1}
+                  onPress={onRemove}
+                >
+                  <Icon icon="solar:close-circle-bold" width={16} />
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </CardBody>
@@ -232,7 +287,48 @@ export function AdCloneScriptStep({ teamId }: AdCloneScriptStepProps) {
     [scripts, selectedVariant, setScripts]
   );
 
-  const handleSceneReorder = useCallback(
+  const handleSceneRevert = useCallback(
+    (sceneIndex: number, snapshot: UGCScene) => {
+      if (!scripts) return;
+
+      setScripts(
+        scripts.map((script, i) => {
+          if (i !== selectedVariant) return script;
+          return {
+            ...script,
+            scenes: script.scenes.map((scene: UGCScene, si: number) =>
+              si === sceneIndex ? snapshot : scene
+            ),
+          };
+        })
+      );
+    },
+    [scripts, selectedVariant, setScripts]
+  );
+
+  const handleRemoveScene = useCallback(
+    (sceneIndex: number) => {
+      if (!scripts || !selectedScript) return;
+      if (selectedScript.scenes.length <= 1) return;
+
+      setScripts(
+        scripts.map((script, i) => {
+          if (i !== selectedVariant) return script;
+          const newScenes = script.scenes.filter((_: UGCScene, idx: number) => idx !== sceneIndex);
+          return {
+            ...script,
+            scenes: newScenes.map((scene: UGCScene, idx: number) => ({
+              ...scene,
+              sceneNumber: idx + 1,
+            })),
+          };
+        })
+      );
+    },
+    [scripts, selectedScript, selectedVariant, setScripts]
+  );
+
+  const handleMoveScene = useCallback(
     (fromIndex: number, toIndex: number) => {
       if (!scripts || !selectedScript) return;
       if (toIndex < 0 || toIndex >= selectedScript.scenes.length) return;
@@ -256,7 +352,43 @@ export function AdCloneScriptStep({ teamId }: AdCloneScriptStepProps) {
     [scripts, selectedScript, selectedVariant, setScripts]
   );
 
-  // Combined loading state for analyze + script generation
+  const [newSceneId, setNewSceneId] = useState<string | null>(null);
+
+  const handleAddScene = useCallback(() => {
+    if (!scripts || !selectedScript) return;
+
+    const id = crypto.randomUUID();
+    const newScene: UGCScene = {
+      id,
+      sceneNumber: selectedScript.scenes.length + 1,
+      sceneType: "demo",
+      action: "",
+      dialogue: "",
+      emotion: "friendly",
+      estimatedDurationSeconds: 5,
+      shotType: "a-roll",
+      cameraAngle: "medium-shot",
+    };
+
+    setNewSceneId(id);
+
+    setScripts(
+      scripts.map((script, i) => {
+        if (i !== selectedVariant) return script;
+        return {
+          ...script,
+          scenes: [...script.scenes, newScene],
+        };
+      })
+    );
+  }, [scripts, selectedScript, selectedVariant, setScripts]);
+
+  useEffect(() => {
+    if (newSceneId) {
+      setNewSceneId(null);
+    }
+  }, [newSceneId]);
+
   if (status === "analyzing" || status === "generating_script") {
     const isAnalyzing = status === "analyzing";
     const stages = [
@@ -443,23 +575,32 @@ export function AdCloneScriptStep({ teamId }: AdCloneScriptStepProps) {
       </div>
 
       <div className="space-y-3">
-        {selectedScript.scenes.map((scene: UGCScene, index: number) => (
-          <div key={scene.id || index}>
-            <SceneEditor
-              scene={scene}
-              index={index}
-              totalScenes={selectedScript.scenes.length}
-              onUpdate={(updates) => handleSceneUpdate(index, updates)}
-              onMoveUp={() => handleSceneReorder(index, index - 1)}
-              onMoveDown={() => handleSceneReorder(index, index + 1)}
-            />
-            {index < selectedScript.scenes.length - 1 && (
-              <div className="flex justify-center my-2">
-                <Icon icon="solar:arrow-down-linear" className="text-text-muted" width={16} />
-              </div>
-            )}
-          </div>
-        ))}
+        {selectedScript.scenes.map((scene: UGCScene, index: number) => {
+          const isNewScene = scene.id === newSceneId;
+          return (
+            <div key={scene.id || index}>
+              <SceneEditor
+                scene={scene}
+                index={index}
+                totalScenes={selectedScript.scenes.length}
+                defaultEditing={isNewScene}
+                onUpdate={(updates) => handleSceneUpdate(index, updates)}
+                onRevert={(snapshot) => handleSceneRevert(index, snapshot)}
+                onRemove={() => handleRemoveScene(index)}
+                onMoveUp={() => handleMoveScene(index, index - 1)}
+                onMoveDown={() => handleMoveScene(index, index + 1)}
+              />
+            </div>
+          );
+        })}
+
+        <button
+          onClick={handleAddScene}
+          className="w-full p-4 rounded-xl border-2 border-dashed border-border-base hover:border-orange-500/50 bg-surface-base hover:bg-orange-500/5 transition-all flex items-center justify-center gap-2 group"
+        >
+          <Icon icon="solar:add-circle-bold" className="text-text-muted group-hover:text-orange-500 transition-colors" width={20} />
+          <span className="text-sm font-medium text-text-muted group-hover:text-orange-500 transition-colors">Add Scene</span>
+        </button>
       </div>
     </div>
   );

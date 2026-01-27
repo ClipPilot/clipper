@@ -19,6 +19,12 @@ import {
 import { BatchUploadSection } from "@/components/create-clip/BatchUploadSection";
 import { PromptType } from "@/constants/promptTypes";
 import { Switch, Tooltip } from "@heroui/react";
+import PendingClipsSection from "@/components/clips/PendingClipsSection";
+import { ClipsToSaveSection } from "@/components/clips/ClipsToSaveSection";
+import PreviewClipViewModal from "@/components/clips/PreviewClipViewModal";
+import ClipViewModal from "@/components/clips/ClipViewModal";
+import { DeleteConfirmModal } from "@/components/clips/DeleteConfirmModal";
+import { useClipsData, useClipModals, useTags, useFolders } from "@/hooks/useClips";
 
 interface UploadedVideo {
   s3Key: string;
@@ -63,6 +69,38 @@ export default function CreateClipPage() {
   } = useUsageStats(selectedTeam?.id);
   const { triggerRefresh, refreshTrigger } = useUsageStatsRefresh();
 
+  // Processing clips hooks
+  const {
+    pendingClips,
+    unsavedClips,
+    loadPendingClips,
+    loadUnsavedClips,
+    requestDeleteClip,
+    confirmDeleteClip,
+    cancelDeleteClip,
+    isDeleteModalOpen,
+    clipToDelete,
+    isDeleting,
+    saveClip,
+    rejectClip,
+  } = useClipsData();
+
+  const {
+    isViewModalOpen,
+    selectedClip,
+    isPreviewModalOpen,
+    selectedPreviewClip,
+    isSavingPreviewClip,
+    setIsSavingPreviewClip,
+    openViewModal,
+    closeViewModal,
+    openPreviewModal,
+    closePreviewModal,
+  } = useClipModals();
+
+  const { tags, loadTags, createTag, deleteTag, updateClipTags } = useTags();
+  const { folders, loadFolders } = useFolders();
+
   useEffect(() => {
     if (!user) {
       const accessToken =
@@ -99,6 +137,16 @@ export default function CreateClipPage() {
     }
   }, [selectedTeam?.plan, usageStats?.generationsRemaining]);
 
+  // Load processing clips
+  useEffect(() => {
+    if (selectedTeam?.id) {
+      loadPendingClips();
+      loadUnsavedClips();
+      loadTags();
+      loadFolders();
+    }
+  }, [selectedTeam?.id, loadPendingClips, loadUnsavedClips, loadTags, loadFolders]);
+
   const handleUploadComplete = (
     s3Key: string,
     fileName: string,
@@ -115,6 +163,26 @@ export default function CreateClipPage() {
 
   const handleUploadError = (errorMessage: string) => {
     setError(errorMessage);
+  };
+
+  const handleClipSaved = async () => {
+    await loadPendingClips();
+    await loadUnsavedClips();
+    triggerRefresh();
+  };
+
+  const handleSavePreviewClip = async (clipId: number) => {
+    if (!selectedTeam?.id) return;
+    setIsSavingPreviewClip(true);
+    try {
+      await saveClip(clipId, triggerRefresh);
+      closePreviewModal();
+      await handleClipSaved();
+    } catch (error) {
+      console.error("Failed to save clip:", error);
+    } finally {
+      setIsSavingPreviewClip(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -211,7 +279,23 @@ export default function CreateClipPage() {
       }
 
       triggerRefresh();
-      router.push("/dashboard/clips?tab=processing");
+
+      // Reload processing clips and scroll to processing section
+      await loadPendingClips();
+      await loadUnsavedClips();
+
+      // Reset upload state
+      setUploadedVideo(null);
+      setBatchVideos([]);
+      setIsProcessing(false);
+
+      // Scroll to processing section
+      setTimeout(() => {
+        const processingSection = document.getElementById('processing-section');
+        if (processingSection) {
+          processingSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
     } catch (err: any) {
       console.error("Submit error:", err);
       setError(err.message || "Failed to create clip");
@@ -260,7 +344,7 @@ export default function CreateClipPage() {
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 lg:mb-8">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-text-primary mb-1 sm:mb-2">
-              Create Clip
+              AI Clipping
             </h1>
             <p className="text-sm sm:text-base text-text-secondary">
               Upload a video and let AI create viral clips for social media
@@ -601,7 +685,99 @@ export default function CreateClipPage() {
             )}
           </div>
         )}
+
+        {/* Processing Section - moved from Library */}
+        {selectedTeam && (
+          <div id="processing-section" className="mt-12">
+            <div className="border-t border-border-base pt-8">
+              <div className="mb-6 flex items-center gap-3">
+                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-warning-500/10">
+                  <Icon icon="solar:hourglass-bold-duotone" className="text-2xl text-warning-400" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-text-primary">Processing</h2>
+                  <p className="text-sm text-text-secondary">
+                    {pendingClips.length + unsavedClips.length > 0
+                      ? `${pendingClips.length + unsavedClips.length} clip${pendingClips.length + unsavedClips.length === 1 ? '' : 's'} being processed`
+                      : "No clips processing"}
+                  </p>
+                </div>
+              </div>
+
+              {pendingClips.length > 0 || unsavedClips.length > 0 ? (
+                <div className="space-y-6">
+                  <PendingClipsSection
+                    clips={pendingClips}
+                    onClipClick={(clip: any) => openViewModal(clip)}
+                    onCancel={(clipId) => requestDeleteClip(clipId, undefined, triggerRefresh)}
+                  />
+
+                  <ClipsToSaveSection
+                    clips={unsavedClips}
+                    teamId={selectedTeam.id}
+                    onClipSaved={handleClipSaved}
+                    onClipRejected={rejectClip}
+                    onClipView={openPreviewModal}
+                    onUsageUpdated={triggerRefresh}
+                  />
+                </div>
+              ) : (
+                <Card className="bg-surface-base border border-border-base">
+                  <CardBody className="flex flex-col items-center justify-center py-12">
+                    <Icon
+                      icon="solar:check-circle-bold-duotone"
+                      className="text-5xl text-success-500 mb-3"
+                    />
+                    <p className="text-text-secondary text-center mb-1 text-base">
+                      All caught up!
+                    </p>
+                    <p className="text-text-tertiary text-center text-sm max-w-md">
+                      Upload a video above to generate new clips
+                    </p>
+                  </CardBody>
+                </Card>
+              )}
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Modals */}
+      {selectedClip && (
+        <ClipViewModal
+          isOpen={isViewModalOpen}
+          onClose={closeViewModal}
+          clip={selectedClip}
+          folders={folders}
+          availableTags={tags}
+          onMoveToFolder={() => {}}
+          onTagsChange={updateClipTags}
+          onCreateTag={createTag}
+          onDeleteTag={deleteTag}
+          onGenerateShareLink={() => Promise.resolve("")}
+          onRemoveShareLink={() => Promise.resolve()}
+          onUpdateTitle={() => Promise.resolve()}
+        />
+      )}
+
+      {selectedPreviewClip && (
+        <PreviewClipViewModal
+          isOpen={isPreviewModalOpen}
+          onClose={closePreviewModal}
+          clip={selectedPreviewClip}
+          onSave={handleSavePreviewClip}
+          onReject={rejectClip}
+          isSaving={isSavingPreviewClip}
+        />
+      )}
+
+      <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={cancelDeleteClip}
+        onConfirm={confirmDeleteClip}
+        isDeleting={isDeleting}
+        clipName={clipToDelete?.name}
+      />
     </div>
   );
 }

@@ -25,7 +25,6 @@ interface AdCloneWizardProps {
   teamId: number;
 }
 
-// Character+Voice comes before Storyboard because scene image generation needs characterId
 const STEPS: { key: AdCloneStep; label: string; icon: string }[] = [
   { key: "upload", label: "Upload", icon: "solar:upload-bold-duotone" },
   { key: "script", label: "Script", icon: "solar:document-text-bold-duotone" },
@@ -63,7 +62,6 @@ export function AdCloneWizard({ teamId }: AdCloneWizardProps) {
           }
           break;
         case "script":
-          // Save the edited script to database before proceeding
           if (selectedScript) {
             await updateScript(selectedScript);
           }
@@ -107,7 +105,6 @@ export function AdCloneWizard({ teamId }: AdCloneWizardProps) {
 
   const canGoBack = ["script", "storyboard", "character", "generate"].includes(step);
 
-  // Auto-scroll to top when reaching character/voice step
   useEffect(() => {
     if (step === "character") {
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -133,7 +130,6 @@ export function AdCloneWizard({ teamId }: AdCloneWizardProps) {
 
   return (
     <div className="space-y-6">
-      {/* Progress Steps */}
       <Card className="bg-surface-base border border-border-base">
         <CardBody className="p-4">
           <div className="flex items-center justify-between gap-2 overflow-x-auto">
@@ -189,7 +185,6 @@ export function AdCloneWizard({ teamId }: AdCloneWizardProps) {
         </CardBody>
       </Card>
 
-      {/* Error Banner */}
       {error && (
         <Card className="bg-red-500/10 border border-red-500/30">
           <CardBody className="p-4">
@@ -212,10 +207,8 @@ export function AdCloneWizard({ teamId }: AdCloneWizardProps) {
         </Card>
       )}
 
-      {/* Step Content */}
       {renderStepContent()}
 
-      {/* Navigation */}
       {!["upload", "generate"].includes(step) && status !== "analyzing" && status !== "generating_script" && (
         <div className="flex items-center justify-between">
           {canGoBack ? (

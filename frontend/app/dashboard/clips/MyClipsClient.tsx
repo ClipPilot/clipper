@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useCallback, Suspense, useState } from "react";
+import React, { useEffect, useRef, useCallback, Suspense, useState, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { userAtom, selectedTeamAtom } from "@/store/auth";
@@ -17,13 +17,14 @@ import {
   selectedFolderIdAtom,
   clipsViewModeAtom,
 } from "@/store/clips";
-import { Button, Card, CardBody, Tabs, Tab } from "@heroui/react";
+import { Button, Card, CardBody, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { authAPI } from "@/api/auth";
 import { Clip, clipsAPI } from "@/api/clips";
 import { ClipCard } from "@/components/clips/ClipCard";
 import { SubfolderCard } from "@/components/clips/SubfolderCard";
 import { CreateFolderModal } from "@/components/clips/CreateFolderModal";
+import { DeleteConfirmModal } from "@/components/clips/DeleteConfirmModal";
 import { FolderTree } from "@/components/clips/FolderTree";
 import { FolderBreadcrumb } from "@/components/clips/FolderBreadcrumb";
 import { FolderTreeNode } from "@/api/clips";
@@ -76,6 +77,7 @@ function MyClipsPageContent() {
   const hasMore = useAtomValue(hasMoreClipsAtom);
   const selectedFolderId = useAtomValue(selectedFolderIdAtom);
   const [viewMode, setViewMode] = useAtom(clipsViewModeAtom);
+  const [clipTypeFilter, setClipTypeFilter] = useState<string>("all");
 
   const {
     pendingClips,
@@ -86,7 +88,12 @@ function MyClipsPageContent() {
     loadUnsavedClips,
     loadSavedClips,
     loadMoreClips,
-    deleteClip,
+    requestDeleteClip,
+    confirmDeleteClip,
+    cancelDeleteClip,
+    isDeleteModalOpen,
+    clipToDelete,
+    isDeleting,
     saveClip,
     rejectClip,
     moveClipToFolder,
@@ -116,6 +123,31 @@ function MyClipsPageContent() {
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [isMobileFolderOpen, setIsMobileFolderOpen] = useState(false);
   const clipSearchRef = useRef<ClipSearchHandle>(null);
+
+  // Filter clips based on type
+  const filterClipsByType = useCallback((clips: Clip[]) => {
+    if (clipTypeFilter === "all") return clips;
+
+    return clips.filter(clip => {
+      const clipType = clip.clip_metadata?.type;
+
+      switch (clipTypeFilter) {
+        case "clips":
+          return !clipType || clipType === "clip";
+        case "ai-video":
+          return clipType === "ugc";
+        case "face-swap":
+          return clipType === "face-swap";
+        case "ad-clone":
+          return clipType === "ad-clone";
+        default:
+          return true;
+      }
+    });
+  }, [clipTypeFilter]);
+
+  const filteredSavedClips = useMemo(() => filterClipsByType(savedClips), [savedClips, filterClipsByType]);
+  const filteredSearchResults = useMemo(() => filterClipsByType(searchResults), [searchResults, filterClipsByType]);
 
   // Callbacks for ClipSearch component
   const handleSearchResults = useCallback((
@@ -346,84 +378,39 @@ function MyClipsPageContent() {
   return (
     <div className="min-h-screen bg-surface-dark p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-4 sm:mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-text-primary">My Clips</h1>
+        <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <h1 className="text-2xl sm:text-3xl font-bold text-text-primary">Library</h1>
+          <Dropdown>
+            <DropdownTrigger>
+              <Button
+                variant="flat"
+                className="bg-surface-base border border-border-base"
+                startContent={<Icon icon="solar:filter-bold-duotone" className="text-accent-400" width={18} />}
+                endContent={<Icon icon="solar:alt-arrow-down-linear" width={16} />}
+              >
+                {clipTypeFilter === "all" ? "All" : clipTypeFilter === "clips" ? "Clips" : clipTypeFilter === "ai-video" ? "AI Video Creator" : clipTypeFilter === "face-swap" ? "Face Swap" : "Ad Clone"}
+              </Button>
+            </DropdownTrigger>
+            <DropdownMenu
+              aria-label="Clip type filter"
+              selectedKeys={[clipTypeFilter]}
+              selectionMode="single"
+              onSelectionChange={(keys) => setClipTypeFilter(Array.from(keys)[0] as string)}
+              classNames={{
+                base: "bg-surface-base border border-border-base",
+              }}
+            >
+              <DropdownItem key="all">All</DropdownItem>
+              <DropdownItem key="clips">Clips</DropdownItem>
+              <DropdownItem key="ai-video">AI Video Creator</DropdownItem>
+              <DropdownItem key="face-swap">Face Swap</DropdownItem>
+              <DropdownItem key="ad-clone">Ad Clone</DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
         </div>
 
-        <Tabs
-          selectedKey={activeTab}
-          onSelectionChange={(key) => setActiveTab(key as string)}
-          classNames={{
-            tabList: "bg-surface-base border border-border-base rounded-lg p-1 gap-1 w-full max-w-md",
-            cursor: "bg-accent-400",
-            tab: "px-3 sm:px-4 py-2 data-[selected=true]:text-white flex-1 min-w-0",
-            tabContent: "group-data-[selected=true]:text-white truncate",
-          }}
-          className="mb-4 sm:mb-6"
-        >
-          <Tab
-            key="processing"
-            title={
-              <div className="flex items-center justify-center gap-1.5 sm:gap-2 min-w-0">
-                <Icon icon="solar:hourglass-bold-duotone" className="text-base sm:text-lg flex-shrink-0" />
-                <span className="text-xs sm:text-sm truncate">Processing</span>
-                {processingCount > 0 && (
-                  <span className="px-1.5 py-0.5 text-[10px] sm:text-xs rounded-full bg-warning-500/20 text-warning-500 flex-shrink-0">
-                    {processingCount}
-                  </span>
-                )}
-              </div>
-            }
-          />
-          <Tab
-            key="library"
-            title={
-              <div className="flex items-center justify-center gap-1.5 sm:gap-2 min-w-0">
-                <Icon icon="solar:library-bold-duotone" className="text-base sm:text-lg flex-shrink-0" />
-                <span className="text-xs sm:text-sm truncate">Library</span>
-              </div>
-            }
-          />
-        </Tabs>
-
-        {activeTab === "processing" && (
-          <div className="space-y-6">
-            <PendingClipsSection
-              clips={pendingClips}
-              onClipClick={(clip: any) => openViewModal(clip)}
-              onCancel={(clipId) => deleteClip(clipId, triggerRefresh)}
-            />
-
-            <ClipsToSaveSection
-              clips={unsavedClips}
-              teamId={selectedTeam!.id}
-              onClipSaved={handleClipSaved}
-              onClipRejected={rejectClip}
-              onClipView={openPreviewModal}
-              onUsageUpdated={triggerRefresh}
-            />
-
-            {pendingClips.length === 0 && unsavedClips.length === 0 && (
-              <Card className="bg-surface-base border border-border-base">
-                <CardBody className="flex flex-col items-center justify-center py-16">
-                  <Icon
-                    icon="solar:check-circle-bold-duotone"
-                    className="text-6xl text-success-500 mb-4"
-                  />
-                  <p className="text-text-secondary text-center mb-2 text-lg">
-                    All caught up!
-                  </p>
-                  <p className="text-text-tertiary text-center text-sm max-w-md">
-                    No clips are currently processing. Upload a video to generate new clips.
-                  </p>
-                </CardBody>
-              </Card>
-            )}
-          </div>
-        )}
-
-        {activeTab === "library" && (
-          <div className="space-y-4">
+        {/* Library Content - Processing tab moved to AI Clipping page */}
+        <div className="space-y-4">
             {/* Search Component */}
             {selectedTeam && (
               <ClipSearch
@@ -509,7 +496,10 @@ function MyClipsPageContent() {
               {!isSearchMode && selectedFolderId === null && (
                 <NewClipsSection
                   clips={newClips}
-                  onDelete={(clipId) => deleteClip(clipId, triggerRefresh)}
+                  onDelete={(clipId) => {
+                    const clip = newClips.find(c => c.id === clipId);
+                    requestDeleteClip(clipId, clip?.title, triggerRefresh);
+                  }}
                   onClipClick={(clip: any) => openViewModal(clip)}
                   onEditClick={(clip: any) => handleEditClip(clip)}
                   selectedClipId={isViewModalOpen ? selectedClip?.id : null}
@@ -555,23 +545,23 @@ function MyClipsPageContent() {
 
                 {/* Search Results Display */}
                 {isSearchMode ? (
-                  isSearching && searchResults.length === 0 ? (
+                  isSearching && filteredSearchResults.length === 0 ? (
                     <div className="flex items-center justify-center py-12">
                       <Icon
                         icon="solar:loading-circle-bold"
                         className="text-4xl animate-spin text-accent-400"
                       />
                     </div>
-                  ) : searchResults.length > 0 ? (
+                  ) : filteredSearchResults.length > 0 ? (
                     <>
                       <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" : "flex flex-col gap-2"}>
-                        {searchResults.map((clip) => (
+                        {filteredSearchResults.map((clip) => (
                           <ClipCard
                             key={clip.id}
                             clip={clip}
                             viewMode={viewMode}
                             onDelete={(clipId) => {
-                              deleteClip(clipId, triggerRefresh);
+                              requestDeleteClip(clipId, clip.title, triggerRefresh);
                               setSearchResults(prev => prev.filter(c => c.id !== clipId));
                             }}
                             onView={() => openViewModal(clip)}
@@ -629,12 +619,12 @@ function MyClipsPageContent() {
                           onDropClip={selectedTeam?.plan === "scale" || selectedTeam?.plan === "enterprise" ? moveClipToFolder : undefined}
                         />
                       ))}
-                      {savedClips.map((clip) => (
+                      {filteredSavedClips.map((clip) => (
                         <ClipCard
                           key={clip.id}
                           clip={clip}
                           viewMode={viewMode}
-                          onDelete={(clipId) => deleteClip(clipId, triggerRefresh)}
+                          onDelete={(clipId) => requestDeleteClip(clipId, clip.title, triggerRefresh)}
                           onView={() => openViewModal(clip)}
                           onEdit={() => handleEditClip(clip)}
                           isSelected={isViewModalOpen && selectedClip?.id === clip.id}
@@ -677,8 +667,7 @@ function MyClipsPageContent() {
               </div>
             </div>
           </div>
-          </div>
-        )}
+        </div>
       </div>
 
       <CreateFolderModal
@@ -719,6 +708,14 @@ function MyClipsPageContent() {
           isSaving={isSavingPreviewClip}
         />
       )}
+
+      <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={cancelDeleteClip}
+        onConfirm={confirmDeleteClip}
+        isDeleting={isDeleting}
+        clipName={clipToDelete?.name}
+      />
     </div>
   );
 }

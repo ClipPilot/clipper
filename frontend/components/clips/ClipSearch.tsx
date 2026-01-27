@@ -120,7 +120,7 @@ const ClipSearch = forwardRef<ClipSearchHandle, ClipSearchProps>(function ClipSe
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex-1">
           <Input
-            placeholder="Search clips by title or description..."
+            placeholder="Search videos"
             value={searchQuery}
             onValueChange={handleSearchChange}
             startContent={

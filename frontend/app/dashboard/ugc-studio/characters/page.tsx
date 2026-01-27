@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAtomValue } from "jotai";
 import { Button, Card, CardBody, Spinner, Tabs, Tab } from "@heroui/react";
 import { Icon } from "@iconify/react";
@@ -20,8 +20,10 @@ const PAGE_SIZE = 12;
 
 export default function CharactersPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const selectedTeam = useAtomValue(selectedTeamAtom);
-  const [activeTab, setActiveTab] = useState<"create" | "my-actors">("my-actors");
+  const initialTab = searchParams.get("tab") === "create" ? "create" : "my-actors";
+  const [activeTab, setActiveTab] = useState<"create" | "my-actors">(initialTab);
   const [myActors, setMyActors] = useState<Character[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);

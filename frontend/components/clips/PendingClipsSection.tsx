@@ -128,8 +128,7 @@ export default function PendingClipsSection({
 }: PendingClipsSectionProps) {
   const [cancellingIds, setCancellingIds] = useState<Set<number>>(new Set());
 
-  const handleCancel = async (e: React.MouseEvent, clipId: number) => {
-    e.stopPropagation();
+  const handleCancel = async (clipId: number) => {
     if (!onCancel) return;
 
     setCancellingIds(prev => new Set(prev).add(clipId));
@@ -189,7 +188,7 @@ export default function PendingClipsSection({
                         color="danger"
                         isIconOnly
                         isLoading={cancellingIds.has(clip.id)}
-                        onPress={(e) => handleCancel(e as unknown as React.MouseEvent, clip.id)}
+                        onPress={() => handleCancel(clip.id)}
                         className="min-w-6 w-6 h-6"
                         title="Cancel processing"
                       >
@@ -244,7 +243,7 @@ export default function PendingClipsSection({
                         color="danger"
                         isIconOnly
                         isLoading={cancellingIds.has(clip.id)}
-                        onPress={(e) => handleCancel(e as unknown as React.MouseEvent, clip.id)}
+                        onPress={() => handleCancel(clip.id)}
                         className="min-w-6 w-6 h-6"
                         title="Cancel editing"
                       >

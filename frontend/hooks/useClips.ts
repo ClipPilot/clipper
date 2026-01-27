@@ -24,6 +24,9 @@ import {
   isPreviewModalOpenAtom,
   selectedPreviewClipAtom,
   isSavingPreviewClipAtom,
+  isDeleteModalOpenAtom,
+  clipToDeleteAtom,
+  isDeletingClipAtom,
 } from "@/store/clips";
 import { clipsAPI, FolderTreeNode } from "@/api/clips";
 
@@ -40,6 +43,10 @@ export function useClipsData() {
   const [offset, setOffset] = useAtom(clipsOffsetAtom);
   const selectedFolderId = useAtomValue(selectedFolderIdAtom);
   const isDraggingRef = useRef(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useAtom(isDeleteModalOpenAtom);
+  const [clipToDelete, setClipToDelete] = useAtom(clipToDeleteAtom);
+  const [isDeleting, setIsDeleting] = useAtom(isDeletingClipAtom);
+  const triggerRefreshRef = useRef<(() => void) | null>(null);
 
   const loadPendingClips = useCallback(async () => {
     if (!selectedTeam?.id) return;
@@ -127,23 +134,43 @@ export function useClipsData() {
     }
   }, [selectedTeam?.id, isLoadingMore, hasMore, offset, setIsLoadingMore, setSavedClips, setOffset, setHasMore]);
 
-  const deleteClip = useCallback(
-    async (clipId: number, triggerRefresh: () => void) => {
-      if (!selectedTeam?.id) return;
-      if (!confirm("Are you sure you want to delete this clip?")) return;
-
-      try {
-        await clipsAPI.deleteClip(selectedTeam.id, clipId);
-        setPendingClips((prev) => prev.filter((c) => c.id !== clipId));
-        setUnsavedClips((prev) => prev.filter((c) => c.id !== clipId));
-        setSavedClips((prev) => prev.filter((c) => c.id !== clipId));
-        triggerRefresh();
-      } catch (error) {
-        console.error("Failed to delete clip:", error);
-      }
+  const requestDeleteClip = useCallback(
+    (clipId: number, clipName: string | undefined, triggerRefresh: () => void) => {
+      setClipToDelete({ id: clipId, name: clipName });
+      triggerRefreshRef.current = triggerRefresh;
+      setIsDeleteModalOpen(true);
     },
-    [selectedTeam?.id, setPendingClips, setUnsavedClips, setSavedClips]
+    [setClipToDelete, setIsDeleteModalOpen]
   );
+
+  const confirmDeleteClip = useCallback(async () => {
+    if (!selectedTeam?.id || !clipToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      await clipsAPI.deleteClip(selectedTeam.id, clipToDelete.id);
+      setPendingClips((prev) => prev.filter((c) => c.id !== clipToDelete.id));
+      setUnsavedClips((prev) => prev.filter((c) => c.id !== clipToDelete.id));
+      setSavedClips((prev) => prev.filter((c) => c.id !== clipToDelete.id));
+
+      if (triggerRefreshRef.current) {
+        triggerRefreshRef.current();
+      }
+
+      setIsDeleteModalOpen(false);
+      setClipToDelete(null);
+    } catch (error) {
+      console.error("Failed to delete clip:", error);
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [selectedTeam?.id, clipToDelete, setPendingClips, setUnsavedClips, setSavedClips, setIsDeleting, setIsDeleteModalOpen, setClipToDelete]);
+
+  const cancelDeleteClip = useCallback(() => {
+    setIsDeleteModalOpen(false);
+    setClipToDelete(null);
+    triggerRefreshRef.current = null;
+  }, [setIsDeleteModalOpen, setClipToDelete]);
 
   const saveClip = useCallback(
     async (clipId: number, triggerRefresh: () => void) => {
@@ -216,7 +243,12 @@ export function useClipsData() {
     loadUnsavedClips,
     loadSavedClips,
     loadMoreClips,
-    deleteClip,
+    requestDeleteClip,
+    confirmDeleteClip,
+    cancelDeleteClip,
+    isDeleteModalOpen,
+    clipToDelete,
+    isDeleting,
     saveClip,
     rejectClip,
     moveClipToFolder,

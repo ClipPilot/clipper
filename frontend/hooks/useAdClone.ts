@@ -94,14 +94,11 @@ export function useAdClone(teamId: number | undefined) {
         setError(update.error);
       }
 
-      // Auto-advance step based on status
       switch (update.status) {
         case "script_generated":
-          // Combined analyze+script is done, stay on script step to review
           setStep("script");
           break;
         case "completed":
-          // Video generation complete, stay on generate step (which shows preview)
           setStep("generate");
           break;
         case "failed":
@@ -112,7 +109,6 @@ export function useAdClone(teamId: number | undefined) {
     [projectId, setStatus, setProgress, setProgressMessage, setAnalysis, setScripts, setError, setStep]
   );
 
-  // Socket connection for real-time updates
   useEffect(() => {
     if (!teamId || !projectId) return;
 
@@ -137,7 +133,7 @@ export function useAdClone(teamId: number | undefined) {
   }, [teamId, projectId, handleSocketUpdate]);
 
   const createProject = useCallback(async () => {
-    if (!teamId || !video || !productImage) {
+    if (!teamId || !video) {
       throw new Error("Missing required data");
     }
 
@@ -157,45 +153,52 @@ export function useAdClone(teamId: number | undefined) {
       setProgress(5);
       setProgressMessage("Uploading video...");
 
-      // Upload video
+      const videoProgressWeight = productImage ? 0.4 : 0.8;
       await adCloneAPI.uploadFile(
         result.uploadUrls.video.uploadUrl,
         video.file,
         (progress) => {
-          setProgress(5 + Math.round(progress * 0.4));
+          setProgress(5 + Math.round(progress * videoProgressWeight));
           setProgressMessage(`Uploading video... ${progress}%`);
         }
       );
 
-      setProgress(50);
-      setProgressMessage("Uploading product image...");
+      if (productImage) {
+        setProgress(50);
+        setProgressMessage("Uploading product image...");
 
-      // Get upload URL for product image
-      const uploadUrls = await adCloneAPI.getUploadUrls({
-        teamId,
-        projectId: result.projectId,
-        videoFileName: video.file.name,
-        productImageFileNames: [productImage.file.name],
-      });
+        const uploadUrls = await adCloneAPI.getUploadUrls({
+          teamId,
+          projectId: result.projectId,
+          videoFileName: video.file.name,
+          productImageFileNames: [productImage.file.name],
+        });
 
-      // Upload product image
-      await adCloneAPI.uploadFile(
-        uploadUrls.uploadUrls.productImages[0].uploadUrl,
-        productImage.file,
-        (progress) => {
-          setProgress(50 + Math.round(progress * 0.3));
-          setProgressMessage(`Uploading product image... ${progress}%`);
-        }
-      );
+        await adCloneAPI.uploadFile(
+          uploadUrls.uploadUrls.productImages[0].uploadUrl,
+          productImage.file,
+          (progress) => {
+            setProgress(50 + Math.round(progress * 0.3));
+            setProgressMessage(`Uploading product image... ${progress}%`);
+          }
+        );
 
-      setProgress(85);
-      setProgressMessage("Confirming uploads...");
+        setProgress(85);
+        setProgressMessage("Confirming uploads...");
 
-      // Confirm upload
-      await adCloneAPI.confirmUpload(result.projectId, {
-        referenceVideoKey: result.uploadUrls.video.s3Key,
-        productImageKeys: [uploadUrls.uploadUrls.productImages[0].s3Key],
-      });
+        await adCloneAPI.confirmUpload(result.projectId, {
+          referenceVideoKey: result.uploadUrls.video.s3Key,
+          productImageKeys: [uploadUrls.uploadUrls.productImages[0].s3Key],
+        });
+      } else {
+        setProgress(85);
+        setProgressMessage("Confirming uploads...");
+
+        await adCloneAPI.confirmUpload(result.projectId, {
+          referenceVideoKey: result.uploadUrls.video.s3Key,
+          productImageKeys: [],
+        });
+      }
 
       setProgress(100);
       setProgressMessage("Uploads complete");
@@ -449,7 +452,6 @@ export function useAdClone(teamId: number | undefined) {
   );
 
   return {
-    // State
     video,
     productImage,
     productName,
@@ -466,14 +468,10 @@ export function useAdClone(teamId: number | undefined) {
     error,
     videoJobId,
     finalVideoUrl,
-
-    // Setters
     setCharacterId,
     setVoiceId,
     setStep,
     setSelectedVariant,
-
-    // Actions
     createProject,
     startAnalysis,
     startAnalyzeAndScript,

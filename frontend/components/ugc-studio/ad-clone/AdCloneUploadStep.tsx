@@ -204,16 +204,17 @@ export function AdCloneUploadStep({ teamId, onContinue }: AdCloneUploadStepProps
           </CardBody>
         </Card>
 
-        <Card className="bg-surface-base border border-border-base">
+        <Card className="bg-surface-base border border-dashed border-border-base">
           <CardBody className="p-5">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center">
                 <Icon icon="solar:box-bold-duotone" className="text-cyan-400" width={22} />
               </div>
-              <div>
+              <div className="flex-1">
                 <h3 className="text-base font-semibold text-text-primary">Product Image</h3>
                 <p className="text-xs text-text-tertiary">Your product to feature in the ad</p>
               </div>
+              <span className="text-xs font-medium text-text-muted bg-surface-elevated px-2 py-1 rounded-md">Optional</span>
             </div>
 
             {productImage ? (
@@ -282,20 +283,21 @@ export function AdCloneUploadStep({ teamId, onContinue }: AdCloneUploadStepProps
         </Card>
       </div>
 
-      <Card className="bg-surface-base border border-border-base">
+      <Card className="bg-surface-base border border-dashed border-border-base">
         <CardBody className="p-5 space-y-5">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
               <Icon icon="solar:document-text-bold-duotone" className="text-purple-400" width={22} />
             </div>
-            <div>
+            <div className="flex-1">
               <h3 className="text-base font-semibold text-text-primary">Product Details</h3>
               <p className="text-xs text-text-tertiary">Tell us about your product</p>
             </div>
+            <span className="text-xs font-medium text-text-muted bg-surface-elevated px-2 py-1 rounded-md">Optional</span>
           </div>
 
           <Input
-            label="Product Name"
+            label="Product Name (optional)"
             placeholder="e.g., GlowSkin Serum"
             value={productName}
             onValueChange={setProductName}
@@ -307,7 +309,7 @@ export function AdCloneUploadStep({ teamId, onContinue }: AdCloneUploadStepProps
           />
 
           <Textarea
-            label="Product Description"
+            label="Product Description (optional)"
             placeholder="Describe your product, its key features, and benefits..."
             value={productDescription}
             onValueChange={setProductDescription}

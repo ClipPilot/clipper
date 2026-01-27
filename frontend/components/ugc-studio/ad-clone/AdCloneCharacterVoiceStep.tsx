@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { useAtom, useSetAtom } from "jotai";
 import {
   Card,
@@ -39,10 +40,10 @@ export function AdCloneCharacterVoiceStep({
   onContinue,
   onBack,
 }: AdCloneCharacterVoiceStepProps) {
+  const router = useRouter();
   const [characterId, setCharacterId] = useAtom(adCloneCharacterIdAtom);
   const [voiceId, setVoiceId] = useAtom(adCloneVoiceIdAtom);
 
-  // Character state
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
   const [activeTab, setActiveTab] = useState<"my-actors" | "community">("my-actors");
   const [myActors, setMyActors] = useState<Character[]>([]);
@@ -55,7 +56,6 @@ export function AdCloneCharacterVoiceStep({
   const [communityTotal, setCommunityTotal] = useState(0);
   const [detailCharacter, setDetailCharacter] = useState<Character | null>(null);
 
-  // Voice state
   const [voiceFilter, setVoiceFilter] = useState<GenderFilter>("all");
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
   const [playbackProgress, setPlaybackProgress] = useState(0);
@@ -69,7 +69,6 @@ export function AdCloneCharacterVoiceStep({
 
   const canContinue = !!characterId && !!voiceId;
 
-  // Character loading
   const loadMyActors = useCallback(
     async (reset = true) => {
       if (reset) {
@@ -154,7 +153,6 @@ export function AdCloneCharacterVoiceStep({
     }
   }, [characterId, selectedCharacter, setCharacterId]);
 
-  // Voice audio handling
   const handlePlayToggle = useCallback(
     (voice: Voice) => {
       if (playingVoiceId === voice.id) {
@@ -228,7 +226,6 @@ export function AdCloneCharacterVoiceStep({
         </p>
       </div>
 
-      {/* Selection Summary */}
       {(selectedCharacter || selectedVoice) && (
         <Card className="bg-gradient-to-r from-orange-500/10 to-purple-500/10 border border-orange-500/30">
           <CardBody className="p-4">
@@ -290,17 +287,24 @@ export function AdCloneCharacterVoiceStep({
         </Card>
       )}
 
-      {/* Character Selection */}
       <Card className="bg-surface-base border border-border-base">
         <CardHeader className="flex-col items-start gap-3 pb-0">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 w-full">
             <div className="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center">
               <Icon icon="solar:user-circle-bold-duotone" className="text-orange-500" width={22} />
             </div>
-            <div>
+            <div className="flex-1">
               <h3 className="text-base font-semibold text-text-primary">Choose Actor</h3>
               <p className="text-xs text-text-tertiary">Select the AI actor for your ad</p>
             </div>
+            <Button
+              size="sm"
+              className="bg-orange-500 text-white"
+              startContent={<Icon icon="solar:user-plus-bold" width={16} />}
+              onPress={() => router.push("/dashboard/ugc-studio/characters?tab=create")}
+            >
+              Create New
+            </Button>
           </div>
         </CardHeader>
         <CardBody className="pt-4">
@@ -386,14 +390,21 @@ export function AdCloneCharacterVoiceStep({
                   </>
                 ) : (
                   <Card className="bg-surface-elevated border border-border-base border-dashed">
-                    <CardBody className="py-12 text-center">
+                    <CardBody className="py-12 flex flex-col items-center text-center">
                       <Icon icon="solar:user-plus-bold-duotone" className="text-text-muted mx-auto mb-4" width={48} />
                       <h3 className="text-lg font-semibold text-text-primary mb-2">
                         No actors yet
                       </h3>
-                      <p className="text-text-secondary text-sm">
-                        Create actors in the UGC Studio to use them here
+                      <p className="text-text-secondary text-sm mb-4">
+                        Create your first AI actor to use in your ad
                       </p>
+                      <Button
+                        className="bg-orange-500 text-white"
+                        startContent={<Icon icon="solar:user-plus-bold" width={16} />}
+                        onPress={() => router.push("/dashboard/ugc-studio/characters?tab=create")}
+                      >
+                        Create New Actor
+                      </Button>
                     </CardBody>
                   </Card>
                 )}
@@ -488,7 +499,6 @@ export function AdCloneCharacterVoiceStep({
         </CardBody>
       </Card>
 
-      {/* Voice Selection */}
       <Card className="bg-surface-base border border-border-base">
         <CardHeader className="pb-0 flex-col items-start gap-3">
           <div className="flex items-center gap-3">
@@ -530,7 +540,6 @@ export function AdCloneCharacterVoiceStep({
         </CardBody>
       </Card>
 
-      {/* Continue Button (inline for this step) */}
       {onContinue && (
         <div className="flex justify-center">
           <Button
