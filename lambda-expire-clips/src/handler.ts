@@ -97,12 +97,12 @@ async function findStuckProcessingClips(db: ReturnType<typeof drizzle>) {
       clip_path: schema.clips.clip_path,
       blank_video_path: schema.clips.blank_video_path,
       watermarked_clip_path: schema.clips.watermarked_clip_path,
-      raw_video_path: schema.clips.raw_video_path,
+      source_video_path: schema.clips.source_video_path,
     })
     .from(schema.clips)
     .where(
       and(
-        eq(schema.clips.status, "processing"),
+        eq(schema.clips.status, "pending"),
         lt(schema.clips.created_at, processingThreshold)
       )
     );
@@ -169,14 +169,14 @@ export const handler: Handler = async (event: any, context: Context) => {
       console.log(`Found ${stuckClips.length} stuck processing clips to delete`);
 
       for (const clip of stuckClips) {
-        const { id, clip_path, blank_video_path, watermarked_clip_path, raw_video_path } = clip;
+        const { id, clip_path, blank_video_path, watermarked_clip_path, source_video_path } = clip;
 
         try {
           // Delete all S3 files completely (no archiving for failed clips)
           await deleteS3Object(S3_BUCKET, clip_path || "");
           await deleteS3Object(S3_BUCKET, blank_video_path || "");
           await deleteS3Object(S3_BUCKET, watermarked_clip_path || "");
-          await deleteS3Object(S3_BUCKET, raw_video_path || "");
+          await deleteS3Object(S3_BUCKET, source_video_path || "");
 
           // Delete the database record completely
           if (await deleteStuckClip(db, id)) {
