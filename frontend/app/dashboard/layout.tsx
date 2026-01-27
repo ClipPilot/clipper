@@ -327,7 +327,7 @@ export default function DashboardLayout({
                 >
                   Settings
                 </DropdownItem>
-                {canViewPricing && (
+                {canViewPricing ? (
                   <DropdownItem
                     key="pricing"
                     startContent={
@@ -345,7 +345,7 @@ export default function DashboardLayout({
                   >
                     Pricing
                   </DropdownItem>
-                )}
+                ) : null}
                 <DropdownItem
                   key="logout"
                   color="danger"
