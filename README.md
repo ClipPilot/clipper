@@ -42,11 +42,44 @@ clipper/
 pnpm install
 ```
 
+### Environment Variables (dotenv-vault)
+
+This project uses [dotenv-vault](https://www.dotenv.org/docs) to securely manage environment variables across all packages. Encrypted `.env.vault` files are committed to git, while plaintext `.env` files are gitignored.
+
+#### Vault Setup
+
+The project vault is hosted at:
+**[vault.dotenv.org](https://vault.dotenv.org)**
+
+Each package has its own vault:
+- `backend/.env.vault`
+- `frontend/.env.vault`
+- `packages/shared-db/.env.vault`
+
+#### Getting Started
+
+1. **Login** to the vault:
+
+```bash
+npx dotenv-vault@latest login
+```
+
+2. **Pull** environment variables to your local `.env` files:
+
+```bash
+# From each package directory (backend, frontend, packages/shared-db)
+npx dotenv-vault@latest pull
+```
+
+3. **Adding new variables:** Contact Naman to configure any new environment variables in the vault.
+
 ### Database Setup
 
 #### 1. Configure Environment Variables
 
-Update the database URLs in `packages/shared-db/.env`:
+Pull environment variables using dotenv-vault (see above), or manually create the `.env` files:
+
+`packages/shared-db/.env`:
 
 ```env
 DATABASE_URL=postgresql://user:password@host:port/database_dev
@@ -55,7 +88,7 @@ PROD_DATABASE_URL=postgresql://user:password@host:port/database_prod
 ENV=dev
 ```
 
-Also update `backend/.env`:
+`backend/.env`:
 
 ```env
 DATABASE_URL=postgresql://user:password@host:port/database_dev
