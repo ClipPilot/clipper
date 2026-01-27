@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAtomValue } from "jotai";
 import { Button, Card, CardBody, Spinner, Tabs, Tab } from "@heroui/react";
@@ -19,6 +19,20 @@ import { useEffect, useCallback } from "react";
 const PAGE_SIZE = 12;
 
 export default function CharactersPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-surface-dark flex items-center justify-center">
+          <Spinner size="lg" color="primary" />
+        </div>
+      }
+    >
+      <CharactersPageContent />
+    </Suspense>
+  );
+}
+
+function CharactersPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedTeam = useAtomValue(selectedTeamAtom);
