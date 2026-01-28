@@ -38,6 +38,13 @@ const FONT_NAME_MAP: Record<string, string> = {
   "Burbank": "Burbank Big Regular",
   "Bebas Neue": "Bebas Neue",
   "Anton": "Anton",
+  "Noto Sans Devanagari": "Noto Sans Devanagari",
+};
+
+const DEVANAGARI_FONT = "Noto Sans Devanagari";
+
+const containsDevanagari = (text: string): boolean => {
+  return /[\u0900-\u097F]/.test(text);
 };
 
 const resolveFontName = (fontName: string): string => {
@@ -69,12 +76,14 @@ const buildHighlightedText = (
   words: TimedWord[],
   activeIndex: number,
   highlightColor: string,
-  defaultColor: string
+  defaultColor: string,
+  defaultFont: string
 ): string => {
   return words
     .map((w, i) => {
       const color = i === activeIndex ? highlightColor : defaultColor;
-      return `{\\c${color}}${w.word}`;
+      const font = containsDevanagari(w.word) ? DEVANAGARI_FONT : defaultFont;
+      return `{\\fn${font}\\c${color}}${w.word}`;
     })
     .join(" ");
 };
@@ -108,7 +117,7 @@ WrapStyle: 0
 
 [V4+ Styles]
 Format: Name,Fontname,Fontsize,PrimaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding
-Style: Default,${resolvedFont},120,${defaultColor},&H00000000,&H80000000,1,0,0,0,100,100,2,0,1,6,2,2,80,80,280,1
+Style: Default,${resolvedFont},120,${defaultColor},&H00000000,&H80000000,1,0,0,0,100,100,2,0,1,6,2,2,80,80,280,0
 
 [Events]
 Format: Layer,Start,End,Style,Text
@@ -141,7 +150,8 @@ Format: Layer,Start,End,Style,Text
           timedGroup,
           j,
           highlightColor,
-          defaultColor
+          defaultColor,
+          resolvedFont
         );
 
         ass += `Dialogue: 0,${formatTime(currentWord.start)},${formatTime(currentWord.end)},Default,${text}\n`;
@@ -151,7 +161,7 @@ Format: Layer,Start,End,Style,Text
     offset += segment.end - segment.start;
   }
 
-  fs.writeFileSync(assPath, ass);
+  fs.writeFileSync(assPath, ass, "utf-8");
 
   const fontsDir = path.resolve(__dirname, "../../fonts");
 
@@ -246,7 +256,7 @@ WrapStyle: 0
 
 [V4+ Styles]
 Format: Name,Fontname,Fontsize,PrimaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding
-Style: Default,${resolvedFont},120,${defaultColor},&H00000000,&H80000000,1,0,0,0,100,100,2,0,1,6,2,2,80,80,280,1
+Style: Default,${resolvedFont},120,${defaultColor},&H00000000,&H80000000,1,0,0,0,100,100,2,0,1,6,2,2,80,80,280,0
 
 [Events]
 Format: Layer,Start,End,Style,Text
@@ -263,7 +273,8 @@ Format: Layer,Start,End,Style,Text
       const text = words
         .map((w, idx) => {
           const color = idx === i ? highlightColor : defaultColor;
-          return `{\\c${color}}${w}`;
+          const font = containsDevanagari(w) ? DEVANAGARI_FONT : resolvedFont;
+          return `{\\fn${font}\\c${color}}${w}`;
         })
         .join(" ");
 
@@ -271,7 +282,7 @@ Format: Layer,Start,End,Style,Text
     }
   }
 
-  fs.writeFileSync(assPath, ass);
+  fs.writeFileSync(assPath, ass, "utf-8");
 
   const fontsDir = path.resolve(__dirname, "../../fonts");
 
