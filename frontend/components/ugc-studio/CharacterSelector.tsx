@@ -1,12 +1,15 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
-import { Button, Card, CardBody, CardHeader, Input, addToast } from "@heroui/react";
+import { Button, Card, CardBody, CardHeader, Input, Tabs, Tab, addToast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { EXAMPLE_CHARACTERS, SelectedCharacter } from "./types";
 import { savedFacesAPI, SavedFace } from "@/api/ugc/savedFaces";
+import { voicesConfig, type Voice } from "@/config/voicesConfig";
+import { VoiceCard } from "./voice/VoiceCard";
 
 type TabType = "saved" | "examples" | "upload";
+type GenderFilter = "all" | "male" | "female";
 
 interface CharacterSelectorProps {
   selectedCharacters: SelectedCharacter[];
@@ -31,7 +34,96 @@ export function CharacterSelector({
   const [saveName, setSaveName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
+  // Voice sidebar state
+  const [voiceSidebarOpen, setVoiceSidebarOpen] = useState(false);
+  const [voiceSidebarAnimating, setVoiceSidebarAnimating] = useState(false);
+  const [editingVoiceForIndex, setEditingVoiceForIndex] = useState<number | null>(null);
+  const [voiceFilter, setVoiceFilter] = useState<GenderFilter>("all");
+  const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
+  const [playbackProgress, setPlaybackProgress] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
   const canAddMore = selectedCharacters.length < maxSelections;
+
+  const filteredVoices =
+    voiceFilter === "all"
+      ? voicesConfig
+      : voicesConfig.filter((v) => v.gender === voiceFilter);
+
+  const openVoiceSidebar = useCallback((index: number) => {
+    setEditingVoiceForIndex(index);
+    setVoiceSidebarOpen(true);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setVoiceSidebarAnimating(true);
+      });
+    });
+  }, []);
+
+  const closeVoiceSidebar = useCallback(() => {
+    setVoiceSidebarAnimating(false);
+    setTimeout(() => {
+      setVoiceSidebarOpen(false);
+      setEditingVoiceForIndex(null);
+    }, 300);
+  }, []);
+
+  const handleVoiceSelect = useCallback(
+    (voice: Voice) => {
+      if (editingVoiceForIndex === null) return;
+      const updated = [...selectedCharacters];
+      const current = updated[editingVoiceForIndex];
+      if (current.voiceId === voice.id) {
+        updated[editingVoiceForIndex] = { ...current, voiceId: undefined, voiceName: undefined };
+      } else {
+        updated[editingVoiceForIndex] = { ...current, voiceId: voice.id, voiceName: voice.name };
+      }
+      onCharactersChange(updated);
+      closeVoiceSidebar();
+    },
+    [editingVoiceForIndex, selectedCharacters, onCharactersChange, closeVoiceSidebar]
+  );
+
+  const handleVoicePlayToggle = useCallback(
+    (voice: Voice) => {
+      if (playingVoiceId === voice.id) {
+        audioRef.current?.pause();
+        setPlayingVoiceId(null);
+        setPlaybackProgress(0);
+        return;
+      }
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        audioRef.current.src = voice.previewFile;
+        audioRef.current.load();
+        audioRef.current
+          .play()
+          .then(() => {
+            setPlayingVoiceId(voice.id);
+            setPlaybackProgress(0);
+          })
+          .catch(() => setPlayingVoiceId(null));
+      }
+    },
+    [playingVoiceId]
+  );
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const handleEnded = () => { setPlayingVoiceId(null); setPlaybackProgress(0); };
+    const handleTimeUpdate = () => { if (audio.duration) setPlaybackProgress(audio.currentTime / audio.duration); };
+    const handleError = () => { setPlayingVoiceId(null); setPlaybackProgress(0); };
+    audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("error", handleError);
+    return () => {
+      audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener("error", handleError);
+    };
+  }, []);
 
   useEffect(() => {
     if (teamId) {
@@ -213,24 +305,40 @@ export function CharacterSelector({
         {selectedCharacters.length > 0 && (
           <div className="space-y-2">
             <p className="text-xs text-text-tertiary">Selected faces</p>
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-2 gap-3">
               {selectedCharacters.map((character, index) => (
                 <div
                   key={`${character.src}-${index}`}
-                  className="relative aspect-square rounded-lg overflow-hidden bg-surface-elevated group"
+                  className="flex flex-col gap-1.5"
                 >
-                  <img src={character.src} alt={`Character ${index + 1}`} className="w-full h-full object-cover" />
-                  <button
-                    onClick={() => handleRemoveCharacter(index)}
-                    className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <Icon icon="solar:close-circle-bold" width={14} />
-                  </button>
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-1">
-                    <span className="text-[10px] text-white font-medium">
-                      {character.type === "uploaded" ? "Custom" : character.type === "saved" ? "Saved" : "Example"}
-                    </span>
+                  <div className="relative aspect-square rounded-lg overflow-hidden bg-surface-elevated group">
+                    <img src={character.src} alt={`Character ${index + 1}`} className="w-full h-full object-cover" />
+                    <button
+                      onClick={() => handleRemoveCharacter(index)}
+                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Icon icon="solar:close-circle-bold" width={14} />
+                    </button>
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-1">
+                      <span className="text-[10px] text-white font-medium">
+                        {character.type === "uploaded" ? "Custom" : character.type === "saved" ? "Saved" : "Example"}
+                      </span>
+                    </div>
                   </div>
+                  <button
+                    onClick={() => openVoiceSidebar(index)}
+                    className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs transition-all border ${
+                      character.voiceId
+                        ? "border-accent-400/50 bg-accent-400/10 text-accent-400"
+                        : "border-border-base bg-surface-elevated text-text-muted hover:border-accent-400/30"
+                    }`}
+                  >
+                    <Icon icon="solar:microphone-3-bold-duotone" width={14} className={character.voiceId ? "text-accent-400" : "text-text-tertiary"} />
+                    <span className="truncate flex-1 text-left">
+                      {character.voiceName || "Voice"}
+                    </span>
+                    <Icon icon="solar:alt-arrow-right-linear" width={12} className="text-text-tertiary shrink-0" />
+                  </button>
                 </div>
               ))}
             </div>
@@ -453,6 +561,73 @@ export function CharacterSelector({
           <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
             <Icon icon="solar:info-circle-bold" className="text-amber-400" width={18} />
             <span className="text-sm text-amber-400">Maximum {maxSelections} faces reached</span>
+          </div>
+        )}
+
+        <audio ref={audioRef} className="hidden" preload="none" />
+
+        {/* Voice Selector Sidebar */}
+        {voiceSidebarOpen && (
+          <div className="fixed inset-0 z-50 flex justify-end">
+            <div
+              className={`absolute inset-0 bg-black/50 transition-opacity duration-300 ${
+                voiceSidebarAnimating ? "opacity-100" : "opacity-0"
+              }`}
+              onClick={closeVoiceSidebar}
+            />
+            <div
+              className={`relative w-80 max-w-full h-full bg-surface-base border-l border-border-base shadow-xl flex flex-col transition-transform duration-300 ease-out ${
+                voiceSidebarAnimating ? "translate-x-0" : "translate-x-full"
+              }`}
+            >
+              <div className="flex items-center justify-between p-4 border-b border-border-base">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-accent-400/20 flex items-center justify-center">
+                    <Icon icon="solar:microphone-3-bold-duotone" className="text-accent-400" width={22} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-semibold text-text-primary">Select Voice</h3>
+                    <p className="text-xs text-text-tertiary">
+                      {editingVoiceForIndex !== null
+                        ? `Character ${editingVoiceForIndex + 1}`
+                        : "Choose the AI voice"}
+                    </p>
+                  </div>
+                </div>
+                <Button isIconOnly variant="light" size="sm" onPress={closeVoiceSidebar}>
+                  <Icon icon="solar:close-circle-bold" className="text-text-muted" width={20} />
+                </Button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4">
+                <Tabs
+                  selectedKey={voiceFilter}
+                  onSelectionChange={(key) => setVoiceFilter(key as GenderFilter)}
+                  size="sm"
+                  variant="light"
+                  classNames={{ tabList: "gap-2", tab: "px-3", cursor: "bg-accent-400/20" }}
+                >
+                  <Tab key="all" title="All" />
+                  <Tab key="male" title="Male" />
+                  <Tab key="female" title="Female" />
+                </Tabs>
+                <div className="flex flex-col gap-2 mt-4">
+                  {filteredVoices.map((voice) => (
+                    <VoiceCard
+                      key={voice.id}
+                      voice={voice}
+                      isSelected={
+                        editingVoiceForIndex !== null &&
+                        selectedCharacters[editingVoiceForIndex]?.voiceId === voice.id
+                      }
+                      isPlaying={playingVoiceId === voice.id}
+                      progress={playingVoiceId === voice.id ? playbackProgress : 0}
+                      onSelect={() => handleVoiceSelect(voice)}
+                      onPlayToggle={() => handleVoicePlayToggle(voice)}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </CardBody>

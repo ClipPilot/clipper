@@ -9,8 +9,6 @@ import { selectedTeamAtom } from "@/store/auth";
 import { canAccessUGCStudio } from "@/lib/plans";
 import { faceSwapAPI } from "@/api/ugc/faceSwap";
 import type { SelectedCharacter } from "@/components/ugc-studio/types";
-import type { Voice } from "@/config/voicesConfig";
-import { VoiceSelector } from "@/components/ugc-studio/voice";
 import {
   UploadedFile,
   VideoSegment,
@@ -48,7 +46,6 @@ function FaceSwapContent({
   const [segments, setSegments] = useState<VideoSegment[]>([]);
   const [showEditor, setShowEditor] = useState(false);
   const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
-  const [selectedVoice, setSelectedVoice] = useState<Voice | null>(null);
   const faceSwapsSectionRef = useRef<MyFaceSwapsSectionRef>(null);
 
   const getCharacterImages = (): Array<File | { imageKey: string }> => {
@@ -98,6 +95,7 @@ function FaceSwapContent({
     const characterCount = characterImages.length;
     const totalCredits = characterCount * 5;
 
+    const voiceIds = selectedCharacters.map((c) => c.voiceId || null);
     const tempIds = characterImages.map((_, i) => `temp-${Date.now()}-${i}`);
 
     tempIds.forEach((tempId) => {
@@ -118,7 +116,7 @@ function FaceSwapContent({
         videoDuration: duration,
         spliceWithOriginal: true,
         folderId: selectedFolderId,
-        voiceId: selectedVoice?.id,
+        voiceIds,
       });
 
       result.jobIds.forEach((jobId, i) => {
@@ -164,6 +162,7 @@ function FaceSwapContent({
     const videoToRevoke = video.preview;
     const characterCount = characterImages.length;
     const totalCredits = characterCount * 5;
+    const voiceIds = selectedCharacters.map((c) => c.voiceId || null);
     const tempIds = characterImages.map((_, i) => `temp-${Date.now()}-${i}`);
 
     tempIds.forEach((tempId, i) => {
@@ -186,7 +185,7 @@ function FaceSwapContent({
         videoDuration: duration,
         spliceWithOriginal: true,
         folderId: selectedFolderId,
-        voiceId: selectedVoice?.id,
+        voiceIds,
       });
 
       result.jobIds.forEach((jobId, i) => {
@@ -215,7 +214,7 @@ function FaceSwapContent({
         color: "danger",
       });
     }
-  }, [video, selectedCharacters, selectedTeam?.id, videoDuration, selectedVoice, selectedFolderId]);
+  }, [video, selectedCharacters, selectedTeam?.id, videoDuration, selectedFolderId]);
 
   return (
     <div className="min-h-screen bg-surface-dark p-6 lg:p-8">
@@ -268,12 +267,6 @@ function FaceSwapContent({
               selectedCharacters={selectedCharacters}
               onCharactersChange={handleCharactersChange}
               teamId={selectedTeam?.id}
-            />
-
-            <VoiceSelector
-              selectedVoice={selectedVoice}
-              onVoiceChange={setSelectedVoice}
-              faceSwap
             />
 
             <GeneratePanel
