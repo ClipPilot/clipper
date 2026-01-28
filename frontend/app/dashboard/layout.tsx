@@ -42,16 +42,16 @@ const baseSidebarItems: SidebarItem[] = [
     href: "/dashboard",
   },
   {
-    key: "create-clip",
-    title: "Create Clip",
-    icon: "solar:scissors-bold-duotone",
-    href: "/dashboard/create-clip",
-  },
-  {
     key: "clips",
-    title: "My Clips",
+    title: "Library",
     icon: "solar:video-library-bold-duotone",
     href: "/dashboard/clips",
+  },
+  {
+    key: "create-clip",
+    title: "AI Clipping",
+    icon: "solar:scissors-bold-duotone",
+    href: "/dashboard/create-clip",
   },
   {
     key: "ugc-studio",
@@ -60,13 +60,6 @@ const baseSidebarItems: SidebarItem[] = [
     href: "/dashboard/ugc-studio",
   }
 ];
-
-const pricingItem: SidebarItem = {
-  key: "pricing",
-  title: "Pricing",
-  icon: "solar:wallet-bold-duotone",
-  href: "/dashboard/pricing",
-};
 
 export default function DashboardLayout({
   children,
@@ -87,15 +80,9 @@ export default function DashboardLayout({
   const [isManageTeamOpen, setIsManageTeamOpen] = useState(false);
   const { fetchUnread } = useAnnouncements();
 
-  // Only show pricing to owners and managers
   const canViewPricing =
     selectedTeam?.role === "owner" || selectedTeam?.role === "manager";
-  const sidebarItems = useMemo(() => {
-    if (canViewPricing) {
-      return [...baseSidebarItems, pricingItem];
-    }
-    return baseSidebarItems;
-  }, [canViewPricing]);
+  const sidebarItems = baseSidebarItems;
 
   const getTeamIcon = (role?: string) => {
     switch (role) {
@@ -340,6 +327,25 @@ export default function DashboardLayout({
                 >
                   Settings
                 </DropdownItem>
+                {canViewPricing ? (
+                  <DropdownItem
+                    key="pricing"
+                    startContent={
+                      <Icon
+                        icon="solar:wallet-bold-duotone"
+                        width={20}
+                        className="text-text-secondary"
+                      />
+                    }
+                    onPress={() => router.push("/dashboard/pricing")}
+                    classNames={{
+                      base: "rounded-lg hover:bg-surface-elevated",
+                      title: "text-text-primary font-medium",
+                    }}
+                  >
+                    Pricing
+                  </DropdownItem>
+                ) : null}
                 <DropdownItem
                   key="logout"
                   color="danger"

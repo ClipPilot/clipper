@@ -238,6 +238,54 @@ export class ClipManagerController {
     }
   }
 
+  async streamClip(req: AuthRequest, res: Response) {
+    try {
+      const clipId = parseInt(req.params.clipId);
+      const teamId = parseInt(req.params.teamId);
+
+      if (isNaN(clipId) || isNaN(teamId)) {
+        return res.status(400).json({ error: "Invalid clip ID or team ID" });
+      }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
+
+      const clip = await clipManagerService.getClipById(clipId, teamId);
+
+      // Use watermarked path for unsaved clips, clip_path for saved
+      const videoPath = clip.saved
+        ? clip.clip_path
+        : clip.watermarked_clip_path;
+
+      if (!videoPath) {
+        return res.status(404).json({ error: "Video not available" });
+      }
+
+      const range = req.headers.range;
+      const s3Response = await s3Service.getObject(videoPath, range || undefined);
+
+      res.setHeader("Content-Type", s3Response.ContentType || "video/mp4");
+      res.setHeader("Accept-Ranges", "bytes");
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+
+      if (range && s3Response.ContentRange) {
+        res.status(206);
+        res.setHeader("Content-Range", s3Response.ContentRange);
+      }
+
+      if (s3Response.ContentLength) {
+        res.setHeader("Content-Length", s3Response.ContentLength.toString());
+      }
+
+      const stream = s3Response.Body as NodeJS.ReadableStream;
+      stream.pipe(res);
+    } catch (error) {
+      console.error("Stream clip error:", error);
+      Sentry.captureException(error);
+      return res.status(500).json({ error: "Failed to stream video" });
+    }
+  }
+
   async updateClip(req: AuthRequest, res: Response) {
     try {
       const clipId = parseInt(req.params.clipId);

@@ -36,6 +36,10 @@ export const isPreviewModalOpenAtom = atom(false);
 export const selectedPreviewClipAtom = atom<Clip | null>(null);
 export const isSavingPreviewClipAtom = atom(false);
 
+export const isDeleteModalOpenAtom = atom(false);
+export const clipToDeleteAtom = atom<{ id: number; name?: string } | null>(null);
+export const isDeletingClipAtom = atom(false);
+
 export const newClipsAtom = atom((get) => {
   const savedClips = get(savedClipsAtom);
   const twentyMinutesAgo = new Date(Date.now() - 20 * 60 * 1000);

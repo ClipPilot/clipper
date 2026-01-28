@@ -7,6 +7,7 @@ import {
   ugcScripts,
   sceneImages,
   clips,
+  adCloneProjects,
 } from "@clipper/shared-db/src/schema";
 import { s3Service } from "../services/s3.service";
 import { sqsService, GenerateUGCVideoJob } from "../services/sqs.service";
@@ -57,7 +58,13 @@ export class UGCVideoController {
         return res.status(400).json({ error: "teamId is required" });
       }
 
-      // Get jobs with script info
+      // Exclude jobs that belong to Ad Clone projects
+      const adCloneJobFilter = sql`${ugcVideoGenerationJobs.id} NOT IN (
+        SELECT ${adCloneProjects.video_job_id} FROM ${adCloneProjects}
+        WHERE ${adCloneProjects.video_job_id} IS NOT NULL
+      )`;
+
+      // Get jobs with script info (only AI UGC jobs, not Ad Clone)
       const jobs = await db
         .select({
           id: ugcVideoGenerationJobs.id,
@@ -77,7 +84,10 @@ export class UGCVideoController {
         })
         .from(ugcVideoGenerationJobs)
         .leftJoin(ugcScripts, eq(ugcVideoGenerationJobs.script_id, ugcScripts.id))
-        .where(eq(ugcVideoGenerationJobs.team_id, teamId))
+        .where(and(
+          eq(ugcVideoGenerationJobs.team_id, teamId),
+          adCloneJobFilter
+        ))
         .orderBy(desc(ugcVideoGenerationJobs.created_at))
         .limit(limit)
         .offset(offset);
@@ -103,11 +113,14 @@ export class UGCVideoController {
         }
       }
 
-      // Get total count
+      // Get total count (excluding Ad Clone jobs)
       const [countResult] = await db
         .select({ count: count() })
         .from(ugcVideoGenerationJobs)
-        .where(eq(ugcVideoGenerationJobs.team_id, teamId));
+        .where(and(
+          eq(ugcVideoGenerationJobs.team_id, teamId),
+          adCloneJobFilter
+        ));
 
       // Get thumbnails for each job (first scene image per script)
       const scriptIds = [...new Set(jobs.map((j) => j.scriptId))];

@@ -152,7 +152,7 @@ export const ClipsToSaveSection: React.FC<ClipsToSaveSectionProps> = ({
             className="text-lg sm:text-xl text-warning-500 flex-shrink-0 mt-0.5 sm:mt-0"
           />
           <p className="text-xs sm:text-sm text-text-secondary">
-            Clips have a preview watermark. Save to add to your library without watermark.
+            Clips cannot be downloaded here. Save to add to your library to download.
             <span className="hidden sm:inline"> Saving counts toward your usage quota. Unsaved clips expire after 7 days.</span>
           </p>
         </CardBody>

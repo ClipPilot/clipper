@@ -37,3 +37,7 @@ next-env.d.ts
 pnpm-lock.yaml
 yarn.lock
 bun.lockb
+.env*
+.flaskenv*
+!.env.project
+!.env.vault

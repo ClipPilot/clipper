@@ -777,6 +777,46 @@ router.get(
 
 /**
  * @openapi
+ * /clip-video/teams/{teamId}/clips/{clipId}/stream:
+ *   get:
+ *     summary: Stream clip video through backend proxy
+ *     description: Streams the clip video directly from S3 through the backend. Supports Range requests for seeking. The S3 URL is never exposed to the client.
+ *     tags:
+ *       - Clips Management
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: clipId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Video stream
+ *         content:
+ *           video/mp4:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       206:
+ *         description: Partial video stream (Range request)
+ *       404:
+ *         description: Video not available
+ */
+router.get(
+  "/teams/:teamId/clips/:clipId/stream",
+  requireAuth,
+  clipManagerController.streamClip.bind(clipManagerController)
+);
+
+/**
+ * @openapi
  * /clip-video/teams/{teamId}/clips/{clipId}:
  *   patch:
  *     summary: Update a clip

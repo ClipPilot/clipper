@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAtomValue } from "jotai";
 import { Button, Card, CardBody, Spinner, Tabs, Tab } from "@heroui/react";
 import { Icon } from "@iconify/react";
@@ -19,9 +19,25 @@ import { useEffect, useCallback } from "react";
 const PAGE_SIZE = 12;
 
 export default function CharactersPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-surface-dark flex items-center justify-center">
+          <Spinner size="lg" color="primary" />
+        </div>
+      }
+    >
+      <CharactersPageContent />
+    </Suspense>
+  );
+}
+
+function CharactersPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const selectedTeam = useAtomValue(selectedTeamAtom);
-  const [activeTab, setActiveTab] = useState<"create" | "my-actors">("my-actors");
+  const initialTab = searchParams.get("tab") === "create" ? "create" : "my-actors";
+  const [activeTab, setActiveTab] = useState<"create" | "my-actors">(initialTab);
   const [myActors, setMyActors] = useState<Character[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);

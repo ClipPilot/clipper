@@ -30,6 +30,8 @@ export interface SelectedCharacter {
   file?: File;
   savedFaceId?: number;
   imageKey?: string;
+  voiceId?: string;
+  voiceName?: string;
 }
 
 export const EXAMPLE_CHARACTERS = [

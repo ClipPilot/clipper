@@ -6,7 +6,7 @@
  * - First image: The character/person to pose (keeps their face, clothes, identity)
  * - Second image: The pose reference (extracts pose, body position, background context)
  */
-export const POSE_GENERATION_PROMPT = `Place the person from the first image into the exact same pose as the second image. Match the pose, body position, and background from the second image exactly. Keep the person's face, identity, and clothes from the first image. The person should be looking directly at the camera with natural eye contact. High quality, no text or captions.`;
+export const POSE_GENERATION_PROMPT = `Place the person from the first image into the exact same pose as the second image. Match the pose, body position, and background from the second image exactly. Keep the person's face, identity, and clothes from the first image. The person should be looking directly at the camera with natural eye contact. High quality, no text or captions. Match the pose and body positioning EXACTLY as the reference image, exact hand position, correct left and right orientation, etc`;
 
 export interface ScriptStructurePattern {
   type: string;
@@ -29,7 +29,10 @@ export interface UGCScriptPromptConfig {
   customPattern?: { type: string; shot: string }[];
 }
 
-const SCRIPT_STRUCTURES: Record<string, { name: string; pattern: ScriptStructurePattern[] }> = {
+const SCRIPT_STRUCTURES: Record<
+  string,
+  { name: string; pattern: ScriptStructurePattern[] }
+> = {
   classic: {
     name: "Classic UGC",
     pattern: [
@@ -83,7 +86,10 @@ const SCRIPT_STRUCTURES: Record<string, { name: string; pattern: ScriptStructure
   },
 };
 
-const formatStructure = (structureId: string, customPattern?: { type: string; shot: string }[]): string => {
+const formatStructure = (
+  structureId: string,
+  customPattern?: { type: string; shot: string }[],
+): string => {
   if (structureId === "custom" && customPattern && customPattern.length > 0) {
     const sceneBreakdown = customPattern
       .map((s, i) => `${i + 1}. ${s.type.toUpperCase()} - ${s.shot}`)
@@ -129,7 +135,9 @@ DO NOT use tags for a-roll - those should be natural and conversational
   const structure = SCRIPT_STRUCTURES[structureId] || SCRIPT_STRUCTURES.classic;
 
   const sceneBreakdown = structure.pattern
-    .map((s, i) => `${i + 1}. ${s.type.toUpperCase()} (${s.duration}) - ${s.shot}`)
+    .map(
+      (s, i) => `${i + 1}. ${s.type.toUpperCase()} (${s.duration}) - ${s.shot}`,
+    )
     .join("\n");
 
   return `
@@ -169,7 +177,9 @@ DO NOT use tags for a-roll - those should be natural and conversational
 `;
 };
 
-export const generateUGCScriptPrompt = (config: UGCScriptPromptConfig): string => {
+export const generateUGCScriptPrompt = (
+  config: UGCScriptPromptConfig,
+): string => {
   const duration = config.targetDuration || 30;
   const numVariations = config.numberOfVariations || 2;
   const structureId = config.structureId || "classic";
@@ -760,14 +770,15 @@ export const generateSceneRegenerationPrompt = (
   currentEmotion: string,
   productContext: string,
   characterContext: string,
-  shotType?: string
+  shotType?: string,
 ): string => {
-  const voiceTagInstruction = shotType === "b-roll" || shotType === "mixed"
-    ? `
+  const voiceTagInstruction =
+    shotType === "b-roll" || shotType === "mixed"
+      ? `
 VOICE DIRECTION TAGS (REQUIRED for ${shotType}):
 Add a voice tag at the START of dialogue: [whispering], [excited], [curious], [sincere], [playful], [dramatic], [satisfied], [amazed], [laughing]
 Example: "[whispering] Look at that texture... absolutely insane"`
-    : `
+      : `
 DIALOGUE STYLE:
 Natural, conversational - NO voice direction tags for a-roll`;
 
