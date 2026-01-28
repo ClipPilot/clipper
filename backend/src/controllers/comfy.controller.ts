@@ -662,9 +662,19 @@ export class ComfyController {
         imageKeys: imageKeysRaw,
         folderId: folderIdRaw,
         voiceId,
+        voiceIds: voiceIdsRaw,
       } = req.body;
 
       const folderId = folderIdRaw ? parseInt(folderIdRaw) : undefined;
+
+      // Parse per-character voiceIds array, falling back to legacy single voiceId
+      const voiceIds: (string | null | undefined)[] = voiceIdsRaw
+        ? typeof voiceIdsRaw === "string"
+          ? JSON.parse(voiceIdsRaw)
+          : voiceIdsRaw
+        : voiceId
+          ? [voiceId]
+          : [];
 
       const autoDetect = autoDetectRaw === "true" || autoDetectRaw === true;
 
@@ -843,7 +853,7 @@ export class ComfyController {
         spliceWithOriginal: spliceWithOriginal === "true" || spliceWithOriginal === true,
         autoDetect,
         folderId,
-        voiceId: voiceId || undefined,
+        voiceIds,
       }).catch((err) => {
         console.error("[comfy] Background upload failed:", err);
         Sentry.captureException(err);
@@ -868,7 +878,7 @@ export class ComfyController {
     spliceWithOriginal: boolean;
     autoDetect: boolean;
     folderId?: number;
-    voiceId?: string;
+    voiceIds?: (string | null | undefined)[];
   }) {
     const {
       jobIds,
@@ -879,7 +889,7 @@ export class ComfyController {
       spliceWithOriginal,
       autoDetect,
       folderId,
-      voiceId,
+      voiceIds,
     } = params;
 
     let { segments, videoDuration } = params;
@@ -1060,7 +1070,7 @@ export class ComfyController {
             spliceMode: isSpliceMode,
             spliceMetadata: spliceMetadata || undefined,
             folderId,
-            voiceId,
+            voiceId: voiceIds?.[i] || undefined,
           });
           console.log(`[comfy] Job ${jobId} sent to Kling worker queue`);
 
