@@ -38,6 +38,56 @@ const FONT_NAME_MAP: Record<string, string> = {
   "Burbank": "Burbank Big Regular",
   "Bebas Neue": "Bebas Neue",
   "Anton": "Anton",
+  "Noto Sans Devanagari": "Noto Sans Devanagari",
+};
+
+// Script detection patterns and their fallback fonts
+// Uses Noto Sans family which provides comprehensive Unicode coverage
+const SCRIPT_FONT_MAP: Array<{ pattern: RegExp; font: string }> = [
+  // Indic scripts
+  { pattern: /[\u0900-\u097F]/, font: "Noto Sans Devanagari" },     // Devanagari (Hindi, Sanskrit, Marathi)
+  { pattern: /[\u0980-\u09FF]/, font: "Noto Sans Bengali" },        // Bengali, Assamese
+  { pattern: /[\u0A00-\u0A7F]/, font: "Noto Sans Gurmukhi" },       // Punjabi
+  { pattern: /[\u0A80-\u0AFF]/, font: "Noto Sans Gujarati" },       // Gujarati
+  { pattern: /[\u0B00-\u0B7F]/, font: "Noto Sans Oriya" },          // Odia
+  { pattern: /[\u0B80-\u0BFF]/, font: "Noto Sans Tamil" },          // Tamil
+  { pattern: /[\u0C00-\u0C7F]/, font: "Noto Sans Telugu" },         // Telugu
+  { pattern: /[\u0C80-\u0CFF]/, font: "Noto Sans Kannada" },        // Kannada
+  { pattern: /[\u0D00-\u0D7F]/, font: "Noto Sans Malayalam" },      // Malayalam
+  { pattern: /[\u0D80-\u0DFF]/, font: "Noto Sans Sinhala" },        // Sinhala
+
+  // East Asian scripts
+  { pattern: /[\u4E00-\u9FFF\u3400-\u4DBF]/, font: "Noto Sans SC" }, // Chinese (Simplified)
+  { pattern: /[\u3040-\u309F\u30A0-\u30FF]/, font: "Noto Sans JP" }, // Japanese Hiragana/Katakana
+  { pattern: /[\uAC00-\uD7AF\u1100-\u11FF]/, font: "Noto Sans KR" }, // Korean Hangul
+
+  // Southeast Asian scripts
+  { pattern: /[\u0E00-\u0E7F]/, font: "Noto Sans Thai" },           // Thai
+  { pattern: /[\u0E80-\u0EFF]/, font: "Noto Sans Lao" },            // Lao
+  { pattern: /[\u0F00-\u0FFF]/, font: "Noto Sans Tibetan" },        // Tibetan
+  { pattern: /[\u1000-\u109F]/, font: "Noto Sans Myanmar" },        // Myanmar
+  { pattern: /[\u1780-\u17FF]/, font: "Noto Sans Khmer" },          // Khmer
+
+  // Middle Eastern scripts
+  { pattern: /[\u0600-\u06FF\u0750-\u077F]/, font: "Noto Sans Arabic" }, // Arabic
+  { pattern: /[\u0590-\u05FF]/, font: "Noto Sans Hebrew" },         // Hebrew
+
+  // Other scripts
+  { pattern: /[\u0400-\u04FF]/, font: "Noto Sans" },                // Cyrillic (Russian, etc.)
+  { pattern: /[\u0370-\u03FF]/, font: "Noto Sans" },                // Greek
+  { pattern: /[\u0530-\u058F]/, font: "Noto Sans Armenian" },       // Armenian
+  { pattern: /[\u10A0-\u10FF]/, font: "Noto Sans Georgian" },       // Georgian
+  { pattern: /[\u1200-\u137F]/, font: "Noto Sans Ethiopic" },       // Ethiopic
+];
+
+// Detect the appropriate fallback font for text containing non-Latin scripts
+const detectScriptFont = (text: string, defaultFont: string): string => {
+  for (const { pattern, font } of SCRIPT_FONT_MAP) {
+    if (pattern.test(text)) {
+      return font;
+    }
+  }
+  return defaultFont;
 };
 
 const resolveFontName = (fontName: string): string => {
@@ -69,12 +119,14 @@ const buildHighlightedText = (
   words: TimedWord[],
   activeIndex: number,
   highlightColor: string,
-  defaultColor: string
+  defaultColor: string,
+  defaultFont: string
 ): string => {
   return words
     .map((w, i) => {
       const color = i === activeIndex ? highlightColor : defaultColor;
-      return `{\\c${color}}${w.word}`;
+      const font = detectScriptFont(w.word, defaultFont);
+      return `{\\fn${font}\\c${color}}${w.word}`;
     })
     .join(" ");
 };
@@ -108,7 +160,7 @@ WrapStyle: 0
 
 [V4+ Styles]
 Format: Name,Fontname,Fontsize,PrimaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding
-Style: Default,${resolvedFont},120,${defaultColor},&H00000000,&H80000000,1,0,0,0,100,100,2,0,1,6,2,2,80,80,280,1
+Style: Default,${resolvedFont},120,${defaultColor},&H00000000,&H80000000,1,0,0,0,100,100,2,0,1,6,2,2,80,80,280,0
 
 [Events]
 Format: Layer,Start,End,Style,Text
@@ -141,7 +193,8 @@ Format: Layer,Start,End,Style,Text
           timedGroup,
           j,
           highlightColor,
-          defaultColor
+          defaultColor,
+          resolvedFont
         );
 
         ass += `Dialogue: 0,${formatTime(currentWord.start)},${formatTime(currentWord.end)},Default,${text}\n`;
@@ -151,7 +204,7 @@ Format: Layer,Start,End,Style,Text
     offset += segment.end - segment.start;
   }
 
-  fs.writeFileSync(assPath, ass);
+  fs.writeFileSync(assPath, ass, "utf-8");
 
   const fontsDir = path.resolve(__dirname, "../../fonts");
 
@@ -246,7 +299,7 @@ WrapStyle: 0
 
 [V4+ Styles]
 Format: Name,Fontname,Fontsize,PrimaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding
-Style: Default,${resolvedFont},120,${defaultColor},&H00000000,&H80000000,1,0,0,0,100,100,2,0,1,6,2,2,80,80,280,1
+Style: Default,${resolvedFont},120,${defaultColor},&H00000000,&H80000000,1,0,0,0,100,100,2,0,1,6,2,2,80,80,280,0
 
 [Events]
 Format: Layer,Start,End,Style,Text
@@ -263,7 +316,8 @@ Format: Layer,Start,End,Style,Text
       const text = words
         .map((w, idx) => {
           const color = idx === i ? highlightColor : defaultColor;
-          return `{\\c${color}}${w}`;
+          const font = detectScriptFont(w, resolvedFont);
+          return `{\\fn${font}\\c${color}}${w}`;
         })
         .join(" ");
 
@@ -271,7 +325,7 @@ Format: Layer,Start,End,Style,Text
     }
   }
 
-  fs.writeFileSync(assPath, ass);
+  fs.writeFileSync(assPath, ass, "utf-8");
 
   const fontsDir = path.resolve(__dirname, "../../fonts");
 
