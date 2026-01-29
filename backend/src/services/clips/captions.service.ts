@@ -41,10 +41,53 @@ const FONT_NAME_MAP: Record<string, string> = {
   "Noto Sans Devanagari": "Noto Sans Devanagari",
 };
 
-const DEVANAGARI_FONT = "Noto Sans Devanagari";
+// Script detection patterns and their fallback fonts
+// Uses Noto Sans family which provides comprehensive Unicode coverage
+const SCRIPT_FONT_MAP: Array<{ pattern: RegExp; font: string }> = [
+  // Indic scripts
+  { pattern: /[\u0900-\u097F]/, font: "Noto Sans Devanagari" },     // Devanagari (Hindi, Sanskrit, Marathi)
+  { pattern: /[\u0980-\u09FF]/, font: "Noto Sans Bengali" },        // Bengali, Assamese
+  { pattern: /[\u0A00-\u0A7F]/, font: "Noto Sans Gurmukhi" },       // Punjabi
+  { pattern: /[\u0A80-\u0AFF]/, font: "Noto Sans Gujarati" },       // Gujarati
+  { pattern: /[\u0B00-\u0B7F]/, font: "Noto Sans Oriya" },          // Odia
+  { pattern: /[\u0B80-\u0BFF]/, font: "Noto Sans Tamil" },          // Tamil
+  { pattern: /[\u0C00-\u0C7F]/, font: "Noto Sans Telugu" },         // Telugu
+  { pattern: /[\u0C80-\u0CFF]/, font: "Noto Sans Kannada" },        // Kannada
+  { pattern: /[\u0D00-\u0D7F]/, font: "Noto Sans Malayalam" },      // Malayalam
+  { pattern: /[\u0D80-\u0DFF]/, font: "Noto Sans Sinhala" },        // Sinhala
 
-const containsDevanagari = (text: string): boolean => {
-  return /[\u0900-\u097F]/.test(text);
+  // East Asian scripts
+  { pattern: /[\u4E00-\u9FFF\u3400-\u4DBF]/, font: "Noto Sans SC" }, // Chinese (Simplified)
+  { pattern: /[\u3040-\u309F\u30A0-\u30FF]/, font: "Noto Sans JP" }, // Japanese Hiragana/Katakana
+  { pattern: /[\uAC00-\uD7AF\u1100-\u11FF]/, font: "Noto Sans KR" }, // Korean Hangul
+
+  // Southeast Asian scripts
+  { pattern: /[\u0E00-\u0E7F]/, font: "Noto Sans Thai" },           // Thai
+  { pattern: /[\u0E80-\u0EFF]/, font: "Noto Sans Lao" },            // Lao
+  { pattern: /[\u0F00-\u0FFF]/, font: "Noto Sans Tibetan" },        // Tibetan
+  { pattern: /[\u1000-\u109F]/, font: "Noto Sans Myanmar" },        // Myanmar
+  { pattern: /[\u1780-\u17FF]/, font: "Noto Sans Khmer" },          // Khmer
+
+  // Middle Eastern scripts
+  { pattern: /[\u0600-\u06FF\u0750-\u077F]/, font: "Noto Sans Arabic" }, // Arabic
+  { pattern: /[\u0590-\u05FF]/, font: "Noto Sans Hebrew" },         // Hebrew
+
+  // Other scripts
+  { pattern: /[\u0400-\u04FF]/, font: "Noto Sans" },                // Cyrillic (Russian, etc.)
+  { pattern: /[\u0370-\u03FF]/, font: "Noto Sans" },                // Greek
+  { pattern: /[\u0530-\u058F]/, font: "Noto Sans Armenian" },       // Armenian
+  { pattern: /[\u10A0-\u10FF]/, font: "Noto Sans Georgian" },       // Georgian
+  { pattern: /[\u1200-\u137F]/, font: "Noto Sans Ethiopic" },       // Ethiopic
+];
+
+// Detect the appropriate fallback font for text containing non-Latin scripts
+const detectScriptFont = (text: string, defaultFont: string): string => {
+  for (const { pattern, font } of SCRIPT_FONT_MAP) {
+    if (pattern.test(text)) {
+      return font;
+    }
+  }
+  return defaultFont;
 };
 
 const resolveFontName = (fontName: string): string => {
@@ -82,7 +125,7 @@ const buildHighlightedText = (
   return words
     .map((w, i) => {
       const color = i === activeIndex ? highlightColor : defaultColor;
-      const font = containsDevanagari(w.word) ? DEVANAGARI_FONT : defaultFont;
+      const font = detectScriptFont(w.word, defaultFont);
       return `{\\fn${font}\\c${color}}${w.word}`;
     })
     .join(" ");
@@ -273,7 +316,7 @@ Format: Layer,Start,End,Style,Text
       const text = words
         .map((w, idx) => {
           const color = idx === i ? highlightColor : defaultColor;
-          const font = containsDevanagari(w) ? DEVANAGARI_FONT : resolvedFont;
+          const font = detectScriptFont(w, resolvedFont);
           return `{\\fn${font}\\c${color}}${w}`;
         })
         .join(" ");
