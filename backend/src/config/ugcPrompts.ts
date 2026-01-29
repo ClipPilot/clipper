@@ -313,6 +313,23 @@ Include filmmaking terminology and what to AVOID.
 - Style reference: "UGC iPhone aesthetic with natural sensor noise" / "cinematic shallow DOF" / "documentary handheld feel"
 - NEGATIVE ELEMENTS (what NOT to generate): "No harsh shadows, no unnatural skin smoothing, no warped proportions, no text overlays, no multiple subjects, maintains exact appearance throughout"
 
+===== STRUCTURED CINEMATOGRAPHY FORMAT (USE THIS LABELING) =====
+
+Within your paragraphs, use these labeled sections for clarity:
+
+**Camera Shot:** [SHOT TYPE - e.g., Medium close-up, close-up, medium shot] from [ANGLE - e.g., slightly below eye level, eye level, slightly above], [FRAMING - e.g., centered framing, off-center left, rule of thirds].
+
+**Lens & DOF:** iPhone 15 Pro front camera (~24mm equivalent), [DEPTH OF FIELD - e.g., deep depth of field keeping background in focus, shallow with slight background blur]. Note: These specs function as stylistic cues for the AI, not actual optical parameters.
+
+**Camera Motion:** [MOVEMENT - e.g., Subtle handheld sway and jitter consistent with a selfie grip, smooth gimbal-like motion, static with micro-movements, slow 2-second push-in, gentle lateral drift].
+
+**Lighting:** [LIGHT SOURCE & QUALITY - e.g., Natural diffuse daylight coming through window, ring light creating catch lights in eyes, golden hour sunlight], illuminating face [LIGHTING STYLE - e.g., evenly, dramatically with side shadows, softly with warm glow]. [SHADOW DETAILS - e.g., Soft shadows under chin, hard shadows from blinds].
+
+**Color & Grade:** iPhone HDR auto-tone; [COLOR PALETTE - e.g., neutral warm daylight, cool blue tones, mixed color temperature]; [TEXTURE - e.g., natural skin texture with visible pores, subtle sensor grain]; [FILTER - e.g., no filters, raw unprocessed look].
+
+EXAMPLE USING LABELED FORMAT:
+"**Camera Shot:** Medium close-up from eye level, slightly off-center using rule of thirds. **Lens & DOF:** iPhone 15 Pro front camera (~24mm equivalent), deep depth of field with background slightly soft but recognizable. **Camera Motion:** Subtle handheld sway consistent with selfie grip, barely perceptible micro-movements for authenticity. **Lighting:** Natural window light from camera-right creating soft wrap-around illumination, warm 5000K color temperature, soft shadows under jawline. **Color & Grade:** iPhone HDR auto-tone; neutral warm daylight palette; natural skin texture with visible pores and subtle T-zone shine; no filters, raw authentic look."
+
 ===== EXAMPLE MULTI-PARAGRAPH CINEMATICPROMPT =====
 
 For a HOOK scene (a-roll), the cinematicPrompt should look like:
@@ -332,6 +349,60 @@ Shot on virtual 50mm lens equivalent with f/1.8 depth of field creating signific
 3. ALWAYS include NEGATIVE guidance at the end to prevent common AI artifacts
 4. Use filmmaking terminology - the model responds to cinematography vocabulary
 5. Include timing cues like "over 2 seconds" or "holds for 1 beat"
+
+===== KLING 2.6 PRO OPTIMIZATION (for video generation) =====
+
+When these cinematicPrompts are later processed for Kling video generation, they follow this structure:
+
+**SUBJECT** (main focus):
+- Actor speaking to camera OR product as hero OR actor-product interaction
+- Use ++double plus++ emphasis on elements that MUST stay unchanged
+
+**SUBJECT MOVEMENT** (simple, 5-10 seconds):
+- One clear action, straightforward and achievable
+- "natural lip movement synced to speech" / "slow deliberate product rotation" / "subtle hand gestures"
+
+**SCENE DESCRIPTION** (brief, image provides context):
+- 2-3 sentences max, don't overwhelm
+- The reference image provides most visual detail
+
+**CAMERA** (position and movement):
+- "locked static with micro-movements" / "slow 2-second push-in" / "subtle handheld drift"
+- ONE camera movement only
+
+**LIGHTING & ATMOSPHERE** (mood and tone):
+- "warm intimate mood, soft natural light" / "bright energetic atmosphere" / "casual UGC aesthetic"
+
+**STABILITY PHRASES** (always include):
+- "++Subject maintains exact appearance throughout++"
+- "maintains exact appearance from first frame to last"
+- "no morphing, no shape changes"
+
+===== UGC AUTHENTICITY KEYWORDS =====
+
+Include relevant keywords in cinematicPrompts for authentic UGC aesthetic:
+
+CAPTURE STYLE:
+- smartphone selfie, iPhone 15 Pro front camera, handheld realism
+- selfie-grip micro-jitters, arm's length framing, direct-to-camera
+
+LIGHTING:
+- natural available light, mixed color temperature (daylight + tungsten)
+- window light wrap, practical lighting only, no studio setup
+
+AESTHETIC:
+- raw unfiltered TikTok aesthetic, authentic social media quality
+- visible sensor noise, natural skin texture, no beauty filter
+- slight lens vignette, authentic chromatic aberration at edges
+
+PERFORMANCE:
+- influencer-style monologue, conversational delivery
+- authentic micro-expressions, genuine emotional reactions
+- natural filler words, realistic speech patterns
+
+EDITING:
+- seamless one-take, no jump cuts (or single jump cut if needed)
+- real-time pacing, no speed ramping
 6. Specify "maintains exact appearance throughout" to prevent morphing
 7. For complex movements, break them into sequential steps
 8. Weight critical elements with emphasis: "++genuine surprised expression++"
@@ -701,17 +772,36 @@ For cameraAngle, choose from:
 CRITICAL - ambientSound field (REQUIRED FOR ALL A-ROLL SCENES):
 - EVERY a-roll scene MUST have an ambientSound value (not null)
 - This creates realistic background audio that matches the environment
-- Keep descriptions short (5-15 words) for best audio generation
 - Match the environment from cinematicPrompt
 - MUST be natural, subtle, continuous background sounds
 
-GOOD ambient sounds (natural, loopable):
-- "quiet room tone with subtle air conditioning hum"
-- "soft indoor ambience with gentle room atmosphere"
-- "light bedroom sounds with distant muffled noise"
-- "calm home interior with subtle background hum"
-- "office ambience with soft keyboard typing and air conditioning"
-- "outdoor park with birds chirping and light wind"
+===== ENHANCED AUDIO & AMBIENCE STRUCTURE =====
+
+Format your ambientSound with this detailed structure for maximum authenticity:
+"Recorded through [DEVICE] mic — [AUDIO QUALITY]. [BACKGROUND SOUNDS]."
+
+DEVICE OPTIONS (match the UGC aesthetic):
+- "iPhone 15 Pro" - for high-quality UGC selfie aesthetic
+- "smartphone" - generic mobile capture feel
+- "phone" - casual shorthand
+
+AUDIO QUALITY DESCRIPTORS:
+- "clear front-facing voice with slight room echo"
+- "crisp indoor audio with natural reverb"
+- "intimate close-mic quality with minimal room tone"
+- "slightly compressed phone mic quality adding authenticity"
+
+BACKGROUND SOUND LAYERS (combine 1-2 for realism):
+- Room tones: "faint air conditioning hum", "quiet refrigerator drone", "subtle HVAC ambience"
+- Life sounds: "muffled distant traffic", "occasional bird chirp outside", "neighbor's muted TV"
+- Environment: "soft room reverb", "natural indoor acoustics", "slight echo from hard surfaces"
+
+GOOD ambient sounds (detailed, authentic):
+- "Recorded through iPhone 15 Pro mic — clear front-facing voice with slight room echo. Faint air conditioning hum, occasional muffled traffic outside."
+- "Recorded through smartphone mic — intimate close-mic quality. Quiet home interior, subtle refrigerator drone in background."
+- "Recorded through iPhone mic — crisp indoor audio with natural reverb. Soft room tone, distant muffled sounds from other rooms."
+- "Recorded through phone mic — slightly compressed quality adding authenticity. Light bedroom ambience, occasional bird chirp from window."
+- "Recorded through iPhone 15 Pro mic — clear voice with bathroom reverb. Quiet exhaust fan hum, subtle echo from tile surfaces."
 
 BAD ambient sounds (AVOID THESE):
 - ANY mention of "music", "beats", "melody", "soundtrack"
@@ -720,6 +810,7 @@ BAD ambient sounds (AVOID THESE):
 - "mysterious" or "ethereal" sounds
 - Sound effects that have clear beginnings/endings
 - Anything that sounds like production audio, not natural ambience
+- Generic descriptions like just "room tone" - be SPECIFIC about the space
 
 For b-roll scenes: set ambientSound to null (voiceover only, no background)
 
