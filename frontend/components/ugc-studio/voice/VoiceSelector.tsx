@@ -299,7 +299,7 @@ export function VoiceSelector({
           <Tab key="female" title="Female" />
         </Tabs>
       </CardHeader>
-      <CardBody className="pt-4 max-h-72 overflow-y-auto">
+      <CardBody className="pt-4">
         <div className="grid grid-cols-2 gap-2">
           {filteredVoices.map((voice) => (
             <VoiceCard
