@@ -1,4 +1,3 @@
-import * as Sentry from "@sentry/node";
 import fs from "fs";
 import path from "path";
 import { ClipVideoJob } from "../../services/sqs.service";
@@ -14,12 +13,12 @@ import { extractThumbnail } from "../../utils/extractThumbnail";
 import { notifyClipsRefresh } from "../notify";
 import { emailNotiService } from "../../services/emailNoti.service";
 import { userService } from "../../services/user.service";
+import { ensureOutputDir } from "../../utils/fileUtils";
 
 export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
   const { clipIds, teamId, userId, s3Key, options, originalFileName, fileSize } = job;
 
-  const outDir = path.join(process.cwd(), "output");
-  if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
+  const outDir = ensureOutputDir();
 
   const localVideoPath = path.join(outDir, `raw_${Date.now()}.mp4`);
 

@@ -1,4 +1,3 @@
-import * as Sentry from "@sentry/node";
 import {
   S3Client,
   GetObjectCommand,
@@ -14,6 +13,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import fs from "fs";
 import path from "path";
 import { config } from "../config/env";
+import { sanitizeFileName } from "../utils/fileUtils";
 
 const s3Client = new S3Client({
   region: config.aws.region,
@@ -73,11 +73,6 @@ class S3Service {
       const fileSize = fs.statSync(filePath).size;
 
       console.log(`[S3] Uploading raw video: ${Math.round(fileSize / 1024 / 1024)}MB`);
-
-      if (fileSize > MULTIPART_THRESHOLD) {
-        return await this.multipartUpload(filePath, key, "video/mp4");
-      }
-
       return await this.multipartUpload(filePath, key, "video/mp4");
     } catch (error) {
       console.error("Error uploading raw video to S3:", error);
@@ -243,7 +238,7 @@ class S3Service {
     contentType: string,
     expiresIn: number = 3600
   ): Promise<{ uploadUrl: string; s3Key: string }> {
-    const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const sanitizedFileName = sanitizeFileName(fileName);
     const s3Key = `${RAW_VIDEOS_FOLDER}/${teamId}/${Date.now()}_${sanitizedFileName}`;
 
     const command = new PutObjectCommand({
@@ -283,7 +278,7 @@ class S3Service {
     fileName: string,
     contentType: string
   ): Promise<{ uploadId: string; s3Key: string }> {
-    const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const sanitizedFileName = sanitizeFileName(fileName);
     const s3Key = `${RAW_VIDEOS_FOLDER}/${teamId}/${Date.now()}_${sanitizedFileName}`;
 
     const command = new CreateMultipartUploadCommand({
@@ -405,7 +400,7 @@ class S3Service {
     teamId: number,
     fileName: string
   ): Promise<{ uploadUrl: string; s3Key: string }> {
-    const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const sanitizedFileName = sanitizeFileName(fileName);
     const s3Key = `characters/${teamId}/temp/${Date.now()}_${sanitizedFileName}`;
 
     const command = new PutObjectCommand({
@@ -423,7 +418,7 @@ class S3Service {
     fileName: string,
     contentType: string = "image/jpeg"
   ): Promise<{ uploadUrl: string; s3Key: string }> {
-    const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const sanitizedFileName = sanitizeFileName(fileName);
     const s3Key = `ugc-products/${teamId}/${Date.now()}_${sanitizedFileName}`;
 
     const command = new PutObjectCommand({
@@ -441,7 +436,7 @@ class S3Service {
     fileName: string,
     contentType: string = "image/jpeg"
   ): Promise<{ uploadUrl: string; s3Key: string }> {
-    const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const sanitizedFileName = sanitizeFileName(fileName);
     const s3Key = `scene-images/${teamId}/supporting/${Date.now()}_${sanitizedFileName}`;
 
     const command = new PutObjectCommand({
@@ -542,7 +537,7 @@ class S3Service {
     teamId: number,
     fileName: string
   ): Promise<{ uploadUrl: string; s3Key: string }> {
-    const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const sanitizedFileName = sanitizeFileName(fileName);
     const s3Key = `temp-face-detect/${teamId}/${Date.now()}_${sanitizedFileName}`;
 
     const command = new PutObjectCommand({
@@ -563,8 +558,8 @@ class S3Service {
     video: { uploadUrl: string; s3Key: string };
     image: { uploadUrl: string; s3Key: string };
   }> {
-    const sanitizedVideoName = videoFileName.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const sanitizedImageName = imageFileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const sanitizedVideoName = sanitizeFileName(videoFileName);
+    const sanitizedImageName = sanitizeFileName(imageFileName);
     const timestamp = Date.now();
 
     const videoKey = `ugc-inputs/${teamId}/${timestamp}_${sanitizedVideoName}`;
@@ -602,7 +597,7 @@ class S3Service {
     video: { uploadUrl: string; s3Key: string };
     productImages: { uploadUrl: string; s3Key: string }[];
   }> {
-    const sanitizedVideoName = videoFileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const sanitizedVideoName = sanitizeFileName(videoFileName);
     const timestamp = Date.now();
 
     const videoKey = `ad-clone/${teamId}/${projectId}/reference_${timestamp}_${sanitizedVideoName}`;
@@ -616,7 +611,7 @@ class S3Service {
     const videoUrl = await getSignedUrl(s3Client, videoCommand, { expiresIn: 3600 });
 
     const productImagePromises = productImageFileNames.map(async (fileName, index) => {
-      const sanitizedName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const sanitizedName = sanitizeFileName(fileName);
       const imageKey = `ad-clone/${teamId}/${projectId}/product_${timestamp}_${index}_${sanitizedName}`;
 
       const imageCommand = new PutObjectCommand({

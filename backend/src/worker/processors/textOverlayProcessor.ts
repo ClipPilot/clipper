@@ -1,4 +1,3 @@
-import * as Sentry from "@sentry/node";
 import fs from "fs";
 import path from "path";
 import { TextOverlayJob } from "../../services/sqs.service";
@@ -7,14 +6,14 @@ import { clipManagerService } from "../../services/clips/clipManager.service";
 import { s3Service } from "../../services/s3.service";
 import { notifyClipsRefresh } from "../notify";
 import { addCaptionsFromData, CaptionEntry } from "../../services/clips/captions.service";
+import { ensureOutputDir } from "../../utils/fileUtils";
 
 export async function processTextOverlayJob(
   job: TextOverlayJob
 ): Promise<void> {
   const { clipId, teamId, text, color, font, x, y, fontSize } = job;
 
-  const outDir = path.join(process.cwd(), "output");
-  if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
+  const outDir = ensureOutputDir();
 
   const localBlankPath = path.join(outDir, `blank_${clipId}_${Date.now()}.mp4`);
   let newClipPath: string | null = null;

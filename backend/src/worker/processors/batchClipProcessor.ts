@@ -1,4 +1,3 @@
-import * as Sentry from "@sentry/node";
 import fs from "fs";
 import path from "path";
 import { BatchClipVideoJob } from "../../services/sqs.service";
@@ -14,14 +13,14 @@ import { extractThumbnail } from "../../utils/extractThumbnail";
 import { notifyClipsRefresh } from "../notify";
 import { emailNotiService } from "../../services/emailNoti.service";
 import { userService } from "../../services/user.service";
+import { ensureOutputDir } from "../../utils/fileUtils";
 
 export async function processBatchClipVideoJob(
   job: BatchClipVideoJob
 ): Promise<void> {
   const { clipIds, teamId, userId, videos, options } = job;
 
-  const outDir = path.join(process.cwd(), "output");
-  if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
+  const outDir = ensureOutputDir();
 
   const localVideoPaths: Array<{ path: string; videoIndex: number; fileName?: string }> = [];
 

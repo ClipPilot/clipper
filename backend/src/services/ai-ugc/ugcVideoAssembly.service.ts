@@ -13,15 +13,14 @@ import {
 } from "./kling.service";
 import { openaiClient } from "../openai.service";
 import { generateJumbledMetadataString } from "../../utils/videoMetadata";
+import { VIDEO_ENCODE_SETTINGS, AUDIO_SETTINGS } from "../../config/ffmpegSettings";
 
 const MAX_KLING_VIDEO_DURATION = 10;
 const KLING_EXTENSION_DURATION = 5;
 const PARALLEL_SCENES = 2;
-const AUDIO_SAMPLE_RATE = 44100;
-const AUDIO_CHANNELS = 2;
-const AUDIO_BITRATE = "192k";
-const VIDEO_ENCODE_SETTINGS =
-  "-c:v libx264 -preset fast -crf 23 -profile:v main -level 3.1 -pix_fmt yuv420p -r 30 -g 30 -keyint_min 30 -vsync cfr";
+const AUDIO_SAMPLE_RATE = AUDIO_SETTINGS.sampleRate;
+const AUDIO_CHANNELS = AUDIO_SETTINGS.channels;
+const AUDIO_BITRATE = AUDIO_SETTINGS.bitrate;
 const SPEECH_SPEED_BOOST = 1.25;
 
 function applySpeedBoost(

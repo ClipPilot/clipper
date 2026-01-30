@@ -3,6 +3,7 @@ import ffmpeg from "fluent-ffmpeg";
 import fs from "fs";
 import puppeteer from "puppeteer";
 import path from "path";
+import { MOBILE_VIDEO_SETTINGS, COMPRESSION } from "../../config/ffmpegSettings";
 
 interface VideoMetadata {
   width: number;
@@ -33,25 +34,7 @@ const getVideoMetadata = (videoPath: string): Promise<VideoMetadata> => {
   });
 };
 
-const COMPRESSION_THRESHOLD = 200 * 1024 * 1024; // Only compress files > 200MB
-const TARGET_CRF = 23; // Quality level (18-28, lower = better quality, 23 is default/good)
-const MAX_BITRATE = 12000; // 12 Mbps max bitrate cap
-
-// Mobile-compatible H.264 encoding settings
-// profile:v main - Broad device support (especially older iOS/Android)
-// level 3.1 - Compatible with most mobile devices
-// pix_fmt yuv420p - Required for QuickTime/iOS playback
-// g/keyint_min 30 - Keyframe every second for smooth seeking
-// vsync cfr - Constant frame rate prevents mobile playback issues
-const MOBILE_VIDEO_SETTINGS = [
-  "-profile:v main",
-  "-level 3.1",
-  "-pix_fmt yuv420p",
-  "-r 30",
-  "-g 30",
-  "-keyint_min 30",
-  "-vsync cfr",
-];
+const { threshold: COMPRESSION_THRESHOLD, targetCrf: TARGET_CRF, maxBitrate: MAX_BITRATE } = COMPRESSION;
 
 export const compressVideoForUpload = async (
   inputPath: string,
