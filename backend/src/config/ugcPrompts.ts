@@ -6,7 +6,9 @@
  * - First image: The character/person to pose (keeps their face, clothes, identity)
  * - Second image: The pose reference (extracts pose, body position, background context)
  */
-export const POSE_GENERATION_PROMPT = `Place the person from the first image into the exact same pose as the second image. Match the pose, body position, and background from the second image exactly. Keep the person's face, identity, and clothes from the first image. The person should be looking directly at the camera with natural eye contact. High quality, no text or captions. Match the pose and body positioning EXACTLY as the reference image, exact hand position, correct left and right orientation, etc`;
+export const POSE_GENERATION_PROMPT = `Place the person from the first image into the exact same pose as the second image. Match the pose, body position, and background from the second image exactly. Keep the person's face, identity, and clothes from the first image. The person should be looking directly at the camera with natural eye contact. High quality, no text or captions. Match the pose and body positioning EXACTLY as the reference image, correct left and right orientation.
+
+CRITICAL HAND REQUIREMENTS: Both hands MUST be fully visible with all 5 fingers on each hand shown in a natural, relaxed position. Even if the original pose has hands hidden, cropped, or partially visible, you MUST show both complete hands with proper finger anatomy. Position hands naturally in frame - resting at sides, on hips, or gesturing - but always fully visible with correct finger count. Never crop, hide, or obscure any part of the hands.`;
 
 export interface ScriptStructurePattern {
   type: string;

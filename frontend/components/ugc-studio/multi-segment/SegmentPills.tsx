@@ -84,11 +84,12 @@ export function SegmentPills({
         <Button
           size="sm"
           variant="flat"
-          className="bg-surface-elevated text-text-secondary"
+          className="bg-surface-elevated text-text-secondary min-w-0"
           onPress={onAddSegment}
           startContent={<Icon icon="solar:add-circle-bold" width={16} />}
         >
-          Add at Playhead
+          <span className="hidden sm:inline">Add at Playhead</span>
+          <span className="sm:hidden">Add</span>
         </Button>
       )}
 
@@ -96,13 +97,14 @@ export function SegmentPills({
         <Button
           size="sm"
           variant="flat"
-          className="bg-purple-500/20 text-purple-400 hover:bg-purple-500/30"
+          className="bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 min-w-0"
           onPress={onAutoDetectFaces}
           isLoading={isDetectingFaces}
           isDisabled={isDetectingFaces}
           startContent={!isDetectingFaces && <Icon icon="solar:face-scan-circle-bold" width={16} />}
         >
-          {isDetectingFaces ? "Detecting..." : "Auto-detect Faces"}
+          <span className="hidden sm:inline">{isDetectingFaces ? "Detecting..." : "Auto-detect Faces"}</span>
+          <span className="sm:hidden">{isDetectingFaces ? "..." : "Detect"}</span>
         </Button>
       )}
     </div>
