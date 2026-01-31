@@ -1,5 +1,5 @@
 export * from "./types";
-export * from "./MultiSegmentTrimmer";
+export * from "./multi-segment";
 export * from "./FaceSwapDetailModal";
 export * from "./MyFaceSwapsSection";
 export * from "./CharacterSelector";

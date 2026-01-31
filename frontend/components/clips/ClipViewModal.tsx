@@ -15,10 +15,9 @@ import {
   DropdownMenu,
   DropdownItem,
   Input,
-  addToast,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { faceSwapAPI } from "@/api/ugc/faceSwap";
+import { useDownloadVideo } from "@/hooks/useDownloadVideo";
 
 interface Folder {
   id: number;
@@ -108,7 +107,7 @@ export default function ClipViewModal({
     clip.share_token || null
   );
   const [showShareTooltip, setShowShareTooltip] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
+  const { isDownloading, download } = useDownloadVideo();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState(clip.title || "");
   const [isSavingTitle, setIsSavingTitle] = useState(false);
@@ -167,42 +166,13 @@ export default function ClipViewModal({
     return "danger";
   };
 
-  const handleDownload = async () => {
-    if (!clip.clipUrl || isDownloading) return;
-
-    setIsDownloading(true);
-    const filename = `clip_${clip.id}.mp4`;
-
-    try {
-      let blob: Blob;
-      const isFaceSwap = clip.clip_metadata?.type === "face-swap";
-
-      if (isFaceSwap) {
-        blob = await faceSwapAPI.downloadVideo(clip.clipUrl, filename);
-      } else {
-        const response = await fetch(clip.clipUrl);
-        if (!response.ok) throw new Error("Failed to download video");
-        blob = await response.blob();
-      }
-
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error) {
-      console.error("Download failed:", error);
-      addToast({
-        title: "Download failed",
-        description: "Failed to download the video. Please try again.",
-        color: "danger",
-      });
-    } finally {
-      setIsDownloading(false);
-    }
+  const handleDownload = () => {
+    if (!clip.clipUrl) return;
+    download({
+      url: clip.clipUrl,
+      filename: `clip_${clip.id}.mp4`,
+      isFaceSwap: clip.clip_metadata?.type === "face-swap",
+    });
   };
 
   const handleMove = async (folderId: number | null) => {

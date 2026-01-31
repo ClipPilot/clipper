@@ -3,7 +3,7 @@
 import { useRef, useState, useCallback } from "react";
 import { Button, Card, CardBody, CardHeader } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { MultiSegmentTrimmer, VideoSegment } from "./MultiSegmentTrimmer";
+import { MultiSegmentTrimmer, VideoSegment } from "./multi-segment";
 import { UploadedFile } from "./types";
 
 interface VideoUploadCardProps {

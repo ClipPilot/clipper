@@ -1,4 +1,4 @@
-export { ScriptStep } from "./ScriptStep";
+export { ScriptStep } from "./script-step";
 export { ScriptEditor } from "./ScriptEditor";
 export { SceneCard } from "./SceneCard";
 export { EmotionSelector } from "./EmotionSelector";

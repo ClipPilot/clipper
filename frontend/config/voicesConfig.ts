@@ -165,7 +165,7 @@ export const voicesConfig: Voice[] = [
     name: "Avery",
     id: "7RxgWgwjutaZHWIknJAY",
     previewFile: "/voices/avery.mp3",
-    gender: "female",
+    gender: "male",
     description: "Influencer",
   },
   {

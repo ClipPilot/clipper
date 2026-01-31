@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState, memo, useRef, useEffect } from "react";
-import { Card, Button, Tooltip, addToast } from "@heroui/react";
+import { Card, Button, Tooltip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { Clip } from "@/api/clips";
-import { faceSwapAPI } from "@/api/ugc/faceSwap";
+import { useDownloadVideo } from "@/hooks/useDownloadVideo";
 
 interface ClipCardProps {
   clip: Clip;
@@ -25,7 +25,7 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
   isSelected = false,
   isUgcVideo = false,
 }) => {
-  const [isDownloading, setIsDownloading] = useState(false);
+  const { isDownloading, download } = useDownloadVideo();
   const [isVisible, setIsVisible] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -48,43 +48,13 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
     return () => observer.disconnect();
   }, []);
 
-  const handleDownload = async (e: any) => {
-    if (!clip.clipUrl || isDownloading) return;
-
-    setIsDownloading(true);
-    try {
-      const filename = `${clip.title || `clip-${clip.id}`}.mp4`;
-      let blob: Blob;
-      const isFaceSwap = clip.clip_metadata?.type === "face-swap";
-
-      if (isFaceSwap) {
-        blob = await faceSwapAPI.downloadVideo(clip.clipUrl, filename);
-      } else {
-        const response = await fetch(clip.clipUrl);
-        if (!response.ok) throw new Error("Failed to download video");
-        blob = await response.blob();
-      }
-
-      const blobUrl = URL.createObjectURL(blob);
-
-      const link = document.createElement("a");
-      link.href = blobUrl;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      URL.revokeObjectURL(blobUrl);
-    } catch (error) {
-      console.error("Failed to download clip:", error);
-      addToast({
-        title: "Download failed",
-        description: "Failed to download the video. Please try again.",
-        color: "danger",
-      });
-    } finally {
-      setIsDownloading(false);
-    }
+  const handleDownload = () => {
+    if (!clip.clipUrl) return;
+    download({
+      url: clip.clipUrl,
+      filename: `${clip.title || `clip-${clip.id}`}.mp4`,
+      isFaceSwap: clip.clip_metadata?.type === "face-swap",
+    });
   };
 
   const formatDate = (dateString: string) => {

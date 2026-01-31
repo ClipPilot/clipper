@@ -21,6 +21,7 @@ import {
   getStatusIcon,
 } from "./types";
 import { faceSwapAPI } from "@/api/ugc/faceSwap";
+import { useDownloadVideo } from "@/hooks/useDownloadVideo";
 
 function formatTime(seconds: number): string {
   const mins = Math.floor(seconds / 60);
@@ -44,7 +45,7 @@ export function FaceSwapDetailModal({
   onTitleUpdate,
 }: FaceSwapDetailModalProps) {
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
+  const { isDownloading, download } = useDownloadVideo();
   const [showSegments, setShowSegments] = useState(false);
   const [activeSegmentIndex, setActiveSegmentIndex] = useState<number | null>(
     null
@@ -96,33 +97,13 @@ export function FaceSwapDetailModal({
     }
   };
 
-  const handleDownload = async () => {
-    if (!job?.outputUrl || isDownloading) return;
-
-    setIsDownloading(true);
-    try {
-      const response = await fetch(job.outputUrl);
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-
-      const link = document.createElement("a");
-      link.href = blobUrl;
-      link.download = `face-swap-${job.id}.mp4`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      URL.revokeObjectURL(blobUrl);
-    } catch (error) {
-      console.error("Failed to download video:", error);
-      addToast({
-        title: "Download failed",
-        description: "Failed to download the video. Please try again.",
-        color: "danger",
-      });
-    } finally {
-      setIsDownloading(false);
-    }
+  const handleDownload = () => {
+    if (!job?.outputUrl) return;
+    download({
+      url: job.outputUrl,
+      filename: `face-swap-${job.id}.mp4`,
+      isFaceSwap: true,
+    });
   };
 
   const handleClose = () => {
