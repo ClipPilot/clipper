@@ -9,16 +9,26 @@
  * - Add rigidity language: "remains solid throughout", "maintains exact appearance"
  * - Avoid simultaneous complex camera transformations
  * - Negative prompts are crucial - use aggressively
+ *
+ * Hand/Finger Best Practices (Motion Control):
+ * - Ensure hands are visible in source image (hidden hands = hallucinated 6-finger glitches)
+ * - Name the smallest moving joint first: "wrist flick, fingers lead"
+ * - Use anchors to localize motion: "wrists planted, elbows steady, torso still"
+ * - Keep hand actions simple: "hands holding object" safer than complex finger work
+ * - Use negatives to freeze motion chains: "no shoulder involvement"
  */
 
 export const PRODUCT_NEGATIVE_PROMPT =
   "distortion, warping, morphing, melting, blur, stretching, proportion change, shape shifting, " +
-  "object morphing, face morphing, body morphing, limb distortion, extra fingers, missing fingers, " +
+  "object morphing, face morphing, body morphing, limb distortion, " +
+  "extra fingers, missing fingers, fused fingers, mutated hands, malformed hands, six fingers, four fingers, " +
+  "merged fingers, webbed fingers, distorted hands, twisted fingers, wrong number of fingers, " +
+  "hallucinated hands, blurry hands, floating fingers, disconnected fingers, " +
   "changing phone screen, morphing phone, warped phone, bent phone, phone screen changing, " +
   "screen content changing, different screen content, glitchy screen, transparent phone, " +
   "phone screen on back, screen through phone, blurry phone screen, " +
   "low quality, blurry, out of focus, extra elements, added elements, " +
-  "text overlays, captions, watermarks, logos, jerky motion, unstable camera";
+  "text overlays, captions, watermarks, logos, jerky motion, unstable camera, camera shake";
 
 export const PRODUCT_STABILITY_MODIFIERS =
   "++Product remains solid and rigid throughout++ - no morphing, no shape changes. " +
@@ -42,10 +52,6 @@ export const SCREEN_STABILITY_MODIFIERS =
   "Device proportions stay locked - no warping, no bending, no shape shifting.";
 
 export const PRO_MOTION_PROMPT =
-  "Smooth natural movements matching reference video exactly. " +
-  "Anatomically correct hands with natural finger positioning. " +
-  "Hands remain relaxed and stable, minimal finger articulation. " +
-  "Subject maintains exact appearance throughout - consistent face, clothing, no morphing. " +
+  "Smooth natural movements matching reference video exactly. No blurry, sharp details and realism " +
   "Replicate held items exactly as shown. Fluid realistic motion at original speed. " +
-  "match the exact pose and actions of the person in the reference video. " +
   "High quality, sharp details, professional video.";

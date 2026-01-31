@@ -5,10 +5,13 @@
  * Image order expected by the model:
  * - First image: The character/person to pose (keeps their face, clothes, identity)
  * - Second image: The pose reference (extracts pose, body position, background context)
+ *
+ * CRITICAL for Kling Motion Control:
+ * - All limbs (especially hands) MUST be visible in frame
+ * - Hidden hands = hallucinated hands = 6-finger glitches in video
+ * - Zoom out slightly if needed to show full arms and hands
  */
-export const POSE_GENERATION_PROMPT = `Place the person from the first image into the exact same pose as the second image. Match the pose, body position, and background from the second image exactly. Keep the person's face, identity, and clothes from the first image. The person should be looking directly at the camera with natural eye contact. High quality, no text or captions. Match the pose and body positioning EXACTLY as the reference image, correct left and right orientation.
-
-CRITICAL HAND REQUIREMENTS: Both hands MUST be fully visible with all 5 fingers on each hand shown in a natural, relaxed position. Even if the original pose has hands hidden, cropped, or partially visible, you MUST show both complete hands with proper finger anatomy. Position hands naturally in frame - resting at sides, on hips, or gesturing - but always fully visible with correct finger count. Never crop, hide, or obscure any part of the hands.`;
+export const POSE_GENERATION_PROMPT = `Place the person from the first image into the exact same pose as the second image. Match the pose, body position, and background from the second image exactly. Keep the person's face, identity, and clothes from the first image. The person should be looking directly at the camera with natural eye contact. CRITICAL: All limbs must be fully visible in frame - hands and arms must never be cut off, hidden in pockets, or obscured. Zoom out or adjust camera angle if needed to show complete hands and arms. Realistic anatomically correct limbs with natural human proportions - no distortion, no warping, no stretching, no bent or twisted limbs. Arms and legs must have correct joint placement and natural length ratios. Hands must have exactly 5 fingers per hand with natural proportions - no extra, missing, fused, or merged fingers. Leave breathing room around the subject for natural movement. High quality photorealistic, no text or captions. Match the pose and body positioning EXACTLY as the reference image, exact hand position, correct left and right orientation, etc`;
 
 export interface ScriptStructurePattern {
   type: string;

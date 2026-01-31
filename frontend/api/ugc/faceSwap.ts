@@ -78,9 +78,9 @@ class FaceSwapAPI {
     }
   }
 
-  async downloadVideo(url: string, filename: string): Promise<Blob> {
-    const downloadUrl = `${API_URL}/face-swap/download-fixed?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`;
-    const response = await apiFetch(downloadUrl);
+  async downloadVideo(url: string, _filename: string): Promise<Blob> {
+    // Fetch the video directly from the URL
+    const response = await fetch(url);
 
     if (!response.ok) {
       throw new Error("Download failed");
