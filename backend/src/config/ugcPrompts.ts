@@ -11,7 +11,7 @@
  * - Hidden hands = hallucinated hands = 6-finger glitches in video
  * - Zoom out slightly if needed to show full arms and hands
  */
-export const POSE_GENERATION_PROMPT = `Transpose the person from the first image into the exact pose and background of the second image. Keep the person's face, identity, and clothes from the first image. Match the pose, body position, and background from the second image exactly. The person should be looking directly at the camera with natural eye contact. Hands must have exactly 5 fingers each with natural proportions - all fingers visible and defined, no extra, missing, fused, or merged fingers. If arms are crossed or folded, keep the pose natural but ensure all fingers remain visible. Realistic anatomically correct limbs - no distortion or warping. High quality photorealistic, no text or captions`;
+export const POSE_GENERATION_PROMPT = `Transpose the person from the first image into the exact pose and background of the second image. Keep the person's face, identity, and clothes from the first image. Match the pose, body position, and background from the second image exactly. The person should be looking directly at the camera with natural eye contact. Hands must be SEPARATE from each other - never touching, overlapping, or intertwined. Each hand must have exactly 5 fingers with natural proportions - all fingers visible, defined, and completely separate from each other, no extra, missing, fused, or merged fingers. Realistic anatomically correct limbs - no distortion or warping. High quality photorealistic, no text or captions`;
 
 export interface ScriptStructurePattern {
   type: string;
