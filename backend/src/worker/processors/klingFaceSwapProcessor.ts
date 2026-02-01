@@ -258,7 +258,7 @@ export async function processKlingFaceSwapJob(
         const result = await klingProMotionWithRetry({
           imageUrl,
           videoUrl: chunkUrl,
-          prompt: PRO_MOTION_PROMPT,
+          // prompt: PRO_MOTION_PROMPT,
           keepOriginalSound: true,
           characterOrientation: "video",
         });
