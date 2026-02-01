@@ -52,6 +52,16 @@ export const SCREEN_STABILITY_MODIFIERS =
   "Device proportions stay locked - no warping, no bending, no shape shifting.";
 
 export const PRO_MOTION_PROMPT =
-  "Smooth natural movements matching reference video exactly. No blurry, sharp details and realism " +
+  "Smooth natural movements matching reference video exactly. " +
+  "++Hands with exactly 5 fingers each++, natural proportions, no extra or fused fingers. " +
+  "Wrists planted, elbows steady - keep hand motions simple and grounded. " +
+  "Subject maintains exact appearance throughout. " +
   "Replicate held items exactly as shown. Fluid realistic motion at original speed. " +
   "High quality, sharp details, professional video.";
+
+/**
+ * Avatar-specific prompt for talking head generation
+ * Note: Kling Avatar API only has prompt (default ".") - no negative_prompt option
+ */
+export const AVATAR_PROMPT =
+  "Natural talking head, two hands only, no extra limbs, no text overlays";
