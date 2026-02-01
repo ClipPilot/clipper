@@ -1,4 +1,3 @@
-import * as Sentry from "@sentry/node";
 import fs from "fs";
 import path from "path";
 import { UpdateOverlaysJob } from "../../services/sqs.service";
@@ -7,12 +6,12 @@ import { s3Service } from "../../services/s3.service";
 import { notifyClipsRefresh } from "../notify";
 import { addCaptionsFromData, CaptionEntry } from "../../services/clips/captions.service";
 import { regenerateClipWithTextOverlay } from "../../services/clips/clip.service";
+import { ensureOutputDir } from "../../utils/fileUtils";
 
 export async function processOverlaysJob(job: UpdateOverlaysJob): Promise<void> {
   const { clipId, teamId, captionsEnabled, captionsData, captionColor, captionFont, heading } = job;
 
-  const outDir = path.join(process.cwd(), "output");
-  if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
+  const outDir = ensureOutputDir();
 
   const localBlankPath = path.join(outDir, `blank_${clipId}_${Date.now()}.mp4`);
   let newClipPath = "";

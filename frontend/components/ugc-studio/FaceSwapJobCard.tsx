@@ -7,10 +7,10 @@ import {
   CardBody,
   Chip,
   Progress,
-  addToast,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { FaceSwapJob, getStatusColor, getStatusIcon } from "./types";
+import { useDownloadVideo } from "@/hooks/useDownloadVideo";
 
 interface FaceSwapJobCardProps {
   job: FaceSwapJob;
@@ -22,7 +22,7 @@ export const FaceSwapJobCard = memo(
   function FaceSwapJobCard({ job, onClick, onDelete }: FaceSwapJobCardProps) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isDeleting, setIsDeleting] = useState(false);
-    const [isDownloading, setIsDownloading] = useState(false);
+    const { isDownloading, download } = useDownloadVideo();
 
     const handleDelete = async () => {
       if (isDeleting || !onDelete) return;
@@ -35,33 +35,13 @@ export const FaceSwapJobCard = memo(
       }
     };
 
-    const handleDownload = async () => {
-      if (!job.outputUrl || isDownloading) return;
-
-      setIsDownloading(true);
-      try {
-        const response = await fetch(job.outputUrl);
-        const blob = await response.blob();
-        const blobUrl = URL.createObjectURL(blob);
-
-        const link = document.createElement("a");
-        link.href = blobUrl;
-        link.download = `face-swap-${job.id}.mp4`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        URL.revokeObjectURL(blobUrl);
-      } catch (error) {
-        console.error("Failed to download video:", error);
-        addToast({
-          title: "Download failed",
-          description: "Failed to download the video. Please try again.",
-          color: "danger",
-        });
-      } finally {
-        setIsDownloading(false);
-      }
+    const handleDownload = () => {
+      if (!job.outputUrl) return;
+      download({
+        url: job.outputUrl,
+        filename: `face-swap-${job.id}.mp4`,
+        isFaceSwap: true,
+      });
     };
 
     return (

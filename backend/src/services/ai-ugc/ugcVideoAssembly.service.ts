@@ -13,15 +13,14 @@ import {
 } from "./kling.service";
 import { openaiClient } from "../openai.service";
 import { generateJumbledMetadataString } from "../../utils/videoMetadata";
+import { VIDEO_ENCODE_SETTINGS, AUDIO_SETTINGS } from "../../config/ffmpegSettings";
 
 const MAX_KLING_VIDEO_DURATION = 10;
 const KLING_EXTENSION_DURATION = 5;
 const PARALLEL_SCENES = 2;
-const AUDIO_SAMPLE_RATE = 44100;
-const AUDIO_CHANNELS = 2;
-const AUDIO_BITRATE = "192k";
-const VIDEO_ENCODE_SETTINGS =
-  "-c:v libx264 -preset fast -crf 23 -profile:v main -level 3.1 -pix_fmt yuv420p -r 30 -g 30 -keyint_min 30 -vsync cfr";
+const AUDIO_SAMPLE_RATE = AUDIO_SETTINGS.sampleRate;
+const AUDIO_CHANNELS = AUDIO_SETTINGS.channels;
+const AUDIO_BITRATE = AUDIO_SETTINGS.bitrate;
 const SPEECH_SPEED_BOOST = 1.25;
 
 function applySpeedBoost(
@@ -294,15 +293,19 @@ function trimVideoToAudio(
 }
 
 /**
- * Extend a video to match target duration using Kling's last-frame continuation.
- * If video is shorter than target, extracts last frame and generates continuation segments.
+ * Extend a video to match target duration using last-frame continuation.
+ * Extracts the last frame from the current video and uses it as the starting
+ * image for the next segment, maintaining visual continuity.
+ *
+ * Works for both A-roll (avatar) and B-roll (product shots) - uses the same
+ * Kling 2.6 Pro image-to-video with the original prompt for consistency.
  *
  * Process:
- * 1. Generate initial 10s video
- * 2. If audio > 10s, extract last frame
- * 3. Use last frame as start reference to generate 5s continuation with same prompt
- * 4. Merge videos seamlessly
- * 5. Trim to exact target duration
+ * 1. Extract last frame from current video
+ * 2. Use last frame as start image for Kling image-to-video
+ * 3. Generate 5-10s extension with same prompt
+ * 4. Merge all segments seamlessly
+ * 5. Repeat until target duration reached
  */
 async function extendVideoToMatchAudio(
   initialVideoPath: string,
@@ -328,8 +331,7 @@ async function extendVideoToMatchAudio(
   // Keep extending until we have enough video
   while (currentDuration < targetDuration) {
     const neededDuration = targetDuration - currentDuration;
-    // Use 5s extensions (Kling minimum)
-    const extensionDuration = neededDuration > 5 ? 10 : 5;
+    const extensionDuration: 5 | 10 = neededDuration > 5 ? 10 : 5;
 
     console.log(
       `[Video Extension] Scene ${sceneNumber}: Extending by ${extensionDuration}s (need ${neededDuration.toFixed(2)}s more)`,
@@ -344,12 +346,16 @@ async function extendVideoToMatchAudio(
     await s3Service.uploadBuffer(lastFrameBuffer, lastFrameKey, "image/png");
     const lastFrameUrl = await s3Service.getPresignedUrl(lastFrameKey, 3600);
 
-    // Generate extension video using last frame as start reference
+    console.log(
+      `[Video Extension] Scene ${sceneNumber}: Last frame extracted, generating continuation`,
+    );
+
+    // Generate extension video using last frame + same prompt
     const { videoUrl: extensionVideoUrl } =
       await klingService.generateVideoWithRetry({
         imageUrl: lastFrameUrl,
-        prompt: `Continue the scene naturally and seamlessly. ${SCREEN_STABILITY_MODIFIERS} ${prompt}`,
-        duration: extensionDuration as 5 | 10,
+        prompt: `${prompt} ${SCREEN_STABILITY_MODIFIERS}`,
+        duration: extensionDuration,
         negativePrompt: PRODUCT_NEGATIVE_PROMPT,
       });
 
@@ -371,6 +377,7 @@ async function extendVideoToMatchAudio(
       `[Video Extension] Scene ${sceneNumber}: Now have ${currentDuration.toFixed(2)}s of video`,
     );
   }
+
   if (videosToMerge.length > 1) {
     const mergedPath = path.join(
       OUTPUT_DIR,
@@ -378,6 +385,7 @@ async function extendVideoToMatchAudio(
     );
     mergeUGCClips(videosToMerge, mergedPath);
 
+    // Cleanup extension segments (keep original)
     for (let i = 1; i < videosToMerge.length; i++) {
       if (fs.existsSync(videosToMerge[i])) fs.unlinkSync(videosToMerge[i]);
     }

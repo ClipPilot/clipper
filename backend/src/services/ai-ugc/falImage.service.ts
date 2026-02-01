@@ -39,6 +39,7 @@ export interface GenerateImageWithReferencesOptions {
   imageUrls: string[];
   aspectRatio?: AspectRatio | "auto";
   numImages?: number;
+  negativePrompt?: string;
 }
 
 export interface GenerateImageResult {
@@ -108,7 +109,7 @@ export async function generateImage(
 export async function generateImageWithReferences(
   options: GenerateImageWithReferencesOptions & { usePro?: boolean },
 ): Promise<GenerateImageResult> {
-  const { prompt, imageUrls, aspectRatio = "3:4", numImages = 1, usePro = false } = options;
+  const { prompt, imageUrls, aspectRatio = "3:4", numImages = 1, usePro = false, negativePrompt } = options;
 
   const model = usePro ? "fal-ai/nano-banana-pro/edit" : "fal-ai/nano-banana/edit";
 
@@ -116,16 +117,22 @@ export async function generateImageWithReferences(
     `[FAL_IMAGE] Image-to-image with ${imageUrls.length} reference images, aspect ratio ${aspectRatio}, model: ${model}`,
   );
 
+  const input: Record<string, unknown> = {
+    prompt,
+    image_urls: imageUrls,
+    num_images: numImages,
+    aspect_ratio: aspectRatio,
+    output_format: "png",
+    limit_generations: true,
+  };
+
+  if (negativePrompt) {
+    input.negative_prompt = negativePrompt;
+  }
+
   const result = (await withTimeout(
     fal.subscribe(model, {
-      input: {
-        prompt,
-        image_urls: imageUrls,
-        num_images: numImages,
-        aspect_ratio: aspectRatio,
-        output_format: "png",
-        limit_generations: true,
-      },
+      input: input as Parameters<typeof fal.subscribe>[1] extends { input: infer I } ? I : never,
       logs: true,
       onQueueUpdate: (update) => {
         if (update.status === "IN_PROGRESS" && update.logs) {

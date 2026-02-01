@@ -1,4 +1,3 @@
-import * as Sentry from "@sentry/node";
 import fs from "fs";
 import path from "path";
 import { UpdateCaptionsJob } from "../../services/sqs.service";
@@ -6,12 +5,12 @@ import { regenerateClipWithCaptions } from "../../services/clips/clip.service";
 import { clipManagerService } from "../../services/clips/clipManager.service";
 import { s3Service } from "../../services/s3.service";
 import { notifyClipsRefresh } from "../notify";
+import { ensureOutputDir } from "../../utils/fileUtils";
 
 export async function processCaptionsJob(job: UpdateCaptionsJob): Promise<void> {
   const { clipId, teamId, captionsData, captionColor, captionFont, captionsEnabled = true } = job;
 
-  const outDir = path.join(process.cwd(), "output");
-  if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
+  const outDir = ensureOutputDir();
 
   const localBlankPath = path.join(outDir, `blank_${clipId}_${Date.now()}.mp4`);
   let newClipPath: string | null = null;

@@ -89,6 +89,7 @@ export function GeneratePanel({
             <ul className="text-xs text-text-tertiary space-y-1 pl-5 list-disc">
               <li>Use clips with clear faces looking at the camera</li>
               <li>Avoid videos with text overlays or captions</li>
+              <li>Avoid folded arms or limb overlaps in your video</li>
               <li>Ensure good lighting on the face</li>
             </ul>
           </div>
