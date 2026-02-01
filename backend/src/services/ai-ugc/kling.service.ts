@@ -8,6 +8,7 @@ import {
   BROLL_MOTION_MODIFIERS,
   SCREEN_STABILITY_MODIFIERS,
   PRO_MOTION_PROMPT,
+  AVATAR_PROMPT,
 } from "./klingPrompts";
 import {
   generateGroundedCinematicSystemPrompt,
@@ -21,6 +22,7 @@ export {
   BROLL_MOTION_MODIFIERS,
   SCREEN_STABILITY_MODIFIERS,
   PRO_MOTION_PROMPT,
+  AVATAR_PROMPT,
 } from "./klingPrompts";
 
 export const KLING_MAX_PROMPT_LENGTH = 2500;
@@ -573,14 +575,10 @@ export async function applyLipsyncWithRetry(
 export async function generateAvatar(
   options: AvatarOptions,
 ): Promise<AvatarResult> {
-  const { imageUrl, audioUrl, prompt, negativePrompt } = options;
+  const { imageUrl, audioUrl, prompt } = options;
 
-  const avoidElements = negativePrompt || PRODUCT_NEGATIVE_PROMPT;
-  let finalPrompt = prompt
-    ? `${prompt}. DO NOT INCLUDE ANY OF THESE: ${avoidElements}`
-    : `DO NOT INCLUDE ANY OF THESE: ${avoidElements}. Ensure added text like headings and captions are NOT included in this video. `;
-
-  finalPrompt = await shortenPromptIfNeeded(finalPrompt);
+  // Use avatar-specific prompt - brief and direct (API has no negative_prompt)
+  const finalPrompt = prompt || AVATAR_PROMPT;
 
   console.log(`[Kling Avatar v2] Generating talking head video`);
   console.log(`[Kling Avatar v2] Image: ${imageUrl.substring(0, 80)}...`);

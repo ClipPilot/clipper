@@ -11,6 +11,7 @@ import {
   PRODUCT_NEGATIVE_PROMPT,
   SCREEN_STABILITY_MODIFIERS,
 } from "./kling.service";
+import { grokImagineService } from "./grokImagine.service";
 import { openaiClient } from "../openai.service";
 import { generateJumbledMetadataString } from "../../utils/videoMetadata";
 import { VIDEO_ENCODE_SETTINGS, AUDIO_SETTINGS } from "../../config/ffmpegSettings";
@@ -746,12 +747,11 @@ async function processBrollScene(
         shot.action,
       );
 
+      // Use Grok Imagine for B-roll (6s fixed duration, better product shots)
       const { videoUrl: shotVideoUrl } =
-        await klingService.generateVideoWithRetry({
+        await grokImagineService.generateVideoWithRetry({
           imageUrl: shotImageUrl,
-          prompt: shotPrompt,
-          duration: klingDuration as 5 | 10,
-          negativePrompt: PRODUCT_NEGATIVE_PROMPT,
+          prompt: groundedPrompt, // Use grounded prompt directly (Grok doesn't need Kling-specific formatting)
         });
 
       const shotVideoPath = path.join(
@@ -872,24 +872,22 @@ async function processBrollScene(
       action,
     );
 
-    const { videoUrl: klingVideoUrl } =
-      await klingService.generateVideoWithRetry({
+    // Use Grok Imagine for B-roll (6s fixed duration, better product shots)
+    const { videoUrl: grokVideoUrl } =
+      await grokImagineService.generateVideoWithRetry({
         imageUrl,
-        tailImageUrl,
-        prompt,
-        duration: 10,
-        negativePrompt: PRODUCT_NEGATIVE_PROMPT,
+        prompt: groundedCinematicPrompt, // Use grounded prompt directly
       });
 
     console.log(
-      `[UGC Assembly] B-Roll Scene ${sceneNumber}: Kling generated 10s video`,
+      `[UGC Assembly] B-Roll Scene ${sceneNumber}: Grok generated 6s video`,
     );
 
     const silentVideoPath = path.join(
       OUTPUT_DIR,
       `silent_${sceneNumber}_${Date.now()}.mp4`,
     );
-    await s3Service.downloadVideoFromUrl(klingVideoUrl, silentVideoPath);
+    await s3Service.downloadVideoFromUrl(grokVideoUrl, silentVideoPath);
 
     processedVideoPath = silentVideoPath;
   }
