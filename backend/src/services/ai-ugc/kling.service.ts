@@ -745,7 +745,7 @@ export async function klingProMotion(
     videoUrl,
     prompt,
     keepOriginalSound = true,
-    characterOrientation = "video",
+    characterOrientation = "image",
   } = options;
 
   const input: Record<string, unknown> = {
