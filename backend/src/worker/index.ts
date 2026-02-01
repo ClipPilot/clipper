@@ -26,6 +26,7 @@ import { processBatchClipVideoJob } from "./processors/batchClipProcessor";
 import { processCaptionsJob } from "./processors/captionsProcessor";
 import { processTextOverlayJob } from "./processors/textOverlayProcessor";
 import { processOverlaysJob } from "./processors/overlaysProcessor";
+import { processVideoEditJob } from "./processors/videoEditProcessor";
 import { processCharacterJob } from "./processors/characterProcessor";
 import { processSceneImageJob } from "./processors/sceneImageProcessor";
 import { processScriptJob } from "./processors/scriptProcessor";
@@ -43,6 +44,7 @@ import {
   UpdateCaptionsJob,
   TextOverlayJob,
   UpdateOverlaysJob,
+  VideoEditJob,
   GenerateCharacterJob,
   GenerateSceneImageJob,
   GenerateScriptJob,
@@ -151,6 +153,9 @@ async function processMessage(job: VideoProcessingJob, receiptHandle: string): P
         break;
       case "update-overlays":
         await processOverlaysJob(job as UpdateOverlaysJob);
+        break;
+      case "video-edit":
+        await processVideoEditJob(job as VideoEditJob);
         break;
       case "generate-character":
         await processCharacterJob(job as GenerateCharacterJob);

@@ -891,3 +891,330 @@ export const addTextOverlay = async (
     throw err;
   }
 };
+
+// =============================================================================
+// VIDEO EDITOR: New Operations for CapCut-like editing
+// =============================================================================
+
+/**
+ * Change video playback speed.
+ * Uses setpts filter for video and atempo for audio.
+ * atempo only supports 0.5-2.0 range, so we chain multiple filters for wider range.
+ */
+export const changeSpeed = (
+  inputPath: string,
+  outputPath: string,
+  speed: number
+): Promise<string> => {
+  console.log(`[SPEED] Changing speed to ${speed}x: ${inputPath} -> ${outputPath}`);
+
+  if (speed <= 0 || speed > 4) {
+    return Promise.reject(new Error(`Invalid speed: ${speed}. Must be between 0.25 and 4.0`));
+  }
+
+  if (!fs.existsSync(inputPath)) {
+    return Promise.reject(new Error(`[SPEED] Input file does not exist: ${inputPath}`));
+  }
+
+  // Video: setpts=PTS/speed (inverse because higher speed = lower PTS)
+  const videoPts = `setpts=PTS/${speed}`;
+
+  // Audio: atempo only supports 0.5-2.0, so chain filters for wider range
+  let audioFilter: string;
+  if (speed >= 0.5 && speed <= 2.0) {
+    audioFilter = `atempo=${speed}`;
+  } else if (speed < 0.5) {
+    // Chain multiple atempo filters for very slow speeds
+    // 0.25x = atempo=0.5,atempo=0.5
+    const numFilters = Math.ceil(Math.log(0.5 / speed) / Math.log(2)) + 1;
+    const filterValue = Math.pow(speed, 1 / numFilters);
+    audioFilter = Array(numFilters).fill(`atempo=${filterValue.toFixed(4)}`).join(",");
+  } else {
+    // Chain multiple atempo filters for very fast speeds
+    // 4x = atempo=2.0,atempo=2.0
+    const numFilters = Math.ceil(Math.log(speed / 2.0) / Math.log(2)) + 1;
+    const filterValue = Math.pow(speed, 1 / numFilters);
+    audioFilter = Array(numFilters).fill(`atempo=${filterValue.toFixed(4)}`).join(",");
+  }
+
+  return new Promise((resolve, reject) => {
+    ffmpeg(inputPath)
+      .complexFilter([
+        `[0:v]${videoPts}[v]`,
+        `[0:a]${audioFilter}[a]`,
+      ])
+      .outputOptions([
+        "-map", "[v]",
+        "-map", "[a]",
+        "-c:v libx264",
+        "-preset fast",
+        "-crf 23",
+        ...MOBILE_VIDEO_SETTINGS,
+        "-c:a aac",
+        "-b:a 128k",
+        "-ar 48000",
+        "-movflags +faststart",
+        "-map_metadata", "-1",
+      ])
+      .save(outputPath)
+      .on("end", () => {
+        if (!fs.existsSync(outputPath)) {
+          return reject(new Error(`[SPEED] Output file not created: ${outputPath}`));
+        }
+        console.log(`[SPEED] Success: ${outputPath}`);
+        resolve(outputPath);
+      })
+      .on("error", (err) => {
+        console.error(`[SPEED] Failed: ${err.message}`);
+        reject(err);
+      });
+  });
+};
+
+/**
+ * Crop video to specified dimensions.
+ */
+export const cropVideo = (
+  inputPath: string,
+  outputPath: string,
+  crop: { x: number; y: number; width: number; height: number }
+): Promise<string> => {
+  console.log(`[CROP] Cropping to ${crop.width}x${crop.height} at (${crop.x},${crop.y}): ${inputPath} -> ${outputPath}`);
+
+  if (!fs.existsSync(inputPath)) {
+    return Promise.reject(new Error(`[CROP] Input file does not exist: ${inputPath}`));
+  }
+
+  return new Promise((resolve, reject) => {
+    ffmpeg(inputPath)
+      .videoFilters(`crop=${crop.width}:${crop.height}:${crop.x}:${crop.y}`)
+      .outputOptions([
+        "-c:v libx264",
+        "-preset fast",
+        "-crf 23",
+        ...MOBILE_VIDEO_SETTINGS,
+        "-c:a aac",
+        "-b:a 128k",
+        "-ar 48000",
+        "-movflags +faststart",
+        "-map_metadata", "-1",
+      ])
+      .save(outputPath)
+      .on("end", () => {
+        if (!fs.existsSync(outputPath)) {
+          return reject(new Error(`[CROP] Output file not created: ${outputPath}`));
+        }
+        console.log(`[CROP] Success: ${outputPath}`);
+        resolve(outputPath);
+      })
+      .on("error", (err) => {
+        console.error(`[CROP] Failed: ${err.message}`);
+        reject(err);
+      });
+  });
+};
+
+/**
+ * Change video to a specific aspect ratio.
+ * Crops the video to fit the new ratio (removes content, no letterboxing).
+ */
+export const changeAspectRatio = async (
+  inputPath: string,
+  outputPath: string,
+  aspectRatio: "9:16" | "16:9" | "1:1" | "4:5"
+): Promise<string> => {
+  console.log(`[ASPECT] Changing to ${aspectRatio}: ${inputPath} -> ${outputPath}`);
+
+  if (!fs.existsSync(inputPath)) {
+    return Promise.reject(new Error(`[ASPECT] Input file does not exist: ${inputPath}`));
+  }
+
+  // Get current video dimensions
+  const metadata = await getVideoMetadata(inputPath);
+  const { width: srcWidth, height: srcHeight } = metadata;
+
+  // Calculate target dimensions based on aspect ratio
+  let targetWidth: number;
+  let targetHeight: number;
+  const ratioMap: Record<string, number> = {
+    "9:16": 9 / 16,
+    "16:9": 16 / 9,
+    "1:1": 1,
+    "4:5": 4 / 5,
+  };
+  const targetRatio = ratioMap[aspectRatio];
+  const srcRatio = srcWidth / srcHeight;
+
+  if (srcRatio > targetRatio) {
+    // Source is wider than target, crop width
+    targetHeight = srcHeight;
+    targetWidth = Math.round(srcHeight * targetRatio);
+  } else {
+    // Source is taller than target, crop height
+    targetWidth = srcWidth;
+    targetHeight = Math.round(srcWidth / targetRatio);
+  }
+
+  // Center the crop
+  const cropX = Math.round((srcWidth - targetWidth) / 2);
+  const cropY = Math.round((srcHeight - targetHeight) / 2);
+
+  return cropVideo(inputPath, outputPath, {
+    x: cropX,
+    y: cropY,
+    width: targetWidth,
+    height: targetHeight,
+  });
+};
+
+/**
+ * Adjust audio volume.
+ * @param volume - Volume multiplier (0 = mute, 1 = normal, 2 = double)
+ */
+export const adjustVolume = (
+  inputPath: string,
+  outputPath: string,
+  volume: number
+): Promise<string> => {
+  console.log(`[VOLUME] Adjusting to ${volume}x: ${inputPath} -> ${outputPath}`);
+
+  if (!fs.existsSync(inputPath)) {
+    return Promise.reject(new Error(`[VOLUME] Input file does not exist: ${inputPath}`));
+  }
+
+  return new Promise((resolve, reject) => {
+    ffmpeg(inputPath)
+      .audioFilters(`volume=${volume}`)
+      .outputOptions([
+        "-c:v copy",
+        "-c:a aac",
+        "-b:a 192k",
+        "-ar 44100",
+        "-movflags +faststart",
+        "-map_metadata", "-1",
+      ])
+      .save(outputPath)
+      .on("end", () => {
+        if (!fs.existsSync(outputPath)) {
+          return reject(new Error(`[VOLUME] Output file not created: ${outputPath}`));
+        }
+        console.log(`[VOLUME] Success: ${outputPath}`);
+        resolve(outputPath);
+      })
+      .on("error", (err) => {
+        console.error(`[VOLUME] Failed: ${err.message}`);
+        reject(err);
+      });
+  });
+};
+
+/**
+ * Mix background music with video audio.
+ */
+export const mixBackgroundMusic = (
+  videoPath: string,
+  musicPath: string,
+  outputPath: string,
+  config: {
+    originalVolume: number; // 0-1
+    musicVolume: number; // 0-1
+    musicStartTime: number; // Offset in video timeline where music starts
+    musicTrimStart: number; // Where to start in the music file
+    musicTrimEnd: number; // Where to end in the music file
+  }
+): Promise<string> => {
+  console.log(`[MIX] Mixing music: video=${videoPath}, music=${musicPath} -> ${outputPath}`);
+  console.log(`[MIX] Config: originalVol=${config.originalVolume}, musicVol=${config.musicVolume}, startAt=${config.musicStartTime}s`);
+
+  if (!fs.existsSync(videoPath)) {
+    return Promise.reject(new Error(`[MIX] Video file does not exist: ${videoPath}`));
+  }
+  if (!fs.existsSync(musicPath)) {
+    return Promise.reject(new Error(`[MIX] Music file does not exist: ${musicPath}`));
+  }
+
+  // Calculate music duration and delay
+  const musicDuration = config.musicTrimEnd - config.musicTrimStart;
+  const delayMs = Math.round(config.musicStartTime * 1000);
+
+  // Build filter complex
+  // 1. Adjust original audio volume
+  // 2. Trim and adjust music volume, add delay
+  // 3. Mix both audio streams
+  const filterComplex = [
+    // Video audio with volume adjustment
+    `[0:a]volume=${config.originalVolume}[original]`,
+    // Music: trim, adjust volume, and add delay
+    `[1:a]atrim=start=${config.musicTrimStart}:end=${config.musicTrimEnd},asetpts=PTS-STARTPTS,volume=${config.musicVolume},adelay=${delayMs}|${delayMs}[music]`,
+    // Mix both audio streams, use video duration as reference
+    `[original][music]amix=inputs=2:duration=first:dropout_transition=2[mixed]`,
+  ].join(";");
+
+  return new Promise((resolve, reject) => {
+    ffmpeg()
+      .input(videoPath)
+      .input(musicPath)
+      .complexFilter(filterComplex)
+      .outputOptions([
+        "-map", "0:v",
+        "-map", "[mixed]",
+        "-c:v copy",
+        "-c:a aac",
+        "-b:a 192k",
+        "-ar 44100",
+        "-shortest",
+        "-movflags +faststart",
+        "-map_metadata", "-1",
+      ])
+      .save(outputPath)
+      .on("end", () => {
+        if (!fs.existsSync(outputPath)) {
+          return reject(new Error(`[MIX] Output file not created: ${outputPath}`));
+        }
+        console.log(`[MIX] Success: ${outputPath}`);
+        resolve(outputPath);
+      })
+      .on("error", (err) => {
+        console.error(`[MIX] Failed: ${err.message}`);
+        reject(err);
+      });
+  });
+};
+
+/**
+ * Mute video audio completely.
+ */
+export const muteAudio = (
+  inputPath: string,
+  outputPath: string
+): Promise<string> => {
+  console.log(`[MUTE] Muting audio: ${inputPath} -> ${outputPath}`);
+
+  if (!fs.existsSync(inputPath)) {
+    return Promise.reject(new Error(`[MUTE] Input file does not exist: ${inputPath}`));
+  }
+
+  return new Promise((resolve, reject) => {
+    ffmpeg(inputPath)
+      .audioFilters("volume=0")
+      .outputOptions([
+        "-c:v copy",
+        "-c:a aac",
+        "-b:a 32k", // Low bitrate since it's silent
+        "-movflags +faststart",
+        "-map_metadata", "-1",
+      ])
+      .save(outputPath)
+      .on("end", () => {
+        if (!fs.existsSync(outputPath)) {
+          return reject(new Error(`[MUTE] Output file not created: ${outputPath}`));
+        }
+        console.log(`[MUTE] Success: ${outputPath}`);
+        resolve(outputPath);
+      })
+      .on("error", (err) => {
+        console.error(`[MUTE] Failed: ${err.message}`);
+        reject(err);
+      });
+  });
+};

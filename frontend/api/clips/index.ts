@@ -745,6 +745,114 @@ class ClipsAPI {
 
     return response.json();
   }
+
+  // Video Editor
+  async submitVideoEdit(
+    teamId: number,
+    clipId: number,
+    editConfig: {
+      trim?: { startTime: number; endTime: number };
+      crop?: { aspectRatio: string; customCrop?: { x: number; y: number; width: number; height: number } };
+      speed?: number;
+      audio?: {
+        originalVolume: number;
+        originalMuted: boolean;
+        backgroundMusic?: {
+          s3Key: string;
+          volume: number;
+          startTime: number;  // Where in video timeline music begins
+          trimStart: number;  // Where in music file to start
+          trimEnd: number;    // Where in music file to end
+        };
+      };
+      captions?: {
+        enabled: boolean;
+        data: CaptionEntry[];
+        color: string;
+        font: string;
+      };
+      heading?: {
+        text: string;
+        color: string;
+        font: string;
+        x: number;
+        y: number;
+        fontSize: number;
+      };
+    }
+  ): Promise<{ message: string; jobId: string }> {
+    const response = await apiFetch(
+      `${API_URL}/clip-video/teams/${teamId}/clips/${clipId}/edit`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ editConfig }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to submit video edit");
+    }
+
+    return response.json();
+  }
+
+  async getMusicUploadUrl(
+    teamId: number,
+    clipId: number,
+    fileName: string,
+    contentType: string
+  ): Promise<{ uploadUrl: string; s3Key: string }> {
+    const response = await apiFetch(
+      `${API_URL}/clip-video/teams/${teamId}/clips/${clipId}/music`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileName, contentType }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to get music upload URL");
+    }
+
+    return response.json();
+  }
+
+  async uploadMusicToS3(
+    uploadUrl: string,
+    file: File,
+    onProgress?: (progress: number) => void
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+
+      xhr.upload.addEventListener("progress", (event) => {
+        if (event.lengthComputable && onProgress) {
+          const progress = Math.round((event.loaded / event.total) * 100);
+          onProgress(progress);
+        }
+      });
+
+      xhr.addEventListener("load", () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve();
+        } else {
+          reject(new Error(`Upload failed with status ${xhr.status}`));
+        }
+      });
+
+      xhr.addEventListener("error", () => {
+        reject(new Error("Upload failed"));
+      });
+
+      xhr.open("PUT", uploadUrl);
+      xhr.setRequestHeader("Content-Type", file.type);
+      xhr.send(file);
+    });
+  }
 }
 
 export const clipsAPI = new ClipsAPI();

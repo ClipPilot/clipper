@@ -12,6 +12,7 @@ export type JobType =
   | "update-captions"
   | "text-overlay"
   | "update-overlays"
+  | "video-edit"
   | "generate-character"
   | "generate-scene-image"
   | "generate-script"
@@ -118,6 +119,64 @@ export interface UpdateOverlaysJob extends BaseJob {
     x: number;
     y: number;
     fontSize: number;
+  };
+}
+
+// Video edit job payload (CapCut-like editing)
+export interface VideoEditJob extends BaseJob {
+  type: "video-edit";
+  clipId: number;
+  editConfig: {
+    // Trim
+    trim?: {
+      startTime: number;
+      endTime: number;
+    };
+    // Crop
+    crop?: {
+      aspectRatio: "9:16" | "16:9" | "1:1" | "4:5" | "custom";
+      customCrop?: {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+      };
+    };
+    // Speed (0.25 to 4.0)
+    speed?: number;
+    // Audio
+    audio?: {
+      originalVolume: number;
+      originalMuted: boolean;
+      backgroundMusic?: {
+        s3Key: string;
+        volume: number;
+        startTime: number;
+        trimStart: number;
+        trimEnd: number;
+      };
+    };
+    // Captions
+    captions?: {
+      enabled: boolean;
+      data: Array<{
+        index: number;
+        startTime: number;
+        endTime: number;
+        text: string;
+      }>;
+      color: string;
+      font: string;
+    };
+    // Heading
+    heading?: {
+      text: string;
+      color: string;
+      font: string;
+      x: number;
+      y: number;
+      fontSize: number;
+    };
   };
 }
 
@@ -264,6 +323,7 @@ export type VideoProcessingJob =
   | UpdateCaptionsJob
   | TextOverlayJob
   | UpdateOverlaysJob
+  | VideoEditJob
   | GenerateCharacterJob
   | GenerateSceneImageJob
   | GenerateScriptJob
@@ -636,6 +696,24 @@ class SQSService {
       projectId: params.projectId,
       teamId: params.teamId,
       userId: params.userId,
+      createdAt: new Date().toISOString(),
+    };
+
+    return this.sendJob(job);
+  }
+
+  async sendVideoEditJob(params: {
+    clipId: number;
+    teamId: number;
+    userId: number;
+    editConfig: VideoEditJob["editConfig"];
+  }): Promise<string> {
+    const job: VideoEditJob = {
+      type: "video-edit",
+      clipId: params.clipId,
+      teamId: params.teamId,
+      userId: params.userId,
+      editConfig: params.editConfig,
       createdAt: new Date().toISOString(),
     };
 

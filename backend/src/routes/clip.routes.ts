@@ -1173,6 +1173,150 @@ router.post(
 
 /**
  * @openapi
+ * /clip-video/teams/{teamId}/clips/{clipId}/edit:
+ *   post:
+ *     summary: Submit a video edit job (CapCut-like editing)
+ *     description: |
+ *       Submits a comprehensive video edit job that can include trimming, speed changes,
+ *       cropping, audio adjustments, background music, captions, and heading overlays.
+ *       All edits are processed in a single render pass on the worker.
+ *     tags:
+ *       - Video Editor
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: clipId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - editConfig
+ *             properties:
+ *               editConfig:
+ *                 type: object
+ *                 properties:
+ *                   trim:
+ *                     type: object
+ *                     properties:
+ *                       startTime:
+ *                         type: number
+ *                       endTime:
+ *                         type: number
+ *                   crop:
+ *                     type: object
+ *                     properties:
+ *                       aspectRatio:
+ *                         type: string
+ *                         enum: ["9:16", "16:9", "1:1", "4:5", "custom"]
+ *                       customCrop:
+ *                         type: object
+ *                   speed:
+ *                     type: number
+ *                     minimum: 0.25
+ *                     maximum: 4
+ *                   audio:
+ *                     type: object
+ *                     properties:
+ *                       originalVolume:
+ *                         type: number
+ *                       originalMuted:
+ *                         type: boolean
+ *                       backgroundMusic:
+ *                         type: object
+ *                   captions:
+ *                     type: object
+ *                   heading:
+ *                     type: object
+ *     responses:
+ *       200:
+ *         description: Video edit job queued successfully
+ *       400:
+ *         description: Invalid configuration
+ *       403:
+ *         description: Cannot edit unsaved clips
+ *       404:
+ *         description: Clip not found
+ */
+router.post(
+  "/teams/:teamId/clips/:clipId/edit",
+  requireAuth,
+  requireSeatAccess,
+  clipManagerController.submitVideoEdit.bind(clipManagerController)
+);
+
+/**
+ * @openapi
+ * /clip-video/teams/{teamId}/clips/{clipId}/music:
+ *   post:
+ *     summary: Get presigned URL for background music upload
+ *     description: Returns a presigned URL for uploading background music to S3
+ *     tags:
+ *       - Video Editor
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: clipId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - fileName
+ *               - contentType
+ *             properties:
+ *               fileName:
+ *                 type: string
+ *               contentType:
+ *                 type: string
+ *               fileSize:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Upload URL generated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 uploadUrl:
+ *                   type: string
+ *                 s3Key:
+ *                   type: string
+ *       400:
+ *         description: Invalid file type or size
+ */
+router.post(
+  "/teams/:teamId/clips/:clipId/music",
+  requireAuth,
+  requireSeatAccess,
+  clipManagerController.getMusicUploadUrl.bind(clipManagerController)
+);
+
+/**
+ * @openapi
  * /clip-video/teams/{teamId}/clips/{clipId}/save:
  *   post:
  *     summary: Save a clip
