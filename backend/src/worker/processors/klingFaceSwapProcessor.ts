@@ -19,7 +19,6 @@ import {
   cutClip,
   mergeClipsGpu,
   extractFirstFrame,
-  extractLastFrame,
   extractAudio,
   replaceAudioInVideo,
   getVideoDuration,
@@ -132,13 +131,17 @@ async function updateProgress(
   progress: number,
   message?: string,
 ): Promise<void> {
-  await db
-    .update(comfyJobs)
-    .set({
-      progress,
-      progressMessage: message || null,
-    })
-    .where(eq(comfyJobs.id, jobId));
+  try {
+    await db
+      .update(comfyJobs)
+      .set({
+        progress,
+        progressMessage: message || null,
+      })
+      .where(eq(comfyJobs.id, jobId));
+  } catch (err) {
+    console.warn(`[kling-face-swap] Progress update failed (non-fatal): ${(err as Error).message}`);
+  }
 
   emitJobUpdate(teamId, {
     id: jobId,
@@ -160,17 +163,31 @@ async function completeJob(
   errorMessage?: string,
 ): Promise<void> {
   const finishedAt = new Date();
-  await db
-    .update(comfyJobs)
-    .set({
-      status: success ? "completed" : "failed",
-      progress: success ? 100 : null,
-      progressMessage: success ? "Completed" : errorMessage || null,
-      outputFile: outputFile || null,
-      errorMessage: errorMessage || null,
-      finishedAt,
-    })
-    .where(eq(comfyJobs.id, jobId));
+  const maxRetries = 3;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      await db
+        .update(comfyJobs)
+        .set({
+          status: success ? "completed" : "failed",
+          progress: success ? 100 : null,
+          progressMessage: success ? "Completed" : errorMessage || null,
+          outputFile: outputFile || null,
+          errorMessage: errorMessage || null,
+          finishedAt,
+        })
+        .where(eq(comfyJobs.id, jobId));
+      break;
+    } catch (err) {
+      console.warn(`[kling-face-swap] completeJob DB update failed (attempt ${attempt}/${maxRetries}): ${(err as Error).message}`);
+      if (attempt === maxRetries) {
+        console.error(`[kling-face-swap] completeJob failed after ${maxRetries} attempts`);
+      } else {
+        await new Promise(r => setTimeout(r, 1000 * attempt));
+      }
+    }
+  }
 
   emitJobUpdate(teamId, {
     id: jobId,
@@ -237,34 +254,46 @@ export async function processKlingFaceSwapJob(
     await s3Service.downloadFile(imageS3Key, localImagePath);
     console.log(`[kling-face-swap] Downloaded reference image`);
 
-    // Download the full original video (worker handles all cutting)
     const fullVideoPath = path.join(outDir, `full_video_${Date.now()}.mp4`);
     if (!originalVideoS3Key) {
-      throw new Error("originalVideoS3Key is required - worker handles all video cutting");
+      throw new Error("originalVideoS3Key is required");
     }
     await s3Service.downloadFile(originalVideoS3Key, fullVideoPath);
-    console.log(`[kling-face-swap] Downloaded full video from ${originalVideoS3Key}`);
+    console.log(`[kling-face-swap] Downloaded video: ${originalVideoS3Key}`);
 
-    // Step 1: Extract audio from the FULL original video FIRST (preserves continuous audio across all segments)
-    // Note: extractAudio uses pcm_s16le codec which outputs WAV format
-    const originalAudioPath = path.join(outDir, `original_audio_${Date.now()}.wav`);
-    await extractAudio(fullVideoPath, originalAudioPath);
-    console.log(`[kling-face-swap] Extracted original audio for later restoration`);
+    const actualVideoDuration = await getVideoDuration(fullVideoPath);
+    console.log(`[kling-face-swap] Actual video duration: ${actualVideoDuration.toFixed(2)}s`);
+    console.log(`[kling-face-swap] Face segments (job.segments): ${segments.map(s => `${s.start.toFixed(2)}-${s.end.toFixed(2)}`).join(', ')}`);
 
-    // Step 2: Get video duration
-    const videoDuration = await getVideoDuration(fullVideoPath);
-    console.log(`[kling-face-swap] Video duration: ${videoDuration.toFixed(2)}s, segments to process: ${segments.length}`);
+    if (spliceMode && spliceMetadata) {
+      const metaSegs = spliceMetadata.segments as SpliceMetadataSegment[];
+      console.log(`[kling-face-swap] Splice segments BEFORE adjustment: ${metaSegs.map(s => `${s.type}:${s.start.toFixed(2)}-${s.end.toFixed(2)}`).join(', ')} (metadataDuration: ${spliceMetadata.videoDuration})`);
+    }
 
-    // Step 3: Cut each segment from the full video, then chunk each segment into 10s pieces
-    // All cutting happens here in the worker
+    if (spliceMode && spliceMetadata) {
+      const metadataDuration = spliceMetadata.videoDuration || 0;
+      if (actualVideoDuration > metadataDuration + 0.1) {
+        const typedSegs = spliceMetadata.segments as SpliceMetadataSegment[];
+        const lastSeg = typedSegs[typedSegs.length - 1];
+        if (lastSeg.type === "original") {
+          lastSeg.end = actualVideoDuration;
+        } else {
+          typedSegs.push({ start: lastSeg.end, end: actualVideoDuration, type: "original" });
+        }
+        spliceMetadata.videoDuration = actualVideoDuration;
+        console.log(`[kling-face-swap] Extended to actual duration: ${actualVideoDuration.toFixed(2)}s (was ${metadataDuration.toFixed(2)}s)`);
+      }
+      const adjustedSegs = spliceMetadata.segments as SpliceMetadataSegment[];
+      console.log(`[kling-face-swap] Splice segments AFTER adjustment: ${adjustedSegs.map(s => `${s.type}:${s.start.toFixed(2)}-${s.end.toFixed(2)}`).join(', ')}`);
+    }
+
     const chunkLocalPaths: string[] = [];
-    const chunkSegmentMap: number[] = []; // Track which segment each chunk belongs to
+    const chunkSegmentMap: number[] = [];
 
     for (let segIdx = 0; segIdx < segments.length; segIdx++) {
       const seg = segments[segIdx];
       const segmentDuration = seg.end - seg.start;
 
-      // Calculate chunk durations ensuring each is between 3-10 seconds
       const chunkDurations = calculateChunkDurations(segmentDuration);
 
       console.log(`[kling-face-swap] Segment ${segIdx + 1}/${segments.length}: ${seg.start.toFixed(2)}s - ${seg.end.toFixed(2)}s (${segmentDuration.toFixed(2)}s, ${chunkDurations.length} chunks: [${chunkDurations.map(d => d.toFixed(1)).join(', ')}]s)`);
@@ -289,10 +318,8 @@ export async function processKlingFaceSwapJob(
 
     await updateProgress(jobId, teamId, 15, `Generating pose image`);
 
-    // Step 4: Generate nano-banana pose image from first frame
     const frameOutputPath = path.join(outDir, `frame_${Date.now()}.jpg`);
     await extractFirstFrame(chunkLocalPaths[0], frameOutputPath);
-    console.log(`[kling-face-swap] Extracted first frame from video`);
 
     const frameS3Key = `face-swap-assets/${teamId}/${jobId}/frame_${Date.now()}.jpg`;
     await s3Service.uploadFile(frameOutputPath, frameS3Key, "image/jpeg");
@@ -318,53 +345,48 @@ export async function processKlingFaceSwapJob(
 
     await updateProgress(jobId, teamId, 20, `Processing video chunks`);
 
-    // Step 5: Process chunks SEQUENTIALLY with chained reference images
-    // First chunk uses nano-banana pose, subsequent chunks use last frame of previous processed chunk
-    const processedChunkPaths: string[] = [];
-    let currentReferenceUrl = initialPoseUrl;
+    // Process chunks in parallel batches (same pose for all = no dependencies)
+    const PARALLEL_BATCH_SIZE = 3;
+    const processedChunkPaths: string[] = new Array(chunkLocalPaths.length);
 
-    for (let i = 0; i < chunkLocalPaths.length; i++) {
-      const chunkPath = chunkLocalPaths[i];
-      const tempChunkKey = `face-swap-assets/${teamId}/${jobId}/chunk_${i}_${Date.now()}.mp4`;
-
-      const progressPercent = 20 + Math.floor((i / chunkLocalPaths.length) * 60);
-      await updateProgress(jobId, teamId, progressPercent, `Processing chunk ${i + 1}/${chunkLocalPaths.length}`);
+    async function processChunk(index: number): Promise<void> {
+      const chunkPath = chunkLocalPaths[index];
+      const tempChunkKey = `face-swap-assets/${teamId}/${jobId}/chunk_${index}_${Date.now()}.mp4`;
 
       try {
         await s3Service.uploadFile(chunkPath, tempChunkKey, "video/mp4");
         const chunkUrl = await s3Service.getPresignedUrl(tempChunkKey, 3600);
 
-        console.log(`[kling-face-swap] Chunk ${i + 1}/${chunkLocalPaths.length}: Using reference from ${i === 0 ? 'nano-banana pose' : 'previous chunk last frame'}`);
+        console.log(`[kling-face-swap] Chunk ${index + 1}/${chunkLocalPaths.length}: Starting`);
 
         const result = await klingProMotionWithRetry({
-          imageUrl: currentReferenceUrl,
+          imageUrl: initialPoseUrl,
           videoUrl: chunkUrl,
-          keepOriginalSound: false, // We'll replace with original audio later
+          keepOriginalSound: true,
           characterOrientation: "image",
         });
 
-        const processedPath = path.join(outDir, `processed_${i}.mp4`);
+        const processedPath = path.join(outDir, `processed_${index}.mp4`);
         await s3Service.downloadVideoFromUrl(result.videoUrl, processedPath);
-        processedChunkPaths.push(processedPath);
+        processedChunkPaths[index] = processedPath;
 
-        console.log(`[kling-face-swap] Chunk ${i + 1}/${chunkLocalPaths.length}: Complete`);
-
-        // For next chunk, extract last frame from this processed chunk as the new reference
-        if (i < chunkLocalPaths.length - 1) {
-          const lastFramePath = path.join(outDir, `last_frame_${i}_${Date.now()}.jpg`);
-          await extractLastFrame(processedPath, lastFramePath);
-
-          const lastFrameS3Key = `face-swap-assets/${teamId}/${jobId}/last_frame_${i}_${Date.now()}.jpg`;
-          await s3Service.uploadFile(lastFramePath, lastFrameS3Key, "image/jpeg");
-          currentReferenceUrl = await s3Service.getPresignedUrl(lastFrameS3Key, 3600);
-          console.log(`[kling-face-swap] Extracted last frame from chunk ${i + 1} for next chunk reference`);
-        }
-
+        console.log(`[kling-face-swap] Chunk ${index + 1}/${chunkLocalPaths.length}: Complete`);
         await s3Service.deleteObject(tempChunkKey).catch(() => {});
       } catch (error) {
         await s3Service.deleteObject(tempChunkKey).catch(() => {});
-        throw new Error(`Chunk ${i + 1} failed: ${(error as Error).message}`);
+        throw new Error(`Chunk ${index + 1} failed: ${(error as Error).message}`);
       }
+    }
+
+    for (let batchStart = 0; batchStart < chunkLocalPaths.length; batchStart += PARALLEL_BATCH_SIZE) {
+      const batchEnd = Math.min(batchStart + PARALLEL_BATCH_SIZE, chunkLocalPaths.length);
+      const batchIndices = Array.from({ length: batchEnd - batchStart }, (_, i) => batchStart + i);
+
+      const progressPercent = 20 + Math.floor((batchStart / chunkLocalPaths.length) * 60);
+      await updateProgress(jobId, teamId, progressPercent, `Processing chunks ${batchStart + 1}-${batchEnd}/${chunkLocalPaths.length}`);
+
+      console.log(`[kling-face-swap] Processing batch: chunks ${batchStart + 1}-${batchEnd} in parallel`);
+      await Promise.all(batchIndices.map(i => processChunk(i)));
     }
 
     console.log(
@@ -374,50 +396,39 @@ export async function processKlingFaceSwapJob(
     let finalOutputPath: string;
 
     if (spliceMode && spliceMetadata) {
-      // SPLICE MODE: Interleave processed segments with original (unprocessed) segments
-      console.log(`[kling-face-swap] Splice mode: assembling interleaved video...`);
       await updateProgress(jobId, teamId, 82, "Assembling spliced video");
 
       const spliceSegmentPaths: string[] = [];
       let processedChunkIdx = 0;
       const typedSegments = spliceMetadata.segments as SpliceMetadataSegment[];
 
+      const totalSpliceDuration = typedSegments.reduce((sum, s) => sum + (s.end - s.start), 0);
+      console.log(`[kling-face-swap] Splice mode: ${typedSegments.length} segments, total duration: ${totalSpliceDuration.toFixed(2)}s (actual video: ${actualVideoDuration.toFixed(2)}s)`);
+
       for (let i = 0; i < typedSegments.length; i++) {
         const seg = typedSegments[i];
         const segPath = path.join(outDir, `splice_seg_${i}.mp4`);
 
         if (seg.type === "processed") {
-          // Calculate how many chunks belong to this processed segment (using same logic as cutting)
           const segmentDuration = seg.end - seg.start;
           const numChunks = calculateChunkDurations(segmentDuration).length;
-
-          const chunksForSegment = processedChunkPaths.slice(
-            processedChunkIdx,
-            processedChunkIdx + numChunks,
-          );
+          const chunksForSegment = processedChunkPaths.slice(processedChunkIdx, processedChunkIdx + numChunks);
           processedChunkIdx += numChunks;
 
-          console.log(
-            `[kling-face-swap] Splice segment ${i}: PROCESSED ${seg.start.toFixed(2)}-${seg.end.toFixed(2)}s using ${numChunks} chunks`,
-          );
+          console.log(`[kling-face-swap] Splice ${i}: PROCESSED ${seg.start.toFixed(2)}-${seg.end.toFixed(2)}s (${numChunks} chunks)`);
 
           if (chunksForSegment.length === 0) {
             throw new Error(`No chunks available for processed segment ${i}`);
           }
 
-          // Merge this segment's processed chunks
           await mergeClipsGpu(chunksForSegment, segPath);
         } else {
-          // Original segment - cut from the full video (already downloaded)
-          console.log(
-            `[kling-face-swap] Splice segment ${i}: ORIGINAL ${seg.start.toFixed(2)}-${seg.end.toFixed(2)}s`,
-          );
+          console.log(`[kling-face-swap] Splice ${i}: ORIGINAL ${seg.start.toFixed(2)}-${seg.end.toFixed(2)}s`);
           await cutClip(fullVideoPath, segPath, seg.start, seg.end);
         }
 
         spliceSegmentPaths.push(segPath);
 
-        // Upload each segment to S3 for debugging/reference
         const segBuffer = fs.readFileSync(segPath);
         const segS3Key = `comfy-outputs/${teamId}/${jobId}/segment_${i}_${seg.type}.mp4`;
         await s3Service.uploadBuffer(segBuffer, segS3Key, "video/mp4");
@@ -429,40 +440,31 @@ export async function processKlingFaceSwapJob(
         });
       }
 
-      // Merge all splice segments (processed + original interleaved)
+      if (processedChunkIdx !== processedChunkPaths.length) {
+        console.warn(`[kling-face-swap] WARNING: Used ${processedChunkIdx}/${processedChunkPaths.length} chunks - some may be missing!`);
+      }
+
       console.log(`[kling-face-swap] Merging ${spliceSegmentPaths.length} splice segments...`);
       await updateProgress(jobId, teamId, 85, "Merging segments");
 
-      const splicedVideoPath = path.join(outDir, `spliced_${Date.now()}.mp4`);
-      await mergeClipsGpu(spliceSegmentPaths, splicedVideoPath);
-
-      // Replace audio with original continuous audio track
-      console.log(`[kling-face-swap] Restoring original audio...`);
-      await updateProgress(jobId, teamId, 87, "Restoring audio");
-
       finalOutputPath = path.join(outDir, `final_${Date.now()}.mp4`);
-      await replaceAudioInVideo(splicedVideoPath, originalAudioPath, finalOutputPath);
-      console.log(`[kling-face-swap] Spliced ${spliceSegmentPaths.length} segments with restored audio`);
+      await mergeClipsGpu(spliceSegmentPaths, finalOutputPath);
+
+      const finalDuration = await getVideoDuration(finalOutputPath);
+      console.log(`[kling-face-swap] Final output: ${finalDuration.toFixed(2)}s (expected: ${actualVideoDuration.toFixed(2)}s, diff: ${(actualVideoDuration - finalDuration).toFixed(2)}s)`);
 
     } else {
-      // NON-SPLICE MODE: Simple merge of all processed chunks
-      console.log(`[kling-face-swap] Non-splice mode: merging ${processedChunkPaths.length} chunks...`);
+      console.log(`[kling-face-swap] Non-splice: merging ${processedChunkPaths.length} chunks...`);
       await updateProgress(jobId, teamId, 82, "Combining video");
 
-      const mergedVideoPath = path.join(outDir, `merged_${Date.now()}.mp4`);
-      await mergeClipsGpu(processedChunkPaths, mergedVideoPath);
-      console.log(`[kling-face-swap] Merged ${processedChunkPaths.length} chunks`);
-
-      // Replace audio with original continuous audio track
-      console.log(`[kling-face-swap] Restoring original audio...`);
-      await updateProgress(jobId, teamId, 85, "Restoring audio");
-
       finalOutputPath = path.join(outDir, `final_${Date.now()}.mp4`);
-      await replaceAudioInVideo(mergedVideoPath, originalAudioPath, finalOutputPath);
-      console.log(`[kling-face-swap] Audio restored from original video`);
+      await mergeClipsGpu(processedChunkPaths, finalOutputPath);
+
+      const finalDuration = await getVideoDuration(finalOutputPath);
+      const expectedDuration = segments.reduce((sum, s) => sum + (s.end - s.start), 0);
+      console.log(`[kling-face-swap] Final output: ${finalDuration.toFixed(2)}s (expected: ${expectedDuration.toFixed(2)}s)`);
     }
 
-    // Update splice metadata in DB if we have processed segments
     if (spliceMode && spliceSegmentS3Keys.length > 0) {
       await db
         .update(comfyJobs)
@@ -475,27 +477,15 @@ export async function processKlingFaceSwapJob(
         .where(eq(comfyJobs.id, jobId));
     }
 
-    // Speech-to-Speech voice conversion if voiceId is provided
     if (voiceId) {
-      console.log(
-        `[kling-face-swap] Voice conversion requested with voiceId: ${voiceId}`,
-      );
+      console.log(`[kling-face-swap] Voice conversion: ${voiceId}`);
       await updateProgress(jobId, teamId, 92, "Converting voice...");
 
       try {
-        // Extract audio from the final video
-        const extractedAudioPath = path.join(
-          outDir,
-          `extracted_audio_${Date.now()}.wav`,
-        );
+        const extractedAudioPath = path.join(outDir, `extracted_audio_${Date.now()}.wav`);
         await extractAudio(finalOutputPath, extractedAudioPath);
-        console.log(`[kling-face-swap] Extracted audio from video`);
 
-        // Convert to MP3 for ElevenLabs (it expects mp3/mpeg format)
-        const mp3AudioPath = path.join(
-          outDir,
-          `audio_for_sts_${Date.now()}.mp3`,
-        );
+        const mp3AudioPath = path.join(outDir, `audio_for_sts_${Date.now()}.mp3`);
         await new Promise<void>((resolve, reject) => {
           const { execSync } = require("child_process");
           try {
@@ -509,7 +499,6 @@ export async function processKlingFaceSwapJob(
           }
         });
 
-        // Read the audio and send to ElevenLabs Speech-to-Speech
         const audioBuffer = fs.readFileSync(mp3AudioPath);
         const convertedAudioBuffer = await speechToSpeech({
           voiceId,
