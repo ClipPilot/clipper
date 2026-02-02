@@ -166,6 +166,28 @@ export const extractFirstFrame = (
   });
 };
 
+export const extractFrameAtTime = (
+  videoPath: string,
+  outputPath: string,
+  timeInSeconds: number
+): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    ffmpeg(videoPath)
+      .setStartTime(timeInSeconds)
+      .outputOptions(["-vframes", "1", "-q:v", "2"])
+      .output(outputPath)
+      .on("end", () => {
+        console.log(`[EXTRACT] Frame at ${timeInSeconds.toFixed(2)}s saved to ${outputPath}`);
+        resolve(outputPath);
+      })
+      .on("error", (err) => {
+        console.error(`[EXTRACT] Failed to extract frame: ${err.message}`);
+        reject(err);
+      })
+      .run();
+  });
+};
+
 /**
  * Extracts the last frame from a video as a JPG image.
  * Used for temporal consistency when processing video in chunks -
@@ -200,6 +222,49 @@ export const extractLastFrame = (
       reject(err);
     }
   });
+};
+
+export const prependPoseFrame = async (
+  videoPath: string,
+  imagePath: string,
+  outputPath: string
+): Promise<string> => {
+  console.log(`[PREPEND-FRAME] Adding pose frame to start of ${videoPath}`);
+  const { execSync } = require("child_process");
+
+  const tempDir = path.dirname(outputPath);
+  const timestamp = Date.now();
+
+  // Get video fps, dimensions, and audio sample rate
+  const probeCmd = `ffprobe -v error -select_streams v:0 -show_entries stream=r_frame_rate,width,height -of csv=p=0 "${videoPath}"`;
+  const probeResult = execSync(probeCmd, { encoding: "utf-8" }).trim();
+  const [width, height, fpsRatio] = probeResult.split(",");
+  const [fpsNum, fpsDen] = fpsRatio.split("/");
+  const fps = parseInt(fpsNum) / parseInt(fpsDen || "1");
+  const frameDuration = 1 / fps;
+
+  // Create 1-frame video from pose image WITH silent audio track
+  const oneFrameVideo = path.join(tempDir, `pose_frame_${timestamp}.mp4`);
+  const createFrameCmd = `ffmpeg -y -loop 1 -i "${imagePath}" -f lavfi -i anullsrc=r=48000:cl=stereo -c:v libx264 -t ${frameDuration.toFixed(6)} -pix_fmt yuv420p -vf "scale=${width}:${height}" -c:a aac -shortest -r ${fps} "${oneFrameVideo}"`;
+  execSync(createFrameCmd, { stdio: "pipe" });
+
+  // Re-encode original video to ensure compatible format
+  const reEncodedVideo = path.join(tempDir, `reencoded_${timestamp}.mp4`);
+  const reEncodeCmd = `ffmpeg -y -i "${videoPath}" -c:v libx264 -pix_fmt yuv420p -r ${fps} -c:a aac -ar 48000 -ac 2 "${reEncodedVideo}"`;
+  execSync(reEncodeCmd, { stdio: "pipe" });
+
+  // Concatenate: pose frame + full original video
+  const concatList = path.join(tempDir, `concat_${timestamp}.txt`);
+  fs.writeFileSync(concatList, `file '${oneFrameVideo}'\nfile '${reEncodedVideo}'`);
+  const concatCmd = `ffmpeg -y -f concat -safe 0 -i "${concatList}" -c copy "${outputPath}"`;
+  execSync(concatCmd, { stdio: "pipe" });
+
+  fs.unlinkSync(oneFrameVideo);
+  fs.unlinkSync(reEncodedVideo);
+  fs.unlinkSync(concatList);
+
+  console.log(`[PREPEND-FRAME] Done: ${outputPath}`);
+  return outputPath;
 };
 
 export const cutClip = (
@@ -366,34 +431,26 @@ const normalizeClip = (input: string, output: string): Promise<string> => {
   });
 };
 
-export const mergeClipsGpu = async (clips: string[], outputPath: string) => {
-  console.log(`[MERGE-GPU] Merging ${clips.length} clips`);
+export const mergeClipsFaceSwap = async (clips: string[], outputPath: string) => {
+  console.log(`[MERGE] Merging ${clips.length} clips`);
 
   for (const clip of clips) {
     if (!fs.existsSync(clip)) {
-      throw new Error(`[MERGE-GPU] Input clip not found: ${clip}`);
+      throw new Error(`[MERGE] Input clip not found: ${clip}`);
     }
     const stats = fs.statSync(clip);
-    console.log(
-      `[MERGE-GPU] Input: ${clip} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`
-    );
+    console.log(`[MERGE] Input: ${clip} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`);
   }
 
-  // Skip individual normalization - we'll re-encode in the final merge
-  // This ensures keyframes are properly aligned across segment boundaries
-  // which fixes mobile playback issues (pausing at segment joins)
   return new Promise((resolve, reject) => {
     const listPath = outputPath + ".txt";
-    const content = clips
-      .map((c) => `file '${c.replace(/'/g, "'\\''")}'`)
-      .join("\n");
+    const content = clips.map((c) => `file '${c.replace(/'/g, "'\\''")}'`).join("\n");
     fs.writeFileSync(listPath, content);
 
     ffmpeg()
       .input(listPath)
       .inputOptions(["-f concat", "-safe 0"])
       .outputOptions([
-        // Re-encode to ensure consistent keyframes across all segments
         "-c:v libx264",
         "-preset fast",
         "-crf 23",
@@ -413,139 +470,90 @@ export const mergeClipsGpu = async (clips: string[], outputPath: string) => {
       .on("end", () => {
         fs.unlinkSync(listPath);
         const finalStats = fs.statSync(outputPath);
-        console.log(
-          `[MERGE-GPU] Success: ${outputPath} (${(finalStats.size / 1024 / 1024).toFixed(2)}MB)`
-        );
+        console.log(`[MERGE] Success: ${outputPath} (${(finalStats.size / 1024 / 1024).toFixed(2)}MB)`);
         resolve(outputPath);
       })
       .on("error", (err) => {
-        console.error(`[MERGE-GPU] Failed: ${err.message}`);
+        console.error(`[MERGE] Failed: ${err.message}`);
         reject(err);
       });
   });
 };
 
-export const mergeClips = async (clips: string[], outputPath: string) => {
-  console.log(`[MERGE] Merging ${clips.length} clips...`);
+export const mergeClipsGpu = mergeClipsFaceSwap;
+export const mergeClips = mergeClipsFaceSwap;
 
-  // Verify all input clips exist
+export const mergeClipsWithCrossfade = async (
+  clips: string[],
+  outputPath: string,
+  overlapDuration: number = 0.3
+): Promise<string> => {
+  console.log(`[MERGE-XFADE] Merging ${clips.length} clips with ${overlapDuration}s crossfade`);
+
+  if (clips.length === 0) throw new Error("No clips to merge");
+  if (clips.length === 1) {
+    fs.copyFileSync(clips[0], outputPath);
+    return outputPath;
+  }
+
   for (const clip of clips) {
     if (!fs.existsSync(clip)) {
-      throw new Error(`[MERGE] Input clip not found: ${clip}`);
+      throw new Error(`[MERGE-XFADE] Input clip not found: ${clip}`);
     }
-    const stats = fs.statSync(clip);
-    console.log(
-      `[MERGE] Input: ${clip} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`
-    );
   }
 
-  const firstClip = clips[0];
-  let metadata;
-  try {
-    metadata = await getVideoMetadata(firstClip);
-    console.log(
-      `[MERGE] First clip dimensions: ${metadata.width}x${metadata.height}`
-    );
-  } catch (err) {
-    console.error(`[MERGE] Failed to get metadata for ${firstClip}:`, err);
-    throw err;
+  const durations: number[] = [];
+  for (const clip of clips) {
+    const dur = await getVideoDuration(clip);
+    durations.push(dur);
+    console.log(`[MERGE-XFADE] ${clip}: ${dur.toFixed(2)}s`);
   }
-  const isHorizontal = metadata.width > metadata.height;
+
+  const inputs: string[] = [];
+  clips.forEach((clip) => {
+    inputs.push("-i", clip);
+  });
+
+  let videoFilter = "";
+  let audioFilter = "";
+  let offset = 0;
+
+  for (let i = 0; i < clips.length - 1; i++) {
+    const prevLabel = i === 0 ? `[${i}:v]` : `[v${i}]`;
+    const nextLabel = `[${i + 1}:v]`;
+    const outLabel = i === clips.length - 2 ? "[vout]" : `[v${i + 1}]`;
+
+    offset = i === 0 ? durations[0] - overlapDuration : offset + durations[i] - overlapDuration;
+
+    videoFilter += `${prevLabel}${nextLabel}xfade=transition=fade:duration=${overlapDuration}:offset=${offset.toFixed(3)}${outLabel}`;
+    if (i < clips.length - 2) videoFilter += ";";
+  }
+
+  offset = 0;
+  for (let i = 0; i < clips.length - 1; i++) {
+    const prevLabel = i === 0 ? `[${i}:a]` : `[a${i}]`;
+    const nextLabel = `[${i + 1}:a]`;
+    const outLabel = i === clips.length - 2 ? "[aout]" : `[a${i + 1}]`;
+
+    audioFilter += `${prevLabel}${nextLabel}acrossfade=d=${overlapDuration}:c1=tri:c2=tri${outLabel}`;
+    if (i < clips.length - 2) audioFilter += ";";
+  }
+
+  const filterComplex = `${videoFilter};${audioFilter}`;
+  console.log(`[MERGE-XFADE] Filter: ${filterComplex}`);
 
   return new Promise((resolve, reject) => {
-    const listPath = outputPath + ".txt";
-    const content = clips
-      .map((c) => `file '${c.replace(/'/g, "'\\''")}'`)
-      .join("\n");
+    const { execSync } = require("child_process");
+    const cmd = `ffmpeg -y ${inputs.join(" ")} -filter_complex "${filterComplex}" -map "[vout]" -map "[aout]" -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 128k -movflags +faststart "${outputPath}"`;
 
-    fs.writeFileSync(listPath, content);
-
-    const ffmpegCmd = ffmpeg()
-      .input(listPath)
-      .inputOptions(["-f concat", "-safe 0"]);
-
-    if (isHorizontal) {
-      ffmpegCmd
-        .complexFilter([
-          {
-            filter: "scale",
-            options: {
-              w: 1080,
-              h: 1920,
-              force_original_aspect_ratio: "increase",
-            },
-            inputs: "0:v",
-            outputs: "bg1",
-          },
-          {
-            filter: "crop",
-            options: { w: 1080, h: 1920 },
-            inputs: "bg1",
-            outputs: "bg2",
-          },
-          {
-            filter: "gblur",
-            options: { sigma: 20 },
-            inputs: "bg2",
-            outputs: "bg",
-          },
-          {
-            filter: "scale",
-            options: {
-              w: 1080,
-              h: -2,
-            },
-            inputs: "0:v",
-            outputs: "fg",
-          },
-          {
-            filter: "overlay",
-            options: {
-              x: "(W-w)/2",
-              y: "(H-h)/2",
-            },
-            inputs: ["bg", "fg"],
-            outputs: "v",
-          },
-        ])
-        .outputOptions([
-          "-map [v]",
-          "-map 0:a?",
-          "-c:v libx264",
-          "-preset fast",
-          "-crf 23",
-          ...MOBILE_VIDEO_SETTINGS,
-          "-bf 0",
-          "-movflags +faststart",
-          "-c:a aac",
-          "-b:a 128k",
-          "-ar 48000",
-          "-ac 2",
-          "-map_metadata", "-1",
-        ]);
-    } else {
-      ffmpegCmd.outputOptions([
-        "-c:v libx264",
-        "-preset fast",
-        "-crf 23",
-        ...MOBILE_VIDEO_SETTINGS,
-        "-bf 0",
-        "-movflags +faststart",
-        "-c:a aac",
-        "-b:a 128k",
-        "-ar 48000",
-        "-ac 2",
-        "-map_metadata", "-1",
-      ]);
+    try {
+      execSync(cmd, { stdio: "pipe", maxBuffer: 50 * 1024 * 1024 });
+      console.log(`[MERGE-XFADE] Success: ${outputPath}`);
+      resolve(outputPath);
+    } catch (err) {
+      console.error(`[MERGE-XFADE] Failed:`, (err as Error).message);
+      reject(err);
     }
-
-    ffmpegCmd
-      .save(outputPath)
-      .on("end", () => {
-        fs.unlinkSync(listPath);
-        resolve(outputPath);
-      })
-      .on("error", (err) => reject(err));
   });
 };
 
