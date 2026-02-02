@@ -255,6 +255,7 @@ export async function processKlingFaceSwapJob(
     const faceImageUrl = await s3Service.getPresignedUrl(imageS3Key, 3600);
     const PARALLEL_SEGMENTS = 3;
     const PARALLEL_CHUNKS = 3;
+    let firstPoseUrl: string | null = null;
 
     async function processSegment(segIdx: number): Promise<string> {
       const seg = segments[segIdx];
@@ -273,9 +274,11 @@ export async function processKlingFaceSwapJob(
       await s3Service.uploadFile(frameOutputPath, frameS3Key, "image/jpeg");
       const frameUrl = await s3Service.getPresignedUrl(frameS3Key, 3600);
 
+      const referenceImageUrl = segIdx === 0 ? faceImageUrl : firstPoseUrl!;
+
       const poseResult = await falImageService.generateImageWithReferences({
         prompt: POSE_GENERATION_PROMPT,
-        imageUrls: [faceImageUrl, frameUrl],
+        imageUrls: [referenceImageUrl, frameUrl],
         aspectRatio: "auto",
         numImages: 1,
         usePro: true,
@@ -289,6 +292,10 @@ export async function processKlingFaceSwapJob(
       const poseS3Key = `face-swap-assets/${teamId}/${jobId}/pose_seg${segIdx}_${timestamp}.png`;
       await s3Service.uploadBuffer(poseBuffer, poseS3Key, "image/png");
       const poseUrl = await s3Service.getPresignedUrl(poseS3Key, 3600);
+
+      if (segIdx === 0) {
+        firstPoseUrl = poseUrl;
+      }
 
       const prependedSegmentPath = path.join(outDir, `prepended_seg${segIdx}_${timestamp}.mp4`);
       await prependPoseFrame(segmentPath, poseImagePath, prependedSegmentPath);
@@ -349,17 +356,22 @@ export async function processKlingFaceSwapJob(
 
     const processedSegmentPaths: string[] = new Array(segments.length);
 
-    for (let batchStart = 0; batchStart < segments.length; batchStart += PARALLEL_SEGMENTS) {
-      const batchEnd = Math.min(batchStart + PARALLEL_SEGMENTS, segments.length);
-      const batchIndices = Array.from({ length: batchEnd - batchStart }, (_, i) => batchStart + i);
+    await updateProgress(jobId, teamId, 15, "Processing");
+    processedSegmentPaths[0] = await processSegment(0);
 
-      const progressPercent = 15 + Math.floor((batchStart / segments.length) * 65);
-      await updateProgress(jobId, teamId, progressPercent, "Processing");
+    if (segments.length > 1) {
+      for (let batchStart = 1; batchStart < segments.length; batchStart += PARALLEL_SEGMENTS) {
+        const batchEnd = Math.min(batchStart + PARALLEL_SEGMENTS, segments.length);
+        const batchIndices = Array.from({ length: batchEnd - batchStart }, (_, i) => batchStart + i);
 
-      const results = await Promise.all(batchIndices.map(i => processSegment(i)));
-      results.forEach((path, idx) => {
-        processedSegmentPaths[batchIndices[idx]] = path;
-      });
+        const progressPercent = 15 + Math.floor((batchStart / segments.length) * 65);
+        await updateProgress(jobId, teamId, progressPercent, "Processing");
+
+        const results = await Promise.all(batchIndices.map(i => processSegment(i)));
+        results.forEach((path, idx) => {
+          processedSegmentPaths[batchIndices[idx]] = path;
+        });
+      }
     }
 
     console.log(`[kling-face-swap] All ${processedSegmentPaths.length} segments processed`);
