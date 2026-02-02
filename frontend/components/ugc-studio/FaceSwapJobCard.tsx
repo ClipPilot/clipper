@@ -78,8 +78,105 @@ export const FaceSwapJobCard = memo(
     };
 
     const isCompleted = job.status === "completed";
+    const isProcessing = job.status === "running" || job.status === "uploading" || job.status === "pending_upload" || job.status === "queued";
     const hasClip = !!job.clipId;
 
+    // Processing card layout (uploading, queued, running)
+    if (isProcessing || job.status === "failed") {
+      return (
+        <div onClick={onClick} className="cursor-pointer h-full">
+          <Card className="bg-surface-base border border-border-base hover:border-accent-400/30 transition-colors overflow-hidden h-full">
+            <CardBody className="p-4 flex flex-col h-full min-h-[140px]">
+              {/* Top section: Icon + Info */}
+              <div className="flex items-start gap-3 flex-1">
+                {/* Centered icon - no background */}
+                <div className="flex-shrink-0">
+                  <Icon
+                    icon={getStatusIcon(job.status)}
+                    className={`text-3xl ${
+                      job.status === "running"
+                        ? "animate-spin text-accent-400"
+                        : job.status === "uploading" || job.status === "pending_upload"
+                          ? "animate-pulse text-accent-400"
+                          : job.status === "failed"
+                            ? "text-red-500"
+                            : "text-yellow-500"
+                    }`}
+                  />
+                </div>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-sm font-medium text-text-primary truncate">
+                      {job.title || "Face Swap"}
+                    </h3>
+                    <Chip
+                      size="sm"
+                      color={getStatusColor(job.status)}
+                      variant="flat"
+                      className="text-[10px] h-5 flex-shrink-0"
+                    >
+                      {job.status === "pending_upload" ? "uploading" : job.status}
+                    </Chip>
+                  </div>
+                  <span className="text-xs text-text-tertiary">
+                    {new Date(job.createdAt).toLocaleDateString()}
+                  </span>
+
+                  {/* Status info */}
+                  <div className="mt-2">
+                    {job.status === "running" && (
+                      <div className="space-y-1">
+                        <Progress value={job.progress || 0} size="sm" color="primary" />
+                        <p className="text-xs text-text-tertiary truncate">
+                          {job.progressMessage || "Processing..."} ({job.progress || 0}%)
+                        </p>
+                      </div>
+                    )}
+                    {job.status === "queued" && (
+                      <p className="text-xs text-text-tertiary">Waiting in queue...</p>
+                    )}
+                    {(job.status === "uploading" || job.status === "pending_upload") && (
+                      <p className="text-xs text-accent-400">
+                        {job.progressMessage || "Uploading files..."}
+                      </p>
+                    )}
+                    {job.status === "failed" && (
+                      <p className="text-xs text-red-500 line-clamp-2">
+                        {job.errorMessage || "Processing failed"}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom: Trash button */}
+              {onDelete && (
+                <div className="flex justify-end mt-3" onClick={(e) => e.stopPropagation()}>
+                  <Tooltip content="Delete">
+                    <Button
+                      size="sm"
+                      variant="flat"
+                      isIconOnly
+                      className="bg-red-500/20 text-red-500 min-w-7 w-7 h-7"
+                      onPress={handleDelete}
+                      isLoading={isDeleting}
+                    >
+                      {!isDeleting && (
+                        <Icon icon="solar:trash-bin-trash-bold" className="text-sm" />
+                      )}
+                    </Button>
+                  </Tooltip>
+                </div>
+              )}
+            </CardBody>
+          </Card>
+        </div>
+      );
+    }
+
+    // Completed card layout (original)
     return (
       <div onClick={onClick} className="cursor-pointer h-full">
         <Card className="bg-surface-base border border-border-base hover:border-accent-400/30 transition-colors overflow-hidden h-full">
@@ -88,36 +185,21 @@ export const FaceSwapJobCard = memo(
             <div className="flex flex-col sm:flex-row">
               {/* Thumbnail */}
               <div className="w-full sm:w-28 md:w-32 h-24 sm:h-auto sm:min-h-[100px] bg-surface-elevated flex-shrink-0 relative">
-                {isCompleted && job.outputUrl ? (
-                  <video
-                    ref={videoRef}
-                    src={job.outputUrl}
-                    className="w-full h-full object-cover"
-                    muted
-                    playsInline
-                    preload="metadata"
-                    onMouseEnter={() => videoRef.current?.play()}
-                    onMouseLeave={() => {
-                      if (videoRef.current) {
-                        videoRef.current.pause();
-                        videoRef.current.currentTime = 0;
-                      }
-                    }}
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Icon
-                      icon={getStatusIcon(job.status)}
-                      className={`text-2xl sm:text-3xl ${
-                        job.status === "running"
-                          ? "animate-spin text-accent-400"
-                          : (job.status === "uploading" || job.status === "pending_upload")
-                            ? "animate-pulse text-accent-400"
-                            : "text-text-tertiary"
-                      }`}
-                    />
-                  </div>
-                )}
+                <video
+                  ref={videoRef}
+                  src={job.outputUrl!}
+                  className="w-full h-full object-cover"
+                  muted
+                  playsInline
+                  preload="metadata"
+                  onMouseEnter={() => videoRef.current?.play()}
+                  onMouseLeave={() => {
+                    if (videoRef.current) {
+                      videoRef.current.pause();
+                      videoRef.current.currentTime = 0;
+                    }
+                  }}
+                />
                 {/* Status badge overlay on thumbnail */}
                 <div className="absolute top-2 left-2">
                   <Chip
@@ -145,30 +227,7 @@ export const FaceSwapJobCard = memo(
 
                 {/* Status messages */}
                 <div className="flex-1 mb-2">
-                  {job.status === "running" && (
-                    <div className="space-y-1">
-                      <Progress value={job.progress || 0} size="sm" color="primary" />
-                      <p className="text-xs text-text-tertiary truncate">
-                        {job.progressMessage || "Processing..."}
-                      </p>
-                    </div>
-                  )}
-                  {job.status === "failed" && (
-                    <p className="text-xs text-red-500 line-clamp-2">
-                      {job.errorMessage || "Processing failed"}
-                    </p>
-                  )}
-                  {isCompleted && (
-                    <p className="text-xs text-text-secondary">Click to view details</p>
-                  )}
-                  {job.status === "queued" && (
-                    <p className="text-xs text-text-tertiary">Waiting in queue...</p>
-                  )}
-                  {(job.status === "uploading" || job.status === "pending_upload") && (
-                    <p className="text-xs text-accent-400">
-                      {job.progressMessage || "Uploading files..."}
-                    </p>
-                  )}
+                  <p className="text-xs text-text-secondary">Click to view details</p>
                 </div>
 
                 {/* Action buttons */}
@@ -176,7 +235,7 @@ export const FaceSwapJobCard = memo(
                   className="flex items-center gap-1 flex-wrap"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  {isCompleted && hasClip && onShare && (
+                  {hasClip && onShare && (
                     <Tooltip content={showCopied ? "Copied!" : (job.shareToken ? "Copy link" : "Share")}>
                       <Button
                         size="sm"
@@ -195,7 +254,7 @@ export const FaceSwapJobCard = memo(
                       </Button>
                     </Tooltip>
                   )}
-                  {isCompleted && hasClip && onEdit && (
+                  {hasClip && onEdit && (
                     <Tooltip content="Edit">
                       <Button
                         size="sm"
@@ -208,7 +267,7 @@ export const FaceSwapJobCard = memo(
                       </Button>
                     </Tooltip>
                   )}
-                  {isCompleted && job.outputUrl && (
+                  {job.outputUrl && (
                     <Tooltip content="Download">
                       <Button
                         size="sm"
