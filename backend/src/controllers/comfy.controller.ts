@@ -26,8 +26,8 @@ const MIN_SEGMENT_DURATION = 3;
 
 const GPU_CHUNK_DURATION = 10;
 const GPU_CHUNK_LEEWAY = 1;
-const KLING_CHUNK_DURATION = 10; // Kling Pro Motion with characterOrientation='image' has 10s max
-const KLING_CHUNK_LEEWAY = 0;
+const KLING_CHUNK_DURATION = 25;
+const KLING_CHUNK_LEEWAY = 5;
 
 const idempotencyCache = new Map<string, { jobId: string; expiresAt: number }>();
 const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
@@ -259,7 +259,28 @@ export class ComfyController {
       await teamService.incrementTeamUsage(parseInt(teamId), UGC_CREDIT_COST);
       console.log(`[comfy] Charged ${UGC_CREDIT_COST} credits upfront to team ${teamId}`);
 
-      console.log(`[comfy] Routing to Kling worker (chunking will happen on worker)`);
+      const chunkDuration = KLING_CHUNK_DURATION;
+      const chunkLeeway = KLING_CHUNK_LEEWAY;
+
+      console.log(`[comfy] Routing to Kling (chunk: ${chunkDuration}s)`);
+
+      const chunkCountsPerSegment: number[] = [];
+
+      for (let i = 0; i < segments.length; i++) {
+        const segPath = path.join(TEMP_DIR, `${crypto.randomUUID()}_segment_${i}.mp4`);
+        await cutClip(tempVideoPath, segPath, segments[i].start, segments[i].end);
+        segmentPaths.push(segPath);
+
+        const segmentChunks = await createSceneAwareChunks(segPath, TEMP_DIR, {
+          targetDuration: chunkDuration,
+          leeway: chunkLeeway,
+        });
+
+        chunkCountsPerSegment.push(segmentChunks.length);
+        chunkPaths.push(...segmentChunks);
+      }
+
+      console.log(`[comfy] Split ${segments.length} segments into ${chunkPaths.length} chunks (per segment: ${chunkCountsPerSegment.join(", ")})`);
 
       const spliceWithOriginal = req.body.spliceWithOriginal === "true" || req.body.spliceWithOriginal === true;
       const isSpliceMode = (segments.length >= 2 || spliceWithOriginal) && videoDuration > 0;
@@ -267,18 +288,33 @@ export class ComfyController {
       let spliceMetadata: { videoDuration: number; segments: SpliceSegment[] } | null = null;
       if (isSpliceMode) {
         const spliceSegments = calculateSpliceSegments(segments, videoDuration);
-        // Worker will calculate chunk counts dynamically
+        let processedSegmentIndex = 0;
+        for (const seg of spliceSegments) {
+          if (seg.type === "processed") {
+            seg.chunkCount = chunkCountsPerSegment[processedSegmentIndex];
+            processedSegmentIndex++;
+          }
+        }
         spliceMetadata = { videoDuration, segments: spliceSegments };
       }
 
-      // Upload ONLY the full original video - worker will do all cutting/chunking
-      const originalVideoS3Key = `ugc-inputs/${teamId}/${crypto.randomUUID()}_original.mp4`;
-      const originalBuffer = fs.readFileSync(tempVideoPath);
-      await s3Service.uploadBuffer(originalBuffer, originalVideoS3Key, "video/mp4");
-      console.log(`[comfy] Uploaded full video to S3: ${originalVideoS3Key}`);
-
-      // chunkS3Keys is now empty - worker will handle chunking
+      const uploads: Promise<string>[] = [];
       const chunkS3Keys: string[] = [];
+      for (let i = 0; i < chunkPaths.length; i++) {
+        const chunkBuffer = fs.readFileSync(chunkPaths[i]);
+        const chunkS3Key = `ugc-inputs/${teamId}/${crypto.randomUUID()}_chunk_${i}.mp4`;
+        chunkS3Keys.push(chunkS3Key);
+        uploads.push(s3Service.uploadBuffer(chunkBuffer, chunkS3Key, "video/mp4"));
+      }
+
+      let originalVideoS3Key: string | undefined;
+      if (isSpliceMode) {
+        originalVideoS3Key = `ugc-inputs/${teamId}/${crypto.randomUUID()}_original.mp4`;
+        const originalBuffer = fs.readFileSync(tempVideoPath);
+        uploads.push(s3Service.uploadBuffer(originalBuffer, originalVideoS3Key, "video/mp4"));
+      }
+
+      await Promise.all(uploads);
 
       const jobId = crypto.randomUUID();
       const now = new Date();
@@ -290,7 +326,7 @@ export class ComfyController {
           teamId: parseInt(teamId),
           status: "queued",
           imageFile: imageS3Key,
-          videoFile: originalVideoS3Key,
+          videoFile: chunkS3Keys[0],
           jobType: "ugc-face-swap-parent",
           priority: Math.floor(Date.now() / 1000),
           originalVideoS3Key,
@@ -934,25 +970,61 @@ export class ComfyController {
         }
       }
 
-      console.log(`[comfy] Routing to Kling worker (chunking will happen on worker)`);
+      const chunkDuration = KLING_CHUNK_DURATION;
+      const chunkLeeway = KLING_CHUNK_LEEWAY;
+
+      console.log(`[comfy] Routing to Kling (chunk: ${chunkDuration}s)`);
+
+      const chunkCountsPerSegment: number[] = [];
+
+      for (let i = 0; i < segments.length; i++) {
+        const segPath = path.join(TEMP_DIR, `${crypto.randomUUID()}_segment_${i}.mp4`);
+        await cutClip(videoPath, segPath, segments[i].start, segments[i].end);
+        segmentPaths.push(segPath);
+
+        const segmentChunks = await createSceneAwareChunks(segPath, TEMP_DIR, {
+          targetDuration: chunkDuration,
+          leeway: chunkLeeway,
+        });
+
+        chunkCountsPerSegment.push(segmentChunks.length);
+        chunkPaths.push(...segmentChunks);
+      }
+
+      console.log(`[comfy] Split ${segments.length} segments into ${chunkPaths.length} chunks (per segment: ${chunkCountsPerSegment.join(", ")})`);
+
+      const chunkS3Keys: string[] = [];
+      for (let i = 0; i < chunkPaths.length; i++) {
+        const chunkBuffer = fs.readFileSync(chunkPaths[i]);
+        const chunkS3Key = `ugc-inputs/${teamId}/${crypto.randomUUID()}_chunk_${i}.mp4`;
+        chunkS3Keys.push(chunkS3Key);
+        await s3Service.uploadBuffer(chunkBuffer, chunkS3Key, "video/mp4");
+      }
+
+      console.log(`[comfy] Uploaded ${chunkS3Keys.length} chunks to S3`);
 
       const isSpliceMode = (segments.length >= 2 || spliceWithOriginal) && videoDuration > 0;
+      let originalVideoS3Key: string | undefined;
+
+      if (isSpliceMode) {
+        originalVideoS3Key = `ugc-inputs/${teamId}/${crypto.randomUUID()}_original.mp4`;
+        const originalBuffer = fs.readFileSync(videoPath);
+        await s3Service.uploadBuffer(originalBuffer, originalVideoS3Key, "video/mp4");
+        console.log(`[comfy] Uploaded original video for splice mode`);
+      }
 
       let spliceMetadata: { videoDuration: number; segments: SpliceSegment[] } | null = null;
       if (isSpliceMode) {
         const spliceSegments = calculateSpliceSegments(segments, videoDuration);
-        // Worker will calculate chunk counts dynamically
+        let processedSegmentIndex = 0;
+        for (const seg of spliceSegments) {
+          if (seg.type === "processed") {
+            seg.chunkCount = chunkCountsPerSegment[processedSegmentIndex];
+            processedSegmentIndex++;
+          }
+        }
         spliceMetadata = { videoDuration, segments: spliceSegments };
       }
-
-      // Upload ONLY the full original video - worker will do all cutting/chunking
-      const originalVideoS3Key = `ugc-inputs/${teamId}/${crypto.randomUUID()}_original.mp4`;
-      const originalBuffer = fs.readFileSync(videoPath);
-      await s3Service.uploadBuffer(originalBuffer, originalVideoS3Key, "video/mp4");
-      console.log(`[comfy] Uploaded full video to S3: ${originalVideoS3Key}`);
-
-      // chunkS3Keys is now empty - worker will handle chunking
-      const chunkS3Keys: string[] = [];
 
       for (let i = 0; i < imageSources.length; i++) {
         const jobId = jobIds[i];
@@ -978,7 +1050,7 @@ export class ComfyController {
             .set({
               status: "queued",
               imageFile: imageS3Key,
-              videoFile: originalVideoS3Key,
+              videoFile: chunkS3Keys[0],
               originalVideoS3Key,
               spliceMode: isSpliceMode,
               spliceMetadata: spliceMetadata || undefined,

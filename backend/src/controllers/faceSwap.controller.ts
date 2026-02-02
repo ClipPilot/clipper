@@ -60,8 +60,8 @@ export const trimVideo = async (req: AuthRequest, res: Response) => {
     }
 
     const duration = end - start;
-    if (duration > 10) {
-      return res.status(400).json({ error: "Maximum clip duration is 10 seconds" });
+    if (duration > 30) {
+      return res.status(400).json({ error: "Maximum clip duration is 30 seconds" });
     }
 
     if (duration < 1) {
