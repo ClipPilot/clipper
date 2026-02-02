@@ -17,11 +17,12 @@ import {
 } from "../../services/ai-ugc/kling.service";
 import {
   cutClip,
-  mergeClipsGpu,
-  mergeClipsWithCrossfade,
+  mergeClipsFaceSwap,
   extractFirstFrame,
+  extractFrameAtTime,
   extractAudio,
   replaceAudioInVideo,
+  prependPoseFrame,
   getVideoDuration,
 } from "../../services/clips/videoEditor.service";
 import { speechToSpeech } from "../../services/ai-ugc/elevenlabs.service";
@@ -40,9 +41,8 @@ const API_INTERNAL_URL =
   process.env.API_INTERNAL_URL || "http://localhost:3001";
 const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || "";
 const UGC_CREDIT_COST = 5;
-const MAX_CHUNK_DURATION = 10; // Kling Pro Motion with characterOrientation='image' has 10s max
-const MIN_CHUNK_DURATION = 3; // Kling requires minimum 3 seconds
-const CROSSFADE_OVERLAP = 0.3;
+const MAX_CHUNK_DURATION = 25;
+const MIN_CHUNK_DURATION = 3;
 
 /**
  * Calculate chunk durations ensuring each chunk is between MIN and MAX duration.
@@ -232,7 +232,7 @@ export async function processKlingFaceSwapJob(
       finishedAt: null,
     });
 
-    await updateProgress(jobId, teamId, 10, "Downloading files.");
+    await updateProgress(jobId, teamId, 10, "Preparing");
     await s3Service.downloadFile(imageS3Key, localImagePath);
     console.log(`[kling-face-swap] Downloaded reference image`);
     const fullVideoPath = path.join(outDir, `full_video_${Date.now()}.mp4`);
@@ -251,61 +251,23 @@ export async function processKlingFaceSwapJob(
       `[kling-face-swap] Video duration: ${videoDuration.toFixed(2)}s, segments to process: ${segments.length}`,
     );
 
-    // Step 3: Cut each segment from the full video, then chunk each segment into 10s pieces
-    const chunkLocalPaths: string[] = [];
-    const chunkSegmentMap: number[] = [];
-    const segmentFirstChunkIndex: number[] = [];
+    await updateProgress(jobId, teamId, 15, "Processing");
+    const faceImageUrl = await s3Service.getPresignedUrl(imageS3Key, 3600);
+    const PARALLEL_SEGMENTS = 3;
+    const PARALLEL_CHUNKS = 3;
 
-    for (let segIdx = 0; segIdx < segments.length; segIdx++) {
+    async function processSegment(segIdx: number): Promise<string> {
       const seg = segments[segIdx];
       const segmentDuration = seg.end - seg.start;
-      const chunkDurations = calculateChunkDurations(segmentDuration);
+      const timestamp = Date.now() + segIdx;
 
-      console.log(
-        `[kling-face-swap] Segment ${segIdx + 1}/${segments.length}: ${seg.start.toFixed(2)}s - ${seg.end.toFixed(2)}s (${segmentDuration.toFixed(2)}s, ${chunkDurations.length} chunks: [${chunkDurations.map((d) => d.toFixed(1)).join(", ")}]s)`,
-      );
+      console.log(`[kling-face-swap] Segment ${segIdx + 1}/${segments.length}: ${seg.start.toFixed(2)}s - ${seg.end.toFixed(2)}s`);
 
-      segmentFirstChunkIndex.push(chunkLocalPaths.length);
-
-      let currentTime = seg.start;
-      for (let chunkIdx = 0; chunkIdx < chunkDurations.length; chunkIdx++) {
-        const chunkDuration = chunkDurations[chunkIdx];
-        const chunkStart = chunkIdx === 0
-          ? currentTime
-          : currentTime - CROSSFADE_OVERLAP;
-        const chunkEnd = Math.min(chunkStart + chunkDuration, seg.end);
-        const actualDuration = chunkEnd - chunkStart;
-
-        const chunkPath = path.join(
-          outDir,
-          `seg${segIdx}_chunk${chunkIdx}.mp4`,
-        );
-
-        await cutClip(fullVideoPath, chunkPath, chunkStart, chunkEnd);
-        chunkLocalPaths.push(chunkPath);
-        chunkSegmentMap.push(segIdx);
-        console.log(
-          `[kling-face-swap] Cut segment ${segIdx + 1} chunk ${chunkIdx + 1}/${chunkDurations.length}: ${chunkStart.toFixed(2)}s - ${chunkEnd.toFixed(2)}s (${actualDuration.toFixed(1)}s)${chunkIdx > 0 ? ` [overlap: ${CROSSFADE_OVERLAP}s]` : ""}`,
-        );
-
-        currentTime = chunkEnd;
-      }
-    }
-
-    console.log(
-      `[kling-face-swap] Total chunks to process: ${chunkLocalPaths.length}`,
-    );
-
-    // Step 4: Generate pose images for all segments in parallel
-    await updateProgress(jobId, teamId, 15, `Generating pose images for ${segments.length} segments`);
-    const faceImageUrl = await s3Service.getPresignedUrl(imageS3Key, 3600);
-
-    async function generatePoseForSegment(segIdx: number): Promise<string> {
-      const firstChunkPath = chunkLocalPaths[segmentFirstChunkIndex[segIdx]];
-      const timestamp = Date.now();
+      const segmentPath = path.join(outDir, `segment_${segIdx}_${timestamp}.mp4`);
+      await cutClip(fullVideoPath, segmentPath, seg.start, seg.end);
 
       const frameOutputPath = path.join(outDir, `frame_seg${segIdx}_${timestamp}.jpg`);
-      await extractFirstFrame(firstChunkPath, frameOutputPath);
+      await extractFrameAtTime(segmentPath, frameOutputPath, 0.1);
 
       const frameS3Key = `face-swap-assets/${teamId}/${jobId}/frame_seg${segIdx}_${timestamp}.jpg`;
       await s3Service.uploadFile(frameOutputPath, frameS3Key, "image/jpeg");
@@ -328,27 +290,28 @@ export async function processKlingFaceSwapJob(
       await s3Service.uploadBuffer(poseBuffer, poseS3Key, "image/png");
       const poseUrl = await s3Service.getPresignedUrl(poseS3Key, 3600);
 
-      console.log(`[kling-face-swap] Generated pose for segment ${segIdx + 1}/${segments.length}`);
-      return poseUrl;
-    }
+      const prependedSegmentPath = path.join(outDir, `prepended_seg${segIdx}_${timestamp}.mp4`);
+      await prependPoseFrame(segmentPath, poseImagePath, prependedSegmentPath);
 
-    const segmentPoseUrls = await Promise.all(
-      segments.map((_, segIdx) => generatePoseForSegment(segIdx))
-    );
+      const prependedDuration = await getVideoDuration(prependedSegmentPath);
+      const chunkDurations = calculateChunkDurations(prependedDuration);
 
-    await updateProgress(jobId, teamId, 20, `Processing video chunks`);
+      const chunkPaths: string[] = [];
+      let currentTime = 0;
+      for (let chunkIdx = 0; chunkIdx < chunkDurations.length; chunkIdx++) {
+        const chunkDuration = chunkDurations[chunkIdx];
+        const chunkPath = path.join(outDir, `seg${segIdx}_chunk${chunkIdx}_${timestamp}.mp4`);
+        await cutClip(prependedSegmentPath, chunkPath, currentTime, currentTime + chunkDuration);
+        chunkPaths.push(chunkPath);
+        currentTime += chunkDuration;
+      }
 
-    const processedChunkPaths: string[] = [];
-    const PARALLEL_BATCH_SIZE = 3;
-    const processedChunkResults: string[] = new Array(chunkLocalPaths.length);
+      const processedChunks: string[] = new Array(chunkPaths.length);
 
-    async function processChunk(index: number): Promise<void> {
-      const chunkPath = chunkLocalPaths[index];
-      const segIdx = chunkSegmentMap[index];
-      const poseUrl = segmentPoseUrls[segIdx];
-      const tempChunkKey = `face-swap-assets/${teamId}/${jobId}/chunk_${index}_${Date.now()}.mp4`;
+      async function processChunk(chunkIdx: number): Promise<void> {
+        const chunkPath = chunkPaths[chunkIdx];
+        const tempChunkKey = `face-swap-assets/${teamId}/${jobId}/seg${segIdx}_chunk${chunkIdx}_${timestamp}.mp4`;
 
-      try {
         await s3Service.uploadFile(chunkPath, tempChunkKey, "video/mp4");
         const chunkUrl = await s3Service.getPresignedUrl(tempChunkKey, 3600);
 
@@ -356,37 +319,50 @@ export async function processKlingFaceSwapJob(
           imageUrl: poseUrl,
           videoUrl: chunkUrl,
           keepOriginalSound: true,
-          characterOrientation: "image",
+          characterOrientation: "video",
         });
 
-        const processedPath = path.join(outDir, `processed_${index}.mp4`);
+        const processedPath = path.join(outDir, `processed_seg${segIdx}_chunk${chunkIdx}_${timestamp}.mp4`);
         await s3Service.downloadVideoFromUrl(result.videoUrl, processedPath);
-        processedChunkResults[index] = processedPath;
+        processedChunks[chunkIdx] = processedPath;
 
-        console.log(`[kling-face-swap] Chunk ${index + 1}/${chunkLocalPaths.length}: Complete`);
+        console.log(`[kling-face-swap] Segment ${segIdx + 1} chunk ${chunkIdx + 1}/${chunkPaths.length}: Complete`);
         await s3Service.deleteObject(tempChunkKey).catch(() => {});
-      } catch (error) {
-        await s3Service.deleteObject(tempChunkKey).catch(() => {});
-        throw new Error(`Chunk ${index + 1} failed: ${(error as Error).message}`);
       }
+
+      for (let batchStart = 0; batchStart < chunkPaths.length; batchStart += PARALLEL_CHUNKS) {
+        const batchEnd = Math.min(batchStart + PARALLEL_CHUNKS, chunkPaths.length);
+        const batchIndices = Array.from({ length: batchEnd - batchStart }, (_, i) => batchStart + i);
+        await Promise.all(batchIndices.map(i => processChunk(i)));
+      }
+
+      const processedSegmentPath = path.join(outDir, `processed_segment_${segIdx}_${timestamp}.mp4`);
+      if (processedChunks.length === 1) {
+        fs.copyFileSync(processedChunks[0], processedSegmentPath);
+      } else {
+        await mergeClipsFaceSwap(processedChunks, processedSegmentPath);
+      }
+
+      console.log(`[kling-face-swap] Segment ${segIdx + 1}/${segments.length} complete`);
+      return processedSegmentPath;
     }
 
-    for (let batchStart = 0; batchStart < chunkLocalPaths.length; batchStart += PARALLEL_BATCH_SIZE) {
-      const batchEnd = Math.min(batchStart + PARALLEL_BATCH_SIZE, chunkLocalPaths.length);
+    const processedSegmentPaths: string[] = new Array(segments.length);
+
+    for (let batchStart = 0; batchStart < segments.length; batchStart += PARALLEL_SEGMENTS) {
+      const batchEnd = Math.min(batchStart + PARALLEL_SEGMENTS, segments.length);
       const batchIndices = Array.from({ length: batchEnd - batchStart }, (_, i) => batchStart + i);
 
-      const progressPercent = 20 + Math.floor((batchStart / chunkLocalPaths.length) * 60);
-      await updateProgress(jobId, teamId, progressPercent, `Processing chunks ${batchStart + 1}-${batchEnd}/${chunkLocalPaths.length}`);
+      const progressPercent = 15 + Math.floor((batchStart / segments.length) * 65);
+      await updateProgress(jobId, teamId, progressPercent, "Processing");
 
-      console.log(`[kling-face-swap] Processing batch: chunks ${batchStart + 1}-${batchEnd} in parallel`);
-      await Promise.all(batchIndices.map(i => processChunk(i)));
+      const results = await Promise.all(batchIndices.map(i => processSegment(i)));
+      results.forEach((path, idx) => {
+        processedSegmentPaths[batchIndices[idx]] = path;
+      });
     }
 
-    processedChunkPaths.push(...processedChunkResults);
-
-    console.log(
-      `[kling-face-swap] All ${processedChunkPaths.length} chunks processed successfully`,
-    );
+    console.log(`[kling-face-swap] All ${processedSegmentPaths.length} segments processed`);
 
     let finalOutputPath: string;
 
@@ -395,74 +371,82 @@ export async function processKlingFaceSwapJob(
       console.log(
         `[kling-face-swap] Splice mode: assembling interleaved video...`,
       );
-      await updateProgress(jobId, teamId, 82, "Assembling spliced video");
+      await updateProgress(jobId, teamId, 82, "Assembling");
 
       const spliceSegmentPaths: string[] = [];
-      let processedChunkIdx = 0;
+      let processedSegIdx = 0;
       const typedSegments = spliceMetadata.segments as SpliceMetadataSegment[];
+
+      const { execSync } = require("child_process");
 
       for (let i = 0; i < typedSegments.length; i++) {
         const seg = typedSegments[i];
+        const rawPath = path.join(outDir, `splice_seg_${i}_raw.mp4`);
         const segPath = path.join(outDir, `splice_seg_${i}.mp4`);
 
         if (seg.type === "processed") {
-          // Calculate how many chunks belong to this processed segment (using same logic as cutting)
-          const segmentDuration = seg.end - seg.start;
-          const numChunks = calculateChunkDurations(segmentDuration).length;
-
-          const chunksForSegment = processedChunkPaths.slice(
-            processedChunkIdx,
-            processedChunkIdx + numChunks,
-          );
-          processedChunkIdx += numChunks;
-
-          console.log(
-            `[kling-face-swap] Splice segment ${i}: PROCESSED ${seg.start.toFixed(2)}-${seg.end.toFixed(2)}s using ${numChunks} chunks`,
-          );
-
-          if (chunksForSegment.length === 0) {
-            throw new Error(`No chunks available for processed segment ${i}`);
-          }
-
-          await mergeClipsWithCrossfade(chunksForSegment, segPath, CROSSFADE_OVERLAP);
+          console.log(`[kling-face-swap] Splice segment ${i}: PROCESSED ${seg.start.toFixed(2)}-${seg.end.toFixed(2)}s`);
+          fs.copyFileSync(processedSegmentPaths[processedSegIdx], rawPath);
+          processedSegIdx++;
         } else {
-          // Original segment - cut from the full video (already downloaded)
-          console.log(
-            `[kling-face-swap] Splice segment ${i}: ORIGINAL ${seg.start.toFixed(2)}-${seg.end.toFixed(2)}s`,
-          );
-          await cutClip(fullVideoPath, segPath, seg.start, seg.end);
+          console.log(`[kling-face-swap] Splice segment ${i}: ORIGINAL ${seg.start.toFixed(2)}-${seg.end.toFixed(2)}s`);
+          await cutClip(fullVideoPath, rawPath, seg.start, seg.end);
         }
+
+        execSync(`ffmpeg -y -i "${rawPath}" -c:v libx264 -preset fast -crf 23 -pix_fmt yuv420p -c:a aac -ar 48000 -ac 2 "${segPath}"`, { stdio: "pipe" });
+        fs.unlinkSync(rawPath);
 
         spliceSegmentPaths.push(segPath);
 
-        // Upload each segment to S3 for debugging/reference
         const segBuffer = fs.readFileSync(segPath);
         const segS3Key = `comfy-outputs/${teamId}/${jobId}/segment_${i}_${seg.type}.mp4`;
         await s3Service.uploadBuffer(segBuffer, segS3Key, "video/mp4");
-        spliceSegmentS3Keys.push({
-          s3Key: segS3Key,
-          type: seg.type,
-          start: seg.start,
-          end: seg.end,
-        });
+        spliceSegmentS3Keys.push({ s3Key: segS3Key, type: seg.type, start: seg.start, end: seg.end });
       }
 
-      // Merge all splice segments (processed + original interleaved)
       console.log(
         `[kling-face-swap] Merging ${spliceSegmentPaths.length} splice segments...`,
       );
-      await updateProgress(jobId, teamId, 85, "Merging segments");
+
+      for (const segPath of spliceSegmentPaths) {
+        if (!fs.existsSync(segPath)) {
+          throw new Error(`Splice segment missing: ${segPath}`);
+        }
+      }
+
+      await updateProgress(jobId, teamId, 85, "Finalizing");
 
       finalOutputPath = path.join(outDir, `final_${Date.now()}.mp4`);
-      await mergeClipsGpu(spliceSegmentPaths, finalOutputPath);
-      console.log(`[kling-face-swap] Merged ${spliceSegmentPaths.length} splice segments`);
+
+      if (spliceSegmentPaths.length === 1) {
+        fs.copyFileSync(spliceSegmentPaths[0], finalOutputPath);
+        console.log(`[kling-face-swap] Single splice segment, copied directly`);
+      } else {
+        await mergeClipsFaceSwap(spliceSegmentPaths, finalOutputPath);
+        console.log(`[kling-face-swap] Merged ${spliceSegmentPaths.length} splice segments`);
+      }
     } else {
-      console.log(`[kling-face-swap] Merging ${processedChunkPaths.length} chunks with crossfade...`);
-      await updateProgress(jobId, teamId, 85, "Merging video with crossfade");
+      console.log(`[kling-face-swap] Merging ${processedSegmentPaths.length} segments...`);
+      console.log(`[kling-face-swap] Segment paths:`, processedSegmentPaths);
+
+      for (const segPath of processedSegmentPaths) {
+        if (!fs.existsSync(segPath)) {
+          throw new Error(`Processed segment missing: ${segPath}`);
+        }
+        console.log(`[kling-face-swap] Verified: ${segPath} exists`);
+      }
+
+      await updateProgress(jobId, teamId, 85, "Finalizing");
 
       finalOutputPath = path.join(outDir, `final_${Date.now()}.mp4`);
-      await mergeClipsWithCrossfade(processedChunkPaths, finalOutputPath, CROSSFADE_OVERLAP);
-      console.log(`[kling-face-swap] Merged ${processedChunkPaths.length} chunks with crossfade`);
+
+      if (processedSegmentPaths.length === 1) {
+        fs.copyFileSync(processedSegmentPaths[0], finalOutputPath);
+        console.log(`[kling-face-swap] Single segment, copied directly`);
+      } else {
+        await mergeClipsFaceSwap(processedSegmentPaths, finalOutputPath);
+        console.log(`[kling-face-swap] Merged ${processedSegmentPaths.length} segments`);
+      }
     }
 
     // Update splice metadata in DB if we have processed segments
@@ -483,7 +467,7 @@ export async function processKlingFaceSwapJob(
       console.log(
         `[kling-face-swap] Voice conversion requested with voiceId: ${voiceId}`,
       );
-      await updateProgress(jobId, teamId, 92, "Converting voice...");
+      await updateProgress(jobId, teamId, 92, "Converting voice");
 
       try {
         // Extract audio from the final video
@@ -542,7 +526,7 @@ export async function processKlingFaceSwapJob(
     }
 
     console.log(`[kling-face-swap] Uploading final video to S3...`);
-    await updateProgress(jobId, teamId, 95, "Uploading.");
+    await updateProgress(jobId, teamId, 95, "Uploading");
 
     const finalBuffer = fs.readFileSync(finalOutputPath);
     const s3Key = `comfy-outputs/${teamId}/${jobId}/final.mp4`;

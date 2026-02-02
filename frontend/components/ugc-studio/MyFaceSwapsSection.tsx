@@ -3,8 +3,10 @@
 import { useState, useCallback, useEffect, useImperativeHandle, forwardRef, useRef } from "react";
 import { Card, CardBody, Pagination, addToast } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import { useRouter } from "next/navigation";
 import { connectSocket, joinTeam, leaveTeam } from "@/lib/socket";
 import { faceSwapAPI } from "@/api/ugc/faceSwap";
+import { clipsAPI } from "@/api/clips";
 import { FaceSwapJob } from "./types";
 import { FaceSwapDetailModal } from "./FaceSwapDetailModal";
 import { FaceSwapJobCard } from "./FaceSwapJobCard";
@@ -26,6 +28,7 @@ export interface MyFaceSwapsSectionRef {
 export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsSectionProps>(function MyFaceSwapsSection({
   teamId,
 }, ref) {
+  const router = useRouter();
   const [jobs, setJobs] = useState<FaceSwapJob[]>([]);
   const [optimisticJobs, setOptimisticJobs] = useState<FaceSwapJob[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -172,7 +175,8 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
           updated.progress !== selectedJob.progress ||
           updated.outputUrl !== selectedJob.outputUrl ||
           updated.clipId !== selectedJob.clipId ||
-          updated.title !== selectedJob.title)
+          updated.title !== selectedJob.title ||
+          updated.shareToken !== selectedJob.shareToken)
       ) {
         setSelectedJob(updated);
       }
@@ -231,11 +235,32 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
         job.id === jobId ? { ...job, title } : job
       )
     );
-    // Also update selectedJob if it's the one being edited
     if (selectedJob?.id === jobId) {
       setSelectedJob((prev) => prev ? { ...prev, title } : null);
     }
   }, [selectedJob]);
+
+  const handleEdit = useCallback((clipId: number) => {
+    router.push(`/dashboard/clips/${clipId}/edit`);
+  }, [router]);
+
+  const handleShare = useCallback(async (clipId: number): Promise<string> => {
+    const token = await clipsAPI.generateShareLink(teamId, clipId);
+    setJobs((prev) =>
+      prev.map((job) =>
+        job.clipId === clipId ? { ...job, shareToken: token } : job
+      )
+    );
+    setOptimisticJobs((prev) =>
+      prev.map((job) =>
+        job.clipId === clipId ? { ...job, shareToken: token } : job
+      )
+    );
+    if (selectedJob?.clipId === clipId) {
+      setSelectedJob((prev) => prev ? { ...prev, shareToken: token } : null);
+    }
+    return token;
+  }, [teamId, selectedJob]);
 
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
@@ -274,13 +299,15 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
   return (
     <>
       <div className="space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
           {displayJobs.map((job) => (
             <FaceSwapJobCard
               key={job.id}
               job={job}
               onClick={() => handleJobClick(job)}
               onDelete={handleDeleteJob}
+              onEdit={handleEdit}
+              onShare={handleShare}
             />
           ))}
         </div>
@@ -305,6 +332,8 @@ export const MyFaceSwapsSection = forwardRef<MyFaceSwapsSectionRef, MyFaceSwapsS
         onClose={() => setIsModalOpen(false)}
         onDelete={handleDeleteJob}
         onTitleUpdate={handleTitleUpdate}
+        onEdit={handleEdit}
+        onShare={handleShare}
       />
     </>
   );
