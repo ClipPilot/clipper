@@ -87,6 +87,7 @@ export interface ComfyJobUpdate {
   errorMessage: string | null;
   createdAt?: string;
   finishedAt: string | null;
+  clipId?: number;
 }
 
 export const emitComfyJobUpdate = (teamId: number, job: ComfyJobUpdate) => {

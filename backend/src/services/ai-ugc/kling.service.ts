@@ -745,7 +745,7 @@ export async function klingProMotion(
     videoUrl,
     prompt,
     keepOriginalSound = true,
-    characterOrientation = "video",
+    characterOrientation = "image",
   } = options;
 
   const input: Record<string, unknown> = {
@@ -828,6 +828,9 @@ export async function klingProMotionWithRetry(
       return await klingProMotion(currentOptions);
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
+      const errorMessage = lastError.message || String(error);
+      const is422 =
+        errorMessage.includes("422") || errorMessage.includes("Unprocessable");
       const isTimeout =
         lastError.message.includes("ETIMEDOUT") ||
         lastError.message.includes("fetch failed") ||
@@ -837,7 +840,14 @@ export async function klingProMotionWithRetry(
         `[Kling Pro Motion] Attempt ${attempt}/${maxRetries} failed:`,
         lastError.message,
         isTimeout ? "(network timeout)" : "",
+        is422 ? "(422 - video quality issue)" : "",
       );
+
+      if (is422) {
+        throw new Error(
+          "Video rejected: The video must clearly show one person from at least the torso up. Make sure the subject is visible and not too far from camera.",
+        );
+      }
 
       if (attempt < maxRetries) {
         const baseDelay = isTimeout ? 15000 : 5000;
