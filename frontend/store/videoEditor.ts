@@ -147,6 +147,8 @@ export const isDraggingPlayheadAtom = atom<boolean>(false);
 export const isDraggingTrimHandleAtom = atom<"start" | "end" | null>(null);
 export const thumbnailsAtom = atom<string[]>([]);
 export const isGeneratingThumbnailsAtom = atom<boolean>(false);
+export const waveformDataAtom = atom<number[]>([]);
+export const isGeneratingWaveformAtom = atom<boolean>(false);
 
 // =============================================================================
 // Edit History Atoms (for undo/redo)

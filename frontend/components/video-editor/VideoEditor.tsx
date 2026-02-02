@@ -136,6 +136,61 @@ export function VideoEditor() {
     }
   };
 
+  // Generate thumbnails for timeline at 1 frame per second
+  const generateThumbnails = useCallback(
+    async (duration: number) => {
+      if (!videoRef.current || !clip) return;
+
+      setIsGeneratingThumbnails(true);
+      const fps = 1;
+      const thumbnailCount = Math.min(Math.ceil(duration * fps), 60);
+      const interval = duration / thumbnailCount;
+      const newThumbnails: string[] = [];
+
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        setIsGeneratingThumbnails(false);
+        return;
+      }
+
+      canvas.width = 80;
+      canvas.height = 45;
+
+      const video = document.createElement("video");
+      video.src = clip.blankVideoUrl || clip.clipUrl || "";
+      video.crossOrigin = "anonymous";
+      video.muted = true;
+
+      try {
+        await new Promise<void>((resolve, reject) => {
+          video.onloadeddata = () => resolve();
+          video.onerror = () => reject(new Error("Video load failed"));
+          video.load();
+        });
+
+        for (let i = 0; i < thumbnailCount; i++) {
+          const time = i * interval;
+          video.currentTime = time;
+          await new Promise<void>((resolve) => {
+            video.onseeked = () => {
+              ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+              newThumbnails.push(canvas.toDataURL("image/jpeg", 0.6));
+              resolve();
+            };
+          });
+        }
+
+        setThumbnails(newThumbnails);
+      } catch (err) {
+        console.error("Failed to generate thumbnails:", err);
+      } finally {
+        setIsGeneratingThumbnails(false);
+      }
+    },
+    [clip, setThumbnails, setIsGeneratingThumbnails]
+  );
+
   // Handle video metadata loaded
   const handleLoadedMetadata = useCallback(() => {
     if (videoRef.current) {
@@ -144,52 +199,7 @@ export function VideoEditor() {
       setTrimState({ startTime: 0, endTime: duration });
       generateThumbnails(duration);
     }
-  }, [setVideoDuration, setTrimState]);
-
-  // Generate thumbnails for timeline
-  const generateThumbnails = useCallback(
-    async (duration: number) => {
-      if (!videoRef.current || !clip) return;
-
-      setIsGeneratingThumbnails(true);
-      const thumbnailCount = 10;
-      const interval = duration / thumbnailCount;
-      const newThumbnails: string[] = [];
-
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-
-      canvas.width = 160;
-      canvas.height = 90;
-
-      const video = document.createElement("video");
-      video.src = clip.blankVideoUrl || clip.clipUrl || "";
-      video.crossOrigin = "anonymous";
-      video.muted = true;
-
-      await new Promise<void>((resolve) => {
-        video.onloadeddata = () => resolve();
-        video.load();
-      });
-
-      for (let i = 0; i < thumbnailCount; i++) {
-        const time = i * interval;
-        video.currentTime = time;
-        await new Promise<void>((resolve) => {
-          video.onseeked = () => {
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            newThumbnails.push(canvas.toDataURL("image/jpeg", 0.5));
-            resolve();
-          };
-        });
-      }
-
-      setThumbnails(newThumbnails);
-      setIsGeneratingThumbnails(false);
-    },
-    [clip, setThumbnails, setIsGeneratingThumbnails]
-  );
+  }, [setVideoDuration, setTrimState, generateThumbnails]);
 
   // Handle time update
   const handleTimeUpdate = useCallback(() => {
