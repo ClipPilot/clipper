@@ -425,6 +425,80 @@ export const mergeClipsGpu = async (clips: string[], outputPath: string) => {
   });
 };
 
+export const mergeClipsWithCrossfade = async (
+  clips: string[],
+  outputPath: string,
+  overlapDuration: number = 0.3
+): Promise<string> => {
+  console.log(`[MERGE-XFADE] Merging ${clips.length} clips with ${overlapDuration}s crossfade`);
+
+  if (clips.length === 0) throw new Error("No clips to merge");
+  if (clips.length === 1) {
+    fs.copyFileSync(clips[0], outputPath);
+    return outputPath;
+  }
+
+  for (const clip of clips) {
+    if (!fs.existsSync(clip)) {
+      throw new Error(`[MERGE-XFADE] Input clip not found: ${clip}`);
+    }
+  }
+
+  const durations: number[] = [];
+  for (const clip of clips) {
+    const dur = await getVideoDuration(clip);
+    durations.push(dur);
+    console.log(`[MERGE-XFADE] ${clip}: ${dur.toFixed(2)}s`);
+  }
+
+  const inputs: string[] = [];
+  clips.forEach((clip) => {
+    inputs.push("-i", clip);
+  });
+
+  let videoFilter = "";
+  let audioFilter = "";
+  let offset = 0;
+
+  for (let i = 0; i < clips.length - 1; i++) {
+    const prevLabel = i === 0 ? `[${i}:v]` : `[v${i}]`;
+    const nextLabel = `[${i + 1}:v]`;
+    const outLabel = i === clips.length - 2 ? "[vout]" : `[v${i + 1}]`;
+
+    offset = i === 0 ? durations[0] - overlapDuration : offset + durations[i] - overlapDuration;
+
+    videoFilter += `${prevLabel}${nextLabel}xfade=transition=fade:duration=${overlapDuration}:offset=${offset.toFixed(3)}${outLabel}`;
+    if (i < clips.length - 2) videoFilter += ";";
+  }
+
+  offset = 0;
+  for (let i = 0; i < clips.length - 1; i++) {
+    const prevLabel = i === 0 ? `[${i}:a]` : `[a${i}]`;
+    const nextLabel = `[${i + 1}:a]`;
+    const outLabel = i === clips.length - 2 ? "[aout]" : `[a${i + 1}]`;
+
+    audioFilter += `${prevLabel}${nextLabel}acrossfade=d=${overlapDuration}:c1=tri:c2=tri${outLabel}`;
+    if (i < clips.length - 2) audioFilter += ";";
+  }
+
+  const filterComplex = `${videoFilter};${audioFilter}`;
+  console.log(`[MERGE-XFADE] Filter: ${filterComplex}`);
+
+  return new Promise((resolve, reject) => {
+    const { execSync } = require("child_process");
+    const cmd = `ffmpeg -y ${inputs.join(" ")} -filter_complex "${filterComplex}" -map "[vout]" -map "[aout]" -c:v libx264 -preset fast -crf 23 -c:a aac -b:a 128k -movflags +faststart "${outputPath}"`;
+
+    try {
+      execSync(cmd, { stdio: "pipe", maxBuffer: 50 * 1024 * 1024 });
+      console.log(`[MERGE-XFADE] Success: ${outputPath}`);
+      resolve(outputPath);
+    } catch (err) {
+      console.error(`[MERGE-XFADE] Failed:`, (err as Error).message);
+      reject(err);
+    }
+  });
+};
+
 export const mergeClips = async (clips: string[], outputPath: string) => {
   console.log(`[MERGE] Merging ${clips.length} clips...`);
 
