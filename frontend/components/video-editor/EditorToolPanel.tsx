@@ -20,7 +20,7 @@ interface ToolTab {
 const TOOL_TABS: ToolTab[] = [
   { id: "trim", label: "Trim", icon: "solar:scissors-bold" },
   { id: "crop", label: "Crop", icon: "solar:crop-bold" },
-  { id: "speed", label: "Speed", icon: "solar:speedometer-bold" },
+  { id: "speed", label: "Speed", icon: "solar:playback-speed-bold" },
   { id: "audio", label: "Audio", icon: "solar:volume-loud-bold" },
   { id: "captions", label: "Captions", icon: "solar:subtitles-bold" },
   { id: "heading", label: "Heading", icon: "solar:text-bold" },
