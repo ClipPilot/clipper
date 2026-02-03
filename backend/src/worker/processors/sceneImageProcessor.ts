@@ -69,6 +69,8 @@ export async function processSceneImageJob(
     singleBRollShotIndex,
     existingBRollImages,
     previousArollImageKey,
+    isConsecutiveAroll,
+    previousSceneSetting,
   } = job;
 
   const includeProductImages = shouldIncludeProductImages(sceneData.sceneType);
@@ -342,6 +344,8 @@ export async function processSceneImageJob(
         "start",
         characterAppearance,
         hasSupportingImages,
+        isConsecutiveAroll,
+        previousSceneSetting,
       );
 
       const startResult = await falImageService.generateImageWithRetry({

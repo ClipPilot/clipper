@@ -282,12 +282,15 @@ export function ScriptStep({
       }
     } else {
       const defaultDialogues: Record<string, string> = {
-        hook: "Stop scrolling! You need to see this...",
-        problem: "I was struggling with this problem for so long...",
-        solution: "Then I discovered this game-changer...",
-        demo: "Let me show you how it works...",
-        testimonial: "This has completely changed my life...",
-        cta: "Click the link below to get yours now!",
+        hook: "Okay but why did no one tell me about this sooner...",
+        problem: "I was literally SO tired of dealing with this every single day...",
+        agitate: "And the worst part? Nothing I tried actually worked...",
+        solution: "Until I found this and honestly... it changed everything.",
+        demo: "Let me show you how it actually works...",
+        "social-proof": "I was so skeptical until I saw the reviews...",
+        testimonial: "After using it for a week, I literally can't go back...",
+        transformation: "Look at the difference. I'm actually shook.",
+        cta: "Seriously, you have to try this. Link's in my bio.",
       };
 
       handleSceneUpdate(sceneIndex, {

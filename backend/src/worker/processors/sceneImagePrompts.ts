@@ -1,17 +1,5 @@
 import { GenerateSceneImageJob } from "../../services/sqs.service";
 
-export const UGC_IPHONE_STYLE = `A vertical 9:16 UGC-style video frame captured on an iPhone. The composition is a medium-wide portrait, framed at true eye-level with a slightly forward-leaning posture for conversational authority.
-
-Camera behavior uses the native iPhone lens (26mm equivalent): slightly wide, honest perspective, mild barrel softness at edges, minimal compression. Only tiny pockets of neural blur appear around hair edges—true iPhone depth-map artifacts.
-
-Lighting is "Available Light": a mix of cool overcast daylight filtering through a window and warm tungsten from interior lights, creating imperfect balance and natural falloff. Shadows are soft but asymmetric. ISO noise from 500–900 sits naturally in midtones, producing sensor grain and mild vignetting (12% falloff).
-
-Skin is rendered with natural texture: visible micro pores across the nose and cheeks, faint peach fuzz catching sidelight along the jawline, subtle stubble shadow density variation if male, and soft lip line diffusion. Natural oils break through on the forehead and nose bridge; no foundation, no filter. Faint dark circles sit under the eyes—realistic, lived-in.
-
-Reality details: gentle 35mm film grain, light fingerprint smudge on lens glass, tiny dust haze in the air, and minimal chromatic aberration around high-contrast edges. No cinematic bloom, no studio finish.
-
-Styling: raw UGC realism, available indoor light, mixed color temperature, minimal depth blur, slight lens smudge, visible ISO noise, no cinematic polish, emphasis on authenticity and true iPhone capture.`;
-
 export type FrameType = "start" | "end";
 
 export interface BRollShotData {
@@ -38,15 +26,77 @@ export interface ImagePositions {
   productCount: number;
 }
 
+const ANATOMY_NEGATIVE = [
+  "extra limbs", "additional limbs", "three arms", "four arms", "multiple arms",
+  "extra hands", "additional hands", "three hands", "four hands", "multiple hands",
+  "extra fingers", "six fingers", "seven fingers", "eight fingers", "missing fingers",
+  "fused fingers", "merged fingers", "webbed fingers", "stub fingers",
+  "deformed hands", "mutated hands", "malformed hands", "twisted hands", "mangled hands",
+  "wrong hand anatomy", "impossible hand position", "backwards hands", "upside down hands",
+  "floating hands", "disconnected hands", "hands growing from wrong place",
+  "extra legs", "three legs", "four legs", "missing legs",
+  "distorted body", "warped anatomy", "impossible pose", "contorted limbs",
+  "body horror", "mutation", "deformity", "anatomical error",
+].join(", ");
+
+const STYLE_NEGATIVE = [
+  "cartoon", "illustration", "drawing", "painting", "anime", "manga",
+  "3D render", "CGI", "digital art", "artistic", "stylized",
+  "watermark", "signature", "text", "caption", "title", "subtitle", "label",
+  "logo", "brand name", "typography", "written words", "speech bubble",
+  "collage", "grid", "matrix", "multiple images", "split image", "side-by-side",
+  "before after", "comparison", "photo strip", "contact sheet",
+  "oversaturated", "HDR", "overprocessed", "artificial colors",
+].join(", ");
+
+const IPHONE_CAMERA_SPECS = `Shot on iPhone 15 Pro at 26mm equivalent, f/1.78 aperture. Available light: mixed daylight from window and warm tungsten interior creating natural color temperature shift. ISO 640 producing authentic sensor grain visible in shadow areas. Computational photography engaged but not overdone. Slight barrel distortion at frame edges, natural vignette falloff around 12%. Micro lens smudge creating subtle haze. Vertical 9:16 framing for social media.`;
+
+const SKIN_REALISM = `Skin shows authentic texture: visible pores on nose and cheeks, natural oil shine on T-zone, subtle imperfections including tiny bumps or barely visible blemishes. Color varies naturally across face with slight redness around nose. Fine peach fuzz catches sidelight along jawline. No beauty filter, no skin smoothing, no airbrushing.`;
+
 export function buildCharacterDescription(appearance: CharacterAppearance): string {
   const parts: string[] = [];
   if (appearance.gender) parts.push(appearance.gender);
   if (appearance.ageRange) parts.push(`${appearance.ageRange} years old`);
-  if (appearance.skinTone) parts.push(`${appearance.skinTone} skin tone`);
-  if (appearance.hairColor) parts.push(`${appearance.hairColor} hair`);
+  if (appearance.skinTone) parts.push(`${appearance.skinTone} skin`);
+  if (appearance.hairColor && appearance.hairStyle) {
+    parts.push(`${appearance.hairColor} ${appearance.hairStyle} hair`);
+  } else if (appearance.hairColor) {
+    parts.push(`${appearance.hairColor} hair`);
+  }
   if (appearance.eyeColor) parts.push(`${appearance.eyeColor} eyes`);
   if (appearance.bodyType) parts.push(`${appearance.bodyType} build`);
   return parts.join(", ");
+}
+
+function buildReferenceImageGuide(imagePositions: ImagePositions): string {
+  const lines: string[] = ["REFERENCE IMAGE GUIDE:"];
+  let position = 1;
+
+  if (imagePositions.supportingCount > 0) {
+    for (let i = 0; i < imagePositions.supportingCount; i++) {
+      lines.push(`Image ${position}: PRIMARY VISUAL REFERENCE - Replicate this image's style, composition, colors, and specific details as closely as possible.`);
+      position++;
+    }
+  }
+
+  if (imagePositions.hasOriginal) {
+    lines.push(`Image ${position}: ORIGINAL TO VARY - Create a new version maintaining the same general composition with subtle differences.`);
+    position++;
+  }
+
+  if (imagePositions.hasCharacter) {
+    lines.push(`Image ${position}: CHARACTER IDENTITY - Match this person exactly if any human features appear in the shot.`);
+    position++;
+  }
+
+  if (imagePositions.productCount > 0) {
+    for (let i = 0; i < imagePositions.productCount; i++) {
+      lines.push(`Image ${position}: PRODUCT REFERENCE - Replicate this product's appearance accurately.`);
+      position++;
+    }
+  }
+
+  return lines.join("\n");
 }
 
 export function buildBRollShotPrompt(
@@ -58,152 +108,65 @@ export function buildBRollShotPrompt(
   productName?: string,
   userRefinement?: string,
   characterAppearance?: CharacterAppearance,
-  imagePositions?: ImagePositions,
+  imagePositions?: ImagePositions
 ): string {
-  const parts: string[] = [];
+  const sections: string[] = [];
 
   if (imagePositions && hasReferenceImages) {
-    let position = 1;
-    const positionGuide: string[] = [
-      "*** REFERENCE IMAGE GUIDE (in order of priority): ***",
-    ];
-
-    if (imagePositions.supportingCount > 0) {
-      for (let i = 0; i < imagePositions.supportingCount; i++) {
-        positionGuide.push(
-          `Image ${position}: USER'S REFERENCE IMAGE - This is the MOST IMPORTANT image. Replicate its visual style, composition, colors, and details EXACTLY.`,
-        );
-        position++;
-      }
-    }
-
-    if (imagePositions.hasOriginal) {
-      positionGuide.push(
-        `Image ${position}: ORIGINAL IMAGE - Create a variation of this, keeping similar composition but with changes based on user instructions.`,
-      );
-      position++;
-    }
-
-    if (imagePositions.hasCharacter) {
-      positionGuide.push(
-        `Image ${position}: CHARACTER REFERENCE - Match this person's appearance if any hands/person shown.`,
-      );
-      position++;
-    }
-
-    if (imagePositions.productCount > 0) {
-      for (let i = 0; i < imagePositions.productCount; i++) {
-        positionGuide.push(
-          `Image ${position}: PRODUCT REFERENCE - Use for product visual consistency.`,
-        );
-        position++;
-      }
-    }
-
-    positionGuide.push("");
-    parts.push(...positionGuide);
+    sections.push(buildReferenceImageGuide(imagePositions));
   }
 
   if (userRefinement) {
-    parts.push(
-      "*** HIGHEST PRIORITY - USER INSTRUCTIONS (MUST FOLLOW): ***",
-      userRefinement,
-      "",
-      "The above user instructions override any conflicting guidance below. Follow them exactly.",
-      "",
-    );
+    sections.push(`USER INSTRUCTIONS (HIGHEST PRIORITY):
+${userRefinement}
+Follow these instructions exactly. They override any conflicting guidance below.`);
   }
 
   if (imagePositions?.supportingCount && imagePositions.supportingCount > 0) {
-    parts.push(
-      "*** CRITICAL - USER'S REFERENCE IMAGE (Image 1): ***",
-      "The FIRST reference image is provided by the user. This is your PRIMARY visual guide.",
-      "You MUST replicate the visual style, composition, layout, colors, and specific details shown in this image.",
-      "This image shows EXACTLY what the user wants - match it as closely as possible.",
-      "If this is an app screenshot or product screen, replicate that EXACT screen.",
-      "",
-    );
+    sections.push(`PRIMARY REFERENCE (Image 1):
+The first reference image is your main visual guide. Replicate its style, composition, layout, colors, and specific details. If it shows an app screen, product shot, or specific scene, recreate that exact visual.`);
   }
 
   if (imagePositions?.hasOriginal) {
-    const originalPos = (imagePositions?.supportingCount || 0) + 1;
-    parts.push(
-      `*** VARIATION MODE (Image ${originalPos}): ***`,
-      "Create a VARIATION of the original image provided.",
-      "Keep the same general composition and style, but generate a new version with subtle differences.",
-      "The result should look like a different take/angle of the same scene.",
-      "",
-    );
+    sections.push(`VARIATION MODE:
+Create a fresh take on the original image. Keep the same general scene and composition but generate new details. The result should feel like a different moment from the same shoot.`);
   }
 
-  if (hasReferenceImages) {
-    const characterDesc = characterAppearance
-      ? buildCharacterDescription(characterAppearance)
-      : null;
-
-    if (characterDesc) {
-      parts.push(
-        `CHARACTER REFERENCE: If any person or hands are shown, they MUST match: ${characterDesc}. Maintain the same race, skin color, and physical features.`,
-        "",
-      );
-    }
-
-    if (productName) {
-      const productDesc = `"${productName}"`;
-      parts.push(
-        `PRODUCT REFERENCE: Use the product reference images to maintain consistent visual identity. Feature ${productDesc} as shown in references.`,
-        "",
-      );
-    }
+  if (hasReferenceImages && characterAppearance) {
+    const charDesc = buildCharacterDescription(characterAppearance);
+    sections.push(`CHARACTER CONSISTENCY:
+If any human features appear (hands, arms, partial body), they must match: ${charDesc}. Maintain identical skin tone and physical characteristics.`);
   }
 
   if (productName) {
-    parts.push(
-      `PRODUCT: ${productName}`,
-      `Generate a B-roll shot featuring "${productName}" - ensure the product is clearly identifiable.`,
-      "",
-    );
+    sections.push(`FEATURED PRODUCT: "${productName}"
+The product must be clearly visible, accurately depicted, and the natural focal point of the composition.`);
   }
 
-  parts.push(
-    "B-ROLL PRODUCT SHOT:",
-    `Shot ${shotIndex + 1} of ${totalShots} in montage sequence`,
-    "",
-    "SHOT ACTION:",
-    shot.action,
-    "",
-    "SHOT CONTEXT:",
-    `- Shot Type: B-Roll Product Shot`,
-    `- Duration: ${shot.durationSeconds} seconds`,
-    `- Scene Type: ${sceneData.sceneType}`,
-    `- Camera Angle: ${sceneData.cameraAngle}`,
-  );
+  sections.push(`SHOT DESCRIPTION:
+B-roll shot ${shotIndex + 1} of ${totalShots} in a montage sequence.
 
-  parts.push(
-    "",
-    "CRITICAL OUTPUT FORMAT:",
-    "- Generate EXACTLY ONE single image, NOT a collage, grid, matrix, or multiple images combined",
-    "- The output must be a single photograph-style image",
-    "- Do NOT create side-by-side comparisons, before/after layouts, or any multi-panel arrangements",
-    "",
-    "ABSOLUTELY NO TEXT OR CAPTIONS:",
-    "- Do NOT add any text, captions, titles, subtitles, labels, or written words to the image",
-    "- Do NOT add watermarks, logos, brand names, or any typography",
-    "- Do NOT include speech bubbles, thought bubbles, or text boxes",
-    "- The image must be purely visual with ZERO text elements",
-    "",
-    "TECHNICAL REQUIREMENTS:",
-    "- Photorealistic quality, clean product photography",
-    "- Vertical 9:16 aspect ratio for social media",
-    "- Professional but authentic aesthetic - NOT overly polished stock imagery",
-    "- Product should be clearly visible and the focal point",
-    "- Natural or softbox lighting with proper shadows",
-    "- Clean, uncluttered composition",
-    "",
-    "NEGATIVE: blurry, out of focus, watermarks, text overlays, text, captions, titles, subtitles, labels, written words, typography, logos, brand names, speech bubbles, deformed products, unrealistic colors, oversaturated images, collages, grids, multiple images, split images, hands holding product unless specified, human faces unless specified",
-  );
+Action: ${shot.action}
 
-  return parts.join("\n");
+Context: ${sceneData.sceneType} scene, ${sceneData.cameraAngle} angle, ${shot.durationSeconds} second duration.`);
+
+  sections.push(`OUTPUT REQUIREMENTS:
+Generate exactly ONE photograph. Not a collage, not a grid, not a comparison, not multiple panels. A single cohesive image.
+
+Zero text of any kind. No captions, no labels, no watermarks, no logos, no typography anywhere in the image.
+
+ANATOMY (if hands or person visible):
+- Exactly two hands maximum, each with exactly five fingers
+- Natural finger positions, no impossible bends or angles
+- Hands connect naturally to arms which connect to body
+- Standard human proportions
+
+TECHNICAL:
+Photorealistic product photography quality. Clean composition with the product as clear focal point. Professional but authentic aesthetic. Natural or softbox lighting with proper shadows. Vertical 9:16 aspect ratio.`);
+
+  sections.push(`NEGATIVE: ${ANATOMY_NEGATIVE}, ${STYLE_NEGATIVE}, blurry, out of focus, low quality, amateur, stock photo watermark`);
+
+  return sections.join("\n\n");
 }
 
 export function buildSceneImagePrompt(
@@ -215,107 +178,90 @@ export function buildSceneImagePrompt(
   frameType: FrameType = "start",
   characterAppearance?: CharacterAppearance,
   hasSupportingImages?: boolean,
+  isConsecutiveAroll?: boolean,
+  previousSceneSetting?: string
 ): string {
-  const parts: string[] = [];
+  const sections: string[] = [];
+
+  if (isConsecutiveAroll) {
+    sections.push(`**CRITICAL - CONSECUTIVE SHOT CONTINUITY**
+This is a CONTINUATION of the previous scene. You MUST maintain EXACT visual consistency:
+- SAME background, SAME room, SAME environment - not similar, IDENTICAL
+- SAME lighting setup, SAME color temperature, SAME shadows
+- SAME props, furniture, and objects in frame - nothing added or removed
+- SAME camera position and framing
+- Character wears the SAME outfit in the SAME position
+- Only the character's expression and subtle pose changes${previousSceneSetting ? `\n\nPREVIOUS SCENE ENVIRONMENT: ${previousSceneSetting}` : ""}
+
+The first reference image shows the PREVIOUS FRAME - match its environment EXACTLY. This should look like the next frame in a video, not a new scene.`);
+  }
 
   if (hasReferenceImages) {
-    const characterDesc = characterAppearance
-      ? buildCharacterDescription(characterAppearance)
-      : null;
-    let refDescription =
-      hasProductImages && productName
-        ? `Use the character reference image to maintain consistent identity. This must be the EXACT SAME person shown in the reference - same face, same features, same person. Also use the product reference images to accurately depict "${productName}".`
-        : "Use the character reference image to maintain consistent identity. This must be the EXACT SAME person shown in the reference - same face, same features, same person.";
+    const charDesc = characterAppearance ? buildCharacterDescription(characterAppearance) : null;
 
-    if (characterDesc) {
-      refDescription += ` CHARACTER APPEARANCE: ${characterDesc}. CRITICAL: Maintain the same race, skin color, and physical features throughout - do not change the character's ethnicity or appearance.`;
+    let refText = "REFERENCE IMAGES PROVIDED:\n";
+    refText += "The character reference shows the exact person to depict. This must be the identical individual - same face, same features, same identity throughout.\n";
+
+    if (charDesc) {
+      refText += `\nCHARACTER: ${charDesc}. Maintain exact skin tone, ethnicity, and physical features. Do not alter the character's race or appearance.\n`;
     }
 
-    parts.push(`REFERENCE IMAGES PROVIDED: ${refDescription}`, "");
+    if (hasProductImages && productName) {
+      refText += `\nPRODUCT: "${productName}" must appear exactly as shown in reference images.`;
+    }
+
+    sections.push(refText);
   }
 
   if (hasSupportingImages) {
-    parts.push(
-      `SUPPORTING REFERENCE IMAGES: Use the additional supporting reference images to guide visual style, composition, and scene details. Replicate key elements, layouts, or visual references from these images where appropriate.`,
-      "",
-    );
+    sections.push(`SUPPORTING REFERENCES:
+Additional reference images guide visual style, composition, and scene details. Incorporate key elements and layouts from these images where appropriate.`);
   }
 
   if (hasProductImages && productName) {
-    parts.push(
-      `PRODUCT FEATURED: "${productName}"`,
-      `This scene should prominently feature the product "${productName}" as shown in the reference images. The product must be clearly visible and accurately depicted.`,
-      "",
-    );
+    sections.push(`FEATURED PRODUCT: "${productName}"
+Prominently feature this product. It must be clearly visible and accurately depicted based on reference images.`);
   }
 
-  parts.push(
-    "UGC IPHONE AUTHENTICITY STYLE:",
-    UGC_IPHONE_STYLE,
-    "",
-    "SCENE VISUAL DIRECTION:",
-    sceneData.cinematicPrompt,
-    "",
-    "SCENE CONTEXT:",
-    `- Scene Type: ${sceneData.sceneType}`,
-    `- Camera Angle: ${sceneData.cameraAngle}`,
-    `- Emotion: ${sceneData.emotion}`,
-    `- Action: ${sceneData.action}`,
-  );
+  sections.push(`VISUAL DIRECTION:
+${sceneData.cinematicPrompt}
 
-  if (frameType === "start") {
-    parts.push(
-      "",
-      "FRAME TIMING: START FRAME",
-      "- This is the BEGINNING moment of the scene",
-      "- Character is about to begin the action, initial anticipation",
-      "- Product/device in starting position",
-      "- Expression shows initial emotion before transformation",
-    );
-  } else {
-    parts.push(
-      "",
-      "FRAME TIMING: END FRAME",
-      "- This is the FINAL moment of the scene",
-      "- Action has been completed, result is visible",
-      "- Product/device in final position after interaction",
-      "- Expression shows satisfied/transformed emotion after the action",
-      "- Keep the SAME camera angle, framing, and setting as start frame",
-    );
-  }
+SCENE CONTEXT:
+Type: ${sceneData.sceneType}
+Camera: ${sceneData.cameraAngle}
+Emotion: ${sceneData.emotion}
+Action: ${sceneData.action}`);
+
+  const frameGuidance = frameType === "start"
+    ? `FRAME TIMING: START
+This captures the beginning moment. The subject is about to begin the action. Initial anticipation visible in expression. Product or device in starting position. Emotion shows the "before" state.`
+    : `FRAME TIMING: END
+This captures the completion moment. Action has finished, result is visible. Product or device in final position after interaction. Expression shows satisfaction or transformation. Maintain identical camera angle and framing from start frame.`;
+
+  sections.push(frameGuidance);
 
   if (userRefinement) {
-    parts.push("", `USER NOTES: ${userRefinement}`);
+    sections.push(`USER NOTES: ${userRefinement}`);
   }
 
-  parts.push(
-    "",
-    "CRITICAL OUTPUT FORMAT:",
-    "- Generate EXACTLY ONE single image, NOT a collage, grid, matrix, or multiple images combined",
-    "- The output must be a single photograph-style image as if taken by an iPhone camera",
-    "- Do NOT create side-by-side comparisons, before/after layouts, or any multi-panel arrangements",
-    "",
-    "ABSOLUTELY NO TEXT OR CAPTIONS:",
-    "- Do NOT add any text, captions, titles, subtitles, labels, or written words to the image",
-    "- Do NOT add watermarks, logos, brand names, or any typography",
-    "- Do NOT include speech bubbles, thought bubbles, or text boxes",
-    "- The image must be purely visual with ZERO text elements",
-    "",
-    "TECHNICAL REQUIREMENTS:",
-    "- Photorealistic quality, indistinguishable from a real iPhone photograph",
-    "- UGC/social media authentic aesthetic - NOT professional studio lighting",
-    "- Vertical 9:16 aspect ratio for social media",
-    "- Natural available light with mixed color temperature (daylight + tungsten)",
-    "- Visible skin texture: pores, natural oils, imperfections",
-    "- Sensor noise and grain consistent with iPhone in indoor lighting",
-    "- Mild lens artifacts: slight vignette, chromatic aberration at edges",
-    `- Expression matches emotion: ${sceneData.emotion}`,
-    "- Correct human anatomy with natural proportions",
-    "- Exactly two arms, exactly two hands with five fingers each",
-    "- Natural body positioning and limb placement",
-    "",
-    "NEGATIVE: extra limbs, extra arms, extra hands, extra fingers, missing limbs, deformed hands, fused fingers, too many fingers, mutated hands, malformed limbs, bad anatomy, distorted body parts, unnatural arm positions, floating limbs, disconnected limbs, cartoon style, illustration, watermarks, text overlays, text, captions, titles, subtitles, labels, written words, typography, logos, brand names, speech bubbles, deformed features, unnatural colors, oversaturated images, collages, grids, multiple images, split images, side-by-side images, matrix layouts, photo grids, studio lighting, professional photography, perfect skin, airbrushed, beauty filter, cinematic lighting, dramatic shadows",
-  );
+  sections.push(`CAMERA AND AUTHENTICITY:
+${IPHONE_CAMERA_SPECS}
 
-  return parts.join("\n");
+${SKIN_REALISM}
+
+This photograph is indistinguishable from a real iPhone capture. Raw UGC social media aesthetic, not a polished studio portrait.`);
+
+  sections.push(`OUTPUT REQUIREMENTS:
+Generate exactly ONE photograph. Not a collage, grid, comparison, or multi-panel layout. A single image as if captured on an iPhone.
+
+Zero text anywhere. No captions, titles, labels, watermarks, logos, speech bubbles, or any typography.
+
+ANATOMY - CRITICAL:
+The subject has exactly two arms naturally positioned at their sides or engaged in the action. If hands are visible, exactly two hands with five fingers each. Fingers are in natural positions - no impossible bends, no extra digits, no missing digits, no fused fingers. All limbs connect naturally to the body with standard human proportions.
+
+Expression matches the ${sceneData.emotion} emotion specified.`);
+
+  sections.push(`NEGATIVE: ${ANATOMY_NEGATIVE}, ${STYLE_NEGATIVE}, studio lighting, professional photography, perfect skin, airbrushed, beauty filter, cinematic lighting, dramatic shadows, posed model aesthetic`);
+
+  return sections.join("\n\n");
 }

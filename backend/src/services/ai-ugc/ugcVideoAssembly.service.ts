@@ -148,6 +148,7 @@ export interface SceneVideoData {
   emotion: string;
   ambientSound?: string | null;
   bRollShots?: BRollShotVideoData[];
+  sharedAmbientAudioPath?: string;
 }
 
 export interface ProcessedScene {
@@ -482,6 +483,7 @@ async function processArollScene(
     action,
     emotion,
     ambientSound,
+    sharedAmbientAudioPath,
   } = scene;
   onProgress?.(`Scene ${sceneNumber}: Generating dialogue...`);
   const {
@@ -565,32 +567,44 @@ async function processArollScene(
   }
   processedVideoPath = trimmedPath;
 
-  // Step 8: Mix ambient sound if provided
+  // Step 8: Mix ambient sound if provided (use shared path for consecutive A-rolls)
   console.log(
-    `[UGC Assembly] Scene ${sceneNumber}: ambientSound field = "${ambientSound || "NOT SET"}"`,
+    `[UGC Assembly] Scene ${sceneNumber}: ambientSound field = "${ambientSound || "NOT SET"}", sharedPath = ${sharedAmbientAudioPath ? "YES" : "NO"}`,
   );
 
-  if (ambientSound && ambientSound.trim()) {
+  if (sharedAmbientAudioPath || (ambientSound && ambientSound.trim())) {
     onProgress?.(`Scene ${sceneNumber}: Adding ambient audio...`);
-    console.log(
-      `[UGC Assembly] Scene ${sceneNumber}: Generating ambient sound: "${ambientSound}"`,
-    );
 
     try {
-      const ambientBuffer = await elevenLabsService.generateSoundEffect({
-        text: ambientSound,
-        durationSeconds: audioDuration,
-        promptInfluence: 0.3,
-      });
+      let ambientAudioPath: string;
+      let shouldDeleteAmbient = false;
 
-      console.log(
-        `[UGC Assembly] Scene ${sceneNumber}: Ambient audio generated (${(ambientBuffer.length / 1024).toFixed(1)}KB)`,
-      );
-      const ambientAudioPath = path.join(
-        OUTPUT_DIR,
-        `ambient_${sceneNumber}_${Date.now()}.mp3`,
-      );
-      fs.writeFileSync(ambientAudioPath, ambientBuffer);
+      if (sharedAmbientAudioPath && fs.existsSync(sharedAmbientAudioPath)) {
+        console.log(
+          `[UGC Assembly] Scene ${sceneNumber}: Using shared ambient audio for consecutive A-roll`,
+        );
+        ambientAudioPath = sharedAmbientAudioPath;
+      } else {
+        console.log(
+          `[UGC Assembly] Scene ${sceneNumber}: Generating ambient sound: "${ambientSound}"`,
+        );
+        const ambientBuffer = await elevenLabsService.generateSoundEffect({
+          text: ambientSound!,
+          durationSeconds: audioDuration,
+          promptInfluence: 0.3,
+        });
+
+        console.log(
+          `[UGC Assembly] Scene ${sceneNumber}: Ambient audio generated (${(ambientBuffer.length / 1024).toFixed(1)}KB)`,
+        );
+        ambientAudioPath = path.join(
+          OUTPUT_DIR,
+          `ambient_${sceneNumber}_${Date.now()}.mp3`,
+        );
+        fs.writeFileSync(ambientAudioPath, ambientBuffer);
+        shouldDeleteAmbient = true;
+      }
+
       const mixedVideoPath = mixAmbientAudio(
         processedVideoPath,
         ambientAudioPath,
@@ -602,7 +616,7 @@ async function processArollScene(
       ) {
         fs.unlinkSync(processedVideoPath);
       }
-      if (fs.existsSync(ambientAudioPath)) {
+      if (shouldDeleteAmbient && fs.existsSync(ambientAudioPath)) {
         fs.unlinkSync(ambientAudioPath);
       }
 
@@ -962,6 +976,73 @@ async function processScenesBatch(
   );
 }
 
+async function prepareConsecutiveArollAmbientAudio(
+  sortedScenes: SceneVideoData[],
+): Promise<Map<number, string>> {
+  const sharedAmbientPaths = new Map<number, string>();
+  const consecutiveSequences: { start: number; end: number; ambientSound: string }[] = [];
+
+  let sequenceStart: number | null = null;
+  let sequenceAmbient: string | null = null;
+
+  for (let i = 0; i < sortedScenes.length; i++) {
+    const scene = sortedScenes[i];
+    const isAroll = scene.shotType === "a-roll";
+    const nextScene = sortedScenes[i + 1];
+    const nextIsAroll = nextScene?.shotType === "a-roll";
+
+    if (isAroll && sequenceStart === null) {
+      sequenceStart = i;
+      sequenceAmbient = scene.ambientSound || null;
+    }
+
+    if (sequenceStart !== null && (!nextIsAroll || i === sortedScenes.length - 1)) {
+      const sequenceEnd = isAroll ? i : i - 1;
+      if (sequenceEnd > sequenceStart && sequenceAmbient) {
+        consecutiveSequences.push({
+          start: sequenceStart,
+          end: sequenceEnd,
+          ambientSound: sequenceAmbient,
+        });
+      }
+      sequenceStart = null;
+      sequenceAmbient = null;
+    }
+  }
+
+  for (const seq of consecutiveSequences) {
+    const totalDuration = sortedScenes
+      .slice(seq.start, seq.end + 1)
+      .reduce((sum, s) => sum + s.duration, 0);
+
+    console.log(
+      `[UGC Assembly] Generating shared ambient audio for consecutive A-rolls ${seq.start + 1}-${seq.end + 1}: "${seq.ambientSound}" (${totalDuration.toFixed(1)}s)`,
+    );
+
+    try {
+      const ambientBuffer = await elevenLabsService.generateSoundEffect({
+        text: seq.ambientSound,
+        durationSeconds: Math.min(totalDuration + 2, 22),
+        promptInfluence: 0.3,
+      });
+
+      const sharedPath = path.join(
+        OUTPUT_DIR,
+        `shared_ambient_${seq.start}_${seq.end}_${Date.now()}.mp3`,
+      );
+      fs.writeFileSync(sharedPath, ambientBuffer);
+
+      for (let i = seq.start; i <= seq.end; i++) {
+        sharedAmbientPaths.set(sortedScenes[i].sceneNumber, sharedPath);
+      }
+    } catch (error) {
+      console.error(`[UGC Assembly] Failed to generate shared ambient audio:`, error);
+    }
+  }
+
+  return sharedAmbientPaths;
+}
+
 export async function assembleUGCVideo(
   options: AssemblyOptions,
 ): Promise<AssemblyResult> {
@@ -978,6 +1059,15 @@ export async function assembleUGCVideo(
   const sortedScenes = [...scenes].sort(
     (a, b) => a.sceneNumber - b.sceneNumber,
   );
+
+  // Pre-generate shared ambient audio for consecutive A-roll sequences
+  const sharedAmbientPaths = await prepareConsecutiveArollAmbientAudio(sortedScenes);
+  for (const scene of sortedScenes) {
+    const sharedPath = sharedAmbientPaths.get(scene.sceneNumber);
+    if (sharedPath) {
+      scene.sharedAmbientAudioPath = sharedPath;
+    }
+  }
 
   console.log(
     `[UGC Assembly] Starting assembly of ${totalScenes} scenes in order: ${sortedScenes.map((s) => s.sceneNumber).join(", ")}`,
@@ -1046,6 +1136,15 @@ export async function assembleUGCVideo(
   }
   if (fs.existsSync(finalLocalPath)) {
     fs.unlinkSync(finalLocalPath);
+  }
+
+  // Clean up shared ambient audio files
+  const cleanedPaths = new Set<string>();
+  for (const sharedPath of sharedAmbientPaths.values()) {
+    if (!cleanedPaths.has(sharedPath) && fs.existsSync(sharedPath)) {
+      fs.unlinkSync(sharedPath);
+      cleanedPaths.add(sharedPath);
+    }
   }
 
   onProgress?.(100, "Complete!");

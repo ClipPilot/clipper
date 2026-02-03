@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAtomValue } from "jotai";
 import { Card, CardBody, Button, Spinner } from "@heroui/react";
@@ -12,7 +12,6 @@ import {
   VideoGenerationStatus,
 } from "@/api/ugc/video";
 import { ugcScriptAPI } from "@/api/ugc";
-import { VideoPreview } from "@/components/ugc-studio/generate/VideoPreview";
 import { VideoLoadingAnimation } from "@/components/ugc-studio/generate/VideoLoadingAnimation";
 import { useUGCVideoSocket } from "@/hooks/useUGCVideoSocket";
 import type { UGCScene } from "@/components/ugc-studio/script/types";
@@ -31,6 +30,7 @@ export default function VideoJobPage() {
   const [scenes, setScenes] = useState<UGCScene[]>([]);
   const [scriptId, setScriptId] = useState<string | null>(null);
   const [isFinalizing, setIsFinalizing] = useState(false);
+  const hasAutoFinalized = useRef(false);
 
   // Fetch job status and script data on mount
   useEffect(() => {
@@ -88,26 +88,39 @@ export default function VideoJobPage() {
     onUpdate: handleSocketUpdate,
   });
 
-  const handleFinalize = async (folderId: number | null) => {
-    if (!selectedTeam?.id) return;
+  // Auto-finalize when video is completed
+  useEffect(() => {
+    const autoFinalize = async () => {
+      if (
+        videoStatus?.status === "completed" &&
+        videoStatus.finalVideoUrl &&
+        selectedTeam?.id &&
+        !hasAutoFinalized.current &&
+        !isFinalizing &&
+        !videoStatus.clipId // Don't auto-finalize if already finalized
+      ) {
+        hasAutoFinalized.current = true;
+        setIsFinalizing(true);
+        setError(null);
 
-    setIsFinalizing(true);
-    setError(null);
+        try {
+          const response = await ugcVideoAPI.finalizeVideo({
+            jobId,
+            teamId: selectedTeam.id,
+          });
 
-    try {
-      const response = await ugcVideoAPI.finalizeVideo({
-        jobId,
-        teamId: selectedTeam.id,
-        folderId: folderId ?? undefined,
-      });
+          // Redirect to clip edit page
+          router.push(`/dashboard/clips/${response.clipId}/edit`);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "Failed to finalize video");
+          setIsFinalizing(false);
+          hasAutoFinalized.current = false; // Allow retry on error
+        }
+      }
+    };
 
-      // Redirect to clip edit page
-      router.push(`/dashboard/clips/${response.clipId}/edit`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to finalize video");
-      setIsFinalizing(false);
-    }
-  };
+    autoFinalize();
+  }, [videoStatus, selectedTeam?.id, jobId, router, isFinalizing]);
 
   const handleBack = () => {
     router.push("/dashboard/ugc-studio/ai-video-creator");
@@ -258,11 +271,22 @@ export default function VideoJobPage() {
     );
   }
 
-  // Completed state - show preview
+  // Completed state - auto-finalize and show loading
   if (videoStatus?.status === "completed") {
+    // If already finalized, redirect to edit page
+    if (videoStatus.clipId) {
+      router.push(`/dashboard/clips/${videoStatus.clipId}/edit`);
+      return (
+        <div className="min-h-screen bg-surface-dark flex items-center justify-center">
+          <Spinner size="lg" color="primary" />
+        </div>
+      );
+    }
+
+    // Show finalizing state while auto-finalize is in progress
     return (
       <div className="min-h-screen bg-surface-dark p-6">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-4xl mx-auto">
           <Button
             variant="light"
             className="text-text-secondary mb-6"
@@ -272,29 +296,57 @@ export default function VideoJobPage() {
             Back to Video Creator
           </Button>
 
-          {error && (
-            <Card className="bg-red-500/10 border border-red-500/30 mb-6">
-              <CardBody className="p-4">
-                <div className="flex items-center gap-3">
-                  <Icon
-                    icon="solar:danger-triangle-bold"
-                    className="text-red-400"
-                    width={24}
-                  />
-                  <p className="text-red-400 text-sm">{error}</p>
+          {error ? (
+            <Card className="bg-red-500/10 border border-red-500/30">
+              <CardBody className="p-8 text-center">
+                <Icon
+                  icon="solar:danger-triangle-bold-duotone"
+                  className="text-red-400 mx-auto mb-4"
+                  width={48}
+                />
+                <h2 className="text-xl font-bold text-text-primary mb-2">
+                  Failed to Save Video
+                </h2>
+                <p className="text-text-secondary text-sm mb-6">{error}</p>
+                <Button
+                  className="bg-accent-400 text-white font-semibold"
+                  onPress={() => {
+                    hasAutoFinalized.current = false;
+                    setError(null);
+                  }}
+                >
+                  Try Again
+                </Button>
+              </CardBody>
+            </Card>
+          ) : (
+            <Card className="bg-surface-base border border-border-base">
+              <CardBody className="p-8 text-center">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="relative">
+                    <div className="w-20 h-20 rounded-full bg-accent-400/20 flex items-center justify-center">
+                      <Icon
+                        icon="solar:check-circle-bold-duotone"
+                        className="text-accent-400"
+                        width={40}
+                      />
+                    </div>
+                    <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-surface-base border-2 border-accent-400 flex items-center justify-center">
+                      <Spinner size="sm" color="primary" />
+                    </div>
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-text-primary mb-2">
+                      Video Complete!
+                    </h2>
+                    <p className="text-text-secondary">
+                      Saving to your library and preparing the editor...
+                    </p>
+                  </div>
                 </div>
               </CardBody>
             </Card>
           )}
-
-          <VideoPreview
-            videoStatus={videoStatus}
-            scenes={scenes}
-            teamId={selectedTeam.id}
-            scriptId={scriptId || ""}
-            onFinalize={handleFinalize}
-            isFinalizing={isFinalizing}
-          />
         </div>
       </div>
     );

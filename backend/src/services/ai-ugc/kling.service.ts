@@ -577,8 +577,12 @@ export async function generateAvatar(
 ): Promise<AvatarResult> {
   const { imageUrl, audioUrl, prompt } = options;
 
-  // Use avatar-specific prompt - brief and direct (API has no negative_prompt)
-  const finalPrompt = prompt || AVATAR_PROMPT;
+  let finalPrompt = prompt || AVATAR_PROMPT;
+
+  if (finalPrompt.length > KLING_MAX_PROMPT_LENGTH) {
+    console.log(`[Kling Avatar v2] Prompt too long (${finalPrompt.length}/${KLING_MAX_PROMPT_LENGTH}), shortening...`);
+    finalPrompt = await shortenPromptIfNeeded(finalPrompt, KLING_MAX_PROMPT_LENGTH);
+  }
 
   console.log(`[Kling Avatar v2] Generating talking head video`);
   console.log(`[Kling Avatar v2] Image: ${imageUrl.substring(0, 80)}...`);

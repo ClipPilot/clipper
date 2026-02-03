@@ -36,58 +36,98 @@ export interface UGCScriptPromptConfig {
 
 const SCRIPT_STRUCTURES: Record<
   string,
-  { name: string; pattern: ScriptStructurePattern[] }
+  { name: string; pattern: ScriptStructurePattern[]; description: string }
 > = {
   classic: {
-    name: "Classic UGC",
+    name: "Classic Hook-Problem-Solution",
+    description: "The proven UGC formula: grab attention, show the pain, reveal the solution",
     pattern: [
-      { type: "hook", shot: "a-roll", duration: "2-4s" },
-      { type: "problem", shot: "a-roll", duration: "4-6s" },
-      { type: "demo", shot: "b-roll", duration: "3-5s" },
-      { type: "cta", shot: "a-roll", duration: "3-5s" },
-    ],
-  },
-  "problem-solution": {
-    name: "Problem → Solution",
-    pattern: [
-      { type: "hook", shot: "a-roll", duration: "2-4s" },
+      { type: "hook", shot: "a-roll", duration: "2-3s" },
       { type: "problem", shot: "a-roll", duration: "4-6s" },
       { type: "solution", shot: "mixed", duration: "4-6s" },
+      { type: "cta", shot: "a-roll", duration: "3-4s" },
+    ],
+  },
+  "problem-agitate-solution": {
+    name: "PAS (Problem-Agitate-Solution)",
+    description: "Dig into the pain before offering relief - high emotional impact",
+    pattern: [
+      { type: "hook", shot: "a-roll", duration: "2-3s" },
+      { type: "problem", shot: "a-roll", duration: "3-5s" },
+      { type: "agitate", shot: "a-roll", duration: "3-5s" },
+      { type: "solution", shot: "mixed", duration: "4-6s" },
+      { type: "cta", shot: "a-roll", duration: "3-4s" },
+    ],
+  },
+  "social-proof": {
+    name: "Social Proof Heavy",
+    description: "Lead with credibility and validation - great for skeptical audiences",
+    pattern: [
+      { type: "hook", shot: "a-roll", duration: "2-3s" },
+      { type: "social-proof", shot: "a-roll", duration: "4-5s" },
+      { type: "demo", shot: "b-roll", duration: "3-5s" },
       { type: "testimonial", shot: "a-roll", duration: "4-5s" },
       { type: "cta", shot: "a-roll", duration: "3-4s" },
     ],
   },
   storytelling: {
     name: "Story Arc",
+    description: "Mini-narrative with transformation - builds emotional connection",
     pattern: [
-      { type: "hook", shot: "a-roll", duration: "2-4s" },
-      { type: "problem", shot: "b-roll", duration: "3-4s" },
-      { type: "solution", shot: "a-roll", duration: "4-6s" },
+      { type: "hook", shot: "a-roll", duration: "2-3s" },
+      { type: "problem", shot: "a-roll", duration: "4-5s" },
+      { type: "transformation", shot: "mixed", duration: "4-6s" },
       { type: "testimonial", shot: "a-roll", duration: "4-5s" },
       { type: "cta", shot: "a-roll", duration: "3-4s" },
     ],
   },
-  custom: {
-    name: "Custom (AI Decides)",
-    pattern: [],
+  "before-after": {
+    name: "Before/After Transformation",
+    description: "Visual transformation story - powerful for results-based products",
+    pattern: [
+      { type: "hook", shot: "a-roll", duration: "2-3s" },
+      { type: "problem", shot: "b-roll", duration: "3-4s" },
+      { type: "solution", shot: "a-roll", duration: "3-5s" },
+      { type: "transformation", shot: "b-roll", duration: "4-5s" },
+      { type: "cta", shot: "a-roll", duration: "3-4s" },
+    ],
   },
   unboxing: {
     name: "Unboxing Reveal",
+    description: "ASMR-style product reveal - builds anticipation and desire",
     pattern: [
-      { type: "hook", shot: "a-roll", duration: "2-4s" },
-      { type: "demo", shot: "b-roll", duration: "3-5s" },
-      { type: "solution", shot: "a-roll", duration: "4-6s" },
+      { type: "hook", shot: "a-roll", duration: "2-3s" },
+      { type: "demo", shot: "b-roll", duration: "4-6s" },
+      { type: "solution", shot: "a-roll", duration: "4-5s" },
       { type: "cta", shot: "a-roll", duration: "3-4s" },
     ],
   },
   tutorial: {
     name: "Quick Tutorial",
+    description: "Educational value-first approach - positions you as helpful expert",
     pattern: [
-      { type: "hook", shot: "a-roll", duration: "2-4s" },
+      { type: "hook", shot: "a-roll", duration: "2-3s" },
       { type: "demo", shot: "mixed", duration: "4-6s" },
       { type: "demo", shot: "b-roll", duration: "3-5s" },
+      { type: "testimonial", shot: "a-roll", duration: "3-4s" },
       { type: "cta", shot: "a-roll", duration: "3-4s" },
     ],
+  },
+  "controversy": {
+    name: "Hot Take / Controversy",
+    description: "Bold opinion that challenges common beliefs - high engagement potential",
+    pattern: [
+      { type: "hook", shot: "a-roll", duration: "2-3s" },
+      { type: "problem", shot: "a-roll", duration: "4-6s" },
+      { type: "solution", shot: "a-roll", duration: "4-6s" },
+      { type: "social-proof", shot: "mixed", duration: "3-4s" },
+      { type: "cta", shot: "a-roll", duration: "3-4s" },
+    ],
+  },
+  custom: {
+    name: "Custom (AI Decides)",
+    description: "Let AI choose the best structure based on your direction",
+    pattern: [],
   },
 };
 
@@ -237,19 +277,78 @@ TARGET DURATION: ${duration} seconds total
 
 ${formatStructure(structureId, customPattern)}
 
-===== HOOK STRATEGIES (use one) =====
-- Pattern interrupt: "Wait, is this actually real?"
-- Controversy: "I was wrong about everything..."
-- Relatability: "POV: You finally found something that works"
-- Shock: "Holy shit, I wasn't expecting this"
-- Curiosity gap: "Nobody talks about this but..."
-- Direct call-out: "If you have [problem], stop scrolling"
+===== HOOK STRATEGIES (CRITICAL - First 3 Seconds Decide Everything) =====
+
+The hook is the MOST IMPORTANT part of UGC. You have 3 seconds to stop the scroll or lose the viewer forever. Choose ONE hook category and execute it perfectly:
+
+**CATEGORY 1 - ATTENTION GRABBING (Pattern Interrupts)**
+These hooks SHOCK the viewer into stopping. Use bold claims or unexpected openings:
+- "You won't believe what just happened..."
+- "This changed everything for me..."
+- "I have a confession to make..."
+- "Is this even real life right now?"
+- "I literally had to share this immediately..."
+- "Wait... is this actually working?"
+
+**CATEGORY 2 - EMOTION/CURIOSITY DRIVEN**
+These hooks create an emotional connection or curiosity gap that MUST be satisfied:
+- "I was struggling with [problem] until I found this..."
+- "This product literally saved me from [situation]..."
+- "I used to hate [task], but now I actually look forward to it..."
+- "My biggest regret is not finding this sooner..."
+- "I learned this the hard way so you don't have to..."
+- "Nobody warned me about this..."
+
+**CATEGORY 3 - PAIN-POINT ALIGNMENT (Direct Relatability)**
+These hooks make the viewer feel SEEN. They think "this is literally me":
+- "Struggling with [issue]? Here's what actually worked for me..."
+- "Tired of [problem] that never goes away?"
+- "If you're like me and [common experience], this is for you..."
+- "Say goodbye to [pain point] forever..."
+- "Here's how I finally overcame [challenge]..."
+- "POV: You finally find something that actually works"
+
+**CATEGORY 4 - VALUE/SOLUTION FOCUSED**
+These hooks promise specific value upfront - the viewer knows exactly what they'll get:
+- "Three tips to get rid of [problem] for good..."
+- "The best hack for [task] that no one talks about..."
+- "How I went from [before state] to [after state]..."
+- "The secret to [desired outcome] that actually works..."
+- "This is the only thing that helped me with [problem]..."
+- "Stop doing [wrong thing], and do this instead..."
+
+**CATEGORY 5 - SOCIAL PROOF / VALIDATION**
+These hooks leverage credibility and FOMO to build instant trust:
+- "I finally got my hands on that viral [product]..."
+- "Everyone's been talking about this and I had to try it..."
+- "My friend who's a [expert] recommended this..."
+- "I saw this everywhere and was so skeptical, but..."
+- "After seeing this all over my feed, I caved..."
+- "I know I'm late to this but oh my god..."
+
+**CATEGORY 6 - ENGAGEMENT/CONTROVERSIAL**
+These hooks demand participation or take a bold stance:
+- "I need your honest opinion on this..."
+- "Unpopular opinion: [bold statement]..."
+- "Tell me why nobody is talking about this..."
+- "Help me decide between these two..."
+- "Am I the only one who [relatable thing]?"
+- "I'm about to say something controversial..."
+
+**THREE-PART HOOK FORMULA:**
+1. Bold opening statement (shocking, relatable, or curiosity-sparking)
+2. Brief context or pain point (2-5 words)
+3. Value teaser (what they'll learn/see)
+
+Example: "Nobody told me this about [product]... I was doing it ALL wrong... and this changes everything."
 
 NEVER START WITH:
-- "Hi guys" / "Hey everyone"
-- "So I wanted to share"
-- "Today I'm going to show you"
-- Any typical YouTuber intro
+- "Hi guys" / "Hey everyone" / "What's up"
+- "So I wanted to share" / "So today I'm going to"
+- "Today I'm going to show you" / "In this video"
+- Any typical YouTuber/influencer greeting
+- Questions that can be answered with "no" and scroll away
+- Generic statements that don't create curiosity
 
 ===== DIALOGUE GUIDELINES =====
 
@@ -258,20 +357,48 @@ CRITICAL WORD LIMIT (MUST FOLLOW):
 - Keep it punchy and concise - short lines hit harder
 - If you have more to say, SPLIT into multiple shorter scenes
 - Count your words - scenes with 40+ words will cause audio overflow
+- Target: 75-120 words total for a 30-second script
 
-1. NATURAL SPEECH:
+1. AUTHENTIC UGC SPEECH PATTERNS (This is what makes UGC work):
    - Use conversational rhythm with natural pauses (mark with "...")
-   - Include filler words sparingly (like, literally, honestly, lowkey)
-   - Short punchy lines work best - don't ramble
-   - Use contractions (can't, won't, it's, that's)
+   - Include strategic filler words: "like", "literally", "honestly", "lowkey", "okay so", "I mean"
+   - Short punchy lines - don't ramble. Real people don't monologue.
+   - Use contractions ALWAYS (can't, won't, it's, that's, I'm, you're)
+   - Self-corrections feel authentic: "it's not good, it's amazing"
+   - Trailing thoughts: "and I was like... wait what?"
+   - Emphatic repetition: "it actually works. Like, it actually works."
+   - Direct address: "okay hear me out", "I need you to understand"
+   - Casual interjections: "okay but", "wait", "no because", "like honestly"
 
-2. EMOTIONAL AUTHENTICITY:
+   AUTHENTIC UGC PHRASES (sprinkle these naturally):
+   - "I'm not even kidding..."
+   - "Okay but listen..."
+   - "Here's the thing..."
+   - "I was today years old when..."
+   - "No because why did no one tell me..."
+   - "This is actually insane..."
+   - "I'm lowkey obsessed..."
+   - "Not me [doing relatable thing]..."
+   - "The way this [does something]..."
+   - "I literally can't..."
+   - "It just hits different..."
+
+2. EMOTIONAL AUTHENTICITY (Build a journey):
    - Show genuine reactions (not fake enthusiasm)
-   - Include moments of vulnerability
-   - Build emotional arc through the script
+   - Include moments of vulnerability - people connect with real struggles
+   - Build emotional arc: frustration → discovery → relief → excitement
    - Match energy to content naturally
+   - Skepticism-to-belief arc is POWERFUL: "I didn't think this would work but..."
+   - Share the internal dialogue: "I was like there's no way..."
 
-3. VOICE OPTIMIZATION (TTS SAFETY):
+3. STORYTELLING MICRO-MOMENTS:
+   - "Before/after" framing: "I used to [struggle]. Now I [benefit]."
+   - Specific details make it real: "every single morning" > "often"
+   - Time markers create narrative: "three weeks later...", "after just one use..."
+   - Sensory language: "the texture", "how it feels", "look at this"
+   - Internal reactions: "I literally gasped", "I had to tell someone"
+
+4. VOICE OPTIMIZATION (TTS SAFETY):
    - Clear pronunciation over fancy vocabulary
    - Spell out numbers ("fifteen" not "15")
    - Avoid tongue twisters and complex phrases
@@ -651,6 +778,7 @@ Shot on virtual 85mm portrait lens equivalent with f/1.4 creating razor-thin dep
 ----- PROBLEM SCENES (Show genuine frustration/relatability) -----
 Goals: Capture defeated body language, authentic frustration, relatable 'you know what I mean' energy
 Key elements: Furrowed brow, eye roll, exasperated exhale, slumped shoulders, hands in defeat
+Dialogue approach: Share the struggle authentically - "I was SO tired of...", "Every single time I tried...", "No matter what I did..."
 
 EXAMPLE PROBLEM cinematicPrompt:
 "Medium shot framing from waist up, set in a cluttered bathroom environment suggesting daily frustration. Flat overhead fluorescent lighting mixed with harsh mirror light creates unflattering shadows under eyes and emphasizes tired expression. Color temperature is cool and clinical around 5500K. Background shows slightly messy counter with various failed products visible but blurred, adding to the 'tried everything' narrative. No depth glamour - this is reality.
@@ -704,9 +832,47 @@ Camera is mostly static with subtle organic drift - gentle 1-2 pixel movement su
 
 Shot on virtual 50mm lens equivalent with f/2.2 for flattering portrait depth while maintaining some environmental context. Color grade is warm and inviting. Soft film grain around ISO 400. Slight vignette draws focus to face. Natural lighting aesthetic. NEGATIVE: No performative expressions, no perfect skin, no artificial catch-lights, no theatrical gestures, no rapid movements, maintains authentic conversational energy throughout, no morphing of features between expressions."
 
+----- AGITATE SCENES (Twist the knife - make them FEEL the pain deeper) -----
+Goals: Intensify the problem, create urgency, make viewer desperate for solution
+Key elements: Building frustration, relatable specifics, "it gets worse" energy, knowing nods
+Dialogue approach: Stack the pain - "And the worst part? [consequence]", "Not only that, but...", "I tried everything and nothing worked"
+Visual: Escalating frustration, hands in hair, looking at ceiling, deep sighs, checking phone again
+
+EXAMPLE AGITATE cinematicPrompt:
+"Medium shot of ${config.characterName} in same environment as problem scene, frustration visibly intensifying. Hands rake through hair in exasperation. Eyes close tight for a moment then open with 'are you kidding me' energy. Head shakes slowly side to side. Posture shifts from slumped to agitated - leaning forward then back. Jaw tightens. One hand gestures outward in 'what else can go wrong' motion. Visible emotional escalation building the need for a solution. The 'rock bottom' moment before the turn."
+
+----- SOCIAL PROOF SCENES (Build instant credibility) -----
+Goals: Establish trust, leverage authority, create FOMO, validate the viewer's interest
+Key elements: Confident knowing expression, "I was skeptical too" energy, implied credibility
+Dialogue approach: Drop credibility bombs - "My friend who's a dermatologist told me about this", "After seeing it everywhere", "Over 10,000 five-star reviews", "I was so skeptical until..."
+Social proof types:
+  - Authority: "My [expert friend/family member] recommended this"
+  - Viral validation: "This has been all over my feed", "Everyone's talking about this"
+  - Statistics: "Millions of people swear by this"
+  - Implied scarcity: "I finally got my hands on it"
+  - Skeptic-to-believer: "I didn't believe the hype but..."
+
+EXAMPLE SOCIAL PROOF cinematicPrompt:
+"Close-up of ${config.characterName} with knowing, confident expression. Slight lean forward as if sharing insider information. Eyebrows raise briefly with 'trust me on this' energy. Eyes bright and engaged. Small conspiratorial smile that says 'I'm letting you in on something'. Head tilts slightly. Hand may gesture toward camera in inclusive 'you and me' motion. The face of someone who's done the research and found something worth sharing."
+
+----- TRANSFORMATION SCENES (The payoff - show the change) -----
+Goals: Dramatic before/after contrast, visible relief, the "I can't believe it" moment
+Key elements: Joy, disbelief, showing results, genuine amazement
+Dialogue approach: Celebrate the change - "Look at the difference", "I can't even believe this is me", "Three weeks later and...", "This is AFTER just one use"
+Visual: Brighter lighting than problem scene, open body language, genuine smile, showing/demonstrating the result
+
+EXAMPLE TRANSFORMATION cinematicPrompt:
+"Medium shot with noticeably brighter, warmer lighting than previous scenes. ${config.characterName}'s entire demeanor has shifted - shoulders back, chin up, radiating confidence. Genuine ear-to-ear smile that reaches the eyes. Hands may gesture toward self or product in 'can you believe this' manner. Head shake of happy disbelief. Eyes occasionally look down at [product/result] then back at camera with amazement. The visual payoff to the story - this is what the viewer could have too."
+
 ----- CTA SCENES (Confident invitation - make them want to take action) -----
 Goals: Confident approachability, direct invitation, energetic positivity, clear call to action energy
 Key elements: Warm inviting smile, unwavering eye contact, open body language, forward energy
+Dialogue approach: Friendly recommendation NOT hard sell - "You have to try this", "Link's in my bio", "Trust me on this one", "Do yourself a favor"
+CTA types that work:
+  - Friendly advice: "Seriously, just try it"
+  - Urgency: "They sell out fast so grab it while you can"
+  - Personal endorsement: "This is the only one I recommend"
+  - Direct but warm: "Link in bio if you need this in your life"
 
 EXAMPLE CTA cinematicPrompt:
 "Medium-close shot with camera positioned at slight low angle (15 degrees below eye line) creating subtle confidence and authority for the subject. Bright, energetic lighting setup with ring light or large softbox creating even flattering illumination with minimal shadows. Bright catch-lights in both eyes creating engaged, alive appearance. Color temperature around 5500K - clean and vibrant. Background is clean and bright, potentially with product visible at edge of frame for final association. Environment suggests positivity and action.
@@ -730,6 +896,12 @@ Match these visual cues to the emotion field:
 - urgent: Intense focused eyes, leaning forward, emphatic hand movements, serious furrowed expression
 - sincere: Soft direct eye contact, slight earnest head tilt, open palm gestures, vulnerable micro-nods
 - playful: Mischievous smirk, twinkling eyes, casual relaxed posture, teasing head movements
+- vulnerable: Slightly downcast eyes, soft voice energy, genuine openness, slight shoulder hunch, authentic uncertainty showing
+- skeptical: One eyebrow slightly raised, head tilted back, arms may cross, "prove it to me" energy, slight squint
+- amazed: Wide eyes with genuine wonder, hands to chest or face, slight gasp expression, head shake of disbelief, "wow" mouth shape
+- conspiratorial: Slight lean in toward camera, knowing smile, lowered voice energy, "I'm letting you in on a secret" eyes, raised eyebrow
+- empathetic: Soft understanding eyes, gentle nodding, open relaxed expression, "I get it" energy, warm supportive gaze
+- determined: Set jaw, steady unwavering gaze, squared shoulders, slight forward lean, resolute expression
 
 ===== DIGITAL PRODUCTS & APP SCREENS (REMINDER) =====
 
@@ -759,9 +931,20 @@ Return exactly ${numVariations} script variation(s). Each must:
 - Include detailed cinematicPrompts for each scene
 
 For emotion field, choose from:
-excited, curious, surprised, frustrated, relieved, confident, friendly, urgent, sincere, playful
+excited, curious, surprised, frustrated, relieved, confident, friendly, urgent, sincere, playful, vulnerable, skeptical, amazed, conspiratorial, empathetic, determined
 
-For sceneType, use: hook, problem, solution, demo, testimonial, cta
+For sceneType, use: hook, problem, agitate, solution, demo, social-proof, testimonial, transformation, cta
+
+SCENE TYPE PURPOSES:
+- hook: Stop the scroll - pattern interrupt, curiosity, shock value (2-3 seconds)
+- problem: Establish relatable pain point - "I struggled with..." (3-5 seconds)
+- agitate: Intensify the pain - "And it gets worse..." - optional but powerful (3-4 seconds)
+- solution: Introduce the product/answer - the turn point (4-6 seconds)
+- demo: Show the product in action - visual proof (3-5 seconds)
+- social-proof: Build credibility - reviews, popularity, expert endorsement (3-5 seconds)
+- testimonial: Personal results/experience - "After using it..." (4-5 seconds)
+- transformation: Before/after payoff - show the change (3-5 seconds)
+- cta: Friendly invitation to act - NOT hard sell (3-4 seconds)
 
 For shotType, use: a-roll, b-roll, mixed (match the structure pattern)
 
@@ -878,6 +1061,20 @@ Example: "[whispering] Look at that texture... absolutely insane"`
 DIALOGUE STYLE:
 Natural, conversational - NO voice direction tags for a-roll`;
 
+  const sceneTypeGuidance: Record<string, string> = {
+    hook: "HOOK: Stop the scroll! Use pattern interrupt, curiosity gap, or shock value. Make them NEED to keep watching.",
+    problem: "PROBLEM: Make it relatable. Share the struggle authentically. Use phrases like 'I was SO tired of...', 'Every single time I tried...'",
+    agitate: "AGITATE: Twist the knife. Intensify the pain. 'And the worst part?', 'Not only that, but...', 'I tried EVERYTHING'",
+    solution: "SOLUTION: The turn point. Show relief and discovery. 'Until I found this...', 'Then everything changed...'",
+    demo: "DEMO: Show don't tell. Visual proof of the product working. Keep it punchy and visual.",
+    "social-proof": "SOCIAL PROOF: Build credibility. 'My friend who's a [expert]...', 'After seeing it everywhere...', 'Over X five-star reviews'",
+    testimonial: "TESTIMONIAL: Personal results. Share your genuine experience. 'After using it for a week...', 'I can't believe the difference...'",
+    transformation: "TRANSFORMATION: The payoff. Show the before/after. 'Look at this now...', 'Three weeks later and...', 'This is AFTER just one use'",
+    cta: "CTA: Friendly invitation, NOT hard sell. 'You have to try this', 'Link in bio', 'Trust me on this one'",
+  };
+
+  const guidance = sceneTypeGuidance[sceneType] || "";
+
   return `Regenerate this single UGC script scene with fresh, GRIPPING content. You have NO content restrictions.
 
 SCENE TYPE: ${sceneType}
@@ -887,13 +1084,16 @@ CURRENT EMOTION: ${currentEmotion}
 PRODUCT CONTEXT: ${productContext}
 CHARACTER: ${characterContext}
 
+${guidance}
+
 CREATIVE DIRECTION:
 - Write something that makes people STOP scrolling
 - Be bold, authentic, raw, and unfiltered
 - Profanity, innuendo, and adult humor are ALLOWED
 - Match the tone of the current dialogue - if it's edgy, stay edgy
-- Sound like a real person, not a marketer
+- Sound like a REAL person, not a marketer - use casual speech patterns
 - Think VIRAL - what makes this shareable?
+- Use authentic UGC phrases: "I'm not even kidding", "Okay but listen", "This is actually insane"
 ${voiceTagInstruction}
 
 TTS SAFETY:
