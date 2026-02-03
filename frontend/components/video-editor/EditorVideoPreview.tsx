@@ -12,6 +12,9 @@ import {
   currentTimeAtom,
   cropStateAtom,
   speedStateAtom,
+  audioStateAtom,
+  trimStateAtom,
+  videoDurationAtom,
 } from "@/store/videoEditor";
 import { CAPTION_FONTS, HEADING_FONTS } from "@/constants/overlayStyles";
 import { CaptionEntry } from "@/api/clips";
@@ -36,6 +39,7 @@ export function EditorVideoPreview({
   currentTime,
 }: EditorVideoPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const bgMusicRef = useRef<HTMLAudioElement | null>(null);
   const [containerHeight, setContainerHeight] = useState(0);
 
   // Atom values
@@ -46,6 +50,9 @@ export function EditorVideoPreview({
   const headingState = useAtomValue(headingStateAtom);
   const cropState = useAtomValue(cropStateAtom);
   const speed = useAtomValue(speedStateAtom);
+  const audioState = useAtomValue(audioStateAtom);
+  const trimState = useAtomValue(trimStateAtom);
+  const videoDuration = useAtomValue(videoDurationAtom);
 
   // Update container height
   useEffect(() => {
@@ -65,6 +72,79 @@ export function EditorVideoPreview({
       videoRef.current.playbackRate = speed;
     }
   }, [speed, videoRef]);
+
+  // Apply volume and mute state for audio preview
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.volume = audioState.originalVolume;
+      videoRef.current.muted = audioState.originalMuted;
+    }
+  }, [audioState.originalVolume, audioState.originalMuted, videoRef]);
+
+  // Setup background music audio element
+  useEffect(() => {
+    const bgMusic = audioState.backgroundMusic;
+
+    if (bgMusic?.url) {
+      // Create audio element if it doesn't exist or URL changed
+      if (!bgMusicRef.current || bgMusicRef.current.src !== bgMusic.url) {
+        if (bgMusicRef.current) {
+          bgMusicRef.current.pause();
+        }
+        bgMusicRef.current = new Audio(bgMusic.url);
+        bgMusicRef.current.loop = true;
+      }
+      bgMusicRef.current.volume = bgMusic.volume;
+    } else if (bgMusicRef.current) {
+      bgMusicRef.current.pause();
+      bgMusicRef.current = null;
+    }
+
+    return () => {
+      if (bgMusicRef.current) {
+        bgMusicRef.current.pause();
+      }
+    };
+  }, [audioState.backgroundMusic?.url, audioState.backgroundMusic?.volume]);
+
+  // Sync background music with video playback
+  useEffect(() => {
+    const bgMusic = audioState.backgroundMusic;
+    if (!bgMusicRef.current || !bgMusic) return;
+
+    // Determine end time (use trim end if set, otherwise video duration)
+    const endTime = trimState.endTime > 0 ? trimState.endTime : videoDuration;
+
+    if (isPlaying) {
+      // Check if we're within the valid playback range for music
+      const isInMusicRange = currentTime >= bgMusic.startTime && currentTime < endTime;
+
+      if (isInMusicRange) {
+        // Calculate where in the music track we should be
+        const musicTime = (currentTime - bgMusic.startTime) % bgMusic.duration;
+
+        // Only seek if we're significantly out of sync (>0.3s)
+        if (Math.abs(bgMusicRef.current.currentTime - musicTime) > 0.3) {
+          bgMusicRef.current.currentTime = musicTime;
+        }
+
+        if (bgMusicRef.current.paused) {
+          bgMusicRef.current.play().catch(() => {});
+        }
+      } else {
+        bgMusicRef.current.pause();
+      }
+    } else {
+      bgMusicRef.current.pause();
+    }
+  }, [isPlaying, currentTime, audioState.backgroundMusic, trimState.endTime, videoDuration]);
+
+  // Apply playback rate to background music
+  useEffect(() => {
+    if (bgMusicRef.current) {
+      bgMusicRef.current.playbackRate = speed;
+    }
+  }, [speed]);
 
   const scale = containerHeight / 1920;
 
@@ -214,6 +294,16 @@ export function EditorVideoPreview({
               <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
                 <Icon icon="solar:speedometer-bold" />
                 {speed}x
+              </div>
+            )}
+
+            {/* Background Music Indicator */}
+            {audioState.backgroundMusic && (
+              <div
+                className={`absolute ${speed !== 1.0 ? "top-10" : "top-2"} right-2 bg-black/60 text-white text-xs px-2 py-1 rounded flex items-center gap-1`}
+              >
+                <Icon icon="solar:music-notes-bold" className={isPlaying && currentTime >= audioState.backgroundMusic.startTime ? "animate-pulse" : ""} />
+                Music
               </div>
             )}
           </>
