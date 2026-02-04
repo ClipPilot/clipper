@@ -335,6 +335,22 @@ CRITICAL WORD LIMIT (MUST FOLLOW):
 - Count your words - scenes with 40+ words will cause audio overflow
 - Target: 75-120 words total for a 30-second script
 
+SPONTANEOUS, NOT SCRIPTED (THIS IS THE #1 RULE):
+- Write like someone just had a thought and grabbed their phone to share it
+- NEVER sound like you're reading from a script or reciting ad copy
+- Real people don't speak in perfect sentences - embrace messiness
+- Include mid-thought pivots: "wait no actually—", "hold on—"
+- Sound like you're telling a friend, not pitching to a customer
+- If it sounds like an ad, REWRITE IT until it sounds like a real person
+- The viewer should feel like they stumbled onto someone's genuine reaction
+
+AD-SPEAK TO AVOID (instant credibility killer):
+❌ "This product is amazing for..." → ✅ "Okay so I tried this and..."
+❌ "If you're looking for..." → ✅ "I was literally just dealing with..."
+❌ "It features..." → ✅ "The thing is..."
+❌ "I highly recommend..." → ✅ "You need this."
+❌ "This is perfect for..." → ✅ "Where was this when I..."
+
 1. AUTHENTIC UGC SPEECH PATTERNS (This is what makes UGC work):
    - Use conversational rhythm with natural pauses (mark with "...")
    - Include strategic filler words: "like", "literally", "honestly", "lowkey", "okay so", "I mean"
@@ -571,18 +587,35 @@ NEVER include in action or cinematicPrompt:
 
 B-roll = visuals that play under voiceover narration (NOT lip-synced dialogue).
 
-**B-ROLL MULTI-SHOT (bRollShots array) - PRODUCT DEMOS ONLY**
-Use multiple shots ONLY for product-focused sequences:
-- Unboxing sequences (box → opening → reveal)
-- Product demos showing different features/angles
-- Before/after product comparison
-- Multi-angle product showcases
+**B-ROLL TYPES (Choose the right one for the moment):**
+
+1. **PRODUCT HERO SHOT** (Most common - product is the star)
+   - Simple product on clean surface while voiceover reacts
+   - NO hands, NO demo - just the product looking beautiful
+   - Perfect for: "this is INSANE", "I can't believe this exists", "only $X?!"
+   - Example: Product sitting on marble counter while VO says "girlies this saved my LIFE"
+
+2. **REACTION B-ROLL** (Product visible + enthusiastic VO)
+   - Show the product while voiceover expresses excitement/disbelief
+   - NOT a demo - just showcasing while reacting verbally
+   - Great for price reveals, "obsessed" moments, hype building
+   - Example dialogue: "and it's only twenty dollars?!", "where has this been all my life"
+
+3. **DEMO B-ROLL** (Product being actively used)
+   - Hands interacting with product, showing how it works
+   - Unboxing, applying, opening, using
+   - Use when you need to SHOW functionality
+
+4. **LIFESTYLE B-ROLL** (Product in context)
+   - Product in its natural environment
+   - Bathroom shelf, desk setup, kitchen counter, etc.
+   - Adds aspirational/aesthetic value
 
 **B-ROLL SINGLE SHOT - USE WHEN:**
 - Person is visible doing an action (not speaking to camera)
 - Lifestyle shots where person is the subject
 - Any scene where a PERSON is the main focus (even if not talking)
-- Simple product closeup
+- Simple product closeup or hero shot
 - Short 2-4 second scenes
 
 IMPORTANT: If a person appears in b-roll with dialogue:
@@ -638,6 +671,24 @@ Example - Single shot B-roll (just one shot is fine!):
   "estimatedDurationSeconds": 3,
   "bRollShots": [
     { "action": "Close-up of product texture", "cinematicPrompt": "...", "durationSeconds": 3, "productImageNeeded": true }
+  ]
+}
+
+Example - REACTION B-roll (product hero shot + enthusiastic VO):
+{
+  "dialogue": "[amazed] Girlies this saved my LIFE... and it's only twenty dollars?!",
+  "estimatedDurationSeconds": 4,
+  "bRollShots": [
+    { "action": "Product sitting beautifully on clean surface, soft lighting", "cinematicPrompt": "...", "durationSeconds": 4, "productImageNeeded": true }
+  ]
+}
+
+Example - Product hero with hype VO:
+{
+  "dialogue": "[excited] I literally can't... this is actually insane",
+  "estimatedDurationSeconds": 3,
+  "bRollShots": [
+    { "action": "Product centered on aesthetic background, no hands", "cinematicPrompt": "...", "durationSeconds": 3, "productImageNeeded": true }
   ]
 }
 
@@ -916,11 +967,23 @@ SCENE TYPE PURPOSES:
 - problem: Establish relatable pain point - "I struggled with..." (3-5 seconds)
 - agitate: Intensify the pain - "And it gets worse..." - optional but powerful (3-4 seconds)
 - solution: Introduce the product/answer - the turn point (4-6 seconds)
-- demo: Show the product in action - visual proof (3-5 seconds)
+  * Can be PRODUCT HERO SHOT (no hands) with excited reaction VO
+  * "this is INSANE", "girlies this saved my life", "only $X?!"
+- demo: Show the product in action - hands-on visual proof (3-5 seconds)
+  * Use when you need to SHOW how it works
+  * Hands interacting, applying, opening, using
 - social-proof: Build credibility - reviews, popularity, expert endorsement (3-5 seconds)
 - testimonial: Personal results/experience - "After using it..." (4-5 seconds)
+  * Can be product hero shot OR results-focused
+  * Great for hype: "I literally can't", "obsessed doesn't even cover it"
 - transformation: Before/after payoff - show the change (3-5 seconds)
 - cta: Friendly invitation to act - NOT hard sell (3-4 seconds)
+
+B-ROLL STYLE GUIDANCE:
+- NOT every b-roll needs hands/demo - sometimes just showing the product is MORE powerful
+- Product hero shot + enthusiastic VO = creates desire without overexplaining
+- Use demo b-roll only when functionality needs to be shown
+- "This saved my life" + beautiful product shot > "let me show you how this works"
 
 For shotType, use: a-roll, b-roll (match the structure pattern)
 
@@ -1065,6 +1128,12 @@ CREATIVE DIRECTION:
 - Sound like a REAL person, not a marketer - use casual speech patterns
 - Think VIRAL - what makes this shareable?
 - Use authentic UGC phrases: "I'm not even kidding", "Okay but listen", "This is actually insane"
+
+SPONTANEOUS, NOT SCRIPTED (CRITICAL):
+- Sound like someone just grabbed their phone to share a thought
+- If it sounds like an ad, REWRITE IT - viewers can smell ad-speak instantly
+- Real people don't speak perfectly - embrace mid-thought pivots and messiness
+- Tell a friend, don't pitch a customer
 ${voiceTagInstruction}
 
 TTS SAFETY:
