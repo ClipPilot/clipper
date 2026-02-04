@@ -17,6 +17,7 @@ import { generateJumbledMetadataString } from "../../utils/videoMetadata";
 import { VIDEO_ENCODE_SETTINGS, AUDIO_SETTINGS } from "../../config/ffmpegSettings";
 
 const MAX_KLING_VIDEO_DURATION = 10;
+const MAX_AROLL_VIDEO_DURATION = 60;
 const KLING_EXTENSION_DURATION = 5;
 const PARALLEL_SCENES = 2;
 const AUDIO_SAMPLE_RATE = AUDIO_SETTINGS.sampleRate;
@@ -534,12 +535,11 @@ async function processArollScene(
   );
   await s3Service.downloadVideoFromUrl(avatarVideoUrl, avatarVideoPath);
 
-  // Step 6: Extend video if audio > 10s using last-frame continuation
   let processedVideoPath = avatarVideoPath;
-  if (audioDuration > MAX_KLING_VIDEO_DURATION) {
+  if (audioDuration > MAX_AROLL_VIDEO_DURATION) {
     onProgress?.(`Scene ${sceneNumber}: Building Video...`);
     console.log(
-      `[UGC Assembly] A-Roll Scene ${sceneNumber}: Audio ${audioDuration.toFixed(2)}s > ${MAX_KLING_VIDEO_DURATION}s, extending video`,
+      `[UGC Assembly] A-Roll Scene ${sceneNumber}: Audio ${audioDuration.toFixed(2)}s > ${MAX_AROLL_VIDEO_DURATION}s, extending video`,
     );
     processedVideoPath = await extendVideoToMatchAudio(
       avatarVideoPath,
@@ -1022,7 +1022,7 @@ async function prepareConsecutiveArollAmbientAudio(
     try {
       const ambientBuffer = await elevenLabsService.generateSoundEffect({
         text: seq.ambientSound,
-        durationSeconds: Math.min(totalDuration + 2, 22),
+        durationSeconds: totalDuration + 2,
         promptInfluence: 0.3,
       });
 

@@ -64,4 +64,4 @@ export const PRO_MOTION_PROMPT =
  * Note: Kling Avatar API only has prompt (default ".") - no negative_prompt option
  */
 export const AVATAR_PROMPT =
-  "Natural talking head, two hands only, no extra limbs, no text overlays";
+  "Natural talking head, two hands only, no extra limbs";

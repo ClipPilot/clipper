@@ -29,7 +29,7 @@ export const EMOTIONS = [
   "determined",
 ] as const;
 
-export const SHOT_TYPES = ["a-roll", "b-roll", "mixed"] as const;
+export const SHOT_TYPES = ["a-roll", "b-roll"] as const;
 
 export const CAMERA_ANGLES = [
   "pov-selfie",
@@ -66,6 +66,7 @@ export interface UGCScene {
   customCameraAngle?: string;
   ambientSound?: string;
   bRollShots?: BRollShot[] | null;
+  mergedSceneTypes?: SceneType[] | null;
 }
 
 export interface UGCScript {
@@ -298,7 +299,7 @@ export const SCRIPT_STRUCTURES: ScriptStructure[] = [
     pattern: [
       { type: "hook", shot: "a-roll", duration: "2-3s" },
       { type: "problem", shot: "a-roll", duration: "4-6s" },
-      { type: "solution", shot: "mixed", duration: "4-6s" },
+      { type: "solution", shot: "b-roll", duration: "4-6s" },
       { type: "cta", shot: "a-roll", duration: "3-4s" },
     ],
     bestFor: ["Most products", "Quick conversions", "First-time creators"],
@@ -312,7 +313,7 @@ export const SCRIPT_STRUCTURES: ScriptStructure[] = [
       { type: "hook", shot: "a-roll", duration: "2-3s" },
       { type: "problem", shot: "a-roll", duration: "3-5s" },
       { type: "agitate", shot: "a-roll", duration: "3-5s" },
-      { type: "solution", shot: "mixed", duration: "4-6s" },
+      { type: "solution", shot: "b-roll", duration: "4-6s" },
       { type: "cta", shot: "a-roll", duration: "3-4s" },
     ],
     bestFor: ["Pain point products", "Health supplements", "Problem solvers"],
@@ -339,7 +340,7 @@ export const SCRIPT_STRUCTURES: ScriptStructure[] = [
     pattern: [
       { type: "hook", shot: "a-roll", duration: "2-3s" },
       { type: "problem", shot: "a-roll", duration: "4-5s" },
-      { type: "transformation", shot: "mixed", duration: "4-6s" },
+      { type: "transformation", shot: "b-roll", duration: "4-6s" },
       { type: "testimonial", shot: "a-roll", duration: "4-5s" },
       { type: "cta", shot: "a-roll", duration: "3-4s" },
     ],
@@ -379,7 +380,7 @@ export const SCRIPT_STRUCTURES: ScriptStructure[] = [
     description: "Educational value-first - positions you as expert",
     pattern: [
       { type: "hook", shot: "a-roll", duration: "2-3s" },
-      { type: "demo", shot: "mixed", duration: "4-6s" },
+      { type: "demo", shot: "b-roll", duration: "4-6s" },
       { type: "demo", shot: "b-roll", duration: "3-5s" },
       { type: "testimonial", shot: "a-roll", duration: "3-4s" },
       { type: "cta", shot: "a-roll", duration: "3-4s" },
@@ -395,7 +396,7 @@ export const SCRIPT_STRUCTURES: ScriptStructure[] = [
       { type: "hook", shot: "a-roll", duration: "2-3s" },
       { type: "problem", shot: "a-roll", duration: "4-6s" },
       { type: "solution", shot: "a-roll", duration: "4-6s" },
-      { type: "social-proof", shot: "mixed", duration: "3-4s" },
+      { type: "social-proof", shot: "b-roll", duration: "3-4s" },
       { type: "cta", shot: "a-roll", duration: "3-4s" },
     ],
     bestFor: ["Disruptive products", "Bold brands", "Standing out"],

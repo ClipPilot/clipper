@@ -93,6 +93,11 @@ export const UGCSceneSchema = z.object({
     .nullable()
     .optional()
     .describe("For B-roll PRODUCT DEMO scenes only: multi-shot sequences for unboxing, product showcases, demos. Do NOT use for person-focused b-roll scenes. Each shot has productImageNeeded to control whether product reference is used."),
+  mergedSceneTypes: z
+    .array(z.enum(SCENE_TYPES))
+    .nullable()
+    .optional()
+    .describe("Original scene types that were combined for merged scenes"),
 }).refine(
   (scene) => {
     if (scene.shotType === "a-roll") {

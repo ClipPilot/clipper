@@ -44,7 +44,7 @@ const SCRIPT_STRUCTURES: Record<
     pattern: [
       { type: "hook", shot: "a-roll", duration: "2-3s" },
       { type: "problem", shot: "a-roll", duration: "4-6s" },
-      { type: "solution", shot: "mixed", duration: "4-6s" },
+      { type: "solution", shot: "b-roll", duration: "4-6s" },
       { type: "cta", shot: "a-roll", duration: "3-4s" },
     ],
   },
@@ -55,7 +55,7 @@ const SCRIPT_STRUCTURES: Record<
       { type: "hook", shot: "a-roll", duration: "2-3s" },
       { type: "problem", shot: "a-roll", duration: "3-5s" },
       { type: "agitate", shot: "a-roll", duration: "3-5s" },
-      { type: "solution", shot: "mixed", duration: "4-6s" },
+      { type: "solution", shot: "b-roll", duration: "4-6s" },
       { type: "cta", shot: "a-roll", duration: "3-4s" },
     ],
   },
@@ -76,7 +76,7 @@ const SCRIPT_STRUCTURES: Record<
     pattern: [
       { type: "hook", shot: "a-roll", duration: "2-3s" },
       { type: "problem", shot: "a-roll", duration: "4-5s" },
-      { type: "transformation", shot: "mixed", duration: "4-6s" },
+      { type: "transformation", shot: "b-roll", duration: "4-6s" },
       { type: "testimonial", shot: "a-roll", duration: "4-5s" },
       { type: "cta", shot: "a-roll", duration: "3-4s" },
     ],
@@ -107,7 +107,7 @@ const SCRIPT_STRUCTURES: Record<
     description: "Educational value-first approach - positions you as helpful expert",
     pattern: [
       { type: "hook", shot: "a-roll", duration: "2-3s" },
-      { type: "demo", shot: "mixed", duration: "4-6s" },
+      { type: "demo", shot: "b-roll", duration: "4-6s" },
       { type: "demo", shot: "b-roll", duration: "3-5s" },
       { type: "testimonial", shot: "a-roll", duration: "3-4s" },
       { type: "cta", shot: "a-roll", duration: "3-4s" },
@@ -120,7 +120,7 @@ const SCRIPT_STRUCTURES: Record<
       { type: "hook", shot: "a-roll", duration: "2-3s" },
       { type: "problem", shot: "a-roll", duration: "4-6s" },
       { type: "solution", shot: "a-roll", duration: "4-6s" },
-      { type: "social-proof", shot: "mixed", duration: "3-4s" },
+      { type: "social-proof", shot: "b-roll", duration: "3-4s" },
       { type: "cta", shot: "a-roll", duration: "3-4s" },
     ],
   },
@@ -137,52 +137,35 @@ const formatStructure = (
 ): string => {
   if (structureId === "custom" && customPattern && customPattern.length > 0) {
     const sceneBreakdown = customPattern
-      .map((s, i) => `${i + 1}. ${s.type.toUpperCase()} - ${s.shot}`)
+      .map((s, i) => `${i + 1}. ${s.type.toUpperCase()} (3-5s) - shotType: "${s.shot}"`)
       .join("\n");
 
     return `
-REQUIRED STRUCTURE: Custom (User-defined)
-Follow this EXACT scene order and shot types:
+===== MANDATORY STRUCTURE - DO NOT DEVIATE =====
+
+You MUST generate EXACTLY ${customPattern.length} scenes with these EXACT shot types:
 
 ${sceneBreakdown}
 
-Shot Types:
-- "a-roll" = Actor speaking directly to camera (face visible, talking head, lip-sync required)
-- "b-roll" = Product shots, close-ups, demos WITHOUT actor visible (voiceover as expressive narration)
-- "mixed" = Actor visible but NOT speaking to camera (hands holding product, over-shoulder view)
+STRICT RULES:
+1. Generate EXACTLY ${customPattern.length} scenes - no more, no less
+2. Each scene's "shotType" field MUST match EXACTLY what is specified above
+3. DO NOT change a-roll to b-roll or vice versa
+4. DO NOT add extra scenes
+5. DO NOT skip any scenes
 
-CRITICAL DIALOGUE RULES:
-- ONLY "a-roll" scenes contain natural conversational dialogue
-- "b-roll" and "mixed" scenes: dialogue is VOICEOVER with VOICE DIRECTION TAGS
+Shot Type Definitions:
+- "a-roll" = Actor speaking directly to camera (talking head)
+- "b-roll" = Product shots with voiceover
 
-B-ROLL VOICE DIRECTION TAGS (REQUIRED for b-roll/mixed scenes):
-Add these tags at the START of b-roll dialogue for expressive delivery:
-- [whispering] - Soft, intimate, ASMR-like (great for product reveals)
-- [excited] - High energy, enthusiastic
-- [curious] - Questioning, intrigued
-- [sincere] - Heartfelt, genuine
-- [playful] - Light, teasing
-- [dramatic] - Building tension
-- [satisfied] - Content, pleased
-- [amazed] - Blown away, impressed
-- [laughing] - Light laughter, amused, delighted
-
-B-roll examples:
-✓ "[whispering] Look at that texture... absolutely insane"
-✓ "[amazed] And this is where it gets crazy..."
-✓ "[satisfied] This is what peak performance looks like"
-✓ "[laughing] I can't believe this actually works"
-
-DO NOT use tags for a-roll - those should be natural and conversational
+If the user specified all a-roll, generate ALL a-roll scenes. Period.
 `;
   }
 
   const structure = SCRIPT_STRUCTURES[structureId] || SCRIPT_STRUCTURES.classic;
 
   const sceneBreakdown = structure.pattern
-    .map(
-      (s, i) => `${i + 1}. ${s.type.toUpperCase()} (${s.duration}) - ${s.shot}`,
-    )
+    .map((s, i) => `${i + 1}. ${s.type.toUpperCase()} (${s.duration}) - ${s.shot}`)
     .join("\n");
 
   return `
@@ -192,17 +175,12 @@ Follow this EXACT scene order and shot types:
 ${sceneBreakdown}
 
 Shot Types:
-- "a-roll" = Actor speaking directly to camera (face visible, talking head, lip-sync required)
-- "b-roll" = Product shots, close-ups, demos WITHOUT actor visible (voiceover as expressive narration)
-- "mixed" = Actor visible but NOT speaking to camera (hands holding product, over-shoulder view)
+- "a-roll" = Actor speaking directly to camera (talking head)
+- "b-roll" = Product shots with voiceover
 
-CRITICAL DIALOGUE RULES:
-- ONLY "a-roll" scenes contain natural conversational dialogue
-- "b-roll" and "mixed" scenes: dialogue is VOICEOVER with VOICE DIRECTION TAGS
-
-B-ROLL VOICE DIRECTION TAGS (REQUIRED for b-roll/mixed scenes):
-Add these tags at the START of b-roll dialogue for expressive delivery:
-- [whispering] - Soft, intimate, ASMR-like (great for product reveals)
+VOICE DIRECTION TAGS (REQUIRED for ALL scenes):
+Add emotion tags at the START of dialogue for expressive delivery:
+- [whispering] - Soft, intimate, ASMR-like
 - [excited] - High energy, enthusiastic
 - [curious] - Questioning, intrigued
 - [sincere] - Heartfelt, genuine
@@ -210,15 +188,13 @@ Add these tags at the START of b-roll dialogue for expressive delivery:
 - [dramatic] - Building tension
 - [satisfied] - Content, pleased
 - [amazed] - Blown away, impressed
-- [laughing] - Light laughter, amused, delighted
+- [laughing] - Light laughter, amused
 
-B-roll examples:
-✓ "[whispering] Look at that texture... absolutely insane"
+Examples:
+✓ "[excited] Oh my god, you guys need to see this!"
+✓ "[curious] So I've been testing this for a week now..."
 ✓ "[amazed] And this is where it gets crazy..."
-✓ "[satisfied] This is what peak performance looks like"
-✓ "[laughing] I can't believe this actually works"
-
-DO NOT use tags for a-roll - those should be natural and conversational
+✓ "[sincere] I genuinely didn't expect it to work this well"
 `;
 };
 
@@ -946,7 +922,7 @@ SCENE TYPE PURPOSES:
 - transformation: Before/after payoff - show the change (3-5 seconds)
 - cta: Friendly invitation to act - NOT hard sell (3-4 seconds)
 
-For shotType, use: a-roll, b-roll, mixed (match the structure pattern)
+For shotType, use: a-roll, b-roll (match the structure pattern)
 
 For cameraAngle, choose from:
 - pov-selfie: Phone held at arm's length, classic UGC style
@@ -1030,15 +1006,15 @@ Score 95+ means: irresistible hook, perfect pacing, genuine emotion, share-worth
 - cinematicPrompts are DETAILED like film director notes (not generic)
 - Total duration close to ${duration} seconds
 - Structure matches the required pattern EXACTLY
-- estimatedDurationSeconds is a NUMBER for each scene (a-roll: max 8s, single-shot b-roll: max 4s, montage b-roll: max 10s)
-- a-roll scenes: natural dialogue (NO voice tags), MUST have ambientSound (e.g., "gym with weights clanking")
-- b-roll/mixed scenes: MUST have voice direction tags, ambientSound should be null
+- estimatedDurationSeconds is a NUMBER for each scene (a-roll: max 8s, b-roll: max 4-10s)
+- ALL scenes: MUST have voice direction tags at start of dialogue
+- a-roll scenes: MUST have ambientSound
+- b-roll scenes: ambientSound should be null
 - No tongue twisters or plosive clusters in dialogue
-- B-ROLL: Use bRollShots array with as many shots as needed (1, 2, 3, 4, etc)
+- B-ROLL: Use bRollShots array with as many shots as needed
 - productImageNeeded based on scene type: PROBLEM/HOOK = false, SOLUTION/DEMO/CTA = true where product shown
-- Each individual shot's action is SPECIFIC but SIMPLE - no multi-step sequences per shot
 - VERIFY: Every a-roll scene has a non-null ambientSound describing background audio
-- VERIFY: No scene exceeds 50 words - if content is longer, split into multiple scenes
+- VERIFY: No scene exceeds 50 words
 - VERIFY: If bRollShots is used, total duration of shots = estimatedDurationSeconds
 `;
 };
@@ -1051,15 +1027,10 @@ export const generateSceneRegenerationPrompt = (
   characterContext: string,
   shotType?: string,
 ): string => {
-  const voiceTagInstruction =
-    shotType === "b-roll" || shotType === "mixed"
-      ? `
-VOICE DIRECTION TAGS (REQUIRED for ${shotType}):
+  const voiceTagInstruction = `
+VOICE DIRECTION TAGS (REQUIRED):
 Add a voice tag at the START of dialogue: [whispering], [excited], [curious], [sincere], [playful], [dramatic], [satisfied], [amazed], [laughing]
-Example: "[whispering] Look at that texture... absolutely insane"`
-      : `
-DIALOGUE STYLE:
-Natural, conversational - NO voice direction tags for a-roll`;
+Example: "[excited] Oh my god, you guys need to see this!"`;
 
   const sceneTypeGuidance: Record<string, string> = {
     hook: "HOOK: Stop the scroll! Use pattern interrupt, curiosity gap, or shock value. Make them NEED to keep watching.",
