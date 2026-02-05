@@ -4,6 +4,7 @@ import { teams, teamMembers, users, usageStats, subscriptions } from "@clipper/s
 import { eq, and, desc, count } from "drizzle-orm";
 import { PLAN_LIMITS, stripe } from "../config/stripe.config";
 import { s3Service } from "./s3.service";
+import { FREE_TIER_STARTING_CREDITS } from "../constants/credits";
 
 class TeamService {
   /**
@@ -393,8 +394,6 @@ class TeamService {
       role: "owner",
     });
 
-    // Create initial usage stats
-    // First team: 3 free clips, Additional teams: 0 clips (must subscribe)
     const resetsDate = new Date();
     resetsDate.setDate(resetsDate.getDate() + 30);
 
@@ -402,7 +401,7 @@ class TeamService {
       team_id: team.id,
       date: new Date(),
       clips_created: 0,
-      limit: isFirstTeam ? 3 : 0,
+      limit: isFirstTeam ? FREE_TIER_STARTING_CREDITS : 0,
       resets_date: resetsDate,
       rollover: false,
     });

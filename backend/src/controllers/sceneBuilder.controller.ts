@@ -231,6 +231,9 @@ export class SceneBuilderController {
       const prompt = this.buildScenePrompt(sceneData, userRefinement);
 
       let previousArollImageKey: string | undefined;
+      let isConsecutiveAroll = false;
+      let previousSceneSetting: string | undefined;
+
       if (sceneData.shotType === "a-roll") {
         const allScenes = selectedScript?.scenes as SceneData[] || [];
         const previousScene = allScenes.find(
@@ -238,6 +241,9 @@ export class SceneBuilderController {
         );
 
         if (previousScene?.shotType === "a-roll") {
+          isConsecutiveAroll = true;
+          previousSceneSetting = previousScene.cinematicPrompt;
+
           const [prevSceneImage] = await db
             .select()
             .from(sceneImages)
@@ -252,7 +258,7 @@ export class SceneBuilderController {
           if (prevSceneImage?.image_key) {
             previousArollImageKey = prevSceneImage.image_key;
             console.log(
-              `[SCENE_BUILDER] Scene ${sceneNumber}: Using previous A-roll image for consistency`
+              `[SCENE_BUILDER] Scene ${sceneNumber}: Consecutive A-roll - using previous image for consistency`
             );
           }
         }
@@ -304,6 +310,8 @@ export class SceneBuilderController {
         singleBRollShotIndex,
         existingBRollImages: existingBRollImages || undefined,
         previousArollImageKey,
+        isConsecutiveAroll,
+        previousSceneSetting,
       });
 
       return res.status(202).json({
@@ -484,13 +492,25 @@ export class SceneBuilderController {
         // Check if this scene is part of an A-roll chain
         const chainInfo = arollChains.get(idx);
         let previousArollImageKey: string | undefined;
+        let isConsecutiveAroll = false;
+        let previousSceneSetting: string | undefined;
 
         if (chainInfo?.isPartOfChain && chainInfo.previousSceneIndex !== null) {
+          isConsecutiveAroll = true;
+
           // Get the previous A-roll's generated image key
           previousArollImageKey = generatedImageKeys.get(chainInfo.previousSceneIndex) || undefined;
+
+          // Get the previous scene's cinematic prompt for environment consistency
+          const prevSceneRequest = scenes[chainInfo.previousSceneIndex];
+          const prevDbSceneData = selectedScript?.scenes?.find(
+            (s: SceneData) => s.id === prevSceneRequest.sceneId
+          ) as SceneData | undefined;
+          previousSceneSetting = prevSceneRequest.cinematicPrompt || prevDbSceneData?.cinematicPrompt;
+
           if (previousArollImageKey) {
             console.log(
-              `[SCENE_BUILDER] Scene ${sceneRequest.sceneNumber}: Using previous A-roll image as reference for visual consistency`
+              `[SCENE_BUILDER] Scene ${sceneRequest.sceneNumber}: Consecutive A-roll - using previous image & environment for consistency`
             );
           }
         }
@@ -521,6 +541,8 @@ export class SceneBuilderController {
           customEndImageKey: sceneRequest.customEndImageKey || undefined,
           bRollShots: sceneData.bRollShots || undefined,
           previousArollImageKey,
+          isConsecutiveAroll,
+          previousSceneSetting,
         });
 
         jobIds.push(job.id);

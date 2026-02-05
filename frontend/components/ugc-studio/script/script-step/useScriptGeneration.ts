@@ -21,6 +21,8 @@ interface GenerateScriptParams {
   customPattern?: CustomPatternStep[];
 }
 
+const POLL_INTERVAL = 5000; // Poll every 5 seconds as fallback
+
 export function useScriptGeneration({
   teamId,
   characterId,
@@ -35,35 +37,71 @@ export function useScriptGeneration({
     error: null,
   });
 
-  const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isCompletedRef = useRef(false);
+
+  const clearPolling = useCallback(() => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+  }, []);
 
   const pollScriptStatus = useCallback(async (scriptIdToPoll: string, productImages: ProductImage[]) => {
+    // Prevent duplicate completions
+    if (isCompletedRef.current) return true;
+
     try {
-      const response = await ugcScriptAPI.getFullScript(scriptIdToPoll);
-      if (response.success && response.scripts && response.scripts.length > 0) {
-        onScriptGenerated(
-          response.scripts,
-          scriptIdToPoll,
-          productImages.map((img) => img.key)
-        );
+      const statusResponse = await ugcScriptAPI.getScriptStatus(scriptIdToPoll);
+
+      // Update progress from polling
+      if (statusResponse.status === "generating" || statusResponse.status === "queued") {
+        setState((prev) => ({
+          ...prev,
+          generationProgress: statusResponse.progress || prev.generationProgress,
+          progressMessage: statusResponse.progressMessage || prev.progressMessage,
+        }));
+        return false;
+      }
+
+      if (statusResponse.status === "failed") {
+        isCompletedRef.current = true;
+        clearPolling();
+        onError(statusResponse.error || "Script generation failed");
         setState((prev) => ({
           ...prev,
           isGenerating: false,
           pendingScriptId: null,
-          generationProgress: 100,
-          progressMessage: "Complete!",
         }));
-        if (pollTimeoutRef.current) {
-          clearTimeout(pollTimeoutRef.current);
-          pollTimeoutRef.current = null;
-        }
         return true;
       }
+
+      if (statusResponse.status === "completed") {
+        // Fetch full script data
+        const response = await ugcScriptAPI.getFullScript(scriptIdToPoll);
+        if (response.success && response.scripts && response.scripts.length > 0) {
+          isCompletedRef.current = true;
+          clearPolling();
+          onScriptGenerated(
+            response.scripts,
+            scriptIdToPoll,
+            productImages.map((img) => img.key)
+          );
+          setState((prev) => ({
+            ...prev,
+            isGenerating: false,
+            pendingScriptId: null,
+            generationProgress: 100,
+            progressMessage: "Complete!",
+          }));
+          return true;
+        }
+      }
     } catch (err) {
-      console.log("[useScriptGeneration] Polling: script not ready yet");
+      console.log("[useScriptGeneration] Polling: script not ready yet or error", err);
     }
     return false;
-  }, [onScriptGenerated]);
+  }, [onScriptGenerated, onError, clearPolling]);
 
   const generate = useCallback(async (params: GenerateScriptParams) => {
     const { productImages, productName, scriptDirection, selectedStructureId, customPattern } = params;
@@ -72,6 +110,10 @@ export function useScriptGeneration({
       onError("Please provide a script direction");
       return false;
     }
+
+    // Reset completion tracking
+    isCompletedRef.current = false;
+    clearPolling();
 
     setState({
       isGenerating: true,
@@ -107,11 +149,14 @@ export function useScriptGeneration({
       }));
       return false;
     }
-  }, [teamId, characterId, onError]);
+  }, [teamId, characterId, onError, clearPolling]);
 
-  // WebSocket effect for real-time updates
+  // WebSocket effect for real-time updates + polling fallback
   useEffect(() => {
     if (!state.pendingScriptId) return;
+
+    const scriptId = state.pendingScriptId;
+    isCompletedRef.current = false;
 
     const socket = connectSocket();
     joinTeam(teamId);
@@ -126,7 +171,7 @@ export function useScriptGeneration({
     }
 
     const handleScriptUpdate = (update: ScriptJobUpdate) => {
-      if (update.scriptId !== state.pendingScriptId) return;
+      if (update.scriptId !== scriptId || isCompletedRef.current) return;
 
       setState((prev) => ({
         ...prev,
@@ -135,10 +180,8 @@ export function useScriptGeneration({
       }));
 
       if (update.status === "completed" && update.scripts) {
-        if (pollTimeoutRef.current) {
-          clearTimeout(pollTimeoutRef.current);
-          pollTimeoutRef.current = null;
-        }
+        isCompletedRef.current = true;
+        clearPolling();
         onScriptGenerated(update.scripts, update.scriptId, []);
         setState((prev) => ({
           ...prev,
@@ -146,47 +189,37 @@ export function useScriptGeneration({
           pendingScriptId: null,
         }));
       } else if (update.status === "failed") {
-        if (pollTimeoutRef.current) {
-          clearTimeout(pollTimeoutRef.current);
-          pollTimeoutRef.current = null;
-        }
+        isCompletedRef.current = true;
+        clearPolling();
         onError(update.error || "Script generation failed");
         setState((prev) => ({
           ...prev,
           isGenerating: false,
           pendingScriptId: null,
         }));
-      } else if (update.progress >= 90 && !pollTimeoutRef.current) {
-        // Start polling as backup when nearing completion
-        pollTimeoutRef.current = setTimeout(async () => {
-          const scriptId = state.pendingScriptId;
-          if (scriptId) {
-            const success = await pollScriptStatus(scriptId, []);
-            if (!success) {
-              pollTimeoutRef.current = setTimeout(() => {
-                if (state.pendingScriptId) {
-                  pollScriptStatus(state.pendingScriptId, []);
-                }
-              }, 2000);
-            }
-          }
-        }, 3000);
       }
     };
 
     socket.on("script-job-update", handleScriptUpdate);
 
+    // Start polling immediately as fallback for WebSocket disconnection
+    // This ensures we catch completion even if WebSocket drops
+    pollIntervalRef.current = setInterval(() => {
+      if (!isCompletedRef.current) {
+        pollScriptStatus(scriptId, []);
+      }
+    }, POLL_INTERVAL);
+
     return () => {
       socket.off("script-job-update", handleScriptUpdate);
       leaveTeam(teamId);
-      if (pollTimeoutRef.current) {
-        clearTimeout(pollTimeoutRef.current);
-        pollTimeoutRef.current = null;
-      }
+      clearPolling();
     };
-  }, [teamId, state.pendingScriptId, onScriptGenerated, onError, pollScriptStatus]);
+  }, [teamId, state.pendingScriptId, onScriptGenerated, onError, pollScriptStatus, clearPolling]);
 
   const reset = useCallback(() => {
+    isCompletedRef.current = false;
+    clearPolling();
     setState({
       isGenerating: false,
       generationProgress: 0,
@@ -194,7 +227,7 @@ export function useScriptGeneration({
       pendingScriptId: null,
       error: null,
     });
-  }, []);
+  }, [clearPolling]);
 
   return {
     ...state,

@@ -142,7 +142,7 @@ export function SceneCard({
       action: "Product showcase",
       cinematicPrompt: "Close-up shot of the product",
       durationSeconds: 3,
-      productImageNeeded: true, // Default to showing product for new B-roll shots
+      productImageNeeded: true,
     };
     const currentShots = scene.bRollShots || [];
     onUpdate({ bRollShots: [...currentShots, newShot] });
@@ -155,7 +155,7 @@ export function SceneCard({
     }
   };
 
-  const showBRollSection = scene.shotType === "b-roll" || scene.shotType === "mixed";
+  const showBRollSection = scene.shotType === "b-roll";
 
   return (
     <Card className="bg-surface-elevated border border-border-base overflow-visible">
@@ -193,66 +193,71 @@ export function SceneCard({
                 })}
               </DropdownMenu>
             </Dropdown>
+            {scene.mergedSceneTypes && scene.mergedSceneTypes.length > 1 && (
+              <Tooltip
+                content={
+                  <div className="text-xs">
+                    <p className="font-medium mb-1">Combined beats:</p>
+                    {scene.mergedSceneTypes.map((type, i) => (
+                      <p key={i} className="flex items-center gap-1">
+                        <Icon icon={SCENE_TYPE_CONFIG[type].icon} width={12} />
+                        {SCENE_TYPE_CONFIG[type].label}
+                      </p>
+                    ))}
+                  </div>
+                }
+                placement="bottom"
+                classNames={{ content: "bg-surface-elevated border border-border-base" }}
+              >
+                <Chip
+                  size="sm"
+                  variant="flat"
+                  className="bg-gradient-to-r from-purple-500/20 to-blue-500/20 text-purple-300 cursor-help"
+                  startContent={<Icon icon="solar:layers-bold" width={12} />}
+                >
+                  {scene.mergedSceneTypes.length} beats
+                </Chip>
+              </Tooltip>
+            )}
             <span className="text-xs text-text-muted">
               {scene.estimatedDurationSeconds}s
             </span>
           </div>
 
           <div className="flex items-center gap-1">
-            <Tooltip
-              isDisabled={scene.shotType !== "mixed"}
-              content={
-                <div className="max-w-xs p-1 text-xs">
-                  <p className="font-medium mb-1">Shot Types:</p>
-                  <p><span className="text-blue-400 font-medium">A-roll</span> — Primary footage of the speaker talking directly to camera</p>
-                  <p className="mt-1"><span className="text-amber-400 font-medium">B-roll</span> — Supplementary footage (product shots, demos, cutaways)</p>
-                </div>
-              }
-              placement="bottom"
-              classNames={{ content: "bg-surface-elevated border border-border-base" }}
-            >
-              <div>
-                <Dropdown>
-                  <DropdownTrigger>
-                    <Chip
-                      size="sm"
-                      variant="flat"
-                      className={`cursor-pointer hover:opacity-80 ${
-                        scene.shotType === "a-roll"
-                          ? "bg-blue-500/20 text-blue-400"
-                          : scene.shotType === "b-roll"
-                            ? "bg-amber-500/20 text-amber-400"
-                            : "bg-purple-500/20 text-purple-400"
-                      }`}
-                    >
-                      {scene.shotType}
-                    </Chip>
-                  </DropdownTrigger>
-                  <DropdownMenu
-                    aria-label="Select shot type"
-                    selectionMode="single"
-                    selectedKeys={[scene.shotType]}
-                    onAction={(key) => onUpdate({ shotType: key as ShotType })}
-                    className="bg-surface-elevated"
+            <Dropdown>
+              <DropdownTrigger>
+                <Chip
+                  size="sm"
+                  variant="flat"
+                  className={`cursor-pointer hover:opacity-80 ${
+                    scene.shotType === "a-roll"
+                      ? "bg-blue-500/20 text-blue-400"
+                      : "bg-amber-500/20 text-amber-400"
+                  }`}
+                >
+                  {scene.shotType}
+                </Chip>
+              </DropdownTrigger>
+              <DropdownMenu
+                aria-label="Select shot type"
+                selectionMode="single"
+                selectedKeys={[scene.shotType]}
+                onAction={(key) => onUpdate({ shotType: key as ShotType })}
+                className="bg-surface-elevated"
+              >
+                {SHOT_TYPES.map((shotType) => (
+                  <DropdownItem
+                    key={shotType}
+                    className={
+                      shotType === "a-roll" ? "text-blue-400" : "text-amber-400"
+                    }
                   >
-                    {SHOT_TYPES.map((shotType) => (
-                      <DropdownItem
-                        key={shotType}
-                        className={`text-text-primary ${
-                          shotType === "a-roll"
-                            ? "text-blue-400"
-                            : shotType === "b-roll"
-                              ? "text-amber-400"
-                              : "text-purple-400"
-                        }`}
-                      >
-                        {shotType}
-                      </DropdownItem>
-                    ))}
-                  </DropdownMenu>
-                </Dropdown>
-              </div>
-            </Tooltip>
+                    {shotType}
+                  </DropdownItem>
+                ))}
+              </DropdownMenu>
+            </Dropdown>
             <Tooltip content="Regenerate scene" placement="bottom">
               <Button
                 isIconOnly
@@ -347,7 +352,6 @@ export function SceneCard({
           </div>
         )}
 
-        {/* B-Roll Shots Section */}
         {showBRollSection && (
           <div className="space-y-2 pt-2 border-t border-border-base">
             <div className="flex items-center justify-between">

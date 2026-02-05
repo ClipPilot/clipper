@@ -169,9 +169,13 @@ export function CreateCharacterFlow({ teamId, onCharacterCreated }: CreateCharac
         pollJobStatus(response.jobId);
       }, 2000);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to start generation:", error);
       setIsGenerating(false);
+      const msg = error?.message || error?.response?.data?.error || "";
+      if (msg.includes("Insufficient credits") || msg.includes("INSUFFICIENT_CREDITS")) {
+        setSaveError("Not enough credits to generate. Please upgrade or purchase more credits.");
+      }
     }
   };
 

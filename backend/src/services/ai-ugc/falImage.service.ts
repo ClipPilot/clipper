@@ -61,14 +61,15 @@ interface FalImageResponse {
  * Use this when NO reference images are provided
  */
 export async function generateImage(
-  options: GenerateImageOptions,
+  options: GenerateImageOptions & { usePro?: boolean },
 ): Promise<GenerateImageResult> {
-  const { prompt, aspectRatio = "3:4", numImages = 1 } = options;
+  const { prompt, aspectRatio = "3:4", numImages = 1, usePro = false } = options;
 
-  console.log(`[FAL_IMAGE] Text-to-image with aspect ratio ${aspectRatio}`);
+  const model = usePro ? "fal-ai/nano-banana-pro" : "fal-ai/nano-banana";
+  console.log(`[FAL_IMAGE] Text-to-image with ${model}, aspect ratio ${aspectRatio}`);
 
   const result = (await withTimeout(
-    fal.subscribe("fal-ai/nano-banana", {
+    fal.subscribe(model, {
       input: {
         prompt,
         num_images: numImages,

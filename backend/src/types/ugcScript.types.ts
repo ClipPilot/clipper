@@ -3,9 +3,12 @@ import { z } from "zod";
 export const SCENE_TYPES = [
   "hook",
   "problem",
+  "agitate",
   "solution",
   "demo",
+  "social-proof",
   "testimonial",
+  "transformation",
   "cta",
 ] as const;
 
@@ -20,6 +23,12 @@ export const EMOTIONS = [
   "urgent",
   "sincere",
   "playful",
+  "vulnerable",
+  "skeptical",
+  "amazed",
+  "conspiratorial",
+  "empathetic",
+  "determined",
 ] as const;
 
 export const SHOT_TYPES = ["a-roll", "b-roll"] as const;
@@ -77,14 +86,30 @@ export const UGCSceneSchema = z.object({
   ambientSound: z
     .string()
     .nullable()
-    .describe("REQUIRED for a-roll scenes ONLY: short natural background sound (5-15 words). Examples: 'quiet room tone with subtle air conditioning hum', 'soft indoor ambience with distant muffled sounds'. NO music, NO dramatic sounds, NO production elements. Set to null for b-roll scenes."),
+    .describe("REQUIRED for a-roll scenes: natural background sound matching the environment (e.g., 'quiet kitchen with fridge hum', 'car interior with road noise', 'outdoor park with birds'). Set to null for b-roll scenes."),
   bRollShots: z
     .array(BRollShotSchema)
     .min(1)
     .nullable()
     .optional()
     .describe("For B-roll PRODUCT DEMO scenes only: multi-shot sequences for unboxing, product showcases, demos. Do NOT use for person-focused b-roll scenes. Each shot has productImageNeeded to control whether product reference is used."),
-});
+  mergedSceneTypes: z
+    .array(z.enum(SCENE_TYPES))
+    .nullable()
+    .optional()
+    .describe("Original scene types that were combined for merged scenes"),
+}).refine(
+  (scene) => {
+    if (scene.shotType === "a-roll") {
+      return scene.ambientSound !== null && scene.ambientSound.trim().length > 0;
+    }
+    return true;
+  },
+  {
+    message: "A-roll scenes MUST have ambientSound (background audio matching the environment)",
+    path: ["ambientSound"],
+  }
+);
 
 export const UGCScriptSchema = z.object({
   title: z.string().describe("Catchy title for the UGC ad"),
