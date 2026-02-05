@@ -11,6 +11,7 @@ import {
   PRODUCT_NEGATIVE_PROMPT,
   SCREEN_STABILITY_MODIFIERS,
 } from "./kling.service";
+import { veedFabricService } from "./veedFabric.service";
 import { grokImagineService } from "./grokImagine.service";
 import { openaiClient } from "../openai.service";
 import { generateJumbledMetadataString } from "../../utils/videoMetadata";
@@ -461,10 +462,13 @@ function mixAmbientAudio(
 }
 
 /**
- * Process A-Roll scene using Kling Avatar v2 (optimized for talking heads).
- * Single-step: image + audio → video with built-in lip-sync.
- * If audio > 10s, extends video using last-frame continuation technique.
+ * Process A-Roll scene using VEED Fabric 1.0 (text-to-video with built-in TTS).
+ * Single-step: image + text → video with built-in voice generation and lip-sync.
+ * VEED generates audio internally from text, no need for pre-generated audio.
  * Optionally mixes in ambient sound effects for realistic background audio.
+ *
+ * NOTE: Switched from Kling Avatar v2 for A/B testing. To revert, restore the
+ * previous implementation that used klingService.generateAvatarWithRetry.
  */
 async function processArollScene(
   scene: SceneVideoData,
@@ -486,6 +490,8 @@ async function processArollScene(
     ambientSound,
     sharedAmbientAudioPath,
   } = scene;
+
+  // Generate dialogue audio with ElevenLabs
   onProgress?.(`Scene ${sceneNumber}: Generating dialogue...`);
   const {
     audioPath,
@@ -503,32 +509,18 @@ async function processArollScene(
   console.log(
     `[UGC Assembly] A-Roll Scene ${sceneNumber}: Audio duration: ${audioDuration.toFixed(2)}s`,
   );
-  onProgress?.(`Scene ${sceneNumber}: Generating video`);
+  onProgress?.(`Scene ${sceneNumber}: Generating video with VEED Fabric`);
   const imageUrl = await s3Service.getPresignedUrl(imageKey, 3600);
   const audioUrl = await s3Service.getPresignedUrl(audioKey, 3600);
 
-  onProgress?.(`Scene ${sceneNumber}: Analyzing...`);
-  const groundedCinematicPrompt = await generateGroundedCinematicPrompt({
-    originalCinematicPrompt: cinematicPrompt,
-    startImageUrl: imageUrl,
-    shotType,
-    emotion,
-    action,
-  });
-
-  // Step 4: Generate video with Avatar v2 (lip-sync)
-  const prompt = buildKlingPrompt(
-    groundedCinematicPrompt,
-    shotType,
-    emotion,
-    action,
-  );
+  // Generate video with VEED Fabric (image + audio -> lip-synced video)
   const { videoUrl: avatarVideoUrl } =
-    await klingService.generateAvatarWithRetry({
+    await veedFabricService.generateFabricVideoWithRetry({
       imageUrl,
       audioUrl,
-      prompt,
+      resolution: "720p",
     });
+
   const avatarVideoPath = path.join(
     OUTPUT_DIR,
     `avatar_${sceneNumber}_${Date.now()}.mp4`,
@@ -536,25 +528,6 @@ async function processArollScene(
   await s3Service.downloadVideoFromUrl(avatarVideoUrl, avatarVideoPath);
 
   let processedVideoPath = avatarVideoPath;
-  if (audioDuration > MAX_AROLL_VIDEO_DURATION) {
-    onProgress?.(`Scene ${sceneNumber}: Building Video...`);
-    console.log(
-      `[UGC Assembly] A-Roll Scene ${sceneNumber}: Audio ${audioDuration.toFixed(2)}s > ${MAX_AROLL_VIDEO_DURATION}s, extending video`,
-    );
-    processedVideoPath = await extendVideoToMatchAudio(
-      avatarVideoPath,
-      audioDuration,
-      prompt,
-      sceneNumber,
-      teamId,
-    );
-    if (
-      fs.existsSync(avatarVideoPath) &&
-      avatarVideoPath !== processedVideoPath
-    ) {
-      fs.unlinkSync(avatarVideoPath);
-    }
-  }
 
   // Step 7: Trim video to exact audio duration
   const trimmedPath = trimVideoToAudio(

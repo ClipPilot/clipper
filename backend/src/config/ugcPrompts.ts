@@ -328,6 +328,8 @@ NEVER START WITH:
 
 ===== DIALOGUE GUIDELINES =====
 
+**THE SECRET:** Write it like you're texting a friend about something cool you found, NOT like you're trying to sell them something.
+
 CRITICAL WORD LIMIT (MUST FOLLOW):
 - Each scene MUST have 15-30 words in dialogue (aim for ~20 words)
 - Keep it punchy and concise - short lines hit harder
@@ -335,62 +337,94 @@ CRITICAL WORD LIMIT (MUST FOLLOW):
 - Count your words - scenes with 40+ words will cause audio overflow
 - Target: 75-120 words total for a 30-second script
 
-SPONTANEOUS, NOT SCRIPTED (THIS IS THE #1 RULE):
-- Write like someone just had a thought and grabbed their phone to share it
-- NEVER sound like you're reading from a script or reciting ad copy
-- Real people don't speak in perfect sentences - embrace messiness
-- Include mid-thought pivots: "wait no actually—", "hold on—"
-- Sound like you're telling a friend, not pitching to a customer
-- If it sounds like an ad, REWRITE IT until it sounds like a real person
-- The viewer should feel like they stumbled onto someone's genuine reaction
+===== REAL UGC EXAMPLES (STUDY THESE) =====
 
-AD-SPEAK TO AVOID (instant credibility killer):
+**❌ BAD (Too Salesy - viewers will scroll away):**
+"Are you looking for the best productivity app? Introducing TaskMaster Pro! It has amazing features like task organization and reminders."
+
+**✅ GOOD (Natural UGC - this is what works):**
+"Okay so I've been using this app for like two weeks and it's actually changed how I work. I used to have sticky notes everywhere and would forget half my tasks. Found this thing called TaskMaster... it's basically like having a second brain. You just dump everything in and it organizes it for you. Game changer honestly."
+
+**MORE WINNING EXAMPLES BY NICHE:**
+
+Tech/SaaS:
+"You know how you're always forgetting passwords? Yeah, me too. So I started using this password manager thing... honestly thought it'd be annoying to set up. Took like five minutes. Now I just click one button and boom, logged in everywhere. My boyfriend made fun of me for it and now he uses it too."
+
+Skincare:
+"So my skin was a mess last month. Tried this serum my friend recommended... didn't expect much. Week three and I'm like... wait, is my skin actually glowing? Anyway, here's the before and after."
+
+Fitness:
+"I'm not gonna lie, I was skeptical. But this resistance band thing? Been using it for morning workouts and my arms are actually getting toned. No gym membership needed."
+
+Productivity:
+"If you're drowning in emails like I was, watch this. I found this AI thing that literally summarizes my inbox. Takes two minutes instead of an hour. I don't even know how I lived without it."
+
+Wellness:
+"My therapist told me to journal. I tried for like three days and gave up. Too much effort. Then I found this voice journal app... you just talk to it for two minutes. Actually stuck with it for two months now. First time a mental health thing has worked for me."
+
+Food/Meal Prep:
+"I was spending like twenty dollars a day on lunch. Did the math and almost cried. Started using this meal prep app... it plans everything and makes a grocery list. Now I spend maybe forty a week total. Tastes better too honestly."
+
+===== KEY ELEMENTS CHECKLIST (Every script needs these) =====
+
+✅ MUST HAVE:
+- Personal story opener ("I was...", "My friend told me...", "So I...")
+- Skepticism overcome ("I didn't believe it but...", "I was skeptical...")
+- Specific results (NOT "it's great" → "saved me two hours", "week three and...")
+- Casual language ("like", "honestly", "not gonna lie", "lowkey")
+- Relatable problem (something your audience actually experiences)
+
+❌ NEVER USE:
+- Marketing jargon ("revolutionary", "game-changing features", "best-in-class")
+- Superlatives without proof ("amazing", "incredible", "the best")
+- Scripted-sounding phrases ("I highly recommend", "This product is perfect for")
+- Generic claims ("it's so good", "you'll love it")
+
+===== AD-SPEAK TO AVOID (instant credibility killer) =====
+
 ❌ "This product is amazing for..." → ✅ "Okay so I tried this and..."
 ❌ "If you're looking for..." → ✅ "I was literally just dealing with..."
 ❌ "It features..." → ✅ "The thing is..."
-❌ "I highly recommend..." → ✅ "You need this."
+❌ "I highly recommend..." → ✅ "You need this." or "Link's below if you want it"
 ❌ "This is perfect for..." → ✅ "Where was this when I..."
+❌ "It's amazing" → ✅ "It actually works. Like, it actually works."
+❌ "Revolutionary technology" → ✅ "This thing just... works"
+❌ "Transform your life" → ✅ "Changed how I do [specific thing]"
 
-1. AUTHENTIC UGC SPEECH PATTERNS (This is what makes UGC work):
-   - Use conversational rhythm with natural pauses (mark with "...")
-   - Include strategic filler words: "like", "literally", "honestly", "lowkey", "okay so", "I mean"
+===== AUTHENTIC UGC SPEECH PATTERNS =====
+
+1. CONVERSATIONAL FLOW:
+   - Use natural pauses (mark with "...")
+   - Strategic filler words: "like", "literally", "honestly", "lowkey", "okay so", "I mean"
    - Short punchy lines - don't ramble. Real people don't monologue.
    - Use contractions ALWAYS (can't, won't, it's, that's, I'm, you're)
    - Self-corrections feel authentic: "it's not good, it's amazing"
    - Trailing thoughts: "and I was like... wait what?"
    - Emphatic repetition: "it actually works. Like, it actually works."
-   - Direct address: "okay hear me out", "I need you to understand"
-   - Casual interjections: "okay but", "wait", "no because", "like honestly"
 
-   AUTHENTIC UGC PHRASES (sprinkle these naturally):
-   - "I'm not even kidding..."
+2. AUTHENTIC TRANSITIONS (use these between thoughts):
    - "Okay but listen..."
    - "Here's the thing..."
-   - "I was today years old when..."
+   - "Not gonna lie..."
+   - "I'm not even kidding..."
    - "No because why did no one tell me..."
-   - "This is actually insane..."
-   - "I'm lowkey obsessed..."
-   - "Not me [doing relatable thing]..."
-   - "The way this [does something]..."
+   - "The way this just..."
    - "I literally can't..."
    - "It just hits different..."
 
-2. EMOTIONAL AUTHENTICITY (Build a journey):
-   - Show genuine reactions (not fake enthusiasm)
-   - Include moments of vulnerability - people connect with real struggles
-   - Build emotional arc: frustration → discovery → relief → excitement
-   - Match energy to content naturally
-   - Skepticism-to-belief arc is POWERFUL: "I didn't think this would work but..."
+3. SKEPTICISM-TO-BELIEF ARC (this is POWERFUL):
+   - Start skeptical: "I didn't think this would work but..."
    - Share the internal dialogue: "I was like there's no way..."
+   - Show the turn: "Week two and I'm like... okay wait"
+   - Land the conclusion: "Now I can't go back"
 
-3. STORYTELLING MICRO-MOMENTS:
-   - "Before/after" framing: "I used to [struggle]. Now I [benefit]."
-   - Specific details make it real: "every single morning" > "often"
-   - Time markers create narrative: "three weeks later...", "after just one use..."
-   - Sensory language: "the texture", "how it feels", "look at this"
-   - Internal reactions: "I literally gasped", "I had to tell someone"
+4. SPECIFIC > GENERIC (details make it believable):
+   - ❌ "It saved me time" → ✅ "Takes two minutes instead of an hour"
+   - ❌ "It works great" → ✅ "Week three and my skin is actually glowing"
+   - ❌ "I use it often" → ✅ "Every single morning before work"
+   - ❌ "It's affordable" → ✅ "Now I spend maybe forty a week total"
 
-4. VOICE OPTIMIZATION (TTS SAFETY):
+5. VOICE OPTIMIZATION (TTS SAFETY):
    - Clear pronunciation over fancy vocabulary
    - Spell out numbers ("fifteen" not "15")
    - Avoid tongue twisters and complex phrases
@@ -527,9 +561,6 @@ PERFORMANCE:
 EDITING:
 - seamless one-take, no jump cuts (or single jump cut if needed)
 - real-time pacing, no speed ramping
-6. Specify "maintains exact appearance throughout" to prevent morphing
-7. For complex movements, break them into sequential steps
-8. Weight critical elements with emphasis: "++genuine surprised expression++"
 
 ===== PRODUCT & OBJECT CONSISTENCY (CRITICAL) =====
 
@@ -547,13 +578,6 @@ AI video models can struggle with keeping products, text, and objects consistent
 - Include: "brand name and product text stay crisp and unchanged - no blurring or morphing of letters"
 - For close-ups: "text on product maintains exact font, size, and spacing throughout the entire shot"
 - Include in NEGATIVE: "no garbled text, no changing letters, no blurry or morphing typography"
-
-**PHONE & DEVICE CONSISTENCY:**
-- ALWAYS specify phone color and model consistency: "black iPhone held steady, same device throughout entire shot"
-- Include: "phone screen remains flat, rectangular, with consistent bezel proportions - no warping"
-- For screen-facing shots: "device held perfectly still, screen facing camera at consistent angle, no tilting or rotation"
-- Specify hand position: "fingers grip phone edges consistently, same grip throughout"
-- Include in NEGATIVE: "no warping of phone shape, no bending screen, no changing device proportions, no morphing bezels"
 
 **EXAMPLE PRODUCT-FOCUSED NEGATIVE SECTION:**
 "NEGATIVE: No morphing of product shape or proportions, no changing label text or design, no warping bottle dimensions, no blurry or garbled typography, no inconsistent product colors, product maintains exact identical appearance from first frame to last frame, no extra fingers or hands, no distorted grip, maintains same product-to-hand scale relationship throughout."
@@ -587,7 +611,47 @@ NEVER include in action or cinematicPrompt:
 
 B-roll = visuals that play under voiceover narration (NOT lip-synced dialogue).
 
-**B-ROLL TYPES (Choose the right one for the moment):**
+**THE RULE: Every 5-7 seconds of talking head, cut to B-roll. Keeps attention locked.**
+
+B-roll is visual storytelling - you cut away from the talking head to SHOW what you're describing.
+
+===== SCRIPT → B-ROLL MAPPING (How to think about it) =====
+
+Example Script: "I was drowning in emails. Had like 300 unread. Found this AI tool that organizes everything in 2 minutes."
+
+| Script Line                    | B-Roll Visual                                    |
+|-------------------------------|--------------------------------------------------|
+| "I was drowning in emails"    | Person stressed at laptop, overwhelmed           |
+| "Had like 300 unread"         | Close-up of inbox with notification badges       |
+| "Found this AI tool"          | App interface, clean dashboard                   |
+
+===== B-ROLL CHEAT SHEET (Quick Reference) =====
+
+**EMOTIONAL MOMENTS:**
+- Frustration → hands on head, stressed face, eye roll
+- Relief → deep breath, shoulders drop, smile breaking through
+- Surprise → eyes widen, "whoa" moment, hand to chest
+- Skepticism → raised eyebrow, arms crossed, head tilt
+
+**PRODUCT SHOTS:**
+- Slow zoom into product
+- Hand holding/using product
+- Product in natural environment (desk, bathroom shelf, kitchen)
+- Unboxing reveal moment
+
+**TIME PASSING:**
+- Clock ticking (for "after X days...")
+- Calendar pages (for "three weeks later...")
+- Sunrise to morning routine
+- Progress bar filling
+
+**SOCIAL PROOF:**
+- Notifications popping up
+- 5-star reviews appearing
+- Numbers counting up
+- Multiple products sold out
+
+===== B-ROLL TYPES (Choose the right one) =====
 
 1. **PRODUCT HERO SHOT** (Most common - product is the star)
    - Simple product on clean surface while voiceover reacts
@@ -610,6 +674,32 @@ B-roll = visuals that play under voiceover narration (NOT lip-synced dialogue).
    - Product in its natural environment
    - Bathroom shelf, desk setup, kitchen counter, etc.
    - Adds aspirational/aesthetic value
+
+===== PROBLEM → SOLUTION B-ROLL PATTERNS =====
+
+**Fitness Example:**
+- Problem: "I had no energy in the morning"
+  → B-roll: Person tired in bed, dragging themselves up
+- Solution: "Started this 5-min morning routine"
+  → B-roll: Person doing simple stretches, looking energized
+- Result: "Now I'm up at 6am no problem"
+  → B-roll: Sunrise, person jogging happily
+
+**Skincare Example:**
+- Before: "My skin was breaking out constantly"
+  → B-roll: Close-up of problem skin area
+- During: "Used this serum for 3 weeks"
+  → B-roll: Product shot, person applying serum
+- After: "Look at the difference"
+  → B-roll: Clear skin close-up, person looking in mirror happily
+
+**Productivity Example:**
+- Problem: "I was drowning in emails"
+  → B-roll: Overwhelming inbox, stressed expression
+- Solution: "Found this AI tool"
+  → B-roll: Clean app interface, organized dashboard
+- Result: "Takes 2 minutes instead of an hour"
+  → B-roll: Person relaxed, satisfied smile
 
 **B-ROLL SINGLE SHOT - USE WHEN:**
 - Person is visible doing an action (not speaking to camera)
@@ -929,25 +1019,6 @@ Match these visual cues to the emotion field:
 - conspiratorial: Slight lean in toward camera, knowing smile, lowered voice energy, "I'm letting you in on a secret" eyes, raised eyebrow
 - empathetic: Soft understanding eyes, gentle nodding, open relaxed expression, "I get it" energy, warm supportive gaze
 - determined: Set jaw, steady unwavering gaze, squared shoulders, slight forward lean, resolute expression
-
-===== DIGITAL PRODUCTS & APP SCREENS (REMINDER) =====
-
-REMEMBER: AI video models CANNOT generate realistic app screens or interactions.
-DO NOT describe UI elements, screen content, or user interactions.
-
-The reference image of the screen will be composited in post-production.
-Your ONLY job is to describe HOW THE ACTOR PRESENTS the device:
-
-ALWAYS include "showing the screen but not using it" in cinematicPrompts with screens.
-
-GOOD APP cinematicPrompt examples:
-✓ "Actor holds phone at chest height angled toward camera, showing the screen but not using it, eyes bright with excitement, free hand gestures toward the display"
-✓ "Medium shot of actor holding tablet steady, showing the screen but not using it, nodding approvingly while speaking to camera"
-✓ "Close-up of hands holding phone horizontally, showing the screen but not using it, thumbs visible on edges, screen fills frame"
-✓ "Actor turns laptop toward camera, showing the screen but not using it, leans back with satisfied smile, arms open in presenting gesture"
-
-Focus on: actor's expression, body language, hand positioning, how they present/hold the device.
-DO NOT focus on: what's on the screen, UI elements, app features, tapping, scrolling.
 
 ===== OUTPUT FORMAT =====
 
