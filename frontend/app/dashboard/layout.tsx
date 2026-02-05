@@ -380,7 +380,7 @@ export default function DashboardLayout({
                     width={18}
                   />
                   <p className="text-sm text-text-secondary">
-                    You&apos;re on the <span className="font-semibold text-text-primary">Free plan</span>. Upgrade for unlimited generations, watermark-free exports, and more.
+                    Upgrade your workspace for more credits and features.
                   </p>
                 </div>
                 <Button
