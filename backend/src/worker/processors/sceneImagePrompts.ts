@@ -155,16 +155,18 @@ Generate exactly ONE photograph. Not a collage, not a grid, not a comparison, no
 
 Zero text of any kind. No captions, no labels, no watermarks, no logos, no typography anywhere in the image.
 
-ANATOMY (if hands or person visible):
-- Exactly two hands maximum, each with exactly five fingers
-- Natural finger positions, no impossible bends or angles
-- Hands connect naturally to arms which connect to body
-- Standard human proportions
+ANATOMY - CRITICAL:
+- A human has a MAXIMUM of TWO HANDS and TWO ARMS. Zero, one, or two hands may be visible — NEVER three or more.
+- Each hand has EXACTLY FIVE FINGERS: one thumb and four fingers. No sixth finger, no missing finger, no fused fingers.
+- Hands must be clearly separated from each other — never merged, blended, or overlapping unnaturally.
+- All fingers must have natural proportions and natural bending angles. No impossibly long, short, twisted, or boneless fingers.
+- Arms connect to shoulders, hands connect to wrists — standard human skeletal structure only.
+- Every visible hand MUST be attached to a visible arm. No floating or disembodied hands.
 
 TECHNICAL:
 Photorealistic product photography quality. Clean composition with the product as clear focal point. Professional but authentic aesthetic. Natural or softbox lighting with proper shadows. Vertical 9:16 aspect ratio.`);
 
-  sections.push(`NEGATIVE: ${ANATOMY_NEGATIVE}, ${STYLE_NEGATIVE}, blurry, out of focus, low quality, amateur, stock photo watermark`);
+  sections.push(`NEGATIVE: ${ANATOMY_NEGATIVE}, three hands, hand growing from product, hand emerging from nowhere, phantom hand, disembodied hand, hand without arm, extra arm, third arm, arm from wrong angle, weird fingers, boneless fingers, noodle fingers, ${STYLE_NEGATIVE}, blurry, out of focus, low quality, amateur, stock photo watermark`);
 
   return sections.join("\n\n");
 }
