@@ -18,7 +18,7 @@ const features: PricingFeatures = [
       {
         title: "Credits",
         tiers: {
-          [TiersEnum.Free]: "3 credits included",
+          [TiersEnum.Free]: "15 credits included",
           [TiersEnum.Studio]: "400 credits / month",
           [TiersEnum.Scale]: "1,000 credits / month",
           [TiersEnum.Enterprise]: "Custom credits",

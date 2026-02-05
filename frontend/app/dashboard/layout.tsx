@@ -369,7 +369,32 @@ export default function DashboardLayout({
           />
         </aside>
 
-        <main className="flex-1 overflow-auto">{children}</main>
+        <main className="flex-1 overflow-auto">
+          {selectedTeam?.plan === "free" && (
+            <div className="bg-gradient-to-r from-accent-400/10 via-purple-500/10 to-accent-400/10 border-b border-accent-400/20">
+              <div className="max-w-7xl mx-auto px-4 py-2.5 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Icon
+                    icon="solar:star-bold-duotone"
+                    className="text-accent-400 flex-shrink-0"
+                    width={18}
+                  />
+                  <p className="text-sm text-text-secondary">
+                    You&apos;re on the <span className="font-semibold text-text-primary">Free plan</span>. Upgrade for unlimited generations, watermark-free exports, and more.
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  className="bg-accent-400 text-white font-semibold flex-shrink-0"
+                  onPress={() => router.push("/dashboard/pricing")}
+                >
+                  Upgrade
+                </Button>
+              </div>
+            </div>
+          )}
+          {children}
+        </main>
         <ToastProvider placement="top-right" />
       </div>
 

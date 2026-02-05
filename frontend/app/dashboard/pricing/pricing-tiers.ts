@@ -12,10 +12,10 @@ export const tiers: Array<Tier> = [
     mostPopular: false,
     description: "Perfect for trying out our AI clip generation.",
     generations: "10 generations",
-    credits: "3 credits",
+    credits: "15 credits",
     features: [
       "10 AI clip generations",
-      "3 credits included",
+      "15 credits included",
       "Basic editing tools",
       "720p export quality",
       "Community support",
