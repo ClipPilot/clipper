@@ -15,6 +15,8 @@ export function createDrizzleChain(result: any[] = []) {
     "where",
     "limit",
     "orderBy",
+    "offset",
+    "groupBy",
     "innerJoin",
     "leftJoin",
     "set",
