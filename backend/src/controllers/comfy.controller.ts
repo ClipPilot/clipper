@@ -4,7 +4,6 @@ import { db } from "../db";
 import { comfyJobs, clips, savedFaces } from "@clipper/shared-db/src/schema";
 import { s3Service } from "../services/s3.service";
 import { sqsService } from "../services/sqs.service";
-import { gpuSqsService } from "../services/gpuSqs.service";
 import { cutClip, getVideoDuration } from "../services/clips/videoEditor.service";
 import { createSceneAwareChunks } from "../services/ai-ugc/sceneChunker.service";
 import { detectFaceSegmentsWithPadding } from "../services/face-swap/faceDetection.service";
@@ -24,8 +23,6 @@ import { TEMP_DIR } from "../utils/tempCleanup";
 const UGC_CREDIT_COST = 5;
 const MIN_SEGMENT_DURATION = 3;
 
-const GPU_CHUNK_DURATION = 10;
-const GPU_CHUNK_LEEWAY = 1;
 const KLING_CHUNK_DURATION = 25;
 const KLING_CHUNK_LEEWAY = 5;
 

@@ -16,7 +16,6 @@ export default defineConfig({
       exclude: [
         "src/server.ts",
         "src/worker/**",
-        "src/gpu-worker/**",
         "src/archive/**",
         "src/types/**",
       ],

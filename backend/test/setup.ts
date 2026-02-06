@@ -12,7 +12,6 @@ process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_fake";
 process.env.GEMINI_API_KEY = "test-gemini-key";
 process.env.AWS_REGION = "us-west-2";
 process.env.SQS_QUEUE_URL = "https://sqs.us-west-2.amazonaws.com/000/test";
-process.env.GPU_SQS_QUEUE_URL = "https://sqs.us-west-2.amazonaws.com/000/test-gpu";
 
 // Mock Sentry globally - prevents real error reporting during tests
 vi.mock("@sentry/node", () => ({
