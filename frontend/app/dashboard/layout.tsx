@@ -58,7 +58,13 @@ const baseSidebarItems: SidebarItem[] = [
     title: "UGC Studio",
     icon: "solar:video-frame-play-vertical-bold-duotone",
     href: "/dashboard/ugc-studio",
-  }
+  },
+  {
+    key: "virality",
+    title: "Virality",
+    icon: "solar:chart-bold-duotone",
+    href: "/dashboard/virality",
+  },
 ];
 
 export default function DashboardLayout({

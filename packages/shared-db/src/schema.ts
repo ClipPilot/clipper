@@ -768,3 +768,78 @@ export const userAnnouncementDismissals = pgTable(
     ),
   })
 ).enableRLS();
+
+
+// Virality Tracking (tentative, only as a starting point)
+export const viralityPlatformEnum = pgEnum("virality_platform", ["instagram"]);
+export const viralitySyncStatusEnum = pgEnum("virality_sync_status", [
+  "pending",
+  "syncing",
+  "completed",
+  "failed",
+]);
+
+export const viralityTargets = pgTable(
+  "virality_targets",
+  {
+    id: serial("id").primaryKey(),
+    team_id: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    platform: viralityPlatformEnum("platform").notNull(),
+    username: varchar("username", { length: 255 }).notNull(),
+    profile_url: text("profile_url").notNull(),
+    display_name: varchar("display_name", { length: 255 }),
+    avatar_url: text("avatar_url"),
+    bio: text("bio"),
+    follower_count: integer("follower_count"),
+    following_count: integer("following_count"),
+    total_likes: integer("total_likes"),
+    post_count: integer("post_count"),
+    is_verified: boolean("is_verified").default(false),
+    last_synced_at: timestamp("last_synced_at"),
+    sync_status: viralitySyncStatusEnum("sync_status").default("pending"),
+    sync_error: text("sync_error"),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    teamIdx: index("virality_targets_team_id_idx").on(table.team_id),
+    uniqueTeamPlatformUsername: unique("virality_targets_unique").on(
+      table.team_id,
+      table.platform,
+      table.username
+    ),
+  })
+).enableRLS();
+
+export const viralityPosts = pgTable(
+  "virality_posts",
+  {
+    id: serial("id").primaryKey(),
+    target_id: integer("target_id")
+      .notNull()
+      .references(() => viralityTargets.id, { onDelete: "cascade" }),
+    platform_post_id: varchar("platform_post_id", { length: 255 }).notNull(),
+    post_url: text("post_url").notNull(),
+    thumbnail_url: text("thumbnail_url"),
+    caption: text("caption"),
+    hashtags: jsonb("hashtags"),
+    post_type: varchar("post_type", { length: 50 }),
+    posted_at: timestamp("posted_at"),
+    like_count: integer("like_count").default(0),
+    comment_count: integer("comment_count").default(0),
+    video_view_count: integer("video_view_count"),
+    video_play_count: integer("video_play_count"),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    targetIdx: index("virality_posts_target_id_idx").on(table.target_id),
+    uniqueTargetPost: unique("virality_posts_unique").on(
+      table.target_id,
+      table.platform_post_id
+    ),
+    postedAtIdx: index("virality_posts_posted_at_idx").on(table.posted_at),
+  })
+).enableRLS();

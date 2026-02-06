@@ -1,0 +1,203 @@
+"use client";
+
+import { useState } from "react";
+import { Card, CardBody, Avatar, Button, Chip } from "@heroui/react";
+import { Icon } from "@iconify/react";
+import { ViralityTarget } from "@/api/virality";
+
+interface TargetCardProps {
+  target: ViralityTarget;
+  onSync: () => Promise<void>;
+  onDelete: () => Promise<void>;
+  onViewPosts: () => void;
+}
+
+export function TargetCard({
+  target,
+  onSync,
+  onDelete,
+  onViewPosts,
+}: TargetCardProps) {
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleSync = async () => {
+    setIsSyncing(true);
+    try {
+      await onSync();
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await onDelete();
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const formatNumber = (num: number | null) => {
+    if (!num) return "0";
+    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+    return num.toString();
+  };
+
+  const getSyncStatusColor = () => {
+    switch (target.sync_status) {
+      case "completed":
+        return "success";
+      case "failed":
+        return "danger";
+      case "syncing":
+        return "warning";
+      default:
+        return "default";
+    }
+  };
+
+  const formatLastSynced = () => {
+    if (!target.last_synced_at) return "Never synced";
+    const date = new Date(target.last_synced_at);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return `${diffDays}d ago`;
+  };
+
+  return (
+    <Card
+      className="bg-surface-base border border-border-base hover:border-accent-400/40 transition-all"
+    >
+      <CardBody className="p-4">
+        <div
+          className="flex items-start gap-3 mb-4 cursor-pointer"
+          onClick={onViewPosts}
+        >
+          <Avatar
+            src={target.avatar_url || undefined}
+            name={target.username.charAt(0).toUpperCase()}
+            size="lg"
+            classNames={{
+              base: "bg-surface-hover flex-shrink-0",
+            }}
+          />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="font-semibold text-text-primary truncate">
+                {target.display_name || target.username}
+              </p>
+              {target.is_verified && (
+                <Icon
+                  icon="solar:verified-check-bold"
+                  className="text-blue-500 flex-shrink-0"
+                  width={16}
+                />
+              )}
+            </div>
+            <p className="text-sm text-text-tertiary">@{target.username}</p>
+            <div className="flex items-center gap-1 mt-1">
+              <Icon icon="ri:instagram-fill" className="text-pink-500" width={14} />
+              <span className="text-xs text-text-tertiary">Instagram</span>
+            </div>
+          </div>
+          <Chip
+            size="sm"
+            variant="flat"
+            color={getSyncStatusColor()}
+            classNames={{
+              base: "capitalize",
+            }}
+          >
+            {target.sync_status}
+          </Chip>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          <div className="text-center p-2 rounded-lg bg-surface-elevated">
+            <p className="text-lg font-bold text-text-primary">
+              {formatNumber(target.follower_count)}
+            </p>
+            <p className="text-xs text-text-tertiary">Followers</p>
+          </div>
+          <div className="text-center p-2 rounded-lg bg-surface-elevated">
+            <p className="text-lg font-bold text-text-primary">
+              {formatNumber(target.total_likes)}
+            </p>
+            <p className="text-xs text-text-tertiary">Likes</p>
+          </div>
+          <div className="text-center p-2 rounded-lg bg-surface-elevated">
+            <p className="text-lg font-bold text-text-primary">
+              {formatNumber(target.post_count)}
+            </p>
+            <p className="text-xs text-text-tertiary">Posts</p>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs text-text-tertiary">
+            <Icon
+              icon="solar:clock-circle-bold"
+              width={12}
+              className="inline mr-1"
+            />
+            {formatLastSynced()}
+          </p>
+          {target.sync_error && (
+            <p className="text-xs text-red-500 truncate max-w-[150px]">
+              {target.sync_error}
+            </p>
+          )}
+        </div>
+
+        {target.sync_status === "completed" && (
+          <Button
+            size="sm"
+            variant="flat"
+            className="w-full mb-2 bg-accent-400/10 text-accent-400"
+            startContent={<Icon icon="solar:gallery-bold" width={14} />}
+            endContent={<Icon icon="solar:arrow-right-linear" width={14} />}
+            onPress={onViewPosts}
+          >
+            View Posts
+          </Button>
+        )}
+
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="flat"
+            className="flex-1"
+            startContent={
+              !isSyncing && <Icon icon="solar:refresh-bold" width={14} />
+            }
+            onPress={handleSync}
+            isLoading={isSyncing}
+            isDisabled={target.sync_status === "syncing"}
+          >
+            {isSyncing ? "Syncing..." : "Refresh"}
+          </Button>
+          <Button
+            size="sm"
+            variant="flat"
+            color="danger"
+            isIconOnly
+            onPress={handleDelete}
+            isLoading={isDeleting}
+          >
+            {!isDeleting && <Icon icon="solar:trash-bin-trash-bold" width={14} />}
+          </Button>
+        </div>
+      </CardBody>
+    </Card>
+  );
+}
