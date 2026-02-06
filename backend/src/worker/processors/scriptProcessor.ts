@@ -14,6 +14,7 @@ import {
 } from "../../types/ugcScript.types";
 import { notifyScriptJobUpdate } from "../notify";
 import { openaiClient as client } from "../../services/openai.service";
+import { mergeConsecutiveArollScenes } from "../../services/ai-ugc/ugcScript.service";
 
 async function updateJobProgress(
   jobId: string,
@@ -29,7 +30,6 @@ async function updateJobProgress(
     })
     .where(eq(schema.ugcScripts.id, jobId));
 
-  // Emit real-time update via WebSocket
   await notifyScriptJobUpdate(teamId, {
     scriptId: jobId,
     status: "generating",
@@ -106,7 +106,6 @@ export async function processScriptJob(job: GenerateScriptJob): Promise<void> {
   console.log(`[SCRIPT] Starting generation for job ${jobId}`);
 
   try {
-    // Update status to "generating"
     await db
       .update(schema.ugcScripts)
       .set({
@@ -119,7 +118,6 @@ export async function processScriptJob(job: GenerateScriptJob): Promise<void> {
 
     await updateJobProgress(jobId, teamId, 10, "Loading character data...");
 
-    // Fetch character
     const [character] = await db
       .select()
       .from(schema.characters)
@@ -144,7 +142,6 @@ export async function processScriptJob(job: GenerateScriptJob): Promise<void> {
 
     await updateJobProgress(jobId, teamId, 40, "Generating script variations...");
 
-    // Build prompt config
     const appearanceDesc = formatAppearanceConfig(character.appearance_config);
 
     const promptConfig: UGCScriptPromptConfig = {
@@ -197,19 +194,27 @@ export async function processScriptJob(job: GenerateScriptJob): Promise<void> {
 
     const scripts = parsed.scripts || [];
 
-    // Assign IDs and scene numbers
     scripts.forEach((script) => {
-      script.scenes.forEach((scene, idx) => {
+      script.scenes.forEach((scene) => {
         if (!scene.id) {
           scene.id = randomUUID();
         }
-        scene.sceneNumber = idx + 1;
       });
+
+      const originalCount = script.scenes.length;
+      const shotTypes = script.scenes.map(s => s.shotType);
+      console.log(`[SCRIPT] Before merge: ${originalCount} scenes, shotTypes: ${JSON.stringify(shotTypes)}`);
+
+      script.scenes = mergeConsecutiveArollScenes(script.scenes);
+
+      console.log(`[SCRIPT] After merge: ${script.scenes.length} scenes`);
+      if (script.scenes.length < originalCount) {
+        console.log(`[SCRIPT] Merged ${originalCount} scenes into ${script.scenes.length} (combined consecutive a-rolls)`);
+      }
     });
 
     await updateJobProgress(jobId, teamId, 90, "Saving scripts...");
 
-    // Update job as completed
     await db
       .update(schema.ugcScripts)
       .set({

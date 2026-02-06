@@ -41,6 +41,19 @@ export class ActorController {
         return res.status(403).json({ error: "UGC Studio access required" });
       }
 
+      // Check that the team has at least 1 credit before burning GPU
+      const stats = await teamService.getTeamUsageStats(teamId);
+      const baseRemaining = Math.max(0, stats.limit - stats.clips_created);
+      const addonRemaining = (team as any).addon_clips_remaining || 0;
+      if (baseRemaining + addonRemaining < 1) {
+        return res.status(403).json({
+          error: "Insufficient credits",
+          code: "INSUFFICIENT_CREDITS",
+          required: 1,
+          available: 0,
+        });
+      }
+
       const [job] = await db
         .insert(characterGenerationJobs)
         .values({
@@ -481,6 +494,19 @@ export class ActorController {
       const team = await teamService.getTeamById(teamId);
       if (!team || !canAccessUGCStudio(team.plan)) {
         return res.status(403).json({ error: "UGC Studio access required" });
+      }
+
+      // Check that the team has at least 1 credit before burning GPU
+      const stats = await teamService.getTeamUsageStats(teamId);
+      const baseRemaining = Math.max(0, stats.limit - stats.clips_created);
+      const addonRemaining = (team as any).addon_clips_remaining || 0;
+      if (baseRemaining + addonRemaining < 1) {
+        return res.status(403).json({
+          error: "Insufficient credits",
+          code: "INSUFFICIENT_CREDITS",
+          required: 1,
+          available: 0,
+        });
       }
 
       const [original] = await db

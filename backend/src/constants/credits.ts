@@ -1,0 +1,1 @@
+export const FREE_TIER_STARTING_CREDITS = 15;

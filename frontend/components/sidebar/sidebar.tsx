@@ -253,9 +253,16 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
                 ) : (
                   <button
                     onClick={() => router.push("/dashboard/pricing")}
-                    className="w-full text-xs text-text-tertiary hover:text-accent-400 transition-colors text-left"
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-accent-400/10 border border-accent-400/20 hover:bg-accent-400/20 transition-colors"
                   >
-                    Upgrade workspace
+                    <Icon
+                      icon="solar:arrow-up-bold"
+                      className="text-accent-400"
+                      width={14}
+                    />
+                    <span className="text-xs font-medium text-accent-400">
+                      Upgrade workspace
+                    </span>
                   </button>
                 )
               )}

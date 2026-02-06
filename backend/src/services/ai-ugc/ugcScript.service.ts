@@ -11,6 +11,7 @@ import {
   UGCScene,
   UGCSceneSchema,
   ClientUGCScript,
+  SceneType,
 } from "../../types/ugcScript.types";
 import { db } from "../../db";
 import { characters, ugcScripts } from "@clipper/shared-db";
@@ -18,6 +19,68 @@ import { eq } from "drizzle-orm";
 import { openaiClient } from "../openai.service";
 
 const client = openaiClient;
+const MAX_AROLL_MERGE_COUNT = 3;
+
+export function mergeConsecutiveArollScenes(scenes: UGCScene[]): UGCScene[] {
+  if (scenes.length === 0) return scenes;
+
+  const merged: UGCScene[] = [];
+  let i = 0;
+
+  while (i < scenes.length) {
+    const current = scenes[i];
+
+    if (current.shotType === "a-roll" && i + 1 < scenes.length) {
+      const consecutiveArolls: UGCScene[] = [current];
+      let j = i + 1;
+
+      while (
+        j < scenes.length &&
+        scenes[j].shotType === "a-roll" &&
+        consecutiveArolls.length < MAX_AROLL_MERGE_COUNT
+      ) {
+        consecutiveArolls.push(scenes[j]);
+        j++;
+      }
+
+      if (consecutiveArolls.length > 1) {
+        const mergedTypes = consecutiveArolls.map(s => s.sceneType);
+        const combinedDialogue = consecutiveArolls.map(s => s.dialogue).join(" ");
+        const combinedDuration = consecutiveArolls.reduce((sum, s) => sum + s.estimatedDurationSeconds, 0);
+        const combinedAction = consecutiveArolls.map(s => s.action).join(" Then, ");
+        const combinedCinematic = consecutiveArolls.map(s => s.cinematicPrompt).join("\n\n");
+
+        merged.push({
+          id: current.id,
+          sceneNumber: merged.length + 1,
+          sceneType: current.sceneType,
+          action: combinedAction,
+          dialogue: combinedDialogue,
+          emotion: current.emotion,
+          estimatedDurationSeconds: combinedDuration,
+          shotType: "a-roll",
+          cameraAngle: current.cameraAngle,
+          customCameraAngle: current.customCameraAngle,
+          cinematicPrompt: combinedCinematic,
+          cameraDirection: current.cameraDirection,
+          ambientSound: current.ambientSound,
+          bRollShots: null,
+          mergedSceneTypes: mergedTypes as SceneType[],
+        });
+
+        i = j;
+      } else {
+        merged.push({ ...current, sceneNumber: merged.length + 1 });
+        i++;
+      }
+    } else {
+      merged.push({ ...current, sceneNumber: merged.length + 1 });
+      i++;
+    }
+  }
+
+  return merged;
+}
 
 export interface GenerateScriptsParams {
   productImageUrls: string[];
@@ -127,12 +190,12 @@ class UGCScriptService {
     const scripts = parsed.scripts || [];
 
     scripts.forEach((script) => {
-      script.scenes.forEach((scene, idx) => {
+      script.scenes.forEach((scene) => {
         if (!scene.id) {
           scene.id = randomUUID();
         }
-        scene.sceneNumber = idx + 1;
       });
+      script.scenes = mergeConsecutiveArollScenes(script.scenes);
     });
 
     return scripts;

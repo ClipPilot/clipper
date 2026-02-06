@@ -13,8 +13,8 @@ interface DownloadOptions {
 /**
  * Hook for downloading videos with consistent error handling and loading state.
  *
- * Regular clips: Direct link download (fast, no blob fetch)
- * Face-swap videos: Blob download via API (handles auth/CORS)
+ * Downloads video as blob and triggers save dialog.
+ * This works for all video sources including S3 presigned URLs.
  */
 export function useDownloadVideo() {
   const [isDownloading, setIsDownloading] = useState(false);
@@ -26,27 +26,29 @@ export function useDownloadVideo() {
 
     setIsDownloading(true);
     try {
+      let blob: Blob;
+
       if (isFaceSwap) {
-        // Face-swap videos need blob download (handles auth/CORS)
-        const blob = await faceSwapAPI.downloadVideo(url, filename);
-        const blobUrl = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = blobUrl;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(blobUrl);
+        // Face-swap videos: use API endpoint (handles auth)
+        blob = await faceSwapAPI.downloadVideo(url, filename);
       } else {
-        // Regular clips: direct link download (faster)
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = filename;
-        link.target = "_blank";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        // All other videos: fetch as blob directly
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch video: ${response.status}`);
+        }
+        blob = await response.blob();
       }
+
+      // Create blob URL and trigger download
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
 
       return true;
     } catch (error) {

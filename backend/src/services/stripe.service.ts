@@ -120,7 +120,7 @@ class StripeService {
       success_url: successUrl,
       cancel_url: cancelUrl,
       allow_promotion_codes: true,
-      metadata: { teamId: teamId.toString() },
+      metadata: { teamId: teamId.toString(), priceId },
       subscription_data: {
         metadata: { teamId: teamId.toString() },
       },
@@ -560,8 +560,8 @@ class StripeService {
     await db
       .update(usageStats)
       .set({
-        limit: 3,
-        clips_created: 3,
+        limit: 0,
+        clips_created: 0,
         updated_at: new Date(),
       })
       .where(eq(usageStats.team_id, existingSub.team_id));
@@ -667,18 +667,33 @@ class StripeService {
       ? parseInt(session.metadata.teamId)
       : null;
     const isPaid = session.payment_status === "paid";
-    const priceId =
+    let priceId =
       session.line_items?.data?.[0]?.price?.id || session.metadata?.priceId;
     const metadataPlan = session.metadata?.plan;
 
-    // Determine plan from metadata (enterprise) or price ID (studio/scale)
+    // Fallback: fetch subscription from Stripe if priceId not in session
+    if (!priceId && session.subscription) {
+      try {
+        const sub = await stripe.subscriptions.retrieve(session.subscription);
+        priceId = sub.items?.data?.[0]?.price?.id;
+        console.log(
+          `[Subscription Checkout] Resolved priceId from Stripe subscription: ${priceId}`,
+        );
+      } catch (err) {
+        console.error(
+          `[Subscription Checkout] Failed to fetch subscription ${session.subscription}:`,
+          err,
+        );
+      }
+    }
+
     const plan =
       metadataPlan === "enterprise"
         ? "enterprise"
         : getPlanFromPriceId(priceId);
 
     console.log(
-      `[Subscription Checkout] Team: ${teamId}, Plan: ${plan}, Payment: ${session.payment_status}, Session: ${session.id}`,
+      `[Subscription Checkout] Team: ${teamId}, Plan: ${plan}, PriceId: ${priceId}, Payment: ${session.payment_status}, Session: ${session.id}`,
     );
 
     if (!teamId) {
@@ -686,7 +701,8 @@ class StripeService {
       return;
     }
 
-    if (!plan) {
+    // Can't determine plan — let subscription.created handle it
+    if (plan === "free" && !priceId) {
       console.log(
         "[Subscription Checkout] Could not determine plan, letting subscription.created handle it",
       );
@@ -704,7 +720,7 @@ class StripeService {
       return;
     }
 
-    // If already on a paid plan (subscription.created may have fired), skip
+    // Already on correct plan (subscription.created may have fired first)
     if (team.plan !== "free" && team.plan === plan) {
       console.log(
         `[Subscription Checkout] Team ${teamId} already on ${plan}, skipping`,
@@ -712,7 +728,13 @@ class StripeService {
       return;
     }
 
-    // Determine clips limit based on plan
+    // Don't downgrade a paid team
+    if (plan === "free" && team.plan !== "free") {
+      console.log(
+        `[Subscription Checkout] Team ${teamId} already on ${team.plan}, not downgrading`,
+      );
+      return;
+    }
     const clipsLimit =
       plan === "enterprise" && team.enterprise_clip_limit
         ? team.enterprise_clip_limit
@@ -813,7 +835,7 @@ class StripeService {
         await db
           .update(usageStats)
           .set({
-            limit: 3,
+            limit: 0,
             updated_at: new Date(),
           })
           .where(eq(usageStats.team_id, teamId));

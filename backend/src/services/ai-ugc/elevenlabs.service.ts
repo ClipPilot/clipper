@@ -6,8 +6,7 @@ import os from "os";
 import { config } from "../../config/env";
 import { s3Service } from "../s3.service";
 
-// Maximum audio duration to match Kling video clip limits (5-10 seconds). --TODO NEED TO FIGURE OUT HOW TO NATURALIZE THE VOICE AND NOT MAKE IT SOUDN SUDIO
-const MAX_AUDIO_DURATION_SECONDS = 10;
+const MAX_AUDIO_DURATION_SECONDS = 60;
 
 let elevenLabsClient: ElevenLabsClient | null = null;
 
@@ -71,6 +70,12 @@ export async function generateSpeech(
       text,
       modelId,
       outputFormat,
+      voice_settings: {
+        stability: 0.35,
+        similarity_boost: 0.80,
+        style: 0.45,
+        use_speaker_boost: true,
+      },
     };
 
     if (speed && speed !== 1.0) {
@@ -326,6 +331,12 @@ export async function textToDialogue(
       inputs: inputs.map((input) => ({
         text: input.text,
         voiceId: input.voiceId,
+        voice_settings: {
+          stability: 0.35,
+          similarity_boost: 0.80,
+          style: 0.45,
+          use_speaker_boost: true,
+        },
       })),
       modelId,
       outputFormat: outputFormat as any,
@@ -460,7 +471,7 @@ export async function generateSoundEffect(
 
   const { text, durationSeconds, promptInfluence = 0.3 } = options;
 
-  const clampedDuration = Math.max(0.5, Math.min(30, durationSeconds));
+  const clampedDuration = Math.max(0.5, Math.min(60, durationSeconds));
 
   console.log(
     `[ElevenLabs] Generating sound effect: "${text}" (${clampedDuration}s)`,

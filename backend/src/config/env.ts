@@ -28,7 +28,6 @@ export const config = {
     region: getEnv("AWS_REGION", "us-west-2"),
     s3Bucket: "clipster-videos-prod-850317988005",
     sqsQueueUrl: getEnv("SQS_QUEUE_URL", ""),
-    gpuSqsQueueUrl: getEnv("GPU_SQS_QUEUE_URL", ""),
   },
   gemini: {
     apiKey: getEnv("GEMINI_API_KEY"),
