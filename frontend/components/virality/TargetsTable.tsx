@@ -222,7 +222,7 @@ export function TargetsTable({ platformFilter, onViewDetails }: TargetsTableProp
         </TableHeader>
         <TableBody>
           {paginatedTargets.map((target) => (
-            <TableRow key={target.id}>
+            <TableRow key={target.id} className="cursor-pointer hover:bg-surface-hover transition-colors" onClick={() => onViewDetails?.(target)}>
               <TableCell>
                 <div className="flex items-center gap-3">
                   <Avatar

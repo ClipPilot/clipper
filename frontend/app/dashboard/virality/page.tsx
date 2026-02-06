@@ -1,19 +1,23 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Button, Input } from "@heroui/react";
+import { Button, Input, useDisclosure } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import {
   StatsOverview,
   TargetsTable,
   PlatformFilter,
+  AddTargetModal,
 } from "@/components/virality";
 import type { Platform, TrackedTarget } from "@/components/virality/TargetsTable";
 
 export default function ViralityPage() {
+  const router = useRouter();
   const [platformFilter, setPlatformFilter] = useState<Platform | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const { isOpen, onOpen, onClose } = useDisclosure();
 
   // Dummy stats for now
   const dummyStats = {
@@ -25,8 +29,16 @@ export default function ViralityPage() {
   };
 
   const handleViewDetails = (target: TrackedTarget) => {
-    console.log("View details for:", target.username);
-    // TODO: Open details modal or navigate to details page
+    router.push(`/dashboard/virality/${target.id}`);
+  };
+
+  const handleAddTarget = async (
+    platform: "tiktok" | "instagram" | "x",
+    profileUrl: string,
+    options: { enableAlerts: boolean; minViews: string; minEngagement: string }
+  ) => {
+    console.log("Adding target:", { platform, profileUrl, options });
+    // TODO: Call API to add target
   };
 
   return (
@@ -66,6 +78,7 @@ export default function ViralityPage() {
             <Button
               className="bg-accent-400 text-white"
               startContent={<Icon icon="solar:add-circle-bold" width={18} />}
+              onPress={onOpen}
             >
               Add Target
             </Button>
@@ -89,6 +102,13 @@ export default function ViralityPage() {
           onViewDetails={handleViewDetails}
         />
       </div>
+
+      {/* Add Target Modal */}
+      <AddTargetModal
+        isOpen={isOpen}
+        onClose={onClose}
+        onSubmit={handleAddTarget}
+      />
     </motion.div>
   );
 }

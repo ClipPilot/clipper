@@ -770,8 +770,8 @@ export const userAnnouncementDismissals = pgTable(
 ).enableRLS();
 
 
-// Virality Tracking (tentative, only as a starting point)
-export const viralityPlatformEnum = pgEnum("virality_platform", ["instagram"]);
+// Virality Tracking
+export const viralityPlatformEnum = pgEnum("virality_platform", ["instagram", "tiktok", "x"]);
 export const viralitySyncStatusEnum = pgEnum("virality_sync_status", [
   "pending",
   "syncing",
@@ -779,6 +779,25 @@ export const viralitySyncStatusEnum = pgEnum("virality_sync_status", [
   "failed",
 ]);
 
+// Competitor groups (e.g., "Nike", "Competitor A")
+export const viralityCompetitors = pgTable(
+  "virality_competitors",
+  {
+    id: serial("id").primaryKey(),
+    team_id: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 255 }).notNull(),
+    description: text("description"),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    teamIdx: index("virality_competitors_team_id_idx").on(table.team_id),
+  })
+).enableRLS();
+
+// Platform accounts (instagram, tiktok, x) - up to 3 per competitor
 export const viralityTargets = pgTable(
   "virality_targets",
   {
@@ -786,6 +805,8 @@ export const viralityTargets = pgTable(
     team_id: integer("team_id")
       .notNull()
       .references(() => teams.id, { onDelete: "cascade" }),
+    competitor_id: integer("competitor_id")
+      .references(() => viralityCompetitors.id, { onDelete: "cascade" }),
     platform: viralityPlatformEnum("platform").notNull(),
     username: varchar("username", { length: 255 }).notNull(),
     profile_url: text("profile_url").notNull(),
@@ -831,6 +852,9 @@ export const viralityPosts = pgTable(
     comment_count: integer("comment_count").default(0),
     video_view_count: integer("video_view_count"),
     video_play_count: integer("video_play_count"),
+    // Metrics history for graphing - array of {recorded_at, likes, comments, views}
+    // Limited to 28 entries (14 days at 12h intervals)
+    metrics_history: jsonb("metrics_history").default([]),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },
