@@ -15,6 +15,7 @@ import {
   audioStateAtom,
   trimStateAtom,
   videoDurationAtom,
+  activeSegmentsAtom,
 } from "@/store/videoEditor";
 import { CAPTION_FONTS, HEADING_FONTS } from "@/constants/overlayStyles";
 import { CaptionEntry } from "@/api/clips";
@@ -49,10 +50,21 @@ export function EditorVideoPreview({
   const captionFont = useAtomValue(captionFontAtom);
   const headingState = useAtomValue(headingStateAtom);
   const cropState = useAtomValue(cropStateAtom);
-  const speed = useAtomValue(speedStateAtom);
+  const globalSpeed = useAtomValue(speedStateAtom);
   const audioState = useAtomValue(audioStateAtom);
   const trimState = useAtomValue(trimStateAtom);
   const videoDuration = useAtomValue(videoDurationAtom);
+  const activeSegments = useAtomValue(activeSegmentsAtom);
+
+  // Get current segment based on playhead position
+  const currentSegment = React.useMemo(() => {
+    return activeSegments.find(
+      (s) => currentTime >= s.startTime && currentTime < s.endTime
+    );
+  }, [activeSegments, currentTime]);
+
+  // Current speed: use segment speed if available, otherwise global speed
+  const speed = currentSegment?.speed ?? globalSpeed;
 
   // Update container height
   useEffect(() => {
@@ -66,12 +78,12 @@ export function EditorVideoPreview({
     return () => window.removeEventListener("resize", updateSize);
   }, []);
 
-  // Apply playback rate for speed preview
+  // Apply playback rate for speed preview (uses current segment's speed)
   useEffect(() => {
     if (videoRef.current) {
       videoRef.current.playbackRate = speed;
     }
-  }, [speed, videoRef]);
+  }, [speed, videoRef, currentSegment?.id]);
 
   // Apply volume and mute state for audio preview
   useEffect(() => {
@@ -289,11 +301,14 @@ export function EditorVideoPreview({
               </div>
             )}
 
-            {/* Speed Indicator */}
+            {/* Speed Indicator - shows current segment speed */}
             {speed !== 1.0 && (
               <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
                 <Icon icon="solar:speedometer-bold" />
                 {speed}x
+                {activeSegments.length > 1 && currentSegment && (
+                  <span className="text-text-tertiary ml-1">(segment)</span>
+                )}
               </div>
             )}
 

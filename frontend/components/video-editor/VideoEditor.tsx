@@ -36,10 +36,15 @@ import {
   thumbnailsAtom,
   isGeneratingThumbnailsAtom,
   EditorTool,
+  initializeSegmentsAtom,
+  activeSegmentsAtom,
 } from "@/store/videoEditor";
 import { EditorToolPanel } from "./EditorToolPanel";
-import { EditorTimeline } from "./EditorTimeline";
+import { EditorTimelineV2 } from "./EditorTimelineV2";
 import { EditorVideoPreview } from "./EditorVideoPreview";
+
+// Import timeline editor CSS
+import "@xzdarcy/react-timeline-editor/dist/react-timeline-editor.css";
 
 export function VideoEditor() {
   const params = useParams();
@@ -74,6 +79,10 @@ export function VideoEditor() {
   // Thumbnails
   const setThumbnails = useSetAtom(thumbnailsAtom);
   const setIsGeneratingThumbnails = useSetAtom(isGeneratingThumbnailsAtom);
+
+  // Segments
+  const initializeSegments = useSetAtom(initializeSegmentsAtom);
+  const activeSegments = useAtomValue(activeSegmentsAtom);
 
   // Edit config
   const editConfig = useAtomValue(editConfigAtom);
@@ -197,16 +206,38 @@ export function VideoEditor() {
       const duration = videoRef.current.duration;
       setVideoDuration(duration);
       setTrimState({ startTime: 0, endTime: duration });
+      // Initialize segments with a single segment covering the full video
+      initializeSegments(duration);
       generateThumbnails(duration);
     }
-  }, [setVideoDuration, setTrimState, generateThumbnails]);
+  }, [setVideoDuration, setTrimState, initializeSegments, generateThumbnails]);
 
-  // Handle time update
+  // Handle time update - skip gaps from deleted segments
   const handleTimeUpdate = useCallback(() => {
-    if (videoRef.current) {
-      setCurrentTime(videoRef.current.currentTime);
+    if (!videoRef.current) return;
+    const time = videoRef.current.currentTime;
+    setCurrentTime(time);
+
+    // Check if we're in a gap between segments (deleted region)
+    const sortedSegments = [...activeSegments].sort((a, b) => a.startTime - b.startTime);
+    const inSegment = sortedSegments.some(
+      (s) => time >= s.startTime && time < s.endTime
+    );
+
+    if (!inSegment && !videoRef.current.paused) {
+      // Find next segment after current time
+      const nextSegment = sortedSegments.find((s) => s.startTime > time);
+      if (nextSegment) {
+        // Jump over the gap to the next segment
+        videoRef.current.currentTime = nextSegment.startTime;
+        setCurrentTime(nextSegment.startTime);
+      } else {
+        // Past all segments — stop playback
+        videoRef.current.pause();
+        setIsPlaying(false);
+      }
     }
-  }, [setCurrentTime]);
+  }, [setCurrentTime, activeSegments, setIsPlaying]);
 
   // Seek to time
   const seekToTime = useCallback((time: number) => {
@@ -218,15 +249,30 @@ export function VideoEditor() {
 
   // Toggle play/pause
   const togglePlayPause = useCallback(() => {
-    if (videoRef.current) {
-      if (isPlaying) {
-        videoRef.current.pause();
-      } else {
-        videoRef.current.play();
+    if (!videoRef.current) return;
+
+    if (isPlaying) {
+      videoRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      // If playhead is in a gap or past all segments, seek to a valid position
+      const time = videoRef.current.currentTime;
+      const sortedSegments = [...activeSegments].sort((a, b) => a.startTime - b.startTime);
+      const inSegment = sortedSegments.some(
+        (s) => time >= s.startTime && time < s.endTime
+      );
+
+      if (!inSegment && sortedSegments.length > 0) {
+        const nextSegment = sortedSegments.find((s) => s.startTime > time);
+        const target = nextSegment ? nextSegment.startTime : sortedSegments[0].startTime;
+        videoRef.current.currentTime = target;
+        setCurrentTime(target);
       }
-      setIsPlaying(!isPlaying);
+
+      videoRef.current.play();
+      setIsPlaying(true);
     }
-  }, [isPlaying, setIsPlaying]);
+  }, [isPlaying, setIsPlaying, activeSegments, setCurrentTime]);
 
   // Handle apply changes
   const handleApplyChanges = async () => {
@@ -252,7 +298,7 @@ export function VideoEditor() {
   // Handle success modal close
   const handleSuccessModalClose = () => {
     setShowSuccessModal(false);
-    router.push("/dashboard/clips?tab=processing");
+    router.push("/dashboard/create-clip");
   };
 
   // Loading state
@@ -338,7 +384,7 @@ export function VideoEditor() {
 
             {/* Timeline */}
             <div className="mt-4">
-              <EditorTimeline
+              <EditorTimelineV2
                 videoRef={videoRef}
                 onSeek={seekToTime}
               />
