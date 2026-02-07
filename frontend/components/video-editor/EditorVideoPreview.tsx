@@ -28,6 +28,7 @@ interface EditorVideoPreviewProps {
   onPlayPause: () => void;
   isPlaying: boolean;
   currentTime: number;
+  isInGap?: boolean;
 }
 
 export function EditorVideoPreview({
@@ -38,6 +39,7 @@ export function EditorVideoPreview({
   onPlayPause,
   isPlaying,
   currentTime,
+  isInGap = false,
 }: EditorVideoPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const bgMusicRef = useRef<HTMLAudioElement | null>(null);
@@ -203,6 +205,16 @@ export function EditorVideoPreview({
               onPause={() => {}}
               playsInline
             />
+
+            {/* Black overlay when in gap (cut region) */}
+            {isInGap && (
+              <div className="absolute inset-0 bg-black flex items-center justify-center">
+                <div className="text-text-tertiary text-sm flex items-center gap-2">
+                  <Icon icon="solar:scissors-bold" className="text-lg" />
+                  Cut
+                </div>
+              </div>
+            )}
 
             {/* Play/Pause Overlay */}
             <button

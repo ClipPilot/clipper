@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useCallback } from "react";
+import React, { useEffect, useRef, useCallback, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAtom, useSetAtom, useAtomValue } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
@@ -92,6 +92,10 @@ export function VideoEditor() {
 
   // Video ref
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Track if we're in a gap (for showing black screen)
+  const [isInGap, setIsInGap] = useState(false);
+  const gapIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Load clip on mount
   useEffect(() => {
@@ -212,40 +216,103 @@ export function VideoEditor() {
     }
   }, [setVideoDuration, setTrimState, initializeSegments, generateThumbnails]);
 
-  // Handle time update - skip gaps from deleted segments
+  // Helper: check if time is in any active segment
+  const isTimeInSegment = useCallback(
+    (time: number) => {
+      return activeSegments.some((s) => time >= s.startTime && time < s.endTime);
+    },
+    [activeSegments]
+  );
+
+  // Helper: find next segment after given time
+  const findNextSegment = useCallback(
+    (time: number) => {
+      const sorted = [...activeSegments].sort((a, b) => a.startTime - b.startTime);
+      return sorted.find((s) => s.startTime > time);
+    },
+    [activeSegments]
+  );
+
+  // Clear gap interval on unmount or when stopping
+  const clearGapInterval = useCallback(() => {
+    if (gapIntervalRef.current) {
+      clearInterval(gapIntervalRef.current);
+      gapIntervalRef.current = null;
+    }
+  }, []);
+
+  // Handle time update - pause video in gaps but keep playhead moving
   const handleTimeUpdate = useCallback(() => {
     if (!videoRef.current) return;
     const time = videoRef.current.currentTime;
     setCurrentTime(time);
 
-    // Check if we're in a gap between segments (deleted region)
-    const sortedSegments = [...activeSegments].sort((a, b) => a.startTime - b.startTime);
-    const inSegment = sortedSegments.some(
-      (s) => time >= s.startTime && time < s.endTime
-    );
+    const inSegment = isTimeInSegment(time);
 
-    if (!inSegment && !videoRef.current.paused) {
-      // Find next segment after current time
-      const nextSegment = sortedSegments.find((s) => s.startTime > time);
+    if (inSegment) {
+      // We're in a valid segment
+      if (isInGap) {
+        setIsInGap(false);
+        clearGapInterval();
+      }
+    } else if (!videoRef.current.paused) {
+      // Entering a gap - pause the video but we'll handle gap traversal separately
+      const nextSegment = findNextSegment(time);
       if (nextSegment) {
-        // Jump over the gap to the next segment
-        videoRef.current.currentTime = nextSegment.startTime;
-        setCurrentTime(nextSegment.startTime);
+        // Pause video, start gap interval
+        videoRef.current.pause();
+        setIsInGap(true);
+
+        // Start interval to advance playhead through the gap
+        clearGapInterval();
+        const gapStart = time;
+        const gapEnd = nextSegment.startTime;
+        const startRealTime = Date.now();
+
+        gapIntervalRef.current = setInterval(() => {
+          const elapsed = (Date.now() - startRealTime) / 1000;
+          const newTime = gapStart + elapsed;
+
+          if (newTime >= gapEnd) {
+            // Gap finished - resume video
+            clearGapInterval();
+            setIsInGap(false);
+            if (videoRef.current) {
+              videoRef.current.currentTime = gapEnd;
+              setCurrentTime(gapEnd);
+              videoRef.current.play();
+            }
+          } else {
+            setCurrentTime(newTime);
+          }
+        }, 33); // ~30fps update
       } else {
         // Past all segments — stop playback
         videoRef.current.pause();
         setIsPlaying(false);
+        setIsInGap(false);
+        clearGapInterval();
       }
     }
-  }, [setCurrentTime, activeSegments, setIsPlaying]);
+  }, [setCurrentTime, isTimeInSegment, findNextSegment, isInGap, setIsPlaying, clearGapInterval]);
+
+  // Clean up interval on unmount
+  useEffect(() => {
+    return () => clearGapInterval();
+  }, [clearGapInterval]);
 
   // Seek to time
-  const seekToTime = useCallback((time: number) => {
-    if (videoRef.current) {
-      videoRef.current.currentTime = time;
-      setCurrentTime(time);
-    }
-  }, [setCurrentTime]);
+  const seekToTime = useCallback(
+    (time: number) => {
+      clearGapInterval();
+      setIsInGap(false);
+      if (videoRef.current) {
+        videoRef.current.currentTime = time;
+        setCurrentTime(time);
+      }
+    },
+    [setCurrentTime, clearGapInterval]
+  );
 
   // Toggle play/pause
   const togglePlayPause = useCallback(() => {
@@ -253,26 +320,24 @@ export function VideoEditor() {
 
     if (isPlaying) {
       videoRef.current.pause();
+      clearGapInterval();
+      setIsInGap(false);
       setIsPlaying(false);
     } else {
-      // If playhead is in a gap or past all segments, seek to a valid position
       const time = videoRef.current.currentTime;
-      const sortedSegments = [...activeSegments].sort((a, b) => a.startTime - b.startTime);
-      const inSegment = sortedSegments.some(
-        (s) => time >= s.startTime && time < s.endTime
-      );
 
-      if (!inSegment && sortedSegments.length > 0) {
-        const nextSegment = sortedSegments.find((s) => s.startTime > time);
-        const target = nextSegment ? nextSegment.startTime : sortedSegments[0].startTime;
-        videoRef.current.currentTime = target;
-        setCurrentTime(target);
+      // If past all segments, loop back to start
+      const sorted = [...activeSegments].sort((a, b) => a.startTime - b.startTime);
+      const lastSegment = sorted[sorted.length - 1];
+      if (lastSegment && time >= lastSegment.endTime) {
+        videoRef.current.currentTime = sorted[0].startTime;
+        setCurrentTime(sorted[0].startTime);
       }
 
       videoRef.current.play();
       setIsPlaying(true);
     }
-  }, [isPlaying, setIsPlaying, activeSegments, setCurrentTime]);
+  }, [isPlaying, setIsPlaying, activeSegments, setCurrentTime, clearGapInterval]);
 
   // Handle apply changes
   const handleApplyChanges = async () => {
@@ -380,6 +445,7 @@ export function VideoEditor() {
               onPlayPause={togglePlayPause}
               isPlaying={isPlaying}
               currentTime={currentTime}
+              isInGap={isInGap}
             />
 
             {/* Timeline */}
