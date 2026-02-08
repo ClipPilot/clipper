@@ -44,6 +44,7 @@ import { EditorTimelineV2 } from "./EditorTimelineV2";
 import { EditorVideoPreview } from "./EditorVideoPreview";
 
 // Import timeline editor CSS
+// @ts-ignore - CSS import from external library
 import "@xzdarcy/react-timeline-editor/dist/react-timeline-editor.css";
 
 export function VideoEditor() {

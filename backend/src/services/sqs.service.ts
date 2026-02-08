@@ -122,12 +122,22 @@ export interface UpdateOverlaysJob extends BaseJob {
   };
 }
 
+// Segment configuration for per-segment editing (cuts, reordering, per-segment speed)
+export interface SegmentConfig {
+  id: string;
+  startTime: number;
+  endTime: number;
+  speed: number; // 0.25 to 4.0
+}
+
 // Video edit job payload (CapCut-like editing)
 export interface VideoEditJob extends BaseJob {
   type: "video-edit";
   clipId: number;
   editConfig: {
-    // Trim
+    // Segments: per-segment editing with individual cuts/speeds (takes precedence over trim/speed)
+    segments?: SegmentConfig[];
+    // Trim (legacy - used when segments is not provided)
     trim?: {
       startTime: number;
       endTime: number;
@@ -142,7 +152,7 @@ export interface VideoEditJob extends BaseJob {
         height: number;
       };
     };
-    // Speed (0.25 to 4.0)
+    // Speed (legacy - used when segments is not provided, 0.25 to 4.0)
     speed?: number;
     // Audio
     audio?: {

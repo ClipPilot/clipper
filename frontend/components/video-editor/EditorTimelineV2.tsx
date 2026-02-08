@@ -40,7 +40,9 @@ interface SegmentAction extends TimelineAction {
 
 export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
   const timelineRef = useRef<TimelineState>(null);
+  const timelineContainerRef = useRef<HTMLDivElement>(null);
   const [isDraggingCursor, setIsDraggingCursor] = useState(false);
+  const [containerWidth, setContainerWidth] = useState(0);
 
   // Atoms
   const duration = useAtomValue(videoDurationAtom);
@@ -265,6 +267,31 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
     }
   }, [currentTime, isDraggingCursor]);
 
+  // Measure container width so timeline fills the card
+  useEffect(() => {
+    const el = timelineContainerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setContainerWidth(entry.contentRect.width);
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // Calculate scaleWidth so the full duration fits in the visible area
+  // scaleWidth = pixels per 1-second scale unit. startLeft is the left gutter.
+  const startLeft = 20;
+  const scaleWidth = useMemo(() => {
+    if (!containerWidth || !duration) return 100;
+    const availableWidth = containerWidth - startLeft;
+    // Each "scale count" = 1 second, so we need total seconds to fit
+    const perSecond = availableWidth / Math.ceil(duration);
+    // Clamp to a minimum so it doesn't get too tiny on very long clips
+    return Math.max(perSecond, 30);
+  }, [containerWidth, duration]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -452,17 +479,17 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
       </div>
 
       {/* Timeline */}
-      <div className="timeline-container rounded-lg overflow-hidden border border-border-base">
+      <div ref={timelineContainerRef} className="timeline-container rounded-lg overflow-hidden border border-border-base">
         <Timeline
           ref={timelineRef}
           editorData={editorData}
           effects={effects}
           scale={1}
-          scaleWidth={100}
+          scaleWidth={scaleWidth}
           scaleSplitCount={10}
           minScaleCount={Math.ceil(duration)}
           maxScaleCount={Math.ceil(duration) + 1}
-          startLeft={20}
+          startLeft={startLeft}
           rowHeight={60}
           gridSnap={true}
           dragLine={true}
@@ -478,7 +505,7 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
           onActionResizeStart={handleActionResizeStart}
           getActionRender={getActionRender}
           getScaleRender={getScaleRender}
-          style={{ height: 176, backgroundColor: "var(--surface-elevated)" }}
+          style={{ height: 176, width: "100%", backgroundColor: "var(--surface-elevated)" }}
         />
       </div>
 

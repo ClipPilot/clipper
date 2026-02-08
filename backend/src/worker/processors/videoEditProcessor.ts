@@ -14,17 +14,18 @@ import {
   adjustVolume,
   mixBackgroundMusic,
   muteAudio,
+  processSegments,
 } from "../../services/clips/videoEditor.service";
 import { ensureOutputDir } from "../../utils/fileUtils";
 
 /**
  * Process a video edit job.
- * Processing order: Trim → Speed → Crop → Audio → Heading → Captions
+ * Processing order: Segments (or Trim+Speed) → Crop → Audio → Heading → Captions
  * This ensures accurate positioning for overlays.
  */
 export async function processVideoEditJob(job: VideoEditJob): Promise<void> {
   const { clipId, teamId, editConfig } = job;
-  const { trim, crop, speed, audio, captions, heading } = editConfig;
+  const { segments, trim, crop, speed, audio, captions, heading } = editConfig;
 
   const outDir = ensureOutputDir();
   const timestamp = Date.now();
@@ -37,7 +38,7 @@ export async function processVideoEditJob(job: VideoEditJob): Promise<void> {
 
   try {
     console.log(`[VIDEO-EDIT] Processing clip ${clipId}`);
-    console.log(`[VIDEO-EDIT] Config: trim=${!!trim}, speed=${speed}, crop=${crop?.aspectRatio}, audio=${!!audio}, heading=${!!heading}, captions=${captions?.enabled}`);
+    console.log(`[VIDEO-EDIT] Config: segments=${segments?.length || 0}, trim=${!!trim}, speed=${speed}, crop=${crop?.aspectRatio}, audio=${!!audio}, heading=${!!heading}, captions=${captions?.enabled}`);
 
     // Get clip data
     const clip = await clipManagerService.getClipById(clipId, teamId);
@@ -51,30 +52,49 @@ export async function processVideoEditJob(job: VideoEditJob): Promise<void> {
     tempFiles.push(localBlankPath);
 
     // ==========================================================================
-    // Step 1: TRIM
+    // Step 1: SEGMENTS (or legacy TRIM + SPEED)
+    // Segments take precedence over legacy trim/speed if provided
     // ==========================================================================
-    if (trim && (trim.startTime > 0 || trim.endTime < Infinity)) {
-      console.log(`[VIDEO-EDIT] Step 1: Trimming ${trim.startTime}s to ${trim.endTime}s`);
-      const trimmedPath = path.join(outDir, `trimmed_${clipId}_${timestamp}.mp4`);
-      await cutClip(currentVideoPath, trimmedPath, trim.startTime, trim.endTime);
+    if (segments && segments.length > 0) {
+      // New segment-based editing: cut, apply per-segment speed, and concatenate
+      console.log(`[VIDEO-EDIT] Step 1: Processing ${segments.length} segments`);
+      const segmentsPath = path.join(outDir, `segments_${clipId}_${timestamp}.mp4`);
 
-      if (currentVideoPath !== localBlankPath) {
-        tempFiles.push(currentVideoPath);
+      const { tempFiles: segmentTempFiles } = await processSegments(
+        currentVideoPath,
+        segmentsPath,
+        segments,
+        outDir
+      );
+
+      // Add segment temp files for cleanup
+      tempFiles.push(...segmentTempFiles);
+      currentVideoPath = segmentsPath;
+      tempFiles.push(segmentsPath);
+    } else {
+      // Legacy: separate trim and speed steps
+      // Step 1a: TRIM
+      if (trim && (trim.startTime > 0 || trim.endTime < Infinity)) {
+        console.log(`[VIDEO-EDIT] Step 1a: Trimming ${trim.startTime}s to ${trim.endTime}s`);
+        const trimmedPath = path.join(outDir, `trimmed_${clipId}_${timestamp}.mp4`);
+        await cutClip(currentVideoPath, trimmedPath, trim.startTime, trim.endTime);
+
+        if (currentVideoPath !== localBlankPath) {
+          tempFiles.push(currentVideoPath);
+        }
+        currentVideoPath = trimmedPath;
+        tempFiles.push(trimmedPath);
       }
-      currentVideoPath = trimmedPath;
-      tempFiles.push(trimmedPath);
-    }
 
-    // ==========================================================================
-    // Step 2: SPEED
-    // ==========================================================================
-    if (speed && speed !== 1.0) {
-      console.log(`[VIDEO-EDIT] Step 2: Changing speed to ${speed}x`);
-      const speedPath = path.join(outDir, `speed_${clipId}_${timestamp}.mp4`);
-      await changeSpeed(currentVideoPath, speedPath, speed);
+      // Step 1b: SPEED
+      if (speed && speed !== 1.0) {
+        console.log(`[VIDEO-EDIT] Step 1b: Changing speed to ${speed}x`);
+        const speedPath = path.join(outDir, `speed_${clipId}_${timestamp}.mp4`);
+        await changeSpeed(currentVideoPath, speedPath, speed);
 
-      currentVideoPath = speedPath;
-      tempFiles.push(speedPath);
+        currentVideoPath = speedPath;
+        tempFiles.push(speedPath);
+      }
     }
 
     // ==========================================================================
@@ -162,11 +182,13 @@ export async function processVideoEditJob(job: VideoEditJob): Promise<void> {
     // Step 6: CAPTIONS
     // ==========================================================================
     if (captions?.enabled && captions.data && captions.data.length > 0) {
-      console.log(`[VIDEO-EDIT] Step 6: Adding captions (${captions.data.length} segments)`);
+      console.log(`[VIDEO-EDIT] Step 6: Adding captions (${captions.data.length} entries)`);
 
-      // Adjust caption timings if video was trimmed or speed-changed
+      // Adjust caption timings based on segments or legacy trim/speed
       let adjustedCaptions = captions.data;
-      if (trim || (speed && speed !== 1.0)) {
+      if (segments && segments.length > 0) {
+        adjustedCaptions = adjustCaptionTimingsForSegments(captions.data, segments);
+      } else if (trim || (speed && speed !== 1.0)) {
         adjustedCaptions = adjustCaptionTimings(captions.data, trim, speed);
       }
 
@@ -245,7 +267,7 @@ export async function processVideoEditJob(job: VideoEditJob): Promise<void> {
 }
 
 /**
- * Adjust caption timings based on trim and speed changes.
+ * Adjust caption timings based on trim and speed changes (legacy mode).
  */
 function adjustCaptionTimings(
   captions: Array<{ index: number; startTime: number; endTime: number; text: string }>,
@@ -275,4 +297,84 @@ function adjustCaptionTimings(
         endTime: newEnd,
       };
     });
+}
+
+/**
+ * Adjust caption timings based on segments (cuts, reordering, per-segment speed).
+ * Maps captions from original video time to new concatenated video time.
+ * Accounts for black gap durations between non-adjacent segments.
+ */
+function adjustCaptionTimingsForSegments(
+  captions: Array<{ index: number; startTime: number; endTime: number; text: string }>,
+  segments: Array<{ id: string; startTime: number; endTime: number; speed: number }>
+): Array<{ index: number; startTime: number; endTime: number; text: string }> {
+  const adjustedCaptions: Array<{ index: number; startTime: number; endTime: number; text: string }> = [];
+
+  // Sort segments by startTime (same order as processSegments)
+  const sortedSegments = [...segments].sort((a, b) => a.startTime - b.startTime);
+
+  // Calculate the output time offset for each segment, including gap durations
+  let outputTimeOffset = 0;
+  const segmentOutputTimes: Array<{
+    segment: (typeof segments)[0];
+    outputStart: number;
+    outputEnd: number;
+  }> = [];
+
+  for (let i = 0; i < sortedSegments.length; i++) {
+    const segment = sortedSegments[i];
+
+    // Add gap duration before this segment
+    if (i > 0) {
+      const prevSegment = sortedSegments[i - 1];
+      const gapDuration = segment.startTime - prevSegment.endTime;
+      if (gapDuration > 0.05) {
+        outputTimeOffset += gapDuration;
+      }
+    }
+
+    const segmentDuration = segment.endTime - segment.startTime;
+    const outputDuration = segmentDuration / segment.speed;
+    segmentOutputTimes.push({
+      segment,
+      outputStart: outputTimeOffset,
+      outputEnd: outputTimeOffset + outputDuration,
+    });
+    outputTimeOffset += outputDuration;
+  }
+
+  // For each caption, check if it overlaps with any segment
+  for (const caption of captions) {
+    for (const { segment, outputStart } of segmentOutputTimes) {
+      // Check if caption overlaps with this segment's source time range
+      if (caption.endTime > segment.startTime && caption.startTime < segment.endTime) {
+        // Caption overlaps with this segment
+        // Clamp caption times to segment bounds
+        const clampedStart = Math.max(caption.startTime, segment.startTime);
+        const clampedEnd = Math.min(caption.endTime, segment.endTime);
+
+        // Calculate offset within segment and apply speed
+        const offsetInSegment = clampedStart - segment.startTime;
+        const durationInSegment = clampedEnd - clampedStart;
+
+        // Map to output time
+        const newStart = outputStart + offsetInSegment / segment.speed;
+        const newEnd = newStart + durationInSegment / segment.speed;
+
+        adjustedCaptions.push({
+          ...caption,
+          startTime: newStart,
+          endTime: newEnd,
+        });
+      }
+    }
+  }
+
+  // Sort by start time and re-index
+  return adjustedCaptions
+    .sort((a, b) => a.startTime - b.startTime)
+    .map((c, idx) => ({
+      ...c,
+      index: idx + 1,
+    }));
 }

@@ -1136,10 +1136,32 @@ export class ClipManagerController {
       }
 
       // Validate editConfig structure
-      const { trim, crop, speed, audio, captions, heading } = editConfig;
+      const { segments, trim, crop, speed, audio, captions, heading } = editConfig;
 
-      // Validate trim
-      if (trim) {
+      // Validate segments (new per-segment editing)
+      if (segments) {
+        if (!Array.isArray(segments)) {
+          return res.status(400).json({ error: "Segments must be an array" });
+        }
+        if (segments.length === 0) {
+          return res.status(400).json({ error: "Segments array cannot be empty" });
+        }
+        for (let i = 0; i < segments.length; i++) {
+          const seg = segments[i];
+          if (typeof seg.startTime !== "number" || typeof seg.endTime !== "number") {
+            return res.status(400).json({ error: `Invalid segment ${i}: startTime and endTime must be numbers` });
+          }
+          if (seg.startTime >= seg.endTime) {
+            return res.status(400).json({ error: `Invalid segment ${i}: startTime must be before endTime` });
+          }
+          if (typeof seg.speed !== "number" || seg.speed < 0.25 || seg.speed > 4) {
+            return res.status(400).json({ error: `Invalid segment ${i}: speed must be between 0.25 and 4` });
+          }
+        }
+      }
+
+      // Validate trim (legacy - only if segments not provided)
+      if (trim && !segments) {
         if (typeof trim.startTime !== "number" || typeof trim.endTime !== "number") {
           return res.status(400).json({ error: "Invalid trim configuration" });
         }
@@ -1148,8 +1170,8 @@ export class ClipManagerController {
         }
       }
 
-      // Validate speed
-      if (speed !== undefined) {
+      // Validate speed (legacy - only if segments not provided)
+      if (speed !== undefined && !segments) {
         if (typeof speed !== "number" || speed < 0.25 || speed > 4) {
           return res.status(400).json({ error: "Speed must be between 0.25 and 4" });
         }

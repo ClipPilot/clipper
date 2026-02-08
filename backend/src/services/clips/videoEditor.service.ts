@@ -1226,3 +1226,270 @@ export const muteAudio = (
       });
   });
 };
+
+// =============================================================================
+// SEGMENT PROCESSING: Cut, speed adjust, and concatenate multiple segments
+// =============================================================================
+
+export interface SegmentConfig {
+  id: string;
+  startTime: number;
+  endTime: number;
+  speed: number;
+}
+
+/**
+ * Process a single segment: cut and apply speed change.
+ * Returns the path to the processed segment.
+ */
+export const processSegment = async (
+  inputPath: string,
+  outputPath: string,
+  segment: SegmentConfig
+): Promise<string> => {
+  const { startTime, endTime, speed } = segment;
+  const duration = endTime - startTime;
+
+  console.log(`[SEGMENT] Processing segment ${segment.id}: ${startTime.toFixed(2)}s-${endTime.toFixed(2)}s @ ${speed}x`);
+
+  if (!fs.existsSync(inputPath)) {
+    throw new Error(`[SEGMENT] Input file does not exist: ${inputPath}`);
+  }
+
+  // Build video filter: setpts for speed
+  const videoPts = `setpts=PTS/${speed}`;
+
+  // Build audio filter: atempo (chain for extreme speeds)
+  let audioFilter: string;
+  if (speed >= 0.5 && speed <= 2.0) {
+    audioFilter = `atempo=${speed}`;
+  } else if (speed < 0.5) {
+    const numFilters = Math.ceil(Math.log(0.5 / speed) / Math.log(2)) + 1;
+    const filterValue = Math.pow(speed, 1 / numFilters);
+    audioFilter = Array(numFilters).fill(`atempo=${filterValue.toFixed(4)}`).join(",");
+  } else {
+    const numFilters = Math.ceil(Math.log(speed / 2.0) / Math.log(2)) + 1;
+    const filterValue = Math.pow(speed, 1 / numFilters);
+    audioFilter = Array(numFilters).fill(`atempo=${filterValue.toFixed(4)}`).join(",");
+  }
+
+  return new Promise((resolve, reject) => {
+    ffmpeg(inputPath)
+      .setStartTime(startTime)
+      .setDuration(duration)
+      .complexFilter([
+        `[0:v]${videoPts}[v]`,
+        `[0:a]${audioFilter}[a]`,
+      ])
+      .outputOptions([
+        "-map", "[v]",
+        "-map", "[a]",
+        "-c:v libx264",
+        "-preset fast",
+        "-crf 23",
+        ...MOBILE_VIDEO_SETTINGS,
+        "-c:a aac",
+        "-b:a 128k",
+        "-ar 48000",
+        "-avoid_negative_ts make_zero",
+        "-reset_timestamps 1",
+        "-movflags +faststart",
+        "-map_metadata", "-1",
+      ])
+      .save(outputPath)
+      .on("end", () => {
+        if (!fs.existsSync(outputPath)) {
+          return reject(new Error(`[SEGMENT] Output file not created: ${outputPath}`));
+        }
+        const stats = fs.statSync(outputPath);
+        console.log(`[SEGMENT] Processed ${segment.id}: ${(stats.size / 1024 / 1024).toFixed(2)}MB`);
+        resolve(outputPath);
+      })
+      .on("error", (err) => {
+        console.error(`[SEGMENT] Failed processing ${segment.id}: ${err.message}`);
+        reject(err);
+      });
+  });
+};
+
+/**
+ * Concatenate multiple video files into one.
+ * Uses FFmpeg concat demuxer for efficient lossless concatenation.
+ */
+export const concatVideos = (
+  inputPaths: string[],
+  outputPath: string
+): Promise<string> => {
+  console.log(`[CONCAT] Concatenating ${inputPaths.length} videos -> ${outputPath}`);
+
+  if (inputPaths.length === 0) {
+    return Promise.reject(new Error("[CONCAT] No input files provided"));
+  }
+
+  if (inputPaths.length === 1) {
+    // Just copy the single file
+    fs.copyFileSync(inputPaths[0], outputPath);
+    return Promise.resolve(outputPath);
+  }
+
+  // Create a concat list file
+  const concatListPath = outputPath.replace(".mp4", "_concat_list.txt");
+  const concatListContent = inputPaths
+    .map((p) => `file '${p.replace(/'/g, "'\\''")}'`)
+    .join("\n");
+  fs.writeFileSync(concatListPath, concatListContent);
+
+  return new Promise((resolve, reject) => {
+    ffmpeg()
+      .input(concatListPath)
+      .inputOptions(["-f concat", "-safe 0"])
+      .outputOptions([
+        "-c:v libx264",
+        "-preset fast",
+        "-crf 23",
+        ...MOBILE_VIDEO_SETTINGS,
+        "-c:a aac",
+        "-b:a 128k",
+        "-ar 48000",
+        "-movflags +faststart",
+        "-map_metadata", "-1",
+      ])
+      .save(outputPath)
+      .on("end", () => {
+        // Clean up concat list
+        if (fs.existsSync(concatListPath)) {
+          fs.unlinkSync(concatListPath);
+        }
+
+        if (!fs.existsSync(outputPath)) {
+          return reject(new Error(`[CONCAT] Output file not created: ${outputPath}`));
+        }
+        const stats = fs.statSync(outputPath);
+        console.log(`[CONCAT] Success: ${outputPath} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`);
+        resolve(outputPath);
+      })
+      .on("error", (err) => {
+        // Clean up concat list on error
+        if (fs.existsSync(concatListPath)) {
+          fs.unlinkSync(concatListPath);
+        }
+        console.error(`[CONCAT] Failed: ${err.message}`);
+        reject(err);
+      });
+  });
+};
+
+/**
+ * Generate a black video with silence for a given duration.
+ * Matches the source video's dimensions for seamless concatenation.
+ */
+export const generateBlackSegment = (
+  outputPath: string,
+  duration: number,
+  width: number,
+  height: number
+): Promise<string> => {
+  console.log(`[BLACK] Generating ${duration.toFixed(2)}s black segment (${width}x${height}) -> ${outputPath}`);
+
+  return new Promise((resolve, reject) => {
+    ffmpeg()
+      .input("color=c=black:s=" + width + "x" + height + ":r=30:d=" + duration.toFixed(4))
+      .inputOptions(["-f lavfi"])
+      .input("anullsrc=r=48000:cl=stereo")
+      .inputOptions(["-f lavfi"])
+      .outputOptions([
+        "-t", duration.toFixed(4),
+        "-c:v libx264",
+        "-preset fast",
+        "-crf 23",
+        ...MOBILE_VIDEO_SETTINGS,
+        "-c:a aac",
+        "-b:a 128k",
+        "-ar 48000",
+        "-shortest",
+        "-movflags +faststart",
+        "-map_metadata", "-1",
+      ])
+      .save(outputPath)
+      .on("end", () => {
+        if (!fs.existsSync(outputPath)) {
+          return reject(new Error(`[BLACK] Output file not created: ${outputPath}`));
+        }
+        console.log(`[BLACK] Success: ${outputPath}`);
+        resolve(outputPath);
+      })
+      .on("error", (err) => {
+        console.error(`[BLACK] Failed: ${err.message}`);
+        reject(err);
+      });
+  });
+};
+
+/**
+ * Process multiple segments: cut each segment from source, apply per-segment speed,
+ * generate black video for gaps between segments, and concatenate in order.
+ */
+export const processSegments = async (
+  inputPath: string,
+  outputPath: string,
+  segments: SegmentConfig[],
+  tempDir: string
+): Promise<{ outputPath: string; tempFiles: string[] }> => {
+  console.log(`[SEGMENTS] Processing ${segments.length} segments from ${inputPath}`);
+
+  if (!fs.existsSync(inputPath)) {
+    throw new Error(`[SEGMENTS] Input file does not exist: ${inputPath}`);
+  }
+
+  if (segments.length === 0) {
+    throw new Error("[SEGMENTS] No segments provided");
+  }
+
+  const tempFiles: string[] = [];
+  const concatParts: string[] = []; // Ordered list of video parts (segments + gaps)
+  const timestamp = Date.now();
+
+  // Get source video dimensions for generating matching black segments
+  const metadata = await getVideoMetadata(inputPath);
+  const { width, height } = metadata;
+
+  // Sort segments by startTime to detect gaps
+  const sortedSegments = [...segments].sort((a, b) => a.startTime - b.startTime);
+
+  // Process each segment and detect gaps between them
+  for (let i = 0; i < sortedSegments.length; i++) {
+    const segment = sortedSegments[i];
+
+    // Check for gap before this segment
+    if (i > 0) {
+      const prevSegment = sortedSegments[i - 1];
+      const gapDuration = segment.startTime - prevSegment.endTime;
+
+      if (gapDuration > 0.05) { // Ignore tiny gaps from floating point
+        console.log(`[SEGMENTS] Gap detected: ${prevSegment.endTime.toFixed(2)}s to ${segment.startTime.toFixed(2)}s (${gapDuration.toFixed(2)}s)`);
+        const gapPath = path.join(tempDir, `gap_${i}_${timestamp}.mp4`);
+        await generateBlackSegment(gapPath, gapDuration, width, height);
+        concatParts.push(gapPath);
+        tempFiles.push(gapPath);
+      }
+    }
+
+    // Process the actual segment
+    const segmentPath = path.join(tempDir, `segment_${i}_${timestamp}.mp4`);
+    await processSegment(inputPath, segmentPath, segment);
+    concatParts.push(segmentPath);
+    tempFiles.push(segmentPath);
+  }
+
+  // Concatenate all parts (segments + gaps)
+  if (concatParts.length === 1) {
+    fs.renameSync(concatParts[0], outputPath);
+    tempFiles.pop();
+  } else {
+    await concatVideos(concatParts, outputPath);
+  }
+
+  console.log(`[SEGMENTS] All segments processed and concatenated: ${outputPath}`);
+
+  return { outputPath, tempFiles };
+};
