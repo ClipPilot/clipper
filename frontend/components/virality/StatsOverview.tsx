@@ -4,19 +4,19 @@ import { Card, CardBody } from "@heroui/react";
 import { Icon } from "@iconify/react";
 
 interface StatsOverviewProps {
-  totalTargets: number;
-  totalDailyViews: number;
-  viewsChange: number;
-  avgEngagement: number;
-  engagementChange: number;
+  targetsCount: number;
+  maxTargets: number;
+  totalFollowers: number;
+  totalLikes: number;
+  totalPosts: number;
 }
 
 export function StatsOverview({
-  totalTargets,
-  totalDailyViews,
-  viewsChange,
-  avgEngagement,
-  engagementChange,
+  targetsCount,
+  maxTargets,
+  totalFollowers,
+  totalLikes,
+  totalPosts,
 }: StatsOverviewProps) {
   const formatNumber = (num: number) => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
@@ -24,32 +24,24 @@ export function StatsOverview({
     return num.toString();
   };
 
-  const formatPercent = (num: number) => {
-    const sign = num >= 0 ? "+" : "";
-    return `${sign}${num.toFixed(1)}%`;
-  };
-
   const statCards = [
     {
       title: "TOTAL TARGETS",
-      value: totalTargets.toString(),
-      change: 2.1, // Dummy change for now
+      value: `${targetsCount} / ${maxTargets}`,
       icon: "solar:users-group-rounded-bold",
       iconColor: "text-accent-400",
       iconBg: "bg-accent-400/10",
     },
     {
-      title: "TOTAL DAILY VIEWS",
-      value: formatNumber(totalDailyViews),
-      change: viewsChange,
+      title: "TOTAL FOLLOWERS",
+      value: formatNumber(totalFollowers),
       icon: "solar:eye-bold",
       iconColor: "text-accent-400",
       iconBg: "bg-accent-400/10",
     },
     {
-      title: "AVG. ENGAGEMENT",
-      value: `${avgEngagement.toFixed(1)}%`,
-      change: engagementChange,
+      title: "TOTAL LIKES",
+      value: formatNumber(totalLikes),
       icon: "solar:heart-bold",
       iconColor: "text-red-500",
       iconBg: "bg-red-500/10",
@@ -72,18 +64,9 @@ export function StatsOverview({
                 <p className="text-xs text-text-tertiary font-medium tracking-wide mb-1">
                   {stat.title}
                 </p>
-                <div className="flex items-baseline gap-2">
-                  <p className="text-2xl font-bold text-text-primary">
-                    {stat.value}
-                  </p>
-                  <span
-                    className={`text-sm font-medium ${
-                      stat.change >= 0 ? "text-green-500" : "text-red-500"
-                    }`}
-                  >
-                    {formatPercent(stat.change)}
-                  </span>
-                </div>
+                <p className="text-2xl font-bold text-text-primary">
+                  {stat.value}
+                </p>
               </div>
             </div>
           </CardBody>

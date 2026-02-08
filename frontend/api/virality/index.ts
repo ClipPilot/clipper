@@ -1,9 +1,17 @@
 import API_URL from "@/config/constants";
 import { apiFetch } from "@/lib/apiClient";
 
+export interface MetricsEntry {
+  recorded_at: string;
+  likes: number;
+  comments: number;
+  views: number | null;
+}
+
 export interface ViralityTarget {
   id: number;
   team_id: number;
+  competitor_id: number | null;
   platform: "instagram";
   username: string;
   profile_url: string;
@@ -36,8 +44,22 @@ export interface ViralityPost {
   comment_count: number;
   video_view_count: number | null;
   video_play_count: number | null;
+  metrics_history: MetricsEntry[];
   created_at: string;
   updated_at: string;
+}
+
+export interface ViralityCompetitor {
+  id: number;
+  team_id: number;
+  name: string;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CompetitorWithTargets extends ViralityCompetitor {
+  targets: ViralityTarget[];
 }
 
 export interface DashboardStats {
@@ -50,6 +72,8 @@ export interface DashboardStats {
 }
 
 class ViralityAPI {
+  // ── Targets ──
+
   async getTargets(teamId: number): Promise<ViralityTarget[]> {
     const response = await apiFetch(`${API_URL}/virality/${teamId}/targets`, {
       method: "GET",
@@ -69,13 +93,14 @@ class ViralityAPI {
   async addTarget(
     teamId: number,
     platform: "instagram",
-    profileUrl: string
+    profileUrl: string,
+    competitorId?: number
   ): Promise<ViralityTarget> {
     const response = await apiFetch(`${API_URL}/virality/${teamId}/targets`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ platform, profileUrl }),
+      body: JSON.stringify({ platform, profileUrl, competitorId }),
     });
 
     if (!response.ok) {
@@ -169,6 +194,89 @@ class ViralityAPI {
     }
 
     return response.json();
+  }
+
+  // ── Competitors ──
+
+  async getCompetitors(teamId: number): Promise<ViralityCompetitor[]> {
+    const response = await apiFetch(
+      `${API_URL}/virality/${teamId}/competitors`,
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to fetch competitors");
+    }
+
+    const data = await response.json();
+    return data.competitors;
+  }
+
+  async createCompetitor(
+    teamId: number,
+    name: string,
+    description?: string
+  ): Promise<ViralityCompetitor> {
+    const response = await apiFetch(
+      `${API_URL}/virality/${teamId}/competitors`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ name, description }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to create competitor");
+    }
+
+    const data = await response.json();
+    return data.competitor;
+  }
+
+  async getCompetitor(
+    teamId: number,
+    competitorId: number
+  ): Promise<CompetitorWithTargets> {
+    const response = await apiFetch(
+      `${API_URL}/virality/${teamId}/competitors/${competitorId}`,
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to fetch competitor");
+    }
+
+    const data = await response.json();
+    return data.competitor;
+  }
+
+  async deleteCompetitor(teamId: number, competitorId: number): Promise<void> {
+    const response = await apiFetch(
+      `${API_URL}/virality/${teamId}/competitors/${competitorId}`,
+      {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to delete competitor");
+    }
   }
 }
 

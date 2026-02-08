@@ -2,6 +2,7 @@ packages:
   - packages/*
   - backend
   - lambda-expire-clips
+  - lambda-virality-sync
 
 ignoredBuiltDependencies:
   - puppeteer

@@ -8,6 +8,10 @@ import {
   syncTargetController,
   getPostsController,
   getDashboardController,
+  listCompetitorsController,
+  createCompetitorController,
+  getCompetitorController,
+  deleteCompetitorController,
 } from "../controllers/virality.controller";
 
 const router = Router();
@@ -226,5 +230,12 @@ router.get("/:teamId/targets/:targetId/posts", requireAuth, getPostsController);
  *         description: Plan upgrade required
  */
 router.get("/:teamId/dashboard", requireAuth, getDashboardController);
+
+// ── Competitor routes ──
+
+router.get("/:teamId/competitors", requireAuth, listCompetitorsController);
+router.post("/:teamId/competitors", requireAuth, createCompetitorController);
+router.get("/:teamId/competitors/:competitorId", requireAuth, getCompetitorController);
+router.delete("/:teamId/competitors/:competitorId", requireAuth, deleteCompetitorController);
 
 export default router;

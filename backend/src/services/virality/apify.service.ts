@@ -43,13 +43,14 @@ class ApifyService {
   }
 
   async scrapeInstagramPosts(
-    username: string,
-    postsLimit: number = 20
+    username: string
   ): Promise<{ posts: InstagramPost[]; profile: InstagramProfile | null }> {
     const input = {
+      addParentData: false,
       directUrls: [`https://www.instagram.com/${username}/`],
+      onlyPostsNewerThan: "28 days",
+      resultsLimit: 100,
       resultsType: "posts",
-      resultsLimit: postsLimit,
       searchType: "user",
     };
 

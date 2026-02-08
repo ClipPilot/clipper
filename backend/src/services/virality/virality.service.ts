@@ -3,15 +3,82 @@ import { db } from "../../db";
 import {
   viralityTargets,
   viralityPosts,
+  viralityCompetitors,
   teams,
 } from "@clipper/shared-db/src/schema";
 import { eq, and, desc, count } from "drizzle-orm";
 import { apifyService, InstagramPost, InstagramProfile } from "./apify.service";
 
 const MAX_TARGETS_PER_TEAM = 10;
-const MAX_POSTS_PER_SYNC = 20;
+const MAX_METRICS_HISTORY = 28;
+
+interface MetricsEntry {
+  recorded_at: string;
+  likes: number;
+  comments: number;
+  views: number | null;
+}
 
 class ViralityService {
+  // ── Competitor CRUD ──
+
+  async getCompetitorsByTeam(teamId: number) {
+    return db
+      .select()
+      .from(viralityCompetitors)
+      .where(eq(viralityCompetitors.team_id, teamId))
+      .orderBy(desc(viralityCompetitors.created_at));
+  }
+
+  async createCompetitor(teamId: number, name: string, description?: string) {
+    const [competitor] = await db
+      .insert(viralityCompetitors)
+      .values({
+        team_id: teamId,
+        name,
+        description: description || null,
+      })
+      .returning();
+    return competitor;
+  }
+
+  async getCompetitorById(competitorId: number) {
+    const [competitor] = await db
+      .select()
+      .from(viralityCompetitors)
+      .where(eq(viralityCompetitors.id, competitorId))
+      .limit(1);
+    return competitor || null;
+  }
+
+  async getCompetitorWithTargets(competitorId: number, teamId: number) {
+    const competitor = await this.getCompetitorById(competitorId);
+    if (!competitor || competitor.team_id !== teamId) {
+      throw new Error("Competitor not found or access denied");
+    }
+
+    const targets = await db
+      .select()
+      .from(viralityTargets)
+      .where(eq(viralityTargets.competitor_id, competitorId))
+      .orderBy(desc(viralityTargets.created_at));
+
+    return { ...competitor, targets };
+  }
+
+  async deleteCompetitor(competitorId: number, teamId: number) {
+    const competitor = await this.getCompetitorById(competitorId);
+    if (!competitor || competitor.team_id !== teamId) {
+      throw new Error("Competitor not found or access denied");
+    }
+
+    await db
+      .delete(viralityCompetitors)
+      .where(eq(viralityCompetitors.id, competitorId));
+  }
+
+  // ── Target CRUD ──
+
   async getTargetsByTeam(teamId: number) {
     return db
       .select()
@@ -37,7 +104,7 @@ class ViralityService {
     return result?.count || 0;
   }
 
-  async addTarget(teamId: number, platform: "instagram", profileUrl: string) {
+  async addTarget(teamId: number, platform: "instagram", profileUrl: string, competitorId?: number) {
     // Check target limit
     const currentCount = await this.getTargetCount(teamId);
     if (currentCount >= MAX_TARGETS_PER_TEAM) {
@@ -65,6 +132,14 @@ class ViralityService {
       throw new Error(`Target @${username} is already being tracked`);
     }
 
+    // Verify competitor ownership if provided
+    if (competitorId) {
+      const competitor = await this.getCompetitorById(competitorId);
+      if (!competitor || competitor.team_id !== teamId) {
+        throw new Error("Competitor not found or access denied");
+      }
+    }
+
     const [target] = await db
       .insert(viralityTargets)
       .values({
@@ -73,6 +148,7 @@ class ViralityService {
         username,
         profile_url: `https://www.instagram.com/${username}/`,
         sync_status: "pending",
+        competitor_id: competitorId || null,
       })
       .returning();
 
@@ -109,8 +185,7 @@ class ViralityService {
     try {
       // Scrape Instagram posts using Apify SDK
       const { posts, profile } = await apifyService.scrapeInstagramPosts(
-        target.username,
-        MAX_POSTS_PER_SYNC
+        target.username
       );
       console.log(`Scraped ${posts.length} posts for @${target.username}`);
 
@@ -188,31 +263,50 @@ class ViralityService {
       )
       .limit(1);
 
-    const postValues = {
-      target_id: targetId,
-      platform_post_id: postData.id,
-      post_url: postData.url || `https://www.instagram.com/p/${postData.shortCode}/`,
-      thumbnail_url: postData.displayUrl,
-      caption: postData.caption,
-      hashtags: postData.hashtags || [],
-      post_type: postData.type,
-      posted_at: postData.timestamp ? new Date(postData.timestamp) : null,
-      like_count: postData.likesCount || 0,
-      comment_count: postData.commentsCount || 0,
-      video_view_count: postData.videoViewCount,
-      video_play_count: postData.videoPlayCount,
-      updated_at: new Date(),
+    const newMetric: MetricsEntry = {
+      recorded_at: new Date().toISOString(),
+      likes: postData.likesCount || 0,
+      comments: postData.commentsCount || 0,
+      views: postData.videoViewCount ?? postData.videoPlayCount ?? null,
     };
 
     if (existingPost) {
+      const history: MetricsEntry[] = Array.isArray(existingPost.metrics_history)
+        ? [...(existingPost.metrics_history as MetricsEntry[])]
+        : [];
+      history.push(newMetric);
+      const trimmed = history.length > MAX_METRICS_HISTORY
+        ? history.slice(-MAX_METRICS_HISTORY)
+        : history;
+
       await db
         .update(viralityPosts)
-        .set(postValues)
+        .set({
+          like_count: postData.likesCount || 0,
+          comment_count: postData.commentsCount || 0,
+          video_view_count: postData.videoViewCount,
+          video_play_count: postData.videoPlayCount,
+          metrics_history: trimmed,
+          updated_at: new Date(),
+        })
         .where(eq(viralityPosts.id, existingPost.id));
     } else {
       await db.insert(viralityPosts).values({
-        ...postValues,
+        target_id: targetId,
+        platform_post_id: postData.id,
+        post_url: postData.url || `https://www.instagram.com/p/${postData.shortCode}/`,
+        thumbnail_url: postData.displayUrl,
+        caption: postData.caption,
+        hashtags: postData.hashtags || [],
+        post_type: postData.type,
+        posted_at: postData.timestamp ? new Date(postData.timestamp) : null,
+        like_count: postData.likesCount || 0,
+        comment_count: postData.commentsCount || 0,
+        video_view_count: postData.videoViewCount,
+        video_play_count: postData.videoPlayCount,
+        metrics_history: [newMetric],
         created_at: new Date(),
+        updated_at: new Date(),
       });
     }
   }

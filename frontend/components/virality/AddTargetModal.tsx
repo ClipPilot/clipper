@@ -12,52 +12,40 @@ import {
   SelectItem,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import type { ViralityCompetitor } from "@/api/virality";
 
 type Platform = "tiktok" | "instagram" | "x";
 
 interface AddTargetModalProps {
   isOpen: boolean;
   onClose: () => void;
+  competitors?: ViralityCompetitor[];
   onSubmit: (platform: Platform, profileUrl: string, options: {
     enableAlerts: boolean;
-    minViews: string;
-    minEngagement: string;
+    competitorId?: number;
+    newCompetitorName?: string;
   }) => Promise<void>;
 }
 
-const platforms: { value: Platform; label: string; icon: string }[] = [
-  { value: "tiktok", label: "TikTok", icon: "ri:tiktok-fill" },
-  { value: "instagram", label: "Instagram", icon: "solar:camera-bold" },
-  { value: "x", label: "X", icon: "ri:twitter-x-fill" },
-];
-
-const viewOptions = [
-  { value: "1k", label: "1k+ views" },
-  { value: "5k", label: "5k+ views" },
-  { value: "10k", label: "10k+ views" },
-  { value: "50k", label: "50k+ views" },
-  { value: "100k", label: "100k+ views" },
-];
-
-const engagementOptions = [
-  { value: "1", label: "1%+" },
-  { value: "3", label: "3%+" },
-  { value: "5", label: "5%+" },
-  { value: "10", label: "10%+" },
+const platforms: { value: Platform; label: string; icon: string; enabled: boolean }[] = [
+  { value: "instagram", label: "Instagram", icon: "solar:camera-bold", enabled: true },
+  { value: "tiktok", label: "TikTok", icon: "ri:tiktok-fill", enabled: false },
+  { value: "x", label: "X", icon: "ri:twitter-x-fill", enabled: false },
 ];
 
 export function AddTargetModal({
   isOpen,
   onClose,
+  competitors = [],
   onSubmit,
 }: AddTargetModalProps) {
   const [profileUrl, setProfileUrl] = useState("");
-  const [selectedPlatform, setSelectedPlatform] = useState<Platform>("tiktok");
+  const [selectedPlatform, setSelectedPlatform] = useState<Platform>("instagram");
   const [enableAlerts, setEnableAlerts] = useState(true);
-  const [minViews, setMinViews] = useState("10k");
-  const [minEngagement, setMinEngagement] = useState("3");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [competitorSelection, setCompetitorSelection] = useState<string>("new");
+  const [newCompetitorName, setNewCompetitorName] = useState("");
 
   const handleSubmit = async () => {
     if (!profileUrl.trim()) return;
@@ -66,16 +54,20 @@ export function AddTargetModal({
     setError(null);
 
     try {
+      const competitorId = competitorSelection !== "new"
+        ? parseInt(competitorSelection)
+        : undefined;
+
       await onSubmit(selectedPlatform, profileUrl, {
         enableAlerts,
-        minViews,
-        minEngagement,
+        competitorId,
+        newCompetitorName: competitorSelection === "new" ? newCompetitorName.trim() : undefined,
       });
       setProfileUrl("");
-      setSelectedPlatform("tiktok");
+      setSelectedPlatform("instagram");
       setEnableAlerts(true);
-      setMinViews("10k");
-      setMinEngagement("3");
+      setCompetitorSelection("new");
+      setNewCompetitorName("");
       onClose();
     } catch (err: any) {
       setError(err.message || "Failed to add target");
@@ -87,6 +79,8 @@ export function AddTargetModal({
   const handleClose = () => {
     setProfileUrl("");
     setError(null);
+    setCompetitorSelection("new");
+    setNewCompetitorName("");
     onClose();
   };
 
@@ -119,13 +113,13 @@ export function AddTargetModal({
 
           {/* Profile URL Input */}
           <div className="space-y-2">
-            <label className="text-sm text-gray-400">Profile URL or Handle</label>
+            <label className="text-sm text-gray-400">Profile URL</label>
             <Input
-              placeholder="e.g. @creatorscale or tiktok.com/@user"
+              placeholder="e.g. instagram.com/creatorscale"
               value={profileUrl}
               onValueChange={setProfileUrl}
               startContent={
-                <Icon icon="solar:at-linear" width={18} className="text-gray-500" />
+                <Icon icon="solar:link-linear" width={18} className="text-gray-500" />
               }
               classNames={{
                 inputWrapper:
@@ -147,34 +141,75 @@ export function AddTargetModal({
               {platforms.map((platform) => (
                 <button
                   key={platform.value}
-                  onClick={() => setSelectedPlatform(platform.value)}
-                  className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl border transition-all ${
-                    selectedPlatform === platform.value
-                      ? "bg-[#1e2140] border-accent-400"
-                      : "bg-[#0d0f1a] border-[#2a2d3e] hover:border-[#3a3d4e]"
+                  onClick={() => platform.enabled && setSelectedPlatform(platform.value)}
+                  className={`relative flex flex-col items-center justify-center gap-2 p-4 rounded-xl border transition-all ${
+                    !platform.enabled
+                      ? "bg-[#0d0f1a] border-[#2a2d3e] opacity-50 cursor-not-allowed"
+                      : selectedPlatform === platform.value
+                        ? "bg-[#1e2140] border-accent-400"
+                        : "bg-[#0d0f1a] border-[#2a2d3e] hover:border-[#3a3d4e]"
                   }`}
                 >
                   <Icon
                     icon={platform.icon}
                     width={24}
                     className={
-                      selectedPlatform === platform.value
+                      selectedPlatform === platform.value && platform.enabled
                         ? "text-white"
                         : "text-gray-400"
                     }
                   />
                   <span
                     className={`text-sm ${
-                      selectedPlatform === platform.value
+                      selectedPlatform === platform.value && platform.enabled
                         ? "text-white"
                         : "text-gray-400"
                     }`}
                   >
                     {platform.label}
                   </span>
+                  {!platform.enabled && (
+                    <span className="absolute top-1 right-1 text-[10px] bg-gray-700 text-gray-400 px-1.5 py-0.5 rounded-full">
+                      Soon
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Competitor Group */}
+          <div className="space-y-2">
+            <label className="text-sm text-gray-400">Competitor Group</label>
+            <Select
+              items={[
+                { key: "new", label: "Create New Competitor" },
+                ...competitors.map((c) => ({ key: String(c.id), label: c.name })),
+              ]}
+              selectedKeys={[competitorSelection]}
+              onSelectionChange={(keys) => {
+                const val = Array.from(keys)[0] as string;
+                if (val) setCompetitorSelection(val);
+              }}
+              classNames={{
+                trigger: "bg-[#0d0f1a] border border-[#2a2d3e] hover:border-[#3a3d4e] rounded-xl h-12",
+                value: "text-white",
+              }}
+            >
+              {(item) => <SelectItem key={item.key}>{item.label}</SelectItem>}
+            </Select>
+            {competitorSelection === "new" && (
+              <Input
+                placeholder="e.g. Nike, Adidas"
+                value={newCompetitorName}
+                onValueChange={setNewCompetitorName}
+                classNames={{
+                  inputWrapper:
+                    "bg-[#0d0f1a] border border-[#2a2d3e] hover:border-[#3a3d4e] rounded-xl h-12",
+                  input: "text-white placeholder:text-gray-500",
+                }}
+              />
+            )}
           </div>
 
           {/* Enable Instant Alerts */}
@@ -197,64 +232,6 @@ export function AddTargetModal({
                 wrapper: enableAlerts ? "bg-accent-400" : "bg-gray-600",
               }}
             />
-          </div>
-
-          {/* Advanced Filters */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Icon icon="solar:tuning-2-linear" width={16} className="text-gray-400" />
-              <span className="text-sm text-gray-400">Advanced Filters</span>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <label className="text-xs text-gray-500 uppercase tracking-wider">
-                  Min Views
-                </label>
-                <Select
-                  selectedKeys={[minViews]}
-                  onSelectionChange={(keys) => {
-                    const value = Array.from(keys)[0] as string;
-                    if (value) setMinViews(value);
-                  }}
-                  classNames={{
-                    trigger:
-                      "bg-[#0d0f1a] border border-[#2a2d3e] hover:border-[#3a3d4e] rounded-xl h-11 data-[hover=true]:bg-[#0d0f1a]",
-                    value: "text-white",
-                    popoverContent: "bg-[#1a1d2e] border border-[#2a2d3e]",
-                  }}
-                >
-                  {viewOptions.map((option) => (
-                    <SelectItem key={option.value} className="text-white">
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs text-gray-500 uppercase tracking-wider">
-                  Min Engagement Rate
-                </label>
-                <Select
-                  selectedKeys={[minEngagement]}
-                  onSelectionChange={(keys) => {
-                    const value = Array.from(keys)[0] as string;
-                    if (value) setMinEngagement(value);
-                  }}
-                  classNames={{
-                    trigger:
-                      "bg-[#0d0f1a] border border-[#2a2d3e] hover:border-[#3a3d4e] rounded-xl h-11 data-[hover=true]:bg-[#0d0f1a]",
-                    value: "text-white",
-                    popoverContent: "bg-[#1a1d2e] border border-[#2a2d3e]",
-                  }}
-                >
-                  {engagementOptions.map((option) => (
-                    <SelectItem key={option.value} className="text-white">
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </Select>
-              </div>
-            </div>
           </div>
 
           {/* Error Message */}

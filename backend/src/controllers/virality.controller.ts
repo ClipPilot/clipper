@@ -31,7 +31,7 @@ export async function listTargetsController(req: AuthRequest, res: Response) {
 export async function addTargetController(req: AuthRequest, res: Response) {
   try {
     const teamId = parseInt(req.params.teamId);
-    const { platform, profileUrl } = req.body;
+    const { platform, profileUrl, competitorId } = req.body;
 
     if (isNaN(teamId)) {
       return res.status(400).json({ error: "Invalid team ID" });
@@ -56,7 +56,12 @@ export async function addTargetController(req: AuthRequest, res: Response) {
       return res.status(400).json({ error: "Only Instagram is supported currently" });
     }
 
-    const target = await viralityService.addTarget(teamId, platform, profileUrl);
+    const target = await viralityService.addTarget(
+      teamId,
+      platform,
+      profileUrl,
+      competitorId ? parseInt(competitorId) : undefined
+    );
     return res.status(201).json({ target });
   } catch (error: any) {
     console.error("Add virality target error:", error);
@@ -164,7 +169,7 @@ export async function getPostsController(req: AuthRequest, res: Response) {
     const posts = await viralityService.getPostsByTarget(
       targetId,
       teamId,
-      Math.min(limit, 50),
+      Math.min(limit, 100),
       offset
     );
     return res.json({ posts });
@@ -202,5 +207,107 @@ export async function getDashboardController(req: AuthRequest, res: Response) {
     console.error("Get virality dashboard error:", error);
     Sentry.captureException(error);
     return res.status(500).json({ error: "Failed to get dashboard stats" });
+  }
+}
+
+// ── Competitor Controllers ──
+
+export async function listCompetitorsController(req: AuthRequest, res: Response) {
+  try {
+    const teamId = parseInt(req.params.teamId);
+    if (isNaN(teamId)) {
+      return res.status(400).json({ error: "Invalid team ID" });
+    }
+
+    const hasAccess = await viralityService.checkTeamPlanAccess(teamId);
+    if (!hasAccess) {
+      return res.status(403).json({
+        error: "Virality tracking requires a Studio plan or higher",
+        code: "PLAN_REQUIRED",
+      });
+    }
+
+    const competitors = await viralityService.getCompetitorsByTeam(teamId);
+    return res.json({ competitors });
+  } catch (error) {
+    console.error("List competitors error:", error);
+    Sentry.captureException(error);
+    return res.status(500).json({ error: "Failed to list competitors" });
+  }
+}
+
+export async function createCompetitorController(req: AuthRequest, res: Response) {
+  try {
+    const teamId = parseInt(req.params.teamId);
+    const { name, description } = req.body;
+
+    if (isNaN(teamId)) {
+      return res.status(400).json({ error: "Invalid team ID" });
+    }
+
+    const hasAccess = await viralityService.checkTeamPlanAccess(teamId);
+    if (!hasAccess) {
+      return res.status(403).json({
+        error: "Virality tracking requires a Studio plan or higher",
+        code: "PLAN_REQUIRED",
+      });
+    }
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: "Competitor name is required" });
+    }
+
+    const competitor = await viralityService.createCompetitor(teamId, name.trim(), description?.trim());
+    return res.status(201).json({ competitor });
+  } catch (error) {
+    console.error("Create competitor error:", error);
+    Sentry.captureException(error);
+    return res.status(500).json({ error: "Failed to create competitor" });
+  }
+}
+
+export async function getCompetitorController(req: AuthRequest, res: Response) {
+  try {
+    const teamId = parseInt(req.params.teamId);
+    const competitorId = parseInt(req.params.competitorId);
+
+    if (isNaN(teamId) || isNaN(competitorId)) {
+      return res.status(400).json({ error: "Invalid team or competitor ID" });
+    }
+
+    const competitor = await viralityService.getCompetitorWithTargets(competitorId, teamId);
+    return res.json({ competitor });
+  } catch (error: any) {
+    console.error("Get competitor error:", error);
+    Sentry.captureException(error);
+
+    if (error.message?.includes("not found")) {
+      return res.status(404).json({ error: error.message });
+    }
+
+    return res.status(500).json({ error: "Failed to get competitor" });
+  }
+}
+
+export async function deleteCompetitorController(req: AuthRequest, res: Response) {
+  try {
+    const teamId = parseInt(req.params.teamId);
+    const competitorId = parseInt(req.params.competitorId);
+
+    if (isNaN(teamId) || isNaN(competitorId)) {
+      return res.status(400).json({ error: "Invalid team or competitor ID" });
+    }
+
+    await viralityService.deleteCompetitor(competitorId, teamId);
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error("Delete competitor error:", error);
+    Sentry.captureException(error);
+
+    if (error.message?.includes("not found")) {
+      return res.status(404).json({ error: error.message });
+    }
+
+    return res.status(500).json({ error: "Failed to delete competitor" });
   }
 }

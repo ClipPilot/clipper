@@ -11,201 +11,128 @@ import {
   Avatar,
   Chip,
   Button,
-  Switch,
   Pagination,
   Dropdown,
   DropdownTrigger,
   DropdownMenu,
   DropdownItem,
+  Spinner,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import type { CompetitorWithTargets } from "@/api/virality";
 
 export type Platform = "tiktok" | "instagram" | "x";
-export type TargetStatus = "live" | "paused";
-
-export interface TrackedTarget {
-  id: number;
-  username: string;
-  category: string;
-  platform: Platform;
-  avatar?: string;
-  dailyViewGain: number;
-  dailyLikeGain: number;
-  likeGainPercent: number;
-  status: TargetStatus;
-  sparklineData: number[];
-}
-
-// Dummy data
-const dummyTargets: TrackedTarget[] = [
-  {
-    id: 1,
-    username: "tech_guru",
-    category: "Tech & Lifestyle",
-    platform: "tiktok",
-    dailyViewGain: 124500,
-    dailyLikeGain: 12400,
-    likeGainPercent: 8.2,
-    status: "live",
-    sparklineData: [20, 35, 25, 45, 40, 55, 50, 65],
-  },
-  {
-    id: 2,
-    username: "style_icon",
-    category: "Fashion Designer",
-    platform: "instagram",
-    dailyViewGain: -12300,
-    dailyLikeGain: 2100,
-    likeGainPercent: -3.1,
-    status: "live",
-    sparklineData: [60, 55, 50, 45, 48, 42, 38, 35],
-  },
-  {
-    id: 3,
-    username: "gaming_hub",
-    category: "Esports News",
-    platform: "x",
-    dailyViewGain: 450200,
-    dailyLikeGain: 45800,
-    likeGainPercent: 12.0,
-    status: "paused",
-    sparklineData: [15, 25, 35, 30, 45, 55, 60, 70],
-  },
-  {
-    id: 4,
-    username: "fitness_pro",
-    category: "Bodybuilding Expert",
-    platform: "tiktok",
-    dailyViewGain: 60800,
-    dailyLikeGain: 8200,
-    likeGainPercent: 5.5,
-    status: "live",
-    sparklineData: [30, 35, 40, 38, 45, 50, 48, 55],
-  },
-  {
-    id: 5,
-    username: "foodie_adventures",
-    category: "Food & Travel",
-    platform: "instagram",
-    dailyViewGain: 89000,
-    dailyLikeGain: 15600,
-    likeGainPercent: 9.8,
-    status: "live",
-    sparklineData: [25, 30, 35, 45, 50, 55, 60, 65],
-  },
-  {
-    id: 6,
-    username: "crypto_daily",
-    category: "Finance & Crypto",
-    platform: "x",
-    dailyViewGain: -5400,
-    dailyLikeGain: 3200,
-    likeGainPercent: -1.2,
-    status: "live",
-    sparklineData: [50, 48, 45, 42, 40, 38, 35, 32],
-  },
-];
 
 interface TargetsTableProps {
+  competitors: CompetitorWithTargets[];
   platformFilter: Platform | "all";
-  onViewDetails?: (target: TrackedTarget) => void;
+  searchQuery?: string;
+  isLoading?: boolean;
+  onViewDetails?: (competitor: CompetitorWithTargets) => void;
+  onSync?: (competitorId: number) => Promise<void>;
+  onDelete?: (competitorId: number) => Promise<void>;
 }
 
-export function TargetsTable({ platformFilter, onViewDetails }: TargetsTableProps) {
+export function TargetsTable({
+  competitors,
+  platformFilter,
+  searchQuery,
+  isLoading,
+  onViewDetails,
+  onSync,
+  onDelete,
+}: TargetsTableProps) {
   const [page, setPage] = useState(1);
-  const [statuses, setStatuses] = useState<Record<number, TargetStatus>>(
-    Object.fromEntries(dummyTargets.map((t) => [t.id, t.status]))
-  );
+  const [syncingId, setSyncingId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const rowsPerPage = 4;
-
-  // Filter by platform
-  const filteredTargets = dummyTargets.filter(
-    (t) => platformFilter === "all" || t.platform === platformFilter
-  );
-
-  // Sort by views (descending)
-  const sortedTargets = [...filteredTargets].sort(
-    (a, b) => Math.abs(b.dailyViewGain) - Math.abs(a.dailyViewGain)
-  );
-
-  // Paginate
-  const totalPages = Math.ceil(sortedTargets.length / rowsPerPage);
-  const paginatedTargets = sortedTargets.slice(
-    (page - 1) * rowsPerPage,
-    page * rowsPerPage
-  );
 
   const formatNumber = (num: number) => {
     const abs = Math.abs(num);
     if (abs >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-    if (abs >= 1000) return `${(num / 1000).toFixed(1)}k`;
+    if (abs >= 1000) return `${(num / 1000).toFixed(1)}K`;
     return num.toString();
   };
 
-  const getPlatformIcon = (platform: Platform) => {
-    switch (platform) {
-      case "tiktok":
-        return "ri:tiktok-fill";
-      case "instagram":
-        return "ri:instagram-fill";
-      case "x":
-        return "ri:twitter-x-fill";
+  // Filter competitors by platform and search query
+  const filtered = competitors.filter((c) => {
+    const matchesPlatform =
+      platformFilter === "all" ||
+      c.targets.some((t) => t.platform === platformFilter);
+    const matchesSearch =
+      !searchQuery ||
+      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.targets.some((t) =>
+        t.username.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    return matchesPlatform && matchesSearch;
+  });
+
+  const totalPages = Math.ceil(filtered.length / rowsPerPage);
+  const paginated = filtered.slice(
+    (page - 1) * rowsPerPage,
+    page * rowsPerPage
+  );
+
+  const getWorstSyncStatus = (targets: CompetitorWithTargets["targets"]) => {
+    if (targets.some((t) => t.sync_status === "failed")) return "failed";
+    if (targets.some((t) => t.sync_status === "syncing")) return "syncing";
+    if (targets.some((t) => t.sync_status === "pending")) return "pending";
+    if (targets.length === 0) return "pending";
+    return "completed";
+  };
+
+  const getSyncChipColor = (status: string) => {
+    switch (status) {
+      case "completed": return "success";
+      case "failed": return "danger";
+      case "syncing": return "warning";
+      default: return "default";
     }
   };
 
-  const getPlatformColor = (platform: Platform) => {
-    switch (platform) {
-      case "tiktok":
-        return "bg-red-500/10 text-red-500";
-      case "instagram":
-        return "bg-pink-500/10 text-pink-500";
-      case "x":
-        return "bg-gray-500/10 text-gray-400";
+  const handleSync = async (competitorId: number) => {
+    if (!onSync) return;
+    setSyncingId(competitorId);
+    try {
+      await onSync(competitorId);
+    } finally {
+      setSyncingId(null);
     }
   };
 
-  const toggleStatus = (id: number) => {
-    setStatuses((prev) => ({
-      ...prev,
-      [id]: prev[id] === "live" ? "paused" : "live",
-    }));
+  const handleDelete = async (competitorId: number) => {
+    if (!onDelete) return;
+    setDeletingId(competitorId);
+    try {
+      await onDelete(competitorId);
+    } finally {
+      setDeletingId(null);
+    }
   };
 
-  // Simple sparkline SVG
-  const Sparkline = ({ data, isPositive }: { data: number[]; isPositive: boolean }) => {
-    const max = Math.max(...data);
-    const min = Math.min(...data);
-    const range = max - min || 1;
-    const width = 80;
-    const height = 24;
-    const padding = 2;
-
-    const points = data
-      .map((val, i) => {
-        const x = padding + (i / (data.length - 1)) * (width - padding * 2);
-        const y = height - padding - ((val - min) / range) * (height - padding * 2);
-        return `${x},${y}`;
-      })
-      .join(" ");
-
+  if (isLoading) {
     return (
-      <svg width={width} height={height} className="inline-block">
-        <polyline
-          points={points}
-          fill="none"
-          stroke={isPositive ? "#8b5cf6" : "#ef4444"}
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
+      <div className="flex items-center justify-center py-16">
+        <Spinner size="lg" />
+      </div>
     );
-  };
+  }
+
+  if (competitors.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-3">
+        <Icon icon="solar:users-group-rounded-linear" width={48} className="text-text-tertiary" />
+        <p className="text-text-secondary">No competitors tracked yet</p>
+        <p className="text-text-tertiary text-sm">Add your first competitor to start tracking</p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-surface-base border border-border-base rounded-xl overflow-hidden">
       <Table
-        aria-label="Tracked targets table"
+        aria-label="Competitors table"
         removeWrapper
         classNames={{
           th: "bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4",
@@ -213,165 +140,169 @@ export function TargetsTable({ platformFilter, onViewDetails }: TargetsTableProp
         }}
       >
         <TableHeader>
-          <TableColumn>TARGET</TableColumn>
-          <TableColumn>PLATFORM</TableColumn>
-          <TableColumn>DAILY VIEW GAIN</TableColumn>
-          <TableColumn>DAILY LIKE GAIN</TableColumn>
-          <TableColumn>STATUS</TableColumn>
+          <TableColumn>COMPETITOR</TableColumn>
+          <TableColumn>TARGETS</TableColumn>
+          <TableColumn>FOLLOWERS</TableColumn>
+          <TableColumn>POSTS</TableColumn>
+          <TableColumn>SYNC STATUS</TableColumn>
           <TableColumn>ACTIONS</TableColumn>
         </TableHeader>
         <TableBody>
-          {paginatedTargets.map((target) => (
-            <TableRow key={target.id} className="cursor-pointer hover:bg-surface-hover transition-colors" onClick={() => onViewDetails?.(target)}>
-              <TableCell>
-                <div className="flex items-center gap-3">
-                  <Avatar
-                    src={target.avatar}
-                    name={target.username.charAt(0).toUpperCase()}
-                    size="sm"
-                    classNames={{
-                      base: "bg-surface-hover",
-                    }}
-                  />
-                  <div>
-                    <p className="font-medium text-text-primary">
-                      @{target.username}
-                    </p>
-                    <p className="text-xs text-text-tertiary">
-                      {target.category}
-                    </p>
+          {paginated.map((competitor) => {
+            const totalFollowers = competitor.targets.reduce(
+              (sum, t) => sum + (t.follower_count || 0),
+              0
+            );
+            const totalPosts = competitor.targets.reduce(
+              (sum, t) => sum + (t.post_count || 0),
+              0
+            );
+            const syncStatus = getWorstSyncStatus(competitor.targets);
+            const isSyncing = syncingId === competitor.id;
+            const isDeleting = deletingId === competitor.id;
+
+            return (
+              <TableRow
+                key={competitor.id}
+                className="cursor-pointer hover:bg-surface-hover transition-colors"
+                onClick={() => onViewDetails?.(competitor)}
+              >
+                <TableCell>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-accent-400/10">
+                      <Icon
+                        icon="solar:buildings-bold"
+                        width={20}
+                        className="text-accent-400"
+                      />
+                    </div>
+                    <div>
+                      <p className="font-medium text-text-primary">
+                        {competitor.name}
+                      </p>
+                      {competitor.description && (
+                        <p className="text-xs text-text-tertiary truncate max-w-[200px]">
+                          {competitor.description}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </TableCell>
-              <TableCell>
-                <Chip
-                  size="sm"
-                  variant="flat"
-                  startContent={
-                    <Icon icon={getPlatformIcon(target.platform)} width={14} />
-                  }
-                  classNames={{
-                    base: getPlatformColor(target.platform),
-                  }}
-                >
-                  {target.platform === "x"
-                    ? "X"
-                    : target.platform.charAt(0).toUpperCase() +
-                      target.platform.slice(1)}
-                </Chip>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-3">
-                  <Sparkline
-                    data={target.sparklineData}
-                    isPositive={target.dailyViewGain >= 0}
-                  />
-                  <span
-                    className={`font-medium ${
-                      target.dailyViewGain >= 0
-                        ? "text-green-500"
-                        : "text-red-500"
-                    }`}
-                  >
-                    {target.dailyViewGain >= 0 ? "+" : ""}
-                    {formatNumber(target.dailyViewGain)}
-                  </span>
-                </div>
-              </TableCell>
-              <TableCell>
-                <div className="flex flex-col">
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-col gap-1">
+                    {competitor.targets.length === 0 ? (
+                      <span className="text-text-tertiary text-sm">No targets</span>
+                    ) : (
+                      competitor.targets.map((t) => (
+                        <div key={t.id} className="flex items-center gap-1.5">
+                          <Avatar
+                            src={t.avatar_url || undefined}
+                            name={t.username.charAt(0).toUpperCase()}
+                            size="sm"
+                            className="w-5 h-5"
+                            classNames={{ base: "bg-surface-hover" }}
+                          />
+                          <span className="text-sm text-text-secondary">
+                            @{t.username}
+                          </span>
+                          <Chip
+                            size="sm"
+                            variant="flat"
+                            classNames={{ base: "bg-pink-500/10 text-pink-500 h-4 px-1" }}
+                          >
+                            <Icon icon="ri:instagram-fill" width={10} />
+                          </Chip>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell>
                   <span className="font-medium text-text-primary">
-                    {formatNumber(target.dailyLikeGain)}
+                    {formatNumber(totalFollowers)}
                   </span>
-                  <span
-                    className={`text-xs ${
-                      target.likeGainPercent >= 0
-                        ? "text-green-500"
-                        : "text-red-500"
-                    }`}
-                  >
-                    {target.likeGainPercent >= 0 ? "↑" : "↓"}{" "}
-                    {Math.abs(target.likeGainPercent)}%
+                </TableCell>
+                <TableCell>
+                  <span className="font-medium text-text-primary">
+                    {formatNumber(totalPosts)}
                   </span>
-                </div>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <Switch
-                    size="sm"
-                    isSelected={statuses[target.id] === "live"}
-                    onValueChange={() => toggleStatus(target.id)}
-                    classNames={{
-                      wrapper: statuses[target.id] === "live"
-                        ? "bg-green-500"
-                        : "bg-gray-600",
-                    }}
-                  />
-                  <span
-                    className={`text-xs font-medium ${
-                      statuses[target.id] === "live"
-                        ? "text-green-500"
-                        : "text-text-tertiary"
-                    }`}
-                  >
-                    {statuses[target.id] === "live" ? "LIVE" : "PAUSED"}
-                  </span>
-                </div>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <Button
+                </TableCell>
+                <TableCell>
+                  <Chip
                     size="sm"
                     variant="flat"
-                    className="bg-surface-elevated"
-                    onPress={() => onViewDetails?.(target)}
+                    color={getSyncChipColor(isSyncing ? "syncing" : syncStatus)}
                   >
-                    View Details
-                  </Button>
-                  <Dropdown>
-                    <DropdownTrigger>
-                      <Button
-                        size="sm"
-                        variant="flat"
-                        isIconOnly
-                        className="bg-surface-elevated"
+                    {isSyncing ? "Syncing..." : syncStatus}
+                  </Chip>
+                </TableCell>
+                <TableCell>
+                  <div
+                    className="flex items-center gap-2"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Button
+                      size="sm"
+                      variant="flat"
+                      className="bg-surface-elevated"
+                      onPress={() => onViewDetails?.(competitor)}
+                    >
+                      View Details
+                    </Button>
+                    <Dropdown>
+                      <DropdownTrigger>
+                        <Button
+                          size="sm"
+                          variant="flat"
+                          isIconOnly
+                          className="bg-surface-elevated"
+                        >
+                          <Icon icon="solar:menu-dots-bold" width={16} />
+                        </Button>
+                      </DropdownTrigger>
+                      <DropdownMenu
+                        aria-label="Competitor actions"
+                        onAction={(key) => {
+                          if (key === "sync") handleSync(competitor.id);
+                          if (key === "delete") handleDelete(competitor.id);
+                        }}
                       >
-                        <Icon icon="solar:menu-dots-bold" width={16} />
-                      </Button>
-                    </DropdownTrigger>
-                    <DropdownMenu aria-label="Target actions">
-                      <DropdownItem key="sync">
-                        <div className="flex items-center gap-2">
-                          <Icon icon="solar:refresh-bold" width={16} />
-                          Sync Now
-                        </div>
-                      </DropdownItem>
-                      <DropdownItem key="edit">
-                        <div className="flex items-center gap-2">
-                          <Icon icon="solar:pen-bold" width={16} />
-                          Edit
-                        </div>
-                      </DropdownItem>
-                      <DropdownItem key="delete" className="text-danger" color="danger">
-                        <div className="flex items-center gap-2">
-                          <Icon icon="solar:trash-bin-trash-bold" width={16} />
-                          Delete
-                        </div>
-                      </DropdownItem>
-                    </DropdownMenu>
-                  </Dropdown>
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
+                        <DropdownItem
+                          key="sync"
+                          isDisabled={isSyncing}
+                          startContent={
+                            isSyncing ? (
+                              <Spinner size="sm" />
+                            ) : (
+                              <Icon icon="solar:refresh-bold" width={16} />
+                            )
+                          }
+                        >
+                          {isSyncing ? "Syncing..." : "Sync All Targets"}
+                        </DropdownItem>
+                        <DropdownItem
+                          key="delete"
+                          className="text-danger"
+                          color="danger"
+                          isDisabled={isDeleting}
+                          startContent={<Icon icon="solar:trash-bin-trash-bold" width={16} />}
+                        >
+                          {isDeleting ? "Deleting..." : "Delete"}
+                        </DropdownItem>
+                      </DropdownMenu>
+                    </Dropdown>
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
 
       {/* Pagination */}
       <div className="flex items-center justify-between px-4 py-4 border-t border-border-base">
         <p className="text-sm text-text-tertiary">
-          Showing {paginatedTargets.length} of {sortedTargets.length} Monitored
-          Targets
+          Showing {paginated.length} of {filtered.length} Competitors
         </p>
         {totalPages > 1 && (
           <Pagination
