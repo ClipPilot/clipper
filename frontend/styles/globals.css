@@ -151,3 +151,120 @@ body {
   content: "";
   margin-top: 0.5rem;
 }
+
+/* =============================================================================
+   Timeline Editor Styles (react-timeline-editor)
+   ============================================================================= */
+
+.timeline-container {
+  --timeline-bg: var(--surface-elevated);
+  --timeline-action-bg: var(--surface-base);
+  --timeline-cursor-color: #ffffff;
+  --timeline-scale-color: var(--text-tertiary);
+}
+
+/* Timeline background */
+.timeline-editor {
+  background-color: var(--timeline-bg) !important;
+}
+
+/* Scale area (time markers) */
+.timeline-editor-time-area {
+  background-color: var(--surface-base) !important;
+  border-bottom: 1px solid var(--border-base) !important;
+}
+
+/* Scale text */
+.timeline-editor-time-unit {
+  color: var(--text-tertiary) !important;
+  font-size: 10px !important;
+}
+
+/* Cursor/playhead */
+.timeline-editor-cursor {
+  background-color: var(--timeline-cursor-color) !important;
+  width: 2px !important;
+  z-index: 50 !important;
+}
+
+.timeline-editor-cursor-top {
+  background-color: var(--timeline-cursor-color) !important;
+  border-radius: 50% !important;
+  width: 12px !important;
+  height: 12px !important;
+  left: -5px !important;
+  top: -6px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Action (segment) styles */
+.timeline-editor-action {
+  border-radius: 6px !important;
+  overflow: hidden !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+  transition: box-shadow 0.15s ease !important;
+}
+
+.timeline-editor-action:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Action resize handles */
+.timeline-editor-action-left-stretch,
+.timeline-editor-action-right-stretch {
+  width: 8px !important;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba(124, 58, 237, 0.5) 50%,
+    transparent 100%
+  ) !important;
+  opacity: 0 !important;
+  transition: opacity 0.15s ease !important;
+}
+
+.timeline-editor-action:hover .timeline-editor-action-left-stretch,
+.timeline-editor-action:hover .timeline-editor-action-right-stretch {
+  opacity: 1 !important;
+}
+
+.timeline-editor-action-left-stretch:hover,
+.timeline-editor-action-right-stretch:hover {
+  background: rgba(124, 58, 237, 0.8) !important;
+  opacity: 1 !important;
+}
+
+/* Row styles */
+.timeline-editor-edit-row {
+  border-bottom: 1px solid var(--border-base) !important;
+}
+
+/* Drag line (snapping guide) */
+.timeline-editor-drag-line {
+  background-color: #10b981 !important;
+  width: 2px !important;
+}
+
+/* Grid lines */
+.timeline-editor-time-unit-scale {
+  border-left-color: var(--border-base) !important;
+}
+
+/* Scrollbar styling */
+.timeline-editor ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.timeline-editor ::-webkit-scrollbar-track {
+  background: var(--surface-base);
+}
+
+.timeline-editor ::-webkit-scrollbar-thumb {
+  background: var(--border-base);
+  border-radius: 4px;
+}
+
+.timeline-editor ::-webkit-scrollbar-thumb:hover {
+  background: var(--border-light);
+}

@@ -1102,6 +1102,274 @@ export class ClipManagerController {
       });
     }
   }
+
+  /**
+   * Submit a video edit job (CapCut-like editing)
+   */
+  async submitVideoEdit(req: AuthRequest, res: Response) {
+    try {
+      const clipId = parseInt(req.params.clipId);
+      const teamId = parseInt(req.params.teamId);
+      const { editConfig } = req.body;
+
+      if (isNaN(clipId) || isNaN(teamId)) {
+        return res.status(400).json({ error: "Invalid clip ID or team ID" });
+      }
+
+      if (!editConfig) {
+        return res.status(400).json({ error: "editConfig is required" });
+      }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
+
+      const clip = await clipManagerService.getClipById(clipId, teamId);
+
+      if (!clip.saved) {
+        return res.status(403).json({ error: "Cannot edit unsaved clips" });
+      }
+
+      if (!clip.blank_video_path) {
+        return res
+          .status(400)
+          .json({ error: "No blank video available for this clip" });
+      }
+
+      // Validate editConfig structure
+      const { segments, trim, crop, speed, audio, captions, heading } = editConfig;
+
+      // Validate segments (new per-segment editing)
+      if (segments) {
+        if (!Array.isArray(segments)) {
+          return res.status(400).json({ error: "Segments must be an array" });
+        }
+        if (segments.length === 0) {
+          return res.status(400).json({ error: "Segments array cannot be empty" });
+        }
+        for (let i = 0; i < segments.length; i++) {
+          const seg = segments[i];
+          if (typeof seg.startTime !== "number" || typeof seg.endTime !== "number") {
+            return res.status(400).json({ error: `Invalid segment ${i}: startTime and endTime must be numbers` });
+          }
+          if (seg.startTime >= seg.endTime) {
+            return res.status(400).json({ error: `Invalid segment ${i}: startTime must be before endTime` });
+          }
+          if (typeof seg.speed !== "number" || seg.speed < 0.25 || seg.speed > 4) {
+            return res.status(400).json({ error: `Invalid segment ${i}: speed must be between 0.25 and 4` });
+          }
+        }
+      }
+
+      // Validate trim (legacy - only if segments not provided)
+      if (trim && !segments) {
+        if (typeof trim.startTime !== "number" || typeof trim.endTime !== "number") {
+          return res.status(400).json({ error: "Invalid trim configuration" });
+        }
+        if (trim.startTime >= trim.endTime) {
+          return res.status(400).json({ error: "Trim start must be before end" });
+        }
+      }
+
+      // Validate speed (legacy - only if segments not provided)
+      if (speed !== undefined && !segments) {
+        if (typeof speed !== "number" || speed < 0.25 || speed > 4) {
+          return res.status(400).json({ error: "Speed must be between 0.25 and 4" });
+        }
+      }
+
+      // Validate crop
+      if (crop) {
+        const validRatios = ["9:16", "16:9", "1:1", "4:5", "custom"];
+        if (!validRatios.includes(crop.aspectRatio)) {
+          return res.status(400).json({ error: "Invalid aspect ratio" });
+        }
+      }
+
+      // Validate audio
+      if (audio) {
+        if (typeof audio.originalVolume !== "number" || audio.originalVolume < 0 || audio.originalVolume > 1) {
+          return res.status(400).json({ error: "Volume must be between 0 and 1" });
+        }
+      }
+
+      // Set clip status to pending
+      await clipManagerService.updateClipStatus(clipId, teamId, "pending");
+
+      const userId = req.user?.dbUserId || 0;
+      const messageId = await sqsService.sendVideoEditJob({
+        clipId,
+        teamId,
+        userId,
+        editConfig,
+      });
+
+      console.log(`Video edit job sent to SQS with messageId: ${messageId}`);
+
+      return res.status(200).json({
+        message: "Video edit queued for processing",
+        jobId: messageId,
+        clipId,
+      });
+    } catch (error) {
+      console.error("Submit video edit error:", error);
+      Sentry.captureException(error);
+      return res.status(500).json({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to queue video edit",
+      });
+    }
+  }
+
+  /**
+   * Get presigned URL for music upload
+   */
+  async getMusicUploadUrl(req: AuthRequest, res: Response) {
+    try {
+      const clipId = parseInt(req.params.clipId);
+      const teamId = parseInt(req.params.teamId);
+      const { fileName, contentType, fileSize } = req.body;
+
+      if (isNaN(clipId) || isNaN(teamId)) {
+        return res.status(400).json({ error: "Invalid clip ID or team ID" });
+      }
+
+      if (!fileName || !contentType) {
+        return res.status(400).json({ error: "fileName and contentType are required" });
+      }
+
+      // Validate file type
+      const validTypes = ["audio/mpeg", "audio/wav", "audio/aac", "audio/mp4"];
+      if (!validTypes.includes(contentType)) {
+        return res.status(400).json({ error: "Invalid audio format. Use MP3, WAV, or AAC" });
+      }
+
+      // Validate file size (50MB max)
+      if (fileSize && fileSize > 50 * 1024 * 1024) {
+        return res.status(400).json({ error: "File size must be less than 50MB" });
+      }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
+
+      const clip = await clipManagerService.getClipById(clipId, teamId);
+      if (!clip.saved) {
+        return res.status(403).json({ error: "Cannot add music to unsaved clips" });
+      }
+
+      // Generate S3 key for music file
+      const timestamp = Date.now();
+      const extension = fileName.split(".").pop() || "mp3";
+      const s3Key = `teams/${teamId}/clips/${clipId}/music/${timestamp}.${extension}`;
+
+      // Get presigned URL for upload
+      const uploadUrl = await s3Service.getPresignedUploadUrlForKey(s3Key, contentType);
+
+      return res.status(200).json({
+        uploadUrl,
+        s3Key,
+      });
+    } catch (error) {
+      console.error("Get music upload URL error:", error);
+      Sentry.captureException(error);
+      return res.status(500).json({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to get upload URL",
+      });
+    }
+  }
+  /**
+   * Get presigned URL for media overlay upload
+   */
+  async getOverlayUploadUrl(req: AuthRequest, res: Response) {
+    try {
+      const clipId = parseInt(req.params.clipId);
+      const teamId = parseInt(req.params.teamId);
+      const { fileName, contentType } = req.body;
+
+      if (isNaN(clipId) || isNaN(teamId)) {
+        return res.status(400).json({ error: "Invalid clip ID or team ID" });
+      }
+
+      if (!fileName || !contentType) {
+        return res.status(400).json({ error: "fileName and contentType are required" });
+      }
+
+      // Validate file type (images + videos)
+      const validTypes = [
+        "image/jpeg", "image/png", "image/gif", "image/webp",
+        "video/mp4", "video/quicktime", "video/webm",
+      ];
+      if (!validTypes.includes(contentType)) {
+        return res.status(400).json({ error: "Invalid file type. Use JPEG, PNG, GIF, WebP, MP4, MOV, or WebM" });
+      }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
+
+      const clip = await clipManagerService.getClipById(clipId, teamId);
+      if (!clip.saved) {
+        return res.status(403).json({ error: "Cannot add overlays to unsaved clips" });
+      }
+
+      // Generate S3 key for overlay file
+      const timestamp = Date.now();
+      const extension = fileName.split(".").pop() || "bin";
+      const s3Key = `teams/${teamId}/clips/${clipId}/overlays/${timestamp}.${extension}`;
+
+      const uploadUrl = await s3Service.getPresignedUploadUrlForKey(s3Key, contentType);
+
+      return res.status(200).json({ uploadUrl, s3Key });
+    } catch (error) {
+      console.error("Get overlay upload URL error:", error);
+      Sentry.captureException(error);
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to get upload URL",
+      });
+    }
+  }
+  /**
+   * Get presigned view URLs for saved overlay S3 keys
+   */
+  async getOverlayViewUrls(req: AuthRequest, res: Response) {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      const clipId = parseInt(req.params.clipId);
+      const { s3Keys } = req.body;
+
+      if (isNaN(clipId) || isNaN(teamId)) {
+        return res.status(400).json({ error: "Invalid clip ID or team ID" });
+      }
+
+      if (!Array.isArray(s3Keys) || s3Keys.length === 0) {
+        return res.status(400).json({ error: "s3Keys array is required" });
+      }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
+
+      // Validate all keys belong to this team/clip's overlay path
+      const expectedPrefix = `teams/${teamId}/clips/${clipId}/overlays/`;
+      for (const key of s3Keys) {
+        if (!key.startsWith(expectedPrefix)) {
+          return res.status(403).json({ error: "Invalid S3 key for this clip" });
+        }
+      }
+
+      const urlMap = await s3Service.getMultiplePresignedUrls(s3Keys);
+
+      return res.status(200).json({ urls: urlMap });
+    } catch (error) {
+      console.error("Get overlay view URLs error:", error);
+      Sentry.captureException(error);
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to get overlay URLs",
+      });
+    }
+  }
 }
 
 export const clipManagerController = new ClipManagerController();
