@@ -1315,6 +1315,20 @@ router.post(
   clipManagerController.getMusicUploadUrl.bind(clipManagerController)
 );
 
+router.post(
+  "/teams/:teamId/clips/:clipId/overlay-upload",
+  requireAuth,
+  requireSeatAccess,
+  clipManagerController.getOverlayUploadUrl.bind(clipManagerController)
+);
+
+router.post(
+  "/teams/:teamId/clips/:clipId/overlay-urls",
+  requireAuth,
+  requireSeatAccess,
+  clipManagerController.getOverlayViewUrls.bind(clipManagerController)
+);
+
 /**
  * @openapi
  * /clip-video/teams/{teamId}/clips/{clipId}/save:

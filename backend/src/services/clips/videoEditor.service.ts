@@ -1493,3 +1493,113 @@ export const processSegments = async (
 
   return { outputPath, tempFiles };
 };
+
+// =============================================================================
+// MEDIA OVERLAY: Composite images/videos on top of the main video
+// =============================================================================
+
+export interface MediaOverlayItem {
+  type: "image" | "video";
+  localPath: string;
+  startTime: number;
+  endTime: number;
+  x: number; // percentage 0-100
+  y: number;
+  scale: number;
+  opacity: number;
+  naturalWidth: number;
+  naturalHeight: number;
+}
+
+/**
+ * Apply media overlays (images/videos) on top of a video.
+ * Uses FFmpeg complexFilter with overlay + enable for time-gating.
+ * Same pattern as addPreviewWatermark but with user-specified positioning.
+ */
+export const applyMediaOverlays = async (
+  inputPath: string,
+  outputPath: string,
+  overlays: MediaOverlayItem[]
+): Promise<string> => {
+  console.log(`[OVERLAY] Applying ${overlays.length} overlay(s): ${inputPath} -> ${outputPath}`);
+
+  if (!fs.existsSync(inputPath)) {
+    throw new Error(`[OVERLAY] Input file does not exist: ${inputPath}`);
+  }
+
+  if (overlays.length === 0) {
+    fs.copyFileSync(inputPath, outputPath);
+    return outputPath;
+  }
+
+  // Get video metadata for calculating pixel positions
+  const metadata = await getVideoMetadata(inputPath);
+  const { width: videoWidth, height: videoHeight } = metadata;
+
+  // Build FFmpeg command with inputs and complex filter
+  const inputs: string[] = ["-i", inputPath];
+  const filterParts: string[] = [];
+
+  for (let i = 0; i < overlays.length; i++) {
+    const overlay = overlays[i];
+
+    if (!fs.existsSync(overlay.localPath)) {
+      console.warn(`[OVERLAY] Overlay file missing, skipping: ${overlay.localPath}`);
+      continue;
+    }
+
+    inputs.push("-i", overlay.localPath);
+    const inputIdx = i + 1; // 0 is the main video
+
+    // Calculate scaled overlay dimensions
+    const scaledWidth = Math.round(overlay.naturalWidth * overlay.scale);
+    const scaledHeight = Math.round(overlay.naturalHeight * overlay.scale);
+
+    // Clamp overlay size to video dimensions
+    const finalWidth = Math.min(scaledWidth, videoWidth);
+    const finalHeight = Math.min(scaledHeight, videoHeight);
+
+    // Position: convert percentage to pixel, center the overlay
+    const xPixel = Math.round((overlay.x / 100) * videoWidth - finalWidth / 2);
+    const yPixel = Math.round((overlay.y / 100) * videoHeight - finalHeight / 2);
+
+    // Input label for this overlay
+    const prevLabel = i === 0 ? "[0:v]" : `[v${i}]`;
+    const outLabel = i === overlays.length - 1 ? "[vout]" : `[v${i + 1}]`;
+
+    // Scale + set opacity for this overlay input
+    const overlayLabel = `[ov${i}]`;
+    filterParts.push(
+      `[${inputIdx}:v]scale=${finalWidth}:${finalHeight},format=rgba,colorchannelmixer=aa=${overlay.opacity}${overlayLabel}`
+    );
+
+    // Apply overlay with time-gating using enable
+    filterParts.push(
+      `${prevLabel}${overlayLabel}overlay=${xPixel}:${yPixel}:enable='between(t,${overlay.startTime},${overlay.endTime})'${outLabel}`
+    );
+  }
+
+  if (filterParts.length === 0) {
+    // All overlays were missing, just copy
+    fs.copyFileSync(inputPath, outputPath);
+    return outputPath;
+  }
+
+  const filterComplex = filterParts.join(";");
+  console.log(`[OVERLAY] Filter: ${filterComplex}`);
+
+  return new Promise<string>((resolve, reject) => {
+    const { execSync } = require("child_process");
+    const inputArgs = inputs.join(" ");
+    const cmd = `ffmpeg -y ${inputArgs} -filter_complex "${filterComplex}" -map "[vout]" -map "0:a?" -c:v libx264 -preset fast -crf 23 ${MOBILE_VIDEO_SETTINGS.join(" ")} -c:a aac -b:a 128k -ar 48000 -movflags +faststart "${outputPath}"`;
+
+    try {
+      execSync(cmd, { stdio: "pipe", maxBuffer: 100 * 1024 * 1024 });
+      console.log(`[OVERLAY] Success: ${outputPath}`);
+      resolve(outputPath);
+    } catch (err) {
+      console.error(`[OVERLAY] Failed:`, (err as Error).message);
+      reject(err);
+    }
+  });
+};

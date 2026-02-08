@@ -4,7 +4,7 @@ import { atom } from "jotai";
 import { CaptionEntry, Clip } from "@/api/clips";
 
 // Editor tool types
-export type EditorTool = "trim" | "crop" | "speed" | "audio" | "captions" | "heading";
+export type EditorTool = "trim" | "crop" | "speed" | "audio" | "captions" | "heading" | "overlay";
 
 // Aspect ratio types
 export type AspectRatio = "9:16" | "16:9" | "1:1" | "4:5" | "custom";
@@ -55,6 +55,43 @@ export interface HeadingState {
   y: number;
   fontSize: number;
 }
+
+// Media overlay state
+export interface MediaOverlay {
+  id: string;
+  type: "image" | "video";
+  s3Key: string;
+  fileName: string;
+  url: string; // Blob URL for preview
+  startTime: number;
+  endTime: number;
+  x: number; // Position as percentage (0-100)
+  y: number;
+  scale: number; // 0.1-2.0
+  opacity: number; // 0-1
+  naturalWidth: number;
+  naturalHeight: number;
+}
+
+// Media overlay config for API submission (no blob URLs)
+export interface MediaOverlayConfig {
+  id: string;
+  type: "image" | "video";
+  s3Key: string;
+  fileName: string;
+  startTime: number;
+  endTime: number;
+  x: number;
+  y: number;
+  scale: number;
+  opacity: number;
+  naturalWidth: number;
+  naturalHeight: number;
+}
+
+// Helper to generate unique overlay IDs
+export const generateOverlayId = (): string =>
+  `overlay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
 // Captions state
 export interface CaptionsState {
@@ -113,6 +150,7 @@ export interface VideoEditConfig {
   captions?: CaptionsState;
   heading?: HeadingState;
   segments?: SegmentConfig[]; // New: per-segment editing
+  overlays?: MediaOverlayConfig[];
 }
 
 // =============================================================================
@@ -164,6 +202,16 @@ export const captionFontAtom = atom<string>("Luckiest Guy");
 
 // Heading
 export const headingStateAtom = atom<HeadingState | null>(null);
+
+// Media Overlays
+export const mediaOverlaysAtom = atom<MediaOverlay[]>([]);
+export const selectedOverlayIdAtom = atom<string | null>(null);
+export const selectedOverlayAtom = atom((get) => {
+  const overlays = get(mediaOverlaysAtom);
+  const selectedId = get(selectedOverlayIdAtom);
+  if (!selectedId) return null;
+  return overlays.find((o) => o.id === selectedId) || null;
+});
 
 // =============================================================================
 // Segment Atoms
@@ -575,6 +623,16 @@ export const editConfigAtom = atom<VideoEditConfig>((get) => {
     config.heading = heading;
   }
 
+  // Include overlays if any exist
+  const overlays = get(mediaOverlaysAtom);
+  if (overlays.length > 0) {
+    config.overlays = overlays
+      .filter((o) => o.s3Key) // Only include uploaded overlays
+      .map(({ id, type, s3Key, fileName, startTime, endTime, x, y, scale, opacity, naturalWidth, naturalHeight }) => ({
+        id, type, s3Key, fileName, startTime, endTime, x, y, scale, opacity, naturalWidth, naturalHeight,
+      }));
+  }
+
   return config;
 });
 
@@ -592,8 +650,9 @@ export const hasEditsAtom = atom((get) => {
   const hasSpeed = config.speed !== undefined;
   const hasAudio = config.audio !== undefined;
   const hasHeading = config.heading !== undefined;
+  const hasOverlays = config.overlays !== undefined && config.overlays.length > 0;
 
-  return hasTrim || hasCrop || hasSpeed || hasAudio || hasHeading;
+  return hasTrim || hasCrop || hasSpeed || hasAudio || hasHeading || hasOverlays;
 });
 
 // =============================================================================

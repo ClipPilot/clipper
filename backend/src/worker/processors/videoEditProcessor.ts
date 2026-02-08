@@ -15,6 +15,8 @@ import {
   mixBackgroundMusic,
   muteAudio,
   processSegments,
+  applyMediaOverlays,
+  MediaOverlayItem,
 } from "../../services/clips/videoEditor.service";
 import { ensureOutputDir } from "../../utils/fileUtils";
 
@@ -25,7 +27,7 @@ import { ensureOutputDir } from "../../utils/fileUtils";
  */
 export async function processVideoEditJob(job: VideoEditJob): Promise<void> {
   const { clipId, teamId, editConfig } = job;
-  const { segments, trim, crop, speed, audio, captions, heading } = editConfig;
+  const { segments, trim, crop, speed, audio, captions, heading, overlays } = editConfig;
 
   const outDir = ensureOutputDir();
   const timestamp = Date.now();
@@ -38,7 +40,7 @@ export async function processVideoEditJob(job: VideoEditJob): Promise<void> {
 
   try {
     console.log(`[VIDEO-EDIT] Processing clip ${clipId}`);
-    console.log(`[VIDEO-EDIT] Config: segments=${segments?.length || 0}, trim=${!!trim}, speed=${speed}, crop=${crop?.aspectRatio}, audio=${!!audio}, heading=${!!heading}, captions=${captions?.enabled}`);
+    console.log(`[VIDEO-EDIT] Config: segments=${segments?.length || 0}, trim=${!!trim}, speed=${speed}, crop=${crop?.aspectRatio}, audio=${!!audio}, heading=${!!heading}, captions=${captions?.enabled}, overlays=${overlays?.length || 0}`);
 
     // Get clip data
     const clip = await clipManagerService.getClipById(clipId, teamId);
@@ -116,6 +118,42 @@ export async function processVideoEditJob(job: VideoEditJob): Promise<void> {
         currentVideoPath = aspectPath;
         tempFiles.push(aspectPath);
       }
+    }
+
+    // ==========================================================================
+    // Step 3.5: MEDIA OVERLAYS (images/videos composited on top)
+    // After crop so positions are relative to final frame, before text overlays
+    // ==========================================================================
+    if (overlays && overlays.length > 0) {
+      console.log(`[VIDEO-EDIT] Step 3.5: Applying ${overlays.length} media overlay(s)`);
+
+      // Download each overlay from S3
+      const overlayItems: MediaOverlayItem[] = [];
+      for (let i = 0; i < overlays.length; i++) {
+        const overlay = overlays[i];
+        const ext = overlay.fileName.split(".").pop() || "bin";
+        const localOverlayPath = path.join(outDir, `overlay_${i}_${clipId}_${timestamp}.${ext}`);
+        await s3Service.downloadFile(overlay.s3Key, localOverlayPath);
+        tempFiles.push(localOverlayPath);
+
+        overlayItems.push({
+          type: overlay.type,
+          localPath: localOverlayPath,
+          startTime: overlay.startTime,
+          endTime: overlay.endTime,
+          x: overlay.x,
+          y: overlay.y,
+          scale: overlay.scale,
+          opacity: overlay.opacity,
+          naturalWidth: overlay.naturalWidth,
+          naturalHeight: overlay.naturalHeight,
+        });
+      }
+
+      const overlayPath = path.join(outDir, `overlayed_${clipId}_${timestamp}.mp4`);
+      await applyMediaOverlays(currentVideoPath, overlayPath, overlayItems);
+      currentVideoPath = overlayPath;
+      tempFiles.push(overlayPath);
     }
 
     // ==========================================================================

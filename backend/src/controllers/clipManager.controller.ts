@@ -1281,6 +1281,95 @@ export class ClipManagerController {
       });
     }
   }
+  /**
+   * Get presigned URL for media overlay upload
+   */
+  async getOverlayUploadUrl(req: AuthRequest, res: Response) {
+    try {
+      const clipId = parseInt(req.params.clipId);
+      const teamId = parseInt(req.params.teamId);
+      const { fileName, contentType } = req.body;
+
+      if (isNaN(clipId) || isNaN(teamId)) {
+        return res.status(400).json({ error: "Invalid clip ID or team ID" });
+      }
+
+      if (!fileName || !contentType) {
+        return res.status(400).json({ error: "fileName and contentType are required" });
+      }
+
+      // Validate file type (images + videos)
+      const validTypes = [
+        "image/jpeg", "image/png", "image/gif", "image/webp",
+        "video/mp4", "video/quicktime", "video/webm",
+      ];
+      if (!validTypes.includes(contentType)) {
+        return res.status(400).json({ error: "Invalid file type. Use JPEG, PNG, GIF, WebP, MP4, MOV, or WebM" });
+      }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
+
+      const clip = await clipManagerService.getClipById(clipId, teamId);
+      if (!clip.saved) {
+        return res.status(403).json({ error: "Cannot add overlays to unsaved clips" });
+      }
+
+      // Generate S3 key for overlay file
+      const timestamp = Date.now();
+      const extension = fileName.split(".").pop() || "bin";
+      const s3Key = `teams/${teamId}/clips/${clipId}/overlays/${timestamp}.${extension}`;
+
+      const uploadUrl = await s3Service.getPresignedUploadUrlForKey(s3Key, contentType);
+
+      return res.status(200).json({ uploadUrl, s3Key });
+    } catch (error) {
+      console.error("Get overlay upload URL error:", error);
+      Sentry.captureException(error);
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to get upload URL",
+      });
+    }
+  }
+  /**
+   * Get presigned view URLs for saved overlay S3 keys
+   */
+  async getOverlayViewUrls(req: AuthRequest, res: Response) {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      const clipId = parseInt(req.params.clipId);
+      const { s3Keys } = req.body;
+
+      if (isNaN(clipId) || isNaN(teamId)) {
+        return res.status(400).json({ error: "Invalid clip ID or team ID" });
+      }
+
+      if (!Array.isArray(s3Keys) || s3Keys.length === 0) {
+        return res.status(400).json({ error: "s3Keys array is required" });
+      }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
+
+      // Validate all keys belong to this team/clip's overlay path
+      const expectedPrefix = `teams/${teamId}/clips/${clipId}/overlays/`;
+      for (const key of s3Keys) {
+        if (!key.startsWith(expectedPrefix)) {
+          return res.status(403).json({ error: "Invalid S3 key for this clip" });
+        }
+      }
+
+      const urlMap = await s3Service.getMultiplePresignedUrls(s3Keys);
+
+      return res.status(200).json({ urls: urlMap });
+    } catch (error) {
+      console.error("Get overlay view URLs error:", error);
+      Sentry.captureException(error);
+      return res.status(500).json({
+        error: error instanceof Error ? error.message : "Failed to get overlay URLs",
+      });
+    }
+  }
 }
 
 export const clipManagerController = new ClipManagerController();

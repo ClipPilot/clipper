@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useRef, useEffect, useState } from "react";
-import { useAtomValue } from "jotai";
+import React, { useRef, useEffect, useState, useCallback } from "react";
+import { useAtomValue, useSetAtom } from "jotai";
 import { Icon } from "@iconify/react";
 import {
   captionsEnabledAtom,
@@ -16,6 +16,8 @@ import {
   trimStateAtom,
   videoDurationAtom,
   activeSegmentsAtom,
+  mediaOverlaysAtom,
+  selectedOverlayIdAtom,
 } from "@/store/videoEditor";
 import { CAPTION_FONTS, HEADING_FONTS } from "@/constants/overlayStyles";
 import { CaptionEntry } from "@/api/clips";
@@ -45,6 +47,12 @@ export function EditorVideoPreview({
   const bgMusicRef = useRef<HTMLAudioElement | null>(null);
   const [containerHeight, setContainerHeight] = useState(0);
 
+  // Overlay drag state
+  const setOverlays = useSetAtom(mediaOverlaysAtom);
+  const setSelectedOverlayId = useSetAtom(selectedOverlayIdAtom);
+  const selectedOverlayId = useAtomValue(selectedOverlayIdAtom);
+  const dragRef = useRef<{ overlayId: string; startMouseX: number; startMouseY: number; startX: number; startY: number } | null>(null);
+
   // Atom values
   const captionsEnabled = useAtomValue(captionsEnabledAtom);
   const captionsData = useAtomValue(captionsDataAtom);
@@ -57,6 +65,7 @@ export function EditorVideoPreview({
   const trimState = useAtomValue(trimStateAtom);
   const videoDuration = useAtomValue(videoDurationAtom);
   const activeSegments = useAtomValue(activeSegmentsAtom);
+  const mediaOverlays = useAtomValue(mediaOverlaysAtom);
 
   // Get current segment based on playhead position
   const currentSegment = React.useMemo(() => {
@@ -186,12 +195,57 @@ export function EditorVideoPreview({
     return {};
   };
 
+  // Overlay drag handlers
+  const handleOverlayMouseDown = useCallback(
+    (e: React.MouseEvent, overlayId: string, currentX: number, currentY: number) => {
+      e.stopPropagation();
+      e.preventDefault();
+      if (selectedOverlayId !== overlayId) {
+        // First click selects, doesn't start drag
+        setSelectedOverlayId(overlayId);
+        return;
+      }
+      // Already selected — start drag
+      dragRef.current = {
+        overlayId,
+        startMouseX: e.clientX,
+        startMouseY: e.clientY,
+        startX: currentX,
+        startY: currentY,
+      };
+    },
+    [selectedOverlayId, setSelectedOverlayId]
+  );
+
+  const handleContainerMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (!dragRef.current || !containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const deltaXPercent = ((e.clientX - dragRef.current.startMouseX) / rect.width) * 100;
+      const deltaYPercent = ((e.clientY - dragRef.current.startMouseY) / rect.height) * 100;
+      const newX = Math.max(0, Math.min(100, dragRef.current.startX + deltaXPercent));
+      const newY = Math.max(0, Math.min(100, dragRef.current.startY + deltaYPercent));
+      const id = dragRef.current.overlayId;
+      setOverlays((prev) =>
+        prev.map((o) => (o.id === id ? { ...o, x: newX, y: newY } : o))
+      );
+    },
+    [setOverlays]
+  );
+
+  const handleContainerMouseUp = useCallback(() => {
+    dragRef.current = null;
+  }, []);
+
   return (
     <div className="bg-surface-base border border-border-base rounded-xl p-4">
       <div
         ref={containerRef}
         className="relative rounded-lg overflow-hidden bg-black aspect-[9/16] max-h-[65vh] mx-auto"
         style={getCropPreviewStyle()}
+        onMouseMove={handleContainerMouseMove}
+        onMouseUp={handleContainerMouseUp}
+        onMouseLeave={handleContainerMouseUp}
       >
         {videoUrl ? (
           <>
@@ -229,6 +283,53 @@ export function EditorVideoPreview({
               </div>
             </button>
 
+            {/* Media Overlays Preview */}
+            {containerHeight > 0 && mediaOverlays.map((overlay) => {
+              // Time-gate: only show if current time is within overlay range
+              if (currentTime < overlay.startTime || currentTime > overlay.endTime) return null;
+
+              const scaledWidth = overlay.naturalWidth * overlay.scale * scale;
+              const scaledHeight = overlay.naturalHeight * overlay.scale * scale;
+
+              const isSelected = selectedOverlayId === overlay.id;
+
+              return (
+                <div
+                  key={overlay.id}
+                  className={`absolute pointer-events-auto ${isSelected ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}`}
+                  style={{
+                    left: `${overlay.x}%`,
+                    top: `${overlay.y}%`,
+                    transform: "translate(-50%, -50%)",
+                    width: scaledWidth,
+                    height: scaledHeight,
+                    opacity: overlay.opacity,
+                    outline: isSelected ? "2px solid rgba(139, 92, 246, 0.8)" : "none",
+                    outlineOffset: "2px",
+                    zIndex: isSelected ? 10 : 1,
+                  }}
+                  onMouseDown={(e) => handleOverlayMouseDown(e, overlay.id, overlay.x, overlay.y)}
+                >
+                  {overlay.type === "image" ? (
+                    <img
+                      src={overlay.url}
+                      alt={overlay.fileName}
+                      className="w-full h-full object-contain"
+                      draggable={false}
+                    />
+                  ) : (
+                    <video
+                      src={overlay.url}
+                      className="w-full h-full object-contain"
+                      muted
+                      playsInline
+                      autoPlay={isPlaying}
+                    />
+                  )}
+                </div>
+              );
+            })}
+
             {/* Captions Preview */}
             {captionsEnabled && captionsData.length > 0 && containerHeight > 0 && (() => {
               const activeCaption = captionsData.find((c) => isActiveCaption(c));
@@ -245,15 +346,14 @@ export function EditorVideoPreview({
                   <p
                     style={{
                       fontFamily: `var(--font-${getFontId(captionFont, CAPTION_FONTS)}), sans-serif`,
-                      fontSize: `${Math.round(120 * scale)}px`,
+                      fontSize: `${Math.round(90 * scale)}px`,
                       fontWeight: 700,
                       color: "#FFFFFF",
                       textAlign: "center",
                       lineHeight: 1.2,
                       letterSpacing: `${Math.round(2 * scale)}px`,
-                      WebkitTextStroke: `${Math.max(1, Math.round(6 * scale))}px black`,
+                      WebkitTextStroke: `${Math.max(1, Math.round(4 * scale))}px black`,
                       paintOrder: "stroke fill",
-                      textShadow: `${Math.round(2 * scale)}px ${Math.round(2 * scale)}px ${Math.round(4 * scale)}px rgba(0,0,0,0.5)`,
                       maxWidth: "100%",
                       wordWrap: "break-word",
                     }}

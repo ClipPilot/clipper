@@ -187,6 +187,21 @@ export interface VideoEditJob extends BaseJob {
       y: number;
       fontSize: number;
     };
+    // Media overlays (images/videos composited on top)
+    overlays?: Array<{
+      id: string;
+      type: "image" | "video";
+      s3Key: string;
+      fileName: string;
+      startTime: number;
+      endTime: number;
+      x: number; // Position as percentage (0-100)
+      y: number;
+      scale: number; // 0.1-2.0
+      opacity: number; // 0-1
+      naturalWidth: number;
+      naturalHeight: number;
+    }>;
   };
 }
 

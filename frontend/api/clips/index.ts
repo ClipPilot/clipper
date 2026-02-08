@@ -779,6 +779,20 @@ class ClipsAPI {
         y: number;
         fontSize: number;
       };
+      overlays?: Array<{
+        id: string;
+        type: "image" | "video";
+        s3Key: string;
+        fileName: string;
+        startTime: number;
+        endTime: number;
+        x: number;
+        y: number;
+        scale: number;
+        opacity: number;
+        naturalWidth: number;
+        naturalHeight: number;
+      }>;
     }
   ): Promise<{ message: string; jobId: string }> {
     const response = await apiFetch(
@@ -852,6 +866,87 @@ class ClipsAPI {
       xhr.setRequestHeader("Content-Type", file.type);
       xhr.send(file);
     });
+  }
+
+  // Media Overlay Upload
+  async getOverlayUploadUrl(
+    teamId: number,
+    clipId: number,
+    fileName: string,
+    contentType: string
+  ): Promise<{ uploadUrl: string; s3Key: string }> {
+    const response = await apiFetch(
+      `${API_URL}/clip-video/teams/${teamId}/clips/${clipId}/overlay-upload`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileName, contentType }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to get overlay upload URL");
+    }
+
+    return response.json();
+  }
+
+  async uploadOverlayToS3(
+    uploadUrl: string,
+    file: File,
+    onProgress?: (progress: number) => void
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+
+      xhr.upload.addEventListener("progress", (event) => {
+        if (event.lengthComputable && onProgress) {
+          const progress = Math.round((event.loaded / event.total) * 100);
+          onProgress(progress);
+        }
+      });
+
+      xhr.addEventListener("load", () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve();
+        } else {
+          reject(new Error(`Upload failed with status ${xhr.status}`));
+        }
+      });
+
+      xhr.addEventListener("error", () => {
+        reject(new Error("Upload failed"));
+      });
+
+      xhr.open("PUT", uploadUrl);
+      xhr.setRequestHeader("Content-Type", file.type);
+      xhr.send(file);
+    });
+  }
+
+  // Get presigned view URLs for saved overlay S3 keys
+  async getOverlayViewUrls(
+    teamId: number,
+    clipId: number,
+    s3Keys: string[]
+  ): Promise<Record<string, string>> {
+    const response = await apiFetch(
+      `${API_URL}/clip-video/teams/${teamId}/clips/${clipId}/overlay-urls`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ s3Keys }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to get overlay URLs");
+    }
+
+    const data = await response.json();
+    return data.urls;
   }
 }
 

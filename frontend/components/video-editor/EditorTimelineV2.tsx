@@ -26,6 +26,9 @@ import {
   generateSegmentId,
   segmentHistoryAtom,
   segmentHistoryIndexAtom,
+  mediaOverlaysAtom,
+  selectedOverlayIdAtom,
+  MediaOverlay,
 } from "@/store/videoEditor";
 
 interface EditorTimelineV2Props {
@@ -43,6 +46,7 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
   const timelineContainerRef = useRef<HTMLDivElement>(null);
   const [isDraggingCursor, setIsDraggingCursor] = useState(false);
   const [containerWidth, setContainerWidth] = useState(0);
+  const [zoomLevel, setZoomLevel] = useState(1); // 1 = fit-to-view
 
   // Atoms
   const duration = useAtomValue(videoDurationAtom);
@@ -69,14 +73,37 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
   const [segmentHistory, setSegmentHistory] = useAtom(segmentHistoryAtom);
   const [segmentHistoryIndex, setSegmentHistoryIndex] = useAtom(segmentHistoryIndexAtom);
 
-  // Deterministic audio bar heights for visualization
-  const audioBarHeights = useMemo(
-    () =>
-      Array.from({ length: 50 }, (_, i) =>
-        20 + Math.abs(Math.sin(i * 0.7)) * 40 + Math.abs(Math.cos(i * 1.3)) * 30
-      ),
-    []
-  );
+  // Overlay atoms
+  const overlays = useAtomValue(mediaOverlaysAtom);
+  const [selectedOverlayId, setSelectedOverlayId] = useAtom(selectedOverlayIdAtom);
+  const setOverlays = useSetAtom(mediaOverlaysAtom);
+
+  // Generate smooth waveform SVG path from deterministic sample points
+  const audioWavePath = useMemo(() => {
+    const points = 80;
+    const heights = Array.from({ length: points }, (_, i) =>
+      0.2 + Math.abs(Math.sin(i * 0.7)) * 0.4 + Math.abs(Math.cos(i * 1.3)) * 0.3
+    );
+    // Build mirrored waveform path (top half + bottom half)
+    const w = 100; // viewBox width percentage
+    const midY = 50;
+    const stepX = w / (points - 1);
+
+    let topPath = `M 0 ${midY}`;
+    let bottomPath = "";
+    for (let i = 0; i < points; i++) {
+      const x = i * stepX;
+      const amp = heights[i] * midY * 0.85;
+      topPath += ` L ${x} ${midY - amp}`;
+    }
+    // Come back along the bottom
+    for (let i = points - 1; i >= 0; i--) {
+      const x = i * stepX;
+      const amp = heights[i] * midY * 0.85;
+      bottomPath += ` L ${x} ${midY + amp}`;
+    }
+    return topPath + bottomPath + " Z";
+  }, []);
 
   // Convert segments to timeline editor format
   const editorData: TimelineRow[] = useMemo(() => {
@@ -101,19 +128,39 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
       movable: false,
     }));
 
-    return [
+    const rows: TimelineRow[] = [
       {
         id: "video-track",
         actions: videoActions,
         rowHeight: 60,
       },
-      {
-        id: "audio-track",
-        actions: audioActions,
-        rowHeight: 36,
-      },
     ];
-  }, [activeSegments, selectedSegmentId]);
+
+    // Add overlay track if overlays exist
+    if (overlays.length > 0) {
+      const overlayActions: TimelineAction[] = overlays.map((overlay) => ({
+        id: overlay.id,
+        start: overlay.startTime,
+        end: overlay.endTime,
+        effectId: "overlay",
+        flexible: true,
+        movable: true,
+      }));
+      rows.push({
+        id: "overlay-track",
+        actions: overlayActions,
+        rowHeight: 36,
+      });
+    }
+
+    rows.push({
+      id: "audio-track",
+      actions: audioActions,
+      rowHeight: 36,
+    });
+
+    return rows;
+  }, [activeSegments, selectedSegmentId, overlays]);
 
   // Define effects
   const effects: Record<string, TimelineEffect> = useMemo(
@@ -125,6 +172,10 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
       audio: {
         id: "audio",
         name: "Audio",
+      },
+      overlay: {
+        id: "overlay",
+        name: "Overlay",
       },
     }),
     []
@@ -188,8 +239,22 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
         const lastEnd = Math.max(...newSegments.map((s) => s.endTime));
         setTrimState({ startTime: firstStart, endTime: lastEnd });
       }
+
+      // Update overlay times if overlay track was modified
+      const overlayTrack = newEditorData.find((row) => row.id === "overlay-track");
+      if (overlayTrack) {
+        setOverlays((prev) =>
+          prev.map((overlay) => {
+            const action = overlayTrack.actions.find((a: any) => a.id === overlay.id);
+            if (action) {
+              return { ...overlay, startTime: action.start, endTime: action.end };
+            }
+            return overlay;
+          })
+        );
+      }
     },
-    [setSegmentsState, segmentsState.selectedSegmentId, setTrimState]
+    [setSegmentsState, segmentsState.selectedSegmentId, setTrimState, setOverlays]
   );
 
   // Handle action click (select segment — ignore audio track)
@@ -200,9 +265,16 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
     ) => {
       if (row.id === "audio-track") return;
       e.stopPropagation();
-      selectSegment(action.id);
+
+      if (row.id === "overlay-track") {
+        setSelectedOverlayId(action.id);
+        selectSegment(null);
+      } else {
+        selectSegment(action.id);
+        setSelectedOverlayId(null);
+      }
     },
-    [selectSegment]
+    [selectSegment, setSelectedOverlayId]
   );
 
   // Handle row click (deselect)
@@ -283,14 +355,34 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
   // Calculate scaleWidth so the full duration fits in the visible area
   // scaleWidth = pixels per 1-second scale unit. startLeft is the left gutter.
   const startLeft = 20;
-  const scaleWidth = useMemo(() => {
+  const baseScaleWidth = useMemo(() => {
     if (!containerWidth || !duration) return 100;
     const availableWidth = containerWidth - startLeft;
-    // Each "scale count" = 1 second, so we need total seconds to fit
     const perSecond = availableWidth / Math.ceil(duration);
-    // Clamp to a minimum so it doesn't get too tiny on very long clips
     return Math.max(perSecond, 30);
   }, [containerWidth, duration]);
+
+  const scaleWidth = baseScaleWidth * zoomLevel;
+
+  // Reduce tick subdivisions when zoomed out to prevent label overlap
+  const scaleSplitCount = useMemo(() => {
+    if (scaleWidth >= 120) return 10;
+    if (scaleWidth >= 60) return 5;
+    if (scaleWidth >= 30) return 2;
+    return 1;
+  }, [scaleWidth]);
+
+  const handleZoomIn = useCallback(() => {
+    setZoomLevel((z) => Math.min(z * 1.5, 10));
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setZoomLevel((z) => Math.max(z / 1.5, 1));
+  }, []);
+
+  const handleZoomReset = useCallback(() => {
+    setZoomLevel(1);
+  }, []);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -338,26 +430,54 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
   // Custom action renderer
   const getActionRender = useCallback(
     (action: TimelineAction, row: TimelineRow) => {
+      // Overlay track renderer
+      if (row.id === "overlay-track") {
+        const overlay = overlays.find((o) => o.id === action.id);
+        const isSelected = action.id === selectedOverlayId;
+        return (
+          <div
+            className={`h-full w-full rounded flex items-center gap-1.5 px-2 ${
+              isSelected
+                ? "bg-purple-500/40 ring-1 ring-purple-400"
+                : "bg-purple-500/20 hover:bg-purple-500/30"
+            }`}
+          >
+            <Icon
+              icon={overlay?.type === "video" ? "solar:videocamera-bold" : "solar:gallery-bold"}
+              className="text-xs text-purple-400 shrink-0"
+            />
+            <span className="text-[10px] text-purple-300 truncate">
+              {overlay?.fileName || "Overlay"}
+            </span>
+          </div>
+        );
+      }
+
       // Audio track renderer
       if (row.id === "audio-track") {
         const isMuted = audioState.originalMuted;
         return (
           <div
-            className={`h-full w-full rounded flex items-center gap-[1px] px-1 ${
-              isMuted ? "bg-surface-elevated/40" : "bg-sky-500/15"
+            className={`h-full w-full rounded flex items-center overflow-hidden ${
+              isMuted ? "bg-surface-elevated/40" : "bg-sky-500/10"
             }`}
           >
             <Icon
               icon={isMuted ? "solar:muted-bold" : "solar:music-notes-bold"}
-              className={`text-xs shrink-0 mr-1 ${isMuted ? "text-text-tertiary" : "text-sky-400"}`}
+              className={`text-xs shrink-0 ml-1.5 z-10 ${isMuted ? "text-text-tertiary" : "text-sky-400"}`}
             />
-            {audioBarHeights.map((h, i) => (
-              <div
-                key={i}
-                className={`flex-1 min-w-[1px] rounded-sm ${isMuted ? "bg-text-tertiary/30" : "bg-sky-400/50"}`}
-                style={{ height: `${h}%` }}
+            <svg
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+              className="flex-1 h-full"
+            >
+              <path
+                d={audioWavePath}
+                fill={isMuted ? "rgba(120,120,120,0.15)" : "rgba(56,189,248,0.35)"}
+                stroke={isMuted ? "rgba(120,120,120,0.2)" : "rgba(56,189,248,0.5)"}
+                strokeWidth="0.5"
               />
-            ))}
+            </svg>
           </div>
         );
       }
@@ -367,25 +487,48 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
       const isSelected = action.id === selectedSegmentId;
       const segment = segmentAction.segmentData;
 
+      // Calculate which thumbnails fall in this segment's range
+      const startIdx = Math.floor((action.start / duration) * thumbnails.length);
+      const endIdx = Math.ceil((action.end / duration) * thumbnails.length);
+      const segmentThumbs = thumbnails.slice(startIdx, Math.max(endIdx, startIdx + 1));
+
       return (
         <div
-          className={`h-full w-full relative overflow-hidden rounded ${
+          className={`h-full w-full relative overflow-hidden rounded-md ${
             isSelected
-              ? "ring-2 ring-accent-400 bg-accent-400/30"
-              : "bg-surface-elevated/80 hover:bg-surface-hover"
+              ? "ring-2 ring-accent-400 shadow-[0_0_8px_rgba(79,71,230,0.4)]"
+              : "ring-1 ring-white/10 hover:ring-white/25"
           }`}
+          style={isSelected ? { background: "linear-gradient(to bottom, rgba(79,71,230,0.15), rgba(79,71,230,0.05))" } : undefined}
         >
-          {/* Thumbnail background */}
-          {thumbnails.length > 0 && (
-            <div
-              className="absolute inset-0 opacity-60"
-              style={{
-                backgroundImage: `url(${thumbnails[Math.floor((action.start / duration) * thumbnails.length)] || thumbnails[0]})`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-              }}
-            />
+          {/* Left/right edge handles for selected segment */}
+          {isSelected && (
+            <>
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-accent-400 z-20 rounded-l-md" />
+              <div className="absolute right-0 top-0 bottom-0 w-1 bg-accent-400 z-20 rounded-r-md" />
+            </>
           )}
+
+          {/* Thumbnail filmstrip or loading state */}
+          {isGeneratingThumbnails && thumbnails.length === 0 ? (
+            <div className="absolute inset-0 bg-surface-elevated flex items-center justify-center gap-2">
+              <svg className="animate-spin h-4 w-4 text-text-tertiary" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              <span className="text-[10px] text-text-tertiary">Loading frames...</span>
+            </div>
+          ) : thumbnails.length > 0 ? (
+            <div className="absolute inset-0 flex opacity-70">
+              {segmentThumbs.map((thumb, i) => (
+                <div
+                  key={i}
+                  className="h-full flex-1 min-w-0 bg-cover bg-center"
+                  style={{ backgroundImage: `url(${thumb})` }}
+                />
+              ))}
+            </div>
+          ) : null}
 
           {/* Speed indicator */}
           {segment?.speed !== 1.0 && (
@@ -403,19 +546,33 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
         </div>
       );
     },
-    [selectedSegmentId, thumbnails, duration, audioState.originalMuted, audioBarHeights]
+    [selectedSegmentId, thumbnails, duration, audioState.originalMuted, audioWavePath, overlays, selectedOverlayId, isGeneratingThumbnails]
+  );
+
+  // Format scale label — shorter format when zoomed out to prevent overlap
+  const formatScaleLabel = useCallback(
+    (seconds: number): string => {
+      if (scaleWidth < 60) {
+        // Very compact: just seconds
+        return `${Math.round(seconds)}s`;
+      }
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${mins}:${secs.toString().padStart(2, "0")}`;
+    },
+    [scaleWidth]
   );
 
   // Custom scale renderer
   const getScaleRender = useCallback(
     (scale: number) => {
       return (
-        <span className="text-[10px] text-text-tertiary">
-          {formatTime(scale)}
+        <span className="text-[10px] text-text-tertiary whitespace-nowrap">
+          {formatScaleLabel(scale)}
         </span>
       );
     },
-    []
+    [formatScaleLabel]
   );
 
   return (
@@ -450,7 +607,41 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
             Delete
           </button>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          {/* Zoom controls */}
+          <div className="flex items-center gap-1 border-r border-border-base pr-3">
+            <button
+              onClick={handleZoomOut}
+              disabled={zoomLevel <= 1}
+              className={`p-1.5 rounded-lg transition-colors ${
+                zoomLevel > 1
+                  ? "hover:bg-surface-elevated text-text-primary"
+                  : "text-text-tertiary cursor-not-allowed"
+              }`}
+              title="Zoom out"
+            >
+              <Icon icon="solar:magnifer-zoom-out-bold" className="text-lg" />
+            </button>
+            <button
+              onClick={handleZoomReset}
+              className="px-1.5 py-0.5 rounded text-[10px] text-text-secondary hover:bg-surface-elevated transition-colors font-mono min-w-[38px] text-center"
+              title="Reset zoom"
+            >
+              {Math.round(zoomLevel * 100)}%
+            </button>
+            <button
+              onClick={handleZoomIn}
+              disabled={zoomLevel >= 10}
+              className={`p-1.5 rounded-lg transition-colors ${
+                zoomLevel < 10
+                  ? "hover:bg-surface-elevated text-text-primary"
+                  : "text-text-tertiary cursor-not-allowed"
+              }`}
+              title="Zoom in"
+            >
+              <Icon icon="solar:magnifer-zoom-in-bold" className="text-lg" />
+            </button>
+          </div>
           <button
             onClick={() => undoSegments()}
             disabled={!canUndo}
@@ -479,21 +670,21 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
       </div>
 
       {/* Timeline */}
-      <div ref={timelineContainerRef} className="timeline-container rounded-lg overflow-hidden border border-border-base">
+      <div ref={timelineContainerRef} className="timeline-container rounded-lg overflow-x-auto overflow-y-hidden border border-border-base">
         <Timeline
           ref={timelineRef}
           editorData={editorData}
           effects={effects}
           scale={1}
           scaleWidth={scaleWidth}
-          scaleSplitCount={10}
+          scaleSplitCount={scaleSplitCount}
           minScaleCount={Math.ceil(duration)}
           maxScaleCount={Math.ceil(duration) + 1}
+          autoScroll={zoomLevel > 1}
           startLeft={startLeft}
           rowHeight={60}
           gridSnap={true}
           dragLine={true}
-          autoScroll={true}
           onChange={handleChange}
           onClickAction={handleClickAction}
           onClickRow={handleClickRow}

@@ -10,6 +10,7 @@ import { CropTool } from "./tools/CropTool";
 import { AudioTool } from "./tools/AudioTool";
 import { CaptionsTool } from "./tools/CaptionsTool";
 import { HeadingTool } from "./tools/HeadingTool";
+import { OverlayTool } from "./tools/OverlayTool";
 
 interface ToolTab {
   id: EditorTool;
@@ -24,6 +25,7 @@ const TOOL_TABS: ToolTab[] = [
   { id: "audio", label: "Audio", icon: "solar:volume-loud-bold" },
   { id: "captions", label: "Captions", icon: "solar:subtitles-bold" },
   { id: "heading", label: "Heading", icon: "solar:text-bold" },
+  { id: "overlay", label: "Overlay", icon: "solar:layers-bold" },
 ];
 
 export function EditorToolPanel() {
@@ -43,6 +45,8 @@ export function EditorToolPanel() {
         return <CaptionsTool />;
       case "heading":
         return <HeadingTool />;
+      case "overlay":
+        return <OverlayTool />;
       default:
         return null;
     }

@@ -38,6 +38,16 @@ import {
   EditorTool,
   initializeSegmentsAtom,
   activeSegmentsAtom,
+  speedStateAtom,
+  cropStateAtom,
+  audioStateAtom,
+  segmentsStateAtom,
+  segmentHistoryAtom,
+  segmentHistoryIndexAtom,
+  generateSegmentId,
+  mediaOverlaysAtom,
+  selectedOverlayIdAtom,
+  MediaOverlay,
 } from "@/store/videoEditor";
 import { EditorToolPanel } from "./EditorToolPanel";
 import { EditorTimelineV2 } from "./EditorTimelineV2";
@@ -76,6 +86,18 @@ export function VideoEditor() {
 
   // Heading state
   const setHeadingState = useSetAtom(headingStateAtom);
+
+  // Additional state for restoring saved config
+  const setSpeed = useSetAtom(speedStateAtom);
+  const setCropState = useSetAtom(cropStateAtom);
+  const setAudioState = useSetAtom(audioStateAtom);
+  const setSegmentsState = useSetAtom(segmentsStateAtom);
+  const setSegmentHistory = useSetAtom(segmentHistoryAtom);
+  const setSegmentHistoryIndex = useSetAtom(segmentHistoryIndexAtom);
+
+  // Overlays
+  const setOverlays = useSetAtom(mediaOverlaysAtom);
+  const setSelectedOverlayId = useSetAtom(selectedOverlayIdAtom);
 
   // Thumbnails
   const setThumbnails = useSetAtom(thumbnailsAtom);
@@ -168,8 +190,8 @@ export function VideoEditor() {
         return;
       }
 
-      canvas.width = 80;
-      canvas.height = 45;
+      canvas.width = 320;
+      canvas.height = 180;
 
       const video = document.createElement("video");
       video.src = clip.blankVideoUrl || clip.clipUrl || "";
@@ -189,7 +211,7 @@ export function VideoEditor() {
           await new Promise<void>((resolve) => {
             video.onseeked = () => {
               ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-              newThumbnails.push(canvas.toDataURL("image/jpeg", 0.6));
+              newThumbnails.push(canvas.toDataURL("image/jpeg", 0.8));
               resolve();
             };
           });
@@ -205,17 +227,97 @@ export function VideoEditor() {
     [clip, setThumbnails, setIsGeneratingThumbnails]
   );
 
-  // Handle video metadata loaded
-  const handleLoadedMetadata = useCallback(() => {
-    if (videoRef.current) {
-      const duration = videoRef.current.duration;
-      setVideoDuration(duration);
+  // Handle video metadata loaded — restore saved editor config if available
+  const handleLoadedMetadata = useCallback(async () => {
+    if (!videoRef.current) return;
+
+    const duration = videoRef.current.duration;
+    setVideoDuration(duration);
+
+    const metadata = clip?.clip_metadata as any;
+    const savedConfig = metadata?.editorConfig;
+
+    // Restore trim or default to full video
+    if (savedConfig?.trim) {
+      setTrimState(savedConfig.trim);
+    } else {
       setTrimState({ startTime: 0, endTime: duration });
-      // Initialize segments with a single segment covering the full video
-      initializeSegments(duration);
-      generateThumbnails(duration);
     }
-  }, [setVideoDuration, setTrimState, initializeSegments, generateThumbnails]);
+
+    // Restore segments or initialize single full-video segment
+    if (savedConfig?.segments && savedConfig.segments.length > 0) {
+      const restoredSegments = savedConfig.segments.map((s: any) => ({
+        id: s.id || generateSegmentId(),
+        startTime: s.startTime,
+        endTime: s.endTime,
+        speed: s.speed ?? 1.0,
+      }));
+      setSegmentsState({ segments: restoredSegments, selectedSegmentId: null });
+      setSegmentHistory([restoredSegments]);
+      setSegmentHistoryIndex(0);
+    } else {
+      initializeSegments(duration);
+    }
+
+    // Restore speed, crop, audio from saved config
+    if (savedConfig?.speed) {
+      setSpeed(savedConfig.speed);
+    }
+    if (savedConfig?.crop) {
+      setCropState(savedConfig.crop);
+    }
+    if (savedConfig?.audio) {
+      setAudioState(savedConfig.audio);
+    }
+
+    // Reset overlays and restore from saved config
+    setOverlays([]);
+    setSelectedOverlayId(null);
+    if (savedConfig?.overlays && savedConfig.overlays.length > 0 && selectedTeam?.id) {
+      // Fetch presigned view URLs for saved overlay S3 keys
+      const s3Keys = savedConfig.overlays.map((o: any) => o.s3Key).filter(Boolean);
+      let urlMap: Record<string, string> = {};
+      try {
+        if (s3Keys.length > 0) {
+          urlMap = await clipsAPI.getOverlayViewUrls(selectedTeam.id, clipId, s3Keys);
+        }
+      } catch (err) {
+        console.error("Failed to fetch overlay URLs:", err);
+      }
+
+      const restoredOverlays: MediaOverlay[] = savedConfig.overlays.map((o: any) => ({
+        id: o.id,
+        type: o.type,
+        s3Key: o.s3Key,
+        fileName: o.fileName,
+        url: urlMap[o.s3Key] || "",
+        startTime: o.startTime,
+        endTime: o.endTime,
+        x: o.x,
+        y: o.y,
+        scale: o.scale,
+        opacity: o.opacity,
+        naturalWidth: o.naturalWidth,
+        naturalHeight: o.naturalHeight,
+      }));
+      setOverlays(restoredOverlays);
+    }
+
+    // Restore caption settings from editorConfig (overrides initial parameters)
+    if (savedConfig?.captions) {
+      if (savedConfig.captions.color) setCaptionColor(savedConfig.captions.color);
+      if (savedConfig.captions.font) setCaptionFont(savedConfig.captions.font);
+      if (savedConfig.captions.enabled !== undefined) setCaptionsEnabled(savedConfig.captions.enabled);
+    }
+
+    generateThumbnails(duration);
+  }, [
+    clip, clipId, selectedTeam?.id, setVideoDuration, setTrimState, initializeSegments, generateThumbnails,
+    setSegmentsState, setSegmentHistory, setSegmentHistoryIndex,
+    setSpeed, setCropState, setAudioState,
+    setCaptionColor, setCaptionFont, setCaptionsEnabled,
+    setOverlays, setSelectedOverlayId,
+  ]);
 
   // Helper: check if time is in any active segment
   const isTimeInSegment = useCallback(
