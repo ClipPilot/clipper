@@ -437,7 +437,7 @@ export async function generateVideo(
     const data = result.data as KlingImageToVideoResponse;
 
     if (!data?.video?.url) {
-      throw new Error("No video URL in Kling response");
+      throw new Error("No video URL in generation response");
     }
 
     console.log(`[Kling] Video generated: ${data.video.url}`);
@@ -481,7 +481,7 @@ export async function applyLipsync(
     const data = result.data as KlingLipsyncResponse;
 
     if (!data?.video?.url) {
-      throw new Error("No video URL in Kling lipsync response");
+      throw new Error("No video URL in lipsync response");
     }
 
     console.log(`[Kling] Lipsync complete: ${data.video.url}`);
@@ -611,7 +611,7 @@ export async function generateAvatar(
     const data = result.data as KlingAvatarResponse;
 
     if (!data?.video?.url) {
-      throw new Error("No video URL in Kling Avatar v2 response");
+      throw new Error("No video URL in avatar response");
     }
 
     console.log(`[Kling Avatar v2] Video generated: ${data.video.url}`);
@@ -691,7 +691,7 @@ export async function extendVideo(
     const data = result.data as KlingExtendVideoResponse;
 
     if (!data?.video?.url) {
-      throw new Error("No video URL in Kling O1 extend response");
+      throw new Error("No video URL in video extension response");
     }
 
     console.log(`[Kling O1] Extended video generated: ${data.video.url}`);
@@ -809,7 +809,7 @@ export async function klingProMotion(
   const data = result.data as KlingMotionControlResponse;
 
   if (!data?.video?.url) {
-    throw new Error("No video URL in Kling Motion Control response");
+    throw new Error("No video URL in motion control response");
   }
 
   console.log(`[Kling Pro Motion] Video generated: ${data.video.url}`);

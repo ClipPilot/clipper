@@ -8,6 +8,7 @@ import { tagService } from "../services/tag.service";
 import { userService } from "../services/user.service";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { getTeamUsage } from "../middleware/subscription.middleware";
+import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
 
 async function verifyTeamAccessOrFail(
   req: AuthRequest,
@@ -71,7 +72,7 @@ export class ClipManagerController {
       console.error("Get clips error:", error);
       Sentry.captureException(error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to get clips",
+        error: sanitizeErrorForFrontend(error, "Failed to get clips"),
       });
     }
   }
@@ -233,7 +234,7 @@ export class ClipManagerController {
       console.error("Get clip error:", error);
       Sentry.captureException(error);
       return res.status(404).json({
-        error: error instanceof Error ? error.message : "Clip not found",
+        error: sanitizeErrorForFrontend(error, "Clip not found"),
       });
     }
   }
@@ -331,7 +332,7 @@ export class ClipManagerController {
       console.error("Update clip error:", error);
       Sentry.captureException(error);
       return res.status(404).json({
-        error: error instanceof Error ? error.message : "Failed to update clip",
+        error: sanitizeErrorForFrontend(error, "Failed to update clip"),
       });
     }
   }
@@ -378,7 +379,7 @@ export class ClipManagerController {
       console.error("Get clips by folder error:", error);
       Sentry.captureException(error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to get clips",
+        error: sanitizeErrorForFrontend(error, "Failed to get clips"),
       });
     }
   }
@@ -410,7 +411,7 @@ export class ClipManagerController {
       console.error("Delete clip error:", error);
       Sentry.captureException(error);
       return res.status(404).json({
-        error: error instanceof Error ? error.message : "Failed to delete clip",
+        error: sanitizeErrorForFrontend(error, "Failed to delete clip"),
       });
     }
   }
@@ -687,7 +688,7 @@ export class ClipManagerController {
       console.error("Save clip error:", error);
       Sentry.captureException(error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to save clip",
+        error: sanitizeErrorForFrontend(error, "Failed to save clip"),
       });
     }
   }
@@ -806,7 +807,7 @@ export class ClipManagerController {
       Sentry.captureException(error);
       return res.status(500).json({
         error:
-          error instanceof Error ? error.message : "Failed to get saved clips",
+          sanitizeErrorForFrontend(error, "Failed to get saved clips"),
       });
     }
   }
@@ -842,7 +843,7 @@ export class ClipManagerController {
       console.error("Reject clip error:", error);
       Sentry.captureException(error);
       return res.status(404).json({
-        error: error instanceof Error ? error.message : "Failed to reject clip",
+        error: sanitizeErrorForFrontend(error, "Failed to reject clip"),
       });
     }
   }
@@ -1098,7 +1099,7 @@ export class ClipManagerController {
       console.error("Search clips error:", error);
       Sentry.captureException(error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to search clips",
+        error: sanitizeErrorForFrontend(error, "Failed to search clips"),
       });
     }
   }
@@ -1327,7 +1328,7 @@ export class ClipManagerController {
       console.error("Get overlay upload URL error:", error);
       Sentry.captureException(error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to get upload URL",
+        error: sanitizeErrorForFrontend(error, "Failed to get upload URL"),
       });
     }
   }
@@ -1366,7 +1367,7 @@ export class ClipManagerController {
       console.error("Get overlay view URLs error:", error);
       Sentry.captureException(error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to get overlay URLs",
+        error: sanitizeErrorForFrontend(error, "Failed to get overlay URLs"),
       });
     }
   }

@@ -69,7 +69,6 @@ export function SceneBuilderStep({
 
   useEffect(() => {
     if (freshStart) {
-      console.log("[SceneBuilder] Fresh start - skipping saved images");
       setLoading(false);
       return;
     }
@@ -79,7 +78,6 @@ export function SceneBuilderStep({
         prevCharacterIdRef.current !== null &&
         prevCharacterIdRef.current !== characterId
       ) {
-        console.log("[SceneBuilder] Character changed, clearing images");
         setSceneImages({});
         setLoading(false);
         prevCharacterIdRef.current = characterId;
@@ -146,7 +144,6 @@ export function SceneBuilderStep({
     if (anyGenerating) return;
 
     hasTriggeredAutoGenerate.current = true;
-    console.log("[SceneBuilder] Auto-generating all scene images");
     handleGenerateAll();
   }, [loading, scenes, sceneImages, generatingAll]);
 

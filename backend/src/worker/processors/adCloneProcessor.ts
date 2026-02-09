@@ -6,6 +6,7 @@ import {
 } from "../../services/sqs.service";
 import { adCloneService } from "../../services/ad-clone/adclone.service";
 import { notifyAdCloneJobUpdate } from "../notify";
+import { sanitizeErrorForFrontend } from "../../utils/errorSanitizer";
 
 export async function processAdCloneAnalyzeJob(
   job: AdCloneAnalyzeJob
@@ -37,7 +38,7 @@ export async function processAdCloneAnalyzeJob(
     );
   } catch (error) {
     const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
+      sanitizeErrorForFrontend(error, "Operation failed. Please try again.");
 
     console.error(`[AD_CLONE_ANALYZE] Error analyzing project ${projectId}:`, error);
     Sentry.captureException(error);
@@ -89,7 +90,7 @@ export async function processAdCloneGenerateScriptJob(
     );
   } catch (error) {
     const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
+      sanitizeErrorForFrontend(error, "Operation failed. Please try again.");
 
     console.error(
       `[AD_CLONE_SCRIPT] Error generating script for project ${projectId}:`,
@@ -164,7 +165,7 @@ export async function processAdCloneAnalyzeAndScriptJob(
     );
   } catch (error) {
     const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
+      sanitizeErrorForFrontend(error, "Operation failed. Please try again.");
 
     console.error(
       `[AD_CLONE_COMBINED] Error in combined process for project ${projectId}:`,

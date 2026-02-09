@@ -227,7 +227,7 @@ class SceneBuilderAPI {
   }
 
   /**
-   * Get presigned URL for uploading supporting images
+   * Get secure upload URL for uploading supporting images
    */
   async getUploadUrl(
     teamId: number,

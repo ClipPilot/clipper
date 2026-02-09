@@ -93,7 +93,7 @@ export async function generateImage(
   )) as { data: FalImageResponse };
 
   if (!result.data?.images?.[0]?.url) {
-    throw new Error("FAL AI did not return an image");
+    throw new Error("Image generation did not return an image");
   }
 
   return {
@@ -150,7 +150,7 @@ export async function generateImageWithReferences(
   )) as { data: FalImageResponse };
 
   if (!result.data?.images?.[0]?.url) {
-    throw new Error("FAL AI did not return an image");
+    throw new Error("Image generation did not return an image");
   }
 
   return {

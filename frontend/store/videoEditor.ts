@@ -287,7 +287,7 @@ export const redoSegmentsAtom = atom(null, (get, set) => {
 export const splitSegmentAtom = atom(null, (get, set, splitTime: number) => {
   const state = get(segmentsStateAtom);
   const segmentToSplit = state.segments.find(
-    (s) => splitTime > s.startTime + 0.5 && splitTime < s.endTime - 0.5
+    (s) => splitTime > s.startTime + 0.1 && splitTime < s.endTime - 0.1
   );
 
   if (!segmentToSplit) return;
@@ -397,8 +397,8 @@ export const trimSegmentAtom = atom(
     const newStart = startTime !== undefined ? startTime : segment.startTime;
     const newEnd = endTime !== undefined ? endTime : segment.endTime;
 
-    // Ensure minimum duration of 0.5s
-    if (newEnd - newStart < 0.5) return;
+    // Ensure minimum duration of 0.1s
+    if (newEnd - newStart < 0.1) return;
 
     set(segmentsStateAtom, {
       ...state,

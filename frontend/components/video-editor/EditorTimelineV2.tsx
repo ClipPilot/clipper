@@ -191,7 +191,7 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
 
   // Check if split is possible at current time
   const canSplit = activeSegments.some(
-    (s) => currentTime > s.startTime + 0.5 && currentTime < s.endTime - 0.5
+    (s) => currentTime > s.startTime + 0.1 && currentTime < s.endTime - 0.1
   );
 
   // Handle split at playhead

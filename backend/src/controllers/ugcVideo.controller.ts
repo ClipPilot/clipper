@@ -17,6 +17,7 @@ import { eq, and, desc, count, sql } from "drizzle-orm";
 import { transcribeVideoService } from "../services/clips/transcription.service";
 import { convertWordsToCaptionEntries, CaptionEntry } from "../services/clips/captions.service";
 import { getTeamUsage } from "../middleware/subscription.middleware";
+import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
 
 interface AuthRequest extends Request {
   user?: { id: string; email: string; dbUserId: number };
@@ -200,7 +201,7 @@ export class UGCVideoController {
     } catch (error) {
       console.error("[UGC_VIDEO] List jobs error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to list video jobs",
+        error: sanitizeErrorForFrontend(error, "Failed to list video jobs"),
       });
     }
   }
@@ -254,9 +255,11 @@ export class UGCVideoController {
         });
       }
 
-      // Calculate credit cost based on scene count (2 credits per scene)
+      // Calculate credit cost (2 credits per original scene, merged a-rolls count individually)
       const CREDIT_PER_SCENE = 2;
-      const sceneCount = selectedScript.scenes.length;
+      const sceneCount = selectedScript.scenes.reduce((count: number, scene: any) => {
+        return count + (scene.mergedSceneTypes?.length || 1);
+      }, 0);
       const creditCost = sceneCount * CREDIT_PER_SCENE;
 
       const usage = await getTeamUsage(teamId);
@@ -363,7 +366,7 @@ export class UGCVideoController {
       console.error("[UGC_VIDEO] Generate video error:", error);
       return res.status(500).json({
         error:
-          error instanceof Error ? error.message : "Failed to queue video generation",
+          sanitizeErrorForFrontend(error, "Failed to queue video generation"),
       });
     }
   }
@@ -425,7 +428,7 @@ export class UGCVideoController {
     } catch (error) {
       console.error("[UGC_VIDEO] Get status error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to get job status",
+        error: sanitizeErrorForFrontend(error, "Failed to get job status"),
       });
     }
   }
@@ -474,7 +477,7 @@ export class UGCVideoController {
     } catch (error) {
       console.error("[UGC_VIDEO] Get script video error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to get video",
+        error: sanitizeErrorForFrontend(error, "Failed to get video"),
       });
     }
   }
@@ -604,7 +607,7 @@ export class UGCVideoController {
       console.error("[UGC_VIDEO] Finalize video error:", error);
       return res.status(500).json({
         error:
-          error instanceof Error ? error.message : "Failed to finalize video",
+          sanitizeErrorForFrontend(error, "Failed to finalize video"),
       });
     }
   }

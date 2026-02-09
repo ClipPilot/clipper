@@ -14,6 +14,7 @@ import { notifyClipsRefresh } from "../notify";
 import { emailNotiService } from "../../services/emailNoti.service";
 import { userService } from "../../services/user.service";
 import { ensureOutputDir } from "../../utils/fileUtils";
+import { sanitizeErrorForFrontend } from "../../utils/errorSanitizer";
 
 export async function processBatchClipVideoJob(
   job: BatchClipVideoJob
@@ -226,7 +227,7 @@ export async function processBatchClipVideoJob(
   } catch (error) {
     console.error("Error processing batch clips:", error);
 
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorMessage = sanitizeErrorForFrontend(error, "Operation failed. Please try again.");
     const alreadyHandled = errorMessage.startsWith("All") && errorMessage.includes("clips failed");
 
     if (!alreadyHandled) {

@@ -10,6 +10,7 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 import ffmpeg from "fluent-ffmpeg";
+import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
 
 // Mobile-compatible H.264 encoding settings for downloads
 const MOBILE_DOWNLOAD_SETTINGS = [
@@ -88,7 +89,7 @@ export const trimVideo = async (req: AuthRequest, res: Response) => {
     console.error("[FACE-SWAP] Trim video error:", error);
     Sentry.captureException(error);
     return res.status(500).json({
-      error: error instanceof Error ? error.message : "Failed to trim video",
+      error: sanitizeErrorForFrontend(error, "Failed to trim video"),
     });
   } finally {
     // Cleanup uploaded file
@@ -243,7 +244,7 @@ export const downloadFixed = async (req: AuthRequest, res: Response) => {
     if (fs.existsSync(tempInputPath)) fs.unlinkSync(tempInputPath);
     if (fs.existsSync(tempOutputPath)) fs.unlinkSync(tempOutputPath);
     return res.status(500).json({
-      error: error instanceof Error ? error.message : "Failed to process video",
+      error: sanitizeErrorForFrontend(error, "Failed to process video"),
     });
   }
 };
@@ -371,7 +372,7 @@ export const downloadFixedPublic = async (req: Request, res: Response) => {
     if (fs.existsSync(tempInputPath)) fs.unlinkSync(tempInputPath);
     if (fs.existsSync(tempOutputPath)) fs.unlinkSync(tempOutputPath);
     return res.status(500).json({
-      error: error instanceof Error ? error.message : "Failed to process video",
+      error: sanitizeErrorForFrontend(error, "Failed to process video"),
     });
   }
 };
@@ -424,7 +425,7 @@ export const detectFaces = async (req: AuthRequest, res: Response) => {
     console.error("[FACE-DETECT] Error:", error);
     Sentry.captureException(error);
     return res.status(500).json({
-      error: error instanceof Error ? error.message : "Failed to detect faces",
+      error: sanitizeErrorForFrontend(error, "Failed to detect faces"),
     });
   } finally {
     // Cleanup uploaded file
@@ -470,7 +471,7 @@ export const getDetectFacesUploadUrl = async (req: AuthRequest, res: Response) =
     console.error("[FACE-DETECT] Get upload URL error:", error);
     Sentry.captureException(error);
     return res.status(500).json({
-      error: error instanceof Error ? error.message : "Failed to get upload URL",
+      error: sanitizeErrorForFrontend(error, "Failed to get upload URL"),
     });
   }
 };
@@ -520,7 +521,7 @@ export const detectFacesFromS3 = async (req: AuthRequest, res: Response) => {
     console.error("[FACE-DETECT] Error:", error);
     Sentry.captureException(error);
     return res.status(500).json({
-      error: error instanceof Error ? error.message : "Failed to detect faces",
+      error: sanitizeErrorForFrontend(error, "Failed to detect faces"),
     });
   }
 };

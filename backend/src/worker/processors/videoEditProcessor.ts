@@ -19,6 +19,7 @@ import {
   MediaOverlayItem,
 } from "../../services/clips/videoEditor.service";
 import { ensureOutputDir } from "../../utils/fileUtils";
+import { sanitizeErrorForFrontend } from "../../utils/errorSanitizer";
 
 /**
  * Process a video edit job.
@@ -283,7 +284,7 @@ export async function processVideoEditJob(job: VideoEditJob): Promise<void> {
       clipId,
       teamId,
       "failed",
-      error instanceof Error ? error.message : "Unknown error"
+      sanitizeErrorForFrontend(error, "Operation failed. Please try again.")
     );
 
     await notifyClipsRefresh(teamId);

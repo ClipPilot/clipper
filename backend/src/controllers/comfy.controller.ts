@@ -19,6 +19,7 @@ import path from "path";
 import fs from "fs";
 import "multer";
 import { TEMP_DIR } from "../utils/tempCleanup";
+import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
 
 const UGC_CREDIT_COST = 5;
 const MIN_SEGMENT_DURATION = 3;
@@ -120,7 +121,7 @@ export class ComfyController {
       console.error("Get UGC upload URLs error:", error);
       Sentry.captureException(error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to get upload URLs",
+        error: sanitizeErrorForFrontend(error, "Failed to get upload URLs"),
       });
     }
   }
@@ -377,7 +378,7 @@ export class ComfyController {
       console.error("Create UGC face swap job error:", error);
       Sentry.captureException(error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to queue job",
+        error: sanitizeErrorForFrontend(error, "Failed to queue job"),
       });
     } finally {
       if (tempVideoPath && fs.existsSync(tempVideoPath)) {
@@ -454,7 +455,7 @@ export class ComfyController {
       console.error("Get job error:", error);
       Sentry.captureException(error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to get job",
+        error: sanitizeErrorForFrontend(error, "Failed to get job"),
       });
     }
   }
@@ -532,7 +533,7 @@ export class ComfyController {
       console.error("Get team jobs error:", error);
       Sentry.captureException(error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to get jobs",
+        error: sanitizeErrorForFrontend(error, "Failed to get jobs"),
       });
     }
   }
@@ -594,7 +595,7 @@ export class ComfyController {
       console.error("Delete job error:", error);
       Sentry.captureException(error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to delete job",
+        error: sanitizeErrorForFrontend(error, "Failed to delete job"),
       });
     }
   }
@@ -640,7 +641,7 @@ export class ComfyController {
       console.error("Update job error:", error);
       Sentry.captureException(error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to update job",
+        error: sanitizeErrorForFrontend(error, "Failed to update job"),
       });
     }
   }
@@ -859,7 +860,7 @@ export class ComfyController {
       console.error("Create UGC face swap upload error:", error);
       Sentry.captureException(error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to create jobs",
+        error: sanitizeErrorForFrontend(error, "Failed to create jobs"),
       });
     }
   }
@@ -1121,7 +1122,7 @@ export class ComfyController {
             .update(comfyJobs)
             .set({
               status: "failed",
-              errorMessage: error instanceof Error ? error.message : "Upload failed",
+              errorMessage: sanitizeErrorForFrontend(error, "Upload failed"),
               finishedAt: new Date(),
             })
             .where(eq(comfyJobs.id, jobId));
@@ -1132,7 +1133,7 @@ export class ComfyController {
             progress: 0,
             progressMessage: null,
             outputUrl: null,
-            errorMessage: error instanceof Error ? error.message : "Upload failed",
+            errorMessage: sanitizeErrorForFrontend(error, "Upload failed"),
             createdAt: new Date().toISOString(),
             finishedAt: new Date().toISOString(),
           });
@@ -1193,7 +1194,7 @@ export class ComfyController {
       console.error("Get saved faces error:", error);
       Sentry.captureException(error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to get saved faces",
+        error: sanitizeErrorForFrontend(error, "Failed to get saved faces"),
       });
     }
   }
@@ -1242,7 +1243,7 @@ export class ComfyController {
       console.error("Save face error:", error);
       Sentry.captureException(error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to save face",
+        error: sanitizeErrorForFrontend(error, "Failed to save face"),
       });
     }
   }
@@ -1278,7 +1279,7 @@ export class ComfyController {
       console.error("Delete saved face error:", error);
       Sentry.captureException(error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to delete face",
+        error: sanitizeErrorForFrontend(error, "Failed to delete face"),
       });
     }
   }
@@ -1354,7 +1355,7 @@ export class ComfyController {
       console.error("Generate pose error:", error);
       Sentry.captureException(error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to generate pose",
+        error: sanitizeErrorForFrontend(error, "Failed to generate pose"),
       });
     }
   }

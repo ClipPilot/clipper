@@ -1,6 +1,7 @@
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { userPreferencesService } from "../services/userPreferences.service";
+import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
 
 export class UserPreferencesController {
   async getPreferences(req: AuthRequest, res: Response) {
@@ -11,7 +12,7 @@ export class UserPreferencesController {
     } catch (error) {
       console.error("Get preferences error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to get preferences",
+        error: sanitizeErrorForFrontend(error, "Failed to get preferences"),
       });
     }
   }
@@ -30,7 +31,7 @@ export class UserPreferencesController {
     } catch (error) {
       console.error("Update preferences error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to update preferences",
+        error: sanitizeErrorForFrontend(error, "Failed to update preferences"),
       });
     }
   }
@@ -43,7 +44,7 @@ export class UserPreferencesController {
     } catch (error) {
       console.error("Reset preferences error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to reset preferences",
+        error: sanitizeErrorForFrontend(error, "Failed to reset preferences"),
       });
     }
   }

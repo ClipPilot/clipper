@@ -15,6 +15,7 @@ import {
 import { notifyScriptJobUpdate } from "../notify";
 import { openaiClient as client } from "../../services/openai.service";
 import { mergeConsecutiveArollScenes } from "../../services/ai-ugc/ugcScript.service";
+import { sanitizeErrorForFrontend } from "../../utils/errorSanitizer";
 
 async function updateJobProgress(
   jobId: string,
@@ -239,7 +240,7 @@ export async function processScriptJob(job: GenerateScriptJob): Promise<void> {
   } catch (error) {
     console.error(`[SCRIPT] Job ${jobId} failed:`, error);
 
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorMessage = sanitizeErrorForFrontend(error, "Operation failed. Please try again.");
 
     await db
       .update(schema.ugcScripts)

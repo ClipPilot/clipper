@@ -62,19 +62,15 @@ export function useUGCVideoSocket({ teamId, jobId, onUpdate }: UseUGCVideoSocket
       return;
     }
 
-    console.log("[UGCVideoSocket] Connecting to", SOCKET_URL);
     socketRef.current = io(SOCKET_URL, {
       transports: ["websocket", "polling"],
     });
 
     socketRef.current.on("connect", () => {
-      console.log("[UGCVideoSocket] Connected, joining team:", teamId);
       socketRef.current?.emit("join-team", teamId);
     });
 
     socketRef.current.on("ugc-video-job-update", (update: UGCVideoSocketUpdate) => {
-      console.log("[UGCVideoSocket] Received update:", update.jobId, update.status, update.progress);
-
       // Only process updates for our job
       if (update.jobId === jobId) {
         onUpdateRef.current({
@@ -93,12 +89,12 @@ export function useUGCVideoSocket({ teamId, jobId, onUpdate }: UseUGCVideoSocket
       }
     });
 
-    socketRef.current.on("disconnect", (reason) => {
-      console.log("[UGCVideoSocket] Disconnected:", reason);
+    socketRef.current.on("disconnect", () => {
+      // Connection closed
     });
 
     socketRef.current.on("connect_error", (error) => {
-      console.error("[UGCVideoSocket] Connection error:", error.message);
+      console.error("Connection error:", error.message);
     });
   }, [teamId, jobId]);
 
@@ -109,7 +105,6 @@ export function useUGCVideoSocket({ teamId, jobId, onUpdate }: UseUGCVideoSocket
       }
       socketRef.current.disconnect();
       socketRef.current = null;
-      console.log("[UGCVideoSocket] Disconnected and cleaned up");
     }
   }, [teamId]);
 

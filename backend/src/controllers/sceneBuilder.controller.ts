@@ -12,6 +12,7 @@ import { sqsService } from "../services/sqs.service";
 import { teamService } from "../services/team.service";
 import { canAccessUGCStudio } from "../utils/plans";
 import { eq, and } from "drizzle-orm";
+import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
 
 interface AuthRequest extends Request {
   user?: { id: string; email: string; dbUserId: number };
@@ -326,7 +327,7 @@ export class SceneBuilderController {
       console.error("[SCENE_BUILDER] Generate scene images error:", error);
       return res.status(500).json({
         error:
-          error instanceof Error ? error.message : "Failed to queue generation",
+          sanitizeErrorForFrontend(error, "Failed to queue generation"),
       });
     }
   }
@@ -650,7 +651,7 @@ export class SceneBuilderController {
     } catch (error) {
       console.error("[SCENE_BUILDER] Get generation status error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to get status",
+        error: sanitizeErrorForFrontend(error, "Failed to get status"),
       });
     }
   }
@@ -726,7 +727,7 @@ export class SceneBuilderController {
       console.error("[SCENE_BUILDER] Get scene images error:", error);
       return res.status(500).json({
         error:
-          error instanceof Error ? error.message : "Failed to get scene images",
+          sanitizeErrorForFrontend(error, "Failed to get scene images"),
       });
     }
   }
@@ -838,7 +839,7 @@ export class SceneBuilderController {
     } catch (error) {
       console.error("[SCENE_BUILDER] Cancel job error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to cancel job",
+        error: sanitizeErrorForFrontend(error, "Failed to cancel job"),
       });
     }
   }
@@ -868,7 +869,7 @@ export class SceneBuilderController {
       console.error("[SCENE_BUILDER] Get upload URL error:", error);
       return res.status(500).json({
         error:
-          error instanceof Error ? error.message : "Failed to get upload URL",
+          sanitizeErrorForFrontend(error, "Failed to get upload URL"),
       });
     }
   }
@@ -899,7 +900,7 @@ export class SceneBuilderController {
       console.error("[SCENE_BUILDER] Get upload URL for key error:", error);
       return res.status(500).json({
         error:
-          error instanceof Error ? error.message : "Failed to get upload URL",
+          sanitizeErrorForFrontend(error, "Failed to get upload URL"),
       });
     }
   }

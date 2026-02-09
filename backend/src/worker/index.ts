@@ -56,6 +56,7 @@ import {
 } from "../services/sqs.service";
 import { db, schema } from "../db";
 import { eq } from "drizzle-orm";
+import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
 
 const sqsClient = new SQSClient({
   region: config.aws.region,
@@ -229,7 +230,7 @@ async function handleMessage(message: { Body: string; ReceiptHandle: string }): 
     );
     console.log(`[Worker] Completed job: ${job!.type} (active: ${activeJobs - 1})`);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorMessage = sanitizeErrorForFrontend(error, "Job failed. Please try again.");
     console.error("[Worker] Error processing message:", error);
 
     if (job) {

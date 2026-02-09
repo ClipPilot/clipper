@@ -9,13 +9,14 @@ import {
   GeminiUploadedFile,
 } from "./gemini.service";
 import { analyzeVideoWithGemini } from "./videoAnalysis.service";
-import { scriptAdaptationService } from "./scriptAdaptation.service";
 import {
   AdCloneProject,
   AdCloneProjectStatus,
   VideoAnalysis,
 } from "../../types/adClone.types";
 import { UGCScript } from "../../types/ugcScript.types";
+import { ugcScriptService } from "../ai-ugc/ugcScript.service";
+import { sanitizeErrorForFrontend } from "../../utils/errorSanitizer";
 import fs from "fs";
 import path from "path";
 import os from "os";
@@ -182,7 +183,7 @@ class AdCloneService {
         projectId,
         "analyzing",
         20,
-        "Uploading to Gemini for analysis..."
+        "Uploading video for analysis..."
       );
 
       uploadResult = await uploadVideoToGemini(localVideoPath);
@@ -218,8 +219,7 @@ class AdCloneService {
 
       return analysis;
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
+      const errorMessage = sanitizeErrorForFrontend(error, "Analysis failed. Please try again.");
       await this.updateProjectStatus(
         projectId,
         "failed",
@@ -291,22 +291,52 @@ class AdCloneService {
         "Analyzing product images..."
       );
 
-      const adaptedScript = await scriptAdaptationService.adaptScript({
-        videoAnalysis: project.videoAnalysis,
-        productImageKeys: project.productImageKeys,
-        productName: project.productName || "Product",
-        productDescription: project.productDescription || "",
-        ...(character && {
-          character: {
+      const productImageUrls = await Promise.all(
+        project.productImageKeys.map((key) => s3Service.getPresignedUrl(key, 3600))
+      );
+
+      const scriptDirection = this.buildScriptDirectionFromAnalysis(
+        project.videoAnalysis,
+        project.adDirection
+      );
+
+      const customPattern = project.videoAnalysis.scenes.map((scene) => ({
+        type: scene.sceneType,
+        shot: scene.shotType,
+      }));
+
+      const effectiveCharacter = character
+        ? {
             id: character.id,
             name: character.name,
             gender: character.gender,
             age_range: character.age_range,
             appearance_config: character.appearance_config,
-          },
-        }),
-        adDirection: project.adDirection || undefined,
+          }
+        : {
+            id: 0,
+            name: "The Presenter",
+            gender: "unspecified" as string | null,
+            age_range: "25-35" as string | null,
+            appearance_config: null,
+          };
+
+      const scripts = await ugcScriptService.generateScripts({
+        productImageUrls,
+        productName: project.productName || undefined,
+        productDescription: project.productDescription || undefined,
+        scriptDirection,
+        character: effectiveCharacter,
+        targetDuration: project.videoAnalysis.totalDuration,
+        numberOfVariations: 1,
+        structureId: "custom",
+        customPattern,
       });
+
+      const adaptedScript = scripts[0];
+      if (!adaptedScript) {
+        throw new Error("Failed to generate adapted script");
+      }
 
       await db
         .update(adCloneProjects)
@@ -322,8 +352,7 @@ class AdCloneService {
 
       return adaptedScript;
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
+      const errorMessage = sanitizeErrorForFrontend(error, "Script generation failed. Please try again.");
       await this.updateProjectStatus(
         projectId,
         "failed",
@@ -413,6 +442,49 @@ class AdCloneService {
     await db
       .delete(adCloneProjects)
       .where(eq(adCloneProjects.id, projectId));
+  }
+
+  private buildScriptDirectionFromAnalysis(
+    analysis: VideoAnalysis,
+    adDirection?: string | null
+  ): string {
+    const lines: string[] = [];
+
+    lines.push("=== AD CLONE: Recreate this video's style and structure ===");
+    lines.push("");
+    lines.push(`Original video duration: ${analysis.totalDuration} seconds`);
+    lines.push(`Overall style: ${analysis.overallStyle}`);
+    lines.push(`Pacing: ${analysis.pacing}`);
+    lines.push(`Hook strategy: ${analysis.hookStrategy}`);
+    lines.push(`CTA approach: ${analysis.ctaApproach}`);
+    lines.push(`Target demographic: ${analysis.targetDemographic}`);
+    lines.push(`Narrative arc: ${analysis.overallNarrative}`);
+
+    if (analysis.keyStrengths.length > 0) {
+      lines.push("");
+      lines.push("Key strengths to replicate:");
+      analysis.keyStrengths.forEach((s) => lines.push(`- ${s}`));
+    }
+
+    lines.push("");
+    lines.push("=== SCENE-BY-SCENE REFERENCE ===");
+    analysis.scenes.forEach((scene) => {
+      lines.push(`Scene ${scene.sceneNumber} (${scene.durationSeconds}s): ${scene.sceneType} / ${scene.shotType}`);
+      lines.push(`  Emotion: ${scene.emotionalTone}`);
+      if (scene.transcribedDialogue) {
+        lines.push(`  Original dialogue style: "${scene.transcribedDialogue}"`);
+      }
+      lines.push(`  Action: ${scene.actionDescription}`);
+      lines.push(`  Setting: ${scene.settingDescription}`);
+    });
+
+    if (adDirection) {
+      lines.push("");
+      lines.push("=== ADDITIONAL USER DIRECTION ===");
+      lines.push(adDirection);
+    }
+
+    return lines.join("\n");
   }
 
   private mapDbToProject(dbProject: any): AdCloneProject {
