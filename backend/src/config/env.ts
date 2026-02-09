@@ -41,6 +41,11 @@ export const config = {
   sync: {
     apiKey: process.env.SYNC_KEY || "",
   },
+  google: {
+    serviceAccountEmail: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || "",
+    serviceAccountPrivateKey: process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY || "",
+    driveParentFolderId: process.env.GOOGLE_DRIVE_PARENT_FOLDER_ID || "",
+  },
   port: getEnv("PORT", "3001"),
 };
 

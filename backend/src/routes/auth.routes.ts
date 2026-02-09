@@ -333,6 +333,33 @@ router.post(
   authController.updatePassword.bind(authController)
 );
 
+/**
+ * @swagger
+ * /api/auth/profile:
+ *   patch:
+ *     summary: Update user profile
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               firstName:
+ *                 type: string
+ *               lastName:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
 router.patch(
   "/profile",
   requireAuth,

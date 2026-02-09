@@ -14,23 +14,19 @@ import { useAtom } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
 import { useUsageStatsRefresh } from "@/contexts/UsageStatsContext";
 import { useRouter } from "next/navigation";
+import { SIDEBAR_ITEMS, type SidebarItem } from "@/constants/navigation";
 
-export type SidebarItem = {
-  key: string;
-  title: string;
-  icon?: string;
-  href?: string;
-};
+export type { SidebarItem };
 
 export type SidebarProps = {
-  items: SidebarItem[];
   defaultSelectedKey: string;
   onSelect?: (key: string) => void;
   canViewPricing?: boolean;
 };
 
 const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
-  ({ items, defaultSelectedKey, onSelect, canViewPricing = true }, ref) => {
+  ({ defaultSelectedKey, onSelect, canViewPricing = true }, ref) => {
+    const items = SIDEBAR_ITEMS;
     const router = useRouter();
     const [selected, setSelected] = React.useState<React.Key>(defaultSelectedKey);
     const [selectedTeam] = useAtom(selectedTeamAtom);

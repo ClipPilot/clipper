@@ -243,3 +243,16 @@ export const ugcReadyEmail = (data: UgcReadyEmailData): string => {
   `;
   return wrapInBase(content);
 };
+
+export interface MassPostingApprovedEmailData {
+  userName: string;
+  teamName: string;
+  dashboardUrl: string;
+  driveFolderUrl: string;
+}
+
+// TODO(human): Implement the mass posting approved email template
+export const massPostingApprovedEmail = (data: MassPostingApprovedEmailData): string => {
+  const content = `<!-- TODO(human): Write the email HTML content here -->`;
+  return wrapInBase(content);
+};

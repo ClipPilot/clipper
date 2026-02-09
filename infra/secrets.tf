@@ -188,3 +188,17 @@ resource "aws_secretsmanager_secret_version" "fal_key" {
   secret_id     = aws_secretsmanager_secret.fal_key.id
   secret_string = var.fal_key
 }
+
+# Google Service Account Private Key (Mass Posting / Drive)
+resource "aws_secretsmanager_secret" "google_service_account_private_key" {
+  name                    = "${var.project_name}-${var.environment}/google-service-account-private-key"
+  recovery_window_in_days = 0
+
+  tags = {
+    Name = "${var.project_name}-google-sa-private-key-${var.environment}"
+  }
+}
+resource "aws_secretsmanager_secret_version" "google_service_account_private_key" {
+  secret_id     = aws_secretsmanager_secret.google_service_account_private_key.id
+  secret_string = var.google_service_account_private_key
+}

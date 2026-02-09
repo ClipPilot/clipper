@@ -123,6 +123,14 @@ resource "aws_ecs_task_definition" "backend" {
       {
         name  = "YOUTUBE_LAMBDA_URL"
         value = aws_lambda_function_url.youtube_downloader.function_url
+      },
+      {
+        name  = "GOOGLE_SERVICE_ACCOUNT_EMAIL"
+        value = var.google_service_account_email
+      },
+      {
+        name  = "GOOGLE_DRIVE_PARENT_FOLDER_ID"
+        value = var.google_drive_parent_folder_id
       }
     ]
 
@@ -174,6 +182,10 @@ resource "aws_ecs_task_definition" "backend" {
       {
         name      = "FAL_KEY"
         valueFrom = aws_secretsmanager_secret.fal_key.arn
+      },
+      {
+        name      = "GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY"
+        valueFrom = aws_secretsmanager_secret.google_service_account_private_key.arn
       }
     ]
 

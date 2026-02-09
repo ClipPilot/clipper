@@ -18,9 +18,15 @@ const config = {
           "0%": { transform: "translateX(-100%)" },
           "100%": { transform: "translateX(100%)" },
         },
+        checkPop: {
+          "0%": { transform: "scale(0)", opacity: "0" },
+          "50%": { transform: "scale(1.3)" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
       },
       animation: {
         shimmer: "shimmer 2s infinite",
+        "check-pop": "checkPop 0.4s ease-out",
       },
       colors: {
         // Custom colors for use alongside HeroUI theme

@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import Sidebar, { SidebarItem } from "@/components/sidebar/sidebar";
+import Sidebar from "@/components/sidebar/sidebar";
+import { SIDEBAR_ITEMS } from "@/constants/navigation";
 import { useRouter, usePathname } from "next/navigation";
 import {
   Avatar,
@@ -13,7 +14,6 @@ import {
   PopoverTrigger,
   PopoverContent,
   Button,
-  // Badge, // TODO: Re-enable with notifications
   ToastProvider,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
@@ -25,7 +25,6 @@ import WorkspaceSelector from "@/components/workspace-selector";
 import CreateTeamModal from "@/components/teams/CreateTeamModal";
 import TeamManagementModal from "@/components/teams/TeamManagementModal";
 import Image from "next/image";
-// import NotificationsCard from "@/components/notifications/notifications-card"; // TODO: Re-enable
 import { UsageStatsProvider } from "@/contexts/UsageStatsContext";
 import CuttrLogo from "@/public/branding/cuttr_logo.png";
 import { useTheme } from "next-themes";
@@ -33,33 +32,6 @@ import NotificationBellButton from "@/components/announcements/NotificationBellB
 import AnnouncementInboxModal from "@/components/announcements/AnnouncementInboxModal";
 import AnnouncementPopupModal from "@/components/announcements/AnnouncementPopupModal";
 import { useAnnouncements } from "@/hooks/useAnnouncements";
-
-const baseSidebarItems: SidebarItem[] = [
-  {
-    key: "home",
-    title: "Home",
-    icon: "solar:home-2-bold-duotone",
-    href: "/dashboard",
-  },
-  {
-    key: "clips",
-    title: "Library",
-    icon: "solar:video-library-bold-duotone",
-    href: "/dashboard/clips",
-  },
-  {
-    key: "create-clip",
-    title: "AI Clipping",
-    icon: "solar:scissors-bold-duotone",
-    href: "/dashboard/create-clip",
-  },
-  {
-    key: "ugc-studio",
-    title: "UGC Studio",
-    icon: "solar:video-frame-play-vertical-bold-duotone",
-    href: "/dashboard/ugc-studio",
-  }
-];
 
 export default function DashboardLayout({
   children,
@@ -82,7 +54,6 @@ export default function DashboardLayout({
 
   const canViewPricing =
     selectedTeam?.role === "owner" || selectedTeam?.role === "manager";
-  const sidebarItems = baseSidebarItems;
 
   const getTeamIcon = (role?: string) => {
     switch (role) {
@@ -128,7 +99,7 @@ export default function DashboardLayout({
   const getInitials = (
     firstName?: string,
     lastName?: string,
-    email?: string
+    email?: string,
   ) => {
     if (firstName && lastName) {
       return `${firstName[0]}${lastName[0]}`.toUpperCase();
@@ -163,7 +134,7 @@ export default function DashboardLayout({
   // Sort by href length descending to match most specific route first
   // Return empty string for pages not in sidebar (e.g., referrals, usage) so nothing is highlighted
   const currentKey =
-    [...sidebarItems]
+    [...SIDEBAR_ITEMS]
       .sort((a, b) => (b.href?.length || 0) - (a.href?.length || 0))
       .find((item) => item.href && pathname.startsWith(item.href))?.key || "";
 
@@ -194,7 +165,11 @@ export default function DashboardLayout({
                   onPress={() => setTheme(theme === "dark" ? "light" : "dark")}
                 >
                   <Icon
-                    icon={theme === "dark" ? "solar:sun-bold-duotone" : "solar:moon-bold-duotone"}
+                    icon={
+                      theme === "dark"
+                        ? "solar:sun-bold-duotone"
+                        : "solar:moon-bold-duotone"
+                    }
                     width={20}
                   />
                 </Button>
@@ -221,8 +196,13 @@ export default function DashboardLayout({
                         />
                       </div>
                     ) : (
-                      <div className={`flex items-center justify-center w-8 h-8 rounded-lg ${getPlanBgColor(selectedTeam?.plan)} text-white`}>
-                        <Icon icon={getTeamIcon(selectedTeam?.role)} width={16} />
+                      <div
+                        className={`flex items-center justify-center w-8 h-8 rounded-lg ${getPlanBgColor(selectedTeam?.plan)} text-white`}
+                      >
+                        <Icon
+                          icon={getTeamIcon(selectedTeam?.role)}
+                          width={16}
+                        />
                       </div>
                     )}
                     <span className="text-sm font-medium text-text-primary flex-1 text-left truncate">
@@ -253,11 +233,10 @@ export default function DashboardLayout({
 
           <div className="flex-1 p-4 overflow-y-auto">
             <Sidebar
-              items={sidebarItems}
               defaultSelectedKey={currentKey}
               canViewPricing={canViewPricing}
               onSelect={(key) => {
-                const item = sidebarItems.find((item) => item.key === key);
+                const item = SIDEBAR_ITEMS.find((item) => item.key === key);
                 if (item?.href) {
                   router.push(item.href);
                 }
@@ -278,7 +257,7 @@ export default function DashboardLayout({
                       name={getInitials(
                         user?.firstName,
                         user?.lastName,
-                        user?.email
+                        user?.email,
                       )}
                       classNames={{
                         base: "bg-accent-400 text-white flex-shrink-0",

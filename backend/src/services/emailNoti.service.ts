@@ -24,6 +24,8 @@ import {
   ReferralRewardSetEmailData,
   ugcReadyEmail,
   UgcReadyEmailData,
+  massPostingApprovedEmail,
+  MassPostingApprovedEmailData,
 } from "../templates/emailTemplates";
 
 export class EmailNotiService {
@@ -126,6 +128,11 @@ export class EmailNotiService {
   async sendUgcReady(to: string, data: UgcReadyEmailData) {
     const html = ugcReadyEmail(data);
     return this.sendEmailNotification(to, "Your UGC video is ready! 🎉", html);
+  }
+
+  async sendMassPostingApproved(to: string, data: MassPostingApprovedEmailData) {
+    const html = massPostingApprovedEmail(data);
+    return this.sendEmailNotification(to, `${data.teamName} is approved for Mass Posting!`, html);
   }
 }
 

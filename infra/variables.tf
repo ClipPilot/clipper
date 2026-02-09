@@ -202,3 +202,23 @@ variable "fal_key" {
   sensitive   = true
 }
 
+# Google Drive (Mass Posting)
+variable "google_service_account_email" {
+  description = "Google service account email for Drive API"
+  type        = string
+  default     = ""
+}
+
+variable "google_service_account_private_key" {
+  description = "Google service account private key for Drive API"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "google_drive_parent_folder_id" {
+  description = "Google Drive parent folder ID for team folders"
+  type        = string
+  default     = ""
+}
+
