@@ -122,14 +122,14 @@ export function buildBRollShotPrompt(
 ): string {
   const sections: string[] = [];
 
-  if (imagePositions && hasReferenceImages) {
-    sections.push(buildReferenceImageGuide(imagePositions));
-  }
-
   if (userRefinement) {
     sections.push(`USER INSTRUCTIONS (HIGHEST PRIORITY):
 ${userRefinement}
-Follow these instructions exactly. They override any conflicting guidance below.`);
+Follow these instructions exactly. If the user references any image, it represents the uploaded image which is IMAGE 1 passed into you.`);
+  }
+
+  if (imagePositions && hasReferenceImages) {
+    sections.push(buildReferenceImageGuide(imagePositions));
   }
 
   if (imagePositions?.supportingCount && imagePositions.supportingCount > 0 && imagePositions?.hasOriginal) {
