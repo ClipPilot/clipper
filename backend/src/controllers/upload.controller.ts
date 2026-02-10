@@ -6,7 +6,7 @@ import { s3Service } from "../services/s3.service";
 import { sqsService } from "../services/sqs.service";
 import { teamService } from "../services/team.service";
 import { clipManagerService } from "../services/clips/clipManager.service";
-import { PLAN_LIMITS } from "../config/stripe.config";
+import { PLAN_LIMITS, getMaxUploadSizeForPlan } from "../config/stripe.config";
 import { PROMPT_TYPES, isValidPromptType } from "../constants/promptTypes";
 
 const hexColorRegex = /^#[0-9A-Fa-f]{6}$/;
@@ -45,9 +45,12 @@ export const initiateMultipartUpload = async (req: AuthRequest, res: Response) =
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024;
+    const team = await teamService.getTeamById(parseInt(teamId));
+    const plan = team.plan || "free";
+    const MAX_FILE_SIZE = getMaxUploadSizeForPlan(plan);
     if (fileSize > MAX_FILE_SIZE) {
-      return res.status(400).json({ error: "File size exceeds maximum limit of 2GB" });
+      const limitGB = MAX_FILE_SIZE / (1024 * 1024 * 1024);
+      return res.status(400).json({ error: `File size exceeds maximum limit of ${limitGB}GB for your plan` });
     }
 
     const validTypes = ["video/mp4", "video/quicktime", "video/x-msvideo", "video/x-matroska", "video/webm"];
@@ -136,9 +139,12 @@ export const getPresignedUploadUrl = async (req: AuthRequest, res: Response) => 
       return res.status(400).json({ error: "Missing required fields: teamId, fileName, contentType" });
     }
 
-    const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024;
+    const team = await teamService.getTeamById(parseInt(teamId));
+    const plan = team.plan || "free";
+    const MAX_FILE_SIZE = getMaxUploadSizeForPlan(plan);
     if (fileSize && fileSize > MAX_FILE_SIZE) {
-      return res.status(400).json({ error: "File size exceeds maximum limit of 2GB" });
+      const limitGB = MAX_FILE_SIZE / (1024 * 1024 * 1024);
+      return res.status(400).json({ error: `File size exceeds maximum limit of ${limitGB}GB for your plan` });
     }
 
     const validTypes = ["video/mp4", "video/quicktime", "video/x-msvideo", "video/x-matroska", "video/webm"];

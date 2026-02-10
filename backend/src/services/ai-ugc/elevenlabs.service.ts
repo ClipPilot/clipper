@@ -72,7 +72,7 @@ export async function generateSpeech(
       outputFormat,
       voice_settings: {
         stability: 0.35,
-        similarity_boost: 0.80,
+        similarity_boost: 0.8,
         style: 0.45,
         use_speaker_boost: true,
       },
@@ -331,12 +331,6 @@ export async function textToDialogue(
       inputs: inputs.map((input) => ({
         text: input.text,
         voiceId: input.voiceId,
-        voice_settings: {
-          stability: 0.35,
-          similarity_boost: 0.80,
-          style: 0.45,
-          use_speaker_boost: true,
-        },
       })),
       modelId,
       outputFormat: outputFormat as any,
@@ -393,10 +387,6 @@ export async function textToDialogueForTargetDuration(
       `[ElevenLabs] Capping dialogue target from ${requestedDuration}s to ${MAX_AUDIO_DURATION_SECONDS}s (Kling video limit)`,
     );
   }
-
-  console.log(
-    `[ElevenLabs] Generating dialogue with target duration: ${targetDurationSeconds}s`,
-  );
 
   const audioBuffer = await textToDialogue({
     inputs: [{ text, voiceId }],

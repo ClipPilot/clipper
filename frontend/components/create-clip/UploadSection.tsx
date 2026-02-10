@@ -7,8 +7,16 @@ import { videoAPI, UploadProgress, MultipartUploadResponse } from "@/api/video";
 // TODO: Re-enable when Google Drive integration is complete
 // import { DrivePicker } from "./DrivePicker";
 
+const PLAN_UPLOAD_LIMITS: Record<string, number> = {
+  free: 2 * 1024 * 1024 * 1024,
+  studio: 2 * 1024 * 1024 * 1024,
+  scale: 3 * 1024 * 1024 * 1024,
+  enterprise: 3 * 1024 * 1024 * 1024,
+};
+
 interface UploadSectionProps {
   teamId: number;
+  plan?: string;
   onUploadComplete: (s3Key: string, fileName: string, fileSize: number) => void;
   onError: (error: string) => void;
   isDisabled?: boolean;
@@ -40,6 +48,7 @@ const formatSpeed = (bytesPerSecond: number): string => {
 
 export const UploadSection: React.FC<UploadSectionProps> = ({
   teamId,
+  plan = "free",
   onUploadComplete,
   onError,
   isDisabled = false,
@@ -55,7 +64,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
   const [downloading, setDownloading] = useState(false);
   const multipartDataRef = useRef<MultipartUploadResponse | null>(null);
 
-  const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024;
+  const MAX_FILE_SIZE = PLAN_UPLOAD_LIMITS[plan] ?? PLAN_UPLOAD_LIMITS.free;
   const validTypes = [
     "video/mp4",
     "video/quicktime",
@@ -79,8 +88,9 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
 
   const processFile = async (file: File) => {
     if (file.size > MAX_FILE_SIZE) {
+      const limitGB = MAX_FILE_SIZE / (1024 * 1024 * 1024);
       onError(
-        `File size must be less than 2GB. Your file is ${formatBytes(file.size)}`
+        `File size must be less than ${limitGB}GB. Your file is ${formatBytes(file.size)}`
       );
       return;
     }
@@ -331,7 +341,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                 className="text-base mt-0.5"
               />
               <div>
-                <p>Max size: 2GB | Formats: MP4, MOV, AVI, MKV, WebM</p>
+                <p>Max size: {MAX_FILE_SIZE / (1024 * 1024 * 1024)}GB | Formats: MP4, MOV, AVI, MKV, WebM</p>
               </div>
             </div>
           </div>
