@@ -12,6 +12,7 @@ export type JobType =
   | "update-captions"
   | "text-overlay"
   | "update-overlays"
+  | "video-edit"
   | "generate-character"
   | "generate-scene-image"
   | "generate-script"
@@ -118,6 +119,89 @@ export interface UpdateOverlaysJob extends BaseJob {
     x: number;
     y: number;
     fontSize: number;
+  };
+}
+
+// Segment configuration for per-segment editing (cuts, reordering, per-segment speed)
+export interface SegmentConfig {
+  id: string;
+  startTime: number;
+  endTime: number;
+  speed: number; // 0.25 to 4.0
+}
+
+// Video edit job payload (CapCut-like editing)
+export interface VideoEditJob extends BaseJob {
+  type: "video-edit";
+  clipId: number;
+  editConfig: {
+    // Segments: per-segment editing with individual cuts/speeds (takes precedence over trim/speed)
+    segments?: SegmentConfig[];
+    // Trim (legacy - used when segments is not provided)
+    trim?: {
+      startTime: number;
+      endTime: number;
+    };
+    // Crop
+    crop?: {
+      aspectRatio: "9:16" | "16:9" | "1:1" | "4:5" | "custom";
+      customCrop?: {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+      };
+    };
+    // Speed (legacy - used when segments is not provided, 0.25 to 4.0)
+    speed?: number;
+    // Audio
+    audio?: {
+      originalVolume: number;
+      originalMuted: boolean;
+      backgroundMusic?: {
+        s3Key: string;
+        volume: number;
+        startTime: number;
+        trimStart: number;
+        trimEnd: number;
+      };
+    };
+    // Captions
+    captions?: {
+      enabled: boolean;
+      data: Array<{
+        index: number;
+        startTime: number;
+        endTime: number;
+        text: string;
+      }>;
+      color: string;
+      font: string;
+    };
+    // Heading
+    heading?: {
+      text: string;
+      color: string;
+      font: string;
+      x: number;
+      y: number;
+      fontSize: number;
+    };
+    // Media overlays (images/videos composited on top)
+    overlays?: Array<{
+      id: string;
+      type: "image" | "video";
+      s3Key: string;
+      fileName: string;
+      startTime: number;
+      endTime: number;
+      x: number; // Position as percentage (0-100)
+      y: number;
+      scale: number; // 0.1-2.0
+      opacity: number; // 0-1
+      naturalWidth: number;
+      naturalHeight: number;
+    }>;
   };
 }
 
@@ -266,6 +350,7 @@ export type VideoProcessingJob =
   | UpdateCaptionsJob
   | TextOverlayJob
   | UpdateOverlaysJob
+  | VideoEditJob
   | GenerateCharacterJob
   | GenerateSceneImageJob
   | GenerateScriptJob
@@ -642,6 +727,24 @@ class SQSService {
       projectId: params.projectId,
       teamId: params.teamId,
       userId: params.userId,
+      createdAt: new Date().toISOString(),
+    };
+
+    return this.sendJob(job);
+  }
+
+  async sendVideoEditJob(params: {
+    clipId: number;
+    teamId: number;
+    userId: number;
+    editConfig: VideoEditJob["editConfig"];
+  }): Promise<string> {
+    const job: VideoEditJob = {
+      type: "video-edit",
+      clipId: params.clipId,
+      teamId: params.teamId,
+      userId: params.userId,
+      editConfig: params.editConfig,
       createdAt: new Date().toISOString(),
     };
 

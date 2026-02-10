@@ -108,30 +108,18 @@ export function SceneImageCard({
     // Build existing images array, merging custom images with generated images
     let existingImages: string[] | undefined;
 
-    console.log(`[SceneImageCard] handleGenerate called with singleShotIndex=${singleShotIndex}`);
-    console.log(`[SceneImageCard] generation object:`, generation);
-    console.log(`[SceneImageCard] generation?.generatedImages:`, generation?.generatedImages);
-    console.log(`[SceneImageCard] customBRollImages:`, customBRollImages);
-    console.log(`[SceneImageCard] supportingImageKeys (from props):`, supportingImageKeys);
-    console.log(`[SceneImageCard] supportingImages (local state):`, supportingImages);
-    console.log(`[SceneImageCard] localRefinement:`, localRefinement);
-
     if (singleShotIndex !== undefined && scene.bRollShots) {
       existingImages = scene.bRollShots.map((_, idx) => {
         // Use custom image if available, otherwise use generated image
         const customImage = customBRollImages?.[idx];
         const generatedImage = generation?.generatedImages?.[idx];
         const key = customImage?.key || generatedImage?.key || "";
-        console.log(`[SceneImageCard] Shot ${idx}: customKey=${customImage?.key}, generatedKey=${generatedImage?.key}, using=${key}`);
         return key;
       }).filter(Boolean);
 
       // Only pass if we have some existing images to preserve
       if (existingImages.length === 0) {
-        console.warn(`[SceneImageCard] WARNING: No existing images found! Will regenerate ALL shots.`);
         existingImages = undefined;
-      } else {
-        console.log(`[SceneImageCard] Single shot regen: idx=${singleShotIndex}, preserving ${existingImages.length} existing images`);
       }
     }
 
@@ -139,8 +127,6 @@ export function SceneImageCard({
     const currentSupportingKeys = supportingImages.length > 0
       ? supportingImages.map(img => img.key)
       : supportingImageKeys;
-
-    console.log(`[SceneImageCard] Using supportingImageKeys:`, currentSupportingKeys);
 
     const requestData = {
       teamId,

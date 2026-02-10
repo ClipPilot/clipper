@@ -26,6 +26,7 @@ import { processBatchClipVideoJob } from "./processors/batchClipProcessor";
 import { processCaptionsJob } from "./processors/captionsProcessor";
 import { processTextOverlayJob } from "./processors/textOverlayProcessor";
 import { processOverlaysJob } from "./processors/overlaysProcessor";
+import { processVideoEditJob } from "./processors/videoEditProcessor";
 import { processCharacterJob } from "./processors/characterProcessor";
 import { processSceneImageJob } from "./processors/sceneImageProcessor";
 import { processScriptJob } from "./processors/scriptProcessor";
@@ -43,6 +44,7 @@ import {
   UpdateCaptionsJob,
   TextOverlayJob,
   UpdateOverlaysJob,
+  VideoEditJob,
   GenerateCharacterJob,
   GenerateSceneImageJob,
   GenerateScriptJob,
@@ -54,6 +56,7 @@ import {
 } from "../services/sqs.service";
 import { db, schema } from "../db";
 import { eq } from "drizzle-orm";
+import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
 
 const sqsClient = new SQSClient({
   region: config.aws.region,
@@ -152,6 +155,9 @@ async function processMessage(job: VideoProcessingJob, receiptHandle: string): P
       case "update-overlays":
         await processOverlaysJob(job as UpdateOverlaysJob);
         break;
+      case "video-edit":
+        await processVideoEditJob(job as VideoEditJob);
+        break;
       case "generate-character":
         await processCharacterJob(job as GenerateCharacterJob);
         break;
@@ -224,7 +230,7 @@ async function handleMessage(message: { Body: string; ReceiptHandle: string }): 
     );
     console.log(`[Worker] Completed job: ${job!.type} (active: ${activeJobs - 1})`);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorMessage = sanitizeErrorForFrontend(error, "Job failed. Please try again.");
     console.error("[Worker] Error processing message:", error);
 
     if (job) {

@@ -12,6 +12,7 @@ import { s3Service } from "../services/s3.service";
 import { getTeamUsage } from "../middleware/subscription.middleware";
 import { transcribeVideoService } from "../services/clips/transcription.service";
 import { convertWordsToCaptionEntries, CaptionEntry } from "../services/clips/captions.service";
+import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
 
 interface AuthRequest extends Request {
   user?: { id: string; email: string; dbUserId: number };
@@ -52,7 +53,7 @@ export class AdCloneController {
     } catch (error) {
       console.error("[AD_CLONE] Create project error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to create project",
+        error: sanitizeErrorForFrontend(error, "Failed to create project"),
       });
     }
   }
@@ -86,7 +87,7 @@ export class AdCloneController {
     } catch (error) {
       console.error("[AD_CLONE] Get upload URLs error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to get upload URLs",
+        error: sanitizeErrorForFrontend(error, "Failed to get upload URLs"),
       });
     }
   }
@@ -115,7 +116,7 @@ export class AdCloneController {
     } catch (error) {
       console.error("[AD_CLONE] Confirm upload error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to confirm upload",
+        error: sanitizeErrorForFrontend(error, "Failed to confirm upload"),
       });
     }
   }
@@ -161,7 +162,7 @@ export class AdCloneController {
     } catch (error) {
       console.error("[AD_CLONE] Start analysis error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to start analysis",
+        error: sanitizeErrorForFrontend(error, "Failed to start analysis"),
       });
     }
   }
@@ -207,7 +208,7 @@ export class AdCloneController {
     } catch (error) {
       console.error("[AD_CLONE] Start analyze and script error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to start processing",
+        error: sanitizeErrorForFrontend(error, "Failed to start processing"),
       });
     }
   }
@@ -234,7 +235,7 @@ export class AdCloneController {
     } catch (error) {
       console.error("[AD_CLONE] Get analysis error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to get analysis",
+        error: sanitizeErrorForFrontend(error, "Failed to get analysis"),
       });
     }
   }
@@ -283,7 +284,7 @@ export class AdCloneController {
     } catch (error) {
       console.error("[AD_CLONE] Generate script error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to generate script",
+        error: sanitizeErrorForFrontend(error, "Failed to generate script"),
       });
     }
   }
@@ -306,7 +307,7 @@ export class AdCloneController {
     } catch (error) {
       console.error("[AD_CLONE] Update script error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to update script",
+        error: sanitizeErrorForFrontend(error, "Failed to update script"),
       });
     }
   }
@@ -372,9 +373,11 @@ export class AdCloneController {
       // Use the first product image for b-roll scenes
       const productImage = project.productImageKeys[0];
 
-      // Calculate credit cost (2 credits per scene)
+      // Calculate credit cost (2 credits per original scene, merged a-rolls count individually)
       const CREDIT_PER_SCENE = 2;
-      const sceneCount = selectedScript.scenes.length;
+      const sceneCount = selectedScript.scenes.reduce((count: number, scene: any) => {
+        return count + (scene.mergedSceneTypes?.length || 1);
+      }, 0);
       const creditCost = sceneCount * CREDIT_PER_SCENE;
 
       const usage = await getTeamUsage(teamId);
@@ -493,7 +496,7 @@ export class AdCloneController {
     } catch (error) {
       console.error("[AD_CLONE] Generate video error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to generate video",
+        error: sanitizeErrorForFrontend(error, "Failed to generate video"),
       });
     }
   }
@@ -582,7 +585,7 @@ export class AdCloneController {
     } catch (error) {
       console.error("[AD_CLONE] Get status error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to get status",
+        error: sanitizeErrorForFrontend(error, "Failed to get status"),
       });
     }
   }
@@ -652,7 +655,7 @@ export class AdCloneController {
     } catch (error) {
       console.error("[AD_CLONE] Get project error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to get project",
+        error: sanitizeErrorForFrontend(error, "Failed to get project"),
       });
     }
   }
@@ -674,7 +677,7 @@ export class AdCloneController {
     } catch (error) {
       console.error("[AD_CLONE] Delete project error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to delete project",
+        error: sanitizeErrorForFrontend(error, "Failed to delete project"),
       });
     }
   }
@@ -740,7 +743,7 @@ export class AdCloneController {
     } catch (error) {
       console.error("[AD_CLONE] List projects error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to list projects",
+        error: sanitizeErrorForFrontend(error, "Failed to list projects"),
       });
     }
   }
@@ -840,7 +843,7 @@ export class AdCloneController {
     } catch (error) {
       console.error("[AD_CLONE] Finalize project error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to finalize project",
+        error: sanitizeErrorForFrontend(error, "Failed to finalize project"),
       });
     }
   }

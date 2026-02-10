@@ -13,7 +13,7 @@ let elevenLabsClient: ElevenLabsClient | null = null;
 const getClient = (): ElevenLabsClient => {
   if (!elevenLabsClient) {
     if (!config.elevenlabs.apiKey) {
-      throw new Error("ELEVENLABS_API_KEY is not configured");
+      throw new Error("Voice synthesis API key is not configured");
     }
     elevenLabsClient = new ElevenLabsClient({
       apiKey: config.elevenlabs.apiKey,

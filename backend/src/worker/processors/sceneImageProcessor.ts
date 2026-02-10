@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { GenerateSceneImageJob } from "../../services/sqs.service";
 import { s3Service } from "../../services/s3.service";
 import { falImageService } from "../../services/ai-ugc/falImage.service";
+import { sanitizeErrorForFrontend } from "../../utils/errorSanitizer";
 import {
   CharacterAppearance,
   ImagePositions,
@@ -236,7 +237,7 @@ export async function processSceneImageJob(
         const response = await fetch(result.imageUrl);
         if (!response.ok) {
           throw new Error(
-            `Failed to download B-roll shot ${i + 1} from FAL: ${response.status}`,
+            `Failed to download B-roll shot ${i + 1}: ${response.status}`,
           );
         }
 
@@ -358,7 +359,7 @@ export async function processSceneImageJob(
       const startResponse = await fetch(startResult.imageUrl);
       if (!startResponse.ok) {
         throw new Error(
-          `Failed to download start image from FAL: ${startResponse.status}`,
+          `Failed to download start image: ${startResponse.status}`,
         );
       }
 
@@ -456,7 +457,7 @@ export async function processSceneImageJob(
         const endResponse = await fetch(endResult.imageUrl);
         if (!endResponse.ok) {
           throw new Error(
-            `Failed to download end image from FAL: ${endResponse.status}`,
+            `Failed to download end image: ${endResponse.status}`,
           );
         }
 
@@ -493,7 +494,7 @@ export async function processSceneImageJob(
       .update(schema.sceneImageGenerationJobs)
       .set({
         status: "failed",
-        error_message: error instanceof Error ? error.message : "Unknown error",
+        error_message: sanitizeErrorForFrontend(error, "Image generation failed. Please try again."),
         completed_at: new Date(),
       })
       .where(eq(schema.sceneImageGenerationJobs.id, jobId));

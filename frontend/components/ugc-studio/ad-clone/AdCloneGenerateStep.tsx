@@ -267,7 +267,8 @@ export function AdCloneGenerateStep({ teamId }: AdCloneGenerateStepProps) {
 
   const selectedVoice = voicesConfig.find((v) => v.id === voiceId) || null;
   const scenes = selectedScript?.scenes || [];
-  const creditCost = scenes.length * 2;
+  const effectiveSceneCount = scenes.reduce((total: number, scene: any) => total + (scene.mergedSceneTypes?.length || 1), 0);
+  const creditCost = effectiveSceneCount * 2;
 
   const handleGenerateClick = () => {
     if (!voiceId || !characterId) {
@@ -378,7 +379,7 @@ export function AdCloneGenerateStep({ teamId }: AdCloneGenerateStepProps) {
               <div>
                 <p className="text-lg font-bold text-text-primary">{creditCost} Credits</p>
                 <p className="text-sm text-text-secondary">
-                  {scenes.length} scenes • 2 credits per scene
+                  Based on estimated video length
                 </p>
                 <p className="text-xs text-text-muted mt-1">
                   {usageStats
@@ -422,7 +423,7 @@ export function AdCloneGenerateStep({ teamId }: AdCloneGenerateStepProps) {
                 This will use <span className="font-bold text-orange-500">{creditCost} credits</span>
               </p>
               <p className="text-xs text-text-muted mb-2">
-                {scenes.length} scenes • 2 credits per scene
+                Based on estimated video length
               </p>
               <p className="text-sm text-text-secondary">
                 You&apos;ll have {usageStats ? usageStats.totalRemaining - creditCost : 0} credits remaining

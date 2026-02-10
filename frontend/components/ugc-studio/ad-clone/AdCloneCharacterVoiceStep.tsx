@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useAtom, useSetAtom } from "jotai";
+import { useAtom, useSetAtom, useAtomValue } from "jotai";
 import {
   Card,
   CardBody,
@@ -22,7 +22,7 @@ import { CharacterGrid } from "../actors/CharacterGrid";
 import { CharacterDetailModal } from "../actors/CharacterDetailModal";
 import { VoiceCard } from "../voice/VoiceCard";
 import { voicesConfig, type Voice } from "@/config/voicesConfig";
-import { adCloneCharacterIdAtom, adCloneVoiceIdAtom } from "@/store/adClone";
+import { adCloneCharacterIdAtom, adCloneVoiceIdAtom, adCloneProjectIdAtom } from "@/store/adClone";
 import type { Character } from "../actors/types";
 
 const PAGE_SIZE = 12;
@@ -43,6 +43,11 @@ export function AdCloneCharacterVoiceStep({
   const router = useRouter();
   const [characterId, setCharacterId] = useAtom(adCloneCharacterIdAtom);
   const [voiceId, setVoiceId] = useAtom(adCloneVoiceIdAtom);
+  const projectId = useAtomValue(adCloneProjectIdAtom);
+
+  const createCharacterUrl = `/dashboard/ugc-studio/characters?tab=create&returnTo=${encodeURIComponent(
+    `/dashboard/ugc-studio/ad-clone/create${projectId ? `?projectId=${projectId}` : ""}`
+  )}`;
 
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
   const [activeTab, setActiveTab] = useState<"my-actors" | "community">("my-actors");
@@ -301,7 +306,7 @@ export function AdCloneCharacterVoiceStep({
               size="sm"
               className="bg-orange-500 text-white"
               startContent={<Icon icon="solar:user-plus-bold" width={16} />}
-              onPress={() => router.push("/dashboard/ugc-studio/characters?tab=create")}
+              onPress={() => router.push(createCharacterUrl)}
             >
               Create New
             </Button>
@@ -401,7 +406,7 @@ export function AdCloneCharacterVoiceStep({
                       <Button
                         className="bg-orange-500 text-white"
                         startContent={<Icon icon="solar:user-plus-bold" width={16} />}
-                        onPress={() => router.push("/dashboard/ugc-studio/characters?tab=create")}
+                        onPress={() => router.push(createCharacterUrl)}
                       >
                         Create New Actor
                       </Button>

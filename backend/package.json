@@ -5,11 +5,9 @@
   "scripts": {
     "dev": "nodemon --watch src --exec ts-node src/server.ts",
     "dev:worker": "nodemon --watch src --exec ts-node src/worker/index.ts",
-    "dev:gpu-worker": "nodemon --watch src --exec ts-node src/gpu-worker/index.ts",
     "build": "tsc && cp -r src/fonts dist/ && cp -r src/templates dist/ && cp -r src/config dist/",
     "start": "node dist/server.js",
     "start:worker": "node dist/worker/index.js",
-    "start:gpu-worker": "node dist/gpu-worker/index.js",
     "lint": "eslint . --ext .ts",
     "format": "prettier --write .",
     "type-check": "tsc --noEmit",
@@ -17,7 +15,12 @@
     "db:migrate": "pnpm --filter @clipper/shared-db db:migrate",
     "db:studio": "pnpm --filter @clipper/shared-db db:studio",
     "db:push": "pnpm --filter @clipper/shared-db db:push",
-    "stripe:create-plans": "ts-node src/config/stripe.ts"
+    "stripe:create-plans": "ts-node src/config/stripe.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:unit": "vitest run --exclude 'test/integration/**'",
+    "test:integration": "vitest run test/integration"
   },
   "author": "",
   "license": "ISC",
@@ -70,9 +73,11 @@
     "@types/node": "^24.10.2",
     "@types/pg": "^8.15.6",
     "@types/socket.io": "^3.0.2",
+    "@types/supertest": "^6.0.3",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.8",
     "@types/ws": "^8.18.1",
+    "@vitest/coverage-v8": "^4.0.18",
     "dotenv": "^17.2.3",
     "drizzle-kit": "^0.31.7",
     "eslint": "^9.39.1",
@@ -81,7 +86,9 @@
     "nodemon": "^3.1.11",
     "npm": "^11.6.4",
     "prettier": "^3.6.2",
+    "supertest": "^7.2.2",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
   }
 }

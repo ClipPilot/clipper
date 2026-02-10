@@ -32,8 +32,8 @@ interface GenerateVideoStepProps {
 
 type StepState = "ready" | "confirming" | "generating";
 
-function calculateCreditCost(scenes: Array<{ shotType: string; bRollShots?: unknown[] | null }>) {
-  return scenes.length * 2;
+function calculateCreditCost(scenes: Array<{ shotType: string; bRollShots?: unknown[] | null; mergedSceneTypes?: string[] | null }>) {
+  return scenes.reduce((total, scene) => total + (scene.mergedSceneTypes?.length || 1) * 2, 0);
 }
 
 export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) {
@@ -51,7 +51,7 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
 
   const currentScript = scripts[selectedVariantIndex];
   const scenes = currentScript?.scenes || [];
-  const totalScenes = scenes.length;
+  const totalScenes = scenes.reduce((total: number, scene: any) => total + (scene.mergedSceneTypes?.length || 1), 0);
   const creditCost = calculateCreditCost(scenes);
 
   // Check for existing completed video on mount (not during fresh start)
@@ -224,7 +224,7 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
                   {creditCost} Credits
                 </p>
                 <p className="text-sm text-text-secondary">
-                  {totalScenes} scenes • 2 credits per scene
+                  Based on estimated video length
                 </p>
                 <p className="text-xs text-text-muted mt-1">
                   {usageStats
@@ -310,7 +310,7 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
                 This will use <span className="font-bold text-accent-400">{creditCost} credits</span>
               </p>
               <p className="text-xs text-text-muted mb-2">
-                {totalScenes} scenes • 2 credits per scene
+                Based on estimated video length
               </p>
               <p className="text-sm text-text-secondary">
                 You&apos;ll have {usageStats ? usageStats.totalRemaining - creditCost : 0} credits remaining
