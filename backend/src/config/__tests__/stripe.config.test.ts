@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   getPlanFromPriceId,
   getClipsLimitForPlan,
+  getMaxUploadSizeForPlan,
   isAddonPrice,
   getAddonClips,
   PLAN_LIMITS,
@@ -10,19 +11,19 @@ import {
 
 describe("PLAN_LIMITS", () => {
   it("has correct free tier limits", () => {
-    expect(PLAN_LIMITS.FREE).toEqual({ clips: 3, generations: 10, seats: 1 });
+    expect(PLAN_LIMITS.FREE).toEqual({ clips: 3, generations: 10, seats: 1, maxUploadSizeGB: 2 });
   });
 
   it("has correct studio limits", () => {
-    expect(PLAN_LIMITS.STUDIO).toEqual({ clips: 400, generations: -1, seats: 1 });
+    expect(PLAN_LIMITS.STUDIO).toEqual({ clips: 400, generations: -1, seats: 1, maxUploadSizeGB: 2 });
   });
 
   it("has correct scale limits", () => {
-    expect(PLAN_LIMITS.SCALE).toEqual({ clips: 1000, generations: -1, seats: -1 });
+    expect(PLAN_LIMITS.SCALE).toEqual({ clips: 1000, generations: -1, seats: -1, maxUploadSizeGB: 3 });
   });
 
   it("has unlimited enterprise", () => {
-    expect(PLAN_LIMITS.ENTERPRISE).toEqual({ clips: -1, generations: -1, seats: -1 });
+    expect(PLAN_LIMITS.ENTERPRISE).toEqual({ clips: -1, generations: -1, seats: -1, maxUploadSizeGB: 3 });
   });
 
   it("has addon clip counts", () => {
@@ -77,6 +78,28 @@ describe("getClipsLimitForPlan", () => {
   it("returns 3 for free/unknown", () => {
     expect(getClipsLimitForPlan("free")).toBe(3);
     expect(getClipsLimitForPlan("unknown")).toBe(3);
+  });
+});
+
+describe("getMaxUploadSizeForPlan", () => {
+  it("returns 2GB for free plan", () => {
+    expect(getMaxUploadSizeForPlan("free")).toBe(2 * 1024 * 1024 * 1024);
+  });
+
+  it("returns 2GB for studio plan", () => {
+    expect(getMaxUploadSizeForPlan("studio")).toBe(2 * 1024 * 1024 * 1024);
+  });
+
+  it("returns 3GB for scale plan", () => {
+    expect(getMaxUploadSizeForPlan("scale")).toBe(3 * 1024 * 1024 * 1024);
+  });
+
+  it("returns 3GB for enterprise plan", () => {
+    expect(getMaxUploadSizeForPlan("enterprise")).toBe(3 * 1024 * 1024 * 1024);
+  });
+
+  it("returns 2GB for unknown plan", () => {
+    expect(getMaxUploadSizeForPlan("unknown")).toBe(2 * 1024 * 1024 * 1024);
   });
 });
 
