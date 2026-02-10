@@ -23,24 +23,17 @@ export const voicesConfig: Voice[] = [
   },
   {
     name: "Derek",
-    id: "UJwJKLxD98hM5x13z3bu",
+    id: "QaG1DLeO8t87oG7vEkyu",
     previewFile: "/voices/derek.mp3",
     gender: "male",
     description: "Laid-back, authentic reviewer",
   },
   {
     name: "Naomi",
-    id: "NLR8EVRwIpHyxT26wyO0",
+    id: "UJwJKLxD98hM5x13z3bu",
     previewFile: "/voices/naomi.mp3",
     gender: "female",
     description: "Warm, relatable best friend",
-  },
-  {
-    name: "Adam",
-    id: "pNInz6obpgDQGcFmaJgB",
-    previewFile: "/voices/adam.mp3",
-    gender: "male",
-    description: "Dominant, firm",
   },
   {
     name: "Alexis",
@@ -48,13 +41,6 @@ export const voicesConfig: Voice[] = [
     previewFile: "/voices/alexis.mp3",
     gender: "female",
     description: "Emotional & expressive",
-  },
-  {
-    name: "Ashley",
-    id: "bxiObU1YDrf7lrFAyV99",
-    previewFile: "/voices/ashley.mp3",
-    gender: "female",
-    description: "Natural female voice",
   },
   {
     name: "Backwardks",
@@ -69,13 +55,6 @@ export const voicesConfig: Voice[] = [
     previewFile: "/voices/bianca.mp3",
     gender: "female",
     description: "City girl",
-  },
-  {
-    name: "Brian",
-    id: "nPczCjzI2devNBz1zQrb",
-    previewFile: "/voices/brian.mp3",
-    gender: "male",
-    description: "Deep, resonant and comforting",
   },
   {
     name: "Brittney",
@@ -99,13 +78,6 @@ export const voicesConfig: Voice[] = [
     description: "Chill, natural & real",
   },
   {
-    name: "Guy",
-    id: "QTGiyJvep6bcx4WD1qAq",
-    previewFile: "/voices/guy.mp3",
-    gender: "male",
-    description: "Serious TV/radio announcer",
-  },
-  {
     name: "James",
     id: "2eEzqYH6ZE3sUbRXWquV",
     previewFile: "/voices/james.mp3",
@@ -118,13 +90,6 @@ export const voicesConfig: Voice[] = [
     previewFile: "/voices/kaylin.mp3",
     gender: "female",
     description: "Bright & energetic",
-  },
-  {
-    name: "Laura",
-    id: "FGY2WhTYpPnrIDTdsKH5",
-    previewFile: "/voices/laura.mp3",
-    gender: "female",
-    description: "Enthusiast, quirky attitude",
   },
   {
     name: "Liam",

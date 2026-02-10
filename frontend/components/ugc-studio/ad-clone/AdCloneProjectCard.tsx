@@ -20,6 +20,7 @@ export interface AdCloneProject {
 interface AdCloneProjectCardProps {
   project: AdCloneProject;
   onClick: () => void;
+  onDelete?: () => void;
 }
 
 const STATUS_CONFIG: Record<
@@ -68,7 +69,7 @@ const STATUS_CONFIG: Record<
   },
 };
 
-export function AdCloneProjectCard({ project, onClick }: AdCloneProjectCardProps) {
+export function AdCloneProjectCard({ project, onClick, onDelete }: AdCloneProjectCardProps) {
   const statusConfig = STATUS_CONFIG[project.status] || STATUS_CONFIG.uploading;
   const isGenerating = ["analyzing", "generating_script", "generating_video"].includes(project.status);
   const isComplete = project.status === "completed";
@@ -177,6 +178,20 @@ export function AdCloneProjectCard({ project, onClick }: AdCloneProjectCardProps
               {statusConfig.label}
             </Chip>
           </div>
+
+          {/* Delete button */}
+          {onDelete && (
+            <button
+              className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/80 z-10"
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                onDelete();
+              }}
+            >
+              <Icon icon="solar:trash-bin-trash-bold" className="text-white" width={14} />
+            </button>
+          )}
         </div>
 
         {/* Info */}
