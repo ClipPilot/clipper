@@ -11,6 +11,7 @@ interface ProductImageUploaderProps {
   maxImages?: number;
   images: ProductImage[];
   onImagesChange: (images: ProductImage[]) => void;
+  uploadFn?: (teamId: number, file: File) => Promise<{ key: string; url: string }>;
 }
 
 export function ProductImageUploader({
@@ -18,6 +19,7 @@ export function ProductImageUploader({
   maxImages = 5,
   images,
   onImagesChange,
+  uploadFn,
 }: ProductImageUploaderProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -34,7 +36,8 @@ export function ProductImageUploader({
       const uploadedImages: ProductImage[] = [];
 
       for (const file of filesToUpload) {
-        const result = await ugcScriptAPI.uploadImage(teamId, file);
+        const upload = uploadFn || ugcScriptAPI.uploadImage.bind(ugcScriptAPI);
+        const result = await upload(teamId, file);
         uploadedImages.push({ ...result, file });
       }
 

@@ -1,0 +1,54 @@
+export interface GraphicTypeConfig {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+}
+
+export const GRAPHIC_TYPES: GraphicTypeConfig[] = [
+  {
+    id: "instagram-ad",
+    name: "Instagram Ad",
+    description: "Bold, scroll-stopping visuals for Instagram feed and stories",
+    icon: "solar:camera-bold-duotone",
+  },
+  {
+    id: "facebook-ad",
+    name: "Facebook Ad",
+    description: "Clean, conversion-focused designs for Facebook campaigns",
+    icon: "solar:like-bold-duotone",
+  },
+  {
+    id: "product-showcase",
+    name: "Product Showcase",
+    description: "Premium studio-quality product imagery",
+    icon: "solar:bag-smile-bold-duotone",
+  },
+  {
+    id: "banner-display-ad",
+    name: "Banner / Display Ad",
+    description: "Eye-catching banner graphics for display networks",
+    icon: "solar:monitor-bold-duotone",
+  },
+  {
+    id: "custom",
+    name: "Custom",
+    description: "General-purpose marketing graphic with your own direction",
+    icon: "solar:palette-bold-duotone",
+  },
+];
+
+export interface AspectRatioConfig {
+  value: string;
+  label: string;
+  description: string;
+}
+
+export const ASPECT_RATIOS: AspectRatioConfig[] = [
+  { value: "1:1", label: "1:1", description: "Square" },
+  { value: "9:16", label: "9:16", description: "Story / Reel" },
+  { value: "16:9", label: "16:9", description: "Landscape" },
+  { value: "4:5", label: "4:5", description: "Instagram Feed" },
+  { value: "3:4", label: "3:4", description: "Portrait" },
+  { value: "2:3", label: "2:3", description: "Pinterest" },
+];
