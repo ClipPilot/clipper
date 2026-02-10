@@ -612,6 +612,76 @@ export class UGCVideoController {
     }
   }
 
+  /**
+   * Delete a video generation job and its S3 assets
+   */
+  async deleteVideoJob(req: AuthRequest, res: Response) {
+    try {
+      const { jobId } = req.params;
+
+      if (!jobId) {
+        return res.status(400).json({ error: "jobId is required" });
+      }
+
+      const [job] = await db
+        .select()
+        .from(ugcVideoGenerationJobs)
+        .where(eq(ugcVideoGenerationJobs.id, jobId));
+
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+
+      // Delete final video from S3
+      if (job.final_video_key) {
+        try {
+          await s3Service.deleteObject(job.final_video_key);
+        } catch (e) {
+          console.warn("[UGC_VIDEO] Failed to delete final video:", e);
+        }
+      }
+
+      // Delete individual scene videos and audio from S3
+      const sceneVideos = job.scene_videos as Array<{
+        sceneId: string;
+        sceneNumber: number;
+        audioKey: string;
+        videoKey: string;
+      }> | null;
+
+      if (sceneVideos?.length) {
+        for (const scene of sceneVideos) {
+          if (scene.videoKey) {
+            try {
+              await s3Service.deleteObject(scene.videoKey);
+            } catch (e) {
+              console.warn("[UGC_VIDEO] Failed to delete scene video:", e);
+            }
+          }
+          if (scene.audioKey) {
+            try {
+              await s3Service.deleteObject(scene.audioKey);
+            } catch (e) {
+              console.warn("[UGC_VIDEO] Failed to delete scene audio:", e);
+            }
+          }
+        }
+      }
+
+      // Delete the database record
+      await db
+        .delete(ugcVideoGenerationJobs)
+        .where(eq(ugcVideoGenerationJobs.id, jobId));
+
+      console.log(`[UGC_VIDEO] Deleted job ${jobId}`);
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      console.error("[UGC_VIDEO] Delete job error:", error);
+      return res.status(500).json({
+        error: sanitizeErrorForFrontend(error, "Failed to delete video job"),
+      });
+    }
+  }
 }
 
 export const ugcVideoController = new UGCVideoController();

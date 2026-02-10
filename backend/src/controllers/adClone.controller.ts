@@ -7,7 +7,7 @@ import { teamService } from "../services/team.service";
 import { canAccessUGCStudio } from "../utils/plans";
 import { db } from "../db";
 import { adCloneProjects, ugcScripts, sceneImages, characters, clips, ugcVideoGenerationJobs } from "@clipper/shared-db";
-import { eq } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { s3Service } from "../services/s3.service";
 import { getTeamUsage } from "../middleware/subscription.middleware";
 import { transcribeVideoService } from "../services/clips/transcription.service";
@@ -575,6 +575,22 @@ export class AdCloneController {
           project!.finalVideoKey,
           3600
         );
+
+        // Check if already finalized to a clip
+        const [existingClip] = await db
+          .select({ id: clips.id })
+          .from(clips)
+          .where(
+            and(
+              eq(clips.team_id, project!.teamId),
+              sql`${clips.clip_metadata}->>'projectId' = ${project!.id}`
+            )
+          )
+          .limit(1);
+
+        if (existingClip) {
+          response.clipId = existingClip.id;
+        }
       }
 
       if (project!.status === "failed") {
@@ -772,6 +788,25 @@ export class AdCloneController {
 
       if (project.status !== "completed" || !project.finalVideoKey) {
         return res.status(400).json({ error: "Project video not completed" });
+      }
+
+      // Check if already finalized — return existing clip instead of creating a duplicate
+      const [existingClip] = await db
+        .select({ id: clips.id })
+        .from(clips)
+        .where(
+          and(
+            eq(clips.team_id, teamId),
+            sql`${clips.clip_metadata}->>'projectId' = ${projectId}`
+          )
+        )
+        .limit(1);
+
+      if (existingClip) {
+        return res.status(200).json({
+          success: true,
+          clipId: existingClip.id,
+        });
       }
 
       const selectedScript = project.adaptedScripts?.[project.selectedVariantIndex];

@@ -3,6 +3,7 @@ import {
   GetObjectCommand,
   DeleteObjectCommand,
   PutObjectCommand,
+  HeadObjectCommand,
   CreateMultipartUploadCommand,
   UploadPartCommand,
   CompleteMultipartUploadCommand,
@@ -250,6 +251,15 @@ class S3Service {
     const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn });
 
     return { uploadUrl, s3Key };
+  }
+
+  async objectExists(key: string): Promise<boolean> {
+    try {
+      await s3Client.send(new HeadObjectCommand({ Bucket: BUCKET_NAME, Key: key }));
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   async deleteObject(key: string): Promise<void> {

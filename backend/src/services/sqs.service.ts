@@ -267,6 +267,8 @@ export interface GenerateSceneImageJob extends BaseJob {
   previousArollImageKey?: string;
   isConsecutiveAroll?: boolean;
   previousSceneSetting?: string;
+  adCloneReferenceVideoKey?: string;
+  adCloneSceneTimestamp?: number;
 }
 
 // Script generation job payload
@@ -558,6 +560,8 @@ class SQSService {
     previousArollImageKey?: string;
     isConsecutiveAroll?: boolean;
     previousSceneSetting?: string;
+    adCloneReferenceVideoKey?: string;
+    adCloneSceneTimestamp?: number;
   }): Promise<string> {
     const job: GenerateSceneImageJob = {
       type: "generate-scene-image",
@@ -582,6 +586,8 @@ class SQSService {
       previousArollImageKey: params.previousArollImageKey,
       isConsecutiveAroll: params.isConsecutiveAroll,
       previousSceneSetting: params.previousSceneSetting,
+      adCloneReferenceVideoKey: params.adCloneReferenceVideoKey,
+      adCloneSceneTimestamp: params.adCloneSceneTimestamp,
       createdAt: new Date().toISOString(),
     };
 

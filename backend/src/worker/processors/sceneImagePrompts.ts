@@ -192,7 +192,8 @@ export function buildSceneImagePrompt(
   characterAppearance?: CharacterAppearance,
   hasSupportingImages?: boolean,
   isConsecutiveAroll?: boolean,
-  previousSceneSetting?: string
+  previousSceneSetting?: string,
+  hasVideoFrameReference?: boolean
 ): string {
   const sections: string[] = [];
 
@@ -209,10 +210,22 @@ This is a CONTINUATION of the previous scene. You MUST maintain EXACT visual con
 The first reference image shows the PREVIOUS FRAME - match its environment EXACTLY. This should look like the next frame in a video, not a new scene.`);
   }
 
+  if (hasVideoFrameReference) {
+    sections.push(`**AD CLONE - POSE/COMPOSITION REFERENCE**
+The FIRST reference image is a frame from the original video ad. Use it as a COMPOSITION and POSE guide ONLY:
+- REPLICATE the body positioning, posture, arm placement, and overall pose
+- REPLICATE the camera angle, framing, and distance from subject
+- REPLICATE the setting layout, background composition, and lighting direction
+- DO NOT copy the person's face or identity — use the CHARACTER reference for that`);
+  }
+
   if (hasReferenceImages) {
     const charDesc = characterAppearance ? buildCharacterDescription(characterAppearance) : null;
 
     let refText = "REFERENCE IMAGES PROVIDED:\n";
+    if (hasVideoFrameReference) {
+      refText += "Note: Image 1 is the video frame pose reference (see above). The CHARACTER reference image follows after it.\n";
+    }
     refText += "The character reference shows the exact person to depict. This must be the identical individual - same face, same features, same identity throughout.\n";
 
     if (charDesc) {

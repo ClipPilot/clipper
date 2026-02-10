@@ -184,6 +184,9 @@ export class SceneBuilderController {
         .from(ugcScripts)
         .where(eq(ugcScripts.id, scriptId));
 
+      let adCloneReferenceVideoKey: string | undefined;
+      let adCloneVideoAnalysis: any = null;
+
       if (script) {
         scriptsData = script.scripts_data as any[];
         selectedVariantIndex = script.selected_variant_index;
@@ -201,6 +204,8 @@ export class SceneBuilderController {
           selectedVariantIndex = adCloneProject.selected_variant_index ?? 0;
           productImageKeys = (adCloneProject.product_image_keys as string[]) || [];
           productName = adCloneProject.product_name;
+          adCloneReferenceVideoKey = adCloneProject.reference_video_key || undefined;
+          adCloneVideoAnalysis = adCloneProject.video_analysis;
         }
       }
 
@@ -283,6 +288,15 @@ export class SceneBuilderController {
         })
         .returning();
 
+      // Compute ad clone scene timestamp for A-roll scenes
+      let adCloneSceneTimestamp: number | undefined;
+      if (adCloneReferenceVideoKey && adCloneVideoAnalysis?.scenes && sceneData.shotType === "a-roll") {
+        const analysisScene = adCloneVideoAnalysis.scenes.find((s: any) => s.sceneNumber === sceneNumber);
+        if (analysisScene) {
+          adCloneSceneTimestamp = (analysisScene.startTime + analysisScene.endTime) / 2;
+        }
+      }
+
       await sqsService.sendGenerateSceneImageJob({
         jobId: job.id,
         teamId,
@@ -313,6 +327,8 @@ export class SceneBuilderController {
         previousArollImageKey,
         isConsecutiveAroll,
         previousSceneSetting,
+        adCloneReferenceVideoKey,
+        adCloneSceneTimestamp,
       });
 
       return res.status(202).json({
@@ -389,6 +405,9 @@ export class SceneBuilderController {
         .from(ugcScripts)
         .where(eq(ugcScripts.id, scriptId));
 
+      let adCloneReferenceVideoKey: string | undefined;
+      let adCloneVideoAnalysis: any = null;
+
       if (script) {
         scriptsData = script.scripts_data as any[];
         selectedVariantIndex = script.selected_variant_index;
@@ -406,6 +425,8 @@ export class SceneBuilderController {
           selectedVariantIndex = adCloneProject.selected_variant_index ?? 0;
           productImageKeys = (adCloneProject.product_image_keys as string[]) || [];
           productName = adCloneProject.product_name;
+          adCloneReferenceVideoKey = adCloneProject.reference_video_key || undefined;
+          adCloneVideoAnalysis = adCloneProject.video_analysis;
         }
       }
 
@@ -516,6 +537,15 @@ export class SceneBuilderController {
           }
         }
 
+        // Compute ad clone scene timestamp for A-roll scenes
+        let adCloneSceneTimestamp: number | undefined;
+        if (adCloneReferenceVideoKey && adCloneVideoAnalysis?.scenes && sceneData.shotType === "a-roll") {
+          const analysisScene = adCloneVideoAnalysis.scenes.find((s: any) => s.sceneNumber === sceneRequest.sceneNumber);
+          if (analysisScene) {
+            adCloneSceneTimestamp = (analysisScene.startTime + analysisScene.endTime) / 2;
+          }
+        }
+
         await sqsService.sendGenerateSceneImageJob({
           jobId: job.id,
           teamId,
@@ -544,6 +574,8 @@ export class SceneBuilderController {
           previousArollImageKey,
           isConsecutiveAroll,
           previousSceneSetting,
+          adCloneReferenceVideoKey,
+          adCloneSceneTimestamp,
         });
 
         jobIds.push(job.id);
