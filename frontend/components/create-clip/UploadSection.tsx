@@ -24,6 +24,26 @@ interface UploadSectionProps {
 }
 
 const MULTIPART_THRESHOLD = 50 * 1024 * 1024;
+const MAX_VIDEO_DURATION_SECONDS = 2 * 60 * 60; // 2 hours
+
+const getVideoDuration = (file: File): Promise<number> => {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement("video");
+    video.preload = "metadata";
+
+    video.onloadedmetadata = () => {
+      URL.revokeObjectURL(video.src);
+      resolve(video.duration);
+    };
+
+    video.onerror = () => {
+      URL.revokeObjectURL(video.src);
+      reject(new Error("Failed to load video metadata"));
+    };
+
+    video.src = URL.createObjectURL(file);
+  });
+};
 
 const formatTime = (seconds: number): string => {
   if (seconds < 60) return `${Math.round(seconds)}s`;
@@ -98,6 +118,20 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
     if (!validTypes.includes(file.type)) {
       onError("Please upload a valid video file (MP4, MOV, AVI, MKV, WebM)");
       return;
+    }
+
+    try {
+      const duration = await getVideoDuration(file);
+      if (duration > MAX_VIDEO_DURATION_SECONDS) {
+        const hours = Math.floor(duration / 3600);
+        const mins = Math.floor((duration % 3600) / 60);
+        onError(
+          `Video is too long (${hours}h ${mins}m). Maximum duration is 2 hours.`
+        );
+        return;
+      }
+    } catch {
+      // If we can't read metadata, let the upload proceed — backend will handle it
     }
 
     setSelectedFile(file);
@@ -341,7 +375,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                 className="text-base mt-0.5"
               />
               <div>
-                <p>Max size: {MAX_FILE_SIZE / (1024 * 1024 * 1024)}GB | Formats: MP4, MOV, AVI, MKV, WebM</p>
+                <p>Max 2 hours | Max size: {MAX_FILE_SIZE / (1024 * 1024 * 1024)}GB | Formats: MP4, MOV, AVI, MKV, WebM</p>
               </div>
             </div>
           </div>
