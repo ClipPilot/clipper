@@ -178,8 +178,10 @@ Shot Types:
 - "a-roll" = Actor speaking directly to camera (talking head)
 - "b-roll" = Product shots with voiceover
 
-VOICE DIRECTION TAGS (REQUIRED for ALL scenes):
-Add emotion tags at the START of dialogue for expressive delivery:
+VOICE DIRECTION TAGS (REQUIRED for ALL a-roll scenes — EVERY SINGLE SENTENCE):
+EVERY a-roll sentence MUST start with an emotion tag. No exceptions — if a sentence is missing a tag, the TTS will sound flat and robotic.
+
+Available emotion tags:
 - [whispering] - Soft, intimate, ASMR-like
 - [excited] - High energy, enthusiastic
 - [curious] - Questioning, intrigued
@@ -190,11 +192,26 @@ Add emotion tags at the START of dialogue for expressive delivery:
 - [amazed] - Blown away, impressed
 - [laughing] - Light laughter, amused
 
+Pacing tag (COMBINE with emotion tags for UGC energy):
+- [fast-paced] - Quick, energetic delivery like real UGC creators who talk fast
+
+CRITICAL: For most a-roll scenes, COMBINE [fast-paced] with an emotion tag to create that authentic UGC creator energy. Real TikTok/IG creators talk FAST — they don't pause between thoughts, they rush through with excitement. Use [fast-paced] on the MAJORITY of a-roll sentences (aim for 70-80% of them).
+
+Format: "[fast-paced][emotion] sentence text" — fast-paced tag FIRST, then emotion tag.
+
 Examples:
-✓ "[excited] Oh my god, you guys need to see this!"
-✓ "[curious] So I've been testing this for a week now..."
-✓ "[amazed] And this is where it gets crazy..."
-✓ "[sincere] I genuinely didn't expect it to work this well"
+✓ "[fast-paced][excited] Oh my god, you guys need to see this!"
+✓ "[fast-paced][curious] So I've been testing this for a week now..."
+✓ "[fast-paced][amazed] And this is where it gets crazy..."
+✓ "[sincere] I genuinely didn't expect it to work this well" (slower for emotional impact)
+✓ "[fast-paced][playful] Okay but like... why did no one tell me about this"
+✓ "[whispering] This is the one secret nobody talks about..." (slow for dramatic effect)
+
+When to SKIP [fast-paced]:
+- [whispering] scenes — these need to be slow and intimate
+- [sincere] moments — genuine emotion lands better with slower pace
+- [dramatic] build-ups — tension needs breathing room
+- Key emotional beats where you want the viewer to FEEL something
 `;
 };
 
@@ -747,7 +764,7 @@ Example - Problem scene B-roll (NO product needed):
 
 Example - Demo scene B-roll (mixed):
 {
-  "dialogue": "[excited] And then I found this game-changer...",
+  "dialogue": "[fast-paced][excited] And then I found this game-changer...",
   "estimatedDurationSeconds": 5,
   "bRollShots": [
     { "action": "Soft morning light through window", "cinematicPrompt": "...", "durationSeconds": 2, "productImageNeeded": false },
@@ -766,7 +783,7 @@ Example - Single shot B-roll (just one shot is fine!):
 
 Example - REACTION B-roll (product hero shot + enthusiastic VO):
 {
-  "dialogue": "[amazed] Girlies this saved my LIFE... and it's only twenty dollars?!",
+  "dialogue": "[fast-paced][amazed] Girlies this saved my LIFE... and it's only twenty dollars?!",
   "estimatedDurationSeconds": 4,
   "bRollShots": [
     { "action": "Product sitting beautifully on clean surface, soft lighting", "cinematicPrompt": "...", "durationSeconds": 4, "productImageNeeded": true }
@@ -775,7 +792,7 @@ Example - REACTION B-roll (product hero shot + enthusiastic VO):
 
 Example - Product hero with hype VO:
 {
-  "dialogue": "[excited] I literally can't... this is actually insane",
+  "dialogue": "[fast-paced][excited] I literally can't... this is actually insane",
   "estimatedDurationSeconds": 3,
   "bRollShots": [
     { "action": "Product centered on aesthetic background, no hands", "cinematicPrompt": "...", "durationSeconds": 3, "productImageNeeded": true }
@@ -1141,7 +1158,8 @@ Score 95+ means: irresistible hook, perfect pacing, genuine emotion, share-worth
 - Total duration close to ${duration} seconds
 - Structure matches the required pattern EXACTLY
 - estimatedDurationSeconds is a NUMBER for each scene (a-roll: max 8s, b-roll: max 4-10s)
-- ALL scenes: MUST have voice direction tags at start of dialogue
+- ALL a-roll scenes: EVERY sentence MUST start with an emotion tag — no untagged sentences
+- MOST a-roll sentences (70-80%) should have [fast-paced] BEFORE the emotion tag for UGC energy
 - a-roll scenes: MUST have ambientSound
 - b-roll scenes: ambientSound should be null
 - No tongue twisters or plosive clusters in dialogue
@@ -1162,9 +1180,11 @@ export const generateSceneRegenerationPrompt = (
   shotType?: string,
 ): string => {
   const voiceTagInstruction = `
-VOICE DIRECTION TAGS (REQUIRED):
-Add a voice tag at the START of dialogue: [whispering], [excited], [curious], [sincere], [playful], [dramatic], [satisfied], [amazed], [laughing]
-Example: "[excited] Oh my god, you guys need to see this!"`;
+VOICE DIRECTION TAGS (REQUIRED for every a-roll sentence):
+EVERY sentence MUST start with an emotion tag: [whispering], [excited], [curious], [sincere], [playful], [dramatic], [satisfied], [amazed], [laughing]
+For most sentences, add [fast-paced] BEFORE the emotion tag for authentic UGC energy.
+Examples: "[fast-paced][excited] Oh my god, you guys need to see this!"
+"[sincere] I genuinely didn't expect it to work this well" (skip fast-paced for emotional beats)`;
 
   const sceneTypeGuidance: Record<string, string> = {
     hook: "HOOK: Stop the scroll! Use pattern interrupt, curiosity gap, or shock value. Make them NEED to keep watching.",

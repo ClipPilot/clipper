@@ -8,6 +8,34 @@ export interface Voice {
 
 export const voicesConfig: Voice[] = [
   {
+    name: "Mia",
+    id: "0fVjb4gNcZk8YVYDMSkX",
+    previewFile: "/voices/mia.mp3",
+    gender: "female",
+    description: "Trendy, fast-talking creator",
+  },
+  {
+    name: "Marcus",
+    id: "syZ36STRyFxIffFLfYw6",
+    previewFile: "/voices/marcus.mp3",
+    gender: "male",
+    description: "Confident, streetwise storyteller",
+  },
+  {
+    name: "Derek",
+    id: "UJwJKLxD98hM5x13z3bu",
+    previewFile: "/voices/derek.mp3",
+    gender: "male",
+    description: "Laid-back, authentic reviewer",
+  },
+  {
+    name: "Naomi",
+    id: "NLR8EVRwIpHyxT26wyO0",
+    previewFile: "/voices/naomi.mp3",
+    gender: "female",
+    description: "Warm, relatable best friend",
+  },
+  {
     name: "Adam",
     id: "pNInz6obpgDQGcFmaJgB",
     previewFile: "/voices/adam.mp3",
