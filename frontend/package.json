@@ -41,6 +41,7 @@
     "@heroui/toast": "2.0.17",
     "@heroui/user": "2.2.22",
     "@iconify/react": "^6.0.2",
+    "@internationalized/date": "^3.10.1",
     "@react-aria/ssr": "3.9.10",
     "@react-aria/visually-hidden": "3.8.28",
     "@stripe/react-stripe-js": "^5.4.1",

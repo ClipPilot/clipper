@@ -16,7 +16,7 @@ import type { ViralityCompetitor } from "@/api/virality";
 
 type Platform = "tiktok" | "instagram" | "x";
 
-interface AddTargetModalProps {
+interface AddAccountModalProps {
   isOpen: boolean;
   onClose: () => void;
   competitors?: ViralityCompetitor[];
@@ -29,16 +29,16 @@ interface AddTargetModalProps {
 
 const platforms: { value: Platform; label: string; icon: string; enabled: boolean }[] = [
   { value: "instagram", label: "Instagram", icon: "solar:camera-bold", enabled: true },
-  { value: "tiktok", label: "TikTok", icon: "ri:tiktok-fill", enabled: false },
-  { value: "x", label: "X", icon: "ri:twitter-x-fill", enabled: false },
+  { value: "tiktok", label: "TikTok", icon: "ri:tiktok-fill", enabled: true },
+  { value: "x", label: "X", icon: "ri:twitter-x-fill", enabled: true },
 ];
 
-export function AddTargetModal({
+export function AddAccountModal({
   isOpen,
   onClose,
   competitors = [],
   onSubmit,
-}: AddTargetModalProps) {
+}: AddAccountModalProps) {
   const [profileUrl, setProfileUrl] = useState("");
   const [selectedPlatform, setSelectedPlatform] = useState<Platform>("instagram");
   const [enableAlerts, setEnableAlerts] = useState(true);
@@ -70,7 +70,7 @@ export function AddTargetModal({
       setNewCompetitorName("");
       onClose();
     } catch (err: any) {
-      setError(err.message || "Failed to add target");
+      setError(err.message || "Failed to add account");
     } finally {
       setIsSubmitting(false);
     }
@@ -99,7 +99,7 @@ export function AddTargetModal({
         <ModalBody className="gap-6">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-white">Add New Target</h2>
+            <h2 className="text-xl font-semibold text-white">Add New Account</h2>
             <Button
               isIconOnly
               variant="light"
@@ -111,15 +111,27 @@ export function AddTargetModal({
             </Button>
           </div>
 
-          {/* Profile URL Input */}
+          {/* Profile URL / Username Input */}
           <div className="space-y-2">
-            <label className="text-sm text-gray-400">Profile URL</label>
+            <label className="text-sm text-gray-400">
+              {selectedPlatform === "instagram" ? "Profile URL" : "Username or Profile URL"}
+            </label>
             <Input
-              placeholder="e.g. instagram.com/creatorscale"
+              placeholder={
+                selectedPlatform === "tiktok"
+                  ? "e.g. @kotasyaps or tiktok.com/@kotasyaps"
+                  : selectedPlatform === "x"
+                    ? "e.g. @elonmusk or x.com/elonmusk"
+                    : "e.g. instagram.com/creatorscale"
+              }
               value={profileUrl}
               onValueChange={setProfileUrl}
               startContent={
-                <Icon icon="solar:link-linear" width={18} className="text-gray-500" />
+                <Icon
+                  icon={selectedPlatform === "instagram" ? "solar:link-linear" : "solar:at-linear"}
+                  width={18}
+                  className="text-gray-500"
+                />
               }
               classNames={{
                 inputWrapper:

@@ -7,6 +7,7 @@ import {
   Button,
   Card,
   CardBody,
+  Input,
   Tabs,
   Tab,
   Table,
@@ -35,9 +36,17 @@ import {
 import { useTeams } from "@/hooks/useTeams";
 import {
   viralityAPI,
-  type CompetitorWithTargets,
+  type CompetitorWithAccounts,
   type ViralityPost,
 } from "@/api/virality";
+import {
+  DateRangeFilter,
+  type DateRangeValue,
+} from "@/components/virality/DateRangeFilter";
+import {
+  ComparisonModeSelector,
+  type ComparisonMode,
+} from "@/components/virality/ComparisonModeSelector";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -60,6 +69,55 @@ function formatChartValue(value: number) {
   if (value >= 1000000) return (value / 1000000).toFixed(1) + "M";
   if (value >= 1000) return (value / 1000).toFixed(0) + "K";
   return value.toLocaleString();
+}
+
+/** Compute % change between last two metrics_history entries for a post */
+function getPostMetricChange(
+  post: ViralityPost,
+  metric: "likes" | "comments" | "views"
+): number | null {
+  const h = post.metrics_history;
+  if (!h || h.length < 2) return null;
+  const prev = h[h.length - 2];
+  const latest = h[h.length - 1];
+  const prevVal = metric === "views" ? (prev.views ?? 0) : prev[metric];
+  const latestVal = metric === "views" ? (latest.views ?? 0) : latest[metric];
+  if (prevVal === 0 || (metric === "views" && latestVal === 0)) return null;
+  return ((latestVal - prevVal) / prevVal) * 100;
+}
+
+/** Find the history entry closest to a target date */
+function findClosestEntry<T extends { recorded_at: string }>(
+  history: T[],
+  targetDate: Date
+): T | null {
+  if (!history || history.length === 0) return null;
+  const targetMs = targetDate.getTime();
+  let closest: T | null = null;
+  let closestDiff = Infinity;
+  for (const entry of history) {
+    const diff = Math.abs(new Date(entry.recorded_at).getTime() - targetMs);
+    if (diff < closestDiff) {
+      closestDiff = diff;
+      closest = entry;
+    }
+  }
+  return closest;
+}
+
+/** Resolve a ComparisonMode to a Date (null = last sync / use last two entries) */
+function getComparisonDate(mode: ComparisonMode): Date | null {
+  switch (mode.type) {
+    case "last-sync":
+      return null;
+    case "days-ago": {
+      const d = new Date();
+      d.setDate(d.getDate() - mode.days);
+      return d;
+    }
+    case "custom-date":
+      return mode.date;
+  }
 }
 
 // ─── Chart Data Builder ──────────────────────────────────────────────────────
@@ -114,7 +172,7 @@ interface AnalyticsChartProps {
 
 function AnalyticsChart({ posts }: AnalyticsChartProps) {
   const [weekFilter, setWeekFilter] = useState(4);
-  const [activeMetric, setActiveMetric] = useState<ChartMetricKey>("likes");
+  const [activeMetric, setActiveMetric] = useState<ChartMetricKey>("views");
 
   const chartData = useMemo(
     () => buildChartData(posts, weekFilter),
@@ -137,9 +195,9 @@ function AnalyticsChart({ posts }: AnalyticsChartProps) {
     value: number;
     tooltip?: string;
   }[] = [
+    { key: "views", title: "Total Views", value: totals.views, tooltip: "Only counts views on video posts (Reels)" },
     { key: "likes", title: "Total Likes", value: totals.likes },
     { key: "comments", title: "Total Comments", value: totals.comments },
-    { key: "views", title: "Total Views", value: totals.views, tooltip: "Only counts views on video posts (Reels)" },
   ];
 
   // Build chart series based on active metric
@@ -322,17 +380,21 @@ export default function CompetitorDetailPage() {
   const { selectedTeam } = useTeams();
   const competitorId = Number(params.competitorId);
 
-  const [competitor, setCompetitor] = useState<CompetitorWithTargets | null>(
+  const [competitor, setCompetitor] = useState<CompetitorWithAccounts | null>(
     null
   );
-  const [postsByTarget, setPostsByTarget] = useState<
+  const [postsByAccount, setPostsByAccount] = useState<
     Record<number, ViralityPost[]>
   >({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [activeTargetId, setActiveTargetId] = useState<string>("all");
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [activeAccountId, setActiveAccountId] = useState<string>("all");
+  const [dateRange, setDateRange] = useState<DateRangeValue>({});
   const [page, setPage] = useState(1);
-  const rowsPerPage = 6;
+  const [rowsPerPage, setRowsPerPage] = useState(25);
+  const [comparisonMode, setComparisonMode] = useState<ComparisonMode>({ type: "last-sync" });
 
   const fetchData = useCallback(async () => {
     if (!selectedTeam?.id || isNaN(competitorId)) return;
@@ -343,19 +405,23 @@ export default function CompetitorDetailPage() {
       );
       setCompetitor(comp);
 
-      // Fetch posts for each target
+      // Fetch posts for each account
+      const { startDate, endDate } = dateRange;
       const postsMap: Record<number, ViralityPost[]> = {};
       await Promise.all(
-        comp.targets.map(async (t) => {
-          const posts = await viralityAPI.getTargetPosts(
+        comp.accounts.map(async (a) => {
+          const posts = await viralityAPI.getAccountPosts(
             selectedTeam.id,
-            t.id,
-            100
+            a.id,
+            100,
+            0,
+            startDate,
+            endDate
           );
-          postsMap[t.id] = posts;
+          postsMap[a.id] = posts;
         })
       );
-      setPostsByTarget(postsMap);
+      setPostsByAccount(postsMap);
     } catch (err: any) {
       addToast({
         title: "Failed to load competitor",
@@ -365,15 +431,20 @@ export default function CompetitorDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedTeam?.id, competitorId]);
+  }, [selectedTeam?.id, competitorId, dateRange]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  // Reset pagination when tab changes
+  // Reset pagination when tab or date range changes
   const handleTabChange = (key: React.Key) => {
-    setActiveTargetId(String(key));
+    setActiveAccountId(String(key));
+    setPage(1);
+  };
+
+  const handleDateRangeChange = (value: DateRangeValue) => {
+    setDateRange(value);
     setPage(1);
   };
 
@@ -381,8 +452,8 @@ export default function CompetitorDetailPage() {
     if (!selectedTeam?.id || !competitor) return;
     setIsSyncing(true);
     try {
-      for (const target of competitor.targets) {
-        await viralityAPI.syncTarget(selectedTeam.id, target.id);
+      for (const account of competitor.accounts) {
+        await viralityAPI.syncAccount(selectedTeam.id, account.id);
       }
       addToast({ title: "Sync complete", color: "success" });
       await fetchData();
@@ -397,30 +468,70 @@ export default function CompetitorDetailPage() {
     }
   };
 
-  // Determine which targets/posts are active based on tab
-  const activeTargets = useMemo(() => {
+  const handleSaveName = async () => {
+    if (!selectedTeam?.id || !editName.trim()) return;
+    try {
+      await viralityAPI.updateCompetitor(selectedTeam.id, competitorId, {
+        name: editName.trim(),
+      });
+      setIsEditingName(false);
+      addToast({ title: "Name updated", color: "success" });
+      await fetchData();
+    } catch (err: any) {
+      addToast({
+        title: "Failed to update name",
+        description: err.message,
+        color: "danger",
+      });
+    }
+  };
+
+  // Determine which accounts/posts are active based on tab
+  const activeAccounts = useMemo(() => {
     if (!competitor) return [];
-    if (activeTargetId === "all") return competitor.targets;
-    const id = Number(activeTargetId);
-    return competitor.targets.filter((t) => t.id === id);
-  }, [competitor, activeTargetId]);
+    if (activeAccountId === "all") return competitor.accounts;
+    const id = Number(activeAccountId);
+    return competitor.accounts.filter((a) => a.id === id);
+  }, [competitor, activeAccountId]);
 
   const activePosts = useMemo(() => {
     const posts: ViralityPost[] = [];
-    for (const t of activeTargets) {
-      posts.push(...(postsByTarget[t.id] || []));
+    for (const a of activeAccounts) {
+      posts.push(...(postsByAccount[a.id] || []));
     }
     return posts.sort(
       (a, b) =>
         new Date(b.posted_at || 0).getTime() -
         new Date(a.posted_at || 0).getTime()
     );
-  }, [activeTargets, postsByTarget]);
+  }, [activeAccounts, postsByAccount]);
+
+  // Lookup account platform by account_id
+  const accountPlatformMap = useMemo(() => {
+    const map: Record<number, string> = {};
+    if (competitor) {
+      for (const a of competitor.accounts) {
+        map[a.id] = a.platform;
+      }
+    }
+    return map;
+  }, [competitor]);
+
+  // Lookup last_synced_at by account_id
+  const accountSyncMap = useMemo(() => {
+    const map: Record<number, string | null> = {};
+    if (competitor) {
+      for (const a of competitor.accounts) {
+        map[a.id] = a.last_synced_at;
+      }
+    }
+    return map;
+  }, [competitor]);
 
   // Stats with change deltas from metrics_history
   const stats = useMemo(() => {
-    const followers = activeTargets.reduce(
-      (sum, t) => sum + (t.follower_count || 0),
+    const followers = activeAccounts.reduce(
+      (sum, a) => sum + (a.follower_count || 0),
       0
     );
     const totalLikes = activePosts.reduce(
@@ -432,43 +543,75 @@ export default function CompetitorDetailPage() {
       0
     );
     const totalViews = activePosts.reduce(
-      (sum, p) => sum + (p.video_view_count ?? p.video_play_count ?? 0),
+      (sum, p) => sum + (p.video_play_count || 0),
       0
     );
 
-    // Compute change % by comparing last two metrics_history entries across all posts
+    const comparisonDate = getComparisonDate(comparisonMode);
+
+    // Compute change % by comparing metrics_history entries across all posts
     let prevLikes = 0, prevComments = 0, prevViews = 0;
     let latestLikes = 0, latestComments = 0, latestViews = 0;
     let hasHistory = false;
 
     for (const post of activePosts) {
       const h = post.metrics_history;
-      if (h && h.length >= 2) {
-        hasHistory = true;
-        const prev = h[h.length - 2];
-        const latest = h[h.length - 1];
-        prevLikes += prev.likes;
-        prevComments += prev.comments;
-        prevViews += prev.views ?? 0;
-        latestLikes += latest.likes;
-        latestComments += latest.comments;
-        latestViews += latest.views ?? 0;
+      if (!h || h.length < 2) continue;
+
+      const latest = h[h.length - 1];
+      let prev;
+      if (comparisonDate === null) {
+        // "Since last sync" - use second-to-last entry
+        prev = h[h.length - 2];
+      } else {
+        prev = findClosestEntry(h, comparisonDate);
+        if (!prev) continue;
       }
+
+      hasHistory = true;
+      prevLikes += prev.likes;
+      prevComments += prev.comments;
+      prevViews += prev.views ?? 0;
+      latestLikes += latest.likes;
+      latestComments += latest.comments;
+      latestViews += latest.views ?? 0;
     }
 
     const pct = (latest: number, prev: number) =>
       prev > 0 ? ((latest - prev) / prev) * 100 : null;
+
+    // Compute follower change from follower_history across active accounts
+    let prevFollowers = 0, latestFollowers = 0;
+    let hasFollowerHistory = false;
+    for (const a of activeAccounts) {
+      const fh = a.follower_history;
+      if (!fh || fh.length < 2) continue;
+
+      const latestF = fh[fh.length - 1];
+      let prevF;
+      if (comparisonDate === null) {
+        prevF = fh[fh.length - 2];
+      } else {
+        prevF = findClosestEntry(fh, comparisonDate);
+        if (!prevF) continue;
+      }
+
+      hasFollowerHistory = true;
+      prevFollowers += prevF.followers;
+      latestFollowers += latestF.followers;
+    }
 
     return {
       followers,
       totalLikes,
       totalComments,
       totalViews,
+      followersChange: hasFollowerHistory ? pct(latestFollowers, prevFollowers) : null,
       likesChange: hasHistory ? pct(latestLikes, prevLikes) : null,
       commentsChange: hasHistory ? pct(latestComments, prevComments) : null,
       viewsChange: hasHistory ? pct(latestViews, prevViews) : null,
     };
-  }, [activeTargets, activePosts]);
+  }, [activeAccounts, activePosts, comparisonMode]);
 
   // Pagination
   const totalPages = Math.ceil(activePosts.length / rowsPerPage);
@@ -511,7 +654,28 @@ export default function CompetitorDetailPage() {
       icon: "solar:users-group-rounded-bold",
       iconColor: "text-accent-400",
       iconBg: "bg-accent-400/10",
-      change: null as number | null,
+      change: stats.followersChange,
+    },
+    {
+      title: "TOTAL VIEWS",
+      value: formatNumber(stats.totalViews),
+      icon: "solar:eye-bold",
+      iconColor: "text-blue-500",
+      iconBg: "bg-blue-500/10",
+      change: stats.viewsChange,
+      tooltip: "Only counts views on video posts (Reels)",
+    },
+    {
+      title: "AVG VIEWS / POST",
+      value: formatNumber(
+        activePosts.length > 0
+          ? Math.round(stats.totalViews / activePosts.length)
+          : 0
+      ),
+      icon: "solar:chart-2-bold",
+      iconColor: "text-emerald-500",
+      iconBg: "bg-emerald-500/10",
+      change: null,
     },
     {
       title: "TOTAL LIKES",
@@ -528,15 +692,6 @@ export default function CompetitorDetailPage() {
       iconColor: "text-amber-500",
       iconBg: "bg-amber-500/10",
       change: stats.commentsChange,
-    },
-    {
-      title: "TOTAL VIEWS",
-      value: formatNumber(stats.totalViews),
-      icon: "solar:eye-bold",
-      iconColor: "text-blue-500",
-      iconBg: "bg-blue-500/10",
-      change: stats.viewsChange,
-      tooltip: "Only counts views on video posts (Reels)",
     },
   ];
 
@@ -559,9 +714,58 @@ export default function CompetitorDetailPage() {
               <Icon icon="solar:arrow-left-linear" width={20} />
             </Button>
             <div>
-              <h1 className="text-2xl font-bold text-text-primary">
-                {competitor.name}
-              </h1>
+              {isEditingName ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    size="sm"
+                    value={editName}
+                    onValueChange={setEditName}
+                    classNames={{
+                      inputWrapper: "bg-surface-base border-border-base",
+                    }}
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSaveName();
+                      if (e.key === "Escape") setIsEditingName(false);
+                    }}
+                  />
+                  <Button
+                    size="sm"
+                    isIconOnly
+                    variant="flat"
+                    className="bg-accent-400 text-white"
+                    onPress={handleSaveName}
+                  >
+                    <Icon icon="solar:check-read-linear" width={16} />
+                  </Button>
+                  <Button
+                    size="sm"
+                    isIconOnly
+                    variant="flat"
+                    className="bg-surface-elevated"
+                    onPress={() => setIsEditingName(false)}
+                  >
+                    <Icon icon="solar:close-circle-linear" width={16} />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl font-bold text-text-primary">
+                    {competitor.name}
+                  </h1>
+                  <Button
+                    size="sm"
+                    isIconOnly
+                    variant="light"
+                    onPress={() => {
+                      setEditName(competitor.name);
+                      setIsEditingName(true);
+                    }}
+                  >
+                    <Icon icon="solar:pen-2-linear" width={16} className="text-text-tertiary" />
+                  </Button>
+                </div>
+              )}
               {competitor.description && (
                 <p className="text-text-secondary text-sm">
                   {competitor.description}
@@ -569,26 +773,30 @@ export default function CompetitorDetailPage() {
               )}
             </div>
           </div>
-          <Button
-            className="bg-accent-400 text-white"
-            startContent={
-              isSyncing ? (
-                <Spinner size="sm" color="white" />
-              ) : (
-                <Icon icon="solar:refresh-bold" width={18} />
-              )
-            }
-            isDisabled={isSyncing || competitor.targets.length === 0}
-            onPress={handleSyncAll}
-          >
-            {isSyncing ? "Syncing..." : "Sync All"}
-          </Button>
+          <div className="flex items-center gap-3">
+            <DateRangeFilter value={dateRange} onChange={handleDateRangeChange} />
+            <ComparisonModeSelector selected={comparisonMode} onChange={setComparisonMode} />
+            <Button
+              className="bg-accent-400 text-white"
+              startContent={
+                isSyncing ? (
+                  <Spinner size="sm" color="white" />
+                ) : (
+                  <Icon icon="solar:refresh-bold" width={18} />
+                )
+              }
+              isDisabled={isSyncing || competitor.accounts.length === 0}
+              onPress={handleSyncAll}
+            >
+              {isSyncing ? "Syncing..." : "Sync All"}
+            </Button>
+          </div>
         </div>
 
-        {/* Target Tabs */}
-        {competitor.targets.length > 0 ? (
+        {/* Account Tabs */}
+        {competitor.accounts.length > 0 ? (
           <Tabs
-            selectedKey={activeTargetId}
+            selectedKey={activeAccountId}
             onSelectionChange={handleTabChange}
             variant="underlined"
             classNames={{
@@ -597,17 +805,16 @@ export default function CompetitorDetailPage() {
               tab: "text-text-tertiary data-[selected=true]:text-text-primary",
             }}
           >
-            <Tab key="all" title="All Targets" />
-            {competitor.targets.map((t) => (
+            <Tab key="all" title="All Accounts" />
+            {competitor.accounts.map((t) => (
               <Tab
                 key={String(t.id)}
                 title={
                   <div className="flex items-center gap-1.5">
-                    <Avatar
-                      src={t.avatar_url || undefined}
-                      name={t.username.charAt(0).toUpperCase()}
-                      className="w-4 h-4"
-                      classNames={{ base: "bg-surface-hover" }}
+                    <Icon
+                      icon={t.platform === "tiktok" ? "ri:tiktok-fill" : t.platform === "x" ? "ri:twitter-x-fill" : "ri:instagram-fill"}
+                      width={14}
+                      className={t.platform === "tiktok" ? "text-cyan-500" : t.platform === "x" ? "text-foreground" : "text-pink-500"}
                     />
                     @{t.username}
                   </div>
@@ -623,13 +830,13 @@ export default function CompetitorDetailPage() {
               className="text-text-tertiary"
             />
             <p className="text-text-secondary text-sm">
-              No targets in this competitor group yet
+              No accounts in this competitor group yet
             </p>
           </div>
         )}
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           {statCards.map((stat) => (
             <Card
               key={stat.title}
@@ -708,9 +915,10 @@ export default function CompetitorDetailPage() {
               <TableHeader>
                 <TableColumn>POST</TableColumn>
                 <TableColumn>POSTED</TableColumn>
+                <TableColumn>VIEWS</TableColumn>
                 <TableColumn>LIKES</TableColumn>
                 <TableColumn>COMMENTS</TableColumn>
-                <TableColumn>VIEWS</TableColumn>
+                <TableColumn>LAST SYNCED</TableColumn>
               </TableHeader>
               <TableBody>
                 {paginatedPosts.map((post) => (
@@ -721,15 +929,31 @@ export default function CompetitorDetailPage() {
                   >
                     <TableCell>
                       <div className="flex items-center gap-3 max-w-sm">
-                        <Avatar
-                          src={post.thumbnail_url || undefined}
-                          name="P"
-                          size="sm"
-                          radius="sm"
-                          classNames={{
-                            base: "bg-surface-hover flex-shrink-0",
-                          }}
-                        />
+                        {!post.thumbnail_url ? (
+                          <div className="w-8 h-8 rounded-sm bg-surface-hover flex items-center justify-center flex-shrink-0">
+                            <Icon
+                              icon={
+                                accountPlatformMap[post.account_id] === "x"
+                                  ? "ri:twitter-x-fill"
+                                  : accountPlatformMap[post.account_id] === "tiktok"
+                                    ? "ri:tiktok-fill"
+                                    : "mdi:instagram"
+                              }
+                              width={20}
+                              className="text-text-tertiary"
+                            />
+                          </div>
+                        ) : (
+                          <Avatar
+                            src={post.thumbnail_url}
+                            name="P"
+                            size="sm"
+                            radius="sm"
+                            classNames={{
+                              base: "bg-surface-hover flex-shrink-0",
+                            }}
+                          />
+                        )}
                         <p className="text-sm text-text-primary truncate">
                           {post.caption || "No caption"}
                         </p>
@@ -741,19 +965,62 @@ export default function CompetitorDetailPage() {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <span className="font-medium text-text-primary">
-                        {formatNumber(post.like_count)}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-medium text-text-primary">
+                          {post.video_play_count != null
+                            ? formatNumber(post.video_play_count)
+                            : "—"}
+                        </span>
+                        {(() => {
+                          const c = getPostMetricChange(post, "views");
+                          if (c == null) return null;
+                          return (
+                            <div className={cn("flex items-center gap-0.5", c >= 0 ? "text-green-500" : "text-red-500")}>
+                              <Icon icon={c >= 0 ? "solar:arrow-up-linear" : "solar:arrow-down-linear"} width={10} />
+                              <span className="text-[10px] font-medium">{Math.abs(c).toFixed(1)}%</span>
+                            </div>
+                          );
+                        })()}
+                      </div>
                     </TableCell>
                     <TableCell>
-                      <span className="font-medium text-text-primary">
-                        {formatNumber(post.comment_count)}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-medium text-text-primary">
+                          {formatNumber(post.like_count)}
+                        </span>
+                        {(() => {
+                          const c = getPostMetricChange(post, "likes");
+                          if (c == null) return null;
+                          return (
+                            <div className={cn("flex items-center gap-0.5", c >= 0 ? "text-green-500" : "text-red-500")}>
+                              <Icon icon={c >= 0 ? "solar:arrow-up-linear" : "solar:arrow-down-linear"} width={10} />
+                              <span className="text-[10px] font-medium">{Math.abs(c).toFixed(1)}%</span>
+                            </div>
+                          );
+                        })()}
+                      </div>
                     </TableCell>
                     <TableCell>
-                      <span className="font-medium text-text-primary">
-                        {(post.video_view_count ?? post.video_play_count) != null
-                          ? formatNumber(post.video_view_count ?? post.video_play_count ?? 0)
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-medium text-text-primary">
+                          {formatNumber(post.comment_count)}
+                        </span>
+                        {(() => {
+                          const c = getPostMetricChange(post, "comments");
+                          if (c == null) return null;
+                          return (
+                            <div className={cn("flex items-center gap-0.5", c >= 0 ? "text-green-500" : "text-red-500")}>
+                              <Icon icon={c >= 0 ? "solar:arrow-up-linear" : "solar:arrow-down-linear"} width={10} />
+                              <span className="text-[10px] font-medium">{Math.abs(c).toFixed(1)}%</span>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-text-secondary">
+                        {accountSyncMap[post.account_id]
+                          ? formatDate(accountSyncMap[post.account_id]!)
                           : "—"}
                       </span>
                     </TableCell>
@@ -767,18 +1034,41 @@ export default function CompetitorDetailPage() {
               <p className="text-sm text-text-tertiary">
                 Showing {paginatedPosts.length} of {activePosts.length} posts
               </p>
-              {totalPages > 1 && (
-                <Pagination
-                  total={totalPages}
-                  page={page}
-                  onChange={setPage}
-                  size="sm"
-                  classNames={{
-                    item: "bg-surface-elevated text-text-secondary",
-                    cursor: "bg-accent-400 text-white",
-                  }}
-                />
-              )}
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-text-tertiary">Show:</span>
+                  {[25, 50, 100].map((size) => (
+                    <Button
+                      key={size}
+                      size="sm"
+                      variant={rowsPerPage === size ? "solid" : "flat"}
+                      className={
+                        rowsPerPage === size
+                          ? "bg-accent-400 text-white min-w-[40px]"
+                          : "bg-surface-elevated text-text-secondary min-w-[40px]"
+                      }
+                      onPress={() => {
+                        setRowsPerPage(size);
+                        setPage(1);
+                      }}
+                    >
+                      {size}
+                    </Button>
+                  ))}
+                </div>
+                {totalPages > 1 && (
+                  <Pagination
+                    total={totalPages}
+                    page={page}
+                    onChange={setPage}
+                    size="sm"
+                    classNames={{
+                      item: "bg-surface-elevated text-text-secondary",
+                      cursor: "bg-accent-400 text-white",
+                    }}
+                  />
+                )}
+              </div>
             </div>
           </div>
         ) : (
@@ -789,7 +1079,7 @@ export default function CompetitorDetailPage() {
               className="text-text-tertiary"
             />
             <p className="text-text-secondary text-sm">
-              No posts yet — sync targets to fetch posts
+              No posts yet — sync accounts to fetch posts
             </p>
           </div>
         )}

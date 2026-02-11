@@ -202,3 +202,9 @@ variable "fal_key" {
   sensitive   = true
 }
 
+variable "apify_api_token" {
+  description = "Apify API Token for virality sync"
+  type        = string
+  sensitive   = true
+}
+

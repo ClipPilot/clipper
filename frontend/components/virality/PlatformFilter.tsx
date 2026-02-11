@@ -2,7 +2,7 @@
 
 import { Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { Platform } from "./TargetsTable";
+import { Platform } from "./AccountsTable";
 
 type FilterOption = Platform | "all";
 

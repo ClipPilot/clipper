@@ -6,9 +6,10 @@ import { ViralityPost } from "@/api/virality";
 
 interface PostCardProps {
   post: ViralityPost;
+  platform?: "instagram" | "tiktok" | "x";
 }
 
-export function PostCard({ post }: PostCardProps) {
+export function PostCard({ post, platform }: PostCardProps) {
   const formatNumber = (num: number | null | undefined) => {
     if (!num) return "0";
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
@@ -32,6 +33,12 @@ export function PostCard({ post }: PostCardProps) {
         return "solar:video-frame-bold";
       case "sidecar":
         return "solar:gallery-wide-bold";
+      case "tweet":
+        return "ri:twitter-x-fill";
+      case "retweet":
+        return "solar:repeat-bold";
+      case "quote":
+        return "solar:quote-up-double-bold";
       default:
         return "solar:gallery-bold";
     }
@@ -43,6 +50,12 @@ export function PostCard({ post }: PostCardProps) {
         return "Video";
       case "sidecar":
         return "Carousel";
+      case "tweet":
+        return "Tweet";
+      case "retweet":
+        return "Retweet";
+      case "quote":
+        return "Quote";
       default:
         return "Image";
     }
@@ -66,20 +79,20 @@ export function PostCard({ post }: PostCardProps) {
     >
       <CardBody className="p-0">
         <div className="relative aspect-square bg-surface-elevated">
-          {post.thumbnail_url ? (
+          {!post.thumbnail_url ? (
+            <div className="w-full h-full flex items-center justify-center">
+              <Icon
+                icon={platform === "x" ? "ri:twitter-x-fill" : platform === "instagram" ? "mdi:instagram" : "solar:gallery-bold"}
+                width={48}
+                className="text-text-tertiary"
+              />
+            </div>
+          ) : (
             <img
               src={post.thumbnail_url}
               alt="Post thumbnail"
               className="w-full h-full object-cover"
             />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <Icon
-                icon="solar:gallery-bold"
-                width={48}
-                className="text-text-tertiary"
-              />
-            </div>
           )}
           <div className="absolute top-2 right-2">
             <Chip
@@ -103,8 +116,8 @@ export function PostCard({ post }: PostCardProps) {
 
           <div className="flex items-center justify-between text-xs text-text-tertiary mb-2">
             <span>{formatDate(post.posted_at)}</span>
-            {post.post_type?.toLowerCase() === "video" &&
-              post.video_view_count && (
+            {post.video_view_count && (
+              post.video_view_count > 0) && (
                 <span className="flex items-center gap-1">
                   <Icon icon="solar:eye-bold" width={12} />
                   {formatNumber(post.video_view_count)} views

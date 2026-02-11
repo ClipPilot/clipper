@@ -3,21 +3,21 @@
 import { useState } from "react";
 import { Card, CardBody, Avatar, Button, Chip } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { ViralityTarget } from "@/api/virality";
+import { ViralityAccount } from "@/api/virality";
 
-interface TargetCardProps {
-  target: ViralityTarget;
+interface AccountCardProps {
+  account: ViralityAccount;
   onSync: () => Promise<void>;
   onDelete: () => Promise<void>;
   onViewPosts: () => void;
 }
 
-export function TargetCard({
-  target,
+export function AccountCard({
+  account,
   onSync,
   onDelete,
   onViewPosts,
-}: TargetCardProps) {
+}: AccountCardProps) {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -47,7 +47,7 @@ export function TargetCard({
   };
 
   const getSyncStatusColor = () => {
-    switch (target.sync_status) {
+    switch (account.sync_status) {
       case "completed":
         return "success";
       case "failed":
@@ -60,8 +60,8 @@ export function TargetCard({
   };
 
   const formatLastSynced = () => {
-    if (!target.last_synced_at) return "Never synced";
-    const date = new Date(target.last_synced_at);
+    if (!account.last_synced_at) return "Never synced";
+    const date = new Date(account.last_synced_at);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
@@ -84,8 +84,8 @@ export function TargetCard({
           onClick={onViewPosts}
         >
           <Avatar
-            src={target.avatar_url || undefined}
-            name={target.username.charAt(0).toUpperCase()}
+            src={account.avatar_url || undefined}
+            name={account.username.charAt(0).toUpperCase()}
             size="lg"
             classNames={{
               base: "bg-surface-hover flex-shrink-0",
@@ -94,9 +94,9 @@ export function TargetCard({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <p className="font-semibold text-text-primary truncate">
-                {target.display_name || target.username}
+                {account.display_name || account.username}
               </p>
-              {target.is_verified && (
+              {account.is_verified && (
                 <Icon
                   icon="solar:verified-check-bold"
                   className="text-blue-500 flex-shrink-0"
@@ -104,7 +104,7 @@ export function TargetCard({
                 />
               )}
             </div>
-            <p className="text-sm text-text-tertiary">@{target.username}</p>
+            <p className="text-sm text-text-tertiary">@{account.username}</p>
             <div className="flex items-center gap-1 mt-1">
               <Icon icon="ri:instagram-fill" className="text-pink-500" width={14} />
               <span className="text-xs text-text-tertiary">Instagram</span>
@@ -118,26 +118,26 @@ export function TargetCard({
               base: "capitalize",
             }}
           >
-            {target.sync_status}
+            {account.sync_status}
           </Chip>
         </div>
 
         <div className="grid grid-cols-3 gap-2 mb-4">
           <div className="text-center p-2 rounded-lg bg-surface-elevated">
             <p className="text-lg font-bold text-text-primary">
-              {formatNumber(target.follower_count)}
+              {formatNumber(account.follower_count)}
             </p>
             <p className="text-xs text-text-tertiary">Followers</p>
           </div>
           <div className="text-center p-2 rounded-lg bg-surface-elevated">
             <p className="text-lg font-bold text-text-primary">
-              {formatNumber(target.total_likes)}
+              {formatNumber(account.total_likes)}
             </p>
             <p className="text-xs text-text-tertiary">Likes</p>
           </div>
           <div className="text-center p-2 rounded-lg bg-surface-elevated">
             <p className="text-lg font-bold text-text-primary">
-              {formatNumber(target.post_count)}
+              {formatNumber(account.post_count)}
             </p>
             <p className="text-xs text-text-tertiary">Posts</p>
           </div>
@@ -152,14 +152,14 @@ export function TargetCard({
             />
             {formatLastSynced()}
           </p>
-          {target.sync_error && (
+          {account.sync_error && (
             <p className="text-xs text-red-500 truncate max-w-[150px]">
-              {target.sync_error}
+              {account.sync_error}
             </p>
           )}
         </div>
 
-        {target.sync_status === "completed" && (
+        {account.sync_status === "completed" && (
           <Button
             size="sm"
             variant="flat"
@@ -182,7 +182,7 @@ export function TargetCard({
             }
             onPress={handleSync}
             isLoading={isSyncing}
-            isDisabled={target.sync_status === "syncing"}
+            isDisabled={account.sync_status === "syncing"}
           >
             {isSyncing ? "Syncing..." : "Refresh"}
           </Button>

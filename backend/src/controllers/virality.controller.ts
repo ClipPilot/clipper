@@ -3,7 +3,7 @@ import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { viralityService } from "../services/virality/virality.service";
 
-export async function listTargetsController(req: AuthRequest, res: Response) {
+export async function listAccountsController(req: AuthRequest, res: Response) {
   try {
     const teamId = parseInt(req.params.teamId);
     if (isNaN(teamId)) {
@@ -19,16 +19,16 @@ export async function listTargetsController(req: AuthRequest, res: Response) {
       });
     }
 
-    const targets = await viralityService.getTargetsByTeam(teamId);
-    return res.json({ targets });
+    const accounts = await viralityService.getAccountsByTeam(teamId);
+    return res.json({ accounts });
   } catch (error) {
-    console.error("List virality targets error:", error);
+    console.error("List virality accounts error:", error);
     Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to list targets" });
+    return res.status(500).json({ error: "Failed to list accounts" });
   }
 }
 
-export async function addTargetController(req: AuthRequest, res: Response) {
+export async function addAccountController(req: AuthRequest, res: Response) {
   try {
     const teamId = parseInt(req.params.teamId);
     const { platform, profileUrl, competitorId } = req.body;
@@ -52,19 +52,19 @@ export async function addTargetController(req: AuthRequest, res: Response) {
         .json({ error: "Platform and profile URL are required" });
     }
 
-    if (platform !== "instagram") {
-      return res.status(400).json({ error: "Only Instagram is supported currently" });
+    if (!["instagram", "tiktok", "x"].includes(platform)) {
+      return res.status(400).json({ error: "Only Instagram, TikTok, and X are supported" });
     }
 
-    const target = await viralityService.addTarget(
+    const account = await viralityService.addAccount(
       teamId,
       platform,
       profileUrl,
       competitorId ? parseInt(competitorId) : undefined
     );
-    return res.status(201).json({ target });
+    return res.status(201).json({ account });
   } catch (error: any) {
-    console.error("Add virality target error:", error);
+    console.error("Add virality account error:", error);
     Sentry.captureException(error);
 
     if (error.message?.includes("already being tracked")) {
@@ -74,62 +74,62 @@ export async function addTargetController(req: AuthRequest, res: Response) {
       return res.status(400).json({ error: error.message });
     }
 
-    return res.status(500).json({ error: "Failed to add target" });
+    return res.status(500).json({ error: "Failed to add account" });
   }
 }
 
-export async function getTargetController(req: AuthRequest, res: Response) {
+export async function getAccountController(req: AuthRequest, res: Response) {
   try {
     const teamId = parseInt(req.params.teamId);
-    const targetId = parseInt(req.params.targetId);
+    const accountId = parseInt(req.params.accountId);
 
-    if (isNaN(teamId) || isNaN(targetId)) {
-      return res.status(400).json({ error: "Invalid team or target ID" });
+    if (isNaN(teamId) || isNaN(accountId)) {
+      return res.status(400).json({ error: "Invalid team or account ID" });
     }
 
-    const target = await viralityService.getTargetById(targetId);
-    if (!target || target.team_id !== teamId) {
-      return res.status(404).json({ error: "Target not found" });
+    const account = await viralityService.getAccountById(accountId);
+    if (!account || account.team_id !== teamId) {
+      return res.status(404).json({ error: "Account not found" });
     }
 
-    return res.json({ target });
+    return res.json({ account });
   } catch (error) {
-    console.error("Get virality target error:", error);
+    console.error("Get virality account error:", error);
     Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to get target" });
+    return res.status(500).json({ error: "Failed to get account" });
   }
 }
 
-export async function deleteTargetController(req: AuthRequest, res: Response) {
+export async function deleteAccountController(req: AuthRequest, res: Response) {
   try {
     const teamId = parseInt(req.params.teamId);
-    const targetId = parseInt(req.params.targetId);
+    const accountId = parseInt(req.params.accountId);
 
-    if (isNaN(teamId) || isNaN(targetId)) {
-      return res.status(400).json({ error: "Invalid team or target ID" });
+    if (isNaN(teamId) || isNaN(accountId)) {
+      return res.status(400).json({ error: "Invalid team or account ID" });
     }
 
-    await viralityService.deleteTarget(targetId, teamId);
+    await viralityService.deleteAccount(accountId, teamId);
     return res.json({ success: true });
   } catch (error: any) {
-    console.error("Delete virality target error:", error);
+    console.error("Delete virality account error:", error);
     Sentry.captureException(error);
 
     if (error.message?.includes("not found")) {
       return res.status(404).json({ error: error.message });
     }
 
-    return res.status(500).json({ error: "Failed to delete target" });
+    return res.status(500).json({ error: "Failed to delete account" });
   }
 }
 
-export async function syncTargetController(req: AuthRequest, res: Response) {
+export async function syncAccountController(req: AuthRequest, res: Response) {
   try {
     const teamId = parseInt(req.params.teamId);
-    const targetId = parseInt(req.params.targetId);
+    const accountId = parseInt(req.params.accountId);
 
-    if (isNaN(teamId) || isNaN(targetId)) {
-      return res.status(400).json({ error: "Invalid team or target ID" });
+    if (isNaN(teamId) || isNaN(accountId)) {
+      return res.status(400).json({ error: "Invalid team or account ID" });
     }
 
     // Check plan access
@@ -141,10 +141,10 @@ export async function syncTargetController(req: AuthRequest, res: Response) {
       });
     }
 
-    const result = await viralityService.syncTarget(targetId, teamId);
+    const result = await viralityService.syncAccount(accountId, teamId);
     return res.json(result);
   } catch (error: any) {
-    console.error("Sync virality target error:", error);
+    console.error("Sync virality account error:", error);
     Sentry.captureException(error);
 
     if (error.message?.includes("not found")) {
@@ -158,19 +158,24 @@ export async function syncTargetController(req: AuthRequest, res: Response) {
 export async function getPostsController(req: AuthRequest, res: Response) {
   try {
     const teamId = parseInt(req.params.teamId);
-    const targetId = parseInt(req.params.targetId);
+    const accountId = parseInt(req.params.accountId);
     const limit = parseInt(req.query.limit as string) || 20;
     const offset = parseInt(req.query.offset as string) || 0;
 
-    if (isNaN(teamId) || isNaN(targetId)) {
-      return res.status(400).json({ error: "Invalid team or target ID" });
+    if (isNaN(teamId) || isNaN(accountId)) {
+      return res.status(400).json({ error: "Invalid team or account ID" });
     }
 
-    const posts = await viralityService.getPostsByTarget(
-      targetId,
+    const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+    const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+
+    const posts = await viralityService.getPostsByAccount(
+      accountId,
       teamId,
       Math.min(limit, 100),
-      offset
+      offset,
+      startDate,
+      endDate
     );
     return res.json({ posts });
   } catch (error: any) {
@@ -201,7 +206,10 @@ export async function getDashboardController(req: AuthRequest, res: Response) {
       });
     }
 
-    const stats = await viralityService.getDashboardStats(teamId);
+    const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+    const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+
+    const stats = await viralityService.getDashboardStats(teamId, startDate, endDate);
     return res.json(stats);
   } catch (error) {
     console.error("Get virality dashboard error:", error);
@@ -266,6 +274,43 @@ export async function createCompetitorController(req: AuthRequest, res: Response
   }
 }
 
+export async function updateCompetitorController(req: AuthRequest, res: Response) {
+  try {
+    const teamId = parseInt(req.params.teamId);
+    const competitorId = parseInt(req.params.competitorId);
+    const { name, description } = req.body;
+
+    if (isNaN(teamId) || isNaN(competitorId)) {
+      return res.status(400).json({ error: "Invalid team or competitor ID" });
+    }
+
+    const hasAccess = await viralityService.checkTeamPlanAccess(teamId);
+    if (!hasAccess) {
+      return res.status(403).json({
+        error: "Virality tracking requires a Studio plan or higher",
+        code: "PLAN_REQUIRED",
+      });
+    }
+
+    if (name !== undefined && (!name || !name.trim())) {
+      return res.status(400).json({ error: "Competitor name cannot be empty" });
+    }
+
+    const competitor = await viralityService.updateCompetitor(competitorId, teamId, {
+      name: name?.trim(),
+      description: description?.trim(),
+    });
+    return res.json({ competitor });
+  } catch (error: any) {
+    console.error("Update competitor error:", error);
+    Sentry.captureException(error);
+    if (error.message?.includes("not found")) {
+      return res.status(404).json({ error: error.message });
+    }
+    return res.status(500).json({ error: "Failed to update competitor" });
+  }
+}
+
 export async function getCompetitorController(req: AuthRequest, res: Response) {
   try {
     const teamId = parseInt(req.params.teamId);
@@ -275,7 +320,7 @@ export async function getCompetitorController(req: AuthRequest, res: Response) {
       return res.status(400).json({ error: "Invalid team or competitor ID" });
     }
 
-    const competitor = await viralityService.getCompetitorWithTargets(competitorId, teamId);
+    const competitor = await viralityService.getCompetitorWithAccounts(competitorId, teamId);
     return res.json({ competitor });
   } catch (error: any) {
     console.error("Get competitor error:", error);

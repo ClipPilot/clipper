@@ -1,26 +1,27 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth.middleware";
 import {
-  listTargetsController,
-  addTargetController,
-  getTargetController,
-  deleteTargetController,
-  syncTargetController,
+  listAccountsController,
+  addAccountController,
+  getAccountController,
+  deleteAccountController,
+  syncAccountController,
   getPostsController,
   getDashboardController,
   listCompetitorsController,
   createCompetitorController,
   getCompetitorController,
   deleteCompetitorController,
+  updateCompetitorController,
 } from "../controllers/virality.controller";
 
 const router = Router();
 
 /**
  * @openapi
- * /virality/{teamId}/targets:
+ * /virality/{teamId}/accounts:
  *   get:
- *     summary: List all tracked targets for a team
+ *     summary: List all tracked accounts for a team
  *     tags:
  *       - Virality
  *     security:
@@ -33,17 +34,17 @@ const router = Router();
  *           type: integer
  *     responses:
  *       200:
- *         description: List of targets
+ *         description: List of accounts
  *       403:
  *         description: Plan upgrade required
  */
-router.get("/:teamId/targets", requireAuth, listTargetsController);
+router.get("/:teamId/accounts", requireAuth, listAccountsController);
 
 /**
  * @openapi
- * /virality/{teamId}/targets:
+ * /virality/{teamId}/accounts:
  *   post:
- *     summary: Add a new target to track
+ *     summary: Add a new account to track
  *     tags:
  *       - Virality
  *     security:
@@ -66,26 +67,26 @@ router.get("/:teamId/targets", requireAuth, listTargetsController);
  *             properties:
  *               platform:
  *                 type: string
- *                 enum: [instagram]
+ *                 enum: [instagram, tiktok, x]
  *               profileUrl:
  *                 type: string
  *     responses:
  *       201:
- *         description: Target created
+ *         description: Account created
  *       400:
  *         description: Invalid input or limit reached
  *       403:
  *         description: Plan upgrade required
  *       409:
- *         description: Target already exists
+ *         description: Account already exists
  */
-router.post("/:teamId/targets", requireAuth, addTargetController);
+router.post("/:teamId/accounts", requireAuth, addAccountController);
 
 /**
  * @openapi
- * /virality/{teamId}/targets/{targetId}:
+ * /virality/{teamId}/accounts/{accountId}:
  *   get:
- *     summary: Get a specific target
+ *     summary: Get a specific account
  *     tags:
  *       - Virality
  *     security:
@@ -97,23 +98,23 @@ router.post("/:teamId/targets", requireAuth, addTargetController);
  *         schema:
  *           type: integer
  *       - in: path
- *         name: targetId
+ *         name: accountId
  *         required: true
  *         schema:
  *           type: integer
  *     responses:
  *       200:
- *         description: Target details
+ *         description: Account details
  *       404:
- *         description: Target not found
+ *         description: Account not found
  */
-router.get("/:teamId/targets/:targetId", requireAuth, getTargetController);
+router.get("/:teamId/accounts/:accountId", requireAuth, getAccountController);
 
 /**
  * @openapi
- * /virality/{teamId}/targets/{targetId}:
+ * /virality/{teamId}/accounts/{accountId}:
  *   delete:
- *     summary: Remove a tracked target
+ *     summary: Remove a tracked account
  *     tags:
  *       - Virality
  *     security:
@@ -125,24 +126,24 @@ router.get("/:teamId/targets/:targetId", requireAuth, getTargetController);
  *         schema:
  *           type: integer
  *       - in: path
- *         name: targetId
+ *         name: accountId
  *         required: true
  *         schema:
  *           type: integer
  *     responses:
  *       200:
- *         description: Target deleted
+ *         description: Account deleted
  *       404:
- *         description: Target not found
+ *         description: Account not found
  */
-router.delete("/:teamId/targets/:targetId", requireAuth, deleteTargetController);
+router.delete("/:teamId/accounts/:accountId", requireAuth, deleteAccountController);
 
 /**
  * @openapi
- * /virality/{teamId}/targets/{targetId}/sync:
+ * /virality/{teamId}/accounts/{accountId}/sync:
  *   post:
- *     summary: Trigger a sync for a target
- *     description: Fetches latest posts and metrics from Instagram
+ *     summary: Trigger a sync for an account
+ *     description: Fetches latest posts and metrics from Instagram, TikTok, or X
  *     tags:
  *       - Virality
  *     security:
@@ -154,7 +155,7 @@ router.delete("/:teamId/targets/:targetId", requireAuth, deleteTargetController)
  *         schema:
  *           type: integer
  *       - in: path
- *         name: targetId
+ *         name: accountId
  *         required: true
  *         schema:
  *           type: integer
@@ -164,17 +165,17 @@ router.delete("/:teamId/targets/:targetId", requireAuth, deleteTargetController)
  *       403:
  *         description: Plan upgrade required
  *       404:
- *         description: Target not found
+ *         description: Account not found
  *       500:
  *         description: Sync failed
  */
-router.post("/:teamId/targets/:targetId/sync", requireAuth, syncTargetController);
+router.post("/:teamId/accounts/:accountId/sync", requireAuth, syncAccountController);
 
 /**
  * @openapi
- * /virality/{teamId}/targets/{targetId}/posts:
+ * /virality/{teamId}/accounts/{accountId}/posts:
  *   get:
- *     summary: Get posts for a target
+ *     summary: Get posts for an account
  *     tags:
  *       - Virality
  *     security:
@@ -186,7 +187,7 @@ router.post("/:teamId/targets/:targetId/sync", requireAuth, syncTargetController
  *         schema:
  *           type: integer
  *       - in: path
- *         name: targetId
+ *         name: accountId
  *         required: true
  *         schema:
  *           type: integer
@@ -204,9 +205,9 @@ router.post("/:teamId/targets/:targetId/sync", requireAuth, syncTargetController
  *       200:
  *         description: List of posts
  *       404:
- *         description: Target not found
+ *         description: Account not found
  */
-router.get("/:teamId/targets/:targetId/posts", requireAuth, getPostsController);
+router.get("/:teamId/accounts/:accountId/posts", requireAuth, getPostsController);
 
 /**
  * @openapi
@@ -235,6 +236,7 @@ router.get("/:teamId/dashboard", requireAuth, getDashboardController);
 
 router.get("/:teamId/competitors", requireAuth, listCompetitorsController);
 router.post("/:teamId/competitors", requireAuth, createCompetitorController);
+router.patch("/:teamId/competitors/:competitorId", requireAuth, updateCompetitorController);
 router.get("/:teamId/competitors/:competitorId", requireAuth, getCompetitorController);
 router.delete("/:teamId/competitors/:competitorId", requireAuth, deleteCompetitorController);
 

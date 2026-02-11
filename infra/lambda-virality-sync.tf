@@ -1,5 +1,5 @@
 # Lambda function to sync virality targets via Apify
-# Runs every 12 hours via EventBridge
+# Runs every 6 hours via EventBridge
 
 # ECR Repository for Virality Sync Lambda
 resource "aws_ecr_repository" "virality_sync_lambda" {
@@ -104,11 +104,11 @@ resource "aws_cloudwatch_log_group" "virality_sync_lambda" {
   }
 }
 
-# EventBridge Rule - Run every 12 hours
+# EventBridge Rule - Run every 6 hours
 resource "aws_cloudwatch_event_rule" "virality_sync_schedule" {
   name                = "${var.project_name}-virality-sync-schedule"
-  description         = "Trigger virality-sync Lambda every 12 hours"
-  schedule_expression = "cron(0 */12 * * ? *)"
+  description         = "Trigger virality-sync Lambda every 6 hours"
+  schedule_expression = "cron(0 */6 * * ? *)"
 
   tags = {
     Name = "${var.project_name}-virality-sync-schedule"

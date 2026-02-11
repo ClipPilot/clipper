@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Table,
   TableHeader,
@@ -19,33 +19,41 @@ import {
   Spinner,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import type { CompetitorWithTargets } from "@/api/virality";
+import type { CompetitorWithAccounts, AccountPostStats, ViralityAccount } from "@/api/virality";
 
 export type Platform = "tiktok" | "instagram" | "x";
 
-interface TargetsTableProps {
-  competitors: CompetitorWithTargets[];
+interface FlatAccount {
+  account: ViralityAccount;
+  competitorName: string;
+  competitorId: number;
+}
+
+interface AccountsTableProps {
+  competitors: CompetitorWithAccounts[];
   platformFilter: Platform | "all";
   searchQuery?: string;
   isLoading?: boolean;
-  onViewDetails?: (competitor: CompetitorWithTargets) => void;
-  onSync?: (competitorId: number) => Promise<void>;
-  onDelete?: (competitorId: number) => Promise<void>;
+  accountPostStats?: Record<number, AccountPostStats>;
+  onViewCompetitor?: (competitorId: number) => void;
+  onSyncAccount?: (accountId: number) => Promise<void>;
+  onDeleteAccount?: (accountId: number) => Promise<void>;
 }
 
-export function TargetsTable({
+export function AccountsTable({
   competitors,
   platformFilter,
   searchQuery,
   isLoading,
-  onViewDetails,
-  onSync,
-  onDelete,
-}: TargetsTableProps) {
+  accountPostStats,
+  onViewCompetitor,
+  onSyncAccount,
+  onDeleteAccount,
+}: AccountsTableProps) {
   const [page, setPage] = useState(1);
   const [syncingId, setSyncingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const rowsPerPage = 4;
+  const rowsPerPage = 10;
 
   const formatNumber = (num: number) => {
     const abs = Math.abs(num);
@@ -54,33 +62,39 @@ export function TargetsTable({
     return num.toString();
   };
 
-  // Filter competitors by platform and search query
-  const filtered = competitors.filter((c) => {
-    const matchesPlatform =
-      platformFilter === "all" ||
-      c.targets.some((t) => t.platform === platformFilter);
-    const matchesSearch =
-      !searchQuery ||
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.targets.some((t) =>
-        t.username.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    return matchesPlatform && matchesSearch;
-  });
+  // Flatten competitors into individual account rows
+  const flatAccounts = useMemo<FlatAccount[]>(() => {
+    const result: FlatAccount[] = [];
+    for (const c of competitors) {
+      for (const a of c.accounts) {
+        result.push({
+          account: a,
+          competitorName: c.name,
+          competitorId: c.id,
+        });
+      }
+    }
+    return result;
+  }, [competitors]);
+
+  // Filter by platform and search query
+  const filtered = useMemo(() => {
+    return flatAccounts.filter((fa) => {
+      const matchesPlatform =
+        platformFilter === "all" || fa.account.platform === platformFilter;
+      const matchesSearch =
+        !searchQuery ||
+        fa.account.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        fa.competitorName.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesPlatform && matchesSearch;
+    });
+  }, [flatAccounts, platformFilter, searchQuery]);
 
   const totalPages = Math.ceil(filtered.length / rowsPerPage);
   const paginated = filtered.slice(
     (page - 1) * rowsPerPage,
     page * rowsPerPage
   );
-
-  const getWorstSyncStatus = (targets: CompetitorWithTargets["targets"]) => {
-    if (targets.some((t) => t.sync_status === "failed")) return "failed";
-    if (targets.some((t) => t.sync_status === "syncing")) return "syncing";
-    if (targets.some((t) => t.sync_status === "pending")) return "pending";
-    if (targets.length === 0) return "pending";
-    return "completed";
-  };
 
   const getSyncChipColor = (status: string) => {
     switch (status) {
@@ -91,21 +105,38 @@ export function TargetsTable({
     }
   };
 
-  const handleSync = async (competitorId: number) => {
-    if (!onSync) return;
-    setSyncingId(competitorId);
+  const getPlatformIcon = (platform: string) => {
+    switch (platform) {
+      case "tiktok": return "ri:tiktok-fill";
+      case "x": return "ri:twitter-x-fill";
+      default: return "ri:instagram-fill";
+    }
+  };
+
+  const getPlatformChipClass = (platform: string) => {
+    switch (platform) {
+      case "tiktok": return "bg-cyan-500/10 text-cyan-500";
+      case "x": return "bg-foreground/10 text-foreground";
+      default: return "bg-pink-500/10 text-pink-500";
+    }
+  };
+
+  const handleSync = async (accountId: number) => {
+    if (!onSyncAccount) return;
+    setSyncingId(accountId);
     try {
-      await onSync(competitorId);
+      await onSyncAccount(accountId);
     } finally {
       setSyncingId(null);
     }
   };
 
-  const handleDelete = async (competitorId: number) => {
-    if (!onDelete) return;
-    setDeletingId(competitorId);
+  const handleDelete = async (accountId: number) => {
+    if (!onDeleteAccount) return;
+    if (!window.confirm("Delete this account? All tracked posts will also be removed.")) return;
+    setDeletingId(accountId);
     try {
-      await onDelete(competitorId);
+      await onDeleteAccount(accountId);
     } finally {
       setDeletingId(null);
     }
@@ -119,12 +150,12 @@ export function TargetsTable({
     );
   }
 
-  if (competitors.length === 0) {
+  if (flatAccounts.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-3">
         <Icon icon="solar:users-group-rounded-linear" width={48} className="text-text-tertiary" />
-        <p className="text-text-secondary">No competitors tracked yet</p>
-        <p className="text-text-tertiary text-sm">Add your first competitor to start tracking</p>
+        <p className="text-text-secondary">No accounts tracked yet</p>
+        <p className="text-text-tertiary text-sm">Add your first account to start tracking</p>
       </div>
     );
   }
@@ -132,7 +163,7 @@ export function TargetsTable({
   return (
     <div className="bg-surface-base border border-border-base rounded-xl overflow-hidden">
       <Table
-        aria-label="Competitors table"
+        aria-label="Tracked accounts table"
         removeWrapper
         classNames={{
           th: "bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4",
@@ -140,100 +171,94 @@ export function TargetsTable({
         }}
       >
         <TableHeader>
+          <TableColumn>ACCOUNT</TableColumn>
+          <TableColumn>PLATFORM</TableColumn>
           <TableColumn>COMPETITOR</TableColumn>
-          <TableColumn>TARGETS</TableColumn>
-          <TableColumn>FOLLOWERS</TableColumn>
+          <TableColumn>VIEWS</TableColumn>
+          <TableColumn>AVG VIEWS</TableColumn>
           <TableColumn>POSTS</TableColumn>
           <TableColumn>SYNC STATUS</TableColumn>
           <TableColumn>ACTIONS</TableColumn>
         </TableHeader>
         <TableBody>
-          {paginated.map((competitor) => {
-            const totalFollowers = competitor.targets.reduce(
-              (sum, t) => sum + (t.follower_count || 0),
-              0
-            );
-            const totalPosts = competitor.targets.reduce(
-              (sum, t) => sum + (t.post_count || 0),
-              0
-            );
-            const syncStatus = getWorstSyncStatus(competitor.targets);
-            const isSyncing = syncingId === competitor.id;
-            const isDeleting = deletingId === competitor.id;
+          {paginated.map((fa) => {
+            const stats = accountPostStats?.[fa.account.id];
+            const views = stats?.totalViews || 0;
+            const postCount = stats?.postCount || 0;
+            const avgViews = postCount > 0 ? Math.round(views / postCount) : 0;
+            const isSyncing = syncingId === fa.account.id;
+            const isDeleting = deletingId === fa.account.id;
 
             return (
               <TableRow
-                key={competitor.id}
+                key={fa.account.id}
                 className="cursor-pointer hover:bg-surface-hover transition-colors"
-                onClick={() => onViewDetails?.(competitor)}
+                onClick={() => onViewCompetitor?.(fa.competitorId)}
               >
                 <TableCell>
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-accent-400/10">
-                      <Icon
-                        icon="solar:buildings-bold"
-                        width={20}
-                        className="text-accent-400"
-                      />
-                    </div>
+                    <Avatar
+                      src={fa.account.avatar_url || undefined}
+                      name={fa.account.username.charAt(0).toUpperCase()}
+                      size="sm"
+                      classNames={{ base: "bg-surface-hover flex-shrink-0" }}
+                    />
                     <div>
                       <p className="font-medium text-text-primary">
-                        {competitor.name}
+                        @{fa.account.username}
                       </p>
-                      {competitor.description && (
-                        <p className="text-xs text-text-tertiary truncate max-w-[200px]">
-                          {competitor.description}
+                      {fa.account.display_name && (
+                        <p className="text-xs text-text-tertiary truncate max-w-[180px]">
+                          {fa.account.display_name}
                         </p>
                       )}
                     </div>
                   </div>
                 </TableCell>
                 <TableCell>
-                  <div className="flex flex-col gap-1">
-                    {competitor.targets.length === 0 ? (
-                      <span className="text-text-tertiary text-sm">No targets</span>
-                    ) : (
-                      competitor.targets.map((t) => (
-                        <div key={t.id} className="flex items-center gap-1.5">
-                          <Avatar
-                            src={t.avatar_url || undefined}
-                            name={t.username.charAt(0).toUpperCase()}
-                            size="sm"
-                            className="w-5 h-5"
-                            classNames={{ base: "bg-surface-hover" }}
-                          />
-                          <span className="text-sm text-text-secondary">
-                            @{t.username}
-                          </span>
-                          <Chip
-                            size="sm"
-                            variant="flat"
-                            classNames={{ base: "bg-pink-500/10 text-pink-500 h-4 px-1" }}
-                          >
-                            <Icon icon="ri:instagram-fill" width={10} />
-                          </Chip>
-                        </div>
-                      ))
-                    )}
-                  </div>
+                  <Chip
+                    size="sm"
+                    variant="flat"
+                    classNames={{
+                      base: `${getPlatformChipClass(fa.account.platform)} h-6 px-2`,
+                    }}
+                    startContent={
+                      <Icon
+                        icon={getPlatformIcon(fa.account.platform)}
+                        width={12}
+                      />
+                    }
+                  >
+                    <span className="text-xs capitalize">{fa.account.platform}</span>
+                  </Chip>
                 </TableCell>
                 <TableCell>
-                  <span className="font-medium text-text-primary">
-                    {formatNumber(totalFollowers)}
+                  <span className="text-sm text-text-secondary">
+                    {fa.competitorName}
                   </span>
                 </TableCell>
                 <TableCell>
                   <span className="font-medium text-text-primary">
-                    {formatNumber(totalPosts)}
+                    {formatNumber(views)}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <span className="font-medium text-text-primary">
+                    {formatNumber(avgViews)}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <span className="font-medium text-text-primary">
+                    {formatNumber(postCount)}
                   </span>
                 </TableCell>
                 <TableCell>
                   <Chip
                     size="sm"
                     variant="flat"
-                    color={getSyncChipColor(isSyncing ? "syncing" : syncStatus)}
+                    color={getSyncChipColor(isSyncing ? "syncing" : fa.account.sync_status)}
                   >
-                    {isSyncing ? "Syncing..." : syncStatus}
+                    {isSyncing ? "Syncing..." : fa.account.sync_status}
                   </Chip>
                 </TableCell>
                 <TableCell>
@@ -241,14 +266,6 @@ export function TargetsTable({
                     className="flex items-center gap-2"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <Button
-                      size="sm"
-                      variant="flat"
-                      className="bg-surface-elevated"
-                      onPress={() => onViewDetails?.(competitor)}
-                    >
-                      View Details
-                    </Button>
                     <Dropdown>
                       <DropdownTrigger>
                         <Button
@@ -261,10 +278,10 @@ export function TargetsTable({
                         </Button>
                       </DropdownTrigger>
                       <DropdownMenu
-                        aria-label="Competitor actions"
+                        aria-label="Account actions"
                         onAction={(key) => {
-                          if (key === "sync") handleSync(competitor.id);
-                          if (key === "delete") handleDelete(competitor.id);
+                          if (key === "sync") handleSync(fa.account.id);
+                          if (key === "delete") handleDelete(fa.account.id);
                         }}
                       >
                         <DropdownItem
@@ -278,7 +295,7 @@ export function TargetsTable({
                             )
                           }
                         >
-                          {isSyncing ? "Syncing..." : "Sync All Targets"}
+                          {isSyncing ? "Syncing..." : "Sync"}
                         </DropdownItem>
                         <DropdownItem
                           key="delete"
@@ -302,7 +319,7 @@ export function TargetsTable({
       {/* Pagination */}
       <div className="flex items-center justify-between px-4 py-4 border-t border-border-base">
         <p className="text-sm text-text-tertiary">
-          Showing {paginated.length} of {filtered.length} Competitors
+          Showing {paginated.length} of {filtered.length} Accounts
         </p>
         {totalPages > 1 && (
           <Pagination

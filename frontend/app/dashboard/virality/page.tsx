@@ -7,15 +7,18 @@ import { Button, Input, useDisclosure, addToast, Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import {
   StatsOverview,
-  TargetsTable,
+  AccountsTable,
   PlatformFilter,
-  AddTargetModal,
+  AddAccountModal,
+  DateRangeFilter,
+  DistributionCharts,
 } from "@/components/virality";
-import type { Platform } from "@/components/virality/TargetsTable";
+import type { Platform } from "@/components/virality/AccountsTable";
+import type { DateRangeValue } from "@/components/virality/DateRangeFilter";
 import { useTeams } from "@/hooks/useTeams";
 import {
   viralityAPI,
-  type CompetitorWithTargets,
+  type CompetitorWithAccounts,
   type DashboardStats,
   type ViralityCompetitor,
 } from "@/api/virality";
@@ -25,9 +28,10 @@ export default function ViralityPage() {
   const { selectedTeam } = useTeams();
   const [platformFilter, setPlatformFilter] = useState<Platform | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [dateRange, setDateRange] = useState<DateRangeValue>({});
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  const [competitors, setCompetitors] = useState<CompetitorWithTargets[]>([]);
+  const [competitors, setCompetitors] = useState<CompetitorWithAccounts[]>([]);
   const [simpleCompetitors, setSimpleCompetitors] = useState<ViralityCompetitor[]>([]);
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -35,21 +39,22 @@ export default function ViralityPage() {
   const fetchData = useCallback(async () => {
     if (!selectedTeam?.id) return;
     try {
+      const { startDate, endDate } = dateRange;
       const [competitorsList, stats] = await Promise.all([
         viralityAPI.getCompetitors(selectedTeam.id),
-        viralityAPI.getDashboardStats(selectedTeam.id),
+        viralityAPI.getDashboardStats(selectedTeam.id, startDate, endDate),
       ]);
 
       setSimpleCompetitors(competitorsList);
       setDashboardStats(stats);
 
-      // For each competitor, fetch its targets to build CompetitorWithTargets
-      const withTargets: CompetitorWithTargets[] = await Promise.all(
+      // For each competitor, fetch its accounts to build CompetitorWithAccounts
+      const withAccounts: CompetitorWithAccounts[] = await Promise.all(
         competitorsList.map((c) =>
           viralityAPI.getCompetitor(selectedTeam.id, c.id)
         )
       );
-      setCompetitors(withTargets);
+      setCompetitors(withAccounts);
     } catch (err: any) {
       addToast({
         title: "Failed to load data",
@@ -59,17 +64,17 @@ export default function ViralityPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedTeam?.id]);
+  }, [selectedTeam?.id, dateRange]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  const handleViewDetails = (competitor: CompetitorWithTargets) => {
-    router.push(`/dashboard/virality/${competitor.id}`);
+  const handleViewCompetitor = (competitorId: number) => {
+    router.push(`/dashboard/virality/${competitorId}`);
   };
 
-  const handleAddTarget = async (
+  const handleAddAccount = async (
     platform: "tiktok" | "instagram" | "x",
     profileUrl: string,
     options: {
@@ -95,26 +100,21 @@ export default function ViralityPage() {
       throw new Error("Please select or create a competitor group");
     }
 
-    await viralityAPI.addTarget(
+    await viralityAPI.addAccount(
       selectedTeam.id,
-      platform as "instagram",
+      platform as "instagram" | "tiktok",
       profileUrl,
       competitorId
     );
 
-    addToast({ title: "Target added", color: "success" });
+    addToast({ title: "Account added", color: "success" });
     await fetchData();
   };
 
-  const handleSync = async (competitorId: number) => {
+  const handleSyncAccount = async (accountId: number) => {
     if (!selectedTeam?.id) return;
-    const competitor = competitors.find((c) => c.id === competitorId);
-    if (!competitor) return;
-
     try {
-      for (const target of competitor.targets) {
-        await viralityAPI.syncTarget(selectedTeam.id, target.id);
-      }
+      await viralityAPI.syncAccount(selectedTeam.id, accountId);
       addToast({ title: "Sync complete", color: "success" });
       await fetchData();
     } catch (err: any) {
@@ -126,11 +126,11 @@ export default function ViralityPage() {
     }
   };
 
-  const handleDelete = async (competitorId: number) => {
+  const handleDeleteAccount = async (accountId: number) => {
     if (!selectedTeam?.id) return;
     try {
-      await viralityAPI.deleteCompetitor(selectedTeam.id, competitorId);
-      addToast({ title: "Competitor deleted", color: "success" });
+      await viralityAPI.deleteAccount(selectedTeam.id, accountId);
+      addToast({ title: "Account removed", color: "success" });
       await fetchData();
     } catch (err: any) {
       addToast({
@@ -167,28 +167,13 @@ export default function ViralityPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Input
-              placeholder="Search across all targets..."
-              value={searchQuery}
-              onValueChange={setSearchQuery}
-              startContent={
-                <Icon
-                  icon="solar:magnifer-linear"
-                  width={18}
-                  className="text-text-tertiary"
-                />
-              }
-              classNames={{
-                base: "w-72",
-                inputWrapper: "bg-surface-base border-border-base",
-              }}
-            />
+            <DateRangeFilter value={dateRange} onChange={setDateRange} />
             <Button
               className="bg-accent-400 text-white"
               startContent={<Icon icon="solar:add-circle-bold" width={18} />}
               onPress={onOpen}
             >
-              Add Target
+              Add Account
             </Button>
           </div>
         </div>
@@ -196,39 +181,63 @@ export default function ViralityPage() {
         {/* Stats Overview */}
         {dashboardStats && (
           <StatsOverview
-            targetsCount={dashboardStats.targetsCount}
-            maxTargets={dashboardStats.maxTargets}
+            accountsCount={dashboardStats.accountsCount}
+            maxAccounts={dashboardStats.maxAccounts}
             totalFollowers={dashboardStats.totalFollowers}
             totalLikes={dashboardStats.totalLikes}
             totalPosts={dashboardStats.totalPosts}
+            totalViews={dashboardStats.totalViews}
+            avgViewsPerPost={dashboardStats.avgViewsPerPost}
           />
         )}
 
-        {/* Platform Filter */}
+        {/* Distribution Charts */}
+        {dashboardStats && (
+          <DistributionCharts accounts={dashboardStats.accounts} accountPostStats={dashboardStats.accountPostStats} />
+        )}
+
+        {/* Filters & Search */}
         <div className="flex items-center justify-between">
           <PlatformFilter
             selected={platformFilter}
             onChange={setPlatformFilter}
           />
+          <Input
+            placeholder="Search across all accounts..."
+            value={searchQuery}
+            onValueChange={setSearchQuery}
+            startContent={
+              <Icon
+                icon="solar:magnifer-linear"
+                width={18}
+                className="text-text-tertiary"
+              />
+            }
+            classNames={{
+              base: "w-72",
+              inputWrapper: "bg-surface-base border-border-base",
+            }}
+          />
         </div>
 
         {/* Competitors Table */}
-        <TargetsTable
+        <AccountsTable
           competitors={competitors}
           platformFilter={platformFilter}
           searchQuery={searchQuery}
-          onViewDetails={handleViewDetails}
-          onSync={handleSync}
-          onDelete={handleDelete}
+          accountPostStats={dashboardStats?.accountPostStats}
+          onViewCompetitor={handleViewCompetitor}
+          onSyncAccount={handleSyncAccount}
+          onDeleteAccount={handleDeleteAccount}
         />
       </div>
 
-      {/* Add Target Modal */}
-      <AddTargetModal
+      {/* Add Account Modal */}
+      <AddAccountModal
         isOpen={isOpen}
         onClose={onClose}
         competitors={simpleCompetitors}
-        onSubmit={handleAddTarget}
+        onSubmit={handleAddAccount}
       />
     </motion.div>
   );

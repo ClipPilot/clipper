@@ -798,8 +798,8 @@ export const viralityCompetitors = pgTable(
 ).enableRLS();
 
 // Platform accounts (instagram, tiktok, x) - up to 3 per competitor
-export const viralityTargets = pgTable(
-  "virality_targets",
+export const viralityAccounts = pgTable(
+  "virality_accounts",
   {
     id: serial("id").primaryKey(),
     team_id: integer("team_id")
@@ -817,6 +817,7 @@ export const viralityTargets = pgTable(
     following_count: integer("following_count"),
     total_likes: integer("total_likes"),
     post_count: integer("post_count"),
+    follower_history: jsonb("follower_history"),
     is_verified: boolean("is_verified").default(false),
     last_synced_at: timestamp("last_synced_at"),
     sync_status: viralitySyncStatusEnum("sync_status").default("pending"),
@@ -825,8 +826,8 @@ export const viralityTargets = pgTable(
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => ({
-    teamIdx: index("virality_targets_team_id_idx").on(table.team_id),
-    uniqueTeamPlatformUsername: unique("virality_targets_unique").on(
+    teamIdx: index("virality_accounts_team_id_idx").on(table.team_id),
+    uniqueTeamPlatformUsername: unique("virality_accounts_unique").on(
       table.team_id,
       table.platform,
       table.username
@@ -838,9 +839,9 @@ export const viralityPosts = pgTable(
   "virality_posts",
   {
     id: serial("id").primaryKey(),
-    target_id: integer("target_id")
+    account_id: integer("account_id")
       .notNull()
-      .references(() => viralityTargets.id, { onDelete: "cascade" }),
+      .references(() => viralityAccounts.id, { onDelete: "cascade" }),
     platform_post_id: varchar("platform_post_id", { length: 255 }).notNull(),
     post_url: text("post_url").notNull(),
     thumbnail_url: text("thumbnail_url"),
@@ -853,15 +854,15 @@ export const viralityPosts = pgTable(
     video_view_count: integer("video_view_count"),
     video_play_count: integer("video_play_count"),
     // Metrics history for graphing - array of {recorded_at, likes, comments, views}
-    // Limited to 28 entries (14 days at 12h intervals)
+    // Limited to 28 entries (14 days at 6h intervals)
     metrics_history: jsonb("metrics_history").default([]),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => ({
-    targetIdx: index("virality_posts_target_id_idx").on(table.target_id),
-    uniqueTargetPost: unique("virality_posts_unique").on(
-      table.target_id,
+    accountIdx: index("virality_posts_account_id_idx").on(table.account_id),
+    uniqueAccountPost: unique("virality_posts_unique").on(
+      table.account_id,
       table.platform_post_id
     ),
     postedAtIdx: index("virality_posts_posted_at_idx").on(table.posted_at),

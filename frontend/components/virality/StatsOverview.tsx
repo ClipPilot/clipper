@@ -4,19 +4,23 @@ import { Card, CardBody } from "@heroui/react";
 import { Icon } from "@iconify/react";
 
 interface StatsOverviewProps {
-  targetsCount: number;
-  maxTargets: number;
+  accountsCount: number;
+  maxAccounts: number;
   totalFollowers: number;
   totalLikes: number;
   totalPosts: number;
+  totalViews: number;
+  avgViewsPerPost: number;
 }
 
 export function StatsOverview({
-  targetsCount,
-  maxTargets,
+  accountsCount,
+  maxAccounts,
   totalFollowers,
   totalLikes,
   totalPosts,
+  totalViews,
+  avgViewsPerPost,
 }: StatsOverviewProps) {
   const formatNumber = (num: number) => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
@@ -26,8 +30,8 @@ export function StatsOverview({
 
   const statCards = [
     {
-      title: "TOTAL TARGETS",
-      value: `${targetsCount} / ${maxTargets}`,
+      title: "TOTAL ACCOUNTS",
+      value: `${accountsCount} / ${maxAccounts}`,
       icon: "solar:users-group-rounded-bold",
       iconColor: "text-accent-400",
       iconBg: "bg-accent-400/10",
@@ -40,16 +44,30 @@ export function StatsOverview({
       iconBg: "bg-accent-400/10",
     },
     {
-      title: "TOTAL LIKES",
-      value: formatNumber(totalLikes),
-      icon: "solar:heart-bold",
-      iconColor: "text-red-500",
-      iconBg: "bg-red-500/10",
+      title: "TOTAL VIEWS",
+      value: formatNumber(totalViews),
+      icon: "solar:play-bold",
+      iconColor: "text-purple-500",
+      iconBg: "bg-purple-500/10",
+    },
+    {
+      title: "AVG VIEWS / POST",
+      value: formatNumber(avgViewsPerPost),
+      icon: "solar:chart-2-bold",
+      iconColor: "text-emerald-500",
+      iconBg: "bg-emerald-500/10",
+    },
+    {
+      title: "TOTAL POSTS",
+      value: formatNumber(totalPosts),
+      icon: "solar:document-bold",
+      iconColor: "text-blue-500",
+      iconBg: "bg-blue-500/10",
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
       {statCards.map((stat) => (
         <Card
           key={stat.title}
@@ -61,7 +79,7 @@ export function StatsOverview({
                 <Icon icon={stat.icon} width={24} className={stat.iconColor} />
               </div>
               <div className="flex-1">
-                <p className="text-xs text-text-tertiary font-medium tracking-wide mb-1">
+                <p className="text-xs text-text-tertiary font-medium tracking-wide mb-1 min-h-[2rem] flex items-end">
                   {stat.title}
                 </p>
                 <p className="text-2xl font-bold text-text-primary">

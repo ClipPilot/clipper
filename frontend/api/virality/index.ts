@@ -8,11 +8,16 @@ export interface MetricsEntry {
   views: number | null;
 }
 
-export interface ViralityTarget {
+export interface FollowerEntry {
+  recorded_at: string;
+  followers: number;
+}
+
+export interface ViralityAccount {
   id: number;
   team_id: number;
   competitor_id: number | null;
-  platform: "instagram";
+  platform: "instagram" | "tiktok" | "x";
   username: string;
   profile_url: string;
   display_name: string | null;
@@ -22,6 +27,7 @@ export interface ViralityTarget {
   following_count: number | null;
   total_likes: number | null;
   post_count: number | null;
+  follower_history: FollowerEntry[] | null;
   is_verified: boolean;
   last_synced_at: string | null;
   sync_status: "pending" | "syncing" | "completed" | "failed";
@@ -32,7 +38,7 @@ export interface ViralityTarget {
 
 export interface ViralityPost {
   id: number;
-  target_id: number;
+  account_id: number;
   platform_post_id: string;
   post_url: string;
   thumbnail_url: string | null;
@@ -58,24 +64,32 @@ export interface ViralityCompetitor {
   updated_at: string;
 }
 
-export interface CompetitorWithTargets extends ViralityCompetitor {
-  targets: ViralityTarget[];
+export interface CompetitorWithAccounts extends ViralityCompetitor {
+  accounts: ViralityAccount[];
+}
+
+export interface AccountPostStats {
+  totalViews: number;
+  postCount: number;
 }
 
 export interface DashboardStats {
-  targetsCount: number;
-  maxTargets: number;
+  accountsCount: number;
+  maxAccounts: number;
   totalFollowers: number;
   totalLikes: number;
   totalPosts: number;
-  targets: ViralityTarget[];
+  totalViews: number;
+  avgViewsPerPost: number;
+  accountPostStats: Record<number, AccountPostStats>;
+  accounts: ViralityAccount[];
 }
 
 class ViralityAPI {
-  // ── Targets ──
+  // ── Accounts ──
 
-  async getTargets(teamId: number): Promise<ViralityTarget[]> {
-    const response = await apiFetch(`${API_URL}/virality/${teamId}/targets`, {
+  async getAccounts(teamId: number): Promise<ViralityAccount[]> {
+    const response = await apiFetch(`${API_URL}/virality/${teamId}/accounts`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -83,20 +97,20 @@ class ViralityAPI {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || "Failed to fetch targets");
+      throw new Error(error.error || "Failed to fetch accounts");
     }
 
     const data = await response.json();
-    return data.targets;
+    return data.accounts;
   }
 
-  async addTarget(
+  async addAccount(
     teamId: number,
-    platform: "instagram",
+    platform: "instagram" | "tiktok" | "x",
     profileUrl: string,
     competitorId?: number
-  ): Promise<ViralityTarget> {
-    const response = await apiFetch(`${API_URL}/virality/${teamId}/targets`, {
+  ): Promise<ViralityAccount> {
+    const response = await apiFetch(`${API_URL}/virality/${teamId}/accounts`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -105,16 +119,16 @@ class ViralityAPI {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || "Failed to add target");
+      throw new Error(error.error || "Failed to add account");
     }
 
     const data = await response.json();
-    return data.target;
+    return data.account;
   }
 
-  async deleteTarget(teamId: number, targetId: number): Promise<void> {
+  async deleteAccount(teamId: number, accountId: number): Promise<void> {
     const response = await apiFetch(
-      `${API_URL}/virality/${teamId}/targets/${targetId}`,
+      `${API_URL}/virality/${teamId}/accounts/${accountId}`,
       {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
@@ -124,16 +138,16 @@ class ViralityAPI {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || "Failed to delete target");
+      throw new Error(error.error || "Failed to delete account");
     }
   }
 
-  async syncTarget(
+  async syncAccount(
     teamId: number,
-    targetId: number
+    accountId: number
   ): Promise<{ success: boolean; postsProcessed: number }> {
     const response = await apiFetch(
-      `${API_URL}/virality/${teamId}/targets/${targetId}/sync`,
+      `${API_URL}/virality/${teamId}/accounts/${accountId}/sync`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -143,25 +157,29 @@ class ViralityAPI {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || "Failed to sync target");
+      throw new Error(error.error || "Failed to sync account");
     }
 
     return response.json();
   }
 
-  async getTargetPosts(
+  async getAccountPosts(
     teamId: number,
-    targetId: number,
+    accountId: number,
     limit: number = 20,
-    offset: number = 0
+    offset: number = 0,
+    startDate?: string,
+    endDate?: string
   ): Promise<ViralityPost[]> {
     const params = new URLSearchParams({
       limit: String(limit),
       offset: String(offset),
     });
+    if (startDate) params.set("startDate", startDate);
+    if (endDate) params.set("endDate", endDate);
 
     const response = await apiFetch(
-      `${API_URL}/virality/${teamId}/targets/${targetId}/posts?${params}`,
+      `${API_URL}/virality/${teamId}/accounts/${accountId}/posts?${params}`,
       {
         method: "GET",
         headers: { "Content-Type": "application/json" },
@@ -178,9 +196,18 @@ class ViralityAPI {
     return data.posts;
   }
 
-  async getDashboardStats(teamId: number): Promise<DashboardStats> {
+  async getDashboardStats(
+    teamId: number,
+    startDate?: string,
+    endDate?: string
+  ): Promise<DashboardStats> {
+    const params = new URLSearchParams();
+    if (startDate) params.set("startDate", startDate);
+    if (endDate) params.set("endDate", endDate);
+    const queryString = params.toString();
+
     const response = await apiFetch(
-      `${API_URL}/virality/${teamId}/dashboard`,
+      `${API_URL}/virality/${teamId}/dashboard${queryString ? `?${queryString}` : ""}`,
       {
         method: "GET",
         headers: { "Content-Type": "application/json" },
@@ -241,10 +268,34 @@ class ViralityAPI {
     return data.competitor;
   }
 
+  async updateCompetitor(
+    teamId: number,
+    competitorId: number,
+    data: { name?: string; description?: string }
+  ): Promise<ViralityCompetitor> {
+    const response = await apiFetch(
+      `${API_URL}/virality/${teamId}/competitors/${competitorId}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(data),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to update competitor");
+    }
+
+    const result = await response.json();
+    return result.competitor;
+  }
+
   async getCompetitor(
     teamId: number,
     competitorId: number
-  ): Promise<CompetitorWithTargets> {
+  ): Promise<CompetitorWithAccounts> {
     const response = await apiFetch(
       `${API_URL}/virality/${teamId}/competitors/${competitorId}`,
       {

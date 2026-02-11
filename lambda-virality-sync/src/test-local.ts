@@ -4,7 +4,7 @@
  * Usage:
  *   DATABASE_URL="..." APIFY_API_TOKEN="..." npx ts-node src/test-local.ts
  *
- * Requires at least one Instagram target in the virality_targets table.
+ * Requires at least one Instagram account in the virality_accounts table.
  */
 
 import { handler } from "./handler";
