@@ -120,6 +120,20 @@
       "when": 1770579021981,
       "tag": "0016_handy_revanche",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1770781299951,
+      "tag": "0017_rainy_switch",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1770787127100,
+      "tag": "0018_overconfident_zombie",
+      "breakpoints": true
     }
   ]
 }

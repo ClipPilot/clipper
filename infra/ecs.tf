@@ -186,6 +186,10 @@ resource "aws_ecs_task_definition" "backend" {
       {
         name      = "GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY"
         valueFrom = aws_secretsmanager_secret.google_service_account_private_key.arn
+      },
+      {
+        name      = "AD_POSTING_WEBHOOK_SECRET"
+        valueFrom = aws_secretsmanager_secret.ad_posting_webhook_secret.arn
       }
     ]
 

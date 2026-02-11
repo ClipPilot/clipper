@@ -45,6 +45,7 @@ export const config = {
     serviceAccountEmail: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || "",
     serviceAccountPrivateKey: process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY || "",
     driveParentFolderId: process.env.GOOGLE_DRIVE_PARENT_FOLDER_ID || "",
+    delegateEmail: "contact@cuttr.com",
   },
   port: getEnv("PORT", "3001"),
 };

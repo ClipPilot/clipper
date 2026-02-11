@@ -202,6 +202,14 @@ variable "fal_key" {
   sensitive   = true
 }
 
+# Ad Posting Webhook
+variable "ad_posting_webhook_secret" {
+  description = "Shared secret for botfarm ad posting webhook"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 # Google Drive (Mass Posting)
 variable "google_service_account_email" {
   description = "Google service account email for Drive API"

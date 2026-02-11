@@ -108,6 +108,7 @@ jobs:
           google_service_account_email       = "${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}"
           google_service_account_private_key = "${{ secrets.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY }}"
           google_drive_parent_folder_id      = "${{ secrets.GOOGLE_DRIVE_PARENT_FOLDER_ID }}"
+          ad_posting_webhook_secret          = "${{ secrets.AD_POSTING_WEBHOOK_SECRET }}"
 
           # Custom Domain
           api_domain          = "api.cuttr.com"
@@ -235,6 +236,7 @@ jobs:
           google_service_account_email       = "${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}"
           google_service_account_private_key = "${{ secrets.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY }}"
           google_drive_parent_folder_id      = "${{ secrets.GOOGLE_DRIVE_PARENT_FOLDER_ID }}"
+          ad_posting_webhook_secret          = "${{ secrets.AD_POSTING_WEBHOOK_SECRET }}"
 
           # Custom Domain
           api_domain          = "api.cuttr.com"

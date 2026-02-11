@@ -1,4 +1,5 @@
 import { google, drive_v3 } from "googleapis";
+import fs from "fs";
 import { config } from "../../config/env";
 
 class GoogleDriveService {
@@ -27,6 +28,7 @@ class GoogleDriveService {
       email: serviceAccountEmail,
       key: serviceAccountPrivateKey.replace(/\\n/g, "\n"),
       scopes: ["https://www.googleapis.com/auth/drive"],
+      subject: config.google.delegateEmail || undefined,
     });
 
     this.driveClient = google.drive({ version: "v3", auth });
@@ -57,6 +59,71 @@ class GoogleDriveService {
 
   getFolderLink(folderId: string): string {
     return `https://drive.google.com/drive/folders/${folderId}`;
+  }
+
+  async ensurePlatformFolder(parentFolderId: string, platformName: string): Promise<string> {
+    const existing = await this.listChildFolders(parentFolderId);
+    const existingId = existing.get(platformName);
+    if (existingId) return existingId;
+
+    const drive = this.getDrive();
+    const response = await drive.files.create({
+      requestBody: {
+        name: platformName,
+        mimeType: "application/vnd.google-apps.folder",
+        parents: [parentFolderId],
+      },
+      supportsAllDrives: true,
+      fields: "id",
+    });
+
+    const folderId = response.data.id;
+    if (!folderId) {
+      throw new Error(`Failed to create platform folder "${platformName}" - no ID returned`);
+    }
+    return folderId;
+  }
+
+  async uploadFile(folderId: string, fileName: string, filePath: string, mimeType: string): Promise<string> {
+    const drive = this.getDrive();
+    const response = await drive.files.create({
+      requestBody: {
+        name: fileName,
+        parents: [folderId],
+      },
+      media: {
+        mimeType,
+        body: fs.createReadStream(filePath),
+      },
+      supportsAllDrives: true,
+      fields: "id",
+    });
+
+    const fileId = response.data.id;
+    if (!fileId) {
+      throw new Error(`Failed to upload file "${fileName}" - no ID returned`);
+    }
+    return fileId;
+  }
+
+  private async listChildFolders(parentFolderId: string): Promise<Map<string, string>> {
+    const drive = this.getDrive();
+    const result = new Map<string, string>();
+
+    const response = await drive.files.list({
+      q: `'${parentFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
+      fields: "files(id, name)",
+    });
+
+    for (const file of response.data.files || []) {
+      if (file.id && file.name) {
+        result.set(file.name, file.id);
+      }
+    }
+
+    return result;
   }
 }
 

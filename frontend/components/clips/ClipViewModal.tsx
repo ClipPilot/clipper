@@ -18,6 +18,9 @@ import {
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useDownloadVideo } from "@/hooks/useDownloadVideo";
+import { adPostingAPI, ClipPost } from "@/api/adPosting";
+import { useAtomValue } from "jotai";
+import { selectedTeamAtom } from "@/store/auth";
 
 interface Folder {
   id: number;
@@ -64,7 +67,16 @@ interface ClipViewModalProps {
   onGenerateShareLink?: (clipId: number) => Promise<string>;
   onRemoveShareLink?: (clipId: number) => Promise<void>;
   onUpdateTitle?: (clipId: number, title: string) => Promise<void>;
+  onAdPosting?: () => void;
 }
+
+const PLATFORM_META: Record<string, { name: string; icon: string }> = {
+  tiktok: { name: "TikTok", icon: "logos:tiktok-icon" },
+  instagram: { name: "Instagram", icon: "skill-icons:instagram" },
+  facebook: { name: "Facebook", icon: "logos:facebook" },
+  youtube: { name: "YouTube", icon: "logos:youtube-icon" },
+  x: { name: "X", icon: "ri:twitter-x-fill" },
+};
 
 const TAG_COLORS = [
   "#6366f1",
@@ -92,6 +104,7 @@ export default function ClipViewModal({
   onGenerateShareLink,
   onRemoveShareLink,
   onUpdateTitle,
+  onAdPosting,
 }: ClipViewModalProps) {
   const [isMoving, setIsMoving] = useState(false);
   const [isUpdatingTags, setIsUpdatingTags] = useState(false);
@@ -111,6 +124,8 @@ export default function ClipViewModal({
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState(clip.title || "");
   const [isSavingTitle, setIsSavingTitle] = useState(false);
+  const selectedTeam = useAtomValue(selectedTeamAtom);
+  const [clipPosts, setClipPosts] = useState<ClipPost[]>([]);
 
   React.useEffect(() => {
     setSelectedTagIds(clip.tags?.map((t) => t.id) || []);
@@ -123,6 +138,17 @@ export default function ClipViewModal({
   React.useEffect(() => {
     setEditedTitle(clip.title || "");
   }, [clip.title]);
+
+  React.useEffect(() => {
+    if (isOpen && selectedTeam?.id && clip.id) {
+      adPostingAPI
+        .getClipPosts(selectedTeam.id, clip.id)
+        .then(setClipPosts)
+        .catch(() => setClipPosts([]));
+    } else {
+      setClipPosts([]);
+    }
+  }, [isOpen, selectedTeam?.id, clip.id]);
 
   const handleSaveTitle = async () => {
     if (!onUpdateTitle || editedTitle === clip.title) {
@@ -739,6 +765,73 @@ export default function ClipViewModal({
                 </div>
               )}
 
+              {clipPosts.length > 0 && (
+                <div className="p-4 rounded-lg bg-surface-elevated">
+                  <h3 className="text-sm font-semibold text-text-secondary mb-3 flex items-center gap-2">
+                    <Icon
+                      icon="mdi:megaphone"
+                      className="text-accent-400"
+                    />
+                    Ad Posting
+                  </h3>
+                  <div className="space-y-2">
+                    {clipPosts.map((post) => {
+                      const meta = PLATFORM_META[post.platform] || {
+                        name: post.platform,
+                        icon: "mdi:web",
+                      };
+                      const isPosted = post.status === "posted";
+                      return (
+                        <div
+                          key={post.id}
+                          className="flex items-center justify-between p-2 rounded-lg bg-surface-dark"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Icon icon={meta.icon} className="text-lg" />
+                            <span className="text-sm text-text-primary">
+                              {meta.name}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Chip
+                              size="sm"
+                              variant="flat"
+                              color={
+                                isPosted
+                                  ? "success"
+                                  : post.status === "scheduled"
+                                  ? "warning"
+                                  : "danger"
+                              }
+                            >
+                              {post.status}
+                            </Chip>
+                            {isPosted && post.post_url && (
+                              <a
+                                href={post.post_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <Button
+                                  size="sm"
+                                  variant="light"
+                                  isIconOnly
+                                >
+                                  <Icon
+                                    icon="solar:square-top-down-bold"
+                                    className="text-accent-400"
+                                  />
+                                </Button>
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div className="p-4 rounded-lg bg-surface-elevated">
                 <h3 className="text-sm font-semibold text-text-secondary mb-3 flex items-center gap-2">
                   <Icon
@@ -808,6 +901,15 @@ export default function ClipViewModal({
                   </Button>
                 )}
               </>
+            )}
+            {onAdPosting && clip.clipUrl && (
+              <Button
+                variant="flat"
+                startContent={<Icon icon="mdi:megaphone" />}
+                onPress={onAdPosting}
+              >
+                Ad Post
+              </Button>
             )}
             {clip.clipUrl && (
               <Button

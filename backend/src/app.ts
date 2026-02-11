@@ -23,6 +23,7 @@ import adCloneRoutes from "./routes/adClone.routes";
 import graphicsRoutes from "./routes/graphics.routes";
 import announcementRoutes from "./routes/announcement.routes";
 import intakeRoutes from "./routes/intake.routes";
+import adPostingRoutes from "./routes/adPosting.routes";
 import { swaggerSpec } from "./config/swagger";
 
 const app = express();
@@ -80,6 +81,7 @@ app.use("/api/ad-clone", adCloneRoutes);
 app.use("/api/graphics", graphicsRoutes);
 app.use("/api/announcements", announcementRoutes);
 app.use("/api/intake", intakeRoutes);
+app.use("/api/ad-posting", adPostingRoutes);
 
 // Sentry test route
 app.get("/debug-sentry", function mainHandler(req, res) {

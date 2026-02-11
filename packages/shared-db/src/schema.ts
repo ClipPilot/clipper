@@ -801,10 +801,9 @@ export const massPostingApplications = pgTable(
     team_id: integer("team_id")
       .notNull()
       .references(() => teams.id, { onDelete: "cascade" }),
-    intake_form_id: integer("intake_form_id").references(
-      () => intakeForms.id,
-      { onDelete: "set null" },
-    ),
+    intake_form_id: integer("intake_form_id").references(() => intakeForms.id, {
+      onDelete: "set null",
+    }),
     status: varchar("status", { length: 50 }).notNull().default("pending"),
     details: jsonb("details"),
     google_drive_folder_id: varchar("google_drive_folder_id", { length: 255 }),
@@ -836,5 +835,46 @@ export const intakeForms = pgTable(
   },
   (table) => ({
     teamIdx: index("intake_forms_team_id_idx").on(table.team_id),
+  }),
+).enableRLS();
+
+export const platformEnum = pgEnum("platform_enum", [
+  "tiktok",
+  "instagram",
+  "facebook",
+  "youtube",
+  "x",
+]);
+
+export const postStatusEnum = pgEnum("post_status_enum", [
+  "scheduled",
+  "posted",
+  "cancelled",
+  "deleted",
+  "failed",
+]);
+export const posts = pgTable(
+  "posts",
+  {
+    id: serial("id").primaryKey(),
+    team_id: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    clip_id: integer("clip_id").references(() => clips.id, {
+      onDelete: "set null",
+    }),
+    content: text("content").notNull(),
+    platform: platformEnum("platform").notNull(),
+    posted_time: timestamp("posted_time").notNull().defaultNow(),
+    post_url: text("post_url"),
+    drive_file_id: varchar("drive_file_id", { length: 255 }),
+    status: postStatusEnum("status").notNull().default("scheduled"),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    teamIdx: index("posts_team_id_idx").on(table.team_id),
+    platformIdx: index("posts_platform_idx").on(table.platform),
+    clipIdx: index("posts_clip_id_idx").on(table.clip_id),
   }),
 ).enableRLS();

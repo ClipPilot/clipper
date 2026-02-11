@@ -36,6 +36,8 @@ import ClipSearch, { ClipSearchHandle } from "@/components/clips/ClipSearch";
 import ClipViewModal from "@/components/clips/ClipViewModal";
 import PreviewClipViewModal from "@/components/clips/PreviewClipViewModal";
 import { useSocket } from "@/hooks/useSocket";
+import { getSocket } from "@/lib/socket";
+import { addToast } from "@heroui/react";
 import {
   useClipsData,
   useFolders,
@@ -43,6 +45,8 @@ import {
   useDragAndDrop,
   useClipModals,
 } from "@/hooks/useClips";
+import { useMassPosting } from "@/hooks/useMassPosting";
+import AdPostingModal from "@/components/clips/AdPostingModal";
 
 function MyClipsPageContent() {
   const router = useRouter();
@@ -51,6 +55,9 @@ function MyClipsPageContent() {
   const selectedTeam = useAtomValue(selectedTeamAtom);
   const { triggerRefresh } = useUsageStatsRefresh();
   const [mounted, setMounted] = useState(false);
+  const { isApproved, googleDriveFolderId } = useMassPosting();
+  const canAdPost = isApproved && !!googleDriveFolderId;
+  const [adPostClip, setAdPostClip] = useState<Clip | null>(null);
 
   // Ensure hydration consistency - only render dynamic content after mount
   useEffect(() => {
@@ -210,6 +217,47 @@ function MyClipsPageContent() {
   }, [loadPendingClips, loadUnsavedClips, loadSavedClips, isDraggingRef, selectedFolderId, refreshFolderClips]);
 
   useSocket(selectedTeam?.id, handleSocketUpdate);
+
+  // Listen for ad-posting progress events and show toasts
+  useEffect(() => {
+    const socket = getSocket();
+
+    const handleAdPostingUpdate = (update: {
+      clipId: number;
+      platform: string;
+      platformName: string;
+      status: "processing" | "uploaded" | "failed" | "complete";
+      postId?: number;
+      error?: string;
+      totalPlatforms: number;
+      completedPlatforms: number;
+    }) => {
+      if (update.status === "uploaded") {
+        addToast({
+          title: `${update.platformName} ready`,
+          description: `Uploaded to Drive (${update.completedPlatforms}/${update.totalPlatforms})`,
+          color: "success",
+        });
+      } else if (update.status === "failed") {
+        addToast({
+          title: `${update.platformName} failed`,
+          description: update.error || "Upload failed",
+          color: "danger",
+        });
+      } else if (update.status === "complete") {
+        addToast({
+          title: "Ad posting complete",
+          description: `All ${update.totalPlatforms} platform${update.totalPlatforms > 1 ? "s" : ""} processed`,
+          color: "success",
+        });
+      }
+    };
+
+    socket.on("ad-posting-update", handleAdPostingUpdate);
+    return () => {
+      socket.off("ad-posting-update", handleAdPostingUpdate);
+    };
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -502,6 +550,7 @@ function MyClipsPageContent() {
                   }}
                   onClipClick={(clip: any) => openViewModal(clip)}
                   onEditClick={(clip: any) => handleEditClip(clip)}
+                  onAdPosting={canAdPost ? (clip: any) => setAdPostClip(clip) : undefined}
                   selectedClipId={isViewModalOpen ? selectedClip?.id : null}
                 />
               )}
@@ -566,6 +615,7 @@ function MyClipsPageContent() {
                             }}
                             onView={() => openViewModal(clip)}
                             onEdit={() => handleEditClip(clip)}
+                            onAdPosting={canAdPost ? () => setAdPostClip(clip) : undefined}
                             isSelected={isViewModalOpen && selectedClip?.id === clip.id}
                           />
                         ))}
@@ -627,6 +677,7 @@ function MyClipsPageContent() {
                           onDelete={(clipId) => requestDeleteClip(clipId, clip.title, triggerRefresh)}
                           onView={() => openViewModal(clip)}
                           onEdit={() => handleEditClip(clip)}
+                          onAdPosting={canAdPost ? () => setAdPostClip(clip) : undefined}
                           isSelected={isViewModalOpen && selectedClip?.id === clip.id}
                         />
                       ))}
@@ -695,6 +746,7 @@ function MyClipsPageContent() {
           onGenerateShareLink={handleGenerateShareLink}
           onRemoveShareLink={handleRemoveShareLink}
           onUpdateTitle={handleUpdateTitle}
+          onAdPosting={canAdPost ? () => { closeViewModal(); setAdPostClip(selectedClip); } : undefined}
         />
       )}
 
@@ -716,6 +768,14 @@ function MyClipsPageContent() {
         isDeleting={isDeleting}
         clipName={clipToDelete?.name}
       />
+
+      {adPostClip && (
+        <AdPostingModal
+          isOpen={!!adPostClip}
+          onClose={() => setAdPostClip(null)}
+          clip={adPostClip}
+        />
+      )}
     </div>
   );
 }
