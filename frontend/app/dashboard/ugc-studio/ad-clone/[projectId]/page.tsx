@@ -51,8 +51,15 @@ export default function AdCloneProjectPage() {
     progress: number;
     progressMessage: string;
     finalVideoUrl?: string;
+    clipId?: number | null;
     error?: string;
   }) => {
+    // If the worker already created the clip, redirect immediately
+    if (update.status === "completed" && update.clipId) {
+      router.push(`/dashboard/clips/${update.clipId}/edit`);
+      return;
+    }
+
     if (update.status === "completed" && !update.finalVideoUrl) {
       // Re-fetch from API to get presigned URL
       try {
@@ -77,7 +84,7 @@ export default function AdCloneProjectPage() {
         error: update.error,
       } : null);
     }
-  }, []);
+  }, [router]);
 
   // Socket for real-time updates
   const isGenerating = projectStatus?.status === "generating_video" ||
@@ -111,21 +118,23 @@ export default function AdCloneProjectPage() {
     return () => clearInterval(pollInterval);
   }, [isGenerating, projectId]);
 
-  // Auto-finalize when video is completed, or redirect if already finalized
+  // Auto-redirect or fallback finalize when video is completed
   useEffect(() => {
     const autoFinalize = async () => {
       if (
         projectStatus?.status === "completed" &&
-        projectStatus.finalVideoUrl &&
         selectedTeam?.id &&
         !hasAutoFinalized.current &&
         !isFinalizing
       ) {
-        // If already finalized, go straight to edit page
+        // If worker already created the clip, redirect directly
         if (projectStatus.clipId) {
           router.push(`/dashboard/clips/${projectStatus.clipId}/edit`);
           return;
         }
+
+        // Fallback: finalize via API (worker may not have created the clip)
+        if (!projectStatus.finalVideoUrl) return;
 
         hasAutoFinalized.current = true;
         setIsFinalizing(true);
@@ -136,12 +145,11 @@ export default function AdCloneProjectPage() {
             teamId: selectedTeam.id,
           });
 
-          // Redirect to clip edit page
           router.push(`/dashboard/clips/${response.clipId}/edit`);
         } catch (err) {
           setError(err instanceof Error ? err.message : "Failed to save to library");
           setIsFinalizing(false);
-          hasAutoFinalized.current = false; // Allow retry on error
+          hasAutoFinalized.current = false;
         }
       }
     };

@@ -535,6 +535,21 @@ export class UGCVideoController {
         });
       }
 
+      // Check if already finalized — return existing clip instead of creating a duplicate
+      const [existingClip] = await db
+        .select({ id: clips.id })
+        .from(clips)
+        .where(sql`${clips.clip_metadata}->>'generationJobId' = ${jobId}`)
+        .limit(1);
+
+      if (existingClip) {
+        return res.status(200).json({
+          success: true,
+          clipId: existingClip.id,
+          clipPath: job.final_video_key,
+        });
+      }
+
       // Get the script to extract title and scene data for captions
       const [script] = await db
         .select()
