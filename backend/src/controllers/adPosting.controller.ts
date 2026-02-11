@@ -1,7 +1,7 @@
 import * as Sentry from "@sentry/node";
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
-import { adPostingService, AdPostingError } from "../services/adPosting.service";
+import { adPostingService, AdPostingError, PlatformQuantities } from "../services/adPosting.service";
 
 export async function postClipToPlatforms(req: AuthRequest, res: Response) {
   try {
@@ -10,19 +10,36 @@ export async function postClipToPlatforms(req: AuthRequest, res: Response) {
       return res.status(400).json({ error: "Invalid team ID" });
     }
 
-    const { clipId, platforms } = req.body;
+    const userId = req.user?.dbUserId;
+    if (!userId) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+
+    const { clipId, platforms, platformQuantities: rawPQ } = req.body;
 
     if (!clipId || typeof clipId !== "number") {
       return res.status(400).json({ error: "clipId is required and must be a number" });
     }
 
-    if (!Array.isArray(platforms) || platforms.length === 0) {
-      return res.status(400).json({ error: "platforms must be a non-empty array" });
+    // Build platformQuantities — support both old and new format
+    let platformQuantities: PlatformQuantities;
+
+    if (rawPQ && typeof rawPQ === "object" && !Array.isArray(rawPQ)) {
+      platformQuantities = rawPQ;
+    } else if (Array.isArray(platforms) && platforms.length > 0) {
+      // Backward compat: convert ["instagram", "tiktok"] → { instagram: 1, tiktok: 1 }
+      platformQuantities = {};
+      for (const p of platforms) {
+        platformQuantities[p] = 1;
+      }
+    } else {
+      return res.status(400).json({
+        error: "platformQuantities (object) or platforms (array) is required",
+      });
     }
 
-    // Validates inputs and deducts credits synchronously,
-    // then kicks off background processing via socket events
-    await adPostingService.validateAndStart(teamId, clipId, platforms);
+    // Validates inputs, deducts credits, and sends SQS job for worker processing
+    await adPostingService.validateAndStart(teamId, clipId, platformQuantities, userId);
 
     return res.status(202).json({ message: "Ad posting started" });
   } catch (error) {

@@ -169,8 +169,13 @@ export interface AdPostingUpdate {
   status: "processing" | "uploaded" | "failed" | "complete";
   postId?: number;
   error?: string;
-  totalPlatforms: number;
-  completedPlatforms: number;
+  // Batch fields (total copies across all platforms)
+  totalItems: number;
+  completedItems: number;
+  copyIndex?: number;
+  platformTotal?: number;
+  successCount?: number;
+  failedCount?: number;
 }
 
 export const emitAdPostingUpdate = (teamId: number, update: AdPostingUpdate) => {

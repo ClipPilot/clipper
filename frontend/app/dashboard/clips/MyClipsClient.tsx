@@ -229,26 +229,43 @@ function MyClipsPageContent() {
       status: "processing" | "uploaded" | "failed" | "complete";
       postId?: number;
       error?: string;
-      totalPlatforms: number;
-      completedPlatforms: number;
+      totalItems: number;
+      completedItems: number;
+      copyIndex?: number;
+      platformTotal?: number;
+      successCount?: number;
+      failedCount?: number;
     }) => {
-      if (update.status === "uploaded") {
+      const isBatch = update.totalItems > 5;
+
+      if (update.status === "uploaded" && !isBatch) {
+        // Only show individual upload toasts for small batches
+        const copyLabel = update.copyIndex && update.platformTotal && update.platformTotal > 1
+          ? ` #${update.copyIndex}`
+          : "";
         addToast({
-          title: `${update.platformName} ready`,
-          description: `Uploaded to Drive (${update.completedPlatforms}/${update.totalPlatforms})`,
+          title: `${update.platformName}${copyLabel} ready`,
+          description: `Uploaded to Drive (${update.completedItems}/${update.totalItems})`,
           color: "success",
         });
       } else if (update.status === "failed") {
+        // Always show individual failure toasts
+        const copyLabel = update.copyIndex && update.platformTotal && update.platformTotal > 1
+          ? ` copy ${update.copyIndex}`
+          : "";
         addToast({
-          title: `${update.platformName} failed`,
+          title: `${update.platformName}${copyLabel} failed`,
           description: update.error || "Upload failed",
           color: "danger",
         });
       } else if (update.status === "complete") {
+        const success = update.successCount ?? update.completedItems;
+        const failed = update.failedCount ?? 0;
+        const failedText = failed > 0 ? ` (${failed} failed)` : "";
         addToast({
           title: "Ad posting complete",
-          description: `All ${update.totalPlatforms} platform${update.totalPlatforms > 1 ? "s" : ""} processed`,
-          color: "success",
+          description: `${success} of ${update.totalItems} cop${update.totalItems > 1 ? "ies" : "y"} uploaded${failedText}`,
+          color: failed > 0 ? "warning" : "success",
         });
       }
     };

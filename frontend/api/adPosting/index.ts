@@ -15,7 +15,7 @@ class AdPostingAPI {
   async postToPlatforms(
     teamId: number,
     clipId: number,
-    platforms: string[]
+    platformQuantities: Record<string, number>
   ): Promise<void> {
     const response = await apiFetch(
       `${API_URL}/ad-posting/teams/${teamId}/post`,
@@ -23,7 +23,7 @@ class AdPostingAPI {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ clipId, platforms }),
+        body: JSON.stringify({ clipId, platformQuantities }),
       }
     );
 

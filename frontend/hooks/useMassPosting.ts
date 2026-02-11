@@ -31,7 +31,6 @@ export function useMassPosting() {
     fetchStatus();
   }, [fetchStatus]);
 
-  // TODO(human): Decide on the refetch/cache invalidation strategy
   const refetch = useCallback(() => {
     fetchStatus();
   }, [fetchStatus]);

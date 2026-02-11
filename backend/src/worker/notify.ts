@@ -92,3 +92,22 @@ export interface AdCloneJobUpdate {
 export async function notifyAdCloneJobUpdate(teamId: number, update: AdCloneJobUpdate): Promise<void> {
   await callNotifyEndpoint("/internal/notify/ad-clone-job-update", { teamId, update });
 }
+
+export interface AdPostingWorkerUpdate {
+  clipId: number;
+  platform: string;
+  platformName: string;
+  status: "processing" | "uploaded" | "failed" | "complete";
+  postId?: number;
+  error?: string;
+  totalItems: number;
+  completedItems: number;
+  copyIndex?: number;
+  platformTotal?: number;
+  successCount?: number;
+  failedCount?: number;
+}
+
+export async function notifyAdPostingUpdate(teamId: number, update: AdPostingWorkerUpdate): Promise<void> {
+  await callNotifyEndpoint("/internal/notify/ad-posting-update", { teamId, update });
+}

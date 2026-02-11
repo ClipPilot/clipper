@@ -1,5 +1,13 @@
 import { Router, Request, Response } from "express";
-import { emitClipsRefresh, emitClipUpdate, emitComfyJobUpdate, ComfyJobUpdate, emitScriptJobUpdate, ScriptJobUpdate, emitUGCVideoJobUpdate, UGCVideoJobUpdate, emitAdCloneJobUpdate, AdCloneJobUpdate } from "../services/socket.service";
+import {
+  notifyClipsRefresh,
+  notifyClipUpdate,
+  notifyComfyJobUpdate,
+  notifyScriptJobUpdate,
+  notifyUGCVideoJobUpdate,
+  notifyAdCloneJobUpdate,
+  notifyAdPostingUpdate,
+} from "../controllers/internal.controller";
 
 const router = Router();
 
@@ -61,18 +69,7 @@ const validateInternalKey = (req: Request, res: Response, next: Function) => {
  *       401:
  *         description: Invalid internal API key
  */
-router.post("/notify/clips-refresh", validateInternalKey, (req: Request, res: Response) => {
-  const { teamId } = req.body;
-
-  if (!teamId) {
-    return res.status(400).json({ error: "teamId is required" });
-  }
-
-  emitClipsRefresh(teamId);
-  console.log(`[INTERNAL] Emitted clips-refresh for team ${teamId}`);
-
-  return res.status(200).json({ success: true });
-});
+router.post("/notify/clips-refresh", validateInternalKey, notifyClipsRefresh);
 
 /**
  * @openapi
@@ -122,57 +119,186 @@ router.post("/notify/clips-refresh", validateInternalKey, (req: Request, res: Re
  *       401:
  *         description: Invalid internal API key
  */
-router.post("/notify/clip-update", validateInternalKey, (req: Request, res: Response) => {
-  const { teamId, clipId, clip } = req.body;
+router.post("/notify/clip-update", validateInternalKey, notifyClipUpdate);
 
-  if (!teamId) {
-    return res.status(400).json({ error: "teamId is required" });
-  }
+/**
+ * @openapi
+ * /internal/notify/comfy-job-update:
+ *   post:
+ *     summary: Trigger ComfyUI job update notification
+ *     description: |
+ *       Internal endpoint used by the worker to notify clients of ComfyUI job
+ *       progress updates. Emits a WebSocket event with job status and output.
+ *     tags:
+ *       - Internal
+ *     security:
+ *       - internalApiKey: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - teamId
+ *               - job
+ *             properties:
+ *               teamId:
+ *                 type: integer
+ *                 description: The team ID to notify
+ *               job:
+ *                 type: object
+ *                 required:
+ *                   - id
+ *                   - status
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                   status:
+ *                     type: string
+ *                     enum: [pending_upload, queued, running, completed, failed, deleted]
+ *                   progress:
+ *                     type: number
+ *                   progressMessage:
+ *                     type: string
+ *                   outputUrl:
+ *                     type: string
+ *                   errorMessage:
+ *                     type: string
+ *     responses:
+ *       200:
+ *         description: Notification sent successfully
+ *       400:
+ *         description: Missing teamId or job
+ *       401:
+ *         description: Invalid internal API key
+ */
+router.post("/notify/comfy-job-update", validateInternalKey, notifyComfyJobUpdate);
 
-  emitClipUpdate(teamId, clip || { id: clipId });
-  console.log(`[INTERNAL] Emitted clip-update for team ${teamId}, clip ${clipId}`);
+/**
+ * @openapi
+ * /internal/notify/script-job-update:
+ *   post:
+ *     summary: Trigger script generation job update notification
+ *     description: |
+ *       Internal endpoint used by the worker to notify clients of script generation
+ *       progress. Emits a WebSocket event with generation status and results.
+ *     tags:
+ *       - Internal
+ *     security:
+ *       - internalApiKey: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - teamId
+ *               - update
+ *             properties:
+ *               teamId:
+ *                 type: integer
+ *                 description: The team ID to notify
+ *               update:
+ *                 type: object
+ *                 required:
+ *                   - scriptId
+ *                   - status
+ *                   - progress
+ *                   - progressMessage
+ *                 properties:
+ *                   scriptId:
+ *                     type: string
+ *                   status:
+ *                     type: string
+ *                     enum: [queued, generating, completed, failed]
+ *                   progress:
+ *                     type: integer
+ *                     minimum: 0
+ *                     maximum: 100
+ *                   progressMessage:
+ *                     type: string
+ *                   scripts:
+ *                     type: array
+ *                     description: Generated scripts (when status is completed)
+ *                   error:
+ *                     type: string
+ *                     description: Error message (when status is failed)
+ *     responses:
+ *       200:
+ *         description: Notification sent successfully
+ *       400:
+ *         description: Missing teamId or update
+ *       401:
+ *         description: Invalid internal API key
+ */
+router.post("/notify/script-job-update", validateInternalKey, notifyScriptJobUpdate);
 
-  return res.status(200).json({ success: true });
-});
-
-router.post("/notify/comfy-job-update", validateInternalKey, (req: Request, res: Response) => {
-  const { teamId, job } = req.body as { teamId: number; job: ComfyJobUpdate };
-
-  if (!teamId || !job) {
-    return res.status(400).json({ error: "teamId and job are required" });
-  }
-
-  emitComfyJobUpdate(teamId, job);
-  console.log(`[INTERNAL] Emitted comfy-job-update for team ${teamId}, job ${job.id}`);
-
-  return res.status(200).json({ success: true });
-});
-
-router.post("/notify/script-job-update", validateInternalKey, (req: Request, res: Response) => {
-  const { teamId, update } = req.body as { teamId: number; update: ScriptJobUpdate };
-
-  if (!teamId || !update) {
-    return res.status(400).json({ error: "teamId and update are required" });
-  }
-
-  emitScriptJobUpdate(teamId, update);
-  console.log(`[INTERNAL] Emitted script-job-update for team ${teamId}, script ${update.scriptId}`);
-
-  return res.status(200).json({ success: true });
-});
-
-router.post("/notify/ugc-video-job-update", validateInternalKey, (req: Request, res: Response) => {
-  const { teamId, update } = req.body as { teamId: number; update: UGCVideoJobUpdate };
-
-  if (!teamId || !update) {
-    return res.status(400).json({ error: "teamId and update are required" });
-  }
-
-  emitUGCVideoJobUpdate(teamId, update);
-  console.log(`[INTERNAL] Emitted ugc-video-job-update for team ${teamId}, job ${update.jobId}`);
-
-  return res.status(200).json({ success: true });
-});
+/**
+ * @openapi
+ * /internal/notify/ugc-video-job-update:
+ *   post:
+ *     summary: Trigger UGC video generation job update notification
+ *     description: |
+ *       Internal endpoint used by the worker to notify clients of UGC video generation
+ *       progress. Emits a WebSocket event with generation status, scene progress, and output.
+ *     tags:
+ *       - Internal
+ *     security:
+ *       - internalApiKey: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - teamId
+ *               - update
+ *             properties:
+ *               teamId:
+ *                 type: integer
+ *                 description: The team ID to notify
+ *               update:
+ *                 type: object
+ *                 required:
+ *                   - jobId
+ *                   - status
+ *                   - progress
+ *                   - progressMessage
+ *                 properties:
+ *                   jobId:
+ *                     type: string
+ *                   status:
+ *                     type: string
+ *                     enum: [queued, generating, completed, failed]
+ *                   progress:
+ *                     type: integer
+ *                     minimum: 0
+ *                     maximum: 100
+ *                   progressMessage:
+ *                     type: string
+ *                   currentScene:
+ *                     type: integer
+ *                   totalScenes:
+ *                     type: integer
+ *                   finalVideoUrl:
+ *                     type: string
+ *                   finalVideoKey:
+ *                     type: string
+ *                   error:
+ *                     type: string
+ *                     description: Error message (when status is failed)
+ *     responses:
+ *       200:
+ *         description: Notification sent successfully
+ *       400:
+ *         description: Missing teamId or update
+ *       401:
+ *         description: Invalid internal API key
+ */
+router.post("/notify/ugc-video-job-update", validateInternalKey, notifyUGCVideoJobUpdate);
 
 /**
  * @openapi
@@ -236,17 +362,84 @@ router.post("/notify/ugc-video-job-update", validateInternalKey, (req: Request, 
  *       401:
  *         description: Invalid internal API key
  */
-router.post("/notify/ad-clone-job-update", validateInternalKey, (req: Request, res: Response) => {
-  const { teamId, update } = req.body as { teamId: number; update: AdCloneJobUpdate };
+router.post("/notify/ad-clone-job-update", validateInternalKey, notifyAdCloneJobUpdate);
 
-  if (!teamId || !update) {
-    return res.status(400).json({ error: "teamId and update are required" });
-  }
-
-  emitAdCloneJobUpdate(teamId, update);
-  console.log(`[INTERNAL] Emitted ad-clone-job-update for team ${teamId}, project ${update.projectId}`);
-
-  return res.status(200).json({ success: true });
-});
+/**
+ * @openapi
+ * /internal/notify/ad-posting-update:
+ *   post:
+ *     summary: Trigger ad posting progress notification
+ *     description: |
+ *       Internal endpoint used by the worker to notify clients of ad posting
+ *       progress. Emits a WebSocket event with per-copy encoding/upload status.
+ *     tags:
+ *       - Internal
+ *     security:
+ *       - internalApiKey: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - teamId
+ *               - update
+ *             properties:
+ *               teamId:
+ *                 type: integer
+ *                 description: The team ID to notify
+ *               update:
+ *                 type: object
+ *                 required:
+ *                   - clipId
+ *                   - platform
+ *                   - platformName
+ *                   - status
+ *                   - totalItems
+ *                   - completedItems
+ *                 properties:
+ *                   clipId:
+ *                     type: integer
+ *                   platform:
+ *                     type: string
+ *                   platformName:
+ *                     type: string
+ *                   status:
+ *                     type: string
+ *                     enum: [processing, uploaded, failed, complete]
+ *                   postId:
+ *                     type: integer
+ *                     description: Created post ID (when status is uploaded)
+ *                   error:
+ *                     type: string
+ *                     description: Error message (when status is failed)
+ *                   totalItems:
+ *                     type: integer
+ *                     description: Total copies across all platforms
+ *                   completedItems:
+ *                     type: integer
+ *                     description: Number of copies processed so far
+ *                   copyIndex:
+ *                     type: integer
+ *                     description: Index of this copy within its platform
+ *                   platformTotal:
+ *                     type: integer
+ *                     description: Total copies for this platform
+ *                   successCount:
+ *                     type: integer
+ *                     description: Successful uploads (when status is complete)
+ *                   failedCount:
+ *                     type: integer
+ *                     description: Failed uploads (when status is complete)
+ *     responses:
+ *       200:
+ *         description: Notification sent successfully
+ *       400:
+ *         description: Missing teamId or update
+ *       401:
+ *         description: Invalid internal API key
+ */
+router.post("/notify/ad-posting-update", validateInternalKey, notifyAdPostingUpdate);
 
 export default router;

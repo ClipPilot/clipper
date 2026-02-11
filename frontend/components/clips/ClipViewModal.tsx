@@ -126,6 +126,7 @@ export default function ClipViewModal({
   const [isSavingTitle, setIsSavingTitle] = useState(false);
   const selectedTeam = useAtomValue(selectedTeamAtom);
   const [clipPosts, setClipPosts] = useState<ClipPost[]>([]);
+  const [expandedPlatforms, setExpandedPlatforms] = useState<Set<string>>(new Set());
 
   React.useEffect(() => {
     setSelectedTagIds(clip.tags?.map((t) => t.id) || []);
@@ -765,72 +766,129 @@ export default function ClipViewModal({
                 </div>
               )}
 
-              {clipPosts.length > 0 && (
-                <div className="p-4 rounded-lg bg-surface-elevated">
-                  <h3 className="text-sm font-semibold text-text-secondary mb-3 flex items-center gap-2">
-                    <Icon
-                      icon="mdi:megaphone"
-                      className="text-accent-400"
-                    />
-                    Ad Posting
-                  </h3>
-                  <div className="space-y-2">
-                    {clipPosts.map((post) => {
-                      const meta = PLATFORM_META[post.platform] || {
-                        name: post.platform,
-                        icon: "mdi:web",
-                      };
-                      const isPosted = post.status === "posted";
-                      return (
-                        <div
-                          key={post.id}
-                          className="flex items-center justify-between p-2 rounded-lg bg-surface-dark"
-                        >
-                          <div className="flex items-center gap-2">
-                            <Icon icon={meta.icon} className="text-lg" />
-                            <span className="text-sm text-text-primary">
-                              {meta.name}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Chip
-                              size="sm"
-                              variant="flat"
-                              color={
-                                isPosted
-                                  ? "success"
-                                  : post.status === "scheduled"
-                                  ? "warning"
-                                  : "danger"
-                              }
-                            >
-                              {post.status}
-                            </Chip>
-                            {isPosted && post.post_url && (
-                              <a
-                                href={post.post_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
+              {clipPosts.length > 0 && (() => {
+                const grouped = clipPosts.reduce<Record<string, ClipPost[]>>((acc, post) => {
+                  (acc[post.platform] ??= []).push(post);
+                  return acc;
+                }, {});
+
+                const formatTimeAgo = (dateStr: string) => {
+                  const diffSec = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+                  if (diffSec < 60) return "just now";
+                  const diffMin = Math.floor(diffSec / 60);
+                  if (diffMin < 60) return `${diffMin}m ago`;
+                  const diffHour = Math.floor(diffMin / 60);
+                  if (diffHour < 24) return `${diffHour}h ago`;
+                  return `${Math.floor(diffHour / 24)}d ago`;
+                };
+
+                return (
+                  <div className="p-4 rounded-lg bg-surface-elevated">
+                    <h3 className="text-sm font-semibold text-text-secondary mb-3 flex items-center gap-2">
+                      <Icon icon="mdi:megaphone" className="text-accent-400" />
+                      Ad Posts
+                      <Chip size="sm" variant="flat">{clipPosts.length}</Chip>
+                    </h3>
+                    <div className="space-y-3">
+                      {Object.entries(grouped).map(([platform, platformPosts]) => {
+                        const meta = PLATFORM_META[platform] || { name: platform, icon: "mdi:web" };
+                        const postedCount = platformPosts.filter(p => p.status === "posted").length;
+                        const scheduledCount = platformPosts.filter(p => p.status === "scheduled").length;
+                        const failedCount = platformPosts.filter(p => p.status === "failed").length;
+                        const isExpanded = expandedPlatforms.has(platform);
+                        const showToggle = platformPosts.length > 3;
+
+                        return (
+                          <div key={platform} className="rounded-lg bg-surface-dark p-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Icon icon={meta.icon} className="text-lg" />
+                                <span className="text-sm font-medium text-text-primary">
+                                  {meta.name}
+                                </span>
+                                <span className="text-xs text-text-tertiary">
+                                  · {platformPosts.length} {platformPosts.length === 1 ? "copy" : "copies"}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                {postedCount > 0 && (
+                                  <Chip size="sm" variant="flat" color="success">
+                                    {postedCount} posted
+                                  </Chip>
+                                )}
+                                {scheduledCount > 0 && (
+                                  <Chip size="sm" variant="flat" color="warning">
+                                    {scheduledCount} scheduled
+                                  </Chip>
+                                )}
+                                {failedCount > 0 && (
+                                  <Chip size="sm" variant="flat" color="danger">
+                                    {failedCount} failed
+                                  </Chip>
+                                )}
+                              </div>
+                            </div>
+
+                            {(isExpanded || !showToggle) && (
+                              <div className="mt-2 space-y-1">
+                                {(isExpanded ? platformPosts : platformPosts.slice(0, 3)).map((post) => (
+                                  <div
+                                    key={post.id}
+                                    className="flex items-center justify-between py-1.5 px-2 rounded bg-surface-elevated text-xs"
+                                  >
+                                    <div className="flex items-center gap-2 text-text-tertiary">
+                                      <span className="text-text-secondary font-mono">#{post.id}</span>
+                                      <Chip
+                                        size="sm"
+                                        variant="flat"
+                                        color={
+                                          post.status === "posted"
+                                            ? "success"
+                                            : post.status === "scheduled"
+                                            ? "warning"
+                                            : "danger"
+                                        }
+                                      >
+                                        {post.status}
+                                      </Chip>
+                                      <span>{formatTimeAgo(post.created_at)}</span>
+                                    </div>
+                                    {post.status === "posted" && post.post_url && (
+                                      <a href={post.post_url} target="_blank" rel="noopener noreferrer">
+                                        <Button size="sm" variant="light" isIconOnly>
+                                          <Icon icon="solar:square-top-down-bold" className="text-accent-400" />
+                                        </Button>
+                                      </a>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {showToggle && (
+                              <Button
+                                size="sm"
+                                variant="light"
+                                className="mt-2 text-xs text-accent-400"
+                                onPress={() => {
+                                  setExpandedPlatforms(prev => {
+                                    const next = new Set(prev);
+                                    if (next.has(platform)) next.delete(platform);
+                                    else next.add(platform);
+                                    return next;
+                                  });
+                                }}
                               >
-                                <Button
-                                  size="sm"
-                                  variant="light"
-                                  isIconOnly
-                                >
-                                  <Icon
-                                    icon="solar:square-top-down-bold"
-                                    className="text-accent-400"
-                                  />
-                                </Button>
-                              </a>
+                                {isExpanded ? "Show less" : `Show all ${platformPosts.length}`}
+                              </Button>
                             )}
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               <div className="p-4 rounded-lg bg-surface-elevated">
                 <h3 className="text-sm font-semibold text-text-secondary mb-3 flex items-center gap-2">
