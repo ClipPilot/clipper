@@ -10,7 +10,9 @@ import { eq, and, desc, count, gte, lte, inArray, sql } from "drizzle-orm";
 import { apifyService, InstagramPost, InstagramProfile } from "./apify.service";
 
 const MAX_ACCOUNTS_PER_TEAM = 10;
-const MAX_METRICS_HISTORY = 28;
+const SYNC_INTERVAL = 6 // every 6 hours
+const SYNCS_PER_DAY = Math.floor(24 / SYNC_INTERVAL)
+const MAX_METRICS_HISTORY = 28 * SYNCS_PER_DAY;
 const MAX_FOLLOWER_HISTORY = 180; // ~6 months of daily syncs
 
 interface MetricsEntry {

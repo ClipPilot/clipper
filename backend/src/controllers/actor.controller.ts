@@ -12,6 +12,7 @@ import { canAccessUGCStudio } from "../utils/plans";
 import { teamService } from "../services/team.service";
 import { eq, desc, and, sql } from "drizzle-orm";
 import crypto from "crypto";
+import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
 
 interface AuthRequest extends Request {
   user?: { id: string; email: string; dbUserId: number };
@@ -90,7 +91,7 @@ export class ActorController {
     } catch (error) {
       console.error("[ACTOR] Generate preview error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to queue generation",
+        error: sanitizeErrorForFrontend(error, "Failed to queue generation"),
       });
     }
   }
@@ -145,7 +146,7 @@ export class ActorController {
     } catch (error) {
       console.error("[ACTOR] Get generation status error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to get status",
+        error: sanitizeErrorForFrontend(error, "Failed to get status"),
       });
     }
   }
@@ -243,7 +244,7 @@ export class ActorController {
     } catch (error) {
       console.error("[ACTOR] Create error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to create character",
+        error: sanitizeErrorForFrontend(error, "Failed to create character"),
       });
     }
   }
@@ -295,7 +296,7 @@ export class ActorController {
     } catch (error) {
       console.error("[ACTOR] List error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to list characters",
+        error: sanitizeErrorForFrontend(error, "Failed to list characters"),
       });
     }
   }
@@ -343,7 +344,7 @@ export class ActorController {
     } catch (error) {
       console.error("[ACTOR] List community error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to list community characters",
+        error: sanitizeErrorForFrontend(error, "Failed to list community characters"),
       });
     }
   }
@@ -380,7 +381,7 @@ export class ActorController {
     } catch (error) {
       console.error("[ACTOR] Get by ID error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to get character",
+        error: sanitizeErrorForFrontend(error, "Failed to get character"),
       });
     }
   }
@@ -417,7 +418,7 @@ export class ActorController {
     } catch (error) {
       console.error("[ACTOR] Update error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to update character",
+        error: sanitizeErrorForFrontend(error, "Failed to update character"),
       });
     }
   }
@@ -446,7 +447,7 @@ export class ActorController {
     } catch (error) {
       console.error("[ACTOR] Delete error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to delete character",
+        error: sanitizeErrorForFrontend(error, "Failed to delete character"),
       });
     }
   }
@@ -468,7 +469,7 @@ export class ActorController {
     } catch (error) {
       console.error("[ACTOR] Increment use error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to increment use count",
+        error: sanitizeErrorForFrontend(error, "Failed to increment use count"),
       });
     }
   }
@@ -569,7 +570,7 @@ export class ActorController {
     } catch (error) {
       console.error("[ACTOR] Create variation error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to create variation",
+        error: sanitizeErrorForFrontend(error, "Failed to create variation"),
       });
     }
   }
@@ -595,7 +596,7 @@ export class ActorController {
     } catch (error) {
       console.error("[ACTOR] Presigned URL error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to get presigned URL",
+        error: sanitizeErrorForFrontend(error, "Failed to get presigned URL"),
       });
     }
   }

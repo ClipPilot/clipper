@@ -1,18 +1,6 @@
-/**
- * VEED Fabric 1.0 Audio-to-Video Service
- *
- * Alternative to Kling Avatar for talking head generation.
- * Like Kling, VEED Fabric takes an image + audio URL and generates lip-synced video.
- *
- * Use for A/B testing against Kling Avatar v2.
- *
- * API: https://fal.run/veed/fabric-1.0
- */
-
 import { fal } from "@fal-ai/client";
 import { config } from "../../config/env";
 
-// Ensure fal is configured (may already be done in kling.service.ts)
 fal.config({
   credentials: config.fal.apiKey,
 });
@@ -24,11 +12,8 @@ export type VeedResolution = "720p" | "480p";
  * Matches Kling Avatar interface for easy swapping.
  */
 export interface VeedFabricOptions {
-  /** URL of the image to animate (person/avatar) */
   imageUrl: string;
-  /** URL of the audio file for lip-sync */
   audioUrl: string;
-  /** Video resolution - 720p (default) or 480p */
   resolution?: VeedResolution;
 }
 
@@ -53,11 +38,7 @@ interface VeedFabricResponse {
 export async function generateFabricVideo(
   options: VeedFabricOptions,
 ): Promise<VeedFabricResult> {
-  const {
-    imageUrl,
-    audioUrl,
-    resolution = "720p",
-  } = options;
+  const { imageUrl, audioUrl, resolution = "720p" } = options;
 
   console.log(`[VEED Fabric] Generating talking head video`);
   console.log(`[VEED Fabric] Image: ${imageUrl.substring(0, 80)}...`);
@@ -84,7 +65,7 @@ export async function generateFabricVideo(
     const data = result.data as VeedFabricResponse;
 
     if (!data?.video?.url) {
-      throw new Error("No video URL in VEED Fabric response");
+      throw new Error("No video URL in generation response");
     }
 
     console.log(`[VEED Fabric] Video generated: ${data.video.url}`);
@@ -136,7 +117,7 @@ export async function generateFabricVideoWithRetry(
     }
   }
 
-  throw lastError || new Error("VEED Fabric generation failed after retries");
+  throw lastError || new Error("Video generation failed after retries");
 }
 
 export const veedFabricService = {

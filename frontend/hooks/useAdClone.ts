@@ -47,6 +47,7 @@ interface AdCloneSocketUpdate {
   progressMessage: string;
   analysis?: VideoAnalysis;
   scripts?: any[];
+  clipId?: number | null;
   error?: string;
 }
 

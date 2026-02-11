@@ -7,8 +7,16 @@ import { videoAPI, UploadProgress, MultipartUploadResponse } from "@/api/video";
 // TODO: Re-enable when Google Drive integration is complete
 // import { DrivePicker } from "./DrivePicker";
 
+const PLAN_UPLOAD_LIMITS: Record<string, number> = {
+  free: 2 * 1024 * 1024 * 1024,
+  studio: 2 * 1024 * 1024 * 1024,
+  scale: 3 * 1024 * 1024 * 1024,
+  enterprise: 3 * 1024 * 1024 * 1024,
+};
+
 interface UploadSectionProps {
   teamId: number;
+  plan?: string;
   onUploadComplete: (s3Key: string, fileName: string, fileSize: number) => void;
   onError: (error: string) => void;
   isDisabled?: boolean;
@@ -16,6 +24,26 @@ interface UploadSectionProps {
 }
 
 const MULTIPART_THRESHOLD = 50 * 1024 * 1024;
+const MAX_VIDEO_DURATION_SECONDS = 2 * 60 * 60; // 2 hours
+
+const getVideoDuration = (file: File): Promise<number> => {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement("video");
+    video.preload = "metadata";
+
+    video.onloadedmetadata = () => {
+      URL.revokeObjectURL(video.src);
+      resolve(video.duration);
+    };
+
+    video.onerror = () => {
+      URL.revokeObjectURL(video.src);
+      reject(new Error("Failed to load video metadata"));
+    };
+
+    video.src = URL.createObjectURL(file);
+  });
+};
 
 const formatTime = (seconds: number): string => {
   if (seconds < 60) return `${Math.round(seconds)}s`;
@@ -40,6 +68,7 @@ const formatSpeed = (bytesPerSecond: number): string => {
 
 export const UploadSection: React.FC<UploadSectionProps> = ({
   teamId,
+  plan = "free",
   onUploadComplete,
   onError,
   isDisabled = false,
@@ -55,7 +84,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
   const [downloading, setDownloading] = useState(false);
   const multipartDataRef = useRef<MultipartUploadResponse | null>(null);
 
-  const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024;
+  const MAX_FILE_SIZE = PLAN_UPLOAD_LIMITS[plan] ?? PLAN_UPLOAD_LIMITS.free;
   const validTypes = [
     "video/mp4",
     "video/quicktime",
@@ -79,8 +108,9 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
 
   const processFile = async (file: File) => {
     if (file.size > MAX_FILE_SIZE) {
+      const limitGB = MAX_FILE_SIZE / (1024 * 1024 * 1024);
       onError(
-        `File size must be less than 2GB. Your file is ${formatBytes(file.size)}`
+        `File size must be less than ${limitGB}GB. Your file is ${formatBytes(file.size)}`
       );
       return;
     }
@@ -88,6 +118,20 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
     if (!validTypes.includes(file.type)) {
       onError("Please upload a valid video file (MP4, MOV, AVI, MKV, WebM)");
       return;
+    }
+
+    try {
+      const duration = await getVideoDuration(file);
+      if (duration > MAX_VIDEO_DURATION_SECONDS) {
+        const hours = Math.floor(duration / 3600);
+        const mins = Math.floor((duration % 3600) / 60);
+        onError(
+          `Video is too long (${hours}h ${mins}m). Maximum duration is 2 hours.`
+        );
+        return;
+      }
+    } catch {
+      // If we can't read metadata, let the upload proceed — backend will handle it
     }
 
     setSelectedFile(file);
@@ -331,7 +375,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                 className="text-base mt-0.5"
               />
               <div>
-                <p>Max size: 2GB | Formats: MP4, MOV, AVI, MKV, WebM</p>
+                <p>Max 2 hours | Max size: {MAX_FILE_SIZE / (1024 * 1024 * 1024)}GB | Formats: MP4, MOV, AVI, MKV, WebM</p>
               </div>
             </div>
           </div>

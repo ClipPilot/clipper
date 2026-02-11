@@ -6,6 +6,7 @@ import { clipManagerService } from "../../services/clips/clipManager.service";
 import { s3Service } from "../../services/s3.service";
 import { notifyClipsRefresh } from "../notify";
 import { ensureOutputDir } from "../../utils/fileUtils";
+import { sanitizeErrorForFrontend } from "../../utils/errorSanitizer";
 
 export async function processCaptionsJob(job: UpdateCaptionsJob): Promise<void> {
   const { clipId, teamId, captionsData, captionColor, captionFont, captionsEnabled = true } = job;
@@ -80,7 +81,7 @@ export async function processCaptionsJob(job: UpdateCaptionsJob): Promise<void> 
       clipId,
       teamId,
       "failed",
-      `Captions update failed: ${error instanceof Error ? error.message : "Unknown error"}`
+      `Captions update failed: ${sanitizeErrorForFrontend(error, "Operation failed. Please try again.")}`
     );
 
     // Notify frontend

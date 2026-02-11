@@ -74,14 +74,9 @@ function buildReferenceImageGuide(imagePositions: ImagePositions): string {
 
   if (imagePositions.supportingCount > 0) {
     for (let i = 0; i < imagePositions.supportingCount; i++) {
-      lines.push(`Image ${position}: PRIMARY VISUAL REFERENCE - Replicate this image's style, composition, colors, and specific details as closely as possible.`);
+      lines.push(`Image ${position}: USER-UPLOADED REFERENCE - Incorporate this visual content into the scene. Reproduce it faithfully as the focal element.`);
       position++;
     }
-  }
-
-  if (imagePositions.hasOriginal) {
-    lines.push(`Image ${position}: ORIGINAL TO VARY - Create a new version maintaining the same general composition with subtle differences.`);
-    position++;
   }
 
   if (imagePositions.hasCharacter) {
@@ -112,24 +107,22 @@ export function buildBRollShotPrompt(
 ): string {
   const sections: string[] = [];
 
+  if (imagePositions?.supportingCount && imagePositions.supportingCount > 0) {
+    if (userRefinement) {
+      sections.push(`USER INSTRUCTIONS (HIGHEST PRIORITY):
+${userRefinement}
+When the user says "this" or "the image" or references uploaded content, they are referring to the SUPPORTING REFERENCE IMAGE(S) provided (Image 1${imagePositions.supportingCount > 1 ? ` through Image ${imagePositions.supportingCount}` : ""}). Incorporate that visual content exactly as the user describes.`);
+    }
+
+    sections.push(`SUPPORTING REFERENCE IMAGE${imagePositions.supportingCount > 1 ? "S" : ""}:
+Image 1${imagePositions.supportingCount > 1 ? ` through Image ${imagePositions.supportingCount}` : ""} ${imagePositions.supportingCount > 1 ? "are user-uploaded references" : "is a user-uploaded reference"}. This is specific visual content the user wants incorporated into the scene. If it shows a screen, app, website, product, or any visual — reproduce that content faithfully and make it the focal element of the shot. The reference image content must be clearly visible and recognizable in the final result.`);
+  } else if (userRefinement) {
+    sections.push(`USER INSTRUCTIONS (HIGHEST PRIORITY):
+${userRefinement}`);
+  }
+
   if (imagePositions && hasReferenceImages) {
     sections.push(buildReferenceImageGuide(imagePositions));
-  }
-
-  if (userRefinement) {
-    sections.push(`USER INSTRUCTIONS (HIGHEST PRIORITY):
-${userRefinement}
-Follow these instructions exactly. They override any conflicting guidance below.`);
-  }
-
-  if (imagePositions?.supportingCount && imagePositions.supportingCount > 0) {
-    sections.push(`PRIMARY REFERENCE (Image 1):
-The first reference image is your main visual guide. Replicate its style, composition, layout, colors, and specific details. If it shows an app screen, product shot, or specific scene, recreate that exact visual.`);
-  }
-
-  if (imagePositions?.hasOriginal) {
-    sections.push(`VARIATION MODE:
-Create a fresh take on the original image. Keep the same general scene and composition but generate new details. The result should feel like a different moment from the same shoot.`);
   }
 
   if (hasReferenceImages && characterAppearance) {
@@ -181,7 +174,8 @@ export function buildSceneImagePrompt(
   characterAppearance?: CharacterAppearance,
   hasSupportingImages?: boolean,
   isConsecutiveAroll?: boolean,
-  previousSceneSetting?: string
+  previousSceneSetting?: string,
+  hasVideoFrameReference?: boolean
 ): string {
   const sections: string[] = [];
 
@@ -198,10 +192,22 @@ This is a CONTINUATION of the previous scene. You MUST maintain EXACT visual con
 The first reference image shows the PREVIOUS FRAME - match its environment EXACTLY. This should look like the next frame in a video, not a new scene.`);
   }
 
+  if (hasVideoFrameReference) {
+    sections.push(`**AD CLONE - POSE/COMPOSITION REFERENCE**
+The FIRST reference image is a frame from the original video ad. Use it as a COMPOSITION and POSE guide ONLY:
+- REPLICATE the body positioning, posture, arm placement, and overall pose
+- REPLICATE the camera angle, framing, and distance from subject
+- REPLICATE the setting layout, background composition, and lighting direction
+- DO NOT copy the person's face or identity — use the CHARACTER reference for that`);
+  }
+
   if (hasReferenceImages) {
     const charDesc = characterAppearance ? buildCharacterDescription(characterAppearance) : null;
 
     let refText = "REFERENCE IMAGES PROVIDED:\n";
+    if (hasVideoFrameReference) {
+      refText += "Note: Image 1 is the video frame pose reference (see above). The CHARACTER reference image follows after it.\n";
+    }
     refText += "The character reference shows the exact person to depict. This must be the identical individual - same face, same features, same identity throughout.\n";
 
     if (charDesc) {

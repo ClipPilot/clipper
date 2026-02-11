@@ -33,6 +33,7 @@ export interface ProjectStatusResponse {
   hasScript?: boolean;
   script?: any;
   finalVideoUrl?: string;
+  clipId?: number;
   error?: string;
 }
 

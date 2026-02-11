@@ -12,7 +12,9 @@ const INSTAGRAM_PROFILE_SCRAPER_ACTOR = "apify/instagram-profile-scraper";
 const TIKTOK_SCRAPER_ACTOR = "clockworks/tiktok-scraper";
 const X_POSTS_SCRAPER_ACTOR = "apidojo/twitter-scraper-lite";
 const X_VIEWS_SCRAPER_ACTOR = "scrape.badger/twitter-tweets-scraper";
-const MAX_METRICS_HISTORY = 28;
+const SYNC_INTERVAL = 6 // every 6 hours
+const SYNCS_PER_DAY = Math.floor(24 / SYNC_INTERVAL)
+const MAX_METRICS_HISTORY = 28 * SYNCS_PER_DAY;
 const MAX_FOLLOWER_HISTORY = 180; // ~6 months of daily syncs
 const SCRAPE_WINDOW_DAYS = 28;
 

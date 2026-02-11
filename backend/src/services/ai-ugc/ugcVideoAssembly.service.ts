@@ -15,7 +15,10 @@ import { veedFabricService } from "./veedFabric.service";
 import { grokImagineService } from "./grokImagine.service";
 import { openaiClient } from "../openai.service";
 import { generateJumbledMetadataString } from "../../utils/videoMetadata";
-import { VIDEO_ENCODE_SETTINGS, AUDIO_SETTINGS } from "../../config/ffmpegSettings";
+import {
+  VIDEO_ENCODE_SETTINGS,
+  AUDIO_SETTINGS,
+} from "../../config/ffmpegSettings";
 
 const MAX_KLING_VIDEO_DURATION = 10;
 const MAX_AROLL_VIDEO_DURATION = 60;
@@ -62,7 +65,9 @@ async function shortenDialogueText(
   sceneNumber: number,
 ): Promise<string> {
   const reductionRatio = targetDurationSeconds / currentDurationSeconds;
-  const targetCharCount = Math.floor(originalText.length * reductionRatio * 0.9);
+  const targetCharCount = Math.floor(
+    originalText.length * reductionRatio * 0.9,
+  );
 
   console.log(
     `[UGC Assembly] Scene ${sceneNumber}: Shortening dialogue from ${originalText.length} chars to ~${targetCharCount} chars`,
@@ -245,7 +250,11 @@ async function generateDialogueAudio(
   );
   fs.writeFileSync(tempAudioPath, audioBuffer);
 
-  const { outputPath: audioPath, finalDuration } = applySpeedBoost(tempAudioPath, sceneNumber, speedBoost);
+  const { outputPath: audioPath, finalDuration } = applySpeedBoost(
+    tempAudioPath,
+    sceneNumber,
+    speedBoost,
+  );
 
   console.log(
     `[UGC Assembly] Scene ${sceneNumber}: Audio ${actualDuration.toFixed(2)}s -> ${finalDuration.toFixed(2)}s (${speedBoost}x)`,
@@ -509,11 +518,10 @@ async function processArollScene(
   console.log(
     `[UGC Assembly] A-Roll Scene ${sceneNumber}: Audio duration: ${audioDuration.toFixed(2)}s`,
   );
-  onProgress?.(`Scene ${sceneNumber}: Generating video with VEED Fabric`);
+  onProgress?.(`Scene ${sceneNumber}: Generating video`);
   const imageUrl = await s3Service.getPresignedUrl(imageKey, 3600);
   const audioUrl = await s3Service.getPresignedUrl(audioKey, 3600);
 
-  // Generate video with VEED Fabric (image + audio -> lip-synced video)
   const { videoUrl: avatarVideoUrl } =
     await veedFabricService.generateFabricVideoWithRetry({
       imageUrl,
@@ -700,7 +708,7 @@ async function processBrollScene(
     const shotDurations = calculateMontageShots(audioDuration, numShots);
 
     console.log(
-      `[UGC Assembly] Montage: ${numShots} shots, audio ${audioDuration.toFixed(2)}s → durations: [${shotDurations.map(d => d.trim + 's').join(', ')}]`,
+      `[UGC Assembly] Montage: ${numShots} shots, audio ${audioDuration.toFixed(2)}s → durations: [${shotDurations.map((d) => d.trim + "s").join(", ")}]`,
     );
 
     const shotVideoPaths: string[] = [];
@@ -788,7 +796,10 @@ async function processBrollScene(
     let shortenAttempts = 0;
     let currentDialogue = dialogue;
 
-    while (audioDuration > MAX_KLING_VIDEO_DURATION && shortenAttempts < MAX_SHORTEN_ATTEMPTS) {
+    while (
+      audioDuration > MAX_KLING_VIDEO_DURATION &&
+      shortenAttempts < MAX_SHORTEN_ATTEMPTS
+    ) {
       shortenAttempts++;
       console.log(
         `[UGC Assembly] B-Roll Scene ${sceneNumber}: Audio ${audioDuration.toFixed(2)}s > ${MAX_KLING_VIDEO_DURATION}s, shortening text (attempt ${shortenAttempts}/${MAX_SHORTEN_ATTEMPTS})`,
@@ -929,9 +940,23 @@ async function processScene(
   speedBoost: number = SPEECH_SPEED_BOOST,
 ): Promise<ProcessedScene> {
   if (scene.shotType === "a-roll") {
-    return processArollScene(scene, teamId, scriptId, voiceId, onProgress, speedBoost);
+    return processArollScene(
+      scene,
+      teamId,
+      scriptId,
+      voiceId,
+      onProgress,
+      speedBoost,
+    );
   }
-  return processBrollScene(scene, teamId, scriptId, voiceId, onProgress, speedBoost);
+  return processBrollScene(
+    scene,
+    teamId,
+    scriptId,
+    voiceId,
+    onProgress,
+    speedBoost,
+  );
 }
 
 async function processScenesBatch(
@@ -953,7 +978,11 @@ async function prepareConsecutiveArollAmbientAudio(
   sortedScenes: SceneVideoData[],
 ): Promise<Map<number, string>> {
   const sharedAmbientPaths = new Map<number, string>();
-  const consecutiveSequences: { start: number; end: number; ambientSound: string }[] = [];
+  const consecutiveSequences: {
+    start: number;
+    end: number;
+    ambientSound: string;
+  }[] = [];
 
   let sequenceStart: number | null = null;
   let sequenceAmbient: string | null = null;
@@ -969,7 +998,10 @@ async function prepareConsecutiveArollAmbientAudio(
       sequenceAmbient = scene.ambientSound || null;
     }
 
-    if (sequenceStart !== null && (!nextIsAroll || i === sortedScenes.length - 1)) {
+    if (
+      sequenceStart !== null &&
+      (!nextIsAroll || i === sortedScenes.length - 1)
+    ) {
       const sequenceEnd = isAroll ? i : i - 1;
       if (sequenceEnd > sequenceStart && sequenceAmbient) {
         consecutiveSequences.push({
@@ -1009,7 +1041,10 @@ async function prepareConsecutiveArollAmbientAudio(
         sharedAmbientPaths.set(sortedScenes[i].sceneNumber, sharedPath);
       }
     } catch (error) {
-      console.error(`[UGC Assembly] Failed to generate shared ambient audio:`, error);
+      console.error(
+        `[UGC Assembly] Failed to generate shared ambient audio:`,
+        error,
+      );
     }
   }
 
@@ -1034,7 +1069,8 @@ export async function assembleUGCVideo(
   );
 
   // Pre-generate shared ambient audio for consecutive A-roll sequences
-  const sharedAmbientPaths = await prepareConsecutiveArollAmbientAudio(sortedScenes);
+  const sharedAmbientPaths =
+    await prepareConsecutiveArollAmbientAudio(sortedScenes);
   for (const scene of sortedScenes) {
     const sharedPath = sharedAmbientPaths.get(scene.sceneNumber);
     if (sharedPath) {

@@ -30,13 +30,26 @@ vi.mock("../../services/sqs.service", () => ({ sqsService: mockSqsService }));
 vi.mock("../../services/team.service", () => ({ teamService: mockTeamService }));
 vi.mock("../../services/clips/clipManager.service", () => ({ clipManagerService: mockClipManagerService }));
 vi.mock("../../config/stripe.config", () => ({
-  PLAN_LIMITS: { FREE: { generations: 3 } },
+  PLAN_LIMITS: {
+    FREE: { generations: 3, maxUploadSizeGB: 2 },
+    STUDIO: { maxUploadSizeGB: 2 },
+    SCALE: { maxUploadSizeGB: 3 },
+    ENTERPRISE: { maxUploadSizeGB: 3 },
+  },
   stripe: {},
   STRIPE_PRICES: {},
   getPlanFromPriceId: vi.fn(),
   getClipsLimitForPlan: vi.fn(),
   isAddonPrice: vi.fn(),
   getAddonClips: vi.fn(),
+  getMaxUploadSizeForPlan: (plan: string) => {
+    const limits: Record<string, number> = {
+      scale: 3 * 1024 * 1024 * 1024,
+      enterprise: 3 * 1024 * 1024 * 1024,
+      studio: 2 * 1024 * 1024 * 1024,
+    };
+    return limits[plan] ?? 2 * 1024 * 1024 * 1024;
+  },
 }));
 vi.mock("@sentry/node", () => ({ captureException: vi.fn() }));
 
@@ -71,6 +84,7 @@ describe("initiateMultipartUpload", () => {
   });
 
   it("returns 400 when file too large", async () => {
+    mockTeamService.getTeamById.mockResolvedValue({ plan: "free" });
     const req = createReq({
       user: { id: "u1" },
       body: { teamId: "1", fileName: "video.mp4", contentType: "video/mp4", fileSize: 3 * 1024 * 1024 * 1024 },
@@ -81,7 +95,22 @@ describe("initiateMultipartUpload", () => {
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: expect.stringContaining("2GB") }));
   });
 
+  it("allows 3GB upload for scale plan", async () => {
+    mockTeamService.getTeamById.mockResolvedValue({ plan: "scale" });
+    mockS3Service.initiateMultipartUpload.mockResolvedValue({ uploadId: "up-1", s3Key: "raw/1/v.mp4" });
+    mockS3Service.getPresignedPartUrls.mockResolvedValue({ 1: "https://s3/part1" });
+
+    const req = createReq({
+      user: { id: "u1" },
+      body: { teamId: "1", fileName: "video.mp4", contentType: "video/mp4", fileSize: 2.5 * 1024 * 1024 * 1024 },
+    });
+    const res = createMockResponse();
+    await initiateMultipartUpload(req, res);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ uploadId: "up-1", s3Key: "raw/1/v.mp4" }));
+  });
+
   it("returns 400 for invalid content type", async () => {
+    mockTeamService.getTeamById.mockResolvedValue({ plan: "free" });
     const req = createReq({
       user: { id: "u1" },
       body: { teamId: "1", fileName: "doc.pdf", contentType: "application/pdf", fileSize: 1000 },
@@ -92,6 +121,7 @@ describe("initiateMultipartUpload", () => {
   });
 
   it("returns upload details on success", async () => {
+    mockTeamService.getTeamById.mockResolvedValue({ plan: "studio" });
     mockS3Service.initiateMultipartUpload.mockResolvedValue({ uploadId: "up-1", s3Key: "raw/1/v.mp4" });
     mockS3Service.getPresignedPartUrls.mockResolvedValue({ 1: "https://s3/part1" });
 
@@ -160,6 +190,7 @@ describe("getPresignedUploadUrl", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("returns 400 for invalid content type", async () => {
+    mockTeamService.getTeamById.mockResolvedValue({ plan: "free" });
     const req = createReq({
       user: { id: "u1" },
       body: { teamId: "1", fileName: "f.txt", contentType: "text/plain" },
@@ -170,6 +201,7 @@ describe("getPresignedUploadUrl", () => {
   });
 
   it("returns presigned URL on success", async () => {
+    mockTeamService.getTeamById.mockResolvedValue({ plan: "studio" });
     mockS3Service.getPresignedUploadUrl.mockResolvedValue({ uploadUrl: "https://s3/upload", s3Key: "raw/1/v.mp4" });
     const req = createReq({
       user: { id: "u1" },

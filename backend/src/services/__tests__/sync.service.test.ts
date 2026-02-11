@@ -73,7 +73,7 @@ describe("SyncService", () => {
       });
 
       await expect(service.createLipSync("v.mp4", "a.wav")).rejects.toThrow(
-        "Sync API error (400): Bad request"
+        "Lip sync error (400): Bad request"
       );
     });
   });
@@ -102,7 +102,7 @@ describe("SyncService", () => {
       });
 
       await expect(service.getStatus("bad-id")).rejects.toThrow(
-        "Sync API error (404): Not found"
+        "Lip sync error (404): Not found"
       );
     });
   });

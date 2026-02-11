@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import { authService } from "../services/auth.service";
 import { userService } from "../services/user.service";
 import { AuthRequest } from "../middleware/auth.middleware";
+import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
 export class AuthController {
   async signUp(req: Request, res: Response) {
     try {
@@ -36,7 +37,7 @@ export class AuthController {
       console.error("Signup error:", error);
       Sentry.captureException(error);
       return res.status(400).json({
-        error: error instanceof Error ? error.message : "Failed to sign up",
+        error: sanitizeErrorForFrontend(error, "Failed to sign up"),
       });
     }
   }
@@ -68,7 +69,7 @@ export class AuthController {
       console.error("Signin error:", error);
       Sentry.captureException(error);
       return res.status(401).json({
-        error: error instanceof Error ? error.message : "Failed to sign in",
+        error: sanitizeErrorForFrontend(error, "Failed to sign in"),
       });
     }
   }
@@ -130,7 +131,7 @@ export class AuthController {
       console.error("Signout error:", error);
       Sentry.captureException(error);
       return res.status(400).json({
-        error: error instanceof Error ? error.message : "Failed to sign out",
+        error: sanitizeErrorForFrontend(error, "Failed to sign out"),
       });
     }
   }
@@ -160,7 +161,7 @@ export class AuthController {
       console.error("Get user error:", error);
       Sentry.captureException(error);
       return res.status(401).json({
-        error: error instanceof Error ? error.message : "Failed to get user",
+        error: sanitizeErrorForFrontend(error, "Failed to get user"),
       });
     }
   }
@@ -186,7 +187,7 @@ export class AuthController {
       Sentry.captureException(error);
       return res.status(401).json({
         error:
-          error instanceof Error ? error.message : "Failed to refresh session",
+          sanitizeErrorForFrontend(error, "Failed to refresh session"),
       });
     }
   }
@@ -209,7 +210,7 @@ export class AuthController {
       Sentry.captureException(error);
       return res.status(400).json({
         error:
-          error instanceof Error ? error.message : "Failed to send reset email",
+          sanitizeErrorForFrontend(error, "Failed to send reset email"),
       });
     }
   }
@@ -250,7 +251,7 @@ export class AuthController {
       Sentry.captureException(error);
       return res.status(400).json({
         error:
-          error instanceof Error ? error.message : "Failed to update password",
+          sanitizeErrorForFrontend(error, "Failed to update password"),
       });
     }
   }
@@ -282,7 +283,7 @@ export class AuthController {
       Sentry.captureException(error);
       return res.status(400).json({
         error:
-          error instanceof Error ? error.message : "Failed to update profile",
+          sanitizeErrorForFrontend(error, "Failed to update profile"),
       });
     }
   }

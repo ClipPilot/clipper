@@ -23,7 +23,7 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      // Check if user has a valid Supabase session (from the recovery link)
+      // Check if user has a valid auth session (from the recovery link)
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -57,7 +57,7 @@ export default function ResetPasswordPage() {
     setIsLoading(true);
 
     try {
-      // Use Supabase's updateUser directly - the session is already set from the recovery link
+      // Update password using auth provider - the session is already set from the recovery link
       const { data, error: updateError } = await supabase.auth.updateUser({
         password: newPassword,
       });

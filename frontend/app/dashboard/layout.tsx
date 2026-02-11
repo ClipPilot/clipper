@@ -13,7 +13,6 @@ import {
   PopoverTrigger,
   PopoverContent,
   Button,
-  // Badge, // TODO: Re-enable with notifications
   ToastProvider,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
@@ -134,7 +133,7 @@ export default function DashboardLayout({
   const getInitials = (
     firstName?: string,
     lastName?: string,
-    email?: string
+    email?: string,
   ) => {
     if (firstName && lastName) {
       return `${firstName[0]}${lastName[0]}`.toUpperCase();
@@ -200,7 +199,11 @@ export default function DashboardLayout({
                   onPress={() => setTheme(theme === "dark" ? "light" : "dark")}
                 >
                   <Icon
-                    icon={theme === "dark" ? "solar:sun-bold-duotone" : "solar:moon-bold-duotone"}
+                    icon={
+                      theme === "dark"
+                        ? "solar:sun-bold-duotone"
+                        : "solar:moon-bold-duotone"
+                    }
                     width={20}
                   />
                 </Button>
@@ -227,8 +230,13 @@ export default function DashboardLayout({
                         />
                       </div>
                     ) : (
-                      <div className={`flex items-center justify-center w-8 h-8 rounded-lg ${getPlanBgColor(selectedTeam?.plan)} text-white`}>
-                        <Icon icon={getTeamIcon(selectedTeam?.role)} width={16} />
+                      <div
+                        className={`flex items-center justify-center w-8 h-8 rounded-lg ${getPlanBgColor(selectedTeam?.plan)} text-white`}
+                      >
+                        <Icon
+                          icon={getTeamIcon(selectedTeam?.role)}
+                          width={16}
+                        />
                       </div>
                     )}
                     <span className="text-sm font-medium text-text-primary flex-1 text-left truncate">
@@ -284,7 +292,7 @@ export default function DashboardLayout({
                       name={getInitials(
                         user?.firstName,
                         user?.lastName,
-                        user?.email
+                        user?.email,
                       )}
                       classNames={{
                         base: "bg-accent-400 text-white flex-shrink-0",

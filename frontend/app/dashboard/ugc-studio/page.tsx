@@ -55,7 +55,7 @@ export default function UGCStudioPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.2 }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6 lg:gap-8"
         >
           <FeatureCard
             icon="solar:mask-happly-bold-duotone"
@@ -97,6 +97,19 @@ export default function UGCStudioPage() {
               "AI-powered recreation",
             ]}
             onPress={() => router.push("/dashboard/ugc-studio/ad-clone")}
+          />
+          <FeatureCard
+            icon="solar:palette-bold-duotone"
+            title="Graphics"
+            description="Generate professional ad graphics from text prompts. Create Instagram ads, product showcases, banners, and more with AI."
+            gradient="from-pink-500/20 via-rose-500/10 to-transparent"
+            iconColor="text-pink-400"
+            features={[
+              "4 variations per generation",
+              "Multiple ad formats",
+              "Product image support",
+            ]}
+            onPress={() => router.push("/dashboard/ugc-studio/graphics")}
           />
         </motion.div>
 

@@ -44,6 +44,8 @@ interface SceneImageCardProps {
   onUseEndFrameChange: (useEndFrame: boolean) => void;
   onCustomImageChange: (type: "start" | "end", key: string | undefined, url: string | undefined) => void;
   onCustomBRollImageChange?: (shotIndex: number, key: string | undefined, url: string | undefined) => void;
+  /** Called when scene text fields are edited inline (dialogue, action, b-roll actions) */
+  onSceneUpdate?: (updatedScene: UGCScene) => void;
   /** When true, always shows expanded view (used in storyboard mode) */
   isStoryboardMode?: boolean;
 }
@@ -73,6 +75,7 @@ export function SceneImageCard({
   onSupportingImagesChange,
   onUseEndFrameChange,
   onCustomImageChange,
+  onSceneUpdate,
   onCustomBRollImageChange,
   isStoryboardMode = false,
 }: SceneImageCardProps) {
@@ -88,6 +91,58 @@ export function SceneImageCard({
   const [selectedBRollIndex, setSelectedBRollIndex] = useState<number | null>(null);
   // Track which specific shot is regenerating (null = all shots or none)
   const [regeneratingShotIndex, setRegeneratingShotIndex] = useState<number | null>(null);
+
+  // Inline editing state for storyboard mode
+  const [editingField, setEditingField] = useState<"dialogue" | "action" | null>(null);
+  const [editingBRollIndex, setEditingBRollIndex] = useState<number | null>(null);
+  const [editValue, setEditValue] = useState("");
+
+  const startEditing = (field: "dialogue" | "action") => {
+    if (!onSceneUpdate) return;
+    setEditingField(field);
+    setEditValue(field === "dialogue" ? scene.dialogue : scene.action);
+    setEditingBRollIndex(null);
+  };
+
+  const startEditingBRoll = (index: number) => {
+    if (!onSceneUpdate || !scene.bRollShots?.[index]) return;
+    setEditingBRollIndex(index);
+    setEditValue(scene.bRollShots[index].action);
+    setEditingField(null);
+  };
+
+  const saveEdit = () => {
+    if (!onSceneUpdate) return;
+    if (editingField === "dialogue" && editValue !== scene.dialogue) {
+      onSceneUpdate({ ...scene, dialogue: editValue });
+    } else if (editingField === "action" && editValue !== scene.action) {
+      onSceneUpdate({ ...scene, action: editValue });
+    } else if (editingBRollIndex !== null && scene.bRollShots) {
+      const currentAction = scene.bRollShots[editingBRollIndex]?.action;
+      if (editValue !== currentAction) {
+        const updatedShots = scene.bRollShots.map((shot, idx) =>
+          idx === editingBRollIndex ? { ...shot, action: editValue } : shot
+        );
+        onSceneUpdate({ ...scene, bRollShots: updatedShots });
+      }
+    }
+    setEditingField(null);
+    setEditingBRollIndex(null);
+  };
+
+  const cancelEdit = () => {
+    setEditingField(null);
+    setEditingBRollIndex(null);
+  };
+
+  const handleEditKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      saveEdit();
+    } else if (e.key === "Escape") {
+      cancelEdit();
+    }
+  };
 
   const sceneConfig = SCENE_TYPE_CONFIG[scene.sceneType];
   const hasImage = !!imageKey;
@@ -108,30 +163,18 @@ export function SceneImageCard({
     // Build existing images array, merging custom images with generated images
     let existingImages: string[] | undefined;
 
-    console.log(`[SceneImageCard] handleGenerate called with singleShotIndex=${singleShotIndex}`);
-    console.log(`[SceneImageCard] generation object:`, generation);
-    console.log(`[SceneImageCard] generation?.generatedImages:`, generation?.generatedImages);
-    console.log(`[SceneImageCard] customBRollImages:`, customBRollImages);
-    console.log(`[SceneImageCard] supportingImageKeys (from props):`, supportingImageKeys);
-    console.log(`[SceneImageCard] supportingImages (local state):`, supportingImages);
-    console.log(`[SceneImageCard] localRefinement:`, localRefinement);
-
     if (singleShotIndex !== undefined && scene.bRollShots) {
       existingImages = scene.bRollShots.map((_, idx) => {
         // Use custom image if available, otherwise use generated image
         const customImage = customBRollImages?.[idx];
         const generatedImage = generation?.generatedImages?.[idx];
         const key = customImage?.key || generatedImage?.key || "";
-        console.log(`[SceneImageCard] Shot ${idx}: customKey=${customImage?.key}, generatedKey=${generatedImage?.key}, using=${key}`);
         return key;
       }).filter(Boolean);
 
       // Only pass if we have some existing images to preserve
       if (existingImages.length === 0) {
-        console.warn(`[SceneImageCard] WARNING: No existing images found! Will regenerate ALL shots.`);
         existingImages = undefined;
-      } else {
-        console.log(`[SceneImageCard] Single shot regen: idx=${singleShotIndex}, preserving ${existingImages.length} existing images`);
       }
     }
 
@@ -139,8 +182,6 @@ export function SceneImageCard({
     const currentSupportingKeys = supportingImages.length > 0
       ? supportingImages.map(img => img.key)
       : supportingImageKeys;
-
-    console.log(`[SceneImageCard] Using supportingImageKeys:`, currentSupportingKeys);
 
     const requestData = {
       teamId,
@@ -451,19 +492,54 @@ export function SceneImageCard({
           )}
         </div>
 
-        <div className="bg-surface-base rounded-lg p-3">
-          <p className="text-text-primary text-sm leading-relaxed">
-            "{scene.dialogue}"
-          </p>
+        <div
+          className={`bg-surface-base rounded-lg p-3 ${onSceneUpdate ? "cursor-pointer hover:ring-1 hover:ring-accent-400/30 transition-all" : ""}`}
+          onClick={() => editingField !== "dialogue" && startEditing("dialogue")}
+        >
+          {editingField === "dialogue" ? (
+            <textarea
+              autoFocus
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onBlur={saveEdit}
+              onKeyDown={handleEditKeyDown}
+              className="w-full bg-transparent text-text-primary text-sm leading-relaxed resize-none outline-none min-h-[40px]"
+              rows={2}
+            />
+          ) : (
+            <div className="flex items-center gap-2">
+              <p className="text-text-primary text-sm leading-relaxed flex-1">
+                &ldquo;{scene.dialogue}&rdquo;
+              </p>
+              {onSceneUpdate && (
+                <Icon icon="solar:pen-2-linear" className="text-text-muted shrink-0 opacity-0 group-hover:opacity-100" width={14} />
+              )}
+            </div>
+          )}
         </div>
 
-        <div className="flex items-center gap-2 text-sm text-text-secondary">
+        <div
+          className={`flex items-center gap-2 text-sm text-text-secondary ${onSceneUpdate ? "cursor-pointer hover:text-text-primary transition-colors" : ""}`}
+          onClick={() => editingField !== "action" && startEditing("action")}
+        >
           <Icon
             icon="solar:running-bold"
             width={14}
             className="text-text-muted shrink-0"
           />
-          <span>{scene.action}</span>
+          {editingField === "action" ? (
+            <textarea
+              autoFocus
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onBlur={saveEdit}
+              onKeyDown={handleEditKeyDown}
+              className="flex-1 bg-surface-base rounded px-2 py-1 text-text-primary text-sm resize-none outline-none ring-1 ring-accent-400/50 min-h-[28px]"
+              rows={1}
+            />
+          ) : (
+            <span>{scene.action}</span>
+          )}
         </div>
 
         <div className="flex items-start gap-3">
@@ -627,7 +703,28 @@ export function SceneImageCard({
                           </Chip>
                         )}
                       </div>
-                      <p className="text-xs text-text-secondary line-clamp-2">{shot.action}</p>
+                      {editingBRollIndex === idx ? (
+                        <textarea
+                          autoFocus
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onBlur={saveEdit}
+                          onKeyDown={handleEditKeyDown}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-full bg-surface-elevated rounded px-2 py-1 text-text-primary text-xs resize-none outline-none ring-1 ring-amber-400/50 min-h-[28px]"
+                          rows={2}
+                        />
+                      ) : (
+                        <p
+                          className={`text-xs text-text-secondary line-clamp-2 ${onSceneUpdate ? "cursor-pointer hover:text-text-primary transition-colors" : ""}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            startEditingBRoll(idx);
+                          }}
+                        >
+                          {shot.action}
+                        </p>
+                      )}
                     </div>
                     {isSelected && (
                       <div className="flex gap-1 shrink-0">

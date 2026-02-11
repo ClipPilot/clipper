@@ -7,6 +7,7 @@ import { notifyClipsRefresh } from "../notify";
 import { addCaptionsFromData, CaptionEntry } from "../../services/clips/captions.service";
 import { regenerateClipWithTextOverlay } from "../../services/clips/clip.service";
 import { ensureOutputDir } from "../../utils/fileUtils";
+import { sanitizeErrorForFrontend } from "../../utils/errorSanitizer";
 
 export async function processOverlaysJob(job: UpdateOverlaysJob): Promise<void> {
   const { clipId, teamId, captionsEnabled, captionsData, captionColor, captionFont, heading } = job;
@@ -99,7 +100,7 @@ export async function processOverlaysJob(job: UpdateOverlaysJob): Promise<void> 
       clipId,
       teamId,
       "failed",
-      error instanceof Error ? error.message : "Unknown error"
+      sanitizeErrorForFrontend(error, "Operation failed. Please try again.")
     );
 
     await notifyClipsRefresh(teamId);

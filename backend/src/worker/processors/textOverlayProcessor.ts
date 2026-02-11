@@ -7,6 +7,7 @@ import { s3Service } from "../../services/s3.service";
 import { notifyClipsRefresh } from "../notify";
 import { addCaptionsFromData, CaptionEntry } from "../../services/clips/captions.service";
 import { ensureOutputDir } from "../../utils/fileUtils";
+import { sanitizeErrorForFrontend } from "../../utils/errorSanitizer";
 
 export async function processTextOverlayJob(
   job: TextOverlayJob
@@ -104,7 +105,7 @@ export async function processTextOverlayJob(
       clipId,
       teamId,
       "failed",
-      `Applying heading failed: ${error instanceof Error ? error.message : "Unknown error"}`
+      `Applying heading failed: ${sanitizeErrorForFrontend(error, "Operation failed. Please try again.")}`
     );
 
     // Notify frontend

@@ -65,11 +65,15 @@ export default function VideoJobPage() {
   }, [jobId]);
 
   // Socket for real-time updates
-  // When status becomes "completed", re-fetch from API to get presigned URL
   const handleSocketUpdate = useCallback(async (status: VideoGenerationStatus) => {
+    // If the worker already created the clip, redirect immediately
+    if (status.status === "completed" && status.clipId) {
+      router.push(`/dashboard/clips/${status.clipId}/edit`);
+      return;
+    }
+
     if (status.status === "completed" && !status.finalVideoUrl) {
-      // Socket sends finalVideoKey but not finalVideoUrl
-      // Re-fetch from API to get the presigned URL
+      // Socket sends finalVideoKey but not finalVideoUrl — re-fetch
       try {
         const fullStatus = await ugcVideoAPI.getVideoStatus(status.jobId);
         setVideoStatus(fullStatus);
@@ -80,7 +84,7 @@ export default function VideoJobPage() {
     } else {
       setVideoStatus(status);
     }
-  }, []);
+  }, [router]);
 
   useUGCVideoSocket({
     teamId: selectedTeam?.id,
@@ -88,17 +92,46 @@ export default function VideoJobPage() {
     onUpdate: handleSocketUpdate,
   });
 
-  // Auto-finalize when video is completed
+  // Polling fallback (every 5s while generating/queued)
+  const isGenerating = videoStatus?.status === "generating" || videoStatus?.status === "queued";
+
+  useEffect(() => {
+    if (!isGenerating) return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const status = await ugcVideoAPI.getVideoStatus(jobId);
+        setVideoStatus(status);
+
+        if (status.status === "completed" || status.status === "failed") {
+          clearInterval(pollInterval);
+        }
+      } catch (err) {
+        console.error("Failed to poll status:", err);
+      }
+    }, 5000);
+
+    return () => clearInterval(pollInterval);
+  }, [isGenerating, jobId]);
+
+  // Auto-redirect or fallback finalize when video is completed
   useEffect(() => {
     const autoFinalize = async () => {
       if (
         videoStatus?.status === "completed" &&
-        videoStatus.finalVideoUrl &&
         selectedTeam?.id &&
         !hasAutoFinalized.current &&
-        !isFinalizing &&
-        !videoStatus.clipId // Don't auto-finalize if already finalized
+        !isFinalizing
       ) {
+        // If worker already created the clip, redirect directly
+        if (videoStatus.clipId) {
+          router.push(`/dashboard/clips/${videoStatus.clipId}/edit`);
+          return;
+        }
+
+        // Fallback: finalize via API (worker may not have created the clip)
+        if (!videoStatus.finalVideoUrl) return;
+
         hasAutoFinalized.current = true;
         setIsFinalizing(true);
         setError(null);
@@ -109,12 +142,11 @@ export default function VideoJobPage() {
             teamId: selectedTeam.id,
           });
 
-          // Redirect to clip edit page
           router.push(`/dashboard/clips/${response.clipId}/edit`);
         } catch (err) {
           setError(err instanceof Error ? err.message : "Failed to finalize video");
           setIsFinalizing(false);
-          hasAutoFinalized.current = false; // Allow retry on error
+          hasAutoFinalized.current = false;
         }
       }
     };

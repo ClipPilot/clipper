@@ -47,6 +47,11 @@ export interface GenerateImageResult {
   description?: string;
 }
 
+export interface GenerateMultipleImagesResult {
+  imageUrls: string[];
+  description?: string;
+}
+
 interface FalImageResponse {
   images: Array<{
     url: string;
@@ -93,7 +98,7 @@ export async function generateImage(
   )) as { data: FalImageResponse };
 
   if (!result.data?.images?.[0]?.url) {
-    throw new Error("FAL AI did not return an image");
+    throw new Error("Image generation did not return an image");
   }
 
   return {
@@ -150,11 +155,113 @@ export async function generateImageWithReferences(
   )) as { data: FalImageResponse };
 
   if (!result.data?.images?.[0]?.url) {
-    throw new Error("FAL AI did not return an image");
+    throw new Error("Image generation did not return an image");
   }
 
   return {
     imageUrl: result.data.images[0].url,
+    description: result.data.description,
+  };
+}
+
+/**
+ * Generate multiple images using FAL AI (text-to-image)
+ * Returns all generated images instead of just the first one
+ */
+export async function generateMultipleImages(
+  options: GenerateImageOptions & { usePro?: boolean },
+): Promise<GenerateMultipleImagesResult> {
+  const { prompt, aspectRatio = "3:4", numImages = 4, usePro = false } = options;
+
+  const model = usePro ? "fal-ai/nano-banana-pro" : "fal-ai/nano-banana";
+  console.log(`[FAL_IMAGE] Multi text-to-image with ${model}, ${numImages} images, aspect ratio ${aspectRatio}`);
+
+  const result = (await withTimeout(
+    fal.subscribe(model, {
+      input: {
+        prompt,
+        num_images: numImages,
+        aspect_ratio: aspectRatio,
+        output_format: "png",
+        limit_generations: true,
+      },
+      logs: true,
+      onQueueUpdate: (update) => {
+        if (update.status === "IN_PROGRESS" && update.logs) {
+          update.logs
+            .map((log: { message: string }) => log.message)
+            .forEach((msg: string) => {
+              console.log(`[FAL_IMAGE] ${msg}`);
+            });
+        }
+      },
+    }),
+    FAL_TIMEOUT_MS,
+    "FAL multi text-to-image"
+  )) as { data: FalImageResponse };
+
+  if (!result.data?.images?.length) {
+    throw new Error("Image generation did not return any images");
+  }
+
+  return {
+    imageUrls: result.data.images.map((img) => img.url),
+    description: result.data.description,
+  };
+}
+
+/**
+ * Generate multiple images using FAL AI (image-to-image with references)
+ * Returns all generated images instead of just the first one
+ */
+export async function generateMultipleImagesWithReferences(
+  options: GenerateImageWithReferencesOptions & { usePro?: boolean },
+): Promise<GenerateMultipleImagesResult> {
+  const { prompt, imageUrls, aspectRatio = "3:4", numImages = 4, usePro = false, negativePrompt } = options;
+
+  const model = usePro ? "fal-ai/nano-banana-pro/edit" : "fal-ai/nano-banana/edit";
+
+  console.log(
+    `[FAL_IMAGE] Multi image-to-image with ${imageUrls.length} references, ${numImages} images, aspect ratio ${aspectRatio}, model: ${model}`,
+  );
+
+  const input: Record<string, unknown> = {
+    prompt,
+    image_urls: imageUrls,
+    num_images: numImages,
+    aspect_ratio: aspectRatio,
+    output_format: "png",
+    limit_generations: true,
+  };
+
+  if (negativePrompt) {
+    input.negative_prompt = negativePrompt;
+  }
+
+  const result = (await withTimeout(
+    fal.subscribe(model, {
+      input: input as Parameters<typeof fal.subscribe>[1] extends { input: infer I } ? I : never,
+      logs: true,
+      onQueueUpdate: (update) => {
+        if (update.status === "IN_PROGRESS" && update.logs) {
+          update.logs
+            .map((log: { message: string }) => log.message)
+            .forEach((msg: string) => {
+              console.log(`[FAL_IMAGE] ${msg}`);
+            });
+        }
+      },
+    }),
+    FAL_TIMEOUT_MS,
+    "FAL multi image-to-image"
+  )) as { data: FalImageResponse };
+
+  if (!result.data?.images?.length) {
+    throw new Error("Image generation did not return any images");
+  }
+
+  return {
+    imageUrls: result.data.images.map((img) => img.url),
     description: result.data.description,
   };
 }
@@ -203,5 +310,7 @@ export async function generateImageWithRetry(
 export const falImageService = {
   generateImage,
   generateImageWithReferences,
+  generateMultipleImages,
+  generateMultipleImagesWithReferences,
   generateImageWithRetry,
 };

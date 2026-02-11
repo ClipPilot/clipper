@@ -486,6 +486,7 @@ export default function CreateClipPage() {
                 {batchMode ? (
                   <BatchUploadSection
                     teamId={selectedTeam.id}
+                    plan={selectedTeam.plan}
                     onUploadComplete={handleBatchUploadComplete}
                     onError={handleUploadError}
                     maxVideos={5}
@@ -505,6 +506,7 @@ export default function CreateClipPage() {
                 ) : (
                   <UploadSection
                     teamId={selectedTeam.id}
+                    plan={selectedTeam.plan}
                     onUploadComplete={handleUploadComplete}
                     onError={handleUploadError}
                     isDisabled={

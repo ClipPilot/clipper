@@ -20,6 +20,7 @@ import sceneBuilderRoutes from "./routes/sceneBuilder.routes";
 import ugcVideoRoutes from "./routes/ugcVideo.routes";
 import userPreferencesRoutes from "./routes/userPreferences.routes";
 import adCloneRoutes from "./routes/adClone.routes";
+import graphicsRoutes from "./routes/graphics.routes";
 import announcementRoutes from "./routes/announcement.routes";
 import viralityRoutes from "./routes/virality.routes";
 import { swaggerSpec } from "./config/swagger";
@@ -76,6 +77,7 @@ app.use("/api/scene-builder", sceneBuilderRoutes);
 app.use("/api/ugc-video", ugcVideoRoutes);
 app.use("/api/user/preferences", userPreferencesRoutes);
 app.use("/api/ad-clone", adCloneRoutes);
+app.use("/api/graphics", graphicsRoutes);
 app.use("/api/announcements", announcementRoutes);
 app.use("/api/virality", viralityRoutes);
 
