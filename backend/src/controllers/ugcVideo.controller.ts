@@ -18,6 +18,7 @@ import { transcribeVideoService } from "../services/clips/transcription.service"
 import { convertWordsToCaptionEntries, CaptionEntry } from "../services/clips/captions.service";
 import { getTeamUsage } from "../middleware/subscription.middleware";
 import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
+import { ugcScriptService } from "../services/ai-ugc/ugcScript.service";
 
 interface AuthRequest extends Request {
   user?: { id: string; email: string; dbUserId: number };
@@ -281,7 +282,26 @@ export class UGCVideoController {
         .from(sceneImages)
         .where(eq(sceneImages.script_id, scriptId));
 
-      // Build scene video data from script + saved images
+      await Promise.all(
+        (selectedScript.scenes as SceneData[]).map(async (scene) => {
+          const promises: Promise<void>[] = [
+            ugcScriptService.regenerateCinematicPrompt(scene.action)
+              .then((p) => { scene.cinematicPrompt = p; }),
+          ];
+          for (const shot of scene.bRollShots || []) {
+            promises.push(
+              ugcScriptService.regenerateCinematicPrompt(shot.action)
+                .then((p) => { shot.cinematicPrompt = p; })
+            );
+          }
+          await Promise.all(promises);
+        })
+      );
+
+      await db
+        .update(ugcScripts)
+        .set({ scripts_data: scriptsData, updated_at: new Date() })
+        .where(eq(ugcScripts.id, scriptId));
       const scenes: GenerateUGCVideoJob["scenes"] = [];
 
       for (const scene of selectedScript.scenes as SceneData[]) {

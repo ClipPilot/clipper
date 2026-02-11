@@ -72,26 +72,11 @@ function buildReferenceImageGuide(imagePositions: ImagePositions): string {
   const lines: string[] = ["REFERENCE IMAGE GUIDE:"];
   let position = 1;
 
-  const isCompositeMode = imagePositions.supportingCount > 0 && imagePositions.hasOriginal;
-
   if (imagePositions.supportingCount > 0) {
     for (let i = 0; i < imagePositions.supportingCount; i++) {
-      if (isCompositeMode) {
-        lines.push(`Image ${position}: VISUAL CONTENT REFERENCE - This is the key visual that MUST be prominently featured and faithfully reproduced in the generated image. Incorporate this exact visual into the scene.`);
-      } else {
-        lines.push(`Image ${position}: PRIMARY VISUAL REFERENCE - Replicate this image's style, composition, colors, and specific details as closely as possible.`);
-      }
+      lines.push(`Image ${position}: USER-UPLOADED REFERENCE - Incorporate this visual content into the scene. Reproduce it faithfully as the focal element.`);
       position++;
     }
-  }
-
-  if (imagePositions.hasOriginal) {
-    if (isCompositeMode) {
-      lines.push(`Image ${position}: SCENE LAYOUT REFERENCE - This defines the overall scene composition, camera angle, environment, and subject positioning. Recreate this scene but incorporate the visual content from Image 1 into it.`);
-    } else {
-      lines.push(`Image ${position}: ORIGINAL TO VARY - Create a new version maintaining the same general composition with subtle differences.`);
-    }
-    position++;
   }
 
   if (imagePositions.hasCharacter) {
@@ -122,25 +107,22 @@ export function buildBRollShotPrompt(
 ): string {
   const sections: string[] = [];
 
-  if (userRefinement) {
-    sections.push(`USER INSTRUCTIONS (HIGHEST PRIORITY):
+  if (imagePositions?.supportingCount && imagePositions.supportingCount > 0) {
+    if (userRefinement) {
+      sections.push(`USER INSTRUCTIONS (HIGHEST PRIORITY):
 ${userRefinement}
-Follow these instructions exactly. If the user references any image, it represents the uploaded image which is IMAGE 1 passed into you.`);
+When the user says "this" or "the image" or references uploaded content, they are referring to the SUPPORTING REFERENCE IMAGE(S) provided (Image 1${imagePositions.supportingCount > 1 ? ` through Image ${imagePositions.supportingCount}` : ""}). Incorporate that visual content exactly as the user describes.`);
+    }
+
+    sections.push(`SUPPORTING REFERENCE IMAGE${imagePositions.supportingCount > 1 ? "S" : ""}:
+Image 1${imagePositions.supportingCount > 1 ? ` through Image ${imagePositions.supportingCount}` : ""} ${imagePositions.supportingCount > 1 ? "are user-uploaded references" : "is a user-uploaded reference"}. This is specific visual content the user wants incorporated into the scene. If it shows a screen, app, website, product, or any visual — reproduce that content faithfully and make it the focal element of the shot. The reference image content must be clearly visible and recognizable in the final result.`);
+  } else if (userRefinement) {
+    sections.push(`USER INSTRUCTIONS (HIGHEST PRIORITY):
+${userRefinement}`);
   }
 
   if (imagePositions && hasReferenceImages) {
     sections.push(buildReferenceImageGuide(imagePositions));
-  }
-
-  if (imagePositions?.supportingCount && imagePositions.supportingCount > 0 && imagePositions?.hasOriginal) {
-    sections.push(`REFERENCE INTEGRATION (Image 1 + Image 2):
-Image 1 is the KEY VISUAL that must be faithfully reproduced and prominently incorporated into the final image. Image 2 defines the overall scene layout — same camera angle, same environment, same subject positioning, same lighting setup. YOUR TASK: Recreate Image 2's scene composition, but integrate Image 1's visual content into it as the focal element. The content from Image 1 must be clearly visible and recognizable. Do NOT use Image 1 as the overall scene layout — use Image 2 for that. Image 1's content goes INSIDE the scene that Image 2 defines.`);
-  } else if (imagePositions?.supportingCount && imagePositions.supportingCount > 0) {
-    sections.push(`PRIMARY REFERENCE (Image 1):
-The first reference image is your main visual guide. Replicate its style, composition, layout, colors, and specific details. If it shows an app screen, product shot, or specific scene, recreate that exact visual.`);
-  } else if (imagePositions?.hasOriginal) {
-    sections.push(`VARIATION MODE:
-Create a fresh take on the original image. Keep the same general scene and composition but generate new details. The result should feel like a different moment from the same shoot.`);
   }
 
   if (hasReferenceImages && characterAppearance) {

@@ -196,22 +196,6 @@ export async function processSceneImageJob(
           ? await getReferenceImageUrls(supportingImageKeys.slice(0, 2))
           : [];
 
-      const existingImageUrls: (string | null)[] = [];
-      if (existingBRollImages && existingBRollImages.length > 0) {
-        for (const key of existingBRollImages) {
-          if (key) {
-            try {
-              const url = await s3Service.getPresignedUrl(key, 3600);
-              existingImageUrls.push(url);
-            } catch (e) {
-              existingImageUrls.push(null);
-            }
-          } else {
-            existingImageUrls.push(null);
-          }
-        }
-      }
-
       for (let i = 0; i < bRollShots.length; i++) {
         if (isSingleShotRegen && i !== singleBRollShotIndex) {
           continue;
@@ -237,11 +221,6 @@ export async function processSceneImageJob(
           shotReferenceUrls.push(...supportingReferenceUrls);
         }
 
-        const originalImageUrl = existingImageUrls[i];
-        if (originalImageUrl) {
-          shotReferenceUrls.push(originalImageUrl);
-        }
-
         if (characterReferenceUrl) {
           shotReferenceUrls.push(characterReferenceUrl);
         }
@@ -255,7 +234,7 @@ export async function processSceneImageJob(
 
         const imagePositions: ImagePositions = {
           supportingCount: supportingReferenceUrls.length,
-          hasOriginal: !!originalImageUrl,
+          hasOriginal: false,
           hasCharacter: !!characterReferenceUrl,
           productCount:
             shotNeedsProduct && productReferenceUrls.length > 0

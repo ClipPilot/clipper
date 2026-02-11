@@ -477,7 +477,7 @@ export function AdCloneScriptStep({ teamId }: AdCloneScriptStepProps) {
     );
   }
 
-  if (!selectedScript) {
+  if (!selectedScript || !selectedScript.scenes) {
     return (
       <Card className="bg-surface-base border border-border-base">
         <CardBody className="p-8 text-center">

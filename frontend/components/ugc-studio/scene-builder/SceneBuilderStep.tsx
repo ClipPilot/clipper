@@ -15,7 +15,7 @@ import { sceneBuilderAPI } from "@/api/sceneBuilder";
 import { ugcScriptAPI } from "@/api/ugc";
 import { SceneImageCard } from "./SceneImageCard";
 import { StoryboardThumbnail } from "./StoryboardThumbnail";
-import { SCENE_TYPE_CONFIG } from "../script/types";
+import { SCENE_TYPE_CONFIG, type UGCScene } from "../script/types";
 import type { SceneImageGeneration } from "./types";
 
 interface SceneBuilderStepProps {
@@ -33,7 +33,7 @@ export function SceneBuilderStep({
   productImageKeys,
   onContinue,
 }: SceneBuilderStepProps) {
-  const scripts = useAtomValue(scriptsAtom);
+  const [scripts, setScripts] = useAtom(scriptsAtom);
   const selectedVariantIndex = useAtomValue(selectedVariantIndexAtom);
   const [sceneImages, setSceneImages] = useAtom(sceneImagesAtom);
   const freshStart = useAtomValue(freshStartAtom);
@@ -353,6 +353,24 @@ export function SceneBuilderStep({
     }));
   };
 
+  const handleSceneUpdate = async (updatedScene: UGCScene) => {
+    const updatedScenes = scenes.map((s) =>
+      s.id === updatedScene.id ? updatedScene : s
+    );
+    setScripts((prev) =>
+      prev.map((script, idx) =>
+        idx === selectedVariantIndex
+          ? { ...script, scenes: updatedScenes }
+          : script
+      )
+    );
+    try {
+      await ugcScriptAPI.updateScript(scriptId, { scenes: updatedScenes });
+    } catch (error) {
+      console.error("Failed to save scene edit:", error);
+    }
+  };
+
   const handleGenerateAll = async () => {
     if (scenes.length === 0) return;
 
@@ -628,6 +646,7 @@ export function SceneBuilderStep({
               handleCustomImageChange(scene.id, type, key, url)
             }
             customBRollImages={sceneState.customBRollImages}
+            onSceneUpdate={handleSceneUpdate}
             onCustomBRollImageChange={(shotIndex, key, url) =>
               handleCustomBRollImageChange(scene.id, shotIndex, key, url)
             }

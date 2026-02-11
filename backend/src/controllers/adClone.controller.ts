@@ -13,6 +13,7 @@ import { getTeamUsage } from "../middleware/subscription.middleware";
 import { transcribeVideoService } from "../services/clips/transcription.service";
 import { convertWordsToCaptionEntries, CaptionEntry } from "../services/clips/captions.service";
 import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
+import { ugcScriptService } from "../services/ai-ugc/ugcScript.service";
 
 interface AuthRequest extends Request {
   user?: { id: string; email: string; dbUserId: number };
@@ -392,6 +393,24 @@ export class AdCloneController {
           available: usage.totalRemaining,
         });
       }
+
+      await Promise.all(
+        (selectedScript.scenes as any[]).map(async (scene: any) => {
+          const promises: Promise<void>[] = [
+            ugcScriptService.regenerateCinematicPrompt(scene.action)
+              .then((p: string) => { scene.cinematicPrompt = p; }),
+          ];
+          for (const shot of scene.bRollShots || []) {
+            promises.push(
+              ugcScriptService.regenerateCinematicPrompt(shot.action)
+                .then((p: string) => { shot.cinematicPrompt = p; })
+            );
+          }
+          await Promise.all(promises);
+        })
+      );
+
+      await adCloneService.updateScript(projectId, selectedScript, project.selectedVariantIndex);
 
       const savedImages = await db
         .select()
