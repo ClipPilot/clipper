@@ -8,7 +8,7 @@ import {
   forwardRef,
 } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardBody, Pagination } from "@heroui/react";
+import { Card, CardBody, Pagination, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { ugcVideoAPI, UGCVideoJob } from "@/api/ugc/video";
 import { connectSocket, joinTeam, leaveTeam } from "@/lib/socket";
@@ -46,6 +46,8 @@ export const MyVideoJobsSection = forwardRef<
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchJobs = useCallback(async () => {
     try {
@@ -113,6 +115,21 @@ export const MyVideoJobsSection = forwardRef<
     };
   }, [teamId, fetchJobs]);
 
+  const handleConfirmDelete = async () => {
+    if (!deletingJobId) return;
+    setIsDeleting(true);
+    try {
+      await ugcVideoAPI.deleteVideoJob(deletingJobId);
+      setJobs((prev) => prev.filter((j) => j.id !== deletingJobId));
+      setTotal((prev) => prev - 1);
+    } catch (err) {
+      console.error("Failed to delete video job:", err);
+    } finally {
+      setIsDeleting(false);
+      setDeletingJobId(null);
+    }
+  };
+
   const handleJobClick = (job: UGCVideoJob) => {
     // Navigate to the job edit/view page
     router.push(`/dashboard/ugc-studio/ai-video-creator/${job.id}`);
@@ -158,6 +175,7 @@ export const MyVideoJobsSection = forwardRef<
             key={job.id}
             job={job}
             onClick={() => handleJobClick(job)}
+            onDelete={() => setDeletingJobId(job.id)}
           />
         ))}
       </div>
@@ -173,6 +191,26 @@ export const MyVideoJobsSection = forwardRef<
           />
         </div>
       )}
+
+      {/* Delete confirmation modal */}
+      <Modal isOpen={!!deletingJobId} onClose={() => !isDeleting && setDeletingJobId(null)} size="sm">
+        <ModalContent>
+          <ModalHeader className="text-text-primary">Delete Video</ModalHeader>
+          <ModalBody>
+            <p className="text-text-secondary">
+              Are you sure you want to delete this video? This action cannot be undone.
+            </p>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="flat" onPress={() => setDeletingJobId(null)} isDisabled={isDeleting}>
+              Cancel
+            </Button>
+            <Button color="danger" onPress={handleConfirmDelete} isLoading={isDeleting}>
+              Delete
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </div>
   );
 });

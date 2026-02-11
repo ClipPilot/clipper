@@ -17,6 +17,8 @@ import { eq, and, desc, count, sql } from "drizzle-orm";
 import { transcribeVideoService } from "../services/clips/transcription.service";
 import { convertWordsToCaptionEntries, CaptionEntry } from "../services/clips/captions.service";
 import { getTeamUsage } from "../middleware/subscription.middleware";
+import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
+import { ugcScriptService } from "../services/ai-ugc/ugcScript.service";
 
 interface AuthRequest extends Request {
   user?: { id: string; email: string; dbUserId: number };
@@ -200,7 +202,7 @@ export class UGCVideoController {
     } catch (error) {
       console.error("[UGC_VIDEO] List jobs error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to list video jobs",
+        error: sanitizeErrorForFrontend(error, "Failed to list video jobs"),
       });
     }
   }
@@ -254,9 +256,11 @@ export class UGCVideoController {
         });
       }
 
-      // Calculate credit cost based on scene count (2 credits per scene)
+      // Calculate credit cost (2 credits per original scene, merged a-rolls count individually)
       const CREDIT_PER_SCENE = 2;
-      const sceneCount = selectedScript.scenes.length;
+      const sceneCount = selectedScript.scenes.reduce((count: number, scene: any) => {
+        return count + (scene.mergedSceneTypes?.length || 1);
+      }, 0);
       const creditCost = sceneCount * CREDIT_PER_SCENE;
 
       const usage = await getTeamUsage(teamId);
@@ -278,7 +282,26 @@ export class UGCVideoController {
         .from(sceneImages)
         .where(eq(sceneImages.script_id, scriptId));
 
-      // Build scene video data from script + saved images
+      await Promise.all(
+        (selectedScript.scenes as SceneData[]).map(async (scene) => {
+          const promises: Promise<void>[] = [
+            ugcScriptService.regenerateCinematicPrompt(scene.action)
+              .then((p) => { scene.cinematicPrompt = p; }),
+          ];
+          for (const shot of scene.bRollShots || []) {
+            promises.push(
+              ugcScriptService.regenerateCinematicPrompt(shot.action)
+                .then((p) => { shot.cinematicPrompt = p; })
+            );
+          }
+          await Promise.all(promises);
+        })
+      );
+
+      await db
+        .update(ugcScripts)
+        .set({ scripts_data: scriptsData, updated_at: new Date() })
+        .where(eq(ugcScripts.id, scriptId));
       const scenes: GenerateUGCVideoJob["scenes"] = [];
 
       for (const scene of selectedScript.scenes as SceneData[]) {
@@ -363,7 +386,7 @@ export class UGCVideoController {
       console.error("[UGC_VIDEO] Generate video error:", error);
       return res.status(500).json({
         error:
-          error instanceof Error ? error.message : "Failed to queue video generation",
+          sanitizeErrorForFrontend(error, "Failed to queue video generation"),
       });
     }
   }
@@ -425,7 +448,7 @@ export class UGCVideoController {
     } catch (error) {
       console.error("[UGC_VIDEO] Get status error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to get job status",
+        error: sanitizeErrorForFrontend(error, "Failed to get job status"),
       });
     }
   }
@@ -474,7 +497,7 @@ export class UGCVideoController {
     } catch (error) {
       console.error("[UGC_VIDEO] Get script video error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to get video",
+        error: sanitizeErrorForFrontend(error, "Failed to get video"),
       });
     }
   }
@@ -604,11 +627,81 @@ export class UGCVideoController {
       console.error("[UGC_VIDEO] Finalize video error:", error);
       return res.status(500).json({
         error:
-          error instanceof Error ? error.message : "Failed to finalize video",
+          sanitizeErrorForFrontend(error, "Failed to finalize video"),
       });
     }
   }
 
+  /**
+   * Delete a video generation job and its S3 assets
+   */
+  async deleteVideoJob(req: AuthRequest, res: Response) {
+    try {
+      const { jobId } = req.params;
+
+      if (!jobId) {
+        return res.status(400).json({ error: "jobId is required" });
+      }
+
+      const [job] = await db
+        .select()
+        .from(ugcVideoGenerationJobs)
+        .where(eq(ugcVideoGenerationJobs.id, jobId));
+
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+
+      // Delete final video from S3
+      if (job.final_video_key) {
+        try {
+          await s3Service.deleteObject(job.final_video_key);
+        } catch (e) {
+          console.warn("[UGC_VIDEO] Failed to delete final video:", e);
+        }
+      }
+
+      // Delete individual scene videos and audio from S3
+      const sceneVideos = job.scene_videos as Array<{
+        sceneId: string;
+        sceneNumber: number;
+        audioKey: string;
+        videoKey: string;
+      }> | null;
+
+      if (sceneVideos?.length) {
+        for (const scene of sceneVideos) {
+          if (scene.videoKey) {
+            try {
+              await s3Service.deleteObject(scene.videoKey);
+            } catch (e) {
+              console.warn("[UGC_VIDEO] Failed to delete scene video:", e);
+            }
+          }
+          if (scene.audioKey) {
+            try {
+              await s3Service.deleteObject(scene.audioKey);
+            } catch (e) {
+              console.warn("[UGC_VIDEO] Failed to delete scene audio:", e);
+            }
+          }
+        }
+      }
+
+      // Delete the database record
+      await db
+        .delete(ugcVideoGenerationJobs)
+        .where(eq(ugcVideoGenerationJobs.id, jobId));
+
+      console.log(`[UGC_VIDEO] Deleted job ${jobId}`);
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      console.error("[UGC_VIDEO] Delete job error:", error);
+      return res.status(500).json({
+        error: sanitizeErrorForFrontend(error, "Failed to delete video job"),
+      });
+    }
+  }
 }
 
 export const ugcVideoController = new UGCVideoController();

@@ -134,6 +134,7 @@ export class ClipManagerService {
       clipScore?: number;
       folderId?: number | null;
       clipPath?: string;
+      clipMetadata?: Record<string, any>;
     }
   ) {
     const updateData: any = {
@@ -146,6 +147,7 @@ export class ClipManagerService {
       updateData.clip_score = updates.clipScore;
     if (updates.folderId !== undefined) updateData.folder_id = updates.folderId;
     if (updates.clipPath !== undefined) updateData.clip_path = updates.clipPath;
+    if (updates.clipMetadata !== undefined) updateData.clip_metadata = updates.clipMetadata;
 
     const [updatedClip] = await db
       .update(clips)

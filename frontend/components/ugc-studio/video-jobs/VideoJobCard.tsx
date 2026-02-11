@@ -23,6 +23,7 @@ function formatRelativeTime(date: Date): string {
 interface VideoJobCardProps {
   job: UGCVideoJob;
   onClick: () => void;
+  onDelete?: () => void;
 }
 
 function getStatusColor(status: UGCVideoJob["status"], isFinalized: boolean) {
@@ -62,7 +63,7 @@ function formatDuration(seconds: number): string {
 }
 
 export const VideoJobCard = memo(
-  function VideoJobCard({ job, onClick }: VideoJobCardProps) {
+  function VideoJobCard({ job, onClick, onDelete }: VideoJobCardProps) {
     const videoRef = useRef<HTMLVideoElement>(null);
 
     const isProcessing = job.status === "generating" || job.status === "queued";
@@ -141,6 +142,20 @@ export const VideoJobCard = memo(
             <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-sm text-white text-xs px-2 py-0.5 rounded-md font-medium">
               {formatDuration(job.totalDurationSeconds)}
             </div>
+          )}
+
+          {/* Delete button */}
+          {onDelete && (
+            <button
+              className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/80 z-10"
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                onDelete();
+              }}
+            >
+              <Icon icon="solar:trash-bin-trash-bold" className="text-white" width={14} />
+            </button>
           )}
 
           {/* Progress bar overlay for generating */}

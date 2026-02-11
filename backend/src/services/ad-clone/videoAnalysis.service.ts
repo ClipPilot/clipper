@@ -48,7 +48,7 @@ export async function analyzeVideoWithGemini(
   console.log("[VideoAnalysis] Raw response length:", responseText?.length);
 
   if (!responseText) {
-    throw new Error("Gemini returned empty response for video analysis");
+    throw new Error("AI returned empty response for video analysis");
   }
 
   let parsedAnalysis: unknown;

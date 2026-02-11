@@ -111,7 +111,7 @@ export default function AdCloneProjectPage() {
     return () => clearInterval(pollInterval);
   }, [isGenerating, projectId]);
 
-  // Auto-finalize when video is completed
+  // Auto-finalize when video is completed, or redirect if already finalized
   useEffect(() => {
     const autoFinalize = async () => {
       if (
@@ -121,6 +121,12 @@ export default function AdCloneProjectPage() {
         !hasAutoFinalized.current &&
         !isFinalizing
       ) {
+        // If already finalized, go straight to edit page
+        if (projectStatus.clipId) {
+          router.push(`/dashboard/clips/${projectStatus.clipId}/edit`);
+          return;
+        }
+
         hasAutoFinalized.current = true;
         setIsFinalizing(true);
         setError(null);

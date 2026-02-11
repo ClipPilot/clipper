@@ -387,6 +387,24 @@ Return a JSON object with a "descriptions" array of strings, one description per
     return newScene;
   }
 
+  async regenerateCinematicPrompt(action: string): Promise<string> {
+    const prompt = `Generate a detailed cinematicPrompt for a video scene with this action: "${action}"
+
+The cinematicPrompt should be 2-3 paragraphs describing:
+1. Visual composition, lighting, and framing
+2. Camera movement and timing
+3. Technical style and what to avoid
+
+Keep it professional and suitable for AI video generation. Return ONLY the cinematicPrompt text, no JSON or extra formatting.`;
+
+    const response = await client.responses.create({
+      model: "gpt-5-mini",
+      input: [{ role: "user", content: prompt }],
+    });
+
+    return response.output_text?.trim() || action;
+  }
+
   async regenerateBRollPrompt(params: RegenerateBRollPromptParams): Promise<string> {
     const { scriptId, sceneId, bRollShotIndex, newAction } = params;
 

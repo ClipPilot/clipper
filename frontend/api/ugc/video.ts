@@ -181,6 +181,23 @@ class UGCVideoAPI {
   }
 
   /**
+   * Delete a video generation job
+   */
+  async deleteVideoJob(jobId: string): Promise<{ success: boolean }> {
+    const response = await apiFetch(`${API_URL}/ugc-video/${jobId}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to delete video job");
+    }
+
+    return response.json();
+  }
+
+  /**
    * Get the generated video for a script (if completed)
    */
   async getScriptVideo(scriptId: string): Promise<ScriptVideoResponse> {

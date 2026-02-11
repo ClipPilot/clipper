@@ -6,6 +6,7 @@ import {
   SceneVideoData,
 } from "../../services/ai-ugc/ugcVideoAssembly.service";
 import { notifyUGCVideoJobUpdate, UGCVideoJobUpdate } from "../notify";
+import { sanitizeErrorForFrontend } from "../../utils/errorSanitizer";
 
 /**
  * Update job progress in database and emit real-time update
@@ -155,7 +156,7 @@ export async function processUGCVideoJob(
   } catch (error) {
     console.error(`[UGC_VIDEO] Job ${jobId} failed:`, error);
 
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorMessage = sanitizeErrorForFrontend(error, "Video generation failed. Please try again.");
 
     await db
       .update(schema.ugcVideoGenerationJobs)

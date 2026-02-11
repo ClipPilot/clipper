@@ -12,6 +12,7 @@ import { sqsService } from "../services/sqs.service";
 import { teamService } from "../services/team.service";
 import { canAccessUGCStudio } from "../utils/plans";
 import { eq, and } from "drizzle-orm";
+import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
 
 interface AuthRequest extends Request {
   user?: { id: string; email: string; dbUserId: number };
@@ -183,6 +184,9 @@ export class SceneBuilderController {
         .from(ugcScripts)
         .where(eq(ugcScripts.id, scriptId));
 
+      let adCloneReferenceVideoKey: string | undefined;
+      let adCloneVideoAnalysis: any = null;
+
       if (script) {
         scriptsData = script.scripts_data as any[];
         selectedVariantIndex = script.selected_variant_index;
@@ -200,6 +204,8 @@ export class SceneBuilderController {
           selectedVariantIndex = adCloneProject.selected_variant_index ?? 0;
           productImageKeys = (adCloneProject.product_image_keys as string[]) || [];
           productName = adCloneProject.product_name;
+          adCloneReferenceVideoKey = adCloneProject.reference_video_key || undefined;
+          adCloneVideoAnalysis = adCloneProject.video_analysis;
         }
       }
 
@@ -282,6 +288,15 @@ export class SceneBuilderController {
         })
         .returning();
 
+      // Compute ad clone scene timestamp for A-roll scenes
+      let adCloneSceneTimestamp: number | undefined;
+      if (adCloneReferenceVideoKey && adCloneVideoAnalysis?.scenes && sceneData.shotType === "a-roll") {
+        const analysisScene = adCloneVideoAnalysis.scenes.find((s: any) => s.sceneNumber === sceneNumber);
+        if (analysisScene) {
+          adCloneSceneTimestamp = (analysisScene.startTime + analysisScene.endTime) / 2;
+        }
+      }
+
       await sqsService.sendGenerateSceneImageJob({
         jobId: job.id,
         teamId,
@@ -312,6 +327,8 @@ export class SceneBuilderController {
         previousArollImageKey,
         isConsecutiveAroll,
         previousSceneSetting,
+        adCloneReferenceVideoKey,
+        adCloneSceneTimestamp,
       });
 
       return res.status(202).json({
@@ -326,7 +343,7 @@ export class SceneBuilderController {
       console.error("[SCENE_BUILDER] Generate scene images error:", error);
       return res.status(500).json({
         error:
-          error instanceof Error ? error.message : "Failed to queue generation",
+          sanitizeErrorForFrontend(error, "Failed to queue generation"),
       });
     }
   }
@@ -388,6 +405,9 @@ export class SceneBuilderController {
         .from(ugcScripts)
         .where(eq(ugcScripts.id, scriptId));
 
+      let adCloneReferenceVideoKey: string | undefined;
+      let adCloneVideoAnalysis: any = null;
+
       if (script) {
         scriptsData = script.scripts_data as any[];
         selectedVariantIndex = script.selected_variant_index;
@@ -405,6 +425,8 @@ export class SceneBuilderController {
           selectedVariantIndex = adCloneProject.selected_variant_index ?? 0;
           productImageKeys = (adCloneProject.product_image_keys as string[]) || [];
           productName = adCloneProject.product_name;
+          adCloneReferenceVideoKey = adCloneProject.reference_video_key || undefined;
+          adCloneVideoAnalysis = adCloneProject.video_analysis;
         }
       }
 
@@ -515,6 +537,15 @@ export class SceneBuilderController {
           }
         }
 
+        // Compute ad clone scene timestamp for A-roll scenes
+        let adCloneSceneTimestamp: number | undefined;
+        if (adCloneReferenceVideoKey && adCloneVideoAnalysis?.scenes && sceneData.shotType === "a-roll") {
+          const analysisScene = adCloneVideoAnalysis.scenes.find((s: any) => s.sceneNumber === sceneRequest.sceneNumber);
+          if (analysisScene) {
+            adCloneSceneTimestamp = (analysisScene.startTime + analysisScene.endTime) / 2;
+          }
+        }
+
         await sqsService.sendGenerateSceneImageJob({
           jobId: job.id,
           teamId,
@@ -543,6 +574,8 @@ export class SceneBuilderController {
           previousArollImageKey,
           isConsecutiveAroll,
           previousSceneSetting,
+          adCloneReferenceVideoKey,
+          adCloneSceneTimestamp,
         });
 
         jobIds.push(job.id);
@@ -650,7 +683,7 @@ export class SceneBuilderController {
     } catch (error) {
       console.error("[SCENE_BUILDER] Get generation status error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to get status",
+        error: sanitizeErrorForFrontend(error, "Failed to get status"),
       });
     }
   }
@@ -726,7 +759,7 @@ export class SceneBuilderController {
       console.error("[SCENE_BUILDER] Get scene images error:", error);
       return res.status(500).json({
         error:
-          error instanceof Error ? error.message : "Failed to get scene images",
+          sanitizeErrorForFrontend(error, "Failed to get scene images"),
       });
     }
   }
@@ -838,7 +871,7 @@ export class SceneBuilderController {
     } catch (error) {
       console.error("[SCENE_BUILDER] Cancel job error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to cancel job",
+        error: sanitizeErrorForFrontend(error, "Failed to cancel job"),
       });
     }
   }
@@ -868,7 +901,7 @@ export class SceneBuilderController {
       console.error("[SCENE_BUILDER] Get upload URL error:", error);
       return res.status(500).json({
         error:
-          error instanceof Error ? error.message : "Failed to get upload URL",
+          sanitizeErrorForFrontend(error, "Failed to get upload URL"),
       });
     }
   }
@@ -899,7 +932,7 @@ export class SceneBuilderController {
       console.error("[SCENE_BUILDER] Get upload URL for key error:", error);
       return res.status(500).json({
         error:
-          error instanceof Error ? error.message : "Failed to get upload URL",
+          sanitizeErrorForFrontend(error, "Failed to get upload URL"),
       });
     }
   }

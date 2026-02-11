@@ -7,11 +7,13 @@ import { teamService } from "../services/team.service";
 import { canAccessUGCStudio } from "../utils/plans";
 import { db } from "../db";
 import { adCloneProjects, ugcScripts, sceneImages, characters, clips, ugcVideoGenerationJobs } from "@clipper/shared-db";
-import { eq } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { s3Service } from "../services/s3.service";
 import { getTeamUsage } from "../middleware/subscription.middleware";
 import { transcribeVideoService } from "../services/clips/transcription.service";
 import { convertWordsToCaptionEntries, CaptionEntry } from "../services/clips/captions.service";
+import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
+import { ugcScriptService } from "../services/ai-ugc/ugcScript.service";
 
 interface AuthRequest extends Request {
   user?: { id: string; email: string; dbUserId: number };
@@ -52,7 +54,7 @@ export class AdCloneController {
     } catch (error) {
       console.error("[AD_CLONE] Create project error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to create project",
+        error: sanitizeErrorForFrontend(error, "Failed to create project"),
       });
     }
   }
@@ -86,7 +88,7 @@ export class AdCloneController {
     } catch (error) {
       console.error("[AD_CLONE] Get upload URLs error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to get upload URLs",
+        error: sanitizeErrorForFrontend(error, "Failed to get upload URLs"),
       });
     }
   }
@@ -115,7 +117,7 @@ export class AdCloneController {
     } catch (error) {
       console.error("[AD_CLONE] Confirm upload error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to confirm upload",
+        error: sanitizeErrorForFrontend(error, "Failed to confirm upload"),
       });
     }
   }
@@ -161,7 +163,7 @@ export class AdCloneController {
     } catch (error) {
       console.error("[AD_CLONE] Start analysis error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to start analysis",
+        error: sanitizeErrorForFrontend(error, "Failed to start analysis"),
       });
     }
   }
@@ -207,7 +209,7 @@ export class AdCloneController {
     } catch (error) {
       console.error("[AD_CLONE] Start analyze and script error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to start processing",
+        error: sanitizeErrorForFrontend(error, "Failed to start processing"),
       });
     }
   }
@@ -234,7 +236,7 @@ export class AdCloneController {
     } catch (error) {
       console.error("[AD_CLONE] Get analysis error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to get analysis",
+        error: sanitizeErrorForFrontend(error, "Failed to get analysis"),
       });
     }
   }
@@ -283,7 +285,7 @@ export class AdCloneController {
     } catch (error) {
       console.error("[AD_CLONE] Generate script error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to generate script",
+        error: sanitizeErrorForFrontend(error, "Failed to generate script"),
       });
     }
   }
@@ -306,7 +308,7 @@ export class AdCloneController {
     } catch (error) {
       console.error("[AD_CLONE] Update script error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to update script",
+        error: sanitizeErrorForFrontend(error, "Failed to update script"),
       });
     }
   }
@@ -372,9 +374,11 @@ export class AdCloneController {
       // Use the first product image for b-roll scenes
       const productImage = project.productImageKeys[0];
 
-      // Calculate credit cost (2 credits per scene)
+      // Calculate credit cost (2 credits per original scene, merged a-rolls count individually)
       const CREDIT_PER_SCENE = 2;
-      const sceneCount = selectedScript.scenes.length;
+      const sceneCount = selectedScript.scenes.reduce((count: number, scene: any) => {
+        return count + (scene.mergedSceneTypes?.length || 1);
+      }, 0);
       const creditCost = sceneCount * CREDIT_PER_SCENE;
 
       const usage = await getTeamUsage(teamId);
@@ -389,6 +393,24 @@ export class AdCloneController {
           available: usage.totalRemaining,
         });
       }
+
+      await Promise.all(
+        (selectedScript.scenes as any[]).map(async (scene: any) => {
+          const promises: Promise<void>[] = [
+            ugcScriptService.regenerateCinematicPrompt(scene.action)
+              .then((p: string) => { scene.cinematicPrompt = p; }),
+          ];
+          for (const shot of scene.bRollShots || []) {
+            promises.push(
+              ugcScriptService.regenerateCinematicPrompt(shot.action)
+                .then((p: string) => { shot.cinematicPrompt = p; })
+            );
+          }
+          await Promise.all(promises);
+        })
+      );
+
+      await adCloneService.updateScript(projectId, selectedScript, project.selectedVariantIndex);
 
       const savedImages = await db
         .select()
@@ -493,7 +515,7 @@ export class AdCloneController {
     } catch (error) {
       console.error("[AD_CLONE] Generate video error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to generate video",
+        error: sanitizeErrorForFrontend(error, "Failed to generate video"),
       });
     }
   }
@@ -572,6 +594,22 @@ export class AdCloneController {
           project!.finalVideoKey,
           3600
         );
+
+        // Check if already finalized to a clip
+        const [existingClip] = await db
+          .select({ id: clips.id })
+          .from(clips)
+          .where(
+            and(
+              eq(clips.team_id, project!.teamId),
+              sql`${clips.clip_metadata}->>'projectId' = ${project!.id}`
+            )
+          )
+          .limit(1);
+
+        if (existingClip) {
+          response.clipId = existingClip.id;
+        }
       }
 
       if (project!.status === "failed") {
@@ -582,7 +620,7 @@ export class AdCloneController {
     } catch (error) {
       console.error("[AD_CLONE] Get status error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to get status",
+        error: sanitizeErrorForFrontend(error, "Failed to get status"),
       });
     }
   }
@@ -652,7 +690,7 @@ export class AdCloneController {
     } catch (error) {
       console.error("[AD_CLONE] Get project error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to get project",
+        error: sanitizeErrorForFrontend(error, "Failed to get project"),
       });
     }
   }
@@ -674,7 +712,7 @@ export class AdCloneController {
     } catch (error) {
       console.error("[AD_CLONE] Delete project error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to delete project",
+        error: sanitizeErrorForFrontend(error, "Failed to delete project"),
       });
     }
   }
@@ -740,7 +778,7 @@ export class AdCloneController {
     } catch (error) {
       console.error("[AD_CLONE] List projects error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to list projects",
+        error: sanitizeErrorForFrontend(error, "Failed to list projects"),
       });
     }
   }
@@ -769,6 +807,25 @@ export class AdCloneController {
 
       if (project.status !== "completed" || !project.finalVideoKey) {
         return res.status(400).json({ error: "Project video not completed" });
+      }
+
+      // Check if already finalized — return existing clip instead of creating a duplicate
+      const [existingClip] = await db
+        .select({ id: clips.id })
+        .from(clips)
+        .where(
+          and(
+            eq(clips.team_id, teamId),
+            sql`${clips.clip_metadata}->>'projectId' = ${projectId}`
+          )
+        )
+        .limit(1);
+
+      if (existingClip) {
+        return res.status(200).json({
+          success: true,
+          clipId: existingClip.id,
+        });
       }
 
       const selectedScript = project.adaptedScripts?.[project.selectedVariantIndex];
@@ -840,7 +897,7 @@ export class AdCloneController {
     } catch (error) {
       console.error("[AD_CLONE] Finalize project error:", error);
       return res.status(500).json({
-        error: error instanceof Error ? error.message : "Failed to finalize project",
+        error: sanitizeErrorForFrontend(error, "Failed to finalize project"),
       });
     }
   }

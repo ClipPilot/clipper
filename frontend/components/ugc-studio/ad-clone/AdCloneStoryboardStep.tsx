@@ -13,6 +13,7 @@ import {
   SceneImage,
 } from "@/store/adClone";
 import { sceneBuilderAPI } from "@/api/sceneBuilder";
+import { adCloneAPI } from "@/api/adClone";
 import { StoryboardThumbnail } from "../scene-builder/StoryboardThumbnail";
 import { SceneImageCard } from "../scene-builder/SceneImageCard";
 import { SCENE_TYPE_CONFIG } from "../script/types";
@@ -47,7 +48,7 @@ export function AdCloneStoryboardStep({
   onContinue,
   onBack,
 }: AdCloneStoryboardStepProps) {
-  const scripts = useAtomValue(adCloneScriptsAtom);
+  const [scripts, setScripts] = useAtom(adCloneScriptsAtom);
   const selectedVariantIndex = useAtomValue(adCloneSelectedVariantAtom);
   const characterId = useAtomValue(adCloneCharacterIdAtom);
   const projectId = useAtomValue(adCloneProjectIdAtom);
@@ -383,6 +384,24 @@ export function AdCloneStoryboardStep({
     }));
   };
 
+  const handleSceneUpdate = async (updatedScene: UGCScene) => {
+    if (!scripts || !currentScript) return;
+    const updatedScenes = scenes.map((s) =>
+      s.id === updatedScene.id ? updatedScene : s
+    );
+    const updatedScript = { ...currentScript, scenes: updatedScenes };
+    setScripts((prev) =>
+      (prev || []).map((script: any, idx: number) =>
+        idx === selectedVariantIndex ? updatedScript : script
+      )
+    );
+    try {
+      await adCloneAPI.updateScript(scriptId, { script: updatedScript });
+    } catch (error) {
+      console.error("Failed to save scene edit:", error);
+    }
+  };
+
   const handleGenerateAll = async () => {
     if (scenes.length === 0 || !characterId) return;
 
@@ -708,6 +727,7 @@ export function AdCloneStoryboardStep({
                 handleCustomImageChange(scene.id, type, key, url)
               }
               customBRollImages={sceneState.customBRollImages}
+              onSceneUpdate={handleSceneUpdate}
               onCustomBRollImageChange={(shotIndex, key, url) =>
                 handleCustomBRollImageChange(scene.id, shotIndex, key, url)
               }

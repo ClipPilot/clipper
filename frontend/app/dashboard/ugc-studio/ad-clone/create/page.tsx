@@ -16,11 +16,12 @@ function AdCloneCreateContent() {
   const searchParams = useSearchParams();
   const selectedTeam = useAtomValue(selectedTeamAtom);
   const resetAdClone = useSetAtom(resetAdCloneAtom);
-  const { loadProject } = useAdClone(selectedTeam?.id);
+  const { loadProject, setCharacterId, setStep } = useAdClone(selectedTeam?.id);
 
   const [isLoading, setIsLoading] = useState(true);
 
   const projectIdToResume = searchParams.get("projectId");
+  const newCharacterId = searchParams.get("newCharacterId");
 
   useEffect(() => {
     setIsLoading(true);
@@ -35,11 +36,17 @@ function AdCloneCreateContent() {
           resetAdClone();
         }
       }
+
+      if (newCharacterId) {
+        setCharacterId(parseInt(newCharacterId, 10));
+        setStep("character");
+      }
+
       setIsLoading(false);
     };
 
     init();
-  }, [projectIdToResume, loadProject, resetAdClone]);
+  }, [projectIdToResume, newCharacterId, loadProject, resetAdClone, setCharacterId, setStep]);
 
   if (!selectedTeam || !canAccessUGCStudio(selectedTeam.plan)) {
     return (

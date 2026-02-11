@@ -85,7 +85,7 @@ export async function generateVideo(
     const data = result.data as GrokVideoResponse;
 
     if (!data?.video?.url) {
-      throw new Error("No video URL in Grok Imagine response");
+      throw new Error("No video URL in generation response");
     }
 
     console.log(`[Grok Imagine] Video generated: ${data.video.url}`);

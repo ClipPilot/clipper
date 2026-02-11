@@ -14,6 +14,7 @@ import { notifyClipsRefresh } from "../notify";
 import { emailNotiService } from "../../services/emailNoti.service";
 import { userService } from "../../services/user.service";
 import { ensureOutputDir } from "../../utils/fileUtils";
+import { sanitizeErrorForFrontend } from "../../utils/errorSanitizer";
 
 export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
   const { clipIds, teamId, userId, s3Key, options, originalFileName, fileSize } = job;
@@ -187,7 +188,7 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
   } catch (error) {
     console.error("Error processing clips:", error);
 
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorMessage = sanitizeErrorForFrontend(error, "Operation failed. Please try again.");
     const alreadyHandled = errorMessage.startsWith("All") && errorMessage.includes("clips failed");
 
     if (!alreadyHandled) {

@@ -88,7 +88,7 @@ export class SyncService {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Sync API error (${response.status}): ${errorText}`);
+      throw new Error(`Lip sync error (${response.status}): ${errorText}`);
     }
 
     const data = (await response.json()) as SyncGenerationResponse;
@@ -106,7 +106,7 @@ export class SyncService {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Sync API error (${response.status}): ${errorText}`);
+      throw new Error(`Lip sync error (${response.status}): ${errorText}`);
     }
 
     return (await response.json()) as SyncGenerationResponse;

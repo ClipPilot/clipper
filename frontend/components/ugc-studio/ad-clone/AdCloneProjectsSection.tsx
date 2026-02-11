@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardBody, Pagination } from "@heroui/react";
+import { Card, CardBody, Pagination, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { adCloneAPI } from "@/api/adClone";
 import { connectSocket, joinTeam, leaveTeam } from "@/lib/socket";
@@ -30,6 +30,8 @@ export function AdCloneProjectsSection({ teamId }: AdCloneProjectsSectionProps) 
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchProjects = useCallback(async () => {
     try {
@@ -100,6 +102,21 @@ export function AdCloneProjectsSection({ teamId }: AdCloneProjectsSectionProps) 
     };
   }, [teamId, fetchProjects]);
 
+  const handleConfirmDelete = async () => {
+    if (!deletingProjectId) return;
+    setIsDeleting(true);
+    try {
+      await adCloneAPI.deleteProject(deletingProjectId);
+      setProjects((prev) => prev.filter((p) => p.id !== deletingProjectId));
+      setTotal((prev) => prev - 1);
+    } catch (err) {
+      console.error("Failed to delete ad clone project:", err);
+    } finally {
+      setIsDeleting(false);
+      setDeletingProjectId(null);
+    }
+  };
+
   const handleProjectClick = (project: AdCloneProject) => {
     if (RESUMABLE_STATUSES.includes(project.status)) {
       router.push(`/dashboard/ugc-studio/ad-clone/create?projectId=${project.id}`);
@@ -148,6 +165,7 @@ export function AdCloneProjectsSection({ teamId }: AdCloneProjectsSectionProps) 
             key={project.id}
             project={project}
             onClick={() => handleProjectClick(project)}
+            onDelete={() => setDeletingProjectId(project.id)}
           />
         ))}
       </div>
@@ -163,6 +181,26 @@ export function AdCloneProjectsSection({ teamId }: AdCloneProjectsSectionProps) 
           />
         </div>
       )}
+
+      {/* Delete confirmation modal */}
+      <Modal isOpen={!!deletingProjectId} onClose={() => !isDeleting && setDeletingProjectId(null)} size="sm">
+        <ModalContent>
+          <ModalHeader className="text-text-primary">Delete Project</ModalHeader>
+          <ModalBody>
+            <p className="text-text-secondary">
+              Are you sure you want to delete this project? This action cannot be undone.
+            </p>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="flat" onPress={() => setDeletingProjectId(null)} isDisabled={isDeleting}>
+              Cancel
+            </Button>
+            <Button color="danger" onPress={handleConfirmDelete} isLoading={isDeleting}>
+              Delete
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </div>
   );
 }

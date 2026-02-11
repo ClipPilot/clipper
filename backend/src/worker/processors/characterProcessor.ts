@@ -4,6 +4,7 @@ import { GenerateCharacterJob } from "../../services/sqs.service";
 import { s3Service } from "../../services/s3.service";
 import { falImageService } from "../../services/ai-ugc/falImage.service";
 import { notifyCharacterGenerated } from "../notify";
+import { sanitizeErrorForFrontend } from "../../utils/errorSanitizer";
 import {
   generateCharacterPromptSchema,
   schemaToPrompt,
@@ -45,7 +46,7 @@ async function generateSingleImage(
 
     const response = await fetch(result.imageUrl);
     if (!response.ok) {
-      throw new Error(`Failed to download image from FAL: ${response.status}`);
+      throw new Error(`Failed to download generated image: ${response.status}`);
     }
 
     const arrayBuffer = await response.arrayBuffer();
@@ -177,7 +178,7 @@ CRITICAL: Generate the SAME person as the reference. Identical face, identical f
       .update(schema.characterGenerationJobs)
       .set({
         status: "failed",
-        error_message: error instanceof Error ? error.message : "Unknown error",
+        error_message: sanitizeErrorForFrontend(error, "Character generation failed. Please try again."),
         completed_at: new Date(),
       })
       .where(eq(schema.characterGenerationJobs.id, jobId));

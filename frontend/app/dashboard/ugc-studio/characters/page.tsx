@@ -93,6 +93,14 @@ function CharactersPageContent() {
     } catch {
       setMyActors((prev) => [character, ...prev]);
     }
+
+    const returnTo = searchParams.get("returnTo");
+    if (returnTo) {
+      const separator = returnTo.includes("?") ? "&" : "?";
+      router.push(`${returnTo}${separator}newCharacterId=${character.id}`);
+      return;
+    }
+
     setActiveTab("my-actors");
   };
 

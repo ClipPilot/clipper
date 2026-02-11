@@ -522,7 +522,6 @@ async function processArollScene(
   const imageUrl = await s3Service.getPresignedUrl(imageKey, 3600);
   const audioUrl = await s3Service.getPresignedUrl(audioKey, 3600);
 
-  // Generate video with VEED Fabric (image + audio -> lip-synced video)
   const { videoUrl: avatarVideoUrl } =
     await veedFabricService.generateFabricVideoWithRetry({
       imageUrl,

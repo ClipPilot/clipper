@@ -94,7 +94,6 @@ class AuthAPI {
     accessToken: string,
     refreshToken: string
   ) {
-    console.log("Signing in with Supabase tokens..." + accessToken + ", " + refreshToken);
     const response = await fetch(`${API_URL}/auth/supabase`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

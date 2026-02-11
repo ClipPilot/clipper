@@ -1,7 +1,6 @@
 import { fal } from "@fal-ai/client";
 import { config } from "../../config/env";
 
-// Ensure fal is configured (may already be done in kling.service.ts)
 fal.config({
   credentials: config.fal.apiKey,
 });
@@ -61,7 +60,7 @@ export async function generateFabricVideo(
     const data = result.data as VeedFabricResponse;
 
     if (!data?.video?.url) {
-      throw new Error("No video URL in VEED Fabric response");
+      throw new Error("No video URL in generation response");
     }
 
     console.log(`[VEED Fabric] Video generated: ${data.video.url}`);
@@ -113,7 +112,7 @@ export async function generateFabricVideoWithRetry(
     }
   }
 
-  throw lastError || new Error("VEED Fabric generation failed after retries");
+  throw lastError || new Error("Video generation failed after retries");
 }
 
 export const veedFabricService = {
