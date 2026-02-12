@@ -1,5 +1,5 @@
 /**
- * Pose Generation Prompt
+ * Character Pose Generation Prompt
  * Used with nano-banana-pro/edit model to generate a character in a specific pose
  *
  * Image order expected by the model:
@@ -7,11 +7,10 @@
  * - Second image: The pose reference (extracts pose, body position, background context)
  *
  * CRITICAL for Kling Motion Control:
- * - All limbs (especially hands) MUST be visible in frame
- * - Hidden hands = hallucinated hands = 6-finger glitches in video
- * - Zoom out slightly if needed to show full arms and hands
+ * - All limbs (especially hands) must be visible in frame
+ * - Visible hands with correct anatomy = clean video output
  */
-export const POSE_GENERATION_PROMPT = `CRITICAL FACE SWAP: You MUST replace the face in the second image with the EXACT face from the first image. The output must show the person from the first image - their exact facial features, skin tone, and identity - NOT the person from the second image. This is a face swap, not a pose reference. The face from image 1 MUST appear in the final output. Keep the person's face, identity, and clothing/outfit from the first image - use the exact same clothes shown in the first image. Match the pose, body position, and background from the second image exactly. CRITICAL CAMERA REQUIREMENTS: Maintain the EXACT same camera angle, distance, and framing as the reference pose image - NO zoom in, NO zoom out, NO cropping, NO reframing. The camera perspective must match the reference exactly. The person should be looking directly at the camera with natural eye contact. CRITICAL HAND REQUIREMENTS: BOTH hands must be fully visible in frame at all times - never cropped, hidden, or cut off. Hands must match the exact position from the reference pose image. Hands must be SEPARATE from each other - never crossed, touching, overlapping, or intertwined. Each hand must have exactly 5 fingers with natural proportions - all fingers fully visible, defined, and completely separate from each other, no extra, missing, fused, or merged fingers. Arms and hands must remain uncrossed and clearly separated with space between them. Realistic anatomically correct limbs - no distortion or warping. High quality photorealistic, no text or captions`;
+export const POSE_GENERATION_PROMPT = `CHARACTER GENERATION: Place the exact character from the first image into the pose shown in the second image. The output must show the person from the first image — preserve their exact facial features, skin tone, identity, and clothing/outfit as shown in the first image. Use the exact same clothes from the first image. Match the pose, body position, and background from the second image exactly. CAMERA: Maintain the exact same camera angle, distance, and framing as the second (pose reference) image. The camera perspective must match the reference precisely. The person should be looking directly at the camera with natural eye contact. HANDS AND BODY: Both hands must be fully visible in frame. Hands must match the exact position from the pose reference image. Each hand has exactly 5 fingers with natural proportions — all fingers fully visible, defined, and clearly separate from each other. Arms and hands remain clearly separated with space between them. Anatomically correct, realistic limbs. High quality photorealistic output.`;
 
 export interface ScriptStructurePattern {
   type: string;
