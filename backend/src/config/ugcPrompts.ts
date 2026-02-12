@@ -1,5 +1,5 @@
 /**
- * Pose Generation Prompt
+ * Character Pose Generation Prompt
  * Used with nano-banana-pro/edit model to generate a character in a specific pose
  *
  * Image order expected by the model:
@@ -7,11 +7,10 @@
  * - Second image: The pose reference (extracts pose, body position, background context)
  *
  * CRITICAL for Kling Motion Control:
- * - All limbs (especially hands) MUST be visible in frame
- * - Hidden hands = hallucinated hands = 6-finger glitches in video
- * - Zoom out slightly if needed to show full arms and hands
+ * - All limbs (especially hands) must be visible in frame
+ * - Visible hands with correct anatomy = clean video output
  */
-export const POSE_GENERATION_PROMPT = `CRITICAL FACE SWAP: You MUST replace the face in the second image with the EXACT face from the first image. The output must show the person from the first image - their exact facial features, skin tone, and identity - NOT the person from the second image. This is a face swap, not a pose reference. The face from image 1 MUST appear in the final output. Keep the person's face, identity, and clothing/outfit from the first image - use the exact same clothes shown in the first image. Match the pose, body position, and background from the second image exactly. CRITICAL CAMERA REQUIREMENTS: Maintain the EXACT same camera angle, distance, and framing as the reference pose image - NO zoom in, NO zoom out, NO cropping, NO reframing. The camera perspective must match the reference exactly. The person should be looking directly at the camera with natural eye contact. CRITICAL HAND REQUIREMENTS: BOTH hands must be fully visible in frame at all times - never cropped, hidden, or cut off. Hands must match the exact position from the reference pose image. Hands must be SEPARATE from each other - never crossed, touching, overlapping, or intertwined. Each hand must have exactly 5 fingers with natural proportions - all fingers fully visible, defined, and completely separate from each other, no extra, missing, fused, or merged fingers. Arms and hands must remain uncrossed and clearly separated with space between them. Realistic anatomically correct limbs - no distortion or warping. High quality photorealistic, no text or captions`;
+export const POSE_GENERATION_PROMPT = `CHARACTER GENERATION: Place the exact character from the first image into the pose shown in the second image. The output must show the person from the first image — preserve their exact facial features, skin tone, identity, and clothing/outfit as shown in the first image. Use the exact same clothes from the first image. Match the pose, body position, and background from the second image exactly. CAMERA: Maintain the exact same camera angle, distance, and framing as the second (pose reference) image. The camera perspective must match the reference precisely. The person should be looking directly at the camera with natural eye contact. HANDS AND BODY: Both hands must be fully visible in frame. Hands must match the exact position from the pose reference image. Each hand has exactly 5 fingers with natural proportions — all fingers fully visible, defined, and clearly separate from each other. Arms and hands remain clearly separated with space between them. Anatomically correct, realistic limbs. High quality photorealistic output.`;
 
 export interface ScriptStructurePattern {
   type: string;
@@ -192,26 +191,29 @@ Available emotion tags:
 - [amazed] - Blown away, impressed
 - [laughing] - Light laughter, amused
 
-Pacing tag (COMBINE with emotion tags for UGC energy):
-- [fast-paced] - Quick, energetic delivery like real UGC creators who talk fast
+Pacing tag (use SELECTIVELY for high-energy moments):
+- [fast-paced] - Quick, energetic delivery for peak excitement moments
 
-CRITICAL: For most a-roll scenes, COMBINE [fast-paced] with an emotion tag to create that authentic UGC creator energy. Real TikTok/IG creators talk FAST — they don't pause between thoughts, they rush through with excitement. Use [fast-paced] on the MAJORITY of a-roll sentences (aim for 70-80% of them).
+Use [fast-paced] on roughly 50-60% of a-roll sentences — for energetic beats like hooks, excited reveals, and CTAs. The rest should flow at a natural conversational pace so the script has dynamic rhythm. Contrast is what makes the fast moments hit.
+
+For b-roll scenes, generally SKIP [fast-paced] — let the visuals breathe. Only use it on b-roll dialogue if the moment genuinely calls for high energy (e.g., an excited reaction over a product hero shot).
 
 Format: "[fast-paced][emotion] sentence text" — fast-paced tag FIRST, then emotion tag.
 
 Examples:
-✓ "[fast-paced][excited] Oh my god, you guys need to see this!"
-✓ "[fast-paced][curious] So I've been testing this for a week now..."
-✓ "[fast-paced][amazed] And this is where it gets crazy..."
+✓ "[fast-paced][excited] Oh my god, you guys need to see this!" (hook — grab attention)
+✓ "[curious] So I've been testing this for a week now..." (natural pace — setup)
+✓ "[fast-paced][amazed] And this is where it gets crazy..." (reveal — spike energy)
 ✓ "[sincere] I genuinely didn't expect it to work this well" (slower for emotional impact)
-✓ "[fast-paced][playful] Okay but like... why did no one tell me about this"
+✓ "[playful] Okay but like... why did no one tell me about this" (natural pace — conversational)
 ✓ "[whispering] This is the one secret nobody talks about..." (slow for dramatic effect)
 
 When to SKIP [fast-paced]:
 - [whispering] scenes — these need to be slow and intimate
 - [sincere] moments — genuine emotion lands better with slower pace
 - [dramatic] build-ups — tension needs breathing room
-- Key emotional beats where you want the viewer to FEEL something
+- Setup/context scenes — natural pace helps the viewer follow along
+- Back-to-back sentences — avoid stacking [fast-paced] on consecutive lines
 `;
 };
 
@@ -764,7 +766,7 @@ Example - Problem scene B-roll (NO product needed):
 
 Example - Demo scene B-roll (mixed):
 {
-  "dialogue": "[fast-paced][excited] And then I found this game-changer...",
+  "dialogue": "[excited] And then I found this game-changer...",
   "estimatedDurationSeconds": 5,
   "bRollShots": [
     { "action": "Soft morning light through window", "cinematicPrompt": "...", "durationSeconds": 2, "productImageNeeded": false },
@@ -783,7 +785,7 @@ Example - Single shot B-roll (just one shot is fine!):
 
 Example - REACTION B-roll (product hero shot + enthusiastic VO):
 {
-  "dialogue": "[fast-paced][amazed] Girlies this saved my LIFE... and it's only twenty dollars?!",
+  "dialogue": "[amazed] Girlies this saved my LIFE... and it's only twenty dollars?!",
   "estimatedDurationSeconds": 4,
   "bRollShots": [
     { "action": "Product sitting beautifully on clean surface, soft lighting", "cinematicPrompt": "...", "durationSeconds": 4, "productImageNeeded": true }
@@ -792,7 +794,7 @@ Example - REACTION B-roll (product hero shot + enthusiastic VO):
 
 Example - Product hero with hype VO:
 {
-  "dialogue": "[fast-paced][excited] I literally can't... this is actually insane",
+  "dialogue": "[excited] I literally can't... this is actually insane",
   "estimatedDurationSeconds": 3,
   "bRollShots": [
     { "action": "Product centered on aesthetic background, no hands", "cinematicPrompt": "...", "durationSeconds": 3, "productImageNeeded": true }
@@ -1159,7 +1161,8 @@ Score 95+ means: irresistible hook, perfect pacing, genuine emotion, share-worth
 - Structure matches the required pattern EXACTLY
 - estimatedDurationSeconds is a NUMBER for each scene (a-roll: max 8s, b-roll: max 4-10s)
 - ALL a-roll scenes: EVERY sentence MUST start with an emotion tag — no untagged sentences
-- MOST a-roll sentences (70-80%) should have [fast-paced] BEFORE the emotion tag for UGC energy
+- About 50-60% of a-roll sentences should have [fast-paced] BEFORE the emotion tag for UGC energy
+- B-roll dialogue should generally SKIP [fast-paced] unless the moment genuinely calls for high energy
 - a-roll scenes: MUST have ambientSound
 - b-roll scenes: ambientSound should be null
 - No tongue twisters or plosive clusters in dialogue
@@ -1182,7 +1185,7 @@ export const generateSceneRegenerationPrompt = (
   const voiceTagInstruction = `
 VOICE DIRECTION TAGS (REQUIRED for every a-roll sentence):
 EVERY sentence MUST start with an emotion tag: [whispering], [excited], [curious], [sincere], [playful], [dramatic], [satisfied], [amazed], [laughing]
-For most sentences, add [fast-paced] BEFORE the emotion tag for authentic UGC energy.
+For about half of a-roll sentences, add [fast-paced] BEFORE the emotion tag for energetic beats (hooks, reveals, CTAs). Skip it for emotional or conversational moments, and generally skip it on b-roll dialogue.
 Examples: "[fast-paced][excited] Oh my god, you guys need to see this!"
 "[sincere] I genuinely didn't expect it to work this well" (skip fast-paced for emotional beats)`;
 
