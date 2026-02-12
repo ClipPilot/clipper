@@ -3,14 +3,13 @@ import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { viralityService } from "../services/virality/virality.service";
 
+// an account is what we used call a 'target'. Its simply an account of a competitor
 export async function listAccountsController(req: AuthRequest, res: Response) {
   try {
     const teamId = parseInt(req.params.teamId);
     if (isNaN(teamId)) {
       return res.status(400).json({ error: "Invalid team ID" });
     }
-
-    // Check plan access
     const hasAccess = await viralityService.checkTeamPlanAccess(teamId);
     if (!hasAccess) {
       return res.status(403).json({
@@ -36,8 +35,6 @@ export async function addAccountController(req: AuthRequest, res: Response) {
     if (isNaN(teamId)) {
       return res.status(400).json({ error: "Invalid team ID" });
     }
-
-    // Check plan access
     const hasAccess = await viralityService.checkTeamPlanAccess(teamId);
     if (!hasAccess) {
       return res.status(403).json({
@@ -131,8 +128,6 @@ export async function syncAccountController(req: AuthRequest, res: Response) {
     if (isNaN(teamId) || isNaN(accountId)) {
       return res.status(400).json({ error: "Invalid team or account ID" });
     }
-
-    // Check plan access
     const hasAccess = await viralityService.checkTeamPlanAccess(teamId);
     if (!hasAccess) {
       return res.status(403).json({
@@ -172,7 +167,7 @@ export async function getPostsController(req: AuthRequest, res: Response) {
     const posts = await viralityService.getPostsByAccount(
       accountId,
       teamId,
-      Math.min(limit, 100),
+      Math.min(limit, 100), // limit to 100 posts (this can be changed later)
       offset,
       startDate,
       endDate
@@ -196,8 +191,6 @@ export async function getDashboardController(req: AuthRequest, res: Response) {
     if (isNaN(teamId)) {
       return res.status(400).json({ error: "Invalid team ID" });
     }
-
-    // Check plan access
     const hasAccess = await viralityService.checkTeamPlanAccess(teamId);
     if (!hasAccess) {
       return res.status(403).json({

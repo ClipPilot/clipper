@@ -116,11 +116,11 @@ export function PostCard({ post, platform }: PostCardProps) {
 
           <div className="flex items-center justify-between text-xs text-text-tertiary mb-2">
             <span>{formatDate(post.posted_at)}</span>
-            {post.video_view_count && (
-              post.video_view_count > 0) && (
+            {post.video_play_count && (
+              post.video_play_count > 0) && (
                 <span className="flex items-center gap-1">
                   <Icon icon="solar:eye-bold" width={12} />
-                  {formatNumber(post.video_view_count)} views
+                  {formatNumber(post.video_play_count)} views
                 </span>
               )}
           </div>

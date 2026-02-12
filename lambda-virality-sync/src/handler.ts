@@ -38,7 +38,6 @@ interface InstagramPost {
   hashtags: string[];
   likesCount: number;
   commentsCount: number;
-  videoViewCount?: number;
   videoPlayCount?: number;
   timestamp: string;
   type: string;
@@ -68,7 +67,6 @@ function normalizePostData(rawPost: any): InstagramPost {
     hashtags: rawPost.hashtags || [],
     likesCount: rawPost.likesCount || 0,
     commentsCount: rawPost.commentsCount || 0,
-    videoViewCount: rawPost.videoPlayCount,
     videoPlayCount: rawPost.videoPlayCount,
     timestamp: rawPost.timestamp,
     type: rawPost.type,
@@ -183,7 +181,6 @@ function normalizeTikTokPostData(rawPost: any): InstagramPost {
     hashtags: rawPost.hashtags?.map((h: any) => h.name || h) || [],
     likesCount: rawPost.diggCount || 0,
     commentsCount: rawPost.commentCount || 0,
-    videoViewCount: rawPost.playCount,
     videoPlayCount: rawPost.playCount,
     timestamp: rawPost.createTimeISO || "",
     type: "Video",
@@ -263,7 +260,6 @@ function normalizeXPostData(rawPost: any, viewCount: number | null): InstagramPo
     hashtags,
     likesCount: rawPost.likeCount || 0,
     commentsCount: rawPost.replyCount || 0,
-    videoViewCount: viewCount ?? undefined,
     videoPlayCount: viewCount ?? undefined,
     timestamp: rawPost.createdAt
       ? new Date(rawPost.createdAt).toISOString()
@@ -383,7 +379,6 @@ async function upsertPost(
       .set({
         like_count: postData.likesCount,
         comment_count: postData.commentsCount,
-        video_view_count: postData.videoPlayCount,
         video_play_count: postData.videoPlayCount,
         metrics_history: trimmed,
         updated_at: new Date(),
@@ -407,7 +402,6 @@ async function upsertPost(
       posted_at: postData.timestamp ? new Date(postData.timestamp) : null,
       like_count: postData.likesCount,
       comment_count: postData.commentsCount,
-      video_view_count: postData.videoPlayCount,
       video_play_count: postData.videoPlayCount,
       metrics_history: [newMetric],
       created_at: new Date(),

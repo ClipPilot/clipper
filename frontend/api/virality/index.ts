@@ -48,7 +48,6 @@ export interface ViralityPost {
   posted_at: string | null;
   like_count: number;
   comment_count: number;
-  video_view_count: number | null;
   video_play_count: number | null;
   metrics_history: MetricsEntry[];
   created_at: string;

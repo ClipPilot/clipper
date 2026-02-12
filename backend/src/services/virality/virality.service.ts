@@ -7,7 +7,7 @@ import {
   teams,
 } from "@clipper/shared-db/src/schema";
 import { eq, and, desc, count, gte, lte, inArray, sql } from "drizzle-orm";
-import { apifyService, InstagramPost, InstagramProfile } from "./apify.service";
+import { getApifyService, InstagramPost, InstagramProfile } from "./apify.service";
 
 const MAX_ACCOUNTS_PER_TEAM = 10;
 const SYNC_INTERVAL = 6 // every 6 hours
@@ -141,10 +141,10 @@ class ViralityService {
     }
 
     const username = platform === "tiktok"
-      ? apifyService.parseTikTokUsername(profileUrl)
+      ? getApifyService().parseTikTokUsername(profileUrl)
       : platform === "x"
-        ? apifyService.parseXUsername(profileUrl)
-        : apifyService.parseInstagramUsername(profileUrl);
+        ? getApifyService().parseXUsername(profileUrl)
+        : getApifyService().parseInstagramUsername(profileUrl);
 
     // Check if account already exists
     const [existing] = await db
@@ -222,16 +222,16 @@ class ViralityService {
     try {
       // Scrape posts using Apify SDK
       const { posts, profile } = account.platform === "tiktok"
-        ? await apifyService.scrapeTikTokPosts(account.username)
+        ? await getApifyService().scrapeTikTokPosts(account.username)
         : account.platform === "x"
-          ? await apifyService.scrapeXPosts(account.username)
-          : await apifyService.scrapeInstagramPosts(account.username);
+          ? await getApifyService().scrapeXPosts(account.username)
+          : await getApifyService().scrapeInstagramPosts(account.username);
       console.log(`Scraped ${posts.length} posts for @${account.username} (${account.platform})`);
 
       // Fallback: fetch profile separately if posts scrape didn't include it (Instagram only)
       const resolvedProfile = profile
         ?? (account.platform === "instagram"
-          ? await apifyService.scrapeInstagramProfile(account.username)
+          ? await getApifyService().scrapeInstagramProfile(account.username)
           : null);
 
       // Update profile info if available
@@ -361,7 +361,6 @@ class ViralityService {
         .set({
           like_count: postData.likesCount || 0,
           comment_count: postData.commentsCount || 0,
-          video_view_count: postData.videoPlayCount,
           video_play_count: postData.videoPlayCount,
           metrics_history: trimmed,
           updated_at: new Date(),
@@ -373,7 +372,9 @@ class ViralityService {
         platform_post_id: postData.id,
         post_url: postData.url || (platform === "x"
           ? `https://x.com/i/status/${postData.id}`
-          : `https://www.instagram.com/p/${postData.shortCode}/`),
+          : platform === "tiktok"
+            ? postData.url || ""
+            : `https://www.instagram.com/p/${postData.shortCode}/`),
         thumbnail_url: platform === "tiktok" ? postData.displayUrl : null,
         caption: postData.caption,
         hashtags: postData.hashtags || [],
@@ -381,7 +382,6 @@ class ViralityService {
         posted_at: postData.timestamp ? new Date(postData.timestamp) : null,
         like_count: postData.likesCount || 0,
         comment_count: postData.commentsCount || 0,
-        video_view_count: postData.videoPlayCount,
         video_play_count: postData.videoPlayCount,
         metrics_history: [newMetric],
         created_at: new Date(),
@@ -434,7 +434,7 @@ class ViralityService {
       .select({
         totalLikes: sql<number>`COALESCE(SUM(${viralityPosts.like_count}), 0)`,
         totalComments: sql<number>`COALESCE(SUM(${viralityPosts.comment_count}), 0)`,
-        totalViews: sql<number>`COALESCE(SUM(${viralityPosts.video_view_count}), 0)`,
+        totalViews: sql<number>`COALESCE(SUM(${viralityPosts.video_play_count}), 0)`,
         postCount: count(),
       })
       .from(viralityPosts)
@@ -462,7 +462,7 @@ class ViralityService {
     const rows = await db
       .select({
         accountId: viralityPosts.account_id,
-        totalViews: sql<number>`COALESCE(SUM(${viralityPosts.video_view_count}), 0)`,
+        totalViews: sql<number>`COALESCE(SUM(${viralityPosts.video_play_count}), 0)`,
         postCount: count(),
       })
       .from(viralityPosts)

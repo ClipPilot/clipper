@@ -17,7 +17,6 @@ interface InstagramPost {
   hashtags: string[];
   likesCount: number;
   commentsCount: number;
-  videoViewCount?: number;
   videoPlayCount?: number;
   timestamp: string;
   type: string;
@@ -141,7 +140,6 @@ class ApifyService {
       hashtags: rawPost.hashtags || [],
       likesCount: rawPost.likesCount || 0,
       commentsCount: rawPost.commentsCount || 0,
-      videoViewCount: rawPost.videoPlayCount,
       videoPlayCount: rawPost.videoPlayCount,
       timestamp: rawPost.timestamp,
       type: rawPost.type,
@@ -354,7 +352,6 @@ class ApifyService {
       hashtags,
       likesCount: rawPost.likeCount || 0,
       commentsCount: rawPost.replyCount || 0,
-      videoViewCount: viewCount ?? undefined,
       videoPlayCount: viewCount ?? undefined,
       timestamp: rawPost.createdAt
         ? new Date(rawPost.createdAt).toISOString()
@@ -380,7 +377,6 @@ class ApifyService {
       hashtags: rawPost.hashtags?.map((h: any) => h.name || h) || [],
       likesCount: rawPost.diggCount || 0,
       commentsCount: rawPost.commentCount || 0,
-      videoViewCount: rawPost.playCount,
       videoPlayCount: rawPost.playCount,
       timestamp: rawPost.createTimeISO || "",
       type: "Video",
@@ -391,5 +387,9 @@ class ApifyService {
   }
 }
 
-export const apifyService = new ApifyService();
+let _apifyService: ApifyService | null = null;
+export function getApifyService() {
+  if (!_apifyService) _apifyService = new ApifyService();
+  return _apifyService;
+}
 export type { InstagramPost, InstagramProfile };
