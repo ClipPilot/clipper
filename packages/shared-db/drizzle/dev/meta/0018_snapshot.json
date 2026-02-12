@@ -1,6 +1,6 @@
 {
-  "id": "834a29b7-5f3e-4101-881c-96c2ce7a7905",
-  "prevId": "643eba9b-a84d-4c74-9c1b-8c4ab093e2b2",
+  "id": "83927feb-ecf8-4e1f-9da2-c921b481ba5d",
+  "prevId": "a4fcd8fa-4e55-4157-b825-a19012ee068c",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1680,12 +1680,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "intake_form_id": {
-          "name": "intake_form_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
         "status": {
           "name": "status",
           "type": "varchar(50)",
@@ -1696,24 +1690,6 @@
         "details": {
           "name": "details",
           "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "google_drive_folder_id": {
-          "name": "google_drive_folder_id",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "rejection_reason": {
-          "name": "rejection_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "admin_notes": {
-          "name": "admin_notes",
-          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
@@ -1761,177 +1737,6 @@
             "id"
           ],
           "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "mass_posting_applications_intake_form_id_intake_forms_id_fk": {
-          "name": "mass_posting_applications_intake_form_id_intake_forms_id_fk",
-          "tableFrom": "mass_posting_applications",
-          "tableTo": "intake_forms",
-          "columnsFrom": [
-            "intake_form_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": true
-    },
-    "public.posts": {
-      "name": "posts",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "team_id": {
-          "name": "team_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "clip_id": {
-          "name": "clip_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "content": {
-          "name": "content",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "platform": {
-          "name": "platform",
-          "type": "platform_enum",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "posted_time": {
-          "name": "posted_time",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "post_url": {
-          "name": "post_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "drive_file_id": {
-          "name": "drive_file_id",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status": {
-          "name": "status",
-          "type": "post_status_enum",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'scheduled'"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "posts_team_id_idx": {
-          "name": "posts_team_id_idx",
-          "columns": [
-            {
-              "expression": "team_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "posts_platform_idx": {
-          "name": "posts_platform_idx",
-          "columns": [
-            {
-              "expression": "platform",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "posts_clip_id_idx": {
-          "name": "posts_clip_id_idx",
-          "columns": [
-            {
-              "expression": "clip_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "posts_team_id_teams_id_fk": {
-          "name": "posts_team_id_teams_id_fk",
-          "tableFrom": "posts",
-          "tableTo": "teams",
-          "columnsFrom": [
-            "team_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "posts_clip_id_clips_id_fk": {
-          "name": "posts_clip_id_clips_id_fk",
-          "tableFrom": "posts",
-          "tableTo": "clips",
-          "columnsFrom": [
-            "clip_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -4105,28 +3910,6 @@
         "accepted",
         "rejected",
         "appeal"
-      ]
-    },
-    "public.platform_enum": {
-      "name": "platform_enum",
-      "schema": "public",
-      "values": [
-        "tiktok",
-        "instagram",
-        "facebook",
-        "youtube",
-        "x"
-      ]
-    },
-    "public.post_status_enum": {
-      "name": "post_status_enum",
-      "schema": "public",
-      "values": [
-        "scheduled",
-        "posted",
-        "cancelled",
-        "deleted",
-        "failed"
       ]
     },
     "public.referral_status": {
