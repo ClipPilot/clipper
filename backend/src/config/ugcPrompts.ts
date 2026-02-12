@@ -195,7 +195,9 @@ Available emotion tags:
 Pacing tag (use SELECTIVELY for high-energy moments):
 - [fast-paced] - Quick, energetic delivery for peak excitement moments
 
-Use [fast-paced] on roughly 30-40% of a-roll sentences — only for the most energetic beats like hooks, excited reveals, and CTAs. The rest should flow at a natural conversational pace so the script has dynamic rhythm. Applying fast pacing everywhere flattens the energy — contrast is what makes the fast moments hit.
+Use [fast-paced] on roughly 50-60% of a-roll sentences — for energetic beats like hooks, excited reveals, and CTAs. The rest should flow at a natural conversational pace so the script has dynamic rhythm. Contrast is what makes the fast moments hit.
+
+For b-roll scenes, generally SKIP [fast-paced] — let the visuals breathe. Only use it on b-roll dialogue if the moment genuinely calls for high energy (e.g., an excited reaction over a product hero shot).
 
 Format: "[fast-paced][emotion] sentence text" — fast-paced tag FIRST, then emotion tag.
 
@@ -765,7 +767,7 @@ Example - Problem scene B-roll (NO product needed):
 
 Example - Demo scene B-roll (mixed):
 {
-  "dialogue": "[fast-paced][excited] And then I found this game-changer...",
+  "dialogue": "[excited] And then I found this game-changer...",
   "estimatedDurationSeconds": 5,
   "bRollShots": [
     { "action": "Soft morning light through window", "cinematicPrompt": "...", "durationSeconds": 2, "productImageNeeded": false },
@@ -784,7 +786,7 @@ Example - Single shot B-roll (just one shot is fine!):
 
 Example - REACTION B-roll (product hero shot + enthusiastic VO):
 {
-  "dialogue": "[fast-paced][amazed] Girlies this saved my LIFE... and it's only twenty dollars?!",
+  "dialogue": "[amazed] Girlies this saved my LIFE... and it's only twenty dollars?!",
   "estimatedDurationSeconds": 4,
   "bRollShots": [
     { "action": "Product sitting beautifully on clean surface, soft lighting", "cinematicPrompt": "...", "durationSeconds": 4, "productImageNeeded": true }
@@ -793,7 +795,7 @@ Example - REACTION B-roll (product hero shot + enthusiastic VO):
 
 Example - Product hero with hype VO:
 {
-  "dialogue": "[fast-paced][excited] I literally can't... this is actually insane",
+  "dialogue": "[excited] I literally can't... this is actually insane",
   "estimatedDurationSeconds": 3,
   "bRollShots": [
     { "action": "Product centered on aesthetic background, no hands", "cinematicPrompt": "...", "durationSeconds": 3, "productImageNeeded": true }
@@ -1160,7 +1162,8 @@ Score 95+ means: irresistible hook, perfect pacing, genuine emotion, share-worth
 - Structure matches the required pattern EXACTLY
 - estimatedDurationSeconds is a NUMBER for each scene (a-roll: max 8s, b-roll: max 4-10s)
 - ALL a-roll scenes: EVERY sentence MUST start with an emotion tag — no untagged sentences
-- MOST a-roll sentences (70-80%) should have [fast-paced] BEFORE the emotion tag for UGC energy
+- About 50-60% of a-roll sentences should have [fast-paced] BEFORE the emotion tag for UGC energy
+- B-roll dialogue should generally SKIP [fast-paced] unless the moment genuinely calls for high energy
 - a-roll scenes: MUST have ambientSound
 - b-roll scenes: ambientSound should be null
 - No tongue twisters or plosive clusters in dialogue
@@ -1183,7 +1186,7 @@ export const generateSceneRegenerationPrompt = (
   const voiceTagInstruction = `
 VOICE DIRECTION TAGS (REQUIRED for every a-roll sentence):
 EVERY sentence MUST start with an emotion tag: [whispering], [excited], [curious], [sincere], [playful], [dramatic], [satisfied], [amazed], [laughing]
-For most sentences, add [fast-paced] BEFORE the emotion tag for authentic UGC energy.
+For about half of a-roll sentences, add [fast-paced] BEFORE the emotion tag for energetic beats (hooks, reveals, CTAs). Skip it for emotional or conversational moments, and generally skip it on b-roll dialogue.
 Examples: "[fast-paced][excited] Oh my god, you guys need to see this!"
 "[sincere] I genuinely didn't expect it to work this well" (skip fast-paced for emotional beats)`;
 

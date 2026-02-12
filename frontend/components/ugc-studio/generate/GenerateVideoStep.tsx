@@ -17,7 +17,6 @@ import {
 } from "@/store/ugc";
 import { ugcVideoAPI } from "@/api/ugc/video";
 import { useUsageStats } from "@/hooks/useUsageStats";
-import { ConfirmGenerateModal } from "@/components/ugc-studio/generate/ConfirmGenerateModal";
 import { CreditCostCard } from "@/components/ugc-studio/generate/CreditCostCard";
 import { calculateCreditCost } from "@/lib/creditCost";
 
@@ -25,8 +24,6 @@ interface GenerateVideoStepProps {
   teamId: number;
   scriptId: string;
 }
-
-type StepState = "ready" | "confirming" | "generating";
 
 export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) {
   const router = useRouter();
@@ -38,7 +35,7 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
 
   const { usageStats } = useUsageStats(teamId);
 
-  const [stepState, setStepState] = useState<StepState>("ready");
+  const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const currentScript = scripts[selectedVariantIndex];
@@ -46,9 +43,8 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
   const totalScenes = scenes.reduce((total: number, scene: any) => total + (scene.mergedSceneTypes?.length || 1), 0);
   const creditCost = calculateCreditCost(scenes);
 
-  // Check for existing completed video on mount (not during fresh start)
   useEffect(() => {
-    if (stepState !== "ready") return;
+    if (isGenerating) return;
     if (freshStart) return;
     if (videoStatus !== null) return;
 
@@ -59,29 +55,25 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
           router.push(`/dashboard/ugc-studio/ai-video-creator/${existingVideo.jobId}`);
         }
       } catch {
-        // No existing video - that's fine
+        // No existing video
       }
     };
 
     checkExistingVideo();
-  }, [scriptId, stepState, freshStart, videoStatus, router]);
+  }, [scriptId, isGenerating, freshStart, videoStatus, router]);
 
-  const handleGenerateClick = () => {
-    if (!usageStats || usageStats.totalRemaining < creditCost) {
-      setError(`Not enough credits. You need ${creditCost} credits to generate this video.`);
-      return;
-    }
-    setStepState("confirming");
-  };
-
-  const handleConfirmGenerate = async () => {
+  const handleGenerateClick = async () => {
     if (!selectedVoice) {
       setError("Please select a voice first");
       return;
     }
+    if (!usageStats || usageStats.totalRemaining < creditCost) {
+      setError(`Not enough credits. You need ${creditCost} credits to generate this video.`);
+      return;
+    }
 
     setError(null);
-    setStepState("generating");
+    setIsGenerating(true);
 
     try {
       const response = await ugcVideoAPI.generateVideo({
@@ -94,7 +86,7 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
       router.push(`/dashboard/ugc-studio/ai-video-creator/${response.jobId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start video generation");
-      setStepState("ready");
+      setIsGenerating(false);
     }
   };
 
@@ -198,7 +190,7 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
         creditCost={creditCost}
         creditsRemaining={usageStats?.totalRemaining}
         isLoading={!usageStats}
-        isDisabled={!usageStats || usageStats.totalRemaining < creditCost}
+        isDisabled={isGenerating || !usageStats || usageStats.totalRemaining < creditCost}
         onGenerate={handleGenerateClick}
         gradientClasses="from-accent-400/20 to-purple-500/20"
         borderClass="border-accent-400/30"
@@ -246,16 +238,6 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
           </div>
         </CardBody>
       </Card>
-
-      <ConfirmGenerateModal
-        isOpen={stepState === "confirming"}
-        onClose={() => setStepState("ready")}
-        onConfirm={handleConfirmGenerate}
-        creditCost={creditCost}
-        creditsRemaining={usageStats?.totalRemaining ?? 0}
-        accentTextClass="text-accent-400"
-        accentButtonClass="bg-accent-400 text-white font-semibold"
-      />
     </div>
   );
 }

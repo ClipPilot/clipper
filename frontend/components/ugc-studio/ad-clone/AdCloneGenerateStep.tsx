@@ -26,7 +26,6 @@ import { voicesConfig } from "@/config/voicesConfig";
 import { useAdClone } from "@/hooks/useAdClone";
 import { useUsageStats } from "@/hooks/useUsageStats";
 import { FolderSelector } from "@/components/clips";
-import { ConfirmGenerateModal } from "@/components/ugc-studio/generate/ConfirmGenerateModal";
 import { CreditCostCard } from "@/components/ugc-studio/generate/CreditCostCard";
 import { calculateCreditCost } from "@/lib/creditCost";
 import type { UGCScript, UGCScene } from "../script/types";
@@ -254,15 +253,15 @@ export function AdCloneGenerateStep({ teamId }: AdCloneGenerateStepProps) {
   const { generateVideo } = useAdClone(teamId);
   const { usageStats } = useUsageStats(teamId);
 
-  const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
+  const router = useRouter();
   const selectedVoice = voicesConfig.find((v) => v.id === voiceId) || null;
   const scenes = selectedScript?.scenes || [];
   const creditCost = calculateCreditCost(scenes);
 
-  const handleGenerateClick = () => {
+  const handleGenerateClick = async () => {
     if (!voiceId || !characterId) {
       setError("Please go back and select a character and voice first");
       return;
@@ -271,13 +270,7 @@ export function AdCloneGenerateStep({ teamId }: AdCloneGenerateStepProps) {
       setError(`Not enough credits. You need ${creditCost} credits to generate this video.`);
       return;
     }
-    setShowConfirm(true);
-  };
 
-  const router = useRouter();
-
-  const handleConfirmGenerate = async () => {
-    setShowConfirm(false);
     setError(null);
     setIsGenerating(true);
 
@@ -364,23 +357,13 @@ export function AdCloneGenerateStep({ teamId }: AdCloneGenerateStepProps) {
         creditCost={creditCost}
         creditsRemaining={usageStats?.totalRemaining}
         isLoading={!usageStats}
-        isDisabled={!voiceId || !characterId || !usageStats || usageStats.totalRemaining < creditCost}
+        isDisabled={isGenerating || !voiceId || !characterId || !usageStats || usageStats.totalRemaining < creditCost}
         onGenerate={handleGenerateClick}
         gradientClasses="from-orange-500/20 to-yellow-500/20"
         borderClass="border-orange-500/30"
         iconBgClass="bg-orange-500/30"
         iconTextClass="text-orange-500"
         buttonClass="bg-orange-500 text-white font-semibold"
-      />
-
-      <ConfirmGenerateModal
-        isOpen={showConfirm}
-        onClose={() => setShowConfirm(false)}
-        onConfirm={handleConfirmGenerate}
-        creditCost={creditCost}
-        creditsRemaining={usageStats?.totalRemaining ?? 0}
-        accentTextClass="text-orange-500"
-        accentButtonClass="bg-orange-500 text-white font-semibold"
       />
     </div>
   );
