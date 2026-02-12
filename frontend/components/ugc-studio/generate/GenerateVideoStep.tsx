@@ -1,20 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useAtom, useAtomValue } from "jotai";
 import { useRouter } from "next/navigation";
 import {
   Card,
   CardBody,
-  Button,
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { BrandLogo } from "@/components/brand-logo";
 import {
   scriptsAtom,
   selectedVariantIndexAtom,
@@ -24,6 +17,9 @@ import {
 } from "@/store/ugc";
 import { ugcVideoAPI } from "@/api/ugc/video";
 import { useUsageStats } from "@/hooks/useUsageStats";
+import { ConfirmGenerateModal } from "@/components/ugc-studio/generate/ConfirmGenerateModal";
+import { CreditCostCard } from "@/components/ugc-studio/generate/CreditCostCard";
+import { calculateCreditCost } from "@/lib/creditCost";
 
 interface GenerateVideoStepProps {
   teamId: number;
@@ -31,10 +27,6 @@ interface GenerateVideoStepProps {
 }
 
 type StepState = "ready" | "confirming" | "generating";
-
-function calculateCreditCost(scenes: Array<{ shotType: string; bRollShots?: unknown[] | null; mergedSceneTypes?: string[] | null }>) {
-  return scenes.reduce((total, scene) => total + (scene.mergedSceneTypes?.length || 1) * 2, 0);
-}
 
 export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) {
   const router = useRouter();
@@ -64,7 +56,6 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
       try {
         const existingVideo = await ugcVideoAPI.getScriptVideo(scriptId);
         if (existingVideo && existingVideo.jobId) {
-          // Redirect to the job status page
           router.push(`/dashboard/ugc-studio/ai-video-creator/${existingVideo.jobId}`);
         }
       } catch {
@@ -91,7 +82,6 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
 
     setError(null);
     setStepState("generating");
-    // Don't reset freshStart here - we're navigating away and it prevents race conditions
 
     try {
       const response = await ugcVideoAPI.generateVideo({
@@ -100,7 +90,6 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
         voiceId: selectedVoice.id,
       });
 
-      // Reset freshStart now that we have a new video, then navigate
       setFreshStart(false);
       router.push(`/dashboard/ugc-studio/ai-video-creator/${response.jobId}`);
     } catch (err) {
@@ -150,10 +139,8 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
     );
   }
 
-  // Ready state - show summary and generate button
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="text-center mb-6">
         <h2 className="text-2xl font-bold text-text-primary mb-2">
           Generate Your Video
@@ -163,7 +150,6 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
         </p>
       </div>
 
-      {/* Error alert */}
       {error && (
         <Card className="bg-red-500/10 border border-red-500/30">
           <CardBody className="p-4">
@@ -175,13 +161,11 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
         </Card>
       )}
 
-      {/* Summary Card */}
       <Card className="bg-surface-elevated border border-border-base">
         <CardBody className="p-6">
           <h3 className="text-lg font-semibold text-text-primary mb-4">Video Summary</h3>
 
           <div className="space-y-4">
-            {/* Script Info */}
             <div className="flex items-center gap-3 p-3 bg-surface-base rounded-xl">
               <div className="w-10 h-10 rounded-xl bg-accent-400/20 flex items-center justify-center">
                 <Icon icon="solar:document-text-bold-duotone" className="text-accent-400" width={20} />
@@ -194,7 +178,6 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
               </div>
             </div>
 
-            {/* Voice Info */}
             <div className="flex items-center gap-3 p-3 bg-surface-base rounded-xl">
               <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
                 <Icon icon="solar:soundwave-bold-duotone" className="text-purple-400" width={20} />
@@ -211,42 +194,19 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
         </CardBody>
       </Card>
 
-      {/* Credit Cost Card */}
-      <Card className="bg-gradient-to-br from-accent-400/20 to-purple-500/20 border border-accent-400/30">
-        <CardBody className="p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-accent-400/30 flex items-center justify-center">
-                <Icon icon="solar:stars-bold-duotone" className="text-accent-400" width={28} />
-              </div>
-              <div>
-                <p className="text-lg font-bold text-text-primary">
-                  {creditCost} Credits
-                </p>
-                <p className="text-sm text-text-secondary">
-                  Based on estimated video length
-                </p>
-                <p className="text-xs text-text-muted mt-1">
-                  {usageStats
-                    ? `You have ${usageStats.totalRemaining} credits remaining`
-                    : "Loading credits..."}
-                </p>
-              </div>
-            </div>
-            <Button
-              size="lg"
-              className="bg-accent-400 text-white font-semibold px-8"
-              onPress={handleGenerateClick}
-              isDisabled={!usageStats || usageStats.totalRemaining < creditCost}
-              startContent={<Icon icon="solar:play-bold" width={20} />}
-            >
-              Generate Video
-            </Button>
-          </div>
-        </CardBody>
-      </Card>
+      <CreditCostCard
+        creditCost={creditCost}
+        creditsRemaining={usageStats?.totalRemaining}
+        isLoading={!usageStats}
+        isDisabled={!usageStats || usageStats.totalRemaining < creditCost}
+        onGenerate={handleGenerateClick}
+        gradientClasses="from-accent-400/20 to-purple-500/20"
+        borderClass="border-accent-400/30"
+        iconBgClass="bg-accent-400/30"
+        iconTextClass="text-accent-400"
+        buttonClass="bg-accent-400 text-white font-semibold"
+      />
 
-      {/* What happens section */}
       <Card className="bg-surface-elevated border border-border-base">
         <CardBody className="p-6">
           <h3 className="text-lg font-semibold text-text-primary mb-4">What happens next?</h3>
@@ -287,54 +247,15 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
         </CardBody>
       </Card>
 
-      {/* Confirmation Modal */}
-      <Modal
+      <ConfirmGenerateModal
         isOpen={stepState === "confirming"}
         onClose={() => setStepState("ready")}
-        classNames={{
-          base: "bg-surface-elevated border border-border-base",
-          header: "border-b border-border-base",
-          footer: "border-t border-border-base",
-        }}
-      >
-        <ModalContent>
-          <ModalHeader className="flex flex-col gap-1">
-            <span className="text-text-primary">Confirm Video Generation</span>
-          </ModalHeader>
-          <ModalBody>
-            <div className="text-center py-4">
-              <div className="flex justify-center mb-4">
-                <BrandLogo size={64} />
-              </div>
-              <p className="text-text-primary mb-2">
-                This will use <span className="font-bold text-accent-400">{creditCost} credits</span>
-              </p>
-              <p className="text-xs text-text-muted mb-2">
-                Based on estimated video length
-              </p>
-              <p className="text-sm text-text-secondary">
-                You&apos;ll have {usageStats ? usageStats.totalRemaining - creditCost : 0} credits remaining
-              </p>
-            </div>
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              variant="bordered"
-              className="border-border-base text-text-secondary"
-              onPress={() => setStepState("ready")}
-            >
-              Cancel
-            </Button>
-            <Button
-              className="bg-accent-400 text-white font-semibold"
-              onPress={handleConfirmGenerate}
-              startContent={<Icon icon="solar:play-bold" width={16} />}
-            >
-              Generate Video
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+        onConfirm={handleConfirmGenerate}
+        creditCost={creditCost}
+        creditsRemaining={usageStats?.totalRemaining ?? 0}
+        accentTextClass="text-accent-400"
+        accentButtonClass="bg-accent-400 text-white font-semibold"
+      />
     </div>
   );
 }

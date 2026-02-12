@@ -192,26 +192,27 @@ Available emotion tags:
 - [amazed] - Blown away, impressed
 - [laughing] - Light laughter, amused
 
-Pacing tag (COMBINE with emotion tags for UGC energy):
-- [fast-paced] - Quick, energetic delivery like real UGC creators who talk fast
+Pacing tag (use SELECTIVELY for high-energy moments):
+- [fast-paced] - Quick, energetic delivery for peak excitement moments
 
-CRITICAL: For most a-roll scenes, COMBINE [fast-paced] with an emotion tag to create that authentic UGC creator energy. Real TikTok/IG creators talk FAST — they don't pause between thoughts, they rush through with excitement. Use [fast-paced] on the MAJORITY of a-roll sentences (aim for 70-80% of them).
+Use [fast-paced] on roughly 30-40% of a-roll sentences — only for the most energetic beats like hooks, excited reveals, and CTAs. The rest should flow at a natural conversational pace so the script has dynamic rhythm. Applying fast pacing everywhere flattens the energy — contrast is what makes the fast moments hit.
 
 Format: "[fast-paced][emotion] sentence text" — fast-paced tag FIRST, then emotion tag.
 
 Examples:
-✓ "[fast-paced][excited] Oh my god, you guys need to see this!"
-✓ "[fast-paced][curious] So I've been testing this for a week now..."
-✓ "[fast-paced][amazed] And this is where it gets crazy..."
+✓ "[fast-paced][excited] Oh my god, you guys need to see this!" (hook — grab attention)
+✓ "[curious] So I've been testing this for a week now..." (natural pace — setup)
+✓ "[fast-paced][amazed] And this is where it gets crazy..." (reveal — spike energy)
 ✓ "[sincere] I genuinely didn't expect it to work this well" (slower for emotional impact)
-✓ "[fast-paced][playful] Okay but like... why did no one tell me about this"
+✓ "[playful] Okay but like... why did no one tell me about this" (natural pace — conversational)
 ✓ "[whispering] This is the one secret nobody talks about..." (slow for dramatic effect)
 
 When to SKIP [fast-paced]:
 - [whispering] scenes — these need to be slow and intimate
 - [sincere] moments — genuine emotion lands better with slower pace
 - [dramatic] build-ups — tension needs breathing room
-- Key emotional beats where you want the viewer to FEEL something
+- Setup/context scenes — natural pace helps the viewer follow along
+- Back-to-back sentences — avoid stacking [fast-paced] on consecutive lines
 `;
 };
 
