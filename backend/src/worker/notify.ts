@@ -72,6 +72,7 @@ export interface UGCVideoJobUpdate {
     audioKey: string;
     videoKey: string;
   }>;
+  clipId?: number | null;
   error?: string;
 }
 
@@ -86,6 +87,7 @@ export interface AdCloneJobUpdate {
   progressMessage: string;
   analysis?: any;
   scripts?: any[];
+  clipId?: number | null;
   error?: string;
 }
 

@@ -9,11 +9,6 @@ import {
   Button,
   Spinner,
   Chip,
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { motion } from "framer-motion";
@@ -31,7 +26,8 @@ import { voicesConfig } from "@/config/voicesConfig";
 import { useAdClone } from "@/hooks/useAdClone";
 import { useUsageStats } from "@/hooks/useUsageStats";
 import { FolderSelector } from "@/components/clips";
-import { BrandLogo } from "@/components/brand-logo";
+import { CreditCostCard } from "@/components/ugc-studio/generate/CreditCostCard";
+import { calculateCreditCost } from "@/lib/creditCost";
 import type { UGCScript, UGCScene } from "../script/types";
 
 interface AdCloneGenerateStepProps {
@@ -250,10 +246,6 @@ function VideoPreviewState({
 
 export function AdCloneGenerateStep({ teamId }: AdCloneGenerateStepProps) {
   const voiceId = useAtomValue(adCloneVoiceIdAtom);
-  const status = useAtomValue(adCloneStatusAtom);
-  const progress = useAtomValue(adCloneProgressAtom);
-  const progressMessage = useAtomValue(adCloneProgressMessageAtom);
-  const finalVideoUrl = useAtomValue(adCloneFinalVideoUrlAtom);
   const selectedScript = useAtomValue(adCloneSelectedScriptAtom) as UGCScript | null;
   const characterId = useAtomValue(adCloneCharacterIdAtom);
   const projectId = useAtomValue(adCloneProjectIdAtom);
@@ -261,16 +253,15 @@ export function AdCloneGenerateStep({ teamId }: AdCloneGenerateStepProps) {
   const { generateVideo } = useAdClone(teamId);
   const { usageStats } = useUsageStats(teamId);
 
-  const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
+  const router = useRouter();
   const selectedVoice = voicesConfig.find((v) => v.id === voiceId) || null;
   const scenes = selectedScript?.scenes || [];
-  const effectiveSceneCount = scenes.reduce((total: number, scene: any) => total + (scene.mergedSceneTypes?.length || 1), 0);
-  const creditCost = effectiveSceneCount * 2;
+  const creditCost = calculateCreditCost(scenes);
 
-  const handleGenerateClick = () => {
+  const handleGenerateClick = async () => {
     if (!voiceId || !characterId) {
       setError("Please go back and select a character and voice first");
       return;
@@ -279,19 +270,12 @@ export function AdCloneGenerateStep({ teamId }: AdCloneGenerateStepProps) {
       setError(`Not enough credits. You need ${creditCost} credits to generate this video.`);
       return;
     }
-    setShowConfirm(true);
-  };
 
-  const router = useRouter();
-
-  const handleConfirmGenerate = async () => {
-    setShowConfirm(false);
     setError(null);
     setIsGenerating(true);
 
     try {
       await generateVideo();
-      // Redirect to project page to show progress
       router.push(`/dashboard/ugc-studio/ad-clone/${projectId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to start video generation");
@@ -369,85 +353,18 @@ export function AdCloneGenerateStep({ teamId }: AdCloneGenerateStepProps) {
         </CardBody>
       </Card>
 
-      <Card className="bg-gradient-to-br from-orange-500/20 to-yellow-500/20 border border-orange-500/30">
-        <CardBody className="p-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-orange-500/30 flex items-center justify-center">
-                <Icon icon="solar:stars-bold-duotone" className="text-orange-500" width={28} />
-              </div>
-              <div>
-                <p className="text-lg font-bold text-text-primary">{creditCost} Credits</p>
-                <p className="text-sm text-text-secondary">
-                  Based on estimated video length
-                </p>
-                <p className="text-xs text-text-muted mt-1">
-                  {usageStats
-                    ? `You have ${usageStats.totalRemaining} credits remaining`
-                    : "Loading credits..."}
-                </p>
-              </div>
-            </div>
-            <Button
-              size="lg"
-              className="bg-orange-500 text-white font-semibold px-8"
-              onPress={handleGenerateClick}
-              isDisabled={!voiceId || !characterId || !usageStats || usageStats.totalRemaining < creditCost}
-              startContent={<Icon icon="solar:play-bold" width={20} />}
-            >
-              Generate Video
-            </Button>
-          </div>
-        </CardBody>
-      </Card>
-
-      <Modal
-        isOpen={showConfirm}
-        onClose={() => setShowConfirm(false)}
-        classNames={{
-          base: "bg-surface-elevated border border-border-base",
-          header: "border-b border-border-base",
-          footer: "border-t border-border-base",
-        }}
-      >
-        <ModalContent>
-          <ModalHeader>
-            <span className="text-text-primary">Confirm Video Generation</span>
-          </ModalHeader>
-          <ModalBody>
-            <div className="text-center py-4">
-              <div className="flex justify-center mb-4">
-                <BrandLogo size={64} />
-              </div>
-              <p className="text-text-primary mb-2">
-                This will use <span className="font-bold text-orange-500">{creditCost} credits</span>
-              </p>
-              <p className="text-xs text-text-muted mb-2">
-                Based on estimated video length
-              </p>
-              <p className="text-sm text-text-secondary">
-                You&apos;ll have {usageStats ? usageStats.totalRemaining - creditCost : 0} credits remaining
-              </p>
-            </div>
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              variant="bordered"
-              className="border-border-base text-text-secondary"
-              onPress={() => setShowConfirm(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              className="bg-orange-500 text-white font-semibold"
-              onPress={handleConfirmGenerate}
-              startContent={<Icon icon="solar:play-bold" width={16} />}
-            >
-              Generate Video
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+      <CreditCostCard
+        creditCost={creditCost}
+        creditsRemaining={usageStats?.totalRemaining}
+        isLoading={!usageStats}
+        isDisabled={isGenerating || !voiceId || !characterId || !usageStats || usageStats.totalRemaining < creditCost}
+        onGenerate={handleGenerateClick}
+        gradientClasses="from-orange-500/20 to-yellow-500/20"
+        borderClass="border-orange-500/30"
+        iconBgClass="bg-orange-500/30"
+        iconTextClass="text-orange-500"
+        buttonClass="bg-orange-500 text-white font-semibold"
+      />
     </div>
   );
 }
