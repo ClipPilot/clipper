@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Card, CardBody, Avatar, Button, Chip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { ViralityAccount } from "@/api/virality";
+import { formatNumber } from "@/lib/formatters";
 
 interface AccountCardProps {
   account: ViralityAccount;
@@ -37,13 +38,6 @@ export function AccountCard({
     } finally {
       setIsDeleting(false);
     }
-  };
-
-  const formatNumber = (num: number | null) => {
-    if (!num) return "0";
-    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
-    return num.toString();
   };
 
   const getSyncStatusColor = () => {

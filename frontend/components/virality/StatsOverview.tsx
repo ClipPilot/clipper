@@ -2,6 +2,7 @@
 
 import { Card, CardBody } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import { formatNumber } from "@/lib/formatters";
 
 interface StatsOverviewProps {
   accountsCount: number;
@@ -22,12 +23,6 @@ export function StatsOverview({
   totalViews,
   avgViewsPerPost,
 }: StatsOverviewProps) {
-  const formatNumber = (num: number) => {
-    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
-    return num.toString();
-  };
-
   const statCards = [
     {
       title: "TOTAL ACCOUNTS",

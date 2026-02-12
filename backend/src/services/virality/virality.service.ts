@@ -8,12 +8,13 @@ import {
 } from "@clipper/shared-db/src/schema";
 import { eq, and, desc, count, gte, lte, inArray, sql } from "drizzle-orm";
 import { getApifyService, InstagramPost, InstagramProfile } from "./apify.service";
-
-const MAX_ACCOUNTS_PER_TEAM = 10;
-const SYNC_INTERVAL = 6 // every 6 hours
-const SYNCS_PER_DAY = Math.floor(24 / SYNC_INTERVAL)
-const MAX_METRICS_HISTORY = 28 * SYNCS_PER_DAY;
-const MAX_FOLLOWER_HISTORY = 180; // ~6 months of daily syncs
+import { parseInstagramUsername, parseTikTokUsername, parseXUsername } from "../../utils/parseUsername";
+import {
+  MAX_ACCOUNTS_PER_TEAM,
+  SYNCS_PER_DAY,
+  MAX_METRICS_HISTORY,
+  MAX_FOLLOWER_HISTORY,
+} from "../../config/virality";
 
 interface MetricsEntry {
   recorded_at: string;
@@ -141,10 +142,10 @@ class ViralityService {
     }
 
     const username = platform === "tiktok"
-      ? getApifyService().parseTikTokUsername(profileUrl)
+      ? parseTikTokUsername(profileUrl)
       : platform === "x"
-        ? getApifyService().parseXUsername(profileUrl)
-        : getApifyService().parseInstagramUsername(profileUrl);
+        ? parseXUsername(profileUrl)
+        : parseInstagramUsername(profileUrl);
 
     // Check if account already exists
     const [existing] = await db

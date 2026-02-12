@@ -3,6 +3,7 @@
 import { Card, CardBody, Chip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { ViralityPost } from "@/api/virality";
+import { formatNumber, formatDate } from "@/lib/formatters";
 
 interface PostCardProps {
   post: ViralityPost;
@@ -10,23 +11,6 @@ interface PostCardProps {
 }
 
 export function PostCard({ post, platform }: PostCardProps) {
-  const formatNumber = (num: number | null | undefined) => {
-    if (!num) return "0";
-    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
-    return num.toString();
-  };
-
-  const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return "Unknown date";
-    const date = new Date(dateStr);
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-
   const getPostTypeIcon = () => {
     switch (post.post_type?.toLowerCase()) {
       case "video":

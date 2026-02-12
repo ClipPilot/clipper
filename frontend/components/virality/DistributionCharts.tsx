@@ -12,6 +12,7 @@ import {
   Label,
 } from "recharts";
 import type { ViralityAccount, AccountPostStats } from "@/api/virality";
+import { formatNumber } from "@/lib/formatters";
 
 const CHART_COLORS = [
   "#E1306C", // pink
@@ -34,12 +35,6 @@ interface ChartEntry {
   platform: "instagram" | "tiktok" | "x";
   value: number;
   fill: string;
-}
-
-function formatNumber(num: number) {
-  if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;
-  if (num >= 1_000) return `${(num / 1_000).toFixed(1)}K`;
-  return num.toString();
 }
 
 function platformIcon(platform: "instagram" | "tiktok" | "x") {

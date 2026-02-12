@@ -1,12 +1,11 @@
 import { ApifyClient } from "apify-client";
-
-const APIFY_API_TOKEN = process.env.APIFY_API_TOKEN;
-const INSTAGRAM_SCRAPER_ACTOR = "apify/instagram-scraper";
-const INSTAGRAM_PROFILE_SCRAPER_ACTOR = "apify/instagram-profile-scraper";
-const TIKTOK_SCRAPER_ACTOR = "clockworks/tiktok-scraper";
-const X_POSTS_SCRAPER_ACTOR = "apidojo/twitter-scraper-lite";
-const X_VIEWS_SCRAPER_ACTOR = "scrape.badger/twitter-tweets-scraper";
-const SCRAPE_WINDOW_DAYS = 28;
+import { config } from "../../config/env";
+import { APIFY_ACTORS, SCRAPE_WINDOW_DAYS } from "../../config/virality";
+import {
+  parseInstagramUsername,
+  parseTikTokUsername,
+  parseXUsername,
+} from "../../utils/parseUsername";
 
 interface InstagramPost {
   id: string;
@@ -40,10 +39,10 @@ class ApifyService {
   private client: ApifyClient;
 
   constructor() {
-    if (!APIFY_API_TOKEN) {
+    if (!config.apify.apiToken) {
       throw new Error("APIFY_API_TOKEN is not configured");
     }
-    this.client = new ApifyClient({ token: APIFY_API_TOKEN });
+    this.client = new ApifyClient({ token: config.apify.apiToken });
   }
 
   async scrapeInstagramPosts(
@@ -59,7 +58,7 @@ class ApifyService {
     };
 
     const run = await this.client
-      .actor(INSTAGRAM_SCRAPER_ACTOR)
+      .actor(APIFY_ACTORS.INSTAGRAM_SCRAPER)
       .call(input);
 
     const { items } = await this.client
@@ -94,7 +93,7 @@ class ApifyService {
     };
 
     const run = await this.client
-      .actor(INSTAGRAM_PROFILE_SCRAPER_ACTOR)
+      .actor(APIFY_ACTORS.INSTAGRAM_PROFILE_SCRAPER)
       .call(input);
 
     const { items } = await this.client
@@ -109,25 +108,7 @@ class ApifyService {
   }
 
   parseInstagramUsername(input: string): string {
-    let username = input.trim();
-
-    // Remove @ prefix
-    if (username.startsWith("@")) {
-      username = username.substring(1);
-    }
-
-    // Extract from URL
-    const urlMatch = username.match(
-      /(?:https?:\/\/)?(?:www\.)?instagram\.com\/([a-zA-Z0-9_.]+)/
-    );
-    if (urlMatch) {
-      username = urlMatch[1];
-    }
-
-    // Remove trailing slashes
-    username = username.replace(/\/$/, "");
-
-    return username;
+    return parseInstagramUsername(input);
   }
 
   normalizePostData(rawPost: any): InstagramPost {
@@ -175,7 +156,7 @@ class ApifyService {
     };
 
     const run = await this.client
-      .actor(TIKTOK_SCRAPER_ACTOR)
+      .actor(APIFY_ACTORS.TIKTOK_SCRAPER)
       .call(input);
 
     const { items } = await this.client
@@ -212,25 +193,7 @@ class ApifyService {
   }
 
   parseTikTokUsername(input: string): string {
-    let username = input.trim();
-
-    // Remove @ prefix
-    if (username.startsWith("@")) {
-      username = username.substring(1);
-    }
-
-    // Extract from URL: tiktok.com/@username
-    const urlMatch = username.match(
-      /(?:https?:\/\/)?(?:www\.)?tiktok\.com\/@([a-zA-Z0-9_.]+)/
-    );
-    if (urlMatch) {
-      username = urlMatch[1];
-    }
-
-    // Remove trailing slashes
-    username = username.replace(/\/$/, "");
-
-    return username;
+    return parseTikTokUsername(input);
   }
 
   // ── X (Twitter) ──
@@ -253,7 +216,7 @@ class ApifyService {
     };
 
     const postsRun = await this.client
-      .actor(X_POSTS_SCRAPER_ACTOR)
+      .actor(APIFY_ACTORS.X_POSTS_SCRAPER)
       .call(postsInput);
 
     const { items: tweetItems } = await this.client
@@ -282,7 +245,7 @@ class ApifyService {
         };
 
         const viewsRun = await this.client
-          .actor(X_VIEWS_SCRAPER_ACTOR)
+          .actor(APIFY_ACTORS.X_VIEWS_SCRAPER)
           .call(viewsInput);
 
         const { items: viewItems } = await this.client
@@ -308,25 +271,7 @@ class ApifyService {
   }
 
   parseXUsername(input: string): string {
-    let username = input.trim();
-
-    // Remove @ prefix
-    if (username.startsWith("@")) {
-      username = username.substring(1);
-    }
-
-    // Extract from URL: x.com/username or twitter.com/username
-    const urlMatch = username.match(
-      /(?:https?:\/\/)?(?:www\.)?(?:x\.com|twitter\.com)\/([a-zA-Z0-9_]+)/
-    );
-    if (urlMatch) {
-      username = urlMatch[1];
-    }
-
-    // Remove trailing slashes
-    username = username.replace(/\/$/, "");
-
-    return username;
+    return parseXUsername(input);
   }
 
   private normalizeXPostData(
@@ -337,11 +282,6 @@ class ApifyService {
     const hashtags = (rawPost.text || "")
       .match(/#[a-zA-Z0-9_]+/g)
       ?.map((h: string) => h.substring(1)) || [];
-
-    // Extract username from URL: https://x.com/username/status/...
-    const urlUsername = rawPost.url?.match(
-      /(?:x\.com|twitter\.com)\/([a-zA-Z0-9_]+)\//
-    );
 
     return {
       id: rawPost.id,
@@ -357,7 +297,7 @@ class ApifyService {
         ? new Date(rawPost.createdAt).toISOString()
         : "",
       type: rawPost.isRetweet ? "Retweet" : rawPost.isQuote ? "Quote" : "Tweet",
-      ownerUsername: urlUsername?.[1] || "",
+      ownerUsername: rawPost.url ? parseXUsername(rawPost.url) : "",
       ownerFullName: "",
       ownerId: "",
     };

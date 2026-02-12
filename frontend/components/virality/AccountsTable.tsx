@@ -20,6 +20,7 @@ import {
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { CompetitorWithAccounts, AccountPostStats, ViralityAccount } from "@/api/virality";
+import { formatNumber } from "@/lib/formatters";
 
 export type Platform = "tiktok" | "instagram" | "x";
 
@@ -54,13 +55,6 @@ export function AccountsTable({
   const [syncingId, setSyncingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const rowsPerPage = 10;
-
-  const formatNumber = (num: number) => {
-    const abs = Math.abs(num);
-    if (abs >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-    if (abs >= 1000) return `${(num / 1000).toFixed(1)}K`;
-    return num.toString();
-  };
 
   // Flatten competitors into individual account rows
   const flatAccounts = useMemo<FlatAccount[]>(() => {

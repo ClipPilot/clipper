@@ -174,6 +174,10 @@ resource "aws_ecs_task_definition" "backend" {
       {
         name      = "FAL_KEY"
         valueFrom = aws_secretsmanager_secret.fal_key.arn
+      },
+      {
+        name      = "APIFY_API_TOKEN"
+        valueFrom = aws_secretsmanager_secret.apify_api_token.arn
       }
     ]
 

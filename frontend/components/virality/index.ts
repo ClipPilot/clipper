@@ -7,3 +7,7 @@ export { PlatformFilter } from "./PlatformFilter";
 export { DateRangeFilter } from "./DateRangeFilter";
 export { DistributionCharts } from "./DistributionCharts";
 export { ComparisonModeSelector } from "./ComparisonModeSelector";
+export { AnalyticsChart } from "./AnalyticsChart";
+export { StatCards } from "./StatCards";
+export type { StatCardItem } from "./StatCards";
+export { PostsTable } from "./PostsTable";

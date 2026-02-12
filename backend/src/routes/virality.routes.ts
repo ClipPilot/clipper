@@ -1,19 +1,6 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth.middleware";
-import {
-  listAccountsController,
-  addAccountController,
-  getAccountController,
-  deleteAccountController,
-  syncAccountController,
-  getPostsController,
-  getDashboardController,
-  listCompetitorsController,
-  createCompetitorController,
-  getCompetitorController,
-  deleteCompetitorController,
-  updateCompetitorController,
-} from "../controllers/virality.controller";
+import { viralityController } from "../controllers/virality.controller";
 
 const router = Router();
 
@@ -38,7 +25,7 @@ const router = Router();
  *       403:
  *         description: Plan upgrade required
  */
-router.get("/:teamId/accounts", requireAuth, listAccountsController);
+router.get("/:teamId/accounts", requireAuth, (req, res) => viralityController.listAccounts(req, res));
 
 /**
  * @openapi
@@ -80,7 +67,7 @@ router.get("/:teamId/accounts", requireAuth, listAccountsController);
  *       409:
  *         description: Account already exists
  */
-router.post("/:teamId/accounts", requireAuth, addAccountController);
+router.post("/:teamId/accounts", requireAuth, (req, res) => viralityController.addAccount(req, res));
 
 /**
  * @openapi
@@ -108,7 +95,7 @@ router.post("/:teamId/accounts", requireAuth, addAccountController);
  *       404:
  *         description: Account not found
  */
-router.get("/:teamId/accounts/:accountId", requireAuth, getAccountController);
+router.get("/:teamId/accounts/:accountId", requireAuth, (req, res) => viralityController.getAccount(req, res));
 
 /**
  * @openapi
@@ -136,7 +123,7 @@ router.get("/:teamId/accounts/:accountId", requireAuth, getAccountController);
  *       404:
  *         description: Account not found
  */
-router.delete("/:teamId/accounts/:accountId", requireAuth, deleteAccountController);
+router.delete("/:teamId/accounts/:accountId", requireAuth, (req, res) => viralityController.deleteAccount(req, res));
 
 /**
  * @openapi
@@ -169,7 +156,7 @@ router.delete("/:teamId/accounts/:accountId", requireAuth, deleteAccountControll
  *       500:
  *         description: Sync failed
  */
-router.post("/:teamId/accounts/:accountId/sync", requireAuth, syncAccountController);
+router.post("/:teamId/accounts/:accountId/sync", requireAuth, (req, res) => viralityController.syncAccount(req, res));
 
 /**
  * @openapi
@@ -207,7 +194,7 @@ router.post("/:teamId/accounts/:accountId/sync", requireAuth, syncAccountControl
  *       404:
  *         description: Account not found
  */
-router.get("/:teamId/accounts/:accountId/posts", requireAuth, getPostsController);
+router.get("/:teamId/accounts/:accountId/posts", requireAuth, (req, res) => viralityController.getPosts(req, res));
 
 /**
  * @openapi
@@ -230,14 +217,168 @@ router.get("/:teamId/accounts/:accountId/posts", requireAuth, getPostsController
  *       403:
  *         description: Plan upgrade required
  */
-router.get("/:teamId/dashboard", requireAuth, getDashboardController);
+router.get("/:teamId/dashboard", requireAuth, (req, res) => viralityController.getDashboard(req, res));
 
 // ── Competitor routes ──
 
-router.get("/:teamId/competitors", requireAuth, listCompetitorsController);
-router.post("/:teamId/competitors", requireAuth, createCompetitorController);
-router.patch("/:teamId/competitors/:competitorId", requireAuth, updateCompetitorController);
-router.get("/:teamId/competitors/:competitorId", requireAuth, getCompetitorController);
-router.delete("/:teamId/competitors/:competitorId", requireAuth, deleteCompetitorController);
+/**
+ * @openapi
+ * /virality/{teamId}/competitors:
+ *   get:
+ *     summary: List all competitors for a team
+ *     tags:
+ *       - Virality
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: List of competitors
+ *       403:
+ *         description: Plan upgrade required
+ */
+router.get("/:teamId/competitors", requireAuth, (req, res) => viralityController.listCompetitors(req, res));
+
+/**
+ * @openapi
+ * /virality/{teamId}/competitors:
+ *   post:
+ *     summary: Create a new competitor
+ *     tags:
+ *       - Virality
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Competitor created
+ *       400:
+ *         description: Invalid input (name is required)
+ *       403:
+ *         description: Plan upgrade required
+ */
+router.post("/:teamId/competitors", requireAuth, (req, res) => viralityController.createCompetitor(req, res));
+
+/**
+ * @openapi
+ * /virality/{teamId}/competitors/{competitorId}:
+ *   patch:
+ *     summary: Update a competitor
+ *     tags:
+ *       - Virality
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: competitorId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Competitor updated
+ *       400:
+ *         description: Invalid input (name cannot be empty)
+ *       403:
+ *         description: Plan upgrade required
+ *       404:
+ *         description: Competitor not found
+ */
+router.patch("/:teamId/competitors/:competitorId", requireAuth, (req, res) => viralityController.updateCompetitor(req, res));
+
+/**
+ * @openapi
+ * /virality/{teamId}/competitors/{competitorId}:
+ *   get:
+ *     summary: Get a competitor with its accounts
+ *     tags:
+ *       - Virality
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: competitorId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Competitor details with nested accounts
+ *       404:
+ *         description: Competitor not found
+ */
+router.get("/:teamId/competitors/:competitorId", requireAuth, (req, res) => viralityController.getCompetitor(req, res));
+
+/**
+ * @openapi
+ * /virality/{teamId}/competitors/{competitorId}:
+ *   delete:
+ *     summary: Delete a competitor
+ *     tags:
+ *       - Virality
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: competitorId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Competitor deleted
+ *       404:
+ *         description: Competitor not found
+ */
+router.delete("/:teamId/competitors/:competitorId", requireAuth, (req, res) => viralityController.deleteCompetitor(req, res));
 
 export default router;
