@@ -49,7 +49,8 @@ resource "aws_iam_role_policy" "ecs_execution_secrets" {
         aws_secretsmanager_secret.admin_jwt_secret.arn,
         aws_secretsmanager_secret.sync_key.arn,
         aws_secretsmanager_secret.elevenlabs_api_key.arn,
-        aws_secretsmanager_secret.fal_key.arn
+        aws_secretsmanager_secret.fal_key.arn,
+        aws_secretsmanager_secret.apify_api_token.arn
       ]
     }]
   })
