@@ -230,6 +230,7 @@ function CreateAdPageContent() {
             teamId={teamId}
             selectedCharacter={selectedCharacter}
             onContinue={handleNext}
+            autoAdvance
           />
         )}
 

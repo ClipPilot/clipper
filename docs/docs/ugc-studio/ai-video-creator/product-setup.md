@@ -4,20 +4,20 @@ sidebar_position: 2
 
 # Product Setup
 
-📌 **What You'll Learn:**
+**What You'll Learn:**
 - Upload product images effectively
 - Write compelling descriptions
 - Set up for best results
 
 ---
 
-## 🎯 Overview
+## Overview
 
 Product setup is the foundation of your AI video. Better inputs = better outputs.
 
 ---
 
-## 📸 Product Images
+## Product Images
 
 ### What to Upload
 
@@ -39,13 +39,13 @@ Product setup is the foundation of your AI video. Better inputs = better outputs
 
 ### Tips for Better Images
 
-✅ **Do:**
+**Do:**
 - Use good lighting
 - Show product clearly
 - Include different angles
 - Keep backgrounds clean
 
-❌ **Don't:**
+**Don't:**
 - Use blurry photos
 - Include text/watermarks
 - Mix multiple products
@@ -53,7 +53,7 @@ Product setup is the foundation of your AI video. Better inputs = better outputs
 
 ---
 
-## 📝 Product Description
+## Product Description
 
 ### What to Include
 
@@ -84,7 +84,7 @@ Unique: Triple-action formula that brightens, firms, and hydrates.
 
 ---
 
-## 💡 Pro Tips
+## Pro Tips
 
 1. **More context = better script** - Don't be brief
 2. **Include benefits, not just features**
@@ -93,7 +93,7 @@ Unique: Triple-action formula that brightens, firms, and hydrates.
 
 ---
 
-## 👉 Next Steps
+## Next Steps
 
 - [Generate your script](/ugc-studio/ai-video-creator/script-generation)
 - [Select voice and generate](/ugc-studio/ai-video-creator/video-generation)

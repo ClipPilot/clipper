@@ -4,20 +4,20 @@ sidebar_position: 3
 
 # Script Generation
 
-📌 **What You'll Learn:**
+**What You'll Learn:**
 - How AI writes your script
 - Script structure and scene types
 - Editing and customization
 
 ---
 
-## 🎯 Overview
+## Overview
 
 The AI writes a complete UGC script based on your product info. It creates a structured narrative designed for social media engagement.
 
 ---
 
-## 📝 Script Structure
+## Script Structure
 
 ### Scene Types
 
@@ -40,7 +40,7 @@ The AI writes a complete UGC script based on your product info. It creates a str
 
 ---
 
-## ✏️ Reviewing the Script
+## Reviewing the Script
 
 ### What You'll See
 
@@ -58,13 +58,13 @@ For each scene:
 
 ### What to Look For
 
-✅ Check for:
+Check for:
 - Natural-sounding dialogue
 - Accurate product claims
 - Good flow between scenes
 - Appropriate length
 
-❌ Watch out for:
+Watch out for:
 - Generic or vague language
 - Inaccurate information
 - Too long or too short
@@ -72,7 +72,7 @@ For each scene:
 
 ---
 
-## 🔄 Regenerating
+## Regenerating
 
 Not happy with the script?
 
@@ -84,7 +84,7 @@ You can also regenerate individual scenes.
 
 ---
 
-## 💡 Pro Tips
+## Pro Tips
 
 1. **Edit before generating** - Saves credits and time
 2. **Keep hooks punchy** - First 2 seconds matter most
@@ -93,6 +93,6 @@ You can also regenerate individual scenes.
 
 ---
 
-## 👉 Next Steps
+## Next Steps
 
 - [Generate your video](/ugc-studio/ai-video-creator/video-generation)

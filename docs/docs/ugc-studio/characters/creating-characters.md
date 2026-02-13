@@ -4,20 +4,20 @@ sidebar_position: 1
 
 # Creating Characters
 
-📌 **What You'll Learn:**
+**What You'll Learn:**
 - Design AI characters step-by-step
 - Customize appearance and style
 - Select the best generated images
 
 ---
 
-## 🎯 Overview
+## Overview
 
 AI Characters are the actors for your UGC content. Create realistic characters with customized appearance, outfits, and settings.
 
 ---
 
-## 📝 Creation Steps
+## Creation Steps
 
 ### Step 1: Basic Info
 
@@ -63,7 +63,7 @@ Set the look and environment:
 
 ---
 
-## 💎 Credits
+## Credits
 
 - **Cost:** 1 credit per character generation
 - Selecting images doesn't cost extra
@@ -71,7 +71,7 @@ Set the look and environment:
 
 ---
 
-## 💡 Pro Tips
+## Pro Tips
 
 1. **Be specific** - Clear descriptions = better results
 2. **Generate variations** - Create multiple versions
@@ -80,7 +80,7 @@ Set the look and environment:
 
 ---
 
-## ❓ FAQ
+## FAQ
 
 **Q: Can I edit a character after creation?**
 A: You can create variations but can't edit existing images.
@@ -93,7 +93,7 @@ A: No, characters are AI-generated. Use Face Swap for real faces.
 
 ---
 
-## 👉 Next Steps
+## Next Steps
 
 - [Manage your characters](/ugc-studio/characters/managing-characters)
 - [Use characters in Face Swap](/ugc-studio/face-swap/overview)

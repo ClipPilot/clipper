@@ -75,6 +75,7 @@ export function AdCloneStoryboardStep({
   const [loading, setLoading] = useState(true);
   const [generatingAll, setGeneratingAll] = useState(false);
   const [selectedSceneId, setSelectedSceneId] = useState<string | null>(null);
+  const [isSavingBRoll, setIsSavingBRoll] = useState(false);
 
   const currentScript = scripts?.[selectedVariantIndex];
   const scenes: UGCScene[] = currentScript?.scenes || [];
@@ -402,6 +403,78 @@ export function AdCloneStoryboardStep({
     }
   };
 
+  const handleAddScene = async (afterIndex: number) => {
+    const newScene: UGCScene = {
+      id: crypto.randomUUID(),
+      sceneNumber: afterIndex + 2,
+      sceneType: "demo",
+      action: "Speaking to camera",
+      dialogue: "Add your dialogue here...",
+      emotion: "friendly",
+      estimatedDurationSeconds: 5,
+      shotType: "a-roll",
+      cameraAngle: "pov-selfie",
+    };
+
+    let updatedScenes: UGCScene[] = [];
+    setScripts((prev) =>
+      (prev || []).map((script: any, i: number) => {
+        if (i !== selectedVariantIndex) return script;
+        const newScenes = [...script.scenes];
+        newScenes.splice(afterIndex + 1, 0, newScene);
+        updatedScenes = newScenes.map((scene: UGCScene, idx: number) => ({
+          ...scene,
+          sceneNumber: idx + 1,
+        }));
+        return { ...script, scenes: updatedScenes };
+      })
+    );
+
+    setSelectedSceneId(newScene.id);
+
+    try {
+      const updatedScript = { ...currentScript, scenes: updatedScenes };
+      await adCloneAPI.updateScript(scriptId, { script: updatedScript });
+    } catch (error) {
+      console.error("Failed to persist new scene:", error);
+    }
+  };
+
+  const handleRemoveScene = async (sceneId: string) => {
+    if (scenes.length <= 3) return;
+
+    let updatedScenes: UGCScene[] = [];
+    setScripts((prev) =>
+      (prev || []).map((script: any, i: number) => {
+        if (i !== selectedVariantIndex) return script;
+        updatedScenes = script.scenes
+          .filter((s: UGCScene) => s.id !== sceneId)
+          .map((scene: UGCScene, idx: number) => ({ ...scene, sceneNumber: idx + 1 }));
+        return { ...script, scenes: updatedScenes };
+      })
+    );
+
+    // Clean up scene images for the removed scene
+    setSceneImages((prev) => {
+      const { [sceneId]: _, ...rest } = prev;
+      return rest;
+    });
+
+    // If removed scene was selected, select nearest
+    if (selectedSceneId === sceneId) {
+      const removedIndex = scenes.findIndex((s) => s.id === sceneId);
+      const nextScene = scenes[removedIndex + 1] || scenes[removedIndex - 1];
+      setSelectedSceneId(nextScene?.id || null);
+    }
+
+    try {
+      const updatedScript = { ...currentScript, scenes: updatedScenes };
+      await adCloneAPI.updateScript(scriptId, { script: updatedScript });
+    } catch (error) {
+      console.error("Failed to persist scene removal:", error);
+    }
+  };
+
   const handleGenerateAll = async () => {
     if (scenes.length === 0 || !characterId) return;
 
@@ -614,7 +687,7 @@ export function AdCloneStoryboardStep({
         </div>
 
         <div className="overflow-x-auto py-2 -mx-2 px-4">
-          <div className="flex items-stretch gap-4 min-w-min">
+          <div className="flex items-center gap-2 min-w-min">
             {scenes.map((scene, index) => {
               const sceneState = sceneImages[scene.id] || { status: "idle" as const };
               const isSelected = selectedSceneId === scene.id;
@@ -632,7 +705,7 @@ export function AdCloneStoryboardStep({
                 sceneState.generatedImages?.[0]?.url || sceneState.imageUrl;
 
               return (
-                <div key={scene.id} className="flex items-center gap-3">
+                <div key={scene.id} className="flex items-center gap-2">
                   <StoryboardThumbnail
                     scene={scene}
                     sceneConfig={sceneConfig}
@@ -642,16 +715,21 @@ export function AdCloneStoryboardStep({
                     hasImage={hasImage}
                     progress={undefined}
                     onClick={() => setSelectedSceneId(scene.id)}
+                    onRemove={scenes.length > 3 ? () => handleRemoveScene(scene.id) : undefined}
                   />
+                  {/* Add scene button */}
+                  <button
+                    onClick={() => handleAddScene(index)}
+                    className="w-5 h-5 rounded-full border border-dashed border-border-base text-text-muted
+                      hover:bg-accent-400/20 hover:text-accent-400 hover:border-accent-400
+                      transition-all shrink-0 flex items-center justify-center"
+                    title="Add scene"
+                  >
+                    <Icon icon="solar:add-circle-linear" width={12} />
+                  </button>
+                  {/* Connector line between scenes */}
                   {index < scenes.length - 1 && (
-                    <div className="flex items-center">
-                      <div className="w-6 h-0.5 bg-border-base" />
-                      <Icon
-                        icon="solar:alt-arrow-right-linear"
-                        className="text-text-muted"
-                        width={12}
-                      />
-                    </div>
+                    <div className="w-4 h-0.5 bg-border-base shrink-0" />
                   )}
                 </div>
               );
@@ -728,10 +806,18 @@ export function AdCloneStoryboardStep({
               }
               customBRollImages={sceneState.customBRollImages}
               onSceneUpdate={handleSceneUpdate}
+              onSavingStateChange={setIsSavingBRoll}
               onCustomBRollImageChange={(shotIndex, key, url) =>
                 handleCustomBRollImageChange(scene.id, shotIndex, key, url)
               }
               isStoryboardMode={true}
+              onRegenerateBRollPrompt={async (params) => {
+                await adCloneAPI.regenerateBRollPrompt(scriptId, params);
+              }}
+              onRegenerateAllBRollShots={async (params) => {
+                const result = await adCloneAPI.regenerateAllBRollShots(scriptId, params);
+                return { bRollShots: result.bRollShots };
+              }}
             />
           );
         })()}

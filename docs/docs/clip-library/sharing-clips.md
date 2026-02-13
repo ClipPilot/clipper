@@ -4,20 +4,20 @@ sidebar_position: 4
 
 # Sharing Clips
 
-📌 **What You'll Learn:**
+**What You'll Learn:**
 - Generate public share links
 - Download clips for posting
 - Share with team members
 
 ---
 
-## 🎯 Overview
+## Overview
 
 Cuttr makes it easy to share your clips with clients, team members, or directly to social media.
 
 ---
 
-## 🔗 Share Links
+## Share Links
 
 ### Generate a Public Link
 
@@ -43,7 +43,7 @@ Cuttr makes it easy to share your clips with clients, team members, or directly 
 
 ---
 
-## ⬇️ Downloading
+## Downloading
 
 ### Download Formats
 
@@ -61,7 +61,7 @@ Cuttr makes it easy to share your clips with clients, team members, or directly 
 
 ---
 
-## 👥 Team Sharing
+## Team Sharing
 
 If you're on a team plan:
 
@@ -71,7 +71,7 @@ If you're on a team plan:
 
 ---
 
-## 💡 Pro Tips
+## Pro Tips
 
 1. **Use links for client review** - Easy approval workflow
 2. **Download for posting** - Direct upload to platforms
@@ -80,7 +80,7 @@ If you're on a team plan:
 
 ---
 
-## 👉 Next Steps
+## Next Steps
 
 - [Explore UGC Studio](/ugc-studio/overview)
 - [Set up your team](/team-features/creating-teams)
