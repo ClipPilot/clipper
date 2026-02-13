@@ -32,7 +32,7 @@ class VoiceCloneController {
       const { voiceId } = await elevenLabsService.cloneVoice(name, audioFile.buffer, audioFile.mimetype);
 
       // Brief delay to let ElevenLabs provision the cloned voice for TTS
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 5000));
 
       // Generate preview audio with the cloned voice
       const previewBuffer = await elevenLabsService.generateClonePreview(voiceId);
