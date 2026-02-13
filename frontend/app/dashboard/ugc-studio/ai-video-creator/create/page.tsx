@@ -243,7 +243,7 @@ function CreateAdPageContent() {
           />
         )}
 
-        {currentStep === "audio" && <AudioStep onContinue={handleNext} />}
+        {currentStep === "audio" && <AudioStep onContinue={handleNext} teamId={teamId ?? undefined} />}
 
         {currentStep === "generate" && scriptId && teamId && (
           <GenerateVideoStep

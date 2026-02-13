@@ -26,23 +26,34 @@ export function VoiceCard({
       onClick={onSelect}
       className={`relative w-full text-left p-3 rounded-xl border-2 transition-all overflow-hidden ${
         isSelected
-          ? "border-accent-400 bg-accent-400/10"
-          : "border-border-base bg-surface-base hover:border-accent-400/50"
+          ? voice.isCloned
+            ? "border-purple-500 bg-purple-500/10"
+            : "border-accent-400 bg-accent-400/10"
+          : voice.isCloned
+            ? "border-purple-500/30 bg-purple-500/5 hover:border-purple-500/60"
+            : "border-border-base bg-surface-base hover:border-accent-400/50"
       }`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <span className="font-medium text-text-primary truncate">{voice.name}</span>
+            {voice.isCloned && (
+              <Chip size="sm" className="bg-purple-500/20 text-purple-400">
+                Cloned
+              </Chip>
+            )}
             <Chip
               size="sm"
               className={
                 voice.gender === "male"
                   ? "bg-blue-500/20 text-blue-500"
-                  : "bg-pink-500/20 text-pink-500"
+                  : voice.gender === "female"
+                    ? "bg-pink-500/20 text-pink-500"
+                    : "bg-gray-500/20 text-gray-400"
               }
             >
-              {voice.gender === "male" ? "M" : "F"}
+              {voice.gender === "male" ? "M" : voice.gender === "female" ? "F" : "O"}
             </Chip>
           </div>
           <p className="text-xs text-text-tertiary line-clamp-2">{voice.description}</p>

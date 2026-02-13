@@ -598,6 +598,17 @@ class S3Service {
     };
   }
 
+  async uploadVoiceSample(
+    buffer: Buffer,
+    teamId: number,
+    voiceId: string
+  ): Promise<string> {
+    const key = `voice-clones/${teamId}/${voiceId}/sample_${Date.now()}.mp3`;
+    await this.uploadBuffer(buffer, key, "audio/mpeg");
+    console.log(`[S3] Uploaded voice sample: ${key} (${(buffer.length / 1024).toFixed(1)}KB)`);
+    return key;
+  }
+
   async getAdCloneUploadUrls(
     teamId: number,
     projectId: string,
