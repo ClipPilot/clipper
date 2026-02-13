@@ -29,6 +29,10 @@ import {
 } from "@/components/virality/ComparisonModeSelector";
 import { StatCards, type StatCardItem } from "@/components/virality/StatCards";
 import { PostsTable } from "@/components/virality/PostsTable";
+import { AnalyticsChart } from "@/components/virality/AnalyticsChart";
+import { PostFrequencyChart } from "@/components/virality/PostFrequencyChart";
+import { AccountBreakdownChart } from "@/components/virality/AccountBreakdownChart";
+import { BestPerformingAccounts } from "@/components/virality/BestPerformingAccounts";
 import { findClosestEntry, getComparisonDate } from "./utils";
 
 // ─── Page Component ──────────────────────────────────────────────────────────
@@ -130,6 +134,14 @@ export default function CompetitorDetailPage() {
     );
   }, [activeAccounts, postsByAccount]);
 
+  const activePostsByAccount = useMemo(() => {
+    const map: Record<number, ViralityPost[]> = {};
+    for (const a of activeAccounts) {
+      map[a.id] = postsByAccount[a.id] || [];
+    }
+    return map;
+  }, [activeAccounts, postsByAccount]);
+
   const accountPlatformMap = useMemo(() => {
     const map: Record<number, string> = {};
     if (competitor) for (const a of competitor.accounts) map[a.id] = a.platform;
@@ -186,14 +198,38 @@ export default function CompetitorDetailPage() {
       latestFollowers += latestF.followers;
     }
 
+    const totalEngagements = totalLikes + totalComments;
+    const engagementRate = totalViews > 0 ? (totalEngagements / totalViews) * 100 : 0;
+
+    const prevEngagements = prevLikes + prevComments;
+    const latestEngagements = latestLikes + latestComments;
+    const engagementsChange = hasHistory ? pct(latestEngagements, prevEngagements) : null;
+
+    const prevEngRate = prevViews > 0 ? (prevEngagements / prevViews) * 100 : 0;
+    const latestEngRate = latestViews > 0 ? (latestEngagements / latestViews) * 100 : 0;
+    const engRateChange = hasHistory && prevEngRate > 0 ? pct(latestEngRate, prevEngRate) : null;
+
     return {
       followers, totalLikes, totalComments, totalViews,
+      totalEngagements, engagementsChange, engagementRate, engRateChange,
       followersChange: hasFollowerHistory ? pct(latestFollowers, prevFollowers) : null,
       likesChange: hasHistory ? pct(latestLikes, prevLikes) : null,
       commentsChange: hasHistory ? pct(latestComments, prevComments) : null,
       viewsChange: hasHistory ? pct(latestViews, prevViews) : null,
     };
   }, [activeAccounts, activePosts, comparisonMode]);
+
+  const contentVelocity = useMemo(() => {
+    if (activePosts.length < 2) return { value: activePosts.length, label: "posts/week" };
+    const dates = activePosts
+      .map((p) => p.posted_at ? new Date(p.posted_at).getTime() : 0)
+      .filter((t) => t > 0);
+    if (dates.length < 2) return { value: activePosts.length, label: "posts/week" };
+    const earliest = Math.min(...dates);
+    const latest = Math.max(...dates);
+    const weeks = Math.max((latest - earliest) / (7 * 24 * 60 * 60 * 1000), 1);
+    return { value: +(dates.length / weeks).toFixed(1), label: "posts/week" };
+  }, [activePosts]);
 
   // ─── Loading / Error states ──────────────────────────────────────────────────
 
@@ -221,14 +257,6 @@ export default function CompetitorDetailPage() {
 
   const statCards: StatCardItem[] = [
     {
-      title: "FOLLOWERS",
-      value: formatNumber(stats.followers),
-      icon: "solar:users-group-rounded-bold",
-      iconColor: "text-accent-400",
-      iconBg: "bg-accent-400/10",
-      change: stats.followersChange,
-    },
-    {
       title: "TOTAL VIEWS",
       value: formatNumber(stats.totalViews),
       icon: "solar:eye-bold",
@@ -238,28 +266,47 @@ export default function CompetitorDetailPage() {
       tooltip: "Only counts views on video posts (Reels)",
     },
     {
-      title: "AVG VIEWS / POST",
-      value: formatNumber(activePosts.length > 0 ? Math.round(stats.totalViews / activePosts.length) : 0),
-      icon: "solar:chart-2-bold",
+      title: "TOTAL ENGAGEMENTS",
+      value: formatNumber(stats.totalEngagements),
+      icon: "solar:heart-bold",
+      iconColor: "text-red-500",
+      iconBg: "bg-red-500/10",
+      change: stats.engagementsChange,
+      tooltip: "Sum of likes and comments",
+    },
+    {
+      title: "TOTAL POSTS",
+      value: formatNumber(activePosts.length),
+      icon: "solar:document-bold",
       iconColor: "text-emerald-500",
       iconBg: "bg-emerald-500/10",
       change: null,
     },
     {
-      title: "TOTAL LIKES",
-      value: formatNumber(stats.totalLikes),
-      icon: "solar:heart-bold",
-      iconColor: "text-red-500",
-      iconBg: "bg-red-500/10",
-      change: stats.likesChange,
+      title: "FOLLOWERS",
+      value: formatNumber(stats.followers),
+      icon: "solar:users-group-rounded-bold",
+      iconColor: "text-accent-400",
+      iconBg: "bg-accent-400/10",
+      change: stats.followersChange,
     },
     {
-      title: "TOTAL COMMENTS",
-      value: formatNumber(stats.totalComments),
-      icon: "solar:chat-round-dots-bold",
+      title: "AVG ENG RATE",
+      value: stats.engagementRate.toFixed(2) + "%",
+      icon: "solar:chart-2-bold",
       iconColor: "text-amber-500",
       iconBg: "bg-amber-500/10",
-      change: stats.commentsChange,
+      change: stats.engRateChange,
+      tooltip: "(Likes + Comments) / Views x 100",
+    },
+    {
+      title: "CONTENT VELOCITY",
+      value: String(contentVelocity.value),
+      icon: "solar:rocket-2-bold",
+      iconColor: "text-purple-500",
+      iconBg: "bg-purple-500/10",
+      change: null,
+      tooltip: "Average posts per week based on post date range",
     },
   ];
 
@@ -377,10 +424,36 @@ export default function CompetitorDetailPage() {
         {/* Stats Cards */}
         <StatCards items={statCards} />
 
-        {/* Analytics Chart (currently disabled) */}
-        {/* <AnalyticsChart posts={activePosts} /> */}
+        {/* Performance Over Time + Account Breakdown */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
+          <div className="lg:col-span-2">
+            <AnalyticsChart
+              accounts={activeAccounts}
+              postsByAccount={activePostsByAccount}
+            />
+          </div>
+          <div className="lg:col-span-1">
+            <AccountBreakdownChart
+              accounts={activeAccounts}
+              postsByAccount={activePostsByAccount}
+            />
+          </div>
+        </div>
 
-        {/* Posts Table */}
+        {/* Post Frequency + Best Performing Accounts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <PostFrequencyChart
+            posts={activePosts}
+            startDate={dateRange.startDate}
+            endDate={dateRange.endDate}
+          />
+          <BestPerformingAccounts
+            accounts={activeAccounts}
+            postsByAccount={postsByAccount}
+          />
+        </div>
+
+        {/* Top Performing Content Table */}
         <PostsTable
           key={activeAccountId + (dateRange.startDate || "") + (dateRange.endDate || "")}
           posts={activePosts}

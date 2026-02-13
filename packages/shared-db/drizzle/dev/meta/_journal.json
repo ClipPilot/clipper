@@ -127,6 +127,48 @@
       "when": 1770837277264,
       "tag": "0017_cynical_stranger",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1770530722121,
+      "tag": "0018_lumpy_human_torch",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1770579021981,
+      "tag": "0019_handy_revanche",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1770781299951,
+      "tag": "0020_rainy_switch",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1770787127100,
+      "tag": "0021_overconfident_zombie",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1770921946420,
+      "tag": "0022_aspiring_black_tarantula",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1770922998776,
+      "tag": "0023_legal_doctor_faustus",
+      "breakpoints": true
     }
   ]
 }

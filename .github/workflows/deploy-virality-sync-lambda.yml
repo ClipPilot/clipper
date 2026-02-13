@@ -1,10 +1,9 @@
-name: Deploy Virality Sync Lambda
+name: Deploy Virality Sync Lambda (Production)
 
 on:
   push:
     branches:
       - main
-      - staging
     paths:
       - "lambda-virality-sync/**"
       - "packages/shared-db/**"
@@ -14,11 +13,11 @@ on:
 env:
   AWS_REGION: us-west-2
   ECR_REPOSITORY: clipster-virality-sync-lambda
-  LAMBDA_FUNCTION: clipster-virality-sync
+  LAMBDA_FUNCTION: clipster-virality-sync-prod
 
 jobs:
   deploy:
-    name: Deploy Virality Sync Lambda
+    name: Deploy Virality Sync Lambda (Production)
     runs-on: ubuntu-latest
     environment: production
 
@@ -43,7 +42,7 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f lambda-virality-sync/Dockerfile .
+          docker build --provenance=false -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f lambda-virality-sync/Dockerfile .
           docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
@@ -62,6 +61,6 @@ jobs:
 
       - name: Verify deployment
         run: |
-          echo "Virality Sync Lambda deployment completed!"
+          echo "Virality Sync Lambda (Production) deployment completed!"
           echo "Function: ${{ env.LAMBDA_FUNCTION }}"
           echo "Image: ${{ steps.build-image.outputs.image }}"

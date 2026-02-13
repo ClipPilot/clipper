@@ -50,6 +50,48 @@ export function getComparisonDate(mode: ComparisonMode): Date | null {
   }
 }
 
+export interface PostFrequencyDay {
+  date: string;
+  count: number;
+}
+
+/** Group posts by posted_at date and count per day, filling gaps with 0 */
+export function buildPostFrequencyData(
+  posts: ViralityPost[],
+  weekFilter: number
+): PostFrequencyDay[] {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - weekFilter * 7);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+
+  const byDate = new Map<string, number>();
+
+  for (const post of posts) {
+    if (!post.posted_at) continue;
+    const day = post.posted_at.slice(0, 10);
+    if (day < cutoffStr) continue;
+    byDate.set(day, (byDate.get(day) || 0) + 1);
+  }
+
+  // Fill gaps between cutoff and today
+  const result: PostFrequencyDay[] = [];
+  const current = new Date(cutoff);
+  current.setDate(current.getDate() + 1);
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+
+  while (current <= today) {
+    const dayStr = current.toISOString().slice(0, 10);
+    result.push({
+      date: new Date(dayStr).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      count: byDate.get(dayStr) || 0,
+    });
+    current.setDate(current.getDate() + 1);
+  }
+
+  return result;
+}
+
 export interface AggregatedDay {
   date: string;
   likes: number;
@@ -87,4 +129,121 @@ export function buildChartData(
       date: new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
       ...vals,
     }));
+}
+
+export interface AccountChartDay {
+  date: string;
+  [key: string]: string | number;
+}
+
+/** Build chart data with a separate series per account for the given metric */
+export function buildChartDataByAccount(
+  postsByAccount: Record<number, ViralityPost[]>,
+  accountIds: number[],
+  weekFilter: number,
+  metric: "likes" | "comments" | "views"
+): AccountChartDay[] {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - weekFilter * 7);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+
+  const allDates = new Set<string>();
+  const byAccountDate = new Map<number, Map<string, number>>();
+
+  for (const accountId of accountIds) {
+    const posts = postsByAccount[accountId] || [];
+    const dateMap = new Map<string, number>();
+
+    for (const post of posts) {
+      if (!post.metrics_history?.length) continue;
+      for (const entry of post.metrics_history) {
+        const day = entry.recorded_at.slice(0, 10);
+        if (day < cutoffStr) continue;
+        allDates.add(day);
+        const val = metric === "views" ? (entry.views ?? 0) : entry[metric];
+        dateMap.set(day, (dateMap.get(day) || 0) + val);
+      }
+    }
+
+    byAccountDate.set(accountId, dateMap);
+  }
+
+  return Array.from(allDates)
+    .sort()
+    .map((day) => {
+      const point: AccountChartDay = {
+        date: new Date(day).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      };
+      for (const accountId of accountIds) {
+        point[`account_${accountId}`] = byAccountDate.get(accountId)?.get(day) || 0;
+      }
+      return point;
+    });
+}
+
+/** Build post frequency data using the page-level date range (supports hourly for single-day) */
+export function buildPostFrequencyDataFromRange(
+  posts: ViralityPost[],
+  startDate?: string,
+  endDate?: string
+): { data: PostFrequencyDay[]; isHourly: boolean } {
+  const now = new Date();
+  const start = startDate ? new Date(startDate) : new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000);
+  const end = endDate ? new Date(endDate) : now;
+
+  const diffMs = end.getTime() - start.getTime();
+  const diffDays = diffMs / (24 * 60 * 60 * 1000);
+  const isHourly = diffDays <= 1;
+
+  if (isHourly) {
+    // Group by hour
+    const byHour = new Map<string, number>();
+    for (const post of posts) {
+      if (!post.posted_at) continue;
+      const d = new Date(post.posted_at);
+      if (d < start || d > end) continue;
+      const hourKey = `${d.toISOString().slice(0, 13)}:00`;
+      byHour.set(hourKey, (byHour.get(hourKey) || 0) + 1);
+    }
+
+    const result: PostFrequencyDay[] = [];
+    const cursor = new Date(start);
+    cursor.setMinutes(0, 0, 0);
+    while (cursor <= end) {
+      const key = `${cursor.toISOString().slice(0, 13)}:00`;
+      result.push({
+        date: cursor.toLocaleTimeString("en-US", { hour: "numeric", hour12: true }),
+        count: byHour.get(key) || 0,
+      });
+      cursor.setHours(cursor.getHours() + 1);
+    }
+    return { data: result, isHourly: true };
+  }
+
+  // Group by day
+  const startStr = start.toISOString().slice(0, 10);
+  const byDate = new Map<string, number>();
+  for (const post of posts) {
+    if (!post.posted_at) continue;
+    const day = post.posted_at.slice(0, 10);
+    if (day < startStr) continue;
+    byDate.set(day, (byDate.get(day) || 0) + 1);
+  }
+
+  const result: PostFrequencyDay[] = [];
+  const cursor = new Date(start);
+  cursor.setDate(cursor.getDate() + 1);
+  const endDay = new Date(end);
+  endDay.setHours(23, 59, 59, 999);
+
+  while (cursor <= endDay) {
+    const dayStr = cursor.toISOString().slice(0, 10);
+    result.push({
+      date: new Date(dayStr).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      count: byDate.get(dayStr) || 0,
+    });
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return { data: result, isHourly: false };
 }

@@ -11,3 +11,7 @@ export { AnalyticsChart } from "./AnalyticsChart";
 export { StatCards } from "./StatCards";
 export type { StatCardItem } from "./StatCards";
 export { PostsTable } from "./PostsTable";
+export { PostFrequencyChart } from "./PostFrequencyChart";
+export { PlatformBreakdownChart } from "./PlatformBreakdownChart";
+export { AccountBreakdownChart } from "./AccountBreakdownChart";
+export { BestPerformingAccounts } from "./BestPerformingAccounts";

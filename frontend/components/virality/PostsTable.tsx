@@ -21,7 +21,7 @@ import { getPostMetricChange } from "@/app/dashboard/virality/[competitorId]/uti
 interface PostsTableProps {
   posts: ViralityPost[];
   accountPlatformMap: Record<number, string>;
-  accountSyncMap: Record<number, string | null>;
+  accountSyncMap?: Record<number, string | null>;
 }
 
 function MetricChangeIndicator({ change }: { change: number | null }) {
@@ -40,7 +40,7 @@ function getPlatformIcon(platform: string): string {
   return "mdi:instagram";
 }
 
-export function PostsTable({ posts, accountPlatformMap, accountSyncMap }: PostsTableProps) {
+export function PostsTable({ posts, accountPlatformMap }: PostsTableProps) {
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(25);
 
@@ -77,11 +77,13 @@ export function PostsTable({ posts, accountPlatformMap, accountSyncMap }: PostsT
       >
         <TableHeader>
           <TableColumn>POST</TableColumn>
-          <TableColumn>POSTED</TableColumn>
+          <TableColumn>PLATFORM</TableColumn>
           <TableColumn>VIEWS</TableColumn>
+          <TableColumn>ENG RATE</TableColumn>
           <TableColumn>LIKES</TableColumn>
           <TableColumn>COMMENTS</TableColumn>
-          <TableColumn>LAST SYNCED</TableColumn>
+          <TableColumn>TYPE</TableColumn>
+          <TableColumn>PUBLISHED</TableColumn>
         </TableHeader>
         <TableBody>
           {paginatedPosts.map((post) => (
@@ -117,9 +119,22 @@ export function PostsTable({ posts, accountPlatformMap, accountSyncMap }: PostsT
                 </div>
               </TableCell>
               <TableCell>
-                <span className="text-sm text-text-secondary">
-                  {post.posted_at ? formatDate(post.posted_at) : "—"}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <Icon
+                    icon={getPlatformIcon(accountPlatformMap[post.account_id])}
+                    width={16}
+                    className={
+                      accountPlatformMap[post.account_id] === "tiktok"
+                        ? "text-cyan-400"
+                        : accountPlatformMap[post.account_id] === "x"
+                          ? "text-foreground"
+                          : "text-pink-500"
+                    }
+                  />
+                  <span className="text-xs text-text-secondary capitalize">
+                    {accountPlatformMap[post.account_id] || "—"}
+                  </span>
+                </div>
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-1.5">
@@ -130,6 +145,13 @@ export function PostsTable({ posts, accountPlatformMap, accountSyncMap }: PostsT
                   </span>
                   <MetricChangeIndicator change={getPostMetricChange(post, "views")} />
                 </div>
+              </TableCell>
+              <TableCell>
+                <span className="font-medium text-text-primary">
+                  {post.video_play_count
+                    ? (((post.like_count + post.comment_count) / post.video_play_count) * 100).toFixed(2) + "%"
+                    : "—"}
+                </span>
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-1.5">
@@ -148,10 +170,17 @@ export function PostsTable({ posts, accountPlatformMap, accountSyncMap }: PostsT
                 </div>
               </TableCell>
               <TableCell>
+                {post.post_type ? (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-surface-elevated text-text-secondary">
+                    {post.post_type}
+                  </span>
+                ) : (
+                  <span className="text-text-tertiary">—</span>
+                )}
+              </TableCell>
+              <TableCell>
                 <span className="text-sm text-text-secondary">
-                  {accountSyncMap[post.account_id]
-                    ? formatDate(accountSyncMap[post.account_id]!)
-                    : "—"}
+                  {post.posted_at ? formatDate(post.posted_at) : "—"}
                 </span>
               </TableCell>
             </TableRow>
