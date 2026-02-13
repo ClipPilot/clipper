@@ -77,6 +77,17 @@ export function VoiceSelector({
       .catch((err) => console.error("[VoiceSelector] Refresh failed:", err));
   }, [teamId]);
 
+  const handleDeleteClonedVoice = useCallback(async (voice: Voice) => {
+    if (!voice.clonedVoiceDbId) return;
+    try {
+      await voiceCloneAPI.deleteClonedVoice(voice.clonedVoiceDbId);
+      setClonedVoices((prev) => prev.filter((v) => v.id !== voice.id));
+      if (selectedVoice?.id === voice.id) onVoiceChange(null);
+    } catch (err) {
+      console.error("[VoiceSelector] Delete failed:", err);
+    }
+  }, [selectedVoice, onVoiceChange]);
+
   // Handle animation state when sidebar opens
   useEffect(() => {
     if (isSidebarOpen) {
@@ -223,6 +234,7 @@ export function VoiceSelector({
               if (faceSwap) handleCloseSidebar();
             }}
             onPlayToggle={() => handlePlayToggle(voice)}
+            onDelete={voice.isCloned ? () => handleDeleteClonedVoice(voice) : undefined}
           />
         ))}
       </div>
@@ -379,6 +391,7 @@ export function VoiceSelector({
                 progress={playingVoiceId === voice.id ? playbackProgress : 0}
                 onSelect={() => handleSelect(voice)}
                 onPlayToggle={() => handlePlayToggle(voice)}
+                onDelete={voice.isCloned ? () => handleDeleteClonedVoice(voice) : undefined}
               />
             ))}
           </div>

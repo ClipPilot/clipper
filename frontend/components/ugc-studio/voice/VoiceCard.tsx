@@ -11,6 +11,7 @@ interface VoiceCardProps {
   progress: number;
   onSelect: () => void;
   onPlayToggle: () => void;
+  onDelete?: () => void;
 }
 
 export function VoiceCard({
@@ -20,6 +21,7 @@ export function VoiceCard({
   progress,
   onSelect,
   onPlayToggle,
+  onDelete,
 }: VoiceCardProps) {
   return (
     <button
@@ -58,7 +60,7 @@ export function VoiceCard({
           </div>
           <p className="text-xs text-text-tertiary line-clamp-2">{voice.description}</p>
         </div>
-        <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+        <div onClick={(e) => e.stopPropagation()} className="shrink-0 flex items-center gap-1">
           <Button
             isIconOnly
             size="sm"
@@ -68,6 +70,17 @@ export function VoiceCard({
           >
             <Icon icon={isPlaying ? "solar:stop-bold" : "solar:play-bold"} width={16} />
           </Button>
+          {voice.isCloned && onDelete && (
+            <Button
+              isIconOnly
+              size="sm"
+              variant="flat"
+              className="bg-surface-elevated text-red-400 hover:bg-red-500/20"
+              onPress={onDelete}
+            >
+              <Icon icon="solar:trash-bin-trash-bold" width={16} />
+            </Button>
+          )}
         </div>
       </div>
       {isPlaying && (

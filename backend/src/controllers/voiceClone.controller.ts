@@ -28,8 +28,11 @@ class VoiceCloneController {
         return res.status(400).json({ error: "Invalid team ID" });
       }
 
-      // Clone voice via ElevenLabs
-      const { voiceId } = await elevenLabsService.cloneVoice(name, audioFile.buffer);
+      // Clone voice via ElevenLabs (pass actual MIME type from upload)
+      const { voiceId } = await elevenLabsService.cloneVoice(name, audioFile.buffer, audioFile.mimetype);
+
+      // Brief delay to let ElevenLabs provision the cloned voice for TTS
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // Generate preview audio with the cloned voice
       const previewBuffer = await elevenLabsService.generateClonePreview(voiceId);

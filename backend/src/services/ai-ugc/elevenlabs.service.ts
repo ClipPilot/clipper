@@ -501,16 +501,17 @@ const CLONE_PREVIEW_TEXT =
 export async function cloneVoice(
   name: string,
   audioBuffer: Buffer,
+  mimeType: string = "audio/mpeg",
   description?: string,
 ): Promise<{ voiceId: string }> {
   const client = getClient();
 
   console.log(
-    `[ElevenLabs] Cloning voice "${name}" from ${(audioBuffer.length / 1024).toFixed(1)}KB audio sample`,
+    `[ElevenLabs] Cloning voice "${name}" from ${(audioBuffer.length / 1024).toFixed(1)}KB audio sample (${mimeType})`,
   );
 
   try {
-    const audioBlob = new Blob([audioBuffer], { type: "audio/mpeg" });
+    const audioBlob = new Blob([audioBuffer], { type: mimeType });
 
     const response = await client.voices.ivc.create({
       name,

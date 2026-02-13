@@ -16,11 +16,11 @@ import { Icon } from "@iconify/react";
 import { voiceCloneAPI } from "@/api/voiceClone";
 
 const PARAGRAPHS = [
-  "Welcome to Cuttr, the future of AI-powered content creation. With our platform, you can transform any idea into stunning video content in minutes. Whether you're building ads, tutorials, or social media clips — your voice brings it all to life.",
-  "Creating engaging content has never been easier. Cuttr helps creators and brands produce professional videos with AI actors, custom scripts, and dynamic scenes. Your unique voice is the final touch that makes every piece of content truly yours.",
-  "Imagine having the power to produce studio-quality videos right from your laptop. That's exactly what Cuttr delivers. From scriptwriting to final export, every step is streamlined so you can focus on what matters most — your creative vision and authentic voice.",
-  "Great content starts with a great story, and every story deserves a memorable voice. With Cuttr's AI tools, you can clone your voice to narrate videos, create ads, and build a personal brand that stands out in today's crowded digital landscape.",
-  "The best creators know that authenticity is everything. By cloning your voice with Cuttr, you unlock the ability to scale your content production without losing that personal touch. Record once, and let your AI voice do the rest across all your projects.",
+  "Welcome to Cuttr, the future of AI-powered content creation. With our platform, you can transform any idea into stunning video content in minutes. Whether you're building ads, tutorials, or social media clips, your voice brings it all to life. In today's world, marketing is everything. The brands that win are the ones that show up consistently with content that feels authentic and personal. Cuttr gives you the tools to do exactly that, from AI-generated scripts to face swaps, voice cloning, and automated short-form video editing, all in one place.",
+  "Creating engaging content has never been easier. Cuttr helps creators and brands produce professional videos with AI actors, custom scripts, and dynamic scenes. Your unique voice is the final touch that makes every piece of content truly yours. Marketing moves fast, and if you're not putting out content daily, you're falling behind your competitors. That's why we built Cuttr, to help you produce weeks of content in a single session. Clone your voice, swap faces, generate clips from long-form videos, and stay ahead of the curve without burning out.",
+  "Imagine having the power to produce studio-quality videos right from your laptop. That's exactly what Cuttr delivers. From scriptwriting to final export, every step is streamlined so you can focus on what matters most, your creative vision and authentic voice. The best marketing doesn't feel like marketing. It feels like a real person talking to you, sharing something valuable. With Cuttr's voice cloning and AI video tools, you can scale that personal connection across hundreds of pieces of content while keeping the human touch that builds trust with your audience.",
+  "Great content starts with a great story, and every story deserves a memorable voice. With Cuttr's AI tools, you can clone your voice to narrate videos, create ads, and build a personal brand that stands out in today's crowded digital landscape. Think about it, the top creators and brands aren't just making one video a week. They're everywhere, on every platform, with fresh content every single day. Cuttr makes that possible for anyone. Upload a video, pick your style, and let the AI handle the editing, clipping, and repurposing so you can focus on strategy and storytelling.",
+  "The best creators know that authenticity is everything. By cloning your voice with Cuttr, you unlock the ability to scale your content production without losing that personal touch. Record once, and let your AI voice do the rest across all your projects. Marketing in the age of short-form video means you need volume and quality. Cuttr bridges that gap by giving you AI-powered tools that handle the heavy lifting, from finding the best moments in your footage to generating captions, adding hooks, and packaging everything into scroll-stopping clips ready for TikTok, Reels, and Shorts.",
 ];
 
 type CloneState = "idle" | "recording" | "recorded" | "submitting" | "done";
@@ -295,7 +295,6 @@ export function VoiceCloneModal({
               >
                 <SelectItem key="male">Male</SelectItem>
                 <SelectItem key="female">Female</SelectItem>
-                <SelectItem key="other">Other</SelectItem>
               </Select>
             </div>
           )}
