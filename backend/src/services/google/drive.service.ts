@@ -106,6 +106,14 @@ class GoogleDriveService {
     return fileId;
   }
 
+  async deleteFile(fileId: string): Promise<void> {
+    const drive = this.getDrive();
+    await drive.files.delete({
+      fileId,
+      supportsAllDrives: true,
+    });
+  }
+
   private async listChildFolders(parentFolderId: string): Promise<Map<string, string>> {
     const drive = this.getDrive();
     const result = new Map<string, string>();

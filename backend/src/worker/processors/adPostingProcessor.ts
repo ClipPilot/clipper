@@ -36,7 +36,6 @@ const PLATFORM_DISPLAY_NAMES: Record<string, string> = {
 const FFMPEG_CONCURRENCY = 3;
 const DRIVE_UPLOAD_CONCURRENCY = 5;
 
-/** Simple concurrency limiter — no extra deps needed */
 function createLimiter(concurrency: number) {
   let active = 0;
   const queue: (() => void)[] = [];
@@ -74,23 +73,34 @@ export async function processAdPostingJob(job: AdPostingJob): Promise<void> {
   const driveLimit = createLimiter(DRIVE_UPLOAD_CONCURRENCY);
 
   try {
-    // 1. Download S3 clip once
     console.log(`[AdPosting] Downloading clip ${clipId} from S3...`);
     await s3Service.downloadFile(clipPath, inputPath);
 
-    // 2. Pre-create platform subfolders (avoids race conditions)
+    const estParts = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/New_York",
+      month: "2-digit",
+      day: "2-digit",
+      year: "numeric",
+    }).formatToParts(new Date());
+    const mm = estParts.find((p) => p.type === "month")!.value;
+    const dd = estParts.find((p) => p.type === "day")!.value;
+    const yyyy = estParts.find((p) => p.type === "year")!.value;
+    const dateFolderId = await googleDriveService.ensurePlatformFolder(
+      driveFolderId,
+      `${mm}-${dd}-${yyyy}`
+    );
+
     const platformFolders: Record<string, string> = {};
     await Promise.all(
       Object.keys(platformQuantities).map(async (platform) => {
         const displayName = PLATFORM_DISPLAY_NAMES[platform];
         platformFolders[platform] = await googleDriveService.ensurePlatformFolder(
-          driveFolderId,
+          dateFolderId,
           displayName
         );
       })
     );
 
-    // 3. Build flat task list across all platforms
     const tasks: { platform: string; copyIndex: number; platformTotal: number }[] = [];
     for (const [platform, qty] of Object.entries(platformQuantities)) {
       for (let i = 0; i < qty; i++) {
@@ -98,14 +108,12 @@ export async function processAdPostingJob(job: AdPostingJob): Promise<void> {
       }
     }
 
-    // 4. Process all tasks concurrently with limiters
     await Promise.allSettled(
       tasks.map(({ platform, copyIndex, platformTotal }) => {
         const displayName = PLATFORM_DISPLAY_NAMES[platform];
         const outputPath = path.join(tempDir, `output_${platform}_${copyIndex}.mp4`);
 
         return (async () => {
-          // Emit "processing" event
           await notifyAdPostingUpdate(teamId, {
             clipId,
             platform,
@@ -118,7 +126,6 @@ export async function processAdPostingJob(job: AdPostingJob): Promise<void> {
           });
 
           try {
-            // FFmpeg re-encode with concurrency limit
             await ffmpegLimit(async () => {
               console.log(
                 `[AdPosting] Re-encoding for ${displayName} copy ${copyIndex}/${platformTotal}...`
@@ -128,7 +135,6 @@ export async function processAdPostingJob(job: AdPostingJob): Promise<void> {
               await execAsync(cmd, { timeout: 300000 });
             });
 
-            // DB insert
             const [post] = await db
               .insert(posts)
               .values({
@@ -140,7 +146,6 @@ export async function processAdPostingJob(job: AdPostingJob): Promise<void> {
               })
               .returning({ id: posts.id });
 
-            // Drive upload with concurrency limit
             const driveFileId = await driveLimit(async () => {
               const fileName = `${post.id}.mp4`;
               console.log(
@@ -154,7 +159,6 @@ export async function processAdPostingJob(job: AdPostingJob): Promise<void> {
               );
             });
 
-            // DB update
             await db
               .update(posts)
               .set({ drive_file_id: driveFileId })
@@ -166,7 +170,6 @@ export async function processAdPostingJob(job: AdPostingJob): Promise<void> {
               `[AdPosting] ${displayName} copy ${copyIndex} complete — post #${post.id}`
             );
 
-            // Emit "uploaded" event
             await notifyAdPostingUpdate(teamId, {
               clipId,
               platform,
@@ -196,7 +199,6 @@ export async function processAdPostingJob(job: AdPostingJob): Promise<void> {
               completedItems,
             });
           } finally {
-            // Clean up temp file immediately after upload
             if (fs.existsSync(outputPath)) {
               fs.unlinkSync(outputPath);
             }
@@ -205,7 +207,6 @@ export async function processAdPostingJob(job: AdPostingJob): Promise<void> {
       })
     );
 
-    // 5. Emit completion event
     await notifyAdPostingUpdate(teamId, {
       clipId,
       platform: "",
@@ -217,7 +218,6 @@ export async function processAdPostingJob(job: AdPostingJob): Promise<void> {
       completedItems,
     });
 
-    // 6. Send email with summary
     await sendCompletionEmail(
       teamId,
       clipTitle,

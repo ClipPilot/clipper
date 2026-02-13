@@ -8,23 +8,19 @@ import { eq, and } from "drizzle-orm";
 import { teamService } from "./team.service";
 import { getTeamUsage } from "../middleware/subscription.middleware";
 import { sqsService } from "./sqs.service";
+import { googleDriveService } from "./google/drive.service";
 
 const VALID_PLATFORMS = new Set(["tiktok", "instagram", "facebook", "youtube", "x"]);
 
 export type PlatformQuantities = Record<string, number>;
 
 class AdPostingService {
-  /**
-   * Validates inputs and deducts credits synchronously,
-   * then sends an SQS job for background processing. Returns immediately.
-   */
   async validateAndStart(
     teamId: number,
     clipId: number,
     platformQuantities: PlatformQuantities,
     userId: number
   ): Promise<void> {
-    // Validate platforms and quantities
     for (const [platform, qty] of Object.entries(platformQuantities)) {
       if (!VALID_PLATFORMS.has(platform)) {
         throw new AdPostingError(`Invalid platform: ${platform}`, 400);
@@ -42,7 +38,6 @@ class AdPostingService {
       0
     );
 
-    // 1. Check mass posting eligibility
     const [application] = await db
       .select()
       .from(massPostingApplications)
@@ -63,7 +58,6 @@ class AdPostingService {
       throw new AdPostingError("Team does not have a Google Drive folder configured", 403);
     }
 
-    // 2. Verify clip exists and belongs to team
     const [clip] = await db
       .select()
       .from(clips)
@@ -78,7 +72,6 @@ class AdPostingService {
       throw new AdPostingError("Clip has no video file", 400);
     }
 
-    // 3. Check credits
     const usage = await getTeamUsage(teamId);
     if (!usage) {
       throw new AdPostingError("Could not retrieve team usage", 500);
@@ -91,10 +84,8 @@ class AdPostingService {
       );
     }
 
-    // 4. Deduct credits upfront
     await teamService.incrementTeamUsage(teamId, totalCopies);
 
-    // 5. Send to SQS worker for background processing
     await sqsService.sendAdPostingJob({
       clipId,
       teamId,
@@ -106,10 +97,13 @@ class AdPostingService {
     });
   }
 
-  /**
-   * Called by botfarm webhook to mark a post as posted with the live URL
-   */
   async markAsPosted(postId: number, postUrl?: string): Promise<void> {
+    const [post] = await db
+      .select({ drive_file_id: posts.drive_file_id })
+      .from(posts)
+      .where(eq(posts.id, postId))
+      .limit(1);
+
     await db
       .update(posts)
       .set({
@@ -119,11 +113,16 @@ class AdPostingService {
         updated_at: new Date(),
       })
       .where(eq(posts.id, postId));
+
+    if (post?.drive_file_id) {
+      try {
+        await googleDriveService.deleteFile(post.drive_file_id);
+      } catch (err) {
+        console.error(`[AdPosting] Drive delete failed for file ${post.drive_file_id}:`, err);
+      }
+    }
   }
 
-  /**
-   * Get all posts for a specific clip
-   */
   async getPostsForClip(teamId: number, clipId: number) {
     return db
       .select({
