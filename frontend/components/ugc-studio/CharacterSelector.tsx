@@ -7,6 +7,8 @@ import { EXAMPLE_CHARACTERS, SelectedCharacter } from "./types";
 import { savedFacesAPI, SavedFace } from "@/api/ugc/savedFaces";
 import { voicesConfig, type Voice } from "@/config/voicesConfig";
 import { VoiceCard } from "./voice/VoiceCard";
+import { VoiceCloneModal } from "./voice/VoiceCloneModal";
+import { voiceCloneAPI, type ClonedVoice } from "@/api/voiceClone";
 
 type TabType = "saved" | "examples" | "upload";
 type GenderFilter = "all" | "male" | "female";
@@ -43,12 +45,61 @@ export function CharacterSelector({
   const [playbackProgress, setPlaybackProgress] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  // Cloned voices state
+  const [clonedVoices, setClonedVoices] = useState<Voice[]>([]);
+  const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
+
   const canAddMore = selectedCharacters.length < maxSelections;
 
+  function clonedToVoice(cv: ClonedVoice): Voice {
+    return {
+      id: cv.voiceId,
+      name: cv.name,
+      previewFile: cv.previewUrl,
+      gender: cv.gender,
+      description: "Your cloned voice",
+      isCloned: true,
+      clonedVoiceDbId: cv.id,
+    };
+  }
+
+  // Fetch cloned voices on mount
+  useEffect(() => {
+    if (!teamId) return;
+    voiceCloneAPI
+      .listClonedVoices(teamId)
+      .then((res) => setClonedVoices(res.voices.map(clonedToVoice)))
+      .catch((err) => console.error("[CharacterSelector] Failed to load cloned voices:", err));
+  }, [teamId]);
+
+  const refreshClonedVoices = useCallback(() => {
+    if (!teamId) return;
+    voiceCloneAPI
+      .listClonedVoices(teamId)
+      .then((res) => setClonedVoices(res.voices.map(clonedToVoice)))
+      .catch((err) => console.error("[CharacterSelector] Refresh cloned voices failed:", err));
+  }, [teamId]);
+
+  const handleDeleteClonedVoice = useCallback(async (voice: Voice) => {
+    if (!voice.clonedVoiceDbId) return;
+    try {
+      await voiceCloneAPI.deleteClonedVoice(voice.clonedVoiceDbId);
+      setClonedVoices((prev) => prev.filter((v) => v.id !== voice.id));
+      // Clear voice from any character that had it selected
+      const updated = selectedCharacters.map((c) =>
+        c.voiceId === voice.id ? { ...c, voiceId: undefined, voiceName: undefined } : c
+      );
+      onCharactersChange(updated);
+    } catch (err) {
+      console.error("[CharacterSelector] Delete cloned voice failed:", err);
+    }
+  }, [selectedCharacters, onCharactersChange]);
+
+  const allVoices = [...clonedVoices, ...voicesConfig];
   const filteredVoices =
     voiceFilter === "all"
-      ? voicesConfig
-      : voicesConfig.filter((v) => v.gender === voiceFilter);
+      ? allVoices
+      : allVoices.filter((v) => v.gender === voiceFilter);
 
   const openVoiceSidebar = useCallback((index: number) => {
     setEditingVoiceForIndex(index);
@@ -598,6 +649,19 @@ export function CharacterSelector({
                   <Icon icon="solar:close-circle-bold" className="text-text-muted" width={20} />
                 </Button>
               </div>
+              {/* Clone button in sidebar */}
+              {teamId && (
+                <div className="px-4 pt-4">
+                  <Button
+                    size="sm"
+                    className="bg-purple-500 text-white"
+                    startContent={<Icon icon="solar:microphone-3-bold" width={16} />}
+                    onPress={() => setIsCloneModalOpen(true)}
+                  >
+                    Clone Your Voice
+                  </Button>
+                </div>
+              )}
               <div className="flex-1 overflow-y-auto p-4">
                 <Tabs
                   selectedKey={voiceFilter}
@@ -623,12 +687,23 @@ export function CharacterSelector({
                       progress={playingVoiceId === voice.id ? playbackProgress : 0}
                       onSelect={() => handleVoiceSelect(voice)}
                       onPlayToggle={() => handleVoicePlayToggle(voice)}
+                      onDelete={voice.isCloned ? () => handleDeleteClonedVoice(voice) : undefined}
                     />
                   ))}
                 </div>
               </div>
             </div>
           </div>
+        )}
+
+        {/* Voice Clone Modal */}
+        {teamId && (
+          <VoiceCloneModal
+            isOpen={isCloneModalOpen}
+            onClose={() => setIsCloneModalOpen(false)}
+            teamId={teamId}
+            onSuccess={refreshClonedVoices}
+          />
         )}
       </CardBody>
     </Card>

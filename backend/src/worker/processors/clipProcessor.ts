@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { SyncPrerecordedResponse } from "@deepgram/sdk";
 import { ClipVideoJob } from "../../services/sqs.service";
 import { transcribeVideoService } from "../../services/clips/transcription.service";
 import {
@@ -30,9 +31,15 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
     await s3Service.downloadFile(s3Key, localVideoPath);
     console.log("Video downloaded successfully");
 
-    const transcriptionData = await transcribeVideoService(localVideoPath);
-    if (!transcriptionData) throw new Error("Transcription failed");
-    console.log("Transcription completed successfully");
+    // Skip Deepgram transcription for gaming — Gemini watches the video directly
+    let transcriptionData: SyncPrerecordedResponse | null = null;
+    if (options.promptType !== "gaming") {
+      transcriptionData = await transcribeVideoService(localVideoPath);
+      if (!transcriptionData) throw new Error("Transcription failed");
+      console.log("Transcription completed successfully");
+    } else {
+      console.log("Gaming mode: skipping Deepgram transcription, using Gemini video analysis");
+    }
 
     const clipOptions: ClipGenerationOptions = {
       length: options.length,
@@ -63,7 +70,9 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
       fs.unlinkSync(thumbnailPath);
     }
 
-    const transcriptionWords = transcriptionData.results.channels[0].alternatives[0].words;
+    const transcriptionWords = transcriptionData
+      ? transcriptionData.results.channels[0].alternatives[0].words
+      : [];
     const clipServiceOptions = {
       customText: options.customText,
       textPosition: options.textPosition,

@@ -31,7 +31,7 @@ export interface ClipGenerationOptions {
 }
 
 export const generateClipSuggestionsService = async (
-  transcription: SyncPrerecordedResponse,
+  transcription: SyncPrerecordedResponse | null,
   options: ClipGenerationOptions = {},
 ): Promise<ClipSuggestions[]> => {
   const length = options.length || 40;
@@ -39,11 +39,12 @@ export const generateClipSuggestionsService = async (
   const promptType = options.promptType || "business";
   const numberOfVideos = options.numberOfVideos || 1;
 
-  const transcriptText =
-    transcription.results.channels[0].alternatives[0].transcript;
-  const transcriptObject = JSON.stringify(
-    transcription.results.channels[0].alternatives[0].paragraphs,
-  );
+  const transcriptText = transcription
+    ? transcription.results.channels[0].alternatives[0].transcript
+    : "";
+  const transcriptObject = transcription
+    ? JSON.stringify(transcription.results.channels[0].alternatives[0].paragraphs)
+    : "";
 
   const prompt = generatePrompt(
     promptType,

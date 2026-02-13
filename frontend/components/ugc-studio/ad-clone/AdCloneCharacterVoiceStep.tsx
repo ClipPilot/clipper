@@ -20,8 +20,11 @@ import { Icon } from "@iconify/react";
 import { actorsAPI } from "@/api/actors";
 import { CharacterGrid } from "../actors/CharacterGrid";
 import { CharacterDetailModal } from "../actors/CharacterDetailModal";
+import { useDisclosure } from "@heroui/react";
 import { VoiceCard } from "../voice/VoiceCard";
+import { VoiceCloneModal } from "../voice/VoiceCloneModal";
 import { voicesConfig, type Voice } from "@/config/voicesConfig";
+import { voiceCloneAPI, type ClonedVoice } from "@/api/voiceClone";
 import { adCloneCharacterIdAtom, adCloneVoiceIdAtom, adCloneProjectIdAtom } from "@/store/adClone";
 import type { Character } from "../actors/types";
 
@@ -65,12 +68,55 @@ export function AdCloneCharacterVoiceStep({
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
   const [playbackProgress, setPlaybackProgress] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [clonedVoices, setClonedVoices] = useState<Voice[]>([]);
+  const { isOpen: isCloneModalOpen, onOpen: openCloneModal, onClose: closeCloneModal } = useDisclosure();
+
+  // Fetch cloned voices
+  useEffect(() => {
+    if (!teamId) return;
+    voiceCloneAPI
+      .listClonedVoices(teamId)
+      .then((res) =>
+        setClonedVoices(
+          res.voices.map((cv: ClonedVoice) => ({
+            id: cv.voiceId,
+            name: cv.name,
+            previewFile: cv.previewUrl,
+            gender: cv.gender,
+            description: "Your cloned voice",
+            isCloned: true,
+            clonedVoiceDbId: cv.id,
+          })),
+        ),
+      )
+      .catch((err) => console.error("Failed to load cloned voices:", err));
+  }, [teamId]);
+
+  const refreshClonedVoices = useCallback(() => {
+    voiceCloneAPI
+      .listClonedVoices(teamId)
+      .then((res) =>
+        setClonedVoices(
+          res.voices.map((cv: ClonedVoice) => ({
+            id: cv.voiceId,
+            name: cv.name,
+            previewFile: cv.previewUrl,
+            gender: cv.gender,
+            description: "Your cloned voice",
+            isCloned: true,
+            clonedVoiceDbId: cv.id,
+          })),
+        ),
+      )
+      .catch((err) => console.error("Refresh cloned voices failed:", err));
+  }, [teamId]);
 
   const mainActors = myActors.filter((c) => !c.is_variation && !c.parent_character_id);
+  const allVoices = [...clonedVoices, ...voicesConfig];
   const filteredVoices = voiceFilter === "all"
-    ? voicesConfig
-    : voicesConfig.filter((v) => v.gender === voiceFilter);
-  const selectedVoice = voicesConfig.find((v) => v.id === voiceId) || null;
+    ? allVoices
+    : allVoices.filter((v) => v.gender === voiceFilter);
+  const selectedVoice = allVoices.find((v) => v.id === voiceId) || null;
 
   const canContinue = !!characterId && !!voiceId;
 
@@ -506,14 +552,22 @@ export function AdCloneCharacterVoiceStep({
 
       <Card className="bg-surface-base border border-border-base">
         <CardHeader className="pb-0 flex-col items-start gap-3">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 w-full">
             <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
               <Icon icon="solar:microphone-3-bold-duotone" className="text-purple-400" width={22} />
             </div>
-            <div>
+            <div className="flex-1">
               <h3 className="text-base font-semibold text-text-primary">Select Voice</h3>
               <p className="text-xs text-text-tertiary">Choose the AI voice for your cloned ad</p>
             </div>
+            <Button
+              size="sm"
+              className="bg-purple-500 text-white"
+              startContent={<Icon icon="solar:microphone-3-bold" width={16} />}
+              onPress={openCloneModal}
+            >
+              Clone Your Voice
+            </Button>
           </div>
           <Tabs
             selectedKey={voiceFilter}
@@ -565,6 +619,13 @@ export function AdCloneCharacterVoiceStep({
         onClose={() => setDetailCharacter(null)}
         allCharacters={[...myActors, ...communityActors]}
         onSelect={handleCharacterSelect}
+      />
+
+      <VoiceCloneModal
+        isOpen={isCloneModalOpen}
+        onClose={closeCloneModal}
+        teamId={teamId}
+        onSuccess={refreshClonedVoices}
       />
     </div>
   );
