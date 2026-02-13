@@ -313,6 +313,61 @@ export class AdCloneController {
     }
   }
 
+  async regenerateBRollPrompt(req: AuthRequest, res: Response) {
+    try {
+      const { projectId } = req.params;
+      const { sceneId, bRollShotIndex, newAction } = req.body;
+
+      if (!projectId || !sceneId || bRollShotIndex === undefined || !newAction) {
+        return res.status(400).json({
+          error: "projectId, sceneId, bRollShotIndex, and newAction are required",
+        });
+      }
+
+      await adCloneService.regenerateBRollPrompt({
+        projectId,
+        sceneId,
+        bRollShotIndex,
+        newAction,
+      });
+
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      console.error("[AD_CLONE] Regenerate B-roll prompt error:", error);
+      return res.status(500).json({
+        error: sanitizeErrorForFrontend(error, "Failed to regenerate B-roll prompt"),
+      });
+    }
+  }
+
+  async regenerateAllBRollShots(req: AuthRequest, res: Response) {
+    try {
+      const { projectId } = req.params;
+      const { sceneId, newSceneAction, shotCount, shotDurations } = req.body;
+
+      if (!projectId || !sceneId || !newSceneAction || !shotCount || !shotDurations) {
+        return res.status(400).json({
+          error: "projectId, sceneId, newSceneAction, shotCount, and shotDurations are required",
+        });
+      }
+
+      const newShots = await adCloneService.regenerateAllBRollShots({
+        projectId,
+        sceneId,
+        newSceneAction,
+        shotCount,
+        shotDurations,
+      });
+
+      return res.status(200).json({ success: true, bRollShots: newShots });
+    } catch (error) {
+      console.error("[AD_CLONE] Regenerate all B-roll shots error:", error);
+      return res.status(500).json({
+        error: sanitizeErrorForFrontend(error, "Failed to regenerate B-roll shots"),
+      });
+    }
+  }
+
   async generateVideo(req: AuthRequest, res: Response) {
     try {
       const { projectId } = req.params;

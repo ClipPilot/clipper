@@ -4,20 +4,20 @@ sidebar_position: 3
 
 # Editing Clips
 
-📌 **What You'll Learn:**
+**What You'll Learn:**
 - Edit captions and timing
 - Modify text overlays
 - Make adjustments after saving
 
 ---
 
-## 🎯 Overview
+## Overview
 
 Already saved a clip? You can still make changes. The clip editor lets you refine captions, overlays, and more.
 
 ---
 
-## 🎬 Opening the Editor
+## Opening the Editor
 
 1. Find your clip in the library
 2. Click on it to open
@@ -26,7 +26,7 @@ Already saved a clip? You can still make changes. The clip editor lets you refin
 
 ---
 
-## ✏️ What You Can Edit
+## What You Can Edit
 
 ### Captions
 
@@ -54,7 +54,7 @@ Already saved a clip? You can still make changes. The clip editor lets you refin
 
 ---
 
-## 💾 Saving Edits
+## Saving Edits
 
 - Changes auto-save as you work
 - Click **"Done"** when finished
@@ -66,7 +66,7 @@ Editing is free and doesn't use additional credits.
 
 ---
 
-## 💡 Pro Tips
+## Pro Tips
 
 1. **Preview before finalizing** - Watch the full clip
 2. **Check on mobile** - Text may need resizing
@@ -75,7 +75,7 @@ Editing is free and doesn't use additional credits.
 
 ---
 
-## 👉 Next Steps
+## Next Steps
 
 - [Share your clips](/clip-library/sharing-clips)
 - [Create more clips](/ai-clipping/overview)

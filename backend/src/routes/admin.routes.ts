@@ -221,6 +221,35 @@ router.get("/teams/:teamId", requireAdminAuth, getTeam);
  */
 router.post("/enterprise/setup", requireAdminAuth, setupEnterprise);
 
+/**
+ * @openapi
+ * /admin/teams/change-plan:
+ *   post:
+ *     summary: Change a team's subscription plan (admin)
+ *     tags:
+ *       - Admin
+ *     security:
+ *       - adminAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - teamId
+ *               - plan
+ *             properties:
+ *               teamId:
+ *                 type: integer
+ *               plan:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Plan changed
+ *       404:
+ *         description: Team not found
+ */
 router.post("/teams/change-plan", requireAdminAuth, changePlan);
 
 /**

@@ -4,20 +4,20 @@ sidebar_position: 2
 
 # Manual Segments
 
-📌 **What You'll Learn:**
+**What You'll Learn:**
 - Define swap segments manually
 - Set precise start/end times
 - Handle multiple segments
 
 ---
 
-## 🎯 Overview
+## Overview
 
 Manual segment mode gives you precise control over which parts of your video get face-swapped.
 
 ---
 
-## 📝 Step-by-Step
+## Step-by-Step
 
 ### Step 1: Upload Video
 
@@ -55,7 +55,7 @@ If your video has multiple sections needing different characters:
 
 ---
 
-## ⚙️ Segment Settings
+## Segment Settings
 
 ### Timing Controls
 
@@ -73,7 +73,7 @@ If your video has multiple sections needing different characters:
 
 ---
 
-## 💡 Pro Tips
+## Pro Tips
 
 1. **Frame-by-frame** - Use arrow keys for precise timing
 2. **Natural cuts** - Start/end at scene transitions
@@ -82,7 +82,7 @@ If your video has multiple sections needing different characters:
 
 ---
 
-## 👉 Next Steps
+## Next Steps
 
 - [Try auto-detect mode](/ugc-studio/face-swap/auto-detect)
 - [Create AI videos](/ugc-studio/ai-video-creator/overview)

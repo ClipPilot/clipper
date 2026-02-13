@@ -451,12 +451,157 @@ router.post("/:teamId/logo", requireAuth, imageUpload.single("logo"), uploadTeam
  */
 router.delete("/:teamId/logo", requireAuth, removeTeamLogoController);
 
-// Invite routes
+/**
+ * @openapi
+ * /teams/invites/{token}:
+ *   get:
+ *     summary: Get invite details by token
+ *     tags:
+ *       - Team Invites
+ *     parameters:
+ *       - name: token
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Invite details
+ *       404:
+ *         description: Invite not found
+ */
 router.get("/invites/:token", getInviteByTokenController);
+
+/**
+ * @openapi
+ * /teams/invites/{token}/accept:
+ *   post:
+ *     summary: Accept a team invite
+ *     tags:
+ *       - Team Invites
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: token
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Invite accepted
+ *       404:
+ *         description: Invite not found or expired
+ */
 router.post("/invites/:token/accept", requireAuth, acceptInviteController);
+
+/**
+ * @openapi
+ * /teams/{teamId}/invites:
+ *   get:
+ *     summary: List all invites for a team
+ *     tags:
+ *       - Team Invites
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: teamId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: List of invites
+ */
 router.get("/:teamId/invites", requireAuth, getTeamInvitesController);
+
+/**
+ * @openapi
+ * /teams/{teamId}/invites:
+ *   post:
+ *     summary: Create a team invite
+ *     tags:
+ *       - Team Invites
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: teamId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               role:
+ *                 type: string
+ *                 enum: [member, admin]
+ *     responses:
+ *       201:
+ *         description: Invite created
+ */
 router.post("/:teamId/invites", requireAuth, requireActiveSubscription, createInviteController);
+
+/**
+ * @openapi
+ * /teams/{teamId}/invites/{inviteId}:
+ *   delete:
+ *     summary: Revoke a team invite
+ *     tags:
+ *       - Team Invites
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: teamId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - name: inviteId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Invite revoked
+ */
 router.delete("/:teamId/invites/:inviteId", requireAuth, revokeInviteController);
+
+/**
+ * @openapi
+ * /teams/{teamId}/invites/{inviteId}/resend:
+ *   post:
+ *     summary: Resend a team invite email
+ *     tags:
+ *       - Team Invites
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: teamId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - name: inviteId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Invite resent
+ */
 router.post("/:teamId/invites/:inviteId/resend", requireAuth, resendInviteController);
 
 export default router;

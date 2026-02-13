@@ -4,20 +4,20 @@ sidebar_position: 2
 
 # Uploading Videos
 
-📌 **What You'll Learn:**
+**What You'll Learn:**
 - Supported video formats
 - Upload methods (file, URL, batch)
 - Best practices for quality
 
 ---
 
-## 🎯 Overview
+## Overview
 
 You can upload videos to Cuttr in multiple ways. Choose the method that works best for your workflow.
 
 ---
 
-## 📤 Upload Methods
+## Upload Methods
 
 ### Method 1: File Upload
 
@@ -52,7 +52,7 @@ Upload up to 5 videos at once:
 
 ---
 
-## 📋 Video Requirements
+## Video Requirements
 
 | Requirement | Specification |
 |-------------|---------------|
@@ -64,7 +64,7 @@ Upload up to 5 videos at once:
 
 ---
 
-## ⏱️ Processing Time
+## Processing Time
 
 | Video Length | Approx. Time |
 |--------------|--------------|
@@ -75,7 +75,7 @@ Upload up to 5 videos at once:
 
 ---
 
-## 💡 Pro Tips
+## Pro Tips
 
 1. **Use MP4 with H.264** - Fastest processing
 2. **Good audio quality** - Clear speech = better transcription
@@ -84,7 +84,7 @@ Upload up to 5 videos at once:
 
 ---
 
-## ❓ FAQ
+## FAQ
 
 **Q: Can I upload private YouTube videos?**
 A: No, only public or unlisted videos can be imported.
@@ -97,7 +97,7 @@ A: Yes! Use batch upload for up to 5 videos at once.
 
 ---
 
-## 👉 Next Steps
+## Next Steps
 
 - [Choose a prompt type](/ai-clipping/prompt-types)
 - [Configure clip settings](/ai-clipping/clip-settings)

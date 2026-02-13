@@ -4,20 +4,20 @@ sidebar_position: 6
 
 # Captions
 
-📌 **What You'll Learn:**
+**What You'll Learn:**
 - Enable and customize captions
 - Word-by-word animation styles
 - Caption best practices
 
 ---
 
-## 🎯 Overview
+## Overview
 
 Captions are auto-generated from your video's audio. They display as animated text that follows the speaker, making your clips accessible and engaging.
 
 ---
 
-## 🔛 Enabling Captions
+## Enabling Captions
 
 ### Toggle Captions
 
@@ -34,7 +34,7 @@ Captions are generated from the AI transcription:
 
 ---
 
-## 🎨 Caption Styling
+## Caption Styling
 
 ### Animation Styles
 
@@ -58,7 +58,7 @@ Captions are generated from the AI transcription:
 
 ---
 
-## ✏️ Editing Captions
+## Editing Captions
 
 ### Fix Transcription Errors
 
@@ -74,7 +74,7 @@ Captions are generated from the AI transcription:
 
 ---
 
-## 💡 Pro Tips
+## Pro Tips
 
 1. **Always review captions** - AI isn't perfect
 2. **Use high-contrast colors** - Ensure readability
@@ -83,7 +83,7 @@ Captions are generated from the AI transcription:
 
 ---
 
-## ❓ FAQ
+## FAQ
 
 **Q: Why are some words wrong?**
 A: AI transcription can misinterpret accents, mumbling, or technical terms. Edit manually.
@@ -93,7 +93,7 @@ A: Currently, Cuttr supports English captions. More languages coming soon.
 
 ---
 
-## 👉 Next Steps
+## Next Steps
 
 - [Manage your clips](/clip-library/managing-clips)
 - [Share your clips](/clip-library/sharing-clips)
