@@ -81,6 +81,28 @@ class UGCScriptAPI {
     return response.json();
   }
 
+  async regenerateAllBRollShots(data: {
+    scriptId: string;
+    sceneId: string;
+    newSceneAction: string;
+    shotCount: number;
+    shotDurations: number[];
+  }): Promise<{ success: boolean; bRollShots: any[] }> {
+    const response = await apiFetch(`${API_URL}/ugc/regenerate-all-broll-shots`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to regenerate B-roll shots");
+    }
+
+    return response.json();
+  }
+
   async getUploadUrl(
     teamId: number,
     fileName: string,

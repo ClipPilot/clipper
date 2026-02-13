@@ -46,6 +46,7 @@ function FaceSwapContent({
   const [segments, setSegments] = useState<VideoSegment[]>([]);
   const [showEditor, setShowEditor] = useState(false);
   const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
+  const [swapType, setSwapType] = useState<"face" | "fullbody">("face");
   const faceSwapsSectionRef = useRef<MyFaceSwapsSectionRef>(null);
 
   const getCharacterImages = (): Array<File | { imageKey: string }> => {
@@ -216,6 +217,67 @@ function FaceSwapContent({
     }
   }, [video, selectedCharacters, selectedTeam?.id, videoDuration, selectedFolderId]);
 
+  const handleFaceSwapGenerate = useCallback(async () => {
+    const characterImages = getCharacterImages();
+    if (!video?.file || characterImages.length === 0 || !selectedTeam?.id)
+      return;
+
+    const videoFile = video.file;
+    const teamId = selectedTeam.id;
+    const duration = videoDuration;
+    const videoToRevoke = video.preview;
+    const characterCount = characterImages.length;
+    const totalCredits = characterCount * 5;
+    const tempIds = characterImages.map((_, i) => `temp-${Date.now()}-${i}`);
+
+    tempIds.forEach((tempId) => {
+      faceSwapsSectionRef.current?.addOptimisticJob(tempId);
+    });
+
+    setVideo(null);
+    setSelectedCharacters([]);
+    setVideoDuration(0);
+    setSegments([]);
+
+    try {
+      const result = await faceSwapAPI.createMultipleJobs({
+        video: videoFile,
+        images: characterImages,
+        teamId,
+        videoDuration: duration,
+        spliceWithOriginal: false,
+        folderId: selectedFolderId,
+        swapType: "face",
+      });
+
+      result.jobIds.forEach((jobId, i) => {
+        if (tempIds[i]) {
+          faceSwapsSectionRef.current?.updateOptimisticJob(tempIds[i], jobId);
+        }
+      });
+
+      addToast({
+        title: `${characterCount} face swap${characterCount > 1 ? "s" : ""} started!`,
+        description: `Processing... This typically takes 5-10 minutes. (${totalCredits} credits)`,
+        color: "success",
+      });
+
+      if (videoToRevoke) URL.revokeObjectURL(videoToRevoke);
+    } catch (error) {
+      console.error("Face swap generate error:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "An error occurred";
+      tempIds.forEach((tempId) => {
+        faceSwapsSectionRef.current?.failOptimisticJob(tempId, errorMessage);
+      });
+      addToast({
+        title: "Failed to start face swap",
+        description: errorMessage,
+        color: "danger",
+      });
+    }
+  }, [video, selectedCharacters, selectedTeam?.id, videoDuration, selectedFolderId]);
+
   return (
     <div className="min-h-screen bg-surface-dark p-6 lg:p-8">
       <div className="max-w-6xl mx-auto space-y-6">
@@ -246,7 +308,7 @@ function FaceSwapContent({
               segments={segments}
               onVideoChange={handleVideoChange}
               onSegmentsChange={setSegments}
-              showEditor={showEditor}
+              showEditor={showEditor && swapType === "fullbody"}
               onToggleEditor={() => setShowEditor((v) => !v)}
             />
             {selectedTeam?.id && (
@@ -276,8 +338,11 @@ function FaceSwapContent({
               totalDuration={totalDuration}
               onGenerate={handleGenerate}
               onAutoDetectAndGenerate={handleAutoDetectAndGenerate}
+              onFaceSwapGenerate={handleFaceSwapGenerate}
               showEditor={showEditor}
               onToggleEditor={() => setShowEditor(false)}
+              swapType={swapType}
+              onSwapTypeChange={setSwapType}
               teamId={selectedTeam?.id}
               selectedFolderId={selectedFolderId}
               onFolderSelect={setSelectedFolderId}

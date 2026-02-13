@@ -33,6 +33,40 @@ import AnnouncementInboxModal from "@/components/announcements/AnnouncementInbox
 import AnnouncementPopupModal from "@/components/announcements/AnnouncementPopupModal";
 import { useAnnouncements } from "@/hooks/useAnnouncements";
 
+const baseSidebarItems: SidebarItem[] = [
+  {
+    key: "home",
+    title: "Home",
+    icon: "solar:home-2-bold-duotone",
+    href: "/dashboard",
+  },
+  {
+    key: "clips",
+    title: "Library",
+    icon: "solar:video-library-bold-duotone",
+    href: "/dashboard/clips",
+  },
+  {
+    key: "create-clip",
+    title: "AI Clipping",
+    icon: "solar:scissors-bold-duotone",
+    href: "/dashboard/create-clip",
+  },
+  {
+    key: "ugc-studio",
+    title: "UGC Studio",
+    icon: "solar:video-frame-play-vertical-bold-duotone",
+    href: "/dashboard/ugc-studio",
+  },
+  {
+    key: "virality",
+    title: "Virality",
+    icon: "solar:chart-bold-duotone",
+    href: "/dashboard/virality",
+  },
+];
+
+
 export default function DashboardLayout({
   children,
 }: {

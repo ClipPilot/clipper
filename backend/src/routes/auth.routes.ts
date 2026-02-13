@@ -334,11 +334,12 @@ router.post(
 );
 
 /**
- * @swagger
- * /api/auth/profile:
+ * @openapi
+ * /auth/profile:
  *   patch:
  *     summary: Update user profile
- *     tags: [Authentication]
+ *     tags:
+ *       - Auth
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -348,17 +349,11 @@ router.post(
  *           schema:
  *             type: object
  *             properties:
- *               firstName:
- *                 type: string
- *               lastName:
+ *               name:
  *                 type: string
  *     responses:
  *       200:
- *         description: Profile updated successfully
- *       401:
- *         description: Unauthorized
- *       500:
- *         description: Server error
+ *         description: Profile updated
  */
 router.patch(
   "/profile",

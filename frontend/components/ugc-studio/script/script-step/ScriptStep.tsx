@@ -22,7 +22,8 @@ export function ScriptStep({
   teamId,
   selectedCharacter,
   onContinue,
-}: ScriptStepProps) {
+  autoAdvance,
+}: ScriptStepProps & { autoAdvance?: boolean }) {
   const [scripts, setScripts] = useAtom(scriptsAtom);
   const [selectedVariantIndex, setSelectedVariantIndex] = useAtom(selectedVariantIndexAtom);
   const [scriptId, setScriptId] = useAtom(scriptIdAtom);
@@ -96,6 +97,13 @@ export function ScriptStep({
       setPhase("upload");
     },
   });
+
+  // Auto-advance past editing phase when autoAdvance is enabled
+  useEffect(() => {
+    if (autoAdvance && phase === "editing" && onContinue) {
+      onContinue();
+    }
+  }, [autoAdvance, phase, onContinue]);
 
   // Fetch existing scripts on mount
   useEffect(() => {

@@ -4,20 +4,20 @@ sidebar_position: 2
 
 # Managing Characters
 
-📌 **What You'll Learn:**
+**What You'll Learn:**
 - View and organize your characters
 - Create character variations
 - Share with the community
 
 ---
 
-## 🎯 Overview
+## Overview
 
 Your character library stores all AI actors you've created. Manage, organize, and reuse them across projects.
 
 ---
 
-## 📍 Character Library
+## Character Library
 
 ### Accessing Characters
 
@@ -35,7 +35,7 @@ Each card shows:
 
 ---
 
-## 🔄 Creating Variations
+## Creating Variations
 
 Want the same character in a different style?
 
@@ -52,7 +52,7 @@ Want the same character in a different style?
 
 ---
 
-## 🌐 Community Sharing
+## Community Sharing
 
 ### Make Character Public
 
@@ -69,7 +69,7 @@ Want the same character in a different style?
 
 ---
 
-## 🗑️ Deleting Characters
+## Deleting Characters
 
 1. Open character
 2. Click **"Delete"**
@@ -81,7 +81,7 @@ Deleted characters cannot be recovered. Clips using them remain unaffected.
 
 ---
 
-## 💡 Pro Tips
+## Pro Tips
 
 1. **Name descriptively** - "Alex_Business_Suit" vs "Character 1"
 2. **Create variations** - Same person, different looks
@@ -90,7 +90,7 @@ Deleted characters cannot be recovered. Clips using them remain unaffected.
 
 ---
 
-## 👉 Next Steps
+## Next Steps
 
 - [Use in Face Swap](/ugc-studio/face-swap/overview)
 - [Create AI Videos](/ugc-studio/ai-video-creator/overview)

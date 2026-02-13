@@ -4,32 +4,32 @@ sidebar_position: 1
 
 # Creating Teams
 
-📌 **What You'll Learn:**
+**What You'll Learn:**
 - Create a team workspace
 - Configure team settings
 - Understand team vs personal accounts
 
 ---
 
-## 🎯 Overview
+## Overview
 
 Teams let multiple people collaborate on content creation. Share clips, characters, and credits across your organization.
 
 ---
 
-## 🏢 Team vs Personal
+## Team vs Personal
 
 | Feature | Personal | Team |
 |---------|----------|------|
 | Users | 1 | Multiple |
-| Shared library | ❌ | ✅ |
-| Roles & permissions | ❌ | ✅ |
-| Team branding | ❌ | ✅ |
-| Shared credits | ❌ | ✅ |
+| Shared library | No | Yes |
+| Roles & permissions | No | Yes |
+| Team branding | No | Yes |
+| Shared credits | No | Yes |
 
 ---
 
-## 📝 Creating a Team
+## Creating a Team
 
 ### Step 1: Start
 
@@ -54,7 +54,7 @@ Enter team details:
 
 ---
 
-## ⚙️ Team Settings
+## Team Settings
 
 ### Branding
 
@@ -68,7 +68,7 @@ Enter team details:
 
 ---
 
-## 💡 Pro Tips
+## Pro Tips
 
 1. **Choose a clear name** - Team members will see it
 2. **Upload a logo** - Helps with organization
@@ -76,7 +76,7 @@ Enter team details:
 
 ---
 
-## 👉 Next Steps
+## Next Steps
 
 - [Invite team members](/team-features/inviting-members)
 - [Set up roles and permissions](/team-features/roles-permissions)

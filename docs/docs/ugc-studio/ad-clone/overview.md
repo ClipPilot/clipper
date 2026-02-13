@@ -4,14 +4,14 @@ sidebar_position: 1
 
 # Ad Clone Overview
 
-📌 **What You'll Learn:**
+**What You'll Learn:**
 - What Ad Clone does
 - When to use it
 - The complete workflow
 
 ---
 
-## 🎯 What is Ad Clone?
+## What is Ad Clone?
 
 Ad Clone recreates the structure and style of successful ads using your AI character and product.
 
@@ -19,7 +19,7 @@ Ad Clone recreates the structure and style of successful ads using your AI chara
 
 ---
 
-## 🔄 How It Works
+## How It Works
 
 | Step | What Happens |
 |------|--------------|
@@ -32,7 +32,7 @@ Ad Clone recreates the structure and style of successful ads using your AI chara
 
 ---
 
-## 📊 What AI Analyzes
+## What AI Analyzes
 
 | Element | What's Detected |
 |---------|-----------------|
@@ -44,7 +44,7 @@ Ad Clone recreates the structure and style of successful ads using your AI chara
 
 ---
 
-## ✨ Use Cases
+## Use Cases
 
 | Scenario | How It Helps |
 |----------|--------------|
@@ -55,7 +55,7 @@ Ad Clone recreates the structure and style of successful ads using your AI chara
 
 ---
 
-## 💎 Credits
+## Credits
 
 **Cost:** 10 credits per clone
 
@@ -66,7 +66,7 @@ Includes:
 
 ---
 
-## ⚠️ Important Notes
+## Important Notes
 
 - **Legal:** Only clone ads you have rights to use as reference
 - **Ethics:** Use for inspiration, not direct copying
@@ -74,7 +74,7 @@ Includes:
 
 ---
 
-## 💡 Pro Tips
+## Pro Tips
 
 1. **Choose proven winners** - Clone ads with demonstrated success
 2. **Similar products work best** - Same category = better fit
@@ -83,7 +83,7 @@ Includes:
 
 ---
 
-## 👉 Next Steps
+## Next Steps
 
 - [Analyze a video](/ugc-studio/ad-clone/video-analysis)
 - [Generate your clone](/ugc-studio/ad-clone/generating-clone)

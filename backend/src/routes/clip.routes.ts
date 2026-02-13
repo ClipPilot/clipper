@@ -242,8 +242,88 @@ router.post("/multipart/complete", requireAuth, completeMultipartUpload);
  */
 router.post("/multipart/abort", requireAuth, abortMultipartUpload);
 
+/**
+ * @openapi
+ * /clip-video/youtube/info:
+ *   post:
+ *     summary: Get YouTube video info
+ *     tags:
+ *       - Clips
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - url
+ *             properties:
+ *               url:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Video info retrieved
+ */
 router.post("/youtube/info", requireAuth, getVideoInfo);
+
+/**
+ * @openapi
+ * /clip-video/youtube/download:
+ *   post:
+ *     summary: Start async YouTube video download
+ *     tags:
+ *       - Clips
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - url
+ *               - teamId
+ *             properties:
+ *               url:
+ *                 type: string
+ *               teamId:
+ *                 type: integer
+ *     responses:
+ *       202:
+ *         description: Download started
+ */
 router.post("/youtube/download", requireAuth, downloadVideo);
+
+/**
+ * @openapi
+ * /clip-video/youtube/download-sync:
+ *   post:
+ *     summary: Download YouTube video synchronously
+ *     tags:
+ *       - Clips
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - url
+ *               - teamId
+ *             properties:
+ *               url:
+ *                 type: string
+ *               teamId:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Video downloaded
+ */
 router.post("/youtube/download-sync", requireAuth, downloadVideoSync);
 
 /**
@@ -1315,6 +1395,30 @@ router.post(
   clipManagerController.getMusicUploadUrl.bind(clipManagerController)
 );
 
+/**
+ * @openapi
+ * /clip-video/teams/{teamId}/clips/{clipId}/overlay-upload:
+ *   post:
+ *     summary: Get upload URL for a clip overlay image
+ *     tags:
+ *       - Clips
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: teamId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - name: clipId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Upload URL generated
+ */
 router.post(
   "/teams/:teamId/clips/:clipId/overlay-upload",
   requireAuth,
@@ -1322,6 +1426,30 @@ router.post(
   clipManagerController.getOverlayUploadUrl.bind(clipManagerController)
 );
 
+/**
+ * @openapi
+ * /clip-video/teams/{teamId}/clips/{clipId}/overlay-urls:
+ *   post:
+ *     summary: Get signed URLs for clip overlay images
+ *     tags:
+ *       - Clips
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: teamId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - name: clipId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Overlay URLs returned
+ */
 router.post(
   "/teams/:teamId/clips/:clipId/overlay-urls",
   requireAuth,
@@ -1594,6 +1722,28 @@ router.get(
   clipManagerController.downloadSharedClip.bind(clipManagerController)
 );
 
+/**
+ * @openapi
+ * /clip-video/search-clips:
+ *   get:
+ *     summary: Search clips across teams
+ *     tags:
+ *       - Clips
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: q
+ *         in: query
+ *         schema:
+ *           type: string
+ *       - name: teamId
+ *         in: query
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Search results
+ */
 router.get(
   "/search-clips",
   requireAuth,

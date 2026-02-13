@@ -15,7 +15,6 @@ export interface AdCloneProduct {
 
 export type AdCloneStep =
   | "upload"
-  | "script"
   | "storyboard"
   | "character"
   | "generate";

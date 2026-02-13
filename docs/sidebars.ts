@@ -5,7 +5,7 @@ const sidebars: SidebarsConfig = {
     'intro',
     {
       type: 'category',
-      label: '🚀 Getting Started',
+      label: 'Getting Started',
       items: [
         'getting-started/quick-start',
         'getting-started/account-setup',
@@ -13,7 +13,7 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: '✂️ AI Clipping',
+      label: 'AI Clipping',
       items: [
         'ai-clipping/overview',
         'ai-clipping/uploading-videos',
@@ -25,7 +25,7 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: '📚 Clip Library',
+      label: 'Clip Library',
       items: [
         'clip-library/managing-clips',
         'clip-library/folders-and-tags',
@@ -35,12 +35,12 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: '🎬 UGC Studio',
+      label: 'UGC Studio',
       items: [
         'ugc-studio/overview',
         {
           type: 'category',
-          label: '👤 Characters',
+          label: 'Characters',
           items: [
             'ugc-studio/characters/creating-characters',
             'ugc-studio/characters/managing-characters',
@@ -48,7 +48,7 @@ const sidebars: SidebarsConfig = {
         },
         {
           type: 'category',
-          label: '🔄 Face Swap',
+          label: 'Face Swap',
           items: [
             'ugc-studio/face-swap/overview',
             'ugc-studio/face-swap/manual-segments',
@@ -57,7 +57,7 @@ const sidebars: SidebarsConfig = {
         },
         {
           type: 'category',
-          label: '🎥 AI Video Creator',
+          label: 'AI Video Creator',
           items: [
             'ugc-studio/ai-video-creator/overview',
             'ugc-studio/ai-video-creator/product-setup',
@@ -67,7 +67,7 @@ const sidebars: SidebarsConfig = {
         },
         {
           type: 'category',
-          label: '📋 Ad Clone',
+          label: 'Ad Clone',
           items: [
             'ugc-studio/ad-clone/overview',
             'ugc-studio/ad-clone/video-analysis',
@@ -78,7 +78,7 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: '👥 Team Features',
+      label: 'Team Features',
       items: [
         'team-features/creating-teams',
         'team-features/inviting-members',
@@ -87,7 +87,7 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: '💳 Billing',
+      label: 'Billing',
       items: [
         'billing/plans',
         'billing/credits-usage',

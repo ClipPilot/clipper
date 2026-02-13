@@ -4,14 +4,14 @@ sidebar_position: 1
 
 # AI Video Creator Overview
 
-📌 **What You'll Learn:**
+**What You'll Learn:**
 - Create complete UGC videos from text
 - The full generation pipeline
 - What to expect from outputs
 
 ---
 
-## 🎯 What is AI Video Creator?
+## What is AI Video Creator?
 
 AI Video Creator generates complete UGC advertisement videos from scratch. Just provide product images and a description—AI handles everything else.
 
@@ -23,7 +23,7 @@ AI Video Creator generates complete UGC advertisement videos from scratch. Just 
 
 ---
 
-## 🔄 The Pipeline
+## The Pipeline
 
 | Step | What Happens |
 |------|--------------|
@@ -37,7 +37,7 @@ AI Video Creator generates complete UGC advertisement videos from scratch. Just 
 
 ---
 
-## 🎬 Video Types
+## Video Types
 
 ### A-Roll (Talking Head)
 - Character speaking to camera
@@ -56,7 +56,7 @@ AI Video Creator generates complete UGC advertisement videos from scratch. Just 
 
 ---
 
-## ⏱️ Processing Time
+## Processing Time
 
 - **Script generation:** 1-2 minutes
 - **Image generation:** 2-5 minutes
@@ -65,7 +65,7 @@ AI Video Creator generates complete UGC advertisement videos from scratch. Just 
 
 ---
 
-## 💎 Credits
+## Credits
 
 **Cost:** 10 credits per video
 
@@ -77,7 +77,7 @@ Includes:
 
 ---
 
-## 💡 Pro Tips
+## Pro Tips
 
 1. **Good product photos** - Clear, well-lit images work best
 2. **Detailed descriptions** - Help AI understand your product
@@ -86,7 +86,7 @@ Includes:
 
 ---
 
-## 👉 Next Steps
+## Next Steps
 
 - [Set up your product](/ugc-studio/ai-video-creator/product-setup)
 - [Understand script generation](/ugc-studio/ai-video-creator/script-generation)

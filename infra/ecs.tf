@@ -190,6 +190,10 @@ resource "aws_ecs_task_definition" "backend" {
       {
         name      = "AD_POSTING_WEBHOOK_SECRET"
         valueFrom = aws_secretsmanager_secret.ad_posting_webhook_secret.arn
+      },
+      {
+        name      = "APIFY_API_TOKEN"
+        valueFrom = aws_secretsmanager_secret.apify_api_token.arn
       }
     ]
 

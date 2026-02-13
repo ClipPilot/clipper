@@ -6,10 +6,9 @@ const router = Router();
 
 /**
  * @openapi
- * /user/preferences:
+ * /user-preferences:
  *   get:
- *     summary: Get user preferences
- *     description: Retrieves the authenticated user's dashboard preferences
+ *     summary: Get current user preferences
  *     tags:
  *       - User Preferences
  *     security:
@@ -17,19 +16,6 @@ const router = Router();
  *     responses:
  *       200:
  *         description: User preferences
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 dashboardLayout:
- *                   type: object
- *                 widgetColors:
- *                   type: object
- *       401:
- *         description: Unauthorized
- *       500:
- *         description: Server error
  */
 router.get("/", requireAuth, (req, res) =>
   userPreferencesController.getPreferences(req, res)
@@ -37,42 +23,22 @@ router.get("/", requireAuth, (req, res) =>
 
 /**
  * @openapi
- * /user/preferences:
+ * /user-preferences:
  *   patch:
  *     summary: Update user preferences
- *     description: Partially updates the authenticated user's dashboard preferences
  *     tags:
  *       - User Preferences
  *     security:
  *       - bearerAuth: []
  *     requestBody:
+ *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             properties:
- *               dashboardLayout:
- *                 type: object
- *                 description: Dashboard layout configuration
- *               widgetColors:
- *                 type: object
- *                 description: Widget color overrides
  *     responses:
  *       200:
- *         description: Updated preferences
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 dashboardLayout:
- *                   type: object
- *                 widgetColors:
- *                   type: object
- *       401:
- *         description: Unauthorized
- *       500:
- *         description: Server error
+ *         description: Preferences updated
  */
 router.patch("/", requireAuth, (req, res) =>
   userPreferencesController.updatePreferences(req, res)
@@ -80,10 +46,9 @@ router.patch("/", requireAuth, (req, res) =>
 
 /**
  * @openapi
- * /user/preferences/reset:
+ * /user-preferences/reset:
  *   post:
- *     summary: Reset user preferences
- *     description: Resets the authenticated user's preferences to default values
+ *     summary: Reset user preferences to defaults
  *     tags:
  *       - User Preferences
  *     security:
@@ -91,17 +56,6 @@ router.patch("/", requireAuth, (req, res) =>
  *     responses:
  *       200:
  *         description: Preferences reset
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *       401:
- *         description: Unauthorized
- *       500:
- *         description: Server error
  */
 router.post("/reset", requireAuth, (req, res) =>
   userPreferencesController.resetPreferences(req, res)

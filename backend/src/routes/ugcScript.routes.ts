@@ -9,9 +9,8 @@ const router = Router();
  * /ugc/generate-script:
  *   post:
  *     summary: Generate a UGC script
- *     description: Queues an AI-powered UGC script generation job for a team and character
  *     tags:
- *       - UGC Scripts
+ *       - UGC Script
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -22,58 +21,21 @@ const router = Router();
  *             type: object
  *             required:
  *               - teamId
- *               - characterId
+ *               - productName
  *             properties:
  *               teamId:
- *                 type: integer
- *               characterId:
- *                 type: integer
+ *                 type: number
+ *               productName:
+ *                 type: string
+ *               productDescription:
+ *                 type: string
  *               productImageKeys:
  *                 type: array
  *                 items:
  *                   type: string
- *                 maxItems: 5
- *               productName:
- *                 type: string
- *               scriptDirection:
- *                 type: string
- *               targetDuration:
- *                 type: integer
- *                 default: 30
- *               numberOfVariations:
- *                 type: integer
- *                 default: 2
- *               structureId:
- *                 type: string
- *                 default: classic
- *               customPattern:
- *                 type: string
  *     responses:
- *       202:
- *         description: Script generation queued
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 scriptId:
- *                   type: string
- *                 status:
- *                   type: string
- *                 message:
- *                   type: string
- *       400:
- *         description: Missing required fields
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: UGC Studio access required
- *       404:
- *         description: Character not found
- *       500:
- *         description: Server error
+ *       200:
+ *         description: Script generation started
  */
 router.post(
   "/generate-script",
@@ -85,10 +47,9 @@ router.post(
  * @openapi
  * /ugc/regenerate-scene:
  *   post:
- *     summary: Regenerate a single scene
- *     description: Regenerates dialogue, emotion, or full content for a specific scene in a script
+ *     summary: Regenerate a single scene in a script
  *     tags:
- *       - UGC Scripts
+ *       - UGC Script
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -99,39 +60,17 @@ router.post(
  *             type: object
  *             required:
  *               - scriptId
- *               - sceneId
+ *               - sceneIndex
  *             properties:
- *               teamId:
- *                 type: integer
  *               scriptId:
  *                 type: string
- *               sceneId:
+ *               sceneIndex:
+ *                 type: number
+ *               instruction:
  *                 type: string
- *               currentDialogue:
- *                 type: string
- *               currentEmotion:
- *                 type: string
- *               regenerationType:
- *                 type: string
- *                 default: full
  *     responses:
  *       200:
- *         description: Scene regenerated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 scene:
- *                   type: object
- *       400:
- *         description: Missing required fields
- *       401:
- *         description: Unauthorized
- *       500:
- *         description: Server error
+ *         description: Scene regenerated
  */
 router.post(
   "/regenerate-scene",
@@ -143,10 +82,9 @@ router.post(
  * @openapi
  * /ugc/regenerate-broll-prompt:
  *   post:
- *     summary: Regenerate a B-roll prompt
- *     description: Regenerates the B-roll prompt for a specific shot within a scene
+ *     summary: Regenerate cinematic prompt for a single B-roll shot
  *     tags:
- *       - UGC Scripts
+ *       - UGC Script
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -166,25 +104,12 @@ router.post(
  *               sceneId:
  *                 type: string
  *               bRollShotIndex:
- *                 type: integer
+ *                 type: number
  *               newAction:
  *                 type: string
  *     responses:
  *       200:
  *         description: B-roll prompt regenerated
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *       400:
- *         description: Missing required fields
- *       401:
- *         description: Unauthorized
- *       500:
- *         description: Server error
  */
 router.post(
   "/regenerate-broll-prompt",
@@ -194,12 +119,66 @@ router.post(
 
 /**
  * @openapi
+ * /ugc/regenerate-all-broll-shots:
+ *   post:
+ *     summary: Regenerate all B-roll shot descriptions from updated scene action
+ *     tags:
+ *       - UGC Script
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - scriptId
+ *               - sceneId
+ *               - newSceneAction
+ *               - shotCount
+ *               - shotDurations
+ *             properties:
+ *               scriptId:
+ *                 type: string
+ *               sceneId:
+ *                 type: string
+ *               newSceneAction:
+ *                 type: string
+ *               shotCount:
+ *                 type: number
+ *               shotDurations:
+ *                 type: array
+ *                 items:
+ *                   type: number
+ *     responses:
+ *       200:
+ *         description: All B-roll shots regenerated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 bRollShots:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ */
+router.post(
+  "/regenerate-all-broll-shots",
+  requireAuth,
+  ugcScriptController.regenerateAllBRollShots.bind(ugcScriptController)
+);
+
+/**
+ * @openapi
  * /ugc/upload-product-image:
  *   post:
  *     summary: Get a presigned upload URL for a product image
- *     description: Returns a presigned S3 URL to upload a product image for UGC script generation
  *     tags:
- *       - UGC Scripts
+ *       - UGC Script
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -213,34 +192,14 @@ router.post(
  *               - fileName
  *             properties:
  *               teamId:
- *                 type: integer
+ *                 type: number
  *               fileName:
  *                 type: string
  *               contentType:
  *                 type: string
- *                 default: image/jpeg
  *     responses:
  *       200:
  *         description: Upload URL generated
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 uploadUrl:
- *                   type: string
- *                 s3Key:
- *                   type: string
- *       400:
- *         description: Missing required fields
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: UGC Studio access required
- *       500:
- *         description: Server error
  */
 router.post(
   "/upload-product-image",
@@ -253,18 +212,18 @@ router.post(
  * /ugc/script/{scriptId}:
  *   put:
  *     summary: Update a script
- *     description: Updates scenes or selected variant index for a script
  *     tags:
- *       - UGC Scripts
+ *       - UGC Script
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - in: path
- *         name: scriptId
+ *       - name: scriptId
+ *         in: path
  *         required: true
  *         schema:
  *           type: string
  *     requestBody:
+ *       required: true
  *       content:
  *         application/json:
  *           schema:
@@ -272,32 +231,11 @@ router.post(
  *             properties:
  *               scenes:
  *                 type: array
- *                 items:
- *                   type: object
  *               selectedVariantIndex:
- *                 type: integer
+ *                 type: number
  *     responses:
  *       200:
- *         description: Script updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 scripts:
- *                   type: array
- *                   items:
- *                     type: object
- *                 selectedVariantIndex:
- *                   type: integer
- *       401:
- *         description: Unauthorized
- *       404:
- *         description: Script not found
- *       500:
- *         description: Server error
+ *         description: Script updated
  */
 router.put(
   "/script/:scriptId",
@@ -309,42 +247,20 @@ router.put(
  * @openapi
  * /ugc/script/{scriptId}/full:
  *   get:
- *     summary: Get full script data
- *     description: Retrieves the complete script including all variants and scene data
+ *     summary: Get the full script with all variants
  *     tags:
- *       - UGC Scripts
+ *       - UGC Script
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - in: path
- *         name: scriptId
+ *       - name: scriptId
+ *         in: path
  *         required: true
  *         schema:
  *           type: string
  *     responses:
  *       200:
  *         description: Full script data
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 scripts:
- *                   type: array
- *                   items:
- *                     type: object
- *                 selectedVariantIndex:
- *                   type: integer
- *                 characterId:
- *                   type: integer
- *       401:
- *         description: Unauthorized
- *       404:
- *         description: Script not found
- *       500:
- *         description: Server error
  */
 router.get(
   "/script/:scriptId/full",
@@ -357,63 +273,19 @@ router.get(
  * /ugc/script/{scriptId}/status:
  *   get:
  *     summary: Get script generation status
- *     description: Polls the current status and progress of a script generation job
  *     tags:
- *       - UGC Scripts
+ *       - UGC Script
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - in: path
- *         name: scriptId
+ *       - name: scriptId
+ *         in: path
  *         required: true
  *         schema:
  *           type: string
  *     responses:
  *       200:
- *         description: Script status retrieved
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 scriptId:
- *                   type: string
- *                 status:
- *                   type: string
- *                   enum: [queued, processing, completed, failed]
- *                 progress:
- *                   type: integer
- *                 progressMessage:
- *                   type: string
- *                 createdAt:
- *                   type: string
- *                   format: date-time
- *                 startedAt:
- *                   type: string
- *                   format: date-time
- *                 completedAt:
- *                   type: string
- *                   format: date-time
- *                 scripts:
- *                   type: array
- *                   items:
- *                     type: object
- *                   description: Only present when status is completed
- *                 selectedVariantIndex:
- *                   type: integer
- *                 error:
- *                   type: string
- *                   description: Only present when status is failed
- *       400:
- *         description: Missing scriptId
- *       401:
- *         description: Unauthorized
- *       404:
- *         description: Script not found
- *       500:
- *         description: Server error
+ *         description: Script status
  */
 router.get(
   "/script/:scriptId/status",
@@ -425,78 +297,20 @@ router.get(
  * @openapi
  * /ugc/scripts/{teamId}:
  *   get:
- *     summary: List scripts for a team
- *     description: Returns a paginated list of completed scripts for the given team
+ *     summary: List all scripts for a team
  *     tags:
- *       - UGC Scripts
+ *       - UGC Script
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - in: path
- *         name: teamId
+ *       - name: teamId
+ *         in: path
  *         required: true
  *         schema:
  *           type: integer
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 20
- *       - in: query
- *         name: offset
- *         schema:
- *           type: integer
- *           default: 0
  *     responses:
  *       200:
- *         description: Scripts list retrieved
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 scripts:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id:
- *                         type: string
- *                       productName:
- *                         type: string
- *                       scriptDirection:
- *                         type: string
- *                       structureId:
- *                         type: string
- *                       characterId:
- *                         type: integer
- *                       characterName:
- *                         type: string
- *                       sceneCount:
- *                         type: integer
- *                       totalDuration:
- *                         type: number
- *                       title:
- *                         type: string
- *                       hook:
- *                         type: string
- *                       viralScore:
- *                         type: number
- *                       createdAt:
- *                         type: string
- *                         format: date-time
- *                 hasMore:
- *                   type: boolean
- *       400:
- *         description: Missing teamId
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: UGC Studio access required
- *       500:
- *         description: Server error
+ *         description: List of scripts
  */
 router.get(
   "/scripts/:teamId",

@@ -230,3 +230,9 @@ variable "google_drive_parent_folder_id" {
   default     = ""
 }
 
+variable "apify_api_token" {
+  description = "Apify API Token for virality sync"
+  type        = string
+  sensitive   = true
+}
+

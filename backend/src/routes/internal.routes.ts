@@ -239,10 +239,7 @@ router.post("/notify/script-job-update", validateInternalKey, notifyScriptJobUpd
  * @openapi
  * /internal/notify/ugc-video-job-update:
  *   post:
- *     summary: Trigger UGC video generation job update notification
- *     description: |
- *       Internal endpoint used by the worker to notify clients of UGC video generation
- *       progress. Emits a WebSocket event with generation status, scene progress, and output.
+ *     summary: Trigger UGC video job update notification
  *     tags:
  *       - Internal
  *     security:
@@ -259,42 +256,16 @@ router.post("/notify/script-job-update", validateInternalKey, notifyScriptJobUpd
  *             properties:
  *               teamId:
  *                 type: integer
- *                 description: The team ID to notify
  *               update:
  *                 type: object
- *                 required:
- *                   - jobId
- *                   - status
- *                   - progress
- *                   - progressMessage
  *                 properties:
  *                   jobId:
  *                     type: string
- *                   status:
- *                     type: string
- *                     enum: [queued, generating, completed, failed]
- *                   progress:
- *                     type: integer
- *                     minimum: 0
- *                     maximum: 100
- *                   progressMessage:
- *                     type: string
- *                   currentScene:
- *                     type: integer
- *                   totalScenes:
- *                     type: integer
- *                   finalVideoUrl:
- *                     type: string
- *                   finalVideoKey:
- *                     type: string
- *                   error:
- *                     type: string
- *                     description: Error message (when status is failed)
  *     responses:
  *       200:
- *         description: Notification sent successfully
+ *         description: Notification sent
  *       400:
- *         description: Missing teamId or update
+ *         description: Missing required fields
  *       401:
  *         description: Invalid internal API key
  */

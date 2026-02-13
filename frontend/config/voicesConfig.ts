@@ -1,9 +1,11 @@
 export interface Voice {
   name: string;
   previewFile: string;
-  gender: "male" | "female";
+  gender: "male" | "female" | "other";
   id: string;
   description: string;
+  isCloned?: boolean;
+  clonedVoiceDbId?: number;
 }
 
 export const voicesConfig: Voice[] = [

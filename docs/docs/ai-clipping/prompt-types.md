@@ -4,22 +4,22 @@ sidebar_position: 3
 
 # Prompt Types
 
-📌 **What You'll Learn:**
+**What You'll Learn:**
 - Available prompt types and when to use them
 - How prompts affect clip suggestions
 - Creating custom prompts
 
 ---
 
-## 🎯 Overview
+## Overview
 
 Prompt types tell the AI what kind of content to look for. Choose the right prompt to get better clip suggestions.
 
 ---
 
-## 📋 Available Prompt Types
+## Available Prompt Types
 
-### 🏢 Business
+### Business
 **Best for:** Entrepreneurs, business coaches, corporate content
 
 Looks for:
@@ -28,7 +28,7 @@ Looks for:
 - Success stories
 - Actionable tips
 
-### 🔥 Viral
+### Viral
 **Best for:** Entertainment, reactions, trending topics
 
 Looks for:
@@ -37,7 +37,7 @@ Looks for:
 - Controversial takes
 - Emotional peaks
 
-### 🎮 Gaming
+### Gaming
 **Best for:** Streamers, gaming content, esports
 
 Looks for:
@@ -46,7 +46,7 @@ Looks for:
 - Rage moments
 - Clutch victories
 
-### 📚 General
+### General
 **Best for:** Mixed content, educational videos
 
 Looks for:
@@ -55,7 +55,7 @@ Looks for:
 - Quotable phrases
 - Engaging explanations
 
-### ✏️ Custom
+### Custom
 **Best for:** Specific needs not covered above
 
 Write your own instructions:
@@ -65,7 +65,7 @@ Write your own instructions:
 
 ---
 
-## 🔧 Using Custom Prompts
+## Using Custom Prompts
 
 ### Example Custom Prompts
 
@@ -89,7 +89,7 @@ comparison moments, and final verdicts.
 
 ---
 
-## 💡 Pro Tips
+## Pro Tips
 
 1. **Match prompt to content** - A gaming prompt on a business video won't work well
 2. **Try different prompts** - Same video can yield different clips with different prompts
@@ -97,7 +97,7 @@ comparison moments, and final verdicts.
 
 ---
 
-## 👉 Next Steps
+## Next Steps
 
 - [Configure clip settings](/ai-clipping/clip-settings)
 - [Add text overlays](/ai-clipping/text-overlays)

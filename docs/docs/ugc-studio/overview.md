@@ -4,14 +4,14 @@ sidebar_position: 1
 
 # UGC Studio Overview
 
-📌 **What You'll Learn:**
+**What You'll Learn:**
 - What UGC Studio offers
 - Available features and workflows
 - Credit usage for each feature
 
 ---
 
-## 🎯 What is UGC Studio?
+## What is UGC Studio?
 
 UGC Studio is your AI-powered toolkit for creating professional user-generated content without hiring actors or creators.
 
@@ -23,9 +23,9 @@ UGC Studio is your AI-powered toolkit for creating professional user-generated c
 
 ---
 
-## 🎬 Features
+## Features
 
-### 👤 AI Characters
+### AI Characters
 
 Create realistic AI actors with custom:
 - Appearance (hair, skin, eyes, body type)
@@ -34,7 +34,7 @@ Create realistic AI actors with custom:
 
 **Cost:** 1 credit per character
 
-### 🔄 Face Swap
+### Face Swap
 
 Replace faces in existing videos:
 - Use your AI characters
@@ -43,7 +43,7 @@ Replace faces in existing videos:
 
 **Cost:** 5 credits per swap
 
-### 🎥 AI Video Creator
+### AI Video Creator
 
 Generate complete UGC videos:
 - Upload product images
@@ -53,7 +53,7 @@ Generate complete UGC videos:
 
 **Cost:** 10 credits per video
 
-### 📋 Ad Clone
+### Ad Clone
 
 Recreate winning ads with your character:
 - Upload reference ad
@@ -64,7 +64,7 @@ Recreate winning ads with your character:
 
 ---
 
-## 🔄 Typical Workflow
+## Typical Workflow
 
 1. **Create Character** → Design your AI actor
 2. **Choose Feature** → Face Swap, Video Creator, or Ad Clone
@@ -75,7 +75,7 @@ Recreate winning ads with your character:
 
 ---
 
-## 💡 Pro Tips
+## Pro Tips
 
 1. **Start with characters** - You'll need them for other features
 2. **Save your best characters** - Reuse across projects
@@ -83,7 +83,7 @@ Recreate winning ads with your character:
 
 ---
 
-## 👉 Next Steps
+## Next Steps
 
 - [Create your first character](/ugc-studio/characters/creating-characters)
 - [Learn about Face Swap](/ugc-studio/face-swap/overview)

@@ -1,0 +1,1 @@
+ALTER TABLE "cloned_voices" ENABLE ROW LEVEL SECURITY;

@@ -4,20 +4,20 @@ sidebar_position: 4
 
 # Video Generation
 
-📌 **What You'll Learn:**
+**What You'll Learn:**
 - Select voice for your character
 - Understand the generation process
 - Review and download your video
 
 ---
 
-## 🎯 Overview
+## Overview
 
 Once your script is ready, select a voice and generate your complete UGC video.
 
 ---
 
-## 🎤 Voice Selection
+## Voice Selection
 
 ### Available Voices
 
@@ -41,7 +41,7 @@ Browse voices by:
 
 ---
 
-## 🎬 Storyboard Review
+## Storyboard Review
 
 Before generating, review the storyboard:
 
@@ -56,7 +56,7 @@ Make any final edits before proceeding.
 
 ---
 
-## ⚙️ Generation Process
+## Generation Process
 
 Click **"Generate Video"** to start:
 
@@ -73,7 +73,7 @@ You'll be notified when complete.
 
 ---
 
-## ✅ Reviewing Results
+## Reviewing Results
 
 Once generated:
 
@@ -84,7 +84,7 @@ Once generated:
 
 ---
 
-## ⬇️ Download & Use
+## Download & Use
 
 Happy with your video?
 
@@ -94,7 +94,7 @@ Happy with your video?
 
 ---
 
-## 💡 Pro Tips
+## Pro Tips
 
 1. **Generate multiple versions** - Different approaches
 2. **A/B test** - See what performs best
@@ -102,7 +102,7 @@ Happy with your video?
 
 ---
 
-## 👉 Next Steps
+## Next Steps
 
 - [Clone winning ads](/ugc-studio/ad-clone/overview)
 - [Manage your clips](/clip-library/managing-clips)

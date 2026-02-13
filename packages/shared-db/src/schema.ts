@@ -879,9 +879,12 @@ export const posts = pgTable(
   }),
 ).enableRLS();
 
-
 // Virality Tracking
-export const viralityPlatformEnum = pgEnum("virality_platform", ["instagram", "tiktok", "x"]);
+export const viralityPlatformEnum = pgEnum("virality_platform", [
+  "instagram",
+  "tiktok",
+  "x",
+]);
 export const viralitySyncStatusEnum = pgEnum("virality_sync_status", [
   "pending",
   "syncing",
@@ -904,7 +907,7 @@ export const viralityCompetitors = pgTable(
   },
   (table) => ({
     teamIdx: index("virality_competitors_team_id_idx").on(table.team_id),
-  })
+  }),
 ).enableRLS();
 
 // Platform accounts (instagram, tiktok, x) - up to 3 per competitor
@@ -915,8 +918,10 @@ export const viralityAccounts = pgTable(
     team_id: integer("team_id")
       .notNull()
       .references(() => teams.id, { onDelete: "cascade" }),
-    competitor_id: integer("competitor_id")
-      .references(() => viralityCompetitors.id, { onDelete: "cascade" }),
+    competitor_id: integer("competitor_id").references(
+      () => viralityCompetitors.id,
+      { onDelete: "cascade" },
+    ),
     platform: viralityPlatformEnum("platform").notNull(),
     username: varchar("username", { length: 255 }).notNull(),
     profile_url: text("profile_url").notNull(),
@@ -940,9 +945,9 @@ export const viralityAccounts = pgTable(
     uniqueTeamPlatformUsername: unique("virality_accounts_unique").on(
       table.team_id,
       table.platform,
-      table.username
+      table.username,
     ),
-  })
+  }),
 ).enableRLS();
 
 export const viralityPosts = pgTable(
@@ -963,8 +968,6 @@ export const viralityPosts = pgTable(
     comment_count: integer("comment_count").default(0),
     video_view_count: integer("video_view_count"),
     video_play_count: integer("video_play_count"),
-    // Metrics history for graphing - array of {recorded_at, likes, comments, views}
-    // Limited to 28 entries (14 days at 6h intervals)
     metrics_history: jsonb("metrics_history").default([]),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
@@ -973,8 +976,23 @@ export const viralityPosts = pgTable(
     accountIdx: index("virality_posts_account_id_idx").on(table.account_id),
     uniqueAccountPost: unique("virality_posts_unique").on(
       table.account_id,
-      table.platform_post_id
+      table.platform_post_id,
     ),
     postedAtIdx: index("virality_posts_posted_at_idx").on(table.posted_at),
-  })
+  }),
 ).enableRLS();
+
+export const genderEnum = pgEnum("gender_enum", ["male", "female", "other"]);
+export const clonedVoices = pgTable("cloned_voices", {
+  id: serial("id").primaryKey(),
+  team_id: integer("team_id")
+    .notNull()
+    .references(() => teams.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  voice_id: varchar("voice_id", { length: 255 }).notNull(),
+  sample_audio_key: text("sample_audio_key").notNull(),
+  gender: genderEnum("gender").notNull(),
+  created_at: timestamp("created_at").notNull().defaultNow(),
+  updated_at: timestamp("updated_at").notNull().defaultNow(),
+}).enableRLS();

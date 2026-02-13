@@ -1,10 +1,13 @@
 /**
  * Cuttr Documentation Theme
- * Primary: #4F47E6 (Purple)
- * Gradient: #4F47E6 → #7C3AED
+ * Matches main Cuttr dashboard: JetBrains Mono, midnight palette, purple accent
  */
 
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+
+/* ─── Light Mode ─── */
 :root {
+  /* Primary accent (purple) — matches dashboard */
   --ifm-color-primary: #4F47E6;
   --ifm-color-primary-dark: #3730a3;
   --ifm-color-primary-darker: #312e81;
@@ -12,11 +15,39 @@
   --ifm-color-primary-light: #6366f1;
   --ifm-color-primary-lighter: #818cf8;
   --ifm-color-primary-lightest: #a5b4fc;
+
+  /* Fonts — JetBrains Mono as primary, Space Mono as code */
+  --ifm-font-family-base: 'JetBrains Mono', monospace;
+  --ifm-font-family-monospace: 'Space Mono', 'JetBrains Mono', monospace;
   --ifm-code-font-size: 95%;
+  --ifm-font-size-base: 15px;
+
+  /* Dashboard light palette */
+  --ifm-background-color: #ffffff;
+  --ifm-background-surface-color: #f8f9fa;
+  --ifm-font-color-base: #0a0a14;
+  --ifm-font-color-secondary: #495057;
+  --ifm-color-emphasis-100: #f1f3f5;
+  --ifm-color-emphasis-200: #dee2e6;
+  --ifm-color-emphasis-300: #adb5bd;
+
+  /* Borders */
+  --ifm-hr-border-color: #dee2e6;
+  --ifm-toc-border-color: #e9ecef;
+
+  /* Card */
+  --ifm-card-background-color: #ffffff;
+
+  /* Spacing */
+  --ifm-global-radius: 8px;
+
+  /* Code highlight */
   --docusaurus-highlighted-code-line-bg: rgba(79, 71, 230, 0.1);
 }
 
+/* ─── Dark Mode ─── */
 [data-theme='dark'] {
+  /* Primary accent — slightly lighter for dark bg readability */
   --ifm-color-primary: #818cf8;
   --ifm-color-primary-dark: #6366f1;
   --ifm-color-primary-darker: #4F47E6;
@@ -24,10 +55,52 @@
   --ifm-color-primary-light: #a5b4fc;
   --ifm-color-primary-lighter: #c7d2fe;
   --ifm-color-primary-lightest: #e0e7ff;
+
+  /* Dashboard dark palette — midnight */
+  --ifm-background-color: #0a0a14;
+  --ifm-background-surface-color: #0f0f1a;
+  --ifm-font-color-base: #ffffff;
+  --ifm-font-color-secondary: #a1a1aa;
+  --ifm-color-emphasis-100: #16161f;
+  --ifm-color-emphasis-200: #27272a;
+  --ifm-color-emphasis-300: #3f3f46;
+  --ifm-color-emphasis-600: #a1a1aa;
+  --ifm-color-emphasis-700: #d4d4d8;
+  --ifm-color-emphasis-800: #e4e4e7;
+  --ifm-color-emphasis-900: #f4f4f5;
+
+  /* Borders */
+  --ifm-hr-border-color: #27272a;
+  --ifm-toc-border-color: #27272a;
+
+  /* Card */
+  --ifm-card-background-color: #0f0f1a;
+
+  /* Navbar & Footer — match dashboard surface */
+  --ifm-navbar-background-color: #0a0a14;
+  --ifm-footer-background-color: #0a0a14;
+
+  /* Code highlight */
   --docusaurus-highlighted-code-line-bg: rgba(129, 140, 248, 0.2);
 }
 
-/* Hero Section */
+/* ─── Global ─── */
+html {
+  scroll-behavior: smooth;
+  font-feature-settings: 'liga' 1, 'calt' 1;
+}
+
+/* Navbar border — subtle separator like dashboard */
+.navbar {
+  border-bottom: 1px solid var(--ifm-color-emphasis-200);
+  box-shadow: none;
+}
+
+[data-theme='dark'] .navbar {
+  border-bottom-color: #27272a;
+}
+
+/* ─── Hero Section ─── */
 .hero {
   background: linear-gradient(135deg, #4F47E6 0%, #7C3AED 100%);
   padding: 4rem 0;
@@ -35,35 +108,39 @@
 
 .hero__title {
   font-size: 3rem;
-  font-weight: 800;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
 }
 
 .hero__subtitle {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   opacity: 0.9;
+  font-weight: 400;
 }
 
-/* Feature Cards */
+/* ─── Feature Cards ─── */
 .feature-card {
   background: var(--ifm-card-background-color);
-  border-radius: 12px;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 8px;
   padding: 1.5rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
   height: 100%;
 }
 
 .feature-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 10px 25px -5px rgba(79, 71, 230, 0.2);
+  border-color: var(--ifm-color-primary);
+  box-shadow: 0 10px 25px -5px rgba(79, 71, 230, 0.15);
 }
 
 .feature-card h3 {
   margin-top: 0;
   color: var(--ifm-color-primary);
+  font-weight: 600;
 }
 
-/* Quick Links Grid */
+/* ─── Quick Links Grid ─── */
 .quick-links {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -74,7 +151,7 @@
 .quick-link-card {
   background: var(--ifm-card-background-color);
   border: 1px solid var(--ifm-color-emphasis-200);
-  border-radius: 12px;
+  border-radius: 8px;
   padding: 1.5rem;
   text-decoration: none !important;
   color: inherit !important;
@@ -98,7 +175,7 @@
   opacity: 0.8;
 }
 
-/* Callout Boxes */
+/* ─── Callout Boxes ─── */
 .tip-box {
   background: linear-gradient(135deg, rgba(79, 71, 230, 0.1) 0%, rgba(124, 58, 237, 0.1) 100%);
   border-left: 4px solid var(--ifm-color-primary);
@@ -123,11 +200,12 @@
   margin: 1.5rem 0;
 }
 
-/* Tables */
+/* ─── Tables ─── */
 table {
   border-collapse: collapse;
   width: 100%;
   margin: 1rem 0;
+  font-size: 0.9rem;
 }
 
 th {
@@ -140,10 +218,11 @@ th, td {
   border: 1px solid var(--ifm-color-emphasis-200);
 }
 
-/* Sidebar styling */
+/* ─── Sidebar ─── */
 .menu__link {
   border-radius: 6px;
   transition: all 0.15s;
+  font-size: 0.9rem;
 }
 
 .menu__link:hover {
@@ -155,28 +234,53 @@ th, td {
   font-weight: 600;
 }
 
-/* Code blocks */
+/* ─── Code Blocks ─── */
 .prism-code {
   border-radius: 8px;
+  font-family: 'Space Mono', 'JetBrains Mono', monospace;
 }
 
-/* Buttons */
+/* ─── Buttons ─── */
 .button--primary {
   background: linear-gradient(135deg, #4F47E6 0%, #7C3AED 100%);
   border: none;
+  font-weight: 600;
 }
 
 .button--primary:hover {
   background: linear-gradient(135deg, #3730a3 0%, #6d28d9 100%);
 }
 
-/* Smooth scrolling */
-html {
-  scroll-behavior: smooth;
-}
-
-/* Better focus states */
+/* ─── Focus States ─── */
 *:focus-visible {
   outline: 2px solid var(--ifm-color-primary);
   outline-offset: 2px;
+}
+
+/* ─── Footer ─── */
+.footer {
+  border-top: 1px solid var(--ifm-color-emphasis-200);
+}
+
+[data-theme='dark'] .footer {
+  border-top-color: #27272a;
+}
+
+/* ─── Scrollbar (matches dashboard) ─── */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--ifm-background-color);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ifm-color-emphasis-200);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ifm-color-emphasis-300);
 }

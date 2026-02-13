@@ -491,6 +491,77 @@ export async function generateSoundEffect(
   }
 }
 
+const CLONE_PREVIEW_TEXT =
+  "Hey! I'm your new AI voice clone on Cuttr. This is what I sound like when creating content for your brand. Pretty cool, right?";
+
+/**
+ * Clone a voice using ElevenLabs Instant Voice Cloning.
+ * Requires a single audio sample (recording of the user reading a paragraph).
+ */
+export async function cloneVoice(
+  name: string,
+  audioBuffer: Buffer,
+  mimeType: string = "audio/mpeg",
+  description?: string,
+): Promise<{ voiceId: string }> {
+  const client = getClient();
+
+  console.log(
+    `[ElevenLabs] Cloning voice "${name}" from ${(audioBuffer.length / 1024).toFixed(1)}KB audio sample (${mimeType})`,
+  );
+
+  try {
+    const audioBlob = new Blob([audioBuffer], { type: mimeType });
+
+    const response = await client.voices.ivc.create({
+      name,
+      files: [audioBlob],
+      description: description || `Cloned voice: ${name}`,
+    });
+
+    const voiceId = response.voiceId;
+    if (!voiceId) {
+      throw new Error("No voice ID returned from ElevenLabs");
+    }
+
+    console.log(`[ElevenLabs] Voice cloned successfully: ${voiceId}`);
+    return { voiceId };
+  } catch (error) {
+    console.error("[ElevenLabs] Voice cloning failed:", error);
+    throw error;
+  }
+}
+
+/**
+ * Generate a short preview clip using a cloned voice.
+ */
+export async function generateClonePreview(
+  voiceId: string,
+): Promise<Buffer> {
+  console.log(`[ElevenLabs] Generating clone preview for voice ${voiceId}`);
+  return generateSpeech({
+    voiceId,
+    text: CLONE_PREVIEW_TEXT,
+  });
+}
+
+/**
+ * Delete a cloned voice from ElevenLabs.
+ */
+export async function deleteClonedVoice(voiceId: string): Promise<void> {
+  const client = getClient();
+
+  console.log(`[ElevenLabs] Deleting cloned voice: ${voiceId}`);
+
+  try {
+    await client.voices.delete(voiceId);
+    console.log(`[ElevenLabs] Voice deleted: ${voiceId}`);
+  } catch (error) {
+    console.error("[ElevenLabs] Voice deletion failed:", error);
+    throw error;
+  }
+}
+
 export const elevenLabsService = {
   generateSpeech,
   generateSpeechAndUpload,
@@ -502,4 +573,7 @@ export const elevenLabsService = {
   generateDialogueAndUpload,
   generateSoundEffect,
   getAudioDuration,
+  cloneVoice,
+  generateClonePreview,
+  deleteClonedVoice,
 };
