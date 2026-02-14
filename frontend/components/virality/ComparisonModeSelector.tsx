@@ -30,7 +30,7 @@ interface ComparisonModeSelectorProps {
   onChange: (mode: ComparisonMode) => void;
 }
 
-function getModeLabel(mode: ComparisonMode): string {
+export function getModeLabel(mode: ComparisonMode): string {
   switch (mode.type) {
     case "last-sync":
       return "Since last sync";

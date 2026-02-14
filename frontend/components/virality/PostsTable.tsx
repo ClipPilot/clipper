@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Table,
   TableHeader,
@@ -16,12 +16,15 @@ import {
 import { Icon } from "@iconify/react";
 import type { ViralityPost } from "@/api/virality";
 import { formatNumber, formatDate } from "@/lib/formatters";
-import { getPostMetricChange } from "@/app/dashboard/virality/[competitorId]/utils";
+import { getPostMetricChange, getPostEngRateChange, getComparisonDate } from "@/app/dashboard/virality/[competitorId]/utils";
+import { ComparisonModeSelector, type ComparisonMode } from "@/components/virality/ComparisonModeSelector";
 
 interface PostsTableProps {
   posts: ViralityPost[];
   accountPlatformMap: Record<number, string>;
   accountSyncMap?: Record<number, string | null>;
+  comparisonMode: ComparisonMode;
+  onComparisonModeChange: (mode: ComparisonMode) => void;
 }
 
 function MetricChangeIndicator({ change }: { change: number | null }) {
@@ -40,9 +43,10 @@ function getPlatformIcon(platform: string): string {
   return "mdi:instagram";
 }
 
-export function PostsTable({ posts, accountPlatformMap }: PostsTableProps) {
+export function PostsTable({ posts, accountPlatformMap, comparisonMode, onComparisonModeChange }: PostsTableProps) {
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(25);
+  const comparisonDate = useMemo(() => getComparisonDate(comparisonMode), [comparisonMode]);
 
   const totalPages = Math.ceil(posts.length / rowsPerPage);
   const paginatedPosts = posts.slice(
@@ -67,6 +71,10 @@ export function PostsTable({ posts, accountPlatformMap }: PostsTableProps) {
 
   return (
     <div className="bg-surface-base border border-border-base rounded-xl overflow-hidden">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-border-base">
+        <span className="text-xs text-text-tertiary">Calculate % change:</span>
+        <ComparisonModeSelector selected={comparisonMode} onChange={onComparisonModeChange} />
+      </div>
       <Table
         aria-label="Posts table"
         removeWrapper
@@ -119,54 +127,52 @@ export function PostsTable({ posts, accountPlatformMap }: PostsTableProps) {
                 </div>
               </TableCell>
               <TableCell>
-                <div className="flex items-center gap-1.5">
-                  <Icon
-                    icon={getPlatformIcon(accountPlatformMap[post.account_id])}
-                    width={16}
-                    className={
-                      accountPlatformMap[post.account_id] === "tiktok"
-                        ? "text-cyan-400"
-                        : accountPlatformMap[post.account_id] === "x"
-                          ? "text-foreground"
-                          : "text-pink-500"
-                    }
-                  />
-                  <span className="text-xs text-text-secondary capitalize">
-                    {accountPlatformMap[post.account_id] || "—"}
-                  </span>
-                </div>
+                <Icon
+                  icon={getPlatformIcon(accountPlatformMap[post.account_id])}
+                  width={16}
+                  className={
+                    accountPlatformMap[post.account_id] === "tiktok"
+                      ? "text-cyan-400"
+                      : accountPlatformMap[post.account_id] === "x"
+                        ? "text-foreground"
+                        : "text-pink-500"
+                  }
+                />
               </TableCell>
               <TableCell>
-                <div className="flex items-center gap-1.5">
+                <div className="flex flex-col">
                   <span className="font-medium text-text-primary">
                     {post.video_play_count != null
                       ? formatNumber(post.video_play_count)
                       : "—"}
                   </span>
-                  <MetricChangeIndicator change={getPostMetricChange(post, "views")} />
+                  <MetricChangeIndicator change={getPostMetricChange(post, "views", comparisonDate)} />
                 </div>
               </TableCell>
               <TableCell>
-                <span className="font-medium text-text-primary">
-                  {post.video_play_count
-                    ? (((post.like_count + post.comment_count) / post.video_play_count) * 100).toFixed(2) + "%"
-                    : "—"}
-                </span>
+                <div className="flex flex-col">
+                  <span className="font-medium text-text-primary">
+                    {post.video_play_count
+                      ? (((post.like_count + post.comment_count) / post.video_play_count) * 100).toFixed(2) + "%"
+                      : "—"}
+                  </span>
+                  <MetricChangeIndicator change={getPostEngRateChange(post, comparisonDate)} />
+                </div>
               </TableCell>
               <TableCell>
-                <div className="flex items-center gap-1.5">
+                <div className="flex flex-col">
                   <span className="font-medium text-text-primary">
                     {formatNumber(post.like_count)}
                   </span>
-                  <MetricChangeIndicator change={getPostMetricChange(post, "likes")} />
+                  <MetricChangeIndicator change={getPostMetricChange(post, "likes", comparisonDate)} />
                 </div>
               </TableCell>
               <TableCell>
-                <div className="flex items-center gap-1.5">
+                <div className="flex flex-col">
                   <span className="font-medium text-text-primary">
                     {formatNumber(post.comment_count)}
                   </span>
-                  <MetricChangeIndicator change={getPostMetricChange(post, "comments")} />
+                  <MetricChangeIndicator change={getPostMetricChange(post, "comments", comparisonDate)} />
                 </div>
               </TableCell>
               <TableCell>

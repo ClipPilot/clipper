@@ -24,7 +24,6 @@ import {
   type DateRangeValue,
 } from "@/components/virality/DateRangeFilter";
 import {
-  ComparisonModeSelector,
   type ComparisonMode,
 } from "@/components/virality/ComparisonModeSelector";
 import { StatCards, type StatCardItem } from "@/components/virality/StatCards";
@@ -371,7 +370,6 @@ export default function CompetitorDetailPage() {
           </div>
           <div className="flex items-center gap-3">
             <DateRangeFilter value={dateRange} onChange={handleDateRangeChange} />
-            <ComparisonModeSelector selected={comparisonMode} onChange={setComparisonMode} />
             <Button
               className="bg-accent-400 text-white"
               startContent={
@@ -459,6 +457,8 @@ export default function CompetitorDetailPage() {
           posts={activePosts}
           accountPlatformMap={accountPlatformMap}
           accountSyncMap={accountSyncMap}
+          comparisonMode={comparisonMode}
+          onComparisonModeChange={setComparisonMode}
         />
       </div>
     </motion.div>

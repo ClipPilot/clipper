@@ -3,9 +3,6 @@
 import { useState, useMemo } from "react";
 import {
   Card,
-  Tabs,
-  Tab,
-  Spacer,
   Tooltip as HTooltip,
   cn,
 } from "@heroui/react";
@@ -36,13 +33,56 @@ export const ACCOUNT_COLORS = [
 
 type ChartMetricKey = "likes" | "comments" | "views";
 
+const TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+function formatHourKey(hourKey: string) {
+  const d = new Date(hourKey + ":00:00Z");
+  return {
+    date: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+    time: d.toLocaleTimeString("en-US", { hour: "numeric", hour12: true }),
+  };
+}
+
+/** Custom XAxis tick: shows date on line 1, time on line 2. Only shows date when the day changes. */
+function SyncTick({ x, y, payload, index, visibleTicksCount, chartData }: any) {
+  if (!payload?.value) return null;
+  const hourKey = payload.value;
+  const { date, time } = formatHourKey(hourKey);
+
+  const prevHourKey = index > 0 ? chartData[index - 1]?.hourKey : null;
+  const prevDate = prevHourKey ? formatHourKey(prevHourKey).date : null;
+  const showDate = date !== prevDate;
+
+  return (
+    <g transform={`translate(${x},${y})`}>
+      {showDate && (
+        <text
+          x={0} y={0} dy={12}
+          textAnchor="middle"
+          fontSize="var(--heroui-font-size-tiny)"
+          fill="hsl(var(--heroui-default-500))"
+        >
+          {date}
+        </text>
+      )}
+      <text
+        x={0} y={0} dy={showDate ? 24 : 12}
+        textAnchor="middle"
+        fontSize="var(--heroui-font-size-tiny)"
+        fill="hsl(var(--heroui-default-400))"
+      >
+        {time}
+      </text>
+    </g>
+  );
+}
+
 interface AnalyticsChartProps {
   accounts: ViralityAccount[];
   postsByAccount: Record<number, ViralityPost[]>;
 }
 
 export function AnalyticsChart({ accounts, postsByAccount }: AnalyticsChartProps) {
-  const [weekFilter, setWeekFilter] = useState(4);
   const [activeMetric, setActiveMetric] = useState<ChartMetricKey>("views");
 
   const chartData = useMemo(
@@ -50,10 +90,10 @@ export function AnalyticsChart({ accounts, postsByAccount }: AnalyticsChartProps
       buildChartDataByAccount(
         postsByAccount,
         accounts.map((a) => a.id),
-        weekFilter,
+        4,
         activeMetric
       ),
-    [postsByAccount, accounts, weekFilter, activeMetric]
+    [postsByAccount, accounts, activeMetric]
   );
 
   const hasData = chartData.length > 0;
@@ -95,8 +135,15 @@ export function AnalyticsChart({ accounts, postsByAccount }: AnalyticsChartProps
         <div className="flex flex-col justify-between gap-y-2 p-6">
           <div className="flex flex-col gap-y-2">
             <div className="flex items-center justify-between">
-              <dt className="text-medium text-text-primary font-medium">
+              <dt className="text-medium text-text-primary font-medium inline-flex items-center gap-1.5">
                 Analytics
+                <HTooltip content={`Times shown in ${TIMEZONE}`} placement="top" size="sm">
+                  <Icon
+                    icon="solar:clock-circle-linear"
+                    width={14}
+                    className="text-default-400 cursor-help"
+                  />
+                </HTooltip>
               </dt>
               <div className="flex items-center gap-3 flex-wrap">
                 {accounts.map((account, i) => (
@@ -115,17 +162,6 @@ export function AnalyticsChart({ accounts, postsByAccount }: AnalyticsChartProps
                 ))}
               </div>
             </div>
-            <Spacer y={2} />
-            <Tabs
-              size="sm"
-              selectedKey={String(weekFilter)}
-              onSelectionChange={(key) => setWeekFilter(Number(key))}
-            >
-              <Tab key="1" title="1 Week" />
-              <Tab key="2" title="2 Weeks" />
-              <Tab key="3" title="3 Weeks" />
-              <Tab key="4" title="4 Weeks" />
-            </Tabs>
             <div className="mt-2 flex w-full items-center">
               <div className="-my-3 flex w-full items-center gap-x-3 overflow-x-auto py-3">
                 {metrics.map(({ key, title, value, tooltip }) => (
@@ -174,7 +210,7 @@ export function AnalyticsChart({ accounts, postsByAccount }: AnalyticsChartProps
               width="100%"
             >
               <AreaChart
-                key={`${weekFilter}-${activeMetric}`}
+                key={activeMetric}
                 accessibilityLayer
                 data={chartData}
                 margin={{ left: 0, right: 0 }}
@@ -213,19 +249,11 @@ export function AnalyticsChart({ accounts, postsByAccount }: AnalyticsChartProps
                 />
                 <XAxis
                   axisLine={false}
-                  dataKey="date"
-                  style={{ fontSize: "var(--heroui-font-size-tiny)" }}
+                  dataKey="hourKey"
                   tickLine={false}
-                  interval={
-                    weekFilter <= 1
-                      ? 0
-                      : weekFilter <= 2
-                        ? 1
-                        : Math.max(
-                            0,
-                            Math.floor(chartData.length / 7) - 1
-                          )
-                  }
+                  tick={(props: any) => <SyncTick {...props} chartData={chartData} />}
+                  interval={Math.max(0, Math.floor(chartData.length / 7) - 1)}
+                  height={40}
                 />
                 <YAxis
                   axisLine={false}
@@ -235,7 +263,10 @@ export function AnalyticsChart({ accounts, postsByAccount }: AnalyticsChartProps
                   tickFormatter={formatChartValue}
                 />
                 <Tooltip
-                  content={({ label, payload }) => (
+                  content={({ payload }) => {
+                    const hourKey = payload?.[0]?.payload?.hourKey;
+                    const label = hourKey ? formatHourKey(hourKey) : null;
+                    return (
                     <div className="rounded-medium bg-foreground text-tiny shadow-small min-w-[160px] p-2.5">
                       <div className="flex w-full flex-col gap-y-1">
                         {payload?.map((p, index) => {
@@ -262,12 +293,15 @@ export function AnalyticsChart({ accounts, postsByAccount }: AnalyticsChartProps
                             </div>
                           );
                         })}
-                        <span className="text-small text-foreground-400 font-medium mt-0.5">
-                          {label}
-                        </span>
+                        {label && (
+                          <span className="text-small text-foreground-400 font-medium mt-0.5">
+                            {label.date} {label.time}
+                          </span>
+                        )}
                       </div>
                     </div>
-                  )}
+                  );
+                  }}
                   cursor={{ strokeWidth: 0 }}
                 />
                 {accounts.map((account, i) => (

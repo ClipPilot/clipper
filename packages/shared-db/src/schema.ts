@@ -950,6 +950,13 @@ export const viralityAccounts = pgTable(
   }),
 ).enableRLS();
 
+// metrics_history is a jsonb column with array of entires like so: 
+//    const newMetric: MetricsEntry = {
+//       recorded_at: new Date().toISOString(),
+//       likes: postData.likesCount || 0,
+//       comments: postData.commentsCount || 0,
+//       views: postData.videoPlayCount ?? null,
+//     };
 export const viralityPosts = pgTable(
   "virality_posts",
   {
