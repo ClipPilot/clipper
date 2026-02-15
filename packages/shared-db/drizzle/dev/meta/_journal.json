@@ -169,6 +169,13 @@
       "when": 1770922998776,
       "tag": "0023_legal_doctor_faustus",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1771182869475,
+      "tag": "0024_yellow_purple_man",
+      "breakpoints": true
     }
   ]
 }

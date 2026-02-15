@@ -1,10 +1,18 @@
 import { Request, Response, NextFunction } from "express";
 import * as Sentry from "@sentry/node";
+import crypto from "crypto";
 import { authService } from "../services/auth.service";
 import { db } from "../db";
-import { users } from "@clipper/shared-db/src/schema";
-import { eq } from "drizzle-orm";
+import {
+  users,
+  APIKeys,
+  apiBillingAccounts,
+} from "@clipper/shared-db/src/schema";
+import { eq, and } from "drizzle-orm";
 import { teamService } from "../services/team.service";
+import { getRedisClient } from "../services/redis.service";
+
+const API_RATE_LIMIT = 60;
 
 export interface AuthRequest extends Request {
   user?: {
@@ -15,10 +23,18 @@ export interface AuthRequest extends Request {
   seatCheckPassed?: boolean;
 }
 
+export interface ApiKeyRequest extends Request {
+  apiKey?: {
+    id: number;
+    teamId: number;
+    name: string;
+  };
+}
+
 export async function requireAuth(
   req: AuthRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
     const authHeader = req.headers.authorization;
@@ -64,12 +80,12 @@ export async function requireAuth(
 
     const err = error as Error & { code?: string; cause?: { code?: string } };
     const isNetworkError =
-      err.code === 'ETIMEDOUT' ||
-      err.code === 'ECONNREFUSED' ||
-      err.code === 'EHOSTUNREACH' ||
-      err.cause?.code === 'UND_ERR_CONNECT_TIMEOUT' ||
-      err.message?.includes('fetch failed') ||
-      err.message?.includes('timeout');
+      err.code === "ETIMEDOUT" ||
+      err.code === "ECONNREFUSED" ||
+      err.code === "EHOSTUNREACH" ||
+      err.cause?.code === "UND_ERR_CONNECT_TIMEOUT" ||
+      err.message?.includes("fetch failed") ||
+      err.message?.includes("timeout");
 
     if (isNetworkError) {
       return res.status(503).json({
@@ -93,7 +109,7 @@ export async function requireAuth(
 export async function requireSeatAccess(
   req: AuthRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   try {
     const teamId = parseInt(req.params.teamId);
@@ -107,7 +123,10 @@ export async function requireSeatAccess(
       return res.status(400).json({ error: "Invalid team ID" });
     }
 
-    const { allowed, reason } = await teamService.canMemberPerformActions(teamId, userId);
+    const { allowed, reason } = await teamService.canMemberPerformActions(
+      teamId,
+      userId,
+    );
 
     if (!allowed) {
       return res.status(403).json({
@@ -125,5 +144,94 @@ export async function requireSeatAccess(
     return res.status(500).json({
       error: "Failed to verify seat access",
     });
+  }
+}
+
+export function hashApiKey(raw: string): string {
+  return crypto.createHash("sha256").update(raw).digest("hex");
+}
+
+export async function checkRateLimit(
+  apiKeyId: number,
+): Promise<{ limited: boolean; retryAfter: number }> {
+  const redis = getRedisClient();
+  if (!redis) return { limited: false, retryAfter: 0 };
+
+  const bucket = Math.floor(Date.now() / 60000);
+  const key = `ratelimit:apikey:${apiKeyId}:${bucket}`;
+  const count = await redis.incr(key);
+  if (count === 1) await redis.expire(key, 60);
+
+  if (count > API_RATE_LIMIT) {
+    const retryAfter = 60 - (Math.floor(Date.now() / 1000) % 60);
+    return { limited: true, retryAfter };
+  }
+
+  return { limited: false, retryAfter: 0 };
+}
+
+export async function validateAPIKey(
+  req: ApiKeyRequest,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const header = req.headers["x-api-key"] as string | undefined;
+
+    if (!header) {
+      return res.status(401).json({ error: "Missing X-API-Key header" });
+    }
+
+    const keyHash = hashApiKey(header);
+
+    const [apiKey] = await db
+      .select()
+      .from(APIKeys)
+      .where(and(eq(APIKeys.key_hash, keyHash), eq(APIKeys.revoked, false)))
+      .limit(1);
+
+    if (!apiKey) {
+      return res.status(401).json({ error: "Invalid API key" });
+    }
+
+    if (apiKey.expires_at && apiKey.expires_at < new Date()) {
+      return res.status(401).json({ error: "API key expired" });
+    }
+
+    const [billing] = await db
+      .select()
+      .from(apiBillingAccounts)
+      .where(eq(apiBillingAccounts.team_id, apiKey.team_id))
+      .limit(1);
+
+    if (!billing || !billing.active) {
+      return res
+        .status(403)
+        .json({ error: "API billing not active for this team" });
+    }
+
+    const { limited, retryAfter } = await checkRateLimit(apiKey.id);
+    if (limited) {
+      res.set("Retry-After", String(retryAfter));
+      return res.status(429).json({ error: "Rate limit exceeded" });
+    }
+
+    db.update(APIKeys)
+      .set({ last_used_at: new Date() })
+      .where(eq(APIKeys.id, apiKey.id))
+      .then(() => {})
+      .catch(() => {});
+
+    req.apiKey = {
+      id: apiKey.id,
+      teamId: apiKey.team_id,
+      name: apiKey.name,
+    };
+
+    next();
+  } catch (error) {
+    console.error("API key validation error:", error);
+    Sentry.captureException(error);
+    return res.status(500).json({ error: "Internal server error" });
   }
 }

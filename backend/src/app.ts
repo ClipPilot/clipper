@@ -24,6 +24,7 @@ import graphicsRoutes from "./routes/graphics.routes";
 import announcementRoutes from "./routes/announcement.routes";
 import viralityRoutes from "./routes/virality.routes";
 import voiceCloneRoutes from "./routes/voiceClone.routes";
+import apiPlatformRoutes from "./routes/api-platform/main.routes";
 import { swaggerSpec } from "./config/swagger";
 
 const app = express();
@@ -82,6 +83,7 @@ app.use("/api/graphics", graphicsRoutes);
 app.use("/api/announcements", announcementRoutes);
 app.use("/api/virality", viralityRoutes);
 app.use("/api/voice-clones", voiceCloneRoutes);
+app.use("/api/platform", apiPlatformRoutes);
 
 // Sentry test route
 app.get("/debug-sentry", function mainHandler(req, res) {
