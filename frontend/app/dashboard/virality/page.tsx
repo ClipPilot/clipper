@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Button, Input, useDisclosure, addToast, Spinner, Card, CardBody, cn } from "@heroui/react";
@@ -26,6 +26,22 @@ import {
 } from "@/api/virality";
 import { formatNumber } from "@/lib/formatters";
 
+function RecalcOverlay({ active, children }: { active: boolean; children: React.ReactNode }) {
+  return (
+    <div className="relative">
+      {children}
+      {active && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-surface-dark/60 rounded-xl backdrop-blur-[1px]">
+          <div className="flex items-center gap-2 text-text-secondary text-sm">
+            <Spinner size="sm" />
+            <span>Recalculating…</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ViralityPage() {
   const router = useRouter();
   const { selectedTeam } = useTeams();
@@ -38,10 +54,13 @@ export default function ViralityPage() {
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
   const [postsByAccount, setPostsByAccount] = useState<Record<number, ViralityPost[]>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [isRecalculating, setIsRecalculating] = useState(false);
   const [cardsExpanded, setCardsExpanded] = useState(false);
+  const initialLoadDone = useRef(false);
 
   const fetchData = useCallback(async () => {
     if (!selectedTeam?.id) return;
+    if (initialLoadDone.current) setIsRecalculating(true);
     try {
       const { startDate, endDate } = dateRange;
       const [competitorsList, stats] = await Promise.all([
@@ -79,6 +98,8 @@ export default function ViralityPage() {
       });
     } finally {
       setIsLoading(false);
+      setIsRecalculating(false);
+      initialLoadDone.current = true;
     }
   }, [selectedTeam?.id, dateRange]);
 
@@ -279,97 +300,101 @@ export default function ViralityPage() {
         </div>
 
         {/* Competitor Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {competitorCards.map(({ competitor, followers, postsPerWeek, engRate, avgViews, platforms, followersChange, viewsChange, engRateChange }, idx) => (
-            <Card key={competitor.id} className="bg-surface-base border border-border-base overflow-hidden">
-              <CardBody className="p-4 flex flex-col gap-0">
-                {/* Top: identity */}
-                <div className="flex items-center gap-3">
-                  <div className={cn(
-                    "w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 border-2 bg-transparent",
-                    AVATAR_COLORS[idx % AVATAR_COLORS.length]
-                  )}>
-                    {competitor.name.slice(0, 2).toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-text-primary truncate">{competitor.name}</p>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      {platforms.map((p) => (
-                        <span key={p} className={cn("w-1.5 h-1.5 rounded-full", PLATFORM_DOTS[p] || "bg-default-400")} />
-                      ))}
-                      <span className="text-[10px] text-text-tertiary">
-                        {competitor.accounts.length} account{competitor.accounts.length !== 1 ? "s" : ""}
-                      </span>
+        <RecalcOverlay active={isRecalculating}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {competitorCards.map(({ competitor, followers, postsPerWeek, engRate, avgViews, platforms, followersChange, viewsChange, engRateChange }, idx) => (
+              <Card key={competitor.id} className="bg-surface-base border border-border-base overflow-hidden">
+                <CardBody className="p-4 flex flex-col gap-0">
+                  {/* Top: identity */}
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 border-2 bg-transparent",
+                      AVATAR_COLORS[idx % AVATAR_COLORS.length]
+                    )}>
+                      {competitor.name.slice(0, 2).toUpperCase()}
                     </div>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="flat"
-                    className="bg-accent-400/10 text-accent-400 text-[11px] h-7 min-w-0 px-2.5"
-                    onPress={() => handleViewCompetitor(competitor.id)}
-                  >
-                    View
-                  </Button>
-                </div>
-
-                {/* Collapsible metrics grid */}
-                <motion.div
-                  initial={false}
-                  animate={{ height: cardsExpanded ? "auto" : 0, opacity: cardsExpanded ? 1 : 0 }}
-                  transition={{ duration: 0.2, ease: "easeInOut" }}
-                  className="overflow-hidden"
-                >
-                  <div className="grid grid-cols-2 gap-2 pt-3">
-                    {[
-                      { label: "Followers", value: formatNumber(followers), change: followersChange },
-                      { label: "Posts/Wk", value: String(postsPerWeek), change: null },
-                      { label: "Eng. Rate", value: engRate.toFixed(2) + "%", change: engRateChange },
-                      { label: "Avg. Views", value: formatNumber(avgViews), change: viewsChange },
-                    ].map((m) => (
-                      <div key={m.label} className="bg-surface-elevated rounded-lg px-3 py-2.5">
-                        <p className="text-[10px] text-text-tertiary font-medium">{m.label}</p>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <p className="text-sm font-bold text-text-primary">{m.value}</p>
-                          {m.change != null && (
-                            <span className={cn("text-[10px] font-medium", m.change >= 0 ? "text-green-500" : "text-red-500")}>
-                              {m.change >= 0 ? "+" : ""}{m.change.toFixed(1)}%
-                            </span>
-                          )}
-                        </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-text-primary truncate">{competitor.name}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {platforms.map((p) => (
+                          <span key={p} className={cn("w-1.5 h-1.5 rounded-full", PLATFORM_DOTS[p] || "bg-default-400")} />
+                        ))}
+                        <span className="text-[10px] text-text-tertiary">
+                          {competitor.accounts.length} account{competitor.accounts.length !== 1 ? "s" : ""}
+                        </span>
                       </div>
-                    ))}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="flat"
+                      className="bg-accent-400/10 text-accent-400 text-[11px] h-7 min-w-0 px-2.5"
+                      onPress={() => handleViewCompetitor(competitor.id)}
+                    >
+                      View
+                    </Button>
                   </div>
-                </motion.div>
 
-                {/* Expand/collapse toggle */}
-                <button
-                  onClick={() => setCardsExpanded((v) => !v)}
-                  className="w-full flex items-center justify-center pt-2"
-                >
-                  <Icon
-                    icon="solar:alt-arrow-down-linear"
-                    width={16}
-                    className={cn("text-text-tertiary transition-transform", cardsExpanded && "rotate-180")}
-                  />
-                </button>
-              </CardBody>
-            </Card>
-          ))}
-        </div>
+                  {/* Collapsible metrics grid */}
+                  <motion.div
+                    initial={false}
+                    animate={{ height: cardsExpanded ? "auto" : 0, opacity: cardsExpanded ? 1 : 0 }}
+                    transition={{ duration: 0.2, ease: "easeInOut" }}
+                    className="overflow-hidden"
+                  >
+                    <div className="grid grid-cols-2 gap-2 pt-3">
+                      {[
+                        { label: "Followers", value: formatNumber(followers), change: followersChange },
+                        { label: "Posts/Wk", value: String(postsPerWeek), change: null },
+                        { label: "Eng. Rate", value: engRate.toFixed(2) + "%", change: engRateChange },
+                        { label: "Avg. Views", value: formatNumber(avgViews), change: viewsChange },
+                      ].map((m) => (
+                        <div key={m.label} className="bg-surface-elevated rounded-lg px-3 py-2.5">
+                          <p className="text-[10px] text-text-tertiary font-medium">{m.label}</p>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <p className="text-sm font-bold text-text-primary">{m.value}</p>
+                            {m.change != null && (
+                              <span className={cn("text-[10px] font-medium", m.change >= 0 ? "text-green-500" : "text-red-500")}>
+                                {m.change >= 0 ? "+" : ""}{m.change.toFixed(1)}%
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+
+                  {/* Expand/collapse toggle */}
+                  <button
+                    onClick={() => setCardsExpanded((v) => !v)}
+                    className="w-full flex items-center justify-center pt-2"
+                  >
+                    <Icon
+                      icon="solar:alt-arrow-down-linear"
+                      width={16}
+                      className={cn("text-text-tertiary transition-transform", cardsExpanded && "rotate-180")}
+                    />
+                  </button>
+                </CardBody>
+              </Card>
+            ))}
+          </div>
+        </RecalcOverlay>
 
         {/* Head-to-Head Comparison */}
         {competitorCards.length > 1 && (
-          <HeadToHeadTable
-            competitors={competitorCards.map(({ competitor, followers, totalViews, engRate, avgViews, postsPerWeek }) => ({
-              name: competitor.name,
-              followers,
-              totalViews,
-              totalPosts: competitor.accounts.flatMap((a) => postsByAccount[a.id] || []).length,
-              engRate,
-              postsPerWeek,
-              avgViews,
-            }))}
-          />
+          <RecalcOverlay active={isRecalculating}>
+            <HeadToHeadTable
+              competitors={competitorCards.map(({ competitor, followers, totalViews, engRate, avgViews, postsPerWeek }) => ({
+                name: competitor.name,
+                followers,
+                totalViews,
+                totalPosts: competitor.accounts.flatMap((a) => postsByAccount[a.id] || []).length,
+                engRate,
+                postsPerWeek,
+                avgViews,
+              }))}
+            />
+          </RecalcOverlay>
         )}
 
         {/* Accounts Table + Activity Feed */}
@@ -398,20 +423,24 @@ export default function ViralityPage() {
                 }}
               />
             </div>
-            <AccountsTable
-              competitors={competitors}
-              platformFilter={platformFilter}
-              searchQuery={searchQuery}
-              accountPostStats={dashboardStats?.accountPostStats}
-              onViewCompetitor={handleViewCompetitor}
-              onSyncAccount={handleSyncAccount}
-              onDeleteAccount={handleDeleteAccount}
-            />
+            <RecalcOverlay active={isRecalculating}>
+              <AccountsTable
+                competitors={competitors}
+                platformFilter={platformFilter}
+                searchQuery={searchQuery}
+                accountPostStats={dashboardStats?.accountPostStats}
+                onViewCompetitor={handleViewCompetitor}
+                onSyncAccount={handleSyncAccount}
+                onDeleteAccount={handleDeleteAccount}
+              />
+            </RecalcOverlay>
           </div>
 
           {/* Activity Feed (1/3 width) */}
           <div className="lg:col-span-1">
-            <ActivityFeed posts={allPosts} accountMap={accountMap} />
+            <RecalcOverlay active={isRecalculating}>
+              <ActivityFeed posts={allPosts} accountMap={accountMap} />
+            </RecalcOverlay>
           </div>
         </div>
       </div>

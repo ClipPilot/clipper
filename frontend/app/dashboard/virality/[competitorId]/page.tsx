@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -35,6 +35,22 @@ import { AccountBreakdownChart } from "@/components/virality/AccountBreakdownCha
 import { BestPerformingAccounts } from "@/components/virality/BestPerformingAccounts";
 import { findClosestEntry, getComparisonDate, isOriginalPost } from "./utils";
 
+function RecalcOverlay({ active, children }: { active: boolean; children: React.ReactNode }) {
+  return (
+    <div className="relative">
+      {children}
+      {active && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-surface-dark/60 rounded-xl backdrop-blur-[1px]">
+          <div className="flex items-center gap-2 text-text-secondary text-sm">
+            <Spinner size="sm" />
+            <span>Recalculating…</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Page Component ──────────────────────────────────────────────────────────
 
 export default function CompetitorDetailPage() {
@@ -46,6 +62,8 @@ export default function CompetitorDetailPage() {
   const [competitor, setCompetitor] = useState<CompetitorWithAccounts | null>(null);
   const [postsByAccount, setPostsByAccount] = useState<Record<number, ViralityPost[]>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [isRecalculating, setIsRecalculating] = useState(false);
+  const initialLoadDone = useRef(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState("");
@@ -55,6 +73,7 @@ export default function CompetitorDetailPage() {
 
   const fetchData = useCallback(async () => {
     if (!selectedTeam?.id || isNaN(competitorId)) return;
+    if (initialLoadDone.current) setIsRecalculating(true);
     try {
       const comp = await viralityAPI.getCompetitor(selectedTeam.id, competitorId);
       setCompetitor(comp);
@@ -74,6 +93,8 @@ export default function CompetitorDetailPage() {
       addToast({ title: "Failed to load competitor", description: err.message, color: "danger" });
     } finally {
       setIsLoading(false);
+      setIsRecalculating(false);
+      initialLoadDone.current = true;
     }
   }, [selectedTeam?.id, competitorId, dateRange]);
 
@@ -442,59 +463,69 @@ export default function CompetitorDetailPage() {
         )}
 
         {/* Stats Cards */}
-        <StatCards items={statCards} />
+        <RecalcOverlay active={isRecalculating}>
+          <StatCards items={statCards} />
+        </RecalcOverlay>
 
         {/* Performance Over Time + Account Breakdown */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
-          <div className="lg:col-span-2">
-            <AnalyticsChart
-              accounts={activeAccounts}
-              postsByAccount={activePostsByAccount}
-              allAccounts={competitor.accounts}
-              allPostsByAccount={allFilteredPostsByAccount}
-              colorMap={accountColorMap}
-            />
+        <RecalcOverlay active={isRecalculating}>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
+            <div className="lg:col-span-2">
+              <AnalyticsChart
+                accounts={activeAccounts}
+                postsByAccount={activePostsByAccount}
+                allAccounts={competitor.accounts}
+                allPostsByAccount={allFilteredPostsByAccount}
+                colorMap={accountColorMap}
+                startDate={dateRange.startDate}
+                endDate={dateRange.endDate}
+              />
+            </div>
+            <div className="lg:col-span-1">
+              <AccountBreakdownChart
+                accounts={activeAccounts}
+                postsByAccount={activePostsByAccount}
+              />
+            </div>
           </div>
-          <div className="lg:col-span-1">
-            <AccountBreakdownChart
-              accounts={activeAccounts}
-              postsByAccount={activePostsByAccount}
-            />
-          </div>
-        </div>
+        </RecalcOverlay>
 
         {/* Post Frequency + Best Performing Accounts */}
-        {activeAccountId === "all" ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <PostFrequencyChart
-              posts={activePosts}
-              startDate={dateRange.startDate}
-              endDate={dateRange.endDate}
-            />
-            <BestPerformingAccounts
-              accounts={activeAccounts}
-              postsByAccount={activePostsByAccount}
-            />
-          </div>
-        ) : (
-          <div className="max-w-3xl mx-auto w-full">
-            <PostFrequencyChart
-              posts={activePosts}
-              startDate={dateRange.startDate}
-              endDate={dateRange.endDate}
-            />
-          </div>
-        )}
+        <RecalcOverlay active={isRecalculating}>
+          {activeAccountId === "all" ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <PostFrequencyChart
+                posts={activePosts}
+                startDate={dateRange.startDate}
+                endDate={dateRange.endDate}
+              />
+              <BestPerformingAccounts
+                accounts={activeAccounts}
+                postsByAccount={activePostsByAccount}
+              />
+            </div>
+          ) : (
+            <div className="max-w-3xl mx-auto w-full">
+              <PostFrequencyChart
+                posts={activePosts}
+                startDate={dateRange.startDate}
+                endDate={dateRange.endDate}
+              />
+            </div>
+          )}
+        </RecalcOverlay>
 
         {/* Top Performing Content Table */}
-        <PostsTable
-          key={activeAccountId + (dateRange.startDate || "") + (dateRange.endDate || "")}
-          posts={activePosts}
-          accountPlatformMap={accountPlatformMap}
-          accountSyncMap={accountSyncMap}
-          comparisonMode={comparisonMode}
-          onComparisonModeChange={setComparisonMode}
-        />
+        <RecalcOverlay active={isRecalculating}>
+          <PostsTable
+            key={activeAccountId + (dateRange.startDate || "") + (dateRange.endDate || "")}
+            posts={activePosts}
+            accountPlatformMap={accountPlatformMap}
+            accountSyncMap={accountSyncMap}
+            comparisonMode={comparisonMode}
+            onComparisonModeChange={setComparisonMode}
+          />
+        </RecalcOverlay>
       </div>
     </motion.div>
   );

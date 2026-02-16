@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { Card, CardBody, Button } from "@heroui/react";
+import { Card, CardBody } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { ViralityPost, ViralityAccount } from "@/api/virality";
 import { formatNumber } from "@/lib/formatters";
@@ -10,18 +9,12 @@ import { platformIcon, platformIconColor, timeAgo } from "@/lib/platformUtils";
 interface ActivityFeedProps {
   posts: ViralityPost[];
   accountMap: Record<number, ViralityAccount>;
-  defaultCount?: number;
 }
 
-export function ActivityFeed({ posts, accountMap, defaultCount = 7 }: ActivityFeedProps) {
-  const [showCount, setShowCount] = useState(defaultCount);
-
+export function ActivityFeed({ posts, accountMap }: ActivityFeedProps) {
   const sorted = posts
     .slice()
     .sort((a, b) => new Date(b.posted_at || 0).getTime() - new Date(a.posted_at || 0).getTime());
-
-  const visible = sorted.slice(0, showCount);
-  const hasMore = sorted.length > showCount;
 
   if (sorted.length === 0) {
     return (
@@ -42,8 +35,8 @@ export function ActivityFeed({ posts, accountMap, defaultCount = 7 }: ActivityFe
           <span className="text-xs text-text-tertiary">{sorted.length} posts</span>
         </div>
 
-        <div className="divide-y divide-border-base">
-          {visible.map((post) => {
+        <div className="divide-y divide-border-base overflow-y-auto max-h-[480px]">
+          {sorted.map((post) => {
             const account = accountMap[post.account_id];
             const platform = account?.platform || "instagram";
 
@@ -55,7 +48,7 @@ export function ActivityFeed({ posts, accountMap, defaultCount = 7 }: ActivityFe
               >
                 {/* Thumbnail */}
                 <div className="w-10 h-10 rounded-lg bg-surface-elevated overflow-hidden flex-shrink-0">
-                  {post.thumbnail_url ? (
+                  {post.thumbnail_url && platform !== "instagram" ? (
                     <img src={post.thumbnail_url} alt="" className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
@@ -104,30 +97,6 @@ export function ActivityFeed({ posts, accountMap, defaultCount = 7 }: ActivityFe
           })}
         </div>
 
-        {/* Show More / Show Less */}
-        {(hasMore || showCount > defaultCount) && (
-          <div className="px-5 py-3 border-t border-border-base flex justify-center">
-            {hasMore ? (
-              <Button
-                size="sm"
-                variant="flat"
-                className="bg-surface-elevated text-text-secondary"
-                onPress={() => setShowCount((c) => c + defaultCount)}
-              >
-                Show More
-              </Button>
-            ) : (
-              <Button
-                size="sm"
-                variant="flat"
-                className="bg-surface-elevated text-text-secondary"
-                onPress={() => setShowCount(defaultCount)}
-              >
-                Show Less
-              </Button>
-            )}
-          </div>
-        )}
       </CardBody>
     </Card>
   );

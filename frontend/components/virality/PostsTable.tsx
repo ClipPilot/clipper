@@ -105,7 +105,7 @@ export function PostsTable({ posts, accountPlatformMap, comparisonMode, onCompar
             >
               <TableCell>
                 <div className="flex items-center gap-3 max-w-sm">
-                  {!post.thumbnail_url ? (
+                  {!post.thumbnail_url || accountPlatformMap[post.account_id] === "instagram" ? (
                     <div className="w-8 h-8 rounded-sm bg-surface-hover flex items-center justify-center flex-shrink-0">
                       <Icon
                         icon={platformIcon(accountPlatformMap[post.account_id])}

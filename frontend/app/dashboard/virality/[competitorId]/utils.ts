@@ -173,12 +173,12 @@ export interface AccountChartDay {
 export function buildChartDataByAccount(
   postsByAccount: Record<number, ViralityPost[]>,
   accountIds: number[],
-  weekFilter: number,
-  metric: "likes" | "comments" | "views"
+  metric: "likes" | "comments" | "views",
+  startDate?: string,
+  endDate?: string,
 ): AccountChartDay[] {
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - weekFilter * 7);
-  const cutoffStr = cutoff.toISOString().slice(0, 13);
+  const startStr = startDate ? new Date(startDate).toISOString().slice(0, 13) : undefined;
+  const endStr = endDate ? new Date(endDate).toISOString().slice(0, 13) : undefined;
 
   const allHours = new Set<string>();
   const byAccountHour = new Map<number, Map<string, number>>();
@@ -191,7 +191,8 @@ export function buildChartDataByAccount(
       if (!post.metrics_history?.length) continue;
       for (const entry of post.metrics_history) {
         const hour = entry.recorded_at.slice(0, 13);
-        if (hour < cutoffStr) continue;
+        if (startStr && hour < startStr) continue;
+        if (endStr && hour > endStr) continue;
         allHours.add(hour);
         const val = metric === "views" ? (entry.views ?? 0) : entry[metric];
         hourMap.set(hour, (hourMap.get(hour) || 0) + val);

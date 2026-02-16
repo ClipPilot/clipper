@@ -76,9 +76,11 @@ interface AnalyticsChartProps {
   allPostsByAccount?: Record<number, ViralityPost[]>;
   /** Stable color map keyed by account ID. When provided, colors stay consistent across tab switches. */
   colorMap?: Record<number, string>;
+  startDate?: string;
+  endDate?: string;
 }
 
-export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPostsByAccount, colorMap }: AnalyticsChartProps) {
+export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPostsByAccount, colorMap, startDate, endDate }: AnalyticsChartProps) {
   const [activeMetric, setActiveMetric] = useState<ChartMetricKey>("views");
 
   const getColor = (account: ViralityAccount, index: number) =>
@@ -93,10 +95,11 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
       buildChartDataByAccount(
         axisPostsByAccount,
         axisAccounts.map((a) => a.id),
-        4,
-        activeMetric
+        activeMetric,
+        startDate,
+        endDate,
       ),
-    [axisPostsByAccount, axisAccounts, activeMetric]
+    [axisPostsByAccount, axisAccounts, activeMetric, startDate, endDate]
   );
 
   // The visible chart data includes all time points but only active accounts' values
@@ -355,7 +358,7 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
               className="text-text-tertiary"
             />
             <p className="text-text-secondary text-sm">
-              Metrics will appear after the next sync
+              Sync data not available for this date range.
             </p>
           </div>
         )}
