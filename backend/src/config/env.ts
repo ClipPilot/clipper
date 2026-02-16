@@ -59,4 +59,5 @@ export const ENV = {
   GEMINI_API_KEY: config.gemini.apiKey,
   ELEVENLABS_API_KEY: config.elevenlabs.apiKey,
   FAL_KEY: config.fal.apiKey,
+  AD_POSTING_WEBHOOK_SECRET: process.env.AD_POSTING_WEBHOOK_SECRET || "",
 };

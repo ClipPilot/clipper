@@ -1,0 +1,58 @@
+---
+title: "Test API Key"
+api: "GET /v1/test"
+description: "Verify your API key is working correctly"
+---
+
+Simple health-check endpoint to verify your API key, billing account, and rate limit are all working. This endpoint is free and does not deduct from your wallet.
+
+<Note>
+  This is the best way to confirm your integration is set up correctly before making billable requests.
+</Note>
+
+### Response
+
+<ResponseField name="status" type="string">
+  Always `"working"` on success.
+</ResponseField>
+
+<ResponseField name="team_id" type="integer">
+  The team ID associated with your API key.
+</ResponseField>
+
+<ResponseField name="key_name" type="string">
+  The name you gave this API key when you created it.
+</ResponseField>
+
+<ResponseField name="timestamp" type="string">
+  ISO 8601 timestamp of the request.
+</ResponseField>
+
+<ResponseExample>
+```json 200
+{
+  "status": "working",
+  "team_id": 42,
+  "key_name": "my-production-key",
+  "timestamp": "2025-01-15T10:30:00.000Z"
+}
+```
+
+```json 401
+{
+  "error": "Invalid API key"
+}
+```
+
+```json 402
+{
+  "error": "Insufficient balance"
+}
+```
+
+```json 429
+{
+  "error": "Rate limit exceeded"
+}
+```
+</ResponseExample>

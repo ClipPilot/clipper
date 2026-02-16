@@ -1,0 +1,42 @@
+---
+title: "Get Wallet"
+api: "GET /teams/{teamId}/wallet"
+description: "Get your team's wallet balance and usage totals"
+---
+
+Returns the team's current wallet balance, total amount spent, and total amount topped up.
+
+### Path parameters
+
+<ParamField path="teamId" type="integer" required>
+  Your team ID.
+</ParamField>
+
+### Response
+
+<ResponseField name="balance_cents" type="integer">
+  Current wallet balance in cents. For example, `2500` = $25.00.
+</ResponseField>
+
+<ResponseField name="total_spent_cents" type="integer">
+  Cumulative amount spent on API calls, in cents.
+</ResponseField>
+
+<ResponseField name="total_topped_up_cents" type="integer">
+  Cumulative amount added to the wallet, in cents.
+</ResponseField>
+
+<ResponseField name="active" type="boolean">
+  Whether the billing account is active.
+</ResponseField>
+
+<ResponseExample>
+```json 200
+{
+  "balance_cents": 2500,
+  "total_spent_cents": 7500,
+  "total_topped_up_cents": 10000,
+  "active": true
+}
+```
+</ResponseExample>

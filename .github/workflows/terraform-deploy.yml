@@ -104,6 +104,9 @@ jobs:
           elevenlabs_api_key = "${{ secrets.ELEVENLABS_API_KEY }}"
           fal_key            = "${{ secrets.FAL_KEY }}"
 
+          # Ad Posting
+          ad_posting_webhook_secret = "${{ secrets.AD_POSTING_WEBHOOK_SECRET }}"
+
           # Custom Domain
           api_domain          = "api.cuttr.com"
           frontend_url        = "https://platform.cuttr.com"
@@ -225,6 +228,9 @@ jobs:
           # Video Gen Keys
           elevenlabs_api_key = "${{ secrets.ELEVENLABS_API_KEY }}"
           fal_key            = "${{ secrets.FAL_KEY }}"
+
+          # Ad Posting
+          ad_posting_webhook_secret = "${{ secrets.AD_POSTING_WEBHOOK_SECRET }}"
 
           # Custom Domain
           api_domain          = "api.cuttr.com"

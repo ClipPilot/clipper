@@ -1,0 +1,89 @@
+---
+title: "Quickstart"
+description: "Make your first API call in under 2 minutes"
+---
+
+## 1. Create an API key
+
+Go to the [API Platform dashboard](https://platform.cuttr.com/dashboard/api-platform) and click **Create Key**. Give it a name and optionally set an expiration date.
+
+<Warning>
+  Your key is displayed **once** after creation. Copy it immediately and store it somewhere secure — you won't be able to see it again.
+</Warning>
+
+Your key will look like this:
+
+```
+cuttr_a1b2c3d4e5f6...
+```
+
+## 2. Fund your wallet
+
+Still in the dashboard, click a top-up amount (minimum $5.00) to open a Stripe checkout. Once payment completes, your balance updates instantly.
+
+<Tip>
+  Enable **auto-refill** in the dashboard to automatically charge your saved card when your balance drops below a threshold. Never miss a request due to insufficient funds.
+</Tip>
+
+## 3. Make your first request
+
+Test your key with the test endpoint:
+
+<CodeGroup>
+
+```bash cURL
+curl -X GET https://api.cuttr.com/api/platform/v1/test \
+  -H "X-API-Key: YOUR_API_KEY"
+```
+
+```javascript Node.js
+const response = await fetch("https://api.cuttr.com/api/platform/v1/test", {
+  headers: {
+    "X-API-Key": "YOUR_API_KEY",
+  },
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://api.cuttr.com/api/platform/v1/test",
+    headers={"X-API-Key": "YOUR_API_KEY"},
+)
+
+print(response.json())
+```
+
+</CodeGroup>
+
+If everything is set up correctly, you'll get:
+
+```json
+{
+  "status": "working",
+  "team_id": 42,
+  "key_name": "my-first-key",
+  "timestamp": "2025-01-15T10:30:00.000Z"
+}
+```
+
+## What's next?
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="key" href="/authentication">
+    Deep dive into API key auth and security best practices.
+  </Card>
+  <Card title="Wallet & Billing" icon="wallet" href="/concepts/wallet">
+    Understand how the prepaid wallet works.
+  </Card>
+  <Card title="Test Endpoint" icon="flask-vial" href="/api-reference/endpoint/test">
+    Try the test endpoint in the interactive playground.
+  </Card>
+  <Card title="Error Handling" icon="triangle-exclamation" href="/concepts/errors">
+    Handle errors gracefully in your integration.
+  </Card>
+</CardGroup>

@@ -1,0 +1,72 @@
+---
+title: "Errors"
+description: "Error codes and how to handle them"
+---
+
+## Error format
+
+All error responses follow the same structure:
+
+```json
+{
+  "error": "Human-readable error message"
+}
+```
+
+## HTTP status codes
+
+| Status | Meaning | Common causes |
+|--------|---------|---------------|
+| `400` | **Bad Request** | Missing required fields, invalid parameters |
+| `401` | **Unauthorized** | Missing, invalid, expired, or revoked API key |
+| `402` | **Payment Required** | Wallet balance is zero — [top up](/api-reference/endpoint/topup-wallet) to continue |
+| `403` | **Forbidden** | API billing not active for this team |
+| `404` | **Not Found** | Resource doesn't exist (e.g., wrong key ID) |
+| `429` | **Too Many Requests** | Rate limit exceeded — check `Retry-After` header |
+| `500` | **Internal Server Error** | Something went wrong on our end |
+
+## Error handling by category
+
+### Authentication errors (401)
+
+```json
+// Missing header
+{ "error": "Missing X-API-Key header" }
+
+// Bad key
+{ "error": "Invalid API key" }
+
+// Expired key
+{ "error": "API key expired" }
+```
+
+**Fix:** Check that you're sending the correct key in the `X-API-Key` header. If the key was revoked or expired, create a new one from the [dashboard](https://platform.cuttr.com/dashboard/api-platform).
+
+### Payment errors (402)
+
+```json
+{ "error": "Insufficient balance" }
+```
+
+**Fix:** [Top up your wallet](/api-reference/endpoint/topup-wallet). Consider enabling [auto-refill](/concepts/wallet#auto-refill) to avoid this in the future.
+
+### Rate limit errors (429)
+
+```json
+{ "error": "Rate limit exceeded" }
+```
+
+**Fix:** Wait for the duration specified in the `Retry-After` response header, then retry. See [Rate Limits](/concepts/rate-limits) for retry strategies.
+
+## Retry strategy
+
+A simple rule of thumb:
+
+| Status | Retry? |
+|--------|--------|
+| `400` | No — fix the request |
+| `401` | No — fix authentication |
+| `402` | No — add funds first |
+| `403` | No — check billing setup |
+| `429` | Yes — after `Retry-After` seconds |
+| `500` | Yes — with exponential backoff |

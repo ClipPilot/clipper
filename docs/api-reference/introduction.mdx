@@ -1,0 +1,38 @@
+---
+title: "API Reference"
+description: "Complete reference for the Cuttr API"
+---
+
+## Base URL
+
+All API requests are made to:
+
+```
+https://api.cuttr.com/api/platform
+```
+
+## Authentication
+
+Every request requires an `X-API-Key` header:
+
+```bash
+curl https://api.cuttr.com/api/platform/v1/test \
+  -H "X-API-Key: YOUR_API_KEY"
+```
+
+Create keys from the [dashboard](https://platform.cuttr.com/dashboard/api-platform) or via the [Create Key](/api-reference/endpoint/create-key) endpoint. See [Authentication](/authentication) for details.
+
+## Interactive playground
+
+Each endpoint page includes a **playground** where you can make live requests. Enter your API key in the header field and click **Send** to test.
+
+<Warning>
+  Playground requests hit the **live API** and will deduct from your wallet balance for billable endpoints.
+</Warning>
+
+## Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | [`/v1/test`](/api-reference/endpoint/test) | Verify your API key works |
+| `GET` | [`/teams/{teamId}/wallet`](/api-reference/endpoint/get-wallet) | Get wallet balance |

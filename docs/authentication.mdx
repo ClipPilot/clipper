@@ -1,0 +1,71 @@
+---
+title: "Authentication"
+description: "How to authenticate with the Cuttr API"
+---
+
+## API Keys
+
+All API requests are authenticated using an API key passed in the `X-API-Key` header.
+
+```bash
+curl https://api.cuttr.com/api/platform/v1/test \
+  -H "X-API-Key: cuttr_a1b2c3d4e5f6..."
+```
+
+## Creating keys
+
+Create API keys from the [dashboard](https://platform.cuttr.com/dashboard/api-platform) or via the [Create Key](/api-reference/endpoint/create-key) endpoint. Each key:
+
+- Is tied to a specific team
+- Can have an optional expiration date
+- Is shown in full **once** at creation — only the prefix (`cuttr_a1b2...`) is stored after that
+- Is hashed with SHA-256 before storage — we never store your raw key
+
+## Key lifecycle
+
+| State | Description |
+|-------|-------------|
+| **Active** | Key is valid and can make requests |
+| **Expired** | Past its `expires_at` date — returns `401` |
+| **Revoked** | Permanently disabled via dashboard or API — returns `401` |
+
+Revoking a key is **irreversible**. If you suspect a key is compromised, revoke it immediately and create a new one.
+
+## Authentication flow
+
+When you make a request, the API:
+
+1. Checks the `X-API-Key` header is present
+2. Hashes the key and looks it up in the database
+3. Verifies the key is not revoked or expired
+4. Checks that the team has an active billing account with sufficient balance
+5. Checks the per-key rate limit (60 requests/minute)
+6. If all checks pass, the request proceeds
+
+## Error responses
+
+| Status | Error | Meaning |
+|--------|-------|---------|
+| `401` | `Missing X-API-Key header` | No key provided |
+| `401` | `Invalid API key` | Key not found or revoked |
+| `401` | `API key expired` | Key past expiration date |
+| `402` | `Insufficient balance` | Wallet balance is zero — top up first |
+| `403` | `API billing not active` | Team doesn't have an active billing account |
+| `429` | `Rate limit exceeded` | Too many requests — check `Retry-After` header |
+
+## Best practices
+
+<AccordionGroup>
+  <Accordion title="Never hardcode keys in source code">
+    Use environment variables or a secrets manager. If a key leaks in a git commit, revoke it immediately.
+  </Accordion>
+  <Accordion title="Use separate keys for each environment">
+    Create different keys for development, staging, and production. This way you can revoke one without affecting others.
+  </Accordion>
+  <Accordion title="Set expiration dates for temporary keys">
+    If you're sharing a key with a contractor or for a demo, set an expiration so it auto-disables.
+  </Accordion>
+  <Accordion title="Monitor usage in the dashboard">
+    Check the usage logs to spot unusual patterns. Each log entry shows which key made the request.
+  </Accordion>
+</AccordionGroup>

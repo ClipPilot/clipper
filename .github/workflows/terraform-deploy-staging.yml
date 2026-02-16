@@ -107,6 +107,9 @@ jobs:
           # Virality
           apify_api_token    = "${{ secrets.APIFY_API_TOKEN }}"
 
+          # Ad Posting
+          ad_posting_webhook_secret = "${{ secrets.AD_POSTING_WEBHOOK_SECRET }}"
+
           # Custom Domain
           api_domain          = "api-staging.cuttr.com"
           frontend_url        = "https://beta.cuttr.com"
@@ -238,6 +241,9 @@ jobs:
 
           # Virality
           apify_api_token    = "${{ secrets.APIFY_API_TOKEN }}"
+
+          # Ad Posting
+          ad_posting_webhook_secret = "${{ secrets.AD_POSTING_WEBHOOK_SECRET }}"
 
           # Custom Domain
           api_domain          = "api-staging.cuttr.com"

@@ -18,6 +18,7 @@ import {
 import { eq, and, not, sql } from "drizzle-orm";
 import { emailNotiService } from "./emailNoti.service";
 import { referralService } from "./referral.service";
+import { apiBillingService } from "./apiBilling.service";
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://platform.cuttr.com";
 
@@ -606,7 +607,11 @@ class StripeService {
       return;
     }
 
-    // Only handle addon purchases (one-time payments)
+    if (session.metadata?.type === "api_topup") {
+      await this.handleApiTopUp(session);
+      return;
+    }
+
     if (session.metadata?.type !== "addon") {
       return;
     }
@@ -650,6 +655,44 @@ class StripeService {
 
     console.log(
       `Added ${addonClips} addon clips to team ${teamId}. New addon total: ${updated.addon_clips_remaining}`,
+    );
+  }
+
+  private async handleApiTopUp(session: any): Promise<void> {
+    if (session.payment_status !== "paid") {
+      console.log(`[API TopUp] Skipping - payment not yet confirmed (status: ${session.payment_status})`);
+      return;
+    }
+
+    const teamId = parseInt(session.metadata.teamId);
+    const amountCents = parseInt(session.metadata.amount_cents);
+
+    if (!teamId || !amountCents) {
+      console.error("[API TopUp] Missing teamId or amount_cents in metadata");
+      return;
+    }
+
+    const { balanceCents } = await apiBillingService.topUp(
+      teamId,
+      amountCents,
+      session.payment_intent,
+      session.id,
+    );
+
+    // Save payment method for auto-refill
+    if (session.payment_intent) {
+      try {
+        const pi = await stripe.paymentIntents.retrieve(session.payment_intent);
+        if (pi.payment_method && typeof pi.payment_method === "string") {
+          await apiBillingService.savePaymentMethod(teamId, pi.payment_method);
+        }
+      } catch (err) {
+        console.error("[API TopUp] Failed to save payment method:", err);
+      }
+    }
+
+    console.log(
+      `[API TopUp] Added $${(amountCents / 100).toFixed(2)} to team ${teamId}. New balance: $${(balanceCents / 100).toFixed(2)}`,
     );
   }
 
