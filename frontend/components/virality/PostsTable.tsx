@@ -11,6 +11,7 @@ import {
   Avatar,
   Pagination,
   Button,
+  Tooltip,
   cn,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
@@ -82,7 +83,14 @@ export function PostsTable({ posts, accountPlatformMap, comparisonMode, onCompar
           <TableColumn>POST</TableColumn>
           <TableColumn>PLATFORM</TableColumn>
           <TableColumn>VIEWS</TableColumn>
-          <TableColumn>ENG RATE</TableColumn>
+          <TableColumn>
+            <span className="inline-flex items-center gap-1">
+              ENG RATE
+              <Tooltip content="(Likes + Comments) / Views" placement="top" size="sm">
+                <Icon icon="solar:info-circle-linear" width={14} className="text-default-400 cursor-help" />
+              </Tooltip>
+            </span>
+          </TableColumn>
           <TableColumn>LIKES</TableColumn>
           <TableColumn>COMMENTS</TableColumn>
           <TableColumn>TYPE</TableColumn>
