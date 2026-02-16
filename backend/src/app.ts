@@ -62,6 +62,54 @@ app.get("/health", (req, res) => {
   });
 });
 
+app.get("/health/worker", async (req, res) => {
+  try {
+    const { SQSClient, GetQueueAttributesCommand } = await import("@aws-sdk/client-sqs");
+    const { ECSClient, DescribeServicesCommand } = await import("@aws-sdk/client-ecs");
+    const region = process.env.AWS_REGION || "us-west-2";
+
+    const [sqsResult, ecsResult] = await Promise.all([
+      new SQSClient({ region }).send(
+        new GetQueueAttributesCommand({
+          QueueUrl: process.env.SQS_QUEUE_URL,
+          AttributeNames: ["ApproximateNumberOfMessages", "ApproximateNumberOfMessagesNotVisible"],
+        })
+      ),
+      new ECSClient({ region }).send(
+        new DescribeServicesCommand({
+          cluster: process.env.ECS_CLUSTER_NAME || "clipster-cluster-prod",
+          services: [process.env.ECS_WORKER_SERVICE_NAME || "clipster-worker-service-prod"],
+        })
+      ),
+    ]);
+
+    const queueDepth = parseInt(sqsResult.Attributes?.ApproximateNumberOfMessages || "0");
+    const inFlight = parseInt(sqsResult.Attributes?.ApproximateNumberOfMessagesNotVisible || "0");
+    const svc = ecsResult.services?.[0];
+    const runningTasks = svc?.runningCount ?? 0;
+    const desiredTasks = svc?.desiredCount ?? 0;
+
+    let status: "healthy" | "degraded" | "unhealthy" = "healthy";
+    if (runningTasks === 0) status = "unhealthy";
+    else if (runningTasks < desiredTasks || queueDepth > 50) status = "degraded";
+
+    res.status(status === "unhealthy" ? 503 : 200).json({
+      status,
+      timestamp: new Date().toISOString(),
+      service: "clipster-worker",
+      queue: { depth: queueDepth, inFlight },
+      ecs: { running: runningTasks, desired: desiredTasks },
+    });
+  } catch (err: any) {
+    res.status(503).json({
+      status: "unhealthy",
+      timestamp: new Date().toISOString(),
+      service: "clipster-worker",
+      error: err.message,
+    });
+  }
+});
+
 app.use("/internal", internalRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/teams", teamRoutes);

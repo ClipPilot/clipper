@@ -7,7 +7,7 @@
     "light": "#6C63FF",
     "dark": "#3D36B9"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "/favicon.ico",
   "navigation": {
     "tabs": [
       {
@@ -15,11 +15,7 @@
         "groups": [
           {
             "group": "Getting Started",
-            "pages": [
-              "index",
-              "quickstart",
-              "authentication"
-            ]
+            "pages": ["index", "quickstart", "authentication"]
           },
           {
             "group": "Core Concepts",
@@ -36,9 +32,7 @@
         "groups": [
           {
             "group": "Overview",
-            "pages": [
-              "api-reference/introduction"
-            ]
+            "pages": ["api-reference/introduction"]
           },
           {
             "group": "Endpoints",
@@ -66,8 +60,8 @@
     }
   },
   "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
+    "light": "/logo/light.png",
+    "dark": "/logo/dark.png"
   },
   "navbar": {
     "links": [
@@ -93,15 +87,24 @@
     }
   },
   "contextual": {
-    "options": [
-      "copy",
-      "view",
-      "chatgpt",
-      "claude",
-      "cursor"
-    ]
+    "options": ["copy", "view", "chatgpt", "claude", "cursor"]
   },
   "footer": {
+    "links": [
+      {
+        "title": "Resources",
+        "links": [
+          {
+            "label": "Status",
+            "href": "https://status.cuttr.com"
+          },
+          {
+            "label": "Support",
+            "href": "mailto:support@cuttr.com"
+          }
+        ]
+      }
+    ],
     "socials": {
       "x": "https://x.com/cuttrapp",
       "website": "https://cuttr.com"

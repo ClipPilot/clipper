@@ -116,6 +116,9 @@ jobs:
 
           # Use prod S3 bucket so staging can access the same clips
           shared_s3_bucket    = "clipster-videos-prod-${{ secrets.AWS_ACCOUNT_ID }}"
+
+          # Status Dashboard
+          status_cron_secret  = "${{ secrets.STATUS_CRON_SECRET }}"
           EOF
 
       - name: Import existing ECR repos (if not in state)
@@ -251,6 +254,9 @@ jobs:
 
           # Use prod S3 bucket so staging can access the same clips
           shared_s3_bucket    = "clipster-videos-prod-${{ secrets.AWS_ACCOUNT_ID }}"
+
+          # Status Dashboard
+          status_cron_secret  = "${{ secrets.STATUS_CRON_SECRET }}"
           EOF
 
       - name: Import existing ECR repos (if not in state)
