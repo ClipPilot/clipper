@@ -333,6 +333,28 @@ router.post(
   authController.updatePassword.bind(authController)
 );
 
+/**
+ * @openapi
+ * /auth/profile:
+ *   patch:
+ *     summary: Update user profile
+ *     tags:
+ *       - Auth
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Profile updated
+ */
 router.patch(
   "/profile",
   requireAuth,

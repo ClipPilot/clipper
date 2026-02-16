@@ -135,6 +135,37 @@ router.post("/notify/clip-update", validateInternalKey, (req: Request, res: Resp
   return res.status(200).json({ success: true });
 });
 
+/**
+ * @openapi
+ * /internal/notify/comfy-job-update:
+ *   post:
+ *     summary: Trigger Comfy UI job update notification
+ *     tags:
+ *       - Internal
+ *     security:
+ *       - internalApiKey: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - teamId
+ *               - job
+ *             properties:
+ *               teamId:
+ *                 type: integer
+ *               job:
+ *                 type: object
+ *     responses:
+ *       200:
+ *         description: Notification sent
+ *       400:
+ *         description: Missing required fields
+ *       401:
+ *         description: Invalid internal API key
+ */
 router.post("/notify/comfy-job-update", validateInternalKey, (req: Request, res: Response) => {
   const { teamId, job } = req.body as { teamId: number; job: ComfyJobUpdate };
 
@@ -148,6 +179,40 @@ router.post("/notify/comfy-job-update", validateInternalKey, (req: Request, res:
   return res.status(200).json({ success: true });
 });
 
+/**
+ * @openapi
+ * /internal/notify/script-job-update:
+ *   post:
+ *     summary: Trigger script job update notification
+ *     tags:
+ *       - Internal
+ *     security:
+ *       - internalApiKey: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - teamId
+ *               - update
+ *             properties:
+ *               teamId:
+ *                 type: integer
+ *               update:
+ *                 type: object
+ *                 properties:
+ *                   scriptId:
+ *                     type: string
+ *     responses:
+ *       200:
+ *         description: Notification sent
+ *       400:
+ *         description: Missing required fields
+ *       401:
+ *         description: Invalid internal API key
+ */
 router.post("/notify/script-job-update", validateInternalKey, (req: Request, res: Response) => {
   const { teamId, update } = req.body as { teamId: number; update: ScriptJobUpdate };
 
@@ -161,6 +226,40 @@ router.post("/notify/script-job-update", validateInternalKey, (req: Request, res
   return res.status(200).json({ success: true });
 });
 
+/**
+ * @openapi
+ * /internal/notify/ugc-video-job-update:
+ *   post:
+ *     summary: Trigger UGC video job update notification
+ *     tags:
+ *       - Internal
+ *     security:
+ *       - internalApiKey: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - teamId
+ *               - update
+ *             properties:
+ *               teamId:
+ *                 type: integer
+ *               update:
+ *                 type: object
+ *                 properties:
+ *                   jobId:
+ *                     type: string
+ *     responses:
+ *       200:
+ *         description: Notification sent
+ *       400:
+ *         description: Missing required fields
+ *       401:
+ *         description: Invalid internal API key
+ */
 router.post("/notify/ugc-video-job-update", validateInternalKey, (req: Request, res: Response) => {
   const { teamId, update } = req.body as { teamId: number; update: UGCVideoJobUpdate };
 

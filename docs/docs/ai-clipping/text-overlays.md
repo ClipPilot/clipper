@@ -4,20 +4,20 @@ sidebar_position: 5
 
 # Text Overlays
 
-📌 **What You'll Learn:**
+**What You'll Learn:**
 - Add and position text overlays
 - Customize fonts and colors
 - Best practices for readability
 
 ---
 
-## 🎯 Overview
+## Overview
 
 Text overlays add context, hooks, or calls-to-action to your clips. They appear as static or animated text on top of your video.
 
 ---
 
-## ➕ Adding Text Overlays
+## Adding Text Overlays
 
 ### How to Add
 
@@ -37,7 +37,7 @@ Text overlays add context, hooks, or calls-to-action to your clips. They appear 
 
 ---
 
-## 🎨 Customization Options
+## Customization Options
 
 ### Position
 
@@ -62,7 +62,7 @@ Text overlays add context, hooks, or calls-to-action to your clips. They appear 
 
 ---
 
-## 💡 Pro Tips
+## Pro Tips
 
 1. **Keep it short** - 3-5 words maximum
 2. **High contrast** - Light text on dark, or vice versa
@@ -71,7 +71,7 @@ Text overlays add context, hooks, or calls-to-action to your clips. They appear 
 
 ---
 
-## 👉 Next Steps
+## Next Steps
 
 - [Configure captions](/ai-clipping/captions)
 - [Manage your clips](/clip-library/managing-clips)

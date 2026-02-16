@@ -123,6 +123,39 @@ const faceSwapFileFilter = (
   }
 };
 
+// Audio upload config (memory storage for voice clone uploads)
+const audioFileFilter = (
+  req: Express.Request,
+  file: Express.Multer.File,
+  cb: multer.FileFilterCallback
+) => {
+  const allowedMimes = [
+    "audio/webm",
+    "audio/mp4",
+    "audio/mpeg",
+    "audio/wav",
+    "audio/ogg",
+  ];
+
+  if (allowedMimes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(
+      new Error(
+        "Invalid file type. Only audio files (webm, mp4, mp3, wav, ogg) are allowed."
+      )
+    );
+  }
+};
+
+export const audioUpload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: audioFileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB max for audio
+  },
+});
+
 export const faceSwapUpload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => {

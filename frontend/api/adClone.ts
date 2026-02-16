@@ -225,6 +225,59 @@ class AdCloneAPI {
     return response.json();
   }
 
+  async regenerateBRollPrompt(
+    projectId: string,
+    data: {
+      sceneId: string;
+      bRollShotIndex: number;
+      newAction: string;
+    }
+  ): Promise<{ success: boolean }> {
+    const response = await apiFetch(
+      `${API_URL}/ad-clone/${projectId}/regenerate-broll-prompt`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(data),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to regenerate B-roll prompt");
+    }
+
+    return response.json();
+  }
+
+  async regenerateAllBRollShots(
+    projectId: string,
+    data: {
+      sceneId: string;
+      newSceneAction: string;
+      shotCount: number;
+      shotDurations: number[];
+    }
+  ): Promise<{ success: boolean; bRollShots: any[] }> {
+    const response = await apiFetch(
+      `${API_URL}/ad-clone/${projectId}/regenerate-all-broll-shots`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(data),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to regenerate B-roll shots");
+    }
+
+    return response.json();
+  }
+
   async generateVideo(
     projectId: string,
     data: { teamId: number; voiceId: string; characterId: number }

@@ -332,6 +332,95 @@ router.put(
 
 /**
  * @openapi
+ * /ad-clone/{projectId}/regenerate-broll-prompt:
+ *   post:
+ *     summary: Regenerate cinematic prompt for a B-roll shot
+ *     tags:
+ *       - Ad Clone
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: projectId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - sceneId
+ *               - bRollShotIndex
+ *               - newAction
+ *             properties:
+ *               sceneId:
+ *                 type: string
+ *               bRollShotIndex:
+ *                 type: number
+ *               newAction:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Cinematic prompt regenerated
+ */
+router.post(
+  "/:projectId/regenerate-broll-prompt",
+  requireAuth,
+  adCloneController.regenerateBRollPrompt.bind(adCloneController)
+);
+
+/**
+ * @openapi
+ * /ad-clone/{projectId}/regenerate-all-broll-shots:
+ *   post:
+ *     summary: Regenerate all B-roll shot descriptions from updated scene action
+ *     tags:
+ *       - Ad Clone
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: projectId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - sceneId
+ *               - newSceneAction
+ *               - shotCount
+ *               - shotDurations
+ *             properties:
+ *               sceneId:
+ *                 type: string
+ *               newSceneAction:
+ *                 type: string
+ *               shotCount:
+ *                 type: number
+ *               shotDurations:
+ *                 type: array
+ *                 items:
+ *                   type: number
+ *     responses:
+ *       200:
+ *         description: All B-roll shots regenerated
+ */
+router.post(
+  "/:projectId/regenerate-all-broll-shots",
+  requireAuth,
+  adCloneController.regenerateAllBRollShots.bind(adCloneController)
+);
+
+/**
+ * @openapi
  * /ad-clone/{projectId}/generate-video:
  *   post:
  *     summary: Queue video generation job

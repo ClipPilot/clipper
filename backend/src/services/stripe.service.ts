@@ -15,7 +15,7 @@ import {
   teamMembers,
   users,
 } from "@clipper/shared-db/src/schema";
-import { eq, and, not } from "drizzle-orm";
+import { eq, and, not, sql } from "drizzle-orm";
 import { emailNotiService } from "./emailNoti.service";
 import { referralService } from "./referral.service";
 
@@ -634,31 +634,22 @@ class StripeService {
       return;
     }
 
-    // Get current team
-    const [team] = await db
-      .select()
-      .from(teams)
+    const [updated] = await db
+      .update(teams)
+      .set({
+        addon_clips_remaining: sql`COALESCE(${teams.addon_clips_remaining}, 0) + ${addonClips}`,
+        updated_at: new Date(),
+      })
       .where(eq(teams.id, teamId))
-      .limit(1);
+      .returning({ addon_clips_remaining: teams.addon_clips_remaining });
 
-    if (!team) {
+    if (!updated) {
       console.error(`No team found for team ${teamId}`);
       return;
     }
 
-    // Add addon clips to the persistent addon pool (never expires)
-    const newAddonTotal = (team.addon_clips_remaining || 0) + addonClips;
-
-    await db
-      .update(teams)
-      .set({
-        addon_clips_remaining: newAddonTotal,
-        updated_at: new Date(),
-      })
-      .where(eq(teams.id, teamId));
-
     console.log(
-      `Added ${addonClips} addon clips to team ${teamId}. New addon total: ${newAddonTotal}`,
+      `Added ${addonClips} addon clips to team ${teamId}. New addon total: ${updated.addon_clips_remaining}`,
     );
   }
 

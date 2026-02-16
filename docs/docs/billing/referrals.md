@@ -4,20 +4,20 @@ sidebar_position: 3
 
 # Referral Program
 
-📌 **What You'll Learn:**
+**What You'll Learn:**
 - How the referral program works
 - Track your referrals
 - Earn rewards
 
 ---
 
-## 🎯 Overview
+## Overview
 
 Refer friends to Cuttr and earn rewards. When someone signs up using your code, both you and your friend benefit.
 
 ---
 
-## 🔗 Getting Your Referral Code
+## Getting Your Referral Code
 
 ### Access Your Code
 
@@ -36,7 +36,7 @@ Or share just the code for signup.
 
 ---
 
-## 🎁 Rewards Structure
+## Rewards Structure
 
 ### What You Earn
 
@@ -63,7 +63,7 @@ Or share just the code for signup.
 
 ---
 
-## 📊 Tracking Referrals
+## Tracking Referrals
 
 ### Referral Dashboard
 
@@ -80,24 +80,24 @@ See all your referrals:
 
 | Status | Meaning |
 |--------|---------|
-| 🟡 Pending | Signed up, no paid plan yet |
-| 🟢 Active | Paid subscriber |
-| 🔴 Churned | Cancelled subscription |
+| Pending | Signed up, no paid plan yet |
+| Active | Paid subscriber |
+| Churned | Cancelled subscription |
 
 ---
 
-## ⏱️ Reward Timing
+## Reward Timing
 
-1. Friend signs up with your code ✅
-2. Friend subscribes to paid plan ✅
-3. Payment processes successfully ✅
-4. Your reward is applied ✅
+1. Friend signs up with your code
+2. Friend subscribes to paid plan
+3. Payment processes successfully
+4. Your reward is applied
 
 **Processing:** Usually instant, max 48 hours.
 
 ---
 
-## 📋 Terms & Conditions
+## Terms & Conditions
 
 ### Eligibility
 - Must have active Cuttr account
@@ -115,7 +115,7 @@ Rewards void if:
 
 ---
 
-## 💡 Pro Tips
+## Pro Tips
 
 1. **Share your story** - Why you love Cuttr
 2. **Show results** - Share clips you've made
@@ -123,7 +123,7 @@ Rewards void if:
 
 ---
 
-## ❓ FAQ
+## FAQ
 
 **Q: Is there a limit to referrals?**
 A: No limit on referrals. Reward caps may apply.
@@ -136,7 +136,7 @@ A: No, rewards are tied to your account.
 
 ---
 
-## 👉 Next Steps
+## Next Steps
 
 - Share your code and start earning
 - [Create more clips](/ai-clipping/overview)

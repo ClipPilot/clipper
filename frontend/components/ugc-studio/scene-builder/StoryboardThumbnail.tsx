@@ -13,6 +13,7 @@ interface StoryboardThumbnailProps {
   hasImage: boolean;
   progress?: number;
   onClick: () => void;
+  onRemove?: () => void;
 }
 
 export function StoryboardThumbnail({
@@ -24,12 +25,13 @@ export function StoryboardThumbnail({
   hasImage,
   progress,
   onClick,
+  onRemove,
 }: StoryboardThumbnailProps) {
   return (
     <button
       onClick={onClick}
       className={`
-        flex flex-col items-center gap-2 p-3 rounded-xl transition-all duration-200
+        group flex flex-col items-center gap-2 p-3 rounded-xl transition-all duration-200
         ${isSelected
           ? "bg-accent-400/10 ring-2 ring-accent-400 ring-offset-2 ring-offset-surface-elevated"
           : "bg-surface-base hover:bg-surface-elevated hover:ring-1 hover:ring-border-base"
@@ -65,6 +67,17 @@ export function StoryboardThumbnail({
           <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-accent-400 flex items-center justify-center shadow-sm">
             <Icon icon="solar:check-circle-bold" className="text-white" width={12} />
           </div>
+        )}
+
+        {/* Delete button - visible on hover */}
+        {onRemove && !isGenerating && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onRemove(); }}
+            className="absolute top-1 left-1 w-5 h-5 rounded-full bg-red-500/80 text-white
+              flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+          >
+            <Icon icon="solar:close-circle-bold" width={12} />
+          </button>
         )}
 
         {/* Scene number badge */}

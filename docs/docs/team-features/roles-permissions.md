@@ -4,20 +4,20 @@ sidebar_position: 3
 
 # Roles & Permissions
 
-📌 **What You'll Learn:**
+**What You'll Learn:**
 - Available team roles
 - What each role can do
 - Changing member roles
 
 ---
 
-## 🎯 Overview
+## Overview
 
 Roles control what team members can access and modify. Assign roles based on responsibilities.
 
 ---
 
-## 👤 Available Roles
+## Available Roles
 
 ### Owner
 
@@ -25,10 +25,10 @@ The team creator with full control.
 
 | Permission | Access |
 |------------|--------|
-| Manage billing | ✅ |
-| Delete team | ✅ |
-| Manage all members | ✅ |
-| All content actions | ✅ |
+| Manage billing | Yes |
+| Delete team | Yes |
+| Manage all members | Yes |
+| All content actions | Yes |
 
 *Note: Only one Owner per team.*
 
@@ -38,11 +38,11 @@ Trusted members with administrative access.
 
 | Permission | Access |
 |------------|--------|
-| Invite members | ✅ |
-| Remove members | ✅ |
-| Manage content | ✅ |
-| View usage | ✅ |
-| Manage billing | ❌ |
+| Invite members | Yes |
+| Remove members | Yes |
+| Manage content | Yes |
+| View usage | Yes |
+| Manage billing | No |
 
 ### Member
 
@@ -50,15 +50,15 @@ Standard team members.
 
 | Permission | Access |
 |------------|--------|
-| Create content | ✅ |
-| Edit own content | ✅ |
-| View shared content | ✅ |
-| Invite members | ❌ |
-| Manage team | ❌ |
+| Create content | Yes |
+| Edit own content | Yes |
+| View shared content | Yes |
+| Invite members | No |
+| Manage team | No |
 
 ---
 
-## 🔄 Changing Roles
+## Changing Roles
 
 ### How to Change
 
@@ -76,21 +76,21 @@ Standard team members.
 
 ---
 
-## 📊 Permission Summary
+## Permission Summary
 
 | Action | Owner | Manager | Member |
 |--------|-------|---------|--------|
-| Create clips | ✅ | ✅ | ✅ |
-| Edit any clip | ✅ | ✅ | ❌ |
-| Delete any clip | ✅ | ✅ | ❌ |
-| Invite members | ✅ | ✅ | ❌ |
-| Remove members | ✅ | ✅ | ❌ |
-| Manage billing | ✅ | ❌ | ❌ |
-| Delete team | ✅ | ❌ | ❌ |
+| Create clips | Yes | Yes | Yes |
+| Edit any clip | Yes | Yes | No |
+| Delete any clip | Yes | Yes | No |
+| Invite members | Yes | Yes | No |
+| Remove members | Yes | Yes | No |
+| Manage billing | Yes | No | No |
+| Delete team | Yes | No | No |
 
 ---
 
-## 💡 Pro Tips
+## Pro Tips
 
 1. **Limit Managers** - Only trusted team leads
 2. **Start as Member** - Promote as needed
@@ -98,7 +98,7 @@ Standard team members.
 
 ---
 
-## 👉 Next Steps
+## Next Steps
 
 - [Understand your plan](/billing/plans)
 - [Track usage](/billing/credits-usage)

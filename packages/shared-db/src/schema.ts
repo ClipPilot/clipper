@@ -1003,3 +1003,96 @@ export const clonedVoices = pgTable("cloned_voices", {
   created_at: timestamp("created_at").notNull().defaultNow(),
   updated_at: timestamp("updated_at").notNull().defaultNow(),
 }).enableRLS();
+
+export const APIKeys = pgTable(
+  "api_keys",
+  {
+    id: serial("id").primaryKey(),
+    team_id: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    user_id: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "set null" }),
+    name: varchar("name", { length: 255 }).notNull(),
+    key_prefix: varchar("key_prefix", { length: 12 }).notNull(),
+    key_hash: varchar("key_hash", { length: 255 }).notNull().unique(),
+    last_used_at: timestamp("last_used_at"),
+    expires_at: timestamp("expires_at"),
+    revoked: boolean("revoked").notNull().default(false),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    teamIdx: index("api_keys_team_id_idx").on(table.team_id),
+    keyHashIdx: index("api_keys_key_hash_idx").on(table.key_hash),
+  }),
+).enableRLS();
+
+export const apiBillingAccounts = pgTable(
+  "api_billing_accounts",
+  {
+    id: serial("id").primaryKey(),
+    team_id: integer("team_id")
+      .notNull()
+      .unique()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    balance_cents: integer("balance_cents").notNull().default(0),
+    total_spent_cents: integer("total_spent_cents").notNull().default(0),
+    total_topped_up_cents: integer("total_topped_up_cents").notNull().default(0),
+    active: boolean("active").notNull().default(false),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    teamIdx: index("api_billing_accounts_team_id_idx").on(table.team_id),
+  }),
+).enableRLS();
+
+export const apiWalletTopUps = pgTable(
+  "api_wallet_top_ups",
+  {
+    id: serial("id").primaryKey(),
+    team_id: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    amount_cents: integer("amount_cents").notNull(),
+    credits_cents: integer("credits_cents").notNull(),
+    stripe_payment_intent_id: varchar("stripe_payment_intent_id", { length: 255 }),
+    stripe_checkout_session_id: varchar("stripe_checkout_session_id", { length: 255 }),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    teamIdx: index("api_wallet_top_ups_team_id_idx").on(table.team_id),
+  }),
+).enableRLS();
+
+export const apiUsageLogs = pgTable(
+  "api_usage_logs",
+  {
+    id: serial("id").primaryKey(),
+    api_key_id: integer("api_key_id")
+      .notNull()
+      .references(() => APIKeys.id, { onDelete: "cascade" }),
+    team_id: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    product_slug: varchar("product_slug", { length: 100 }),
+    endpoint: varchar("endpoint", { length: 255 }).notNull(),
+    method: varchar("method", { length: 10 }).notNull(),
+    status_code: integer("status_code").notNull(),
+    cost_cents: integer("cost_cents").notNull().default(0),
+    quantity: integer("quantity").notNull().default(1),
+    response_time_ms: integer("response_time_ms"),
+    metadata: jsonb("metadata"),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    apiKeyIdx: index("api_usage_logs_api_key_id_idx").on(table.api_key_id),
+    teamIdx: index("api_usage_logs_team_id_idx").on(table.team_id),
+    createdAtIdx: index("api_usage_logs_created_at_idx").on(table.created_at),
+    productSlugIdx: index("api_usage_logs_product_slug_idx").on(
+      table.product_slug,
+    ),
+  }),
+).enableRLS();

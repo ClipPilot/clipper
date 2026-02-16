@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect } from "react";
 import { useAtom, useAtomValue } from "jotai";
-import { Button, Card, CardBody } from "@heroui/react";
+import { Button, Card, CardBody, Spinner, Progress } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import {
   adCloneStepAtom,
@@ -11,12 +11,13 @@ import {
   adCloneStatusAtom,
   adCloneCharacterIdAtom,
   adCloneVoiceIdAtom,
-  adCloneSelectedScriptAtom,
+  adCloneProgressAtom,
+  adCloneProgressMessageAtom,
+  adCloneProjectIdAtom,
   AdCloneStep,
 } from "@/store/adClone";
 import { useAdClone } from "@/hooks/useAdClone";
 import { AdCloneUploadStep } from "./AdCloneUploadStep";
-import { AdCloneScriptStep } from "./AdCloneScriptStep";
 import { AdCloneStoryboardStep } from "./AdCloneStoryboardStep";
 import { AdCloneCharacterVoiceStep } from "./AdCloneCharacterVoiceStep";
 import { AdCloneGenerateStep } from "./AdCloneGenerateStep";
@@ -27,7 +28,6 @@ interface AdCloneWizardProps {
 
 const STEPS: { key: AdCloneStep; label: string; icon: string }[] = [
   { key: "upload", label: "Upload", icon: "solar:upload-bold-duotone" },
-  { key: "script", label: "Script", icon: "solar:document-text-bold-duotone" },
   { key: "character", label: "Character & Voice", icon: "solar:user-speak-bold-duotone" },
   { key: "storyboard", label: "Storyboard", icon: "solar:gallery-bold-duotone" },
   { key: "generate", label: "Generate", icon: "solar:clapperboard-play-bold-duotone" },
@@ -40,13 +40,14 @@ export function AdCloneWizard({ teamId }: AdCloneWizardProps) {
   const status = useAtomValue(adCloneStatusAtom);
   const characterId = useAtomValue(adCloneCharacterIdAtom);
   const voiceId = useAtomValue(adCloneVoiceIdAtom);
-  const selectedScript = useAtomValue(adCloneSelectedScriptAtom);
+  const progress = useAtomValue(adCloneProgressAtom);
+  const progressMessage = useAtomValue(adCloneProgressMessageAtom);
+  const projectId = useAtomValue(adCloneProjectIdAtom);
 
   const {
     createProject,
     startAnalyzeAndScript,
     generateVideo,
-    updateScript,
     reset,
   } = useAdClone(teamId);
 
@@ -56,19 +57,12 @@ export function AdCloneWizard({ teamId }: AdCloneWizardProps) {
     try {
       switch (step) {
         case "upload":
-          const newProjectId = await createProject();
-          if (newProjectId) {
-            await startAnalyzeAndScript(newProjectId);
-          }
-          break;
-        case "script":
-          if (selectedScript) {
-            await updateScript(selectedScript);
-          }
+          await createProject();
           setStep("character");
           break;
         case "character":
-          setStep("storyboard");
+          // Start analysis + script generation now (runs in background, socket handles completion)
+          await startAnalyzeAndScript(projectId || undefined);
           break;
         case "storyboard":
           setStep("generate");
@@ -82,15 +76,12 @@ export function AdCloneWizard({ teamId }: AdCloneWizardProps) {
     } catch (err) {
       console.error("Step action failed:", err);
     }
-  }, [step, createProject, startAnalyzeAndScript, generateVideo, updateScript, selectedScript, setStep]);
+  }, [step, projectId, createProject, startAnalyzeAndScript, generateVideo, setStep]);
 
   const handleBack = useCallback(() => {
     switch (step) {
-      case "script":
-        setStep("upload");
-        break;
       case "character":
-        setStep("script");
+        setStep("upload");
         break;
       case "storyboard":
         setStep("character");
@@ -103,7 +94,7 @@ export function AdCloneWizard({ teamId }: AdCloneWizardProps) {
     }
   }, [step, setStep]);
 
-  const canGoBack = ["script", "storyboard", "character", "generate"].includes(step);
+  const canGoBack = ["storyboard", "character", "generate"].includes(step);
 
   useEffect(() => {
     if (step === "character") {
@@ -111,12 +102,47 @@ export function AdCloneWizard({ teamId }: AdCloneWizardProps) {
     }
   }, [step]);
 
+  const isAnalyzing = step === "character" && (status === "analyzing" || status === "generating_script");
+
   const renderStepContent = () => {
+    if (isAnalyzing) {
+      return (
+        <Card className="bg-surface-base border border-orange-500/30">
+          <CardBody className="p-12 flex flex-col items-center text-center space-y-6">
+            <div className="w-16 h-16 rounded-2xl bg-orange-500/20 flex items-center justify-center">
+              <Spinner size="lg" color="warning" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold text-text-primary">
+                {status === "analyzing" ? "Analyzing Your Video" : "Generating Script"}
+              </h3>
+              <p className="text-sm text-text-secondary max-w-md">
+                {status === "analyzing"
+                  ? "Breaking down scenes, identifying camera angles, and understanding the ad structure..."
+                  : "Creating a tailored script based on the video analysis..."}
+              </p>
+            </div>
+            {progress > 0 && (
+              <div className="w-full max-w-sm space-y-2">
+                <Progress
+                  value={progress}
+                  size="sm"
+                  classNames={{
+                    track: "bg-surface-elevated",
+                    indicator: "bg-orange-500",
+                  }}
+                />
+                <p className="text-xs text-text-muted">{progressMessage || `${progress}%`}</p>
+              </div>
+            )}
+          </CardBody>
+        </Card>
+      );
+    }
+
     switch (step) {
       case "upload":
         return <AdCloneUploadStep teamId={teamId} onContinue={handleContinue} />;
-      case "script":
-        return <AdCloneScriptStep teamId={teamId} />;
       case "storyboard":
         return <AdCloneStoryboardStep teamId={teamId} />;
       case "character":
@@ -132,53 +158,52 @@ export function AdCloneWizard({ teamId }: AdCloneWizardProps) {
     <div className="space-y-6">
       <Card className="bg-surface-base border border-border-base">
         <CardBody className="p-4">
-          <div className="flex items-center justify-between gap-2 overflow-x-auto">
+          <div className="flex items-center gap-0 overflow-x-auto">
             {STEPS.map((s, index) => {
               const isActive = s.key === step;
               const isCompleted = index < currentStepIndex;
               const isDisabled = index > currentStepIndex;
 
               return (
-                <div
-                  key={s.key}
-                  className={`flex items-center gap-2 flex-shrink-0 ${
-                    isDisabled ? "opacity-40" : ""
-                  }`}
-                >
+                <React.Fragment key={s.key}>
                   <div
-                    className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${
-                      isActive
-                        ? "bg-orange-500 text-white"
-                        : isCompleted
-                          ? "bg-green-500/20 text-green-400"
-                          : "bg-surface-elevated text-text-tertiary"
+                    className={`flex items-center gap-2 flex-shrink-0 ${
+                      isDisabled ? "opacity-40" : ""
                     }`}
                   >
-                    {isCompleted ? (
-                      <Icon icon="solar:check-circle-bold" width={20} />
-                    ) : (
-                      <Icon icon={s.icon} width={18} />
-                    )}
+                    <div
+                      className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${
+                        isActive
+                          ? "bg-orange-500 text-white"
+                          : isCompleted
+                            ? "bg-green-500/20 text-green-400"
+                            : "bg-surface-elevated text-text-tertiary"
+                      }`}
+                    >
+                      {isCompleted ? (
+                        <Icon icon="solar:check-circle-bold" width={20} />
+                      ) : (
+                        <Icon icon={s.icon} width={18} />
+                      )}
+                    </div>
+                    <span
+                      className={`text-sm font-medium hidden sm:block ${
+                        isActive
+                          ? "text-text-primary"
+                          : isCompleted
+                            ? "text-green-400"
+                            : "text-text-tertiary"
+                      }`}
+                    >
+                      {s.label}
+                    </span>
                   </div>
-                  <span
-                    className={`text-sm font-medium hidden sm:block ${
-                      isActive
-                        ? "text-text-primary"
-                        : isCompleted
-                          ? "text-green-400"
-                          : "text-text-tertiary"
-                    }`}
-                  >
-                    {s.label}
-                  </span>
                   {index < STEPS.length - 1 && (
-                    <Icon
-                      icon="solar:arrow-right-linear"
-                      className="text-text-tertiary mx-1"
-                      width={16}
-                    />
+                    <div className={`flex-1 h-px mx-3 min-w-[24px] ${
+                      index < currentStepIndex ? "bg-green-400/50" : "bg-border-base"
+                    }`} />
                   )}
-                </div>
+                </React.Fragment>
               );
             })}
           </div>
@@ -209,7 +234,7 @@ export function AdCloneWizard({ teamId }: AdCloneWizardProps) {
 
       {renderStepContent()}
 
-      {!["upload", "generate"].includes(step) && status !== "analyzing" && status !== "generating_script" && (
+      {!["upload", "generate"].includes(step) && !isAnalyzing && (
         <div className="flex items-center justify-between">
           {canGoBack ? (
             <Button

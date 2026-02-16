@@ -3,6 +3,12 @@
 import { useState, useMemo } from "react";
 import {
   Card,
+<<<<<<< HEAD
+=======
+  Tabs,
+  Tab,
+  Spacer,
+>>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
   Tooltip as HTooltip,
   cn,
 } from "@heroui/react";
@@ -14,6 +20,7 @@ import {
   ResponsiveContainer,
   Tooltip,
   XAxis,
+<<<<<<< HEAD
   YAxis,
 } from "recharts";
 import type { ViralityAccount, ViralityPost } from "@/api/virality";
@@ -94,11 +101,34 @@ export function AnalyticsChart({ accounts, postsByAccount }: AnalyticsChartProps
         activeMetric
       ),
     [postsByAccount, accounts, activeMetric]
+=======
+} from "recharts";
+import type { ViralityPost } from "@/api/virality";
+import { formatChartValue } from "@/lib/formatters";
+import { buildChartData } from "@/app/dashboard/virality/[competitorId]/utils";
+
+const CHART_LINE_COLOR = "hsl(var(--heroui-primary))";
+
+type ChartMetricKey = "likes" | "comments" | "views";
+
+interface AnalyticsChartProps {
+  posts: ViralityPost[];
+}
+
+export function AnalyticsChart({ posts }: AnalyticsChartProps) {
+  const [weekFilter, setWeekFilter] = useState(4);
+  const [activeMetric, setActiveMetric] = useState<ChartMetricKey>("views");
+
+  const chartData = useMemo(
+    () => buildChartData(posts, weekFilter),
+    [posts, weekFilter]
+>>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
   );
 
   const hasData = chartData.length > 0;
 
   const totals = useMemo(() => {
+<<<<<<< HEAD
     let likes = 0,
       comments = 0,
       views = 0;
@@ -112,6 +142,13 @@ export function AnalyticsChart({ accounts, postsByAccount }: AnalyticsChartProps
     }
     return { likes, comments, views };
   }, [accounts, postsByAccount]);
+=======
+    const likes = chartData.reduce((s, d) => s + d.likes, 0);
+    const comments = chartData.reduce((s, d) => s + d.comments, 0);
+    const views = chartData.reduce((s, d) => s + d.views, 0);
+    return { likes, comments, views };
+  }, [chartData]);
+>>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
 
   const metrics: {
     key: ChartMetricKey;
@@ -119,16 +156,21 @@ export function AnalyticsChart({ accounts, postsByAccount }: AnalyticsChartProps
     value: number;
     tooltip?: string;
   }[] = [
+<<<<<<< HEAD
     {
       key: "views",
       title: "Total Views",
       value: totals.views,
       tooltip: "Only counts views on video posts (Reels)",
     },
+=======
+    { key: "views", title: "Total Views", value: totals.views, tooltip: "Only counts views on video posts (Reels)" },
+>>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
     { key: "likes", title: "Total Likes", value: totals.likes },
     { key: "comments", title: "Total Comments", value: totals.comments },
   ];
 
+<<<<<<< HEAD
   return (
     <Card className="bg-surface-base border border-border-base h-full">
       <section className="flex flex-col flex-nowrap h-full">
@@ -162,6 +204,43 @@ export function AnalyticsChart({ accounts, postsByAccount }: AnalyticsChartProps
                 ))}
               </div>
             </div>
+=======
+  const series = useMemo(() => {
+    return chartData.map((d) => ({
+      date: d.date,
+      value: d[activeMetric],
+    }));
+  }, [chartData, activeMetric]);
+
+  return (
+    <Card className="bg-surface-base border border-border-base">
+      <section className="flex flex-col flex-nowrap">
+        <div className="flex flex-col justify-between gap-y-2 p-6">
+          <div className="flex flex-col gap-y-2">
+            <div className="flex items-center justify-between">
+              <dt className="text-medium text-text-primary font-medium">
+                Analytics
+              </dt>
+              <div className="flex items-center gap-1.5">
+                <div
+                  className="w-3 h-[3px] rounded-full"
+                  style={{ backgroundColor: CHART_LINE_COLOR }}
+                />
+                <span className="text-xs text-text-tertiary">Aggregated</span>
+              </div>
+            </div>
+            <Spacer y={2} />
+            <Tabs
+              size="sm"
+              selectedKey={String(weekFilter)}
+              onSelectionChange={(key) => setWeekFilter(Number(key))}
+            >
+              <Tab key="1" title="1 Week" />
+              <Tab key="2" title="2 Weeks" />
+              <Tab key="3" title="3 Weeks" />
+              <Tab key="4" title="4 Weeks" />
+            </Tabs>
+>>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
             <div className="mt-2 flex w-full items-center">
               <div className="-my-3 flex w-full items-center gap-x-3 overflow-x-auto py-3">
                 {metrics.map(({ key, title, value, tooltip }) => (
@@ -203,6 +282,7 @@ export function AnalyticsChart({ accounts, postsByAccount }: AnalyticsChartProps
         </div>
 
         {hasData ? (
+<<<<<<< HEAD
           <div className="flex-1 min-h-[300px]">
             <ResponsiveContainer
               className="[&_.recharts-surface]:outline-hidden"
@@ -325,6 +405,86 @@ export function AnalyticsChart({ accounts, postsByAccount }: AnalyticsChartProps
               </AreaChart>
             </ResponsiveContainer>
           </div>
+=======
+          <ResponsiveContainer
+            className="min-h-[300px] [&_.recharts-surface]:outline-hidden"
+            height="100%"
+            width="100%"
+          >
+            <AreaChart
+              key={`${weekFilter}-${activeMetric}`}
+              accessibilityLayer
+              data={series}
+              height={300}
+              margin={{ left: 0, right: 0 }}
+              width={500}
+            >
+              <defs>
+                <linearGradient id="gradient-main" x1="0" x2="0" y1="0" y2="1">
+                  <stop
+                    offset="10%"
+                    stopColor={CHART_LINE_COLOR}
+                    stopOpacity={0.2}
+                  />
+                  <stop
+                    offset="100%"
+                    stopColor={CHART_LINE_COLOR}
+                    stopOpacity={0.02}
+                  />
+                </linearGradient>
+              </defs>
+              <CartesianGrid
+                stroke="hsl(var(--heroui-default-200))"
+                strokeDasharray="3 3"
+                vertical={false}
+              />
+              <XAxis
+                axisLine={false}
+                dataKey="date"
+                style={{ fontSize: "var(--heroui-font-size-tiny)" }}
+                tickLine={false}
+                interval={weekFilter <= 1 ? 0 : weekFilter <= 2 ? 1 : Math.max(0, Math.floor(series.length / 7) - 1)}
+              />
+              <Tooltip
+                content={({ label, payload }) => (
+                  <div className="rounded-medium bg-foreground text-tiny shadow-small flex h-auto min-w-[140px] items-center gap-x-2 p-2.5">
+                    <div className="flex w-full flex-col gap-y-1">
+                      {payload?.map((p, index) => (
+                        <div
+                          key={index}
+                          className="text-small text-background flex w-full items-center justify-between gap-x-2"
+                        >
+                          <span className="font-medium">
+                            {formatChartValue(p.value as number)}
+                          </span>
+                        </div>
+                      ))}
+                      <span className="text-small text-foreground-400 font-medium mt-0.5">
+                        {label}
+                      </span>
+                    </div>
+                  </div>
+                )}
+                cursor={{ strokeWidth: 0 }}
+              />
+              <Area
+                activeDot={{
+                  stroke: CHART_LINE_COLOR,
+                  strokeWidth: 2,
+                  fill: "hsl(var(--heroui-background))",
+                  r: 4,
+                }}
+                animationDuration={800}
+                animationEasing="ease-in-out"
+                dataKey="value"
+                fill="url(#gradient-main)"
+                stroke={CHART_LINE_COLOR}
+                strokeWidth={2.5}
+                type="monotone"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+>>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
         ) : (
           <div className="flex flex-col items-center justify-center py-16 gap-2">
             <Icon

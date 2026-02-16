@@ -23,7 +23,6 @@ class GraphicsAPI {
     prompt: string;
     graphicType: string;
     aspectRatio: string;
-    mode?: "variations" | "carousel";
     productImageKeys?: string[];
   }): Promise<GenerateGraphicsResponse> {
     const response = await apiFetch(`${API_URL}/graphics/generate`, {

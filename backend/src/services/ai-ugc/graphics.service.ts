@@ -89,8 +89,11 @@ async function generateVariations(
   referenceUrls?: string[],
 ): Promise<string[]> {
   const { clean, bold } = GRAPHIC_TYPE_PROMPTS[graphicType];
-  const cleanPrompt = `${clean}\n\nUser request: ${prompt}`;
-  const boldPrompt = `${bold}\n\nUser request: ${prompt}`;
+  const refInstruction = referenceUrls?.length
+    ? "IMPORTANT: Reference images are provided. You MUST use them as the primary visual basis. Keep the same subject, product, colors, and composition from the reference images. The user's request describes how to modify or build upon the reference — do NOT ignore the reference images or generate unrelated content.\n\n"
+    : "";
+  const cleanPrompt = `${refInstruction}${clean}\n\nUser request: ${prompt}`;
+  const boldPrompt = `${refInstruction}${bold}\n\nUser request: ${prompt}`;
 
   const [cleanUrls, boldUrls] = await Promise.all([
     generateBatch(cleanPrompt, 3, aspectRatio, referenceUrls),
@@ -107,7 +110,10 @@ async function generateCarousel(
   referenceUrls?: string[],
 ): Promise<string[]> {
   const { clean } = GRAPHIC_TYPE_PROMPTS[graphicType];
-  const heroPrompt = `${clean}\n\nUser request: ${prompt}`;
+  const refInstruction = referenceUrls?.length
+    ? "IMPORTANT: Reference images are provided. You MUST use them as the primary visual basis. Keep the same subject, product, colors, and composition from the reference images. The user's request describes how to modify or build upon the reference — do NOT ignore the reference images or generate unrelated content.\n\n"
+    : "";
+  const heroPrompt = `${refInstruction}${clean}\n\nUser request: ${prompt}`;
 
   console.log("[GRAPHICS] Carousel: generating hero image...");
 

@@ -4,14 +4,14 @@ sidebar_position: 1
 
 # Face Swap Overview
 
-📌 **What You'll Learn:**
+**What You'll Learn:**
 - What Face Swap does
 - When to use it
 - The complete workflow
 
 ---
 
-## 🎯 What is Face Swap?
+## What is Face Swap?
 
 Face Swap replaces faces in existing videos with your AI characters. The original video motion, audio, and background stay intact—only the face changes.
 
@@ -22,7 +22,7 @@ Face Swap replaces faces in existing videos with your AI characters. The origina
 
 ---
 
-## 🔄 How It Works
+## How It Works
 
 | Step | What Happens |
 |------|--------------|
@@ -35,7 +35,7 @@ Face Swap replaces faces in existing videos with your AI characters. The origina
 
 ---
 
-## ⏱️ Processing Time
+## Processing Time
 
 - **Typical:** 20-40 minutes per swap
 - Depends on video length and complexity
@@ -43,7 +43,7 @@ Face Swap replaces faces in existing videos with your AI characters. The origina
 
 ---
 
-## 💎 Credits
+## Credits
 
 - **Cost:** 5 credits per character swap
 - Multiple characters = multiple costs
@@ -51,7 +51,7 @@ Face Swap replaces faces in existing videos with your AI characters. The origina
 
 ---
 
-## 📋 Requirements
+## Requirements
 
 ### Video Requirements
 
@@ -64,15 +64,15 @@ Face Swap replaces faces in existing videos with your AI characters. The origina
 
 ### Best Results
 
-- ✅ Good lighting on face
-- ✅ Minimal motion blur
-- ✅ Face visible throughout segment
-- ❌ Avoid extreme angles
-- ❌ Avoid faces covered by objects
+- Good lighting on face
+- Minimal motion blur
+- Face visible throughout segment
+- Avoid extreme angles
+- Avoid faces covered by objects
 
 ---
 
-## 💡 Pro Tips
+## Pro Tips
 
 1. **Clear source footage** - Better input = better output
 2. **Front-facing works best** - Profile views are harder
@@ -81,7 +81,7 @@ Face Swap replaces faces in existing videos with your AI characters. The origina
 
 ---
 
-## 👉 Next Steps
+## Next Steps
 
 - [Manual segment selection](/ugc-studio/face-swap/manual-segments)
 - [Auto-detect faces](/ugc-studio/face-swap/auto-detect)

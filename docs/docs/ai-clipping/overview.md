@@ -4,14 +4,14 @@ sidebar_position: 1
 
 # AI Clipping Overview
 
-📌 **What You'll Learn:**
+**What You'll Learn:**
 - How AI Clipping works
 - What makes a great clip
 - The complete workflow
 
 ---
 
-## 🎯 What is AI Clipping?
+## What is AI Clipping?
 
 AI Clipping automatically extracts the most engaging moments from your long-form videos and turns them into viral-ready short clips.
 
@@ -20,7 +20,7 @@ AI Clipping automatically extracts the most engaging moments from your long-form
 
 ---
 
-## 🔄 How It Works
+## How It Works
 
 ### The AI Pipeline
 
@@ -35,15 +35,15 @@ AI Clipping automatically extracts the most engaging moments from your long-form
 
 ### What the AI Looks For
 
-- 🎯 **Hooks**: Attention-grabbing openings
-- 💡 **Value bombs**: Key insights or tips
-- 😂 **Emotional peaks**: Funny, surprising, or powerful moments
-- 📖 **Story arcs**: Complete mini-narratives
-- 🗣️ **Quotables**: Shareable one-liners
+- **Hooks**: Attention-grabbing openings
+- **Value bombs**: Key insights or tips
+- **Emotional peaks**: Funny, surprising, or powerful moments
+- **Story arcs**: Complete mini-narratives
+- **Quotables**: Shareable one-liners
 
 ---
 
-## ✨ Key Features
+## Key Features
 
 ### Automatic Hook Generation
 The AI identifies or creates compelling 2-5 second hooks that grab attention.
@@ -59,20 +59,20 @@ AI-generated captions with word-by-word animation for maximum engagement.
 
 ---
 
-## 📊 Supported Content Types
+## Supported Content Types
 
 | Content Type | Quality |
 |--------------|---------|
-| Podcasts | ⭐⭐⭐⭐⭐ |
-| Interviews | ⭐⭐⭐⭐⭐ |
-| Educational videos | ⭐⭐⭐⭐⭐ |
-| Vlogs | ⭐⭐⭐⭐ |
-| Webinars | ⭐⭐⭐⭐ |
-| Gaming streams | ⭐⭐⭐ |
+| Podcasts | 5 stars |
+| Interviews | 5 stars |
+| Educational videos | 5 stars |
+| Vlogs | 4 stars |
+| Webinars | 4 stars |
+| Gaming streams | 3 stars |
 
 ---
 
-## 💡 Pro Tips
+## Pro Tips
 
 1. **Clear audio = better results** - AI needs to understand speech
 2. **Longer videos = more options** - More content means more clip opportunities
@@ -81,7 +81,7 @@ AI-generated captions with word-by-word animation for maximum engagement.
 
 ---
 
-## 👉 Next Steps
+## Next Steps
 
 - [Upload your first video](/ai-clipping/uploading-videos)
 - [Choose a prompt type](/ai-clipping/prompt-types)

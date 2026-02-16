@@ -205,6 +205,33 @@ export class UGCScriptController {
     }
   }
 
+  async regenerateAllBRollShots(req: AuthRequest, res: Response) {
+    try {
+      const { scriptId, sceneId, newSceneAction, shotCount, shotDurations } = req.body;
+
+      if (!scriptId || !sceneId || !newSceneAction || !shotCount || !shotDurations) {
+        return res.status(400).json({
+          error: "scriptId, sceneId, newSceneAction, shotCount, and shotDurations are required",
+        });
+      }
+
+      const newShots = await ugcScriptService.regenerateAllBRollShots({
+        scriptId,
+        sceneId,
+        newSceneAction,
+        shotCount,
+        shotDurations,
+      });
+
+      return res.status(200).json({ success: true, bRollShots: newShots });
+    } catch (error) {
+      console.error("[UGC_SCRIPT] Regenerate all B-roll shots error:", error);
+      return res.status(500).json({
+        error: sanitizeErrorForFrontend(error, "Failed to regenerate B-roll shots"),
+      });
+    }
+  }
+
   async getUploadUrl(req: AuthRequest, res: Response) {
     try {
       const { teamId, fileName, contentType } = req.body;

@@ -1,9 +1,17 @@
+<<<<<<< HEAD
 name: Deploy Virality Sync Lambda (Production)
+=======
+name: Deploy Virality Sync Lambda
+>>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
 
 on:
   push:
     branches:
       - main
+<<<<<<< HEAD
+=======
+      - staging
+>>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
     paths:
       - "lambda-virality-sync/**"
       - "packages/shared-db/**"
@@ -13,11 +21,19 @@ on:
 env:
   AWS_REGION: us-west-2
   ECR_REPOSITORY: clipster-virality-sync-lambda
+<<<<<<< HEAD
   LAMBDA_FUNCTION: clipster-virality-sync-prod
 
 jobs:
   deploy:
     name: Deploy Virality Sync Lambda (Production)
+=======
+  LAMBDA_FUNCTION: clipster-virality-sync
+
+jobs:
+  deploy:
+    name: Deploy Virality Sync Lambda
+>>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
     runs-on: ubuntu-latest
     environment: production
 
@@ -61,6 +77,10 @@ jobs:
 
       - name: Verify deployment
         run: |
+<<<<<<< HEAD
           echo "Virality Sync Lambda (Production) deployment completed!"
+=======
+          echo "Virality Sync Lambda deployment completed!"
+>>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
           echo "Function: ${{ env.LAMBDA_FUNCTION }}"
           echo "Image: ${{ steps.build-image.outputs.image }}"

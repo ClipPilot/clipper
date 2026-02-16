@@ -8,9 +8,10 @@ import { VoiceSelector } from "./VoiceSelector";
 
 interface AudioStepProps {
   onContinue?: () => void;
+  teamId?: number;
 }
 
-export function AudioStep({ onContinue }: AudioStepProps) {
+export function AudioStep({ onContinue, teamId }: AudioStepProps) {
   const [selectedVoice, setSelectedVoice] = useAtom(selectedVoiceAtom);
 
   return (
@@ -68,7 +69,7 @@ export function AudioStep({ onContinue }: AudioStepProps) {
         </Card>
       )}
 
-      <VoiceSelector selectedVoice={selectedVoice} onVoiceChange={setSelectedVoice} />
+      <VoiceSelector selectedVoice={selectedVoice} onVoiceChange={setSelectedVoice} teamId={teamId} />
     </div>
   );
 }

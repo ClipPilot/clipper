@@ -126,9 +126,8 @@ ${userRefinement}`);
   }
 
   if (hasReferenceImages && characterAppearance) {
-    const charDesc = buildCharacterDescription(characterAppearance);
     sections.push(`CHARACTER CONSISTENCY:
-If any human features appear (hands, arms, partial body), they must match: ${charDesc}. Maintain identical skin tone and physical characteristics.`);
+If any human features appear (hands, arms, partial body), they must match the character shown in the reference image. Maintain identical skin tone and physical characteristics.`);
   }
 
   if (productName) {
@@ -208,11 +207,7 @@ The FIRST reference image is a frame from the original video ad. Use it as a COM
     if (hasVideoFrameReference) {
       refText += "Note: Image 1 is the video frame pose reference (see above). The CHARACTER reference image follows after it.\n";
     }
-    refText += "The character reference shows the exact person to depict. This must be the identical individual - same face, same features, same identity throughout.\n";
-
-    if (charDesc) {
-      refText += `\nCHARACTER: ${charDesc}. Maintain exact skin tone, ethnicity, and physical features. Do not alter the character's race or appearance.\n`;
-    }
+    refText += "The character reference shows the exact person to depict. This must be the identical individual - same face, same features, same identity throughout. Maintain exact skin tone, ethnicity, and physical features. Do not alter the character's race or appearance.\n";
 
     if (hasProductImages && productName) {
       refText += `\nPRODUCT: "${productName}" must appear exactly as shown in reference images.`;

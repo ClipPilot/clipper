@@ -4,20 +4,20 @@ sidebar_position: 2
 
 # Account Setup
 
-📌 **What You'll Learn:**
+**What You'll Learn:**
 - Create and verify your account
 - Set up your profile
 - Connect your workspace
 
 ---
 
-## 🎯 Overview
+## Overview
 
 Setting up your Cuttr account takes just a few minutes. Once complete, you'll have access to all features based on your plan.
 
 ---
 
-## 📝 Creating Your Account
+## Creating Your Account
 
 ### Sign Up Options
 
@@ -34,7 +34,7 @@ Setting up your Cuttr account takes just a few minutes. Once complete, you'll ha
 
 ---
 
-## 👤 Profile Setup
+## Profile Setup
 
 ### Your Profile Includes:
 
@@ -52,7 +52,7 @@ Setting up your Cuttr account takes just a few minutes. Once complete, you'll ha
 
 ---
 
-## 🏢 Workspace Setup
+## Workspace Setup
 
 ### What is a Workspace?
 
@@ -71,7 +71,7 @@ A workspace is your content hub. It contains:
 
 ---
 
-## 💡 Pro Tips
+## Pro Tips
 
 1. **Use a business email** for team features
 2. **Enable notifications** to track clip generation
@@ -79,7 +79,7 @@ A workspace is your content hub. It contains:
 
 ---
 
-## 👉 Next Steps
+## Next Steps
 
 - [Create your first clip](/getting-started/quick-start)
 - [Explore your plan options](/billing/plans)
