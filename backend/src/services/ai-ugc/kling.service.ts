@@ -457,8 +457,6 @@ export async function applyLipsync(
 ): Promise<LipsyncResult> {
   const { videoUrl, audioUrl } = options;
 
-  console.log(`[Kling] Applying lipsync to video`);
-
   try {
     const result = await fal.subscribe(
       "fal-ai/kling-video/lipsync/audio-to-video",
@@ -580,8 +578,13 @@ export async function generateAvatar(
   let finalPrompt = prompt || AVATAR_PROMPT;
 
   if (finalPrompt.length > KLING_MAX_PROMPT_LENGTH) {
-    console.log(`[Kling Avatar v2] Prompt too long (${finalPrompt.length}/${KLING_MAX_PROMPT_LENGTH}), shortening...`);
-    finalPrompt = await shortenPromptIfNeeded(finalPrompt, KLING_MAX_PROMPT_LENGTH);
+    console.log(
+      `[Kling Avatar v2] Prompt too long (${finalPrompt.length}/${KLING_MAX_PROMPT_LENGTH}), shortening...`,
+    );
+    finalPrompt = await shortenPromptIfNeeded(
+      finalPrompt,
+      KLING_MAX_PROMPT_LENGTH,
+    );
   }
 
   console.log(`[Kling Avatar v2] Generating talking head video`);

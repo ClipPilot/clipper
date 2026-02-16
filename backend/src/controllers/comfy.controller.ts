@@ -1086,11 +1086,15 @@ export class ComfyController {
             if (!jobResult?.videoUrl) {
               throw new Error("Face swap service did not return a video URL");
             }
-            console.log(`[comfy] Face swap complete for job ${jobId} (${jobResult.processingTimeMs}ms)`);
+            console.log(
+              `[comfy] Face swap complete for job ${jobId} (${jobResult.processingTimeMs}ms)`,
+            );
 
             const videoResponse = await fetch(jobResult.videoUrl);
             if (!videoResponse.ok) {
-              throw new Error(`Failed to download result video: ${videoResponse.status}`);
+              throw new Error(
+                `Failed to download result video: ${videoResponse.status}`,
+              );
             }
             let finalBuffer = Buffer.from(await videoResponse.arrayBuffer());
 
@@ -1107,7 +1111,7 @@ export class ComfyController {
                   id: jobId,
                   status: "running",
                   progress: 60,
-                  progressMessage: "Applying lip sync",
+                  progressMessage: "Processing",
                   outputUrl: null,
                   errorMessage: null,
                   createdAt: new Date().toISOString(),
@@ -1126,10 +1130,11 @@ export class ComfyController {
                   s3Service.uploadBuffer(finalBuffer, lsVideoKey, "video/mp4"),
                   s3Service.uploadBuffer(audioBuffer, lsAudioKey, "audio/wav"),
                 ]);
-                const [videoPresignedUrl, audioPresignedUrl] = await Promise.all([
-                  s3Service.getPresignedUrl(lsVideoKey, 3600),
-                  s3Service.getPresignedUrl(lsAudioKey, 3600),
-                ]);
+                const [videoPresignedUrl, audioPresignedUrl] =
+                  await Promise.all([
+                    s3Service.getPresignedUrl(lsVideoKey, 3600),
+                    s3Service.getPresignedUrl(lsAudioKey, 3600),
+                  ]);
 
                 const lipsyncOutputUrl = await syncService.applyLipSync(
                   videoPresignedUrl,
@@ -1138,7 +1143,9 @@ export class ComfyController {
 
                 const lipsyncResponse = await fetch(lipsyncOutputUrl);
                 if (lipsyncResponse.ok) {
-                  finalBuffer = Buffer.from(await lipsyncResponse.arrayBuffer());
+                  finalBuffer = Buffer.from(
+                    await lipsyncResponse.arrayBuffer(),
+                  );
                   console.log(`[comfy] Lip sync applied for job ${jobId}`);
                 }
 
@@ -1176,7 +1183,10 @@ export class ComfyController {
               .returning();
             console.log(`[comfy] Created clip ${clip.id} for job ${jobId}`);
 
-            const outputUrl = await s3Service.getPresignedUrl(outputS3Key, 3600);
+            const outputUrl = await s3Service.getPresignedUrl(
+              outputS3Key,
+              3600,
+            );
 
             await db
               .update(comfyJobs)
