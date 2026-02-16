@@ -1030,18 +1030,33 @@ export const apiBillingAccounts = pgTable(
       .notNull()
       .unique()
       .references(() => teams.id, { onDelete: "cascade" }),
-    stripe_subscription_id: varchar("stripe_subscription_id", { length: 255 }),
+    balance_cents: integer("balance_cents").notNull().default(0),
+    total_spent_cents: integer("total_spent_cents").notNull().default(0),
+    total_topped_up_cents: integer("total_topped_up_cents").notNull().default(0),
     active: boolean("active").notNull().default(false),
-    current_period_start: timestamp("current_period_start"),
-    current_period_end: timestamp("current_period_end"),
-    total_usage_cents_this_period: integer("total_usage_cents_this_period")
-      .notNull()
-      .default(0),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => ({
     teamIdx: index("api_billing_accounts_team_id_idx").on(table.team_id),
+  }),
+).enableRLS();
+
+export const apiWalletTopUps = pgTable(
+  "api_wallet_top_ups",
+  {
+    id: serial("id").primaryKey(),
+    team_id: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    amount_cents: integer("amount_cents").notNull(),
+    credits_cents: integer("credits_cents").notNull(),
+    stripe_payment_intent_id: varchar("stripe_payment_intent_id", { length: 255 }),
+    stripe_checkout_session_id: varchar("stripe_checkout_session_id", { length: 255 }),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    teamIdx: index("api_wallet_top_ups_team_id_idx").on(table.team_id),
   }),
 ).enableRLS();
 
@@ -1059,9 +1074,8 @@ export const apiUsageLogs = pgTable(
     endpoint: varchar("endpoint", { length: 255 }).notNull(),
     method: varchar("method", { length: 10 }).notNull(),
     status_code: integer("status_code").notNull(),
-    unit_price_cents: integer("unit_price_cents").notNull().default(0),
+    cost_cents: integer("cost_cents").notNull().default(0),
     quantity: integer("quantity").notNull().default(1),
-    stripe_usage_record_id: varchar("stripe_usage_record_id", { length: 255 }),
     response_time_ms: integer("response_time_ms"),
     metadata: jsonb("metadata"),
     created_at: timestamp("created_at").notNull().defaultNow(),

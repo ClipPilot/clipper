@@ -176,6 +176,20 @@
       "when": 1771182869475,
       "tag": "0024_yellow_purple_man",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1771222060259,
+      "tag": "0025_many_shiver_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1771251120908,
+      "tag": "0026_rainy_stranger",
+      "breakpoints": true
     }
   ]
 }

@@ -210,6 +210,10 @@ export async function validateAPIKey(
         .json({ error: "API billing not active for this team" });
     }
 
+    if (billing.balance_cents <= 0) {
+      return res.status(402).json({ error: "Insufficient balance" });
+    }
+
     const { limited, retryAfter } = await checkRateLimit(apiKey.id);
     if (limited) {
       res.set("Retry-After", String(retryAfter));
