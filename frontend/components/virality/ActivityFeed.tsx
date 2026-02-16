@@ -1,27 +1,149 @@
 "use client";
 
-import { Card, CardBody } from "@heroui/react";
+import { useState, useMemo, useCallback, useRef } from "react";
+import { Card, CardBody, Tooltip, cn } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import type { ViralityPost, ViralityAccount } from "@/api/virality";
+import type { ViralityPost, ViralityAccount, MetricsEntry } from "@/api/virality";
+import type { DateRangeValue } from "@/components/virality/DateRangeFilter";
 import { formatNumber } from "@/lib/formatters";
 import { platformIcon, platformIconColor, timeAgo } from "@/lib/platformUtils";
 
-interface ActivityFeedProps {
-  posts: ViralityPost[];
-  accountMap: Record<number, ViralityAccount>;
+type ContentFilter = "all" | "viral" | "recent";
+
+const VIRAL_VIEW_THRESHOLD = 50_000;
+const PAGE_SIZE = 20;
+
+/** Find the metrics_history entry closest to a given date */
+function findClosestEntry(history: MetricsEntry[], target: Date): MetricsEntry | null {
+  if (!history || history.length === 0) return null;
+  const targetMs = target.getTime();
+  let closest: MetricsEntry | null = null;
+  let closestDiff = Infinity;
+  for (const entry of history) {
+    const diff = Math.abs(new Date(entry.recorded_at).getTime() - targetMs);
+    if (diff < closestDiff) {
+      closestDiff = diff;
+      closest = entry;
+    }
+  }
+  return closest;
 }
 
-export function ActivityFeed({ posts, accountMap }: ActivityFeedProps) {
-  const sorted = posts
-    .slice()
-    .sort((a, b) => new Date(b.posted_at || 0).getTime() - new Date(a.posted_at || 0).getTime());
+/** Calculate views gained within a date range using metrics_history */
+function getViewsInRange(
+  post: ViralityPost,
+  startDate?: string,
+  endDate?: string
+): number {
+  const h = post.metrics_history;
+  if (!h || h.length === 0) return 0;
 
-  if (sorted.length === 0) {
+  // If no date range, return total views
+  if (!startDate && !endDate) return post.video_play_count ?? 0;
+
+  const start = startDate ? new Date(startDate) : null;
+  const end = endDate ? new Date(endDate) : new Date();
+
+  // Find the entry closest to the start of the range
+  const startEntry = start ? findClosestEntry(h, start) : h[0];
+  // Find the entry closest to the end of the range
+  const endEntry = end ? findClosestEntry(h, end) : h[h.length - 1];
+
+  if (!startEntry || !endEntry) return 0;
+
+  const startViews = startEntry.views ?? 0;
+  const endViews = endEntry.views ?? 0;
+
+  return Math.max(endViews - startViews, 0);
+}
+
+interface TopPerformingContentProps {
+  /** Posts filtered by the dashboard date range (used for viral + recent) */
+  posts: ViralityPost[];
+  /** All posts regardless of date range (used for "All" tab) */
+  allPosts: ViralityPost[];
+  accountMap: Record<number, ViralityAccount>;
+  dateRange: DateRangeValue;
+}
+
+export function ActivityFeed({ posts, allPosts, accountMap, dateRange }: TopPerformingContentProps) {
+  const [filter, setFilter] = useState<ContentFilter>("all");
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const hasDateRange = !!(dateRange.startDate || dateRange.endDate);
+
+  /** For viral tab: compute view delta per post within the date range */
+  const viralPostsWithDelta = useMemo(() => {
+    return posts
+      .map((p) => ({
+        post: p,
+        viewsGained: getViewsInRange(p, dateRange.startDate, dateRange.endDate),
+      }))
+      .filter((item) => item.viewsGained >= VIRAL_VIEW_THRESHOLD)
+      .sort((a, b) => b.viewsGained - a.viewsGained);
+  }, [posts, dateRange.startDate, dateRange.endDate]);
+
+  const filteredPosts = useMemo(() => {
+    switch (filter) {
+      case "viral":
+        return viralPostsWithDelta.map((item) => item.post);
+      case "recent":
+        return posts
+          .slice()
+          .sort(
+            (a, b) =>
+              new Date(b.posted_at || 0).getTime() -
+              new Date(a.posted_at || 0).getTime()
+          );
+      case "all":
+      default:
+        return allPosts
+          .slice()
+          .sort((a, b) => (b.video_play_count ?? 0) - (a.video_play_count ?? 0));
+    }
+  }, [filter, posts, allPosts, viralPostsWithDelta]);
+
+  /** Map post id -> views gained for viral display */
+  const viralDeltaMap = useMemo(() => {
+    const map = new Map<number, number>();
+    for (const item of viralPostsWithDelta) {
+      map.set(item.post.id, item.viewsGained);
+    }
+    return map;
+  }, [viralPostsWithDelta]);
+
+  // Reset visible count when filter changes
+  const handleFilterChange = useCallback((f: ContentFilter) => {
+    setFilter(f);
+    setVisibleCount(PAGE_SIZE);
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, []);
+
+  const handleScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      const el = e.currentTarget;
+      if (el.scrollTop + el.clientHeight >= el.scrollHeight - 40) {
+        setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, filteredPosts.length));
+      }
+    },
+    [filteredPosts.length]
+  );
+
+  const visiblePosts = filteredPosts.slice(0, visibleCount);
+
+  const filters: { key: ContentFilter; label: string }[] = [
+    { key: "all", label: "All" },
+    { key: "viral", label: "Viral" },
+    { key: "recent", label: "Recent" },
+  ];
+
+  if (allPosts.length === 0) {
     return (
       <Card className="bg-surface-base border border-border-base">
         <CardBody className="flex flex-col items-center justify-center py-12 gap-2">
-          <Icon icon="solar:feed-linear" width={40} className="text-text-tertiary" />
-          <p className="text-text-secondary text-sm">No recent posts — sync accounts to see activity</p>
+          <Icon icon="solar:fire-bold" width={40} className="text-text-tertiary" />
+          <p className="text-text-secondary text-sm">No posts yet — sync accounts to see top content</p>
         </CardBody>
       </Card>
     );
@@ -31,72 +153,124 @@ export function ActivityFeed({ posts, accountMap }: ActivityFeedProps) {
     <Card className="bg-surface-base border border-border-base">
       <CardBody className="p-0">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border-base">
-          <h3 className="text-sm font-medium text-text-primary">Recent Activity</h3>
-          <span className="text-xs text-text-tertiary">{sorted.length} posts</span>
-        </div>
-
-        <div className="divide-y divide-border-base overflow-y-auto max-h-[480px]">
-          {sorted.map((post) => {
-            const account = accountMap[post.account_id];
-            const platform = account?.platform || "instagram";
-
-            return (
-              <div
-                key={post.id}
-                className="flex items-start gap-3 px-5 py-3.5 hover:bg-surface-hover transition-colors cursor-pointer"
-                onClick={() => window.open(post.post_url, "_blank")}
+          <div className="flex items-center gap-1.5">
+            <h3 className="text-sm font-medium text-text-primary">Top Performing Content</h3>
+            {filter === "viral" && (
+              <Tooltip
+                content={
+                  hasDateRange
+                    ? "Showing posts that gained 50k+ views within the selected date range. View counts reflect only views gained during that period."
+                    : "Showing posts that gained 50k+ views between their first and last recorded sync. Select a date range for more specific results."
+                }
+                classNames={{ content: "max-w-[240px] text-xs" }}
               >
-                {/* Thumbnail */}
-                <div className="w-10 h-10 rounded-lg bg-surface-elevated overflow-hidden flex-shrink-0">
-                  {post.thumbnail_url && platform !== "instagram" ? (
-                    <img src={post.thumbnail_url} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Icon icon={platformIcon(platform)} width={18} className="text-text-tertiary" />
-                    </div>
-                  )}
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5 mb-0.5">
-                    {account && (
-                      <span className="text-xs font-medium text-text-primary">
-                        @{account.username}
-                      </span>
-                    )}
-                    <Icon icon={platformIcon(platform)} width={12} className={platformIconColor(platform)} />
-                    {post.posted_at && (
-                      <span className="text-[11px] text-text-tertiary ml-auto flex-shrink-0">
-                        {timeAgo(post.posted_at)}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-text-secondary line-clamp-1">
-                    {post.caption || "No caption"}
-                  </p>
-                  <div className="flex items-center gap-3 mt-1">
-                    {post.video_play_count != null && post.video_play_count > 0 && (
-                      <span className="flex items-center gap-1 text-[11px] text-text-tertiary">
-                        <Icon icon="solar:eye-bold" width={11} />
-                        {formatNumber(post.video_play_count)}
-                      </span>
-                    )}
-                    <span className="flex items-center gap-1 text-[11px] text-text-tertiary">
-                      <Icon icon="solar:heart-bold" width={11} className="text-red-500/70" />
-                      {formatNumber(post.like_count)}
-                    </span>
-                    <span className="flex items-center gap-1 text-[11px] text-text-tertiary">
-                      <Icon icon="solar:chat-round-dots-bold" width={11} className="text-blue-500/70" />
-                      {formatNumber(post.comment_count)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+                <span className="cursor-help">
+                  <Icon icon="solar:info-circle-linear" width={14} className="text-text-tertiary" />
+                </span>
+              </Tooltip>
+            )}
+          </div>
+          <div className="flex items-center gap-1 bg-surface-elevated rounded-lg p-0.5">
+            {filters.map((f) => (
+              <button
+                key={f.key}
+                onClick={() => handleFilterChange(f.key)}
+                className={cn(
+                  "px-2.5 py-1 text-[11px] font-medium rounded-md transition-all",
+                  filter === f.key
+                    ? "bg-accent-400 text-white shadow-sm"
+                    : "text-text-tertiary hover:text-text-secondary"
+                )}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
         </div>
 
+        {filteredPosts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 gap-2">
+            <Icon icon="solar:fire-bold" width={32} className="text-text-tertiary" />
+            <p className="text-text-secondary text-xs">
+              {filter === "viral"
+                ? `No posts gained 50k+ views${hasDateRange ? " in this date range" : ""}`
+                : "No posts match this filter"}
+            </p>
+          </div>
+        ) : (
+          <div
+            ref={scrollRef}
+            className="divide-y divide-border-base overflow-y-auto max-h-[480px]"
+            onScroll={handleScroll}
+          >
+            {visiblePosts.map((post) => {
+              const account = accountMap[post.account_id];
+              const platform = account?.platform || "instagram";
+              const isViral = filter === "viral";
+              const viewsDelta = isViral ? viralDeltaMap.get(post.id) : undefined;
+
+              return (
+                <div
+                  key={post.id}
+                  className="flex items-start gap-3 px-5 py-3.5 hover:bg-surface-hover transition-colors cursor-pointer"
+                  onClick={() => window.open(post.post_url, "_blank")}
+                >
+                  {/* Thumbnail */}
+                  <div className="w-10 h-10 rounded-lg bg-surface-elevated overflow-hidden flex-shrink-0">
+                    {post.thumbnail_url && platform !== "instagram" ? (
+                      <img src={post.thumbnail_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Icon icon={platformIcon(platform)} width={18} className="text-text-tertiary" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      {account && (
+                        <span className="text-xs font-medium text-text-primary">
+                          @{account.username}
+                        </span>
+                      )}
+                      <Icon icon={platformIcon(platform)} width={12} className={platformIconColor(platform)} />
+                      {post.posted_at && (
+                        <span className="text-[11px] text-text-tertiary ml-auto flex-shrink-0">
+                          {timeAgo(post.posted_at)}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-text-secondary line-clamp-1">
+                      {post.caption || "No caption"}
+                    </p>
+                    <div className="flex items-center gap-3 mt-1">
+                      {isViral && viewsDelta != null ? (
+                        <span className="flex items-center gap-1 text-[11px] text-green-500 font-medium">
+                          <Icon icon="solar:eye-bold" width={11} />
+                          +{formatNumber(viewsDelta)}
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-[11px] text-text-tertiary">
+                          <Icon icon="solar:eye-bold" width={11} />
+                          {formatNumber(post.video_play_count ?? 0)}
+                        </span>
+                      )}
+                      <span className="flex items-center gap-1 text-[11px] text-text-tertiary">
+                        <Icon icon="solar:heart-bold" width={11} className="text-red-500/70" />
+                        {formatNumber(post.like_count)}
+                      </span>
+                      <span className="flex items-center gap-1 text-[11px] text-text-tertiary">
+                        <Icon icon="solar:chat-round-dots-bold" width={11} className="text-blue-500/70" />
+                        {formatNumber(post.comment_count)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </CardBody>
     </Card>
   );

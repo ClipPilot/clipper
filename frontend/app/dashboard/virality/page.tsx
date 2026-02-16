@@ -53,6 +53,7 @@ export default function ViralityPage() {
   const [simpleCompetitors, setSimpleCompetitors] = useState<ViralityCompetitor[]>([]);
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
   const [postsByAccount, setPostsByAccount] = useState<Record<number, ViralityPost[]>>({});
+  const [allPostsByAccountUnfiltered, setAllPostsByAccountUnfiltered] = useState<Record<number, ViralityPost[]>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [cardsExpanded, setCardsExpanded] = useState(false);
@@ -78,18 +79,28 @@ export default function ViralityPage() {
       );
       setCompetitors(withAccounts);
 
-      // Fetch posts for all accounts (for activity feed + per-competitor stats)
+      // Fetch posts for all accounts (filtered + unfiltered for top content)
       const allAccounts = withAccounts.flatMap((c) => c.accounts);
       const postsMap: Record<number, ViralityPost[]> = {};
+      const unfilteredMap: Record<number, ViralityPost[]> = {};
+      const hasDateFilter = !!(startDate || endDate);
       await Promise.all(
-        allAccounts.map(async (a) => {
-          const posts = await viralityAPI.getAccountPosts(
+        allAccounts.flatMap((a) => {
+          const filtered = viralityAPI.getAccountPosts(
             selectedTeam.id, a.id, 50, 0, startDate, endDate
-          );
-          postsMap[a.id] = posts;
+          ).then((posts) => { postsMap[a.id] = posts; });
+
+          if (hasDateFilter) {
+            const unfiltered = viralityAPI.getAccountPosts(
+              selectedTeam.id, a.id, 100, 0
+            ).then((posts) => { unfilteredMap[a.id] = posts; });
+            return [filtered, unfiltered];
+          }
+          return [filtered];
         })
       );
       setPostsByAccount(postsMap);
+      setAllPostsByAccountUnfiltered(hasDateFilter ? unfilteredMap : postsMap);
     } catch (err: any) {
       addToast({
         title: "Failed to load data",
@@ -107,7 +118,7 @@ export default function ViralityPage() {
     fetchData();
   }, [fetchData]);
 
-  // Build account lookup map for ActivityFeed
+  // Build account lookup map for Top Performing Content
   const accountMap = useMemo(() => {
     const map: Record<number, ViralityAccount> = {};
     for (const c of competitors) {
@@ -118,10 +129,15 @@ export default function ViralityPage() {
     return map;
   }, [competitors]);
 
-  // All posts flat for activity feed
+  // Date-filtered posts for viral/recent tabs
   const allPosts = useMemo(() => {
     return Object.values(postsByAccount).flat();
   }, [postsByAccount]);
+
+  // Unfiltered posts for "All" tab
+  const allPostsUnfiltered = useMemo(() => {
+    return Object.values(allPostsByAccountUnfiltered).flat();
+  }, [allPostsByAccountUnfiltered]);
 
   // Per-competitor computed stats
   const AVATAR_COLORS = ["border-accent-400 text-accent-400", "border-purple-500 text-purple-500", "border-emerald-500 text-emerald-500", "border-amber-500 text-amber-500", "border-blue-500 text-blue-500", "border-pink-500 text-pink-500"];
@@ -397,7 +413,7 @@ export default function ViralityPage() {
           </RecalcOverlay>
         )}
 
-        {/* Accounts Table + Activity Feed */}
+        {/* Accounts Table + Top Performing Content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Accounts Table (2/3 width) */}
           <div className="lg:col-span-2 space-y-4">
@@ -436,10 +452,15 @@ export default function ViralityPage() {
             </RecalcOverlay>
           </div>
 
-          {/* Activity Feed (1/3 width) */}
+          {/* Top Performing Content (1/3 width) */}
           <div className="lg:col-span-1">
             <RecalcOverlay active={isRecalculating}>
-              <ActivityFeed posts={allPosts} accountMap={accountMap} />
+              <ActivityFeed
+                posts={allPosts}
+                allPosts={allPostsUnfiltered}
+                accountMap={accountMap}
+                dateRange={dateRange}
+              />
             </RecalcOverlay>
           </div>
         </div>

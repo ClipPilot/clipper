@@ -33,7 +33,7 @@ import { AnalyticsChart } from "@/components/virality/AnalyticsChart";
 import { PostFrequencyChart } from "@/components/virality/PostFrequencyChart";
 import { AccountBreakdownChart } from "@/components/virality/AccountBreakdownChart";
 import { BestPerformingAccounts } from "@/components/virality/BestPerformingAccounts";
-import { findClosestEntry, getComparisonDate, isOriginalPost } from "./utils";
+import { findClosestEntry, getComparisonDate } from "./utils";
 
 function RecalcOverlay({ active, children }: { active: boolean; children: React.ReactNode }) {
   return (
@@ -148,7 +148,7 @@ export default function CompetitorDetailPage() {
   const activePosts = useMemo(() => {
     const posts: ViralityPost[] = [];
     for (const a of activeAccounts) {
-      const accountPosts = (postsByAccount[a.id] || []).filter(isOriginalPost);
+      const accountPosts = postsByAccount[a.id] || [];
       posts.push(...accountPosts);
     }
     return posts.sort(
@@ -159,7 +159,7 @@ export default function CompetitorDetailPage() {
   const activePostsByAccount = useMemo(() => {
     const map: Record<number, ViralityPost[]> = {};
     for (const a of activeAccounts) {
-      map[a.id] = (postsByAccount[a.id] || []).filter(isOriginalPost);
+      map[a.id] = postsByAccount[a.id] || [];
     }
     return map;
   }, [activeAccounts, postsByAccount]);
@@ -169,7 +169,7 @@ export default function CompetitorDetailPage() {
     if (!competitor) return {};
     const map: Record<number, ViralityPost[]> = {};
     for (const a of competitor.accounts) {
-      map[a.id] = (postsByAccount[a.id] || []).filter(isOriginalPost);
+      map[a.id] = postsByAccount[a.id] || [];
     }
     return map;
   }, [competitor, postsByAccount]);
