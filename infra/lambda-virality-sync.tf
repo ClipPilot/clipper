@@ -1,6 +1,22 @@
 # Lambda function to sync virality targets via Apify
 # Runs every 6 hours via EventBridge
 
+# Import existing resources into state (remove these blocks after first successful apply)
+import {
+  to = aws_ecr_repository.virality_sync_lambda
+  id = "clipster-virality-sync-lambda"
+}
+
+import {
+  to = aws_iam_role.virality_sync_lambda
+  id = "clipster-virality-sync-lambda-role"
+}
+
+import {
+  to = aws_cloudwatch_log_group.virality_sync_lambda
+  id = "/aws/lambda/clipster-virality-sync"
+}
+
 # ECR Repository for Virality Sync Lambda
 # Note: Prod uses 'clipster-virality-sync-lambda', staging uses 'clipster-virality-sync-lambda-staging'
 # This separation prevents staging deployments from triggering ECR lifecycle policy

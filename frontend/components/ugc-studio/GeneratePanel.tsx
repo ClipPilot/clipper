@@ -3,6 +3,7 @@
 import { Button, Card, CardBody, Tooltip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { FolderSelector } from "@/components/clips";
+import { FACE_SWAP_TIPS, FULL_BODY_SWAP_TIPS } from "./constants";
 
 interface GeneratePanelProps {
   hasVideo: boolean;
@@ -125,21 +126,11 @@ export function GeneratePanel({
               <Icon icon="solar:lightbulb-bolt-bold" className="text-yellow-400" width={14} />
               {swapType === "face" ? "About Face Swap" : "About Full Body Swap"}
             </p>
-            {swapType === "face" ? (
-              <ul className="text-xs text-text-tertiary space-y-1 pl-5 list-disc">
-                <li>Swaps the face only — works with most videos</li>
-                <li>Fast processing, typically 5-10 minutes</li>
-                <li>Use clips with clear faces and good lighting</li>
-                <li>Avoid videos with text overlays or captions</li>
-              </ul>
-            ) : (
-              <ul className="text-xs text-text-tertiary space-y-1 pl-5 list-disc">
-                <li>Best for dancing or talking head videos</li>
-                <li>Slower processing, typically 20-40 minutes</li>
-                <li>Avoid folded arms or limb overlaps in your video</li>
-                <li>Use clips with clear faces looking at the camera</li>
-              </ul>
-            )}
+            <ul className="text-xs text-text-tertiary space-y-1 pl-5 list-disc">
+              {(swapType === "face" ? FACE_SWAP_TIPS : FULL_BODY_SWAP_TIPS).map((tip) => (
+                <li key={tip}>{tip}</li>
+              ))}
+            </ul>
           </div>
 
           {/* Folder Selection */}

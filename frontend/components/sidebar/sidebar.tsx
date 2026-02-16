@@ -13,35 +13,33 @@ import { useUsageStats } from "@/hooks/useUsageStats";
 import { useAtom } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
 import { useUsageStatsRefresh } from "@/contexts/UsageStatsContext";
-import { useRouter } from "next/navigation";
-
-export type SidebarItem = {
-  key: string;
-  title: string;
-  icon?: string;
-  href?: string;
-};
+import { useRouter, usePathname } from "next/navigation";
+import { SIDEBAR_ITEMS } from "./constants";
 
 export type SidebarProps = {
-  items: SidebarItem[];
-  defaultSelectedKey: string;
-  onSelect?: (key: string) => void;
   canViewPricing?: boolean;
 };
 
 const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
-  ({ items, defaultSelectedKey, onSelect, canViewPricing = true }, ref) => {
+  ({ canViewPricing = true }, ref) => {
     const router = useRouter();
-    const [selected, setSelected] = React.useState<React.Key>(defaultSelectedKey);
+    const pathname = usePathname();
     const [selectedTeam] = useAtom(selectedTeamAtom);
     const { refreshTrigger } = useUsageStatsRefresh();
     const { usageStats, isLoading, error, refetch } = useUsageStats(
       selectedTeam?.id
     );
 
+    const currentKey =
+      [...SIDEBAR_ITEMS]
+        .sort((a, b) => b.href.length - a.href.length)
+        .find((item) => pathname.startsWith(item.href))?.key || "";
+
+    const [selected, setSelected] = React.useState<React.Key>(currentKey);
+
     useEffect(() => {
-      setSelected(defaultSelectedKey);
-    }, [defaultSelectedKey]);
+      setSelected(currentKey);
+    }, [currentKey]);
 
     useEffect(() => {
       if (refreshTrigger > 0) {
@@ -92,17 +90,18 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
             selectionMode="single"
             variant="flat"
             onSelectionChange={(keys) => {
-              const key = Array.from(keys)[0];
+              const key = Array.from(keys)[0] as string;
               if (key) {
-                setSelected(key as React.Key);
-                onSelect?.(key as string);
+                setSelected(key);
+                const item = SIDEBAR_ITEMS.find((i) => i.key === key);
+                if (item?.href) router.push(item.href);
               }
             }}
             classNames={{
               list: "gap-1",
             }}
           >
-            {items.map((item) => {
+            {SIDEBAR_ITEMS.map((item) => {
               const isSelected = selected === item.key;
               return (
                 <ListboxItem

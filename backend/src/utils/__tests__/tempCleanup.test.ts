@@ -1,10 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import fs from "fs";
 import path from "path";
-
-// We need to test the module's internal functions. The module reads TEMP_DIR
-// from process.cwd() at import time. We'll mock fs operations to avoid
-// touching real filesystem, since the module hardcodes path.join(process.cwd(), "temp").
 
 const { mockFs } = vi.hoisted(() => {
   const mockFs = {
@@ -32,6 +27,20 @@ import {
   TEMP_DIR,
 } from "../tempCleanup";
 
+const OUTPUT_DIR = path.join(process.cwd(), "output");
+
+function mockDirEntries(
+  dirMap: Record<string, Array<{ name: string; isDirectory: () => boolean }>>
+) {
+  mockFs.readdirSync.mockImplementation((dir: string) => {
+    return dirMap[dir] || [];
+  });
+}
+
+function mockExistingDirs(dirs: string[]) {
+  mockFs.existsSync.mockImplementation((p: string) => dirs.includes(p));
+}
+
 describe("TEMP_DIR", () => {
   it("is based on process.cwd()", () => {
     expect(TEMP_DIR).toBe(path.join(process.cwd(), "temp"));
@@ -41,7 +50,7 @@ describe("TEMP_DIR", () => {
 describe("cleanupOldFiles", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("returns {deleted: 0, errors: 0} when temp dir doesn't exist", () => {
+  it("returns {deleted: 0, errors: 0} when neither dir exists", () => {
     mockFs.existsSync.mockReturnValue(false);
 
     const result = cleanupOldFiles();
@@ -49,13 +58,12 @@ describe("cleanupOldFiles", () => {
     expect(result).toEqual({ deleted: 0, errors: 0 });
   });
 
-  it("deletes files older than 1 hour", () => {
-    mockFs.existsSync.mockReturnValue(true);
-
+  it("deletes old files from temp dir", () => {
+    mockExistingDirs([TEMP_DIR]);
     const twoHoursAgo = Date.now() - 2 * 60 * 60 * 1000;
-    mockFs.readdirSync.mockReturnValue([
-      { name: "old-file.mp4", isDirectory: () => false },
-    ]);
+    mockDirEntries({
+      [TEMP_DIR]: [{ name: "old-file.mp4", isDirectory: () => false }],
+    });
     mockFs.statSync.mockReturnValue({ mtimeMs: twoHoursAgo });
 
     const result = cleanupOldFiles();
@@ -66,13 +74,43 @@ describe("cleanupOldFiles", () => {
     expect(result.deleted).toBe(1);
   });
 
-  it("removes old directories recursively", () => {
-    mockFs.existsSync.mockReturnValue(true);
-
+  it("deletes old files from output dir", () => {
+    mockExistingDirs([OUTPUT_DIR]);
     const twoHoursAgo = Date.now() - 2 * 60 * 60 * 1000;
-    mockFs.readdirSync.mockReturnValue([
-      { name: "old-dir", isDirectory: () => true },
-    ]);
+    mockDirEntries({
+      [OUTPUT_DIR]: [{ name: "stale-video.mp4", isDirectory: () => false }],
+    });
+    mockFs.statSync.mockReturnValue({ mtimeMs: twoHoursAgo });
+
+    const result = cleanupOldFiles();
+
+    expect(mockFs.unlinkSync).toHaveBeenCalledWith(
+      path.join(OUTPUT_DIR, "stale-video.mp4")
+    );
+    expect(result.deleted).toBe(1);
+  });
+
+  it("sums deletions across both dirs", () => {
+    mockExistingDirs([TEMP_DIR, OUTPUT_DIR]);
+    const twoHoursAgo = Date.now() - 2 * 60 * 60 * 1000;
+    mockDirEntries({
+      [TEMP_DIR]: [{ name: "old-temp.mp4", isDirectory: () => false }],
+      [OUTPUT_DIR]: [{ name: "old-output.mp4", isDirectory: () => false }],
+    });
+    mockFs.statSync.mockReturnValue({ mtimeMs: twoHoursAgo });
+
+    const result = cleanupOldFiles();
+
+    expect(result.deleted).toBe(2);
+    expect(mockFs.unlinkSync).toHaveBeenCalledTimes(2);
+  });
+
+  it("removes old directories recursively", () => {
+    mockExistingDirs([TEMP_DIR]);
+    const twoHoursAgo = Date.now() - 2 * 60 * 60 * 1000;
+    mockDirEntries({
+      [TEMP_DIR]: [{ name: "old-dir", isDirectory: () => true }],
+    });
     mockFs.statSync.mockReturnValue({ mtimeMs: twoHoursAgo });
 
     const result = cleanupOldFiles();
@@ -85,11 +123,11 @@ describe("cleanupOldFiles", () => {
   });
 
   it("skips recent files", () => {
-    mockFs.existsSync.mockReturnValue(true);
-
-    mockFs.readdirSync.mockReturnValue([
-      { name: "new-file.mp4", isDirectory: () => false },
-    ]);
+    mockExistingDirs([TEMP_DIR, OUTPUT_DIR]);
+    mockDirEntries({
+      [TEMP_DIR]: [{ name: "new-file.mp4", isDirectory: () => false }],
+      [OUTPUT_DIR]: [{ name: "new-output.mp4", isDirectory: () => false }],
+    });
     mockFs.statSync.mockReturnValue({ mtimeMs: Date.now() - 1000 });
 
     const result = cleanupOldFiles();
@@ -99,10 +137,10 @@ describe("cleanupOldFiles", () => {
   });
 
   it("counts errors for inaccessible files", () => {
-    mockFs.existsSync.mockReturnValue(true);
-    mockFs.readdirSync.mockReturnValue([
-      { name: "locked-file", isDirectory: () => false },
-    ]);
+    mockExistingDirs([TEMP_DIR]);
+    mockDirEntries({
+      [TEMP_DIR]: [{ name: "locked-file", isDirectory: () => false }],
+    });
     mockFs.statSync.mockImplementation(() => {
       throw new Error("EACCES");
     });
@@ -117,7 +155,7 @@ describe("cleanupOldFiles", () => {
 describe("getTempStats", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("returns zeros when temp dir doesn't exist", () => {
+  it("returns zeros when neither dir exists", () => {
     mockFs.existsSync.mockReturnValue(false);
 
     const result = getTempStats();
@@ -125,12 +163,16 @@ describe("getTempStats", () => {
     expect(result).toEqual({ fileCount: 0, totalSizeMB: 0 });
   });
 
-  it("counts files and sums sizes", () => {
-    mockFs.existsSync.mockReturnValue(true);
-    mockFs.readdirSync.mockReturnValue(["file1.mp4", "file2.mp4"]);
+  it("counts files and sums sizes across both dirs", () => {
+    mockExistingDirs([TEMP_DIR, OUTPUT_DIR]);
+    mockFs.readdirSync.mockImplementation((dir: string) => {
+      if (dir === TEMP_DIR) return ["file1.mp4"];
+      if (dir === OUTPUT_DIR) return ["file2.mp4"];
+      return [];
+    });
     mockFs.statSync
-      .mockReturnValueOnce({ size: 1024 * 1024 }) // 1MB
-      .mockReturnValueOnce({ size: 2 * 1024 * 1024 }); // 2MB
+      .mockReturnValueOnce({ size: 1024 * 1024 })
+      .mockReturnValueOnce({ size: 2 * 1024 * 1024 });
 
     const result = getTempStats();
 
@@ -139,8 +181,11 @@ describe("getTempStats", () => {
   });
 
   it("skips inaccessible files without crashing", () => {
-    mockFs.existsSync.mockReturnValue(true);
-    mockFs.readdirSync.mockReturnValue(["good.mp4", "bad.mp4"]);
+    mockExistingDirs([TEMP_DIR]);
+    mockFs.readdirSync.mockImplementation((dir: string) => {
+      if (dir === TEMP_DIR) return ["good.mp4", "bad.mp4"];
+      return [];
+    });
     mockFs.statSync
       .mockReturnValueOnce({ size: 1024 * 1024 })
       .mockImplementationOnce(() => {
@@ -174,9 +219,6 @@ describe("initializeTempCleanup / stopTempCleanup", () => {
   });
 
   it("sets up periodic cleanup interval", () => {
-    // First call: ensureTempDirectory checks existsSync
-    // Second call: cleanupOldFiles checks existsSync
-    // Third call: getTempStats checks existsSync (after cleanup if deleted > 0)
     mockFs.existsSync.mockReturnValue(true);
     mockFs.writeFileSync.mockReturnValue(undefined);
     mockFs.unlinkSync.mockReturnValue(undefined);
@@ -184,13 +226,10 @@ describe("initializeTempCleanup / stopTempCleanup", () => {
 
     initializeTempCleanup();
 
-    // Advance by 30 minutes — should trigger one cleanup
     mockFs.existsSync.mockReturnValue(true);
     mockFs.readdirSync.mockReturnValue([]);
     vi.advanceTimersByTime(30 * 60 * 1000);
 
-    // cleanupOldFiles should have been called again via the interval
-    // (once during init, once via interval)
     expect(mockFs.existsSync).toHaveBeenCalled();
   });
 
@@ -203,10 +242,8 @@ describe("initializeTempCleanup / stopTempCleanup", () => {
     initializeTempCleanup();
     stopTempCleanup();
 
-    // After stopping, advancing time should not trigger more cleanup calls
     const callCount = mockFs.existsSync.mock.calls.length;
     vi.advanceTimersByTime(60 * 60 * 1000);
-    // Should not have additional existsSync calls from the interval
     expect(mockFs.existsSync.mock.calls.length).toBe(callCount);
   });
 });
