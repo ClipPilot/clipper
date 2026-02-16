@@ -90,23 +90,8 @@
     "options": ["copy", "view", "chatgpt", "claude", "cursor"]
   },
   "footer": {
-    "links": [
-      {
-        "title": "Resources",
-        "links": [
-          {
-            "label": "Status",
-            "href": "https://status.cuttr.com"
-          },
-          {
-            "label": "Support",
-            "href": "mailto:support@cuttr.com"
-          }
-        ]
-      }
-    ],
     "socials": {
-      "x": "https://x.com/cuttrapp",
+      "x": "https://x.com/cuttr",
       "website": "https://cuttr.com"
     }
   }
