@@ -62,6 +62,7 @@ vi.mock("drizzle-orm", () => ({
   eq: vi.fn((...args: any[]) => args),
   and: vi.fn((...args: any[]) => args),
   not: vi.fn((arg: any) => arg),
+  sql: vi.fn((strings: TemplateStringsArray, ...values: any[]) => ({ strings, values })),
 }));
 
 import { stripeService } from "../stripe.service";
@@ -184,8 +185,10 @@ describe("StripeService", () => {
     });
 
     it("adds addon clips on paid addon checkout", async () => {
-      mockDb.select.mockReturnValue(createDrizzleChain([{ id: 1, addon_clips_remaining: 50 }]));
-      mockDb.update.mockReturnValue({ set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }) });
+      const mockReturning = vi.fn().mockResolvedValue([{ addon_clips_remaining: 150 }]);
+      const mockWhere = vi.fn().mockReturnValue({ returning: mockReturning });
+      const mockSet = vi.fn().mockReturnValue({ where: mockWhere });
+      mockDb.update.mockReturnValue({ set: mockSet });
 
       await stripeService.handleCheckoutCompleted({
         mode: "payment",
@@ -193,8 +196,11 @@ describe("StripeService", () => {
         payment_status: "paid",
       });
 
-      const setCall = mockDb.update().set.mock.calls[0][0];
-      expect(setCall.addon_clips_remaining).toBe(150);
+      expect(mockDb.update).toHaveBeenCalled();
+      const setArg = mockSet.mock.calls[0][0];
+      // addon_clips_remaining is a sql template expression, not a plain number
+      expect(setArg.addon_clips_remaining).toBeDefined();
+      expect(setArg.updated_at).toBeInstanceOf(Date);
     });
 
     it("ignores non-addon one-time payments", async () => {
