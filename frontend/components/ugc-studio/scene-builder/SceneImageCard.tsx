@@ -13,9 +13,12 @@ import {
   Input,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { SCENE_TYPE_CONFIG, type UGCScene } from "../script/types";
+import { SCENE_TYPE_CONFIG, type UGCScene, type BRollShot } from "../script/types";
+import { EmotionSelector } from "../script/EmotionSelector";
+import { CameraAngleSelector } from "../script/CameraAngleSelector";
 import { SupportingImageUploader } from "./SupportingImageUploader";
 import { sceneBuilderAPI } from "@/api/sceneBuilder";
+import { ugcScriptAPI } from "@/api/ugc";
 import type { SupportingImage, SceneImageGeneration } from "./types";
 
 interface SceneImageCardProps {
@@ -44,8 +47,25 @@ interface SceneImageCardProps {
   onUseEndFrameChange: (useEndFrame: boolean) => void;
   onCustomImageChange: (type: "start" | "end", key: string | undefined, url: string | undefined) => void;
   onCustomBRollImageChange?: (shotIndex: number, key: string | undefined, url: string | undefined) => void;
+  /** Called when scene text fields are edited inline (dialogue, action, b-roll actions) */
+  onSceneUpdate?: (updatedScene: UGCScene) => void;
+  /** Called when B-roll save/regeneration starts or finishes (prevents navigation during regeneration) */
+  onSavingStateChange?: (isSaving: boolean) => void;
   /** When true, always shows expanded view (used in storyboard mode) */
   isStoryboardMode?: boolean;
+  /** Override for single B-roll prompt regeneration (ad clone uses different API) */
+  onRegenerateBRollPrompt?: (params: {
+    sceneId: string;
+    bRollShotIndex: number;
+    newAction: string;
+  }) => Promise<void>;
+  /** Override for regenerating all B-roll shots when scene action changes */
+  onRegenerateAllBRollShots?: (params: {
+    sceneId: string;
+    newSceneAction: string;
+    shotCount: number;
+    shotDurations: number[];
+  }) => Promise<{ bRollShots: BRollShot[] }>;
 }
 
 export function SceneImageCard({
@@ -73,8 +93,12 @@ export function SceneImageCard({
   onSupportingImagesChange,
   onUseEndFrameChange,
   onCustomImageChange,
+  onSceneUpdate,
+  onSavingStateChange,
   onCustomBRollImageChange,
   isStoryboardMode = false,
+  onRegenerateBRollPrompt,
+  onRegenerateAllBRollShots,
 }: SceneImageCardProps) {
   // In storyboard mode, always show expanded view
   const [isExpanded, setIsExpanded] = useState(isStoryboardMode);
@@ -88,6 +112,164 @@ export function SceneImageCard({
   const [selectedBRollIndex, setSelectedBRollIndex] = useState<number | null>(null);
   // Track which specific shot is regenerating (null = all shots or none)
   const [regeneratingShotIndex, setRegeneratingShotIndex] = useState<number | null>(null);
+  // Track which B-roll shot is being saved + regenerated
+  const [savingBRollIndex, setSavingBRollIndex] = useState<number | null>(null);
+  // Track the current phase of b-roll regeneration
+  const [regenPhase, setRegenPhase] = useState<"updating-prompts" | "generating-images" | null>(null);
+
+  // Keep a ref to latest scene to avoid stale closures in async callbacks
+  const sceneRef = useRef(scene);
+  sceneRef.current = scene;
+
+  // Visible error state for b-roll regeneration failures
+  const [bRollError, setBRollError] = useState<string | null>(null);
+
+  // Inline editing state for storyboard mode
+  const [editingField, setEditingField] = useState<"dialogue" | "action" | null>(null);
+  const [editingBRollIndex, setEditingBRollIndex] = useState<number | null>(null);
+  const [editValue, setEditValue] = useState("");
+
+  const startEditing = (field: "dialogue" | "action") => {
+    if (!onSceneUpdate) return;
+    setEditingField(field);
+    setEditValue(field === "dialogue" ? scene.dialogue : scene.action);
+    setEditingBRollIndex(null);
+  };
+
+  const startEditingBRoll = (index: number) => {
+    if (!onSceneUpdate || !scene.bRollShots?.[index]) return;
+    setEditingBRollIndex(index);
+    setEditValue(scene.bRollShots[index].action);
+    setEditingField(null);
+  };
+
+  const saveEdit = async () => {
+    if (!onSceneUpdate) return;
+    if (editingField === "dialogue" && editValue !== scene.dialogue) {
+      onSceneUpdate({ ...scene, dialogue: editValue });
+    } else if (editingField === "action" && editValue !== scene.action) {
+      await onSceneUpdate({ ...scene, action: editValue });
+      setEditingField(null);
+
+      if (scene.bRollShots && scene.bRollShots.length > 0 && onRegenerateAllBRollShots) {
+        setBRollError(null);
+        onSavingStateChange?.(true);
+        try {
+          // Phase 1: Regenerate all shot descriptions from new scene action
+          setRegenPhase("updating-prompts");
+          const shotDurations = scene.bRollShots.map((s) => s.durationSeconds);
+          const result = await onRegenerateAllBRollShots({
+            sceneId: sceneRef.current.id,
+            newSceneAction: editValue,
+            shotCount: scene.bRollShots.length,
+            shotDurations,
+          });
+
+          // Update frontend state with new shot descriptions
+          await onSceneUpdate({ ...sceneRef.current, bRollShots: result.bRollShots });
+
+          // Phase 2: Regenerate images with updated prompts
+          setRegenPhase("generating-images");
+          await handleGenerate();
+        } catch (error) {
+          console.error("Failed to regenerate B-roll shots:", error);
+          setBRollError(error instanceof Error ? error.message : "Failed to regenerate shots.");
+          setRegenPhase(null);
+        } finally {
+          onSavingStateChange?.(false);
+        }
+      }
+      return;
+    }
+    setEditingField(null);
+  };
+
+  const cancelEdit = () => {
+    setEditingField(null);
+    setEditingBRollIndex(null);
+  };
+
+  const handleEditKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      if (editingBRollIndex !== null) {
+        handleSaveBRoll();
+      } else {
+        saveEdit();
+      }
+    } else if (e.key === "Escape") {
+      cancelEdit();
+    }
+  };
+
+  const handleSaveBRoll = async () => {
+    if (!onSceneUpdate || editingBRollIndex === null || !scene.bRollShots) return;
+    const currentIndex = editingBRollIndex;
+    const originalAction = scene.bRollShots[currentIndex]?.action;
+    const actionChanged = editValue !== originalAction;
+
+    // Update the scene with new action text
+    const updatedShots = scene.bRollShots.map((shot, idx) =>
+      idx === currentIndex ? { ...shot, action: editValue } : shot
+    );
+    await onSceneUpdate({ ...scene, bRollShots: updatedShots });
+    setEditingBRollIndex(null);
+
+    // If action changed, regenerate the cinematic prompt then auto-regenerate ALL b-roll shots
+    if (actionChanged) {
+      setSavingBRollIndex(currentIndex);
+      setBRollError(null);
+      onSavingStateChange?.(true);
+      try {
+        // Phase 1: Regenerate cinematic prompt via LLM
+        setRegenPhase("updating-prompts");
+        if (onRegenerateBRollPrompt) {
+          await onRegenerateBRollPrompt({
+            sceneId: sceneRef.current.id,
+            bRollShotIndex: currentIndex,
+            newAction: editValue,
+          });
+        } else {
+          await ugcScriptAPI.regenerateBRollPrompt({
+            scriptId,
+            sceneId: sceneRef.current.id,
+            bRollShotIndex: currentIndex,
+            newAction: editValue,
+          });
+        }
+        // Phase 2: Regenerate all shot images (use ref to avoid stale closure)
+        setRegenPhase("generating-images");
+        await handleGenerate();
+      } catch (error) {
+        console.error("Failed to regenerate B-roll prompt:", error);
+        setBRollError(error instanceof Error ? error.message : "Failed to regenerate shots. Please try again.");
+        setRegenPhase(null);
+      } finally {
+        setSavingBRollIndex(null);
+        onSavingStateChange?.(false);
+      }
+    }
+  };
+
+  const handleAddBRollShot = () => {
+    if (!onSceneUpdate) return;
+    const newShot: BRollShot = {
+      action: "Product showcase",
+      cinematicPrompt: "Close-up shot of the product",
+      durationSeconds: 3,
+      productImageNeeded: true,
+    };
+    const currentShots = scene.bRollShots || [];
+    onSceneUpdate({ ...scene, bRollShots: [...currentShots, newShot] });
+  };
+
+  const handleRemoveBRollShot = (index: number) => {
+    if (!onSceneUpdate || !scene.bRollShots || scene.bRollShots.length <= 1) return;
+    const newShots = scene.bRollShots.filter((_, i) => i !== index);
+    onSceneUpdate({ ...scene, bRollShots: newShots });
+    // If we removed the selected shot, deselect
+    if (selectedBRollIndex === index) setSelectedBRollIndex(null);
+  };
 
   const sceneConfig = SCENE_TYPE_CONFIG[scene.sceneType];
   const hasImage = !!imageKey;
@@ -97,6 +279,7 @@ export function SceneImageCard({
     if (generation?.status === "completed" || generation?.status === "failed") {
       setIsGenerating(false);
       setRegeneratingShotIndex(null);
+      setRegenPhase(null);
     }
   }, [generation?.status]);
 
@@ -105,11 +288,14 @@ export function SceneImageCard({
     // Track which specific shot is being regenerated (null means all)
     setRegeneratingShotIndex(singleShotIndex ?? null);
 
+    // Use ref to get latest scene data (avoids stale closure after onSceneUpdate re-renders)
+    const currentScene = sceneRef.current;
+
     // Build existing images array, merging custom images with generated images
     let existingImages: string[] | undefined;
 
-    if (singleShotIndex !== undefined && scene.bRollShots) {
-      existingImages = scene.bRollShots.map((_, idx) => {
+    if (singleShotIndex !== undefined && currentScene.bRollShots) {
+      existingImages = currentScene.bRollShots.map((_, idx) => {
         // Use custom image if available, otherwise use generated image
         const customImage = customBRollImages?.[idx];
         const generatedImage = generation?.generatedImages?.[idx];
@@ -131,8 +317,8 @@ export function SceneImageCard({
     const requestData = {
       teamId,
       scriptId,
-      sceneId: scene.id,
-      sceneNumber: scene.sceneNumber,
+      sceneId: currentScene.id,
+      sceneNumber: currentScene.sceneNumber,
       characterId,
       userRefinement: localRefinement || undefined,
       supportingImageKeys: currentSupportingKeys,
@@ -164,7 +350,6 @@ export function SceneImageCard({
     onCustomImageChange(type, undefined, undefined);
   };
 
-  const bRollFileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingShotIndex, setUploadingShotIndex] = useState<number | null>(null);
 
   const handleBRollImageUpload = async (shotIndex: number, file: File) => {
@@ -437,20 +622,120 @@ export function SceneImageCard({
           )}
         </div>
 
+        {/* Dialogue */}
         <div className="bg-surface-base rounded-lg p-3">
-          <p className="text-text-primary text-sm leading-relaxed">
-            "{scene.dialogue}"
-          </p>
+          <div className="flex items-start gap-2">
+            <div className="flex-1 min-w-0">
+              {editingField === "dialogue" ? (
+                <textarea
+                  autoFocus
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onKeyDown={handleEditKeyDown}
+                  className="w-full bg-surface-base/50 text-text-primary text-sm leading-relaxed resize-none outline-none border border-accent-400/30 rounded px-2 py-1 focus:ring-1 focus:ring-accent-400/50"
+                  style={{ fieldSizing: "content" } as React.CSSProperties}
+                  rows={1}
+                />
+              ) : (
+                <p className="text-text-primary text-sm leading-relaxed">
+                  &ldquo;{scene.dialogue}&rdquo;
+                </p>
+              )}
+            </div>
+            {onSceneUpdate && (
+              <div className="flex items-center gap-0.5 shrink-0">
+                {editingField === "dialogue" ? (
+                  <>
+                    <button
+                      onClick={saveEdit}
+                      className="p-1 rounded hover:bg-green-500/20 text-green-400 transition-colors"
+                    >
+                      <Icon icon="solar:check-circle-bold" width={18} />
+                    </button>
+                    <button
+                      onClick={cancelEdit}
+                      className="p-1 rounded hover:bg-red-500/20 text-text-muted hover:text-red-400 transition-colors"
+                    >
+                      <Icon icon="solar:close-circle-bold" width={18} />
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => startEditing("dialogue")}
+                    className="p-1 rounded hover:bg-accent-400/20 text-text-muted hover:text-accent-400 transition-colors"
+                  >
+                    <Icon icon="solar:pen-2-bold" width={16} />
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 text-sm text-text-secondary">
-          <Icon
-            icon="solar:running-bold"
-            width={14}
-            className="text-text-muted shrink-0"
-          />
-          <span>{scene.action}</span>
+        {/* Action */}
+        <div className="flex items-start gap-2 text-sm text-text-secondary">
+          <Icon icon="solar:running-bold" width={14} className="text-text-muted shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            {editingField === "action" ? (
+              <textarea
+                autoFocus
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onKeyDown={handleEditKeyDown}
+                className="w-full bg-surface-base/50 text-text-secondary text-sm leading-relaxed resize-none outline-none border border-accent-400/30 rounded px-2 py-1 focus:ring-1 focus:ring-accent-400/50"
+                style={{ fieldSizing: "content" } as React.CSSProperties}
+                rows={1}
+              />
+            ) : (
+              <span>{scene.action}</span>
+            )}
+          </div>
+          {onSceneUpdate && (
+            <div className="flex items-center gap-0.5 shrink-0">
+              {editingField === "action" ? (
+                <>
+                  <button
+                    onClick={saveEdit}
+                    className="p-1 rounded hover:bg-green-500/20 text-green-400 transition-colors"
+                  >
+                    <Icon icon="solar:check-circle-bold" width={18} />
+                  </button>
+                  <button
+                    onClick={cancelEdit}
+                    className="p-1 rounded hover:bg-red-500/20 text-text-muted hover:text-red-400 transition-colors"
+                  >
+                    <Icon icon="solar:close-circle-bold" width={18} />
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => startEditing("action")}
+                  className="p-1 rounded hover:bg-accent-400/20 text-text-muted hover:text-accent-400 transition-colors"
+                >
+                  <Icon icon="solar:pen-2-bold" width={16} />
+                </button>
+              )}
+            </div>
+          )}
         </div>
+
+        {/* Metadata row — emotion + camera angle selectors */}
+        {onSceneUpdate && (
+          <div className="flex items-center gap-4">
+            <EmotionSelector
+              value={scene.emotion}
+              onChange={(emotion) => onSceneUpdate({ ...scene, emotion })}
+              compact
+            />
+            <CameraAngleSelector
+              value={scene.cameraAngle}
+              customValue={scene.customCameraAngle}
+              onChange={(cameraAngle, customCameraAngle) =>
+                onSceneUpdate({ ...scene, cameraAngle, customCameraAngle })
+              }
+            />
+          </div>
+        )}
 
         <div className="flex items-start gap-3">
           <div className="flex-1">
@@ -475,7 +760,6 @@ export function SceneImageCard({
           />
         </div>
 
-        {/* Advanced options hidden - keeping code for future use */}
 
         {generation?.status === "generating" && (
           <div className="space-y-2">
@@ -535,8 +819,51 @@ export function SceneImageCard({
                 <Icon icon="solar:video-library-bold" width={14} />
                 <span className="font-medium">B-Roll Shots ({scene.bRollShots.length})</span>
               </div>
-              <span className="text-[10px] text-text-muted">Click to select, double-click to zoom</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-text-muted">Click to select</span>
+                {onSceneUpdate && (
+                  <Button
+                    size="sm"
+                    variant="flat"
+                    className="bg-amber-500/20 text-amber-400 h-6 min-w-0 px-2"
+                    onPress={handleAddBRollShot}
+                    startContent={<Icon icon="solar:add-circle-bold" width={12} />}
+                  >
+                    Add Shot
+                  </Button>
+                )}
+              </div>
             </div>
+            {/* Regeneration phase indicator */}
+            {regenPhase && (
+              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium ${
+                regenPhase === "updating-prompts"
+                  ? "bg-purple-500/15 text-purple-400 border border-purple-500/30"
+                  : "bg-blue-500/15 text-blue-400 border border-blue-500/30"
+              }`}>
+                <Icon icon="solar:refresh-bold" className="animate-spin" width={14} />
+                <span>
+                  {regenPhase === "updating-prompts"
+                    ? "Regenerating shots..."
+                    : "Generating images..."}
+                </span>
+              </div>
+            )}
+            {/* B-roll regeneration error banner */}
+            {bRollError && (
+              <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/30">
+                <div className="flex items-center gap-2 text-red-400 text-xs">
+                  <Icon icon="solar:danger-triangle-bold" width={14} />
+                  <span>{bRollError}</span>
+                </div>
+                <button
+                  onClick={() => setBRollError(null)}
+                  className="p-0.5 rounded hover:bg-red-500/20 text-red-400 transition-colors"
+                >
+                  <Icon icon="solar:close-circle-bold" width={14} />
+                </button>
+              </div>
+            )}
             <div className="space-y-2">
               {scene.bRollShots.map((shot, idx) => {
                 const generatedImage = generation?.generatedImages?.[idx];
@@ -613,7 +940,56 @@ export function SceneImageCard({
                           </Chip>
                         )}
                       </div>
-                      <p className="text-xs text-text-secondary line-clamp-2">{shot.action}</p>
+                      <div className="flex items-start gap-1" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex-1 min-w-0">
+                          {editingBRollIndex === idx ? (
+                            <textarea
+                              autoFocus
+                              value={editValue}
+                              onChange={(e) => setEditValue(e.target.value)}
+                              onKeyDown={handleEditKeyDown}
+                              className="w-full bg-surface-base/50 text-text-secondary text-xs resize-none outline-none border border-amber-400/30 rounded px-2 py-1 focus:ring-1 focus:ring-amber-400/50"
+                              style={{ fieldSizing: "content" } as React.CSSProperties}
+                              rows={1}
+                            />
+                          ) : (
+                            <p className="text-xs text-text-secondary line-clamp-2">
+                              {shot.action}
+                            </p>
+                          )}
+                        </div>
+                        {onSceneUpdate && (
+                          <div className="flex items-center gap-0 shrink-0">
+                            {editingBRollIndex === idx ? (
+                              savingBRollIndex === idx ? (
+                                <Icon icon="solar:refresh-bold" className="text-amber-400 animate-spin p-0.5" width={16} />
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={handleSaveBRoll}
+                                    className="p-0.5 rounded hover:bg-green-500/20 text-green-400 transition-colors"
+                                  >
+                                    <Icon icon="solar:check-circle-bold" width={15} />
+                                  </button>
+                                  <button
+                                    onClick={cancelEdit}
+                                    className="p-0.5 rounded hover:bg-red-500/20 text-text-muted hover:text-red-400 transition-colors"
+                                  >
+                                    <Icon icon="solar:close-circle-bold" width={15} />
+                                  </button>
+                                </>
+                              )
+                            ) : (
+                              <button
+                                onClick={() => startEditingBRoll(idx)}
+                                className="p-0.5 rounded hover:bg-amber-500/20 text-text-muted hover:text-amber-400 transition-colors"
+                              >
+                                <Icon icon="solar:pen-2-bold" width={13} />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                     {isSelected && (
                       <div className="flex gap-1 shrink-0">
@@ -668,6 +1044,18 @@ export function SceneImageCard({
                         >
                           <Icon icon="solar:refresh-bold" width={14} />
                         </Button>
+                        {/* Remove shot button */}
+                        {onSceneUpdate && scene.bRollShots && scene.bRollShots.length > 1 && (
+                          <Button
+                            isIconOnly
+                            size="sm"
+                            variant="flat"
+                            className="bg-red-500/20 text-red-400"
+                            onPress={() => handleRemoveBRollShot(idx)}
+                          >
+                            <Icon icon="solar:minus-circle-bold" width={14} />
+                          </Button>
+                        )}
                       </div>
                     )}
                   </div>

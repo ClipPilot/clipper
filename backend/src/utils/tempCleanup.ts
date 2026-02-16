@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 
 const TEMP_DIR = path.join(process.cwd(), "temp");
+const OUTPUT_DIR = path.join(process.cwd(), "output");
 const MAX_AGE_MS = 60 * 60 * 1000;
 const CLEANUP_INTERVAL_MS = 30 * 60 * 1000;
 
@@ -22,20 +23,20 @@ function ensureTempDirectory(): void {
   }
 }
 
-function cleanupOldFiles(): { deleted: number; errors: number } {
+function cleanupDir(dir: string, label: string): { deleted: number; errors: number } {
   const now = Date.now();
   let deleted = 0;
   let errors = 0;
 
-  if (!fs.existsSync(TEMP_DIR)) {
+  if (!fs.existsSync(dir)) {
     return { deleted, errors };
   }
 
   try {
-    const entries = fs.readdirSync(TEMP_DIR, { withFileTypes: true });
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
 
     for (const entry of entries) {
-      const entryPath = path.join(TEMP_DIR, entry.name);
+      const entryPath = path.join(dir, entry.name);
 
       try {
         const stats = fs.statSync(entryPath);
@@ -54,29 +55,35 @@ function cleanupOldFiles(): { deleted: number; errors: number } {
       }
     }
   } catch (err) {
-    console.error(`[TEMP] Failed to read temp directory:`, err);
+    console.error(`[${label}] Failed to read directory:`, err);
   }
 
   if (deleted > 0) {
-    console.log(`[TEMP] Cleaned up ${deleted} old files/directories`);
+    console.log(`[${label}] Cleaned up ${deleted} old files/directories`);
   }
 
   return { deleted, errors };
 }
 
-function getTempStats(): { fileCount: number; totalSizeMB: number } {
+function cleanupOldFiles(): { deleted: number; errors: number } {
+  const temp = cleanupDir(TEMP_DIR, "TEMP");
+  const output = cleanupDir(OUTPUT_DIR, "OUTPUT");
+  return { deleted: temp.deleted + output.deleted, errors: temp.errors + output.errors };
+}
+
+function getDirStats(dir: string): { fileCount: number; totalSizeMB: number } {
   let fileCount = 0;
   let totalSize = 0;
 
-  if (!fs.existsSync(TEMP_DIR)) {
+  if (!fs.existsSync(dir)) {
     return { fileCount, totalSizeMB: 0 };
   }
 
   try {
-    const entries = fs.readdirSync(TEMP_DIR);
+    const entries = fs.readdirSync(dir);
     for (const entry of entries) {
       try {
-        const stats = fs.statSync(path.join(TEMP_DIR, entry));
+        const stats = fs.statSync(path.join(dir, entry));
         fileCount++;
         totalSize += stats.size;
       } catch {
@@ -88,6 +95,15 @@ function getTempStats(): { fileCount: number; totalSizeMB: number } {
   }
 
   return { fileCount, totalSizeMB: Math.round(totalSize / 1024 / 1024) };
+}
+
+function getTempStats(): { fileCount: number; totalSizeMB: number } {
+  const temp = getDirStats(TEMP_DIR);
+  const output = getDirStats(OUTPUT_DIR);
+  return {
+    fileCount: temp.fileCount + output.fileCount,
+    totalSizeMB: temp.totalSizeMB + output.totalSizeMB,
+  };
 }
 
 let cleanupInterval: NodeJS.Timeout | null = null;

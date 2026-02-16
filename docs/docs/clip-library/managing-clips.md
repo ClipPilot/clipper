@@ -4,20 +4,20 @@ sidebar_position: 1
 
 # Managing Clips
 
-📌 **What You'll Learn:**
+**What You'll Learn:**
 - Navigate your clip library
 - Search and filter clips
 - Perform bulk actions
 
 ---
 
-## 🎯 Overview
+## Overview
 
 Your Clip Library is the central hub for all your generated content. Find, organize, and manage every clip you've created.
 
 ---
 
-## 📍 Accessing the Library
+## Accessing the Library
 
 1. Click **"Clips"** in the sidebar
 2. View all your saved clips
@@ -25,7 +25,7 @@ Your Clip Library is the central hub for all your generated content. Find, organ
 
 ---
 
-## 🔍 Finding Clips
+## Finding Clips
 
 ### Search
 
@@ -52,18 +52,18 @@ Type in the search bar to find clips by:
 
 ---
 
-## ⚡ Clip Actions
+## Clip Actions
 
 ### Single Clip
 
 Click on a clip to:
-- ▶️ Preview
-- ✏️ Edit (captions, overlays)
-- 📁 Move to folder
-- 🏷️ Add tags
-- 🔗 Get share link
-- ⬇️ Download
-- 🗑️ Delete
+- Preview
+- Edit (captions, overlays)
+- Move to folder
+- Add tags
+- Get share link
+- Download
+- Delete
 
 ### Bulk Actions
 
@@ -75,7 +75,7 @@ Click on a clip to:
 
 ---
 
-## 💡 Pro Tips
+## Pro Tips
 
 1. **Name clips descriptively** - Makes searching easier
 2. **Use folders** - Group by project or client
@@ -84,7 +84,7 @@ Click on a clip to:
 
 ---
 
-## 👉 Next Steps
+## Next Steps
 
 - [Organize with folders and tags](/clip-library/folders-and-tags)
 - [Edit your clips](/clip-library/editing-clips)

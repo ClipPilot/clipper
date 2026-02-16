@@ -4,20 +4,20 @@ sidebar_position: 2
 
 # Credits & Usage
 
-📌 **What You'll Learn:**
+**What You'll Learn:**
 - How credits work
 - What uses credits
 - Track and manage your usage
 
 ---
 
-## 🎯 Overview
+## Overview
 
 Credits are the currency of Cuttr. Different actions use different amounts.
 
 ---
 
-## 💎 What Uses Credits
+## What Uses Credits
 
 ### AI Clipping
 
@@ -51,7 +51,7 @@ Credits are the currency of Cuttr. Different actions use different amounts.
 
 ---
 
-## 📊 Monthly Allocation
+## Monthly Allocation
 
 | Plan | Monthly Credits |
 |------|-----------------|
@@ -62,7 +62,7 @@ Credits are the currency of Cuttr. Different actions use different amounts.
 
 ---
 
-## 📈 Tracking Usage
+## Tracking Usage
 
 ### Usage Dashboard
 
@@ -78,13 +78,13 @@ See:
 
 | Indicator | Meaning |
 |-----------|---------|
-| 🟢 Green | Plenty remaining (over 50%) |
-| 🟡 Yellow | Watch usage (25-50%) |
-| 🔴 Red | Running low (under 25%) |
+| Green | Plenty remaining (over 50%) |
+| Yellow | Watch usage (25-50%) |
+| Red | Running low (under 25%) |
 
 ---
 
-## 🔄 Credit Reset
+## Credit Reset
 
 - Credits reset on your billing date
 - Unused credits don't roll over
@@ -92,7 +92,7 @@ See:
 
 ---
 
-## ⚠️ When You Run Out
+## When You Run Out
 
 What happens:
 - Can't save new clips
@@ -107,7 +107,7 @@ Your options:
 
 ---
 
-## 💡 Pro Tips
+## Pro Tips
 
 1. **Preview before saving** - Avoid wasted saves
 2. **Check usage weekly** - No surprises
@@ -115,7 +115,7 @@ Your options:
 
 ---
 
-## ❓ FAQ
+## FAQ
 
 **Q: Do unused credits roll over?**
 A: No, credits reset each billing cycle.
@@ -128,7 +128,7 @@ A: Each unique video you save = 1 clip credit.
 
 ---
 
-## 👉 Next Steps
+## Next Steps
 
 - [Earn bonus credits](/billing/referrals)
 - [Compare plans](/billing/plans)

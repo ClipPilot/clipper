@@ -20,7 +20,11 @@ import sceneBuilderRoutes from "./routes/sceneBuilder.routes";
 import ugcVideoRoutes from "./routes/ugcVideo.routes";
 import userPreferencesRoutes from "./routes/userPreferences.routes";
 import adCloneRoutes from "./routes/adClone.routes";
+import graphicsRoutes from "./routes/graphics.routes";
 import announcementRoutes from "./routes/announcement.routes";
+import viralityRoutes from "./routes/virality.routes";
+import voiceCloneRoutes from "./routes/voiceClone.routes";
+import apiPlatformRoutes from "./routes/api-platform/main.routes";
 import { swaggerSpec } from "./config/swagger";
 
 const app = express();
@@ -40,7 +44,7 @@ app.use(
       "https://admin.cuttr.com",
     ],
     credentials: true,
-  })
+  }),
 );
 
 app.use("/api/stripe/webhook", express.raw({ type: "application/json" }));
@@ -75,32 +79,53 @@ app.use("/api/scene-builder", sceneBuilderRoutes);
 app.use("/api/ugc-video", ugcVideoRoutes);
 app.use("/api/user/preferences", userPreferencesRoutes);
 app.use("/api/ad-clone", adCloneRoutes);
+app.use("/api/graphics", graphicsRoutes);
 app.use("/api/announcements", announcementRoutes);
+app.use("/api/virality", viralityRoutes);
+app.use("/api/voice-clones", voiceCloneRoutes);
+app.use("/api/platform", apiPlatformRoutes);
 
 // Sentry test route
 app.get("/debug-sentry", function mainHandler(req, res) {
   throw new Error("My first Sentry error!");
 });
 
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  if (err instanceof multer.MulterError) {
-    console.error("[multer] Error:", err.code, err.message);
-    if (err.code === "LIMIT_FILE_SIZE") {
-      return res.status(413).json({ error: "File too large. Maximum size is 100MB." });
+app.use(
+  (
+    err: Error,
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction,
+  ) => {
+    if (err instanceof multer.MulterError) {
+      console.error("[multer] Error:", err.code, err.message);
+      if (err.code === "LIMIT_FILE_SIZE") {
+        return res
+          .status(413)
+          .json({ error: "File too large. Maximum size is 100MB." });
+      }
+      if (err.code === "LIMIT_FILE_COUNT") {
+        return res
+          .status(400)
+          .json({
+            error: "Too many files. Maximum is 11 (1 video + 10 images).",
+          });
+      }
+      if (err.code === "LIMIT_UNEXPECTED_FILE") {
+        return res.status(400).json({ error: "Unexpected file field." });
+      }
+      return res.status(400).json({ error: err.message });
     }
-    if (err.code === "LIMIT_FILE_COUNT") {
-      return res.status(400).json({ error: "Too many files. Maximum is 11 (1 video + 10 images)." });
+    if (
+      err.message?.includes("Invalid file type") ||
+      err.message?.includes("Invalid video type") ||
+      err.message?.includes("Invalid image type")
+    ) {
+      return res.status(400).json({ error: err.message });
     }
-    if (err.code === "LIMIT_UNEXPECTED_FILE") {
-      return res.status(400).json({ error: "Unexpected file field." });
-    }
-    return res.status(400).json({ error: err.message });
-  }
-  if (err.message?.includes("Invalid file type") || err.message?.includes("Invalid video type") || err.message?.includes("Invalid image type")) {
-    return res.status(400).json({ error: err.message });
-  }
-  next(err);
-});
+    next(err);
+  },
+);
 
 // Sentry error handler must be after all controllers
 Sentry.setupExpressErrorHandler(app);

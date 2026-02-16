@@ -188,3 +188,17 @@ resource "aws_secretsmanager_secret_version" "fal_key" {
   secret_id     = aws_secretsmanager_secret.fal_key.id
   secret_string = var.fal_key
 }
+
+# Apify API Token
+resource "aws_secretsmanager_secret" "apify_api_token" {
+  name                    = "${var.project_name}-${var.environment}/apify-api-token"
+  recovery_window_in_days = 0
+
+  tags = {
+    Name = "${var.project_name}-apify-api-token-${var.environment}"
+  }
+}
+resource "aws_secretsmanager_secret_version" "apify_api_token" {
+  secret_id     = aws_secretsmanager_secret.apify_api_token.id
+  secret_string = var.apify_api_token
+}

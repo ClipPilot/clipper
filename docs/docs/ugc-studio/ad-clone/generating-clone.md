@@ -4,20 +4,20 @@ sidebar_position: 3
 
 # Generating Clone
 
-📌 **What You'll Learn:**
+**What You'll Learn:**
 - Adapt script to your product
 - Select character and voice
 - Generate the final video
 
 ---
 
-## 🎯 Overview
+## Overview
 
 With analysis complete, now adapt the ad for your product and generate your version.
 
 ---
 
-## 📝 Script Adaptation
+## Script Adaptation
 
 ### How It Works
 
@@ -45,7 +45,7 @@ Provide:
 
 ---
 
-## 👤 Character & Voice
+## Character & Voice
 
 ### Select Character
 
@@ -63,7 +63,7 @@ Choose a voice that:
 
 ---
 
-## 🎬 Generation
+## Generation
 
 Click **"Generate Clone"** to start.
 
@@ -76,7 +76,7 @@ Click **"Generate Clone"** to start.
 
 ---
 
-## ✅ Review Results
+## Review Results
 
 When complete:
 
@@ -87,7 +87,7 @@ When complete:
 
 ---
 
-## 🔄 Iterate
+## Iterate
 
 Not perfect?
 
@@ -97,7 +97,7 @@ Not perfect?
 
 ---
 
-## 💡 Pro Tips
+## Pro Tips
 
 1. **Don't copy exactly** - Adapt, don't duplicate
 2. **Keep winning elements** - Structure that works
@@ -106,7 +106,7 @@ Not perfect?
 
 ---
 
-## 👉 Next Steps
+## Next Steps
 
 - [Manage your clips](/clip-library/managing-clips)
 - [Set up your team](/team-features/creating-teams)

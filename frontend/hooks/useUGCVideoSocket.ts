@@ -32,6 +32,7 @@ interface UGCVideoSocketUpdate {
     audioKey: string;
     videoKey: string;
   }>;
+  clipId?: number | null;
   error?: string;
 }
 
@@ -84,6 +85,7 @@ export function useUGCVideoSocket({ teamId, jobId, onUpdate }: UseUGCVideoSocket
           finalVideoKey: update.finalVideoKey,
           totalDurationSeconds: update.totalDurationSeconds,
           sceneVideos: update.sceneVideos,
+          clipId: update.clipId,
           error: update.error,
         });
       }

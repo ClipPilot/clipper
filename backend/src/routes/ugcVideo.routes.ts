@@ -331,4 +331,33 @@ router.post(
   ugcVideoController.finalizeVideo.bind(ugcVideoController)
 );
 
+/**
+ * @openapi
+ * /ugc-video/{jobId}:
+ *   delete:
+ *     summary: Delete a video generation job
+ *     description: Deletes the job record and cleans up associated S3 assets
+ *     tags:
+ *       - UGC Video
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: jobId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Job deleted
+ *       404:
+ *         description: Job not found
+ */
+router.delete(
+  "/:jobId",
+  requireAuth,
+  ugcVideoController.deleteVideoJob.bind(ugcVideoController)
+);
+
 export default router;

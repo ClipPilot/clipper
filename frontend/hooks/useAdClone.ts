@@ -47,6 +47,7 @@ interface AdCloneSocketUpdate {
   progressMessage: string;
   analysis?: VideoAnalysis;
   scripts?: any[];
+  clipId?: number | null;
   error?: string;
 }
 
@@ -96,7 +97,7 @@ export function useAdClone(teamId: number | undefined) {
 
       switch (update.status) {
         case "script_generated":
-          setStep("script");
+          setStep("storyboard");
           break;
         case "completed":
           setStep("generate");
@@ -233,7 +234,6 @@ export function useAdClone(teamId: number | undefined) {
     setError(null);
     setProgress(0);
     setProgressMessage("Starting analysis...");
-    setStep("script");
     setStatus("analyzing");
 
     try {
@@ -255,7 +255,6 @@ export function useAdClone(teamId: number | undefined) {
     setError(null);
     setProgress(0);
     setProgressMessage("Starting analysis...");
-    setStep("script");
     setStatus("analyzing");
 
     try {
@@ -276,7 +275,6 @@ export function useAdClone(teamId: number | undefined) {
     setError(null);
     setProgress(0);
     setProgressMessage("Generating script...");
-    setStep("script");
     setStatus("generating_script");
 
     try {
@@ -407,13 +405,13 @@ export function useAdClone(teamId: number | undefined) {
           case "analyzing":
           case "analysis_complete":
           case "generating_script":
-            setStep("script");
+            setStep("character");
             break;
           case "script_generated":
             if (!result.project.characterId) {
-              setStep("script");
+              setStep("character");
             } else {
-              setStep("generate");
+              setStep("storyboard");
             }
             break;
           case "generating_video":

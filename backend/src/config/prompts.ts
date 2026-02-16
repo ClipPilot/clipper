@@ -3,8 +3,8 @@ import { PromptType } from "../constants/promptTypes";
 export interface PromptConfig {
   length: number;
   hookLength: number;
-  transcriptText: string;
-  transcriptObject: string;
+  transcriptText?: string;
+  transcriptObject?: string;
   numberOfVideos?: number;
   userTextPrompt?: string;
   isBatch?: boolean;
@@ -73,8 +73,8 @@ export const generateBusinessPrompt = (config: PromptConfig): string => {
   const {
     length,
     hookLength,
-    transcriptText,
-    transcriptObject,
+    transcriptText = "",
+    transcriptObject = "",
     numberOfVideos = 1,
     userTextPrompt,
   } = config;
@@ -154,8 +154,8 @@ export const generateViralPrompt = (config: PromptConfig): string => {
   const {
     length,
     hookLength,
-    transcriptText,
-    transcriptObject,
+    transcriptText = "",
+    transcriptObject = "",
     numberOfVideos = 1,
     userTextPrompt,
   } = config;
@@ -254,8 +254,6 @@ export const generateGamingPrompt = (config: PromptConfig): string => {
   const {
     length,
     hookLength,
-    transcriptText,
-    transcriptObject,
     numberOfVideos = 1,
     userTextPrompt,
   } = config;
@@ -406,8 +404,8 @@ export const generateGeneralPrompt = (config: PromptConfig): string => {
   const {
     length,
     hookLength,
-    transcriptText,
-    transcriptObject,
+    transcriptText = "",
+    transcriptObject = "",
     numberOfVideos = 1,
     userTextPrompt,
   } = config;

@@ -1,4 +1,5 @@
 import { zodTextFormat } from "openai/helpers/zod";
+import { z } from "zod";
 import { randomUUID } from "crypto";
 import {
   generateUGCScriptPrompt,
@@ -10,6 +11,8 @@ import {
   UGCScript,
   UGCScene,
   UGCSceneSchema,
+  BRollShotSchema,
+  BRollShot,
   ClientUGCScript,
   SceneType,
 } from "../../types/ugcScript.types";
@@ -387,6 +390,24 @@ Return a JSON object with a "descriptions" array of strings, one description per
     return newScene;
   }
 
+  async regenerateCinematicPrompt(action: string): Promise<string> {
+    const prompt = `Generate a detailed cinematicPrompt for a video scene with this action: "${action}"
+
+The cinematicPrompt should be 2-3 paragraphs describing:
+1. Visual composition, lighting, and framing
+2. Camera movement and timing
+3. Technical style and what to avoid
+
+Keep it professional and suitable for AI video generation. Return ONLY the cinematicPrompt text, no JSON or extra formatting.`;
+
+    const response = await client.responses.create({
+      model: "gpt-5-mini",
+      input: [{ role: "user", content: prompt }],
+    });
+
+    return response.output_text?.trim() || action;
+  }
+
   async regenerateBRollPrompt(params: RegenerateBRollPromptParams): Promise<string> {
     const { scriptId, sceneId, bRollShotIndex, newAction } = params;
 
@@ -434,6 +455,68 @@ Keep it professional and suitable for AI video generation. Return ONLY the cinem
       .where(eq(ugcScripts.id, scriptId));
 
     return newCinematicPrompt;
+  }
+
+  async regenerateAllBRollShots(params: {
+    scriptId: string;
+    sceneId: string;
+    newSceneAction: string;
+    shotCount: number;
+    shotDurations: number[];
+  }): Promise<BRollShot[]> {
+    const { scriptId, sceneId, newSceneAction, shotCount, shotDurations } = params;
+
+    const existing = await this.getFullScript(scriptId);
+    if (!existing) {
+      throw new Error("Script not found");
+    }
+
+    const { scripts, selectedVariantIndex } = existing;
+    const currentScript = scripts[selectedVariantIndex];
+    const scene = currentScript.scenes.find((s) => s.id === sceneId);
+    if (!scene || !scene.bRollShots) {
+      throw new Error("Scene or B-roll shots not found");
+    }
+
+    const ShotsResponseSchema = z.object({
+      shots: z.array(BRollShotSchema).length(shotCount),
+    });
+
+    const prompt = `You are generating ${shotCount} B-roll shot descriptions for a product demo scene.
+
+Scene action: "${newSceneAction}"
+
+Generate exactly ${shotCount} shots that break down this scene action into individual camera shots.
+Each shot should have:
+- "action": A single, specific camera action (1-2 sentences). Describe what the hands/camera do. NEVER mention on-screen text, captions, or graphics.
+- "cinematicPrompt": A detailed cinematic description (2-3 sentences) for AI image generation describing composition, lighting, and framing.
+- "durationSeconds": Use these durations in order: [${shotDurations.join(", ")}]
+- "productImageNeeded": true if the shot shows the product, false for lifestyle/mood shots.
+
+Return a JSON object with a "shots" array of exactly ${shotCount} shot objects.`;
+
+    const response = await client.responses.create({
+      model: "gpt-5-mini",
+      input: [{ role: "user", content: prompt }],
+      text: { format: zodTextFormat(ShotsResponseSchema, "b_roll_shots") },
+    });
+
+    const parsed = JSON.parse(response.output_text);
+    const newShots: BRollShot[] = ShotsResponseSchema.parse(parsed).shots;
+
+    // Update scene in-memory
+    scene.bRollShots = newShots;
+
+    // Persist to database
+    await db
+      .update(ugcScripts)
+      .set({
+        scripts_data: scripts,
+        updated_at: new Date(),
+      })
+      .where(eq(ugcScripts.id, scriptId));
+
+    return newShots;
   }
 
   stripCinematicPrompts(script: UGCScript): ClientUGCScript {

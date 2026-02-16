@@ -104,6 +104,9 @@ jobs:
           elevenlabs_api_key = "${{ secrets.ELEVENLABS_API_KEY }}"
           fal_key            = "${{ secrets.FAL_KEY }}"
 
+          # Virality
+          apify_api_token    = "${{ secrets.APIFY_API_TOKEN }}"
+
           # Custom Domain
           api_domain          = "api-staging.cuttr.com"
           frontend_url        = "https://beta.cuttr.com"
@@ -232,6 +235,9 @@ jobs:
           # Video Gen Keys
           elevenlabs_api_key = "${{ secrets.ELEVENLABS_API_KEY }}"
           fal_key            = "${{ secrets.FAL_KEY }}"
+
+          # Virality
+          apify_api_token    = "${{ secrets.APIFY_API_TOKEN }}"
 
           # Custom Domain
           api_domain          = "api-staging.cuttr.com"

@@ -4,20 +4,20 @@ sidebar_position: 2
 
 # Folders & Tags
 
-📌 **What You'll Learn:**
+**What You'll Learn:**
 - Create and manage folders
 - Use tags for flexible organization
 - Build an efficient system
 
 ---
 
-## 🎯 Overview
+## Overview
 
 Folders and tags help you organize clips as your library grows. Use folders for hierarchical organization and tags for cross-cutting categories.
 
 ---
 
-## 📁 Folders
+## Folders
 
 ### Creating Folders
 
@@ -29,10 +29,10 @@ Folders and tags help you organize clips as your library grows. Use folders for 
 ### Folder Hierarchy
 
 Create nested folders:
-- 📁 Client A
-  - 📁 Campaign 1
-  - 📁 Campaign 2
-- 📁 Client B
+- Client A
+  - Campaign 1
+  - Campaign 2
+- Client B
 
 ### Moving Clips to Folders
 
@@ -48,7 +48,7 @@ Create nested folders:
 
 ---
 
-## 🏷️ Tags
+## Tags
 
 ### Creating Tags
 
@@ -74,7 +74,7 @@ Create nested folders:
 
 ---
 
-## 🔍 Filtering by Folder/Tag
+## Filtering by Folder/Tag
 
 ### Folder Filter
 
@@ -88,7 +88,7 @@ Click any folder in sidebar to see only its contents.
 
 ---
 
-## 💡 Pro Tips
+## Pro Tips
 
 1. **Start simple** - Don't over-organize early
 2. **Use colors** - Visual distinction helps
@@ -97,7 +97,7 @@ Click any folder in sidebar to see only its contents.
 
 ---
 
-## 👉 Next Steps
+## Next Steps
 
 - [Edit your clips](/clip-library/editing-clips)
 - [Share your clips](/clip-library/sharing-clips)

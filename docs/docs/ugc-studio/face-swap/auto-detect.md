@@ -4,20 +4,20 @@ sidebar_position: 3
 
 # Auto-Detect Mode
 
-📌 **What You'll Learn:**
+**What You'll Learn:**
 - Let AI find faces automatically
 - Review and adjust detections
 - Handle multiple faces
 
 ---
 
-## 🎯 Overview
+## Overview
 
 Auto-detect mode uses AI to automatically find faces in your video, saving you time on manual segment definition.
 
 ---
 
-## 📝 How to Use
+## How to Use
 
 ### Step 1: Upload & Enable
 
@@ -52,19 +52,19 @@ Click **"Generate"** to process all segments.
 
 ---
 
-## 🔍 What Auto-Detect Finds
+## What Auto-Detect Finds
 
 | Detection | Accuracy |
 |-----------|----------|
-| Front-facing faces | ⭐⭐⭐⭐⭐ |
-| Slight angles | ⭐⭐⭐⭐ |
-| Profile views | ⭐⭐⭐ |
-| Multiple faces | ⭐⭐⭐⭐ |
-| Moving faces | ⭐⭐⭐ |
+| Front-facing faces | Excellent |
+| Slight angles | Very Good |
+| Profile views | Good |
+| Multiple faces | Very Good |
+| Moving faces | Good |
 
 ---
 
-## ⚠️ Limitations
+## Limitations
 
 Auto-detect may struggle with:
 - Extreme angles (looking away)
@@ -75,7 +75,7 @@ Auto-detect may struggle with:
 
 ---
 
-## 💡 Pro Tips
+## Pro Tips
 
 1. **Review all detections** - AI isn't perfect
 2. **Use manual for precision** - When auto misses
@@ -84,7 +84,7 @@ Auto-detect may struggle with:
 
 ---
 
-## 👉 Next Steps
+## Next Steps
 
 - [Create AI videos](/ugc-studio/ai-video-creator/overview)
 - [Clone winning ads](/ugc-studio/ad-clone/overview)

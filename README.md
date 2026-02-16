@@ -112,9 +112,6 @@ pnpm db:generate
 
 # Run migrations
 pnpm db:migrate
-
-# Or push schema directly to database (dev only)
-pnpm db:push
 ```
 
 ## Environment Management

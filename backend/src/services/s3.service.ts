@@ -3,6 +3,7 @@ import {
   GetObjectCommand,
   DeleteObjectCommand,
   PutObjectCommand,
+  HeadObjectCommand,
   CreateMultipartUploadCommand,
   UploadPartCommand,
   CompleteMultipartUploadCommand,
@@ -250,6 +251,15 @@ class S3Service {
     const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn });
 
     return { uploadUrl, s3Key };
+  }
+
+  async objectExists(key: string): Promise<boolean> {
+    try {
+      await s3Client.send(new HeadObjectCommand({ Bucket: BUCKET_NAME, Key: key }));
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   async deleteObject(key: string): Promise<void> {
@@ -586,6 +596,17 @@ class S3Service {
       video: { uploadUrl: videoUrl, s3Key: videoKey },
       image: { uploadUrl: imageUrl, s3Key: imageKey },
     };
+  }
+
+  async uploadVoiceSample(
+    buffer: Buffer,
+    teamId: number,
+    voiceId: string
+  ): Promise<string> {
+    const key = `voice-clones/${teamId}/${voiceId}/sample_${Date.now()}.mp3`;
+    await this.uploadBuffer(buffer, key, "audio/mpeg");
+    console.log(`[S3] Uploaded voice sample: ${key} (${(buffer.length / 1024).toFixed(1)}KB)`);
+    return key;
   }
 
   async getAdCloneUploadUrls(

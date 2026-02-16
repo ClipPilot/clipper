@@ -24,13 +24,26 @@ export const ENTERPRISE_PRODUCT = isProduction
   : "prod_TipICPrW7FcHcY";
 
 export const PLAN_LIMITS = {
-  FREE: { clips: 3, generations: 10, seats: 1 },
-  STUDIO: { clips: 400, generations: -1, seats: 1 },
-  SCALE: { clips: 1000, generations: -1, seats: -1 },
-  ENTERPRISE: { clips: -1, generations: -1, seats: -1 },
+  FREE: { clips: 3, generations: 10, seats: 1, maxUploadSizeGB: 2 },
+  STUDIO: { clips: 400, generations: -1, seats: 1, maxUploadSizeGB: 2 },
+  SCALE: { clips: 1000, generations: -1, seats: -1, maxUploadSizeGB: 3 },
+  ENTERPRISE: { clips: -1, generations: -1, seats: -1, maxUploadSizeGB: 3 },
   STUDIO_ADDON: { clips: 50 },
   SCALE_ADDON: { clips: 100 },
 } as const;
+
+export const getMaxUploadSizeForPlan = (plan: string): number => {
+  switch (plan) {
+    case "scale":
+      return PLAN_LIMITS.SCALE.maxUploadSizeGB * 1024 * 1024 * 1024;
+    case "enterprise":
+      return PLAN_LIMITS.ENTERPRISE.maxUploadSizeGB * 1024 * 1024 * 1024;
+    case "studio":
+      return PLAN_LIMITS.STUDIO.maxUploadSizeGB * 1024 * 1024 * 1024;
+    default:
+      return PLAN_LIMITS.FREE.maxUploadSizeGB * 1024 * 1024 * 1024;
+  }
+};
 
 export const getPlanFromPriceId = (priceId: string): string => {
   switch (priceId) {

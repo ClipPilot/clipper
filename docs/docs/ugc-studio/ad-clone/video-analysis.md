@@ -4,20 +4,20 @@ sidebar_position: 2
 
 # Video Analysis
 
-📌 **What You'll Learn:**
+**What You'll Learn:**
 - Upload reference videos
 - Understand AI analysis results
 - Review scene breakdowns
 
 ---
 
-## 🎯 Overview
+## Overview
 
 Before cloning, AI analyzes your reference video to understand its structure, script, and flow.
 
 ---
 
-## 📤 Uploading Reference
+## Uploading Reference
 
 ### Supported Sources
 
@@ -37,7 +37,7 @@ Before cloning, AI analyzes your reference video to understand its structure, sc
 
 ---
 
-## 🔍 Analysis Process
+## Analysis Process
 
 After upload, AI performs:
 
@@ -50,7 +50,7 @@ After upload, AI performs:
 
 ---
 
-## 📊 Analysis Results
+## Analysis Results
 
 ### Scene Breakdown
 
@@ -79,7 +79,7 @@ Scene 3: Solution (B-roll, 4s)
 
 ---
 
-## ✏️ Adjusting Analysis
+## Adjusting Analysis
 
 AI isn't perfect. You can:
 
@@ -90,7 +90,7 @@ AI isn't perfect. You can:
 
 ---
 
-## 💡 Pro Tips
+## Pro Tips
 
 1. **Clear audio = better transcription**
 2. **Simple ads analyze better** - Complex edits are harder
@@ -99,6 +99,6 @@ AI isn't perfect. You can:
 
 ---
 
-## 👉 Next Steps
+## Next Steps
 
 - [Generate your clone](/ugc-studio/ad-clone/generating-clone)

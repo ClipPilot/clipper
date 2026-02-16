@@ -4,12 +4,16 @@ import { GenerateSceneImageJob } from "../../services/sqs.service";
 import { s3Service } from "../../services/s3.service";
 import { falImageService } from "../../services/ai-ugc/falImage.service";
 import { sanitizeErrorForFrontend } from "../../utils/errorSanitizer";
+import { extractFrameAtTime } from "../../services/clips/videoEditor.service";
 import {
   CharacterAppearance,
   ImagePositions,
   buildBRollShotPrompt,
   buildSceneImagePrompt,
 } from "./sceneImagePrompts";
+import path from "path";
+import fs from "fs";
+import os from "os";
 
 const PRODUCT_VISIBLE_SCENE_TYPES = ["solution", "demo", "cta", "testimonial"];
 
@@ -48,6 +52,48 @@ async function updateJobProgress(
     .where(eq(schema.sceneImageGenerationJobs.id, jobId));
 }
 
+async function extractAndCacheVideoFrame(
+  referenceVideoKey: string,
+  sceneTimestamp: number,
+  teamId: number,
+  scriptId: string,
+  sceneNumber: number
+): Promise<string | null> {
+  const cacheKey = `ad-clone-frames/${teamId}/${scriptId}/scene_${sceneNumber}_frame.jpg`;
+
+  try {
+    // Check S3 cache first
+    const exists = await s3Service.objectExists(cacheKey);
+    if (exists) {
+      console.log(`[SCENE_IMAGE] Using cached video frame for scene ${sceneNumber}`);
+      return cacheKey;
+    }
+
+    // Download video to temp file
+    const tmpDir = os.tmpdir();
+    const videoPath = path.join(tmpDir, `adclone_video_${teamId}_${Date.now()}.mp4`);
+    const framePath = path.join(tmpDir, `adclone_frame_${teamId}_scene${sceneNumber}_${Date.now()}.jpg`);
+
+    try {
+      await s3Service.downloadFile(referenceVideoKey, videoPath);
+      await extractFrameAtTime(videoPath, framePath, sceneTimestamp);
+
+      const frameBuffer = fs.readFileSync(framePath);
+      await s3Service.uploadBuffer(frameBuffer, cacheKey, "image/jpeg");
+
+      console.log(`[SCENE_IMAGE] Extracted and cached video frame for scene ${sceneNumber} at ${sceneTimestamp.toFixed(1)}s`);
+      return cacheKey;
+    } finally {
+      // Clean up temp files
+      if (fs.existsSync(videoPath)) fs.unlinkSync(videoPath);
+      if (fs.existsSync(framePath)) fs.unlinkSync(framePath);
+    }
+  } catch (error) {
+    console.error(`[SCENE_IMAGE] Failed to extract video frame for scene ${sceneNumber}:`, error);
+    return null;
+  }
+}
+
 export async function processSceneImageJob(
   job: GenerateSceneImageJob,
 ): Promise<void> {
@@ -72,6 +118,8 @@ export async function processSceneImageJob(
     previousArollImageKey,
     isConsecutiveAroll,
     previousSceneSetting,
+    adCloneReferenceVideoKey,
+    adCloneSceneTimestamp,
   } = job;
 
   const includeProductImages = shouldIncludeProductImages(sceneData.sceneType);
@@ -148,22 +196,6 @@ export async function processSceneImageJob(
           ? await getReferenceImageUrls(supportingImageKeys.slice(0, 2))
           : [];
 
-      const existingImageUrls: (string | null)[] = [];
-      if (existingBRollImages && existingBRollImages.length > 0) {
-        for (const key of existingBRollImages) {
-          if (key) {
-            try {
-              const url = await s3Service.getPresignedUrl(key, 3600);
-              existingImageUrls.push(url);
-            } catch (e) {
-              existingImageUrls.push(null);
-            }
-          } else {
-            existingImageUrls.push(null);
-          }
-        }
-      }
-
       for (let i = 0; i < bRollShots.length; i++) {
         if (isSingleShotRegen && i !== singleBRollShotIndex) {
           continue;
@@ -189,11 +221,6 @@ export async function processSceneImageJob(
           shotReferenceUrls.push(...supportingReferenceUrls);
         }
 
-        const originalImageUrl = existingImageUrls[i];
-        if (originalImageUrl) {
-          shotReferenceUrls.push(originalImageUrl);
-        }
-
         if (characterReferenceUrl) {
           shotReferenceUrls.push(characterReferenceUrl);
         }
@@ -207,7 +234,7 @@ export async function processSceneImageJob(
 
         const imagePositions: ImagePositions = {
           supportingCount: supportingReferenceUrls.length,
-          hasOriginal: !!originalImageUrl,
+          hasOriginal: false,
           hasCharacter: !!characterReferenceUrl,
           productCount:
             shotNeedsProduct && productReferenceUrls.length > 0
@@ -281,6 +308,23 @@ export async function processSceneImageJob(
       await updateJobProgress(jobId, 40, "Using custom start image...");
     } else {
       const allReferenceKeys: string[] = [];
+      let hasVideoFrameReference = false;
+
+      // For ad clone A-roll scenes, extract a frame from the original video as pose/composition reference
+      if (adCloneReferenceVideoKey && adCloneSceneTimestamp !== undefined) {
+        const videoFrameKey = await extractAndCacheVideoFrame(
+          adCloneReferenceVideoKey,
+          adCloneSceneTimestamp,
+          teamId,
+          scriptId,
+          sceneNumber
+        );
+        if (videoFrameKey) {
+          allReferenceKeys.push(videoFrameKey);
+          hasVideoFrameReference = true;
+          console.log(`[SCENE_IMAGE] Using reference video frame for pose/composition (scene ${sceneNumber})`);
+        }
+      }
 
       if (previousArollImageKey) {
         allReferenceKeys.push(previousArollImageKey);
@@ -320,7 +364,9 @@ export async function processSceneImageJob(
       const hasProductInScene =
         includeProductImages && productImageKeys && productImageKeys.length > 0;
       if (hasProductInScene) {
-        allReferenceKeys.push(...productImageKeys.slice(0, 2));
+        // Limit product images to 1 when video frame is present to stay within 5 reference image cap
+        const maxProductImages = hasVideoFrameReference ? 1 : 2;
+        allReferenceKeys.push(...productImageKeys.slice(0, maxProductImages));
       }
 
       const hasSupportingImages =
@@ -347,6 +393,7 @@ export async function processSceneImageJob(
         hasSupportingImages,
         isConsecutiveAroll,
         previousSceneSetting,
+        hasVideoFrameReference,
       );
 
       const startResult = await falImageService.generateImageWithRetry({

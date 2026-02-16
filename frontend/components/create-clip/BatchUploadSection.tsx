@@ -12,8 +12,16 @@ import {
 // TODO: Re-enable when Google Drive integration is complete
 // import { DrivePicker } from "./DrivePicker";
 
+const PLAN_UPLOAD_LIMITS: Record<string, number> = {
+  free: 2 * 1024 * 1024 * 1024,
+  studio: 2 * 1024 * 1024 * 1024,
+  scale: 3 * 1024 * 1024 * 1024,
+  enterprise: 3 * 1024 * 1024 * 1024,
+};
+
 interface BatchUploadSectionProps {
   teamId: number;
+  plan?: string;
   onUploadComplete: (videos: BatchUploadedVideo[]) => void;
   onError: (error: string) => void;
   isDisabled?: boolean;
@@ -32,7 +40,6 @@ interface FileUploadState {
 }
 
 const MULTIPART_THRESHOLD = 50 * 1024 * 1024;
-const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024;
 const MAX_VIDEO_DURATION_SECONDS = 30 * 60; // 30 minutes
 
 const formatTime = (seconds: number): string => {
@@ -77,12 +84,14 @@ const getVideoDuration = (file: File): Promise<number> => {
 
 export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
   teamId,
+  plan = "free",
   onUploadComplete,
   onError,
   isDisabled = false,
   disabledReason,
   maxVideos = 5,
 }) => {
+  const MAX_FILE_SIZE = PLAN_UPLOAD_LIMITS[plan] ?? PLAN_UPLOAD_LIMITS.free;
   const [files, setFiles] = useState<FileUploadState[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -231,7 +240,7 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
 
     for (const file of newFiles) {
       if (file.size > MAX_FILE_SIZE) {
-        errors.push(`${file.name}: File size must be less than 2GB`);
+        errors.push(`${file.name}: File size must be less than ${MAX_FILE_SIZE / (1024 * 1024 * 1024)}GB`);
         continue;
       }
       if (!validTypes.includes(file.type)) {
@@ -515,7 +524,7 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
           <Icon icon="solar:info-circle-outline" className="text-base mt-0.5" />
           <div>
             <p>
-              Max 30 min per video | Max size: 2GB | Formats: MP4, MOV, AVI,
+              Max 30 min per video | Max size: {MAX_FILE_SIZE / (1024 * 1024 * 1024)}GB | Formats: MP4, MOV, AVI,
               MKV, WebM
             </p>
           </div>

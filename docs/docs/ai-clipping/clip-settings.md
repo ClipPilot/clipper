@@ -4,20 +4,20 @@ sidebar_position: 4
 
 # Clip Settings
 
-📌 **What You'll Learn:**
+**What You'll Learn:**
 - Configure clip length and hooks
 - Adjust number of suggestions
 - Optimize settings for your content
 
 ---
 
-## 🎯 Overview
+## Overview
 
 Clip settings let you control how the AI generates and formats your clips.
 
 ---
 
-## ⏱️ Duration Settings
+## Duration Settings
 
 ### Clip Length
 
@@ -39,7 +39,7 @@ The hook is the attention-grabbing intro:
 
 ---
 
-## 🔢 Generation Settings
+## Generation Settings
 
 ### Number of Clips
 
@@ -56,7 +56,7 @@ The hook is the attention-grabbing intro:
 
 ---
 
-## 🎨 Visual Settings
+## Visual Settings
 
 ### Aspect Ratio
 
@@ -73,7 +73,7 @@ The hook is the attention-grabbing intro:
 
 ---
 
-## 💡 Pro Tips
+## Pro Tips
 
 1. **Start with medium settings** - Then adjust based on results
 2. **Match platform requirements** - 9:16 for TikTok/Reels
@@ -82,7 +82,7 @@ The hook is the attention-grabbing intro:
 
 ---
 
-## 👉 Next Steps
+## Next Steps
 
 - [Add text overlays](/ai-clipping/text-overlays)
 - [Configure captions](/ai-clipping/captions)

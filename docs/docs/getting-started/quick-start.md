@@ -4,20 +4,20 @@ sidebar_position: 1
 
 # Quick Start Guide
 
-📌 **What You'll Learn:**
+**What You'll Learn:**
 - Create your first AI-generated clip
 - Understand the basic workflow
 - Get results in under 5 minutes
 
 ---
 
-## 🎯 Overview
+## Overview
 
 In this guide, you'll upload a video and create your first viral clip using Cuttr's AI. The entire process takes about 5 minutes.
 
 ---
 
-## 📝 Step-by-Step
+## Step-by-Step
 
 ### Step 1: Upload Your Video
 
@@ -29,9 +29,9 @@ In this guide, you'll upload a video and create your first viral clip using Cutt
 ### Step 2: Wait for Processing
 
 Cuttr will automatically:
-- ✅ Upload your video
-- ✅ Transcribe the audio
-- ✅ Analyze for viral moments
+- Upload your video
+- Transcribe the audio
+- Analyze for viral moments
 
 Processing takes 1-3 minutes depending on video length.
 
@@ -61,7 +61,7 @@ Before saving, you can:
 
 ---
 
-## 💡 Pro Tips
+## Pro Tips
 
 1. **Start with good source material** - Clear audio and engaging content work best
 2. **Preview before saving** - Previews are free, saves use credits
@@ -70,7 +70,7 @@ Before saving, you can:
 
 ---
 
-## ❓ FAQ
+## FAQ
 
 **Q: What video length works best?**
 A: 5-60 minute videos work great. Longer videos = more clip opportunities.
@@ -83,7 +83,7 @@ A: Depends on your plan. Free plan includes 10 clips/month.
 
 ---
 
-## 👉 Next Steps
+## Next Steps
 
 - [Learn about different prompt types](/ai-clipping/prompt-types)
 - [Customize your clip settings](/ai-clipping/clip-settings)

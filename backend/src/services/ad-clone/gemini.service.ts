@@ -68,7 +68,7 @@ export async function reencodeForGemini(inputPath: string): Promise<string> {
 
 export async function uploadVideoToGemini(
   videoPath: string,
-  options: { reencode?: boolean } = { reencode: true }
+  options: { reencode?: boolean } = { reencode: false }
 ): Promise<GeminiVideoUploadResult> {
   const client = await getGeminiClient();
 

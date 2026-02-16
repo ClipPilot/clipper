@@ -7,12 +7,13 @@ import { teamService } from "../services/team.service";
 import { canAccessUGCStudio } from "../utils/plans";
 import { db } from "../db";
 import { adCloneProjects, ugcScripts, sceneImages, characters, clips, ugcVideoGenerationJobs } from "@clipper/shared-db";
-import { eq } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { s3Service } from "../services/s3.service";
 import { getTeamUsage } from "../middleware/subscription.middleware";
 import { transcribeVideoService } from "../services/clips/transcription.service";
 import { convertWordsToCaptionEntries, CaptionEntry } from "../services/clips/captions.service";
 import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
+import { ugcScriptService } from "../services/ai-ugc/ugcScript.service";
 
 interface AuthRequest extends Request {
   user?: { id: string; email: string; dbUserId: number };
@@ -312,6 +313,61 @@ export class AdCloneController {
     }
   }
 
+  async regenerateBRollPrompt(req: AuthRequest, res: Response) {
+    try {
+      const { projectId } = req.params;
+      const { sceneId, bRollShotIndex, newAction } = req.body;
+
+      if (!projectId || !sceneId || bRollShotIndex === undefined || !newAction) {
+        return res.status(400).json({
+          error: "projectId, sceneId, bRollShotIndex, and newAction are required",
+        });
+      }
+
+      await adCloneService.regenerateBRollPrompt({
+        projectId,
+        sceneId,
+        bRollShotIndex,
+        newAction,
+      });
+
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      console.error("[AD_CLONE] Regenerate B-roll prompt error:", error);
+      return res.status(500).json({
+        error: sanitizeErrorForFrontend(error, "Failed to regenerate B-roll prompt"),
+      });
+    }
+  }
+
+  async regenerateAllBRollShots(req: AuthRequest, res: Response) {
+    try {
+      const { projectId } = req.params;
+      const { sceneId, newSceneAction, shotCount, shotDurations } = req.body;
+
+      if (!projectId || !sceneId || !newSceneAction || !shotCount || !shotDurations) {
+        return res.status(400).json({
+          error: "projectId, sceneId, newSceneAction, shotCount, and shotDurations are required",
+        });
+      }
+
+      const newShots = await adCloneService.regenerateAllBRollShots({
+        projectId,
+        sceneId,
+        newSceneAction,
+        shotCount,
+        shotDurations,
+      });
+
+      return res.status(200).json({ success: true, bRollShots: newShots });
+    } catch (error) {
+      console.error("[AD_CLONE] Regenerate all B-roll shots error:", error);
+      return res.status(500).json({
+        error: sanitizeErrorForFrontend(error, "Failed to regenerate B-roll shots"),
+      });
+    }
+  }
+
   async generateVideo(req: AuthRequest, res: Response) {
     try {
       const { projectId } = req.params;
@@ -392,6 +448,24 @@ export class AdCloneController {
           available: usage.totalRemaining,
         });
       }
+
+      await Promise.all(
+        (selectedScript.scenes as any[]).map(async (scene: any) => {
+          const promises: Promise<void>[] = [
+            ugcScriptService.regenerateCinematicPrompt(scene.action)
+              .then((p: string) => { scene.cinematicPrompt = p; }),
+          ];
+          for (const shot of scene.bRollShots || []) {
+            promises.push(
+              ugcScriptService.regenerateCinematicPrompt(shot.action)
+                .then((p: string) => { shot.cinematicPrompt = p; })
+            );
+          }
+          await Promise.all(promises);
+        })
+      );
+
+      await adCloneService.updateScript(projectId, selectedScript, project.selectedVariantIndex);
 
       const savedImages = await db
         .select()
@@ -575,6 +649,22 @@ export class AdCloneController {
           project!.finalVideoKey,
           3600
         );
+
+        // Check if already finalized to a clip
+        const [existingClip] = await db
+          .select({ id: clips.id })
+          .from(clips)
+          .where(
+            and(
+              eq(clips.team_id, project!.teamId),
+              sql`${clips.clip_metadata}->>'projectId' = ${project!.id}`
+            )
+          )
+          .limit(1);
+
+        if (existingClip) {
+          response.clipId = existingClip.id;
+        }
       }
 
       if (project!.status === "failed") {
@@ -772,6 +862,25 @@ export class AdCloneController {
 
       if (project.status !== "completed" || !project.finalVideoKey) {
         return res.status(400).json({ error: "Project video not completed" });
+      }
+
+      // Check if already finalized — return existing clip instead of creating a duplicate
+      const [existingClip] = await db
+        .select({ id: clips.id })
+        .from(clips)
+        .where(
+          and(
+            eq(clips.team_id, teamId),
+            sql`${clips.clip_metadata}->>'projectId' = ${projectId}`
+          )
+        )
+        .limit(1);
+
+      if (existingClip) {
+        return res.status(200).json({
+          success: true,
+          clipId: existingClip.id,
+        });
       }
 
       const selectedScript = project.adaptedScripts?.[project.selectedVariantIndex];

@@ -1,18 +1,41 @@
 export interface Voice {
   name: string;
   previewFile: string;
-  gender: "male" | "female";
+  gender: "male" | "female" | "other";
   id: string;
   description: string;
+  isCloned?: boolean;
+  clonedVoiceDbId?: number;
 }
 
 export const voicesConfig: Voice[] = [
   {
-    name: "Adam",
-    id: "pNInz6obpgDQGcFmaJgB",
-    previewFile: "/voices/adam.mp3",
+    name: "Mia",
+    id: "0fVjb4gNcZk8YVYDMSkX",
+    previewFile: "/voices/mia.mp3",
+    gender: "female",
+    description: "Trendy, fast-talking creator",
+  },
+  {
+    name: "Marcus",
+    id: "syZ36STRyFxIffFLfYw6",
+    previewFile: "/voices/marcus.mp3",
     gender: "male",
-    description: "Dominant, firm",
+    description: "Confident, streetwise storyteller",
+  },
+  {
+    name: "Derek",
+    id: "QaG1DLeO8t87oG7vEkyu",
+    previewFile: "/voices/derek.mp3",
+    gender: "male",
+    description: "Laid-back, authentic reviewer",
+  },
+  {
+    name: "Naomi",
+    id: "UJwJKLxD98hM5x13z3bu",
+    previewFile: "/voices/naomi.mp3",
+    gender: "female",
+    description: "Warm, relatable best friend",
   },
   {
     name: "Alexis",
@@ -20,13 +43,6 @@ export const voicesConfig: Voice[] = [
     previewFile: "/voices/alexis.mp3",
     gender: "female",
     description: "Emotional & expressive",
-  },
-  {
-    name: "Ashley",
-    id: "bxiObU1YDrf7lrFAyV99",
-    previewFile: "/voices/ashley.mp3",
-    gender: "female",
-    description: "Natural female voice",
   },
   {
     name: "Backwardks",
@@ -41,13 +57,6 @@ export const voicesConfig: Voice[] = [
     previewFile: "/voices/bianca.mp3",
     gender: "female",
     description: "City girl",
-  },
-  {
-    name: "Brian",
-    id: "nPczCjzI2devNBz1zQrb",
-    previewFile: "/voices/brian.mp3",
-    gender: "male",
-    description: "Deep, resonant and comforting",
   },
   {
     name: "Brittney",
@@ -71,13 +80,6 @@ export const voicesConfig: Voice[] = [
     description: "Chill, natural & real",
   },
   {
-    name: "Guy",
-    id: "QTGiyJvep6bcx4WD1qAq",
-    previewFile: "/voices/guy.mp3",
-    gender: "male",
-    description: "Serious TV/radio announcer",
-  },
-  {
     name: "James",
     id: "2eEzqYH6ZE3sUbRXWquV",
     previewFile: "/voices/james.mp3",
@@ -90,13 +92,6 @@ export const voicesConfig: Voice[] = [
     previewFile: "/voices/kaylin.mp3",
     gender: "female",
     description: "Bright & energetic",
-  },
-  {
-    name: "Laura",
-    id: "FGY2WhTYpPnrIDTdsKH5",
-    previewFile: "/voices/laura.mp3",
-    gender: "female",
-    description: "Enthusiast, quirky attitude",
   },
   {
     name: "Liam",

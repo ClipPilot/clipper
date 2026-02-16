@@ -38,6 +38,9 @@ export const config = {
   fal: {
     apiKey: getEnv("FAL_KEY", ""),
   },
+  apify: {
+    apiToken: getEnv("APIFY_API_TOKEN", ""),
+  },
   sync: {
     apiKey: process.env.SYNC_KEY || "",
   },

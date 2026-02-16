@@ -1,0 +1,66 @@
+"use client";
+
+import { Card, CardBody, Button } from "@heroui/react";
+import { Icon } from "@iconify/react";
+
+interface CreditCostCardProps {
+  creditCost: number;
+  creditsRemaining: number | undefined;
+  isLoading: boolean;
+  isDisabled: boolean;
+  onGenerate: () => void;
+  gradientClasses: string;
+  borderClass: string;
+  iconBgClass: string;
+  iconTextClass: string;
+  buttonClass: string;
+}
+
+export function CreditCostCard({
+  creditCost,
+  creditsRemaining,
+  isLoading,
+  isDisabled,
+  onGenerate,
+  gradientClasses,
+  borderClass,
+  iconBgClass,
+  iconTextClass,
+  buttonClass,
+}: CreditCostCardProps) {
+  return (
+    <Card className={`bg-gradient-to-br ${gradientClasses} border ${borderClass}`}>
+      <CardBody className="p-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className={`w-14 h-14 rounded-2xl ${iconBgClass} flex items-center justify-center`}>
+              <Icon icon="solar:stars-bold-duotone" className={iconTextClass} width={28} />
+            </div>
+            <div>
+              <p className="text-lg font-bold text-text-primary">
+                {creditCost} Credits
+              </p>
+              <p className="text-sm text-text-secondary">
+                Based on estimated video length
+              </p>
+              <p className="text-xs text-text-muted mt-1">
+                {isLoading
+                  ? "Loading credits..."
+                  : `You have ${creditsRemaining} credits remaining`}
+              </p>
+            </div>
+          </div>
+          <Button
+            size="lg"
+            className={`${buttonClass} px-8`}
+            onPress={onGenerate}
+            isDisabled={isDisabled}
+            startContent={<Icon icon="solar:play-bold" width={20} />}
+          >
+            Generate Video
+          </Button>
+        </div>
+      </CardBody>
+    </Card>
+  );
+}

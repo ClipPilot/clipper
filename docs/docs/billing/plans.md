@@ -4,36 +4,36 @@ sidebar_position: 1
 
 # Plans Overview
 
-📌 **What You'll Learn:**
+**What You'll Learn:**
 - Compare all Cuttr plans
 - Understand what each plan includes
 - Choose the right plan for your needs
 
 ---
 
-## 🎯 Overview
+## Overview
 
 Cuttr offers plans for everyone — from individuals testing the waters to agencies producing at scale.
 
 ---
 
-## 📊 Plan Comparison
+## Plan Comparison
 
 | Feature | Free | Studio | Scale | Enterprise |
 |---------|------|--------|-------|------------|
 | **Clips/Month** | 10 | 500 | 1,000 | Custom |
 | **AI Generations** | Limited | Unlimited | Unlimited | Unlimited |
-| **UGC Studio** | ❌ | ✅ | ✅ | ✅ |
-| **Face Swap** | ❌ | ✅ | ✅ | ✅ |
-| **Ad Clone** | ❌ | ✅ | ✅ | ✅ |
-| **AI Video Creator** | ❌ | ✅ | ✅ | ✅ |
+| **UGC Studio** | No | Yes | Yes | Yes |
+| **Face Swap** | No | Yes | Yes | Yes |
+| **Ad Clone** | No | Yes | Yes | Yes |
+| **AI Video Creator** | No | Yes | Yes | Yes |
 | **Team Members** | 1 | 3 | 10 | Unlimited |
-| **Priority Processing** | ❌ | ❌ | ✅ | ✅ |
-| **Priority Support** | ❌ | ❌ | ✅ | ✅ |
+| **Priority Processing** | No | No | Yes | Yes |
+| **Priority Support** | No | No | Yes | Yes |
 
 ---
 
-## 🆓 Free Plan
+## Free Plan
 
 **Perfect for:** Testing Cuttr before committing.
 
@@ -49,7 +49,7 @@ Cuttr offers plans for everyone — from individuals testing the waters to agenc
 
 ---
 
-## 💜 Studio Plan
+## Studio Plan
 
 **Most popular for:** Content creators and small teams.
 
@@ -64,7 +64,7 @@ Cuttr offers plans for everyone — from individuals testing the waters to agenc
 
 ---
 
-## 🚀 Scale Plan
+## Scale Plan
 
 **Built for:** Agencies and high-volume creators.
 
@@ -78,7 +78,7 @@ Everything in Studio, plus:
 
 ---
 
-## 🏢 Enterprise Plan
+## Enterprise Plan
 
 **Custom for:** Large organizations.
 
@@ -92,7 +92,7 @@ Everything in Scale, plus:
 
 ---
 
-## 🔄 Changing Plans
+## Changing Plans
 
 ### Upgrading
 
@@ -109,7 +109,7 @@ Everything in Scale, plus:
 
 ---
 
-## ❓ FAQ
+## FAQ
 
 **Q: Do unused clips roll over?**
 A: No, clips reset each billing cycle.
@@ -122,7 +122,7 @@ A: Not currently. Cancel and resubscribe when ready.
 
 ---
 
-## 👉 Next Steps
+## Next Steps
 
 - [Understand credits and usage](/billing/credits-usage)
 - [Explore referral rewards](/billing/referrals)

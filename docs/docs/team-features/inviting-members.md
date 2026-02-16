@@ -4,20 +4,20 @@ sidebar_position: 2
 
 # Inviting Members
 
-📌 **What You'll Learn:**
+**What You'll Learn:**
 - Invite team members via email or link
 - Manage pending invitations
 - Handle member onboarding
 
 ---
 
-## 🎯 Overview
+## Overview
 
 Add team members to collaborate on content. Invited members get access to shared clips, characters, and team credits.
 
 ---
 
-## 📧 Invitation Methods
+## Invitation Methods
 
 ### Method 1: Email Invite
 
@@ -43,7 +43,7 @@ Anyone with the link can request to join.
 
 ---
 
-## 📋 Invitation Status
+## Invitation Status
 
 | Status | Meaning |
 |--------|---------|
@@ -59,7 +59,7 @@ Anyone with the link can request to join.
 
 ---
 
-## 👥 Member Limits
+## Member Limits
 
 | Plan | Max Members |
 |------|-------------|
@@ -69,7 +69,7 @@ Anyone with the link can request to join.
 
 ---
 
-## 💡 Pro Tips
+## Pro Tips
 
 1. **Assign roles carefully** - Match responsibilities
 2. **Use email for important invites** - Trackable
@@ -77,7 +77,7 @@ Anyone with the link can request to join.
 
 ---
 
-## 👉 Next Steps
+## Next Steps
 
 - [Configure roles and permissions](/team-features/roles-permissions)
 - [Manage team billing](/billing/plans)

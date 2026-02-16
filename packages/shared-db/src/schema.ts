@@ -103,10 +103,10 @@ export const usageStats = pgTable(
     return {
       teamDateIdx: index("usage_stats_team_id_date_idx").on(
         table.team_id,
-        table.date
+        table.date,
       ),
     };
-  }
+  },
 ).enableRLS();
 
 export const teams = pgTable("teams", {
@@ -162,7 +162,7 @@ export const teamInvites = pgTable(
       tokenIdx: index("team_invites_token_idx").on(table.token),
       teamIdx: index("team_invites_team_id_idx").on(table.team_id),
     };
-  }
+  },
 ).enableRLS();
 
 export const subscriptions = pgTable("subscriptions", {
@@ -213,7 +213,7 @@ export const clips = pgTable(
       () => uploadedRawVideos.id,
       {
         onDelete: "set null",
-      }
+      },
     ),
     title: varchar("title", { length: 255 }),
     message: text("message"),
@@ -228,17 +228,21 @@ export const clips = pgTable(
     return {
       teamIdx: index("clips_team_id_idx").on(table.team_id),
       userIdx: index("clips_generated_by_user_id_idx").on(
-        table.generated_by_user_id
+        table.generated_by_user_id,
       ),
       folderIdx: index("clips_folder_id_idx").on(table.folder_id),
       shareTokenIdx: index("clips_share_token_idx").on(table.share_token),
       // GIN trigram indexes for fuzzy search (requires pg_trgm extension)
-      titleTrgmIdx: index("clips_title_trgm_idx")
-        .using("gin", sql`${table.title} gin_trgm_ops`),
-      messageTrgmIdx: index("clips_message_trgm_idx")
-        .using("gin", sql`${table.message} gin_trgm_ops`),
+      titleTrgmIdx: index("clips_title_trgm_idx").using(
+        "gin",
+        sql`${table.title} gin_trgm_ops`,
+      ),
+      messageTrgmIdx: index("clips_message_trgm_idx").using(
+        "gin",
+        sql`${table.message} gin_trgm_ops`,
+      ),
     };
-  }
+  },
 ).enableRLS();
 
 export const clipFolders = pgTable(
@@ -259,10 +263,10 @@ export const clipFolders = pgTable(
     return {
       teamIdx: index("clip_folders_team_id_idx").on(table.team_id),
       parentIdx: index("clip_folders_parent_folder_id_idx").on(
-        table.parent_folder_id
+        table.parent_folder_id,
       ),
     };
-  }
+  },
 ).enableRLS();
 
 export const uploadedRawVideos = pgTable(
@@ -280,7 +284,7 @@ export const uploadedRawVideos = pgTable(
     return {
       teamIdx: index("uploaded_raw_videos_team_id_idx").on(table.team_id),
     };
-  }
+  },
 ).enableRLS();
 
 export const tags = pgTable(
@@ -300,7 +304,7 @@ export const tags = pgTable(
       teamIdx: index("tags_team_id_idx").on(table.team_id),
       teamNameIdx: index("tags_team_id_name_idx").on(table.team_id, table.name),
     };
-  }
+  },
 ).enableRLS();
 
 export const clipTags = pgTable(
@@ -321,10 +325,10 @@ export const clipTags = pgTable(
       tagIdx: index("clip_tags_tag_id_idx").on(table.tag_id),
       uniqueClipTag: index("clip_tags_clip_id_tag_id_idx").on(
         table.clip_id,
-        table.tag_id
+        table.tag_id,
       ),
     };
-  }
+  },
 ).enableRLS();
 
 export const comfyJobs = pgTable(
@@ -365,10 +369,10 @@ export const comfyJobs = pgTable(
       parentJobIdx: index("comfy_jobs_parent_job_id_idx").on(table.parentJobId),
       priorityCreatedAtIdx: index("comfy_jobs_priority_created_at_idx").on(
         table.priority,
-        table.createdAt
+        table.createdAt,
       ),
     };
-  }
+  },
 ).enableRLS();
 
 export const referralCodes = pgTable("referral_codes", {
@@ -459,7 +463,7 @@ export const characters = pgTable(
     publicIdx: index("characters_public_idx").on(table.public),
     usesIdx: index("characters_uses_count_idx").on(table.uses_count),
     parentIdx: index("characters_parent_id_idx").on(table.parent_character_id),
-  })
+  }),
 ).enableRLS();
 
 export const characterGenerationJobs = pgTable(
@@ -487,8 +491,10 @@ export const characterGenerationJobs = pgTable(
   (table) => ({
     teamIdx: index("character_generation_jobs_team_id_idx").on(table.team_id),
     statusIdx: index("character_generation_jobs_status_idx").on(table.status),
-    createdAtIdx: index("character_generation_jobs_created_at_idx").on(table.created_at),
-  })
+    createdAtIdx: index("character_generation_jobs_created_at_idx").on(
+      table.created_at,
+    ),
+  }),
 ).enableRLS();
 
 export const ugcScripts = pgTable(
@@ -505,7 +511,9 @@ export const ugcScripts = pgTable(
     product_name: varchar("product_name", { length: 255 }),
     script_direction: text("script_direction"),
     scripts_data: jsonb("scripts_data"),
-    selected_variant_index: integer("selected_variant_index").notNull().default(0),
+    selected_variant_index: integer("selected_variant_index")
+      .notNull()
+      .default(0),
     status: ugcScriptStatusEnum("status").notNull().default("queued"),
     progress: integer("progress").notNull().default(0),
     progress_message: text("progress_message"),
@@ -524,7 +532,7 @@ export const ugcScripts = pgTable(
     characterIdx: index("ugc_scripts_character_id_idx").on(table.character_id),
     statusIdx: index("ugc_scripts_status_idx").on(table.status),
     createdAtIdx: index("ugc_scripts_created_at_idx").on(table.created_at),
-  })
+  }),
 ).enableRLS();
 
 // Scene Image Generation - used for generating images for each scene in a script
@@ -548,8 +556,9 @@ export const sceneImageGenerationJobs = pgTable(
     script_id: uuid("script_id").notNull(),
     scene_id: varchar("scene_id", { length: 255 }).notNull(),
     scene_number: integer("scene_number").notNull(),
-    character_id: integer("character_id")
-      .references(() => characters.id, { onDelete: "set null" }),
+    character_id: integer("character_id").references(() => characters.id, {
+      onDelete: "set null",
+    }),
     prompt: text("prompt").notNull(),
     user_refinement: text("user_refinement"),
     supporting_image_keys: jsonb("supporting_image_keys").default([]),
@@ -569,7 +578,7 @@ export const sceneImageGenerationJobs = pgTable(
     sceneIdx: index("scene_image_jobs_scene_id_idx").on(table.scene_id),
     statusIdx: index("scene_image_jobs_status_idx").on(table.status),
     createdAtIdx: index("scene_image_jobs_created_at_idx").on(table.created_at),
-  })
+  }),
 ).enableRLS();
 
 export const sceneImages = pgTable(
@@ -592,9 +601,9 @@ export const sceneImages = pgTable(
     sceneIdx: index("scene_images_scene_id_idx").on(table.scene_id),
     scriptSceneIdx: index("scene_images_script_scene_idx").on(
       table.script_id,
-      table.scene_id
+      table.scene_id,
     ),
-  })
+  }),
 ).enableRLS();
 
 // UGC Video Generation - orchestrates TTS, image-to-video, and lipsync for each scene
@@ -645,7 +654,7 @@ export const ugcVideoGenerationJobs = pgTable(
     scriptIdx: index("ugc_video_jobs_script_id_idx").on(table.script_id),
     statusIdx: index("ugc_video_jobs_status_idx").on(table.status),
     createdAtIdx: index("ugc_video_jobs_created_at_idx").on(table.created_at),
-  })
+  }),
 ).enableRLS();
 
 export const adCloneProjects = pgTable(
@@ -667,7 +676,9 @@ export const adCloneProjects = pgTable(
     gemini_file_uri: text("gemini_file_uri"),
     video_analysis: jsonb("video_analysis"),
     adapted_scripts: jsonb("adapted_scripts"),
-    selected_variant_index: integer("selected_variant_index").notNull().default(0),
+    selected_variant_index: integer("selected_variant_index")
+      .notNull()
+      .default(0),
     character_id: integer("character_id").references(() => characters.id, {
       onDelete: "set null",
     }),
@@ -684,8 +695,10 @@ export const adCloneProjects = pgTable(
     teamIdx: index("ad_clone_projects_team_id_idx").on(table.team_id),
     userIdx: index("ad_clone_projects_user_id_idx").on(table.user_id),
     statusIdx: index("ad_clone_projects_status_idx").on(table.status),
-    createdAtIdx: index("ad_clone_projects_created_at_idx").on(table.created_at),
-  })
+    createdAtIdx: index("ad_clone_projects_created_at_idx").on(
+      table.created_at,
+    ),
+  }),
 ).enableRLS();
 
 export const userPreferences = pgTable(
@@ -703,7 +716,7 @@ export const userPreferences = pgTable(
   },
   (table) => ({
     userIdx: index("user_preferences_user_id_idx").on(table.user_id),
-  })
+  }),
 ).enableRLS();
 
 export const savedFaces = pgTable(
@@ -720,7 +733,7 @@ export const savedFaces = pgTable(
   },
   (table) => ({
     teamIdx: index("saved_faces_team_id_idx").on(table.team_id),
-  })
+  }),
 ).enableRLS();
 
 export const announcements = pgTable(
@@ -734,15 +747,19 @@ export const announcements = pgTable(
     icon: varchar("icon", { length: 100 }),
     action_label: varchar("action_label", { length: 50 }),
     action_url: text("action_url"),
-    created_by_admin_email: varchar("created_by_admin_email", { length: 255 }).notNull(),
+    created_by_admin_email: varchar("created_by_admin_email", {
+      length: 255,
+    }).notNull(),
     published_at: timestamp("published_at"),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => ({
     statusIdx: index("announcements_status_idx").on(table.status),
-    publishedAtIdx: index("announcements_published_at_idx").on(table.published_at),
-  })
+    publishedAtIdx: index("announcements_published_at_idx").on(
+      table.published_at,
+    ),
+  }),
 ).enableRLS();
 
 export const userAnnouncementDismissals = pgTable(
@@ -760,11 +777,315 @@ export const userAnnouncementDismissals = pgTable(
   (table) => ({
     userAnnouncementUnique: unique("user_announcement_unique").on(
       table.user_id,
-      table.announcement_id
+      table.announcement_id,
     ),
-    userIdIdx: index("user_announcement_dismissals_user_id_idx").on(table.user_id),
-    announcementIdIdx: index("user_announcement_dismissals_announcement_id_idx").on(
-      table.announcement_id
+    userIdIdx: index("user_announcement_dismissals_user_id_idx").on(
+      table.user_id,
     ),
-  })
+    announcementIdIdx: index(
+      "user_announcement_dismissals_announcement_id_idx",
+    ).on(table.announcement_id),
+  }),
+).enableRLS();
+
+export const massPostingStatusEnum = pgEnum("mass_posting_status", [
+  "pending",
+  "accepted",
+  "rejected",
+  "appeal",
+]);
+export const massPostingApplications = pgTable(
+  "mass_posting_applications",
+  {
+    id: serial("id").primaryKey(),
+    team_id: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    intake_form_id: integer("intake_form_id").references(() => intakeForms.id, {
+      onDelete: "set null",
+    }),
+    status: varchar("status", { length: 50 }).notNull().default("pending"),
+    details: jsonb("details"),
+    google_drive_folder_id: varchar("google_drive_folder_id", { length: 255 }),
+    rejection_reason: text("rejection_reason"),
+    admin_notes: text("admin_notes"),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    teamIdx: index("mass_posting_applications_team_id_idx").on(table.team_id),
+  }),
+).enableRLS();
+export const intakeForms = pgTable(
+  "intake_forms",
+  {
+    id: serial("id").primaryKey(),
+    team_id: integer("team_id")
+      .notNull()
+      .unique()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    brand_description: text("brand_description"),
+    company_website_url: varchar("company_website_url", { length: 2048 }),
+    icps: jsonb("icps"),
+    company_socials: jsonb("company_socials"),
+    competitor_socials: jsonb("competitor_socials"),
+    completed: boolean("completed").notNull().default(false),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    teamIdx: index("intake_forms_team_id_idx").on(table.team_id),
+  }),
+).enableRLS();
+
+export const platformEnum = pgEnum("platform_enum", [
+  "tiktok",
+  "instagram",
+  "facebook",
+  "youtube",
+  "x",
+]);
+
+export const postStatusEnum = pgEnum("post_status_enum", [
+  "scheduled",
+  "posted",
+  "cancelled",
+  "deleted",
+  "failed",
+]);
+export const posts = pgTable(
+  "posts",
+  {
+    id: serial("id").primaryKey(),
+    team_id: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    clip_id: integer("clip_id").references(() => clips.id, {
+      onDelete: "set null",
+    }),
+    content: text("content").notNull(),
+    platform: platformEnum("platform").notNull(),
+    posted_time: timestamp("posted_time").notNull().defaultNow(),
+    post_url: text("post_url"),
+    drive_file_id: varchar("drive_file_id", { length: 255 }),
+    status: postStatusEnum("status").notNull().default("scheduled"),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    teamIdx: index("posts_team_id_idx").on(table.team_id),
+    platformIdx: index("posts_platform_idx").on(table.platform),
+    clipIdx: index("posts_clip_id_idx").on(table.clip_id),
+  }),
+).enableRLS();
+
+// Virality Tracking
+export const viralityPlatformEnum = pgEnum("virality_platform", [
+  "instagram",
+  "tiktok",
+  "x",
+]);
+export const viralitySyncStatusEnum = pgEnum("virality_sync_status", [
+  "pending",
+  "syncing",
+  "completed",
+  "failed",
+]);
+
+// Competitor groups (e.g., "Nike", "Competitor A")
+export const viralityCompetitors = pgTable(
+  "virality_competitors",
+  {
+    id: serial("id").primaryKey(),
+    team_id: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 255 }).notNull(),
+    description: text("description"),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    teamIdx: index("virality_competitors_team_id_idx").on(table.team_id),
+  }),
+).enableRLS();
+
+// Platform accounts (instagram, tiktok, x) - up to 3 per competitor
+export const viralityAccounts = pgTable(
+  "virality_accounts",
+  {
+    id: serial("id").primaryKey(),
+    team_id: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    competitor_id: integer("competitor_id").references(
+      () => viralityCompetitors.id,
+      { onDelete: "cascade" },
+    ),
+    platform: viralityPlatformEnum("platform").notNull(),
+    username: varchar("username", { length: 255 }).notNull(),
+    profile_url: text("profile_url").notNull(),
+    display_name: varchar("display_name", { length: 255 }),
+    avatar_url: text("avatar_url"),
+    bio: text("bio"),
+    follower_count: integer("follower_count"),
+    following_count: integer("following_count"),
+    total_likes: integer("total_likes"),
+    post_count: integer("post_count"),
+    follower_history: jsonb("follower_history"),
+    is_verified: boolean("is_verified").default(false),
+    last_synced_at: timestamp("last_synced_at"),
+    sync_status: viralitySyncStatusEnum("sync_status").default("pending"),
+    sync_error: text("sync_error"),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    teamIdx: index("virality_accounts_team_id_idx").on(table.team_id),
+    uniqueTeamPlatformUsername: unique("virality_accounts_unique").on(
+      table.team_id,
+      table.platform,
+      table.username,
+    ),
+  }),
+).enableRLS();
+
+export const viralityPosts = pgTable(
+  "virality_posts",
+  {
+    id: serial("id").primaryKey(),
+    account_id: integer("account_id")
+      .notNull()
+      .references(() => viralityAccounts.id, { onDelete: "cascade" }),
+    platform_post_id: varchar("platform_post_id", { length: 255 }).notNull(),
+    post_url: text("post_url").notNull(),
+    thumbnail_url: text("thumbnail_url"),
+    caption: text("caption"),
+    hashtags: jsonb("hashtags"),
+    post_type: varchar("post_type", { length: 50 }),
+    posted_at: timestamp("posted_at"),
+    like_count: integer("like_count").default(0),
+    comment_count: integer("comment_count").default(0),
+    video_view_count: integer("video_view_count"),
+    video_play_count: integer("video_play_count"),
+    metrics_history: jsonb("metrics_history").default([]),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    accountIdx: index("virality_posts_account_id_idx").on(table.account_id),
+    uniqueAccountPost: unique("virality_posts_unique").on(
+      table.account_id,
+      table.platform_post_id,
+    ),
+    postedAtIdx: index("virality_posts_posted_at_idx").on(table.posted_at),
+  }),
+).enableRLS();
+
+export const genderEnum = pgEnum("gender_enum", ["male", "female", "other"]);
+export const clonedVoices = pgTable("cloned_voices", {
+  id: serial("id").primaryKey(),
+  team_id: integer("team_id")
+    .notNull()
+    .references(() => teams.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  voice_id: varchar("voice_id", { length: 255 }).notNull(),
+  sample_audio_key: text("sample_audio_key").notNull(),
+  gender: genderEnum("gender").notNull(),
+  created_at: timestamp("created_at").notNull().defaultNow(),
+  updated_at: timestamp("updated_at").notNull().defaultNow(),
+}).enableRLS();
+
+export const APIKeys = pgTable(
+  "api_keys",
+  {
+    id: serial("id").primaryKey(),
+    team_id: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    user_id: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "set null" }),
+    name: varchar("name", { length: 255 }).notNull(),
+    key_prefix: varchar("key_prefix", { length: 12 }).notNull(),
+    key_hash: varchar("key_hash", { length: 255 }).notNull().unique(),
+    last_used_at: timestamp("last_used_at"),
+    expires_at: timestamp("expires_at"),
+    revoked: boolean("revoked").notNull().default(false),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    teamIdx: index("api_keys_team_id_idx").on(table.team_id),
+    keyHashIdx: index("api_keys_key_hash_idx").on(table.key_hash),
+  }),
+).enableRLS();
+
+export const apiBillingAccounts = pgTable(
+  "api_billing_accounts",
+  {
+    id: serial("id").primaryKey(),
+    team_id: integer("team_id")
+      .notNull()
+      .unique()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    balance_cents: integer("balance_cents").notNull().default(0),
+    total_spent_cents: integer("total_spent_cents").notNull().default(0),
+    total_topped_up_cents: integer("total_topped_up_cents").notNull().default(0),
+    active: boolean("active").notNull().default(false),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    teamIdx: index("api_billing_accounts_team_id_idx").on(table.team_id),
+  }),
+).enableRLS();
+
+export const apiWalletTopUps = pgTable(
+  "api_wallet_top_ups",
+  {
+    id: serial("id").primaryKey(),
+    team_id: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    amount_cents: integer("amount_cents").notNull(),
+    credits_cents: integer("credits_cents").notNull(),
+    stripe_payment_intent_id: varchar("stripe_payment_intent_id", { length: 255 }),
+    stripe_checkout_session_id: varchar("stripe_checkout_session_id", { length: 255 }),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    teamIdx: index("api_wallet_top_ups_team_id_idx").on(table.team_id),
+  }),
+).enableRLS();
+
+export const apiUsageLogs = pgTable(
+  "api_usage_logs",
+  {
+    id: serial("id").primaryKey(),
+    api_key_id: integer("api_key_id")
+      .notNull()
+      .references(() => APIKeys.id, { onDelete: "cascade" }),
+    team_id: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    product_slug: varchar("product_slug", { length: 100 }),
+    endpoint: varchar("endpoint", { length: 255 }).notNull(),
+    method: varchar("method", { length: 10 }).notNull(),
+    status_code: integer("status_code").notNull(),
+    cost_cents: integer("cost_cents").notNull().default(0),
+    quantity: integer("quantity").notNull().default(1),
+    response_time_ms: integer("response_time_ms"),
+    metadata: jsonb("metadata"),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    apiKeyIdx: index("api_usage_logs_api_key_id_idx").on(table.api_key_id),
+    teamIdx: index("api_usage_logs_team_id_idx").on(table.team_id),
+    createdAtIdx: index("api_usage_logs_created_at_idx").on(table.created_at),
+    productSlugIdx: index("api_usage_logs_product_slug_idx").on(
+      table.product_slug,
+    ),
+  }),
 ).enableRLS();
