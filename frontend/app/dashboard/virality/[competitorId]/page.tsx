@@ -24,22 +24,15 @@ import {
   type DateRangeValue,
 } from "@/components/virality/DateRangeFilter";
 import {
-<<<<<<< HEAD
-=======
-  ComparisonModeSelector,
->>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
   type ComparisonMode,
 } from "@/components/virality/ComparisonModeSelector";
 import { StatCards, type StatCardItem } from "@/components/virality/StatCards";
 import { PostsTable } from "@/components/virality/PostsTable";
-<<<<<<< HEAD
 import { AnalyticsChart } from "@/components/virality/AnalyticsChart";
 import { PostFrequencyChart } from "@/components/virality/PostFrequencyChart";
 import { AccountBreakdownChart } from "@/components/virality/AccountBreakdownChart";
 import { BestPerformingAccounts } from "@/components/virality/BestPerformingAccounts";
-=======
->>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
-import { findClosestEntry, getComparisonDate } from "./utils";
+import { findClosestEntry, getComparisonDate, isOriginalPost } from "./utils";
 
 // ─── Page Component ──────────────────────────────────────────────────────────
 
@@ -133,24 +126,22 @@ export default function CompetitorDetailPage() {
   const activePosts = useMemo(() => {
     const posts: ViralityPost[] = [];
     for (const a of activeAccounts) {
-      posts.push(...(postsByAccount[a.id] || []));
+      const accountPosts = (postsByAccount[a.id] || []).filter(isOriginalPost);
+      posts.push(...accountPosts);
     }
     return posts.sort(
       (a, b) => new Date(b.posted_at || 0).getTime() - new Date(a.posted_at || 0).getTime()
     );
   }, [activeAccounts, postsByAccount]);
 
-<<<<<<< HEAD
   const activePostsByAccount = useMemo(() => {
     const map: Record<number, ViralityPost[]> = {};
     for (const a of activeAccounts) {
-      map[a.id] = postsByAccount[a.id] || [];
+      map[a.id] = (postsByAccount[a.id] || []).filter(isOriginalPost);
     }
     return map;
   }, [activeAccounts, postsByAccount]);
 
-=======
->>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
   const accountPlatformMap = useMemo(() => {
     const map: Record<number, string> = {};
     if (competitor) for (const a of competitor.accounts) map[a.id] = a.platform;
@@ -207,7 +198,6 @@ export default function CompetitorDetailPage() {
       latestFollowers += latestF.followers;
     }
 
-<<<<<<< HEAD
     const totalEngagements = totalLikes + totalComments;
     const engagementRate = totalViews > 0 ? (totalEngagements / totalViews) * 100 : 0;
 
@@ -222,10 +212,6 @@ export default function CompetitorDetailPage() {
     return {
       followers, totalLikes, totalComments, totalViews,
       totalEngagements, engagementsChange, engagementRate, engRateChange,
-=======
-    return {
-      followers, totalLikes, totalComments, totalViews,
->>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
       followersChange: hasFollowerHistory ? pct(latestFollowers, prevFollowers) : null,
       likesChange: hasHistory ? pct(latestLikes, prevLikes) : null,
       commentsChange: hasHistory ? pct(latestComments, prevComments) : null,
@@ -233,7 +219,6 @@ export default function CompetitorDetailPage() {
     };
   }, [activeAccounts, activePosts, comparisonMode]);
 
-<<<<<<< HEAD
   const contentVelocity = useMemo(() => {
     if (activePosts.length < 2) return { value: activePosts.length, label: "posts/week" };
     const dates = activePosts
@@ -246,8 +231,6 @@ export default function CompetitorDetailPage() {
     return { value: +(dates.length / weeks).toFixed(1), label: "posts/week" };
   }, [activePosts]);
 
-=======
->>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
   // ─── Loading / Error states ──────────────────────────────────────────────────
 
   if (isLoading) {
@@ -274,17 +257,6 @@ export default function CompetitorDetailPage() {
 
   const statCards: StatCardItem[] = [
     {
-<<<<<<< HEAD
-=======
-      title: "FOLLOWERS",
-      value: formatNumber(stats.followers),
-      icon: "solar:users-group-rounded-bold",
-      iconColor: "text-accent-400",
-      iconBg: "bg-accent-400/10",
-      change: stats.followersChange,
-    },
-    {
->>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
       title: "TOTAL VIEWS",
       value: formatNumber(stats.totalViews),
       icon: "solar:eye-bold",
@@ -294,7 +266,6 @@ export default function CompetitorDetailPage() {
       tooltip: "Only counts views on video posts (Reels)",
     },
     {
-<<<<<<< HEAD
       title: "TOTAL ENGAGEMENTS",
       value: formatNumber(stats.totalEngagements),
       icon: "solar:heart-bold",
@@ -307,17 +278,11 @@ export default function CompetitorDetailPage() {
       title: "TOTAL POSTS",
       value: formatNumber(activePosts.length),
       icon: "solar:document-bold",
-=======
-      title: "AVG VIEWS / POST",
-      value: formatNumber(activePosts.length > 0 ? Math.round(stats.totalViews / activePosts.length) : 0),
-      icon: "solar:chart-2-bold",
->>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
       iconColor: "text-emerald-500",
       iconBg: "bg-emerald-500/10",
       change: null,
     },
     {
-<<<<<<< HEAD
       title: "FOLLOWERS",
       value: formatNumber(stats.followers),
       icon: "solar:users-group-rounded-bold",
@@ -342,22 +307,6 @@ export default function CompetitorDetailPage() {
       iconBg: "bg-purple-500/10",
       change: null,
       tooltip: "Average posts per week based on post date range",
-=======
-      title: "TOTAL LIKES",
-      value: formatNumber(stats.totalLikes),
-      icon: "solar:heart-bold",
-      iconColor: "text-red-500",
-      iconBg: "bg-red-500/10",
-      change: stats.likesChange,
-    },
-    {
-      title: "TOTAL COMMENTS",
-      value: formatNumber(stats.totalComments),
-      icon: "solar:chat-round-dots-bold",
-      iconColor: "text-amber-500",
-      iconBg: "bg-amber-500/10",
-      change: stats.commentsChange,
->>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
     },
   ];
 
@@ -422,10 +371,6 @@ export default function CompetitorDetailPage() {
           </div>
           <div className="flex items-center gap-3">
             <DateRangeFilter value={dateRange} onChange={handleDateRangeChange} />
-<<<<<<< HEAD
-=======
-            <ComparisonModeSelector selected={comparisonMode} onChange={setComparisonMode} />
->>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
             <Button
               className="bg-accent-400 text-white"
               startContent={
@@ -478,7 +423,6 @@ export default function CompetitorDetailPage() {
         {/* Stats Cards */}
         <StatCards items={statCards} />
 
-<<<<<<< HEAD
         {/* Performance Over Time + Account Breakdown */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
           <div className="lg:col-span-2">
@@ -504,27 +448,18 @@ export default function CompetitorDetailPage() {
           />
           <BestPerformingAccounts
             accounts={activeAccounts}
-            postsByAccount={postsByAccount}
+            postsByAccount={activePostsByAccount}
           />
         </div>
 
         {/* Top Performing Content Table */}
-=======
-        {/* Analytics Chart (currently disabled) */}
-        {/* <AnalyticsChart posts={activePosts} /> */}
-
-        {/* Posts Table */}
->>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
         <PostsTable
           key={activeAccountId + (dateRange.startDate || "") + (dateRange.endDate || "")}
           posts={activePosts}
           accountPlatformMap={accountPlatformMap}
           accountSyncMap={accountSyncMap}
-<<<<<<< HEAD
           comparisonMode={comparisonMode}
           onComparisonModeChange={setComparisonMode}
-=======
->>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
         />
       </div>
     </motion.div>

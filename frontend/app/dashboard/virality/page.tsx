@@ -1,31 +1,17 @@
 "use client";
 
-<<<<<<< HEAD
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Button, Input, useDisclosure, addToast, Spinner, Card, CardBody, cn } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import {
-=======
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import { Button, Input, useDisclosure, addToast, Spinner } from "@heroui/react";
-import { Icon } from "@iconify/react";
-import {
-  StatsOverview,
->>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
   AccountsTable,
   PlatformFilter,
   AddAccountModal,
   DateRangeFilter,
-<<<<<<< HEAD
   ActivityFeed,
   HeadToHeadTable,
-=======
-  DistributionCharts,
->>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
 } from "@/components/virality";
 import type { Platform } from "@/components/virality/AccountsTable";
 import type { DateRangeValue } from "@/components/virality/DateRangeFilter";
@@ -35,14 +21,10 @@ import {
   type CompetitorWithAccounts,
   type DashboardStats,
   type ViralityCompetitor,
-<<<<<<< HEAD
   type ViralityPost,
   type ViralityAccount,
 } from "@/api/virality";
 import { formatNumber } from "@/lib/formatters";
-=======
-} from "@/api/virality";
->>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
 
 export default function ViralityPage() {
   const router = useRouter();
@@ -51,20 +33,12 @@ export default function ViralityPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [dateRange, setDateRange] = useState<DateRangeValue>({});
   const { isOpen, onOpen, onClose } = useDisclosure();
-<<<<<<< HEAD
   const [competitors, setCompetitors] = useState<CompetitorWithAccounts[]>([]);
   const [simpleCompetitors, setSimpleCompetitors] = useState<ViralityCompetitor[]>([]);
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
   const [postsByAccount, setPostsByAccount] = useState<Record<number, ViralityPost[]>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [cardsExpanded, setCardsExpanded] = useState(false);
-=======
-
-  const [competitors, setCompetitors] = useState<CompetitorWithAccounts[]>([]);
-  const [simpleCompetitors, setSimpleCompetitors] = useState<ViralityCompetitor[]>([]);
-  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
->>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
 
   const fetchData = useCallback(async () => {
     if (!selectedTeam?.id) return;
@@ -78,17 +52,12 @@ export default function ViralityPage() {
       setSimpleCompetitors(competitorsList);
       setDashboardStats(stats);
 
-<<<<<<< HEAD
-=======
-      // For each competitor, fetch its accounts to build CompetitorWithAccounts
->>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
       const withAccounts: CompetitorWithAccounts[] = await Promise.all(
         competitorsList.map((c) =>
           viralityAPI.getCompetitor(selectedTeam.id, c.id)
         )
       );
       setCompetitors(withAccounts);
-<<<<<<< HEAD
 
       // Fetch posts for all accounts (for activity feed + per-competitor stats)
       const allAccounts = withAccounts.flatMap((c) => c.accounts);
@@ -102,8 +71,6 @@ export default function ViralityPage() {
         })
       );
       setPostsByAccount(postsMap);
-=======
->>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
     } catch (err: any) {
       addToast({
         title: "Failed to load data",
@@ -119,7 +86,6 @@ export default function ViralityPage() {
     fetchData();
   }, [fetchData]);
 
-<<<<<<< HEAD
   // Build account lookup map for ActivityFeed
   const accountMap = useMemo(() => {
     const map: Record<number, ViralityAccount> = {};
@@ -205,8 +171,6 @@ export default function ViralityPage() {
     });
   }, [competitors, postsByAccount]);
 
-=======
->>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
   const handleViewCompetitor = (competitorId: number) => {
     router.push(`/dashboard/virality/${competitorId}`);
   };
@@ -224,10 +188,6 @@ export default function ViralityPage() {
 
     let competitorId = options.competitorId;
 
-<<<<<<< HEAD
-=======
-    // Create new competitor if needed
->>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
     if (!competitorId && options.newCompetitorName) {
       const competitor = await viralityAPI.createCompetitor(
         selectedTeam.id,
@@ -318,7 +278,6 @@ export default function ViralityPage() {
           </div>
         </div>
 
-<<<<<<< HEAD
         {/* Competitor Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {competitorCards.map(({ competitor, followers, postsPerWeek, engRate, avgViews, platforms, followersChange, viewsChange, engRateChange }, idx) => (
@@ -457,63 +416,6 @@ export default function ViralityPage() {
         </div>
       </div>
 
-=======
-        {/* Stats Overview */}
-        {dashboardStats && (
-          <StatsOverview
-            accountsCount={dashboardStats.accountsCount}
-            maxAccounts={dashboardStats.maxAccounts}
-            totalFollowers={dashboardStats.totalFollowers}
-            totalLikes={dashboardStats.totalLikes}
-            totalPosts={dashboardStats.totalPosts}
-            totalViews={dashboardStats.totalViews}
-            avgViewsPerPost={dashboardStats.avgViewsPerPost}
-          />
-        )}
-
-        {/* Distribution Charts */}
-        {dashboardStats && (
-          <DistributionCharts accounts={dashboardStats.accounts} accountPostStats={dashboardStats.accountPostStats} />
-        )}
-
-        {/* Filters & Search */}
-        <div className="flex items-center justify-between">
-          <PlatformFilter
-            selected={platformFilter}
-            onChange={setPlatformFilter}
-          />
-          <Input
-            placeholder="Search across all accounts..."
-            value={searchQuery}
-            onValueChange={setSearchQuery}
-            startContent={
-              <Icon
-                icon="solar:magnifer-linear"
-                width={18}
-                className="text-text-tertiary"
-              />
-            }
-            classNames={{
-              base: "w-72",
-              inputWrapper: "bg-surface-base border-border-base",
-            }}
-          />
-        </div>
-
-        {/* Competitors Table */}
-        <AccountsTable
-          competitors={competitors}
-          platformFilter={platformFilter}
-          searchQuery={searchQuery}
-          accountPostStats={dashboardStats?.accountPostStats}
-          onViewCompetitor={handleViewCompetitor}
-          onSyncAccount={handleSyncAccount}
-          onDeleteAccount={handleDeleteAccount}
-        />
-      </div>
-
-      {/* Add Account Modal */}
->>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
       <AddAccountModal
         isOpen={isOpen}
         onClose={onClose}

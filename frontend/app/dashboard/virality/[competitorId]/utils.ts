@@ -1,7 +1,13 @@
 import type { ViralityPost } from "@/api/virality";
 import type { ComparisonMode } from "@/components/virality/ComparisonModeSelector";
 
-<<<<<<< HEAD
+/** Returns true if the post is an original post (not a retweet or sidecar) */
+export function isOriginalPost(post: ViralityPost): boolean {
+  const t = post.post_type?.toLowerCase();
+  if (!t) return true;
+  return t !== "sidecar" && t !== "retweet";
+}
+
 /** Compute % change for a post metric, optionally relative to a comparison date */
 export function getPostMetricChange(
   post: ViralityPost,
@@ -15,24 +21,12 @@ export function getPostMetricChange(
     ? findClosestEntry(h, comparisonDate)
     : h[h.length - 2];
   if (!prev || prev === latest) return null;
-=======
-/** Compute % change between last two metrics_history entries for a post */
-export function getPostMetricChange(
-  post: ViralityPost,
-  metric: "likes" | "comments" | "views"
-): number | null {
-  const h = post.metrics_history;
-  if (!h || h.length < 2) return null;
-  const prev = h[h.length - 2];
-  const latest = h[h.length - 1];
->>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
   const prevVal = metric === "views" ? (prev.views ?? 0) : prev[metric];
   const latestVal = metric === "views" ? (latest.views ?? 0) : latest[metric];
   if (prevVal === 0 || (metric === "views" && latestVal === 0)) return null;
   return ((latestVal - prevVal) / prevVal) * 100;
 }
 
-<<<<<<< HEAD
 /** Compute % change in engagement rate, optionally relative to a comparison date */
 export function getPostEngRateChange(
   post: ViralityPost,
@@ -54,8 +48,6 @@ export function getPostEngRateChange(
   return ((latestRate - prevRate) / prevRate) * 100;
 }
 
-=======
->>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
 /** Find the history entry closest to a target date */
 export function findClosestEntry<T extends { recorded_at: string }>(
   history: T[],
@@ -90,7 +82,6 @@ export function getComparisonDate(mode: ComparisonMode): Date | null {
   }
 }
 
-<<<<<<< HEAD
 export interface PostFrequencyDay {
   date: string;
   count: number;
@@ -135,54 +126,32 @@ export function buildPostFrequencyData(
 
 export interface AggregatedDay {
   hourKey: string;
-=======
-export interface AggregatedDay {
-  date: string;
->>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
   likes: number;
   comments: number;
   views: number;
 }
 
-<<<<<<< HEAD
 /** Aggregate post metrics per sync point (hourly), filtered to the last N weeks */
-=======
-/** Aggregate post metrics by day, filtered to the last N weeks */
->>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
 export function buildChartData(
   posts: ViralityPost[],
   weekFilter: number
 ): AggregatedDay[] {
-<<<<<<< HEAD
   const byHour = new Map<string, { likes: number; comments: number; views: number }>();
-=======
-  const byDate = new Map<string, { likes: number; comments: number; views: number }>();
->>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
 
   for (const post of posts) {
     if (!post.metrics_history?.length) continue;
     for (const entry of post.metrics_history) {
-<<<<<<< HEAD
       const hour = entry.recorded_at.slice(0, 13);
       const existing = byHour.get(hour) || { likes: 0, comments: 0, views: 0 };
       existing.likes += entry.likes;
       existing.comments += entry.comments;
       existing.views += entry.views ?? 0;
       byHour.set(hour, existing);
-=======
-      const day = entry.recorded_at.slice(0, 10);
-      const existing = byDate.get(day) || { likes: 0, comments: 0, views: 0 };
-      existing.likes += entry.likes;
-      existing.comments += entry.comments;
-      existing.views += entry.views ?? 0;
-      byDate.set(day, existing);
->>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
     }
   }
 
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - weekFilter * 7);
-<<<<<<< HEAD
   const cutoffStr = cutoff.toISOString().slice(0, 13);
 
   const sorted = Array.from(byHour.entries())
@@ -250,8 +219,20 @@ export function buildPostFrequencyDataFromRange(
   endDate?: string
 ): { data: PostFrequencyDay[]; isHourly: boolean } {
   const now = new Date();
-  const start = startDate ? new Date(startDate) : new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000);
   const end = endDate ? new Date(endDate) : now;
+
+  // When no startDate, use the earliest post date instead of a fixed window
+  let start: Date;
+  if (startDate) {
+    start = new Date(startDate);
+  } else {
+    const postDates = posts
+      .map((p) => p.posted_at ? new Date(p.posted_at).getTime() : 0)
+      .filter((t) => t > 0);
+    start = postDates.length > 0
+      ? new Date(Math.min(...postDates))
+      : new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000);
+  }
 
   const diffMs = end.getTime() - start.getTime();
   const diffDays = diffMs / (24 * 60 * 60 * 1000);
@@ -308,15 +289,4 @@ export function buildPostFrequencyDataFromRange(
   }
 
   return { data: result, isHourly: false };
-=======
-  const cutoffStr = cutoff.toISOString().slice(0, 10);
-
-  return Array.from(byDate.entries())
-    .filter(([date]) => date >= cutoffStr)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, vals]) => ({
-      date: new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-      ...vals,
-    }));
->>>>>>> 907f55fab65772aedff47f784ec0e0fd56e46d9b
 }
