@@ -4,36 +4,13 @@ import { useState } from "react";
 import { Card, CardBody, Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { ViralityPost, ViralityAccount } from "@/api/virality";
-import { formatNumber, formatDate } from "@/lib/formatters";
+import { formatNumber } from "@/lib/formatters";
+import { platformIcon, platformIconColor, timeAgo } from "@/lib/platformUtils";
 
 interface ActivityFeedProps {
   posts: ViralityPost[];
   accountMap: Record<number, ViralityAccount>;
   defaultCount?: number;
-}
-
-function getPlatformIcon(platform: string) {
-  if (platform === "x") return "ri:twitter-x-fill";
-  if (platform === "tiktok") return "ri:tiktok-fill";
-  return "ri:instagram-fill";
-}
-
-function getPlatformColor(platform: string) {
-  if (platform === "tiktok") return "text-cyan-400";
-  if (platform === "x") return "text-foreground";
-  return "text-pink-500";
-}
-
-function timeAgo(dateStr: string | null): string {
-  if (!dateStr) return "";
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
-  return formatDate(dateStr);
 }
 
 export function ActivityFeed({ posts, accountMap, defaultCount = 7 }: ActivityFeedProps) {
@@ -82,7 +59,7 @@ export function ActivityFeed({ posts, accountMap, defaultCount = 7 }: ActivityFe
                     <img src={post.thumbnail_url} alt="" className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <Icon icon={getPlatformIcon(platform)} width={18} className="text-text-tertiary" />
+                      <Icon icon={platformIcon(platform)} width={18} className="text-text-tertiary" />
                     </div>
                   )}
                 </div>
@@ -95,7 +72,7 @@ export function ActivityFeed({ posts, accountMap, defaultCount = 7 }: ActivityFe
                         @{account.username}
                       </span>
                     )}
-                    <Icon icon={getPlatformIcon(platform)} width={12} className={getPlatformColor(platform)} />
+                    <Icon icon={platformIcon(platform)} width={12} className={platformIconColor(platform)} />
                     {post.posted_at && (
                       <span className="text-[11px] text-text-tertiary ml-auto flex-shrink-0">
                         {timeAgo(post.posted_at)}

@@ -19,6 +19,7 @@ import {
   type ViralityPost,
 } from "@/api/virality";
 import { formatNumber } from "@/lib/formatters";
+import { CHART_COLORS } from "@/lib/platformUtils";
 import {
   DateRangeFilter,
   type DateRangeValue,
@@ -142,6 +143,16 @@ export default function CompetitorDetailPage() {
     return map;
   }, [activeAccounts, postsByAccount]);
 
+  /** All accounts' posts (filtered) — stable across tab switches, used for fixed chart axes */
+  const allFilteredPostsByAccount = useMemo(() => {
+    if (!competitor) return {};
+    const map: Record<number, ViralityPost[]> = {};
+    for (const a of competitor.accounts) {
+      map[a.id] = (postsByAccount[a.id] || []).filter(isOriginalPost);
+    }
+    return map;
+  }, [competitor, postsByAccount]);
+
   const accountPlatformMap = useMemo(() => {
     const map: Record<number, string> = {};
     if (competitor) for (const a of competitor.accounts) map[a.id] = a.platform;
@@ -151,6 +162,16 @@ export default function CompetitorDetailPage() {
   const accountSyncMap = useMemo(() => {
     const map: Record<number, string | null> = {};
     if (competitor) for (const a of competitor.accounts) map[a.id] = a.last_synced_at;
+    return map;
+  }, [competitor]);
+
+  const accountColorMap = useMemo(() => {
+    const map: Record<number, string> = {};
+    if (competitor) {
+      competitor.accounts.forEach((a, i) => {
+        map[a.id] = CHART_COLORS[i % CHART_COLORS.length];
+      });
+    }
     return map;
   }, [competitor]);
 
@@ -429,6 +450,9 @@ export default function CompetitorDetailPage() {
             <AnalyticsChart
               accounts={activeAccounts}
               postsByAccount={activePostsByAccount}
+              allAccounts={competitor.accounts}
+              allPostsByAccount={allFilteredPostsByAccount}
+              colorMap={accountColorMap}
             />
           </div>
           <div className="lg:col-span-1">
@@ -440,17 +464,27 @@ export default function CompetitorDetailPage() {
         </div>
 
         {/* Post Frequency + Best Performing Accounts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <PostFrequencyChart
-            posts={activePosts}
-            startDate={dateRange.startDate}
-            endDate={dateRange.endDate}
-          />
-          <BestPerformingAccounts
-            accounts={activeAccounts}
-            postsByAccount={activePostsByAccount}
-          />
-        </div>
+        {activeAccountId === "all" ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <PostFrequencyChart
+              posts={activePosts}
+              startDate={dateRange.startDate}
+              endDate={dateRange.endDate}
+            />
+            <BestPerformingAccounts
+              accounts={activeAccounts}
+              postsByAccount={activePostsByAccount}
+            />
+          </div>
+        ) : (
+          <div className="max-w-3xl mx-auto w-full">
+            <PostFrequencyChart
+              posts={activePosts}
+              startDate={dateRange.startDate}
+              endDate={dateRange.endDate}
+            />
+          </div>
+        )}
 
         {/* Top Performing Content Table */}
         <PostsTable

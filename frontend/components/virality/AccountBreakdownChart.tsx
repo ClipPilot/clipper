@@ -13,19 +13,7 @@ import {
 } from "recharts";
 import type { ViralityAccount, ViralityPost } from "@/api/virality";
 import { formatNumber } from "@/lib/formatters";
-import { ACCOUNT_COLORS } from "./AnalyticsChart";
-
-function platformIcon(platform: string) {
-  if (platform === "instagram") return "ri:instagram-fill";
-  if (platform === "x") return "ri:twitter-x-fill";
-  return "ri:tiktok-fill";
-}
-
-function platformIconColor(platform: string) {
-  if (platform === "instagram") return "text-pink-500";
-  if (platform === "x") return "text-foreground";
-  return "text-cyan-400";
-}
+import { platformIcon, platformIconColor, CHART_COLORS } from "@/lib/platformUtils";
 
 interface AccountEntry {
   name: string;
@@ -92,7 +80,7 @@ export function AccountBreakdownChart({
         name: `@${account.username}`,
         platform: account.platform,
         value: views,
-        fill: ACCOUNT_COLORS[i % ACCOUNT_COLORS.length],
+        fill: CHART_COLORS[i % CHART_COLORS.length],
       });
       sum += views;
     });

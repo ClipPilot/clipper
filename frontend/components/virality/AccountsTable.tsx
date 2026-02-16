@@ -21,8 +21,9 @@ import {
 import { Icon } from "@iconify/react";
 import type { CompetitorWithAccounts, AccountPostStats, ViralityAccount } from "@/api/virality";
 import { formatNumber } from "@/lib/formatters";
+import { platformIcon, platformChipClass, syncStatusColor, type Platform } from "@/lib/platformUtils";
 
-export type Platform = "tiktok" | "instagram" | "x";
+export type { Platform };
 
 interface FlatAccount {
   account: ViralityAccount;
@@ -89,31 +90,6 @@ export function AccountsTable({
     (page - 1) * rowsPerPage,
     page * rowsPerPage
   );
-
-  const getSyncChipColor = (status: string) => {
-    switch (status) {
-      case "completed": return "success";
-      case "failed": return "danger";
-      case "syncing": return "warning";
-      default: return "default";
-    }
-  };
-
-  const getPlatformIcon = (platform: string) => {
-    switch (platform) {
-      case "tiktok": return "ri:tiktok-fill";
-      case "x": return "ri:twitter-x-fill";
-      default: return "ri:instagram-fill";
-    }
-  };
-
-  const getPlatformChipClass = (platform: string) => {
-    switch (platform) {
-      case "tiktok": return "bg-cyan-500/10 text-cyan-500";
-      case "x": return "bg-foreground/10 text-foreground";
-      default: return "bg-pink-500/10 text-pink-500";
-    }
-  };
 
   const handleSync = async (accountId: number) => {
     if (!onSyncAccount) return;
@@ -214,11 +190,11 @@ export function AccountsTable({
                     size="sm"
                     variant="flat"
                     classNames={{
-                      base: `${getPlatformChipClass(fa.account.platform)} h-6 px-2`,
+                      base: `${platformChipClass(fa.account.platform)} h-6 px-2`,
                     }}
                     startContent={
                       <Icon
-                        icon={getPlatformIcon(fa.account.platform)}
+                        icon={platformIcon(fa.account.platform)}
                         width={12}
                       />
                     }
@@ -250,7 +226,7 @@ export function AccountsTable({
                   <Chip
                     size="sm"
                     variant="flat"
-                    color={getSyncChipColor(isSyncing ? "syncing" : fa.account.sync_status)}
+                    color={syncStatusColor(isSyncing ? "syncing" : fa.account.sync_status)}
                   >
                     {isSyncing ? "Syncing..." : fa.account.sync_status}
                   </Chip>

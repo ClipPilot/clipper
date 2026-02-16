@@ -1,11 +1,11 @@
 import type { ViralityPost } from "@/api/virality";
 import type { ComparisonMode } from "@/components/virality/ComparisonModeSelector";
 
-/** Returns true if the post is an original post (not a retweet or sidecar) */
+/** Returns true if the post is an original video/content post (excludes image posts, sidecars, retweets) */
 export function isOriginalPost(post: ViralityPost): boolean {
   const t = post.post_type?.toLowerCase();
   if (!t) return true;
-  return t !== "sidecar" && t !== "retweet";
+  return t !== "sidecar" && t !== "retweet" && t !== "image";
 }
 
 /** Compute % change for a post metric, optionally relative to a comparison date */

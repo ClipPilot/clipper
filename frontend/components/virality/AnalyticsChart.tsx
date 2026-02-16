@@ -18,18 +18,8 @@ import {
 } from "recharts";
 import type { ViralityAccount, ViralityPost } from "@/api/virality";
 import { formatChartValue } from "@/lib/formatters";
+import { CHART_COLORS } from "@/lib/platformUtils";
 import { buildChartDataByAccount } from "@/app/dashboard/virality/[competitorId]/utils";
-
-export const ACCOUNT_COLORS = [
-  "#6366F1",
-  "#22D3EE",
-  "#34D399",
-  "#A78BFA",
-  "#F472B6",
-  "#FBBF24",
-  "#FB923C",
-  "#F87171",
-];
 
 type ChartMetricKey = "likes" | "comments" | "views";
 
@@ -44,7 +34,7 @@ function formatHourKey(hourKey: string) {
 }
 
 /** Custom XAxis tick: shows date on line 1, time on line 2. Only shows date when the day changes. */
-function SyncTick({ x, y, payload, index, visibleTicksCount, chartData }: any) {
+function SyncTick({ x, y, payload, index, chartData }: any) {
   if (!payload?.value) return null;
   const hourKey = payload.value;
   const { date, time } = formatHourKey(hourKey);
@@ -80,23 +70,61 @@ function SyncTick({ x, y, payload, index, visibleTicksCount, chartData }: any) {
 interface AnalyticsChartProps {
   accounts: ViralityAccount[];
   postsByAccount: Record<number, ViralityPost[]>;
+  /** All accounts (for stable axis domains across tab switches) */
+  allAccounts?: ViralityAccount[];
+  /** All accounts' posts (for stable axis domains across tab switches) */
+  allPostsByAccount?: Record<number, ViralityPost[]>;
+  /** Stable color map keyed by account ID. When provided, colors stay consistent across tab switches. */
+  colorMap?: Record<number, string>;
 }
 
-export function AnalyticsChart({ accounts, postsByAccount }: AnalyticsChartProps) {
+export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPostsByAccount, colorMap }: AnalyticsChartProps) {
   const [activeMetric, setActiveMetric] = useState<ChartMetricKey>("views");
 
-  const chartData = useMemo(
+  const getColor = (account: ViralityAccount, index: number) =>
+    colorMap?.[account.id] ?? CHART_COLORS[index % CHART_COLORS.length];
+
+  // Build chart data from ALL accounts so X-axis (time points) stays stable
+  const axisAccounts = allAccounts ?? accounts;
+  const axisPostsByAccount = allPostsByAccount ?? postsByAccount;
+
+  const fullChartData = useMemo(
     () =>
       buildChartDataByAccount(
-        postsByAccount,
-        accounts.map((a) => a.id),
+        axisPostsByAccount,
+        axisAccounts.map((a) => a.id),
         4,
         activeMetric
       ),
-    [postsByAccount, accounts, activeMetric]
+    [axisPostsByAccount, axisAccounts, activeMetric]
   );
 
-  const hasData = chartData.length > 0;
+  // The visible chart data includes all time points but only active accounts' values
+  const chartData = useMemo(() => {
+    const activeIds = new Set(accounts.map((a) => a.id));
+    return fullChartData.map((point) => {
+      const filtered: Record<string, string | number> = { hourKey: point.hourKey };
+      for (const account of accounts) {
+        filtered[`account_${account.id}`] = point[`account_${account.id}`] ?? 0;
+      }
+      return filtered;
+    });
+  }, [fullChartData, accounts]);
+
+  // Y-axis domain from full data (all accounts aggregated per time point)
+  const yDomain = useMemo(() => {
+    let max = 0;
+    for (const point of fullChartData) {
+      let sum = 0;
+      for (const key of Object.keys(point)) {
+        if (key.startsWith("account_")) sum += (point[key] as number) || 0;
+      }
+      if (sum > max) max = sum;
+    }
+    return [0, max > 0 ? max : "auto"] as [number, number | "auto"];
+  }, [fullChartData]);
+
+  const hasData = fullChartData.length > 0;
 
   const totals = useMemo(() => {
     let likes = 0,
@@ -151,8 +179,7 @@ export function AnalyticsChart({ accounts, postsByAccount }: AnalyticsChartProps
                     <div
                       className="w-3 h-[3px] rounded-full"
                       style={{
-                        backgroundColor:
-                          ACCOUNT_COLORS[i % ACCOUNT_COLORS.length],
+                        backgroundColor: getColor(account, i),
                       }}
                     />
                     <span className="text-xs text-text-tertiary">
@@ -216,31 +243,22 @@ export function AnalyticsChart({ accounts, postsByAccount }: AnalyticsChartProps
                 margin={{ left: 0, right: 0 }}
               >
                 <defs>
-                  {accounts.map((account, i) => (
-                    <linearGradient
-                      key={account.id}
-                      id={`gradient-${account.id}`}
-                      x1="0"
-                      x2="0"
-                      y1="0"
-                      y2="1"
-                    >
-                      <stop
-                        offset="10%"
-                        stopColor={
-                          ACCOUNT_COLORS[i % ACCOUNT_COLORS.length]
-                        }
-                        stopOpacity={0.2}
-                      />
-                      <stop
-                        offset="100%"
-                        stopColor={
-                          ACCOUNT_COLORS[i % ACCOUNT_COLORS.length]
-                        }
-                        stopOpacity={0.02}
-                      />
-                    </linearGradient>
-                  ))}
+                  {accounts.map((account, i) => {
+                    const color = getColor(account, i);
+                    return (
+                      <linearGradient
+                        key={account.id}
+                        id={`gradient-${account.id}`}
+                        x1="0"
+                        x2="0"
+                        y1="0"
+                        y2="1"
+                      >
+                        <stop offset="10%" stopColor={color} stopOpacity={0.2} />
+                        <stop offset="100%" stopColor={color} stopOpacity={0.02} />
+                      </linearGradient>
+                    );
+                  })}
                 </defs>
                 <CartesianGrid
                   stroke="hsl(var(--heroui-default-200))"
@@ -258,6 +276,7 @@ export function AnalyticsChart({ accounts, postsByAccount }: AnalyticsChartProps
                 <YAxis
                   axisLine={false}
                   tickLine={false}
+                  domain={yDomain}
                   width={50}
                   style={{ fontSize: "var(--heroui-font-size-tiny)" }}
                   tickFormatter={formatChartValue}
@@ -304,24 +323,27 @@ export function AnalyticsChart({ accounts, postsByAccount }: AnalyticsChartProps
                   }}
                   cursor={{ strokeWidth: 0 }}
                 />
-                {accounts.map((account, i) => (
-                  <Area
-                    key={account.id}
-                    activeDot={{
-                      stroke: ACCOUNT_COLORS[i % ACCOUNT_COLORS.length],
-                      strokeWidth: 2,
-                      fill: "hsl(var(--heroui-background))",
-                      r: 4,
-                    }}
-                    animationDuration={800}
-                    animationEasing="ease-in-out"
-                    dataKey={`account_${account.id}`}
-                    fill={`url(#gradient-${account.id})`}
-                    stroke={ACCOUNT_COLORS[i % ACCOUNT_COLORS.length]}
-                    strokeWidth={2.5}
-                    type="monotone"
-                  />
-                ))}
+                {accounts.map((account, i) => {
+                  const color = getColor(account, i);
+                  return (
+                    <Area
+                      key={account.id}
+                      activeDot={{
+                        stroke: color,
+                        strokeWidth: 2,
+                        fill: "hsl(var(--heroui-background))",
+                        r: 4,
+                      }}
+                      animationDuration={800}
+                      animationEasing="ease-in-out"
+                      dataKey={`account_${account.id}`}
+                      fill={`url(#gradient-${account.id})`}
+                      stroke={color}
+                      strokeWidth={2.5}
+                      type="monotone"
+                    />
+                  );
+                })}
               </AreaChart>
             </ResponsiveContainer>
           </div>

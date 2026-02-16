@@ -5,6 +5,7 @@ import { Card, CardBody, Avatar, Button, Chip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { ViralityAccount } from "@/api/virality";
 import { formatNumber } from "@/lib/formatters";
+import { platformIcon, platformIconColor, syncStatusColor, timeAgo } from "@/lib/platformUtils";
 
 interface AccountCardProps {
   account: ViralityAccount;
@@ -40,33 +41,6 @@ export function AccountCard({
     }
   };
 
-  const getSyncStatusColor = () => {
-    switch (account.sync_status) {
-      case "completed":
-        return "success";
-      case "failed":
-        return "danger";
-      case "syncing":
-        return "warning";
-      default:
-        return "default";
-    }
-  };
-
-  const formatLastSynced = () => {
-    if (!account.last_synced_at) return "Never synced";
-    const date = new Date(account.last_synced_at);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    return `${diffDays}d ago`;
-  };
 
   return (
     <Card
@@ -100,14 +74,14 @@ export function AccountCard({
             </div>
             <p className="text-sm text-text-tertiary">@{account.username}</p>
             <div className="flex items-center gap-1 mt-1">
-              <Icon icon="ri:instagram-fill" className="text-pink-500" width={14} />
-              <span className="text-xs text-text-tertiary">Instagram</span>
+              <Icon icon={platformIcon(account.platform)} className={platformIconColor(account.platform)} width={14} />
+              <span className="text-xs text-text-tertiary capitalize">{account.platform}</span>
             </div>
           </div>
           <Chip
             size="sm"
             variant="flat"
-            color={getSyncStatusColor()}
+            color={syncStatusColor(account.sync_status)}
             classNames={{
               base: "capitalize",
             }}
@@ -144,7 +118,7 @@ export function AccountCard({
               width={12}
               className="inline mr-1"
             />
-            {formatLastSynced()}
+            {account.last_synced_at ? timeAgo(account.last_synced_at) : "Never synced"}
           </p>
           {account.sync_error && (
             <p className="text-xs text-red-500 truncate max-w-[150px]">

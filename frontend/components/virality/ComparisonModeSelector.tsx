@@ -16,7 +16,6 @@ import { Icon } from "@iconify/react";
 import {
   today,
   getLocalTimeZone,
-  CalendarDate,
   type DateValue,
 } from "@internationalized/date";
 

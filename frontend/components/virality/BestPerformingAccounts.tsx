@@ -5,18 +5,7 @@ import { Card, CardBody, Avatar } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { ViralityAccount, ViralityPost } from "@/api/virality";
 import { formatNumber } from "@/lib/formatters";
-
-function platformIcon(platform: string) {
-  if (platform === "instagram") return "ri:instagram-fill";
-  if (platform === "x") return "ri:twitter-x-fill";
-  return "ri:tiktok-fill";
-}
-
-function platformIconColor(platform: string) {
-  if (platform === "instagram") return "text-pink-500";
-  if (platform === "x") return "text-foreground";
-  return "text-cyan-400";
-}
+import { platformIcon, platformIconColor } from "@/lib/platformUtils";
 
 interface BestPerformingAccountsProps {
   accounts: ViralityAccount[];

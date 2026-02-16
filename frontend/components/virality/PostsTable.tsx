@@ -16,6 +16,7 @@ import {
 import { Icon } from "@iconify/react";
 import type { ViralityPost } from "@/api/virality";
 import { formatNumber, formatDate } from "@/lib/formatters";
+import { platformIcon, platformIconColor } from "@/lib/platformUtils";
 import { getPostMetricChange, getPostEngRateChange, getComparisonDate } from "@/app/dashboard/virality/[competitorId]/utils";
 import { ComparisonModeSelector, type ComparisonMode } from "@/components/virality/ComparisonModeSelector";
 
@@ -35,12 +36,6 @@ function MetricChangeIndicator({ change }: { change: number | null }) {
       <span className="text-[10px] font-medium">{Math.abs(change).toFixed(1)}%</span>
     </div>
   );
-}
-
-function getPlatformIcon(platform: string): string {
-  if (platform === "x") return "ri:twitter-x-fill";
-  if (platform === "tiktok") return "ri:tiktok-fill";
-  return "mdi:instagram";
 }
 
 export function PostsTable({ posts, accountPlatformMap, comparisonMode, onComparisonModeChange }: PostsTableProps) {
@@ -105,7 +100,7 @@ export function PostsTable({ posts, accountPlatformMap, comparisonMode, onCompar
                   {!post.thumbnail_url ? (
                     <div className="w-8 h-8 rounded-sm bg-surface-hover flex items-center justify-center flex-shrink-0">
                       <Icon
-                        icon={getPlatformIcon(accountPlatformMap[post.account_id])}
+                        icon={platformIcon(accountPlatformMap[post.account_id])}
                         width={20}
                         className="text-text-tertiary"
                       />
@@ -128,15 +123,9 @@ export function PostsTable({ posts, accountPlatformMap, comparisonMode, onCompar
               </TableCell>
               <TableCell>
                 <Icon
-                  icon={getPlatformIcon(accountPlatformMap[post.account_id])}
+                  icon={platformIcon(accountPlatformMap[post.account_id])}
                   width={16}
-                  className={
-                    accountPlatformMap[post.account_id] === "tiktok"
-                      ? "text-cyan-400"
-                      : accountPlatformMap[post.account_id] === "x"
-                        ? "text-foreground"
-                        : "text-pink-500"
-                  }
+                  className={platformIconColor(accountPlatformMap[post.account_id])}
                 />
               </TableCell>
               <TableCell>
