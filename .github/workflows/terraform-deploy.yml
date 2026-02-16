@@ -110,6 +110,12 @@ jobs:
           frontend_url        = "https://platform.cuttr.com"
           EOF
 
+      - name: Import existing virality-sync resources
+        run: |
+          terraform import aws_ecr_repository.virality_sync_lambda clipster-virality-sync-lambda 2>/dev/null || true
+          terraform import aws_iam_role.virality_sync_lambda clipster-virality-sync-lambda-role 2>/dev/null || true
+          terraform import aws_cloudwatch_log_group.virality_sync_lambda /aws/lambda/clipster-virality-sync 2>/dev/null || true
+
       - name: Terraform Plan
         id: plan
         run: terraform plan -no-color -out=tfplan
@@ -232,6 +238,12 @@ jobs:
           api_domain          = "api.cuttr.com"
           frontend_url        = "https://platform.cuttr.com"
           EOF
+
+      - name: Import existing virality-sync resources
+        run: |
+          terraform import aws_ecr_repository.virality_sync_lambda clipster-virality-sync-lambda 2>/dev/null || true
+          terraform import aws_iam_role.virality_sync_lambda clipster-virality-sync-lambda-role 2>/dev/null || true
+          terraform import aws_cloudwatch_log_group.virality_sync_lambda /aws/lambda/clipster-virality-sync 2>/dev/null || true
 
       - name: Download Terraform Plan
         uses: actions/download-artifact@v4

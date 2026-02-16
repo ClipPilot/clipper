@@ -1105,7 +1105,7 @@ export class ComfyController {
 
                 await db
                   .update(comfyJobs)
-                  .set({ progress: 60, progressMessage: "Applying lip sync" })
+                  .set({ progress: 60, progressMessage: "Processing" })
                   .where(eq(comfyJobs.id, jobId));
                 emitComfyJobUpdate(teamId, {
                   id: jobId,
