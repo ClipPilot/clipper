@@ -8,8 +8,8 @@ import {
   Input,
   Tabs,
   Tab,
-  Spinner,
   addToast,
+  Spinner,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useTeams } from "@/hooks/useTeams";
@@ -33,23 +33,8 @@ import { AnalyticsChart } from "@/components/virality/AnalyticsChart";
 import { PostFrequencyChart } from "@/components/virality/PostFrequencyChart";
 import { AccountBreakdownChart } from "@/components/virality/AccountBreakdownChart";
 import { BestPerformingAccounts } from "@/components/virality/BestPerformingAccounts";
-import { findClosestEntry, getComparisonDate } from "./utils";
-
-function RecalcOverlay({ active, children }: { active: boolean; children: React.ReactNode }) {
-  return (
-    <div className="relative">
-      {children}
-      {active && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-surface-dark/60 rounded-xl backdrop-blur-[1px]">
-          <div className="flex items-center gap-2 text-text-secondary text-sm">
-            <Spinner size="sm" />
-            <span>Recalculating…</span>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+import { RecalcOverlay } from "@/components/virality/RecalcOverlay";
+import { findClosestEntry, getComparisonDate, pct, computePostsPerWeek } from "./utils";
 
 // ─── Page Component ──────────────────────────────────────────────────────────
 
@@ -224,9 +209,6 @@ export default function CompetitorDetailPage() {
       latestViews += latest.views ?? 0;
     }
 
-    const pct = (latest: number, prev: number) =>
-      prev > 0 ? ((latest - prev) / prev) * 100 : null;
-
     let prevFollowers = 0, latestFollowers = 0;
     let hasFollowerHistory = false;
     for (const a of activeAccounts) {
@@ -261,17 +243,7 @@ export default function CompetitorDetailPage() {
     };
   }, [activeAccounts, activePosts, comparisonMode]);
 
-  const contentVelocity = useMemo(() => {
-    if (activePosts.length < 2) return { value: activePosts.length, label: "posts/week" };
-    const dates = activePosts
-      .map((p) => p.posted_at ? new Date(p.posted_at).getTime() : 0)
-      .filter((t) => t > 0);
-    if (dates.length < 2) return { value: activePosts.length, label: "posts/week" };
-    const earliest = Math.min(...dates);
-    const latest = Math.max(...dates);
-    const weeks = Math.max((latest - earliest) / (7 * 24 * 60 * 60 * 1000), 1);
-    return { value: +(dates.length / weeks).toFixed(1), label: "posts/week" };
-  }, [activePosts]);
+  const postsPerWeek = useMemo(() => computePostsPerWeek(activePosts), [activePosts]);
 
   // ─── Loading / Error states ──────────────────────────────────────────────────
 
@@ -343,7 +315,7 @@ export default function CompetitorDetailPage() {
     },
     {
       title: "CONTENT VELOCITY",
-      value: String(contentVelocity.value),
+      value: String(postsPerWeek),
       icon: "solar:rocket-2-bold",
       iconColor: "text-purple-500",
       iconBg: "bg-purple-500/10",

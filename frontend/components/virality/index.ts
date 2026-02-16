@@ -12,3 +12,4 @@ export { AccountBreakdownChart } from "./AccountBreakdownChart";
 export { BestPerformingAccounts } from "./BestPerformingAccounts";
 export { ActivityFeed } from "./ActivityFeed";
 export { HeadToHeadTable } from "./HeadToHeadTable";
+export { RecalcOverlay } from "./RecalcOverlay";

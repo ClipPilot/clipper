@@ -3,31 +3,16 @@
 import { useState, useMemo, useCallback, useRef } from "react";
 import { Card, CardBody, Tooltip, cn } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import type { ViralityPost, ViralityAccount, MetricsEntry } from "@/api/virality";
+import type { ViralityPost, ViralityAccount } from "@/api/virality";
 import type { DateRangeValue } from "@/components/virality/DateRangeFilter";
 import { formatNumber } from "@/lib/formatters";
 import { platformIcon, platformIconColor, timeAgo } from "@/lib/platformUtils";
+import { findClosestEntry } from "@/app/dashboard/virality/[competitorId]/utils";
 
 type ContentFilter = "all" | "viral" | "recent";
 
 const VIRAL_VIEW_THRESHOLD = 50_000;
 const PAGE_SIZE = 20;
-
-/** Find the metrics_history entry closest to a given date */
-function findClosestEntry(history: MetricsEntry[], target: Date): MetricsEntry | null {
-  if (!history || history.length === 0) return null;
-  const targetMs = target.getTime();
-  let closest: MetricsEntry | null = null;
-  let closestDiff = Infinity;
-  for (const entry of history) {
-    const diff = Math.abs(new Date(entry.recorded_at).getTime() - targetMs);
-    if (diff < closestDiff) {
-      closestDiff = diff;
-      closest = entry;
-    }
-  }
-  return closest;
-}
 
 /** Calculate views gained within a date range using metrics_history */
 function getViewsInRange(

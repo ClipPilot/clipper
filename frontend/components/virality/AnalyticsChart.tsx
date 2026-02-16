@@ -104,7 +104,6 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
 
   // The visible chart data includes all time points but only active accounts' values
   const chartData = useMemo(() => {
-    const activeIds = new Set(accounts.map((a) => a.id));
     return fullChartData.map((point) => {
       const filtered: Record<string, string | number> = { hourKey: point.hourKey };
       for (const account of accounts) {

@@ -1,6 +1,24 @@
 import type { ViralityPost } from "@/api/virality";
 import type { ComparisonMode } from "@/components/virality/ComparisonModeSelector";
 
+/** Percentage change helper — returns null when prev is 0 */
+export function pct(latest: number, prev: number): number | null {
+  return prev > 0 ? ((latest - prev) / prev) * 100 : null;
+}
+
+/** Average posts per week calculated from posted_at timestamps */
+export function computePostsPerWeek(posts: ViralityPost[]): number {
+  if (posts.length < 2) return posts.length;
+  const dates = posts
+    .map((p) => (p.posted_at ? new Date(p.posted_at).getTime() : 0))
+    .filter((t) => t > 0);
+  if (dates.length < 2) return posts.length;
+  const earliest = Math.min(...dates);
+  const latest = Math.max(...dates);
+  const weeks = Math.max((latest - earliest) / (7 * 24 * 60 * 60 * 1000), 1);
+  return +(dates.length / weeks).toFixed(1);
+}
+
 /** Compute % change for a post metric, optionally relative to a comparison date */
 export function getPostMetricChange(
   post: ViralityPost,
@@ -78,83 +96,6 @@ export function getComparisonDate(mode: ComparisonMode): Date | null {
 export interface PostFrequencyDay {
   date: string;
   count: number;
-}
-
-/** Group posts by posted_at date and count per day, filling gaps with 0 */
-export function buildPostFrequencyData(
-  posts: ViralityPost[],
-  weekFilter: number
-): PostFrequencyDay[] {
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - weekFilter * 7);
-  const cutoffStr = cutoff.toISOString().slice(0, 10);
-
-  const byDate = new Map<string, number>();
-
-  for (const post of posts) {
-    if (!post.posted_at) continue;
-    const day = post.posted_at.slice(0, 10);
-    if (day < cutoffStr) continue;
-    byDate.set(day, (byDate.get(day) || 0) + 1);
-  }
-
-  // Fill gaps between cutoff and today
-  const result: PostFrequencyDay[] = [];
-  const current = new Date(cutoff);
-  current.setDate(current.getDate() + 1);
-  const today = new Date();
-  today.setHours(23, 59, 59, 999);
-
-  while (current <= today) {
-    const dayStr = current.toISOString().slice(0, 10);
-    result.push({
-      date: new Date(dayStr).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-      count: byDate.get(dayStr) || 0,
-    });
-    current.setDate(current.getDate() + 1);
-  }
-
-  return result;
-}
-
-export interface AggregatedDay {
-  hourKey: string;
-  likes: number;
-  comments: number;
-  views: number;
-}
-
-/** Aggregate post metrics per sync point (hourly), filtered to the last N weeks */
-export function buildChartData(
-  posts: ViralityPost[],
-  weekFilter: number
-): AggregatedDay[] {
-  const byHour = new Map<string, { likes: number; comments: number; views: number }>();
-
-  for (const post of posts) {
-    if (!post.metrics_history?.length) continue;
-    for (const entry of post.metrics_history) {
-      const hour = entry.recorded_at.slice(0, 13);
-      const existing = byHour.get(hour) || { likes: 0, comments: 0, views: 0 };
-      existing.likes += entry.likes;
-      existing.comments += entry.comments;
-      existing.views += entry.views ?? 0;
-      byHour.set(hour, existing);
-    }
-  }
-
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - weekFilter * 7);
-  const cutoffStr = cutoff.toISOString().slice(0, 13);
-
-  const sorted = Array.from(byHour.entries())
-    .filter(([hour]) => hour >= cutoffStr)
-    .sort(([a], [b]) => a.localeCompare(b));
-
-  return sorted.map(([hour, vals]) => ({
-    hourKey: hour,
-    ...vals,
-  }));
 }
 
 export interface AccountChartDay {

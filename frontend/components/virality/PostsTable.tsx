@@ -11,7 +11,6 @@ import {
   Avatar,
   Pagination,
   Button,
-  Tooltip,
   Dropdown,
   DropdownTrigger,
   DropdownMenu,
@@ -297,11 +296,6 @@ export function PostsTable({ posts, accountPlatformMap, comparisonMode, onCompar
               currentSort={sortKey}
               currentDir={sortDir}
               onSort={handleSort}
-              // extra={
-              //   <Tooltip content="(Likes + Comments) / Views" placement="top" size="sm">
-              //     <Icon icon="solar:info-circle-linear" width={14} className="text-default-400 cursor-help" />
-              //   </Tooltip>
-              // }
             />
           </TableColumn>
           <TableColumn>

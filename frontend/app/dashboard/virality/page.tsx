@@ -25,22 +25,23 @@ import {
   type ViralityAccount,
 } from "@/api/virality";
 import { formatNumber } from "@/lib/formatters";
+import { RecalcOverlay } from "@/components/virality/RecalcOverlay";
+import { pct, computePostsPerWeek } from "@/app/dashboard/virality/[competitorId]/utils";
 
-function RecalcOverlay({ active, children }: { active: boolean; children: React.ReactNode }) {
-  return (
-    <div className="relative">
-      {children}
-      {active && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-surface-dark/60 rounded-xl backdrop-blur-[1px]">
-          <div className="flex items-center gap-2 text-text-secondary text-sm">
-            <Spinner size="sm" />
-            <span>Recalculating…</span>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+const AVATAR_COLORS = [
+  "border-accent-400 text-accent-400",
+  "border-purple-500 text-purple-500",
+  "border-emerald-500 text-emerald-500",
+  "border-amber-500 text-amber-500",
+  "border-blue-500 text-blue-500",
+  "border-pink-500 text-pink-500",
+];
+
+const PLATFORM_DOTS: Record<string, string> = {
+  instagram: "bg-pink-500",
+  tiktok: "bg-cyan-400",
+  x: "bg-foreground",
+};
 
 export default function ViralityPage() {
   const router = useRouter();
@@ -139,10 +140,6 @@ export default function ViralityPage() {
     return Object.values(allPostsByAccountUnfiltered).flat();
   }, [allPostsByAccountUnfiltered]);
 
-  // Per-competitor computed stats
-  const AVATAR_COLORS = ["border-accent-400 text-accent-400", "border-purple-500 text-purple-500", "border-emerald-500 text-emerald-500", "border-amber-500 text-amber-500", "border-blue-500 text-blue-500", "border-pink-500 text-pink-500"];
-  const PLATFORM_DOTS: Record<string, string> = { instagram: "bg-pink-500", tiktok: "bg-cyan-400", x: "bg-foreground" };
-
   const competitorCards = useMemo(() => {
     return competitors.map((comp) => {
       const posts = comp.accounts.flatMap((a) => postsByAccount[a.id] || []);
@@ -153,16 +150,7 @@ export default function ViralityPage() {
       const engRate = totalViews > 0 ? ((totalLikes + totalComments) / totalViews) * 100 : 0;
       const avgViews = posts.length > 0 ? Math.round(totalViews / posts.length) : 0;
 
-      // posts per week
-      let postsPerWeek = 0;
-      if (posts.length >= 2) {
-        const dates = posts.map((p) => p.posted_at ? new Date(p.posted_at).getTime() : 0).filter(Boolean);
-        if (dates.length >= 2) {
-          const span = Math.max(...dates) - Math.min(...dates);
-          const weeks = Math.max(span / (7 * 24 * 60 * 60 * 1000), 1);
-          postsPerWeek = +(dates.length / weeks).toFixed(1);
-        }
-      }
+      const postsPerWeek = computePostsPerWeek(posts);
 
       // Compute changes from metrics_history (last two entries)
       let prevLikes = 0, prevComments = 0, prevViews = 0;
@@ -191,9 +179,6 @@ export default function ViralityPage() {
         prevFollowers += fh[fh.length - 2].followers;
         latestFollowers += fh[fh.length - 1].followers;
       }
-
-      const pct = (latest: number, prev: number) =>
-        prev > 0 ? ((latest - prev) / prev) * 100 : null;
 
       const followersChange = hasFollowerHistory ? pct(latestFollowers, prevFollowers) : null;
       const viewsChange = hasHistory ? pct(latestViews, prevViews) : null;
