@@ -114,6 +114,9 @@ jobs:
           # Custom Domain
           api_domain          = "api.cuttr.com"
           frontend_url        = "https://platform.cuttr.com"
+
+          # Status Dashboard
+          status_cron_secret  = "${{ secrets.STATUS_CRON_SECRET }}"
           EOF
 
       - name: Terraform Plan
@@ -243,6 +246,9 @@ jobs:
           # Custom Domain
           api_domain          = "api.cuttr.com"
           frontend_url        = "https://platform.cuttr.com"
+
+          # Status Dashboard
+          status_cron_secret  = "${{ secrets.STATUS_CRON_SECRET }}"
           EOF
 
       - name: Download Terraform Plan

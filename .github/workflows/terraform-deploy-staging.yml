@@ -113,12 +113,18 @@ jobs:
           # Virality
           apify_api_token    = "${{ secrets.APIFY_API_TOKEN }}"
 
+          # Ad Posting
+          ad_posting_webhook_secret = "${{ secrets.AD_POSTING_WEBHOOK_SECRET }}"
+
           # Custom Domain
           api_domain          = "api-staging.cuttr.com"
           frontend_url        = "https://beta.cuttr.com"
 
           # Use prod S3 bucket so staging can access the same clips
           shared_s3_bucket    = "clipster-videos-prod-${{ secrets.AWS_ACCOUNT_ID }}"
+
+          # Status Dashboard
+          status_cron_secret  = "${{ secrets.STATUS_CRON_SECRET }}"
           EOF
 
       - name: Import existing ECR repos (if not in state)
@@ -251,12 +257,18 @@ jobs:
           # Virality
           apify_api_token    = "${{ secrets.APIFY_API_TOKEN }}"
 
+          # Ad Posting
+          ad_posting_webhook_secret = "${{ secrets.AD_POSTING_WEBHOOK_SECRET }}"
+
           # Custom Domain
           api_domain          = "api-staging.cuttr.com"
           frontend_url        = "https://beta.cuttr.com"
 
           # Use prod S3 bucket so staging can access the same clips
           shared_s3_bucket    = "clipster-videos-prod-${{ secrets.AWS_ACCOUNT_ID }}"
+
+          # Status Dashboard
+          status_cron_secret  = "${{ secrets.STATUS_CRON_SECRET }}"
           EOF
 
       - name: Import existing ECR repos (if not in state)

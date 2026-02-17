@@ -1,0 +1,26 @@
+{
+  "name": "cuttr-status",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 3005",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.700.0",
+    "@aws-sdk/lib-dynamodb": "^3.700.0",
+    "next": "15.3.6",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.1.11",
+    "@types/node": "20.5.7",
+    "@types/react": "18.3.3",
+    "@types/react-dom": "18.3.0",
+    "postcss": "8.5.6",
+    "tailwindcss": "4.1.11",
+    "typescript": "5.6.3"
+  }
+}

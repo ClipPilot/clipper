@@ -1,0 +1,80 @@
+---
+title: "Rate Limits"
+description: "API rate limits and how to handle them"
+---
+
+## Default limits
+
+Each API key is rate-limited to **60 requests per minute** using a sliding window.
+
+| Limit | Value |
+|-------|-------|
+| Requests per minute | 60 |
+| Window | 1 minute (sliding) |
+| Scope | Per API key |
+
+Rate limits are tracked per key, not per team. If you have multiple keys, each gets its own 60 req/min allowance.
+
+## Rate limit headers
+
+When you hit the rate limit, the API returns:
+
+```json
+{
+  "error": "Rate limit exceeded"
+}
+```
+
+With the following header:
+
+| Header | Description |
+|--------|-------------|
+| `Retry-After` | Seconds until the rate limit resets |
+
+## Handling rate limits
+
+<CodeGroup>
+
+```javascript Node.js
+async function callWithRetry(url, options, maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    const response = await fetch(url, options);
+
+    if (response.status === 429) {
+      const retryAfter = parseInt(response.headers.get("Retry-After") || "5");
+      await new Promise((r) => setTimeout(r, retryAfter * 1000));
+      continue;
+    }
+
+    return response;
+  }
+
+  throw new Error("Max retries exceeded");
+}
+```
+
+```python Python
+import time
+import requests
+
+def call_with_retry(url, headers, max_retries=3):
+    for _ in range(max_retries):
+        response = requests.get(url, headers=headers)
+
+        if response.status_code == 429:
+            retry_after = int(response.headers.get("Retry-After", 5))
+            time.sleep(retry_after)
+            continue
+
+        return response
+
+    raise Exception("Max retries exceeded")
+```
+
+</CodeGroup>
+
+## Best practices
+
+- **Spread requests evenly** — avoid bursting 60 requests at once and then waiting
+- **Use exponential backoff** — when retrying after a 429, increase the wait time with each retry
+- **Use separate keys for separate services** — if you have multiple integrations, create a key for each to get independent rate limits

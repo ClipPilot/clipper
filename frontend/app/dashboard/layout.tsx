@@ -286,6 +286,23 @@ export default function DashboardLayout({
                 >
                   Settings
                 </DropdownItem>
+                <DropdownItem
+                  key="api-platform"
+                  startContent={
+                    <Icon
+                      icon="solar:code-bold-duotone"
+                      width={20}
+                      className="text-text-secondary"
+                    />
+                  }
+                  onPress={() => router.push("/dashboard/api-platform")}
+                  classNames={{
+                    base: "rounded-lg hover:bg-surface-elevated",
+                    title: "text-text-primary font-medium",
+                  }}
+                >
+                  API Platform
+                </DropdownItem>
                 {canViewPricing ? (
                   <DropdownItem
                     key="pricing"
