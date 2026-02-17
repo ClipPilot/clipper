@@ -32,7 +32,7 @@ interface UsageStats {
 }
 
 interface PaidPlanViewProps {
-  currentPlan: "studio" | "scale" | "enterprise";
+  currentPlan: "creator" | "studio" | "scale" | "enterprise";
   teamName?: string;
   teamId?: number;
   isOwner?: boolean;
@@ -42,7 +42,7 @@ interface PaidPlanViewProps {
   loadingChangePlan?: boolean;
   onManageSubscription: () => void;
   onBuyAddon: () => void;
-  onChangePlan?: (newPlan: "studio" | "scale") => Promise<{ effectiveDate: string } | void>;
+  onChangePlan?: (newPlan: "creator" | "studio" | "scale") => Promise<{ effectiveDate: string } | void>;
 }
 
 export function PaidPlanView({
@@ -68,9 +68,10 @@ export function PaidPlanView({
   const isEnterprise = currentPlan === "enterprise";
   const isScale = currentPlan === "scale";
   const isStudio = currentPlan === "studio";
-  // Only allow upgrades (Studio → Scale), not downgrades (Scale → Studio)
-  const canChangePlan = isOwner && isStudio && onChangePlan;
-  const targetPlan = "scale"; // Only upgrade path available
+  const isCreator = currentPlan === "creator";
+  // Only allow upgrades, not downgrades
+  const canChangePlan = isOwner && (isCreator || isStudio) && onChangePlan;
+  const targetPlan: "studio" | "scale" = isCreator ? "studio" : "scale";
 
   const handleChangePlan = async () => {
     if (!onChangePlan) return;
@@ -88,15 +89,54 @@ export function PaidPlanView({
         return "Enterprise";
       case "scale":
         return "Scale";
-      default:
+      case "studio":
         return "Studio";
+      case "creator":
+        return "Creator";
+      default:
+        return "Creator";
     }
   };
 
   const getColorClass = () => {
     if (isEnterprise) return "emerald-500";
     if (isScale) return "purple-500";
+    if (isCreator) return "orange-500";
     return "accent-400";
+  };
+
+  const getTargetPlanDetails = () => {
+    if (isCreator) {
+      return {
+        name: "Studio",
+        color: "accent-400",
+        credits: "400 credits/month",
+        extra1: "Virality Tracker",
+        extra2: "Priority support",
+      };
+    }
+    return {
+      name: "Scale",
+      color: "purple-500",
+      credits: "1,000 credits/month",
+      extra1: "Team seats included",
+      extra2: "Folder management",
+    };
+  };
+
+  const getCurrentPlanDetails = () => {
+    if (isCreator) {
+      return {
+        credits: "75 credits/month",
+        extra1: "Single seat",
+        extra2: "No virality tracking",
+      };
+    }
+    return {
+      credits: "400 credits/month",
+      extra1: "Single seat",
+      extra2: "No folders",
+    };
   };
 
   return (
@@ -126,7 +166,9 @@ export function PaidPlanView({
                       ? "bg-emerald-500/20"
                       : isScale
                         ? "bg-purple-500/20"
-                        : "bg-accent-400/20"
+                        : isCreator
+                          ? "bg-orange-500/20"
+                          : "bg-accent-400/20"
                   )}
                 >
                   <Icon
@@ -136,7 +178,9 @@ export function PaidPlanView({
                         ? "text-emerald-500"
                         : isScale
                           ? "text-purple-500"
-                          : "text-accent-400"
+                          : isCreator
+                            ? "text-orange-500"
+                            : "text-accent-400"
                     )}
                     width={28}
                   />
@@ -157,14 +201,18 @@ export function PaidPlanView({
                     ? "bg-emerald-500/20"
                     : isScale
                       ? "bg-purple-500/20"
-                      : "",
+                      : isCreator
+                        ? "bg-orange-500/20"
+                        : "",
                   content: cn(
                     "font-semibold",
                     isEnterprise
                       ? "text-emerald-500"
                       : isScale
                         ? "text-purple-500"
-                        : ""
+                        : isCreator
+                          ? "text-orange-500"
+                          : ""
                   ),
                 }}
               >
@@ -281,90 +329,13 @@ export function PaidPlanView({
           </CardFooter>
         </Card>
 
+        {/* Addon credits section — hidden for now
         {!isEnterprise && (
           <div className="space-y-4">
-            <div className="text-center">
-              <h3 className="text-xl font-bold text-text-primary">
-                Need more credits?
-              </h3>
-              <p className="text-sm text-text-secondary mt-1">
-                Purchase additional credits to increase your monthly limit
-              </p>
-            </div>
-
-            <Card
-              className={cn(
-                "bg-surface-elevated/80 backdrop-blur-md max-w-md mx-auto",
-                isScale
-                  ? "border border-purple-500/30"
-                  : "border border-border-base"
-              )}
-            >
-              <CardBody className="gap-4">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={cn(
-                      "flex items-center justify-center w-12 h-12 rounded-lg",
-                      isScale ? "bg-purple-500/20" : "bg-accent-400/20"
-                    )}
-                  >
-                    <Icon
-                      icon="solar:add-circle-bold"
-                      className={
-                        isScale ? "text-purple-500" : "text-accent-400"
-                      }
-                      width={28}
-                    />
-                  </div>
-                  <div>
-                    <h4 className="text-lg font-semibold text-text-primary">
-                      +{isScale ? "100" : "50"} Credits
-                    </h4>
-                    <p className="text-sm text-text-tertiary">
-                      {isScale ? "Scale" : "Studio"} Pack
-                    </p>
-                  </div>
-                </div>
-                <div>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold text-text-primary">
-                      ${isScale ? "5.99" : "11.49"}
-                    </span>
-                    <span className="text-sm text-text-tertiary">
-                      /per credit
-                    </span>
-                  </div>
-                  <p className="text-xs text-text-tertiary mt-1">
-                    ${isScale ? "599" : "574.50"} one time purchase
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 p-2 rounded-lg bg-green-500/10 border border-green-500/20">
-                  <Icon
-                    icon="solar:check-circle-bold"
-                    className="text-green-500"
-                    width={16}
-                  />
-                  <p className="text-xs text-green-500">
-                    Bonus credits never expire
-                  </p>
-                </div>
-              </CardBody>
-              <CardFooter>
-                <Button
-                  fullWidth
-                  size="lg"
-                  className={isScale ? "bg-purple-500 text-white" : ""}
-                  color={isScale ? "default" : "primary"}
-                  startContent={<Icon icon="solar:cart-bold" width={20} />}
-                  onPress={onBuyAddon}
-                  isLoading={loadingAddon}
-                >
-                  Buy Now
-                </Button>
-              </CardFooter>
-            </Card>
+            ...
           </div>
         )}
+        */}
 
         {isEnterprise && (
           <div className="text-center space-y-2">
@@ -392,35 +363,43 @@ export function PaidPlanView({
             <div className="space-y-6">
               {/* Plan Comparison Cards */}
               <div className="grid grid-cols-2 gap-4">
-                {/* Current Plan - Studio */}
+                {/* Current Plan */}
                 <div className="p-4 rounded-xl bg-surface-dark/30 border border-border-base">
                   <p className="text-xs text-text-tertiary uppercase tracking-wider mb-2">Current</p>
                   <div className="flex items-center gap-2 mb-3">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-accent-400/20">
-                      <Icon icon="solar:star-bold" className="text-accent-400" width={16} />
+                    <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", isCreator ? "bg-orange-500/20" : "bg-accent-400/20")}>
+                      <Icon icon="solar:star-bold" className={isCreator ? "text-orange-500" : "text-accent-400"} width={16} />
                     </div>
-                    <span className="text-lg font-semibold text-text-primary">Studio</span>
+                    <span className="text-lg font-semibold text-text-primary">{getPlanDisplayName()}</span>
                   </div>
                   <div className="space-y-1 text-sm text-text-secondary">
-                    <p>400 credits/month</p>
-                    <p>Single seat</p>
-                    <p>No folders</p>
+                    <p>{getCurrentPlanDetails().credits}</p>
+                    <p>{getCurrentPlanDetails().extra1}</p>
+                    <p>{getCurrentPlanDetails().extra2}</p>
                   </div>
                 </div>
 
-                {/* New Plan - Scale */}
-                <div className="p-4 rounded-xl border-2 bg-purple-500/5 border-purple-500/30">
+                {/* Target Plan */}
+                <div className={cn(
+                  "p-4 rounded-xl border-2",
+                  isCreator
+                    ? "bg-accent-400/5 border-accent-400/30"
+                    : "bg-purple-500/5 border-purple-500/30"
+                )}>
                   <p className="text-xs text-text-tertiary uppercase tracking-wider mb-2">Upgrade to</p>
                   <div className="flex items-center gap-2 mb-3">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-purple-500/20">
-                      <Icon icon="solar:star-bold" className="text-purple-500" width={16} />
+                    <div className={cn(
+                      "w-8 h-8 rounded-lg flex items-center justify-center",
+                      isCreator ? "bg-accent-400/20" : "bg-purple-500/20"
+                    )}>
+                      <Icon icon="solar:star-bold" className={isCreator ? "text-accent-400" : "text-purple-500"} width={16} />
                     </div>
-                    <span className="text-lg font-semibold text-purple-500">Scale</span>
+                    <span className={cn("text-lg font-semibold", isCreator ? "text-accent-400" : "text-purple-500")}>{getTargetPlanDetails().name}</span>
                   </div>
                   <div className="space-y-1 text-sm text-text-secondary">
-                    <p>1,000 credits/month</p>
-                    <p>Team seats included</p>
-                    <p>Folder management</p>
+                    <p>{getTargetPlanDetails().credits}</p>
+                    <p>{getTargetPlanDetails().extra1}</p>
+                    <p>{getTargetPlanDetails().extra2}</p>
                   </div>
                 </div>
               </div>
@@ -466,12 +445,12 @@ export function PaidPlanView({
               Cancel
             </Button>
             <Button
-              className="font-semibold bg-purple-500 text-white"
+              className={cn("font-semibold text-white", isCreator ? "bg-accent-400" : "bg-purple-500")}
               onPress={handleChangePlan}
               isLoading={loadingChangePlan}
               startContent={!loadingChangePlan && <Icon icon="solar:check-circle-bold" width={18} />}
             >
-              Upgrade to Scale
+              Upgrade to {getTargetPlanDetails().name}
             </Button>
           </ModalFooter>
         </ModalContent>

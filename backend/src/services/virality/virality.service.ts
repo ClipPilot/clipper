@@ -15,6 +15,7 @@ import {
   MAX_METRICS_HISTORY,
   MAX_FOLLOWER_HISTORY,
 } from "../../config/virality";
+import { canAccessViralityTracker } from "../../utils/plans";
 
 interface MetricsEntry {
   recorded_at: string;
@@ -547,9 +548,7 @@ class ViralityService {
 
     if (!team) return false;
 
-    // Studio+ plans only
-    const allowedPlans = ["studio", "scale", "enterprise"];
-    return allowedPlans.includes(team.plan);
+    return canAccessViralityTracker(team.plan);
   }
 }
 
