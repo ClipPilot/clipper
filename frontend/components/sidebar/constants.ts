@@ -36,4 +36,10 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     icon: "solar:chart-bold-duotone",
     href: "/dashboard/virality",
   },
+  {
+    key: "mass-posting",
+    title: "Mass Posting",
+    icon: "solar:posts-carousel-vertical-bold-duotone",
+    href: "/dashboard/mass-posting",
+  },
 ];
