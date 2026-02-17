@@ -230,18 +230,3 @@ resource "aws_secretsmanager_secret_version" "apify_api_token" {
   secret_id     = aws_secretsmanager_secret.apify_api_token.id
   secret_string = var.apify_api_token
 }
-
-# Ad Posting Webhook Secret
-resource "aws_secretsmanager_secret" "ad_posting_webhook_secret" {
-  name                    = "${var.project_name}-${var.environment}/ad-posting-webhook-secret"
-  recovery_window_in_days = 0
-
-  tags = {
-    Name = "${var.project_name}-ad-posting-webhook-secret-${var.environment}"
-  }
-}
-
-resource "aws_secretsmanager_secret_version" "ad_posting_webhook_secret" {
-  secret_id     = aws_secretsmanager_secret.ad_posting_webhook_secret.id
-  secret_string = var.ad_posting_webhook_secret
-}

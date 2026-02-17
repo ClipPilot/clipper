@@ -236,12 +236,6 @@ variable "apify_api_token" {
   sensitive   = true
 }
 
-variable "ad_posting_webhook_secret" {
-  description = "Webhook secret for ad posting service"
-  type        = string
-  sensitive   = true
-}
-
 # Status Dashboard
 variable "status_domain" {
   description = "Domain for the status dashboard (e.g., status.cuttr.com)"
