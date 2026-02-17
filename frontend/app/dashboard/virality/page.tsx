@@ -27,6 +27,7 @@ import {
 import { formatNumber } from "@/lib/formatters";
 import { RecalcOverlay } from "@/components/virality/RecalcOverlay";
 import { pct, computePostsPerWeek } from "@/app/dashboard/virality/[competitorId]/utils";
+import { canAccessViralityTracker } from "@/lib/plans";
 
 const AVATAR_COLORS = [
   "border-accent-400 text-accent-400",
@@ -262,6 +263,27 @@ export default function ViralityPage() {
       });
     }
   };
+
+  if (!canAccessViralityTracker(selectedTeam?.plan)) {
+    return (
+      <div className="min-h-screen bg-surface-dark flex flex-col items-center justify-center gap-4 p-6">
+        <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-purple-500/10">
+          <Icon icon="solar:chart-bold-duotone" className="text-purple-500" width={32} />
+        </div>
+        <h2 className="text-xl font-bold text-text-primary">Virality Tracker</h2>
+        <p className="text-text-secondary text-center max-w-md">
+          Track competitor performance and viral content trends. Available on Studio, Scale, and Enterprise plans.
+        </p>
+        <Button
+          className="bg-accent-400 text-white font-semibold"
+          onPress={() => router.push("/dashboard/pricing")}
+          startContent={<Icon icon="solar:arrow-up-bold" width={18} />}
+        >
+          Upgrade to access
+        </Button>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

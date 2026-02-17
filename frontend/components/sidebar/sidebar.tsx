@@ -31,7 +31,7 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
     );
 
     const currentKey =
-      [...SIDEBAR_ITEMS]
+      [...visibleItems]
         .sort((a, b) => b.href.length - a.href.length)
         .find((item) => pathname.startsWith(item.href))?.key || "";
 
@@ -52,7 +52,12 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
       : 0;
 
     const plan = selectedTeam?.plan || "free";
-    const isPaidPlan = ["studio", "scale", "enterprise"].includes(plan);
+    const isPaidPlan = ["creator", "studio", "scale", "enterprise"].includes(plan);
+
+    const visibleItems = SIDEBAR_ITEMS.filter((item) => {
+      if (!item.requiredPlans) return true;
+      return item.requiredPlans.includes(plan);
+    });
 
     const getPlanName = () => {
       switch (plan) {
@@ -62,6 +67,8 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
           return "Scale";
         case "studio":
           return "Studio";
+        case "creator":
+          return "Creator";
         default:
           return "Free";
       }
@@ -75,6 +82,8 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
           return "bg-purple-500/10 text-purple-500";
         case "studio":
           return "bg-accent-400/10 text-accent-400";
+        case "creator":
+          return "bg-orange-500/10 text-orange-500";
         default:
           return "bg-blue-500/10 text-blue-500";
       }
@@ -93,7 +102,7 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
               const key = Array.from(keys)[0] as string;
               if (key) {
                 setSelected(key);
-                const item = SIDEBAR_ITEMS.find((i) => i.key === key);
+                const item = visibleItems.find((i) => i.key === key);
                 if (item?.href) router.push(item.href);
               }
             }}
@@ -101,7 +110,7 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
               list: "gap-1",
             }}
           >
-            {SIDEBAR_ITEMS.map((item) => {
+            {visibleItems.map((item) => {
               const isSelected = selected === item.key;
               return (
                 <ListboxItem
@@ -222,7 +231,9 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
                         ? "bg-emerald-500/10 border-emerald-500/20 hover:bg-emerald-500/20"
                         : plan === "scale"
                           ? "bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20"
-                          : "bg-accent-400/10 border-accent-400/20 hover:bg-accent-400/20"
+                          : plan === "creator"
+                            ? "bg-orange-500/10 border-orange-500/20 hover:bg-orange-500/20"
+                            : "bg-accent-400/10 border-accent-400/20 hover:bg-accent-400/20"
                     )}
                   >
                     <Icon
@@ -232,7 +243,9 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
                           ? "text-emerald-500"
                           : plan === "scale"
                             ? "text-purple-500"
-                            : "text-accent-400"
+                            : plan === "creator"
+                              ? "text-orange-500"
+                              : "text-accent-400"
                       }
                       width={16}
                     />
@@ -243,7 +256,9 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
                           ? "text-emerald-500"
                           : plan === "scale"
                             ? "text-purple-500"
-                            : "text-accent-400"
+                            : plan === "creator"
+                              ? "text-orange-500"
+                              : "text-accent-400"
                       )}
                     >
                       Manage subscription

@@ -41,7 +41,7 @@ export default function DashboardLayout({
   const [user] = useAtom(userAtom);
   const { signOut: handleSignOut } = useAuth();
   const [selectedTeam] = useAtom(selectedTeamAtom);
-  const { fetchTeams } = useTeams();
+  const { fetchTeams, selectTeam } = useTeams();
   const { theme, setTheme } = useTheme();
   const [sidebarWidth, setSidebarWidth] = useState(256);
   const [isResizing, setIsResizing] = useState(false);
@@ -73,6 +73,8 @@ export default function DashboardLayout({
         return "bg-purple-500";
       case "studio":
         return "bg-accent-400";
+      case "creator":
+        return "bg-orange-500";
       default:
         return "bg-blue-500";
     }
@@ -380,7 +382,10 @@ export default function DashboardLayout({
       <CreateTeamModal
         isOpen={isCreateTeamOpen}
         onClose={() => setIsCreateTeamOpen(false)}
-        onTeamCreated={fetchTeams}
+        onTeamCreated={(newTeam) => {
+          fetchTeams();
+          selectTeam(newTeam);
+        }}
       />
 
       {selectedTeam && (

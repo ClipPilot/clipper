@@ -31,7 +31,7 @@ function PricingContent() {
   const [showReferralInput, setShowReferralInput] = useState(false);
 
   const currentPlan = selectedTeam?.plan || "free";
-  const isPaidPlan = ["studio", "scale", "enterprise"].includes(currentPlan);
+  const isPaidPlan = ["creator", "studio", "scale", "enterprise"].includes(currentPlan);
   const isOwner = selectedTeam?.role === "owner";
 
   useEffect(() => {
@@ -132,10 +132,14 @@ function PricingContent() {
     }
   };
 
-  const handleChangePlan = async (newPlan: "studio" | "scale"): Promise<{ effectiveDate: string } | void> => {
+  const handleChangePlan = async (newPlan: "creator" | "studio" | "scale"): Promise<{ effectiveDate: string } | void> => {
     if (!selectedTeam) return;
 
-    const newPriceId = newPlan === "studio" ? STRIPE_PRICES.STUDIO : STRIPE_PRICES.SCALE;
+    const newPriceId = newPlan === "creator"
+      ? STRIPE_PRICES.CREATOR
+      : newPlan === "studio"
+        ? STRIPE_PRICES.STUDIO
+        : STRIPE_PRICES.SCALE;
 
     try {
       setLoadingChangePlan(true);
@@ -231,7 +235,7 @@ function PricingContent() {
   if (isPaidPlan) {
     return (
       <PaidPlanView
-        currentPlan={currentPlan as "studio" | "scale" | "enterprise"}
+        currentPlan={currentPlan as "creator" | "studio" | "scale" | "enterprise"}
         teamName={selectedTeam?.name}
         teamId={selectedTeam?.id}
         isOwner={isOwner}
@@ -387,7 +391,7 @@ function PricingContent() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.3 }}
-        className="relative z-10 mx-auto grid max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:hidden items-stretch"
+        className="relative z-10 mx-auto grid max-w-6xl grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:hidden items-stretch"
       >
         {tiers.map((tier) => (
           <PricingTierCard
