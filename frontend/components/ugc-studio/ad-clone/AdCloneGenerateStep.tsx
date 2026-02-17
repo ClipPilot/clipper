@@ -358,6 +358,7 @@ export function AdCloneGenerateStep({ teamId }: AdCloneGenerateStepProps) {
         creditsRemaining={usageStats?.totalRemaining}
         isLoading={!usageStats}
         isDisabled={isGenerating || !voiceId || !characterId || !usageStats || usageStats.totalRemaining < creditCost}
+        isGenerating={isGenerating}
         onGenerate={handleGenerateClick}
         gradientClasses="from-orange-500/20 to-yellow-500/20"
         borderClass="border-orange-500/30"

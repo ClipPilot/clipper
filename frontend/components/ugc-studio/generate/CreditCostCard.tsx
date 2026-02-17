@@ -8,6 +8,7 @@ interface CreditCostCardProps {
   creditsRemaining: number | undefined;
   isLoading: boolean;
   isDisabled: boolean;
+  isGenerating?: boolean;
   onGenerate: () => void;
   gradientClasses: string;
   borderClass: string;
@@ -21,6 +22,7 @@ export function CreditCostCard({
   creditsRemaining,
   isLoading,
   isDisabled,
+  isGenerating,
   onGenerate,
   gradientClasses,
   borderClass,
@@ -55,9 +57,10 @@ export function CreditCostCard({
             className={`${buttonClass} px-8`}
             onPress={onGenerate}
             isDisabled={isDisabled}
-            startContent={<Icon icon="solar:play-bold" width={20} />}
+            isLoading={isGenerating}
+            startContent={!isGenerating ? <Icon icon="solar:play-bold" width={20} /> : undefined}
           >
-            Generate Video
+            {isGenerating ? "Starting..." : "Generate Video"}
           </Button>
         </div>
       </CardBody>
