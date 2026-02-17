@@ -7,10 +7,6 @@ fal.config({
 
 export type VeedResolution = "720p" | "480p";
 
-/**
- * Options for VEED Fabric audio-to-video generation.
- * Matches Kling Avatar interface for easy swapping.
- */
 export interface VeedFabricOptions {
   imageUrl: string;
   audioUrl: string;
@@ -22,7 +18,6 @@ export interface VeedFabricResult {
   requestId: string;
 }
 
-// Internal response type matching VEED's API
 interface VeedFabricResponse {
   video: {
     url: string;

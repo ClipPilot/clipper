@@ -16,12 +16,20 @@ interface SyncInput {
   url: string;
 }
 
+interface ActiveSpeakerConfig {
+  auto_detect?: boolean;
+  frame_number?: number;
+  coordinates?: number[];
+}
+
 interface SyncOptions {
   sync_mode?: SyncMode;
   output_format?: "mp4" | "webm";
   fps?: number;
   pads?: { l?: number; r?: number; t?: number; b?: number };
   video_start?: number;
+  active_speaker_detection?: ActiveSpeakerConfig;
+  occlusion_detection_enabled?: boolean;
 }
 
 interface SyncGenerationResponse {
@@ -40,6 +48,8 @@ interface SyncGenerationResponse {
 interface CreateLipSyncOptions {
   model?: SyncModel;
   syncMode?: SyncMode;
+  activeSpeakerDetection?: boolean;
+  occlusionDetection?: boolean;
 }
 
 export class SyncService {
@@ -61,12 +71,29 @@ export class SyncService {
     audioUrl: string,
     options: CreateLipSyncOptions = {}
   ): Promise<SyncGenerationResponse> {
-    const { model = "lipsync-1.9.0-beta", syncMode = "loop" } = options;
+    const {
+      model = "lipsync-2",
+      syncMode = "loop",
+      activeSpeakerDetection = true,
+      occlusionDetection = true,
+    } = options;
 
     console.log(`[SYNC] Creating lip sync job`);
     console.log(`[SYNC] Video: ${videoUrl}`);
     console.log(`[SYNC] Audio: ${audioUrl}`);
-    console.log(`[SYNC] Model: ${model}, Mode: ${syncMode}`);
+    console.log(`[SYNC] Model: ${model}, Mode: ${syncMode}, ASD: ${activeSpeakerDetection}, Occlusion: ${occlusionDetection}`);
+
+    const syncOptions: SyncOptions = {
+      sync_mode: syncMode,
+    };
+
+    if (activeSpeakerDetection) {
+      syncOptions.active_speaker_detection = { auto_detect: true };
+    }
+
+    if (occlusionDetection) {
+      syncOptions.occlusion_detection_enabled = true;
+    }
 
     const response = await fetch(`${SYNC_API_BASE}/generate`, {
       method: "POST",
@@ -80,9 +107,7 @@ export class SyncService {
           { type: "video", url: videoUrl },
           { type: "audio", url: audioUrl },
         ],
-        options: {
-          sync_mode: syncMode,
-        },
+        options: syncOptions,
       }),
     });
 

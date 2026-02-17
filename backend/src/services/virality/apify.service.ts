@@ -1,11 +1,7 @@
 import { ApifyClient } from "apify-client";
 import { config } from "../../config/env";
 import { APIFY_ACTORS, SCRAPE_WINDOW_DAYS } from "../../config/virality";
-import {
-  parseInstagramUsername,
-  parseTikTokUsername,
-  parseXUsername,
-} from "../../utils/parseUsername";
+import { parseXUsername } from "../../utils/parseUsername";
 
 interface InstagramPost {
   id: string;
@@ -107,10 +103,6 @@ class ApifyService {
     return null;
   }
 
-  parseInstagramUsername(input: string): string {
-    return parseInstagramUsername(input);
-  }
-
   normalizePostData(rawPost: any): InstagramPost {
     return {
       id: rawPost.id || rawPost.shortCode,
@@ -192,10 +184,6 @@ class ApifyService {
     return { posts, profile };
   }
 
-  parseTikTokUsername(input: string): string {
-    return parseTikTokUsername(input);
-  }
-
   // ── X (Twitter) ──
 
   async scrapeXPosts(
@@ -268,10 +256,6 @@ class ApifyService {
     );
 
     return { posts, profile: null };
-  }
-
-  parseXUsername(input: string): string {
-    return parseXUsername(input);
   }
 
   private normalizeXPostData(

@@ -18,6 +18,9 @@ import {
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useDownloadVideo } from "@/hooks/useDownloadVideo";
+import { adPostingAPI, ClipPost } from "@/api/adPosting";
+import { useAtomValue } from "jotai";
+import { selectedTeamAtom } from "@/store/auth";
 
 interface Folder {
   id: number;
@@ -64,7 +67,16 @@ interface ClipViewModalProps {
   onGenerateShareLink?: (clipId: number) => Promise<string>;
   onRemoveShareLink?: (clipId: number) => Promise<void>;
   onUpdateTitle?: (clipId: number, title: string) => Promise<void>;
+  onAdPosting?: () => void;
 }
+
+const PLATFORM_META: Record<string, { name: string; icon: string }> = {
+  tiktok: { name: "TikTok", icon: "logos:tiktok-icon" },
+  instagram: { name: "Instagram", icon: "skill-icons:instagram" },
+  facebook: { name: "Facebook", icon: "logos:facebook" },
+  youtube: { name: "YouTube", icon: "logos:youtube-icon" },
+  x: { name: "X", icon: "ri:twitter-x-fill" },
+};
 
 const TAG_COLORS = [
   "#6366f1",
@@ -92,6 +104,7 @@ export default function ClipViewModal({
   onGenerateShareLink,
   onRemoveShareLink,
   onUpdateTitle,
+  onAdPosting,
 }: ClipViewModalProps) {
   const [isMoving, setIsMoving] = useState(false);
   const [isUpdatingTags, setIsUpdatingTags] = useState(false);
@@ -111,6 +124,9 @@ export default function ClipViewModal({
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState(clip.title || "");
   const [isSavingTitle, setIsSavingTitle] = useState(false);
+  const selectedTeam = useAtomValue(selectedTeamAtom);
+  const [clipPosts, setClipPosts] = useState<ClipPost[]>([]);
+  const [expandedPlatforms, setExpandedPlatforms] = useState<Set<string>>(new Set());
 
   React.useEffect(() => {
     setSelectedTagIds(clip.tags?.map((t) => t.id) || []);
@@ -123,6 +139,17 @@ export default function ClipViewModal({
   React.useEffect(() => {
     setEditedTitle(clip.title || "");
   }, [clip.title]);
+
+  React.useEffect(() => {
+    if (isOpen && selectedTeam?.id && clip.id) {
+      adPostingAPI
+        .getClipPosts(selectedTeam.id, clip.id)
+        .then(setClipPosts)
+        .catch(() => setClipPosts([]));
+    } else {
+      setClipPosts([]);
+    }
+  }, [isOpen, selectedTeam?.id, clip.id]);
 
   const handleSaveTitle = async () => {
     if (!onUpdateTitle || editedTitle === clip.title) {
@@ -739,6 +766,130 @@ export default function ClipViewModal({
                 </div>
               )}
 
+              {clipPosts.length > 0 && (() => {
+                const grouped = clipPosts.reduce<Record<string, ClipPost[]>>((acc, post) => {
+                  (acc[post.platform] ??= []).push(post);
+                  return acc;
+                }, {});
+
+                const formatTimeAgo = (dateStr: string) => {
+                  const diffSec = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+                  if (diffSec < 60) return "just now";
+                  const diffMin = Math.floor(diffSec / 60);
+                  if (diffMin < 60) return `${diffMin}m ago`;
+                  const diffHour = Math.floor(diffMin / 60);
+                  if (diffHour < 24) return `${diffHour}h ago`;
+                  return `${Math.floor(diffHour / 24)}d ago`;
+                };
+
+                return (
+                  <div className="p-4 rounded-lg bg-surface-elevated">
+                    <h3 className="text-sm font-semibold text-text-secondary mb-3 flex items-center gap-2">
+                      <Icon icon="mdi:megaphone" className="text-accent-400" />
+                      Ad Posts
+                      <Chip size="sm" variant="flat">{clipPosts.length}</Chip>
+                    </h3>
+                    <div className="space-y-3">
+                      {Object.entries(grouped).map(([platform, platformPosts]) => {
+                        const meta = PLATFORM_META[platform] || { name: platform, icon: "mdi:web" };
+                        const postedCount = platformPosts.filter(p => p.status === "posted").length;
+                        const scheduledCount = platformPosts.filter(p => p.status === "scheduled").length;
+                        const failedCount = platformPosts.filter(p => p.status === "failed").length;
+                        const isExpanded = expandedPlatforms.has(platform);
+                        const showToggle = platformPosts.length > 3;
+
+                        return (
+                          <div key={platform} className="rounded-lg bg-surface-dark p-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Icon icon={meta.icon} className="text-lg" />
+                                <span className="text-sm font-medium text-text-primary">
+                                  {meta.name}
+                                </span>
+                                <span className="text-xs text-text-tertiary">
+                                  · {platformPosts.length} {platformPosts.length === 1 ? "copy" : "copies"}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                {postedCount > 0 && (
+                                  <Chip size="sm" variant="flat" color="success">
+                                    {postedCount} posted
+                                  </Chip>
+                                )}
+                                {scheduledCount > 0 && (
+                                  <Chip size="sm" variant="flat" color="warning">
+                                    {scheduledCount} scheduled
+                                  </Chip>
+                                )}
+                                {failedCount > 0 && (
+                                  <Chip size="sm" variant="flat" color="danger">
+                                    {failedCount} failed
+                                  </Chip>
+                                )}
+                              </div>
+                            </div>
+
+                            {(isExpanded || !showToggle) && (
+                              <div className="mt-2 space-y-1">
+                                {(isExpanded ? platformPosts : platformPosts.slice(0, 3)).map((post) => (
+                                  <div
+                                    key={post.id}
+                                    className="flex items-center justify-between py-1.5 px-2 rounded bg-surface-elevated text-xs"
+                                  >
+                                    <div className="flex items-center gap-2 text-text-tertiary">
+                                      <span className="text-text-secondary font-mono">#{post.id}</span>
+                                      <Chip
+                                        size="sm"
+                                        variant="flat"
+                                        color={
+                                          post.status === "posted"
+                                            ? "success"
+                                            : post.status === "scheduled"
+                                            ? "warning"
+                                            : "danger"
+                                        }
+                                      >
+                                        {post.status}
+                                      </Chip>
+                                      <span>{formatTimeAgo(post.created_at)}</span>
+                                    </div>
+                                    {post.status === "posted" && post.post_url && (
+                                      <a href={post.post_url} target="_blank" rel="noopener noreferrer">
+                                        <Button size="sm" variant="light" isIconOnly>
+                                          <Icon icon="solar:square-top-down-bold" className="text-accent-400" />
+                                        </Button>
+                                      </a>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {showToggle && (
+                              <Button
+                                size="sm"
+                                variant="light"
+                                className="mt-2 text-xs text-accent-400"
+                                onPress={() => {
+                                  setExpandedPlatforms(prev => {
+                                    const next = new Set(prev);
+                                    if (next.has(platform)) next.delete(platform);
+                                    else next.add(platform);
+                                    return next;
+                                  });
+                                }}
+                              >
+                                {isExpanded ? "Show less" : `Show all ${platformPosts.length}`}
+                              </Button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div className="p-4 rounded-lg bg-surface-elevated">
                 <h3 className="text-sm font-semibold text-text-secondary mb-3 flex items-center gap-2">
                   <Icon
@@ -808,6 +959,15 @@ export default function ClipViewModal({
                   </Button>
                 )}
               </>
+            )}
+            {onAdPosting && clip.clipUrl && (
+              <Button
+                variant="flat"
+                startContent={<Icon icon="mdi:megaphone" />}
+                onPress={onAdPosting}
+              >
+                Ad Post
+              </Button>
             )}
             {clip.clipUrl && (
               <Button

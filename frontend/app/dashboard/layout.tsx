@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import Sidebar, { SidebarItem } from "@/components/sidebar/sidebar";
-import { useRouter, usePathname } from "next/navigation";
+import Sidebar from "@/components/sidebar/sidebar";
+import { useRouter } from "next/navigation";
 import {
   Avatar,
   Dropdown,
@@ -24,7 +24,6 @@ import WorkspaceSelector from "@/components/workspace-selector";
 import CreateTeamModal from "@/components/teams/CreateTeamModal";
 import TeamManagementModal from "@/components/teams/TeamManagementModal";
 import Image from "next/image";
-// import NotificationsCard from "@/components/notifications/notifications-card"; // TODO: Re-enable
 import { UsageStatsProvider } from "@/contexts/UsageStatsContext";
 import CuttrLogo from "@/public/branding/cuttr_logo.png";
 import { useTheme } from "next-themes";
@@ -33,46 +32,12 @@ import AnnouncementInboxModal from "@/components/announcements/AnnouncementInbox
 import AnnouncementPopupModal from "@/components/announcements/AnnouncementPopupModal";
 import { useAnnouncements } from "@/hooks/useAnnouncements";
 
-const baseSidebarItems: SidebarItem[] = [
-  {
-    key: "home",
-    title: "Home",
-    icon: "solar:home-2-bold-duotone",
-    href: "/dashboard",
-  },
-  {
-    key: "clips",
-    title: "Library",
-    icon: "solar:video-library-bold-duotone",
-    href: "/dashboard/clips",
-  },
-  {
-    key: "create-clip",
-    title: "AI Clipping",
-    icon: "solar:scissors-bold-duotone",
-    href: "/dashboard/create-clip",
-  },
-  {
-    key: "ugc-studio",
-    title: "UGC Studio",
-    icon: "solar:video-frame-play-vertical-bold-duotone",
-    href: "/dashboard/ugc-studio",
-  },
-  {
-    key: "virality",
-    title: "Virality",
-    icon: "solar:chart-bold-duotone",
-    href: "/dashboard/virality",
-  },
-];
-
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const pathname = usePathname();
   const [user] = useAtom(userAtom);
   const { signOut: handleSignOut } = useAuth();
   const [selectedTeam] = useAtom(selectedTeamAtom);
@@ -87,7 +52,6 @@ export default function DashboardLayout({
 
   const canViewPricing =
     selectedTeam?.role === "owner" || selectedTeam?.role === "manager";
-  const sidebarItems = baseSidebarItems;
 
   const getTeamIcon = (role?: string) => {
     switch (role) {
@@ -159,18 +123,9 @@ export default function DashboardLayout({
     };
   }, [isResizing]);
 
-  // Fetch announcements on mount
   useEffect(() => {
     fetchUnread();
   }, [fetchUnread]);
-
-  // Use startsWith for nested routes (e.g., /dashboard/ugc-studio/face-swap should highlight ugc-studio)
-  // Sort by href length descending to match most specific route first
-  // Return empty string for pages not in sidebar (e.g., referrals, usage) so nothing is highlighted
-  const currentKey =
-    [...sidebarItems]
-      .sort((a, b) => (b.href?.length || 0) - (a.href?.length || 0))
-      .find((item) => item.href && pathname.startsWith(item.href))?.key || "";
 
   return (
     <UsageStatsProvider>
@@ -266,17 +221,7 @@ export default function DashboardLayout({
           </div>
 
           <div className="flex-1 p-4 overflow-y-auto">
-            <Sidebar
-              items={sidebarItems}
-              defaultSelectedKey={currentKey}
-              canViewPricing={canViewPricing}
-              onSelect={(key) => {
-                const item = sidebarItems.find((item) => item.key === key);
-                if (item?.href) {
-                  router.push(item.href);
-                }
-              }}
-            />
+            <Sidebar canViewPricing={canViewPricing} />
           </div>
 
           <div className="p-4 border-t border-border-base">

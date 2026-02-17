@@ -189,6 +189,34 @@ resource "aws_secretsmanager_secret_version" "fal_key" {
   secret_string = var.fal_key
 }
 
+# Ad Posting Webhook Secret
+resource "aws_secretsmanager_secret" "ad_posting_webhook_secret" {
+  name                    = "${var.project_name}-${var.environment}/ad-posting-webhook-secret"
+  recovery_window_in_days = 0
+
+  tags = {
+    Name = "${var.project_name}-ad-posting-webhook-secret-${var.environment}"
+  }
+}
+resource "aws_secretsmanager_secret_version" "ad_posting_webhook_secret" {
+  secret_id     = aws_secretsmanager_secret.ad_posting_webhook_secret.id
+  secret_string = var.ad_posting_webhook_secret
+}
+
+# Google Service Account Private Key (Mass Posting / Drive)
+resource "aws_secretsmanager_secret" "google_service_account_private_key" {
+  name                    = "${var.project_name}-${var.environment}/google-service-account-private-key"
+  recovery_window_in_days = 0
+
+  tags = {
+    Name = "${var.project_name}-google-sa-private-key-${var.environment}"
+  }
+}
+resource "aws_secretsmanager_secret_version" "google_service_account_private_key" {
+  secret_id     = aws_secretsmanager_secret.google_service_account_private_key.id
+  secret_string = var.google_service_account_private_key
+}
+
 # Apify API Token
 resource "aws_secretsmanager_secret" "apify_api_token" {
   name                    = "${var.project_name}-${var.environment}/apify-api-token"

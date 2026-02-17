@@ -12,6 +12,13 @@ import {
   getAllReferrals,
   setReferralReward,
 } from "../controllers/admin.controller";
+import {
+  getAllApplications,
+  getApplication,
+  approveApplication,
+  rejectApplication,
+  retryDriveFolder,
+} from "../controllers/admin-intake.controller";
 
 const router = Router();
 
@@ -306,5 +313,299 @@ router.get("/referrals", requireAdminAuth, getAllReferrals);
  *         description: Unauthorized
  */
 router.post("/referrals/reward", requireAdminAuth, setReferralReward);
+
+// Mass Posting Applications
+
+/**
+ * @swagger
+ * /api/admin/applications:
+ *   get:
+ *     summary: Get all mass-posting applications
+ *     description: Returns a paginated list of mass-posting applications, optionally filtered by status
+ *     tags: [Admin]
+ *     security:
+ *       - adminAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [pending, accepted, rejected, appeal]
+ *         description: Filter by application status
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of results per page
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: Number of results to skip
+ *     responses:
+ *       200:
+ *         description: Paginated list of applications
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 applications:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       team_id:
+ *                         type: integer
+ *                       status:
+ *                         type: string
+ *                       google_drive_folder_id:
+ *                         type: string
+ *                         nullable: true
+ *                       rejection_reason:
+ *                         type: string
+ *                         nullable: true
+ *                       admin_notes:
+ *                         type: string
+ *                         nullable: true
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *                       updated_at:
+ *                         type: string
+ *                         format: date-time
+ *                       team_name:
+ *                         type: string
+ *                       team_plan:
+ *                         type: string
+ *                 total:
+ *                   type: integer
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     limit:
+ *                       type: integer
+ *                     offset:
+ *                       type: integer
+ *                     total:
+ *                       type: integer
+ *                     hasMore:
+ *                       type: boolean
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Failed to fetch applications
+ */
+router.get("/applications", requireAdminAuth, getAllApplications);
+
+/**
+ * @swagger
+ * /api/admin/applications/{applicationId}:
+ *   get:
+ *     summary: Get application by ID
+ *     description: Returns a single mass-posting application with its intake form data
+ *     tags: [Admin]
+ *     security:
+ *       - adminAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: applicationId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Application ID
+ *     responses:
+ *       200:
+ *         description: Application details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 application:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     team_id:
+ *                       type: integer
+ *                     status:
+ *                       type: string
+ *                     google_drive_folder_id:
+ *                       type: string
+ *                       nullable: true
+ *                     rejection_reason:
+ *                       type: string
+ *                       nullable: true
+ *                     admin_notes:
+ *                       type: string
+ *                       nullable: true
+ *                     created_at:
+ *                       type: string
+ *                       format: date-time
+ *                     updated_at:
+ *                       type: string
+ *                       format: date-time
+ *                     team_name:
+ *                       type: string
+ *                     team_plan:
+ *                       type: string
+ *                     intakeForm:
+ *                       type: object
+ *                       nullable: true
+ *       400:
+ *         description: Invalid application ID
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Application not found
+ *       500:
+ *         description: Failed to fetch application
+ */
+router.get("/applications/:applicationId", requireAdminAuth, getApplication);
+
+/**
+ * @swagger
+ * /api/admin/applications/{applicationId}/approve:
+ *   post:
+ *     summary: Approve an application
+ *     description: Approves a mass-posting application and creates a Google Drive folder for the team
+ *     tags: [Admin]
+ *     security:
+ *       - adminAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: applicationId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Application ID
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               adminNotes:
+ *                 type: string
+ *                 description: Optional notes from admin
+ *     responses:
+ *       200:
+ *         description: Application approved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 application:
+ *                   type: object
+ *       400:
+ *         description: Invalid application ID
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Application not found
+ *       500:
+ *         description: Failed to approve application
+ */
+router.post("/applications/:applicationId/approve", requireAdminAuth, approveApplication);
+
+/**
+ * @swagger
+ * /api/admin/applications/{applicationId}/reject:
+ *   post:
+ *     summary: Reject an application
+ *     description: Rejects a mass-posting application with a required reason
+ *     tags: [Admin]
+ *     security:
+ *       - adminAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: applicationId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Application ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - rejectionReason
+ *             properties:
+ *               rejectionReason:
+ *                 type: string
+ *                 description: Reason for rejecting the application
+ *               adminNotes:
+ *                 type: string
+ *                 description: Optional notes from admin
+ *     responses:
+ *       200:
+ *         description: Application rejected
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 application:
+ *                   type: object
+ *       400:
+ *         description: Invalid application ID or missing rejection reason
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Application not found
+ *       500:
+ *         description: Failed to reject application
+ */
+router.post("/applications/:applicationId/reject", requireAdminAuth, rejectApplication);
+
+/**
+ * @swagger
+ * /api/admin/applications/{applicationId}/retry-drive:
+ *   post:
+ *     summary: Retry Google Drive folder creation
+ *     description: Retries creating a Google Drive folder for an approved application that failed folder creation
+ *     tags: [Admin]
+ *     security:
+ *       - adminAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: applicationId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Application ID
+ *     responses:
+ *       200:
+ *         description: Drive folder created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 application:
+ *                   type: object
+ *                   properties:
+ *                     google_drive_folder_id:
+ *                       type: string
+ *       400:
+ *         description: Invalid application ID
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Application not found
+ *       409:
+ *         description: Drive folder already exists or application not in correct status
+ *       500:
+ *         description: Failed to create Drive folder
+ */
+router.post("/applications/:applicationId/retry-drive", requireAdminAuth, retryDriveFolder);
 
 export default router;

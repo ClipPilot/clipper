@@ -7,6 +7,7 @@ import { sqsService } from "../services/sqs.service";
 import {
   cutClip,
   getVideoDuration,
+  extractAudio,
 } from "../services/clips/videoEditor.service";
 import { createSceneAwareChunks } from "../services/ai-ugc/sceneChunker.service";
 import { detectFaceSegmentsWithPadding } from "../services/face-swap/faceDetection.service";
@@ -24,6 +25,7 @@ import "multer";
 import { TEMP_DIR } from "../utils/tempCleanup";
 import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
 import { faceSwapService } from "../services/ai-ugc/faceSwap.service";
+import { syncService } from "../services/sync.service";
 
 const UGC_CREDIT_COST = 5;
 const MIN_SEGMENT_DURATION = 3;
@@ -1084,16 +1086,85 @@ export class ComfyController {
             if (!jobResult?.videoUrl) {
               throw new Error("Face swap service did not return a video URL");
             }
-            console.log(`[comfy] Face swap complete for job ${jobId} (${jobResult.processingTimeMs}ms)`);
+            console.log(
+              `[comfy] Face swap complete for job ${jobId} (${jobResult.processingTimeMs}ms)`,
+            );
 
             const videoResponse = await fetch(jobResult.videoUrl);
             if (!videoResponse.ok) {
-              throw new Error(`Failed to download result video: ${videoResponse.status}`);
+              throw new Error(
+                `Failed to download result video: ${videoResponse.status}`,
+              );
             }
-            const resultBuffer = Buffer.from(await videoResponse.arrayBuffer());
+            let finalBuffer = Buffer.from(await videoResponse.arrayBuffer());
+
+            if (syncService.isConfigured()) {
+              const lipsyncTempDir = path.join(TEMP_DIR, `lipsync-${jobId}`);
+              try {
+                fs.mkdirSync(lipsyncTempDir, { recursive: true });
+
+                await db
+                  .update(comfyJobs)
+                  .set({ progress: 60, progressMessage: "Processing" })
+                  .where(eq(comfyJobs.id, jobId));
+                emitComfyJobUpdate(teamId, {
+                  id: jobId,
+                  status: "running",
+                  progress: 60,
+                  progressMessage: "Processing",
+                  outputUrl: null,
+                  errorMessage: null,
+                  createdAt: new Date().toISOString(),
+                  finishedAt: null,
+                });
+
+                const tempVideoPath = path.join(lipsyncTempDir, "faceswap.mp4");
+                const tempAudioPath = path.join(lipsyncTempDir, "audio.wav");
+                fs.writeFileSync(tempVideoPath, finalBuffer);
+                await extractAudio(tempVideoPath, tempAudioPath);
+
+                const lsVideoKey = `comfy-outputs/${teamId}/${jobId}/faceswap_pre_lipsync.mp4`;
+                const lsAudioKey = `comfy-outputs/${teamId}/${jobId}/audio_for_lipsync.wav`;
+                const audioBuffer = fs.readFileSync(tempAudioPath);
+                await Promise.all([
+                  s3Service.uploadBuffer(finalBuffer, lsVideoKey, "video/mp4"),
+                  s3Service.uploadBuffer(audioBuffer, lsAudioKey, "audio/wav"),
+                ]);
+                const [videoPresignedUrl, audioPresignedUrl] =
+                  await Promise.all([
+                    s3Service.getPresignedUrl(lsVideoKey, 3600),
+                    s3Service.getPresignedUrl(lsAudioKey, 3600),
+                  ]);
+
+                const lipsyncOutputUrl = await syncService.applyLipSync(
+                  videoPresignedUrl,
+                  audioPresignedUrl,
+                );
+
+                const lipsyncResponse = await fetch(lipsyncOutputUrl);
+                if (lipsyncResponse.ok) {
+                  finalBuffer = Buffer.from(
+                    await lipsyncResponse.arrayBuffer(),
+                  );
+                  console.log(`[comfy] Lip sync applied for job ${jobId}`);
+                }
+
+                s3Service.deleteObject(lsVideoKey).catch(() => {});
+                s3Service.deleteObject(lsAudioKey).catch(() => {});
+              } catch (lipsyncError) {
+                console.error(
+                  `[comfy] Lip sync failed for job ${jobId}, using face-swapped video:`,
+                  (lipsyncError as Error).message,
+                );
+              } finally {
+                if (fs.existsSync(lipsyncTempDir)) {
+                  fs.rmSync(lipsyncTempDir, { recursive: true, force: true });
+                }
+              }
+            }
 
             const outputS3Key = `comfy-outputs/${teamId}/${jobId}/final.mp4`;
-            await s3Service.uploadBuffer(resultBuffer, outputS3Key, "video/mp4");
+            await s3Service.uploadBuffer(finalBuffer, outputS3Key, "video/mp4");
 
             const [clip] = await db
               .insert(clips)
@@ -1112,7 +1183,10 @@ export class ComfyController {
               .returning();
             console.log(`[comfy] Created clip ${clip.id} for job ${jobId}`);
 
-            const outputUrl = await s3Service.getPresignedUrl(outputS3Key, 3600);
+            const outputUrl = await s3Service.getPresignedUrl(
+              outputS3Key,
+              3600,
+            );
 
             await db
               .update(comfyJobs)

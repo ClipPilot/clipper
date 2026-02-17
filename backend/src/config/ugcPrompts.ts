@@ -39,7 +39,8 @@ const SCRIPT_STRUCTURES: Record<
 > = {
   classic: {
     name: "Classic Hook-Problem-Solution",
-    description: "The proven UGC formula: grab attention, show the pain, reveal the solution",
+    description:
+      "The proven UGC formula: grab attention, show the pain, reveal the solution",
     pattern: [
       { type: "hook", shot: "a-roll", duration: "2-3s" },
       { type: "problem", shot: "a-roll", duration: "4-6s" },
@@ -49,7 +50,8 @@ const SCRIPT_STRUCTURES: Record<
   },
   "problem-agitate-solution": {
     name: "PAS (Problem-Agitate-Solution)",
-    description: "Dig into the pain before offering relief - high emotional impact",
+    description:
+      "Dig into the pain before offering relief - high emotional impact",
     pattern: [
       { type: "hook", shot: "a-roll", duration: "2-3s" },
       { type: "problem", shot: "a-roll", duration: "3-5s" },
@@ -60,7 +62,8 @@ const SCRIPT_STRUCTURES: Record<
   },
   "social-proof": {
     name: "Social Proof Heavy",
-    description: "Lead with credibility and validation - great for skeptical audiences",
+    description:
+      "Lead with credibility and validation - great for skeptical audiences",
     pattern: [
       { type: "hook", shot: "a-roll", duration: "2-3s" },
       { type: "social-proof", shot: "a-roll", duration: "4-5s" },
@@ -71,7 +74,8 @@ const SCRIPT_STRUCTURES: Record<
   },
   storytelling: {
     name: "Story Arc",
-    description: "Mini-narrative with transformation - builds emotional connection",
+    description:
+      "Mini-narrative with transformation - builds emotional connection",
     pattern: [
       { type: "hook", shot: "a-roll", duration: "2-3s" },
       { type: "problem", shot: "a-roll", duration: "4-5s" },
@@ -82,7 +86,8 @@ const SCRIPT_STRUCTURES: Record<
   },
   "before-after": {
     name: "Before/After Transformation",
-    description: "Visual transformation story - powerful for results-based products",
+    description:
+      "Visual transformation story - powerful for results-based products",
     pattern: [
       { type: "hook", shot: "a-roll", duration: "2-3s" },
       { type: "problem", shot: "b-roll", duration: "3-4s" },
@@ -103,7 +108,8 @@ const SCRIPT_STRUCTURES: Record<
   },
   tutorial: {
     name: "Quick Tutorial",
-    description: "Educational value-first approach - positions you as helpful expert",
+    description:
+      "Educational value-first approach - positions you as helpful expert",
     pattern: [
       { type: "hook", shot: "a-roll", duration: "2-3s" },
       { type: "demo", shot: "b-roll", duration: "4-6s" },
@@ -112,9 +118,10 @@ const SCRIPT_STRUCTURES: Record<
       { type: "cta", shot: "a-roll", duration: "3-4s" },
     ],
   },
-  "controversy": {
+  controversy: {
     name: "Hot Take / Controversy",
-    description: "Bold opinion that challenges common beliefs - high engagement potential",
+    description:
+      "Bold opinion that challenges common beliefs - high engagement potential",
     pattern: [
       { type: "hook", shot: "a-roll", duration: "2-3s" },
       { type: "problem", shot: "a-roll", duration: "4-6s" },
@@ -136,7 +143,10 @@ const formatStructure = (
 ): string => {
   if (structureId === "custom" && customPattern && customPattern.length > 0) {
     const sceneBreakdown = customPattern
-      .map((s, i) => `${i + 1}. ${s.type.toUpperCase()} (3-5s) - shotType: "${s.shot}"`)
+      .map(
+        (s, i) =>
+          `${i + 1}. ${s.type.toUpperCase()} (3-5s) - shotType: "${s.shot}"`,
+      )
       .join("\n");
 
     return `
@@ -164,7 +174,9 @@ If the user specified all a-roll, generate ALL a-roll scenes. Period.
   const structure = SCRIPT_STRUCTURES[structureId] || SCRIPT_STRUCTURES.classic;
 
   const sceneBreakdown = structure.pattern
-    .map((s, i) => `${i + 1}. ${s.type.toUpperCase()} (${s.duration}) - ${s.shot}`)
+    .map(
+      (s, i) => `${i + 1}. ${s.type.toUpperCase()} (${s.duration}) - ${s.shot}`,
+    )
     .join("\n");
 
   return `
@@ -193,13 +205,6 @@ Available emotion tags:
 
 Pacing tag (use SELECTIVELY for high-energy moments):
 - [fast-paced] - Quick, energetic delivery for peak excitement moments
-
-Use [fast-paced] on roughly 50-60% of a-roll sentences — for energetic beats like hooks, excited reveals, and CTAs. The rest should flow at a natural conversational pace so the script has dynamic rhythm. Contrast is what makes the fast moments hit.
-
-For b-roll scenes, generally SKIP [fast-paced] — let the visuals breathe. Only use it on b-roll dialogue if the moment genuinely calls for high energy (e.g., an excited reaction over a product hero shot).
-
-Format: "[fast-paced][emotion] sentence text" — fast-paced tag FIRST, then emotion tag.
-
 Examples:
 ✓ "[fast-paced][excited] Oh my god, you guys need to see this!" (hook — grab attention)
 ✓ "[curious] So I've been testing this for a week now..." (natural pace — setup)
@@ -207,13 +212,6 @@ Examples:
 ✓ "[sincere] I genuinely didn't expect it to work this well" (slower for emotional impact)
 ✓ "[playful] Okay but like... why did no one tell me about this" (natural pace — conversational)
 ✓ "[whispering] This is the one secret nobody talks about..." (slow for dramatic effect)
-
-When to SKIP [fast-paced]:
-- [whispering] scenes — these need to be slow and intimate
-- [sincere] moments — genuine emotion lands better with slower pace
-- [dramatic] build-ups — tension needs breathing room
-- Setup/context scenes — natural pace helps the viewer follow along
-- Back-to-back sentences — avoid stacking [fast-paced] on consecutive lines
 `;
 };
 
@@ -1191,13 +1189,19 @@ Examples: "[fast-paced][excited] Oh my god, you guys need to see this!"
 
   const sceneTypeGuidance: Record<string, string> = {
     hook: "HOOK: Stop the scroll! Use pattern interrupt, curiosity gap, or shock value. Make them NEED to keep watching.",
-    problem: "PROBLEM: Make it relatable. Share the struggle authentically. Use phrases like 'I was SO tired of...', 'Every single time I tried...'",
-    agitate: "AGITATE: Twist the knife. Intensify the pain. 'And the worst part?', 'Not only that, but...', 'I tried EVERYTHING'",
-    solution: "SOLUTION: The turn point. Show relief and discovery. 'Until I found this...', 'Then everything changed...'",
+    problem:
+      "PROBLEM: Make it relatable. Share the struggle authentically. Use phrases like 'I was SO tired of...', 'Every single time I tried...'",
+    agitate:
+      "AGITATE: Twist the knife. Intensify the pain. 'And the worst part?', 'Not only that, but...', 'I tried EVERYTHING'",
+    solution:
+      "SOLUTION: The turn point. Show relief and discovery. 'Until I found this...', 'Then everything changed...'",
     demo: "DEMO: Show don't tell. Visual proof of the product working. Keep it punchy and visual.",
-    "social-proof": "SOCIAL PROOF: Build credibility. 'My friend who's a [expert]...', 'After seeing it everywhere...', 'Over X five-star reviews'",
-    testimonial: "TESTIMONIAL: Personal results. Share your genuine experience. 'After using it for a week...', 'I can't believe the difference...'",
-    transformation: "TRANSFORMATION: The payoff. Show the before/after. 'Look at this now...', 'Three weeks later and...', 'This is AFTER just one use'",
+    "social-proof":
+      "SOCIAL PROOF: Build credibility. 'My friend who's a [expert]...', 'After seeing it everywhere...', 'Over X five-star reviews'",
+    testimonial:
+      "TESTIMONIAL: Personal results. Share your genuine experience. 'After using it for a week...', 'I can't believe the difference...'",
+    transformation:
+      "TRANSFORMATION: The payoff. Show the before/after. 'Look at this now...', 'Three weeks later and...', 'This is AFTER just one use'",
     cta: "CTA: Friendly invitation, NOT hard sell. 'You have to try this', 'Link in bio', 'Trust me on this one'",
   };
 
