@@ -1,0 +1,57 @@
+---
+title: "Introduction"
+description: "Programmatic access to Cuttr's AI video clipping and processing tools"
+---
+
+## Welcome to the Cuttr API
+
+The Cuttr API gives you programmatic access to AI-powered video clipping, face swapping, and more. Build integrations that process video content at scale with simple REST endpoints and a prepaid wallet model.
+
+<Card
+  title="Quickstart"
+  icon="bolt"
+  href="/quickstart"
+  horizontal
+>
+  Get your API key, fund your wallet, and make your first request in under 2 minutes.
+</Card>
+
+## How it works
+
+<Steps>
+  <Step title="Get your API key">
+    Create an API key from the [dashboard](https://platform.cuttr.com/dashboard/api-platform). Keys are shown once — store them securely.
+  </Step>
+  <Step title="Fund your wallet">
+    Add funds to your wallet. Every API call deducts from your balance. Set up auto-refill so you never run out.
+  </Step>
+  <Step title="Make requests">
+    Pass your key in the `X-API-Key` header. Each product has a fixed per-unit cost — no surprises.
+  </Step>
+</Steps>
+
+## Products & Pricing
+
+| Product | Slug | Price | Unit |
+|---------|------|-------|------|
+| AI Clipping | `clip_save` | $0.50 | per clip |
+| Face Swap | `face_swap` | $0.25 | per second |
+
+<Note>More products coming soon — ad cloning, AI UGC, and more.</Note>
+
+## Explore
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="key" href="/authentication">
+    Learn how API key auth works and how to keep keys safe.
+  </Card>
+  <Card title="Wallet & Billing" icon="wallet" href="/concepts/wallet">
+    Understand the prepaid wallet model, top-ups, and auto-refill.
+  </Card>
+  <Card title="Rate Limits" icon="gauge" href="/concepts/rate-limits">
+    Default limits and how to handle 429 responses.
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/introduction">
+    Full endpoint documentation with try-it playground.
+  </Card>
+</CardGroup>

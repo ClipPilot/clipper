@@ -105,9 +105,15 @@ jobs:
           fal_key            = "${{ secrets.FAL_KEY }}"
           apify_api_token    = "${{ secrets.APIFY_API_TOKEN }}"
 
+          # Ad Posting
+          ad_posting_webhook_secret = "${{ secrets.AD_POSTING_WEBHOOK_SECRET }}"
+
           # Custom Domain
           api_domain          = "api.cuttr.com"
           frontend_url        = "https://platform.cuttr.com"
+
+          # Status Dashboard
+          status_cron_secret  = "${{ secrets.STATUS_CRON_SECRET }}"
           EOF
 
       - name: Terraform Plan
@@ -228,9 +234,15 @@ jobs:
           fal_key            = "${{ secrets.FAL_KEY }}"
           apify_api_token    = "${{ secrets.APIFY_API_TOKEN }}"
 
+          # Ad Posting
+          ad_posting_webhook_secret = "${{ secrets.AD_POSTING_WEBHOOK_SECRET }}"
+
           # Custom Domain
           api_domain          = "api.cuttr.com"
           frontend_url        = "https://platform.cuttr.com"
+
+          # Status Dashboard
+          status_cron_secret  = "${{ secrets.STATUS_CRON_SECRET }}"
           EOF
 
       - name: Download Terraform Plan
