@@ -27,6 +27,7 @@ export interface ApiKeyRequest extends Request {
   apiKey?: {
     id: number;
     teamId: number;
+    userId: number;
     name: string;
   };
 }
@@ -229,6 +230,7 @@ export async function validateAPIKey(
     req.apiKey = {
       id: apiKey.id,
       teamId: apiKey.team_id,
+      userId: apiKey.user_id,
       name: apiKey.name,
     };
 

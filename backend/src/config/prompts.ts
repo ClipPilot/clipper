@@ -88,7 +88,22 @@ transcript cut to cut makes some sense.
 
 ${userTextPrompt ? `USER SPECIFIC REQUEST: The user wants you to focus on: "${userTextPrompt}". Try to find clips that align with this request while maintaining high engagement and quality.` : ""}
 
-${numberOfVideos > 1 ? `You need to generate ${numberOfVideos} different video variations. Each should have a unique approach, different hooks, or different angles while all maintaining high quality.` : ""}
+${numberOfVideos > 1 ? `
+===== MULTIPLE VARIATIONS (${numberOfVideos} REQUIRED) =====
+You MUST generate ${numberOfVideos} COMPLETELY DIFFERENT clips from this video. Each variation must tell a DIFFERENT story using DIFFERENT parts of the video.
+
+CRITICAL RULES FOR VARIATIONS:
+- Each variation MUST use a DIFFERENT hook from a DIFFERENT part of the video. NO two variations can share the same hook timestamp range.
+- Each variation MUST use DIFFERENT main segments. NO timestamp ranges should overlap between variations.
+- Think of each variation as a SEPARATE editor making their own independent clip from the same raw footage.
+- Each variation should follow a different narrative angle, storyline, or theme found in the video.
+- If the video covers multiple topics, each variation should focus on a different topic.
+- If the video has one main topic, each variation should highlight a different aspect, argument, or moment.
+- NEVER reuse the same clip across variations unless the user explicitly asks for it.
+
+VARIATION PLANNING: Before selecting clips, identify ${numberOfVideos} distinct compelling storylines or moments in the transcript, then build each variation around a different one.
+===== END VARIATION RULES =====
+` : ""}
 
 The final output video should be about ${length} seconds long (can be a bit less and more)
 
@@ -168,7 +183,21 @@ and combine them into a viral-worthy clip suitable for TikTok, YouTube Shorts, o
 
 ${userTextPrompt ? `USER SPECIFIC REQUEST: The user wants you to focus on: "${userTextPrompt}". Try to find clips that align with this request while maintaining high engagement and viral potential.` : ""}
 
-${numberOfVideos > 1 ? `You need to generate ${numberOfVideos} different video variations. Each should have a unique approach, different moments, or different angles while all maintaining viral potential.` : ""}
+${numberOfVideos > 1 ? `
+===== MULTIPLE VARIATIONS (${numberOfVideos} REQUIRED) =====
+You MUST generate ${numberOfVideos} COMPLETELY DIFFERENT viral clips from this video. Each must showcase a DIFFERENT moment.
+
+CRITICAL RULES FOR VARIATIONS:
+- Each variation MUST use a DIFFERENT hook from a DIFFERENT part of the video. NO two variations can share the same hook timestamp range.
+- Each variation MUST use DIFFERENT main segments. NO timestamp ranges should overlap between variations.
+- Think of each variation as a SEPARATE editor picking their own favorite viral moment from the same raw footage.
+- Each variation should center around a different funny/shocking/engaging moment in the video.
+- NEVER reuse the same clip across variations unless the user explicitly asks for it.
+- If the video has 5 great moments, pick a different one for each variation — don't pick the "best" one 5 times.
+
+VARIATION PLANNING: Before selecting clips, identify ${numberOfVideos} distinct viral-worthy moments across the full transcript, then build each variation around a different one.
+===== END VARIATION RULES =====
+` : ""}
 
 The final output video should be about ${length} seconds long (can be a bit less or more).
 
@@ -333,7 +362,18 @@ This way viewers see: CLIMAX → "wait what?" → build-up → CLIMAX AGAIN → 
 
 MAIN CAN BE A MONTAGE: You can pull clips from DIFFERENT parts of the video to tell a story or show multiple related moments leading to the climax. Be creative!
 
-Generate ${numberOfVideos} DIFFERENT clips. Each must be a UNIQUE exciting moment.
+${numberOfVideos > 1 ? `
+===== MULTIPLE VARIATIONS (${numberOfVideos} REQUIRED) =====
+CRITICAL: Each of the ${numberOfVideos} clips MUST showcase a COMPLETELY DIFFERENT gameplay moment.
+
+- Each variation MUST use a DIFFERENT hook from a DIFFERENT part of the video. NO two variations can share the same hook or climax.
+- Each variation MUST use DIFFERENT main segments. NO timestamp ranges should overlap between variations.
+- Think of each variation as highlighting a different play, fight, round, or epic moment.
+- If the video has a clutch play at 5:00 and a funny fail at 12:00 — those are TWO separate variations, not one clip used twice.
+- NEVER reuse the same gameplay moment across variations unless the user explicitly asks for it.
+- PLAN FIRST: Scan the entire video and list ${numberOfVideos} distinct peak moments, THEN build each variation around a different one.
+===== END VARIATION RULES =====
+` : `Generate 1 clip highlighting the most exciting moment.`}
 
 ===== JSON OUTPUT FORMAT (can have multiple segments in main) =====
 {
@@ -418,7 +458,19 @@ CRITICAL: WATCH THE ENTIRE VIDEO FRAME BY FRAME. You must analyze both what you 
 
 ${userTextPrompt ? `USER SPECIFIC REQUEST: "${userTextPrompt}". Prioritize moments that align with this while watching the video.` : ""}
 
-${numberOfVideos > 1 ? `Generate ${numberOfVideos} different video variations. Each should highlight a DIFFERENT compelling moment.` : ""}
+${numberOfVideos > 1 ? `
+===== MULTIPLE VARIATIONS (${numberOfVideos} REQUIRED) =====
+You MUST generate ${numberOfVideos} COMPLETELY DIFFERENT clips from this video. Each must center on a DIFFERENT visual/emotional moment.
+
+CRITICAL RULES FOR VARIATIONS:
+- Each variation MUST use a DIFFERENT hook from a DIFFERENT part of the video. NO two variations can share the same hook timestamp range.
+- Each variation MUST use DIFFERENT main segments. NO timestamp ranges should overlap between variations.
+- Think of each variation as a SEPARATE editor making their own independent clip from the same raw footage.
+- Each variation should follow a different narrative angle, storyline, or key moment found in the video.
+- NEVER reuse the same clip across variations unless the user explicitly asks for it.
+- PLAN FIRST: Scan the entire video and identify ${numberOfVideos} distinct compelling visual moments, THEN build each variation around a different one.
+===== END VARIATION RULES =====
+` : ""}
 
 ===== HOW TO WATCH THE VIDEO =====
 
@@ -503,7 +555,7 @@ VERIFY BEFORE SUBMITTING:
 
 ===== OUTPUT FORMAT =====
 
-Generate ${numberOfVideos} DIFFERENT clips based on DIFFERENT visual moments you observed.
+Generate ${numberOfVideos} clips. REMINDER: Each clip MUST use completely different timestamps — no overlapping hooks or segments between variations.
 
 {
   "videos": [

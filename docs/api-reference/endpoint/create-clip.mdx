@@ -1,0 +1,130 @@
+---
+title: "Create Clip"
+api: "POST https://api.cuttr.com/api/platform/v1/clip"
+description: "Submit a video for AI clipping"
+---
+
+Submit a video to generate AI-powered short-form clips. You can provide either a **public URL** or **upload the file directly**.
+
+Each clip costs **$1.50** and is deducted from your wallet upfront. The response returns a `job_id` that you can poll with [Get Job Status](/api-reference/endpoint/get-clip-status).
+
+<Note>
+  **Both modes respond immediately.** Whether you provide a URL or upload a file, the response comes back right away while the video is processed in the background. Use the returned `job_id` to poll for status.
+</Note>
+
+## Option 1: JSON with video URL
+
+```bash
+curl -X POST https://api.cuttr.com/api/platform/v1/clip \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "video_url": "https://example.com/video.mp4",
+    "num_clips": 3,
+    "style": "viral",
+    "captions": { "enabled": true, "color": "yellow" }
+  }'
+```
+
+## Option 2: File upload via form data
+
+```bash
+curl -X POST https://api.cuttr.com/api/platform/v1/clip \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -F "video=@/path/to/video.mp4" \
+  -F "num_clips=3" \
+  -F "style=viral" \
+  -F "captions_enabled=true" \
+  -F "captions_color=yellow"
+```
+
+### Headers
+
+<ParamField header="X-API-Key" type="string" required>
+  Your API key. Create one from the [dashboard](https://platform.cuttr.com/dashboard/api-platform).
+</ParamField>
+
+### Body parameters (JSON)
+
+<ParamField body="video_url" type="string">
+  A publicly accessible URL to the source video. Required if not uploading a file.
+</ParamField>
+
+<ParamField body="num_clips" type="integer" default="1">
+  Number of clips to generate (1-10).
+</ParamField>
+
+<ParamField body="style" type="string" default="viral">
+  Clipping style. One of `viral`, `business`, `general`, or `gaming`.
+</ParamField>
+
+<ParamField body="captions" type="object">
+  Caption settings.
+  <Expandable title="properties">
+    <ParamField body="captions.enabled" type="boolean" default="false">
+      Whether to burn captions into the clip.
+    </ParamField>
+    <ParamField body="captions.color" type="string" default="white">
+      Caption text color. One of `white`, `black`, `red`, `orange`, `yellow`, `green`, `teal`, `blue`, `purple`, `pink`.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Form data fields (multipart upload)
+
+<ParamField body="video" type="file">
+  Video file (mp4, mov, avi, mkv, webm). Required if not providing `video_url`.
+</ParamField>
+
+<ParamField body="num_clips" type="string" default="1">
+  Number of clips to generate (1-10).
+</ParamField>
+
+<ParamField body="style" type="string" default="viral">
+  Clipping style. One of `viral`, `business`, `general`, or `gaming`.
+</ParamField>
+
+<ParamField body="captions_enabled" type="string" default="false">
+  `"true"` or `"false"` — whether to burn captions.
+</ParamField>
+
+<ParamField body="captions_color" type="string" default="white">
+  Caption text color. One of `white`, `black`, `red`, `orange`, `yellow`, `green`, `teal`, `blue`, `purple`, `pink`.
+</ParamField>
+
+### Response
+
+<ResponseField name="job_id" type="integer">
+  Job ID to poll for results via [Get Job Status](/api-reference/endpoint/get-clip-status).
+</ResponseField>
+
+<ResponseField name="num_clips" type="integer">
+  Number of clips being generated.
+</ResponseField>
+
+<ResponseField name="cost_cents" type="integer">
+  Total amount charged in cents ($1.50 per clip).
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Always `"processing"` on success.
+</ResponseField>
+
+<ResponseExample>
+```json 200
+{
+  "job_id": 42,
+  "num_clips": 3,
+  "cost_cents": 450,
+  "status": "processing"
+}
+```
+
+```json 402
+{
+  "error": "Insufficient wallet balance",
+  "required_cents": 450,
+  "balance_cents": 200
+}
+```
+</ResponseExample>

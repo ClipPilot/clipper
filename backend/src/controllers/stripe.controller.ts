@@ -135,6 +135,10 @@ export const handleWebhook = async (req: Request, res: Response) => {
         await stripeService.handleInvoicePaymentFailed(event.data.object);
         break;
 
+      case "payment_intent.succeeded":
+        await stripeService.handlePaymentIntentSucceeded(event.data.object);
+        break;
+
       default:
         console.log(`Unhandled event type: ${event.type}`);
     }
