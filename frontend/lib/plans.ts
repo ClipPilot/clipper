@@ -4,6 +4,7 @@ const PAID_PLANS: PlanType[] = ["creator", "studio", "scale", "enterprise"];
 const TEAM_INVITE_PLANS: PlanType[] = ["scale", "enterprise"];
 const UGC_STUDIO_PLANS: PlanType[] = ["free", "creator", "studio", "scale", "enterprise"];
 const VIRALITY_TRACKER_PLANS: PlanType[] = ["studio", "scale", "enterprise"];
+const MASS_POSTING_PLANS: PlanType[] = ["studio", "scale", "enterprise"];
 
 export function isPaidPlan(plan: string | undefined | null): boolean {
   return PAID_PLANS.includes(plan as PlanType);
