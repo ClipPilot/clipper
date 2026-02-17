@@ -37,6 +37,7 @@ import {
   processAdCloneGenerateScriptJob,
   processAdCloneAnalyzeAndScriptJob,
 } from "./processors/adCloneProcessor";
+import { processAdPostingJob } from "./processors/adPostingProcessor";
 import {
   VideoProcessingJob,
   ClipVideoJob,
@@ -53,6 +54,7 @@ import {
   AdCloneAnalyzeJob,
   AdCloneGenerateScriptJob,
   AdCloneAnalyzeAndScriptJob,
+  AdPostingJob,
 } from "../services/sqs.service";
 import { db, schema } from "../db";
 import { eq } from "drizzle-orm";
@@ -181,6 +183,9 @@ async function processMessage(job: VideoProcessingJob, receiptHandle: string): P
         break;
       case "ad-clone-analyze-and-script":
         await processAdCloneAnalyzeAndScriptJob(job as AdCloneAnalyzeAndScriptJob);
+        break;
+      case "ad-posting":
+        await processAdPostingJob(job as AdPostingJob);
         break;
       default:
         console.error(`Unknown job type: ${(job as any).type}`);

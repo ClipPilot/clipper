@@ -136,6 +136,45 @@ export interface CreateAnnouncementData {
   action_url?: string;
 }
 
+// Mass Posting Applications
+export interface IntakeForm {
+  id: number;
+  team_id: number;
+  brand_description: string | null;
+  company_website_url: string | null;
+  icps: any;
+  company_socials: any;
+  competitor_socials: any;
+  completed: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MassPostingApplication {
+  id: number;
+  team_id: number;
+  status: "pending" | "accepted" | "rejected" | "appeal";
+  google_drive_folder_id: string | null;
+  rejection_reason: string | null;
+  admin_notes: string | null;
+  created_at: string;
+  updated_at: string;
+  team_name: string;
+  team_plan: string;
+}
+
+export interface ApplicationDetail extends MassPostingApplication {
+  intake_form_id: number | null;
+  details: any;
+  intakeForm: IntakeForm | null;
+}
+
+export interface ApplicationsResponse {
+  applications: MassPostingApplication[];
+  total: number;
+  pagination: Pagination;
+}
+
 export interface LoginResponse {
   message: string;
   email: string;
@@ -322,6 +361,61 @@ export const adminAPI = {
 
   async publishAnnouncement(id: number): Promise<{ announcement: Announcement }> {
     const response = await fetch(`${API_URL}/announcements/admin/${id}/publish`, {
+      method: "POST",
+      headers: { ...getAuthHeaders() },
+    });
+    return handleResponse(response);
+  },
+
+  // Mass Posting Applications
+  async getApplications(options?: { status?: string; limit?: number; offset?: number }): Promise<ApplicationsResponse> {
+    const params = new URLSearchParams();
+    if (options?.status) params.set("status", options.status);
+    if (options?.limit) params.set("limit", options.limit.toString());
+    if (options?.offset) params.set("offset", options.offset.toString());
+
+    const queryString = params.toString();
+    const url = `${API_URL}/admin/applications${queryString ? `?${queryString}` : ""}`;
+
+    const response = await fetch(url, {
+      headers: { ...getAuthHeaders() },
+    });
+    return handleResponse(response);
+  },
+
+  async getApplication(id: number): Promise<{ application: ApplicationDetail }> {
+    const response = await fetch(`${API_URL}/admin/applications/${id}`, {
+      headers: { ...getAuthHeaders() },
+    });
+    return handleResponse(response);
+  },
+
+  async approveApplication(id: number, adminNotes?: string): Promise<{ application: MassPostingApplication }> {
+    const response = await fetch(`${API_URL}/admin/applications/${id}/approve`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify({ adminNotes }),
+    });
+    return handleResponse(response);
+  },
+
+  async rejectApplication(id: number, rejectionReason: string, adminNotes?: string): Promise<{ application: MassPostingApplication }> {
+    const response = await fetch(`${API_URL}/admin/applications/${id}/reject`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify({ rejectionReason, adminNotes }),
+    });
+    return handleResponse(response);
+  },
+
+  async retryDriveFolder(id: number): Promise<{ application: MassPostingApplication }> {
+    const response = await fetch(`${API_URL}/admin/applications/${id}/retry-drive`, {
       method: "POST",
       headers: { ...getAuthHeaders() },
     });

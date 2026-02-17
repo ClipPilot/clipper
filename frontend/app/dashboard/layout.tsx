@@ -123,7 +123,6 @@ export default function DashboardLayout({
     };
   }, [isResizing]);
 
-  // Fetch announcements on mount
   useEffect(() => {
     fetchUnread();
   }, [fetchUnread]);
