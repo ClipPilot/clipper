@@ -1,10 +1,16 @@
 ---
 title: "Get Wallet"
-api: "GET /teams/{teamId}/wallet"
+api: "GET https://api.cuttr.com/api/platform/teams/{teamId}/wallet"
 description: "Get your team's wallet balance and usage totals"
 ---
 
 Returns the team's current wallet balance, total amount spent, and total amount topped up.
+
+### Headers
+
+<ParamField header="X-API-Key" type="string" required>
+  Your API key. Create one from the [dashboard](https://platform.cuttr.com/dashboard/api-platform).
+</ParamField>
 
 ### Path parameters
 

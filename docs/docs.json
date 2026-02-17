@@ -81,9 +81,6 @@
     "auth": {
       "method": "key",
       "name": "X-API-Key"
-    },
-    "playground": {
-      "mode": "simple"
     }
   },
   "contextual": {

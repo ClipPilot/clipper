@@ -1,8 +1,14 @@
 ---
 title: "Test API Key"
-api: "GET /v1/test"
+api: "GET https://api.cuttr.com/api/platform/v1/test"
 description: "Verify your API key is working correctly"
 ---
+
+### Headers
+
+<ParamField header="X-API-Key" type="string" required>
+  Your API key. Create one from the [dashboard](https://platform.cuttr.com/dashboard/api-platform).
+</ParamField>
 
 Simple health-check endpoint to verify your API key, billing account, and rate limit are all working. This endpoint is free and does not deduct from your wallet.
 
