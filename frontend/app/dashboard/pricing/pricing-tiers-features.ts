@@ -14,7 +14,7 @@ const features: PricingFeatures = [
           [TiersEnum.Scale]: "Unlimited",
           [TiersEnum.Enterprise]: "Unlimited",
         },
-        helpText: "Generate AI-powered clips from your videos. ",
+        helpText: "Generate AI-powered clips from your videos.",
       },
       {
         title: "Credits",
@@ -26,55 +26,6 @@ const features: PricingFeatures = [
           [TiersEnum.Enterprise]: "Custom credits",
         },
         helpText: "Use credits to save and download your favorite clips.",
-      },
-      {
-        title: "Clip storage duration",
-        tiers: {
-          [TiersEnum.Free]: "30 days",
-          [TiersEnum.Creator]: "6 months",
-          [TiersEnum.Studio]: "1 year",
-          [TiersEnum.Scale]: "Unlimited",
-          [TiersEnum.Enterprise]: "Unlimited",
-        },
-        helpText: "How long your saved clips are stored in your account.",
-      },
-    ],
-  },
-  {
-    title: "Export & Quality",
-    items: [
-      {
-        title: "Watermark-free exports",
-        tiers: {
-          [TiersEnum.Free]: false,
-          [TiersEnum.Creator]: true,
-          [TiersEnum.Studio]: true,
-          [TiersEnum.Scale]: true,
-          [TiersEnum.Enterprise]: true,
-        },
-        helpText: "Export clips in high quality ready to post",
-      },
-      {
-        title: "Multiple export formats",
-        tiers: {
-          [TiersEnum.Free]: "MP4 only",
-          [TiersEnum.Creator]: "MP4, MOV",
-          [TiersEnum.Studio]: "MP4, MOV, WebM",
-          [TiersEnum.Scale]: "All formats",
-          [TiersEnum.Enterprise]: "All formats",
-        },
-        helpText: "Available file formats for exporting your clips.",
-      },
-      {
-        title: "Batch export",
-        tiers: {
-          [TiersEnum.Free]: false,
-          [TiersEnum.Creator]: false,
-          [TiersEnum.Studio]: true,
-          [TiersEnum.Scale]: true,
-          [TiersEnum.Enterprise]: true,
-        },
-        helpText: "Export multiple clips at once to save time.",
       },
     ],
   },
@@ -108,6 +59,17 @@ const features: PricingFeatures = [
           [TiersEnum.Enterprise]: true,
         },
         helpText: "Track competitor performance and viral content trends.",
+      },
+      {
+        title: "Mass Posting",
+        tiers: {
+          [TiersEnum.Free]: false,
+          [TiersEnum.Creator]: false,
+          [TiersEnum.Studio]: true,
+          [TiersEnum.Scale]: true,
+          [TiersEnum.Enterprise]: true,
+        },
+        helpText: "Automate posting across multiple platforms.",
       },
     ],
   },

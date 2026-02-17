@@ -6,6 +6,7 @@ import {
   ListboxItem,
   type Selection,
   Progress,
+  Tooltip,
   cn,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
@@ -30,8 +31,26 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
       selectedTeam?.id
     );
 
+    const plan = selectedTeam?.plan || "free";
+    const isPaidPlan = ["creator", "studio", "scale", "enterprise"].includes(plan);
+
+    const isItemLocked = (item: typeof SIDEBAR_ITEMS[number]) => {
+      return item.requiredPlans ? !item.requiredPlans.includes(plan) : false;
+    };
+
+    const getUpgradePlanName = (item: typeof SIDEBAR_ITEMS[number]) => {
+      if (!item.requiredPlans) return "";
+      const planNames: Record<string, string> = {
+        creator: "Creator",
+        studio: "Studio",
+        scale: "Scale",
+        enterprise: "Enterprise",
+      };
+      return planNames[item.requiredPlans[0]] || "a paid";
+    };
+
     const currentKey =
-      [...visibleItems]
+      [...SIDEBAR_ITEMS]
         .sort((a, b) => b.href.length - a.href.length)
         .find((item) => pathname.startsWith(item.href))?.key || "";
 
@@ -50,14 +69,6 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
     const usagePercentage = usageStats
       ? (usageStats.clipsCreated / usageStats.baseLimit) * 100
       : 0;
-
-    const plan = selectedTeam?.plan || "free";
-    const isPaidPlan = ["creator", "studio", "scale", "enterprise"].includes(plan);
-
-    const visibleItems = SIDEBAR_ITEMS.filter((item) => {
-      if (!item.requiredPlans) return true;
-      return item.requiredPlans.includes(plan);
-    });
 
     const getPlanName = () => {
       switch (plan) {
@@ -102,7 +113,7 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
               const key = Array.from(keys)[0] as string;
               if (key) {
                 setSelected(key);
-                const item = visibleItems.find((i) => i.key === key);
+                const item = SIDEBAR_ITEMS.find((i) => i.key === key);
                 if (item?.href) router.push(item.href);
               }
             }}
@@ -110,17 +121,27 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
               list: "gap-1",
             }}
           >
-            {visibleItems.map((item) => {
+            {SIDEBAR_ITEMS.map((item) => {
               const isSelected = selected === item.key;
-              return (
+              const locked = isItemLocked(item);
+              const listboxItem = (
                 <ListboxItem
                   key={item.key}
                   textValue={item.title}
                   classNames={{
-                    base: "px-3 py-2.5 rounded-lg data-[selected=true]:bg-accent-400/10 hover:bg-surface-elevated transition-colors",
+                    base: cn(
+                      "px-3 py-2.5 rounded-lg transition-colors",
+                      locked
+                        ? "opacity-50 hover:bg-surface-elevated"
+                        : "data-[selected=true]:bg-accent-400/10 hover:bg-surface-elevated"
+                    ),
                     title: cn(
                       "text-sm font-medium transition-colors",
-                      isSelected ? "text-accent-400" : "text-text-primary"
+                      locked
+                        ? "text-text-tertiary"
+                        : isSelected
+                          ? "text-accent-400"
+                          : "text-text-primary"
                     ),
                   }}
                   startContent={
@@ -130,15 +151,40 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
                         width={20}
                         className={cn(
                           "transition-colors",
-                          isSelected ? "text-accent-400" : "text-text-primary"
+                          locked
+                            ? "text-text-tertiary"
+                            : isSelected
+                              ? "text-accent-400"
+                              : "text-text-primary"
                         )}
                       />
                     )
+                  }
+                  endContent={
+                    locked ? (
+                      <Tooltip
+                        content={`Upgrade to ${getUpgradePlanName(item)}`}
+                        placement="right"
+                        delay={200}
+                        classNames={{
+                          content: "bg-surface-elevated text-text-primary text-xs px-2 py-1",
+                        }}
+                      >
+                        <div>
+                          <Icon
+                            icon="solar:lock-keyhole-bold"
+                            width={14}
+                            className="text-text-tertiary"
+                          />
+                        </div>
+                      </Tooltip>
+                    ) : undefined
                   }
                 >
                   {item.title}
                 </ListboxItem>
               );
+              return listboxItem;
             })}
           </Listbox>
         </div>

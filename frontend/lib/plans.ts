@@ -20,3 +20,7 @@ export function canAccessUGCStudio(plan: string | undefined | null): boolean {
 export function canAccessViralityTracker(plan: string | undefined | null): boolean {
   return VIRALITY_TRACKER_PLANS.includes(plan as PlanType);
 }
+
+export function canAccessMassPosting(plan: string | undefined | null): boolean {
+  return PAID_PLANS.includes(plan as PlanType);
+}
