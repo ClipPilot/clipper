@@ -5,6 +5,7 @@ import { apiKeyService } from "../services/apiKey.service";
 import { apiBillingService } from "../services/apiBilling.service";
 import { stripeService } from "../services/stripe.service";
 import { stripe } from "../config/stripe.config";
+import { userService } from "../services/user.service";
 
 export const createApiKeyController = async (req: AuthRequest, res: Response) => {
   try {
@@ -130,25 +131,12 @@ export const createWalletTopUpController = async (req: AuthRequest, res: Respons
       req.user!.email,
     );
 
-    const session = await stripe.checkout.sessions.create({
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amount_cents,
+      currency: "usd",
       customer: customerId,
-      payment_method_types: ["card"],
-      payment_intent_data: {
-        setup_future_usage: "off_session",
-      },
-      line_items: [
-        {
-          price_data: {
-            currency: "usd",
-            product_data: { name: "API Wallet Top-Up" },
-            unit_amount: amount_cents,
-          },
-          quantity: 1,
-        },
-      ],
-      mode: "payment",
-      success_url: `${req.headers.origin}/dashboard/api-platform?topup=success`,
-      cancel_url: `${req.headers.origin}/dashboard/api-platform?topup=canceled`,
+      setup_future_usage: "off_session",
+      automatic_payment_methods: { enabled: true },
       metadata: {
         teamId: teamId.toString(),
         type: "api_topup",
@@ -156,12 +144,40 @@ export const createWalletTopUpController = async (req: AuthRequest, res: Respons
       },
     });
 
-    return res.json({ url: session.url });
+    return res.json({
+      clientSecret: paymentIntent.client_secret,
+      paymentIntentId: paymentIntent.id,
+    });
   } catch (err) {
     console.error("Error in createWalletTopUpController:", err);
     Sentry.captureException(err);
     return res.status(500).json({
-      error: err instanceof Error ? err.message : "Failed to create top-up session",
+      error: err instanceof Error ? err.message : "Failed to create top-up",
+    });
+  }
+};
+
+export const getTopUpStatusController = async (req: AuthRequest, res: Response) => {
+  try {
+    const teamId = parseInt(req.params.teamId);
+    const { paymentIntentId } = req.params;
+
+    if (isNaN(teamId)) {
+      return res.status(400).json({ error: "Invalid team ID" });
+    }
+
+    if (!paymentIntentId) {
+      return res.status(400).json({ error: "Missing paymentIntentId" });
+    }
+
+    const credited = await apiBillingService.isTopUpCredited(teamId, paymentIntentId);
+
+    return res.json({ credited });
+  } catch (err) {
+    console.error("Error in getTopUpStatusController:", err);
+    Sentry.captureException(err);
+    return res.status(500).json({
+      error: err instanceof Error ? err.message : "Failed to check top-up status",
     });
   }
 };
@@ -267,4 +283,78 @@ export const testApiRouteController = async (req: ApiKeyRequest, res: Response) 
     key_name: req.apiKey!.name,
     timestamp: new Date().toISOString(),
   });
+};
+
+// ── /v1/wallet (API-key authenticated) ──────────────────────────────
+
+export const getWalletV1Controller = async (req: ApiKeyRequest, res: Response) => {
+  try {
+    const { teamId } = req.apiKey!;
+    const account = await apiBillingService.getOrCreateAccount(teamId);
+
+    return res.json({
+      balance_cents: account.balance_cents,
+      total_spent_cents: account.total_spent_cents,
+      total_topped_up_cents: account.total_topped_up_cents,
+      active: account.active,
+    });
+  } catch (err) {
+    console.error("Error in getWalletV1Controller:", err);
+    Sentry.captureException(err);
+    return res.status(500).json({ error: "Failed to get wallet" });
+  }
+};
+
+export const createWalletTopUpV1Controller = async (req: ApiKeyRequest, res: Response) => {
+  try {
+    const { teamId, userId } = req.apiKey!;
+    const { amount_cents } = req.body;
+
+    if (!amount_cents || amount_cents < 500) {
+      return res.status(400).json({ error: "Minimum top-up is $5.00 (500 cents)" });
+    }
+
+    const user = await userService.getUserById(userId);
+    const customerId = await stripeService.getOrCreateCustomer(teamId, user.email);
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amount_cents,
+      currency: "usd",
+      customer: customerId,
+      setup_future_usage: "off_session",
+      automatic_payment_methods: { enabled: true },
+      metadata: {
+        teamId: teamId.toString(),
+        type: "api_topup",
+        amount_cents: amount_cents.toString(),
+      },
+    });
+
+    return res.json({
+      clientSecret: paymentIntent.client_secret,
+      paymentIntentId: paymentIntent.id,
+    });
+  } catch (err) {
+    console.error("Error in createWalletTopUpV1Controller:", err);
+    Sentry.captureException(err);
+    return res.status(500).json({ error: "Failed to create top-up" });
+  }
+};
+
+export const getTopUpStatusV1Controller = async (req: ApiKeyRequest, res: Response) => {
+  try {
+    const { teamId } = req.apiKey!;
+    const { paymentIntentId } = req.params;
+
+    if (!paymentIntentId) {
+      return res.status(400).json({ error: "Missing paymentIntentId" });
+    }
+
+    const credited = await apiBillingService.isTopUpCredited(teamId, paymentIntentId);
+    return res.json({ credited });
+  } catch (err) {
+    console.error("Error in getTopUpStatusV1Controller:", err);
+    Sentry.captureException(err);
+    return res.status(500).json({ error: "Failed to check top-up status" });
+  }
 };

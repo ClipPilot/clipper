@@ -5,7 +5,7 @@ import {
   apiWalletTopUps,
   teams,
 } from "@clipper/shared-db/src/schema";
-import { eq, sql, desc, count } from "drizzle-orm";
+import { eq, and, sql, desc, count } from "drizzle-orm";
 import { API_PRODUCTS } from "../config/api-products";
 import { stripe } from "../config/stripe.config";
 
@@ -233,6 +233,21 @@ class ApiBillingService {
       console.error(`[Auto-Refill] Failed for team ${teamId}:`, err);
       return false;
     }
+  }
+
+  async isTopUpCredited(teamId: number, stripePaymentIntentId: string): Promise<boolean> {
+    const [topUp] = await db
+      .select({ id: apiWalletTopUps.id })
+      .from(apiWalletTopUps)
+      .where(
+        and(
+          eq(apiWalletTopUps.team_id, teamId),
+          eq(apiWalletTopUps.stripe_payment_intent_id, stripePaymentIntentId),
+        ),
+      )
+      .limit(1);
+
+    return !!topUp;
   }
 
   formatBalance(cents: number): string {

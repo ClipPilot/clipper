@@ -14,6 +14,7 @@ import {
   usageStats,
   teamMembers,
   users,
+  apiWalletTopUps,
 } from "@clipper/shared-db/src/schema";
 import { eq, and, not, sql } from "drizzle-orm";
 import { emailNotiService } from "./emailNoti.service";
@@ -607,11 +608,6 @@ class StripeService {
       return;
     }
 
-    if (session.metadata?.type === "api_topup") {
-      await this.handleApiTopUp(session);
-      return;
-    }
-
     if (session.metadata?.type !== "addon") {
       return;
     }
@@ -658,41 +654,48 @@ class StripeService {
     );
   }
 
-  private async handleApiTopUp(session: any): Promise<void> {
-    if (session.payment_status !== "paid") {
-      console.log(`[API TopUp] Skipping - payment not yet confirmed (status: ${session.payment_status})`);
+  async handlePaymentIntentSucceeded(paymentIntent: any): Promise<void> {
+    if (paymentIntent.metadata?.type !== "api_topup") {
       return;
     }
 
-    const teamId = parseInt(session.metadata.teamId);
-    const amountCents = parseInt(session.metadata.amount_cents);
+    const teamId = parseInt(paymentIntent.metadata.teamId);
+    const amountCents = parseInt(paymentIntent.metadata.amount_cents);
 
     if (!teamId || !amountCents) {
-      console.error("[API TopUp] Missing teamId or amount_cents in metadata");
+      console.error("[PaymentIntent] Missing teamId or amount_cents in metadata");
+      return;
+    }
+
+    // Idempotency: check if already credited
+    const [existing] = await db
+      .select({ id: apiWalletTopUps.id })
+      .from(apiWalletTopUps)
+      .where(eq(apiWalletTopUps.stripe_payment_intent_id, paymentIntent.id))
+      .limit(1);
+
+    if (existing) {
+      console.log(`[PaymentIntent] Already credited PI ${paymentIntent.id}, skipping`);
       return;
     }
 
     const { balanceCents } = await apiBillingService.topUp(
       teamId,
       amountCents,
-      session.payment_intent,
-      session.id,
+      paymentIntent.id,
     );
 
     // Save payment method for auto-refill
-    if (session.payment_intent) {
+    if (paymentIntent.payment_method && typeof paymentIntent.payment_method === "string") {
       try {
-        const pi = await stripe.paymentIntents.retrieve(session.payment_intent);
-        if (pi.payment_method && typeof pi.payment_method === "string") {
-          await apiBillingService.savePaymentMethod(teamId, pi.payment_method);
-        }
+        await apiBillingService.savePaymentMethod(teamId, paymentIntent.payment_method);
       } catch (err) {
-        console.error("[API TopUp] Failed to save payment method:", err);
+        console.error("[PaymentIntent] Failed to save payment method:", err);
       }
     }
 
     console.log(
-      `[API TopUp] Added $${(amountCents / 100).toFixed(2)} to team ${teamId}. New balance: $${(balanceCents / 100).toFixed(2)}`,
+      `[PaymentIntent] Added $${(amountCents / 100).toFixed(2)} to team ${teamId}. New balance: $${(balanceCents / 100).toFixed(2)}`,
     );
   }
 

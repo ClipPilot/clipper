@@ -31,6 +31,7 @@ import {
   type AutoRefillSettings,
   type UsageLog,
 } from "@/api/apiPlatform";
+import TopUpModal from "@/components/api-platform/TopUpModal";
 
 const TOP_UP_PRESETS = [1000, 2500, 5000, 10000]; // cents
 
@@ -45,7 +46,13 @@ export default function ApiPlatformPage() {
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [walletLoading, setWalletLoading] = useState(true);
   const [topUpAmount, setTopUpAmount] = useState("");
-  const [isTopUpLoading, setIsTopUpLoading] = useState(false);
+
+  // Top-up modal state
+  const [topUpModalOpen, setTopUpModalOpen] = useState(false);
+  const [topUpClientSecret, setTopUpClientSecret] = useState<string | null>(null);
+  const [topUpPaymentIntentId, setTopUpPaymentIntentId] = useState<string | null>(null);
+  const [topUpAmountCents, setTopUpAmountCents] = useState(0);
+  const [isCreatingTopUp, setIsCreatingTopUp] = useState(false);
 
   // Keys state
   const [keys, setKeys] = useState<ApiKey[]>([]);
@@ -136,27 +143,6 @@ export default function ApiPlatformPage() {
     fetchUsageLogs();
   }, [fetchWallet, fetchKeys, fetchAutoRefill, fetchUsageLogs]);
 
-  // Check for top-up success/cancel from Stripe redirect
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("topup") === "success") {
-      addToast({
-        title: "Top-up successful",
-        description: "Your wallet has been funded.",
-        color: "success",
-      });
-      fetchWallet();
-      window.history.replaceState({}, "", window.location.pathname);
-    } else if (params.get("topup") === "canceled") {
-      addToast({
-        title: "Top-up canceled",
-        description: "No charges were made.",
-        color: "warning",
-      });
-      window.history.replaceState({}, "", window.location.pathname);
-    }
-  }, [fetchWallet]);
-
   const handleTopUp = async () => {
     if (!teamId) return;
     const cents = Math.round(parseFloat(topUpAmount) * 100);
@@ -168,10 +154,13 @@ export default function ApiPlatformPage() {
       });
       return;
     }
-    setIsTopUpLoading(true);
+    setIsCreatingTopUp(true);
     try {
-      const { url } = await apiPlatformAPI.createTopUp(teamId, cents);
-      window.location.href = url;
+      const { clientSecret, paymentIntentId } = await apiPlatformAPI.createTopUp(teamId, cents);
+      setTopUpClientSecret(clientSecret);
+      setTopUpPaymentIntentId(paymentIntentId);
+      setTopUpAmountCents(cents);
+      setTopUpModalOpen(true);
     } catch (err) {
       addToast({
         title: "Error",
@@ -179,7 +168,8 @@ export default function ApiPlatformPage() {
           err instanceof Error ? err.message : "Failed to start top-up",
         color: "danger",
       });
-      setIsTopUpLoading(false);
+    } finally {
+      setIsCreatingTopUp(false);
     }
   };
 
@@ -466,10 +456,10 @@ export default function ApiPlatformPage() {
                       />
                       <Button
                         className="bg-accent-400 text-white font-medium flex-shrink-0"
-                        isLoading={isTopUpLoading}
+                        isLoading={isCreatingTopUp}
                         onPress={handleTopUp}
                         startContent={
-                          !isTopUpLoading && (
+                          !isCreatingTopUp && (
                             <Icon icon="solar:card-bold-duotone" width={18} />
                           )
                         }
@@ -835,6 +825,9 @@ export default function ApiPlatformPage() {
                         <th className="text-center text-text-tertiary font-medium py-2 px-3">
                           Status
                         </th>
+                        <th className="text-left text-text-tertiary font-medium py-2 px-3">
+                          Job ID
+                        </th>
                         <th className="text-right text-text-tertiary font-medium py-2 px-3">
                           Cost
                         </th>
@@ -896,6 +889,9 @@ export default function ApiPlatformPage() {
                               {log.status_code}
                             </Chip>
                           </td>
+                          <td className="py-2.5 px-3 text-text-secondary font-mono text-xs">
+                            {log.metadata?.jobId ?? "—"}
+                          </td>
                           <td className="py-2.5 px-3 text-right text-text-primary">
                             {log.cost_cents > 0
                               ? formatCents(log.cost_cents)
@@ -918,6 +914,23 @@ export default function ApiPlatformPage() {
       </div>
 
       {renderCreatedKeyModal()}
+
+      <TopUpModal
+        isOpen={topUpModalOpen}
+        onClose={() => {
+          setTopUpModalOpen(false);
+          setTopUpClientSecret(null);
+          setTopUpPaymentIntentId(null);
+        }}
+        clientSecret={topUpClientSecret}
+        paymentIntentId={topUpPaymentIntentId}
+        amountCents={topUpAmountCents}
+        teamId={teamId!}
+        onSuccess={() => {
+          fetchWallet();
+          fetchAutoRefill();
+        }}
+      />
     </motion.div>
   );
 }
