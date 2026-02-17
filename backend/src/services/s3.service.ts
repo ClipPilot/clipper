@@ -223,6 +223,10 @@ class S3Service {
     return await getSignedUrl(s3Client, command, { expiresIn });
   }
 
+  getPublicUrl(key: string): string {
+    return `https://${BUCKET_NAME}.s3.${config.aws.region}.amazonaws.com/${key}`;
+  }
+
   async getPresignedDownloadUrl(key: string, filename: string, expiresIn: number = 3600): Promise<string> {
     const command = new GetObjectCommand({
       Bucket: BUCKET_NAME,

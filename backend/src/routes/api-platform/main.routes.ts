@@ -5,12 +5,19 @@ import {
   revokeApiKeyController,
   getWalletController,
   createWalletTopUpController,
+  getTopUpStatusController,
   getAutoRefillController,
   updateAutoRefillController,
   getUsageLogsController,
   testApiRouteController,
+  getWalletV1Controller,
 } from "../../controllers/apiPlatform.controller";
+import {
+  createClipJobController,
+  getClipJobStatusController,
+} from "../../controllers/apiClip.controller";
 import { requireAuth, validateAPIKey } from "../../middleware/auth.middleware";
+import { upload } from "../../config/multer";
 
 const router = Router();
 
@@ -159,198 +166,12 @@ router.get("/teams/:teamId/keys", requireAuth, listApiKeysController);
  */
 router.delete("/teams/:teamId/keys/:keyId", requireAuth, revokeApiKeyController);
 
-/**
- * @openapi
- * /platform/teams/{teamId}/wallet:
- *   get:
- *     summary: Get wallet balance
- *     description: Returns the team's API wallet balance and usage totals.
- *     tags:
- *       - API Platform
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: teamId
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Wallet balance
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 balance_cents:
- *                   type: integer
- *                 total_spent_cents:
- *                   type: integer
- *                 total_topped_up_cents:
- *                   type: integer
- *                 active:
- *                   type: boolean
- *       401:
- *         description: Unauthorized
- */
+// Dashboard-only routes (bearer auth, teamId in URL) — used by frontend
 router.get("/teams/:teamId/wallet", requireAuth, getWalletController);
-
-/**
- * @openapi
- * /platform/teams/{teamId}/wallet/topup:
- *   post:
- *     summary: Create a wallet top-up checkout session
- *     description: Creates a Stripe checkout session to add funds to the API wallet. Minimum $5.00.
- *     tags:
- *       - API Platform
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: teamId
- *         required: true
- *         schema:
- *           type: integer
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - amount_cents
- *             properties:
- *               amount_cents:
- *                 type: integer
- *                 minimum: 500
- *                 description: Amount in cents (500 = $5.00)
- *     responses:
- *       200:
- *         description: Checkout session created
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 url:
- *                   type: string
- *                   format: uri
- *       400:
- *         description: Invalid amount
- *       401:
- *         description: Unauthorized
- */
 router.post("/teams/:teamId/wallet/topup", requireAuth, createWalletTopUpController);
-
-/**
- * @openapi
- * /platform/teams/{teamId}/wallet/auto-refill:
- *   get:
- *     summary: Get auto-refill settings
- *     tags:
- *       - API Platform
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: teamId
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Auto-refill settings
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 auto_refill:
- *                   type: boolean
- *                 refill_threshold_cents:
- *                   type: integer
- *                 refill_amount_cents:
- *                   type: integer
- *                 has_payment_method:
- *                   type: boolean
- *       401:
- *         description: Unauthorized
- */
+router.get("/teams/:teamId/wallet/topup/:paymentIntentId/status", requireAuth, getTopUpStatusController);
 router.get("/teams/:teamId/wallet/auto-refill", requireAuth, getAutoRefillController);
-
-/**
- * @openapi
- * /platform/teams/{teamId}/wallet/auto-refill:
- *   put:
- *     summary: Update auto-refill settings
- *     tags:
- *       - API Platform
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: teamId
- *         required: true
- *         schema:
- *           type: integer
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               auto_refill:
- *                 type: boolean
- *               refill_threshold_cents:
- *                 type: integer
- *                 minimum: 100
- *               refill_amount_cents:
- *                 type: integer
- *                 minimum: 500
- *     responses:
- *       200:
- *         description: Updated settings
- *       400:
- *         description: No payment method or invalid values
- *       401:
- *         description: Unauthorized
- */
 router.put("/teams/:teamId/wallet/auto-refill", requireAuth, updateAutoRefillController);
-
-/**
- * @openapi
- * /platform/teams/{teamId}/usage:
- *   get:
- *     summary: Get API usage logs
- *     tags:
- *       - API Platform
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: teamId
- *         required: true
- *         schema:
- *           type: integer
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 50
- *           maximum: 100
- *       - in: query
- *         name: offset
- *         schema:
- *           type: integer
- *           default: 0
- *     responses:
- *       200:
- *         description: Usage logs
- *       401:
- *         description: Unauthorized
- */
 router.get("/teams/:teamId/usage", requireAuth, getUsageLogsController);
 
 /**
@@ -389,5 +210,213 @@ router.get("/teams/:teamId/usage", requireAuth, getUsageLogsController);
  *         description: Rate limit exceeded
  */
 router.get("/v1/test", validateAPIKey, testApiRouteController);
+
+/**
+ * @openapi
+ * /platform/v1/wallet:
+ *   get:
+ *     summary: Get wallet balance
+ *     description: Returns your team's API wallet balance and usage totals.
+ *     tags:
+ *       - Wallet
+ *     security:
+ *       - apiKeyAuth: []
+ *     responses:
+ *       200:
+ *         description: Wallet balance
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 balance_cents:
+ *                   type: integer
+ *                 total_spent_cents:
+ *                   type: integer
+ *                 total_topped_up_cents:
+ *                   type: integer
+ *                 active:
+ *                   type: boolean
+ *       401:
+ *         description: Invalid or missing API key
+ */
+router.get("/v1/wallet", validateAPIKey, getWalletV1Controller);
+
+/**
+ * @openapi
+ * /platform/v1/clip:
+ *   post:
+ *     summary: Submit a video for AI clipping
+ *     description: |
+ *       Submit a video for AI-powered clip generation. Provide either:
+ *       - A `video_url` in JSON body, or
+ *       - A `video` file via multipart form data.
+ *
+ *       Each clip costs $1.50 and is deducted from your wallet upfront.
+ *       Poll GET /v1/clip/{jobId} for results.
+ *     tags:
+ *       - AI Clipping
+ *     security:
+ *       - apiKeyAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - video_url
+ *             properties:
+ *               video_url:
+ *                 type: string
+ *                 format: uri
+ *                 description: Public URL of the video to clip
+ *               num_clips:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 10
+ *                 default: 1
+ *               style:
+ *                 type: string
+ *                 enum: [viral, business, general, gaming]
+ *                 default: viral
+ *               captions:
+ *                 type: object
+ *                 properties:
+ *                   enabled:
+ *                     type: boolean
+ *                     default: false
+ *                   color:
+ *                     type: string
+ *                     enum: [white, black, red, orange, yellow, green, teal, blue, purple, pink]
+ *                     default: white
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - video
+ *             properties:
+ *               video:
+ *                 type: string
+ *                 format: binary
+ *                 description: Video file (mp4, mov, avi, mkv, webm)
+ *               num_clips:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 10
+ *                 default: 1
+ *               style:
+ *                 type: string
+ *                 enum: [viral, business, general, gaming]
+ *                 default: viral
+ *               captions_enabled:
+ *                 type: string
+ *                 enum: ["true", "false"]
+ *                 default: "false"
+ *               captions_color:
+ *                 type: string
+ *                 enum: [white, black, red, orange, yellow, green, teal, blue, purple, pink]
+ *                 default: white
+ *     responses:
+ *       200:
+ *         description: Clip job submitted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 job_id:
+ *                   type: integer
+ *                 num_clips:
+ *                   type: integer
+ *                 cost_cents:
+ *                   type: integer
+ *                 status:
+ *                   type: string
+ *                   example: processing
+ *       400:
+ *         description: Invalid input
+ *       401:
+ *         description: Invalid or missing API key
+ *       402:
+ *         description: Insufficient wallet balance
+ */
+router.post("/v1/clip", validateAPIKey, upload.single("video"), createClipJobController);
+
+/**
+ * @openapi
+ * /platform/v1/clip/{jobId}:
+ *   get:
+ *     summary: Get clip job status
+ *     description: |
+ *       Poll this endpoint to check if your clip job is ready.
+ *       Returns permanent download URLs for each clip when status is "completed".
+ *     tags:
+ *       - AI Clipping
+ *     security:
+ *       - apiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: jobId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The job_id returned from POST /v1/clip
+ *     responses:
+ *       200:
+ *         description: Job status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               oneOf:
+ *                 - type: object
+ *                   description: Job is still processing
+ *                   properties:
+ *                     job_id:
+ *                       type: integer
+ *                     status:
+ *                       type: string
+ *                       example: processing
+ *                     progress:
+ *                       type: object
+ *                       properties:
+ *                         completed:
+ *                           type: integer
+ *                         total:
+ *                           type: integer
+ *                 - type: object
+ *                   description: All clips finished
+ *                   properties:
+ *                     job_id:
+ *                       type: integer
+ *                     status:
+ *                       type: string
+ *                       example: completed
+ *                     clips:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           clip_id:
+ *                             type: integer
+ *                           status:
+ *                             type: string
+ *                             enum: [completed, failed]
+ *                           title:
+ *                             type: string
+ *                           download_url:
+ *                             type: string
+ *                             format: uri
+ *                           error:
+ *                             type: string
+ *                           created_at:
+ *                             type: string
+ *                             format: date-time
+ *       401:
+ *         description: Invalid or missing API key
+ *       404:
+ *         description: Job not found
+ */
+router.get("/v1/clip/:jobId", validateAPIKey, getClipJobStatusController);
 
 export default router;

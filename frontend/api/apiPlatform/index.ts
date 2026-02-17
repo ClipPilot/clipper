@@ -32,6 +32,7 @@ export interface UsageLog {
   cost_cents: number;
   quantity: number;
   response_time_ms: number | null;
+  metadata: { jobId?: number; clipId?: number } | null;
   created_at: string;
 }
 
@@ -92,7 +93,10 @@ class ApiPlatformAPI {
     return response.json();
   }
 
-  async createTopUp(teamId: number, amountCents: number): Promise<{ url: string }> {
+  async createTopUp(
+    teamId: number,
+    amountCents: number,
+  ): Promise<{ clientSecret: string; paymentIntentId: string }> {
     const response = await apiFetch(
       `${API_URL}/platform/teams/${teamId}/wallet/topup`,
       {
@@ -105,6 +109,22 @@ class ApiPlatformAPI {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || "Failed to create top-up");
+    }
+
+    return response.json();
+  }
+
+  async getTopUpStatus(
+    teamId: number,
+    paymentIntentId: string,
+  ): Promise<{ credited: boolean }> {
+    const response = await apiFetch(
+      `${API_URL}/platform/teams/${teamId}/wallet/topup/${paymentIntentId}/status`,
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to check top-up status");
     }
 
     return response.json();

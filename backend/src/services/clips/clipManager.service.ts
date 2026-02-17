@@ -77,6 +77,15 @@ export class ClipManagerService {
       .offset(offset);
   }
 
+  // Get all clips for a raw video (used as job grouping for API)
+  async getClipsByRawVideoId(rawVideoId: number, teamId: number) {
+    return await db
+      .select()
+      .from(clips)
+      .where(and(eq(clips.raw_video_id, rawVideoId), eq(clips.team_id, teamId)))
+      .orderBy(desc(clips.created_at));
+  }
+
   // Get a single clip by ID
   async getClipById(clipId: number, teamId: number) {
     const [clip] = await db
