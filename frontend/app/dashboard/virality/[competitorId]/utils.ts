@@ -1,19 +1,62 @@
 import type { ViralityPost } from "@/api/virality";
 import type { ComparisonMode } from "@/components/virality/ComparisonModeSelector";
 
-/** Compute % change between last two metrics_history entries for a post */
+/** Percentage change helper — returns null when prev is 0 */
+export function pct(latest: number, prev: number): number | null {
+  return prev > 0 ? ((latest - prev) / prev) * 100 : null;
+}
+
+/** Average posts per week calculated from posted_at timestamps */
+export function computePostsPerWeek(posts: ViralityPost[]): number {
+  if (posts.length < 2) return posts.length;
+  const dates = posts
+    .map((p) => (p.posted_at ? new Date(p.posted_at).getTime() : 0))
+    .filter((t) => t > 0);
+  if (dates.length < 2) return posts.length;
+  const earliest = Math.min(...dates);
+  const latest = Math.max(...dates);
+  const weeks = Math.max((latest - earliest) / (7 * 24 * 60 * 60 * 1000), 1);
+  return +(dates.length / weeks).toFixed(1);
+}
+
+/** Compute % change for a post metric, optionally relative to a comparison date */
 export function getPostMetricChange(
   post: ViralityPost,
-  metric: "likes" | "comments" | "views"
+  metric: "likes" | "comments" | "views",
+  comparisonDate?: Date | null
 ): number | null {
   const h = post.metrics_history;
   if (!h || h.length < 2) return null;
-  const prev = h[h.length - 2];
   const latest = h[h.length - 1];
+  const prev = comparisonDate
+    ? findClosestEntry(h, comparisonDate)
+    : h[h.length - 2];
+  if (!prev || prev === latest) return null;
   const prevVal = metric === "views" ? (prev.views ?? 0) : prev[metric];
   const latestVal = metric === "views" ? (latest.views ?? 0) : latest[metric];
   if (prevVal === 0 || (metric === "views" && latestVal === 0)) return null;
   return ((latestVal - prevVal) / prevVal) * 100;
+}
+
+/** Compute % change in engagement rate, optionally relative to a comparison date */
+export function getPostEngRateChange(
+  post: ViralityPost,
+  comparisonDate?: Date | null
+): number | null {
+  const h = post.metrics_history;
+  if (!h || h.length < 2) return null;
+  const latest = h[h.length - 1];
+  const prev = comparisonDate
+    ? findClosestEntry(h, comparisonDate)
+    : h[h.length - 2];
+  if (!prev || prev === latest) return null;
+  const prevViews = prev.views ?? 0;
+  const latestViews = latest.views ?? 0;
+  if (prevViews === 0 || latestViews === 0) return null;
+  const prevRate = (prev.likes + prev.comments) / prevViews;
+  const latestRate = (latest.likes + latest.comments) / latestViews;
+  if (prevRate === 0) return null;
+  return ((latestRate - prevRate) / prevRate) * 100;
 }
 
 /** Find the history entry closest to a target date */
@@ -50,41 +93,135 @@ export function getComparisonDate(mode: ComparisonMode): Date | null {
   }
 }
 
-export interface AggregatedDay {
+export interface PostFrequencyDay {
   date: string;
-  likes: number;
-  comments: number;
-  views: number;
+  count: number;
 }
 
-/** Aggregate post metrics by day, filtered to the last N weeks */
-export function buildChartData(
-  posts: ViralityPost[],
-  weekFilter: number
-): AggregatedDay[] {
-  const byDate = new Map<string, { likes: number; comments: number; views: number }>();
+export interface AccountChartDay {
+  hourKey: string;
+  [key: string]: string | number;
+}
 
-  for (const post of posts) {
-    if (!post.metrics_history?.length) continue;
-    for (const entry of post.metrics_history) {
-      const day = entry.recorded_at.slice(0, 10);
-      const existing = byDate.get(day) || { likes: 0, comments: 0, views: 0 };
-      existing.likes += entry.likes;
-      existing.comments += entry.comments;
-      existing.views += entry.views ?? 0;
-      byDate.set(day, existing);
+/** Build chart data with a separate series per account for the given metric (hourly granularity) */
+export function buildChartDataByAccount(
+  postsByAccount: Record<number, ViralityPost[]>,
+  accountIds: number[],
+  metric: "likes" | "comments" | "views",
+  startDate?: string,
+  endDate?: string,
+): AccountChartDay[] {
+  const startStr = startDate ? new Date(startDate).toISOString().slice(0, 13) : undefined;
+  const endStr = endDate ? new Date(endDate).toISOString().slice(0, 13) : undefined;
+
+  const allHours = new Set<string>();
+  const byAccountHour = new Map<number, Map<string, number>>();
+
+  for (const accountId of accountIds) {
+    const posts = postsByAccount[accountId] || [];
+    const hourMap = new Map<string, number>();
+
+    for (const post of posts) {
+      if (!post.metrics_history?.length) continue;
+      for (const entry of post.metrics_history) {
+        const hour = entry.recorded_at.slice(0, 13);
+        if (startStr && hour < startStr) continue;
+        if (endStr && hour > endStr) continue;
+        allHours.add(hour);
+        const val = metric === "views" ? (entry.views ?? 0) : entry[metric];
+        hourMap.set(hour, (hourMap.get(hour) || 0) + val);
+      }
     }
+
+    byAccountHour.set(accountId, hourMap);
   }
 
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - weekFilter * 7);
-  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  const sorted = Array.from(allHours).sort();
 
-  return Array.from(byDate.entries())
-    .filter(([date]) => date >= cutoffStr)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, vals]) => ({
-      date: new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-      ...vals,
-    }));
+  return sorted.map((hour) => {
+    const point: AccountChartDay = { hourKey: hour };
+    for (const accountId of accountIds) {
+      point[`account_${accountId}`] = byAccountHour.get(accountId)?.get(hour) || 0;
+    }
+    return point;
+  });
+}
+
+/** Build post frequency data using the page-level date range (supports hourly for single-day) */
+export function buildPostFrequencyDataFromRange(
+  posts: ViralityPost[],
+  startDate?: string,
+  endDate?: string
+): { data: PostFrequencyDay[]; isHourly: boolean } {
+  const now = new Date();
+  const end = endDate ? new Date(endDate) : now;
+
+  // When no startDate, use the earliest post date instead of a fixed window
+  let start: Date;
+  if (startDate) {
+    start = new Date(startDate);
+  } else {
+    const postDates = posts
+      .map((p) => p.posted_at ? new Date(p.posted_at).getTime() : 0)
+      .filter((t) => t > 0);
+    start = postDates.length > 0
+      ? new Date(Math.min(...postDates))
+      : new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000);
+  }
+
+  const diffMs = end.getTime() - start.getTime();
+  const diffDays = diffMs / (24 * 60 * 60 * 1000);
+  const isHourly = diffDays <= 1;
+
+  if (isHourly) {
+    // Group by hour
+    const byHour = new Map<string, number>();
+    for (const post of posts) {
+      if (!post.posted_at) continue;
+      const d = new Date(post.posted_at);
+      if (d < start || d > end) continue;
+      const hourKey = `${d.toISOString().slice(0, 13)}:00`;
+      byHour.set(hourKey, (byHour.get(hourKey) || 0) + 1);
+    }
+
+    const result: PostFrequencyDay[] = [];
+    const cursor = new Date(start);
+    cursor.setMinutes(0, 0, 0);
+    while (cursor <= end) {
+      const key = `${cursor.toISOString().slice(0, 13)}:00`;
+      result.push({
+        date: cursor.toLocaleTimeString("en-US", { hour: "numeric", hour12: true }),
+        count: byHour.get(key) || 0,
+      });
+      cursor.setHours(cursor.getHours() + 1);
+    }
+    return { data: result, isHourly: true };
+  }
+
+  // Group by day
+  const startStr = start.toISOString().slice(0, 10);
+  const byDate = new Map<string, number>();
+  for (const post of posts) {
+    if (!post.posted_at) continue;
+    const day = post.posted_at.slice(0, 10);
+    if (day < startStr) continue;
+    byDate.set(day, (byDate.get(day) || 0) + 1);
+  }
+
+  const result: PostFrequencyDay[] = [];
+  const cursor = new Date(start);
+  cursor.setDate(cursor.getDate() + 1);
+  const endDay = new Date(end);
+  endDay.setHours(23, 59, 59, 999);
+
+  while (cursor <= endDay) {
+    const dayStr = cursor.toISOString().slice(0, 10);
+    result.push({
+      date: new Date(dayStr).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      count: byDate.get(dayStr) || 0,
+    });
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return { data: result, isHourly: false };
 }

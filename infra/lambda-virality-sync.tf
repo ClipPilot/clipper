@@ -18,8 +18,11 @@ import {
 }
 
 # ECR Repository for Virality Sync Lambda
+# Note: Prod uses 'clipster-virality-sync-lambda', staging uses 'clipster-virality-sync-lambda-staging'
+# This separation prevents staging deployments from triggering ECR lifecycle policy
+# that could delete production images
 resource "aws_ecr_repository" "virality_sync_lambda" {
-  name                 = "${var.project_name}-virality-sync-lambda"
+  name                 = var.environment == "prod" ? "${var.project_name}-virality-sync-lambda" : "${var.project_name}-virality-sync-lambda-${var.environment}"
   image_tag_mutability = "MUTABLE"
   force_delete         = true
 
@@ -28,7 +31,8 @@ resource "aws_ecr_repository" "virality_sync_lambda" {
   }
 
   tags = {
-    Name = "${var.project_name}-virality-sync-lambda"
+    Name        = var.environment == "prod" ? "${var.project_name}-virality-sync-lambda" : "${var.project_name}-virality-sync-lambda-${var.environment}"
+    Environment = var.environment
   }
 }
 
@@ -55,7 +59,7 @@ resource "aws_ecr_lifecycle_policy" "virality_sync_lambda" {
 
 # IAM Role for Virality Sync Lambda
 resource "aws_iam_role" "virality_sync_lambda" {
-  name = "${var.project_name}-virality-sync-lambda-role"
+  name = "${var.project_name}-virality-sync-lambda-role-${var.environment}"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -71,7 +75,8 @@ resource "aws_iam_role" "virality_sync_lambda" {
   })
 
   tags = {
-    Name = "${var.project_name}-virality-sync-lambda-role"
+    Name        = "${var.project_name}-virality-sync-lambda-role-${var.environment}"
+    Environment = var.environment
   }
 }
 
@@ -83,7 +88,7 @@ resource "aws_iam_role_policy_attachment" "virality_sync_lambda_basic" {
 
 # Virality Sync Lambda Function
 resource "aws_lambda_function" "virality_sync" {
-  function_name = "${var.project_name}-virality-sync"
+  function_name = "${var.project_name}-virality-sync-${var.environment}"
   role          = aws_iam_role.virality_sync_lambda.arn
   package_type  = "Image"
   image_uri     = "${aws_ecr_repository.virality_sync_lambda.repository_url}:latest"
@@ -106,28 +111,31 @@ resource "aws_lambda_function" "virality_sync" {
   }
 
   tags = {
-    Name = "${var.project_name}-virality-sync"
+    Name        = "${var.project_name}-virality-sync-${var.environment}"
+    Environment = var.environment
   }
 }
 
 # CloudWatch Log Group for Virality Sync Lambda
 resource "aws_cloudwatch_log_group" "virality_sync_lambda" {
-  name              = "/aws/lambda/${var.project_name}-virality-sync"
+  name              = "/aws/lambda/${var.project_name}-virality-sync-${var.environment}"
   retention_in_days = 14
 
   tags = {
-    Name = "${var.project_name}-virality-sync-logs"
+    Name        = "${var.project_name}-virality-sync-logs-${var.environment}"
+    Environment = var.environment
   }
 }
 
 # EventBridge Rule - Run every 6 hours
 resource "aws_cloudwatch_event_rule" "virality_sync_schedule" {
-  name                = "${var.project_name}-virality-sync-schedule"
+  name                = "${var.project_name}-virality-sync-schedule-${var.environment}"
   description         = "Trigger virality-sync Lambda every 6 hours"
   schedule_expression = "cron(0 */6 * * ? *)"
 
   tags = {
-    Name = "${var.project_name}-virality-sync-schedule"
+    Name        = "${var.project_name}-virality-sync-schedule-${var.environment}"
+    Environment = var.environment
   }
 }
 

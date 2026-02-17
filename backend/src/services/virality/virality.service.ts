@@ -363,6 +363,7 @@ class ViralityService {
           like_count: postData.likesCount || 0,
           comment_count: postData.commentsCount || 0,
           video_play_count: postData.videoPlayCount,
+          thumbnail_url: postData.displayUrl || existingPost.thumbnail_url,
           metrics_history: trimmed,
           updated_at: new Date(),
         })
@@ -376,7 +377,7 @@ class ViralityService {
           : platform === "tiktok"
             ? postData.url || ""
             : `https://www.instagram.com/p/${postData.shortCode}/`),
-        thumbnail_url: platform === "tiktok" ? postData.displayUrl : null,
+        thumbnail_url: postData.displayUrl || null,
         caption: postData.caption,
         hashtags: postData.hashtags || [],
         post_type: postData.type,

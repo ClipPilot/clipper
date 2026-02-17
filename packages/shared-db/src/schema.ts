@@ -950,6 +950,7 @@ export const viralityAccounts = pgTable(
   }),
 ).enableRLS();
 
+
 export const viralityPosts = pgTable(
   "virality_posts",
   {
