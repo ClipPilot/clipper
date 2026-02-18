@@ -50,16 +50,27 @@ export default function MassPostingPage() {
         <div className="flex flex-col items-center gap-6 max-w-sm">
           <div className="relative">
             <div className="flex items-center justify-center w-20 h-20 rounded-2xl bg-accent-400/10">
-              <Icon icon="solar:posts-carousel-vertical-bold-duotone" className="text-accent-400" width={40} />
+              <Icon
+                icon="solar:posts-carousel-vertical-bold-duotone"
+                className="text-accent-400"
+                width={40}
+              />
             </div>
             <div className="absolute -bottom-1 -right-1 flex items-center justify-center w-7 h-7 rounded-full bg-surface-dark border-2 border-surface-dark">
-              <Icon icon="solar:lock-keyhole-bold" className="text-text-tertiary" width={14} />
+              <Icon
+                icon="solar:lock-keyhole-bold"
+                className="text-text-tertiary"
+                width={14}
+              />
             </div>
           </div>
           <div className="text-center space-y-2">
-            <h2 className="text-xl font-bold text-text-primary">Mass Posting</h2>
+            <h2 className="text-xl font-bold text-text-primary">
+              Mass Posting
+            </h2>
             <p className="text-sm text-text-secondary leading-relaxed">
-              Automate posting across multiple platforms and manage all your content distribution in one place.
+              Automate posting across multiple platforms and manage all your
+              content distribution in one place.
             </p>
           </div>
           <div className="flex flex-col items-center gap-3 w-full">
@@ -69,11 +80,8 @@ export default function MassPostingPage() {
               onPress={() => router.push("/dashboard/pricing")}
               startContent={<Icon icon="solar:rocket-bold" width={18} />}
             >
-              Upgrade to Creator
+              Upgrade to Scale
             </Button>
-            <p className="text-xs text-text-tertiary">
-              Available on all paid plans
-            </p>
           </div>
         </div>
       </div>
