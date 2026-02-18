@@ -69,14 +69,29 @@ export function PaidPlanView({
   const isScale = currentPlan === "scale";
   const isStudio = currentPlan === "studio";
   const isCreator = currentPlan === "creator";
-  // Only allow upgrades, not downgrades
-  const canChangePlan = isOwner && (isCreator || isStudio) && onChangePlan;
-  const targetPlan: "studio" | "scale" = isCreator ? "studio" : "scale";
+  // Allow upgrades for creator, studio, and scale
+  const canChangePlan = isOwner && (isCreator || isStudio || isScale) && !isEnterprise;
+
+  type UpgradeTarget = "creator" | "studio" | "scale" | "enterprise";
+  const availableUpgrades: UpgradeTarget[] = isCreator
+    ? ["studio", "scale"]
+    : isStudio
+      ? ["scale"]
+      : isScale
+        ? ["enterprise"]
+        : [];
+
+  const [selectedTarget, setSelectedTarget] = useState<UpgradeTarget>(availableUpgrades[0] || "studio");
 
   const handleChangePlan = async () => {
+    if (selectedTarget === "enterprise") {
+      window.open("https://cuttr.com/contact", "_blank");
+      setIsChangePlanModalOpen(false);
+      return;
+    }
     if (!onChangePlan) return;
 
-    const result = await onChangePlan(targetPlan);
+    const result = await onChangePlan(selectedTarget as "creator" | "studio" | "scale");
     if (result?.effectiveDate) {
       setPendingEffectiveDate(result.effectiveDate);
     }
@@ -98,45 +113,54 @@ export function PaidPlanView({
     }
   };
 
-  const getColorClass = () => {
-    if (isEnterprise) return "emerald-500";
-    if (isScale) return "purple-500";
-    if (isCreator) return "orange-500";
-    return "accent-400";
-  };
-
-  const getTargetPlanDetails = () => {
-    if (isCreator) {
-      return {
-        name: "Studio",
-        color: "accent-400",
-        credits: "400 credits/month",
-        extra1: "Virality Tracker",
-        extra2: "Priority support",
-      };
-    }
-    return {
-      name: "Scale",
-      color: "purple-500",
-      credits: "1,000 credits/month",
-      extra1: "Team seats included",
-      extra2: "Folder management",
-    };
+  const upgradeDetails: Record<UpgradeTarget, {
+    name: string;
+    credits: string;
+    extras: string[];
+    iconBg: string;
+    iconText: string;
+    selectedBg: string;
+    selectedBorder: string;
+    selectedText: string;
+    btnBg: string;
+  }> = {
+    creator: {
+      name: "Creator", credits: "75 credits/month", extras: ["UGC Studio access", "AI Clipping"],
+      iconBg: "bg-orange-500/20", iconText: "text-orange-500",
+      selectedBg: "bg-orange-500/5", selectedBorder: "border-orange-500/30", selectedText: "text-orange-500",
+      btnBg: "bg-orange-500",
+    },
+    studio: {
+      name: "Studio", credits: "400 credits/month", extras: ["Virality Tracker", "Priority support"],
+      iconBg: "bg-accent-400/20", iconText: "text-accent-400",
+      selectedBg: "bg-accent-400/5", selectedBorder: "border-accent-400/30", selectedText: "text-accent-400",
+      btnBg: "bg-accent-400",
+    },
+    scale: {
+      name: "Scale", credits: "1,000 credits/month", extras: ["Team seats included", "Folder management"],
+      iconBg: "bg-purple-500/20", iconText: "text-purple-500",
+      selectedBg: "bg-purple-500/5", selectedBorder: "border-purple-500/30", selectedText: "text-purple-500",
+      btnBg: "bg-purple-500",
+    },
+    enterprise: {
+      name: "Enterprise", credits: "Custom credits", extras: ["Dedicated support", "Custom integrations"],
+      iconBg: "bg-emerald-500/20", iconText: "text-emerald-500",
+      selectedBg: "bg-emerald-500/5", selectedBorder: "border-emerald-500/30", selectedText: "text-emerald-500",
+      btnBg: "bg-emerald-500",
+    },
   };
 
   const getCurrentPlanDetails = () => {
-    if (isCreator) {
-      return {
-        credits: "75 credits/month",
-        extra1: "Single seat",
-        extra2: "No virality tracking",
-      };
+    switch (currentPlan) {
+      case "creator":
+        return { credits: "75 credits/month" };
+      case "studio":
+        return { credits: "400 credits/month" };
+      case "scale":
+        return { credits: "1,000 credits/month" };
+      default:
+        return { credits: "75 credits/month" };
     }
-    return {
-      credits: "400 credits/month",
-      extra1: "Single seat",
-      extra2: "No folders",
-    };
   };
 
   return (
@@ -288,7 +312,7 @@ export function PaidPlanView({
               <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
                 <Icon icon="solar:clock-circle-bold" className="text-amber-500" width={18} />
                 <p className="text-sm text-amber-500">
-                  Your plan will change to <span className="font-semibold capitalize">{targetPlan}</span> on{" "}
+                  Your plan will change to <span className="font-semibold capitalize">{selectedTarget}</span> on{" "}
                   {new Date(pendingEffectiveDate).toLocaleDateString("en-US", {
                     month: "long",
                     day: "numeric",
@@ -312,7 +336,7 @@ export function PaidPlanView({
                   Manage Subscription
                 </Button>
               )}
-              {canChangePlan && !pendingEffectiveDate && (
+              {canChangePlan && !pendingEffectiveDate && availableUpgrades.length > 0 && (
                 <Button
                   variant="flat"
                   color="default"
@@ -361,59 +385,73 @@ export function PaidPlanView({
           </ModalHeader>
           <ModalBody className="py-6">
             <div className="space-y-6">
-              {/* Plan Comparison Cards */}
-              <div className="grid grid-cols-2 gap-4">
-                {/* Current Plan */}
-                <div className="p-4 rounded-xl bg-surface-dark/30 border border-border-base">
-                  <p className="text-xs text-text-tertiary uppercase tracking-wider mb-2">Current</p>
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", isCreator ? "bg-orange-500/20" : "bg-accent-400/20")}>
-                      <Icon icon="solar:star-bold" className={isCreator ? "text-orange-500" : "text-accent-400"} width={16} />
-                    </div>
-                    <span className="text-lg font-semibold text-text-primary">{getPlanDisplayName()}</span>
+              {/* Current Plan */}
+              <div className="p-4 rounded-xl bg-surface-dark/30 border border-border-base">
+                <p className="text-xs text-text-tertiary uppercase tracking-wider mb-2">Current</p>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", upgradeDetails[currentPlan].iconBg)}>
+                    <Icon icon="solar:star-bold" className={upgradeDetails[currentPlan].iconText} width={16} />
                   </div>
-                  <div className="space-y-1 text-sm text-text-secondary">
-                    <p>{getCurrentPlanDetails().credits}</p>
-                    <p>{getCurrentPlanDetails().extra1}</p>
-                    <p>{getCurrentPlanDetails().extra2}</p>
-                  </div>
+                  <span className="text-lg font-semibold text-text-primary">{getPlanDisplayName()}</span>
                 </div>
+                <p className="text-sm text-text-secondary">{getCurrentPlanDetails().credits}</p>
+              </div>
 
-                {/* Target Plan */}
-                <div className={cn(
-                  "p-4 rounded-xl border-2",
-                  isCreator
-                    ? "bg-accent-400/5 border-accent-400/30"
-                    : "bg-purple-500/5 border-purple-500/30"
-                )}>
-                  <p className="text-xs text-text-tertiary uppercase tracking-wider mb-2">Upgrade to</p>
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className={cn(
-                      "w-8 h-8 rounded-lg flex items-center justify-center",
-                      isCreator ? "bg-accent-400/20" : "bg-purple-500/20"
-                    )}>
-                      <Icon icon="solar:star-bold" className={isCreator ? "text-accent-400" : "text-purple-500"} width={16} />
-                    </div>
-                    <span className={cn("text-lg font-semibold", isCreator ? "text-accent-400" : "text-purple-500")}>{getTargetPlanDetails().name}</span>
-                  </div>
-                  <div className="space-y-1 text-sm text-text-secondary">
-                    <p>{getTargetPlanDetails().credits}</p>
-                    <p>{getTargetPlanDetails().extra1}</p>
-                    <p>{getTargetPlanDetails().extra2}</p>
-                  </div>
+              {/* Upgrade Options */}
+              <div>
+                <p className="text-xs text-text-tertiary uppercase tracking-wider mb-3">Upgrade to</p>
+                <div className={cn("grid gap-3", availableUpgrades.length > 1 ? "grid-cols-2" : "grid-cols-1")}>
+                  {availableUpgrades.map((plan) => {
+                    const details = upgradeDetails[plan];
+                    const isSelected = selectedTarget === plan;
+                    return (
+                      <button
+                        key={plan}
+                        type="button"
+                        onClick={() => setSelectedTarget(plan)}
+                        className={cn(
+                          "p-4 rounded-xl border-2 text-left transition-all cursor-pointer",
+                          isSelected
+                            ? cn(details.selectedBg, details.selectedBorder)
+                            : "bg-surface-dark/30 border-border-base hover:border-border-light"
+                        )}
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", details.iconBg)}>
+                              <Icon icon="solar:star-bold" className={details.iconText} width={16} />
+                            </div>
+                            <span className={cn("text-lg font-semibold", isSelected ? details.selectedText : "text-text-primary")}>
+                              {details.name}
+                            </span>
+                          </div>
+                          {isSelected && (
+                            <Icon icon="solar:check-circle-bold" className={details.iconText} width={20} />
+                          )}
+                        </div>
+                        <div className="space-y-1 text-sm text-text-secondary">
+                          <p>{details.credits}</p>
+                          {details.extras.map((extra) => (
+                            <p key={extra}>{extra}</p>
+                          ))}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
               {/* Info Note */}
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-surface-dark/50">
-                <Icon icon="solar:clock-circle-bold" className="text-text-tertiary flex-shrink-0" width={20} />
-                <p className="text-sm text-text-secondary">
-                  Changes take effect at your <span className="text-text-primary font-medium">next billing cycle</span>.
-                  You'll keep your current plan until then.
-                </p>
-              </div>
+              {selectedTarget !== "enterprise" && (
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-surface-dark/50">
+                  <Icon icon="solar:clock-circle-bold" className="text-text-tertiary flex-shrink-0" width={20} />
+                  <p className="text-sm text-text-secondary">
+                    Changes take effect at your <span className="text-text-primary font-medium">next billing cycle</span>.
+                    You'll keep your current plan until then.
+                  </p>
+                </div>
+              )}
 
-              {/* Divider */}
               <Divider className="bg-border-base" />
 
               {/* Contact Links */}
@@ -426,14 +464,16 @@ export function PaidPlanView({
                   <Icon icon="solar:letter-bold" width={16} />
                   <span>Need it immediately? Contact support</span>
                 </Link>
-                <Link
-                  href="https://cuttr.com/contact"
-                  target="_blank"
-                  className="flex items-center gap-2 text-emerald-500/80 hover:text-emerald-400 transition-colors"
-                >
-                  <Icon icon="solar:buildings-bold" width={16} />
-                  <span>Looking for Enterprise?</span>
-                </Link>
+                {selectedTarget !== "enterprise" && (
+                  <Link
+                    href="https://cuttr.com/contact"
+                    target="_blank"
+                    className="flex items-center gap-2 text-emerald-500/80 hover:text-emerald-400 transition-colors"
+                  >
+                    <Icon icon="solar:buildings-bold" width={16} />
+                    <span>Looking for Enterprise?</span>
+                  </Link>
+                )}
               </div>
             </div>
           </ModalBody>
@@ -445,12 +485,12 @@ export function PaidPlanView({
               Cancel
             </Button>
             <Button
-              className={cn("font-semibold text-white", isCreator ? "bg-accent-400" : "bg-purple-500")}
+              className={cn("font-semibold text-white", upgradeDetails[selectedTarget].btnBg)}
               onPress={handleChangePlan}
               isLoading={loadingChangePlan}
-              startContent={!loadingChangePlan && <Icon icon="solar:check-circle-bold" width={18} />}
+              startContent={!loadingChangePlan && <Icon icon={selectedTarget === "enterprise" ? "solar:buildings-bold" : "solar:check-circle-bold"} width={18} />}
             >
-              Upgrade to {getTargetPlanDetails().name}
+              {selectedTarget === "enterprise" ? "Contact Sales" : `Upgrade to ${upgradeDetails[selectedTarget].name}`}
             </Button>
           </ModalFooter>
         </ModalContent>

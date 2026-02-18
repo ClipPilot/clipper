@@ -71,14 +71,6 @@ export function PricingTierCard({
         </div>
 
         <div className="flex flex-col gap-2 rounded-lg bg-surface-dark/50 p-3">
-          {tier.generations && (
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-text-tertiary">Generations</span>
-              <span className="text-sm font-medium text-text-primary">
-                {tier.generations}
-              </span>
-            </div>
-          )}
           <div className="flex items-center justify-between">
             <span className="text-xs text-text-tertiary">Credits</span>
             <span className="text-sm font-medium text-text-primary">

@@ -18,8 +18,8 @@ export const STRIPE_PRICES = isProduction
 
 // Keep in sync with backend PLAN_LIMITS in backend/src/config/stripe.config.ts
 export const PLAN_DETAILS = {
-  free: { name: "Free", clips: 15, generations: 10, price: 0 },
-  creator: { name: "Creator", clips: 75, generations: -1, price: 29925 },
-  studio: { name: "Studio", clips: 400, generations: -1, price: 1500 },
-  scale: { name: "Scale", clips: 1000, generations: -1, price: 2990 },
+  free: { name: "Free", clips: 15, price: 0 },
+  creator: { name: "Creator", clips: 75, price: 29925 },
+  studio: { name: "Studio", clips: 400, price: 1500 },
+  scale: { name: "Scale", clips: 1000, price: 2990 },
 } as const;

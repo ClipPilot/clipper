@@ -104,16 +104,6 @@ export function PricingTable({
                     <div className="flex items-center gap-2">
                       <Icon
                         className="text-accent-400"
-                        icon="solar:magic-stick-3-bold"
-                        width={16}
-                      />
-                      <span className="text-text-secondary">
-                        {tier.generations}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Icon
-                        className="text-accent-400"
                         icon="solar:dollar-minimalistic-bold"
                         width={16}
                       />

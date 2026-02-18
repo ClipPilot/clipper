@@ -279,7 +279,7 @@ export default function WorkspaceSelector({
               <div className="flex-1 text-left">
                 <p className="text-sm font-medium text-accent-400">Upgrade</p>
                 <p className="text-xs text-text-tertiary">
-                  Unlimited generations
+                  Get more credits
                 </p>
               </div>
               <Icon

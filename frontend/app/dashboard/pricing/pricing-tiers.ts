@@ -11,10 +11,8 @@ export const tiers: Array<Tier> = [
     featured: false,
     mostPopular: false,
     description: "Perfect for trying out our AI clip generation.",
-    generations: "10 generations",
     credits: "15 credits",
     features: [
-      "10 AI clip generations",
       "15 credits included",
       "Basic editing tools",
       "720p export quality",
@@ -34,10 +32,8 @@ export const tiers: Array<Tier> = [
     price: "$2.99",
     priceSuffix: "per credit",
     billedAmount: "$2,990 billed monthly",
-    generations: "Unlimited AI generations",
     credits: "1,000 credits per month",
     features: [
-      "Unlimited AI generations",
       "1,000 credits",
       "Mass Posting",
       "Virality Tracker",
@@ -62,10 +58,8 @@ export const tiers: Array<Tier> = [
     priceSuffix: "per credit",
     billedAmount: "$1,500 billed monthly",
     featured: false,
-    generations: "Unlimited AI generations",
     credits: "400 credits per month",
     features: [
-      "Unlimited AI generations",
       "400 credits",
       "Virality Tracker",
       "Advanced editing suite",
@@ -107,10 +101,8 @@ export const tiers: Array<Tier> = [
     mostPopular: false,
     price: "Custom Pricing",
     featured: false,
-    generations: "Unlimited AI generations",
     credits: "Custom credits allocation",
     features: [
-      "Unlimited AI generations",
       "Custom credits allocation",
       "Virality Tracker",
       "Team member seats",

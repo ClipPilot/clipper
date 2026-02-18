@@ -3,19 +3,8 @@ import { TiersEnum } from "./pricing-types";
 
 const features: PricingFeatures = [
   {
-    title: "Generation & Clips",
+    title: "Credits",
     items: [
-      {
-        title: "AI clip generations",
-        tiers: {
-          [TiersEnum.Free]: "10 total",
-          [TiersEnum.Creator]: "Unlimited",
-          [TiersEnum.Studio]: "Unlimited",
-          [TiersEnum.Scale]: "Unlimited",
-          [TiersEnum.Enterprise]: "Unlimited",
-        },
-        helpText: "Generate AI-powered clips from your videos.",
-      },
       {
         title: "Credits",
         tiers: {
