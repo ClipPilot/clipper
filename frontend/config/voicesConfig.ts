@@ -45,13 +45,6 @@ export const voicesConfig: Voice[] = [
     description: "Emotional & expressive",
   },
   {
-    name: "Backwardks",
-    id: "0jndiaiuaqrstJRq7Td7",
-    previewFile: "/voices/backwardks.mp3",
-    gender: "male",
-    description: "Unique style",
-  },
-  {
     name: "Bianca",
     id: "2bk7ULW9HfwvcIbMWod0",
     previewFile: "/voices/bianca.mp3",

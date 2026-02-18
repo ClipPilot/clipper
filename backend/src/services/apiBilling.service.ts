@@ -113,6 +113,56 @@ class ApiBillingService {
     return { success: true, balanceCents: updated.balance_cents };
   }
 
+  async consumeAmount(
+    apiKeyId: number,
+    teamId: number,
+    productSlug: string,
+    totalCostCents: number,
+    quantity: number,
+    endpoint: string,
+    method: string,
+    statusCode: number,
+    responseTimeMs?: number,
+    metadata?: Record<string, unknown>,
+  ) {
+    const product = API_PRODUCTS[productSlug];
+    if (!product) throw new Error(`Unknown product: ${productSlug}`);
+
+    const account = await this.getAccount(teamId);
+    if (!account || account.balance_cents < totalCostCents) {
+      return { success: false, balanceCents: account?.balance_cents ?? 0 };
+    }
+
+    const [updated] = await db
+      .update(apiBillingAccounts)
+      .set({
+        balance_cents: sql`${apiBillingAccounts.balance_cents} - ${totalCostCents}`,
+        total_spent_cents: sql`${apiBillingAccounts.total_spent_cents} + ${totalCostCents}`,
+        updated_at: new Date(),
+      })
+      .where(eq(apiBillingAccounts.team_id, teamId))
+      .returning();
+
+    await db.insert(apiUsageLogs).values({
+      api_key_id: apiKeyId,
+      team_id: teamId,
+      product_slug: productSlug,
+      endpoint,
+      method,
+      status_code: statusCode,
+      cost_cents: totalCostCents,
+      quantity,
+      response_time_ms: responseTimeMs ?? null,
+      metadata: metadata ?? null,
+    });
+
+    if (updated.balance_cents <= updated.refill_threshold_cents && updated.auto_refill) {
+      this.tryAutoRefill(teamId).catch(() => {});
+    }
+
+    return { success: true, balanceCents: updated.balance_cents };
+  }
+
   async logNonBillable(
     apiKeyId: number,
     teamId: number,

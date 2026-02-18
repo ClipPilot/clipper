@@ -171,7 +171,7 @@ export class AdCloneController {
   async startAnalyzeAndScript(req: AuthRequest, res: Response) {
     try {
       const { projectId } = req.params;
-      const { teamId } = req.body;
+      const { teamId, characterId, voiceId } = req.body;
 
       if (!projectId || !teamId) {
         return res.status(400).json({ error: "projectId and teamId are required" });
@@ -192,6 +192,13 @@ export class AdCloneController {
 
       if (!project.referenceVideoKey) {
         return res.status(400).json({ error: "Reference video not uploaded" });
+      }
+
+      if (characterId) {
+        await adCloneService.updateCharacterId(projectId, characterId);
+      }
+      if (voiceId) {
+        await adCloneService.updateVoiceId(projectId, voiceId);
       }
 
       await sqsService.sendAdCloneAnalyzeAndScriptJob({
@@ -706,6 +713,7 @@ export class AdCloneController {
           progressMessage: project.progressMessage,
           selectedVariantIndex: project.selectedVariantIndex,
           characterId: project.characterId,
+          voiceId: project.voiceId,
           createdAt: project.createdAt,
           updatedAt: project.updatedAt,
         },

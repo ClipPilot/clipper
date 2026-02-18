@@ -1,0 +1,139 @@
+---
+title: "Create Face Swap"
+api: "POST https://api.cuttr.com/api/platform/v1/face-swap"
+description: "Submit a video and face image for AI face swapping"
+---
+
+Submit a video and a face image to generate an AI face swap. You can provide **public URLs**, **upload files directly**, or a **mix of both**.
+
+Cost is **$0.20 per second** of video (rounded up), deducted from your wallet upfront. Maximum video duration is **5 minutes (300 seconds)**.
+
+<Note>
+  The response comes back immediately with a `job_id`. The video is processed in the background. Use [Get Face Swap Status](/api-reference/endpoint/get-face-swap-status) to poll for results.
+</Note>
+
+## Modes
+
+| Mode | Engine | Speed | Best for |
+|------|--------|-------|----------|
+| `face` | FAL AI | Fast (minutes) | Face-only swaps, quick previews |
+| `fullbody` (default) | Kling AI | Slower (may take longer) | Full body swaps, production quality |
+
+In **fullbody** mode, the API automatically detects face segments in the video, processes each segment through Kling AI, and stitches the result back into the full original video.
+
+## Option 1: JSON with URLs
+
+```bash
+curl -X POST https://api.cuttr.com/api/platform/v1/face-swap \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "video_url": "https://example.com/video.mp4",
+    "face_image_url": "https://example.com/face.jpg",
+    "mode": "fullbody"
+  }'
+```
+
+## Option 2: File upload via form data
+
+```bash
+curl -X POST https://api.cuttr.com/api/platform/v1/face-swap \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -F "video=@/path/to/video.mp4" \
+  -F "face_image=@/path/to/face.jpg" \
+  -F "mode=fullbody"
+```
+
+## Option 3: Mix of URL and file
+
+```bash
+curl -X POST https://api.cuttr.com/api/platform/v1/face-swap \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -F "video=@/path/to/video.mp4" \
+  -F "face_image_url=https://example.com/face.jpg" \
+  -F "mode=face"
+```
+
+### Headers
+
+<ParamField header="X-API-Key" type="string" required>
+  Your API key. Create one from the [dashboard](https://platform.cuttr.com/dashboard/api-platform).
+</ParamField>
+
+### Body parameters (JSON)
+
+<ParamField body="video_url" type="string">
+  A publicly accessible URL to the source video. Required if not uploading a `video` file.
+</ParamField>
+
+<ParamField body="face_image_url" type="string">
+  A publicly accessible URL to the face image. Required if not uploading a `face_image` file.
+</ParamField>
+
+<ParamField body="mode" type="string" default="fullbody">
+  Face swap mode. One of `face` or `fullbody`.
+  - `face` — Fast face-only swap using FAL AI.
+  - `fullbody` — Full body swap using Kling AI. Automatically detects face segments and stitches the result into the original video.
+</ParamField>
+
+### Form data fields (multipart upload)
+
+<ParamField body="video" type="file">
+  Video file (mp4, mov, webm, avi). Max 500MB. Required if not providing `video_url`.
+</ParamField>
+
+<ParamField body="face_image" type="file">
+  Face image file (jpg, png, webp). Max 500MB. Required if not providing `face_image_url`.
+</ParamField>
+
+<ParamField body="mode" type="string" default="fullbody">
+  Face swap mode. One of `face` or `fullbody`.
+</ParamField>
+
+### Response
+
+<ResponseField name="job_id" type="string">
+  UUID job identifier. Poll with [Get Face Swap Status](/api-reference/endpoint/get-face-swap-status).
+</ResponseField>
+
+<ResponseField name="mode" type="string">
+  The mode used: `"face"` or `"fullbody"`.
+</ResponseField>
+
+<ResponseField name="duration_seconds" type="integer">
+  Video duration in seconds (rounded up). This is the billable quantity.
+</ResponseField>
+
+<ResponseField name="cost_cents" type="integer">
+  Total amount charged in cents (`duration_seconds * 20`).
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Always `"processing"` on success.
+</ResponseField>
+
+<ResponseExample>
+```json 202
+{
+  "job_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "mode": "fullbody",
+  "duration_seconds": 30,
+  "cost_cents": 600,
+  "status": "processing"
+}
+```
+
+```json 400
+{
+  "error": "Provide either a video_url or a video file via multipart form data"
+}
+```
+
+```json 402
+{
+  "error": "Insufficient wallet balance",
+  "required_cents": 600,
+  "balance_cents": 200
+}
+```
+</ResponseExample>
