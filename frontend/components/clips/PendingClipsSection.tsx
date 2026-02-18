@@ -145,7 +145,10 @@ export default function PendingClipsSection({
   };
   if (clips.length === 0) return null;
 
-  const failedClips = clips.filter((c) => c.status === "failed");
+  const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+  const failedClips = clips.filter(
+    (c) => c.status === "failed" && new Date(c.updated_at) >= twoDaysAgo
+  );
   const pendingOnly = clips.filter((c) => c.status !== "failed");
   const newClips = pendingOnly.filter((c) => !c.saved);
   const editingClips = pendingOnly.filter((c) => c.saved);

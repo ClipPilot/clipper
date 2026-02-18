@@ -40,7 +40,7 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
   },
   {
     key: "mass-posting",
-    title: "Mass Posting",
+    title: "Publish Post",
     icon: "solar:posts-carousel-vertical-bold-duotone",
     href: "/dashboard/mass-posting",
     requiredPlans: ["studio", "scale", "enterprise"],
