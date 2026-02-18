@@ -122,6 +122,7 @@ jobs:
 
           # Status Dashboard
           status_cron_secret  = "${{ secrets.STATUS_CRON_SECRET }}"
+          status_domain       = "status-staging.cuttr.com"
           EOF
 
       - name: Import existing ECR repos (if not in state)
@@ -139,6 +140,14 @@ jobs:
           name: tfplan-staging
           path: infra/tfplan
           retention-days: 5
+
+      - name: Upload Terraform Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tf-build-staging
+          path: infra/.build/
+          retention-days: 5
+          if-no-files-found: ignore
 
       - name: Comment PR with Plan
         if: github.event_name == 'pull_request'
@@ -263,6 +272,7 @@ jobs:
 
           # Status Dashboard
           status_cron_secret  = "${{ secrets.STATUS_CRON_SECRET }}"
+          status_domain       = "status-staging.cuttr.com"
           EOF
 
       - name: Import existing ECR repos (if not in state)
@@ -274,6 +284,13 @@ jobs:
         with:
           name: tfplan-staging
           path: infra/
+
+      - name: Download Terraform Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: tf-build-staging
+          path: infra/.build/
+        continue-on-error: true
 
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
