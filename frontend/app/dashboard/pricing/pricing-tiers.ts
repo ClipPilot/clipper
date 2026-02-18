@@ -51,7 +51,7 @@ export const tiers: Array<Tier> = [
   {
     key: TiersEnum.Studio,
     title: "Studio",
-    description: "For creators who need more credits and virality tracking.",
+    description: "Perfect for creators running small-scale content campaigns.",
     href: "#",
     mostPopular: false,
     price: "$3.75",
