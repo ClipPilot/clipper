@@ -218,6 +218,13 @@
       "when": 1769453946024,
       "tag": "0030_crazy_abomination",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1771385872853,
+      "tag": "0031_fearless_living_lightning",
+      "breakpoints": true
     }
   ]
 }
