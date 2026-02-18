@@ -354,6 +354,29 @@ export default function ApiPlatformPage() {
           <p className="text-text-secondary mt-1">
             Manage your API keys and wallet balance
           </p>
+          <div className="flex items-center gap-3 mt-3">
+            <a
+              href="https://developers.cuttr.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-sm text-accent-400 hover:text-accent-300 transition-colors"
+            >
+              <Icon icon="solar:book-bold-duotone" width={16} />
+              Documentation
+              <Icon icon="solar:arrow-right-up-linear" width={14} />
+            </a>
+            <span className="text-border-base">|</span>
+            <a
+              href="https://status.cuttr.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-sm text-accent-400 hover:text-accent-300 transition-colors"
+            >
+              <Icon icon="solar:server-bold-duotone" width={16} />
+              System Status
+              <Icon icon="solar:arrow-right-up-linear" width={14} />
+            </a>
+          </div>
         </motion.div>
 
         {/* Wallet Section */}
