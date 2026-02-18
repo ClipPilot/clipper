@@ -94,7 +94,7 @@ app.get("/health/worker", async (req, res) => {
     const desiredTasks = svc?.desiredCount ?? 0;
 
     let status: "healthy" | "degraded" | "unhealthy" = "healthy";
-    if (runningTasks === 0) status = "unhealthy";
+    if (runningTasks === 0 && desiredTasks > 0) status = "unhealthy";
     else if (runningTasks < desiredTasks || queueDepth > 50) status = "degraded";
 
     res.status(status === "unhealthy" ? 503 : 200).json({

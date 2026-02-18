@@ -12,12 +12,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const result = await checkAllServices();
-  await recordChecks(result.services);
+  try {
+    const result = await checkAllServices();
+    await recordChecks(result.services);
 
-  return NextResponse.json({
-    stored: result.services.length,
-    overall: result.overall,
-    checkedAt: result.checkedAt,
-  });
+    return NextResponse.json({
+      stored: result.services.length,
+      overall: result.overall,
+      checkedAt: result.checkedAt,
+    });
+  } catch (err) {
+    console.error("[/api/cron] Error:", err);
+    return NextResponse.json(
+      { error: "Cron check failed", message: String(err) },
+      { status: 500 }
+    );
+  }
 }
