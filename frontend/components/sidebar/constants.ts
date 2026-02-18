@@ -31,18 +31,19 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     icon: "solar:video-frame-play-vertical-bold-duotone",
     href: "/dashboard/ugc-studio",
   },
-  {
-    key: "virality-tracker",
-    title: "Virality Tracker",
-    icon: "solar:chart-bold-duotone",
-    href: "/dashboard/virality",
-    requiredPlans: ["studio", "scale", "enterprise"],
-  },
-  {
-    key: "mass-posting",
-    title: "Mass Posting",
-    icon: "solar:posts-carousel-vertical-bold-duotone",
-    href: "/dashboard/mass-posting",
-    requiredPlans: ["studio", "scale", "enterprise"],
-  },
+  // TODO: Re-enable after main merge
+  // {
+  //   key: "virality-tracker",
+  //   title: "Virality Tracker",
+  //   icon: "solar:chart-bold-duotone",
+  //   href: "/dashboard/virality",
+  //   requiredPlans: ["studio", "scale", "enterprise"],
+  // },
+  // {
+  //   key: "mass-posting",
+  //   title: "Mass Posting",
+  //   icon: "solar:posts-carousel-vertical-bold-duotone",
+  //   href: "/dashboard/mass-posting",
+  //   requiredPlans: ["studio", "scale", "enterprise"],
+  // },
 ];
