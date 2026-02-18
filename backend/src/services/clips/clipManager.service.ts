@@ -54,7 +54,7 @@ export class ClipManagerService {
       })
       .from(clips)
       .leftJoin(uploadedRawVideos, eq(clips.raw_video_id, uploadedRawVideos.id))
-      .where(and(eq(clips.team_id, teamId), eq(clips.status, "pending")))
+      .where(and(eq(clips.team_id, teamId), inArray(clips.status, ["pending", "failed"])))
       .orderBy(desc(clips.created_at));
 
     return results.map((r) => ({
@@ -243,7 +243,8 @@ export class ClipManagerService {
       .returning();
 
     if (!updatedClip) {
-      throw new Error("Clip not found");
+      console.warn(`Clip ${clipId} not found for team ${teamId} — may have been deleted during processing`);
+      return null;
     }
 
     return updatedClip;
@@ -289,7 +290,8 @@ export class ClipManagerService {
       .returning();
 
     if (!updatedClip) {
-      throw new Error("Clip not found");
+      console.warn(`Clip ${clipId} not found for team ${teamId} — may have been deleted during processing`);
+      return null;
     }
 
     return updatedClip;

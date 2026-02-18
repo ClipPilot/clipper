@@ -50,17 +50,6 @@ const features: PricingFeatures = [
     title: "Analytics",
     items: [
       {
-        title: "Virality Tracker",
-        tiers: {
-          [TiersEnum.Free]: false,
-          [TiersEnum.Creator]: false,
-          [TiersEnum.Studio]: true,
-          [TiersEnum.Scale]: true,
-          [TiersEnum.Enterprise]: true,
-        },
-        helpText: "Track competitor performance and viral content trends.",
-      },
-      {
         title: "Mass Posting",
         tiers: {
           [TiersEnum.Free]: false,
@@ -70,6 +59,17 @@ const features: PricingFeatures = [
           [TiersEnum.Enterprise]: true,
         },
         helpText: "Automate posting across multiple platforms.",
+      },
+      {
+        title: "Virality Tracker",
+        tiers: {
+          [TiersEnum.Free]: false,
+          [TiersEnum.Creator]: false,
+          [TiersEnum.Studio]: true,
+          [TiersEnum.Scale]: true,
+          [TiersEnum.Enterprise]: true,
+        },
+        helpText: "Track competitor performance and viral content trends.",
       },
     ],
   },

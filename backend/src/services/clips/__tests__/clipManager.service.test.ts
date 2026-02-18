@@ -122,9 +122,10 @@ describe("ClipManagerService", () => {
       expect(result).toEqual({ id: 1, status: "completed" });
     });
 
-    it("throws when clip not found", async () => {
+    it("returns null when clip not found", async () => {
       mockDb.update.mockReturnValue(createDrizzleChain([]));
-      await expect(clipManagerService.updateClipStatus(999, 1, "failed")).rejects.toThrow("Clip not found");
+      const result = await clipManagerService.updateClipStatus(999, 1, "failed");
+      expect(result).toBeNull();
     });
   });
 
@@ -205,13 +206,12 @@ describe("ClipManagerService", () => {
       expect(result.status).toBe("completed");
     });
 
-    it("throws when clip not found", async () => {
+    it("returns null when clip not found", async () => {
       mockDb.update.mockReturnValue(createDrizzleChain([]));
-      await expect(
-        clipManagerService.updateClipComplete(999, 1, {
-          clipPath: "x", sourceVideoPath: "y", clipMetadata: {},
-        }),
-      ).rejects.toThrow("Clip not found");
+      const result = await clipManagerService.updateClipComplete(999, 1, {
+        clipPath: "x", sourceVideoPath: "y", clipMetadata: {},
+      });
+      expect(result).toBeNull();
     });
   });
 });

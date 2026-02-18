@@ -2,6 +2,8 @@ import * as Sentry from "@sentry/node";
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { adPostingService, AdPostingError, PlatformQuantities } from "../services/adPosting.service";
+import { canAccessMassPosting } from "../utils/plans";
+import { teamService } from "../services/team.service";
 
 export async function postClipToPlatforms(req: AuthRequest, res: Response) {
   try {
@@ -13,6 +15,11 @@ export async function postClipToPlatforms(req: AuthRequest, res: Response) {
     const userId = req.user?.dbUserId;
     if (!userId) {
       return res.status(401).json({ error: "User not authenticated" });
+    }
+
+    const team = await teamService.getTeamById(teamId);
+    if (!canAccessMassPosting(team.plan)) {
+      return res.status(403).json({ error: "Mass posting requires a Studio plan or higher" });
     }
 
     const { clipId, platforms, platformQuantities: rawPQ } = req.body;

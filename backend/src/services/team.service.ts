@@ -4,7 +4,6 @@ import { teams, teamMembers, users, usageStats, subscriptions } from "@clipper/s
 import { eq, and, desc, count } from "drizzle-orm";
 import { PLAN_LIMITS, stripe } from "../config/stripe.config";
 import { s3Service } from "./s3.service";
-import { FREE_TIER_STARTING_CREDITS } from "../constants/credits";
 
 class TeamService {
   /**
@@ -367,7 +366,7 @@ class TeamService {
 
   /**
    * Create a new team
-   * First team gets 3 free clips, additional teams get 0 (must subscribe)
+   * First team gets 15 free credits, additional teams get 0 (must subscribe)
    */
   async createTeam(name: string, creatorUserId: number, type: "personal" | "business" | "enterprise" = "business") {
     // Check if user already owns any teams
@@ -401,7 +400,7 @@ class TeamService {
       team_id: team.id,
       date: new Date(),
       clips_created: 0,
-      limit: isFirstTeam ? FREE_TIER_STARTING_CREDITS : 0,
+      limit: isFirstTeam ? PLAN_LIMITS.FREE.clips : 0,
       resets_date: resetsDate,
       rollover: false,
     });

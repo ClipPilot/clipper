@@ -35,6 +35,9 @@ vi.mock("../../config/env", () => ({
 vi.mock("../teamInvite.service", () => ({
   teamInviteService: { acceptAllPendingInvitesForUser: mockAcceptAllPending },
 }));
+vi.mock("../../config/stripe.config", () => ({
+  PLAN_LIMITS: { FREE: { clips: 15 } },
+}));
 
 import { authService } from "../auth.service";
 

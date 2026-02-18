@@ -23,5 +23,5 @@ export function canAccessViralityTracker(plan: string | undefined | null): boole
 }
 
 export function canAccessMassPosting(plan: string | undefined | null): boolean {
-  return PAID_PLANS.includes(plan as PlanType);
+  return MASS_POSTING_PLANS.includes(plan as PlanType);
 }

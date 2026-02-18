@@ -398,6 +398,12 @@ export class ClipManagerController {
 
       const clip = await clipManagerService.getClipById(clipId, teamId);
 
+      if (clip.status === "pending") {
+        return res.status(409).json({
+          error: "This clip is currently being processed. Please wait until processing is complete before deleting.",
+        });
+      }
+
       if (clip.clip_path) {
         await s3Service.deleteObject(clip.clip_path);
       }

@@ -11,7 +11,7 @@ import {
 
 describe("PLAN_LIMITS", () => {
   it("has correct free tier limits", () => {
-    expect(PLAN_LIMITS.FREE).toEqual({ clips: 3, generations: 10, seats: 1, maxUploadSizeGB: 2 });
+    expect(PLAN_LIMITS.FREE).toEqual({ clips: 15, generations: 10, seats: 1, maxUploadSizeGB: 2 });
   });
 
   it("has correct studio limits", () => {
@@ -75,9 +75,9 @@ describe("getClipsLimitForPlan", () => {
     expect(getClipsLimitForPlan("studio", 5000)).toBe(400);
   });
 
-  it("returns 3 for free/unknown", () => {
-    expect(getClipsLimitForPlan("free")).toBe(3);
-    expect(getClipsLimitForPlan("unknown")).toBe(3);
+  it("returns 15 for free/unknown", () => {
+    expect(getClipsLimitForPlan("free")).toBe(15);
+    expect(getClipsLimitForPlan("unknown")).toBe(15);
   });
 });
 

@@ -2,6 +2,8 @@ import * as Sentry from "@sentry/node";
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { intakeService } from "../services/massPosting/intake.service";
+import { canAccessMassPosting } from "../utils/plans";
+import { teamService } from "../services/team.service";
 
 export async function getIntakeForm(req: AuthRequest, res: Response) {
   try {
@@ -52,6 +54,11 @@ export async function submitApplication(req: AuthRequest, res: Response) {
       return res.status(400).json({ error: "Invalid team ID" });
     }
 
+    const team = await teamService.getTeamById(teamId);
+    if (!canAccessMassPosting(team.plan)) {
+      return res.status(403).json({ error: "Mass posting requires a Studio plan or higher" });
+    }
+
     const { brand_description, company_website_url, icps, company_socials, competitor_socials } = req.body;
 
     if (!brand_description) {
@@ -84,6 +91,11 @@ export async function submitAppeal(req: AuthRequest, res: Response) {
     const teamId = parseInt(req.params.teamId);
     if (isNaN(teamId)) {
       return res.status(400).json({ error: "Invalid team ID" });
+    }
+
+    const team = await teamService.getTeamById(teamId);
+    if (!canAccessMassPosting(team.plan)) {
+      return res.status(403).json({ error: "Mass posting requires a Studio plan or higher" });
     }
 
     const { brand_description, company_website_url, icps, company_socials, competitor_socials } = req.body;

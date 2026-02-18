@@ -43,6 +43,6 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     title: "Mass Posting",
     icon: "solar:posts-carousel-vertical-bold-duotone",
     href: "/dashboard/mass-posting",
-    requiredPlans: ["creator", "studio", "scale", "enterprise"],
+    requiredPlans: ["studio", "scale", "enterprise"],
   },
 ];

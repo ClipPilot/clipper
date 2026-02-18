@@ -93,7 +93,7 @@ export const usageStats = pgTable(
       .references(() => teams.id, { onDelete: "cascade" }),
     date: timestamp("date").notNull(),
     clips_created: integer("clips_created").notNull().default(0),
-    limit: integer("limit").notNull().default(3),
+    limit: integer("limit").notNull().default(15),
     resets_date: timestamp("resets_date").notNull(),
     rollover: boolean("rollover").notNull().default(false),
     created_at: timestamp("created_at").notNull().defaultNow(),

@@ -26,7 +26,7 @@ export const ENTERPRISE_PRODUCT = isProduction
   : "prod_TipICPrW7FcHcY";
 
 export const PLAN_LIMITS = {
-  FREE: { clips: 3, generations: 10, seats: 1, maxUploadSizeGB: 2 },
+  FREE: { clips: 15, generations: 10, seats: 1, maxUploadSizeGB: 2 },
   CREATOR: { clips: 75, generations: -1, seats: 1, maxUploadSizeGB: 2 },
   STUDIO: { clips: 400, generations: -1, seats: 1, maxUploadSizeGB: 2 },
   SCALE: { clips: 1000, generations: -1, seats: -1, maxUploadSizeGB: 3 },
