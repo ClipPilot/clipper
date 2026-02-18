@@ -203,12 +203,10 @@ Available emotion tags:
 - [amazed] - Blown away, impressed
 - [laughing] - Light laughter, amused
 
-Pacing tag (use SELECTIVELY for high-energy moments):
-- [fast-paced] - Quick, energetic delivery for peak excitement moments
 Examples:
-✓ "[fast-paced][excited] Oh my god, you guys need to see this!" (hook — grab attention)
+✓ "[excited] Oh my god, you guys need to see this!" (hook — grab attention)
 ✓ "[curious] So I've been testing this for a week now..." (natural pace — setup)
-✓ "[fast-paced][amazed] And this is where it gets crazy..." (reveal — spike energy)
+✓ "[amazed] And this is where it gets crazy..." (reveal — spike energy)
 ✓ "[sincere] I genuinely didn't expect it to work this well" (slower for emotional impact)
 ✓ "[playful] Okay but like... why did no one tell me about this" (natural pace — conversational)
 ✓ "[whispering] This is the one secret nobody talks about..." (slow for dramatic effect)
@@ -1159,8 +1157,7 @@ Score 95+ means: irresistible hook, perfect pacing, genuine emotion, share-worth
 - Structure matches the required pattern EXACTLY
 - estimatedDurationSeconds is a NUMBER for each scene (a-roll: max 8s, b-roll: max 4-10s)
 - ALL a-roll scenes: EVERY sentence MUST start with an emotion tag — no untagged sentences
-- About 50-60% of a-roll sentences should have [fast-paced] BEFORE the emotion tag for UGC energy
-- B-roll dialogue should generally SKIP [fast-paced] unless the moment genuinely calls for high energy
+- Do NOT use [fast-paced] tags — they are not supported by the TTS engine
 - a-roll scenes: MUST have ambientSound
 - b-roll scenes: ambientSound should be null
 - No tongue twisters or plosive clusters in dialogue
@@ -1183,9 +1180,9 @@ export const generateSceneRegenerationPrompt = (
   const voiceTagInstruction = `
 VOICE DIRECTION TAGS (REQUIRED for every a-roll sentence):
 EVERY sentence MUST start with an emotion tag: [whispering], [excited], [curious], [sincere], [playful], [dramatic], [satisfied], [amazed], [laughing]
-For about half of a-roll sentences, add [fast-paced] BEFORE the emotion tag for energetic beats (hooks, reveals, CTAs). Skip it for emotional or conversational moments, and generally skip it on b-roll dialogue.
-Examples: "[fast-paced][excited] Oh my god, you guys need to see this!"
-"[sincere] I genuinely didn't expect it to work this well" (skip fast-paced for emotional beats)`;
+Do NOT use [fast-paced] tags — they are not supported by the TTS engine and will create artifacts.
+Examples: "[excited] Oh my god, you guys need to see this!"
+"[sincere] I genuinely didn't expect it to work this well"`;
 
   const sceneTypeGuidance: Record<string, string> = {
     hook: "HOOK: Stop the scroll! Use pattern interrupt, curiosity gap, or shock value. Make them NEED to keep watching.",

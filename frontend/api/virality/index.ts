@@ -192,7 +192,10 @@ class ViralityAPI {
     }
 
     const data = await response.json();
-    return data.posts;
+    const EXCLUDED_TYPES = new Set(["sidecar", "retweet", "quote", "image"]);
+    return (data.posts as ViralityPost[]).filter(
+      (p) => !p.post_type || !EXCLUDED_TYPES.has(p.post_type.toLowerCase())
+    );
   }
 
   async getDashboardStats(

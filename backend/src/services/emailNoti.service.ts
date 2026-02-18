@@ -24,6 +24,10 @@ import {
   ReferralRewardSetEmailData,
   ugcReadyEmail,
   UgcReadyEmailData,
+  massPostingApprovedEmail,
+  MassPostingApprovedEmailData,
+  adPostingReadyEmail,
+  AdPostingReadyEmailData,
 } from "../templates/emailTemplates";
 
 export class EmailNotiService {
@@ -126,6 +130,16 @@ export class EmailNotiService {
   async sendUgcReady(to: string, data: UgcReadyEmailData) {
     const html = ugcReadyEmail(data);
     return this.sendEmailNotification(to, "Your UGC video is ready! 🎉", html);
+  }
+
+  async sendMassPostingApproved(to: string, data: MassPostingApprovedEmailData) {
+    const html = massPostingApprovedEmail(data);
+    return this.sendEmailNotification(to, `${data.teamName} is approved for Mass Posting!`, html);
+  }
+
+  async sendAdPostingReady(to: string, data: AdPostingReadyEmailData) {
+    const html = adPostingReadyEmail(data);
+    return this.sendEmailNotification(to, "Your clip is prepared and will be posted momentarily!", html);
   }
 }
 

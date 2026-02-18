@@ -9,6 +9,7 @@ import {
 import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { teamInviteService } from "./teamInvite.service";
+import { PLAN_LIMITS } from "../config/stripe.config";
 
 class AuthService {
   private supabase: SupabaseClient;
@@ -92,7 +93,7 @@ class AuthService {
       team_id: team.id,
       date: new Date(),
       clips_created: 0,
-      limit: 3,
+      limit: PLAN_LIMITS.FREE.clips,
       resets_date: resetsDate,
       rollover: false,
     });
@@ -205,7 +206,7 @@ class AuthService {
         team_id: team.id,
         date: new Date(),
         clips_created: 0,
-        limit: 3,
+        limit: PLAN_LIMITS.FREE.clips,
         resets_date: resetsDate,
         rollover: false,
       });

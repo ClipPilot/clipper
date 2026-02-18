@@ -1,6 +1,7 @@
 import {
   cutClip,
   mergeClips,
+  convertToVerticalBlur,
   addTextOverlay,
   addTextOverlayAtPosition,
   addPreviewWatermark,
@@ -161,8 +162,15 @@ export const createCombinedClipService = async (
     tempFiles.push(mainPath);
   }
 
+  const mergedRawPath = path.join(outDir, `merged_raw_${videoIndex}_temp.mp4`);
+  await mergeClips(tempFiles, mergedRawPath);
+
+  // Convert horizontal videos to 9:16 with blurred background
   const mergedPath = path.join(outDir, `merged_${videoIndex}_temp.mp4`);
-  await mergeClips(tempFiles, mergedPath);
+  await convertToVerticalBlur(mergedRawPath, mergedPath);
+  if (fs.existsSync(mergedRawPath) && mergedRawPath !== mergedPath) {
+    fs.unlinkSync(mergedRawPath);
+  }
 
   const blankPath = path.join(outDir, `blank_${videoIndex}.mp4`);
   fs.copyFileSync(mergedPath, blankPath);
@@ -445,8 +453,15 @@ export const createBatchCombinedClipService = async (
   }
 
   // Merge all clips
+  const mergedRawPath = path.join(outDir, `batch_merged_raw_${outputIndex}_temp.mp4`);
+  await mergeClips(tempFiles, mergedRawPath);
+
+  // Convert horizontal videos to 9:16 with blurred background
   const mergedPath = path.join(outDir, `batch_merged_${outputIndex}_temp.mp4`);
-  await mergeClips(tempFiles, mergedPath);
+  await convertToVerticalBlur(mergedRawPath, mergedPath);
+  if (fs.existsSync(mergedRawPath) && mergedRawPath !== mergedPath) {
+    fs.unlinkSync(mergedRawPath);
+  }
 
   const blankPath = path.join(outDir, `batch_blank_${outputIndex}.mp4`);
   fs.copyFileSync(mergedPath, blankPath);

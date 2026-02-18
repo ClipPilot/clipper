@@ -31,7 +31,7 @@ function PricingContent() {
   const [showReferralInput, setShowReferralInput] = useState(false);
 
   const currentPlan = selectedTeam?.plan || "free";
-  const isPaidPlan = ["studio", "scale", "enterprise"].includes(currentPlan);
+  const isPaidPlan = ["creator", "studio", "scale", "enterprise"].includes(currentPlan);
   const isOwner = selectedTeam?.role === "owner";
 
   useEffect(() => {
@@ -132,10 +132,14 @@ function PricingContent() {
     }
   };
 
-  const handleChangePlan = async (newPlan: "studio" | "scale"): Promise<{ effectiveDate: string } | void> => {
+  const handleChangePlan = async (newPlan: "creator" | "studio" | "scale"): Promise<{ effectiveDate: string } | void> => {
     if (!selectedTeam) return;
 
-    const newPriceId = newPlan === "studio" ? STRIPE_PRICES.STUDIO : STRIPE_PRICES.SCALE;
+    const newPriceId = newPlan === "creator"
+      ? STRIPE_PRICES.CREATOR
+      : newPlan === "studio"
+        ? STRIPE_PRICES.STUDIO
+        : STRIPE_PRICES.SCALE;
 
     try {
       setLoadingChangePlan(true);
@@ -231,7 +235,7 @@ function PricingContent() {
   if (isPaidPlan) {
     return (
       <PaidPlanView
-        currentPlan={currentPlan as "studio" | "scale" | "enterprise"}
+        currentPlan={currentPlan as "creator" | "studio" | "scale" | "enterprise"}
         teamName={selectedTeam?.name}
         teamId={selectedTeam?.id}
         isOwner={isOwner}
@@ -387,22 +391,55 @@ function PricingContent() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.3 }}
-        className="relative z-10 mx-auto grid max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:hidden items-stretch"
+        className="relative z-10 w-full max-w-6xl mx-auto"
       >
-        {tiers.map((tier) => (
-          <PricingTierCard
-            key={tier.key}
-            tier={tier}
-            isDisabled={isButtonDisabled(tier)}
-            isLoading={loadingTier === tier.key}
-            buttonText={getButtonText(tier)}
-            onUpgrade={() => handleUpgrade(tier)}
-          />
-        ))}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-6 p-6 rounded-2xl bg-surface-elevated/80 border border-border-base backdrop-blur-md">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-emerald-500/10">
+              <Icon icon="solar:buildings-3-bold-duotone" className="text-emerald-500" width={24} />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-text-primary">Enterprise</h3>
+              <p className="text-sm text-text-secondary">
+                Custom credits, dedicated support, and advanced integrations for your organization.
+              </p>
+            </div>
+          </div>
+          <Button
+            className="bg-emerald-500 text-white font-semibold flex-shrink-0"
+            size="lg"
+            onPress={() => window.open("https://cuttr.com/contact", "_blank")}
+            startContent={<Icon icon="solar:chat-round-call-bold" width={18} />}
+          >
+            Contact Sales
+          </Button>
+        </div>
+      </motion.div>
+
+      <Spacer y={6} />
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.4 }}
+        className="relative z-10 mx-auto grid max-w-6xl grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:hidden items-stretch"
+      >
+        {tiers
+          .filter((tier) => tier.key !== TiersEnum.Enterprise)
+          .map((tier) => (
+            <PricingTierCard
+              key={tier.key}
+              tier={tier}
+              isDisabled={isButtonDisabled(tier)}
+              isLoading={loadingTier === tier.key}
+              buttonText={getButtonText(tier)}
+              onUpgrade={() => handleUpgrade(tier)}
+            />
+          ))}
       </motion.div>
 
       <PricingTable
-        tiers={tiers}
+        tiers={tiers.filter((tier) => tier.key !== TiersEnum.Enterprise)}
         features={features}
         loadingTier={loadingTier}
         isButtonDisabled={isButtonDisabled}

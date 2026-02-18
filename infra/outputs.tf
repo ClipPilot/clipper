@@ -126,3 +126,9 @@ output "youtube_lambda_function_name" {
   value       = aws_lambda_function.youtube_downloader.function_name
 }
 
+# Status Dashboard outputs
+output "status_dynamodb_table" {
+  description = "DynamoDB table for status checks"
+  value       = aws_dynamodb_table.status_checks.name
+}
+

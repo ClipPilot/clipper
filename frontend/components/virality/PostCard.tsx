@@ -63,7 +63,7 @@ export function PostCard({ post, platform }: PostCardProps) {
     >
       <CardBody className="p-0">
         <div className="relative aspect-square bg-surface-elevated">
-          {!post.thumbnail_url ? (
+          {!post.thumbnail_url || platform === "instagram" ? (
             <div className="w-full h-full flex items-center justify-center">
               <Icon
                 icon={platform === "x" ? "ri:twitter-x-fill" : platform === "instagram" ? "mdi:instagram" : "solar:gallery-bold"}

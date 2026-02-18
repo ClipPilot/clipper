@@ -71,7 +71,7 @@ export async function generateSpeech(
       modelId,
       outputFormat,
       voice_settings: {
-        stability: 0.35,
+        stability: 0.5,
         similarity_boost: 0.8,
         style: 0.45,
         use_speaker_boost: true,
@@ -331,6 +331,12 @@ export async function textToDialogue(
       inputs: inputs.map((input) => ({
         text: input.text,
         voiceId: input.voiceId,
+        voice_settings: {
+          stability: 0.5,
+          similarity_boost: 0.8,
+          style: 0.45,
+          use_speaker_boost: true,
+        },
       })),
       modelId,
       outputFormat: outputFormat as any,

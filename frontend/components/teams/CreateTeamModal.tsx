@@ -11,12 +11,12 @@ import {
   Input,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { teamAPI } from "@/api/team";
+import { teamAPI, Team } from "@/api/team";
 
 interface CreateTeamModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onTeamCreated: () => void;
+  onTeamCreated: (team: Team) => void;
 }
 
 export default function CreateTeamModal({
@@ -38,9 +38,9 @@ export default function CreateTeamModal({
     setError("");
 
     try {
-      await teamAPI.createTeam(teamName.trim());
+      const newTeam = await teamAPI.createTeam(teamName.trim());
       setTeamName("");
-      onTeamCreated();
+      onTeamCreated(newTeam);
       onClose();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to create team";

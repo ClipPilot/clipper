@@ -13,21 +13,7 @@ import {
 } from "recharts";
 import type { ViralityAccount, AccountPostStats } from "@/api/virality";
 import { formatNumber } from "@/lib/formatters";
-
-const CHART_COLORS = [
-  "#E1306C", // pink
-  "#00F2EA", // cyan
-  "#F77737", // orange
-  "#833AB4", // purple
-  "#22C55E", // green
-  "#3B82F6", // blue
-  "#FACC15", // yellow
-  "#EF4444", // red
-  "#A855F7", // violet
-  "#14B8A6", // teal
-  "#F97316", // amber
-  "#6366F1", // indigo
-];
+import { platformIcon, platformIconColor, CHART_COLORS } from "@/lib/platformUtils";
 
 interface ChartEntry {
   name: string;
@@ -35,18 +21,6 @@ interface ChartEntry {
   platform: "instagram" | "tiktok" | "x";
   value: number;
   fill: string;
-}
-
-function platformIcon(platform: "instagram" | "tiktok" | "x") {
-  if (platform === "instagram") return "ri:instagram-fill";
-  if (platform === "x") return "ri:twitter-x-fill";
-  return "ri:tiktok-fill";
-}
-
-function platformIconColor(platform: "instagram" | "tiktok" | "x") {
-  if (platform === "instagram") return "text-pink-500";
-  if (platform === "x") return "text-foreground";
-  return "text-cyan-400";
 }
 
 interface CustomTooltipProps {

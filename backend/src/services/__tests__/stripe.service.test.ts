@@ -40,7 +40,7 @@ vi.mock("../../config/stripe.config", () => ({
     if (plan === "studio") return 400;
     if (plan === "scale") return 1000;
     if (plan === "enterprise") return -1;
-    return 3;
+    return 15;
   },
   isAddonPrice: (priceId: string) => priceId.startsWith("price_addon"),
   getAddonClips: (priceId: string) => {

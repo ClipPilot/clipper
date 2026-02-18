@@ -162,6 +162,28 @@ export interface NewAnnouncement {
   published_at: Date | null;
 }
 
+export interface AdPostingUpdate {
+  clipId: number;
+  platform: string;
+  platformName: string;
+  status: "processing" | "uploaded" | "failed" | "complete";
+  postId?: number;
+  error?: string;
+  // Batch fields (total copies across all platforms)
+  totalItems: number;
+  completedItems: number;
+  copyIndex?: number;
+  platformTotal?: number;
+  successCount?: number;
+  failedCount?: number;
+}
+
+export const emitAdPostingUpdate = (teamId: number, update: AdPostingUpdate) => {
+  if (io) {
+    io.to(`team-${teamId}`).emit("ad-posting-update", update);
+  }
+};
+
 export const emitNewAnnouncement = (announcement: NewAnnouncement) => {
   if (io) {
     // Broadcast to ALL connected clients (not team-specific)

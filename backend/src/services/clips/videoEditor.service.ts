@@ -483,6 +483,88 @@ export const mergeClipsFaceSwap = async (clips: string[], outputPath: string) =>
 export const mergeClipsGpu = mergeClipsFaceSwap;
 export const mergeClips = mergeClipsFaceSwap;
 
+/**
+ * Convert a horizontal video to 9:16 with a blurred background.
+ * If the video is already vertical (height >= width), it's returned as-is.
+ */
+export const convertToVerticalBlur = async (
+  inputPath: string,
+  outputPath: string,
+): Promise<string> => {
+  const metadata = await getVideoMetadata(inputPath);
+  const { width, height } = metadata;
+
+  // Already vertical or square — skip conversion
+  if (height >= width) {
+    console.log(`[VERTICAL] Already vertical (${width}x${height}), skipping`);
+    fs.copyFileSync(inputPath, outputPath);
+    return outputPath;
+  }
+
+  console.log(`[VERTICAL] Converting horizontal ${width}x${height} to 9:16 with blur background`);
+
+  return new Promise((resolve, reject) => {
+    ffmpeg()
+      .input(inputPath)
+      .complexFilter([
+        // Blurred background: scale up to fill 1080x1920, crop, blur
+        {
+          filter: "scale",
+          options: { w: 1080, h: 1920, force_original_aspect_ratio: "increase" },
+          inputs: "0:v",
+          outputs: "bg1",
+        },
+        {
+          filter: "crop",
+          options: { w: 1080, h: 1920 },
+          inputs: "bg1",
+          outputs: "bg2",
+        },
+        {
+          filter: "gblur",
+          options: { sigma: 15 },
+          inputs: "bg2",
+          outputs: "bg",
+        },
+        // Foreground: scale to fit within 1080x1920
+        {
+          filter: "scale",
+          options: { w: "min(iw\\,1080)", h: "min(ih\\,1920)", force_original_aspect_ratio: "decrease" },
+          inputs: "0:v",
+          outputs: "fg",
+        },
+        // Center foreground on blurred background
+        {
+          filter: "overlay",
+          options: { x: "(W-w)/2", y: "(H-h)/2" },
+          inputs: ["bg", "fg"],
+          outputs: "v",
+        },
+      ])
+      .outputOptions([
+        "-map", "[v]",
+        "-map", "0:a?",
+        "-c:v libx264",
+        "-preset fast",
+        "-crf 23",
+        ...MOBILE_VIDEO_SETTINGS,
+        "-c:a aac",
+        "-b:a 128k",
+        "-ar 48000",
+        "-movflags +faststart",
+      ])
+      .save(outputPath)
+      .on("end", () => {
+        console.log(`[VERTICAL] Converted to 9:16: ${outputPath}`);
+        resolve(outputPath);
+      })
+      .on("error", (err) => {
+        console.error(`[VERTICAL] Conversion failed: ${err.message}`);
+        reject(err);
+      });
+  });
+};
+
 export const mergeClipsWithCrossfade = async (
   clips: string[],
   outputPath: string,

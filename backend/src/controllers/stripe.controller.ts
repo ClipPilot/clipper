@@ -135,6 +135,10 @@ export const handleWebhook = async (req: Request, res: Response) => {
         await stripeService.handleInvoicePaymentFailed(event.data.object);
         break;
 
+      case "payment_intent.succeeded":
+        await stripeService.handlePaymentIntentSucceeded(event.data.object);
+        break;
+
       default:
         console.log(`Unhandled event type: ${event.type}`);
     }
@@ -165,10 +169,10 @@ export const changePlan = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: "Missing teamId or newPriceId" });
     }
 
-    // Only allow changing between Studio and Scale
-    const validPrices = [STRIPE_PRICES.STUDIO, STRIPE_PRICES.SCALE];
+    // Only allow changing between Creator, Studio, and Scale
+    const validPrices = [STRIPE_PRICES.CREATOR, STRIPE_PRICES.STUDIO, STRIPE_PRICES.SCALE];
     if (!validPrices.includes(newPriceId)) {
-      return res.status(400).json({ error: "Invalid plan. Can only change between Studio and Scale." });
+      return res.status(400).json({ error: "Invalid plan. Can only change between Creator, Studio, and Scale." });
     }
 
     const result = await stripeService.changePlan(parseInt(teamId), newPriceId);

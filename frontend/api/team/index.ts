@@ -6,7 +6,7 @@ export interface Team {
   name: string;
   type: "personal" | "business" | "enterprise";
   role: "owner" | "manager" | "member";
-  plan: "free" | "studio" | "scale" | "enterprise";
+  plan: "free" | "creator" | "studio" | "scale" | "enterprise";
   teamSubscriptionId?: string;
   logo_url?: string;
   created_at: string;

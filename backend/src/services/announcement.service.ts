@@ -5,7 +5,7 @@ import {
   userAnnouncementDismissals,
   users,
 } from "@clipper/shared-db/src/schema";
-import { eq, and, desc, lte, sql, notExists, isNotNull } from "drizzle-orm";
+import { eq, and, desc, lte, gte, sql, notExists, isNotNull } from "drizzle-orm";
 import DOMPurify from "isomorphic-dompurify";
 
 interface CreateAnnouncementData {
@@ -65,6 +65,13 @@ class AnnouncementService {
    */
   async getUnreadAnnouncementsForUser(userId: number) {
     try {
+      // Get user's created_at to only show announcements published after signup
+      const [user] = await db
+        .select({ created_at: users.created_at })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
       const unreadAnnouncements = await db
         .select({
           id: announcements.id,
@@ -82,6 +89,8 @@ class AnnouncementService {
             eq(announcements.status, "published"),
             isNotNull(announcements.published_at),
             lte(announcements.published_at, new Date()),
+            // Only show announcements published after user signed up
+            ...(user ? [gte(announcements.published_at, user.created_at)] : []),
             notExists(
               db
                 .select()
@@ -110,6 +119,13 @@ class AnnouncementService {
    */
   async getAllAnnouncementsForUser(userId: number) {
     try {
+      // Get user's created_at to only show announcements published after signup
+      const [user] = await db
+        .select({ created_at: users.created_at })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
       const allAnnouncements = await db
         .select({
           id: announcements.id,
@@ -131,7 +147,9 @@ class AnnouncementService {
           and(
             eq(announcements.status, "published"),
             isNotNull(announcements.published_at),
-            lte(announcements.published_at, new Date())
+            lte(announcements.published_at, new Date()),
+            // Only show announcements published after user signed up
+            ...(user ? [gte(announcements.published_at, user.created_at)] : [])
           )
         )
         .orderBy(desc(announcements.published_at))

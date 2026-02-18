@@ -7,14 +7,16 @@ const isProduction = process.env.NODE_ENV === "production";
 
 export const STRIPE_PRICES = isProduction
   ? {
-      STUDIO: "price_1SfSwWKIbKD6ydHMQNyyZ6mc",
-      SCALE: "price_1SfSwWKIbKD6ydHMVRieRr2n",
+      CREATOR: "price_1T1tVcKIbKD6ydHM4lOfIWvu",
+      STUDIO: "price_1T1tUxKIbKD6ydHMU3zKPvqb",
+      SCALE: "price_1T1tUYKIbKD6ydHMN5VtdtMi",
       STUDIO_ADDON: "price_1SfSwXKIbKD6ydHMrRGsHTdk",
       SCALE_ADDON: "price_1SfSwXKIbKD6ydHMF5piBhSZ",
     }
   : {
-      STUDIO: "price_1SfT5qGu9cYiGgY3Ji42KTKB",
-      SCALE: "price_1SfT5BGu9cYiGgY33x2pCcPc",
+      CREATOR: "price_1T1szJGu9cYiGgY3EAmDP1Xw",
+      STUDIO: "price_1T1rg5Gu9cYiGgY3Gt44c482",
+      SCALE: "price_1T1reJGu9cYiGgY3ngYj1VUi",
       STUDIO_ADDON: "price_1SfTC1Gu9cYiGgY3O1P2rGc1",
       SCALE_ADDON: "price_1SfTAzGu9cYiGgY3SHUjgUf0",
     };
@@ -24,7 +26,8 @@ export const ENTERPRISE_PRODUCT = isProduction
   : "prod_TipICPrW7FcHcY";
 
 export const PLAN_LIMITS = {
-  FREE: { clips: 3, generations: 10, seats: 1, maxUploadSizeGB: 2 },
+  FREE: { clips: 15, generations: 10, seats: 1, maxUploadSizeGB: 2 },
+  CREATOR: { clips: 75, generations: -1, seats: 1, maxUploadSizeGB: 2 },
   STUDIO: { clips: 400, generations: -1, seats: 1, maxUploadSizeGB: 2 },
   SCALE: { clips: 1000, generations: -1, seats: -1, maxUploadSizeGB: 3 },
   ENTERPRISE: { clips: -1, generations: -1, seats: -1, maxUploadSizeGB: 3 },
@@ -40,6 +43,8 @@ export const getMaxUploadSizeForPlan = (plan: string): number => {
       return PLAN_LIMITS.ENTERPRISE.maxUploadSizeGB * 1024 * 1024 * 1024;
     case "studio":
       return PLAN_LIMITS.STUDIO.maxUploadSizeGB * 1024 * 1024 * 1024;
+    case "creator":
+      return PLAN_LIMITS.CREATOR.maxUploadSizeGB * 1024 * 1024 * 1024;
     default:
       return PLAN_LIMITS.FREE.maxUploadSizeGB * 1024 * 1024 * 1024;
   }
@@ -47,6 +52,8 @@ export const getMaxUploadSizeForPlan = (plan: string): number => {
 
 export const getPlanFromPriceId = (priceId: string): string => {
   switch (priceId) {
+    case STRIPE_PRICES.CREATOR:
+      return "creator";
     case STRIPE_PRICES.STUDIO:
       return "studio";
     case STRIPE_PRICES.SCALE:
@@ -65,6 +72,8 @@ export const getClipsLimitForPlan = (plan: string, customLimit?: number): number
     return customLimit;
   }
   switch (plan) {
+    case "creator":
+      return PLAN_LIMITS.CREATOR.clips;
     case "studio":
       return PLAN_LIMITS.STUDIO.clips;
     case "scale":

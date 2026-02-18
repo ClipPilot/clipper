@@ -12,6 +12,7 @@ interface ClipCardProps {
   onDelete?: (clipId: number) => void;
   onView?: () => void;
   onEdit?: () => void;
+  onAdPosting?: () => void;
   isSelected?: boolean;
   isUgcVideo?: boolean;
 }
@@ -22,6 +23,7 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
   onDelete,
   onView,
   onEdit,
+  onAdPosting,
   isSelected = false,
   isUgcVideo = false,
 }) => {
@@ -246,6 +248,23 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
             </Button>
           </Tooltip>
 
+          {onAdPosting && (
+            <Tooltip content="Ad Post">
+              <Button
+                isIconOnly
+                size="sm"
+                variant="light"
+                className="w-8 h-8 min-w-8"
+                onPress={onAdPosting}
+              >
+                <Icon
+                  icon="mdi:megaphone"
+                  className="text-lg text-text-secondary"
+                />
+              </Button>
+            </Tooltip>
+          )}
+
           {onDelete && (
             <Tooltip content="Delete">
               <Button
@@ -403,6 +422,23 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
               </Button>
             </Tooltip>
 
+            {onAdPosting && (
+              <Tooltip content="Ad Post">
+                <Button
+                  isIconOnly
+                  size="sm"
+                  variant="light"
+                  className="w-7 h-7 min-w-7"
+                  onPress={onAdPosting}
+                >
+                  <Icon
+                    icon="mdi:megaphone"
+                    className="text-base text-text-secondary"
+                  />
+                </Button>
+              </Tooltip>
+            )}
+
             {onDelete && (
               <Tooltip content="Delete">
                 <Button
@@ -432,6 +468,7 @@ export const ClipCard = memo(ClipCardComponent, (prevProps, nextProps) => {
     prevProps.clip.raw_video_path === nextProps.clip.raw_video_path &&
     prevProps.viewMode === nextProps.viewMode &&
     prevProps.isSelected === nextProps.isSelected &&
-    prevProps.isUgcVideo === nextProps.isUgcVideo
+    prevProps.isUgcVideo === nextProps.isUgcVideo &&
+    !!prevProps.onAdPosting === !!nextProps.onAdPosting
   );
 });

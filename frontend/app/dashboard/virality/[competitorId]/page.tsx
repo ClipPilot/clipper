@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -8,8 +8,8 @@ import {
   Input,
   Tabs,
   Tab,
-  Spinner,
   addToast,
+  Spinner,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useTeams } from "@/hooks/useTeams";
@@ -19,17 +19,23 @@ import {
   type ViralityPost,
 } from "@/api/virality";
 import { formatNumber } from "@/lib/formatters";
+import { CHART_COLORS } from "@/lib/platformUtils";
 import {
   DateRangeFilter,
   type DateRangeValue,
 } from "@/components/virality/DateRangeFilter";
 import {
-  ComparisonModeSelector,
   type ComparisonMode,
 } from "@/components/virality/ComparisonModeSelector";
 import { StatCards, type StatCardItem } from "@/components/virality/StatCards";
 import { PostsTable } from "@/components/virality/PostsTable";
-import { findClosestEntry, getComparisonDate } from "./utils";
+import { AnalyticsChart } from "@/components/virality/AnalyticsChart";
+import { PostFrequencyChart } from "@/components/virality/PostFrequencyChart";
+import { AccountBreakdownChart } from "@/components/virality/AccountBreakdownChart";
+import { BestPerformingAccounts } from "@/components/virality/BestPerformingAccounts";
+import { RecalcOverlay } from "@/components/virality/RecalcOverlay";
+import { findClosestEntry, getComparisonDate, pct, computePostsPerWeek } from "./utils";
+import { canAccessViralityTracker } from "@/lib/plans";
 
 // ─── Page Component ──────────────────────────────────────────────────────────
 
@@ -42,6 +48,8 @@ export default function CompetitorDetailPage() {
   const [competitor, setCompetitor] = useState<CompetitorWithAccounts | null>(null);
   const [postsByAccount, setPostsByAccount] = useState<Record<number, ViralityPost[]>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [isRecalculating, setIsRecalculating] = useState(false);
+  const initialLoadDone = useRef(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState("");
@@ -50,7 +58,8 @@ export default function CompetitorDetailPage() {
   const [comparisonMode, setComparisonMode] = useState<ComparisonMode>({ type: "last-sync" });
 
   const fetchData = useCallback(async () => {
-    if (!selectedTeam?.id || isNaN(competitorId)) return;
+    if (!selectedTeam?.id || isNaN(competitorId) || !canAccessViralityTracker(selectedTeam.plan)) return;
+    if (initialLoadDone.current) setIsRecalculating(true);
     try {
       const comp = await viralityAPI.getCompetitor(selectedTeam.id, competitorId);
       setCompetitor(comp);
@@ -70,6 +79,8 @@ export default function CompetitorDetailPage() {
       addToast({ title: "Failed to load competitor", description: err.message, color: "danger" });
     } finally {
       setIsLoading(false);
+      setIsRecalculating(false);
+      initialLoadDone.current = true;
     }
   }, [selectedTeam?.id, competitorId, dateRange]);
 
@@ -123,12 +134,31 @@ export default function CompetitorDetailPage() {
   const activePosts = useMemo(() => {
     const posts: ViralityPost[] = [];
     for (const a of activeAccounts) {
-      posts.push(...(postsByAccount[a.id] || []));
+      const accountPosts = postsByAccount[a.id] || [];
+      posts.push(...accountPosts);
     }
     return posts.sort(
       (a, b) => new Date(b.posted_at || 0).getTime() - new Date(a.posted_at || 0).getTime()
     );
   }, [activeAccounts, postsByAccount]);
+
+  const activePostsByAccount = useMemo(() => {
+    const map: Record<number, ViralityPost[]> = {};
+    for (const a of activeAccounts) {
+      map[a.id] = postsByAccount[a.id] || [];
+    }
+    return map;
+  }, [activeAccounts, postsByAccount]);
+
+  /** All accounts' posts (filtered) — stable across tab switches, used for fixed chart axes */
+  const allFilteredPostsByAccount = useMemo(() => {
+    if (!competitor) return {};
+    const map: Record<number, ViralityPost[]> = {};
+    for (const a of competitor.accounts) {
+      map[a.id] = postsByAccount[a.id] || [];
+    }
+    return map;
+  }, [competitor, postsByAccount]);
 
   const accountPlatformMap = useMemo(() => {
     const map: Record<number, string> = {};
@@ -139,6 +169,16 @@ export default function CompetitorDetailPage() {
   const accountSyncMap = useMemo(() => {
     const map: Record<number, string | null> = {};
     if (competitor) for (const a of competitor.accounts) map[a.id] = a.last_synced_at;
+    return map;
+  }, [competitor]);
+
+  const accountColorMap = useMemo(() => {
+    const map: Record<number, string> = {};
+    if (competitor) {
+      competitor.accounts.forEach((a, i) => {
+        map[a.id] = CHART_COLORS[i % CHART_COLORS.length];
+      });
+    }
     return map;
   }, [competitor]);
 
@@ -170,9 +210,6 @@ export default function CompetitorDetailPage() {
       latestViews += latest.views ?? 0;
     }
 
-    const pct = (latest: number, prev: number) =>
-      prev > 0 ? ((latest - prev) / prev) * 100 : null;
-
     let prevFollowers = 0, latestFollowers = 0;
     let hasFollowerHistory = false;
     for (const a of activeAccounts) {
@@ -186,8 +223,20 @@ export default function CompetitorDetailPage() {
       latestFollowers += latestF.followers;
     }
 
+    const totalEngagements = totalLikes + totalComments;
+    const engagementRate = totalViews > 0 ? (totalEngagements / totalViews) * 100 : 0;
+
+    const prevEngagements = prevLikes + prevComments;
+    const latestEngagements = latestLikes + latestComments;
+    const engagementsChange = hasHistory ? pct(latestEngagements, prevEngagements) : null;
+
+    const prevEngRate = prevViews > 0 ? (prevEngagements / prevViews) * 100 : 0;
+    const latestEngRate = latestViews > 0 ? (latestEngagements / latestViews) * 100 : 0;
+    const engRateChange = hasHistory && prevEngRate > 0 ? pct(latestEngRate, prevEngRate) : null;
+
     return {
       followers, totalLikes, totalComments, totalViews,
+      totalEngagements, engagementsChange, engagementRate, engRateChange,
       followersChange: hasFollowerHistory ? pct(latestFollowers, prevFollowers) : null,
       likesChange: hasHistory ? pct(latestLikes, prevLikes) : null,
       commentsChange: hasHistory ? pct(latestComments, prevComments) : null,
@@ -195,7 +244,45 @@ export default function CompetitorDetailPage() {
     };
   }, [activeAccounts, activePosts, comparisonMode]);
 
+  const postsPerWeek = useMemo(() => computePostsPerWeek(activePosts), [activePosts]);
+
   // ─── Loading / Error states ──────────────────────────────────────────────────
+
+  if (!canAccessViralityTracker(selectedTeam?.plan)) {
+    return (
+      <div className="min-h-screen bg-surface-dark flex flex-col items-center justify-center p-6">
+        <div className="flex flex-col items-center gap-6 max-w-sm">
+          <div className="relative">
+            <div className="flex items-center justify-center w-20 h-20 rounded-2xl bg-purple-500/10">
+              <Icon icon="solar:chart-bold-duotone" className="text-purple-500" width={40} />
+            </div>
+            <div className="absolute -bottom-1 -right-1 flex items-center justify-center w-7 h-7 rounded-full bg-surface-dark border-2 border-surface-dark">
+              <Icon icon="solar:lock-keyhole-bold" className="text-text-tertiary" width={14} />
+            </div>
+          </div>
+          <div className="text-center space-y-2">
+            <h2 className="text-xl font-bold text-text-primary">Virality Tracker</h2>
+            <p className="text-sm text-text-secondary leading-relaxed">
+              Track competitor performance, monitor viral trends, and benchmark your content against the competition.
+            </p>
+          </div>
+          <div className="flex flex-col items-center gap-3 w-full">
+            <Button
+              size="lg"
+              className="w-full bg-purple-500 text-white font-semibold"
+              onPress={() => router.push("/dashboard/pricing")}
+              startContent={<Icon icon="solar:rocket-bold" width={18} />}
+            >
+              Upgrade to Studio
+            </Button>
+            <p className="text-xs text-text-tertiary">
+              Available on Studio, Scale & Enterprise
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -221,14 +308,6 @@ export default function CompetitorDetailPage() {
 
   const statCards: StatCardItem[] = [
     {
-      title: "FOLLOWERS",
-      value: formatNumber(stats.followers),
-      icon: "solar:users-group-rounded-bold",
-      iconColor: "text-accent-400",
-      iconBg: "bg-accent-400/10",
-      change: stats.followersChange,
-    },
-    {
       title: "TOTAL VIEWS",
       value: formatNumber(stats.totalViews),
       icon: "solar:eye-bold",
@@ -238,28 +317,47 @@ export default function CompetitorDetailPage() {
       tooltip: "Only counts views on video posts (Reels)",
     },
     {
-      title: "AVG VIEWS / POST",
-      value: formatNumber(activePosts.length > 0 ? Math.round(stats.totalViews / activePosts.length) : 0),
-      icon: "solar:chart-2-bold",
+      title: "TOTAL ENGAGEMENTS",
+      value: formatNumber(stats.totalEngagements),
+      icon: "solar:heart-bold",
+      iconColor: "text-red-500",
+      iconBg: "bg-red-500/10",
+      change: stats.engagementsChange,
+      tooltip: "Sum of likes and comments",
+    },
+    {
+      title: "TOTAL POSTS",
+      value: formatNumber(activePosts.length),
+      icon: "solar:document-bold",
       iconColor: "text-emerald-500",
       iconBg: "bg-emerald-500/10",
       change: null,
     },
     {
-      title: "TOTAL LIKES",
-      value: formatNumber(stats.totalLikes),
-      icon: "solar:heart-bold",
-      iconColor: "text-red-500",
-      iconBg: "bg-red-500/10",
-      change: stats.likesChange,
+      title: "FOLLOWERS",
+      value: formatNumber(stats.followers),
+      icon: "solar:users-group-rounded-bold",
+      iconColor: "text-accent-400",
+      iconBg: "bg-accent-400/10",
+      change: stats.followersChange,
     },
     {
-      title: "TOTAL COMMENTS",
-      value: formatNumber(stats.totalComments),
-      icon: "solar:chat-round-dots-bold",
+      title: "AVG ENG RATE",
+      value: stats.engagementRate.toFixed(2) + "%",
+      icon: "solar:chart-2-bold",
       iconColor: "text-amber-500",
       iconBg: "bg-amber-500/10",
-      change: stats.commentsChange,
+      change: stats.engRateChange,
+      tooltip: "(Likes + Comments) / Views x 100",
+    },
+    {
+      title: "CONTENT VELOCITY",
+      value: String(postsPerWeek),
+      icon: "solar:rocket-2-bold",
+      iconColor: "text-purple-500",
+      iconBg: "bg-purple-500/10",
+      change: null,
+      tooltip: "Average posts per week based on post date range",
     },
   ];
 
@@ -324,7 +422,6 @@ export default function CompetitorDetailPage() {
           </div>
           <div className="flex items-center gap-3">
             <DateRangeFilter value={dateRange} onChange={handleDateRangeChange} />
-            <ComparisonModeSelector selected={comparisonMode} onChange={setComparisonMode} />
             <Button
               className="bg-accent-400 text-white"
               startContent={
@@ -375,18 +472,69 @@ export default function CompetitorDetailPage() {
         )}
 
         {/* Stats Cards */}
-        <StatCards items={statCards} />
+        <RecalcOverlay active={isRecalculating}>
+          <StatCards items={statCards} />
+        </RecalcOverlay>
 
-        {/* Analytics Chart (currently disabled) */}
-        {/* <AnalyticsChart posts={activePosts} /> */}
+        {/* Performance Over Time + Account Breakdown */}
+        <RecalcOverlay active={isRecalculating}>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
+            <div className="lg:col-span-2">
+              <AnalyticsChart
+                accounts={activeAccounts}
+                postsByAccount={activePostsByAccount}
+                allAccounts={competitor.accounts}
+                allPostsByAccount={allFilteredPostsByAccount}
+                colorMap={accountColorMap}
+                startDate={dateRange.startDate}
+                endDate={dateRange.endDate}
+              />
+            </div>
+            <div className="lg:col-span-1">
+              <AccountBreakdownChart
+                accounts={activeAccounts}
+                postsByAccount={activePostsByAccount}
+              />
+            </div>
+          </div>
+        </RecalcOverlay>
 
-        {/* Posts Table */}
-        <PostsTable
-          key={activeAccountId + (dateRange.startDate || "") + (dateRange.endDate || "")}
-          posts={activePosts}
-          accountPlatformMap={accountPlatformMap}
-          accountSyncMap={accountSyncMap}
-        />
+        {/* Post Frequency + Best Performing Accounts */}
+        <RecalcOverlay active={isRecalculating}>
+          {activeAccountId === "all" ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <PostFrequencyChart
+                posts={activePosts}
+                startDate={dateRange.startDate}
+                endDate={dateRange.endDate}
+              />
+              <BestPerformingAccounts
+                accounts={activeAccounts}
+                postsByAccount={activePostsByAccount}
+              />
+            </div>
+          ) : (
+            <div className="max-w-3xl mx-auto w-full">
+              <PostFrequencyChart
+                posts={activePosts}
+                startDate={dateRange.startDate}
+                endDate={dateRange.endDate}
+              />
+            </div>
+          )}
+        </RecalcOverlay>
+
+        {/* Top Performing Content Table */}
+        <RecalcOverlay active={isRecalculating}>
+          <PostsTable
+            key={activeAccountId + (dateRange.startDate || "") + (dateRange.endDate || "")}
+            posts={activePosts}
+            accountPlatformMap={accountPlatformMap}
+            accountSyncMap={accountSyncMap}
+            comparisonMode={comparisonMode}
+            onComparisonModeChange={setComparisonMode}
+          />
+        </RecalcOverlay>
       </div>
     </motion.div>
   );

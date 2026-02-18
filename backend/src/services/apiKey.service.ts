@@ -6,7 +6,7 @@ import { hashApiKey } from "../middleware/auth.middleware";
 
 class ApiKeyService {
   async create(teamId: number, userId: number, name: string, expiresAt?: Date) {
-    const raw = `sk_live_${crypto.randomBytes(32).toString("base64url")}`;
+    const raw = `cuttr_${crypto.randomBytes(32).toString("base64url")}`;
     const keyHash = hashApiKey(raw);
     const keyPrefix = raw.slice(0, 12);
 
