@@ -1,13 +1,12 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { Card, CardBody, Button, Spinner } from "@heroui/react";
+import { Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAtomValue, useSetAtom } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
 import { resetAdCloneAtom } from "@/store/adClone";
-import { canAccessUGCStudio } from "@/lib/plans";
 import { AdCloneWizard } from "@/components/ugc-studio/ad-clone/AdCloneWizard";
 import { useAdClone } from "@/hooks/useAdClone";
 
@@ -48,36 +47,7 @@ function AdCloneCreateContent() {
     init();
   }, [projectIdToResume, newCharacterId, loadProject, resetAdClone, setCharacterId, setStep]);
 
-  if (!selectedTeam || !canAccessUGCStudio(selectedTeam.plan)) {
-    return (
-      <div className="min-h-screen bg-surface-dark flex items-center justify-center p-4">
-        <Card className="bg-surface-base border border-border-base max-w-md">
-          <CardBody className="p-8 text-center">
-            <Icon
-              icon="solar:lock-bold-duotone"
-              className="text-amber-400 mx-auto mb-4"
-              width={48}
-            />
-            <h2 className="text-xl font-bold text-text-primary mb-2">
-              Scale Plan Required
-            </h2>
-            <p className="text-text-secondary text-sm mb-6">
-              Ad Clone requires a Scale plan or higher. Upgrade to unlock this
-              feature.
-            </p>
-            <Button
-              className="bg-orange-500 text-white font-semibold"
-              onPress={() => router.push("/dashboard/pricing")}
-            >
-              View Plans
-            </Button>
-          </CardBody>
-        </Card>
-      </div>
-    );
-  }
-
-  if (isLoading) {
+  if (!selectedTeam || isLoading) {
     return (
       <div className="min-h-screen bg-surface-dark flex items-center justify-center">
         <Spinner size="lg" color="warning" />

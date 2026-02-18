@@ -16,8 +16,12 @@ import {
   createClipJobController,
   getClipJobStatusController,
 } from "../../controllers/apiClip.controller";
+import {
+  createFaceSwapJobController,
+  getFaceSwapStatusController,
+} from "../../controllers/apiFaceSwap.controller";
 import { requireAuth, validateAPIKey } from "../../middleware/auth.middleware";
-import { upload } from "../../config/multer";
+import { upload, apiFaceSwapUpload } from "../../config/multer";
 
 const router = Router();
 
@@ -418,5 +422,177 @@ router.post("/v1/clip", validateAPIKey, upload.single("video"), createClipJobCon
  *         description: Job not found
  */
 router.get("/v1/clip/:jobId", validateAPIKey, getClipJobStatusController);
+
+/**
+ * @openapi
+ * /platform/v1/face-swap:
+ *   post:
+ *     summary: Submit a video for face swap
+ *     description: |
+ *       Submit a video and face image for AI face swapping. Provide either:
+ *       - URLs via JSON (`video_url` + `face_image_url`), or
+ *       - Files via multipart form data (`video` + `face_image`), or
+ *       - A mix of URL and file.
+ *
+ *       Cost is $0.20 per second of video (rounded up), deducted upfront.
+ *       Maximum video duration is 300 seconds (5 minutes).
+ *       Poll GET /v1/face-swap/{jobId} for results.
+ *     tags:
+ *       - Face Swap
+ *     security:
+ *       - apiKeyAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - video_url
+ *               - face_image_url
+ *             properties:
+ *               video_url:
+ *                 type: string
+ *                 format: uri
+ *                 description: Public URL of the video
+ *               face_image_url:
+ *                 type: string
+ *                 format: uri
+ *                 description: Public URL of the face image
+ *               mode:
+ *                 type: string
+ *                 enum: [face, fullbody]
+ *                 default: fullbody
+ *                 description: "face = fast face-only swap (FAL AI), fullbody = full body swap (Kling AI)"
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - video
+ *               - face_image
+ *             properties:
+ *               video:
+ *                 type: string
+ *                 format: binary
+ *                 description: Video file (mp4, mov, webm, avi). Max 500MB.
+ *               face_image:
+ *                 type: string
+ *                 format: binary
+ *                 description: Face image file (jpg, png, webp). Max 500MB.
+ *               mode:
+ *                 type: string
+ *                 enum: [face, fullbody]
+ *                 default: fullbody
+ *     responses:
+ *       202:
+ *         description: Face swap job accepted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 job_id:
+ *                   type: string
+ *                   format: uuid
+ *                 mode:
+ *                   type: string
+ *                   enum: [face, fullbody]
+ *                 duration_seconds:
+ *                   type: integer
+ *                 cost_cents:
+ *                   type: integer
+ *                 status:
+ *                   type: string
+ *                   example: processing
+ *       400:
+ *         description: Invalid input
+ *       401:
+ *         description: Invalid or missing API key
+ *       402:
+ *         description: Insufficient wallet balance
+ */
+router.post(
+  "/v1/face-swap",
+  validateAPIKey,
+  apiFaceSwapUpload.fields([
+    { name: "video", maxCount: 1 },
+    { name: "face_image", maxCount: 1 },
+  ]),
+  createFaceSwapJobController,
+);
+
+/**
+ * @openapi
+ * /platform/v1/face-swap/{jobId}:
+ *   get:
+ *     summary: Get face swap job status
+ *     description: |
+ *       Poll this endpoint to check if your face swap job is ready.
+ *       Returns a download URL when status is "completed".
+ *     tags:
+ *       - Face Swap
+ *     security:
+ *       - apiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: jobId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The job_id returned from POST /v1/face-swap
+ *     responses:
+ *       200:
+ *         description: Job status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               oneOf:
+ *                 - type: object
+ *                   description: Job is still processing
+ *                   properties:
+ *                     job_id:
+ *                       type: string
+ *                     status:
+ *                       type: string
+ *                       example: processing
+ *                     progress:
+ *                       type: integer
+ *                     created_at:
+ *                       type: string
+ *                       format: date-time
+ *                 - type: object
+ *                   description: Job completed
+ *                   properties:
+ *                     job_id:
+ *                       type: string
+ *                     status:
+ *                       type: string
+ *                       example: completed
+ *                     download_url:
+ *                       type: string
+ *                       format: uri
+ *                     created_at:
+ *                       type: string
+ *                       format: date-time
+ *                 - type: object
+ *                   description: Job failed
+ *                   properties:
+ *                     job_id:
+ *                       type: string
+ *                     status:
+ *                       type: string
+ *                       example: failed
+ *                     error:
+ *                       type: string
+ *                     created_at:
+ *                       type: string
+ *                       format: date-time
+ *       401:
+ *         description: Invalid or missing API key
+ *       404:
+ *         description: Job not found
+ */
+router.get("/v1/face-swap/:jobId", validateAPIKey, getFaceSwapStatusController);
 
 export default router;

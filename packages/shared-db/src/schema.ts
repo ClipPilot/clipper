@@ -682,6 +682,7 @@ export const adCloneProjects = pgTable(
     character_id: integer("character_id").references(() => characters.id, {
       onDelete: "set null",
     }),
+    voice_id: varchar("voice_id", { length: 255 }),
     status: adCloneProjectStatusEnum("status").notNull().default("uploading"),
     progress: integer("progress").notNull().default(0),
     progress_message: text("progress_message"),

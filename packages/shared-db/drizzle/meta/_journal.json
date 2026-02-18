@@ -225,6 +225,13 @@
       "when": 1771385872853,
       "tag": "0031_fearless_living_lightning",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1771445463937,
+      "tag": "0032_heavy_namorita",
+      "breakpoints": true
     }
   ]
 }

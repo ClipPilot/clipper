@@ -40,6 +40,8 @@
               "api-reference/endpoint/test",
               "api-reference/endpoint/create-clip",
               "api-reference/endpoint/get-clip-status",
+              "api-reference/endpoint/create-face-swap",
+              "api-reference/endpoint/get-face-swap-status",
               "api-reference/endpoint/get-wallet"
             ]
           }

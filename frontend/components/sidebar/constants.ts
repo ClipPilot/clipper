@@ -31,7 +31,6 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     icon: "solar:video-frame-play-vertical-bold-duotone",
     href: "/dashboard/ugc-studio",
   },
-  // TODO: Re-enable after main merge
   // {
   //   key: "virality-tracker",
   //   title: "Virality Tracker",
@@ -39,11 +38,11 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
   //   href: "/dashboard/virality",
   //   requiredPlans: ["studio", "scale", "enterprise"],
   // },
-  // {
-  //   key: "mass-posting",
-  //   title: "Mass Posting",
-  //   icon: "solar:posts-carousel-vertical-bold-duotone",
-  //   href: "/dashboard/mass-posting",
-  //   requiredPlans: ["studio", "scale", "enterprise"],
-  // },
+  {
+    key: "mass-posting",
+    title: "Publish Post",
+    icon: "solar:posts-carousel-vertical-bold-duotone",
+    href: "/dashboard/mass-posting",
+    requiredPlans: ["studio", "scale", "enterprise"],
+  },
 ];

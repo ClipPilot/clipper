@@ -258,14 +258,14 @@ export function useAdClone(teamId: number | undefined) {
     setStatus("analyzing");
 
     try {
-      await adCloneAPI.startAnalyzeAndScript(pid, teamId);
+      await adCloneAPI.startAnalyzeAndScript(pid, teamId, characterId || undefined, voiceId || undefined);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Failed to start processing";
       setError(errorMsg);
       setStatus("failed");
       throw err;
     }
-  }, [teamId, projectId, setError, setProgress, setProgressMessage, setStep, setStatus]);
+  }, [teamId, projectId, characterId, voiceId, setError, setProgress, setProgressMessage, setStep, setStatus]);
 
   const generateScript = useCallback(async () => {
     if (!teamId || !projectId) {
@@ -393,6 +393,9 @@ export function useAdClone(teamId: number | undefined) {
         if (result.project.characterId) {
           setCharacterId(result.project.characterId);
         }
+        if (result.project.voiceId) {
+          setVoiceId(result.project.voiceId);
+        }
 
         if (result.project.finalVideoUrl) {
           setFinalVideoUrl(result.project.finalVideoUrl);
@@ -408,10 +411,10 @@ export function useAdClone(teamId: number | undefined) {
             setStep("character");
             break;
           case "script_generated":
-            if (!result.project.characterId) {
-              setStep("character");
-            } else {
+            if (result.project.characterId && result.project.voiceId) {
               setStep("storyboard");
+            } else {
+              setStep("character");
             }
             break;
           case "generating_video":

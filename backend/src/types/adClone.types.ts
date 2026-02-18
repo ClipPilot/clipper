@@ -94,6 +94,7 @@ export interface AdCloneProject {
   adaptedScripts: import("./ugcScript.types").UGCScript[] | null;
   selectedVariantIndex: number;
   characterId: number | null;
+  voiceId: string | null;
   status: AdCloneProjectStatus;
   progress: number;
   progressMessage: string | null;

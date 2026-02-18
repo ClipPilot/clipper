@@ -14,6 +14,37 @@ export interface AnalyzeVideoOptions {
   thinkingLevel?: "LOW" | "HIGH" | "MEDIUM" | "MINIMAL";
 }
 
+const RETRY_CONFIG = {
+  maxAttempts: 3,
+  baseDelayMs: 5000,
+  retryableStatuses: [429, 500, 502, 503, 504],
+};
+
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  label: string,
+): Promise<T> {
+  for (let attempt = 1; attempt <= RETRY_CONFIG.maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      const status = err?.status || err?.httpCode;
+      const isRetryable = RETRY_CONFIG.retryableStatuses.includes(status);
+
+      if (!isRetryable || attempt === RETRY_CONFIG.maxAttempts) {
+        throw err;
+      }
+
+      const delay = RETRY_CONFIG.baseDelayMs * Math.pow(2, attempt - 1);
+      console.warn(
+        `[VideoAnalysis] ${label} failed (status ${status}), retrying in ${delay}ms (attempt ${attempt}/${RETRY_CONFIG.maxAttempts})`
+      );
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+  throw new Error("Unreachable");
+}
+
 export async function analyzeVideoWithGemini(
   uploadedFile: GeminiUploadedFile,
   options: AnalyzeVideoOptions = {}
@@ -30,19 +61,22 @@ export async function analyzeVideoWithGemini(
     VIDEO_ANALYSIS_PROMPT,
   ]);
 
-  const response = await client.models.generateContent({
-    model: options.model || "gemini-3-pro-preview",
-    contents,
-    config: {
-      responseMimeType: "application/json",
-      responseJsonSchema: VIDEO_ANALYSIS_JSON_SCHEMA,
-      thinkingConfig: {
-        thinkingLevel: options.thinkingLevel
-          ? ThinkingLevel[options.thinkingLevel]
-          : ThinkingLevel.HIGH,
+  const response = await withRetry(
+    () => client.models.generateContent({
+      model: options.model || "gemini-3-pro-preview",
+      contents,
+      config: {
+        responseMimeType: "application/json",
+        responseJsonSchema: VIDEO_ANALYSIS_JSON_SCHEMA,
+        thinkingConfig: {
+          thinkingLevel: options.thinkingLevel
+            ? ThinkingLevel[options.thinkingLevel]
+            : ThinkingLevel.HIGH,
+        },
       },
-    },
-  });
+    }),
+    "generateContent",
+  ) as { text?: string | null };
 
   const responseText = response.text;
   console.log("[VideoAnalysis] Raw response length:", responseText?.length);

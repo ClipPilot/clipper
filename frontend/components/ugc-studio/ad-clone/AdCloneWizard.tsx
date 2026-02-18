@@ -14,6 +14,7 @@ import {
   adCloneProgressAtom,
   adCloneProgressMessageAtom,
   adCloneProjectIdAtom,
+  adCloneAllScenesCompleteAtom,
   AdCloneStep,
 } from "@/store/adClone";
 import { useAdClone } from "@/hooks/useAdClone";
@@ -43,6 +44,7 @@ export function AdCloneWizard({ teamId }: AdCloneWizardProps) {
   const progress = useAtomValue(adCloneProgressAtom);
   const progressMessage = useAtomValue(adCloneProgressMessageAtom);
   const projectId = useAtomValue(adCloneProjectIdAtom);
+  const allScenesComplete = useAtomValue(adCloneAllScenesCompleteAtom);
 
   const {
     createProject,
@@ -61,8 +63,11 @@ export function AdCloneWizard({ teamId }: AdCloneWizardProps) {
           setStep("character");
           break;
         case "character":
-          // Start analysis + script generation now (runs in background, socket handles completion)
-          await startAnalyzeAndScript(projectId || undefined);
+          if (status === "script_generated") {
+            setStep("storyboard");
+          } else {
+            await startAnalyzeAndScript(projectId || undefined);
+          }
           break;
         case "storyboard":
           setStep("generate");
@@ -76,7 +81,7 @@ export function AdCloneWizard({ teamId }: AdCloneWizardProps) {
     } catch (err) {
       console.error("Step action failed:", err);
     }
-  }, [step, projectId, createProject, startAnalyzeAndScript, generateVideo, setStep]);
+  }, [step, status, projectId, createProject, startAnalyzeAndScript, generateVideo, setStep]);
 
   const handleBack = useCallback(() => {
     switch (step) {
@@ -250,7 +255,10 @@ export function AdCloneWizard({ teamId }: AdCloneWizardProps) {
           )}
           <Button
             size="lg"
-            isDisabled={step === "character" && (!characterId || !voiceId)}
+            isDisabled={
+              (step === "character" && (!characterId || !voiceId)) ||
+              (step === "storyboard" && !allScenesComplete)
+            }
             onPress={handleContinue}
             className="px-8 bg-orange-500 text-white"
             endContent={<Icon icon="solar:arrow-right-linear" width={18} />}
