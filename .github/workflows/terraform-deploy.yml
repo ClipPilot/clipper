@@ -117,6 +117,7 @@ jobs:
 
           # Status Dashboard
           status_cron_secret  = "${{ secrets.STATUS_CRON_SECRET }}"
+          status_domain       = "status.cuttr.com"
           EOF
 
       - name: Terraform Plan
@@ -130,6 +131,14 @@ jobs:
           name: tfplan
           path: infra/tfplan
           retention-days: 5
+
+      - name: Upload Terraform Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tf-build
+          path: infra/.build/
+          retention-days: 5
+          if-no-files-found: ignore
 
       - name: Comment PR with Plan
         if: github.event_name == 'pull_request'
@@ -249,6 +258,7 @@ jobs:
 
           # Status Dashboard
           status_cron_secret  = "${{ secrets.STATUS_CRON_SECRET }}"
+          status_domain       = "status.cuttr.com"
           EOF
 
       - name: Download Terraform Plan
@@ -256,6 +266,13 @@ jobs:
         with:
           name: tfplan
           path: infra/
+
+      - name: Download Terraform Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: tf-build
+          path: infra/.build/
+        continue-on-error: true
 
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
