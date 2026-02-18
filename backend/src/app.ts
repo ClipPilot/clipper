@@ -44,6 +44,8 @@ app.use(
       "https://cuttr.com",
       "https://www.cuttr.com",
       "https://admin.cuttr.com",
+      "https://status.cuttr.com",
+      "https://status-staging.cuttr.com",
     ],
     credentials: true,
   }),
