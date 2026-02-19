@@ -84,6 +84,12 @@ class ViralityController {
         profileUrl,
         competitorId ? parseInt(competitorId) : undefined
       );
+
+      // Trigger first sync in the background
+      viralityService.syncAccount(account.id, teamId).catch((err) => {
+        console.error(`Initial sync failed for account ${account.id}:`, err);
+      });
+
       return res.status(201).json({ account });
     } catch (error) {
       return handleError(res, "Add virality account error", error, "Failed to add account");

@@ -14,9 +14,9 @@ const X_POSTS_SCRAPER_ACTOR = "apidojo/twitter-scraper-lite";
 const X_VIEWS_SCRAPER_ACTOR = "scrape.badger/twitter-tweets-scraper";
 const SYNC_INTERVAL = 6 // every 6 hours
 const SYNCS_PER_DAY = Math.floor(24 / SYNC_INTERVAL)
-const MAX_METRICS_HISTORY = 28 * SYNCS_PER_DAY;
+const SCRAPE_WINDOW_DAYS = 31;
+const MAX_METRICS_HISTORY = SCRAPE_WINDOW_DAYS * SYNCS_PER_DAY;
 const MAX_FOLLOWER_HISTORY = 180; // ~6 months of daily syncs
-const SCRAPE_WINDOW_DAYS = 28;
 
 let pool: Pool | null = null;
 
@@ -196,6 +196,9 @@ async function scrapeTikTokAccount(
 ): Promise<{ posts: InstagramPost[]; profile: InstagramProfile | null }> {
   const input = {
     profiles: [username],
+    oldestPostDateUnified: `${SCRAPE_WINDOW_DAYS} days`,
+    profileScrapeSections: ["videos"],
+    profileSorting: "latest",
     resultsPerPage: 100,
     shouldDownloadCovers: false,
     shouldDownloadVideos: false,
@@ -360,8 +363,8 @@ async function upsertPost(
 
   const newMetric: MetricsEntry = {
     recorded_at: new Date().toISOString(),
-    likes: postData.likesCount,
-    comments: postData.commentsCount,
+    likes: postData.likesCount || 0,
+    comments: postData.commentsCount || 0,
     views: postData.videoPlayCount ?? null,
   };
 
@@ -377,9 +380,10 @@ async function upsertPost(
     await db
       .update(schema.viralityPosts)
       .set({
-        like_count: postData.likesCount,
-        comment_count: postData.commentsCount,
+        like_count: postData.likesCount || 0,
+        comment_count: postData.commentsCount || 0,
         video_play_count: postData.videoPlayCount,
+        thumbnail_url: postData.displayUrl || existingPost.thumbnail_url,
         metrics_history: trimmed,
         updated_at: new Date(),
       })
@@ -393,15 +397,15 @@ async function upsertPost(
       post_url: postData.url || (platform === "x"
         ? `https://x.com/i/status/${postData.id}`
         : platform === "tiktok"
-          ? postData.url
+          ? postData.url || ""
           : `https://www.instagram.com/p/${postData.shortCode}/`),
-      thumbnail_url: platform === "tiktok" ? postData.displayUrl : null,
+      thumbnail_url: postData.displayUrl || null,
       caption: postData.caption,
       hashtags: postData.hashtags || [],
       post_type: postData.type,
       posted_at: postData.timestamp ? new Date(postData.timestamp) : null,
-      like_count: postData.likesCount,
-      comment_count: postData.commentsCount,
+      like_count: postData.likesCount || 0,
+      comment_count: postData.commentsCount || 0,
       video_play_count: postData.videoPlayCount,
       metrics_history: [newMetric],
       created_at: new Date(),

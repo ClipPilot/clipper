@@ -31,13 +31,13 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     icon: "solar:video-frame-play-vertical-bold-duotone",
     href: "/dashboard/ugc-studio",
   },
-  // {
-  //   key: "virality-tracker",
-  //   title: "Virality Tracker",
-  //   icon: "solar:chart-bold-duotone",
-  //   href: "/dashboard/virality",
-  //   requiredPlans: ["studio", "scale", "enterprise"],
-  // },
+  {
+    key: "virality-tracker",
+    title: "Virality Tracker",
+    icon: "solar:chart-bold-duotone",
+    href: "/dashboard/virality",
+    requiredPlans: ["studio", "scale", "enterprise"],
+  },
   {
     key: "mass-posting",
     title: "Publish Post",

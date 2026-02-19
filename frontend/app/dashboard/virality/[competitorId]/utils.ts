@@ -53,10 +53,9 @@ export function getPostEngRateChange(
   const prevViews = prev.views ?? 0;
   const latestViews = latest.views ?? 0;
   if (prevViews === 0 || latestViews === 0) return null;
-  const prevRate = (prev.likes + prev.comments) / prevViews;
-  const latestRate = (latest.likes + latest.comments) / latestViews;
-  if (prevRate === 0) return null;
-  return ((latestRate - prevRate) / prevRate) * 100;
+  const prevRate = ((prev.likes + prev.comments) / prevViews) * 100;
+  const latestRate = ((latest.likes + latest.comments) / latestViews) * 100;
+  return latestRate - prevRate;
 }
 
 /** Find the history entry closest to a target date */

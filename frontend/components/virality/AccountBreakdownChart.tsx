@@ -85,7 +85,7 @@ export function AccountBreakdownChart({
       sum += views;
     });
 
-    return { data: entries.filter((e) => e.value > 0), total: sum };
+    return { data: entries.filter((e) => e.value > 0).sort((a, b) => b.value - a.value), total: sum };
   }, [accounts, postsByAccount]);
 
   if (data.length === 0) {

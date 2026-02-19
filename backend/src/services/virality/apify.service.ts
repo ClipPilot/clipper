@@ -47,7 +47,7 @@ class ApifyService {
     const input = {
       addParentData: false,
       directUrls: [`https://www.instagram.com/${username}/`],
-      onlyPostsNewerThan: "28 days",
+      onlyPostsNewerThan: `${SCRAPE_WINDOW_DAYS} days`,
       resultsLimit: 100,
       resultsType: "posts",
       searchType: "user",
@@ -142,6 +142,9 @@ class ApifyService {
   ): Promise<{ posts: InstagramPost[]; profile: InstagramProfile | null }> {
     const input = {
       profiles: [username],
+      oldestPostDateUnified: `${SCRAPE_WINDOW_DAYS} days`,
+      profileScrapeSections: ["videos"],
+      profileSorting: "latest",
       resultsPerPage: 100,
       shouldDownloadCovers: false,
       shouldDownloadVideos: false,

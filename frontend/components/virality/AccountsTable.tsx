@@ -10,18 +10,13 @@ import {
   TableCell,
   Avatar,
   Chip,
-  Button,
   Pagination,
-  Dropdown,
-  DropdownTrigger,
-  DropdownMenu,
-  DropdownItem,
   Spinner,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { CompetitorWithAccounts, AccountPostStats, ViralityAccount } from "@/api/virality";
 import { formatNumber } from "@/lib/formatters";
-import { platformIcon, platformChipClass, syncStatusColor, type Platform } from "@/lib/platformUtils";
+import { platformIcon, platformChipClass, type Platform } from "@/lib/platformUtils";
 
 export type { Platform };
 
@@ -38,8 +33,7 @@ interface AccountsTableProps {
   isLoading?: boolean;
   accountPostStats?: Record<number, AccountPostStats>;
   onViewCompetitor?: (competitorId: number) => void;
-  onSyncAccount?: (accountId: number) => Promise<void>;
-  onDeleteAccount?: (accountId: number) => Promise<void>;
+  onViewAccount?: (competitorId: number, accountId: number) => void;
 }
 
 export function AccountsTable({
@@ -49,12 +43,9 @@ export function AccountsTable({
   isLoading,
   accountPostStats,
   onViewCompetitor,
-  onSyncAccount,
-  onDeleteAccount,
+  onViewAccount,
 }: AccountsTableProps) {
   const [page, setPage] = useState(1);
-  const [syncingId, setSyncingId] = useState<number | null>(null);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
   const rowsPerPage = 10;
 
   // Flatten competitors into individual account rows
@@ -91,27 +82,6 @@ export function AccountsTable({
     page * rowsPerPage
   );
 
-  const handleSync = async (accountId: number) => {
-    if (!onSyncAccount) return;
-    setSyncingId(accountId);
-    try {
-      await onSyncAccount(accountId);
-    } finally {
-      setSyncingId(null);
-    }
-  };
-
-  const handleDelete = async (accountId: number) => {
-    if (!onDeleteAccount) return;
-    if (!window.confirm("Delete this account? All tracked posts will also be removed.")) return;
-    setDeletingId(accountId);
-    try {
-      await onDeleteAccount(accountId);
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -147,8 +117,6 @@ export function AccountsTable({
           <TableColumn>VIEWS</TableColumn>
           <TableColumn>AVG VIEWS</TableColumn>
           <TableColumn>POSTS</TableColumn>
-          <TableColumn>SYNC STATUS</TableColumn>
-          <TableColumn>ACTIONS</TableColumn>
         </TableHeader>
         <TableBody>
           {paginated.map((fa) => {
@@ -156,14 +124,11 @@ export function AccountsTable({
             const views = stats?.totalViews || 0;
             const postCount = stats?.postCount || 0;
             const avgViews = postCount > 0 ? Math.round(views / postCount) : 0;
-            const isSyncing = syncingId === fa.account.id;
-            const isDeleting = deletingId === fa.account.id;
-
             return (
               <TableRow
                 key={fa.account.id}
                 className="cursor-pointer hover:bg-surface-hover transition-colors"
-                onClick={() => onViewCompetitor?.(fa.competitorId)}
+                onClick={() => onViewAccount?.(fa.competitorId, fa.account.id)}
               >
                 <TableCell>
                   <div className="flex items-center gap-3">
@@ -221,64 +186,6 @@ export function AccountsTable({
                   <span className="font-medium text-text-primary">
                     {formatNumber(postCount)}
                   </span>
-                </TableCell>
-                <TableCell>
-                  <Chip
-                    size="sm"
-                    variant="flat"
-                    color={syncStatusColor(isSyncing ? "syncing" : fa.account.sync_status)}
-                  >
-                    {isSyncing ? "Syncing..." : fa.account.sync_status}
-                  </Chip>
-                </TableCell>
-                <TableCell>
-                  <div
-                    className="flex items-center gap-2"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Dropdown>
-                      <DropdownTrigger>
-                        <Button
-                          size="sm"
-                          variant="flat"
-                          isIconOnly
-                          className="bg-surface-elevated"
-                        >
-                          <Icon icon="solar:menu-dots-bold" width={16} />
-                        </Button>
-                      </DropdownTrigger>
-                      <DropdownMenu
-                        aria-label="Account actions"
-                        onAction={(key) => {
-                          if (key === "sync") handleSync(fa.account.id);
-                          if (key === "delete") handleDelete(fa.account.id);
-                        }}
-                      >
-                        <DropdownItem
-                          key="sync"
-                          isDisabled={isSyncing}
-                          startContent={
-                            isSyncing ? (
-                              <Spinner size="sm" />
-                            ) : (
-                              <Icon icon="solar:refresh-bold" width={16} />
-                            )
-                          }
-                        >
-                          {isSyncing ? "Syncing..." : "Sync"}
-                        </DropdownItem>
-                        <DropdownItem
-                          key="delete"
-                          className="text-danger"
-                          color="danger"
-                          isDisabled={isDeleting}
-                          startContent={<Icon icon="solar:trash-bin-trash-bold" width={16} />}
-                        >
-                          {isDeleting ? "Deleting..." : "Delete"}
-                        </DropdownItem>
-                      </DropdownMenu>
-                    </Dropdown>
-                  </div>
                 </TableCell>
               </TableRow>
             );

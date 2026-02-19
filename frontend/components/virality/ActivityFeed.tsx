@@ -9,7 +9,7 @@ import { formatNumber } from "@/lib/formatters";
 import { platformIcon, platformIconColor, timeAgo } from "@/lib/platformUtils";
 import { findClosestEntry } from "@/app/dashboard/virality/[competitorId]/utils";
 
-type ContentFilter = "all" | "viral" | "recent";
+type ContentFilter = "viral" | "recent";
 
 const VIRAL_VIEW_THRESHOLD = 50_000;
 const PAGE_SIZE = 20;
@@ -52,7 +52,7 @@ interface TopPerformingContentProps {
 }
 
 export function ActivityFeed({ posts, allPosts, accountMap, dateRange }: TopPerformingContentProps) {
-  const [filter, setFilter] = useState<ContentFilter>("all");
+  const [filter, setFilter] = useState<ContentFilter>("viral");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -81,13 +81,10 @@ export function ActivityFeed({ posts, allPosts, accountMap, dateRange }: TopPerf
               new Date(b.posted_at || 0).getTime() -
               new Date(a.posted_at || 0).getTime()
           );
-      case "all":
       default:
-        return allPosts
-          .slice()
-          .sort((a, b) => (b.video_play_count ?? 0) - (a.video_play_count ?? 0));
+        return viralPostsWithDelta.map((item) => item.post);
     }
-  }, [filter, posts, allPosts, viralPostsWithDelta]);
+  }, [filter, posts, viralPostsWithDelta]);
 
   /** Map post id -> views gained for viral display */
   const viralDeltaMap = useMemo(() => {
@@ -118,7 +115,6 @@ export function ActivityFeed({ posts, allPosts, accountMap, dateRange }: TopPerf
   const visiblePosts = filteredPosts.slice(0, visibleCount);
 
   const filters: { key: ContentFilter; label: string }[] = [
-    { key: "all", label: "All" },
     { key: "viral", label: "Viral" },
     { key: "recent", label: "Recent" },
   ];
@@ -147,7 +143,7 @@ export function ActivityFeed({ posts, allPosts, accountMap, dateRange }: TopPerf
                     ? "Showing posts that gained 50k+ views within the selected date range. View counts reflect only views gained during that period."
                     : "Showing posts that gained 50k+ views between their first and last recorded sync. Select a date range for more specific results."
                 }
-                classNames={{ content: "max-w-[240px] text-xs" }}
+                classNames={{ content: "max-w-[240px] text-xs m-2" }}
               >
                 <span className="cursor-help">
                   <Icon icon="solar:info-circle-linear" width={14} className="text-text-tertiary" />
