@@ -4,11 +4,12 @@ import {
   posts,
   massPostingApplications,
 } from "@clipper/shared-db/src/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, or, sql, desc, asc, ilike, gte } from "drizzle-orm";
 import { teamService } from "./team.service";
 import { getTeamUsage } from "../middleware/subscription.middleware";
 import { sqsService } from "./sqs.service";
 import { googleDriveService } from "./google/drive.service";
+import { s3Service } from "./s3.service";
 
 const VALID_PLATFORMS = new Set(["tiktok", "instagram", "facebook", "youtube", "x"]);
 
@@ -121,6 +122,123 @@ class AdPostingService {
         console.error(`[AdPosting] Drive delete failed for file ${post.drive_file_id}:`, err);
       }
     }
+  }
+
+  async getPostsForTeam(
+    teamId: number,
+    options: {
+      tab?: "queued" | "published";
+      platform?: string;
+      dateRange?: string;
+      search?: string;
+      sortBy?: string;
+      sortOrder?: "asc" | "desc";
+      page?: number;
+      pageSize?: number;
+    } = {}
+  ) {
+    const {
+      tab = "queued",
+      platform,
+      dateRange = "all",
+      search,
+      sortBy = "created_at",
+      sortOrder = "desc",
+      page = 1,
+      pageSize = 20,
+    } = options;
+
+    const conditions = [eq(posts.team_id, teamId)];
+
+    // Status group filter
+    if (tab === "queued") {
+      conditions.push(
+        or(
+          eq(posts.status, "scheduled"),
+          eq(posts.status, "failed")
+        )!
+      );
+    } else {
+      conditions.push(eq(posts.status, "posted"));
+    }
+
+    // Platform filter
+    if (platform) {
+      conditions.push(eq(posts.platform, platform as any));
+    }
+
+    // Date range filter
+    if (dateRange !== "all") {
+      const days = dateRange === "7days" ? 7 : dateRange === "30days" ? 30 : 90;
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - days);
+      conditions.push(gte(posts.created_at, cutoff));
+    }
+
+    // Search by clip title
+    if (search) {
+      conditions.push(ilike(clips.title, `%${search}%`));
+    }
+
+    const where = and(...conditions);
+
+    // Count total
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(posts)
+      .leftJoin(clips, eq(posts.clip_id, clips.id))
+      .where(where);
+
+    // Sort
+    const orderCol = sortBy === "posted_time" ? posts.posted_time : posts.created_at;
+    const orderFn = sortOrder === "asc" ? asc : desc;
+
+    // Fetch page
+    const rows = await db
+      .select({
+        id: posts.id,
+        clip_id: posts.clip_id,
+        clip_title: clips.title,
+        clip_path: clips.clip_path,
+        platform: posts.platform,
+        status: posts.status,
+        content: posts.content,
+        post_url: posts.post_url,
+        posted_time: posts.posted_time,
+        created_at: posts.created_at,
+      })
+      .from(posts)
+      .leftJoin(clips, eq(posts.clip_id, clips.id))
+      .where(where)
+      .orderBy(orderFn(orderCol))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize);
+
+    // Generate presigned URLs for clip thumbnails
+    const postsWithUrls = await Promise.all(
+      rows.map(async (row) => {
+        let clip_url: string | null = null;
+        if (row.clip_path) {
+          try {
+            clip_url = await s3Service.getPresignedUrl(row.clip_path);
+          } catch {
+            // S3 URL generation can fail for missing keys
+          }
+        }
+        const { clip_path, ...rest } = row;
+        return { ...rest, clip_url };
+      })
+    );
+
+    return {
+      posts: postsWithUrls,
+      pagination: {
+        page,
+        pageSize,
+        total: count,
+        totalPages: Math.ceil(count / pageSize),
+      },
+    };
   }
 
   async getPostsForClip(teamId: number, clipId: number) {

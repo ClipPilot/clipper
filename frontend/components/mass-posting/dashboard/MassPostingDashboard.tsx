@@ -1,21 +1,64 @@
 "use client";
 
-import { useState } from "react";
-import { Tabs, Tab, Chip } from "@heroui/react";
+import { useState, useEffect, useCallback } from "react";
+import { Tabs, Tab, Chip, Spinner } from "@heroui/react";
+import { useAtomValue } from "jotai";
+import { selectedTeamAtom } from "@/store/auth";
+import { adPostingAPI, type GetTeamPostsParams } from "@/api/adPosting";
+import type { TeamPost, PostsPagination } from "@/types/massPosting";
 import { DashboardHeader } from "./DashboardHeader";
 import { QueuedPostsTab } from "./QueuedPostsTab";
 import { AccountsTab } from "./AccountsTab";
 import { PublishedPostsTab } from "./PublishedPostsTab";
-import { MOCK_QUEUED_POSTS } from "./mockData";
 
 type TabKey = "queued" | "accounts" | "published";
 
 export function MassPostingDashboard() {
+  const selectedTeam = useAtomValue(selectedTeamAtom);
   const [activeTab, setActiveTab] = useState<TabKey>("queued");
 
-  const queuedCount = MOCK_QUEUED_POSTS.filter(
-    (p) => p.status === "queued"
-  ).length;
+  // Queued state
+  const [queuedPosts, setQueuedPosts] = useState<TeamPost[]>([]);
+  const [queuedPagination, setQueuedPagination] = useState<PostsPagination | null>(null);
+  const [queuedLoading, setQueuedLoading] = useState(false);
+
+  // Published state
+  const [publishedPosts, setPublishedPosts] = useState<TeamPost[]>([]);
+  const [publishedPagination, setPublishedPagination] = useState<PostsPagination | null>(null);
+  const [publishedLoading, setPublishedLoading] = useState(false);
+
+  const fetchPosts = useCallback(
+    async (tab: "queued" | "published", params: GetTeamPostsParams = {}) => {
+      if (!selectedTeam?.id) return;
+      const setLoading = tab === "queued" ? setQueuedLoading : setPublishedLoading;
+      const setPosts = tab === "queued" ? setQueuedPosts : setPublishedPosts;
+      const setPagination = tab === "queued" ? setQueuedPagination : setPublishedPagination;
+
+      setLoading(true);
+      try {
+        const result = await adPostingAPI.getTeamPosts(selectedTeam.id, {
+          tab,
+          pageSize: 20,
+          ...params,
+        });
+        setPosts(result.posts);
+        setPagination(result.pagination);
+      } catch (err) {
+        console.error(`Failed to fetch ${tab} posts:`, err);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [selectedTeam?.id]
+  );
+
+  // Initial load for both tabs
+  useEffect(() => {
+    fetchPosts("queued");
+    fetchPosts("published");
+  }, [fetchPosts]);
+
+  const queuedCount = queuedPagination?.total ?? 0;
 
   return (
     <div className="min-h-screen bg-surface-dark p-4 sm:p-6 lg:p-8">
@@ -61,9 +104,23 @@ export function MassPostingDashboard() {
         </Tabs>
 
         <div className="mt-6">
-          {activeTab === "queued" && <QueuedPostsTab />}
+          {activeTab === "queued" && (
+            <QueuedPostsTab
+              posts={queuedPosts}
+              pagination={queuedPagination}
+              isLoading={queuedLoading}
+              onParamsChange={(params) => fetchPosts("queued", params)}
+            />
+          )}
           {activeTab === "accounts" && <AccountsTab />}
-          {activeTab === "published" && <PublishedPostsTab />}
+          {activeTab === "published" && (
+            <PublishedPostsTab
+              posts={publishedPosts}
+              pagination={publishedPagination}
+              isLoading={publishedLoading}
+              onParamsChange={(params) => fetchPosts("published", params)}
+            />
+          )}
         </div>
       </div>
     </div>

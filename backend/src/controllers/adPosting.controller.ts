@@ -78,6 +78,43 @@ export async function getClipPosts(req: AuthRequest, res: Response) {
   }
 }
 
+export async function getPostsForTeam(req: AuthRequest, res: Response) {
+  try {
+    const teamId = parseInt(req.params.teamId);
+    if (isNaN(teamId)) {
+      return res.status(400).json({ error: "Invalid team ID" });
+    }
+
+    const {
+      tab,
+      platform,
+      dateRange,
+      search,
+      sortBy,
+      sortOrder,
+      page,
+      pageSize,
+    } = req.query;
+
+    const result = await adPostingService.getPostsForTeam(teamId, {
+      tab: tab as "queued" | "published" | undefined,
+      platform: platform as string | undefined,
+      dateRange: dateRange as string | undefined,
+      search: search as string | undefined,
+      sortBy: sortBy as string | undefined,
+      sortOrder: sortOrder as "asc" | "desc" | undefined,
+      page: page ? parseInt(page as string) : undefined,
+      pageSize: pageSize ? Math.min(parseInt(pageSize as string), 100) : undefined,
+    });
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error("Get posts for team error:", error);
+    Sentry.captureException(error);
+    return res.status(500).json({ error: "Failed to get posts" });
+  }
+}
+
 export async function webhookMarkAsPosted(req: AuthRequest, res: Response) {
   try {
     // Verify shared secret

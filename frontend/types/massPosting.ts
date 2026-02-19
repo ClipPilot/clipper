@@ -30,7 +30,7 @@ export interface ICP {
   painPoints?: string[];
 }
 
-// --- Dashboard entity types (frontend-only for now) ---
+// --- Dashboard entity types ---
 
 export type MassPostingPlatform =
   | "instagram"
@@ -40,17 +40,41 @@ export type MassPostingPlatform =
   | "facebook"
   | "linkedin";
 
-export type QueuedPostStatus = "queued" | "processing" | "failed";
+export type PostStatus = "scheduled" | "posted" | "cancelled" | "deleted" | "failed";
 
-export interface QueuedPost {
-  id: string;
-  title: string;
-  thumbnailUrl: string;
-  duration: string;
-  resolution: string;
-  dateSubmitted: string;
-  platforms: MassPostingPlatform[];
-  status: QueuedPostStatus;
+/** Single post row from the API (joined with clip data) */
+export interface TeamPost {
+  id: number;
+  clip_id: number | null;
+  clip_title: string | null;
+  clip_url: string | null;
+  platform: MassPostingPlatform;
+  status: PostStatus;
+  content: string;
+  post_url: string | null;
+  posted_time: string | null;
+  created_at: string;
+}
+
+/** Grouped queued entry — multiple posts for the same clip */
+export interface QueuedGroup {
+  clip_id: number | null;
+  clip_title: string | null;
+  clip_url: string | null;
+  posts: TeamPost[];
+  earliestCreatedAt: string;
+}
+
+export interface PostsPagination {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface TeamPostsResponse {
+  posts: TeamPost[];
+  pagination: PostsPagination;
 }
 
 export interface MassPostingAccount {
@@ -61,15 +85,4 @@ export interface MassPostingAccount {
   platformDisplayName: string;
   totalReposts: number;
   isActive: boolean;
-}
-
-export interface PublishedPost {
-  id: string;
-  title: string;
-  thumbnailUrl: string;
-  accountName: string;
-  accountAvatarUrl: string;
-  platform: MassPostingPlatform;
-  publishedDate: string;
-  postUrl: string;
 }
