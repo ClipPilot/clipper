@@ -191,6 +191,7 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
         creditsRemaining={usageStats?.totalRemaining}
         isLoading={!usageStats}
         isDisabled={isGenerating || !usageStats || usageStats.totalRemaining < creditCost}
+        isGenerating={isGenerating}
         onGenerate={handleGenerateClick}
         gradientClasses="from-accent-400/20 to-purple-500/20"
         borderClass="border-accent-400/30"

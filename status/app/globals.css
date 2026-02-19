@@ -1,0 +1,91 @@
+@import "tailwindcss";
+
+@config "../tailwind.config.js";
+
+:root {
+  --background: #0a0a14;
+  --foreground: #ffffff;
+  --surface-base: #0f0f1a;
+  --surface-elevated: #16161f;
+  --surface-hover: #1a1a2e;
+  --text-primary: #ffffff;
+  --text-secondary: #a1a1aa;
+  --text-tertiary: #71717a;
+  --text-muted: #52525b;
+  --border-base: #27272a;
+  --border-light: #3f3f46;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.8);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+.pulse-dot::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  animation: pulse-ring 2s ease-out infinite;
+}
+
+.pulse-dot-green::before {
+  background-color: #22c55e;
+}
+
+.pulse-dot-yellow::before {
+  background-color: #f59e0b;
+}
+
+.pulse-dot-red::before {
+  background-color: #ef4444;
+}
+
+.link-muted {
+  color: var(--text-muted);
+  transition: color 0.15s;
+}
+
+.link-muted:hover {
+  color: var(--text-secondary);
+}
+
+.uptime-day {
+  position: relative;
+}
+
+.uptime-day::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #16161f;
+  border: 1px solid #27272a;
+  color: #ffffff;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+  z-index: 10;
+}
+
+.uptime-day:hover::after {
+  opacity: 1;
+}

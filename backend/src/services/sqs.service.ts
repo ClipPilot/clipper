@@ -20,7 +20,8 @@ export type JobType =
   | "kling-face-swap"
   | "ad-clone-analyze"
   | "ad-clone-generate-script"
-  | "ad-clone-analyze-and-script";
+  | "ad-clone-analyze-and-script"
+  | "ad-posting";
 
 // Base job interface
 interface BaseJob {
@@ -346,6 +347,15 @@ export interface AdCloneAnalyzeAndScriptJob extends BaseJob {
   projectId: string;
 }
 
+export interface AdPostingJob extends BaseJob {
+  type: "ad-posting";
+  clipId: number;
+  platformQuantities: Record<string, number>;
+  driveFolderId: string;
+  clipPath: string;
+  clipTitle: string;
+}
+
 export type VideoProcessingJob =
   | ClipVideoJob
   | BatchClipVideoJob
@@ -360,7 +370,8 @@ export type VideoProcessingJob =
   | KlingFaceSwapJob
   | AdCloneAnalyzeJob
   | AdCloneGenerateScriptJob
-  | AdCloneAnalyzeAndScriptJob;
+  | AdCloneAnalyzeAndScriptJob
+  | AdPostingJob;
 
 class SQSService {
   private queueUrl: string;
@@ -751,6 +762,29 @@ class SQSService {
       teamId: params.teamId,
       userId: params.userId,
       editConfig: params.editConfig,
+      createdAt: new Date().toISOString(),
+    };
+
+    return this.sendJob(job);
+  }
+  async sendAdPostingJob(params: {
+    clipId: number;
+    teamId: number;
+    userId: number;
+    platformQuantities: Record<string, number>;
+    driveFolderId: string;
+    clipPath: string;
+    clipTitle: string;
+  }): Promise<string> {
+    const job: AdPostingJob = {
+      type: "ad-posting",
+      clipId: params.clipId,
+      teamId: params.teamId,
+      userId: params.userId,
+      platformQuantities: params.platformQuantities,
+      driveFolderId: params.driveFolderId,
+      clipPath: params.clipPath,
+      clipTitle: params.clipTitle,
       createdAt: new Date().toISOString(),
     };
 

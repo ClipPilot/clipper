@@ -105,9 +105,19 @@ jobs:
           fal_key            = "${{ secrets.FAL_KEY }}"
           apify_api_token    = "${{ secrets.APIFY_API_TOKEN }}"
 
+          # Google Drive (Mass Posting)
+          google_service_account_email       = "${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}"
+          google_service_account_private_key = "${{ secrets.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY }}"
+          google_drive_parent_folder_id      = "${{ secrets.GOOGLE_DRIVE_PARENT_FOLDER_ID }}"
+          ad_posting_webhook_secret          = "${{ secrets.AD_POSTING_WEBHOOK_SECRET }}"
+
           # Custom Domain
           api_domain          = "api.cuttr.com"
           frontend_url        = "https://platform.cuttr.com"
+
+          # Status Dashboard
+          status_cron_secret  = "${{ secrets.STATUS_CRON_SECRET }}"
+          status_domain       = "status.cuttr.com"
           EOF
 
       - name: Terraform Plan
@@ -228,9 +238,19 @@ jobs:
           fal_key            = "${{ secrets.FAL_KEY }}"
           apify_api_token    = "${{ secrets.APIFY_API_TOKEN }}"
 
+          # Google Drive (Mass Posting)
+          google_service_account_email       = "${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}"
+          google_service_account_private_key = "${{ secrets.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY }}"
+          google_drive_parent_folder_id      = "${{ secrets.GOOGLE_DRIVE_PARENT_FOLDER_ID }}"
+          ad_posting_webhook_secret          = "${{ secrets.AD_POSTING_WEBHOOK_SECRET }}"
+
           # Custom Domain
           api_domain          = "api.cuttr.com"
           frontend_url        = "https://platform.cuttr.com"
+
+          # Status Dashboard
+          status_cron_secret  = "${{ secrets.STATUS_CRON_SECRET }}"
+          status_domain       = "status.cuttr.com"
           EOF
 
       - name: Download Terraform Plan
@@ -238,6 +258,9 @@ jobs:
         with:
           name: tfplan
           path: infra/
+
+      - name: Rebuild Terraform data artifacts
+        run: terraform plan -target='data.archive_file.status_cron_lambda' -out=/dev/null 2>/dev/null || true
 
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan

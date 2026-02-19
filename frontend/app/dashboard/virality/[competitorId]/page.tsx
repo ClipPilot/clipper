@@ -1,13 +1,11 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   Button,
   Input,
-  Tabs,
-  Tab,
   addToast,
   Spinner,
 } from "@heroui/react";
@@ -34,13 +32,16 @@ import { PostFrequencyChart } from "@/components/virality/PostFrequencyChart";
 import { AccountBreakdownChart } from "@/components/virality/AccountBreakdownChart";
 import { BestPerformingAccounts } from "@/components/virality/BestPerformingAccounts";
 import { RecalcOverlay } from "@/components/virality/RecalcOverlay";
+import { AccountFilterPopover } from "@/components/virality/AccountFilterPopover";
 import { findClosestEntry, getComparisonDate, pct, computePostsPerWeek } from "./utils";
+import { canAccessViralityTracker } from "@/lib/plans";
 
 // ─── Page Component ──────────────────────────────────────────────────────────
 
 export default function CompetitorDetailPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const { selectedTeam } = useTeams();
   const competitorId = Number(params.competitorId);
 
@@ -52,12 +53,19 @@ export default function CompetitorDetailPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState("");
-  const [activeAccountId, setActiveAccountId] = useState<string>("all");
-  const [dateRange, setDateRange] = useState<DateRangeValue>({});
+  const [selectedAccountIds, setSelectedAccountIds] = useState<number[]>(() => {
+    const accountId = searchParams.get("accountId");
+    return accountId ? [Number(accountId)] : [];
+  });
+  const [dateRange, setDateRange] = useState<DateRangeValue>(() => {
+    const startDate = searchParams.get("startDate") || undefined;
+    const endDate = searchParams.get("endDate") || undefined;
+    return { startDate, endDate };
+  });
   const [comparisonMode, setComparisonMode] = useState<ComparisonMode>({ type: "last-sync" });
 
   const fetchData = useCallback(async () => {
-    if (!selectedTeam?.id || isNaN(competitorId)) return;
+    if (!selectedTeam?.id || isNaN(competitorId) || !canAccessViralityTracker(selectedTeam.plan)) return;
     if (initialLoadDone.current) setIsRecalculating(true);
     try {
       const comp = await viralityAPI.getCompetitor(selectedTeam.id, competitorId);
@@ -84,10 +92,6 @@ export default function CompetitorDetailPage() {
   }, [selectedTeam?.id, competitorId, dateRange]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
-
-  const handleTabChange = (key: React.Key) => {
-    setActiveAccountId(String(key));
-  };
 
   const handleDateRangeChange = (value: DateRangeValue) => {
     setDateRange(value);
@@ -125,10 +129,9 @@ export default function CompetitorDetailPage() {
 
   const activeAccounts = useMemo(() => {
     if (!competitor) return [];
-    if (activeAccountId === "all") return competitor.accounts;
-    const id = Number(activeAccountId);
-    return competitor.accounts.filter((a) => a.id === id);
-  }, [competitor, activeAccountId]);
+    if (selectedAccountIds.length === 0) return competitor.accounts;
+    return competitor.accounts.filter((a) => selectedAccountIds.includes(a.id));
+  }, [competitor, selectedAccountIds]);
 
   const activePosts = useMemo(() => {
     const posts: ViralityPost[] = [];
@@ -231,7 +234,7 @@ export default function CompetitorDetailPage() {
 
     const prevEngRate = prevViews > 0 ? (prevEngagements / prevViews) * 100 : 0;
     const latestEngRate = latestViews > 0 ? (latestEngagements / latestViews) * 100 : 0;
-    const engRateChange = hasHistory && prevEngRate > 0 ? pct(latestEngRate, prevEngRate) : null;
+    const engRateChange = hasHistory ? latestEngRate - prevEngRate : null;
 
     return {
       followers, totalLikes, totalComments, totalViews,
@@ -246,6 +249,42 @@ export default function CompetitorDetailPage() {
   const postsPerWeek = useMemo(() => computePostsPerWeek(activePosts), [activePosts]);
 
   // ─── Loading / Error states ──────────────────────────────────────────────────
+
+  if (!canAccessViralityTracker(selectedTeam?.plan)) {
+    return (
+      <div className="min-h-screen bg-surface-dark flex flex-col items-center justify-center p-6">
+        <div className="flex flex-col items-center gap-6 max-w-sm">
+          <div className="relative">
+            <div className="flex items-center justify-center w-20 h-20 rounded-2xl bg-purple-500/10">
+              <Icon icon="solar:chart-bold-duotone" className="text-purple-500" width={40} />
+            </div>
+            <div className="absolute -bottom-1 -right-1 flex items-center justify-center w-7 h-7 rounded-full bg-surface-dark border-2 border-surface-dark">
+              <Icon icon="solar:lock-keyhole-bold" className="text-text-tertiary" width={14} />
+            </div>
+          </div>
+          <div className="text-center space-y-2">
+            <h2 className="text-xl font-bold text-text-primary">Virality Tracker</h2>
+            <p className="text-sm text-text-secondary leading-relaxed">
+              Track competitor performance, monitor viral trends, and benchmark your content against the competition.
+            </p>
+          </div>
+          <div className="flex flex-col items-center gap-3 w-full">
+            <Button
+              size="lg"
+              className="w-full bg-purple-500 text-white font-semibold"
+              onPress={() => router.push("/dashboard/pricing")}
+              startContent={<Icon icon="solar:rocket-bold" width={18} />}
+            >
+              Upgrade to Studio
+            </Button>
+            <p className="text-xs text-text-tertiary">
+              Available on Studio, Scale & Enterprise
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -398,35 +437,13 @@ export default function CompetitorDetailPage() {
           </div>
         </div>
 
-        {/* Account Tabs */}
+        {/* Account Filter */}
         {competitor.accounts.length > 0 ? (
-          <Tabs
-            selectedKey={activeAccountId}
-            onSelectionChange={handleTabChange}
-            variant="underlined"
-            classNames={{
-              tabList: "border-b border-border-base",
-              cursor: "bg-accent-400",
-              tab: "text-text-tertiary data-[selected=true]:text-text-primary",
-            }}
-          >
-            <Tab key="all" title="All Accounts" />
-            {competitor.accounts.map((t) => (
-              <Tab
-                key={String(t.id)}
-                title={
-                  <div className="flex items-center gap-1.5">
-                    <Icon
-                      icon={t.platform === "tiktok" ? "ri:tiktok-fill" : t.platform === "x" ? "ri:twitter-x-fill" : "ri:instagram-fill"}
-                      width={14}
-                      className={t.platform === "tiktok" ? "text-cyan-500" : t.platform === "x" ? "text-foreground" : "text-pink-500"}
-                    />
-                    @{t.username}
-                  </div>
-                }
-              />
-            ))}
-          </Tabs>
+          <AccountFilterPopover
+            accounts={competitor.accounts}
+            selectedAccountIds={selectedAccountIds}
+            onChange={setSelectedAccountIds}
+          />
         ) : (
           <div className="flex flex-col items-center justify-center py-8 gap-2">
             <Icon icon="solar:users-group-rounded-linear" width={40} className="text-text-tertiary" />
@@ -464,7 +481,7 @@ export default function CompetitorDetailPage() {
 
         {/* Post Frequency + Best Performing Accounts */}
         <RecalcOverlay active={isRecalculating}>
-          {activeAccountId === "all" ? (
+          {selectedAccountIds.length === 0 || selectedAccountIds.length > 1 ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <PostFrequencyChart
                 posts={activePosts}
@@ -490,7 +507,7 @@ export default function CompetitorDetailPage() {
         {/* Top Performing Content Table */}
         <RecalcOverlay active={isRecalculating}>
           <PostsTable
-            key={activeAccountId + (dateRange.startDate || "") + (dateRange.endDate || "")}
+            key={selectedAccountIds.join(",") + (dateRange.startDate || "") + (dateRange.endDate || "")}
             posts={activePosts}
             accountPlatformMap={accountPlatformMap}
             accountSyncMap={accountSyncMap}

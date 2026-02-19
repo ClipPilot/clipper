@@ -243,3 +243,46 @@ export const ugcReadyEmail = (data: UgcReadyEmailData): string => {
   `;
   return wrapInBase(content);
 };
+
+export interface MassPostingApprovedEmailData {
+  userName: string;
+  teamName: string;
+  dashboardUrl: string;
+  driveFolderUrl: string;
+}
+
+export const massPostingApprovedEmail = (data: MassPostingApprovedEmailData): string => {
+  const content = `
+    <h1 style="color: #ffffff; font-size: 24px; margin-bottom: 16px;">You're Approved for Mass Posting!</h1>
+    <p style="color: #a0a0a0; font-size: 16px; line-height: 1.6;">Hey ${data.userName},</p>
+    <p style="color: #a0a0a0; font-size: 16px; line-height: 1.6;">Great news! <strong style="color: #ffffff;">${data.teamName}</strong> has been approved for mass posting. You can now send clips to multiple platforms at once.</p>
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${data.dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #9333EA, #7C3AED); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">Go to Dashboard</a>
+    </div>
+    <p style="color: #a0a0a0; font-size: 14px; margin-top: 24px;">Your Google Drive folder: <a href="${data.driveFolderUrl}" style="color: #9333EA;">${data.driveFolderUrl}</a></p>
+  `;
+  return wrapInBase(content);
+};
+
+export interface AdPostingReadyEmailData {
+  userName: string;
+  clipTitle: string;
+  platforms: string;
+  dashboardUrl: string;
+}
+
+export const adPostingReadyEmail = (data: AdPostingReadyEmailData): string => {
+  const content = `
+    <h1 style="color: #ffffff; font-size: 24px; margin-bottom: 16px;">Your Clip is Prepared!</h1>
+    <p style="color: #a0a0a0; font-size: 16px; line-height: 1.6;">Hey ${data.userName},</p>
+    <p style="color: #a0a0a0; font-size: 16px; line-height: 1.6;">Your clip <strong style="color: #ffffff;">${data.clipTitle}</strong> has been re-encoded and uploaded to Google Drive for the following platforms:</p>
+    <div style="background: #1a1a1a; border-radius: 8px; padding: 16px; margin: 20px 0;">
+      <p style="color: #ffffff; font-size: 16px; font-weight: 600; margin: 0;">${data.platforms}</p>
+    </div>
+    <p style="color: #a0a0a0; font-size: 16px; line-height: 1.6;">It will be posted momentarily. You'll be able to see the live links in your dashboard once posted.</p>
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${data.dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #9333EA, #7C3AED); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">View in Dashboard</a>
+    </div>
+  `;
+  return wrapInBase(content);
+};

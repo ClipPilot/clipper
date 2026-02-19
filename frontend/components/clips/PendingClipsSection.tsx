@@ -11,6 +11,7 @@ interface Clip {
   updated_at: string;
   rawVideoUrl?: string;
   saved?: boolean;
+  error_message?: string;
 }
 
 interface PendingClipsSectionProps {
@@ -144,11 +145,76 @@ export default function PendingClipsSection({
   };
   if (clips.length === 0) return null;
 
-  const newClips = clips.filter((c) => !c.saved);
-  const editingClips = clips.filter((c) => c.saved);
+  const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+  const failedClips = clips.filter(
+    (c) => c.status === "failed" && new Date(c.updated_at) >= twoDaysAgo
+  );
+  const pendingOnly = clips.filter((c) => c.status !== "failed");
+  const newClips = pendingOnly.filter((c) => !c.saved);
+  const editingClips = pendingOnly.filter((c) => c.saved);
 
   return (
     <div className="mb-8 space-y-6">
+      {/* Failed clips */}
+      {failedClips.length > 0 && (
+        <div>
+          <h2 className="text-xl font-bold text-text-primary mb-4 flex items-center gap-2">
+            <Icon
+              icon="solar:danger-circle-bold-duotone"
+              className="text-2xl text-danger-400"
+            />
+            Failed ({failedClips.length})
+          </h2>
+          <p className="text-sm text-text-tertiary mb-4">
+            These clips failed during processing. You can dismiss them or try again.
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+            {failedClips.map((clip) => (
+              <Card
+                key={clip.id}
+                className="bg-surface-base border border-danger-500/30"
+              >
+                <CardBody className="p-3">
+                  <div className="relative w-full aspect-[9/16] bg-gradient-to-br from-danger-500/10 to-surface-base rounded-lg overflow-hidden flex flex-col items-center justify-center">
+                    <div className="relative mb-3">
+                      <div className="w-14 h-14 rounded-full border-4 border-danger-500/20 flex items-center justify-center">
+                        <Icon
+                          icon="solar:close-circle-bold"
+                          className="text-3xl text-danger-400"
+                        />
+                      </div>
+                    </div>
+                    <span className="text-sm font-medium text-danger-400">Failed</span>
+                    {clip.error_message && (
+                      <p className="text-xs text-text-tertiary mt-2 px-3 text-center line-clamp-3">
+                        {clip.error_message}
+                      </p>
+                    )}
+                  </div>
+                  <div className="mt-2 flex items-center justify-between">
+                    <p className="text-xs text-text-tertiary truncate mr-1">
+                      {new Date(clip.updated_at).toLocaleTimeString()}
+                    </p>
+                    {onCancel && (
+                      <Button
+                        size="sm"
+                        variant="flat"
+                        color="danger"
+                        isLoading={cancellingIds.has(clip.id)}
+                        onPress={() => handleCancel(clip.id)}
+                        className="min-w-fit h-6 text-xs px-2"
+                      >
+                        {!cancellingIds.has(clip.id) && "Dismiss"}
+                      </Button>
+                    )}
+                  </div>
+                </CardBody>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* New clips being processed */}
       {newClips.length > 0 && (
         <div>

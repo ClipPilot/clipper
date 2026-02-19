@@ -78,6 +78,8 @@ export default function WorkspaceSelector({
         return "Scale";
       case "studio":
         return "Studio";
+      case "creator":
+        return "Creator";
       default:
         return "Free";
     }
@@ -91,13 +93,15 @@ export default function WorkspaceSelector({
         return "bg-purple-500/10 text-purple-500";
       case "studio":
         return "bg-accent-400/10 text-accent-400";
+      case "creator":
+        return "bg-orange-500/10 text-orange-500";
       default:
         return "bg-blue-500/10 text-blue-500";
     }
   };
 
   const currentPlan = selectedTeam?.plan || "free";
-  const isPaidPlan = ["studio", "scale", "enterprise"].includes(currentPlan);
+  const isPaidPlan = ["creator", "studio", "scale", "enterprise"].includes(currentPlan);
 
   return (
       <Card
@@ -181,7 +185,9 @@ export default function WorkspaceSelector({
                                   ? "bg-purple-500 text-white"
                                   : teamPlan === "studio"
                                     ? "bg-accent-400 text-white"
-                                    : "bg-blue-500 text-white"
+                                    : teamPlan === "creator"
+                                      ? "bg-orange-500 text-white"
+                                      : "bg-blue-500 text-white"
                           )}
                         >
                           <Icon icon={getRoleIcon(team.role)} width={20} />
@@ -273,7 +279,7 @@ export default function WorkspaceSelector({
               <div className="flex-1 text-left">
                 <p className="text-sm font-medium text-accent-400">Upgrade</p>
                 <p className="text-xs text-text-tertiary">
-                  Unlimited generations
+                  Get more credits
                 </p>
               </div>
               <Icon
@@ -295,7 +301,9 @@ export default function WorkspaceSelector({
                   ? "bg-emerald-500/10 border-emerald-500/20 hover:bg-emerald-500/20"
                   : currentPlan === "scale"
                     ? "bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20"
-                    : "bg-accent-400/10 border-accent-400/20 hover:bg-accent-400/20"
+                    : currentPlan === "creator"
+                      ? "bg-orange-500/10 border-orange-500/20 hover:bg-orange-500/20"
+                      : "bg-accent-400/10 border-accent-400/20 hover:bg-accent-400/20"
               )}
             >
               <Icon
@@ -305,7 +313,9 @@ export default function WorkspaceSelector({
                     ? "text-emerald-500"
                     : currentPlan === "scale"
                       ? "text-purple-500"
-                      : "text-accent-400"
+                      : currentPlan === "creator"
+                        ? "text-orange-500"
+                        : "text-accent-400"
                 }
                 width={20}
               />
@@ -317,7 +327,9 @@ export default function WorkspaceSelector({
                       ? "text-emerald-500"
                       : currentPlan === "scale"
                         ? "text-purple-500"
-                        : "text-accent-400"
+                        : currentPlan === "creator"
+                          ? "text-orange-500"
+                          : "text-accent-400"
                   )}
                 >
                   {getPlanName(currentPlan)} Plan
@@ -333,7 +345,9 @@ export default function WorkspaceSelector({
                     ? "text-emerald-500"
                     : currentPlan === "scale"
                       ? "text-purple-500"
-                      : "text-accent-400"
+                      : currentPlan === "creator"
+                        ? "text-orange-500"
+                        : "text-accent-400"
                 }
                 width={16}
               />

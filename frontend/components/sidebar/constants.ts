@@ -3,6 +3,7 @@ export type SidebarItem = {
   title: string;
   icon?: string;
   href: string;
+  requiredPlans?: string[];
 };
 
 export const SIDEBAR_ITEMS: SidebarItem[] = [
@@ -35,5 +36,13 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
     title: "Virality Tracker",
     icon: "solar:chart-bold-duotone",
     href: "/dashboard/virality",
+    requiredPlans: ["studio", "scale", "enterprise"],
+  },
+  {
+    key: "mass-posting",
+    title: "Publish Post",
+    icon: "solar:posts-carousel-vertical-bold-duotone",
+    href: "/dashboard/mass-posting",
+    requiredPlans: ["studio", "scale", "enterprise"],
   },
 ];

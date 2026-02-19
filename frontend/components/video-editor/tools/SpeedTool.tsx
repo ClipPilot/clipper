@@ -41,6 +41,7 @@ export function SpeedTool() {
     } else if (activeSegments.length > 0) {
       // Apply to all segments
       updateAllSegmentsSpeed(newSpeed);
+      setGlobalSpeed(newSpeed);
     } else {
       // Fallback to global speed
       setGlobalSpeed(newSpeed);

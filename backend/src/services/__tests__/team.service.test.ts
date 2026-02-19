@@ -32,9 +32,6 @@ vi.mock("../s3.service", () => ({
   },
 }));
 
-vi.mock("../../constants/credits", () => ({
-  FREE_TIER_STARTING_CREDITS: 15,
-}));
 
 import { teamService } from "../team.service";
 
@@ -182,7 +179,7 @@ describe("TeamService", () => {
   });
 
   describe("createTeam", () => {
-    it("gives first team FREE_TIER_STARTING_CREDITS (15)", async () => {
+    it("gives first team PLAN_LIMITS.FREE.clips (15)", async () => {
       mockDb.select.mockReturnValue(createDrizzleChain([]));
       const newTeam = buildTeam({ id: 1, name: "My Team" });
       mockDb.insert.mockReturnValue(createDrizzleChain([newTeam]));

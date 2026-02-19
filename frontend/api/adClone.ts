@@ -136,7 +136,9 @@ class AdCloneAPI {
 
   async startAnalyzeAndScript(
     projectId: string,
-    teamId: number
+    teamId: number,
+    characterId?: number,
+    voiceId?: string,
   ): Promise<{ success: boolean; projectId: string; status: string }> {
     const response = await apiFetch(
       `${API_URL}/ad-clone/${projectId}/analyze-and-script`,
@@ -144,7 +146,7 @@ class AdCloneAPI {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ teamId }),
+        body: JSON.stringify({ teamId, characterId, voiceId }),
       }
     );
 

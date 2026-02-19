@@ -14,10 +14,12 @@ import {
   usageStats,
   teamMembers,
   users,
+  apiWalletTopUps,
 } from "@clipper/shared-db/src/schema";
 import { eq, and, not, sql } from "drizzle-orm";
 import { emailNotiService } from "./emailNoti.service";
 import { referralService } from "./referral.service";
+import { apiBillingService } from "./apiBilling.service";
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://platform.cuttr.com";
 
@@ -606,7 +608,6 @@ class StripeService {
       return;
     }
 
-    // Only handle addon purchases (one-time payments)
     if (session.metadata?.type !== "addon") {
       return;
     }
@@ -650,6 +651,51 @@ class StripeService {
 
     console.log(
       `Added ${addonClips} addon clips to team ${teamId}. New addon total: ${updated.addon_clips_remaining}`,
+    );
+  }
+
+  async handlePaymentIntentSucceeded(paymentIntent: any): Promise<void> {
+    if (paymentIntent.metadata?.type !== "api_topup") {
+      return;
+    }
+
+    const teamId = parseInt(paymentIntent.metadata.teamId);
+    const amountCents = parseInt(paymentIntent.metadata.amount_cents);
+
+    if (!teamId || !amountCents) {
+      console.error("[PaymentIntent] Missing teamId or amount_cents in metadata");
+      return;
+    }
+
+    // Idempotency: check if already credited
+    const [existing] = await db
+      .select({ id: apiWalletTopUps.id })
+      .from(apiWalletTopUps)
+      .where(eq(apiWalletTopUps.stripe_payment_intent_id, paymentIntent.id))
+      .limit(1);
+
+    if (existing) {
+      console.log(`[PaymentIntent] Already credited PI ${paymentIntent.id}, skipping`);
+      return;
+    }
+
+    const { balanceCents } = await apiBillingService.topUp(
+      teamId,
+      amountCents,
+      paymentIntent.id,
+    );
+
+    // Save payment method for auto-refill
+    if (paymentIntent.payment_method && typeof paymentIntent.payment_method === "string") {
+      try {
+        await apiBillingService.savePaymentMethod(teamId, paymentIntent.payment_method);
+      } catch (err) {
+        console.error("[PaymentIntent] Failed to save payment method:", err);
+      }
+    }
+
+    console.log(
+      `[PaymentIntent] Added $${(amountCents / 100).toFixed(2)} to team ${teamId}. New balance: $${(balanceCents / 100).toFixed(2)}`,
     );
   }
 

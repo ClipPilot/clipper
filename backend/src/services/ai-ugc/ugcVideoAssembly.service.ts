@@ -46,7 +46,7 @@ function applySpeedBoost(
     `audio_boosted_${sceneNumber}_${Date.now()}.mp3`,
   );
 
-  const cmd = `ffmpeg -y -i "${inputPath}" -filter:a "atempo=${speedBoost}" -vn "${outputPath}"`;
+  const cmd = `ffmpeg -y -i "${inputPath}" -filter:a "atempo=${speedBoost},loudnorm=I=-16:LRA=11:TP=-1.5" -vn "${outputPath}"`;
   execSync(cmd, { stdio: "pipe" });
 
   const finalDuration = getMediaDuration(outputPath);

@@ -104,6 +104,12 @@ jobs:
           elevenlabs_api_key = "${{ secrets.ELEVENLABS_API_KEY }}"
           fal_key            = "${{ secrets.FAL_KEY }}"
 
+          # Google Drive (Mass Posting)
+          google_service_account_email       = "${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}"
+          google_service_account_private_key = "${{ secrets.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY }}"
+          google_drive_parent_folder_id      = "${{ secrets.GOOGLE_DRIVE_PARENT_FOLDER_ID }}"
+          ad_posting_webhook_secret          = "${{ secrets.AD_POSTING_WEBHOOK_SECRET }}"
+
           # Virality
           apify_api_token    = "${{ secrets.APIFY_API_TOKEN }}"
 
@@ -113,6 +119,10 @@ jobs:
 
           # Use prod S3 bucket so staging can access the same clips
           shared_s3_bucket    = "clipster-videos-prod-${{ secrets.AWS_ACCOUNT_ID }}"
+
+          # Status Dashboard
+          status_cron_secret  = "${{ secrets.STATUS_CRON_SECRET }}"
+          status_domain       = "status-staging.cuttr.com"
           EOF
 
       - name: Import existing ECR repos (if not in state)
@@ -130,6 +140,14 @@ jobs:
           name: tfplan-staging
           path: infra/tfplan
           retention-days: 5
+
+      - name: Upload Terraform Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tf-build-staging
+          path: infra/.build/
+          retention-days: 5
+          if-no-files-found: ignore
 
       - name: Comment PR with Plan
         if: github.event_name == 'pull_request'
@@ -236,6 +254,12 @@ jobs:
           elevenlabs_api_key = "${{ secrets.ELEVENLABS_API_KEY }}"
           fal_key            = "${{ secrets.FAL_KEY }}"
 
+          # Google Drive (Mass Posting)
+          google_service_account_email       = "${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}"
+          google_service_account_private_key = "${{ secrets.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY }}"
+          google_drive_parent_folder_id      = "${{ secrets.GOOGLE_DRIVE_PARENT_FOLDER_ID }}"
+          ad_posting_webhook_secret          = "${{ secrets.AD_POSTING_WEBHOOK_SECRET }}"
+
           # Virality
           apify_api_token    = "${{ secrets.APIFY_API_TOKEN }}"
 
@@ -245,6 +269,10 @@ jobs:
 
           # Use prod S3 bucket so staging can access the same clips
           shared_s3_bucket    = "clipster-videos-prod-${{ secrets.AWS_ACCOUNT_ID }}"
+
+          # Status Dashboard
+          status_cron_secret  = "${{ secrets.STATUS_CRON_SECRET }}"
+          status_domain       = "status-staging.cuttr.com"
           EOF
 
       - name: Import existing ECR repos (if not in state)
@@ -256,6 +284,13 @@ jobs:
         with:
           name: tfplan-staging
           path: infra/
+
+      - name: Download Terraform Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: tf-build-staging
+          path: infra/.build/
+        continue-on-error: true
 
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan

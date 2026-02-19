@@ -50,7 +50,9 @@ resource "aws_iam_role_policy" "ecs_execution_secrets" {
         aws_secretsmanager_secret.sync_key.arn,
         aws_secretsmanager_secret.elevenlabs_api_key.arn,
         aws_secretsmanager_secret.fal_key.arn,
-        aws_secretsmanager_secret.apify_api_token.arn
+        aws_secretsmanager_secret.apify_api_token.arn,
+        aws_secretsmanager_secret.ad_posting_webhook_secret.arn,
+        aws_secretsmanager_secret.google_service_account_private_key.arn
       ]
     }]
   })
@@ -103,7 +105,7 @@ resource "aws_iam_role_policy" "ecs_task_s3" {
   })
 }
 
-# Policy for SQS access (API - send messages only)
+# Policy for SQS access (API - send messages + read attributes for health checks)
 resource "aws_iam_role_policy" "ecs_task_sqs" {
   name = "${var.project_name}-ecs-task-sqs-${var.environment}"
   role = aws_iam_role.ecs_task.id
@@ -120,6 +122,28 @@ resource "aws_iam_role_policy" "ecs_task_sqs" {
       Resource = [
         aws_sqs_queue.video_processing.arn
       ]
+    }]
+  })
+}
+
+# Policy for ECS DescribeServices (API health check for worker)
+resource "aws_iam_role_policy" "ecs_task_ecs_describe" {
+  name = "${var.project_name}-ecs-task-ecs-describe-${var.environment}"
+  role = aws_iam_role.ecs_task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "ecs:DescribeServices"
+      ]
+      Resource = ["*"]
+      Condition = {
+        ArnEquals = {
+          "ecs:cluster" = aws_ecs_cluster.main.arn
+        }
+      }
     }]
   })
 }

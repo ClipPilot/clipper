@@ -14,7 +14,7 @@ import { useAnnouncements } from "@/hooks/useAnnouncements";
 import { Announcement } from "@/store/announcements";
 
 export default function AnnouncementPopupModal() {
-  const { unread, dismiss } = useAnnouncements();
+  const { unread, dismiss, dismissAll } = useAnnouncements();
   const [isOpen, setIsOpen] = useState(false);
   const [currentAnnouncement, setCurrentAnnouncement] = useState<Announcement | null>(null);
   const [shownAnnouncementIds, setShownAnnouncementIds] = useState<Set<number>>(new Set());
@@ -36,6 +36,11 @@ export default function AnnouncementPopupModal() {
     if (currentAnnouncement) {
       dismiss(currentAnnouncement.id);
     }
+    setIsOpen(false);
+  };
+
+  const handleDismissAll = () => {
+    dismissAll();
     setIsOpen(false);
   };
 
@@ -189,15 +194,25 @@ export default function AnnouncementPopupModal() {
             Mark as Read
           </Button>
           {unread.length > 1 && (
-            <Button
-              color="primary"
-              variant="flat"
-              onPress={handleViewAll}
-              className="font-semibold"
-              endContent={<Icon icon="solar:inbox-line-bold-duotone" width={20} />}
-            >
-              View All ({unread.length})
-            </Button>
+            <>
+              <Button
+                variant="flat"
+                onPress={handleDismissAll}
+                className="font-semibold"
+                startContent={<Icon icon="solar:check-read-linear" width={20} />}
+              >
+                Mark All as Read ({unread.length})
+              </Button>
+              <Button
+                color="primary"
+                variant="flat"
+                onPress={handleViewAll}
+                className="font-semibold"
+                endContent={<Icon icon="solar:inbox-line-bold-duotone" width={20} />}
+              >
+                View All ({unread.length})
+              </Button>
+            </>
           )}
         </ModalFooter>
       </ModalContent>

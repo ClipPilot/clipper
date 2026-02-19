@@ -88,9 +88,24 @@ transcript cut to cut makes some sense.
 
 ${userTextPrompt ? `USER SPECIFIC REQUEST: The user wants you to focus on: "${userTextPrompt}". Try to find clips that align with this request while maintaining high engagement and quality.` : ""}
 
-${numberOfVideos > 1 ? `You need to generate ${numberOfVideos} different video variations. Each should have a unique approach, different hooks, or different angles while all maintaining high quality.` : ""}
+${numberOfVideos > 1 ? `
+===== MULTIPLE VARIATIONS (${numberOfVideos} REQUIRED) =====
+You MUST generate ${numberOfVideos} COMPLETELY DIFFERENT clips from this video. Each variation must tell a DIFFERENT story using DIFFERENT parts of the video.
 
-The final output video should be about ${length} seconds long (can be a bit less and more)
+CRITICAL RULES FOR VARIATIONS:
+- Each variation MUST use a DIFFERENT hook from a DIFFERENT part of the video. NO two variations can share the same hook timestamp range.
+- Each variation MUST use DIFFERENT main segments. NO timestamp ranges should overlap between variations.
+- Think of each variation as a SEPARATE editor making their own independent clip from the same raw footage.
+- Each variation should follow a different narrative angle, storyline, or theme found in the video.
+- If the video covers multiple topics, each variation should focus on a different topic.
+- If the video has one main topic, each variation should highlight a different aspect, argument, or moment.
+- NEVER reuse the same clip across variations unless the user explicitly asks for it.
+
+VARIATION PLANNING: Before selecting clips, identify ${numberOfVideos} distinct compelling storylines or moments in the transcript, then build each variation around a different one.
+===== END VARIATION RULES =====
+` : ""}
+
+The final output video should be AROUND ${length} seconds long (±15% is fine — quality matters more than hitting an exact number).
 
 You will be given:
 - The full transcription text from a video
@@ -99,20 +114,26 @@ You will be given:
     - each paragraph → "sentences" with "text", "start", "end", "speaker", "num_words"
 
 Your Goals:
-1. Find an emotionally charged or intriguing HOOK that is ${hookLength} seconds long at maximum.
+1. Find an emotionally charged or intriguing HOOK that is AROUND ${hookLength} seconds long (±2 seconds is fine).
    - Must instantly grab attention.
    - No filler, no introductions, no stage directions, no "Speaker 0/1", no camera cues.
    - Must come directly from transcript text.
    - Profanity is allowed if it enhances emotional impact and is recommended.
 
-2. Select the remaining clip (or multiple clips) that is ${mainLength} seconds long at maximum that:
+2. Select the remaining clips (STITCH MULTIPLE segments together) that total AROUND ${mainLength} seconds:
    - Explains the story or product clearly
    - Removes interruptions, off-camera commentary, and irrelevant tangents
    - Maintains narrative tension or informational clarity
    - If relevant, before the product demo, include a brief setup to explain the story or context
    - Last clip should be a closing statement that wraps up the skit, can be emotional and engaging like the hook.
+   - STITCHING IS ENCOURAGED: Pull the best moments from different parts of the video and combine them. Don't feel forced to use one continuous segment. BUT the final stitched clip must still tell a coherent story that makes sense to the viewer — don't just mash random moments together.
 
-3. NEVER include:
+3. CUT BORING PARTS: If a segment contains a dull, low-energy, or filler section in the middle:
+   - Split it into two segments, skipping the boring part
+   - Replace that dead air with a more engaging moment from elsewhere in the video
+   - Never leave in awkward pauses, rambling, "umm"s, or low-energy tangents just because they're between two good parts
+
+4. NEVER include:
    - stage directions
    - descriptions of filming or production
    - meta commentary
@@ -121,20 +142,20 @@ Your Goals:
 Notes:
 - "start" and "end" must correspond to timestamps from the transcript.
 - No clips should have off-camera cues such as "cut", "scene", meta-filming talk, etc.
-- Ensure the combined length of hook + main is between ${length} seconds. The hook should be about ${hookLength} seconds, and the main clip about ${mainLength} seconds. The combined video should NEVER exceed ${length} seconds.
+- The hook should be AROUND ${hookLength} seconds, and the main clips AROUND ${mainLength} seconds total. These are targets, not hard limits.
 
 CRITICAL TIMESTAMP RULES:
 - "end" MUST BE GREATER THAN "start" - ALWAYS (end > start)
 - MINIMUM SEGMENT LENGTH: Each segment (hook and main) must be AT LEAST 0.5 seconds long
-- Hook should be ${hookLength}-${hookLength + 2} seconds long, NEVER shorter than 0.5 seconds
+- Hook should be around ${hookLength}-${hookLength + 2} seconds long, NEVER shorter than 0.5 seconds
 - Each main segment should be at least 2 seconds long
 - Round timestamps to 1 decimal place
 
 Your Task:
 Given the transcript, follow all rules above and return:
 - the strongest possible hook,
-- the best clips in the middle
-- Full story flow should be: Engaging Hook - Context/Story to set the scene if necessary - Product Demo/Key Info - Closing. Try to use 3-4 clips max in the whole video, and make sure they make sense together.
+- the best clips stitched together in the middle — pull from ANYWHERE in the video, skip boring parts, combine the strongest moments
+- Full story flow should be: Engaging Hook - Context/Story to set the scene if necessary - Product Demo/Key Info - Closing. Use 3-5 clips and stitch them together so the final video is engaging throughout.
 - When making the Product demo try to make it one clip (two if necessary), same with context (no clips if not needed, one or two max.)
 - The clips do not need to be in order. The hook for example can be later in the video if it makes sense, but the hook needs to be the most
 engaging and eye catching part.
@@ -168,9 +189,23 @@ and combine them into a viral-worthy clip suitable for TikTok, YouTube Shorts, o
 
 ${userTextPrompt ? `USER SPECIFIC REQUEST: The user wants you to focus on: "${userTextPrompt}". Try to find clips that align with this request while maintaining high engagement and viral potential.` : ""}
 
-${numberOfVideos > 1 ? `You need to generate ${numberOfVideos} different video variations. Each should have a unique approach, different moments, or different angles while all maintaining viral potential.` : ""}
+${numberOfVideos > 1 ? `
+===== MULTIPLE VARIATIONS (${numberOfVideos} REQUIRED) =====
+You MUST generate ${numberOfVideos} COMPLETELY DIFFERENT viral clips from this video. Each must showcase a DIFFERENT moment.
 
-The final output video should be about ${length} seconds long (can be a bit less or more).
+CRITICAL RULES FOR VARIATIONS:
+- Each variation MUST use a DIFFERENT hook from a DIFFERENT part of the video. NO two variations can share the same hook timestamp range.
+- Each variation MUST use DIFFERENT main segments. NO timestamp ranges should overlap between variations.
+- Think of each variation as a SEPARATE editor picking their own favorite viral moment from the same raw footage.
+- Each variation should center around a different funny/shocking/engaging moment in the video.
+- NEVER reuse the same clip across variations unless the user explicitly asks for it.
+- If the video has 5 great moments, pick a different one for each variation — don't pick the "best" one 5 times.
+
+VARIATION PLANNING: Before selecting clips, identify ${numberOfVideos} distinct viral-worthy moments across the full transcript, then build each variation around a different one.
+===== END VARIATION RULES =====
+` : ""}
+
+The final output video should be AROUND ${length} seconds long (±15% is fine — quality matters more than hitting an exact number).
 
 You will be given:
 - The full transcription text from a video
@@ -179,7 +214,7 @@ You will be given:
     - each paragraph → "sentences" with "text", "start", "end", "speaker", "num_words"
 
 Your Goals:
-1. Find the most VIRAL HOOK that is ${hookLength} seconds long at maximum:
+1. Find the most VIRAL HOOK that is AROUND ${hookLength} seconds long (±2 seconds is fine):
    - This should be the most shocking, funny, or jaw-dropping moment
    - Look for: strong reactions, unexpected events, funny one-liners, epic fails, clutch moments
    - Should make viewers immediately think "wait, what just happened?"
@@ -187,7 +222,8 @@ Your Goals:
    - Must come directly from transcript text
    - NO stage directions, camera cues, or meta commentary
 
-2. Select the remaining content (${mainLength} seconds total):
+2. Select the remaining content (AROUND ${mainLength} seconds total):
+   - STITCHING IS ENCOURAGED: Pull the best moments from different parts of the video and combine them. Don't feel forced to use one continuous segment. BUT the final stitched clip must still tell a coherent story that makes sense to the viewer — don't just mash random moments together.
    - YOU HAVE FLEXIBILITY: You can use just ONE single segment if it's viral-worthy enough on its own
    - OR combine 2-3 clips if that creates better flow and maintains energy. This is recommended, maybe do one long segment, but clip out the best parts and combine them into a single clip.
    - If combining clips enhances the story or comedic timing, go for it
@@ -195,7 +231,12 @@ Your Goals:
    - Can include: epic wins/fails, funny banter, unexpected reactions, chaotic moments
    - End with a strong punchline, reaction, or satisfying conclusion
 
-3. VIRAL CONTENT PRIORITIES:
+3. CUT BORING PARTS: If a segment contains a dull, low-energy, or filler section in the middle:
+   - Split it into two segments, skipping the boring part
+   - Replace that dead air with a more engaging moment from elsewhere in the video
+   - Never leave in awkward pauses, rambling, "umm"s, or low-energy tangents just because they're between two good parts
+
+4. VIRAL CONTENT PRIORITIES:
    - Authentic reactions and emotions (shock, laughter, anger, excitement)
    - Unexpected or chaotic moments
    - Funny or clever dialogue
@@ -203,7 +244,7 @@ Your Goals:
    - Keep the main character/creator the focal point
    - Natural, unscripted energy
 
-4. NEVER include:
+5. NEVER include:
    - Long explanations or setups (keep it punchy!)
    - Stage directions or production talk
    - Boring transitions or filler
@@ -214,7 +255,7 @@ Notes:
 - "start" and "end" must correspond to timestamps from the transcript
 - Prioritize moments with high energy and strong emotional reactions
 - The hook should be the MOST viral-worthy moment, even if it comes later in the original video
-- Combined length should be around ${length} seconds (hook ~${hookLength}s, main ~${mainLength}s)
+- Combined length should be AROUND ${length} seconds (hook ~${hookLength}s, main ~${mainLength}s). These are targets, not hard limits.
 - CLIP FLEXIBILITY: Use 1-3 clips total for the main content - whatever works best
   * 1 clip = One perfect, self-contained viral moment
   * 2-3 clips = When combining creates better storytelling or comedic timing
@@ -224,16 +265,16 @@ Notes:
 CRITICAL TIMESTAMP RULES:
 - "end" MUST BE GREATER THAN "start" - ALWAYS (end > start)
 - MINIMUM SEGMENT LENGTH: Each segment (hook and main) must be AT LEAST 0.5 seconds long
-- Hook should be ${hookLength}-${hookLength + 2} seconds long, NEVER shorter than 0.5 seconds
+- Hook should be around ${hookLength}-${hookLength + 2} seconds long, NEVER shorter than 0.5 seconds
 - Each main segment should be at least 2 seconds long
 - Round timestamps to 1 decimal place
 
 Your Task:
 Find the most viral-worthy moments and create a clip with:
 - An absolutely killer hook that stops the scroll
-- Main content: Use YOUR BEST JUDGMENT on clip count
+- Main content: Stitch together the BEST moments from ANYWHERE in the video — skip boring parts, combine the strongest moments
   * If ONE segment after the hook is pure gold and viral on its own → use it!
-  * If combining 2-3 segments creates better pacing/story → do that!
+  * If combining 2-3 segments creates better pacing/story → do that! (recommended)
   * Mix it up between approaches for variety when generating multiple videos
 - Maximum entertainment value and shareability
 - Natural flow that keeps viewers engaged until the end
@@ -312,7 +353,7 @@ Listen for these AUDIO cues that indicate exciting moments:
 
 ===== OUTPUT STRUCTURE =====
 
-TARGET: ${length} seconds total (MUST hit this length!)
+TARGET: AROUND ${length} seconds total (±15% is fine — quality matters more than hitting an exact number)
 - Hook (~${hookLength}s): The PEAK/CLIMAX moment
 - Main (~${mainLength}s): Multiple segments that build up to AND include the climax
 
@@ -333,7 +374,18 @@ This way viewers see: CLIMAX → "wait what?" → build-up → CLIMAX AGAIN → 
 
 MAIN CAN BE A MONTAGE: You can pull clips from DIFFERENT parts of the video to tell a story or show multiple related moments leading to the climax. Be creative!
 
-Generate ${numberOfVideos} DIFFERENT clips. Each must be a UNIQUE exciting moment.
+${numberOfVideos > 1 ? `
+===== MULTIPLE VARIATIONS (${numberOfVideos} REQUIRED) =====
+CRITICAL: Each of the ${numberOfVideos} clips MUST showcase a COMPLETELY DIFFERENT gameplay moment.
+
+- Each variation MUST use a DIFFERENT hook from a DIFFERENT part of the video. NO two variations can share the same hook or climax.
+- Each variation MUST use DIFFERENT main segments. NO timestamp ranges should overlap between variations.
+- Think of each variation as highlighting a different play, fight, round, or epic moment.
+- If the video has a clutch play at 5:00 and a funny fail at 12:00 — those are TWO separate variations, not one clip used twice.
+- NEVER reuse the same gameplay moment across variations unless the user explicitly asks for it.
+- PLAN FIRST: Scan the entire video and list ${numberOfVideos} distinct peak moments, THEN build each variation around a different one.
+===== END VARIATION RULES =====
+` : `Generate 1 clip highlighting the most exciting moment.`}
 
 ===== JSON OUTPUT FORMAT (can have multiple segments in main) =====
 {
@@ -383,12 +435,18 @@ VERIFY BEFORE SUBMITTING:
 - Each Main segment: end - start >= 2 seconds
 - Total duration (hook + all main segments) ≈ ${length} seconds
 
+===== CUT BORING PARTS =====
+If a segment contains a dull, low-energy, or filler section in the middle:
+- Split it into two segments, skipping the boring part
+- Replace that dead air with a more exciting gameplay moment from elsewhere in the video
+- Never leave in slow walking, menu browsing, or dead time just because it's between two exciting parts
+
 ===== FINAL RULES =====
 - The "text" fields should describe VISUAL ACTION not dialogue
 - MAIN MUST have 2-3 segments minimum, and the LAST segment should include/overlap with hook timestamps
-- Main segments can be from DIFFERENT parts of the video (montage style) to tell a better story
+- STITCHING IS ENCOURAGED: Main segments can be from DIFFERENT parts of the video (montage style) — pull the best moments from anywhere. BUT the final stitched clip must still tell a coherent story that makes sense to the viewer — don't just mash random moments together.
 - evalScore: 90+ = insane clip, 80-89 = great clip, 70-79 = good clip
-- Each video MUST be approximately ${length} seconds total - ADD MORE SEGMENTS if too short!
+- Each video should be AROUND ${length} seconds total - ADD MORE SEGMENTS if too short!
 - If you can't find ${numberOfVideos} genuinely exciting moments, return fewer but better clips
 
 DOUBLE-CHECK: For EACH segment, verify end > start and duration >= 0.5 seconds!
@@ -418,7 +476,19 @@ CRITICAL: WATCH THE ENTIRE VIDEO FRAME BY FRAME. You must analyze both what you 
 
 ${userTextPrompt ? `USER SPECIFIC REQUEST: "${userTextPrompt}". Prioritize moments that align with this while watching the video.` : ""}
 
-${numberOfVideos > 1 ? `Generate ${numberOfVideos} different video variations. Each should highlight a DIFFERENT compelling moment.` : ""}
+${numberOfVideos > 1 ? `
+===== MULTIPLE VARIATIONS (${numberOfVideos} REQUIRED) =====
+You MUST generate ${numberOfVideos} COMPLETELY DIFFERENT clips from this video. Each must center on a DIFFERENT visual/emotional moment.
+
+CRITICAL RULES FOR VARIATIONS:
+- Each variation MUST use a DIFFERENT hook from a DIFFERENT part of the video. NO two variations can share the same hook timestamp range.
+- Each variation MUST use DIFFERENT main segments. NO timestamp ranges should overlap between variations.
+- Think of each variation as a SEPARATE editor making their own independent clip from the same raw footage.
+- Each variation should follow a different narrative angle, storyline, or key moment found in the video.
+- NEVER reuse the same clip across variations unless the user explicitly asks for it.
+- PLAN FIRST: Scan the entire video and identify ${numberOfVideos} distinct compelling visual moments, THEN build each variation around a different one.
+===== END VARIATION RULES =====
+` : ""}
 
 ===== HOW TO WATCH THE VIDEO =====
 
@@ -469,8 +539,8 @@ TIER 2 - STRONG CLIPS:
 
 ===== STRUCTURE =====
 
-TARGET: ${length} seconds total
-- Hook (~${hookLength}s): The MOST visually compelling moment. This plays FIRST.
+TARGET: AROUND ${length} seconds total (±15% is fine — quality matters more than hitting an exact number)
+- Hook (~${hookLength}s, ±2 seconds): The MOST visually compelling moment. This plays FIRST.
 - Main (~${mainLength}s): 2-4 segments that build the story with visual interest throughout
 
 HOOK SELECTION (watch the video!):
@@ -480,9 +550,15 @@ HOOK SELECTION (watch the video!):
 4. The hook should make viewers think "I need to see more"
 
 MAIN CONTENT:
-1. Provide context for the hook (can be from earlier in video)
-2. Keep visual interest throughout - no boring talking head sections
-3. End with satisfaction or another visual hook
+1. STITCHING IS ENCOURAGED: Pull the best moments from different parts of the video and combine them. Don't feel forced to use one continuous segment. BUT the final stitched clip must still tell a coherent story that makes sense to the viewer — don't just mash random moments together.
+2. Provide context for the hook (can be from earlier in video)
+3. Keep visual interest throughout - no boring talking head sections
+4. End with satisfaction or another visual hook
+
+CUT BORING PARTS: If a segment contains a dull, low-energy, or filler section in the middle:
+- Split it into two segments, skipping the boring part
+- Replace that dead air with a more engaging moment from elsewhere in the video
+- Never leave in awkward pauses, rambling, "umm"s, or low-energy tangents just because they're between two good parts
 
 ===== CRITICAL TIMESTAMP RULES =====
 
@@ -491,7 +567,7 @@ YOU MUST FOLLOW THESE RULES FOR EVERY SEGMENT:
 1. TIMESTAMPS ARE IN SECONDS (e.g., 145.5 means 2 minutes 25.5 seconds into the video)
 2. "end" MUST BE GREATER THAN "start" - ALWAYS (end > start)
 3. MINIMUM SEGMENT LENGTH: Each segment must be AT LEAST 0.5 seconds long (end - start >= 0.5)
-4. Hook should be ${hookLength}-${hookLength + 2} seconds long, NEVER shorter than 0.5 seconds
+4. Hook should be around ${hookLength}-${hookLength + 2} seconds long, NEVER shorter than 0.5 seconds
 5. Each main segment should be 5-15 seconds long
 6. DO NOT use timestamps beyond the video length
 7. Round timestamps to 1 decimal place (e.g., 145.5, not 145.523)
@@ -499,11 +575,11 @@ YOU MUST FOLLOW THESE RULES FOR EVERY SEGMENT:
 VERIFY BEFORE SUBMITTING:
 - Hook: end - start >= ${hookLength} seconds
 - Each Main segment: end - start >= 2 seconds
-- Total duration (hook + all main segments) ≈ ${length} seconds
+- Total duration (hook + all main segments) ≈ ${length} seconds (approximate — don't force filler to hit an exact number)
 
 ===== OUTPUT FORMAT =====
 
-Generate ${numberOfVideos} DIFFERENT clips based on DIFFERENT visual moments you observed.
+Generate ${numberOfVideos} clips. Stitch together the BEST moments from ANYWHERE in the video. REMINDER: Each clip MUST use completely different timestamps — no overlapping hooks or segments between variations.
 
 {
   "videos": [

@@ -44,6 +44,12 @@ export const config = {
   sync: {
     apiKey: process.env.SYNC_KEY || "",
   },
+  google: {
+    serviceAccountEmail: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || "",
+    serviceAccountPrivateKey: process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY || "",
+    driveParentFolderId: process.env.GOOGLE_DRIVE_PARENT_FOLDER_ID || "",
+    delegateEmail: "contact@cuttr.com",
+  },
   port: getEnv("PORT", "3001"),
 };
 
@@ -59,4 +65,5 @@ export const ENV = {
   GEMINI_API_KEY: config.gemini.apiKey,
   ELEVENLABS_API_KEY: config.elevenlabs.apiKey,
   FAL_KEY: config.fal.apiKey,
+  AD_POSTING_WEBHOOK_SECRET: process.env.AD_POSTING_WEBHOOK_SECRET || "",
 };

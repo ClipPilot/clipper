@@ -22,6 +22,8 @@ import userPreferencesRoutes from "./routes/userPreferences.routes";
 import adCloneRoutes from "./routes/adClone.routes";
 import graphicsRoutes from "./routes/graphics.routes";
 import announcementRoutes from "./routes/announcement.routes";
+import intakeRoutes from "./routes/intake.routes";
+import adPostingRoutes from "./routes/adPosting.routes";
 import viralityRoutes from "./routes/virality.routes";
 import voiceCloneRoutes from "./routes/voiceClone.routes";
 import apiPlatformRoutes from "./routes/api-platform/main.routes";
@@ -42,6 +44,8 @@ app.use(
       "https://cuttr.com",
       "https://www.cuttr.com",
       "https://admin.cuttr.com",
+      "https://status.cuttr.com",
+      "https://status-staging.cuttr.com",
     ],
     credentials: true,
   }),
@@ -60,6 +64,54 @@ app.get("/health", (req, res) => {
     timestamp: new Date().toISOString(),
     service: "clipster-backend",
   });
+});
+
+app.get("/health/worker", async (req, res) => {
+  try {
+    const { SQSClient, GetQueueAttributesCommand } = await import("@aws-sdk/client-sqs");
+    const { ECSClient, DescribeServicesCommand } = await import("@aws-sdk/client-ecs");
+    const region = process.env.AWS_REGION || "us-west-2";
+
+    const [sqsResult, ecsResult] = await Promise.all([
+      new SQSClient({ region }).send(
+        new GetQueueAttributesCommand({
+          QueueUrl: process.env.SQS_QUEUE_URL,
+          AttributeNames: ["ApproximateNumberOfMessages", "ApproximateNumberOfMessagesNotVisible"],
+        })
+      ),
+      new ECSClient({ region }).send(
+        new DescribeServicesCommand({
+          cluster: process.env.ECS_CLUSTER_NAME || "clipster-cluster-prod",
+          services: [process.env.ECS_WORKER_SERVICE_NAME || "clipster-worker-service-prod"],
+        })
+      ),
+    ]);
+
+    const queueDepth = parseInt(sqsResult.Attributes?.ApproximateNumberOfMessages || "0");
+    const inFlight = parseInt(sqsResult.Attributes?.ApproximateNumberOfMessagesNotVisible || "0");
+    const svc = ecsResult.services?.[0];
+    const runningTasks = svc?.runningCount ?? 0;
+    const desiredTasks = svc?.desiredCount ?? 0;
+
+    let status: "healthy" | "degraded" | "unhealthy" = "healthy";
+    if (runningTasks === 0) status = "unhealthy";
+    else if (runningTasks < desiredTasks || queueDepth > 50) status = "degraded";
+
+    res.status(status === "unhealthy" ? 503 : 200).json({
+      status,
+      timestamp: new Date().toISOString(),
+      service: "clipster-worker",
+      queue: { depth: queueDepth, inFlight },
+      ecs: { running: runningTasks, desired: desiredTasks },
+    });
+  } catch (err: any) {
+    res.status(503).json({
+      status: "unhealthy",
+      timestamp: new Date().toISOString(),
+      service: "clipster-worker",
+      error: err.message,
+    });
+  }
 });
 
 app.use("/internal", internalRoutes);
@@ -81,6 +133,8 @@ app.use("/api/user/preferences", userPreferencesRoutes);
 app.use("/api/ad-clone", adCloneRoutes);
 app.use("/api/graphics", graphicsRoutes);
 app.use("/api/announcements", announcementRoutes);
+app.use("/api/intake", intakeRoutes);
+app.use("/api/ad-posting", adPostingRoutes);
 app.use("/api/virality", viralityRoutes);
 app.use("/api/voice-clones", voiceCloneRoutes);
 app.use("/api/platform", apiPlatformRoutes);

@@ -190,6 +190,20 @@
       "when": 1771251120908,
       "tag": "0026_rainy_stranger",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1771254481760,
+      "tag": "0027_superb_overlord",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1771443625595,
+      "tag": "0028_solid_zeigeist",
+      "breakpoints": true
     }
   ]
 }

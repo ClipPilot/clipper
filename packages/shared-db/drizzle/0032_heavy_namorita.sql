@@ -1,0 +1,1 @@
+ALTER TABLE "ad_clone_projects" ADD COLUMN "voice_id" varchar(255);

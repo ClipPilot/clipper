@@ -3,72 +3,18 @@ import { TiersEnum } from "./pricing-types";
 
 const features: PricingFeatures = [
   {
-    title: "Generation & Clips",
+    title: "Credits",
     items: [
-      {
-        title: "AI clip generations",
-        tiers: {
-          [TiersEnum.Free]: "10 total",
-          [TiersEnum.Studio]: "Unlimited",
-          [TiersEnum.Scale]: "Unlimited",
-          [TiersEnum.Enterprise]: "Unlimited",
-        },
-        helpText: "Generate AI-powered clips from your videos. ",
-      },
       {
         title: "Credits",
         tiers: {
           [TiersEnum.Free]: "15 credits included",
+          [TiersEnum.Creator]: "75 credits / month",
           [TiersEnum.Studio]: "400 credits / month",
           [TiersEnum.Scale]: "1,000 credits / month",
           [TiersEnum.Enterprise]: "Custom credits",
         },
         helpText: "Use credits to save and download your favorite clips.",
-      },
-      {
-        title: "Clip storage duration",
-        tiers: {
-          [TiersEnum.Free]: "30 days",
-          [TiersEnum.Studio]: "1 year",
-          [TiersEnum.Scale]: "Unlimited",
-          [TiersEnum.Enterprise]: "Unlimited",
-        },
-        helpText: "How long your saved clips are stored in your account.",
-      },
-    ],
-  },
-  {
-    title: "Export & Quality",
-    items: [
-      {
-        title: "Watermark-free exports",
-        tiers: {
-          [TiersEnum.Free]: false,
-          [TiersEnum.Studio]: true,
-          [TiersEnum.Scale]: true,
-          [TiersEnum.Enterprise]: true,
-        },
-        helpText: "Export clips in high quality ready to post",
-      },
-      {
-        title: "Multiple export formats",
-        tiers: {
-          [TiersEnum.Free]: "MP4 only",
-          [TiersEnum.Studio]: "MP4, MOV, WebM",
-          [TiersEnum.Scale]: "All formats",
-          [TiersEnum.Enterprise]: "All formats",
-        },
-        helpText: "Available file formats for exporting your clips.",
-      },
-      {
-        title: "Batch export",
-        tiers: {
-          [TiersEnum.Free]: false,
-          [TiersEnum.Studio]: true,
-          [TiersEnum.Scale]: true,
-          [TiersEnum.Enterprise]: true,
-        },
-        helpText: "Export multiple clips at once to save time.",
       },
     ],
   },
@@ -79,6 +25,7 @@ const features: PricingFeatures = [
         title: "Account Heading & captions",
         tiers: {
           [TiersEnum.Free]: "Basic",
+          [TiersEnum.Creator]: "Basic",
           [TiersEnum.Studio]: "Advanced",
           [TiersEnum.Scale]: "Advanced",
           [TiersEnum.Enterprise]: "Advanced",
@@ -89,12 +36,40 @@ const features: PricingFeatures = [
     ],
   },
   {
+    title: "Analytics",
+    items: [
+      {
+        title: "Mass Posting",
+        tiers: {
+          [TiersEnum.Free]: false,
+          [TiersEnum.Creator]: false,
+          [TiersEnum.Studio]: true,
+          [TiersEnum.Scale]: true,
+          [TiersEnum.Enterprise]: true,
+        },
+        helpText: "Automate posting across multiple platforms.",
+      },
+      {
+        title: "Virality Tracker",
+        tiers: {
+          [TiersEnum.Free]: false,
+          [TiersEnum.Creator]: false,
+          [TiersEnum.Studio]: true,
+          [TiersEnum.Scale]: true,
+          [TiersEnum.Enterprise]: true,
+        },
+        helpText: "Track competitor performance and viral content trends.",
+      },
+    ],
+  },
+  {
     title: "Organization",
     items: [
       {
         title: "Folder management",
         tiers: {
           [TiersEnum.Free]: false,
+          [TiersEnum.Creator]: false,
           [TiersEnum.Studio]: false,
           [TiersEnum.Scale]: "Unlimited",
           [TiersEnum.Enterprise]: "Unlimited",
@@ -105,6 +80,7 @@ const features: PricingFeatures = [
         title: "Clip sharing",
         tiers: {
           [TiersEnum.Free]: true,
+          [TiersEnum.Creator]: true,
           [TiersEnum.Studio]: true,
           [TiersEnum.Scale]: true,
           [TiersEnum.Enterprise]: true,
@@ -120,6 +96,7 @@ const features: PricingFeatures = [
         title: "Team member seats",
         tiers: {
           [TiersEnum.Free]: "Just you",
+          [TiersEnum.Creator]: "Just you",
           [TiersEnum.Studio]: "Just you",
           [TiersEnum.Scale]: "Unlimited",
           [TiersEnum.Enterprise]: "Unlimited",
@@ -130,6 +107,7 @@ const features: PricingFeatures = [
         title: "Role-based permissions",
         tiers: {
           [TiersEnum.Free]: false,
+          [TiersEnum.Creator]: false,
           [TiersEnum.Studio]: false,
           [TiersEnum.Scale]: true,
           [TiersEnum.Enterprise]: true,
@@ -145,6 +123,7 @@ const features: PricingFeatures = [
         title: "Help center access",
         tiers: {
           [TiersEnum.Free]: true,
+          [TiersEnum.Creator]: true,
           [TiersEnum.Studio]: true,
           [TiersEnum.Scale]: true,
           [TiersEnum.Enterprise]: true,
@@ -155,6 +134,7 @@ const features: PricingFeatures = [
         title: "Email support",
         tiers: {
           [TiersEnum.Free]: "Standard",
+          [TiersEnum.Creator]: "Standard",
           [TiersEnum.Studio]: "Priority",
           [TiersEnum.Scale]: "Priority",
           [TiersEnum.Enterprise]: "Dedicated",

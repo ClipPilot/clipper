@@ -9,13 +9,13 @@ export const API_PRODUCTS: Record<string, ApiProduct> = {
   clip_save: {
     slug: "clip_save",
     name: "AI Clipping",
-    priceCents: 50,
+    priceCents: 150,
     unit: "clip",
   },
   face_swap: {
     slug: "face_swap",
     name: "Face Swap",
-    priceCents: 25,
+    priceCents: 20,
     unit: "second",
   },
   // TODO LATER: ad_clone, ai_ugc

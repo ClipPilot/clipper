@@ -140,6 +140,19 @@ class AdCloneService {
       .where(eq(adCloneProjects.id, projectId));
   }
 
+  async updateVoiceId(
+    projectId: string,
+    voiceId: string
+  ): Promise<void> {
+    await db
+      .update(adCloneProjects)
+      .set({
+        voice_id: voiceId,
+        updated_at: new Date(),
+      })
+      .where(eq(adCloneProjects.id, projectId));
+  }
+
   async setVideoUploaded(
     projectId: string,
     referenceVideoKey: string,
@@ -632,6 +645,7 @@ Return a JSON object with a "shots" array of exactly ${shotCount} shot objects.`
       adaptedScripts: dbProject.adapted_scripts as UGCScript[] | null,
       selectedVariantIndex: dbProject.selected_variant_index,
       characterId: dbProject.character_id,
+      voiceId: dbProject.voice_id,
       status: dbProject.status as AdCloneProjectStatus,
       progress: dbProject.progress,
       progressMessage: dbProject.progress_message,

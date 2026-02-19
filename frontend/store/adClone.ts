@@ -81,6 +81,7 @@ export interface AdCloneProjectData {
   progress: number;
   progressMessage: string | null;
   characterId: number | null;
+  voiceId: string | null;
   selectedVariantIndex: number;
   referenceVideoUrl?: string;
   productImageUrls?: string[];
@@ -125,6 +126,12 @@ export const adCloneFinalVideoUrlAtom = atom<string | null>(null);
 export const adCloneCanProceedAtom = atom((get) => {
   const video = get(adCloneVideoAtom);
   return !!video;
+});
+
+export const adCloneAllScenesCompleteAtom = atom((get) => {
+  const sceneImages = get(adCloneSceneImagesAtom);
+  if (sceneImages.length === 0) return false;
+  return sceneImages.every((s) => s.status === "completed" && s.imageUrl);
 });
 
 export const adCloneCanGenerateScriptAtom = atom((get) => {

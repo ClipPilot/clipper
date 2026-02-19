@@ -25,8 +25,10 @@ import {
   type ViralityAccount,
 } from "@/api/virality";
 import { formatNumber } from "@/lib/formatters";
+import { timeAgo } from "@/lib/platformUtils";
 import { RecalcOverlay } from "@/components/virality/RecalcOverlay";
 import { pct, computePostsPerWeek } from "@/app/dashboard/virality/[competitorId]/utils";
+import { canAccessViralityTracker } from "@/lib/plans";
 
 const AVATAR_COLORS = [
   "border-accent-400 text-accent-400",
@@ -61,7 +63,7 @@ export default function ViralityPage() {
   const initialLoadDone = useRef(false);
 
   const fetchData = useCallback(async () => {
-    if (!selectedTeam?.id) return;
+    if (!selectedTeam?.id || !canAccessViralityTracker(selectedTeam.plan)) return;
     if (initialLoadDone.current) setIsRecalculating(true);
     try {
       const { startDate, endDate } = dateRange;
@@ -140,6 +142,20 @@ export default function ViralityPage() {
     return Object.values(allPostsByAccountUnfiltered).flat();
   }, [allPostsByAccountUnfiltered]);
 
+  /** Most recent sync timestamp across all accounts */
+  const lastSyncedAt = useMemo(() => {
+    let latest: Date | null = null;
+    for (const c of competitors) {
+      for (const a of c.accounts) {
+        if (a.last_synced_at) {
+          const d = new Date(a.last_synced_at);
+          if (!latest || d > latest) latest = d;
+        }
+      }
+    }
+    return latest;
+  }, [competitors]);
+
   const competitorCards = useMemo(() => {
     return competitors.map((comp) => {
       const posts = comp.accounts.flatMap((a) => postsByAccount[a.id] || []);
@@ -185,7 +201,7 @@ export default function ViralityPage() {
 
       const prevEngRate = prevViews > 0 ? ((prevLikes + prevComments) / prevViews) * 100 : 0;
       const latestEngRate = latestViews > 0 ? ((latestLikes + latestComments) / latestViews) * 100 : 0;
-      const engRateChange = hasHistory && prevEngRate > 0 ? pct(latestEngRate, prevEngRate) : null;
+      const engRateChange = hasHistory ? latestEngRate - prevEngRate : null;
 
       const platforms = Array.from(new Set(comp.accounts.map((a) => a.platform)));
 
@@ -194,7 +210,20 @@ export default function ViralityPage() {
   }, [competitors, postsByAccount]);
 
   const handleViewCompetitor = (competitorId: number) => {
-    router.push(`/dashboard/virality/${competitorId}`);
+    const params = new URLSearchParams();
+    if (dateRange.startDate) params.set("startDate", dateRange.startDate);
+    if (dateRange.endDate) params.set("endDate", dateRange.endDate);
+    const qs = params.toString();
+    router.push(`/dashboard/virality/${competitorId}${qs ? `?${qs}` : ""}`);
+  };
+
+  const handleViewAccount = (competitorId: number, accountId: number) => {
+    const params = new URLSearchParams();
+    if (dateRange.startDate) params.set("startDate", dateRange.startDate);
+    if (dateRange.endDate) params.set("endDate", dateRange.endDate);
+    params.set("accountId", String(accountId));
+    const qs = params.toString();
+    router.push(`/dashboard/virality/${competitorId}${qs ? `?${qs}` : ""}`);
   };
 
   const handleAddAccount = async (
@@ -233,35 +262,41 @@ export default function ViralityPage() {
     await fetchData();
   };
 
-  const handleSyncAccount = async (accountId: number) => {
-    if (!selectedTeam?.id) return;
-    try {
-      await viralityAPI.syncAccount(selectedTeam.id, accountId);
-      addToast({ title: "Sync complete", color: "success" });
-      await fetchData();
-    } catch (err: any) {
-      addToast({
-        title: "Sync failed",
-        description: err.message,
-        color: "danger",
-      });
-    }
-  };
-
-  const handleDeleteAccount = async (accountId: number) => {
-    if (!selectedTeam?.id) return;
-    try {
-      await viralityAPI.deleteAccount(selectedTeam.id, accountId);
-      addToast({ title: "Account removed", color: "success" });
-      await fetchData();
-    } catch (err: any) {
-      addToast({
-        title: "Delete failed",
-        description: err.message,
-        color: "danger",
-      });
-    }
-  };
+  if (!canAccessViralityTracker(selectedTeam?.plan)) {
+    return (
+      <div className="min-h-screen bg-surface-dark flex flex-col items-center justify-center p-6">
+        <div className="flex flex-col items-center gap-6 max-w-sm">
+          <div className="relative">
+            <div className="flex items-center justify-center w-20 h-20 rounded-2xl bg-purple-500/10">
+              <Icon icon="solar:chart-bold-duotone" className="text-purple-500" width={40} />
+            </div>
+            <div className="absolute -bottom-1 -right-1 flex items-center justify-center w-7 h-7 rounded-full bg-surface-dark border-2 border-surface-dark">
+              <Icon icon="solar:lock-keyhole-bold" className="text-text-tertiary" width={14} />
+            </div>
+          </div>
+          <div className="text-center space-y-2">
+            <h2 className="text-xl font-bold text-text-primary">Virality Tracker</h2>
+            <p className="text-sm text-text-secondary leading-relaxed">
+              Track competitor performance, monitor viral trends, and benchmark your content against the competition.
+            </p>
+          </div>
+          <div className="flex flex-col items-center gap-3 w-full">
+            <Button
+              size="lg"
+              className="w-full bg-purple-500 text-white font-semibold"
+              onPress={() => router.push("/dashboard/pricing")}
+              startContent={<Icon icon="solar:rocket-bold" width={18} />}
+            >
+              Upgrade to Studio
+            </Button>
+            <p className="text-xs text-text-tertiary">
+              Available on Studio, Scale & Enterprise
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -284,8 +319,22 @@ export default function ViralityPage() {
             <h1 className="text-2xl font-bold text-text-primary">
               Tracked Competitors
             </h1>
-            <p className="text-text-secondary mt-1">
-              Real-time performance metrics for your monitored competitors
+            <p className="text-text-secondary text-sm mt-1">
+              {lastSyncedAt ? (
+                <>
+                  Last synced {timeAgo(lastSyncedAt.toISOString())} · Next sync in{" "}
+                  {(() => {
+                    const nextSync = new Date(lastSyncedAt.getTime() + 6 * 60 * 60 * 1000);
+                    const diff = nextSync.getTime() - Date.now();
+                    if (diff <= 0) return "progress";
+                    const hrs = Math.floor(diff / (1000 * 60 * 60));
+                    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                    return hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+                  })()}
+                </>
+              ) : (
+                "Real-time performance metrics for your monitored competitors"
+              )}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -303,7 +352,7 @@ export default function ViralityPage() {
         {/* Competitor Cards */}
         <RecalcOverlay active={isRecalculating}>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {competitorCards.map(({ competitor, followers, postsPerWeek, engRate, avgViews, platforms, followersChange, viewsChange, engRateChange }, idx) => (
+            {competitorCards.map(({ competitor, followers, totalViews, postsPerWeek, engRate, avgViews, platforms, followersChange, viewsChange, engRateChange }, idx) => (
               <Card key={competitor.id} className="bg-surface-base border border-border-base overflow-hidden">
                 <CardBody className="p-4 flex flex-col gap-0">
                   {/* Top: identity */}
@@ -344,10 +393,10 @@ export default function ViralityPage() {
                   >
                     <div className="grid grid-cols-2 gap-2 pt-3">
                       {[
-                        { label: "Followers", value: formatNumber(followers), change: followersChange },
-                        { label: "Posts/Wk", value: String(postsPerWeek), change: null },
+                        { label: "Total Views", value: formatNumber(totalViews), change: viewsChange },
+                        { label: "Avg. Views", value: formatNumber(avgViews), change: null },
+                        { label: "Total Posts", value: formatNumber(competitor.accounts.flatMap((a) => postsByAccount[a.id] || []).length), change: null },
                         { label: "Eng. Rate", value: engRate.toFixed(2) + "%", change: engRateChange },
-                        { label: "Avg. Views", value: formatNumber(avgViews), change: viewsChange },
                       ].map((m) => (
                         <div key={m.label} className="bg-surface-elevated rounded-lg px-3 py-2.5">
                           <p className="text-[10px] text-text-tertiary font-medium">{m.label}</p>
@@ -431,8 +480,7 @@ export default function ViralityPage() {
                 searchQuery={searchQuery}
                 accountPostStats={dashboardStats?.accountPostStats}
                 onViewCompetitor={handleViewCompetitor}
-                onSyncAccount={handleSyncAccount}
-                onDeleteAccount={handleDeleteAccount}
+                onViewAccount={handleViewAccount}
               />
             </RecalcOverlay>
           </div>

@@ -3,8 +3,25 @@ import {
   createApiKeyController,
   listApiKeysController,
   revokeApiKeyController,
+  getWalletController,
+  createWalletTopUpController,
+  getTopUpStatusController,
+  getAutoRefillController,
+  updateAutoRefillController,
+  getUsageLogsController,
+  testApiRouteController,
+  getWalletV1Controller,
 } from "../../controllers/apiPlatform.controller";
-import { requireAuth } from "../../middleware/auth.middleware";
+import {
+  createClipJobController,
+  getClipJobStatusController,
+} from "../../controllers/apiClip.controller";
+import {
+  createFaceSwapJobController,
+  getFaceSwapStatusController,
+} from "../../controllers/apiFaceSwap.controller";
+import { requireAuth, validateAPIKey } from "../../middleware/auth.middleware";
+import { upload, apiFaceSwapUpload } from "../../config/multer";
 
 const router = Router();
 
@@ -152,5 +169,430 @@ router.get("/teams/:teamId/keys", requireAuth, listApiKeysController);
  *         description: API key not found
  */
 router.delete("/teams/:teamId/keys/:keyId", requireAuth, revokeApiKeyController);
+
+// Dashboard-only routes (bearer auth, teamId in URL) — used by frontend
+router.get("/teams/:teamId/wallet", requireAuth, getWalletController);
+router.post("/teams/:teamId/wallet/topup", requireAuth, createWalletTopUpController);
+router.get("/teams/:teamId/wallet/topup/:paymentIntentId/status", requireAuth, getTopUpStatusController);
+router.get("/teams/:teamId/wallet/auto-refill", requireAuth, getAutoRefillController);
+router.put("/teams/:teamId/wallet/auto-refill", requireAuth, updateAutoRefillController);
+router.get("/teams/:teamId/usage", requireAuth, getUsageLogsController);
+
+/**
+ * @openapi
+ * /platform/v1/test:
+ *   get:
+ *     summary: Test API key authentication
+ *     description: Simple endpoint to verify your API key is working. Requires X-API-Key header.
+ *     tags:
+ *       - API Platform
+ *     security:
+ *       - apiKeyAuth: []
+ *     responses:
+ *       200:
+ *         description: API key is valid
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: working
+ *                 team_id:
+ *                   type: integer
+ *                 key_name:
+ *                   type: string
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *       401:
+ *         description: Invalid or missing API key
+ *       402:
+ *         description: Insufficient balance
+ *       429:
+ *         description: Rate limit exceeded
+ */
+router.get("/v1/test", validateAPIKey, testApiRouteController);
+
+/**
+ * @openapi
+ * /platform/v1/wallet:
+ *   get:
+ *     summary: Get wallet balance
+ *     description: Returns your team's API wallet balance and usage totals.
+ *     tags:
+ *       - Wallet
+ *     security:
+ *       - apiKeyAuth: []
+ *     responses:
+ *       200:
+ *         description: Wallet balance
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 balance_cents:
+ *                   type: integer
+ *                 total_spent_cents:
+ *                   type: integer
+ *                 total_topped_up_cents:
+ *                   type: integer
+ *                 active:
+ *                   type: boolean
+ *       401:
+ *         description: Invalid or missing API key
+ */
+router.get("/v1/wallet", validateAPIKey, getWalletV1Controller);
+
+/**
+ * @openapi
+ * /platform/v1/clip:
+ *   post:
+ *     summary: Submit a video for AI clipping
+ *     description: |
+ *       Submit a video for AI-powered clip generation. Provide either:
+ *       - A `video_url` in JSON body, or
+ *       - A `video` file via multipart form data.
+ *
+ *       Each clip costs $1.50 and is deducted from your wallet upfront.
+ *       Poll GET /v1/clip/{jobId} for results.
+ *     tags:
+ *       - AI Clipping
+ *     security:
+ *       - apiKeyAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - video_url
+ *             properties:
+ *               video_url:
+ *                 type: string
+ *                 format: uri
+ *                 description: Public URL of the video to clip
+ *               num_clips:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 10
+ *                 default: 1
+ *               style:
+ *                 type: string
+ *                 enum: [viral, business, general, gaming]
+ *                 default: viral
+ *               captions:
+ *                 type: object
+ *                 properties:
+ *                   enabled:
+ *                     type: boolean
+ *                     default: false
+ *                   color:
+ *                     type: string
+ *                     enum: [white, black, red, orange, yellow, green, teal, blue, purple, pink]
+ *                     default: white
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - video
+ *             properties:
+ *               video:
+ *                 type: string
+ *                 format: binary
+ *                 description: Video file (mp4, mov, avi, mkv, webm)
+ *               num_clips:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 10
+ *                 default: 1
+ *               style:
+ *                 type: string
+ *                 enum: [viral, business, general, gaming]
+ *                 default: viral
+ *               captions_enabled:
+ *                 type: string
+ *                 enum: ["true", "false"]
+ *                 default: "false"
+ *               captions_color:
+ *                 type: string
+ *                 enum: [white, black, red, orange, yellow, green, teal, blue, purple, pink]
+ *                 default: white
+ *     responses:
+ *       200:
+ *         description: Clip job submitted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 job_id:
+ *                   type: integer
+ *                 num_clips:
+ *                   type: integer
+ *                 cost_cents:
+ *                   type: integer
+ *                 status:
+ *                   type: string
+ *                   example: processing
+ *       400:
+ *         description: Invalid input
+ *       401:
+ *         description: Invalid or missing API key
+ *       402:
+ *         description: Insufficient wallet balance
+ */
+router.post("/v1/clip", validateAPIKey, upload.single("video"), createClipJobController);
+
+/**
+ * @openapi
+ * /platform/v1/clip/{jobId}:
+ *   get:
+ *     summary: Get clip job status
+ *     description: |
+ *       Poll this endpoint to check if your clip job is ready.
+ *       Returns permanent download URLs for each clip when status is "completed".
+ *     tags:
+ *       - AI Clipping
+ *     security:
+ *       - apiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: jobId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The job_id returned from POST /v1/clip
+ *     responses:
+ *       200:
+ *         description: Job status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               oneOf:
+ *                 - type: object
+ *                   description: Job is still processing
+ *                   properties:
+ *                     job_id:
+ *                       type: integer
+ *                     status:
+ *                       type: string
+ *                       example: processing
+ *                     progress:
+ *                       type: object
+ *                       properties:
+ *                         completed:
+ *                           type: integer
+ *                         total:
+ *                           type: integer
+ *                 - type: object
+ *                   description: All clips finished
+ *                   properties:
+ *                     job_id:
+ *                       type: integer
+ *                     status:
+ *                       type: string
+ *                       example: completed
+ *                     clips:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           clip_id:
+ *                             type: integer
+ *                           status:
+ *                             type: string
+ *                             enum: [completed, failed]
+ *                           title:
+ *                             type: string
+ *                           download_url:
+ *                             type: string
+ *                             format: uri
+ *                           error:
+ *                             type: string
+ *                           created_at:
+ *                             type: string
+ *                             format: date-time
+ *       401:
+ *         description: Invalid or missing API key
+ *       404:
+ *         description: Job not found
+ */
+router.get("/v1/clip/:jobId", validateAPIKey, getClipJobStatusController);
+
+/**
+ * @openapi
+ * /platform/v1/face-swap:
+ *   post:
+ *     summary: Submit a video for face swap
+ *     description: |
+ *       Submit a video and face image for AI face swapping. Provide either:
+ *       - URLs via JSON (`video_url` + `face_image_url`), or
+ *       - Files via multipart form data (`video` + `face_image`), or
+ *       - A mix of URL and file.
+ *
+ *       Cost is $0.20 per second of video (rounded up), deducted upfront.
+ *       Maximum video duration is 300 seconds (5 minutes).
+ *       Poll GET /v1/face-swap/{jobId} for results.
+ *     tags:
+ *       - Face Swap
+ *     security:
+ *       - apiKeyAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - video_url
+ *               - face_image_url
+ *             properties:
+ *               video_url:
+ *                 type: string
+ *                 format: uri
+ *                 description: Public URL of the video
+ *               face_image_url:
+ *                 type: string
+ *                 format: uri
+ *                 description: Public URL of the face image
+ *               mode:
+ *                 type: string
+ *                 enum: [face, fullbody]
+ *                 default: fullbody
+ *                 description: "face = fast face-only swap (FAL AI), fullbody = full body swap (Kling AI)"
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - video
+ *               - face_image
+ *             properties:
+ *               video:
+ *                 type: string
+ *                 format: binary
+ *                 description: Video file (mp4, mov, webm, avi). Max 500MB.
+ *               face_image:
+ *                 type: string
+ *                 format: binary
+ *                 description: Face image file (jpg, png, webp). Max 500MB.
+ *               mode:
+ *                 type: string
+ *                 enum: [face, fullbody]
+ *                 default: fullbody
+ *     responses:
+ *       202:
+ *         description: Face swap job accepted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 job_id:
+ *                   type: string
+ *                   format: uuid
+ *                 mode:
+ *                   type: string
+ *                   enum: [face, fullbody]
+ *                 duration_seconds:
+ *                   type: integer
+ *                 cost_cents:
+ *                   type: integer
+ *                 status:
+ *                   type: string
+ *                   example: processing
+ *       400:
+ *         description: Invalid input
+ *       401:
+ *         description: Invalid or missing API key
+ *       402:
+ *         description: Insufficient wallet balance
+ */
+router.post(
+  "/v1/face-swap",
+  validateAPIKey,
+  apiFaceSwapUpload.fields([
+    { name: "video", maxCount: 1 },
+    { name: "face_image", maxCount: 1 },
+  ]),
+  createFaceSwapJobController,
+);
+
+/**
+ * @openapi
+ * /platform/v1/face-swap/{jobId}:
+ *   get:
+ *     summary: Get face swap job status
+ *     description: |
+ *       Poll this endpoint to check if your face swap job is ready.
+ *       Returns a download URL when status is "completed".
+ *     tags:
+ *       - Face Swap
+ *     security:
+ *       - apiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: jobId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The job_id returned from POST /v1/face-swap
+ *     responses:
+ *       200:
+ *         description: Job status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               oneOf:
+ *                 - type: object
+ *                   description: Job is still processing
+ *                   properties:
+ *                     job_id:
+ *                       type: string
+ *                     status:
+ *                       type: string
+ *                       example: processing
+ *                     progress:
+ *                       type: integer
+ *                     created_at:
+ *                       type: string
+ *                       format: date-time
+ *                 - type: object
+ *                   description: Job completed
+ *                   properties:
+ *                     job_id:
+ *                       type: string
+ *                     status:
+ *                       type: string
+ *                       example: completed
+ *                     download_url:
+ *                       type: string
+ *                       format: uri
+ *                     created_at:
+ *                       type: string
+ *                       format: date-time
+ *                 - type: object
+ *                   description: Job failed
+ *                   properties:
+ *                     job_id:
+ *                       type: string
+ *                     status:
+ *                       type: string
+ *                       example: failed
+ *                     error:
+ *                       type: string
+ *                     created_at:
+ *                       type: string
+ *                       format: date-time
+ *       401:
+ *         description: Invalid or missing API key
+ *       404:
+ *         description: Job not found
+ */
+router.get("/v1/face-swap/:jobId", validateAPIKey, getFaceSwapStatusController);
 
 export default router;

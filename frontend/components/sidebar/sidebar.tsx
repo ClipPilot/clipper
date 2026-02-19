@@ -6,6 +6,7 @@ import {
   ListboxItem,
   type Selection,
   Progress,
+  Tooltip,
   cn,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
@@ -30,6 +31,24 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
       selectedTeam?.id
     );
 
+    const plan = selectedTeam?.plan || "free";
+    const isPaidPlan = ["creator", "studio", "scale", "enterprise"].includes(plan);
+
+    const isItemLocked = (item: typeof SIDEBAR_ITEMS[number]) => {
+      return item.requiredPlans ? !item.requiredPlans.includes(plan) : false;
+    };
+
+    const getUpgradePlanName = (item: typeof SIDEBAR_ITEMS[number]) => {
+      if (!item.requiredPlans) return "";
+      const planNames: Record<string, string> = {
+        creator: "Creator",
+        studio: "Studio",
+        scale: "Scale",
+        enterprise: "Enterprise",
+      };
+      return planNames[item.requiredPlans[0]] || "a paid";
+    };
+
     const currentKey =
       [...SIDEBAR_ITEMS]
         .sort((a, b) => b.href.length - a.href.length)
@@ -51,9 +70,6 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
       ? (usageStats.clipsCreated / usageStats.baseLimit) * 100
       : 0;
 
-    const plan = selectedTeam?.plan || "free";
-    const isPaidPlan = ["studio", "scale", "enterprise"].includes(plan);
-
     const getPlanName = () => {
       switch (plan) {
         case "enterprise":
@@ -62,6 +78,8 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
           return "Scale";
         case "studio":
           return "Studio";
+        case "creator":
+          return "Creator";
         default:
           return "Free";
       }
@@ -75,6 +93,8 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
           return "bg-purple-500/10 text-purple-500";
         case "studio":
           return "bg-accent-400/10 text-accent-400";
+        case "creator":
+          return "bg-orange-500/10 text-orange-500";
         default:
           return "bg-blue-500/10 text-blue-500";
       }
@@ -103,15 +123,25 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
           >
             {SIDEBAR_ITEMS.map((item) => {
               const isSelected = selected === item.key;
-              return (
+              const locked = isItemLocked(item);
+              const listboxItem = (
                 <ListboxItem
                   key={item.key}
                   textValue={item.title}
                   classNames={{
-                    base: "px-3 py-2.5 rounded-lg data-[selected=true]:bg-accent-400/10 hover:bg-surface-elevated transition-colors",
+                    base: cn(
+                      "px-3 py-2.5 rounded-lg transition-colors",
+                      locked
+                        ? "opacity-50 hover:bg-surface-elevated"
+                        : "data-[selected=true]:bg-accent-400/10 hover:bg-surface-elevated"
+                    ),
                     title: cn(
                       "text-sm font-medium transition-colors",
-                      isSelected ? "text-accent-400" : "text-text-primary"
+                      locked
+                        ? "text-text-tertiary"
+                        : isSelected
+                          ? "text-accent-400"
+                          : "text-text-primary"
                     ),
                   }}
                   startContent={
@@ -121,15 +151,40 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
                         width={20}
                         className={cn(
                           "transition-colors",
-                          isSelected ? "text-accent-400" : "text-text-primary"
+                          locked
+                            ? "text-text-tertiary"
+                            : isSelected
+                              ? "text-accent-400"
+                              : "text-text-primary"
                         )}
                       />
                     )
+                  }
+                  endContent={
+                    locked ? (
+                      <Tooltip
+                        content={`Upgrade to ${getUpgradePlanName(item)}`}
+                        placement="right"
+                        delay={200}
+                        classNames={{
+                          content: "bg-surface-elevated text-text-primary text-xs px-2 py-1",
+                        }}
+                      >
+                        <div>
+                          <Icon
+                            icon="solar:lock-keyhole-bold"
+                            width={14}
+                            className="text-text-tertiary"
+                          />
+                        </div>
+                      </Tooltip>
+                    ) : undefined
                   }
                 >
                   {item.title}
                 </ListboxItem>
               );
+              return listboxItem;
             })}
           </Listbox>
         </div>
@@ -222,7 +277,9 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
                         ? "bg-emerald-500/10 border-emerald-500/20 hover:bg-emerald-500/20"
                         : plan === "scale"
                           ? "bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20"
-                          : "bg-accent-400/10 border-accent-400/20 hover:bg-accent-400/20"
+                          : plan === "creator"
+                            ? "bg-orange-500/10 border-orange-500/20 hover:bg-orange-500/20"
+                            : "bg-accent-400/10 border-accent-400/20 hover:bg-accent-400/20"
                     )}
                   >
                     <Icon
@@ -232,7 +289,9 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
                           ? "text-emerald-500"
                           : plan === "scale"
                             ? "text-purple-500"
-                            : "text-accent-400"
+                            : plan === "creator"
+                              ? "text-orange-500"
+                              : "text-accent-400"
                       }
                       width={16}
                     />
@@ -243,7 +302,9 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
                           ? "text-emerald-500"
                           : plan === "scale"
                             ? "text-purple-500"
-                            : "text-accent-400"
+                            : plan === "creator"
+                              ? "text-orange-500"
+                              : "text-accent-400"
                       )}
                     >
                       Manage subscription
