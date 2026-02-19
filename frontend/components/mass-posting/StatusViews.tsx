@@ -2,7 +2,7 @@
 
 import { Button, Card, CardBody, Chip, Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { BrandLogo } from "@/components/brand-logo";
+import { MassPostingDashboard } from "./dashboard";
 
 export function LoadingView() {
   return (
@@ -16,29 +16,7 @@ export function LoadingView() {
 }
 
 export function ApprovedView() {
-  return (
-    <div className="min-h-screen bg-surface-dark p-4 sm:p-6 lg:p-8">
-      <div className="max-w-3xl mx-auto mt-12">
-        <Card className="bg-surface-base border border-border-base">
-          <CardBody className="flex flex-col items-center text-center py-16 px-8">
-            <div className="w-16 h-16 bg-accent-400/10 rounded-full flex items-center justify-center mb-6">
-              <BrandLogo size={40} />
-            </div>
-            <h2 className="text-2xl font-bold text-text-primary mb-3">
-              Mass Posting Dashboard
-            </h2>
-            <p className="text-text-secondary max-w-md">
-              Your application has been approved! The mass posting dashboard is
-              currently under construction and will be available soon.
-            </p>
-            <Chip color="success" variant="flat" className="mt-6">
-              Application Approved
-            </Chip>
-          </CardBody>
-        </Card>
-      </div>
-    </div>
-  );
+  return <MassPostingDashboard />;
 }
 
 export function PendingView({ status }: { status: string | null }) {
