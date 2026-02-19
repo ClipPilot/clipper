@@ -6,14 +6,14 @@
 /**
  * Mobile-compatible H.264 encoding settings (as array for fluent-ffmpeg)
  * - profile:v main: Broad device support (especially older iOS/Android)
- * - level 3.1: Compatible with most mobile devices
+ * - level 4.0: Supports up to 1080p (level 3.1 only supports 720p)
  * - pix_fmt yuv420p: Required for QuickTime/iOS playback
  * - g/keyint_min 30: Keyframe every second for smooth seeking
  * - vsync cfr: Constant frame rate prevents mobile playback issues
  */
 export const MOBILE_VIDEO_SETTINGS = [
   "-profile:v main",
-  "-level 3.1",
+  "-level 4.0",
   "-pix_fmt yuv420p",
   "-r 30",
   "-g 30",
@@ -25,7 +25,7 @@ export const MOBILE_VIDEO_SETTINGS = [
  * Same settings as a CLI string for execSync FFmpeg commands
  */
 export const VIDEO_ENCODE_SETTINGS =
-  "-c:v libx264 -preset fast -crf 23 -profile:v main -level 3.1 -pix_fmt yuv420p -r 30 -g 30 -keyint_min 30 -vsync cfr";
+  "-c:v libx264 -preset fast -crf 23 -profile:v main -level 4.0 -pix_fmt yuv420p -r 30 -g 30 -keyint_min 30 -vsync cfr";
 
 /**
  * Standard audio encoding settings

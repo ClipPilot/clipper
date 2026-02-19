@@ -20,6 +20,7 @@ import { comfyJobs, clips } from "@clipper/shared-db/src/schema";
 import { API_PRODUCTS } from "../config/api-products";
 import { ensureOutputDir } from "../utils/fileUtils";
 import { TEMP_DIR } from "../utils/tempCleanup";
+import { videoDownloadService } from "../services/videoDownload.service";
 
 const FACE_SWAP_PRODUCT_SLUG = "face_swap";
 const MAX_DURATION_SECONDS = 300;
@@ -154,7 +155,7 @@ export const createFaceSwapJobController = async (
       const outDir = ensureOutputDir();
       localVideoPath = path.join(outDir, `api_faceswap_download_${Date.now()}.mp4`);
       try {
-        await s3Service.downloadVideoFromUrl(videoUrl!, localVideoPath);
+        await videoDownloadService.downloadToPath(videoUrl!, localVideoPath);
       } catch (err) {
         return res.status(400).json({ error: "Failed to download video from video_url" });
       }

@@ -4,7 +4,7 @@ api: "POST https://api.cuttr.com/api/platform/v1/face-swap"
 description: "Submit a video and face image for AI face swapping"
 ---
 
-Submit a video and a face image to generate an AI face swap. You can provide **public URLs**, **upload files directly**, or a **mix of both**.
+Submit a video and a face image to generate an AI face swap. You can provide **any video URL** (YouTube, TikTok, Instagram, Vimeo, and 1000+ other platforms — or a direct link to a video file), **upload files directly**, or a **mix of both**.
 
 Cost is **$0.20 per second** of video (rounded up), deducted from your wallet upfront. Maximum video duration is **5 minutes (300 seconds)**.
 
@@ -63,7 +63,7 @@ curl -X POST https://api.cuttr.com/api/platform/v1/face-swap \
 ### Body parameters (JSON)
 
 <ParamField body="video_url" type="string">
-  A publicly accessible URL to the source video. Required if not uploading a `video` file.
+  A URL to the source video. Supports YouTube, TikTok, Instagram, Vimeo, and 1000+ other platforms — as well as direct links to video files. Required if not uploading a `video` file.
 </ParamField>
 
 <ParamField body="face_image_url" type="string">

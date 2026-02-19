@@ -210,6 +210,50 @@ class VideoDownloadService {
       }
     }
   }
+  async downloadToPath(url: string, outputPath: string): Promise<void> {
+    const dir = path.dirname(outputPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+
+    return new Promise((resolve, reject) => {
+      const args = [
+        "-f", FORMAT_SELECTION,
+        "--merge-output-format", "mp4",
+        "-o", outputPath,
+        url,
+      ];
+      const proc = spawn("yt-dlp", args);
+
+      let stderr = "";
+
+      const timer = setTimeout(() => {
+        proc.kill("SIGTERM");
+        reject(new Error("Download timed out"));
+      }, DOWNLOAD_TIMEOUT_MS);
+
+      proc.stderr.on("data", (data: Buffer) => {
+        stderr += data.toString();
+      });
+
+      proc.on("close", (code) => {
+        clearTimeout(timer);
+        if (code !== 0) {
+          const msg = stderr.trim() || `yt-dlp exited with code ${code}`;
+          return reject(new Error(msg));
+        }
+        if (!fs.existsSync(outputPath)) {
+          return reject(new Error("Download completed but output file not found"));
+        }
+        resolve();
+      });
+
+      proc.on("error", (err) => {
+        clearTimeout(timer);
+        reject(new Error(`Failed to spawn yt-dlp: ${err.message}`));
+      });
+    });
+  }
 }
 
 export const videoDownloadService = new VideoDownloadService();

@@ -154,7 +154,7 @@ export async function processAdPostingJob(job: AdPostingJob): Promise<void> {
               );
               const metadataString = generateJumbledMetadataString();
               const cmd = `ffmpeg -y -i "${inputPath}" -map_metadata -1 ${VIDEO_ENCODE_SETTINGS} ${AUDIO_ENCODE_SETTINGS} -movflags +faststart ${metadataString} "${outputPath}"`;
-              await execAsync(cmd, { timeout: 300000 });
+              await execAsync(cmd, { timeout: 600000 });
             });
 
             let currentPostId: number;
