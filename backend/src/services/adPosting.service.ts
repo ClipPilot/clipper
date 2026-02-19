@@ -4,7 +4,7 @@ import {
   posts,
   massPostingApplications,
 } from "@clipper/shared-db/src/schema";
-import { eq, and, or, sql, desc, asc, ilike, gte } from "drizzle-orm";
+import { eq, and, or, sql, desc, asc, ilike, gte, inArray } from "drizzle-orm";
 import { teamService } from "./team.service";
 import { getTeamUsage } from "../middleware/subscription.middleware";
 import { sqsService } from "./sqs.service";
@@ -182,37 +182,83 @@ class AdPostingService {
 
     const where = and(...conditions);
 
-    // Count total
-    const [{ count }] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(posts)
-      .leftJoin(clips, eq(posts.clip_id, clips.id))
-      .where(where);
-
-    // Sort
     const orderCol = sortBy === "posted_time" ? posts.posted_time : posts.created_at;
     const orderFn = sortOrder === "asc" ? asc : desc;
 
-    // Fetch page
-    const rows = await db
-      .select({
-        id: posts.id,
-        clip_id: posts.clip_id,
-        clip_title: clips.title,
-        clip_path: clips.clip_path,
-        platform: posts.platform,
-        status: posts.status,
-        content: posts.content,
-        post_url: posts.post_url,
-        posted_time: posts.posted_time,
-        created_at: posts.created_at,
-      })
-      .from(posts)
-      .leftJoin(clips, eq(posts.clip_id, clips.id))
-      .where(where)
-      .orderBy(orderFn(orderCol))
-      .limit(pageSize)
-      .offset((page - 1) * pageSize);
+    const selectFields = {
+      id: posts.id,
+      clip_id: posts.clip_id,
+      clip_title: clips.title,
+      clip_path: clips.clip_path,
+      platform: posts.platform,
+      status: posts.status,
+      content: posts.content,
+      post_url: posts.post_url,
+      posted_time: posts.posted_time,
+      created_at: posts.created_at,
+    };
+
+    let rows;
+    let totalVideos: number;
+    let totalPosts: number;
+
+    if (tab === "queued") {
+      // Paginate by unique clip_id (video), then fetch all posts for those clips
+      const [countResult] = await db
+        .select({
+          videos: sql<number>`COUNT(DISTINCT ${posts.clip_id})::int`,
+          posts: sql<number>`count(*)::int`,
+        })
+        .from(posts)
+        .leftJoin(clips, eq(posts.clip_id, clips.id))
+        .where(where);
+
+      totalVideos = countResult.videos;
+      totalPosts = countResult.posts;
+
+      // Get the clip_ids for this page
+      const clipPage = await db
+        .select({ clip_id: posts.clip_id })
+        .from(posts)
+        .leftJoin(clips, eq(posts.clip_id, clips.id))
+        .where(where)
+        .groupBy(posts.clip_id)
+        .orderBy(orderFn(sql`min(${orderCol})`))
+        .limit(pageSize)
+        .offset((page - 1) * pageSize);
+
+      const clipIds = clipPage.map((r) => r.clip_id).filter((id): id is number => id != null);
+
+      if (clipIds.length === 0) {
+        rows = [];
+      } else {
+        rows = await db
+          .select(selectFields)
+          .from(posts)
+          .leftJoin(clips, eq(posts.clip_id, clips.id))
+          .where(and(where, inArray(posts.clip_id, clipIds)))
+          .orderBy(orderFn(orderCol));
+      }
+    } else {
+      // Published tab: paginate by individual post
+      const [{ count }] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(posts)
+        .leftJoin(clips, eq(posts.clip_id, clips.id))
+        .where(where);
+
+      totalVideos = count;
+      totalPosts = count;
+
+      rows = await db
+        .select(selectFields)
+        .from(posts)
+        .leftJoin(clips, eq(posts.clip_id, clips.id))
+        .where(where)
+        .orderBy(orderFn(orderCol))
+        .limit(pageSize)
+        .offset((page - 1) * pageSize);
+    }
 
     // Generate presigned URLs for clip thumbnails
     const postsWithUrls = await Promise.all(
@@ -235,8 +281,9 @@ class AdPostingService {
       pagination: {
         page,
         pageSize,
-        total: count,
-        totalPages: Math.ceil(count / pageSize),
+        total: totalVideos,
+        totalPages: Math.ceil(totalVideos / pageSize),
+        totalPosts,
       },
     };
   }

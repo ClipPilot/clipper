@@ -103,9 +103,8 @@ export function QueuedPostsTab({
   }, [posts]);
 
   const totalPages = pagination?.totalPages ?? 1;
-  const total = pagination?.total ?? 0;
-  const startItem = total === 0 ? 0 : (page - 1) * (pagination?.pageSize ?? 20) + 1;
-  const endItem = Math.min(page * (pagination?.pageSize ?? 20), total);
+  const totalVideos = pagination?.total ?? 0;
+  const totalPosts = pagination?.totalPosts ?? 0;
 
   // Determine worst status in group for display
   const groupStatus = (group: QueuedGroup) => {
@@ -137,7 +136,7 @@ export function QueuedPostsTab({
           setPage(1);
           fireParams({ dateRange: v, page: 1 });
         }}
-        countLabel={`${total} posts queued`}
+        countLabel={`${totalVideos} video${totalVideos !== 1 ? "s" : ""} queued`}
       />
 
       {isLoading ? (
@@ -268,14 +267,19 @@ export function QueuedPostsTab({
 
       <div className="flex items-center justify-between px-4 py-4 border-t border-border-base">
         <p className="text-sm text-text-tertiary">
-          {total > 0 ? (
+          {grouped.length > 0 ? (
             <>
-              Showing{" "}
               <span className="font-medium text-text-secondary">
-                {startItem}-{endItem}
+                {grouped.length}
               </span>{" "}
               of{" "}
-              <span className="font-medium text-text-secondary">{total}</span>
+              <span className="font-medium text-text-secondary">
+                {totalVideos}
+              </span>{" "}
+              video{totalVideos !== 1 ? "s" : ""}{" "}
+              <span className="text-text-tertiary">
+                ({totalPosts} total post{totalPosts !== 1 ? "s" : ""})
+              </span>
             </>
           ) : (
             "No results"

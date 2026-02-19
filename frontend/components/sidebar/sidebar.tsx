@@ -1,228 +1,268 @@
 "use client";
 
 import React, { useEffect } from "react";
-import {
-  Listbox,
-  ListboxItem,
-  type Selection,
-  Progress,
-  Tooltip,
-  cn,
-} from "@heroui/react";
+import { Progress, Tooltip, cn } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useUsageStats } from "@/hooks/useUsageStats";
 import { useAtom } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
 import { useUsageStatsRefresh } from "@/contexts/UsageStatsContext";
 import { useRouter, usePathname } from "next/navigation";
-import { SIDEBAR_ITEMS } from "./constants";
+import {
+  SIDEBAR_SECTIONS,
+  ALL_SIDEBAR_ITEMS,
+  type SidebarItem,
+  type SidebarSection,
+} from "./constants";
 
 export type SidebarProps = {
+  isCollapsed?: boolean;
   canViewPricing?: boolean;
 };
 
-const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
-  ({ canViewPricing = true }, ref) => {
-    const router = useRouter();
-    const pathname = usePathname();
-    const [selectedTeam] = useAtom(selectedTeamAtom);
-    const { refreshTrigger } = useUsageStatsRefresh();
-    const { usageStats, isLoading, error, refetch } = useUsageStats(
-      selectedTeam?.id,
-    );
+export default function Sidebar({
+  isCollapsed = false,
+  canViewPricing = true,
+}: SidebarProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [selectedTeam] = useAtom(selectedTeamAtom);
+  const { refreshTrigger } = useUsageStatsRefresh();
+  const { usageStats, isLoading, error, refetch } = useUsageStats(
+    selectedTeam?.id
+  );
 
-    const plan = selectedTeam?.plan || "free";
-    const isPaidPlan = ["creator", "studio", "scale", "enterprise"].includes(
-      plan,
-    );
+  const plan = selectedTeam?.plan || "free";
+  const isPaidPlan = ["creator", "studio", "scale", "enterprise"].includes(
+    plan
+  );
 
-    const isItemLocked = (item: (typeof SIDEBAR_ITEMS)[number]) => {
-      return item.requiredPlans ? !item.requiredPlans.includes(plan) : false;
+  const isItemLocked = (item: SidebarItem) =>
+    item.requiredPlans ? !item.requiredPlans.includes(plan) : false;
+
+  const getUpgradePlanName = (item: SidebarItem) => {
+    if (!item.requiredPlans) return "";
+    const planNames: Record<string, string> = {
+      creator: "Creator",
+      studio: "Studio",
+      scale: "Scale",
+      enterprise: "Enterprise",
     };
+    return planNames[item.requiredPlans[0]] || "a paid";
+  };
 
-    const getUpgradePlanName = (item: (typeof SIDEBAR_ITEMS)[number]) => {
-      if (!item.requiredPlans) return "";
-      const planNames: Record<string, string> = {
-        creator: "Creator",
-        studio: "Studio",
-        scale: "Scale",
-        enterprise: "Enterprise",
-      };
-      return planNames[item.requiredPlans[0]] || "a paid";
-    };
+  const currentKey =
+    [...ALL_SIDEBAR_ITEMS]
+      .sort((a, b) => b.href.length - a.href.length)
+      .find((item) => pathname.startsWith(item.href))?.key || "";
 
-    const currentKey =
-      [...SIDEBAR_ITEMS]
-        .sort((a, b) => b.href.length - a.href.length)
-        .find((item) => pathname.startsWith(item.href))?.key || "";
+  useEffect(() => {
+    if (refreshTrigger > 0) refetch();
+  }, [refreshTrigger, refetch]);
 
-    const [selected, setSelected] = React.useState<React.Key>(currentKey);
+  const usagePercentage = usageStats
+    ? (usageStats.clipsCreated / usageStats.baseLimit) * 100
+    : 0;
 
-    useEffect(() => {
-      setSelected(currentKey);
-    }, [currentKey]);
+  const getPlanName = () => {
+    switch (plan) {
+      case "enterprise":
+        return "Enterprise";
+      case "scale":
+        return "Scale";
+      case "studio":
+        return "Studio";
+      case "creator":
+        return "Creator";
+      default:
+        return "Free";
+    }
+  };
 
-    useEffect(() => {
-      if (refreshTrigger > 0) {
-        refetch();
-      }
-    }, [refreshTrigger, refetch]);
+  const getPlanColor = () => {
+    switch (plan) {
+      case "enterprise":
+        return "bg-emerald-500/10 text-emerald-500";
+      case "scale":
+        return "bg-purple-500/10 text-purple-500";
+      case "studio":
+        return "bg-accent-400/10 text-accent-400";
+      case "creator":
+        return "bg-orange-500/10 text-orange-500";
+      default:
+        return "bg-blue-500/10 text-blue-500";
+    }
+  };
 
-    const usagePercentage = usageStats
-      ? (usageStats.clipsCreated / usageStats.baseLimit) * 100
-      : 0;
+  const handleNav = (item: SidebarItem) => {
+    if (isItemLocked(item)) {
+      router.push("/dashboard/pricing");
+      return;
+    }
+    router.push(item.href);
+  };
 
-    const getPlanName = () => {
-      switch (plan) {
-        case "enterprise":
-          return "Enterprise";
-        case "scale":
-          return "Scale";
-        case "studio":
-          return "Studio";
-        case "creator":
-          return "Creator";
-        default:
-          return "Free";
-      }
-    };
+  const renderItem = (item: SidebarItem) => {
+    const isActive = currentKey === item.key;
+    const locked = isItemLocked(item);
 
-    const getPlanColor = () => {
-      switch (plan) {
-        case "enterprise":
-          return "bg-emerald-500/10 text-emerald-500";
-        case "scale":
-          return "bg-purple-500/10 text-purple-500";
-        case "studio":
-          return "bg-accent-400/10 text-accent-400";
-        case "creator":
-          return "bg-orange-500/10 text-orange-500";
-        default:
-          return "bg-blue-500/10 text-blue-500";
-      }
-    };
-
-    return (
-      <div className="flex flex-col h-full">
-        <div className="flex-1 overflow-y-auto">
-          <Listbox
-            ref={ref}
-            aria-label="Navigation"
-            selectedKeys={selected ? ([selected] as unknown as Selection) : []}
-            selectionMode="single"
-            variant="flat"
-            onSelectionChange={(keys) => {
-              const key = Array.from(keys)[0] as string;
-              if (key) {
-                setSelected(key);
-                const item = SIDEBAR_ITEMS.find((i) => i.key === key);
-                if (item?.href) router.push(item.href);
-              }
-            }}
-            classNames={{
-              list: "gap-1",
-            }}
-          >
-            {SIDEBAR_ITEMS.map((item) => {
-              const isSelected = selected === item.key;
-              const locked = isItemLocked(item);
-              const listboxItem = (
-                <ListboxItem
-                  key={item.key}
-                  textValue={item.title}
-                  classNames={{
-                    base: cn(
-                      "px-3 py-2.5 rounded-lg transition-colors",
-                      locked
-                        ? "opacity-50 hover:bg-surface-elevated"
-                        : "data-[selected=true]:bg-accent-400/10 hover:bg-surface-elevated",
-                    ),
-                    title: cn(
-                      "text-sm font-medium transition-colors",
-                      locked
-                        ? "text-text-tertiary"
-                        : isSelected
-                          ? "text-accent-400"
-                          : "text-text-primary",
-                    ),
-                  }}
-                  startContent={
-                    item.icon && (
-                      <Icon
-                        icon={item.icon}
-                        width={20}
-                        className={cn(
-                          "transition-colors",
-                          locked
-                            ? "text-text-tertiary"
-                            : isSelected
-                              ? "text-accent-400"
-                              : "text-text-primary",
-                        )}
-                      />
-                    )
-                  }
-                  endContent={
-                    locked ? (
-                      <Tooltip
-                        content={`Upgrade to ${getUpgradePlanName(item)}`}
-                        placement="right"
-                        delay={200}
-                        classNames={{
-                          content:
-                            "bg-surface-elevated text-text-primary text-xs px-2 py-1",
-                        }}
-                      >
-                        <div>
-                          <Icon
-                            icon="solar:lock-keyhole-bold"
-                            width={14}
-                            className="text-text-tertiary"
-                          />
-                        </div>
-                      </Tooltip>
-                    ) : undefined
-                  }
-                >
-                  {item.title}
-                </ListboxItem>
-              );
-              return listboxItem;
-            })}
-          </Listbox>
-        </div>
-
-        {canViewPricing && selectedTeam && (
-          <div className="px-4 pb-3">
-            <button
-              onClick={() => router.push("/dashboard/referrals")}
-              className="w-full flex items-center gap-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 transition-colors"
-            >
-              <Icon
-                icon="solar:money-bag-bold-duotone"
-                className="text-amber-500 flex-shrink-0"
-                width={20}
-              />
-              <div className="flex-1 text-left">
-                <p className="text-xs font-medium text-amber-500">
-                  Referral Program
-                </p>
-                <p className="text-[10px] text-text-tertiary">
-                  Earn credits & discounts
-                </p>
-              </div>
-              <Icon
-                icon="solar:arrow-right-bold"
-                className="text-amber-500"
-                width={14}
-              />
-            </button>
-          </div>
+    const button = (
+      <button
+        key={item.key}
+        onClick={() => handleNav(item)}
+        className={cn(
+          "w-full flex items-center gap-2.5 rounded-lg transition-colors",
+          isCollapsed ? "justify-center p-2" : "px-2.5 py-1.5",
+          locked
+            ? "opacity-50 hover:bg-surface-elevated"
+            : isActive
+              ? "bg-accent-400/10"
+              : "hover:bg-surface-elevated"
         )}
+      >
+        <Icon
+          icon={item.icon}
+          width={18}
+          className={cn(
+            "flex-shrink-0 transition-colors",
+            locked
+              ? "text-text-tertiary"
+              : isActive
+                ? "text-accent-400"
+                : "text-text-primary"
+          )}
+        />
+        <span
+          className={cn(
+            "text-[13px] font-medium transition-all whitespace-nowrap",
+            isCollapsed
+              ? "w-0 opacity-0 overflow-hidden"
+              : "w-auto opacity-100",
+            locked
+              ? "text-text-tertiary"
+              : isActive
+                ? "text-accent-400"
+                : "text-text-primary"
+          )}
+        >
+          {item.title}
+        </span>
+        {!isCollapsed && locked && (
+          <Icon
+            icon="solar:lock-keyhole-bold"
+            width={14}
+            className="text-text-tertiary ml-auto flex-shrink-0"
+          />
+        )}
+      </button>
+    );
 
-        {!isLoading && !error && usageStats && selectedTeam && (
-          <div className="p-4 border-t border-border-base">
-            <div className="space-y-3">
+    if (isCollapsed) {
+      const tooltipContent = locked
+        ? `${item.title} — Upgrade to ${getUpgradePlanName(item)}`
+        : item.title;
+      return (
+        <Tooltip
+          key={item.key}
+          content={tooltipContent}
+          placement="right"
+          delay={200}
+          classNames={{
+            content:
+              "bg-surface-elevated text-text-primary text-xs px-2 py-1",
+          }}
+        >
+          {button}
+        </Tooltip>
+      );
+    }
+
+    return button;
+  };
+
+  const renderSection = (section: SidebarSection, idx: number) => (
+    <div key={idx}>
+      {idx > 0 && (
+        isCollapsed ? (
+          <div className="mx-3 my-2 border-t border-border-base" />
+        ) : (
+          section.title && (
+            <p className="px-2.5 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-text-tertiary">
+              {section.title}
+            </p>
+          )
+        )
+      )}
+      <div className="flex flex-col gap-0.5">
+        {section.items.map(renderItem)}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="flex flex-col h-full">
+      <nav className="flex-1 overflow-y-auto space-y-0.5">
+        {SIDEBAR_SECTIONS.map(renderSection)}
+      </nav>
+
+      {!isLoading && !error && usageStats && selectedTeam && (
+        <div
+          className={cn(
+            "border-t border-border-base",
+            isCollapsed ? "p-2" : "p-4"
+          )}
+        >
+          {isCollapsed ? (
+            <Tooltip
+              placement="right"
+              content={
+                <div className="space-y-1 py-1">
+                  <p className="font-medium">{selectedTeam.name}</p>
+                  <p className="text-text-tertiary">
+                    {getPlanName()} — {usageStats.clipsCreated}/
+                    {usageStats.baseLimit} clips
+                  </p>
+                  {usageStats.totalRemaining > 0 && (
+                    <p className="text-text-tertiary">
+                      {usageStats.totalRemaining} credit
+                      {usageStats.totalRemaining !== 1 ? "s" : ""} remaining
+                    </p>
+                  )}
+                </div>
+              }
+              classNames={{
+                content:
+                  "bg-surface-elevated text-text-primary text-xs px-3 py-2",
+              }}
+            >
+              <div className="flex flex-col items-center gap-2">
+                <div
+                  className={cn(
+                    "text-[9px] px-1.5 py-0.5 rounded font-medium",
+                    getPlanColor()
+                  )}
+                >
+                  {getPlanName()}
+                </div>
+                <Progress
+                  value={usagePercentage}
+                  color={
+                    usagePercentage >= 100
+                      ? "danger"
+                      : usagePercentage >= 75
+                        ? "warning"
+                        : "primary"
+                  }
+                  size="sm"
+                  classNames={{
+                    base: "w-full",
+                    indicator: "transition-all",
+                  }}
+                />
+              </div>
+            </Tooltip>
+          ) : (
+            <div className="space-y-2">
               <p
                 className="text-xs text-text-secondary font-medium truncate"
                 title={selectedTeam.name}
@@ -233,7 +273,7 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
                 <span
                   className={cn(
                     "text-[10px] px-1.5 py-0.5 rounded font-medium",
-                    getPlanColor(),
+                    getPlanColor()
                   )}
                 >
                   {getPlanName()}
@@ -282,7 +322,7 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
                           ? "bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20"
                           : plan === "creator"
                             ? "bg-orange-500/10 border-orange-500/20 hover:bg-orange-500/20"
-                            : "bg-accent-400/10 border-accent-400/20 hover:bg-accent-400/20",
+                            : "bg-accent-400/10 border-accent-400/20 hover:bg-accent-400/20"
                     )}
                   >
                     <Icon
@@ -307,7 +347,7 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
                             ? "text-purple-500"
                             : plan === "creator"
                               ? "text-orange-500"
-                              : "text-accent-400",
+                              : "text-accent-400"
                       )}
                     >
                       Manage subscription
@@ -329,13 +369,70 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
                   </button>
                 ))}
             </div>
-          </div>
-        )}
-      </div>
-    );
-  },
-);
+          )}
 
-Sidebar.displayName = "Sidebar";
+          {isCollapsed && canViewPricing && !isPaidPlan && (
+            <Tooltip
+              content="Upgrade workspace"
+              placement="right"
+              classNames={{
+                content:
+                  "bg-surface-elevated text-text-primary text-xs px-2 py-1",
+              }}
+            >
+              <button
+                onClick={() => router.push("/dashboard/pricing")}
+                className="w-full mt-2 flex items-center justify-center p-2 rounded-lg bg-accent-400/10 border border-accent-400/20 hover:bg-accent-400/20 transition-colors"
+              >
+                <Icon
+                  icon="solar:arrow-up-bold"
+                  className="text-accent-400"
+                  width={16}
+                />
+              </button>
+            </Tooltip>
+          )}
 
-export default Sidebar;
+          {isCollapsed && canViewPricing && isPaidPlan && (
+            <Tooltip
+              content="Manage subscription"
+              placement="right"
+              classNames={{
+                content:
+                  "bg-surface-elevated text-text-primary text-xs px-2 py-1",
+              }}
+            >
+              <button
+                onClick={() => router.push("/dashboard/pricing")}
+                className={cn(
+                  "w-full mt-2 flex items-center justify-center p-2 rounded-lg border transition-colors",
+                  plan === "enterprise"
+                    ? "bg-emerald-500/10 border-emerald-500/20 hover:bg-emerald-500/20"
+                    : plan === "scale"
+                      ? "bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20"
+                      : plan === "creator"
+                        ? "bg-orange-500/10 border-orange-500/20 hover:bg-orange-500/20"
+                        : "bg-accent-400/10 border-accent-400/20 hover:bg-accent-400/20"
+                )}
+              >
+                <Icon
+                  icon="solar:verified-check-bold"
+                  className={
+                    plan === "enterprise"
+                      ? "text-emerald-500"
+                      : plan === "scale"
+                        ? "text-purple-500"
+                        : plan === "creator"
+                          ? "text-orange-500"
+                          : "text-accent-400"
+                  }
+                  width={16}
+                />
+              </button>
+            </Tooltip>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

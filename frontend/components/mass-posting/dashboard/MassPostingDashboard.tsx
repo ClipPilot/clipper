@@ -58,7 +58,7 @@ export function MassPostingDashboard() {
     fetchPosts("published");
   }, [fetchPosts]);
 
-  const queuedCount = queuedPagination?.total ?? 0;
+  const queuedCount = queuedPagination?.totalPosts ?? 0;
 
   return (
     <div className="min-h-screen bg-surface-dark p-4 sm:p-6 lg:p-8">

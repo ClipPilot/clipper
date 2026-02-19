@@ -70,6 +70,7 @@ export interface PostsPagination {
   pageSize: number;
   total: number;
   totalPages: number;
+  totalPosts: number;
 }
 
 export interface TeamPostsResponse {
