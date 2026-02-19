@@ -28,17 +28,19 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
     const [selectedTeam] = useAtom(selectedTeamAtom);
     const { refreshTrigger } = useUsageStatsRefresh();
     const { usageStats, isLoading, error, refetch } = useUsageStats(
-      selectedTeam?.id
+      selectedTeam?.id,
     );
 
     const plan = selectedTeam?.plan || "free";
-    const isPaidPlan = ["creator", "studio", "scale", "enterprise"].includes(plan);
+    const isPaidPlan = ["creator", "studio", "scale", "enterprise"].includes(
+      plan,
+    );
 
-    const isItemLocked = (item: typeof SIDEBAR_ITEMS[number]) => {
+    const isItemLocked = (item: (typeof SIDEBAR_ITEMS)[number]) => {
       return item.requiredPlans ? !item.requiredPlans.includes(plan) : false;
     };
 
-    const getUpgradePlanName = (item: typeof SIDEBAR_ITEMS[number]) => {
+    const getUpgradePlanName = (item: (typeof SIDEBAR_ITEMS)[number]) => {
       if (!item.requiredPlans) return "";
       const planNames: Record<string, string> = {
         creator: "Creator",
@@ -106,7 +108,7 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
           <Listbox
             ref={ref}
             aria-label="Navigation"
-            selectedKeys={selected ? [selected] as unknown as Selection : []}
+            selectedKeys={selected ? ([selected] as unknown as Selection) : []}
             selectionMode="single"
             variant="flat"
             onSelectionChange={(keys) => {
@@ -133,7 +135,7 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
                       "px-3 py-2.5 rounded-lg transition-colors",
                       locked
                         ? "opacity-50 hover:bg-surface-elevated"
-                        : "data-[selected=true]:bg-accent-400/10 hover:bg-surface-elevated"
+                        : "data-[selected=true]:bg-accent-400/10 hover:bg-surface-elevated",
                     ),
                     title: cn(
                       "text-sm font-medium transition-colors",
@@ -141,7 +143,7 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
                         ? "text-text-tertiary"
                         : isSelected
                           ? "text-accent-400"
-                          : "text-text-primary"
+                          : "text-text-primary",
                     ),
                   }}
                   startContent={
@@ -155,7 +157,7 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
                             ? "text-text-tertiary"
                             : isSelected
                               ? "text-accent-400"
-                              : "text-text-primary"
+                              : "text-text-primary",
                         )}
                       />
                     )
@@ -167,7 +169,8 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
                         placement="right"
                         delay={200}
                         classNames={{
-                          content: "bg-surface-elevated text-text-primary text-xs px-2 py-1",
+                          content:
+                            "bg-surface-elevated text-text-primary text-xs px-2 py-1",
                         }}
                       >
                         <div>
@@ -230,7 +233,7 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
                 <span
                   className={cn(
                     "text-[10px] px-1.5 py-0.5 rounded font-medium",
-                    getPlanColor()
+                    getPlanColor(),
                   )}
                 >
                   {getPlanName()}
@@ -267,8 +270,8 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
                 )}
               </div>
 
-              {canViewPricing && (
-                isPaidPlan ? (
+              {canViewPricing &&
+                (isPaidPlan ? (
                   <button
                     onClick={() => router.push("/dashboard/pricing")}
                     className={cn(
@@ -279,7 +282,7 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
                           ? "bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20"
                           : plan === "creator"
                             ? "bg-orange-500/10 border-orange-500/20 hover:bg-orange-500/20"
-                            : "bg-accent-400/10 border-accent-400/20 hover:bg-accent-400/20"
+                            : "bg-accent-400/10 border-accent-400/20 hover:bg-accent-400/20",
                     )}
                   >
                     <Icon
@@ -304,7 +307,7 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
                             ? "text-purple-500"
                             : plan === "creator"
                               ? "text-orange-500"
-                              : "text-accent-400"
+                              : "text-accent-400",
                       )}
                     >
                       Manage subscription
@@ -324,14 +327,13 @@ const Sidebar = React.forwardRef<HTMLElement, SidebarProps>(
                       Upgrade workspace
                     </span>
                   </button>
-                )
-              )}
+                ))}
             </div>
           </div>
         )}
       </div>
     );
-  }
+  },
 );
 
 Sidebar.displayName = "Sidebar";
