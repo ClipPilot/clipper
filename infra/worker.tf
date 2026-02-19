@@ -101,6 +101,14 @@ resource "aws_ecs_task_definition" "worker" {
       {
         name  = "API_INTERNAL_URL"
         value = var.api_domain != "" ? "https://${var.api_domain}" : "http://${aws_lb.backend.dns_name}"
+      },
+      {
+        name  = "GOOGLE_SERVICE_ACCOUNT_EMAIL"
+        value = var.google_service_account_email
+      },
+      {
+        name  = "GOOGLE_DRIVE_PARENT_FOLDER_ID"
+        value = var.google_drive_parent_folder_id
       }
     ]
 
@@ -148,6 +156,10 @@ resource "aws_ecs_task_definition" "worker" {
       {
         name      = "FAL_KEY"
         valueFrom = aws_secretsmanager_secret.fal_key.arn
+      },
+      {
+        name      = "GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY"
+        valueFrom = aws_secretsmanager_secret.google_service_account_private_key.arn
       }
     ]
 

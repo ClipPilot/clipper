@@ -14,11 +14,10 @@ export function AccountsTab() {
           />
         </div>
         <h3 className="text-lg font-semibold text-text-primary mb-1">
-          Accounts Coming Soon
+          Accounts posting your content
         </h3>
         <p className="text-sm text-text-secondary max-w-sm text-center">
-          Manage your connected social media accounts and track repost
-          performance — all in one place.
+          See which accounts are posting the content you publish through Cuttr.
         </p>
       </div>
     </div>

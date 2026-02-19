@@ -94,6 +94,49 @@ class AdPostingAPI {
 
     return response.json();
   }
+
+  async createCustomVideo(
+    teamId: number,
+    fileName: string,
+    contentType: string
+  ): Promise<{ clipId: number; uploadUrl: string; s3Key: string }> {
+    const response = await apiFetch(
+      `${API_URL}/ad-posting/teams/${teamId}/custom-video`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ fileName, contentType }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to create custom video");
+    }
+
+    return response.json();
+  }
+
+  async completeCustomVideo(
+    teamId: number,
+    clipId: number
+  ): Promise<{ clipId: number }> {
+    const response = await apiFetch(
+      `${API_URL}/ad-posting/teams/${teamId}/custom-video/${clipId}/complete`,
+      {
+        method: "POST",
+        credentials: "include",
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to complete custom video");
+    }
+
+    return response.json();
+  }
 }
 
 export const adPostingAPI = new AdPostingAPI();

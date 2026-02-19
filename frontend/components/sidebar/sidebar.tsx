@@ -57,8 +57,8 @@ export default function Sidebar({
       .find((item) => pathname.startsWith(item.href))?.key || "";
 
   useEffect(() => {
-    if (refreshTrigger > 0) refetch();
-  }, [refreshTrigger, refetch]);
+    refetch();
+  }, [refreshTrigger, pathname, refetch]);
 
   const usagePercentage = usageStats
     ? (usageStats.clipsCreated / usageStats.baseLimit) * 100

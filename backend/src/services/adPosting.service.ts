@@ -78,14 +78,18 @@ class AdPostingService {
       throw new AdPostingError("Could not retrieve team usage", 500);
     }
 
-    if (usage.totalRemaining < totalCopies) {
+    const isCustomUpload = (clip.input_metadata as Record<string, unknown>)?.source === "custom_upload";
+    const creditsPerCopy = isCustomUpload ? 2 : 1;
+    const creditsNeeded = totalCopies * creditsPerCopy;
+
+    if (usage.totalRemaining < creditsNeeded) {
       throw new AdPostingError(
-        `Insufficient credits. Need ${totalCopies}, have ${usage.totalRemaining}`,
+        `Insufficient credits. Need ${creditsNeeded}, have ${usage.totalRemaining}`,
         402
       );
     }
 
-    await teamService.incrementTeamUsage(teamId, totalCopies);
+    await teamService.incrementTeamUsage(teamId, creditsNeeded);
 
     await sqsService.sendAdPostingJob({
       clipId,
@@ -96,6 +100,58 @@ class AdPostingService {
       clipPath: clip.clip_path,
       clipTitle: clip.title || `clip-${clipId}`,
     });
+  }
+
+  async createCustomVideo(
+    teamId: number,
+    userId: number,
+    fileName: string,
+    contentType: string
+  ) {
+    const sanitized = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const s3Key = `custom-uploads/${teamId}/${Date.now()}_${sanitized}`;
+
+    const [clip] = await db
+      .insert(clips)
+      .values({
+        team_id: teamId,
+        generated_by_user_id: userId,
+        clip_path: s3Key,
+        title: fileName.replace(/\.[^.]+$/, ""),
+        status: "pending",
+        saved: true,
+        input_metadata: { source: "custom_upload" },
+      })
+      .returning();
+
+    const uploadUrl = await s3Service.getPresignedUploadUrlForKey(s3Key, contentType);
+
+    return { clipId: clip.id, uploadUrl, s3Key };
+  }
+
+  async completeCustomVideo(teamId: number, clipId: number) {
+    const [clip] = await db
+      .select({ id: clips.id })
+      .from(clips)
+      .where(
+        and(
+          eq(clips.id, clipId),
+          eq(clips.team_id, teamId),
+          eq(clips.status, "pending")
+        )
+      )
+      .limit(1);
+
+    if (!clip) {
+      throw new AdPostingError("Clip not found or already completed", 404);
+    }
+
+    await db
+      .update(clips)
+      .set({ status: "completed", updated_at: new Date() })
+      .where(eq(clips.id, clipId));
+
+    return { clipId };
   }
 
   async markAsPosted(postId: number, postUrl?: string): Promise<void> {

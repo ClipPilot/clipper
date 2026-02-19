@@ -60,6 +60,64 @@ export async function postClipToPlatforms(req: AuthRequest, res: Response) {
   }
 }
 
+export async function uploadCustomVideo(req: AuthRequest, res: Response) {
+  try {
+    const teamId = parseInt(req.params.teamId);
+    if (isNaN(teamId)) {
+      return res.status(400).json({ error: "Invalid team ID" });
+    }
+
+    const userId = req.user?.dbUserId;
+    if (!userId) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+
+    const team = await teamService.getTeamById(teamId);
+    if (!canAccessMassPosting(team.plan)) {
+      return res.status(403).json({ error: "Requires Studio plan or higher" });
+    }
+
+    const { fileName, contentType } = req.body;
+    if (!fileName || !contentType) {
+      return res.status(400).json({ error: "fileName and contentType are required" });
+    }
+
+    if (!contentType.startsWith("video/")) {
+      return res.status(400).json({ error: "Only video files are allowed" });
+    }
+
+    const result = await adPostingService.createCustomVideo(teamId, userId, fileName, contentType);
+    return res.status(200).json(result);
+  } catch (error) {
+    if (error instanceof AdPostingError) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
+    console.error("Upload custom video error:", error);
+    Sentry.captureException(error);
+    return res.status(500).json({ error: "Failed to create custom video" });
+  }
+}
+
+export async function completeCustomVideo(req: AuthRequest, res: Response) {
+  try {
+    const teamId = parseInt(req.params.teamId);
+    const clipId = parseInt(req.params.clipId);
+    if (isNaN(teamId) || isNaN(clipId)) {
+      return res.status(400).json({ error: "Invalid team ID or clip ID" });
+    }
+
+    const result = await adPostingService.completeCustomVideo(teamId, clipId);
+    return res.status(200).json(result);
+  } catch (error) {
+    if (error instanceof AdPostingError) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
+    console.error("Complete custom video error:", error);
+    Sentry.captureException(error);
+    return res.status(500).json({ error: "Failed to complete custom video" });
+  }
+}
+
 export async function getClipPosts(req: AuthRequest, res: Response) {
   try {
     const teamId = parseInt(req.params.teamId);

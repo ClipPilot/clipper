@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAtomValue } from "jotai";
-import { Button, Spinner, Card, CardBody, addToast } from "@heroui/react";
+import { Button, Spinner, Card, CardBody, Progress, addToast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { selectedTeamAtom } from "@/store/auth";
 import { Clip, clipsAPI } from "@/api/clips";
+import { adPostingAPI } from "@/api/adPosting";
 import { canAccessMassPosting } from "@/lib/plans";
 import { useMassPosting } from "@/hooks/useMassPosting";
 import { intakeAPI } from "@/api/intake";
@@ -41,6 +42,10 @@ export default function PublishPostsPage() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [adPostClip, setAdPostClip] = useState<Clip | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     if (isRejected && selectedTeam?.id) {
@@ -86,6 +91,71 @@ export default function PublishPostsPage() {
   useEffect(() => {
     if (isApproved) fetchClips();
   }, [isApproved, fetchClips]);
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedTeam?.id) return;
+    e.target.value = "";
+
+    if (!file.type.startsWith("video/")) {
+      addToast({ title: "Only video files are allowed", color: "danger" });
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    try {
+      const { clipId, uploadUrl } = await adPostingAPI.createCustomVideo(
+        selectedTeam.id,
+        file.name,
+        file.type
+      );
+
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.upload.onprogress = (ev) => {
+          if (ev.lengthComputable) {
+            setUploadProgress(Math.round((ev.loaded / ev.total) * 100));
+          }
+        };
+        xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error("Upload failed")));
+        xhr.onerror = () => reject(new Error("Upload failed"));
+        xhr.open("PUT", uploadUrl);
+        xhr.setRequestHeader("Content-Type", file.type);
+        xhr.send(file);
+      });
+
+      await adPostingAPI.completeCustomVideo(selectedTeam.id, clipId);
+
+      const localUrl = URL.createObjectURL(file);
+      const customClip: Clip = {
+        id: clipId,
+        team_id: selectedTeam.id,
+        generated_by_user_id: 0,
+        status: "completed",
+        saved: true,
+        title: file.name.replace(/\.[^.]+$/, ""),
+        clipUrl: localUrl,
+        input_metadata: { source: "custom_upload" },
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      setClips((prev) => [customClip, ...prev]);
+      setAdPostClip(customClip);
+
+      addToast({ title: "Video uploaded", color: "success" });
+    } catch (err) {
+      addToast({
+        title: err instanceof Error ? err.message : "Upload failed",
+        color: "danger",
+      });
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(null);
+    }
+  };
 
   if (!canAccessMassPosting(selectedTeam?.plan)) {
     return (
@@ -176,10 +246,42 @@ export default function PublishPostsPage() {
               Publish Posts
             </h1>
             <p className="text-sm text-text-secondary mt-1">
-              Select a clip and send it to your connected platforms
+              Select a clip or upload your own video to distribute
             </p>
           </div>
+          <Button
+            className="bg-accent-400 text-white font-semibold"
+            startContent={<Icon icon="solar:upload-bold" width={18} />}
+            onPress={() => fileInputRef.current?.click()}
+            isLoading={isUploading}
+          >
+            Upload Video
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="video/*"
+            className="hidden"
+            onChange={handleFileSelect}
+          />
         </div>
+
+        {isUploading && uploadProgress !== null && (
+          <div className="mb-6 bg-surface-base border border-border-base rounded-xl p-4">
+            <div className="flex items-center gap-3 mb-2">
+              <Icon icon="solar:upload-bold-duotone" width={20} className="text-accent-400" />
+              <span className="text-sm font-medium text-text-primary">
+                Uploading video... {uploadProgress}%
+              </span>
+            </div>
+            <Progress
+              value={uploadProgress}
+              size="sm"
+              color="primary"
+              classNames={{ indicator: "bg-accent-400" }}
+            />
+          </div>
+        )}
 
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
@@ -254,9 +356,16 @@ export default function PublishPostsPage() {
                         <p className="text-xs font-medium text-text-primary truncate">
                           {clip.title || `Clip #${clip.id}`}
                         </p>
-                        <p className="text-[10px] text-text-tertiary mt-0.5">
-                          {new Date(clip.created_at).toLocaleDateString()}
-                        </p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <p className="text-[10px] text-text-tertiary">
+                            {new Date(clip.created_at).toLocaleDateString()}
+                          </p>
+                          {clip.input_metadata?.source === "custom_upload" && (
+                            <span className="text-[9px] font-semibold text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded-full">
+                              2 credits/post
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </CardBody>
                   </Card>
