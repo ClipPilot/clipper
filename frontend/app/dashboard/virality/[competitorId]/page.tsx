@@ -17,7 +17,7 @@ import {
   type ViralityPost,
 } from "@/api/virality";
 import { formatNumber } from "@/lib/formatters";
-import { CHART_COLORS } from "@/lib/platformUtils";
+import { CHART_COLORS, timeAgo } from "@/lib/platformUtils";
 import {
   DateRangeFilter,
   type DateRangeValue,
@@ -248,6 +248,19 @@ export default function CompetitorDetailPage() {
 
   const postsPerWeek = useMemo(() => computePostsPerWeek(activePosts), [activePosts]);
 
+  /** Most recent sync timestamp across this competitor's accounts */
+  const lastSyncedAt = useMemo(() => {
+    if (!competitor) return null;
+    let latest: Date | null = null;
+    for (const a of competitor.accounts) {
+      if (a.last_synced_at) {
+        const d = new Date(a.last_synced_at);
+        if (!latest || d > latest) latest = d;
+      }
+    }
+    return latest;
+  }, [competitor]);
+
   // ─── Loading / Error states ──────────────────────────────────────────────────
 
   if (!canAccessViralityTracker(selectedTeam?.plan)) {
@@ -420,6 +433,27 @@ export default function CompetitorDetailPage() {
               {competitor.description && (
                 <p className="text-text-secondary text-sm">{competitor.description}</p>
               )}
+              <p className="text-text-tertiary text-xs mt-0.5">
+                {lastSyncedAt ? (
+                  <>
+                    Last synced {timeAgo(lastSyncedAt.toISOString())} · Next sync in{" "}
+                    {(() => {
+                      const now = new Date();
+                      const utcH = now.getUTCHours();
+                      const nextSlot = Math.ceil((utcH + 1) / 6) * 6;
+                      const nextSync = new Date(now);
+                      nextSync.setUTCHours(nextSlot, 0, 0, 0);
+                      if (nextSync.getTime() <= now.getTime()) nextSync.setUTCDate(nextSync.getUTCDate() + 1);
+                      const diff = nextSync.getTime() - now.getTime();
+                      const hrs = Math.floor(diff / (1000 * 60 * 60));
+                      const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                      return hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+                    })()}
+                  </>
+                ) : (
+                  "No syncs yet"
+                )}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-3">

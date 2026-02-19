@@ -25,7 +25,6 @@ import {
   type ViralityAccount,
 } from "@/api/virality";
 import { formatNumber } from "@/lib/formatters";
-import { timeAgo } from "@/lib/platformUtils";
 import { RecalcOverlay } from "@/components/virality/RecalcOverlay";
 import { pct, computePostsPerWeek } from "@/app/dashboard/virality/[competitorId]/utils";
 import { canAccessViralityTracker } from "@/lib/plans";
@@ -143,19 +142,6 @@ export default function ViralityPage() {
   }, [allPostsByAccountUnfiltered]);
 
   /** Most recent sync timestamp across all accounts */
-  const lastSyncedAt = useMemo(() => {
-    let latest: Date | null = null;
-    for (const c of competitors) {
-      for (const a of c.accounts) {
-        if (a.last_synced_at) {
-          const d = new Date(a.last_synced_at);
-          if (!latest || d > latest) latest = d;
-        }
-      }
-    }
-    return latest;
-  }, [competitors]);
-
   const competitorCards = useMemo(() => {
     return competitors.map((comp) => {
       const posts = comp.accounts.flatMap((a) => postsByAccount[a.id] || []);
@@ -320,21 +306,7 @@ export default function ViralityPage() {
               Tracked Competitors
             </h1>
             <p className="text-text-secondary text-sm mt-1">
-              {lastSyncedAt ? (
-                <>
-                  Last synced {timeAgo(lastSyncedAt.toISOString())} · Next sync in{" "}
-                  {(() => {
-                    const nextSync = new Date(lastSyncedAt.getTime() + 6 * 60 * 60 * 1000);
-                    const diff = nextSync.getTime() - Date.now();
-                    if (diff <= 0) return "progress";
-                    const hrs = Math.floor(diff / (1000 * 60 * 60));
-                    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                    return hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
-                  })()}
-                </>
-              ) : (
-                "Real-time performance metrics for your monitored competitors"
-              )}
+              Real-time performance metrics for your monitored competitors
             </p>
           </div>
           <div className="flex items-center gap-3">

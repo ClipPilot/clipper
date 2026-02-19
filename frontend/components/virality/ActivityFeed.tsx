@@ -143,7 +143,7 @@ export function ActivityFeed({ posts, allPosts, accountMap, dateRange }: TopPerf
                     ? "Showing posts that gained 50k+ views within the selected date range. View counts reflect only views gained during that period."
                     : "Showing posts that gained 50k+ views between their first and last recorded sync. Select a date range for more specific results."
                 }
-                classNames={{ content: "max-w-[240px] text-xs" }}
+                classNames={{ content: "max-w-[240px] text-xs m-2" }}
               >
                 <span className="cursor-help">
                   <Icon icon="solar:info-circle-linear" width={14} className="text-text-tertiary" />
