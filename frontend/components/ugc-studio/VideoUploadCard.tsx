@@ -1,10 +1,14 @@
 "use client";
 
 import { useRef, useState, useCallback } from "react";
-import { Button, Card, CardBody, CardHeader } from "@heroui/react";
+import { Button, Card, CardBody, CardHeader, Input, Progress, Tabs, Tab } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { MultiSegmentTrimmer, VideoSegment } from "./multi-segment";
 import { UploadedFile } from "./types";
+import { videoAPI, VideoUrlInfo, VideoDownloadProgress } from "@/api/video";
+import { fetchVideoAsFile, formatDuration, formatBytes } from "@/lib/videoUrlUtils";
+
+const MAX_UPLOAD_DURATION = 300;
 
 interface VideoUploadCardProps {
   video: UploadedFile | null;
@@ -14,6 +18,7 @@ interface VideoUploadCardProps {
   onSegmentsChange: (segments: VideoSegment[]) => void;
   showEditor?: boolean;
   onToggleEditor?: () => void;
+  teamId?: number;
 }
 
 export function VideoUploadCard({
@@ -24,9 +29,17 @@ export function VideoUploadCard({
   onSegmentsChange,
   showEditor = false,
   onToggleEditor,
+  teamId,
 }: VideoUploadCardProps) {
   const videoInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
+
+  const [urlInput, setUrlInput] = useState("");
+  const [isFetchingInfo, setIsFetchingInfo] = useState(false);
+  const [videoInfo, setVideoInfo] = useState<VideoUrlInfo | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState<VideoDownloadProgress | null>(null);
+  const [urlError, setUrlError] = useState<string | null>(null);
 
   const handleVideoSelect = useCallback(
     async (file: File) => {
@@ -40,16 +53,13 @@ export function VideoUploadCard({
       videoEl.src = preview;
       videoEl.onloadedmetadata = () => {
         const dur = videoEl.duration;
-        const MAX_UPLOAD_DURATION = 300;
         if (dur > MAX_UPLOAD_DURATION) {
           URL.revokeObjectURL(preview);
-          alert(`Video too long. Maximum upload duration is 5 minutes.`);
+          alert("Video too long. Maximum upload duration is 5 minutes.");
           return;
         }
-        const newVideo = { file, preview };
-        onVideoChange(newVideo, dur);
-        const initialEnd = Math.min(dur, 60);
-        onSegmentsChange([{ id: crypto.randomUUID(), start: 0, end: initialEnd }]);
+        onVideoChange({ file, preview }, dur);
+        onSegmentsChange([{ id: crypto.randomUUID(), start: 0, end: Math.min(dur, 60) }]);
       };
     },
     [video, onVideoChange, onSegmentsChange]
@@ -71,6 +81,237 @@ export function VideoUploadCard({
     onSegmentsChange([]);
   };
 
+  const handleFetchVideoInfo = async () => {
+    if (!urlInput.trim()) return;
+    setIsFetchingInfo(true);
+    setVideoInfo(null);
+    setUrlError(null);
+
+    try {
+      const info = await videoAPI.getVideoInfo(urlInput.trim());
+      if (info.duration > MAX_UPLOAD_DURATION) {
+        setUrlError(`Video is ${formatDuration(info.duration)} long. Maximum is 5 minutes.`);
+        return;
+      }
+      setVideoInfo(info);
+    } catch (err: any) {
+      setUrlError(err.message || "Failed to fetch video info");
+    } finally {
+      setIsFetchingInfo(false);
+    }
+  };
+
+  const handleUrlDownload = async () => {
+    if (!urlInput.trim() || !teamId) return;
+    setIsDownloading(true);
+    setDownloadProgress(null);
+    setUrlError(null);
+
+    try {
+      const result = await videoAPI.downloadFromUrl(
+        urlInput.trim(),
+        teamId,
+        (progress) => setDownloadProgress(progress)
+      );
+
+      if (!result.downloadUrl) {
+        throw new Error("No download URL received");
+      }
+
+      setDownloadProgress({ type: "uploading", message: "Importing video..." });
+      const file = await fetchVideoAsFile(result.downloadUrl, result.fileName);
+      const preview = URL.createObjectURL(file);
+
+      const videoEl = document.createElement("video");
+      videoEl.src = preview;
+      videoEl.onloadedmetadata = () => {
+        const dur = videoEl.duration;
+        onVideoChange({ file, preview }, dur);
+        onSegmentsChange([{ id: crypto.randomUUID(), start: 0, end: Math.min(dur, 60) }]);
+        setIsDownloading(false);
+        setDownloadProgress(null);
+        setUrlInput("");
+        setVideoInfo(null);
+      };
+      videoEl.onerror = () => {
+        URL.revokeObjectURL(preview);
+        setUrlError("Failed to load downloaded video");
+        setIsDownloading(false);
+        setDownloadProgress(null);
+      };
+    } catch (err: any) {
+      setUrlError(err.message || "Failed to download video");
+      setIsDownloading(false);
+      setDownloadProgress(null);
+    }
+  };
+
+  const renderFileUpload = () => (
+    <div
+      className={`border-2 border-dashed rounded-xl p-12 transition-colors ${
+        isDragging
+          ? "border-accent-400 bg-accent-400/10"
+          : "border-border-base hover:border-accent-400/50"
+      }`}
+      onDragOver={(e) => {
+        e.preventDefault();
+        setIsDragging(true);
+      }}
+      onDragLeave={(e) => {
+        e.preventDefault();
+        setIsDragging(false);
+      }}
+      onDrop={handleDrop}
+    >
+      <div className="flex flex-col items-center space-y-4">
+        <div className="w-16 h-16 bg-accent-400/10 rounded-full flex items-center justify-center">
+          <Icon icon="solar:upload-bold-duotone" className="text-3xl text-accent-400" />
+        </div>
+        <div className="text-center">
+          <p className="text-lg font-medium text-text-primary">Drag & drop your video</p>
+          <p className="text-sm text-text-tertiary mt-1">or click to browse files</p>
+        </div>
+        <input
+          ref={videoInputRef}
+          type="file"
+          accept="video/*"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleVideoSelect(file);
+            e.target.value = "";
+          }}
+        />
+        <Button
+          size="md"
+          variant="flat"
+          color="primary"
+          onPress={() => videoInputRef.current?.click()}
+          startContent={<Icon icon="solar:folder-open-bold" />}
+        >
+          Browse Files
+        </Button>
+        <p className="text-xs text-text-muted">MP4, MOV, WebM supported</p>
+      </div>
+    </div>
+  );
+
+  const renderUrlDownload = () => (
+    <div className="flex flex-col space-y-4">
+      {isDownloading ? (
+        <div className="flex flex-col items-center justify-center space-y-4 py-4">
+          <div className="w-16 h-16 bg-accent-400/10 rounded-full flex items-center justify-center">
+            <Icon icon="solar:download-bold-duotone" className="text-3xl text-accent-400 animate-pulse" />
+          </div>
+          <div className="text-center">
+            <h3 className="text-base font-semibold text-text-primary">
+              {downloadProgress?.type === "uploading" ? "Importing Video..." : "Downloading Video"}
+            </h3>
+            {videoInfo && (
+              <p className="text-sm text-text-tertiary mt-1">{videoInfo.title}</p>
+            )}
+          </div>
+          <div className="w-full max-w-sm">
+            <Progress
+              value={downloadProgress?.type === "uploading" ? 100 : downloadProgress?.percent || 0}
+              color="primary"
+              className="mb-2"
+              isIndeterminate={downloadProgress?.type === "start" || downloadProgress?.type === "uploading"}
+              showValueLabel={downloadProgress?.type === "progress"}
+            />
+            <div className="flex justify-between text-xs text-text-tertiary">
+              <span>
+                {downloadProgress?.type === "uploading"
+                  ? "Importing..."
+                  : downloadProgress?.type === "progress"
+                    ? `${downloadProgress.percent?.toFixed(1)}%`
+                    : "Starting..."}
+              </span>
+              <span>{downloadProgress?.speed || ""}</span>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="flex gap-2">
+            <Input
+              placeholder="Paste video URL (YouTube, TikTok, etc.)"
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && urlInput.trim()) handleFetchVideoInfo();
+              }}
+              startContent={<Icon icon="solar:link-bold" className="text-text-tertiary" />}
+              isDisabled={isFetchingInfo}
+              classNames={{
+                inputWrapper: "bg-surface-elevated border border-border-base",
+              }}
+            />
+            <Button
+              color="primary"
+              variant="flat"
+              onPress={handleFetchVideoInfo}
+              isLoading={isFetchingInfo}
+              isDisabled={!urlInput.trim()}
+            >
+              Fetch
+            </Button>
+          </div>
+
+          {videoInfo && (
+            <div className="rounded-lg border border-border-base bg-surface-elevated p-4">
+              <div className="flex gap-4">
+                {videoInfo.thumbnail && (
+                  <img
+                    src={videoInfo.thumbnail}
+                    alt={videoInfo.title}
+                    className="w-32 h-20 object-cover rounded-md flex-shrink-0"
+                  />
+                )}
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm font-semibold text-text-primary truncate">{videoInfo.title}</h4>
+                  <p className="text-xs text-text-secondary mt-1">
+                    {videoInfo.uploader}
+                    {videoInfo.platform && (
+                      <span className="ml-2 px-1.5 py-0.5 bg-accent-400/10 text-accent-400 rounded text-[10px]">
+                        {videoInfo.platform}
+                      </span>
+                    )}
+                  </p>
+                  <div className="flex gap-3 mt-2 text-xs text-text-tertiary">
+                    {videoInfo.duration > 0 && <span>{formatDuration(videoInfo.duration)}</span>}
+                    {videoInfo.filesize > 0 && <span>~{formatBytes(videoInfo.filesize)}</span>}
+                  </div>
+                </div>
+              </div>
+              <Button
+                color="primary"
+                className="w-full mt-4"
+                onPress={handleUrlDownload}
+                isDisabled={!teamId}
+                startContent={<Icon icon="solar:download-bold" />}
+              >
+                Download & Import
+              </Button>
+            </div>
+          )}
+
+          {urlError && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+              <Icon icon="solar:danger-triangle-bold" className="text-red-400 flex-shrink-0" width={18} />
+              <p className="text-sm text-red-400">{urlError}</p>
+            </div>
+          )}
+
+          <div className="flex items-start gap-2 text-xs text-text-tertiary">
+            <Icon icon="solar:info-circle-outline" className="text-base mt-0.5 flex-shrink-0" />
+            <p>Supports YouTube, Twitch, Kick, TikTok, Instagram, and 1000+ sites. Max 5 minutes.</p>
+          </div>
+        </>
+      )}
+    </div>
+  );
+
   return (
     <Card className="bg-surface-base border border-border-base">
       <CardHeader className="pb-0">
@@ -87,12 +328,11 @@ export function VideoUploadCard({
       <CardBody className="pt-4">
         {video ? (
           <div className="space-y-3">
-            {/* Video info bar - always visible */}
             <div className="flex items-center justify-between gap-3 p-2 bg-surface-elevated rounded-lg">
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-text-primary truncate">{video.file.name}</p>
                 <p className="text-xs text-text-tertiary">
-                  {Math.round(videoDuration)}s {!showEditor && "• Ready for auto-detect"}
+                  {Math.round(videoDuration)}s {!showEditor && "\u2022 Ready for auto-detect"}
                 </p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
@@ -119,19 +359,12 @@ export function VideoUploadCard({
               </div>
             </div>
 
-            {/* Simple video player when not editing */}
             {!showEditor && (
               <div className="relative rounded-xl overflow-hidden bg-black aspect-video">
-                <video
-                  src={video.preview}
-                  className="w-full h-full object-contain"
-                  controls
-                  playsInline
-                />
+                <video src={video.preview} className="w-full h-full object-contain" controls playsInline />
               </div>
             )}
 
-            {/* Full editor when editing */}
             {showEditor && (
               <MultiSegmentTrimmer
                 videoSrc={video.preview}
@@ -144,54 +377,42 @@ export function VideoUploadCard({
               />
             )}
           </div>
+        ) : isDownloading ? (
+          renderUrlDownload()
         ) : (
-          <div
-            className={`border-2 border-dashed rounded-xl p-12 transition-colors ${
-              isDragging
-                ? "border-accent-400 bg-accent-400/10"
-                : "border-border-base hover:border-accent-400/50"
-            }`}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setIsDragging(true);
+          <Tabs
+            aria-label="Upload method"
+            variant="underlined"
+            classNames={{
+              tabList: "gap-4 w-full relative rounded-none p-0 border-b border-border-base mb-4",
+              cursor: "w-full bg-accent-400",
+              tab: "max-w-fit px-2 h-10",
+              tabContent: "group-data-[selected=true]:text-accent-400",
             }}
-            onDragLeave={(e) => {
-              e.preventDefault();
-              setIsDragging(false);
-            }}
-            onDrop={handleDrop}
           >
-            <div className="flex flex-col items-center space-y-4">
-              <div className="w-16 h-16 bg-accent-400/10 rounded-full flex items-center justify-center">
-                <Icon icon="solar:upload-bold-duotone" className="text-3xl text-accent-400" />
-              </div>
-              <div className="text-center">
-                <p className="text-lg font-medium text-text-primary">Drag & drop your video</p>
-                <p className="text-sm text-text-tertiary mt-1">or click to browse files</p>
-              </div>
-              <input
-                ref={videoInputRef}
-                type="file"
-                accept="video/*"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleVideoSelect(file);
-                  e.target.value = "";
-                }}
-              />
-              <Button
-                size="md"
-                variant="flat"
-                color="primary"
-                onPress={() => videoInputRef.current?.click()}
-                startContent={<Icon icon="solar:folder-open-bold" />}
-              >
-                Browse Files
-              </Button>
-              <p className="text-xs text-text-muted">MP4, MOV, WebM supported</p>
-            </div>
-          </div>
+            <Tab
+              key="file"
+              title={
+                <div className="flex items-center gap-2">
+                  <Icon icon="solar:upload-bold" />
+                  <span>Upload File</span>
+                </div>
+              }
+            >
+              {renderFileUpload()}
+            </Tab>
+            <Tab
+              key="url"
+              title={
+                <div className="flex items-center gap-2">
+                  <Icon icon="solar:link-bold" />
+                  <span>Paste URL</span>
+                </div>
+              }
+            >
+              {renderUrlDownload()}
+            </Tab>
+          </Tabs>
         )}
       </CardBody>
     </Card>

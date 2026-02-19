@@ -354,6 +354,7 @@ export interface AdPostingJob extends BaseJob {
   driveFolderId: string;
   clipPath: string;
   clipTitle: string;
+  postIds?: Array<{ id: number; platform: string }>;
 }
 
 export type VideoProcessingJob =
@@ -775,6 +776,7 @@ class SQSService {
     driveFolderId: string;
     clipPath: string;
     clipTitle: string;
+    postIds?: Array<{ id: number; platform: string }>;
   }): Promise<string> {
     const job: AdPostingJob = {
       type: "ad-posting",
@@ -785,6 +787,7 @@ class SQSService {
       driveFolderId: params.driveFolderId,
       clipPath: params.clipPath,
       clipTitle: params.clipTitle,
+      postIds: params.postIds,
       createdAt: new Date().toISOString(),
     };
 

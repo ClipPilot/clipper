@@ -91,6 +91,24 @@ class AdPostingService {
 
     await teamService.incrementTeamUsage(teamId, creditsNeeded);
 
+    // Create post rows upfront as "processing" so they appear in the dashboard immediately
+    const postIds: Array<{ id: number; platform: string }> = [];
+    for (const [platform, qty] of Object.entries(platformQuantities)) {
+      for (let i = 0; i < qty; i++) {
+        const [row] = await db
+          .insert(posts)
+          .values({
+            team_id: teamId,
+            clip_id: clipId,
+            content: clip.title || `clip-${clipId}`,
+            platform: platform as any,
+            status: "processing",
+          })
+          .returning({ id: posts.id });
+        postIds.push({ id: row.id, platform });
+      }
+    }
+
     await sqsService.sendAdPostingJob({
       clipId,
       teamId,
@@ -99,6 +117,7 @@ class AdPostingService {
       driveFolderId,
       clipPath: clip.clip_path,
       clipTitle: clip.title || `clip-${clipId}`,
+      postIds,
     });
   }
 
@@ -210,6 +229,7 @@ class AdPostingService {
     if (tab === "queued") {
       conditions.push(
         or(
+          eq(posts.status, "processing"),
           eq(posts.status, "scheduled"),
           eq(posts.status, "failed")
         )!

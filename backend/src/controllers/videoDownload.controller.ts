@@ -1,7 +1,8 @@
 import * as Sentry from "@sentry/node";
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
-import { youtubeService } from "../services/youtube.service";
+import { videoDownloadService } from "../services/videoDownload.service";
+import { s3Service } from "../services/s3.service";
 
 export const getVideoInfo = async (req: AuthRequest, res: Response) => {
   try {
@@ -12,10 +13,10 @@ export const getVideoInfo = async (req: AuthRequest, res: Response) => {
     const { url } = req.body;
 
     if (!url) {
-      return res.status(400).json({ error: "YouTube URL is required" });
+      return res.status(400).json({ error: "URL is required" });
     }
 
-    const info = await youtubeService.getVideoInfo(url);
+    const info = await videoDownloadService.getVideoInfo(url);
     return res.json(info);
   } catch (err: any) {
     console.error("Get video info error:", err);
@@ -52,7 +53,7 @@ export const downloadVideo = async (req: AuthRequest, res: Response) => {
     sendProgress({ type: "start", message: "Starting download..." });
 
     try {
-      const result = await youtubeService.downloadAndUploadToS3(
+      const result = await videoDownloadService.downloadToS3(
         url,
         parsedTeamId,
         (progress) => {
@@ -61,8 +62,6 @@ export const downloadVideo = async (req: AuthRequest, res: Response) => {
             percent: progress.percent,
             speed: progress.speed,
             eta: progress.eta,
-            downloaded: progress.downloaded,
-            total: progress.total,
           });
         }
       );
@@ -72,11 +71,14 @@ export const downloadVideo = async (req: AuthRequest, res: Response) => {
         message: "Uploading to cloud...",
       });
 
+      const downloadUrl = await s3Service.getPresignedUrl(result.s3Key, 3600);
+
       sendProgress({
         type: "complete",
         s3Key: result.s3Key,
         fileName: result.fileName,
         fileSize: result.fileSize,
+        downloadUrl,
       });
     } catch (downloadErr: any) {
       sendProgress({
@@ -112,12 +114,14 @@ export const downloadVideoSync = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: "Invalid team ID" });
     }
 
-    const result = await youtubeService.downloadAndUploadToS3(url, parsedTeamId);
+    const result = await videoDownloadService.downloadToS3(url, parsedTeamId);
+    const downloadUrl = await s3Service.getPresignedUrl(result.s3Key, 3600);
 
     return res.json({
       s3Key: result.s3Key,
       fileName: result.fileName,
       fileSize: result.fileSize,
+      downloadUrl,
     });
   } catch (err: any) {
     console.error("Download video error:", err);

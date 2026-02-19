@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAtom } from "jotai";
 import { userAtom, selectedTeamAtom } from "@/store/auth";
@@ -25,6 +25,7 @@ import PreviewClipViewModal from "@/components/clips/PreviewClipViewModal";
 import ClipViewModal from "@/components/clips/ClipViewModal";
 import { DeleteConfirmModal } from "@/components/clips/DeleteConfirmModal";
 import { useClipsData, useClipModals, useTags, useFolders } from "@/hooks/useClips";
+import { useSocket } from "@/hooks/useSocket";
 
 interface UploadedVideo {
   s3Key: string;
@@ -100,6 +101,20 @@ export default function CreateClipPage() {
 
   const { tags, loadTags, createTag, deleteTag, updateClipTags } = useTags();
   const { folders, loadFolders } = useFolders();
+
+  // WebSocket: refresh pending/unsaved clips when backend signals completion
+  const lastSocketUpdateRef = useRef<number>(0);
+  const handleSocketUpdate = useCallback(() => {
+    const now = Date.now();
+    if (now - lastSocketUpdateRef.current < 2000) return;
+    lastSocketUpdateRef.current = now;
+
+    loadPendingClips();
+    loadUnsavedClips();
+    triggerRefresh();
+  }, [loadPendingClips, loadUnsavedClips, triggerRefresh]);
+
+  useSocket(selectedTeam?.id, handleSocketUpdate);
 
   useEffect(() => {
     if (!user) {

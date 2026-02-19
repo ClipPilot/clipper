@@ -848,6 +848,7 @@ export const platformEnum = pgEnum("platform_enum", [
 ]);
 
 export const postStatusEnum = pgEnum("post_status_enum", [
+  "processing",
   "scheduled",
   "posted",
   "cancelled",

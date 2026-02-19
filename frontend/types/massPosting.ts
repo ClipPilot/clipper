@@ -40,7 +40,7 @@ export type MassPostingPlatform =
   | "facebook"
   | "linkedin";
 
-export type PostStatus = "scheduled" | "posted" | "cancelled" | "deleted" | "failed";
+export type PostStatus = "processing" | "scheduled" | "posted" | "cancelled" | "deleted" | "failed";
 
 /** Single post row from the API (joined with clip data) */
 export interface TeamPost {

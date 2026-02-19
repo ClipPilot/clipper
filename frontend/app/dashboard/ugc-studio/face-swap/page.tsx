@@ -310,6 +310,7 @@ function FaceSwapContent({
               onSegmentsChange={setSegments}
               showEditor={showEditor && swapType === "fullbody"}
               onToggleEditor={() => setShowEditor((v) => !v)}
+              teamId={selectedTeam?.id}
             />
             {selectedTeam?.id && (
               <div className="space-y-4">

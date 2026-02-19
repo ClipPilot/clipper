@@ -30,8 +30,15 @@ import type { GetTeamPostsParams } from "@/api/adPosting";
 
 const STATUS_CONFIG: Record<
   string,
-  { color: string; dotClass: string; icon?: string; label: string }
+  { color: string; dotClass: string; icon?: string; iconClass?: string; label: string }
 > = {
+  processing: {
+    color: "text-blue-400",
+    dotClass: "bg-blue-400",
+    icon: "solar:refresh-bold",
+    iconClass: "animate-spin",
+    label: "Processing",
+  },
   scheduled: {
     color: "text-green-400",
     dotClass: "bg-green-400",
@@ -106,9 +113,10 @@ export function QueuedPostsTab({
   const totalVideos = pagination?.total ?? 0;
   const totalPosts = pagination?.totalPosts ?? 0;
 
-  // Determine worst status in group for display
+  // Determine worst status in group for display (priority: failed > processing > scheduled)
   const groupStatus = (group: QueuedGroup) => {
     if (group.posts.some((p) => p.status === "failed")) return "failed";
+    if (group.posts.some((p) => p.status === "processing")) return "processing";
     return "scheduled";
   };
 
@@ -244,7 +252,7 @@ export function QueuedPostsTab({
                         <Icon
                           icon={statusCfg.icon}
                           width={14}
-                          className={statusCfg.color}
+                          className={`${statusCfg.color} ${statusCfg.iconClass ?? ""}`}
                         />
                       ) : (
                         <span
