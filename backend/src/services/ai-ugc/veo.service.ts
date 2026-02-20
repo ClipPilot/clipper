@@ -25,7 +25,7 @@ export const VEO_GENTLE_MOTION_MODIFIERS =
 
 export type VeoAspectRatio = "16:9" | "9:16" | "auto";
 export type VeoDuration = "7s" | "8s";
-export type VeoFastDuration = "4s" | "6s" | "8s";
+export type VeoI2VDuration = "4s" | "6s" | "8s";
 export type VeoResolution = "720p" | "1080p";
 
 // Reference-to-Video: Generate video from reference images
@@ -68,7 +68,7 @@ export interface ExtendVideoResult {
 export interface ImageToVideoOptions {
   imageUrl: string;
   prompt: string;
-  duration?: VeoFastDuration;
+  duration?: VeoI2VDuration;
   aspectRatio?: VeoAspectRatio;
   resolution?: VeoResolution;
   generateAudio?: boolean;
@@ -293,7 +293,7 @@ export async function extendVideoWithRetry(
 }
 
 /**
- * Generate video from a single image using Veo 3.1 Fast
+ * Generate video from a single image using Veo 3.1
  * Good for B-roll and product shots with configurable duration
  */
 export async function imageToVideo(
@@ -311,13 +311,13 @@ export async function imageToVideo(
     autoFix = false,
   } = options;
 
-  console.log(`[Veo 3.1 Fast] Image-to-video: ${duration} at ${resolution}`);
-  console.log(`[Veo 3.1 Fast] Prompt: ${prompt.substring(0, 150)}...`);
+  console.log(`[Veo 3.1] Image-to-video: ${duration} at ${resolution}`);
+  console.log(`[Veo 3.1] Prompt: ${prompt.substring(0, 150)}...`);
 
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = await (fal.subscribe as any)(
-      "fal-ai/veo3.1/fast/image-to-video",
+      "fal-ai/veo3.1/image-to-video",
       {
         input: {
           prompt,
@@ -337,7 +337,7 @@ export async function imageToVideo(
         }) => {
           if (update.status === "IN_PROGRESS" && update.logs) {
             update.logs.forEach((log) =>
-              console.log(`[Veo 3.1 Fast] ${log.message}`)
+              console.log(`[Veo 3.1] ${log.message}`)
             );
           }
         },
@@ -347,17 +347,17 @@ export async function imageToVideo(
     const data = result.data as VeoVideoResponse;
 
     if (!data?.video?.url) {
-      throw new Error("No video URL in Veo 3.1 Fast response");
+      throw new Error("No video URL in Veo 3.1 response");
     }
 
-    console.log(`[Veo 3.1 Fast] Video generated: ${data.video.url}`);
+    console.log(`[Veo 3.1] Video generated: ${data.video.url}`);
 
     return {
       videoUrl: data.video.url,
       requestId: result.requestId,
     };
   } catch (error) {
-    console.error("[Veo 3.1 Fast] Image-to-video failed:", error);
+    console.error("[Veo 3.1] Image-to-video failed:", error);
     throw error;
   }
 }
@@ -377,13 +377,13 @@ export async function imageToVideoWithRetry(
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
       console.warn(
-        `[Veo 3.1 Fast] Image-to-video attempt ${attempt}/${maxRetries} failed:`,
+        `[Veo 3.1] Image-to-video attempt ${attempt}/${maxRetries} failed:`,
         lastError.message
       );
 
       if (attempt < maxRetries) {
         const delay = Math.pow(2, attempt) * 1000;
-        console.log(`[Veo 3.1 Fast] Retrying in ${delay / 1000}s...`);
+        console.log(`[Veo 3.1] Retrying in ${delay / 1000}s...`);
         await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }

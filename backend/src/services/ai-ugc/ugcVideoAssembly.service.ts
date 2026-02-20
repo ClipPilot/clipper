@@ -742,7 +742,7 @@ async function processBrollScene(
         shot.action,
       );
 
-      // Use Veo 3.1 Fast for B-roll (configurable duration, better product stability)
+      // Use Veo 3.1 for B-roll (configurable duration, better product stability)
       const { videoUrl: shotVideoUrl } =
         await veoService.imageToVideoWithRetry({
           imageUrl: shotImageUrl,
@@ -872,7 +872,7 @@ async function processBrollScene(
       action,
     );
 
-    // Use Veo 3.1 Fast for B-roll (8s configurable duration, better product stability)
+    // Use Veo 3.1 for B-roll (8s configurable duration, better product stability)
     const { videoUrl: veoVideoUrl } =
       await veoService.imageToVideoWithRetry({
         imageUrl,
@@ -882,7 +882,7 @@ async function processBrollScene(
       });
 
     console.log(
-      `[UGC Assembly] B-Roll Scene ${sceneNumber}: Veo 3.1 Fast generated 8s video`,
+      `[UGC Assembly] B-Roll Scene ${sceneNumber}: Veo 3.1 generated 8s video`,
     );
 
     const silentVideoPath = path.join(
