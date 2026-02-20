@@ -273,6 +273,7 @@ export const uploadedRawVideos = pgTable(
   "uploaded_raw_videos",
   {
     id: serial("id").primaryKey(),
+    public_id: uuid("public_id").notNull().defaultRandom().unique(),
     team_id: integer("team_id")
       .notNull()
       .references(() => teams.id, { onDelete: "cascade" }),
@@ -927,6 +928,7 @@ export const viralityAccounts = pgTable(
       { onDelete: "cascade" },
     ),
     platform: viralityPlatformEnum("platform").notNull(),
+    account_type: varchar("account_type", { length: 20 }).notNull().default("profile"),
     username: varchar("username", { length: 255 }).notNull(),
     profile_url: text("profile_url").notNull(),
     display_name: varchar("display_name", { length: 255 }),

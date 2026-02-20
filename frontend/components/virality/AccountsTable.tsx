@@ -132,21 +132,37 @@ export function AccountsTable({
               >
                 <TableCell>
                   <div className="flex items-center gap-3">
-                    <Avatar
-                      src={fa.account.avatar_url || undefined}
-                      name={fa.account.username.charAt(0).toUpperCase()}
-                      size="sm"
-                      classNames={{ base: "bg-surface-hover flex-shrink-0" }}
-                    />
+                    {fa.account.account_type === "hashtag" ? (
+                      <div className="w-8 h-8 rounded-full bg-surface-hover flex items-center justify-center flex-shrink-0">
+                        <Icon icon="solar:hashtag-bold" width={16} className="text-text-secondary" />
+                      </div>
+                    ) : fa.account.account_type === "keyword" ? (
+                      <div className="w-8 h-8 rounded-full bg-surface-hover flex items-center justify-center flex-shrink-0">
+                        <Icon icon="solar:magnifer-bold" width={16} className="text-text-secondary" />
+                      </div>
+                    ) : (
+                      <Avatar
+                        src={fa.account.avatar_url || undefined}
+                        name={fa.account.username.charAt(0).toUpperCase()}
+                        size="sm"
+                        classNames={{ base: "bg-surface-hover flex-shrink-0" }}
+                      />
+                    )}
                     <div>
                       <p className="font-medium text-text-primary">
-                        @{fa.account.username}
+                        {fa.account.account_type === "hashtag"
+                          ? `#${fa.account.username}`
+                          : fa.account.account_type === "keyword"
+                            ? fa.account.username
+                            : `@${fa.account.username}`}
                       </p>
-                      {fa.account.display_name && (
-                        <p className="text-xs text-text-tertiary truncate max-w-[180px]">
-                          {fa.account.display_name}
-                        </p>
-                      )}
+                      <p className="text-xs text-text-tertiary truncate max-w-[180px]">
+                        {fa.account.account_type === "hashtag"
+                          ? "Hashtag search"
+                          : fa.account.account_type === "keyword"
+                            ? "Keyword search"
+                            : fa.account.display_name || ""}
+                      </p>
                     </div>
                   </div>
                 </TableCell>

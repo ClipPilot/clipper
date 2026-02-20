@@ -219,6 +219,7 @@ export default function ViralityPage() {
       enableAlerts: boolean;
       competitorId?: number;
       newCompetitorName?: string;
+      accountType: "profile" | "hashtag" | "keyword";
     }
   ) => {
     if (!selectedTeam?.id) return;
@@ -239,9 +240,10 @@ export default function ViralityPage() {
 
     await viralityAPI.addAccount(
       selectedTeam.id,
-      platform as "instagram" | "tiktok",
+      platform,
       profileUrl,
-      competitorId
+      competitorId,
+      options.accountType
     );
 
     addToast({ title: "Account added", color: "success" });

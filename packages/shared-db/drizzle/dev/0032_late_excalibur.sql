@@ -1,0 +1,2 @@
+ALTER TABLE "uploaded_raw_videos" ADD COLUMN "public_id" uuid DEFAULT gen_random_uuid() NOT NULL;--> statement-breakpoint
+ALTER TABLE "uploaded_raw_videos" ADD CONSTRAINT "uploaded_raw_videos_public_id_unique" UNIQUE("public_id");

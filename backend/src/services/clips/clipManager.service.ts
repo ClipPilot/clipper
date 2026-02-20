@@ -86,6 +86,23 @@ export class ClipManagerService {
       .orderBy(desc(clips.created_at));
   }
 
+  // Get all clips for a raw video by its public UUID (used by external API)
+  async getClipsByPublicId(publicId: string, teamId: number) {
+    const [rawVideo] = await db
+      .select({ id: uploadedRawVideos.id })
+      .from(uploadedRawVideos)
+      .where(and(eq(uploadedRawVideos.public_id, publicId), eq(uploadedRawVideos.team_id, teamId)))
+      .limit(1);
+
+    if (!rawVideo) return [];
+
+    return await db
+      .select()
+      .from(clips)
+      .where(and(eq(clips.raw_video_id, rawVideo.id), eq(clips.team_id, teamId)))
+      .orderBy(desc(clips.created_at));
+  }
+
   // Get a single clip by ID
   async getClipById(clipId: number, teamId: number) {
     const [clip] = await db

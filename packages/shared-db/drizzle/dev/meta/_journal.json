@@ -218,6 +218,20 @@
       "when": 1771567438576,
       "tag": "0030_glorious_meggan",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1771613462242,
+      "tag": "0031_lazy_skrulls",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1771614137238,
+      "tag": "0032_late_excalibur",
+      "breakpoints": true
     }
   ]
 }

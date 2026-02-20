@@ -69,7 +69,7 @@ class ViralityController {
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
       if (!(await requirePlanAccess(teamId, res))) return;
 
-      const { platform, profileUrl, competitorId } = req.body;
+      const { platform, profileUrl, competitorId, accountType } = req.body;
 
       if (!platform || !profileUrl) {
         return res.status(400).json({ error: "Platform and profile URL are required" });
@@ -78,11 +78,17 @@ class ViralityController {
         return res.status(400).json({ error: "Only Instagram, TikTok, and X are supported" });
       }
 
+      const validAccountTypes = ["profile", "hashtag", "keyword"];
+      if (accountType && !validAccountTypes.includes(accountType)) {
+        return res.status(400).json({ error: "Account type must be profile, hashtag, or keyword" });
+      }
+
       const account = await viralityService.addAccount(
         teamId,
         platform,
         profileUrl,
-        competitorId ? parseInt(competitorId) : undefined
+        competitorId ? parseInt(competitorId) : undefined,
+        accountType || "profile"
       );
 
       // Trigger first sync in the background

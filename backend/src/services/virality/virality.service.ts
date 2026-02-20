@@ -133,7 +133,13 @@ class ViralityService {
     return result?.count || 0;
   }
 
-  async addAccount(teamId: number, platform: "instagram" | "tiktok" | "x", profileUrl: string, competitorId?: number) {
+  async addAccount(
+    teamId: number,
+    platform: "instagram" | "tiktok" | "x",
+    profileUrl: string,
+    competitorId?: number,
+    accountType: "profile" | "hashtag" | "keyword" = "profile"
+  ) {
     // Check account limit
     const currentCount = await this.getAccountCount(teamId);
     if (currentCount >= MAX_ACCOUNTS_PER_TEAM) {
@@ -142,11 +148,18 @@ class ViralityService {
       );
     }
 
-    const username = platform === "tiktok"
-      ? parseTikTokUsername(profileUrl)
-      : platform === "x"
-        ? parseXUsername(profileUrl)
-        : parseInstagramUsername(profileUrl);
+    // Parse username based on account type
+    let username: string;
+    if (accountType === "profile") {
+      username = platform === "tiktok"
+        ? parseTikTokUsername(profileUrl)
+        : platform === "x"
+          ? parseXUsername(profileUrl)
+          : parseInstagramUsername(profileUrl);
+    } else {
+      // Hashtag/keyword: strip # and whitespace, lowercase
+      username = profileUrl.trim().replace(/^#/, "").toLowerCase();
+    }
 
     // Check if account already exists
     const [existing] = await db
@@ -162,7 +175,8 @@ class ViralityService {
       .limit(1);
 
     if (existing) {
-      throw new Error(`Account @${username} is already being tracked`);
+      const label = accountType === "hashtag" ? `#${username}` : accountType === "keyword" ? `"${username}"` : `@${username}`;
+      throw new Error(`${label} is already being tracked`);
     }
 
     // Verify competitor ownership if provided
@@ -173,19 +187,40 @@ class ViralityService {
       }
     }
 
-    const profileUrlMap: Record<string, string> = {
-      instagram: `https://www.instagram.com/${username}/`,
-      tiktok: `https://www.tiktok.com/@${username}`,
-      x: `https://x.com/${username}`,
-    };
+    // Build profile_url based on account type
+    let profile_url: string;
+    if (accountType === "profile") {
+      const profileUrlMap: Record<string, string> = {
+        instagram: `https://www.instagram.com/${username}/`,
+        tiktok: `https://www.tiktok.com/@${username}`,
+        x: `https://x.com/${username}`,
+      };
+      profile_url = profileUrlMap[platform];
+    } else if (accountType === "hashtag") {
+      const hashtagUrlMap: Record<string, string> = {
+        instagram: `https://www.instagram.com/explore/tags/${username}/`,
+        tiktok: `https://www.tiktok.com/tag/${username}`,
+        x: `https://x.com/search?q=%23${username}`,
+      };
+      profile_url = hashtagUrlMap[platform];
+    } else {
+      // keyword
+      const keywordUrlMap: Record<string, string> = {
+        instagram: `https://www.instagram.com/explore/tags/${username}/`,
+        tiktok: `https://www.tiktok.com/tag/${username}`,
+        x: `https://x.com/search?q=${encodeURIComponent(username)}`,
+      };
+      profile_url = keywordUrlMap[platform];
+    }
 
     const [account] = await db
       .insert(viralityAccounts)
       .values({
         team_id: teamId,
         platform,
+        account_type: accountType,
         username,
-        profile_url: profileUrlMap[platform],
+        profile_url,
         sync_status: "pending",
         competitor_id: competitorId || null,
       })
@@ -222,23 +257,50 @@ class ViralityService {
       .where(eq(viralityAccounts.id, accountId));
 
     try {
-      // Scrape posts using Apify SDK
-      const { posts, profile } = account.platform === "tiktok"
-        ? await getApifyService().scrapeTikTokPosts(account.username)
-        : account.platform === "x"
-          ? await getApifyService().scrapeXPosts(account.username)
-          : await getApifyService().scrapeInstagramPosts(account.username);
-      console.log(`Scraped ${posts.length} posts for @${account.username} (${account.platform})`);
+      // Scrape posts using Apify SDK — branch on account_type
+      const apify = getApifyService();
+      let posts: InstagramPost[];
+      let profile: InstagramProfile | null = null;
 
-      // Fallback: fetch profile separately if posts scrape didn't include it (Instagram only)
-      const resolvedProfile = profile
-        ?? (account.platform === "instagram"
-          ? await getApifyService().scrapeInstagramProfile(account.username)
-          : null);
+      if (account.account_type === "hashtag") {
+        // Hashtag search
+        const result = account.platform === "tiktok"
+          ? await apify.scrapeTikTokHashtag(account.username)
+          : account.platform === "x"
+            ? await apify.scrapeXKeywordSearch(`#${account.username}`)
+            : await apify.scrapeInstagramHashtag(account.username);
+        posts = result.posts;
+      } else if (account.account_type === "keyword") {
+        // Keyword search — X uses searchTerms, IG/TikTok fall back to hashtag
+        const result = account.platform === "x"
+          ? await apify.scrapeXKeywordSearch(account.username)
+          : account.platform === "tiktok"
+            ? await apify.scrapeTikTokHashtag(account.username)
+            : await apify.scrapeInstagramHashtag(account.username);
+        posts = result.posts;
+      } else {
+        // Profile (default)
+        const result = account.platform === "tiktok"
+          ? await apify.scrapeTikTokPosts(account.username)
+          : account.platform === "x"
+            ? await apify.scrapeXPosts(account.username)
+            : await apify.scrapeInstagramPosts(account.username);
+        posts = result.posts;
+        profile = result.profile;
+      }
 
-      // Update profile info if available
-      if (resolvedProfile) {
-        await this.updateAccountProfile(accountId, resolvedProfile);
+      console.log(`Scraped ${posts.length} posts for ${account.account_type === "hashtag" ? "#" : ""}${account.username} (${account.platform}, type=${account.account_type})`);
+
+      // Only update profile for profile-type accounts
+      if (account.account_type === "profile") {
+        const resolvedProfile = profile
+          ?? (account.platform === "instagram"
+            ? await apify.scrapeInstagramProfile(account.username)
+            : null);
+
+        if (resolvedProfile) {
+          await this.updateAccountProfile(accountId, resolvedProfile);
+        }
       }
 
       // Process and store posts
@@ -488,7 +550,9 @@ class ViralityService {
 
     let totalFollowers = 0;
     for (const account of accounts) {
-      totalFollowers += account.follower_count || 0;
+      if (account.account_type === "profile") {
+        totalFollowers += account.follower_count || 0;
+      }
     }
 
     const hasDateFilter = !!(startDate || endDate);

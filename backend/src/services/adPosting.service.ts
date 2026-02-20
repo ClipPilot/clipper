@@ -10,6 +10,7 @@ import { getTeamUsage } from "../middleware/subscription.middleware";
 import { sqsService } from "./sqs.service";
 import { googleDriveService } from "./google/drive.service";
 import { s3Service } from "./s3.service";
+import { resolveAccountFromUrl } from "../utils/accountResolver";
 
 const VALID_PLATFORMS = new Set(["tiktok", "instagram", "facebook", "youtube", "x"]);
 
@@ -180,6 +181,16 @@ class AdPostingService {
       .where(eq(posts.id, postId))
       .limit(1);
 
+    let accountHandle: string | null = null;
+    if (postUrl) {
+      try {
+        const account = await resolveAccountFromUrl(postUrl);
+        accountHandle = account.username;
+      } catch (err) {
+        console.warn(`[AdPosting] Could not resolve account from ${postUrl}:`, err);
+      }
+    }
+
     await db
       .update(posts)
       .set({
@@ -187,6 +198,7 @@ class AdPostingService {
         post_url: postUrl || null,
         posted_time: new Date(),
         updated_at: new Date(),
+        ...(accountHandle && { accountHandle }),
       })
       .where(eq(posts.id, postId));
 

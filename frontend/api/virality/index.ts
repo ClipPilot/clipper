@@ -18,6 +18,7 @@ export interface ViralityAccount {
   team_id: number;
   competitor_id: number | null;
   platform: "instagram" | "tiktok" | "x";
+  account_type: "profile" | "hashtag" | "keyword";
   username: string;
   profile_url: string;
   display_name: string | null;
@@ -107,13 +108,14 @@ class ViralityAPI {
     teamId: number,
     platform: "instagram" | "tiktok" | "x",
     profileUrl: string,
-    competitorId?: number
+    competitorId?: number,
+    accountType: "profile" | "hashtag" | "keyword" = "profile"
   ): Promise<ViralityAccount> {
     const response = await apiFetch(`${API_URL}/virality/${teamId}/accounts`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ platform, profileUrl, competitorId }),
+      body: JSON.stringify({ platform, profileUrl, competitorId, accountType }),
     });
 
     if (!response.ok) {

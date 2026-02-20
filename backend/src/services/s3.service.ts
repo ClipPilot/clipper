@@ -542,9 +542,29 @@ class S3Service {
     if (!response.ok) {
       throw new Error(`Failed to download video: ${response.statusText}`);
     }
+
+    // Validate content-type looks like a video (not HTML/JSON/etc.)
+    const contentType = response.headers.get("content-type") || "";
+    if (
+      contentType.includes("text/html") ||
+      contentType.includes("application/json")
+    ) {
+      throw new Error(
+        `URL returned ${contentType} instead of a video file. Provide a direct video URL, not a webpage link.`
+      );
+    }
+
     const buffer = Buffer.from(await response.arrayBuffer());
+
+    // Sanity check: video files should be at least a few KB
+    if (buffer.length < 1024) {
+      throw new Error(
+        `Downloaded file is only ${buffer.length} bytes — likely not a valid video. Provide a direct video URL.`
+      );
+    }
+
     fs.writeFileSync(localPath, buffer);
-    console.log(`[S3] Downloaded video to: ${localPath}`);
+    console.log(`[S3] Downloaded video (${(buffer.length / 1024 / 1024).toFixed(1)}MB) to: ${localPath}`);
   }
 
   async getFaceDetectUploadUrl(

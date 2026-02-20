@@ -193,6 +193,37 @@ class ApifyService {
     };
   }
 
+  // ── Instagram Hashtag ──
+
+  async scrapeInstagramHashtag(
+    hashtag: string
+  ): Promise<{ posts: InstagramPost[]; profile: null }> {
+    const tag = hashtag.replace(/^#/, "").toLowerCase();
+    const input = {
+      addParentData: false,
+      directUrls: [`https://www.instagram.com/explore/tags/${tag}/`],
+      onlyPostsNewerThan: `${SCRAPE_WINDOW_DAYS} days`,
+      resultsLimit: 100,
+      resultsType: "posts",
+      searchType: "hashtag",
+    };
+
+    const client = this.getClient();
+    const run = await client
+      .actor(APIFY_ACTORS.INSTAGRAM_SCRAPER)
+      .call(input);
+
+    const { items } = await client
+      .dataset(run.defaultDatasetId)
+      .listItems();
+
+    const posts: InstagramPost[] = items
+      .filter((item: any) => item.type !== "profile" && !item.profilePicUrl)
+      .map((item) => this.normalizePostData(item));
+
+    return { posts, profile: null };
+  }
+
   // ── TikTok ──
 
   async scrapeTikTokPosts(
@@ -244,6 +275,36 @@ class ApifyService {
       : null;
 
     return { posts, profile };
+  }
+
+  // ── TikTok Hashtag ──
+
+  async scrapeTikTokHashtag(
+    hashtag: string
+  ): Promise<{ posts: InstagramPost[]; profile: null }> {
+    const tag = hashtag.replace(/^#/, "").toLowerCase();
+    const input = {
+      hashtags: [`#${tag}`],
+      oldestPostDateUnified: `${SCRAPE_WINDOW_DAYS} days`,
+      resultsPerPage: 100,
+      shouldDownloadCovers: false,
+      shouldDownloadVideos: false,
+    };
+
+    const client = this.getClient();
+    const run = await client
+      .actor(APIFY_ACTORS.TIKTOK_SCRAPER)
+      .call(input);
+
+    const { items } = await client
+      .dataset(run.defaultDatasetId)
+      .listItems();
+
+    const posts: InstagramPost[] = items.map((item) =>
+      this.normalizeTikTokPostData(item)
+    );
+
+    return { posts, profile: null };
   }
 
   // ── X (Twitter) ──
@@ -314,6 +375,72 @@ class ApifyService {
     }
 
     // Step 3: Normalize posts with merged view counts
+    const posts: InstagramPost[] = tweetItems.map((item: any) =>
+      this.normalizeXPostData(item, viewCountMap.get(String(item.id)) ?? null)
+    );
+
+    return { posts, profile: null };
+  }
+
+  // ── X Keyword/Hashtag Search ──
+
+  async scrapeXKeywordSearch(
+    term: string
+  ): Promise<{ posts: InstagramPost[]; profile: null }> {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - SCRAPE_WINDOW_DAYS);
+
+    const postsInput = {
+      searchTerms: [term],
+      start: start.toISOString().split("T")[0],
+      end: end.toISOString().split("T")[0],
+      maxItems: 100,
+      sort: "Latest",
+      includeSearchTerms: false,
+    };
+
+    const client = this.getClient();
+    const postsRun = await client
+      .actor(APIFY_ACTORS.X_POSTS_SCRAPER)
+      .call(postsInput);
+
+    const { items: tweetItems } = await client
+      .dataset(postsRun.defaultDatasetId)
+      .listItems();
+
+    // Fetch view counts
+    const tweetIds = tweetItems
+      .map((item: any) => item.id)
+      .filter(Boolean);
+
+    const viewCountMap = new Map<string, number | null>();
+
+    if (tweetIds.length > 0) {
+      try {
+        const viewsInput = {
+          tweets: tweetIds.join(","),
+          max_results: 100,
+          mode: "Get a Few Tweets",
+        };
+
+        const viewsRun = await client
+          .actor(APIFY_ACTORS.X_VIEWS_SCRAPER)
+          .call(viewsInput);
+
+        const { items: viewItems } = await client
+          .dataset(viewsRun.defaultDatasetId)
+          .listItems();
+
+        for (const item of viewItems) {
+          const vi = item as any;
+          viewCountMap.set(String(vi.id), vi.view_count ?? null);
+        }
+      } catch (err) {
+        console.warn(`Failed to fetch X view counts for search "${term}":`, err);
+      }
+    }
+
     const posts: InstagramPost[] = tweetItems.map((item: any) =>
       this.normalizeXPostData(item, viewCountMap.get(String(item.id)) ?? null)
     );

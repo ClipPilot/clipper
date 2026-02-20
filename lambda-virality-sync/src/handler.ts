@@ -243,6 +243,111 @@ async function scrapeTikTokAccount(
   return { posts, profile };
 }
 
+// ── Instagram Hashtag ──
+
+async function scrapeInstagramHashtag(
+  client: ApifyClient,
+  hashtag: string
+): Promise<{ posts: InstagramPost[]; profile: null }> {
+  const tag = hashtag.replace(/^#/, "").toLowerCase();
+  const input = {
+    addParentData: false,
+    directUrls: [`https://www.instagram.com/explore/tags/${tag}/`],
+    onlyPostsNewerThan: `${SCRAPE_WINDOW_DAYS} days`,
+    resultsLimit: 100,
+    resultsType: "posts",
+    searchType: "hashtag",
+  };
+
+  console.log(`[Apify/IG-Hashtag] Calling actor with input:`, JSON.stringify(input, null, 2));
+  const run = await client.actor(INSTAGRAM_SCRAPER_ACTOR).call(input);
+  const { items } = await client.dataset(run.defaultDatasetId).listItems();
+  console.log(`[Apify/IG-Hashtag] Dataset returned ${items.length} items`);
+
+  const posts: InstagramPost[] = items
+    .filter((item: any) => item.type !== "profile" && !item.profilePicUrl)
+    .map((item) => normalizePostData(item));
+
+  return { posts, profile: null };
+}
+
+// ── TikTok Hashtag ──
+
+async function scrapeTikTokHashtag(
+  client: ApifyClient,
+  hashtag: string
+): Promise<{ posts: InstagramPost[]; profile: null }> {
+  const tag = hashtag.replace(/^#/, "").toLowerCase();
+  const input = {
+    hashtags: [`#${tag}`],
+    oldestPostDateUnified: `${SCRAPE_WINDOW_DAYS} days`,
+    resultsPerPage: 100,
+    shouldDownloadCovers: false,
+    shouldDownloadVideos: false,
+  };
+
+  console.log(`[Apify/TikTok-Hashtag] Calling actor with input:`, JSON.stringify(input, null, 2));
+  const run = await client.actor(TIKTOK_SCRAPER_ACTOR).call(input);
+  const { items } = await client.dataset(run.defaultDatasetId).listItems();
+  console.log(`[Apify/TikTok-Hashtag] Dataset returned ${items.length} items`);
+
+  const posts: InstagramPost[] = items.map((item) => normalizeTikTokPostData(item));
+  return { posts, profile: null };
+}
+
+// ── X Keyword/Hashtag Search ──
+
+async function scrapeXKeywordSearch(
+  client: ApifyClient,
+  term: string
+): Promise<{ posts: InstagramPost[]; profile: null }> {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(start.getDate() - SCRAPE_WINDOW_DAYS);
+
+  const postsInput = {
+    searchTerms: [term],
+    start: start.toISOString().split("T")[0],
+    end: end.toISOString().split("T")[0],
+    maxItems: 100,
+    sort: "Latest",
+    includeSearchTerms: false,
+  };
+
+  console.log(`[Apify/X-Search] Calling actor with input:`, JSON.stringify(postsInput, null, 2));
+  const postsRun = await client.actor(X_POSTS_SCRAPER_ACTOR).call(postsInput);
+  const { items: tweetItems } = await client.dataset(postsRun.defaultDatasetId).listItems();
+  console.log(`[Apify/X-Search] Dataset returned ${tweetItems.length} tweets`);
+
+  const tweetIds = tweetItems.map((item: any) => item.id).filter(Boolean);
+  const viewCountMap = new Map<string, number | null>();
+
+  if (tweetIds.length > 0) {
+    try {
+      const viewsInput = {
+        tweets: tweetIds.join(","),
+        max_results: 100,
+        mode: "Get a Few Tweets",
+      };
+      const viewsRun = await client.actor(X_VIEWS_SCRAPER_ACTOR).call(viewsInput);
+      const { items: viewItems } = await client.dataset(viewsRun.defaultDatasetId).listItems();
+      for (const item of viewItems) {
+        const vi = item as any;
+        viewCountMap.set(String(vi.id), vi.view_count ?? null);
+      }
+      console.log(`[Apify/X-Search] Got view counts for ${viewCountMap.size} tweets`);
+    } catch (err) {
+      console.warn(`[Apify/X-Search] Failed to fetch view counts for "${term}":`, err);
+    }
+  }
+
+  const posts: InstagramPost[] = tweetItems.map((item: any) =>
+    normalizeXPostData(item, viewCountMap.get(String(item.id)) ?? null)
+  );
+
+  return { posts, profile: null };
+}
+
 // ── X (Twitter) helpers ──
 
 function normalizeXPostData(rawPost: any, viewCount: number | null): InstagramPost {
@@ -508,20 +613,44 @@ export const handler: Handler = async (event: any, context: Context) => {
         .where(eq(schema.viralityAccounts.id, account.id));
 
       try {
-        const { posts, profile } = account.platform === "tiktok"
-          ? await scrapeTikTokAccount(apifyClient, account.username)
-          : account.platform === "x"
-            ? await scrapeXAccount(apifyClient, account.username)
-            : await scrapeInstagramAccount(apifyClient, account.username);
+        let posts: InstagramPost[];
+        let profile: InstagramProfile | null = null;
+        const accountType = (account as any).account_type || "profile";
 
-        // Fallback: fetch profile separately if posts scrape didn't include it (Instagram only)
-        const resolvedProfile = profile
-          ?? (account.platform === "instagram"
-            ? await scrapeInstagramProfile(apifyClient, account.username)
-            : null);
+        if (accountType === "hashtag") {
+          const result = account.platform === "tiktok"
+            ? await scrapeTikTokHashtag(apifyClient, account.username)
+            : account.platform === "x"
+              ? await scrapeXKeywordSearch(apifyClient, `#${account.username}`)
+              : await scrapeInstagramHashtag(apifyClient, account.username);
+          posts = result.posts;
+        } else if (accountType === "keyword") {
+          const result = account.platform === "x"
+            ? await scrapeXKeywordSearch(apifyClient, account.username)
+            : account.platform === "tiktok"
+              ? await scrapeTikTokHashtag(apifyClient, account.username)
+              : await scrapeInstagramHashtag(apifyClient, account.username);
+          posts = result.posts;
+        } else {
+          const result = account.platform === "tiktok"
+            ? await scrapeTikTokAccount(apifyClient, account.username)
+            : account.platform === "x"
+              ? await scrapeXAccount(apifyClient, account.username)
+              : await scrapeInstagramAccount(apifyClient, account.username);
+          posts = result.posts;
+          profile = result.profile;
+        }
 
-        if (resolvedProfile) {
-          await updateAccountProfile(db, account.id, resolvedProfile);
+        // Only update profile for profile-type accounts
+        if (accountType === "profile") {
+          const resolvedProfile = profile
+            ?? (account.platform === "instagram"
+              ? await scrapeInstagramProfile(apifyClient, account.username)
+              : null);
+
+          if (resolvedProfile) {
+            await updateAccountProfile(db, account.id, resolvedProfile);
+          }
         }
 
         console.log(`[DB] Upserting ${posts.length} posts...`);
