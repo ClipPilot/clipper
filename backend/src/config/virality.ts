@@ -1,6 +1,7 @@
 export const APIFY_ACTORS = {
   INSTAGRAM_SCRAPER: "apify/instagram-scraper",
   INSTAGRAM_PROFILE_SCRAPER: "apify/instagram-profile-scraper",
+  INSTAGRAM_REEL_SCRAPER: "apify/instagram-reel-scraper",
   TIKTOK_SCRAPER: "clockworks/tiktok-scraper",
   X_POSTS_SCRAPER: "apidojo/twitter-scraper-lite",
   X_VIEWS_SCRAPER: "scrape.badger/twitter-tweets-scraper",

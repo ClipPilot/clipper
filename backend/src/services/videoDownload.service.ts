@@ -2,6 +2,7 @@ import { spawn } from "child_process";
 import fs from "fs";
 import path from "path";
 import { s3Service } from "./s3.service";
+import { getApifyService } from "./virality/apify.service";
 
 export interface VideoInfo {
   title: string;
@@ -25,8 +26,30 @@ const DOWNLOAD_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 const FORMAT_SELECTION =
   "bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4][height<=1080]/best";
 
+function isInstagramUrl(url: string): boolean {
+  try {
+    const hostname = new URL(url).hostname.replace("www.", "");
+    return hostname === "instagram.com" || hostname === "instagr.am";
+  } catch {
+    return false;
+  }
+}
+
+
 class VideoDownloadService {
   async getVideoInfo(url: string): Promise<VideoInfo> {
+    if (isInstagramUrl(url)) {
+      const reel = await getApifyService().scrapeInstagramReel(url);
+      return {
+        title: reel.title,
+        duration: reel.duration,
+        filesize: 0,
+        thumbnail: reel.thumbnail,
+        uploader: reel.uploader,
+        platform: "Instagram",
+      };
+    }
+
     return new Promise((resolve, reject) => {
       const args = ["--dump-json", "--no-download", url];
       const proc = spawn("yt-dlp", args);
@@ -81,6 +104,10 @@ class VideoDownloadService {
     teamId: number,
     onProgress?: (progress: DownloadProgress) => void
   ): Promise<{ s3Key: string; fileName: string; fileSize: number }> {
+    if (isInstagramUrl(url)) {
+      return this.downloadInstagramToS3(url, teamId, onProgress);
+    }
+
     // Ensure output directory exists
     if (!fs.existsSync(OUTPUT_DIR)) {
       fs.mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -211,6 +238,16 @@ class VideoDownloadService {
     }
   }
   async downloadToPath(url: string, outputPath: string): Promise<void> {
+    if (isInstagramUrl(url)) {
+      const reel = await getApifyService().scrapeInstagramReel(url);
+      const dir = path.dirname(outputPath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      await s3Service.downloadVideoFromUrl(reel.videoUrl, outputPath);
+      return;
+    }
+
     const dir = path.dirname(outputPath);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
@@ -253,6 +290,46 @@ class VideoDownloadService {
         reject(new Error(`Failed to spawn yt-dlp: ${err.message}`));
       });
     });
+  }
+  private async downloadInstagramToS3(
+    url: string,
+    teamId: number,
+    onProgress?: (progress: DownloadProgress) => void
+  ): Promise<{ s3Key: string; fileName: string; fileSize: number }> {
+    if (!fs.existsSync(OUTPUT_DIR)) {
+      fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+    }
+
+    const reel = await getApifyService().scrapeInstagramReel(url);
+
+    onProgress?.({ percent: 50, speed: "N/A", eta: "N/A" });
+
+    const localPath = path.join(
+      OUTPUT_DIR,
+      `${teamId}_${Date.now()}_instagram_reel.mp4`
+    );
+
+    try {
+      await s3Service.downloadVideoFromUrl(reel.videoUrl, localPath);
+
+      onProgress?.({ percent: 90, speed: "N/A", eta: "N/A" });
+
+      const fileName = path.basename(localPath);
+      const fileSize = fs.statSync(localPath).size;
+      const s3Key = await s3Service.uploadRawVideo(localPath, teamId);
+
+      onProgress?.({ percent: 100, speed: "N/A", eta: "N/A" });
+
+      return { s3Key, fileName, fileSize };
+    } finally {
+      if (fs.existsSync(localPath)) {
+        try {
+          fs.unlinkSync(localPath);
+        } catch {
+          // Best effort cleanup
+        }
+      }
+    }
   }
 }
 

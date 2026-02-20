@@ -12,7 +12,7 @@ import {
   SCREEN_STABILITY_MODIFIERS,
 } from "./kling.service";
 import { veedFabricService } from "./veedFabric.service";
-import { grokImagineService } from "./grokImagine.service";
+import { veoService, VEO_DEFAULT_NEGATIVE_PROMPT } from "./veo.service";
 import { openaiClient } from "../openai.service";
 import { generateJumbledMetadataString } from "../../utils/videoMetadata";
 import {
@@ -742,11 +742,13 @@ async function processBrollScene(
         shot.action,
       );
 
-      // Use Grok Imagine for B-roll (6s fixed duration, better product shots)
+      // Use Veo 3.1 Fast for B-roll (configurable duration, better product stability)
       const { videoUrl: shotVideoUrl } =
-        await grokImagineService.generateVideoWithRetry({
+        await veoService.imageToVideoWithRetry({
           imageUrl: shotImageUrl,
-          prompt: groundedPrompt, // Use grounded prompt directly (Grok doesn't need Kling-specific formatting)
+          prompt: groundedPrompt,
+          duration: "8s",
+          negativePrompt: VEO_DEFAULT_NEGATIVE_PROMPT,
         });
 
       const shotVideoPath = path.join(
@@ -870,22 +872,24 @@ async function processBrollScene(
       action,
     );
 
-    // Use Grok Imagine for B-roll (6s fixed duration, better product shots)
-    const { videoUrl: grokVideoUrl } =
-      await grokImagineService.generateVideoWithRetry({
+    // Use Veo 3.1 Fast for B-roll (8s configurable duration, better product stability)
+    const { videoUrl: veoVideoUrl } =
+      await veoService.imageToVideoWithRetry({
         imageUrl,
-        prompt: groundedCinematicPrompt, // Use grounded prompt directly
+        prompt: groundedCinematicPrompt,
+        duration: "8s",
+        negativePrompt: VEO_DEFAULT_NEGATIVE_PROMPT,
       });
 
     console.log(
-      `[UGC Assembly] B-Roll Scene ${sceneNumber}: Grok generated 6s video`,
+      `[UGC Assembly] B-Roll Scene ${sceneNumber}: Veo 3.1 Fast generated 8s video`,
     );
 
     const silentVideoPath = path.join(
       OUTPUT_DIR,
       `silent_${sceneNumber}_${Date.now()}.mp4`,
     );
-    await s3Service.downloadVideoFromUrl(grokVideoUrl, silentVideoPath);
+    await s3Service.downloadVideoFromUrl(veoVideoUrl, silentVideoPath);
 
     processedVideoPath = silentVideoPath;
   }

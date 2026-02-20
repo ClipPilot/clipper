@@ -25,6 +25,7 @@ export const VEO_GENTLE_MOTION_MODIFIERS =
 
 export type VeoAspectRatio = "16:9" | "9:16" | "auto";
 export type VeoDuration = "7s" | "8s";
+export type VeoFastDuration = "4s" | "6s" | "8s";
 export type VeoResolution = "720p" | "1080p";
 
 // Reference-to-Video: Generate video from reference images
@@ -59,6 +60,24 @@ export interface ExtendVideoOptions {
 }
 
 export interface ExtendVideoResult {
+  videoUrl: string;
+  requestId: string;
+}
+
+// Image-to-Video (Fast): Generate video from a single image
+export interface ImageToVideoOptions {
+  imageUrl: string;
+  prompt: string;
+  duration?: VeoFastDuration;
+  aspectRatio?: VeoAspectRatio;
+  resolution?: VeoResolution;
+  generateAudio?: boolean;
+  negativePrompt?: string;
+  seed?: number;
+  autoFix?: boolean;
+}
+
+export interface ImageToVideoResult {
   videoUrl: string;
   requestId: string;
 }
@@ -273,6 +292,106 @@ export async function extendVideoWithRetry(
   throw lastError || new Error("Extend video failed after retries");
 }
 
+/**
+ * Generate video from a single image using Veo 3.1 Fast
+ * Good for B-roll and product shots with configurable duration
+ */
+export async function imageToVideo(
+  options: ImageToVideoOptions
+): Promise<ImageToVideoResult> {
+  const {
+    imageUrl,
+    prompt,
+    duration = "8s",
+    aspectRatio = "auto",
+    resolution = "720p",
+    generateAudio = false,
+    negativePrompt,
+    seed,
+    autoFix = false,
+  } = options;
+
+  console.log(`[Veo 3.1 Fast] Image-to-video: ${duration} at ${resolution}`);
+  console.log(`[Veo 3.1 Fast] Prompt: ${prompt.substring(0, 150)}...`);
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await (fal.subscribe as any)(
+      "fal-ai/veo3.1/fast/image-to-video",
+      {
+        input: {
+          prompt,
+          image_url: imageUrl,
+          aspect_ratio: aspectRatio,
+          duration,
+          resolution,
+          generate_audio: generateAudio,
+          ...(negativePrompt && { negative_prompt: negativePrompt }),
+          ...(seed !== undefined && { seed }),
+          auto_fix: autoFix,
+        },
+        logs: true,
+        onQueueUpdate: (update: {
+          status: string;
+          logs?: Array<{ message: string }>;
+        }) => {
+          if (update.status === "IN_PROGRESS" && update.logs) {
+            update.logs.forEach((log) =>
+              console.log(`[Veo 3.1 Fast] ${log.message}`)
+            );
+          }
+        },
+      }
+    );
+
+    const data = result.data as VeoVideoResponse;
+
+    if (!data?.video?.url) {
+      throw new Error("No video URL in Veo 3.1 Fast response");
+    }
+
+    console.log(`[Veo 3.1 Fast] Video generated: ${data.video.url}`);
+
+    return {
+      videoUrl: data.video.url,
+      requestId: result.requestId,
+    };
+  } catch (error) {
+    console.error("[Veo 3.1 Fast] Image-to-video failed:", error);
+    throw error;
+  }
+}
+
+/**
+ * Image-to-video with retry logic
+ */
+export async function imageToVideoWithRetry(
+  options: ImageToVideoOptions,
+  maxRetries: number = 3
+): Promise<ImageToVideoResult> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await imageToVideo(options);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      console.warn(
+        `[Veo 3.1 Fast] Image-to-video attempt ${attempt}/${maxRetries} failed:`,
+        lastError.message
+      );
+
+      if (attempt < maxRetries) {
+        const delay = Math.pow(2, attempt) * 1000;
+        console.log(`[Veo 3.1 Fast] Retrying in ${delay / 1000}s...`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+  }
+
+  throw lastError || new Error("Image-to-video failed after retries");
+}
+
 // Constants for Veo video durations
 const VEO_INITIAL_DURATION = 8; // seconds
 const VEO_EXTEND_DURATION = 7; // seconds per extension
@@ -365,5 +484,7 @@ export const veoService = {
   referenceToVideoWithRetry,
   extendVideo,
   extendVideoWithRetry,
+  imageToVideo,
+  imageToVideoWithRetry,
   generateVideoForDuration,
 };

@@ -31,14 +31,70 @@ interface InstagramProfile {
   isVerified: boolean;
 }
 
+export interface InstagramReelResult {
+  videoUrl: string;
+  title: string;
+  duration: number;
+  thumbnail: string;
+  uploader: string;
+  likesCount: number;
+  commentsCount: number;
+  viewCount: number;
+}
+
 class ApifyService {
-  private client: ApifyClient;
+  private client: ApifyClient | null = null;
 
   constructor() {
-    if (!config.apify.apiToken) {
-      throw new Error("APIFY_API_TOKEN is not configured");
+    if (config.apify.apiToken) {
+      this.client = new ApifyClient({ token: config.apify.apiToken });
     }
-    this.client = new ApifyClient({ token: config.apify.apiToken });
+  }
+
+  private getClient(): ApifyClient {
+    if (!this.client) {
+      throw new Error(
+        "APIFY_API_TOKEN is not configured. Add it to your .env file."
+      );
+    }
+    return this.client;
+  }
+
+  async scrapeInstagramReel(url: string): Promise<InstagramReelResult> {
+    const client = this.getClient();
+    const run = await client
+      .actor(APIFY_ACTORS.INSTAGRAM_SCRAPER)
+      .call({
+        directUrls: [url],
+        resultsLimit: 1,
+        resultsType: "posts",
+      });
+
+    const { items } = await client
+      .dataset(run.defaultDatasetId)
+      .listItems();
+
+    if (items.length === 0) {
+      throw new Error("Failed to fetch Instagram reel via Apify — no results returned");
+    }
+
+    const item = items[0] as any;
+    const videoUrl = item.videoUrl || item.video_url || item.displayUrl;
+
+    if (!videoUrl) {
+      throw new Error("Apify returned no video URL for this Instagram reel");
+    }
+
+    return {
+      videoUrl,
+      title: item.caption?.slice(0, 100) || item.alt || "Instagram Reel",
+      duration: item.videoDuration || item.duration || 0,
+      thumbnail: item.displayUrl || item.thumbnailUrl || "",
+      uploader: item.ownerUsername || item.ownerFullName || "",
+      likesCount: item.likesCount || 0,
+      commentsCount: item.commentsCount || 0,
+      viewCount: item.videoPlayCount || item.videoViewCount || 0,
+    };
   }
 
   async scrapeInstagramPosts(
@@ -53,11 +109,12 @@ class ApifyService {
       searchType: "user",
     };
 
-    const run = await this.client
+    const client = this.getClient();
+    const run = await client
       .actor(APIFY_ACTORS.INSTAGRAM_SCRAPER)
       .call(input);
 
-    const { items } = await this.client
+    const { items } = await client
       .dataset(run.defaultDatasetId)
       .listItems();
 
@@ -88,11 +145,12 @@ class ApifyService {
       usernames: [username],
     };
 
-    const run = await this.client
+    const client = this.getClient();
+    const run = await client
       .actor(APIFY_ACTORS.INSTAGRAM_PROFILE_SCRAPER)
       .call(input);
 
-    const { items } = await this.client
+    const { items } = await client
       .dataset(run.defaultDatasetId)
       .listItems();
 
@@ -150,11 +208,12 @@ class ApifyService {
       shouldDownloadVideos: false,
     };
 
-    const run = await this.client
+    const client = this.getClient();
+    const run = await client
       .actor(APIFY_ACTORS.TIKTOK_SCRAPER)
       .call(input);
 
-    const { items } = await this.client
+    const { items } = await client
       .dataset(run.defaultDatasetId)
       .listItems();
 
@@ -206,11 +265,12 @@ class ApifyService {
       includeSearchTerms: false,
     };
 
-    const postsRun = await this.client
+    const client = this.getClient();
+    const postsRun = await client
       .actor(APIFY_ACTORS.X_POSTS_SCRAPER)
       .call(postsInput);
 
-    const { items: tweetItems } = await this.client
+    const { items: tweetItems } = await client
       .dataset(postsRun.defaultDatasetId)
       .listItems();
 
@@ -235,11 +295,11 @@ class ApifyService {
           mode: "Get a Few Tweets",
         };
 
-        const viewsRun = await this.client
+        const viewsRun = await client
           .actor(APIFY_ACTORS.X_VIEWS_SCRAPER)
           .call(viewsInput);
 
-        const { items: viewItems } = await this.client
+        const { items: viewItems } = await client
           .dataset(viewsRun.defaultDatasetId)
           .listItems();
 
