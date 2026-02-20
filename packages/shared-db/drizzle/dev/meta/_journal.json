@@ -232,6 +232,13 @@
       "when": 1771614137238,
       "tag": "0032_late_excalibur",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1771625528938,
+      "tag": "0033_vengeful_jigsaw",
+      "breakpoints": true
     }
   ]
 }

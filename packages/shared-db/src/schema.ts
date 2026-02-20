@@ -988,6 +988,29 @@ export const viralityPosts = pgTable(
   }),
 ).enableRLS();
 
+export const viralityAlertStatusEnum = pgEnum("virality_alert_status", [
+  "sent",
+  "failed",
+]);
+
+export const viralityAlertLogs = pgTable("virality_alert_logs", {
+  id: serial("id").primaryKey(),
+  team_id: integer("team_id")
+    .notNull()
+    .references(() => teams.id, { onDelete: "cascade" }),
+  user_id: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  email: varchar("email", { length: 255 }).notNull(),
+  subject: varchar("subject", { length: 500 }).notNull(),
+  email_body: text("email_body").notNull(),
+  viral_post_ids: jsonb("viral_post_ids").notNull().$type<number[]>(),
+  status: viralityAlertStatusEnum("status").notNull(),
+  error_message: text("error_message"),
+  sent_at: timestamp("sent_at").notNull().defaultNow(),
+  created_at: timestamp("created_at").notNull().defaultNow(),
+}).enableRLS();
+
 export const genderEnum = pgEnum("gender_enum", ["male", "female", "other"]);
 export const clonedVoices = pgTable("cloned_voices", {
   id: serial("id").primaryKey(),
