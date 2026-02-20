@@ -943,6 +943,7 @@ export const viralityAccounts = pgTable(
     last_synced_at: timestamp("last_synced_at"),
     sync_status: viralitySyncStatusEnum("sync_status").default("pending"),
     sync_error: text("sync_error"),
+    alert_enabled: boolean("alert_enabled").notNull().default(false),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },
@@ -1010,6 +1011,32 @@ export const viralityAlertLogs = pgTable("virality_alert_logs", {
   sent_at: timestamp("sent_at").notNull().defaultNow(),
   created_at: timestamp("created_at").notNull().defaultNow(),
 }).enableRLS();
+
+// Viral alert threshold condition logic
+export const viralityThresholdModeEnum = pgEnum("virality_threshold_mode", [
+  "and",
+  "or",
+]);
+
+// Per-team viral alert settings (one row per team)
+export const viralitySettings = pgTable(
+  "virality_settings",
+  {
+    id: serial("id").primaryKey(),
+    team_id: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    percent_threshold: integer("percent_threshold"),
+    absolute_threshold: integer("absolute_threshold"),
+    threshold_mode: viralityThresholdModeEnum("threshold_mode").notNull().default("or"),
+    time_frame_hours: integer("time_frame_hours").notNull().default(24),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    uniqueTeam: unique("virality_settings_team_unique").on(table.team_id),
+  }),
+).enableRLS();
 
 export const genderEnum = pgEnum("gender_enum", ["male", "female", "other"]);
 export const clonedVoices = pgTable("cloned_voices", {
