@@ -871,6 +871,7 @@ export const posts = pgTable(
     post_url: text("post_url"),
     drive_file_id: varchar("drive_file_id", { length: 255 }),
     status: postStatusEnum("status").notNull().default("scheduled"),
+    accountHandle: varchar("account_handle", { length: 255 }),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },
@@ -878,6 +879,7 @@ export const posts = pgTable(
     teamIdx: index("posts_team_id_idx").on(table.team_id),
     platformIdx: index("posts_platform_idx").on(table.platform),
     clipIdx: index("posts_clip_id_idx").on(table.clip_id),
+    accountIdx: index("posts_account_handle_idx").on(table.accountHandle),
   }),
 ).enableRLS();
 
@@ -951,7 +953,6 @@ export const viralityAccounts = pgTable(
     ),
   }),
 ).enableRLS();
-
 
 export const viralityPosts = pgTable(
   "virality_posts",
@@ -1035,12 +1036,18 @@ export const apiBillingAccounts = pgTable(
       .references(() => teams.id, { onDelete: "cascade" }),
     balance_cents: integer("balance_cents").notNull().default(0),
     total_spent_cents: integer("total_spent_cents").notNull().default(0),
-    total_topped_up_cents: integer("total_topped_up_cents").notNull().default(0),
+    total_topped_up_cents: integer("total_topped_up_cents")
+      .notNull()
+      .default(0),
     active: boolean("active").notNull().default(false),
     auto_refill: boolean("auto_refill").notNull().default(false),
-    refill_threshold_cents: integer("refill_threshold_cents").notNull().default(500),
+    refill_threshold_cents: integer("refill_threshold_cents")
+      .notNull()
+      .default(500),
     refill_amount_cents: integer("refill_amount_cents").notNull().default(2500),
-    stripe_payment_method_id: varchar("stripe_payment_method_id", { length: 255 }),
+    stripe_payment_method_id: varchar("stripe_payment_method_id", {
+      length: 255,
+    }),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },
@@ -1058,8 +1065,12 @@ export const apiWalletTopUps = pgTable(
       .references(() => teams.id, { onDelete: "cascade" }),
     amount_cents: integer("amount_cents").notNull(),
     credits_cents: integer("credits_cents").notNull(),
-    stripe_payment_intent_id: varchar("stripe_payment_intent_id", { length: 255 }),
-    stripe_checkout_session_id: varchar("stripe_checkout_session_id", { length: 255 }),
+    stripe_payment_intent_id: varchar("stripe_payment_intent_id", {
+      length: 255,
+    }),
+    stripe_checkout_session_id: varchar("stripe_checkout_session_id", {
+      length: 255,
+    }),
     created_at: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => ({

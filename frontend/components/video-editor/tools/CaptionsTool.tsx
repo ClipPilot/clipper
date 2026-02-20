@@ -112,8 +112,8 @@ export function CaptionsTool() {
                   onClick={() => setCaptionFont(font.name)}
                   className={`h-12 w-12 rounded-lg border transition-all flex items-center justify-center flex-shrink-0 ${
                     captionFont === font.name
-                      ? "bg-white text-black border-white scale-105"
-                      : "bg-surface-base text-white border-border-base hover:scale-105"
+                      ? "bg-accent-400 text-white border-accent-400 scale-105"
+                      : "bg-surface-base text-text-primary border-border-base hover:scale-105"
                   }`}
                   title={font.name}
                 >

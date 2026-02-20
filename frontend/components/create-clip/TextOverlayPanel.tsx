@@ -86,8 +86,8 @@ export const TextOverlayPanel: React.FC<TextOverlayPanelProps> = ({
                     onClick={() => setCaptionFont(font.name)}
                     className={`h-14 w-14 rounded-xl border transition-all flex items-center justify-center ${
                       captionFont === font.name
-                        ? "bg-white text-black border-white scale-105"
-                        : "bg-surface-elevated text-white border-border-base hover:scale-105"
+                        ? "bg-accent-400 text-white border-accent-400 scale-105"
+                        : "bg-surface-elevated text-text-primary border-border-base hover:scale-105"
                     }`}
                     title={font.name}
                   >
@@ -161,8 +161,8 @@ export const TextOverlayPanel: React.FC<TextOverlayPanelProps> = ({
                     onClick={() => setTextFont(font.name)}
                     className={`h-14 w-14 rounded-xl border transition-all flex items-center justify-center ${
                       textFont === font.name
-                        ? "bg-white text-black border-white scale-105"
-                        : "bg-surface-elevated text-white border-border-base hover:scale-105"
+                        ? "bg-accent-400 text-white border-accent-400 scale-105"
+                        : "bg-surface-elevated text-text-primary border-border-base hover:scale-105"
                     }`}
                     title={font.name}
                   >
