@@ -105,6 +105,33 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
     return topPath + bottomPath + " Z";
   }, []);
 
+  // Stable overlay actions — only recompute when overlay count or start/end times change,
+  // NOT when x/y/scale/opacity change (those don't affect the timeline).
+  const prevOverlayActionsRef = useRef<TimelineAction[]>([]);
+  const overlayActions = useMemo(() => {
+    const newActions: TimelineAction[] = overlays.map((overlay) => ({
+      id: overlay.id,
+      start: overlay.startTime,
+      end: overlay.endTime,
+      effectId: "overlay",
+      flexible: true,
+      movable: true,
+    }));
+
+    const prev = prevOverlayActionsRef.current;
+    const changed =
+      newActions.length !== prev.length ||
+      newActions.some(
+        (a, i) => a.id !== prev[i]?.id || a.start !== prev[i]?.start || a.end !== prev[i]?.end
+      );
+
+    if (changed) {
+      prevOverlayActionsRef.current = newActions;
+      return newActions;
+    }
+    return prev;
+  }, [overlays]);
+
   // Convert segments to timeline editor format
   const editorData: TimelineRow[] = useMemo(() => {
     const videoActions: SegmentAction[] = activeSegments.map((segment) => ({
@@ -137,15 +164,7 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
     ];
 
     // Add overlay track if overlays exist
-    if (overlays.length > 0) {
-      const overlayActions: TimelineAction[] = overlays.map((overlay) => ({
-        id: overlay.id,
-        start: overlay.startTime,
-        end: overlay.endTime,
-        effectId: "overlay",
-        flexible: true,
-        movable: true,
-      }));
+    if (overlayActions.length > 0) {
       rows.push({
         id: "overlay-track",
         actions: overlayActions,
@@ -160,7 +179,7 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
     });
 
     return rows;
-  }, [activeSegments, selectedSegmentId, overlays]);
+  }, [activeSegments, selectedSegmentId, overlayActions]);
 
   // Define effects
   const effects: Record<string, TimelineEffect> = useMemo(
@@ -227,34 +246,47 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
         };
       });
 
-      // Update segments state
-      setSegmentsState({
-        segments: newSegments,
-        selectedSegmentId: segmentsState.selectedSegmentId,
-      });
+      // Only update segments if they actually changed
+      const hasSegmentChanges = newSegments.some((seg) => {
+        const existing = activeSegments.find((s) => s.id === seg.id);
+        return !existing || existing.startTime !== seg.startTime || existing.endTime !== seg.endTime || existing.speed !== seg.speed;
+      }) || newSegments.length !== activeSegments.length;
 
-      // Update trim state to match overall bounds
-      if (newSegments.length > 0) {
-        const firstStart = Math.min(...newSegments.map((s) => s.startTime));
-        const lastEnd = Math.max(...newSegments.map((s) => s.endTime));
-        setTrimState({ startTime: firstStart, endTime: lastEnd });
+      if (hasSegmentChanges) {
+        setSegmentsState({
+          segments: newSegments,
+          selectedSegmentId: segmentsState.selectedSegmentId,
+        });
+
+        // Update trim state to match overall bounds
+        if (newSegments.length > 0) {
+          const firstStart = Math.min(...newSegments.map((s) => s.startTime));
+          const lastEnd = Math.max(...newSegments.map((s) => s.endTime));
+          setTrimState({ startTime: firstStart, endTime: lastEnd });
+        }
       }
 
-      // Update overlay times if overlay track was modified
+      // Update overlay times if overlay track was modified (only if times actually changed)
       const overlayTrack = newEditorData.find((row) => row.id === "overlay-track");
       if (overlayTrack) {
-        setOverlays((prev) =>
-          prev.map((overlay) => {
-            const action = overlayTrack.actions.find((a: any) => a.id === overlay.id);
-            if (action) {
-              return { ...overlay, startTime: action.start, endTime: action.end };
-            }
-            return overlay;
-          })
-        );
+        const hasOverlayChanges = overlayTrack.actions.some((action: any) => {
+          const existing = overlays.find((o) => o.id === action.id);
+          return existing && (existing.startTime !== action.start || existing.endTime !== action.end);
+        });
+        if (hasOverlayChanges) {
+          setOverlays((prev) =>
+            prev.map((overlay) => {
+              const action = overlayTrack.actions.find((a: any) => a.id === overlay.id);
+              if (action) {
+                return { ...overlay, startTime: action.start, endTime: action.end };
+              }
+              return overlay;
+            })
+          );
+        }
       }
     },
-    [setSegmentsState, segmentsState.selectedSegmentId, setTrimState, setOverlays]
+    [setSegmentsState, segmentsState.selectedSegmentId, setTrimState, setOverlays, overlays, activeSegments]
   );
 
   // Handle action click (select segment — ignore audio track)

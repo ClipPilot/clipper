@@ -17,6 +17,7 @@ import {
   processSegments,
   applyMediaOverlays,
   MediaOverlayItem,
+  generateCommentImage,
 } from "../../services/clips/videoEditor.service";
 import { ensureOutputDir } from "../../utils/fileUtils";
 import { sanitizeErrorForFrontend } from "../../utils/errorSanitizer";
@@ -128,27 +129,69 @@ export async function processVideoEditJob(job: VideoEditJob): Promise<void> {
     if (overlays && overlays.length > 0) {
       console.log(`[VIDEO-EDIT] Step 3.5: Applying ${overlays.length} media overlay(s)`);
 
-      // Download each overlay from S3
+      // Download or generate each overlay
       const overlayItems: MediaOverlayItem[] = [];
       for (let i = 0; i < overlays.length; i++) {
         const overlay = overlays[i];
-        const ext = overlay.fileName.split(".").pop() || "bin";
-        const localOverlayPath = path.join(outDir, `overlay_${i}_${clipId}_${timestamp}.${ext}`);
-        await s3Service.downloadFile(overlay.s3Key, localOverlayPath);
-        tempFiles.push(localOverlayPath);
 
-        overlayItems.push({
-          type: overlay.type,
-          localPath: localOverlayPath,
-          startTime: overlay.startTime,
-          endTime: overlay.endTime,
-          x: overlay.x,
-          y: overlay.y,
-          scale: overlay.scale,
-          opacity: overlay.opacity,
-          naturalWidth: overlay.naturalWidth,
-          naturalHeight: overlay.naturalHeight,
-        });
+        if (overlay.type === "comment" && overlay.commentData) {
+          // Generate comment image via Puppeteer
+          const commentImagePath = path.join(outDir, `comment_${i}_${clipId}_${timestamp}.png`);
+
+          // Download profile picture from S3 if provided
+          let profilePicPath: string | undefined;
+          if (overlay.commentData.profilePictureS3Key) {
+            profilePicPath = path.join(outDir, `pfp_${i}_${clipId}_${timestamp}.jpg`);
+            await s3Service.downloadFile(overlay.commentData.profilePictureS3Key, profilePicPath);
+            tempFiles.push(profilePicPath);
+          }
+
+          const { width, height } = await generateCommentImage(
+            {
+              platform: overlay.commentData.platform,
+              username: overlay.commentData.username,
+              commentText: overlay.commentData.commentText,
+              profilePicturePath: profilePicPath,
+              likesCount: overlay.commentData.likesCount,
+              isVerified: overlay.commentData.isVerified,
+              timeAgo: overlay.commentData.timeAgo,
+            },
+            commentImagePath
+          );
+          tempFiles.push(commentImagePath);
+
+          overlayItems.push({
+            type: "image", // FFmpeg treats the generated PNG as a regular image
+            localPath: commentImagePath,
+            startTime: overlay.startTime,
+            endTime: overlay.endTime,
+            x: overlay.x,
+            y: overlay.y,
+            scale: overlay.scale,
+            opacity: overlay.opacity,
+            naturalWidth: width,
+            naturalHeight: height,
+          });
+        } else {
+          // Standard image/video overlay: download from S3
+          const ext = overlay.fileName.split(".").pop() || "bin";
+          const localOverlayPath = path.join(outDir, `overlay_${i}_${clipId}_${timestamp}.${ext}`);
+          await s3Service.downloadFile(overlay.s3Key, localOverlayPath);
+          tempFiles.push(localOverlayPath);
+
+          overlayItems.push({
+            type: overlay.type as "image" | "video",
+            localPath: localOverlayPath,
+            startTime: overlay.startTime,
+            endTime: overlay.endTime,
+            x: overlay.x,
+            y: overlay.y,
+            scale: overlay.scale,
+            opacity: overlay.opacity,
+            naturalWidth: overlay.naturalWidth,
+            naturalHeight: overlay.naturalHeight,
+          });
+        }
       }
 
       const overlayPath = path.join(outDir, `overlayed_${clipId}_${timestamp}.mp4`);

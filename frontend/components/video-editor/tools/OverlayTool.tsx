@@ -15,6 +15,19 @@ import {
   MediaOverlay,
 } from "@/store/videoEditor";
 import { clipsAPI } from "@/api/clips";
+import { CommentOverlayForm } from "./CommentOverlayForm";
+
+const PLATFORM_LABELS: Record<string, string> = {
+  tiktok: "TikTok Comment",
+  youtube: "YouTube Comment",
+  instagram: "Instagram Comment",
+};
+
+const PLATFORM_ICONS: Record<string, string> = {
+  tiktok: "simple-icons:tiktok",
+  youtube: "simple-icons:youtube",
+  instagram: "simple-icons:instagram",
+};
 
 export function OverlayTool() {
   const [overlays, setOverlays] = useAtom(mediaOverlaysAtom);
@@ -133,6 +146,21 @@ export function OverlayTool() {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
+  const getOverlayLabel = (overlay: MediaOverlay): string => {
+    if (overlay.type === "comment" && overlay.commentData) {
+      const text = overlay.commentData.commentText;
+      return `@${overlay.commentData.username}: ${text.length > 25 ? text.slice(0, 25) + "..." : text}`;
+    }
+    return overlay.fileName;
+  };
+
+  const getOverlaySubtitle = (overlay: MediaOverlay): string => {
+    if (overlay.type === "comment" && overlay.commentData) {
+      return PLATFORM_LABELS[overlay.commentData.platform] || "Comment";
+    }
+    return overlay.type === "image" ? "Image" : "Video";
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -142,9 +170,16 @@ export function OverlayTool() {
           Media Overlays
         </h3>
         <p className="text-sm text-text-tertiary mt-1">
-          Add images or videos on top of your clip
+          Add images, videos, or comment overlays on top of your clip
         </p>
       </div>
+
+      {/* Comment Overlay Form */}
+      <CommentOverlayForm
+        editingOverlayId={
+          selectedOverlay?.type === "comment" ? selectedOverlayId : null
+        }
+      />
 
       {/* Upload Button */}
       <div>
@@ -162,7 +197,7 @@ export function OverlayTool() {
           isLoading={uploading}
           startContent={!uploading && <Icon icon="solar:upload-bold" />}
         >
-          {uploading ? `Uploading... ${uploadProgress}%` : "Add Overlay"}
+          {uploading ? `Uploading... ${uploadProgress}%` : "Add Image/Video Overlay"}
         </Button>
         <p className="text-xs text-text-tertiary mt-2 text-center">
           Images or videos (max 100MB)
@@ -185,7 +220,14 @@ export function OverlayTool() {
               <div className="flex items-center gap-3 min-w-0">
                 {/* Thumbnail */}
                 <div className="w-10 h-10 rounded bg-surface-base flex-shrink-0 overflow-hidden">
-                  {overlay.type === "image" ? (
+                  {overlay.type === "comment" && overlay.commentData ? (
+                    <div className="w-full h-full flex items-center justify-center bg-blue-500/20">
+                      <Icon
+                        icon={PLATFORM_ICONS[overlay.commentData.platform] || "solar:chat-round-dots-bold"}
+                        className="text-blue-400"
+                      />
+                    </div>
+                  ) : overlay.type === "image" ? (
                     <img
                       src={overlay.url}
                       alt={overlay.fileName}
@@ -198,9 +240,9 @@ export function OverlayTool() {
                   )}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm text-text-primary truncate">{overlay.fileName}</p>
+                  <p className="text-sm text-text-primary truncate">{getOverlayLabel(overlay)}</p>
                   <p className="text-xs text-text-tertiary">
-                    {overlay.type === "image" ? "Image" : "Video"} &middot;{" "}
+                    {getOverlaySubtitle(overlay)} &middot;{" "}
                     {formatTime(overlay.startTime)} - {formatTime(overlay.endTime)}
                   </p>
                 </div>

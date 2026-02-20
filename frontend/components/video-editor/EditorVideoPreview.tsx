@@ -21,6 +21,7 @@ import {
 } from "@/store/videoEditor";
 import { CAPTION_FONTS, HEADING_FONTS } from "@/constants/overlayStyles";
 import { CaptionEntry } from "@/api/clips";
+import { CommentPreview } from "./CommentPreview";
 
 interface EditorVideoPreviewProps {
   videoRef: React.RefObject<HTMLVideoElement>;
@@ -288,10 +289,34 @@ export function EditorVideoPreview({
               // Time-gate: only show if current time is within overlay range
               if (currentTime < overlay.startTime || currentTime > overlay.endTime) return null;
 
+              const isSelected = selectedOverlayId === overlay.id;
+
+              // Comment overlays render as React components
+              if (overlay.type === "comment" && overlay.commentData) {
+                return (
+                  <div
+                    key={overlay.id}
+                    className={`absolute pointer-events-auto ${isSelected ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}`}
+                    style={{
+                      left: `${overlay.x}%`,
+                      top: `${overlay.y}%`,
+                      transform: `translate(-50%, -50%) scale(${overlay.scale})`,
+                      transformOrigin: "center center",
+                      opacity: overlay.opacity,
+                      outline: isSelected ? "2px solid rgba(139, 92, 246, 0.8)" : "none",
+                      outlineOffset: "2px",
+                      zIndex: isSelected ? 10 : 1,
+                    }}
+                    onMouseDown={(e) => handleOverlayMouseDown(e, overlay.id, overlay.x, overlay.y)}
+                  >
+                    <CommentPreview commentData={overlay.commentData} scale={scale} />
+                  </div>
+                );
+              }
+
+              // Image/video overlays render as media elements
               const scaledWidth = overlay.naturalWidth * overlay.scale * scale;
               const scaledHeight = overlay.naturalHeight * overlay.scale * scale;
-
-              const isSelected = selectedOverlayId === overlay.id;
 
               return (
                 <div

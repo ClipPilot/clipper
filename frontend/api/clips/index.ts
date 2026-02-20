@@ -781,7 +781,7 @@ class ClipsAPI {
       };
       overlays?: Array<{
         id: string;
-        type: "image" | "video";
+        type: "image" | "video" | "comment";
         s3Key: string;
         fileName: string;
         startTime: number;
@@ -792,6 +792,15 @@ class ClipsAPI {
         opacity: number;
         naturalWidth: number;
         naturalHeight: number;
+        commentData?: {
+          platform: "tiktok" | "youtube" | "instagram";
+          username: string;
+          commentText: string;
+          profilePictureS3Key?: string;
+          likesCount: number;
+          isVerified: boolean;
+          timeAgo?: string;
+        };
       }>;
     }
   ): Promise<{ message: string; jobId: string }> {

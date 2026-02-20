@@ -188,10 +188,10 @@ export interface VideoEditJob extends BaseJob {
       y: number;
       fontSize: number;
     };
-    // Media overlays (images/videos composited on top)
+    // Media overlays (images/videos/comments composited on top)
     overlays?: Array<{
       id: string;
-      type: "image" | "video";
+      type: "image" | "video" | "comment";
       s3Key: string;
       fileName: string;
       startTime: number;
@@ -202,6 +202,16 @@ export interface VideoEditJob extends BaseJob {
       opacity: number; // 0-1
       naturalWidth: number;
       naturalHeight: number;
+      // Comment-specific data (only when type === "comment")
+      commentData?: {
+        platform: "tiktok" | "youtube" | "instagram";
+        username: string;
+        commentText: string;
+        profilePictureS3Key?: string;
+        likesCount: number;
+        isVerified: boolean;
+        timeAgo?: string;
+      };
     }>;
   };
 }
