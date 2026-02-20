@@ -29,6 +29,9 @@ export interface ImagePositions {
 const ANATOMY_NEGATIVE = [
   "extra limbs", "additional limbs", "three arms", "four arms", "multiple arms",
   "extra hands", "additional hands", "three hands", "four hands", "multiple hands",
+  "duplicate hand on same side", "two hands on one arm", "cloned hand next to original",
+  "phantom hand beside holding hand", "mirrored hand", "hand shadow duplicate",
+  "two left hands", "two right hands", "hands side by side on same arm",
   "extra fingers", "six fingers", "seven fingers", "eight fingers", "missing fingers",
   "fused fingers", "merged fingers", "webbed fingers", "stub fingers",
   "deformed hands", "mutated hands", "malformed hands", "twisted hands", "mangled hands",
@@ -149,6 +152,8 @@ Zero text of any kind. No captions, no labels, no watermarks, no logos, no typog
 
 ANATOMY - CRITICAL:
 - A human has a MAXIMUM of TWO HANDS and TWO ARMS. Zero, one, or two hands may be visible — NEVER three or more.
+- Each ARM ends in exactly ONE HAND. Never show two hands growing from the same arm or two hands side-by-side on the same side of the body.
+- If a person holds a product with ONE hand, the OTHER hand must be clearly elsewhere — at their side, behind their back, resting on a surface, or out of frame. Never place a second hand right next to the holding hand.
 - Each hand has EXACTLY FIVE FINGERS: one thumb and four fingers. No sixth finger, no missing finger, no fused fingers.
 - Hands must be clearly separated from each other — never merged, blended, or overlapping unnaturally.
 - All fingers must have natural proportions and natural bending angles. No impossibly long, short, twisted, or boneless fingers.
@@ -260,7 +265,7 @@ Generate exactly ONE photograph. Not a collage, grid, comparison, or multi-panel
 Zero text anywhere. No captions, titles, labels, watermarks, logos, speech bubbles, or any typography.
 
 ANATOMY - CRITICAL:
-The subject has exactly two arms naturally positioned at their sides or engaged in the action. If hands are visible, exactly two hands with five fingers each. Fingers are in natural positions - no impossible bends, no extra digits, no missing digits, no fused fingers. All limbs connect naturally to the body with standard human proportions.
+The subject has exactly two arms naturally positioned at their sides or engaged in the action. Each arm ends in exactly one hand — never two hands on the same arm or side. If hands are visible, exactly two hands with five fingers each. If one hand holds a product, the other hand must be clearly in a different position (at their side, gesturing, resting elsewhere) — never adjacent to the holding hand. Fingers are in natural positions - no impossible bends, no extra digits, no missing digits, no fused fingers. All limbs connect naturally to the body with standard human proportions.
 
 Expression matches the ${sceneData.emotion} emotion specified.`);
 
