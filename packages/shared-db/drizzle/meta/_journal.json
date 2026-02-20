@@ -232,6 +232,13 @@
       "when": 1771445463937,
       "tag": "0032_heavy_namorita",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1771570310267,
+      "tag": "0033_pretty_puff_adder",
+      "breakpoints": true
     }
   ]
 }
