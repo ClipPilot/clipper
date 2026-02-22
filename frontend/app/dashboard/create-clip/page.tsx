@@ -26,6 +26,41 @@ import ClipViewModal from "@/components/clips/ClipViewModal";
 import { DeleteConfirmModal } from "@/components/clips/DeleteConfirmModal";
 import { useClipsData, useClipModals, useTags, useFolders } from "@/hooks/useClips";
 import { useSocket } from "@/hooks/useSocket";
+import SpotlightTour, { type TourStep } from "@/components/ui/SpotlightTour";
+import TourHelpButton from "@/components/ui/TourHelpButton";
+
+const CLIPPING_TOUR_STEPS: TourStep[] = [
+  {
+    target: "clip-mode-toggle",
+    title: "Single or Batch",
+    description: "Toggle between clipping a single video or uploading multiple at once.",
+    placement: "bottom",
+  },
+  {
+    target: "clip-upload",
+    title: "Upload Your Video",
+    description: "Drag and drop a video file, or paste a URL. Supports MP4, MOV, WebM up to 2GB.",
+    placement: "bottom",
+  },
+  {
+    target: "clip-settings",
+    title: "Configure Settings",
+    description: "Choose content type, set clip length and hook duration, and pick how many clips to generate.",
+    placement: "right",
+  },
+  {
+    target: "clip-overlays",
+    title: "Text & Captions",
+    description: "Add auto-captions, custom text overlays, and pick fonts and colors.",
+    placement: "left",
+  },
+  {
+    target: "clip-create-btn",
+    title: "Generate Clips",
+    description: "Hit this button to start AI clipping. Your clips will appear in the Processing section below.",
+    placement: "top",
+  },
+];
 
 interface UploadedVideo {
   s3Key: string;
@@ -62,6 +97,7 @@ export default function CreateClipPage() {
   const [error, setError] = useState("");
   const [generatedClips, setGeneratedClips] = useState<any[]>([]);
   const [showResults, setShowResults] = useState(false);
+  const [isTourOpen, setIsTourOpen] = useState(false);
 
   const {
     usageStats,
@@ -358,8 +394,9 @@ export default function CreateClipPage() {
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 lg:mb-8">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-text-primary mb-1 sm:mb-2">
+            <h1 className="text-2xl sm:text-3xl font-bold text-text-primary mb-1 sm:mb-2 flex items-center gap-2">
               AI Clipping
+              <TourHelpButton onPress={() => setIsTourOpen(true)} />
             </h1>
             <p className="text-sm sm:text-base text-text-secondary">
               Upload a video and let AI create viral clips for social media
@@ -451,7 +488,7 @@ export default function CreateClipPage() {
             {!hasVideosReady ? (
               <div className="lg:col-span-3">
                 {/* Batch mode toggle */}
-                <Card className="bg-surface-base border border-border-base mb-4">
+                <Card className="bg-surface-base border border-border-base mb-4" data-tour="clip-mode-toggle">
                   <CardBody className="p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -498,46 +535,48 @@ export default function CreateClipPage() {
                   </CardBody>
                 </Card>
 
-                {batchMode ? (
-                  <BatchUploadSection
-                    teamId={selectedTeam.id}
-                    plan={selectedTeam.plan}
-                    onUploadComplete={handleBatchUploadComplete}
-                    onError={handleUploadError}
-                    maxVideos={5}
-                    isDisabled={
-                      selectedTeam.plan === "free" &&
-                      usageStats?.generationsRemaining !== -1 &&
-                      (usageStats?.generationsRemaining ?? 0) <= 0
-                    }
-                    disabledReason={
-                      selectedTeam.plan === "free" &&
-                      usageStats?.generationsRemaining !== -1 &&
-                      (usageStats?.generationsRemaining ?? 0) <= 0
-                        ? "You've used all your free generations. Subscribe to a plan to continue."
-                        : undefined
-                    }
-                  />
-                ) : (
-                  <UploadSection
-                    teamId={selectedTeam.id}
-                    plan={selectedTeam.plan}
-                    onUploadComplete={handleUploadComplete}
-                    onError={handleUploadError}
-                    isDisabled={
-                      selectedTeam.plan === "free" &&
-                      usageStats?.generationsRemaining !== -1 &&
-                      (usageStats?.generationsRemaining ?? 0) <= 0
-                    }
-                    disabledReason={
-                      selectedTeam.plan === "free" &&
-                      usageStats?.generationsRemaining !== -1 &&
-                      (usageStats?.generationsRemaining ?? 0) <= 0
-                        ? "You've used all your free generations. Subscribe to a plan to continue."
-                        : undefined
-                    }
-                  />
-                )}
+                <div data-tour="clip-upload">
+                  {batchMode ? (
+                    <BatchUploadSection
+                      teamId={selectedTeam.id}
+                      plan={selectedTeam.plan}
+                      onUploadComplete={handleBatchUploadComplete}
+                      onError={handleUploadError}
+                      maxVideos={5}
+                      isDisabled={
+                        selectedTeam.plan === "free" &&
+                        usageStats?.generationsRemaining !== -1 &&
+                        (usageStats?.generationsRemaining ?? 0) <= 0
+                      }
+                      disabledReason={
+                        selectedTeam.plan === "free" &&
+                        usageStats?.generationsRemaining !== -1 &&
+                        (usageStats?.generationsRemaining ?? 0) <= 0
+                          ? "You've used all your free generations. Subscribe to a plan to continue."
+                          : undefined
+                      }
+                    />
+                  ) : (
+                    <UploadSection
+                      teamId={selectedTeam.id}
+                      plan={selectedTeam.plan}
+                      onUploadComplete={handleUploadComplete}
+                      onError={handleUploadError}
+                      isDisabled={
+                        selectedTeam.plan === "free" &&
+                        usageStats?.generationsRemaining !== -1 &&
+                        (usageStats?.generationsRemaining ?? 0) <= 0
+                      }
+                      disabledReason={
+                        selectedTeam.plan === "free" &&
+                        usageStats?.generationsRemaining !== -1 &&
+                        (usageStats?.generationsRemaining ?? 0) <= 0
+                          ? "You've used all your free generations. Subscribe to a plan to continue."
+                          : undefined
+                      }
+                    />
+                  )}
+                </div>
               </div>
             ) : (
               <>
@@ -612,7 +651,7 @@ export default function CreateClipPage() {
                     </CardBody>
                   </Card>
 
-                  <Card className="bg-surface-base border border-border-base">
+                  <Card className="bg-surface-base border border-border-base" data-tour="clip-settings">
                     <CardBody className="p-4 sm:p-6">
                       <SettingsPanel
                         promptType={promptType}
@@ -638,7 +677,7 @@ export default function CreateClipPage() {
                 </div>
 
                 <div className="lg:col-span-2">
-                  <Card className="bg-surface-base border border-border-base h-full">
+                  <Card className="bg-surface-base border border-border-base h-full" data-tour="clip-overlays">
                     <CardBody className="p-4 sm:p-6">
                       <TextOverlayPanel
                         customText={customText}
@@ -675,6 +714,7 @@ export default function CreateClipPage() {
                           fullWidth
                           size="lg"
                           color="primary"
+                          data-tour="clip-create-btn"
                           onPress={handleSubmit}
                           isDisabled={
                             !hasVideosReady ||
@@ -794,6 +834,12 @@ export default function CreateClipPage() {
         onConfirm={confirmDeleteClip}
         isDeleting={isDeleting}
         clipName={clipToDelete?.name}
+      />
+
+      <SpotlightTour
+        steps={CLIPPING_TOUR_STEPS}
+        isOpen={isTourOpen}
+        onClose={() => setIsTourOpen(false)}
       />
     </div>
   );

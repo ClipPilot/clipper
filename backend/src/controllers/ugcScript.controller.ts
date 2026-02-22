@@ -150,7 +150,7 @@ export class UGCScriptController {
 
   async regenerateScene(req: AuthRequest, res: Response) {
     try {
-      const { teamId, scriptId, sceneId, currentDialogue, currentEmotion, regenerationType } =
+      const { teamId, scriptId, sceneId, currentDialogue, currentEmotion, regenerationType, customPrompt } =
         req.body;
 
       if (!scriptId || !sceneId) {
@@ -163,6 +163,7 @@ export class UGCScriptController {
         currentDialogue,
         currentEmotion,
         regenerationType: regenerationType || "full",
+        customPrompt,
       });
 
       const { cinematicPrompt, cameraDirection, ...clientScene } = updatedScene;

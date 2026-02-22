@@ -19,6 +19,35 @@ import {
   MyFaceSwapsSection,
   MyFaceSwapsSectionRef,
 } from "@/components/ugc-studio";
+import SpotlightTour, { type TourStep } from "@/components/ui/SpotlightTour";
+import TourHelpButton from "@/components/ui/TourHelpButton";
+
+const FACE_SWAP_TOUR_STEPS: TourStep[] = [
+  {
+    target: "faceswap-upload",
+    title: "Upload Your Video",
+    description: "Upload a video up to 5 minutes. This is the video whose face will be swapped.",
+    placement: "right",
+  },
+  {
+    target: "faceswap-characters",
+    title: "Select Characters",
+    description: "Choose from saved faces, example characters, or upload a new face image.",
+    placement: "left",
+  },
+  {
+    target: "faceswap-generate",
+    title: "Choose Mode & Generate",
+    description: "Pick Face Swap (faster) or Full Body mode, then hit Generate. Costs 5 credits per character.",
+    placement: "left",
+  },
+  {
+    target: "faceswap-my-swaps",
+    title: "My Swaps",
+    description: "Track your swap jobs here. Processing typically takes 5\u201340 minutes depending on mode.",
+    placement: "top",
+  },
+];
 
 export default function FaceSwapPage() {
   const selectedTeam = useAtomValue(selectedTeamAtom);
@@ -47,6 +76,7 @@ function FaceSwapContent({
   const [showEditor, setShowEditor] = useState(false);
   const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
   const [swapType, setSwapType] = useState<"face" | "fullbody">("face");
+  const [isTourOpen, setIsTourOpen] = useState(false);
   const faceSwapsSectionRef = useRef<MyFaceSwapsSectionRef>(null);
 
   const getCharacterImages = (): Array<File | { imageKey: string }> => {
@@ -291,8 +321,9 @@ function FaceSwapContent({
             <Icon icon="solar:arrow-left-linear" width={20} />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-text-primary">
+            <h1 className="text-2xl font-bold text-text-primary flex items-center gap-2">
               Character Swap
+              <TourHelpButton onPress={() => setIsTourOpen(true)} />
             </h1>
             <p className="text-text-secondary text-sm">
               Upload a video and swap faces with a character
@@ -302,18 +333,20 @@ function FaceSwapContent({
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            <VideoUploadCard
-              video={video}
-              videoDuration={videoDuration}
-              segments={segments}
-              onVideoChange={handleVideoChange}
-              onSegmentsChange={setSegments}
-              showEditor={showEditor && swapType === "fullbody"}
-              onToggleEditor={() => setShowEditor((v) => !v)}
-              teamId={selectedTeam?.id}
-            />
+            <div data-tour="faceswap-upload">
+              <VideoUploadCard
+                video={video}
+                videoDuration={videoDuration}
+                segments={segments}
+                onVideoChange={handleVideoChange}
+                onSegmentsChange={setSegments}
+                showEditor={showEditor && swapType === "fullbody"}
+                onToggleEditor={() => setShowEditor((v) => !v)}
+                teamId={selectedTeam?.id}
+              />
+            </div>
             {selectedTeam?.id && (
-              <div className="space-y-4">
+              <div className="space-y-4" data-tour="faceswap-my-swaps">
                 <h2 className="text-lg font-semibold text-text-primary">
                   My Swaps
                 </h2>
@@ -326,31 +359,41 @@ function FaceSwapContent({
           </div>
 
           <div className="space-y-6">
-            <CharacterSelector
-              selectedCharacters={selectedCharacters}
-              onCharactersChange={handleCharactersChange}
-              teamId={selectedTeam?.id}
-            />
+            <div data-tour="faceswap-characters">
+              <CharacterSelector
+                selectedCharacters={selectedCharacters}
+                onCharactersChange={handleCharactersChange}
+                teamId={selectedTeam?.id}
+              />
+            </div>
 
-            <GeneratePanel
-              hasVideo={!!video}
-              characterCount={selectedCharacters.length}
-              segmentCount={segments.length}
-              totalDuration={totalDuration}
-              onGenerate={handleGenerate}
-              onAutoDetectAndGenerate={handleAutoDetectAndGenerate}
-              onFaceSwapGenerate={handleFaceSwapGenerate}
-              showEditor={showEditor}
-              onToggleEditor={() => setShowEditor(false)}
-              swapType={swapType}
-              onSwapTypeChange={setSwapType}
-              teamId={selectedTeam?.id}
-              selectedFolderId={selectedFolderId}
-              onFolderSelect={setSelectedFolderId}
-            />
+            <div data-tour="faceswap-generate">
+              <GeneratePanel
+                hasVideo={!!video}
+                characterCount={selectedCharacters.length}
+                segmentCount={segments.length}
+                totalDuration={totalDuration}
+                onGenerate={handleGenerate}
+                onAutoDetectAndGenerate={handleAutoDetectAndGenerate}
+                onFaceSwapGenerate={handleFaceSwapGenerate}
+                showEditor={showEditor}
+                onToggleEditor={() => setShowEditor(false)}
+                swapType={swapType}
+                onSwapTypeChange={setSwapType}
+                teamId={selectedTeam?.id}
+                selectedFolderId={selectedFolderId}
+                onFolderSelect={setSelectedFolderId}
+              />
+            </div>
           </div>
         </div>
       </div>
+
+      <SpotlightTour
+        steps={FACE_SWAP_TOUR_STEPS}
+        isOpen={isTourOpen}
+        onClose={() => setIsTourOpen(false)}
+      />
     </div>
   );
 }

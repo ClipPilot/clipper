@@ -143,7 +143,8 @@ B-roll shot ${shotIndex + 1} of ${totalShots} in a montage sequence.
 
 Action: ${shot.action}
 
-Context: ${sceneData.sceneType} scene, ${sceneData.cameraAngle} angle, ${shot.durationSeconds} second duration.`);
+Context: ${sceneData.sceneType} scene, ${shot.durationSeconds} second duration.
+CAMERA: Use a natural product photography angle — straight-on, slight overhead, or tabletop level. Do NOT use the scene's speaker camera angle. Frame for the product/action, not a person.`);
 
   sections.push(`OUTPUT REQUIREMENTS:
 Generate exactly ONE photograph. Not a collage, not a grid, not a comparison, not multiple panels. A single cohesive image.
@@ -238,7 +239,10 @@ SCENE CONTEXT:
 Type: ${sceneData.sceneType}
 Camera: ${sceneData.cameraAngle}
 Emotion: ${sceneData.emotion}
-Action: ${sceneData.action}`);
+Action: ${sceneData.action}
+
+CAMERA ANGLE - CRITICAL:
+Use a natural, realistic camera angle that a real person would capture on their phone. Avoid extreme angles (extreme low-angle, extreme overhead, tilted/dutch angle, fish-eye distortion). The framing should feel like genuine UGC content — straight-on, slight selfie angle, or natural eye-level. No dramatic cinematographic angles.`);
 
   const frameGuidance = frameType === "start"
     ? `FRAME TIMING: START
@@ -269,7 +273,7 @@ The subject has exactly two arms naturally positioned at their sides or engaged 
 
 Expression matches the ${sceneData.emotion} emotion specified.`);
 
-  sections.push(`NEGATIVE: ${ANATOMY_NEGATIVE}, ${STYLE_NEGATIVE}, studio lighting, professional photography, perfect skin, airbrushed, beauty filter, cinematic lighting, dramatic shadows, posed model aesthetic`);
+  sections.push(`NEGATIVE: ${ANATOMY_NEGATIVE}, ${STYLE_NEGATIVE}, studio lighting, professional photography, perfect skin, airbrushed, beauty filter, cinematic lighting, dramatic shadows, posed model aesthetic, extreme low angle, extreme high angle, dutch angle, tilted camera, fish-eye, wide-angle distortion, dramatic camera angle`);
 
   return sections.join("\n\n");
 }
