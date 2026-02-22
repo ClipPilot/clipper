@@ -13,3 +13,6 @@ export { BestPerformingAccounts } from "./BestPerformingAccounts";
 export { ActivityFeed } from "./ActivityFeed";
 export { HeadToHeadTable } from "./HeadToHeadTable";
 export { RecalcOverlay } from "./RecalcOverlay";
+export { CompetitorCard } from "./CompetitorCard";
+export type { CompetitorCardData } from "./CompetitorCard";
+export { ViralityUpgradeWall } from "./ViralityUpgradeWall";

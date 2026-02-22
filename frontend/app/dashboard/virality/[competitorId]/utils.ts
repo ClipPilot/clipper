@@ -1,5 +1,7 @@
 import type { ViralityPost } from "@/api/virality";
 import type { ComparisonMode } from "@/components/virality/ComparisonModeSelector";
+import type { StatCardItem } from "@/components/virality/StatCards";
+import { formatNumber } from "@/lib/formatters";
 
 /** Percentage change helper — returns null when prev is 0 */
 export function pct(latest: number, prev: number): number | null {
@@ -223,4 +225,104 @@ export function buildPostFrequencyDataFromRange(
   }
 
   return { data: result, isHourly: false };
+}
+
+// ── Stat card builder ─────────────────────────────────────────────────────────
+
+export interface CompetitorStats {
+  totalViews: number;
+  totalEngagements: number;
+  engagementsChange: number | null;
+  engagementRate: number;
+  engRateChange: number | null;
+  followers: number;
+  followersChange: number | null;
+  viewsChange: number | null;
+}
+
+/**
+ * Builds the StatCardItem array for the competitor detail page stat row.
+ * Keeping this in utils.ts avoids a 50-line block of data in the page component.
+ */
+export function buildStatCards(
+  stats: CompetitorStats,
+  totalPosts: number,
+  postsPerWeek: number
+): StatCardItem[] {
+  return [
+    {
+      title: "TOTAL VIEWS",
+      value: formatNumber(stats.totalViews),
+      icon: "solar:eye-bold",
+      iconColor: "text-blue-500",
+      iconBg: "bg-blue-500/10",
+      change: stats.viewsChange,
+      tooltip: "Only counts views on video posts (Reels)",
+    },
+    {
+      title: "TOTAL ENGAGEMENTS",
+      value: formatNumber(stats.totalEngagements),
+      icon: "solar:heart-bold",
+      iconColor: "text-red-500",
+      iconBg: "bg-red-500/10",
+      change: stats.engagementsChange,
+      tooltip: "Sum of likes and comments",
+    },
+    {
+      title: "TOTAL POSTS",
+      value: formatNumber(totalPosts),
+      icon: "solar:document-bold",
+      iconColor: "text-emerald-500",
+      iconBg: "bg-emerald-500/10",
+      change: null,
+    },
+    {
+      title: "FOLLOWERS",
+      value: formatNumber(stats.followers),
+      icon: "solar:users-group-rounded-bold",
+      iconColor: "text-accent-400",
+      iconBg: "bg-accent-400/10",
+      change: stats.followersChange,
+    },
+    {
+      title: "AVG ENG RATE",
+      value: stats.engagementRate.toFixed(2) + "%",
+      icon: "solar:chart-2-bold",
+      iconColor: "text-amber-500",
+      iconBg: "bg-amber-500/10",
+      change: stats.engRateChange,
+      absoluteChange: true,
+      tooltip: "(Likes + Comments) / Views x 100",
+    },
+    {
+      title: "CONTENT VELOCITY",
+      value: String(postsPerWeek),
+      icon: "solar:rocket-2-bold",
+      iconColor: "text-purple-500",
+      iconBg: "bg-purple-500/10",
+      change: null,
+      tooltip: "Average posts per week based on post date range",
+    },
+  ];
+}
+
+// ── Sync countdown ────────────────────────────────────────────────────────────
+
+/**
+ * Returns a human-readable string for how long until the next scheduled
+ * Lambda virality sync (runs at 00:00 UTC and 12:00 UTC every day).
+ */
+export function getNextSyncCountdown(): string {
+  const now = new Date();
+  const candidates = [0, 12].map((h) => {
+    const t = new Date(now);
+    t.setUTCHours(h, 0, 0, 0);
+    if (t.getTime() <= now.getTime()) t.setUTCDate(t.getUTCDate() + 1);
+    return t;
+  });
+  const next = candidates.reduce((a, b) => (a < b ? a : b));
+  const diff = next.getTime() - now.getTime();
+  const hrs = Math.floor(diff / (1000 * 60 * 60));
+  const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  return hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
 }

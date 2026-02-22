@@ -21,13 +21,10 @@ import {
   type CompetitorWithAccounts,
   type ViralityPost,
 } from "@/api/virality";
-import { formatNumber } from "@/lib/formatters";
 import { CHART_COLORS, timeAgo, platformIcon, platformIconColor } from "@/lib/platformUtils";
 import { DateRangeFilter } from "@/components/virality/DateRangeFilter";
-import {
-  type ComparisonMode,
-} from "@/components/virality/ComparisonModeSelector";
-import { StatCards, type StatCardItem } from "@/components/virality/StatCards";
+import { type ComparisonMode } from "@/components/virality/ComparisonModeSelector";
+import { StatCards } from "@/components/virality/StatCards";
 import { PostsTable } from "@/components/virality/PostsTable";
 import { AnalyticsChart } from "@/components/virality/AnalyticsChart";
 import { PostFrequencyChart } from "@/components/virality/PostFrequencyChart";
@@ -35,7 +32,15 @@ import { AccountBreakdownChart } from "@/components/virality/AccountBreakdownCha
 import { BestPerformingAccounts } from "@/components/virality/BestPerformingAccounts";
 import { RecalcOverlay } from "@/components/virality/RecalcOverlay";
 import { AccountFilterPopover } from "@/components/virality/AccountFilterPopover";
-import { findClosestEntry, getComparisonDate, pct, computePostsPerWeek } from "./utils";
+import { ViralityUpgradeWall } from "@/components/virality/ViralityUpgradeWall";
+import {
+  findClosestEntry,
+  getComparisonDate,
+  pct,
+  computePostsPerWeek,
+  buildStatCards,
+  getNextSyncCountdown,
+} from "./utils";
 import { canAccessViralityTracker } from "@/lib/plans";
 
 // ─── Page Component ──────────────────────────────────────────────────────────
@@ -258,39 +263,7 @@ export default function CompetitorDetailPage() {
   // ─── Loading / Error states ──────────────────────────────────────────────────
 
   if (!canAccessViralityTracker(selectedTeam?.plan)) {
-    return (
-      <div className="min-h-screen bg-surface-dark flex flex-col items-center justify-center p-6">
-        <div className="flex flex-col items-center gap-6 max-w-sm">
-          <div className="relative">
-            <div className="flex items-center justify-center w-20 h-20 rounded-2xl bg-purple-500/10">
-              <Icon icon="solar:chart-bold-duotone" className="text-purple-500" width={40} />
-            </div>
-            <div className="absolute -bottom-1 -right-1 flex items-center justify-center w-7 h-7 rounded-full bg-surface-dark border-2 border-surface-dark">
-              <Icon icon="solar:lock-keyhole-bold" className="text-text-tertiary" width={14} />
-            </div>
-          </div>
-          <div className="text-center space-y-2">
-            <h2 className="text-xl font-bold text-text-primary">Virality Tracker</h2>
-            <p className="text-sm text-text-secondary leading-relaxed">
-              Track competitor performance, monitor viral trends, and benchmark your content against the competition.
-            </p>
-          </div>
-          <div className="flex flex-col items-center gap-3 w-full">
-            <Button
-              size="lg"
-              className="w-full bg-purple-500 text-white font-semibold"
-              onPress={() => router.push("/dashboard/pricing")}
-              startContent={<Icon icon="solar:rocket-bold" width={18} />}
-            >
-              Upgrade to Studio
-            </Button>
-            <p className="text-xs text-text-tertiary">
-              Available on Studio, Scale & Enterprise
-            </p>
-          </div>
-        </div>
-      </div>
-    );
+    return <ViralityUpgradeWall />;
   }
 
   if (isLoading) {
@@ -315,61 +288,7 @@ export default function CompetitorDetailPage() {
 
   // ─── Stat card data ──────────────────────────────────────────────────────────
 
-  const statCards: StatCardItem[] = [
-    {
-      title: "TOTAL VIEWS",
-      value: formatNumber(stats.totalViews),
-      icon: "solar:eye-bold",
-      iconColor: "text-blue-500",
-      iconBg: "bg-blue-500/10",
-      change: stats.viewsChange,
-      tooltip: "Only counts views on video posts (Reels)",
-    },
-    {
-      title: "TOTAL ENGAGEMENTS",
-      value: formatNumber(stats.totalEngagements),
-      icon: "solar:heart-bold",
-      iconColor: "text-red-500",
-      iconBg: "bg-red-500/10",
-      change: stats.engagementsChange,
-      tooltip: "Sum of likes and comments",
-    },
-    {
-      title: "TOTAL POSTS",
-      value: formatNumber(activePosts.length),
-      icon: "solar:document-bold",
-      iconColor: "text-emerald-500",
-      iconBg: "bg-emerald-500/10",
-      change: null,
-    },
-    {
-      title: "FOLLOWERS",
-      value: formatNumber(stats.followers),
-      icon: "solar:users-group-rounded-bold",
-      iconColor: "text-accent-400",
-      iconBg: "bg-accent-400/10",
-      change: stats.followersChange,
-    },
-    {
-      title: "AVG ENG RATE",
-      value: stats.engagementRate.toFixed(2) + "%",
-      icon: "solar:chart-2-bold",
-      iconColor: "text-amber-500",
-      iconBg: "bg-amber-500/10",
-      change: stats.engRateChange,
-      absoluteChange: true,
-      tooltip: "(Likes + Comments) / Views x 100",
-    },
-    {
-      title: "CONTENT VELOCITY",
-      value: String(postsPerWeek),
-      icon: "solar:rocket-2-bold",
-      iconColor: "text-purple-500",
-      iconBg: "bg-purple-500/10",
-      change: null,
-      tooltip: "Average posts per week based on post date range",
-    },
-  ];
+  const statCards = buildStatCards(stats, activePosts.length, postsPerWeek);
 
   // ─── Render ──────────────────────────────────────────────────────────────────
 
@@ -468,21 +387,7 @@ export default function CompetitorDetailPage() {
                 {lastSyncedAt ? (
                   <>
                     Last synced {timeAgo(lastSyncedAt.toISOString())} · Next sync in{" "}
-                    {(() => {
-                      // Lambda fires at 00:00 UTC and 12:00 UTC every day
-                      const now = new Date();
-                      const candidates = [0, 12].map((h) => {
-                        const t = new Date(now);
-                        t.setUTCHours(h, 0, 0, 0);
-                        if (t.getTime() <= now.getTime()) t.setUTCDate(t.getUTCDate() + 1);
-                        return t;
-                      });
-                      const next = candidates.reduce((a, b) => (a < b ? a : b));
-                      const diff = next.getTime() - now.getTime();
-                      const hrs = Math.floor(diff / (1000 * 60 * 60));
-                      const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                      return hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
-                    })()}
+                    {getNextSyncCountdown()}
                   </>
                 ) : (
                   "No syncs yet"
