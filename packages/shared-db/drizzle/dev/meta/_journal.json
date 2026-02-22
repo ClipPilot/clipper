@@ -232,6 +232,41 @@
       "when": 1771614137238,
       "tag": "0032_late_excalibur",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1771625528938,
+      "tag": "0033_vengeful_jigsaw",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1771628369833,
+      "tag": "0034_nostalgic_shooting_star",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1771745443966,
+      "tag": "0035_concerned_jigsaw",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1771749663626,
+      "tag": "0036_serious_betty_ross",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1771756866466,
+      "tag": "0037_green_magik",
+      "breakpoints": true
     }
   ]
 }
