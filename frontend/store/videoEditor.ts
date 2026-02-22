@@ -56,10 +56,24 @@ export interface HeadingState {
   fontSize: number;
 }
 
+// Comment overlay types
+export type CommentPlatform = "tiktok" | "youtube" | "instagram";
+
+export interface CommentOverlayData {
+  platform: CommentPlatform;
+  username: string;
+  commentText: string;
+  profilePictureUrl?: string; // Blob URL for preview
+  profilePictureS3Key?: string; // S3 key after upload
+  likesCount: number;
+  isVerified: boolean;
+  timeAgo?: string; // e.g. "2h", "1d"
+}
+
 // Media overlay state
 export interface MediaOverlay {
   id: string;
-  type: "image" | "video";
+  type: "image" | "video" | "comment";
   s3Key: string;
   fileName: string;
   url: string; // Blob URL for preview
@@ -71,12 +85,13 @@ export interface MediaOverlay {
   opacity: number; // 0-1
   naturalWidth: number;
   naturalHeight: number;
+  commentData?: CommentOverlayData; // Only present when type === "comment"
 }
 
 // Media overlay config for API submission (no blob URLs)
 export interface MediaOverlayConfig {
   id: string;
-  type: "image" | "video";
+  type: "image" | "video" | "comment";
   s3Key: string;
   fileName: string;
   startTime: number;
@@ -87,6 +102,15 @@ export interface MediaOverlayConfig {
   opacity: number;
   naturalWidth: number;
   naturalHeight: number;
+  commentData?: {
+    platform: CommentPlatform;
+    username: string;
+    commentText: string;
+    profilePictureS3Key?: string;
+    likesCount: number;
+    isVerified: boolean;
+    timeAgo?: string;
+  };
 }
 
 // Helper to generate unique overlay IDs
@@ -627,9 +651,20 @@ export const editConfigAtom = atom<VideoEditConfig>((get) => {
   const overlays = get(mediaOverlaysAtom);
   if (overlays.length > 0) {
     config.overlays = overlays
-      .filter((o) => o.s3Key) // Only include uploaded overlays
-      .map(({ id, type, s3Key, fileName, startTime, endTime, x, y, scale, opacity, naturalWidth, naturalHeight }) => ({
+      .filter((o) => o.s3Key || o.type === "comment") // Include uploaded overlays and comment overlays
+      .map(({ id, type, s3Key, fileName, startTime, endTime, x, y, scale, opacity, naturalWidth, naturalHeight, commentData }) => ({
         id, type, s3Key, fileName, startTime, endTime, x, y, scale, opacity, naturalWidth, naturalHeight,
+        ...(type === "comment" && commentData ? {
+          commentData: {
+            platform: commentData.platform,
+            username: commentData.username,
+            commentText: commentData.commentText,
+            profilePictureS3Key: commentData.profilePictureS3Key,
+            likesCount: commentData.likesCount,
+            isVerified: commentData.isVerified,
+            timeAgo: commentData.timeAgo,
+          },
+        } : {}),
       }));
   }
 

@@ -274,8 +274,10 @@ export function VideoEditor() {
     setOverlays([]);
     setSelectedOverlayId(null);
     if (savedConfig?.overlays && savedConfig.overlays.length > 0 && selectedTeam?.id) {
-      // Fetch presigned view URLs for saved overlay S3 keys
-      const s3Keys = savedConfig.overlays.map((o: any) => o.s3Key).filter(Boolean);
+      // Fetch presigned view URLs for saved overlay S3 keys (only for non-comment overlays)
+      const s3Keys = savedConfig.overlays
+        .filter((o: any) => o.type !== "comment" && o.s3Key)
+        .map((o: any) => o.s3Key);
       let urlMap: Record<string, string> = {};
       try {
         if (s3Keys.length > 0) {
@@ -285,12 +287,25 @@ export function VideoEditor() {
         console.error("Failed to fetch overlay URLs:", err);
       }
 
+      // Fetch profile picture URLs for comment overlays
+      const pfpS3Keys = savedConfig.overlays
+        .filter((o: any) => o.type === "comment" && o.commentData?.profilePictureS3Key)
+        .map((o: any) => o.commentData.profilePictureS3Key);
+      let pfpUrlMap: Record<string, string> = {};
+      try {
+        if (pfpS3Keys.length > 0) {
+          pfpUrlMap = await clipsAPI.getOverlayViewUrls(selectedTeam.id, clipId, pfpS3Keys);
+        }
+      } catch (err) {
+        console.error("Failed to fetch profile picture URLs:", err);
+      }
+
       const restoredOverlays: MediaOverlay[] = savedConfig.overlays.map((o: any) => ({
         id: o.id,
         type: o.type,
-        s3Key: o.s3Key,
+        s3Key: o.s3Key || "",
         fileName: o.fileName,
-        url: urlMap[o.s3Key] || "",
+        url: o.type === "comment" ? "" : (urlMap[o.s3Key] || ""),
         startTime: o.startTime,
         endTime: o.endTime,
         x: o.x,
@@ -299,6 +314,14 @@ export function VideoEditor() {
         opacity: o.opacity,
         naturalWidth: o.naturalWidth,
         naturalHeight: o.naturalHeight,
+        ...(o.type === "comment" && o.commentData ? {
+          commentData: {
+            ...o.commentData,
+            profilePictureUrl: o.commentData.profilePictureS3Key
+              ? pfpUrlMap[o.commentData.profilePictureS3Key] || undefined
+              : undefined,
+          },
+        } : {}),
       }));
       setOverlays(restoredOverlays);
     }

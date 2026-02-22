@@ -1685,3 +1685,207 @@ export const applyMediaOverlays = async (
     }
   });
 };
+
+// =============================================================================
+// COMMENT OVERLAY: Generate social media comment images via Puppeteer
+// =============================================================================
+
+export interface CommentOverlayConfig {
+  platform: "tiktok" | "youtube" | "instagram";
+  username: string;
+  commentText: string;
+  profilePicturePath?: string; // Local file path (downloaded from S3)
+  likesCount: number;
+  isVerified: boolean;
+  timeAgo?: string;
+}
+
+const formatLikesCount = (count: number): string => {
+  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
+  if (count >= 1_000) return `${(count / 1_000).toFixed(1)}K`;
+  return count.toString();
+};
+
+const hashColor = (str: string): string => {
+  const colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E9"];
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+};
+
+const escapeHtml = (text: string): string =>
+  text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+const VERIFIED_BADGE_SVG = {
+  tiktok: `<svg width="14" height="14" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="10" fill="#20D5EC"/><path d="M8.5 13.5L5 10l1.4-1.4 2.1 2.1 4.6-4.6L14.5 7.5l-6 6z" fill="#fff"/></svg>`,
+  youtube: `<svg width="14" height="14" viewBox="0 0 24 24" fill="#aaa"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`,
+  instagram: `<svg width="14" height="14" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="10" fill="#3897F0"/><path d="M8.5 13.5L5 10l1.4-1.4 2.1 2.1 4.6-4.6L14.5 7.5l-6 6z" fill="#fff"/></svg>`,
+};
+
+const HEART_ICON_SVG = `<svg width="20" height="20" viewBox="0 0 24 24" fill="rgba(255,255,255,0.5)" xmlns="http://www.w3.org/2000/svg"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`;
+
+const THUMBS_UP_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="#aaa" xmlns="http://www.w3.org/2000/svg"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>`;
+
+const getDefaultAvatarDataUri = (username: string): string => {
+  const color = hashColor(username);
+  const initial = username.charAt(0).toUpperCase();
+  return `data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72"><circle cx="36" cy="36" r="36" fill="${color}"/><text x="36" y="48" text-anchor="middle" fill="#fff" font-size="32" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-weight="600">${initial}</text></svg>`
+  )}`;
+};
+
+const getCommentHtml = (
+  config: CommentOverlayConfig,
+  profilePicSrc: string
+): string => {
+  const { platform, username, commentText, likesCount, isVerified, timeAgo } = config;
+  const likes = formatLikesCount(likesCount);
+  const badge = isVerified ? VERIFIED_BADGE_SVG[platform] : "";
+  const safeUsername = escapeHtml(username);
+  const safeComment = escapeHtml(commentText);
+  const time = escapeHtml(timeAgo || "2h");
+
+  if (platform === "tiktok") {
+    return `
+      <!DOCTYPE html><html><head><style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { width: 800px; background: transparent; padding: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        .comment { background: rgba(37,37,37,0.92); border-radius: 12px; padding: 14px 16px; display: inline-flex; align-items: flex-start; gap: 10px; max-width: 760px; }
+        .avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+        .body { flex: 1; min-width: 0; }
+        .username-row { display: flex; align-items: center; gap: 4px; }
+        .username { color: rgba(255,255,255,0.55); font-size: 13px; font-weight: 600; }
+        .text { color: #fff; font-size: 15px; margin-top: 4px; line-height: 1.35; word-wrap: break-word; }
+        .meta { display: flex; align-items: center; gap: 16px; margin-top: 6px; }
+        .meta span { color: rgba(255,255,255,0.4); font-size: 12px; }
+        .likes { display: flex; flex-direction: column; align-items: center; gap: 2px; margin-left: 8px; flex-shrink: 0; }
+        .likes span { color: rgba(255,255,255,0.5); font-size: 11px; }
+      </style></head><body>
+        <div class="comment">
+          <img class="avatar" src="${profilePicSrc}" />
+          <div class="body">
+            <div class="username-row"><span class="username">${safeUsername}</span>${badge}</div>
+            <div class="text">${safeComment}</div>
+            <div class="meta"><span>${time}</span><span>Reply</span></div>
+          </div>
+          <div class="likes">${HEART_ICON_SVG}<span>${likes}</span></div>
+        </div>
+      </body></html>
+    `;
+  }
+
+  if (platform === "youtube") {
+    return `
+      <!DOCTYPE html><html><head><style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { width: 800px; background: transparent; padding: 16px; font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        .comment { background: rgba(28,28,28,0.92); border-radius: 12px; padding: 14px 16px; display: inline-flex; align-items: flex-start; gap: 12px; max-width: 760px; }
+        .avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+        .body { flex: 1; min-width: 0; }
+        .username-row { display: flex; align-items: center; gap: 6px; }
+        .username { color: #aaa; font-size: 13px; font-weight: 500; }
+        .time { color: #717171; font-size: 12px; }
+        .text { color: #fff; font-size: 14px; margin-top: 4px; line-height: 1.4; word-wrap: break-word; }
+        .actions { display: flex; align-items: center; gap: 4px; margin-top: 8px; }
+        .actions span { color: #aaa; font-size: 12px; }
+      </style></head><body>
+        <div class="comment">
+          <img class="avatar" src="${profilePicSrc}" />
+          <div class="body">
+            <div class="username-row"><span class="username">@${safeUsername}</span>${badge}<span class="time">${time}</span></div>
+            <div class="text">${safeComment}</div>
+            <div class="actions">${THUMBS_UP_SVG}<span>${likes}</span></div>
+          </div>
+        </div>
+      </body></html>
+    `;
+  }
+
+  // Instagram
+  return `
+    <!DOCTYPE html><html><head><style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { width: 800px; background: transparent; padding: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+      .comment { background: rgba(0,0,0,0.6); border-radius: 20px; padding: 12px 16px; display: inline-flex; align-items: flex-start; gap: 10px; max-width: 760px; }
+      .avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+      .body { flex: 1; min-width: 0; }
+      .username-row { display: flex; align-items: center; gap: 4px; }
+      .username { color: #fff; font-size: 13px; font-weight: 600; }
+      .time { color: rgba(255,255,255,0.4); font-size: 12px; }
+      .text { color: #fff; font-size: 13px; margin-top: 3px; line-height: 1.35; word-wrap: break-word; }
+      .likes { display: flex; flex-direction: column; align-items: center; gap: 1px; margin-left: 8px; flex-shrink: 0; }
+      .likes svg { width: 16px; height: 16px; fill: rgba(255,255,255,0.7); }
+      .likes span { color: rgba(255,255,255,0.6); font-size: 11px; }
+    </style></head><body>
+      <div class="comment">
+        <img class="avatar" src="${profilePicSrc}" />
+        <div class="body">
+          <div class="username-row"><span class="username">${safeUsername}</span>${badge}<span class="time">${time}</span></div>
+          <div class="text">${safeComment}</div>
+        </div>
+        <div class="likes">${HEART_ICON_SVG}<span>${likes}</span></div>
+      </div>
+    </body></html>
+  `;
+};
+
+/**
+ * Generate a social media comment overlay image using Puppeteer.
+ * Returns the rendered dimensions (CSS pixels) for FFmpeg positioning.
+ */
+export const generateCommentImage = async (
+  config: CommentOverlayConfig,
+  outputPath: string
+): Promise<{ width: number; height: number }> => {
+  console.log(`[COMMENT] Generating ${config.platform} comment image for @${config.username}`);
+
+  // Build profile picture data URI
+  let profilePicSrc = getDefaultAvatarDataUri(config.username);
+  if (config.profilePicturePath && fs.existsSync(config.profilePicturePath)) {
+    const imageBuffer = fs.readFileSync(config.profilePicturePath);
+    const ext = path.extname(config.profilePicturePath).toLowerCase();
+    const mime = ext === ".png" ? "image/png" : ext === ".webp" ? "image/webp" : "image/jpeg";
+    profilePicSrc = `data:${mime};base64,${imageBuffer.toString("base64")}`;
+  }
+
+  const htmlContent = getCommentHtml(config, profilePicSrc);
+
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 800, height: 400, deviceScaleFactor: 2 });
+    await page.setContent(htmlContent, { waitUntil: "networkidle0" });
+
+    // Get actual bounding box of the comment element (runs in Puppeteer's browser context)
+    const commentEl = await page.$(".comment");
+    let dimensions = { width: 800, height: 200 };
+    if (commentEl) {
+      const box = await commentEl.boundingBox();
+      if (box) {
+        dimensions = { width: Math.ceil(box.width) + 32, height: Math.ceil(box.height) + 32 }; // +32 for body padding
+      }
+    }
+
+    await page.screenshot({
+      path: outputPath,
+      type: "png",
+      omitBackground: true,
+      clip: { x: 0, y: 0, width: dimensions.width, height: dimensions.height },
+    });
+
+    if (!fs.existsSync(outputPath)) {
+      throw new Error(`Failed to create comment image at ${outputPath}`);
+    }
+
+    console.log(`[COMMENT] Generated ${config.platform} comment: ${dimensions.width}x${dimensions.height}px -> ${outputPath}`);
+    return dimensions;
+  } finally {
+    await browser.close();
+  }
+};
