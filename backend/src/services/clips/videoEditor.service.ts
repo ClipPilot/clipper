@@ -1808,11 +1808,13 @@ const getCommentHtml = (
     <!DOCTYPE html><html><head><style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
       body { width: 800px; background: transparent; padding: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
-      .comment { background: rgba(0,0,0,0.6); border-radius: 20px; padding: 12px 16px; display: inline-flex; align-items: center; gap: 10px; max-width: 760px; }
+      .comment { background: rgba(0,0,0,0.6); border-radius: 20px; padding: 12px 16px; display: inline-flex; align-items: flex-start; gap: 10px; max-width: 760px; }
       .avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
-      .body { flex: 1; min-width: 0; line-height: 1.35; }
+      .body { flex: 1; min-width: 0; }
+      .username-row { display: flex; align-items: center; gap: 4px; }
       .username { color: #fff; font-size: 13px; font-weight: 600; }
-      .text { color: #fff; font-size: 13px; }
+      .time { color: rgba(255,255,255,0.4); font-size: 12px; }
+      .text { color: #fff; font-size: 13px; margin-top: 3px; line-height: 1.35; word-wrap: break-word; }
       .likes { display: flex; flex-direction: column; align-items: center; gap: 1px; margin-left: 8px; flex-shrink: 0; }
       .likes svg { width: 16px; height: 16px; fill: rgba(255,255,255,0.7); }
       .likes span { color: rgba(255,255,255,0.6); font-size: 11px; }
@@ -1820,8 +1822,8 @@ const getCommentHtml = (
       <div class="comment">
         <img class="avatar" src="${profilePicSrc}" />
         <div class="body">
-          <span class="username">${safeUsername}</span>${badge}&nbsp;
-          <span class="text">${safeComment}</span>
+          <div class="username-row"><span class="username">${safeUsername}</span>${badge}<span class="time">${time}</span></div>
+          <div class="text">${safeComment}</div>
         </div>
         <div class="likes">${HEART_ICON_SVG}<span>${likes}</span></div>
       </div>

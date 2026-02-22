@@ -17,19 +17,7 @@ import {
   CommentOverlayData,
 } from "@/store/videoEditor";
 import { clipsAPI } from "@/api/clips";
-
-const PLATFORMS: { id: CommentPlatform; label: string; icon: string }[] = [
-  { id: "tiktok", label: "TikTok", icon: "simple-icons:tiktok" },
-  { id: "youtube", label: "YouTube", icon: "simple-icons:youtube" },
-  { id: "instagram", label: "Instagram", icon: "simple-icons:instagram" },
-];
-
-// Preset dimensions matching Puppeteer output (CSS pixels)
-const COMMENT_DIMENSIONS: Record<CommentPlatform, { width: number; height: number }> = {
-  tiktok: { width: 800, height: 160 },
-  youtube: { width: 800, height: 180 },
-  instagram: { width: 800, height: 140 },
-};
+import { COMMENT_DIMENSIONS, PLATFORMS } from "@/constants/comments";
 
 interface CommentOverlayFormProps {
   editingOverlayId?: string | null;
@@ -171,21 +159,21 @@ export function CommentOverlayForm({ editingOverlayId }: CommentOverlayFormProps
       setSelectedOverlayId(newOverlay.id);
     }
 
-    // Reset form
+    // Reset form (skip revoking the blob URL since the overlay now owns it)
     if (!isEditing) {
-      resetForm();
+      resetForm(true);
       setShowForm(false);
     }
   };
 
-  const resetForm = () => {
+  const resetForm = (keepBlobUrl = false) => {
     setPlatform("tiktok");
     setUsername("");
     setCommentText("");
     setLikesCount(1234);
     setIsVerified(false);
     setTimeAgo("2h");
-    if (profilePictureUrl) URL.revokeObjectURL(profilePictureUrl);
+    if (!keepBlobUrl && profilePictureUrl) URL.revokeObjectURL(profilePictureUrl);
     setProfilePictureUrl(undefined);
     setProfilePictureS3Key(undefined);
   };
@@ -329,7 +317,7 @@ export function CommentOverlayForm({ editingOverlayId }: CommentOverlayFormProps
       </div>
 
       {/* Verified Badge */}
-      <div className="flex items-center justify-between">
+      {/* <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Icon icon="solar:verified-check-bold" className="text-blue-400" />
           <span className="text-sm text-text-secondary">Verified Badge</span>
@@ -339,7 +327,7 @@ export function CommentOverlayForm({ editingOverlayId }: CommentOverlayFormProps
           isSelected={isVerified}
           onValueChange={setIsVerified}
         />
-      </div>
+      </div> */}
 
       {/* Add/Update Button */}
       <Button

@@ -16,18 +16,7 @@ import {
 } from "@/store/videoEditor";
 import { clipsAPI } from "@/api/clips";
 import { CommentOverlayForm } from "./CommentOverlayForm";
-
-const PLATFORM_LABELS: Record<string, string> = {
-  tiktok: "TikTok Comment",
-  youtube: "YouTube Comment",
-  instagram: "Instagram Comment",
-};
-
-const PLATFORM_ICONS: Record<string, string> = {
-  tiktok: "simple-icons:tiktok",
-  youtube: "simple-icons:youtube",
-  instagram: "simple-icons:instagram",
-};
+import { PLATFORM_LABELS, PLATFORM_ICONS } from "@/constants/comments";
 
 export function OverlayTool() {
   const [overlays, setOverlays] = useAtom(mediaOverlaysAtom);
