@@ -945,7 +945,7 @@ export const viralityAccounts = pgTable(
     sync_error: text("sync_error"),
     alert_enabled: boolean("alert_enabled").notNull().default(false),
     is_active: boolean("is_active").notNull().default(true),
-    last_credit_charged_at: timestamp("last_credit_charged_at"),
+    syncs_remaining: integer("syncs_remaining").notNull().default(14),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },

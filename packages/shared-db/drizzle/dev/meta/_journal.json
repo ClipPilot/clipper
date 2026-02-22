@@ -260,6 +260,13 @@
       "when": 1771749663626,
       "tag": "0036_serious_betty_ross",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1771756866466,
+      "tag": "0037_green_magik",
+      "breakpoints": true
     }
   ]
 }
