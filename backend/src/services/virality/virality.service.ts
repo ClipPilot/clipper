@@ -10,12 +10,14 @@ import { eq, and, desc, count, gte, lte, inArray, sql } from "drizzle-orm";
 import { getApifyService, InstagramPost, InstagramProfile } from "./apify.service";
 import { parseInstagramUsername, parseTikTokUsername, parseXUsername } from "../../utils/parseUsername";
 import {
-  MAX_ACCOUNTS_PER_TEAM,
   SYNCS_PER_DAY,
   MAX_METRICS_HISTORY,
   MAX_FOLLOWER_HISTORY,
 } from "../../config/virality";
 import { canAccessViralityTracker } from "../../utils/plans";
+import { teamService } from "../team.service";
+
+const SYNCS_PER_WEEK = SYNCS_PER_DAY * 7;
 
 interface MetricsEntry {
   recorded_at: string;
@@ -140,14 +142,6 @@ class ViralityService {
     competitorId?: number,
     accountType: "profile" | "hashtag" | "keyword" = "profile"
   ) {
-    // Check account limit
-    const currentCount = await this.getAccountCount(teamId);
-    if (currentCount >= MAX_ACCOUNTS_PER_TEAM) {
-      throw new Error(
-        `Maximum of ${MAX_ACCOUNTS_PER_TEAM} accounts per team reached`
-      );
-    }
-
     // Parse username based on account type
     let username: string;
     if (accountType === "profile") {
@@ -226,6 +220,14 @@ class ViralityService {
       })
       .returning();
 
+    // Charge 1 credit immediately on account creation
+    const { success } = await teamService.consumeClip(teamId);
+    if (!success) {
+      // Roll back: delete the just-created account
+      await db.delete(viralityAccounts).where(eq(viralityAccounts.id, account.id));
+      throw new Error("Insufficient credits to start tracking");
+    }
+
     return account;
   }
 
@@ -239,11 +241,35 @@ class ViralityService {
     await db.delete(viralityAccounts).where(eq(viralityAccounts.id, accountId));
   }
 
+  async updateAccountStatus(accountId: number, teamId: number, isActive: boolean) {
+    const account = await this.getAccountById(accountId);
+    if (!account || account.team_id !== teamId) {
+      throw new Error("Account not found or access denied");
+    }
+
+    const [updated] = await db
+      .update(viralityAccounts)
+      .set({
+        is_active: isActive,
+        // Reset syncs counter when reactivating so they get a fresh 7-day window
+        ...(isActive ? { syncs_remaining: SYNCS_PER_WEEK } : {}),
+        updated_at: new Date(),
+      })
+      .where(eq(viralityAccounts.id, accountId))
+      .returning();
+
+    return updated;
+  }
+
   async syncAccount(accountId: number, teamId: number) {
     // Verify ownership
     const account = await this.getAccountById(accountId);
     if (!account || account.team_id !== teamId) {
       throw new Error("Account not found or access denied");
+    }
+
+    if (!account.is_active) {
+      throw new Error("Account is inactive and cannot be synced");
     }
 
     // Update status to syncing
@@ -296,7 +322,9 @@ class ViralityService {
         const resolvedProfile = profile
           ?? (account.platform === "instagram"
             ? await apify.scrapeInstagramProfile(account.username)
-            : null);
+            : account.platform === "x"
+              ? await apify.fetchXProfile(account.username)
+              : null);
 
         if (resolvedProfile) {
           await this.updateAccountProfile(accountId, resolvedProfile);
@@ -592,7 +620,6 @@ class ViralityService {
 
     return {
       accountsCount: accounts.length,
-      maxAccounts: MAX_ACCOUNTS_PER_TEAM,
       totalFollowers,
       totalLikes,
       totalPosts,

@@ -14,8 +14,8 @@ import {
   HeadToHeadTable,
 } from "@/components/virality";
 import type { Platform } from "@/components/virality/AccountsTable";
-import type { DateRangeValue } from "@/components/virality/DateRangeFilter";
 import { useTeams } from "@/hooks/useTeams";
+import { useViralityDateRange } from "@/contexts/ViralityContext";
 import {
   viralityAPI,
   type CompetitorWithAccounts,
@@ -47,9 +47,9 @@ const PLATFORM_DOTS: Record<string, string> = {
 export default function ViralityPage() {
   const router = useRouter();
   const { selectedTeam } = useTeams();
+  const { dateRange, setDateRange } = useViralityDateRange();
   const [platformFilter, setPlatformFilter] = useState<Platform | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [dateRange, setDateRange] = useState<DateRangeValue>({});
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [competitors, setCompetitors] = useState<CompetitorWithAccounts[]>([]);
   const [simpleCompetitors, setSimpleCompetitors] = useState<ViralityCompetitor[]>([]);
@@ -59,6 +59,8 @@ export default function ViralityPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [cardsExpanded, setCardsExpanded] = useState(false);
+  const [editingCompetitorId, setEditingCompetitorId] = useState<number | null>(null);
+  const [editingName, setEditingName] = useState("");
   const initialLoadDone = useRef(false);
 
   const fetchData = useCallback(async () => {
@@ -131,6 +133,17 @@ export default function ViralityPage() {
     return map;
   }, [competitors]);
 
+  // Derive account statuses from real data (is_active defaults to true if missing)
+  const accountStatuses = useMemo(() => {
+    const map: Record<number, "active" | "inactive"> = {};
+    for (const c of competitors) {
+      for (const a of c.accounts) {
+        map[a.id] = a.is_active === false ? "inactive" : "active";
+      }
+    }
+    return map;
+  }, [competitors]);
+
   // Date-filtered posts for viral/recent tabs
   const allPosts = useMemo(() => {
     return Object.values(postsByAccount).flat();
@@ -196,20 +209,61 @@ export default function ViralityPage() {
   }, [competitors, postsByAccount]);
 
   const handleViewCompetitor = (competitorId: number) => {
-    const params = new URLSearchParams();
-    if (dateRange.startDate) params.set("startDate", dateRange.startDate);
-    if (dateRange.endDate) params.set("endDate", dateRange.endDate);
-    const qs = params.toString();
-    router.push(`/dashboard/virality/${competitorId}${qs ? `?${qs}` : ""}`);
+    router.push(`/dashboard/virality/${competitorId}`);
   };
 
   const handleViewAccount = (competitorId: number, accountId: number) => {
-    const params = new URLSearchParams();
-    if (dateRange.startDate) params.set("startDate", dateRange.startDate);
-    if (dateRange.endDate) params.set("endDate", dateRange.endDate);
-    params.set("accountId", String(accountId));
-    const qs = params.toString();
-    router.push(`/dashboard/virality/${competitorId}${qs ? `?${qs}` : ""}`);
+    router.push(`/dashboard/virality/${competitorId}?accountId=${accountId}`);
+  };
+
+  const handleDeleteAccount = async (accountId: number) => {
+    if (!selectedTeam?.id) return;
+    try {
+      await viralityAPI.deleteAccount(selectedTeam.id, accountId);
+      addToast({ title: "Account deleted", color: "success" });
+      await fetchData();
+    } catch (err: any) {
+      addToast({ title: "Failed to delete account", description: err.message, color: "danger" });
+    }
+  };
+
+  const handleToggleAccountStatus = async (accountId: number, newStatus: "active" | "inactive") => {
+    if (!selectedTeam?.id) return;
+    try {
+      await viralityAPI.updateAccountStatus(selectedTeam.id, accountId, newStatus === "active");
+      // Update local state only — no need to refetch everything
+      setCompetitors((prev) =>
+        prev.map((c) => ({
+          ...c,
+          accounts: c.accounts.map((a) =>
+            a.id === accountId ? { ...a, is_active: newStatus === "active" } : a
+          ),
+        }))
+      );
+      addToast({
+        title: `Account ${newStatus === "active" ? "activated" : "deactivated"}`,
+        color: "success",
+      });
+    } catch (err: any) {
+      addToast({ title: "Failed to update status", description: err.message, color: "danger" });
+    }
+  };
+
+  const handleSaveCompetitorName = async (competitorId: number) => {
+    if (!selectedTeam?.id || !editingName.trim()) return;
+    try {
+      await viralityAPI.updateCompetitor(selectedTeam.id, competitorId, { name: editingName.trim() });
+      setCompetitors((prev) =>
+        prev.map((c) => c.id === competitorId ? { ...c, name: editingName.trim() } : c)
+      );
+      setSimpleCompetitors((prev) =>
+        prev.map((c) => c.id === competitorId ? { ...c, name: editingName.trim() } : c)
+      );
+      setEditingCompetitorId(null);
+      addToast({ title: "Competitor renamed", color: "success" });
+    } catch (err: any) {
+      addToast({ title: "Failed to rename competitor", description: err.message, color: "danger" });
+    }
   };
 
   const handleAddAccount = async (
@@ -298,7 +352,7 @@ export default function ViralityPage() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="min-h-screen bg-surface-dark p-6 lg:p-8"
+      className="min-h-screen bg-surface-dark p-6 lg:p-8 overflow-x-hidden"
     >
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
@@ -338,24 +392,73 @@ export default function ViralityPage() {
                       {competitor.name.slice(0, 2).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-text-primary truncate">{competitor.name}</p>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        {platforms.map((p) => (
-                          <span key={p} className={cn("w-1.5 h-1.5 rounded-full", PLATFORM_DOTS[p] || "bg-default-400")} />
-                        ))}
-                        <span className="text-[10px] text-text-tertiary">
-                          {competitor.accounts.length} account{competitor.accounts.length !== 1 ? "s" : ""}
-                        </span>
-                      </div>
+                      {editingCompetitorId === competitor.id ? (
+                        <Input
+                          size="sm"
+                          value={editingName}
+                          onValueChange={setEditingName}
+                          autoFocus
+                          classNames={{ inputWrapper: "bg-surface-elevated border-border-base h-7 min-h-0", input: "text-xs" }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleSaveCompetitorName(competitor.id);
+                            if (e.key === "Escape") setEditingCompetitorId(null);
+                          }}
+                        />
+                      ) : (
+                        <>
+                          <p className="text-sm font-medium text-text-primary truncate">{competitor.name}</p>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            {platforms.map((p) => (
+                              <span key={p} className={cn("w-1.5 h-1.5 rounded-full", PLATFORM_DOTS[p] || "bg-default-400")} />
+                            ))}
+                            <span className="text-[10px] text-text-tertiary">
+                              {competitor.accounts.length} account{competitor.accounts.length !== 1 ? "s" : ""}
+                            </span>
+                          </div>
+                        </>
+                      )}
                     </div>
-                    <Button
-                      size="sm"
-                      variant="flat"
-                      className="bg-accent-400/10 text-accent-400 text-[11px] h-7 min-w-0 px-2.5"
-                      onPress={() => handleViewCompetitor(competitor.id)}
-                    >
-                      View
-                    </Button>
+                    {editingCompetitorId === competitor.id ? (
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button
+                          size="sm"
+                          isIconOnly
+                          className="bg-accent-400 text-white h-7 w-7 min-w-0"
+                          onPress={() => handleSaveCompetitorName(competitor.id)}
+                        >
+                          <Icon icon="solar:check-read-linear" width={14} />
+                        </Button>
+                        <Button
+                          size="sm"
+                          isIconOnly
+                          variant="flat"
+                          className="bg-surface-elevated h-7 w-7 min-w-0"
+                          onPress={() => setEditingCompetitorId(null)}
+                        >
+                          <Icon icon="solar:close-circle-linear" width={14} />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button
+                          size="sm"
+                          isIconOnly
+                          variant="light"
+                          className="text-text-tertiary h-7 w-7 min-w-0"
+                          onPress={() => { setEditingName(competitor.name); setEditingCompetitorId(competitor.id); }}
+                        >
+                          <Icon icon="solar:pen-2-linear" width={14} />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="flat"
+                          className="bg-accent-400/10 text-accent-400 text-[11px] h-7 min-w-0 px-2.5"
+                          onPress={() => handleViewCompetitor(competitor.id)}
+                        >
+                          View
+                        </Button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Collapsible metrics grid */}
@@ -370,15 +473,15 @@ export default function ViralityPage() {
                         { label: "Total Views", value: formatNumber(totalViews), change: viewsChange },
                         { label: "Avg. Views", value: formatNumber(avgViews), change: null },
                         { label: "Total Posts", value: formatNumber(competitor.accounts.flatMap((a) => postsByAccount[a.id] || []).length), change: null },
-                        { label: "Eng. Rate", value: engRate.toFixed(2) + "%", change: engRateChange },
-                      ].map((m) => (
+                        { label: "Eng. Rate", value: engRate.toFixed(2) + "%", change: engRateChange, absoluteChange: true },
+                      ].map((m: { label: string; value: string; change: number | null; absoluteChange?: boolean }) => (
                         <div key={m.label} className="bg-surface-elevated rounded-lg px-3 py-2.5">
                           <p className="text-[10px] text-text-tertiary font-medium">{m.label}</p>
                           <div className="flex items-center gap-1.5 mt-0.5">
                             <p className="text-sm font-bold text-text-primary">{m.value}</p>
                             {m.change != null && (
                               <span className={cn("text-[10px] font-medium", m.change >= 0 ? "text-green-500" : "text-red-500")}>
-                                {m.change >= 0 ? "+" : ""}{m.change.toFixed(1)}%
+                                {m.absoluteChange ? (m.change >= 0 ? "+" : "") + m.change.toFixed(2) : (m.change >= 0 ? "+" : "") + m.change.toFixed(1) + "%"}
                               </span>
                             )}
                           </div>
@@ -390,13 +493,15 @@ export default function ViralityPage() {
                   {/* Expand/collapse toggle */}
                   <button
                     onClick={() => setCardsExpanded((v) => !v)}
-                    className="w-full flex items-center justify-center pt-2"
+                    className="w-full flex items-center justify-center pt-2 group cursor-pointer"
                   >
-                    <Icon
-                      icon="solar:alt-arrow-down-linear"
-                      width={16}
-                      className={cn("text-text-tertiary transition-transform", cardsExpanded && "rotate-180")}
-                    />
+                    <div className="rounded-full p-1 transition-colors group-hover:bg-surface-elevated">
+                      <Icon
+                        icon="solar:alt-arrow-down-linear"
+                        width={16}
+                        className={cn("text-text-tertiary transition-all group-hover:text-text-primary", cardsExpanded && "rotate-180")}
+                      />
+                    </div>
                   </button>
                 </CardBody>
               </Card>
@@ -412,7 +517,7 @@ export default function ViralityPage() {
                 name: competitor.name,
                 followers,
                 totalViews,
-                totalPosts: competitor.accounts.flatMap((a) => postsByAccount[a.id] || []).length,
+                totalPosts: competitor.accounts.reduce((s, a) => s + (dashboardStats?.accountPostStats?.[a.id]?.postCount || 0), 0),
                 engRate,
                 postsPerWeek,
                 avgViews,
@@ -422,9 +527,9 @@ export default function ViralityPage() {
         )}
 
         {/* Accounts Table + Top Performing Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Accounts Table (2/3 width) */}
-          <div className="lg:col-span-2 space-y-4">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          {/* Accounts Table (2/3 width on xl+ screens) */}
+          <div className="xl:col-span-2 space-y-4">
             <div className="flex items-center justify-between">
               <PlatformFilter
                 selected={platformFilter}
@@ -455,12 +560,15 @@ export default function ViralityPage() {
                 accountPostStats={dashboardStats?.accountPostStats}
                 onViewCompetitor={handleViewCompetitor}
                 onViewAccount={handleViewAccount}
+                onDeleteAccount={handleDeleteAccount}
+                onToggleAccountStatus={handleToggleAccountStatus}
+                accountStatuses={accountStatuses}
               />
             </RecalcOverlay>
           </div>
 
-          {/* Top Performing Content (1/3 width) */}
-          <div className="lg:col-span-1">
+          {/* Top Performing Content (1/3 width on xl+ screens) */}
+          <div className="xl:col-span-1">
             <RecalcOverlay active={isRecalculating}>
               <ActivityFeed
                 posts={allPosts}

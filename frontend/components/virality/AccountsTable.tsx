@@ -9,14 +9,20 @@ import {
   TableRow,
   TableCell,
   Avatar,
+  Button,
   Chip,
   Pagination,
   Spinner,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+  Tooltip,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { CompetitorWithAccounts, AccountPostStats, ViralityAccount } from "@/api/virality";
 import { formatNumber } from "@/lib/formatters";
-import { platformIcon, platformChipClass, type Platform } from "@/lib/platformUtils";
+import { platformIcon, platformIconColor, type Platform } from "@/lib/platformUtils";
 
 export type { Platform };
 
@@ -34,6 +40,9 @@ interface AccountsTableProps {
   accountPostStats?: Record<number, AccountPostStats>;
   onViewCompetitor?: (competitorId: number) => void;
   onViewAccount?: (competitorId: number, accountId: number) => void;
+  onDeleteAccount?: (accountId: number) => void;
+  onToggleAccountStatus?: (accountId: number, newStatus: "active" | "inactive") => void;
+  accountStatuses?: Record<number, "active" | "inactive">;
 }
 
 export function AccountsTable({
@@ -44,6 +53,9 @@ export function AccountsTable({
   accountPostStats,
   onViewCompetitor,
   onViewAccount,
+  onDeleteAccount,
+  onToggleAccountStatus,
+  accountStatuses,
 }: AccountsTableProps) {
   const [page, setPage] = useState(1);
   const rowsPerPage = 10;
@@ -102,12 +114,14 @@ export function AccountsTable({
 
   return (
     <div className="bg-surface-base border border-border-base rounded-xl overflow-hidden">
+      <div className="overflow-x-auto">
       <Table
         aria-label="Tracked accounts table"
         removeWrapper
         classNames={{
-          th: "bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4",
+          th: "bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 whitespace-nowrap",
           td: "py-4 px-4 border-t border-border-base",
+          table: "min-w-[700px]",
         }}
       >
         <TableHeader>
@@ -117,6 +131,20 @@ export function AccountsTable({
           <TableColumn>VIEWS</TableColumn>
           <TableColumn>AVG VIEWS</TableColumn>
           <TableColumn>POSTS</TableColumn>
+          <TableColumn>
+            <div className="flex items-center gap-1">
+              STATUS
+              <Tooltip
+                content="Active accounts are synced and billed 1 credit per account per week. Inactive accounts are skipped during sync and not billed."
+                classNames={{ content: "max-w-[220px] text-xs m-2" }}
+              >
+                <span className="cursor-help">
+                  <Icon icon="solar:info-circle-linear" width={13} className="text-text-tertiary" />
+                </span>
+              </Tooltip>
+            </div>
+          </TableColumn>
+          <TableColumn className="w-10"> </TableColumn>
         </TableHeader>
         <TableBody>
           {paginated.map((fa) => {
@@ -167,21 +195,11 @@ export function AccountsTable({
                   </div>
                 </TableCell>
                 <TableCell>
-                  <Chip
-                    size="sm"
-                    variant="flat"
-                    classNames={{
-                      base: `${platformChipClass(fa.account.platform)} h-6 px-2`,
-                    }}
-                    startContent={
-                      <Icon
-                        icon={platformIcon(fa.account.platform)}
-                        width={12}
-                      />
-                    }
-                  >
-                    <span className="text-xs capitalize">{fa.account.platform}</span>
-                  </Chip>
+                  <Icon
+                    icon={platformIcon(fa.account.platform)}
+                    width={20}
+                    className={platformIconColor(fa.account.platform)}
+                  />
                 </TableCell>
                 <TableCell>
                   <span className="text-sm text-text-secondary">
@@ -203,11 +221,75 @@ export function AccountsTable({
                     {formatNumber(postCount)}
                   </span>
                 </TableCell>
+                <TableCell>
+                  {(() => {
+                    const status = accountStatuses?.[fa.account.id] ?? "active";
+                    return (
+                      <Chip
+                        size="sm"
+                        variant="flat"
+                        classNames={{
+                          base: status === "active"
+                            ? "bg-green-500/10 text-green-500 h-6 px-2"
+                            : "bg-default-100 text-text-tertiary h-6 px-2",
+                        }}
+                      >
+                        <span className="text-xs">{status === "active" ? "Active" : "Inactive"}</span>
+                      </Chip>
+                    );
+                  })()}
+                </TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
+                  <Dropdown>
+                    <DropdownTrigger>
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant="light"
+                        className="text-text-tertiary data-[hover=true]:bg-surface-elevated data-[hover=true]:text-text-primary"
+                      >
+                        <Icon icon="solar:menu-dots-bold" width={18} className="rotate-90" />
+                      </Button>
+                    </DropdownTrigger>
+                    <DropdownMenu
+                      aria-label="Account actions"
+                      onAction={(key) => {
+                        if (key === "delete") {
+                          onDeleteAccount?.(fa.account.id);
+                        } else if (key === "toggle-status") {
+                          const current = accountStatuses?.[fa.account.id] ?? "active";
+                          onToggleAccountStatus?.(fa.account.id, current === "active" ? "inactive" : "active");
+                        }
+                      }}
+                    >
+                      <DropdownItem
+                        key="toggle-status"
+                        startContent={
+                          <Icon
+                            icon={(accountStatuses?.[fa.account.id] ?? "active") === "active" ? "solar:pause-circle-linear" : "solar:play-circle-linear"}
+                            width={16}
+                          />
+                        }
+                      >
+                        {(accountStatuses?.[fa.account.id] ?? "active") === "active" ? "Set Inactive" : "Set Active"}
+                      </DropdownItem>
+                      <DropdownItem
+                        key="delete"
+                        className="text-danger"
+                        color="danger"
+                        startContent={<Icon icon="solar:trash-bin-trash-linear" width={16} />}
+                      >
+                        Delete
+                      </DropdownItem>
+                    </DropdownMenu>
+                  </Dropdown>
+                </TableCell>
               </TableRow>
             );
           })}
         </TableBody>
       </Table>
+      </div>
 
       {/* Pagination */}
       <div className="flex items-center justify-between px-4 py-4 border-t border-border-base">

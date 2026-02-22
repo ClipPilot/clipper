@@ -477,6 +477,47 @@ class ApifyService {
     };
   }
 
+  /**
+   * Fetch X/Twitter profile using SocialData API (follower count, etc.)
+   */
+  async fetchXProfile(username: string): Promise<InstagramProfile | null> {
+    const apiKey = config.socialData.apiKey;
+    if (!apiKey) {
+      console.warn("SOCIALDATA_API_KEY not configured, skipping X profile fetch");
+      return null;
+    }
+
+    try {
+      const res = await fetch(`https://api.socialdata.tools/twitter/user/${encodeURIComponent(username)}`, {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          Accept: "application/json",
+        },
+      });
+
+      if (!res.ok) {
+        console.warn(`SocialData API error for @${username}: ${res.status} ${res.statusText}`);
+        return null;
+      }
+
+      const data: any = await res.json();
+
+      return {
+        username: data.screen_name || username,
+        fullName: data.name || "",
+        biography: data.description || "",
+        profilePicUrl: data.profile_image_url_https?.replace("_normal", "") || "",
+        followersCount: data.followers_count ?? 0,
+        followsCount: data.friends_count ?? 0,
+        postsCount: data.statuses_count ?? 0,
+        isVerified: data.verified || false,
+      };
+    } catch (err) {
+      console.warn(`Failed to fetch X profile for @${username}:`, err);
+      return null;
+    }
+  }
+
   private normalizeTikTokPostData(rawPost: any): InstagramPost {
     // Extract video ID from webVideoUrl
     const urlMatch = rawPost.webVideoUrl?.match(/\/video\/(\d+)/);

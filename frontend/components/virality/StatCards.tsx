@@ -10,6 +10,7 @@ export interface StatCardItem {
   iconColor: string;
   iconBg: string;
   change: number | null;
+  absoluteChange?: boolean;
   tooltip?: string;
 }
 
@@ -68,7 +69,7 @@ export function StatCards({ items }: StatCardsProps) {
                       width={12}
                     />
                     <span className="text-xs font-medium">
-                      {Math.abs(stat.change).toFixed(1)}%
+                      {stat.absoluteChange ? (stat.change >= 0 ? "+" : "") + stat.change.toFixed(2) : Math.abs(stat.change).toFixed(1) + "%"}
                     </span>
                   </div>
                 ) : (

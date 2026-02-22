@@ -30,6 +30,8 @@ export interface ViralityAccount {
   post_count: number | null;
   follower_history: FollowerEntry[] | null;
   is_verified: boolean;
+  is_active: boolean;
+  syncs_remaining: number;
   last_synced_at: string | null;
   sync_status: "pending" | "syncing" | "completed" | "failed";
   sync_error: string | null;
@@ -75,7 +77,6 @@ export interface AccountPostStats {
 
 export interface DashboardStats {
   accountsCount: number;
-  maxAccounts: number;
   totalFollowers: number;
   totalLikes: number;
   totalPosts: number;
@@ -121,6 +122,26 @@ class ViralityAPI {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || "Failed to add account");
+    }
+
+    const data = await response.json();
+    return data.account;
+  }
+
+  async updateAccountStatus(teamId: number, accountId: number, isActive: boolean): Promise<ViralityAccount> {
+    const response = await apiFetch(
+      `${API_URL}/virality/${teamId}/accounts/${accountId}/status`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ is_active: isActive }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to update account status");
     }
 
     const data = await response.json();

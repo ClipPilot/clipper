@@ -6,7 +6,6 @@ import { formatNumber } from "@/lib/formatters";
 
 interface StatsOverviewProps {
   accountsCount: number;
-  maxAccounts: number;
   totalFollowers: number;
   totalLikes: number;
   totalPosts: number;
@@ -16,7 +15,6 @@ interface StatsOverviewProps {
 
 export function StatsOverview({
   accountsCount,
-  maxAccounts,
   totalFollowers,
   totalLikes,
   totalPosts,
@@ -26,7 +24,7 @@ export function StatsOverview({
   const statCards = [
     {
       title: "TOTAL ACCOUNTS",
-      value: `${accountsCount} / ${maxAccounts}`,
+      value: String(accountsCount),
       icon: "solar:users-group-rounded-bold",
       iconColor: "text-accent-400",
       iconBg: "bg-accent-400/10",

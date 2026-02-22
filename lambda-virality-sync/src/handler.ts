@@ -7,13 +7,15 @@ import { eq, and, inArray, sql } from "drizzle-orm";
 
 const DATABASE_URL = process.env.DATABASE_URL!;
 const APIFY_API_TOKEN = process.env.APIFY_API_TOKEN!;
+const SOCIALDATA_API_KEY = process.env.SOCIALDATA_API_KEY || "";
 const INSTAGRAM_SCRAPER_ACTOR = "apify/instagram-scraper";
 const INSTAGRAM_PROFILE_SCRAPER_ACTOR = "apify/instagram-profile-scraper";
 const TIKTOK_SCRAPER_ACTOR = "clockworks/tiktok-scraper";
 const X_POSTS_SCRAPER_ACTOR = "apidojo/twitter-scraper-lite";
 const X_VIEWS_SCRAPER_ACTOR = "scrape.badger/twitter-tweets-scraper";
-const SYNC_INTERVAL = 6 // every 6 hours
+const SYNC_INTERVAL = 12 // every 12 hours
 const SYNCS_PER_DAY = Math.floor(24 / SYNC_INTERVAL)
+const SYNCS_PER_WEEK = SYNCS_PER_DAY * 7; // 14 syncs = 1 credit
 const SCRAPE_WINDOW_DAYS = 31;
 const MAX_METRICS_HISTORY = SCRAPE_WINDOW_DAYS * SYNCS_PER_DAY;
 const MAX_FOLLOWER_HISTORY = 180; // ~6 months of daily syncs
@@ -523,6 +525,46 @@ async function upsertPost(
   return true;
 }
 
+async function fetchXProfile(username: string): Promise<InstagramProfile | null> {
+  if (!SOCIALDATA_API_KEY) {
+    console.warn("[SocialData] SOCIALDATA_API_KEY not configured, skipping X profile fetch");
+    return null;
+  }
+
+  try {
+    const res = await fetch(`https://api.socialdata.tools/twitter/user/${encodeURIComponent(username)}`, {
+      headers: {
+        Authorization: `Bearer ${SOCIALDATA_API_KEY}`,
+        Accept: "application/json",
+      },
+    });
+
+    if (!res.ok) {
+      console.warn(`[SocialData] API error for @${username}: ${res.status} ${res.statusText}`);
+      return null;
+    }
+
+    const data: any = await res.json();
+
+    const profile: InstagramProfile = {
+      username: data.screen_name || username,
+      fullName: data.name || "",
+      biography: data.description || "",
+      profilePicUrl: data.profile_image_url_https?.replace("_normal", "") || "",
+      followersCount: data.followers_count ?? 0,
+      followsCount: data.friends_count ?? 0,
+      postsCount: data.statuses_count ?? 0,
+      isVerified: data.verified || false,
+    };
+
+    console.log(`[SocialData] Fetched X profile for @${username}: followers=${profile.followersCount}`);
+    return profile;
+  } catch (err) {
+    console.warn(`[SocialData] Failed to fetch X profile for @${username}:`, err);
+    return null;
+  }
+}
+
 async function updateAccountProfile(
   db: ReturnType<typeof drizzle>,
   accountId: number,
@@ -568,6 +610,48 @@ async function updateAccountProfile(
   console.log(`[DB] Updated profile for account ${accountId}: ${profile.fullName} | followers=${profile.followersCount} following=${profile.followsCount} posts=${profile.postsCount} | follower_history: ${trimmed.length} entries`);
 }
 
+// ── Credit helpers ──
+
+async function consumeOneCredit(
+  db: ReturnType<typeof drizzle>,
+  teamId: number
+): Promise<boolean> {
+  // Get latest usage stats for the team
+  const [stats] = await db
+    .select()
+    .from(schema.usageStats)
+    .where(eq(schema.usageStats.team_id, teamId))
+    .orderBy(sql`${schema.usageStats.created_at} DESC`)
+    .limit(1);
+
+  const [team] = await db
+    .select()
+    .from(schema.teams)
+    .where(eq(schema.teams.id, teamId))
+    .limit(1);
+
+  if (!stats || !team) return false;
+
+  const baseRemaining = Math.max(0, stats.limit - stats.clips_created);
+  const addonRemaining = team.addon_clips_remaining || 0;
+
+  if (baseRemaining > 0) {
+    await db
+      .update(schema.usageStats)
+      .set({ clips_created: stats.clips_created + 1, updated_at: new Date() })
+      .where(eq(schema.usageStats.id, stats.id));
+    return true;
+  } else if (addonRemaining > 0) {
+    await db
+      .update(schema.teams)
+      .set({ addon_clips_remaining: addonRemaining - 1, updated_at: new Date() })
+      .where(eq(schema.teams.id, teamId));
+    return true;
+  }
+
+  return false;
+}
+
 // ── Lambda handler ──
 
 export const handler: Handler = async (event: any, context: Context) => {
@@ -591,21 +675,54 @@ export const handler: Handler = async (event: any, context: Context) => {
 
   let accountsSynced = 0;
   let accountsFailed = 0;
+  let accountsDeactivated = 0;
   let postsUpserted = 0;
 
   try {
     const accounts = await db
       .select()
       .from(schema.viralityAccounts)
-      .where(inArray(schema.viralityAccounts.platform, ["instagram", "tiktok", "x"]));
+      .where(
+        and(
+          inArray(schema.viralityAccounts.platform, ["instagram", "tiktok", "x"]),
+          eq(schema.viralityAccounts.is_active, true)
+        )
+      );
 
-    console.log(`\n[DB] Found ${accounts.length} accounts to sync:`);
+    console.log(`\n[DB] Found ${accounts.length} active accounts to sync:`);
     for (const a of accounts) {
       console.log(`  - id=${a.id} @${a.username} (team=${a.team_id}, last_synced=${a.last_synced_at || "never"})`);
     }
 
     for (const account of accounts) {
-      console.log(`\n--- Syncing @${account.username} [${account.platform}] (id=${account.id}) ---`);
+      console.log(`\n--- Syncing @${account.username} [${account.platform}] (id=${account.id}, syncs_remaining=${account.syncs_remaining}) ---`);
+
+      // Credit check: charge 1 credit when syncs_remaining hits 0
+      if (account.syncs_remaining <= 0) {
+        const charged = await consumeOneCredit(db, account.team_id);
+        if (charged) {
+          await db
+            .update(schema.viralityAccounts)
+            .set({ syncs_remaining: SYNCS_PER_WEEK, updated_at: new Date() })
+            .where(eq(schema.viralityAccounts.id, account.id));
+          console.log(`[Credit] Charged 1 credit for @${account.username} (team=${account.team_id}), reset syncs_remaining=${SYNCS_PER_WEEK}`);
+        } else {
+          // No credits — deactivate account
+          await db
+            .update(schema.viralityAccounts)
+            .set({ is_active: false, updated_at: new Date() })
+            .where(eq(schema.viralityAccounts.id, account.id));
+          accountsDeactivated++;
+          console.log(`[Credit] No credits for team=${account.team_id}, deactivated @${account.username}`);
+          continue;
+        }
+      } else {
+        // Decrement syncs_remaining
+        await db
+          .update(schema.viralityAccounts)
+          .set({ syncs_remaining: account.syncs_remaining - 1, updated_at: new Date() })
+          .where(eq(schema.viralityAccounts.id, account.id));
+      }
 
       await db
         .update(schema.viralityAccounts)
@@ -646,7 +763,9 @@ export const handler: Handler = async (event: any, context: Context) => {
           const resolvedProfile = profile
             ?? (account.platform === "instagram"
               ? await scrapeInstagramProfile(apifyClient, account.username)
-              : null);
+              : account.platform === "x"
+                ? await fetchXProfile(account.username)
+                : null);
 
           if (resolvedProfile) {
             await updateAccountProfile(db, account.id, resolvedProfile);
@@ -695,13 +814,14 @@ export const handler: Handler = async (event: any, context: Context) => {
   const result = {
     accounts_synced: accountsSynced,
     accounts_failed: accountsFailed,
+    accounts_deactivated: accountsDeactivated,
     posts_upserted: postsUpserted,
     timestamp: new Date().toISOString(),
   };
 
   console.log(`\n========================================`);
   console.log(`  SYNC COMPLETE`);
-  console.log(`  Synced: ${accountsSynced} | Failed: ${accountsFailed} | Posts: ${postsUpserted}`);
+  console.log(`  Synced: ${accountsSynced} | Failed: ${accountsFailed} | Deactivated: ${accountsDeactivated} | Posts: ${postsUpserted}`);
   console.log(`========================================\n`);
   console.log(JSON.stringify(result, null, 2));
 

@@ -281,7 +281,7 @@ export function AddAccountModal({
             )}
           </div>
 
-          {/* Enable Instant Alerts */}
+          {/* Enable Instant Alerts
           <div className="flex items-center justify-between p-4 bg-[#0d0f1a] rounded-xl border border-[#2a2d3e]">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-green-500/10 rounded-lg">
@@ -301,7 +301,7 @@ export function AddAccountModal({
                 wrapper: enableAlerts ? "bg-accent-400" : "bg-gray-600",
               }}
             />
-          </div>
+          </div> */}
 
           {/* Error Message */}
           {error && (
@@ -312,6 +312,9 @@ export function AddAccountModal({
           )}
 
           {/* Start Tracking Button */}
+          <p className="text-xs text-text-tertiary text-center">
+            1 credit per account per week
+          </p>
           <Button
             className="w-full h-12 bg-accent-400 text-white font-semibold rounded-xl"
             onPress={handleSubmit}

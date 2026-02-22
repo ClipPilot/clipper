@@ -8,20 +8,22 @@ import {
   Input,
   addToast,
   Spinner,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useTeams } from "@/hooks/useTeams";
+import { useViralityDateRange } from "@/contexts/ViralityContext";
 import {
   viralityAPI,
   type CompetitorWithAccounts,
   type ViralityPost,
 } from "@/api/virality";
 import { formatNumber } from "@/lib/formatters";
-import { CHART_COLORS, timeAgo } from "@/lib/platformUtils";
-import {
-  DateRangeFilter,
-  type DateRangeValue,
-} from "@/components/virality/DateRangeFilter";
+import { CHART_COLORS, timeAgo, platformIcon, platformIconColor } from "@/lib/platformUtils";
+import { DateRangeFilter } from "@/components/virality/DateRangeFilter";
 import {
   type ComparisonMode,
 } from "@/components/virality/ComparisonModeSelector";
@@ -43,6 +45,7 @@ export default function CompetitorDetailPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const { selectedTeam } = useTeams();
+  const { dateRange, setDateRange } = useViralityDateRange();
   const competitorId = Number(params.competitorId);
 
   const [competitor, setCompetitor] = useState<CompetitorWithAccounts | null>(null);
@@ -56,11 +59,6 @@ export default function CompetitorDetailPage() {
   const [selectedAccountIds, setSelectedAccountIds] = useState<number[]>(() => {
     const accountId = searchParams.get("accountId");
     return accountId ? [Number(accountId)] : [];
-  });
-  const [dateRange, setDateRange] = useState<DateRangeValue>(() => {
-    const startDate = searchParams.get("startDate") || undefined;
-    const endDate = searchParams.get("endDate") || undefined;
-    return { startDate, endDate };
   });
   const [comparisonMode, setComparisonMode] = useState<ComparisonMode>({ type: "last-sync" });
 
@@ -92,10 +90,6 @@ export default function CompetitorDetailPage() {
   }, [selectedTeam?.id, competitorId, dateRange]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
-
-  const handleDateRangeChange = (value: DateRangeValue) => {
-    setDateRange(value);
-  };
 
   const handleSyncAll = async () => {
     if (!selectedTeam?.id || !competitor) return;
@@ -363,6 +357,7 @@ export default function CompetitorDetailPage() {
       iconColor: "text-amber-500",
       iconBg: "bg-amber-500/10",
       change: stats.engRateChange,
+      absoluteChange: true,
       tooltip: "(Likes + Comments) / Views x 100",
     },
     {
@@ -428,6 +423,42 @@ export default function CompetitorDetailPage() {
                   >
                     <Icon icon="solar:pen-2-linear" width={16} className="text-text-tertiary" />
                   </Button>
+                  {competitor.accounts.length === 1 ? (
+                    <Button
+                      size="sm"
+                      isIconOnly
+                      variant="light"
+                      as="a"
+                      href={competitor.accounts[0].profile_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Icon icon="solar:arrow-right-up-linear" width={16} className="text-text-tertiary" />
+                    </Button>
+                  ) : competitor.accounts.length > 1 ? (
+                    <Dropdown>
+                      <DropdownTrigger>
+                        <Button size="sm" isIconOnly variant="light">
+                          <Icon icon="solar:arrow-right-up-linear" width={16} className="text-text-tertiary" />
+                        </Button>
+                      </DropdownTrigger>
+                      <DropdownMenu aria-label="Open profile">
+                        {competitor.accounts.map((a) => (
+                          <DropdownItem
+                            key={a.id}
+                            startContent={<Icon icon={platformIcon(a.platform)} width={14} className={platformIconColor(a.platform)} />}
+                            onPress={() => window.open(a.profile_url, "_blank", "noopener,noreferrer")}
+                          >
+                            {a.account_type === "hashtag"
+                              ? `#${a.username}`
+                              : a.account_type === "keyword"
+                                ? a.username
+                                : `@${a.username}`}
+                          </DropdownItem>
+                        ))}
+                      </DropdownMenu>
+                    </Dropdown>
+                  ) : null}
                 </div>
               )}
               {competitor.description && (
@@ -438,13 +469,16 @@ export default function CompetitorDetailPage() {
                   <>
                     Last synced {timeAgo(lastSyncedAt.toISOString())} · Next sync in{" "}
                     {(() => {
+                      // Lambda fires at 00:00 UTC and 12:00 UTC every day
                       const now = new Date();
-                      const utcH = now.getUTCHours();
-                      const nextSlot = Math.ceil((utcH + 1) / 6) * 6;
-                      const nextSync = new Date(now);
-                      nextSync.setUTCHours(nextSlot, 0, 0, 0);
-                      if (nextSync.getTime() <= now.getTime()) nextSync.setUTCDate(nextSync.getUTCDate() + 1);
-                      const diff = nextSync.getTime() - now.getTime();
+                      const candidates = [0, 12].map((h) => {
+                        const t = new Date(now);
+                        t.setUTCHours(h, 0, 0, 0);
+                        if (t.getTime() <= now.getTime()) t.setUTCDate(t.getUTCDate() + 1);
+                        return t;
+                      });
+                      const next = candidates.reduce((a, b) => (a < b ? a : b));
+                      const diff = next.getTime() - now.getTime();
                       const hrs = Math.floor(diff / (1000 * 60 * 60));
                       const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
                       return hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
@@ -457,7 +491,7 @@ export default function CompetitorDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <DateRangeFilter value={dateRange} onChange={handleDateRangeChange} />
+            <DateRangeFilter value={dateRange} onChange={setDateRange} />
             <Button
               className="bg-accent-400 text-white"
               startContent={

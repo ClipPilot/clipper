@@ -181,7 +181,7 @@ export function ActivityFeed({ posts, allPosts, accountMap, dateRange }: TopPerf
         ) : (
           <div
             ref={scrollRef}
-            className="divide-y divide-border-base overflow-y-auto max-h-[480px]"
+            className="divide-y divide-border-base overflow-y-auto overflow-x-hidden max-h-[480px]"
             onScroll={handleScroll}
           >
             {visiblePosts.map((post) => {
@@ -198,7 +198,7 @@ export function ActivityFeed({ posts, allPosts, accountMap, dateRange }: TopPerf
                 >
                   {/* Thumbnail */}
                   <div className="w-10 h-10 rounded-lg bg-surface-elevated overflow-hidden flex-shrink-0">
-                    {post.thumbnail_url && platform !== "instagram" ? (
+                    {post.thumbnail_url && platform === "tiktok" ? (
                       <img src={post.thumbnail_url} alt="" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
