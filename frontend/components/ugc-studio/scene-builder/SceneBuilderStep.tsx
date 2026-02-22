@@ -41,6 +41,7 @@ export function SceneBuilderStep({
   const [generatingAll, setGeneratingAll] = useState(false);
   const [selectedSceneId, setSelectedSceneId] = useState<string | null>(null);
   const [isSavingBRoll, setIsSavingBRoll] = useState(false);
+  const [isRegeneratingScene, setIsRegeneratingScene] = useState(false);
 
   const currentScript = scripts[selectedVariantIndex];
   const scenes = currentScript?.scenes || [];
@@ -575,7 +576,7 @@ export function SceneBuilderStep({
                 <Button
                   className="bg-accent-400 text-white font-semibold"
                   size="sm"
-                  isDisabled={!allComplete}
+                  isDisabled={!allComplete || isSavingBRoll || isRegeneratingScene}
                   onPress={onContinue}
                   endContent={<Icon icon="solar:arrow-right-bold" width={16} />}
                 >
@@ -731,6 +732,25 @@ export function SceneBuilderStep({
               handleCustomBRollImageChange(scene.id, shotIndex, key, url)
             }
             isStoryboardMode={true}
+            onRegenerateScene={async (customPrompt) => {
+              setIsRegeneratingScene(true);
+              try {
+                const result = await ugcScriptAPI.regenerateScene({
+                  teamId,
+                  scriptId,
+                  sceneId: scene.id,
+                  currentDialogue: scene.dialogue,
+                  currentEmotion: scene.emotion,
+                  regenerationType: "full",
+                  customPrompt,
+                });
+                if (result.scene) {
+                  handleSceneUpdate(result.scene);
+                }
+              } finally {
+                setIsRegeneratingScene(false);
+              }
+            }}
             onRegenerateAllBRollShots={async (params) => {
               const result = await ugcScriptAPI.regenerateAllBRollShots({
                 scriptId,
@@ -747,6 +767,7 @@ export function SceneBuilderStep({
           <Button
             className="w-full bg-accent-400 text-white font-semibold"
             size="lg"
+            isDisabled={isSavingBRoll || isRegeneratingScene}
             onPress={onContinue}
             endContent={<Icon icon="solar:arrow-right-bold" width={18} />}
           >

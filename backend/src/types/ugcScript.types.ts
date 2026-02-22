@@ -64,7 +64,7 @@ export const UGCSceneSchema = z.object({
   estimatedDurationSeconds: z
     .number()
     .min(2)
-    .max(30)
+    .max(180)
     .describe("Estimated duration for natural pacing"),
   shotType: z
     .enum(SHOT_TYPES)
@@ -120,7 +120,7 @@ export const UGCScriptSchema = z.object({
     .describe("Total estimated duration in seconds"),
   scenes: z
     .array(UGCSceneSchema)
-    .min(3)
+    .min(1)
     .max(8)
     .describe("Array of scenes that make up the script"),
   viralScore: z

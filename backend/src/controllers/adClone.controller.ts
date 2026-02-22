@@ -6,7 +6,7 @@ import { sqsService, GenerateUGCVideoJob } from "../services/sqs.service";
 import { teamService } from "../services/team.service";
 import { canAccessUGCStudio } from "../utils/plans";
 import { db } from "../db";
-import { adCloneProjects, ugcScripts, sceneImages, characters, clips, ugcVideoGenerationJobs } from "@clipper/shared-db";
+import { adCloneProjects, ugcScripts, sceneImages, sceneImageGenerationJobs, characters, clips, ugcVideoGenerationJobs } from "@clipper/shared-db";
 import { eq, and, sql } from "drizzle-orm";
 import { s3Service } from "../services/s3.service";
 import { getTeamUsage } from "../middleware/subscription.middleware";
@@ -506,10 +506,21 @@ export class AdCloneController {
         };
 
         if (scene.bRollShots && scene.bRollShots.length > 0 && scene.shotType === "b-roll") {
-          const baseKey = savedImage.image_key;
+          // Look up per-shot keys from the generation job
+          let shotKeys: string[] | undefined;
+          if (savedImage.generation_job_id) {
+            const [genJob] = await db
+              .select({ generated_images: sceneImageGenerationJobs.generated_images })
+              .from(sceneImageGenerationJobs)
+              .where(eq(sceneImageGenerationJobs.id, savedImage.generation_job_id))
+              .limit(1);
+            if (genJob?.generated_images) {
+              shotKeys = genJob.generated_images as string[];
+            }
+          }
 
           sceneData.bRollShots = scene.bRollShots.map((shot: any, index: number) => {
-            const shotImageKey = baseKey.replace(/variant_\d+/, `variant_${index}`);
+            const shotImageKey = shotKeys?.[index] || savedImage.image_key;
             const shotCinematicPrompt = shot.cinematicPrompt || `${shot.action}. Product shot with smooth camera motion.`;
             return {
               action: shot.action,

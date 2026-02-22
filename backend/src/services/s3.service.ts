@@ -481,7 +481,8 @@ class S3Service {
     sceneId: string,
     variantIndex: number
   ): Promise<string> {
-    const key = `scene-images/${teamId}/${scriptId}/${sceneId}/variant_${variantIndex}.png`;
+    const ts = Date.now();
+    const key = `scene-images/${teamId}/${scriptId}/${sceneId}/variant_${variantIndex}_${ts}.png`;
     await this.uploadBuffer(buffer, key, "image/png");
     return key;
   }
