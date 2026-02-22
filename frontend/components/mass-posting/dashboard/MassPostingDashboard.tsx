@@ -16,6 +16,7 @@ type TabKey = "queued" | "accounts" | "published";
 export function MassPostingDashboard() {
   const selectedTeam = useAtomValue(selectedTeamAtom);
   const [activeTab, setActiveTab] = useState<TabKey>("queued");
+  const [dateRange, setDateRange] = useState("mtd");
 
   // Queued state
   const [queuedPosts, setQueuedPosts] = useState<TeamPost[]>([]);
@@ -52,11 +53,15 @@ export function MassPostingDashboard() {
     [selectedTeam?.id]
   );
 
-  // Initial load for both tabs
+  // Load queued posts on mount / team change
   useEffect(() => {
     fetchPosts("queued");
-    fetchPosts("published");
   }, [fetchPosts]);
+
+  // Load published posts on mount / team change / dateRange change
+  useEffect(() => {
+    fetchPosts("published", { dateRange });
+  }, [fetchPosts, dateRange]);
 
   const queuedCount = queuedPagination?.totalPosts ?? 0;
 
@@ -112,13 +117,20 @@ export function MassPostingDashboard() {
               onParamsChange={(params) => fetchPosts("queued", params)}
             />
           )}
-          {activeTab === "accounts" && <AccountsTab />}
+          {activeTab === "accounts" && (
+            <AccountsTab
+              dateRange={dateRange}
+              onDateRangeChange={setDateRange}
+            />
+          )}
           {activeTab === "published" && (
             <PublishedPostsTab
               posts={publishedPosts}
               pagination={publishedPagination}
               isLoading={publishedLoading}
               onParamsChange={(params) => fetchPosts("published", params)}
+              dateRange={dateRange}
+              onDateRangeChange={setDateRange}
             />
           )}
         </div>

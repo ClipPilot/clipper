@@ -33,6 +33,8 @@ interface PublishedPostsTabProps {
   pagination: PostsPagination | null;
   isLoading: boolean;
   onParamsChange: (params: GetTeamPostsParams) => void;
+  dateRange: string;
+  onDateRangeChange: (value: string) => void;
 }
 
 export function PublishedPostsTab({
@@ -40,10 +42,11 @@ export function PublishedPostsTab({
   pagination,
   isLoading,
   onParamsChange,
+  dateRange,
+  onDateRangeChange,
 }: PublishedPostsTabProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [platformFilter, setPlatformFilter] = useState("all");
-  const [dateRange, setDateRange] = useState("all");
   const [page, setPage] = useState(1);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -75,10 +78,11 @@ export function PublishedPostsTab({
   const handleExportCSV = () => {
     if (posts.length === 0) return;
 
-    const headers = ["ID", "Clip Title", "Platform", "Status", "Post URL", "Published Date", "Created At"];
+    const headers = ["ID", "Clip Title", "Account", "Platform", "Status", "Post URL", "Published Date", "Created At"];
     const rows = posts.map((post) => [
       post.id,
       post.clip_title ?? "",
+      post.accountHandle ?? "",
       post.platform,
       post.status,
       post.post_url ?? "",
@@ -129,7 +133,7 @@ export function PublishedPostsTab({
           showDateRange
           dateRangeValue={dateRange}
           onDateRangeChange={(v) => {
-            setDateRange(v);
+            onDateRangeChange(v);
             setPage(1);
             fireParams({ dateRange: v, page: 1 });
           }}
@@ -167,6 +171,7 @@ export function PublishedPostsTab({
           >
             <TableHeader>
               <TableColumn>CONTENT</TableColumn>
+              <TableColumn>ACCOUNT</TableColumn>
               <TableColumn>PLATFORM</TableColumn>
               <TableColumn>PUBLISHED DATE</TableColumn>
               <TableColumn>ACTIONS</TableColumn>
@@ -214,6 +219,11 @@ export function PublishedPostsTab({
                           </div>
                         </div>
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-text-secondary">
+                        {post.accountHandle || "—"}
+                      </span>
                     </TableCell>
                     <TableCell>
                       <Chip

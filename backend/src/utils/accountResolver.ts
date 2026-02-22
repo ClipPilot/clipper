@@ -101,6 +101,31 @@ function isReservedInstagramPath(segment: string): boolean {
   return reserved.includes(segment.toLowerCase());
 }
 
+// ── Retry helper for flaky Apify scrapers ──
+
+const APIFY_RETRY_ATTEMPTS = 5;
+const APIFY_RETRY_DELAY_MS = 2000;
+
+async function withRetries<T>(
+  fn: () => Promise<T>,
+  label: string,
+  attempts = APIFY_RETRY_ATTEMPTS
+): Promise<T> {
+  let lastError: Error | null = null;
+  for (let i = 1; i <= attempts; i++) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      lastError = err;
+      if (i < attempts) {
+        console.warn(`[AccountResolver] ${label} attempt ${i}/${attempts} failed: ${err.message}. Retrying in ${APIFY_RETRY_DELAY_MS}ms...`);
+        await new Promise((r) => setTimeout(r, APIFY_RETRY_DELAY_MS));
+      }
+    }
+  }
+  throw lastError!;
+}
+
 // ── API-based resolution (fallbacks) ──
 
 /**
@@ -108,12 +133,14 @@ function isReservedInstagramPath(segment: string): boolean {
  * Uses the existing apify/instagram-scraper with directUrls.
  */
 async function resolveInstagramAccount(url: string): Promise<string> {
-  const apify = getApifyService();
-  const result = await apify.scrapeInstagramReel(url);
-  if (!result.uploader) {
-    throw new Error("Could not resolve Instagram account from post");
-  }
-  return result.uploader;
+  return withRetries(async () => {
+    const apify = getApifyService();
+    const result = await apify.scrapeInstagramReel(url);
+    if (!result.uploader) {
+      throw new Error("Could not resolve Instagram account from post");
+    }
+    return result.uploader;
+  }, "Instagram resolve");
 }
 
 /**
@@ -150,38 +177,40 @@ async function resolveYouTubeAccount(url: string): Promise<string> {
  * Resolve Facebook post owner via Apify scraper.
  */
 async function resolveFacebookAccount(url: string): Promise<string> {
-  const apify = getApifyService();
-  const client = (apify as any).getClient();
+  return withRetries(async () => {
+    const apify = getApifyService();
+    const client = (apify as any).getClient();
 
-  const run = await client
-    .actor("apify/facebook-posts-scraper")
-    .call({
-      startUrls: [{ url }],
-      resultsLimit: 1,
-    });
+    const run = await client
+      .actor("apify/facebook-posts-scraper")
+      .call({
+        startUrls: [{ url }],
+        resultsLimit: 1,
+      });
 
-  const { items } = await client
-    .dataset(run.defaultDatasetId)
-    .listItems();
+    const { items } = await client
+      .dataset(run.defaultDatasetId)
+      .listItems();
 
-  if (items.length === 0) {
-    throw new Error("Could not resolve Facebook account — no results");
-  }
+    if (items.length === 0) {
+      throw new Error("Could not resolve Facebook account — no results");
+    }
 
-  const item = items[0] as any;
-  const username = item.user?.name || item.user?.url || item.pageName || null;
+    const item = items[0] as any;
+    const username = item.user?.name || item.user?.url || item.pageName || null;
 
-  if (!username) {
-    throw new Error("Could not resolve Facebook account from post");
-  }
+    if (!username) {
+      throw new Error("Could not resolve Facebook account from post");
+    }
 
-  // If we got a URL, extract the username from it
-  if (username.startsWith("http")) {
-    const match = username.match(/facebook\.com\/([a-zA-Z0-9_.]+)/);
-    return match ? match[1] : username;
-  }
+    // If we got a URL, extract the username from it
+    if (username.startsWith("http")) {
+      const match = username.match(/facebook\.com\/([a-zA-Z0-9_.]+)/);
+      return match ? match[1] : username;
+    }
 
-  return username;
+    return username;
+  }, "Facebook resolve");
 }
 
 // ── Main resolver ──

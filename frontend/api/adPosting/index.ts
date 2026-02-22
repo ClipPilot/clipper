@@ -1,6 +1,6 @@
 import API_URL from "@/config/constants";
 import { apiFetch } from "@/lib/apiClient";
-import type { TeamPostsResponse } from "@/types/massPosting";
+import type { TeamPostsResponse, AccountStatsResponse } from "@/types/massPosting";
 
 export interface ClipPost {
   id: number;
@@ -90,6 +90,27 @@ class AdPostingAPI {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || "Failed to get team posts");
+    }
+
+    return response.json();
+  }
+
+  async getAccountStats(
+    teamId: number,
+    params: { dateRange?: string } = {}
+  ): Promise<AccountStatsResponse> {
+    const searchParams = new URLSearchParams();
+    if (params.dateRange) searchParams.set("dateRange", params.dateRange);
+    const qs = searchParams.toString();
+
+    const response = await apiFetch(
+      `${API_URL}/ad-posting/teams/${teamId}/accounts${qs ? `?${qs}` : ""}`,
+      { credentials: "include" }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to get account stats");
     }
 
     return response.json();

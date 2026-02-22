@@ -173,6 +173,27 @@ export async function getPostsForTeam(req: AuthRequest, res: Response) {
   }
 }
 
+export async function getAccountStats(req: AuthRequest, res: Response) {
+  try {
+    const teamId = parseInt(req.params.teamId);
+    if (isNaN(teamId)) {
+      return res.status(400).json({ error: "Invalid team ID" });
+    }
+
+    const { dateRange } = req.query;
+
+    const result = await adPostingService.getAccountStats(teamId, {
+      dateRange: dateRange as string | undefined,
+    });
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error("Get account stats error:", error);
+    Sentry.captureException(error);
+    return res.status(500).json({ error: "Failed to get account stats" });
+  }
+}
+
 export async function webhookMarkAsPosted(req: AuthRequest, res: Response) {
   try {
     // Verify shared secret

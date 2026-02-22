@@ -36,9 +36,11 @@ const PLATFORM_OPTIONS = [
 ];
 
 const DEFAULT_DATE_OPTIONS = [
+  { key: "mtd", label: "Month to Date" },
   { key: "7days", label: "Last 7 Days" },
   { key: "30days", label: "Last 30 Days" },
-  { key: "90days", label: "Last 90 Days" },
+  { key: "3months", label: "Last 3 Months" },
+  { key: "1year", label: "Last Year" },
   { key: "all", label: "All Time" },
 ];
 
@@ -50,7 +52,7 @@ export function FilterBar({
   platformValue = "all",
   onPlatformChange,
   showDateRange = true,
-  dateRangeValue = "7days",
+  dateRangeValue = "mtd",
   onDateRangeChange,
   dateRangeOptions,
   countLabel,
@@ -60,7 +62,7 @@ export function FilterBar({
   const selectedPlatformLabel =
     PLATFORM_OPTIONS.find((o) => o.key === platformValue)?.label ?? "All Platforms";
   const selectedDateLabel =
-    dateOptions.find((o) => o.key === dateRangeValue)?.label ?? "Last 7 Days";
+    dateOptions.find((o) => o.key === dateRangeValue)?.label ?? "Month to Date";
 
   return (
     <div className="flex items-center gap-3 px-4 py-3 border-b border-border-base flex-wrap">

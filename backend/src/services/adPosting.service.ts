@@ -4,7 +4,7 @@ import {
   posts,
   massPostingApplications,
 } from "@clipper/shared-db/src/schema";
-import { eq, and, or, sql, desc, asc, ilike, gte, inArray } from "drizzle-orm";
+import { eq, and, or, sql, desc, asc, ilike, gte, inArray, isNotNull, count as drizzleCount } from "drizzle-orm";
 import { teamService } from "./team.service";
 import { getTeamUsage } from "../middleware/subscription.middleware";
 import { sqsService } from "./sqs.service";
@@ -13,6 +13,28 @@ import { s3Service } from "./s3.service";
 import { resolveAccountFromUrl } from "../utils/accountResolver";
 
 const VALID_PLATFORMS = new Set(["tiktok", "instagram", "facebook", "youtube", "x"]);
+
+function getDateRangeCutoff(dateRange: string): Date | null {
+  if (dateRange === "all") return null;
+  if (dateRange === "mtd") {
+    const now = new Date();
+    now.setDate(1);
+    now.setHours(0, 0, 0, 0);
+    return now;
+  }
+  const daysMap: Record<string, number> = {
+    "7days": 7,
+    "30days": 30,
+    "3months": 90,
+    "90days": 90,
+    "1year": 365,
+  };
+  const days = daysMap[dateRange];
+  if (!days) return null;
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days);
+  return cutoff;
+}
 
 export type PlatformQuantities = Record<string, number>;
 
@@ -256,10 +278,8 @@ class AdPostingService {
     }
 
     // Date range filter
-    if (dateRange !== "all") {
-      const days = dateRange === "7days" ? 7 : dateRange === "30days" ? 30 : 90;
-      const cutoff = new Date();
-      cutoff.setDate(cutoff.getDate() - days);
+    const cutoff = getDateRangeCutoff(dateRange);
+    if (cutoff) {
       conditions.push(gte(posts.created_at, cutoff));
     }
 
@@ -284,6 +304,7 @@ class AdPostingService {
       post_url: posts.post_url,
       posted_time: posts.posted_time,
       created_at: posts.created_at,
+      accountHandle: posts.accountHandle,
     };
 
     let rows;
@@ -373,6 +394,53 @@ class AdPostingService {
         totalPages: Math.ceil(totalVideos / pageSize),
         totalPosts,
       },
+    };
+  }
+
+  async getAccountStats(
+    teamId: number,
+    options: { dateRange?: string } = {}
+  ) {
+    const { dateRange = "all" } = options;
+
+    const conditions = [
+      eq(posts.team_id, teamId),
+      eq(posts.status, "posted"),
+      isNotNull(posts.accountHandle),
+    ];
+
+    const cutoff = getDateRangeCutoff(dateRange);
+    if (cutoff) {
+      conditions.push(gte(posts.created_at, cutoff));
+    }
+
+    const rows = await db
+      .select({
+        handle: posts.accountHandle,
+        platform: posts.platform,
+        totalReposts: sql<number>`count(*)::int`,
+      })
+      .from(posts)
+      .where(and(...conditions))
+      .groupBy(posts.accountHandle, posts.platform)
+      .orderBy(sql`count(*) DESC`);
+
+    const accounts = rows.map((row, idx) => ({
+      id: `${row.handle}-${row.platform}-${idx}`,
+      handle: row.handle!,
+      platform: row.platform,
+      totalReposts: row.totalReposts,
+    }));
+
+    const totalAccounts = accounts.length;
+    const totalReposts = accounts.reduce((sum, a) => sum + a.totalReposts, 0);
+    const avgPostsPerAccount = totalAccounts > 0
+      ? Math.round((totalReposts / totalAccounts) * 10) / 10
+      : 0;
+
+    return {
+      accounts,
+      stats: { totalAccounts, totalReposts, avgPostsPerAccount },
     };
   }
 
