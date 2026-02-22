@@ -351,7 +351,7 @@ export function EditorVideoPreview({
                       color: "#FFFFFF",
                       textAlign: "center",
                       lineHeight: 1.2,
-                      letterSpacing: `${Math.round(2 * scale)}px`,
+                      letterSpacing: /[\u0900-\u097F]/.test(activeCaption.text) ? "0px" : `${Math.round(2 * scale)}px`,
                       WebkitTextStroke: `${Math.max(1, Math.round(4 * scale))}px black`,
                       paintOrder: "stroke fill",
                       maxWidth: "100%",
