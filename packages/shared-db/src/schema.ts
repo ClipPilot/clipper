@@ -944,6 +944,7 @@ export const viralityAccounts = pgTable(
     sync_status: viralitySyncStatusEnum("sync_status").default("pending"),
     sync_error: text("sync_error"),
     alert_enabled: boolean("alert_enabled").notNull().default(false),
+    is_active: boolean("is_active").notNull().default(true),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },
@@ -1037,6 +1038,7 @@ export const viralitySettings = pgTable(
     uniqueTeam: unique("virality_settings_team_unique").on(table.team_id),
   }),
 ).enableRLS();
+
 
 export const genderEnum = pgEnum("gender_enum", ["male", "female", "other"]);
 export const clonedVoices = pgTable("cloned_voices", {
