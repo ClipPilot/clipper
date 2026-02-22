@@ -263,108 +263,23 @@ export function OverlayTool() {
 
       {/* Selected Overlay Controls */}
       {selectedOverlay && (
-        <div className="bg-surface-elevated rounded-lg p-4 space-y-4">
-          <div className="flex items-center gap-2 text-sm font-medium text-text-primary">
-            <Icon icon="solar:settings-bold" className="text-text-secondary" />
-            Overlay Settings
-          </div>
-
-          {/* Time Range */}
-          <div>
-            <div className="flex justify-between text-xs text-text-tertiary mb-2">
-              <span>Time Range</span>
-              <span>
-                {formatTime(selectedOverlay.startTime)} - {formatTime(selectedOverlay.endTime)}
-              </span>
-            </div>
-            <div className="flex gap-2">
-              <Slider
-                label="Start"
-                value={selectedOverlay.startTime}
-                onChange={(val) =>
-                  updateOverlay(selectedOverlay.id, { startTime: val as number })
-                }
-                minValue={0}
-                maxValue={selectedOverlay.endTime - 0.1}
-                step={0.1}
-                size="sm"
-                color="secondary"
+        <div className="bg-surface-elevated rounded-lg p-3 space-y-3">
+          {/* Opacity — inline compact row */}
+          <div className="flex items-center gap-3">
+            <button
+              className="p-1.5 rounded-lg hover:bg-surface-hover transition-colors text-text-secondary"
+              onClick={() =>
+                updateOverlay(selectedOverlay.id, {
+                  opacity: selectedOverlay.opacity >= 1 ? 0.5 : 1,
+                })
+              }
+              title={selectedOverlay.opacity < 1 ? "Reset opacity" : "50% opacity"}
+            >
+              <Icon
+                icon={selectedOverlay.opacity < 1 ? "solar:eye-closed-bold" : "solar:eye-bold"}
+                className="text-lg"
               />
-              <Slider
-                label="End"
-                value={selectedOverlay.endTime}
-                onChange={(val) =>
-                  updateOverlay(selectedOverlay.id, { endTime: val as number })
-                }
-                minValue={selectedOverlay.startTime + 0.1}
-                maxValue={videoDuration}
-                step={0.1}
-                size="sm"
-                color="secondary"
-              />
-            </div>
-          </div>
-
-          {/* Position */}
-          <div>
-            <div className="flex justify-between text-xs text-text-tertiary mb-2">
-              <span>Position</span>
-              <span>
-                X: {Math.round(selectedOverlay.x)}% Y: {Math.round(selectedOverlay.y)}%
-              </span>
-            </div>
-            <Slider
-              label="X"
-              value={selectedOverlay.x}
-              onChange={(val) =>
-                updateOverlay(selectedOverlay.id, { x: val as number })
-              }
-              minValue={0}
-              maxValue={100}
-              step={1}
-              size="sm"
-              color="secondary"
-            />
-            <Slider
-              label="Y"
-              value={selectedOverlay.y}
-              onChange={(val) =>
-                updateOverlay(selectedOverlay.id, { y: val as number })
-              }
-              minValue={0}
-              maxValue={100}
-              step={1}
-              size="sm"
-              color="secondary"
-              className="mt-2"
-            />
-          </div>
-
-          {/* Scale */}
-          <div>
-            <div className="flex justify-between text-xs text-text-tertiary mb-2">
-              <span>Scale</span>
-              <span>{Math.round(selectedOverlay.scale * 100)}%</span>
-            </div>
-            <Slider
-              value={selectedOverlay.scale}
-              onChange={(val) =>
-                updateOverlay(selectedOverlay.id, { scale: val as number })
-              }
-              minValue={0.1}
-              maxValue={2.0}
-              step={0.05}
-              size="sm"
-              color="secondary"
-            />
-          </div>
-
-          {/* Opacity */}
-          <div>
-            <div className="flex justify-between text-xs text-text-tertiary mb-2">
-              <span>Opacity</span>
-              <span>{Math.round(selectedOverlay.opacity * 100)}%</span>
-            </div>
+            </button>
             <Slider
               value={selectedOverlay.opacity}
               onChange={(val) =>
@@ -375,21 +290,19 @@ export function OverlayTool() {
               step={0.05}
               size="sm"
               color="secondary"
+              className="flex-1"
+              aria-label="Opacity"
             />
+            <span className="text-xs text-text-tertiary w-8 text-right tabular-nums">
+              {Math.round(selectedOverlay.opacity * 100)}%
+            </span>
           </div>
+
+          <p className="text-[11px] text-text-tertiary text-center">
+            Drag to move &middot; Corner handle to resize
+          </p>
         </div>
       )}
-
-      {/* Tips */}
-      <div className="bg-accent-400/10 rounded-lg p-3">
-        <p className="text-xs text-accent-400 flex items-start gap-2">
-          <Icon icon="solar:info-circle-bold" className="text-sm mt-0.5 flex-shrink-0" />
-          <span>
-            Overlays are composited on top of the video. Use position and scale to
-            place them where you want. They appear behind heading and caption text.
-          </span>
-        </p>
-      </div>
     </div>
   );
 }

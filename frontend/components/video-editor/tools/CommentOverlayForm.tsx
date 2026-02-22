@@ -160,7 +160,7 @@ export function CommentOverlayForm({ editingOverlayId }: CommentOverlayFormProps
         endTime: videoDuration,
         x: 50,
         y: 75,
-        scale: 1,
+        scale: 1.5,
         opacity: 1,
         naturalWidth: dims.width,
         naturalHeight: dims.height,

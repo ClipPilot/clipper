@@ -105,29 +105,43 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
     return topPath + bottomPath + " Z";
   }, []);
 
-  // Stable overlay actions — only recompute when overlay count or start/end times change,
+  // Stable overlay track rows — each overlay gets its own track, like a real editor.
+  // Only recompute when overlay count or start/end times change,
   // NOT when x/y/scale/opacity change (those don't affect the timeline).
-  const prevOverlayActionsRef = useRef<TimelineAction[]>([]);
-  const overlayActions = useMemo(() => {
-    const newActions: TimelineAction[] = overlays.map((overlay) => ({
-      id: overlay.id,
-      start: overlay.startTime,
-      end: overlay.endTime,
-      effectId: "overlay",
-      flexible: true,
-      movable: true,
+  const prevOverlayRowsRef = useRef<TimelineRow[]>([]);
+  const overlayRows = useMemo(() => {
+    const newRows: TimelineRow[] = overlays.map((overlay, i) => ({
+      id: `overlay-track-${i}`,
+      actions: [
+        {
+          id: overlay.id,
+          start: overlay.startTime,
+          end: overlay.endTime,
+          effectId: "overlay",
+          flexible: true,
+          movable: true,
+        },
+      ],
+      rowHeight: 36,
     }));
 
-    const prev = prevOverlayActionsRef.current;
+    const prev = prevOverlayRowsRef.current;
     const changed =
-      newActions.length !== prev.length ||
-      newActions.some(
-        (a, i) => a.id !== prev[i]?.id || a.start !== prev[i]?.start || a.end !== prev[i]?.end
-      );
+      newRows.length !== prev.length ||
+      newRows.some((row, i) => {
+        const prevAction = prev[i]?.actions[0];
+        const newAction = row.actions[0];
+        return (
+          !prevAction ||
+          newAction.id !== prevAction.id ||
+          newAction.start !== prevAction.start ||
+          newAction.end !== prevAction.end
+        );
+      });
 
     if (changed) {
-      prevOverlayActionsRef.current = newActions;
-      return newActions;
+      prevOverlayRowsRef.current = newRows;
+      return newRows;
     }
     return prev;
   }, [overlays]);
@@ -163,14 +177,8 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
       },
     ];
 
-    // Add overlay track if overlays exist
-    if (overlayActions.length > 0) {
-      rows.push({
-        id: "overlay-track",
-        actions: overlayActions,
-        rowHeight: 36,
-      });
-    }
+    // Each overlay gets its own track row
+    rows.push(...overlayRows);
 
     rows.push({
       id: "audio-track",
@@ -179,7 +187,7 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
     });
 
     return rows;
-  }, [activeSegments, selectedSegmentId, overlayActions]);
+  }, [activeSegments, selectedSegmentId, overlayRows]);
 
   // Define effects
   const effects: Record<string, TimelineEffect> = useMemo(
@@ -266,17 +274,18 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
         }
       }
 
-      // Update overlay times if overlay track was modified (only if times actually changed)
-      const overlayTrack = newEditorData.find((row) => row.id === "overlay-track");
-      if (overlayTrack) {
-        const hasOverlayChanges = overlayTrack.actions.some((action: any) => {
+      // Update overlay times from individual overlay tracks (only if times actually changed)
+      const overlayTracks = newEditorData.filter((row) => row.id.startsWith("overlay-track-"));
+      if (overlayTracks.length > 0) {
+        const allOverlayActions = overlayTracks.flatMap((row) => row.actions);
+        const hasOverlayChanges = allOverlayActions.some((action: any) => {
           const existing = overlays.find((o) => o.id === action.id);
           return existing && (existing.startTime !== action.start || existing.endTime !== action.end);
         });
         if (hasOverlayChanges) {
           setOverlays((prev) =>
             prev.map((overlay) => {
-              const action = overlayTrack.actions.find((a: any) => a.id === overlay.id);
+              const action = allOverlayActions.find((a: any) => a.id === overlay.id);
               if (action) {
                 return { ...overlay, startTime: action.start, endTime: action.end };
               }
@@ -298,7 +307,7 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
       if (row.id === "audio-track") return;
       e.stopPropagation();
 
-      if (row.id === "overlay-track") {
+      if (row.id.startsWith("overlay-track-")) {
         setSelectedOverlayId(action.id);
         selectSegment(null);
       } else {
@@ -463,9 +472,18 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
   const getActionRender = useCallback(
     (action: TimelineAction, row: TimelineRow) => {
       // Overlay track renderer
-      if (row.id === "overlay-track") {
+      if (row.id.startsWith("overlay-track-")) {
         const overlay = overlays.find((o) => o.id === action.id);
         const isSelected = action.id === selectedOverlayId;
+        const isComment = overlay?.type === "comment";
+        const overlayIcon = isComment
+          ? "solar:chat-round-dots-bold"
+          : overlay?.type === "video"
+            ? "solar:videocamera-bold"
+            : "solar:gallery-bold";
+        const label = isComment && overlay?.commentData
+          ? `@${overlay.commentData.username}`
+          : overlay?.fileName || "Overlay";
         return (
           <div
             className={`h-full w-full rounded flex items-center gap-1.5 px-2 ${
@@ -475,11 +493,11 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
             }`}
           >
             <Icon
-              icon={overlay?.type === "video" ? "solar:videocamera-bold" : "solar:gallery-bold"}
+              icon={overlayIcon}
               className="text-xs text-purple-400 shrink-0"
             />
             <span className="text-[10px] text-purple-300 truncate">
-              {overlay?.fileName || "Overlay"}
+              {label}
             </span>
           </div>
         );
@@ -728,7 +746,7 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
           onActionResizeStart={handleActionResizeStart}
           getActionRender={getActionRender}
           getScaleRender={getScaleRender}
-          style={{ height: 176, width: "100%", backgroundColor: "var(--surface-elevated)" }}
+          style={{ height: 60 + overlays.length * 36 + 36 + 40, width: "100%", backgroundColor: "var(--surface-elevated)" }}
         />
       </div>
 
