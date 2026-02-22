@@ -141,30 +141,44 @@ The product must be clearly visible, accurately depicted, and the natural focal 
   sections.push(`SHOT DESCRIPTION:
 B-roll shot ${shotIndex + 1} of ${totalShots} in a montage sequence.
 
-Action: ${shot.action}
+VIDEO START FRAME — This image will be used as the FIRST FRAME of a ${shot.durationSeconds}-second video where the following action plays out:
+"${shot.action}"
 
-Context: ${sceneData.sceneType} scene, ${shot.durationSeconds} second duration.
+Compose the image as the STARTING POSITION for this action — everything should be set up and ready for the motion to begin. Objects, hands (if any), and the product should be in their initial positions BEFORE the action happens. Leave visual room for the movement to unfold naturally.
+
+Context: ${sceneData.sceneType} scene.
 CAMERA: Use a natural product photography angle — straight-on, slight overhead, or tabletop level. Do NOT use the scene's speaker camera angle. Frame for the product/action, not a person.`);
 
-  sections.push(`OUTPUT REQUIREMENTS:
-Generate exactly ONE photograph. Not a collage, not a grid, not a comparison, not multiple panels. A single cohesive image.
+  // Detect if the shot involves hands/people or is a pure product/environment shot
+  const actionLower = shot.action.toLowerCase();
+  const involvesHands = /\b(hand|hands|hold|holding|grab|grip|pick|apply|applying|rub|rubbing|touch|touching|pour|pouring|squeeze|finger|fingers|palm|wrist)\b/.test(actionLower);
+  const involvesPerson = involvesHands || /\b(person|face|body|arm|arms|woman|man|girl|guy)\b/.test(actionLower);
 
-Zero text of any kind. No captions, no labels, no watermarks, no logos, no typography anywhere in the image.
+  if (!involvesPerson) {
+    sections.push(`OUTPUT REQUIREMENTS:
+Generate exactly ONE photograph — not a collage, grid, or multi-panel layout. A single image.
 
-ANATOMY - CRITICAL:
-- A human has a MAXIMUM of TWO HANDS and TWO ARMS. Zero, one, or two hands may be visible — NEVER three or more.
-- Each ARM ends in exactly ONE HAND. Never show two hands growing from the same arm or two hands side-by-side on the same side of the body.
-- If a person holds a product with ONE hand, the OTHER hand must be clearly elsewhere — at their side, behind their back, resting on a surface, or out of frame. Never place a second hand right next to the holding hand.
-- Each hand has EXACTLY FIVE FINGERS: one thumb and four fingers. No sixth finger, no missing finger, no fused fingers.
-- Hands must be clearly separated from each other — never merged, blended, or overlapping unnaturally.
-- All fingers must have natural proportions and natural bending angles. No impossibly long, short, twisted, or boneless fingers.
-- Arms connect to shoulders, hands connect to wrists — standard human skeletal structure only.
-- Every visible hand MUST be attached to a visible arm. No floating or disembodied hands.
+CRITICAL: NO PEOPLE. No hands, no fingers, no arms, no body parts anywhere in the frame. This is a PRODUCT-ONLY or ENVIRONMENT-ONLY shot. The product/scene exists by itself.
+
+Zero text of any kind. No captions, labels, watermarks, logos, or typography.
 
 TECHNICAL:
-Photorealistic product photography quality. Clean composition with the product as clear focal point. Professional but authentic aesthetic. Natural or softbox lighting with proper shadows. Vertical 9:16 aspect ratio.`);
+Photorealistic product photography. Clean composition, product as focal point. Natural or softbox lighting with proper shadows. Vertical 9:16 aspect ratio.`);
 
-  sections.push(`NEGATIVE: ${ANATOMY_NEGATIVE}, three hands, hand growing from product, hand emerging from nowhere, phantom hand, disembodied hand, hand without arm, extra arm, third arm, arm from wrong angle, weird fingers, boneless fingers, noodle fingers, ${STYLE_NEGATIVE}, blurry, out of focus, low quality, amateur, stock photo watermark`);
+    sections.push(`NEGATIVE: hands, fingers, arms, person, human, body parts, ${ANATOMY_NEGATIVE}, ${STYLE_NEGATIVE}, blurry, out of focus, low quality`);
+  } else {
+    sections.push(`OUTPUT REQUIREMENTS:
+Generate exactly ONE photograph — not a collage, grid, or multi-panel layout. A single image.
+
+Zero text of any kind. No captions, labels, watermarks, logos, or typography.
+
+HANDS (if visible): Maximum TWO hands total. Five fingers per hand — no more, no less. Natural relaxed positions only. If one hand holds the product, the other hand is elsewhere (not next to it). Keep hand poses simple.
+
+TECHNICAL:
+Photorealistic product photography. Clean composition, product as focal point. Natural or softbox lighting with proper shadows. Vertical 9:16 aspect ratio.`);
+
+    sections.push(`NEGATIVE: three hands, extra hands, extra fingers, six fingers, fused fingers, floating hands, disembodied hands, ${ANATOMY_NEGATIVE}, ${STYLE_NEGATIVE}, blurry, out of focus, low quality`);
+  }
 
   return sections.join("\n\n");
 }
