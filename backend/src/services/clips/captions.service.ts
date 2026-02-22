@@ -30,6 +30,20 @@ export interface CaptionEntry {
 
 const WORDS_PER_GROUP = 4;
 
+// Devanagari combining characters (matras, nukta, virama, etc.) that require a base consonant.
+// When these appear without a base, the font renderer shows a dotted circle (◌) placeholder.
+const DEVANAGARI_COMBINING = /[\u0900-\u0903\u093A-\u094F\u0951-\u0957\u0962-\u0963\u093C]/;
+
+// Strip orphaned Devanagari combining marks and dotted circle placeholders from caption text.
+// This prevents ◌ symbols from appearing when the transcription returns standalone matras.
+const sanitizeDevanagariText = (text: string): string => {
+  // Remove literal dotted circle placeholder (U+25CC)
+  let cleaned = text.replace(/\u25CC/g, '');
+  // Remove combining marks at the start of the string (no base consonant before them)
+  cleaned = cleaned.replace(new RegExp(`^${DEVANAGARI_COMBINING.source}+`), '');
+  return cleaned;
+};
+
 const FONT_NAME_MAP: Record<string, string> = {
   "Luckiest Guy": "Luckiest Guy",
   "Montserrat": "Montserrat",
@@ -126,7 +140,8 @@ const buildHighlightedText = (
     .map((w, i) => {
       const color = i === activeIndex ? highlightColor : defaultColor;
       const font = detectScriptFont(w.word, defaultFont);
-      return `{\\fn${font}\\c${color}}${w.word}`;
+      const spacing = font !== defaultFont ? "\\fsp0" : "";
+      return `{\\fn${font}\\c${color}${spacing}}${w.word}`;
     })
     .join(" ");
 };
@@ -181,7 +196,7 @@ Format: Layer,Start,End,Style,Text
 
       // Convert to timed words with offset applied
       const timedGroup: TimedWord[] = group.map(w => ({
-        word: w.punctuated_word || "",
+        word: sanitizeDevanagariText(w.punctuated_word || ""),
         start: offset + (w.start - segment.start),
         end: offset + (w.end - segment.start),
       }));
@@ -247,7 +262,7 @@ export function convertWordsToCaptionEntries(
       index: entries.length,
       startTime: group[0].start,
       endTime: group[group.length - 1].end,
-      text: group.map(w => w.punctuated_word || "").join(" "),
+      text: group.map(w => sanitizeDevanagariText(w.punctuated_word || "")).join(" "),
     });
   }
 
@@ -306,7 +321,7 @@ Format: Layer,Start,End,Style,Text
 `;
 
   for (const entry of captionsData) {
-    const words = entry.text.split(" ");
+    const words = entry.text.split(" ").map(w => sanitizeDevanagariText(w)).filter(w => w.length > 0);
     const wordDuration = (entry.endTime - entry.startTime) / words.length;
 
     for (let i = 0; i < words.length; i++) {
@@ -317,7 +332,8 @@ Format: Layer,Start,End,Style,Text
         .map((w, idx) => {
           const color = idx === i ? highlightColor : defaultColor;
           const font = detectScriptFont(w, resolvedFont);
-          return `{\\fn${font}\\c${color}}${w}`;
+          const spacing = font !== resolvedFont ? "\\fsp0" : "";
+          return `{\\fn${font}\\c${color}${spacing}}${w}`;
         })
         .join(" ");
 
