@@ -1,8 +1,8 @@
 "use client";
 
-import { Card, CardBody, Avatar } from "@heroui/react";
+import { Card, CardBody } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { platformIcon, platformIconColor } from "@/lib/platformUtils";
+import { platformIcon, platformIconColor, platformDisplayName } from "@/lib/platformUtils";
 import type { MassPostingAccount } from "@/types/massPosting";
 
 interface AccountGridCardProps {
@@ -14,25 +14,19 @@ export function AccountGridCard({ account }: AccountGridCardProps) {
     <Card className="bg-surface-base border border-border-base hover:border-border-base/80 transition-all cursor-pointer">
       <CardBody className="p-4">
         <div className="flex items-center gap-3">
-          <Avatar
-            src={account.avatarUrl}
-            name={account.handle.charAt(1).toUpperCase()}
-            size="sm"
-            classNames={{ base: "bg-surface-elevated flex-shrink-0" }}
-          />
+          <div className="w-8 h-8 rounded-full bg-surface-elevated flex items-center justify-center flex-shrink-0">
+            <Icon
+              icon={platformIcon(account.platform)}
+              width={16}
+              className={platformIconColor(account.platform)}
+            />
+          </div>
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5">
-              <p className="text-sm font-semibold text-text-primary truncate">
-                {account.handle}
-              </p>
-              <Icon
-                icon={platformIcon(account.platform)}
-                width={14}
-                className={platformIconColor(account.platform)}
-              />
-            </div>
+            <p className="text-sm font-semibold text-text-primary truncate">
+              {account.handle}
+            </p>
             <p className="text-xs text-text-tertiary">
-              {account.platformDisplayName}
+              {platformDisplayName(account.platform)}
             </p>
           </div>
         </div>

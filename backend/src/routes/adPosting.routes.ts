@@ -5,6 +5,7 @@ import {
   getClipPosts,
   webhookMarkAsPosted,
   getPostsForTeam,
+  getAccountStats,
   uploadCustomVideo,
   completeCustomVideo,
 } from "../controllers/adPosting.controller";
@@ -345,6 +346,7 @@ router.post("/webhook/posted", webhookMarkAsPosted);
  *         description: Server error
  */
 router.get("/teams/:teamId/posts", requireAuth, requireSeatAccess, getPostsForTeam);
+router.get("/teams/:teamId/accounts", requireAuth, requireSeatAccess, getAccountStats);
 
 router.post("/teams/:teamId/custom-video", requireAuth, requireSeatAccess, uploadCustomVideo);
 router.post("/teams/:teamId/custom-video/:clipId/complete", requireAuth, requireSeatAccess, completeCustomVideo);

@@ -54,6 +54,7 @@ export interface TeamPost {
   post_url: string | null;
   posted_time: string | null;
   created_at: string;
+  accountHandle?: string | null;
 }
 
 /** Grouped queued entry — multiple posts for the same clip */
@@ -81,9 +82,17 @@ export interface TeamPostsResponse {
 export interface MassPostingAccount {
   id: string;
   handle: string;
-  avatarUrl: string;
   platform: MassPostingPlatform;
-  platformDisplayName: string;
   totalReposts: number;
-  isActive: boolean;
+}
+
+export interface AccountStats {
+  totalAccounts: number;
+  totalReposts: number;
+  avgPostsPerAccount: number;
+}
+
+export interface AccountStatsResponse {
+  accounts: MassPostingAccount[];
+  stats: AccountStats;
 }

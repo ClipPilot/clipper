@@ -27,6 +27,18 @@ export function platformChipClass(platform: string): string {
   return "bg-pink-500/10 text-pink-500";
 }
 
+export function platformDisplayName(platform: string): string {
+  const names: Record<string, string> = {
+    tiktok: "TikTok",
+    instagram: "Instagram",
+    youtube: "YouTube",
+    x: "X (Twitter)",
+    facebook: "Facebook",
+    linkedin: "LinkedIn",
+  };
+  return names[platform] ?? platform;
+}
+
 export function platformShortLabel(platform: string): string {
   if (platform === "instagram") return "IG";
   if (platform === "tiktok") return "TT";
