@@ -4,7 +4,6 @@ import { adminService } from "../services/admin.service";
 import { referralService } from "../services/referral.service";
 import { AdminRequest } from "../middleware/admin.middleware";
 
-// Step 1: Validate credentials and send 2FA code
 export async function login(req: AdminRequest, res: Response) {
   try {
     const { email, password } = req.body;
@@ -32,7 +31,6 @@ export async function login(req: AdminRequest, res: Response) {
   }
 }
 
-// Step 2: Verify 2FA code and return token
 export async function verify2FA(req: AdminRequest, res: Response) {
   try {
     const { email, code } = req.body;

@@ -3,6 +3,7 @@
 import { useCallback, useRef, useEffect } from "react";
 import { useAtom, useSetAtom, useAtomValue } from "jotai";
 import { io, Socket } from "socket.io-client";
+import { getSocketUrl } from "@/lib/socket";
 import { adCloneAPI } from "@/api/adClone";
 import {
   adCloneVideoAtom,
@@ -28,17 +29,6 @@ import {
   AdCloneProjectStatus,
   VideoAnalysis,
 } from "@/store/adClone";
-
-const getSocketUrl = (): string => {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (!apiUrl) return "http://localhost:3001";
-  try {
-    const url = new URL(apiUrl);
-    return url.origin;
-  } catch {
-    return apiUrl.replace(/\/api\/?$/, "");
-  }
-};
 
 interface AdCloneSocketUpdate {
   projectId: string;
@@ -225,27 +215,6 @@ export function useAdClone(teamId: number | undefined) {
     setStatus,
   ]);
 
-  const startAnalysis = useCallback(async (overrideProjectId?: string) => {
-    const pid = overrideProjectId || projectId;
-    if (!teamId || !pid) {
-      throw new Error("Missing required data");
-    }
-
-    setError(null);
-    setProgress(0);
-    setProgressMessage("Starting analysis...");
-    setStatus("analyzing");
-
-    try {
-      await adCloneAPI.startAnalysis(pid, teamId);
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : "Failed to start analysis";
-      setError(errorMsg);
-      setStatus("failed");
-      throw err;
-    }
-  }, [teamId, projectId, setError, setProgress, setProgressMessage, setStep, setStatus]);
-
   const startAnalyzeAndScript = useCallback(async (overrideProjectId?: string) => {
     const pid = overrideProjectId || projectId;
     if (!teamId || !pid) {
@@ -265,7 +234,7 @@ export function useAdClone(teamId: number | undefined) {
       setStatus("failed");
       throw err;
     }
-  }, [teamId, projectId, characterId, voiceId, setError, setProgress, setProgressMessage, setStep, setStatus]);
+  }, [teamId, projectId, characterId, voiceId, setError, setProgress, setProgressMessage, setStatus]);
 
   const generateScript = useCallback(async () => {
     if (!teamId || !projectId) {
@@ -285,7 +254,7 @@ export function useAdClone(teamId: number | undefined) {
       setStatus("failed");
       throw err;
     }
-  }, [teamId, projectId, characterId, setError, setProgress, setProgressMessage, setStep, setStatus]);
+  }, [teamId, projectId, characterId, setError, setProgress, setProgressMessage, setStatus]);
 
   const updateScript = useCallback(
     async (script: any) => {
@@ -474,7 +443,6 @@ export function useAdClone(teamId: number | undefined) {
     setStep,
     setSelectedVariant,
     createProject,
-    startAnalysis,
     startAnalyzeAndScript,
     generateScript,
     updateScript,

@@ -1,18 +1,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
 import { VideoGenerationStatus } from "@/api/ugc/video";
-
-const getSocketUrl = (): string => {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (!apiUrl) return "http://localhost:3001";
-
-  try {
-    const url = new URL(apiUrl);
-    return url.origin;
-  } catch {
-    return apiUrl.replace(/\/api\/?$/, "");
-  }
-};
+import { getSocketUrl } from "@/lib/socket";
 
 const SOCKET_URL = getSocketUrl();
 

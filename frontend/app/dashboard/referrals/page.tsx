@@ -23,6 +23,8 @@ import { selectedTeamAtom } from "@/store/auth";
 import { apiJson } from "@/lib/apiClient";
 import API_URL from "@/config/constants";
 import { ReferralCode, Referral, ReferralStats, REFERRAL_BENEFITS } from "@/types/referral";
+import { getPlanColor } from "@/lib/plans";
+import { formatDate } from "@/lib/formatters";
 
 interface ReferralsResponse {
   code: ReferralCode | null;
@@ -118,27 +120,6 @@ export default function ReferralsPage() {
       default:
         return "default";
     }
-  };
-
-  const getPlanColor = (plan: string | null) => {
-    switch (plan) {
-      case "enterprise":
-        return "bg-amber-500/10 text-amber-500";
-      case "scale":
-        return "bg-purple-500/10 text-purple-500";
-      case "studio":
-        return "bg-accent-400/10 text-accent-400";
-      default:
-        return "bg-gray-500/10 text-gray-500";
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
   };
 
   const formatReward = (referral: Referral) => {

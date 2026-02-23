@@ -49,15 +49,5 @@ export const allScenesCompleteAtom = atom((get) => {
 // Video Generation state
 export const videoJobIdAtom = atom<string | null>(null);
 export const videoStatusAtom = atom<VideoGenerationStatus | null>(null);
-export const videoPreviewUrlAtom = atom<string | null>(null);
-export const editingSceneIdAtom = atom<string | null>(null);
-export const isGeneratingVideoAtom = atom(false); // True when generating/finalizing video
-
 // Fresh start flag - set true when loading existing script (only use script text, nothing else)
 export const freshStartAtom = atom(false);
-
-// Derived atom: check if video can be finalized
-export const canFinalizeAtom = atom((get) => {
-  const status = get(videoStatusAtom);
-  return status?.status === "completed" && !!status.finalVideoUrl;
-});

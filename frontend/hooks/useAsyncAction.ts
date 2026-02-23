@@ -46,30 +46,3 @@ export function useAsyncAction<T = void>(
   return { isLoading, error, execute };
 }
 
-/**
- * Simpler version that wraps any async function with loading state.
- *
- * @example
- * const [isLoading, wrappedFn] = useLoadingState(async (id) => {
- *   return await api.fetchItem(id);
- * });
- */
-export function useLoadingState<TArgs extends unknown[], TResult>(
-  fn: (...args: TArgs) => Promise<TResult>
-): [boolean, (...args: TArgs) => Promise<TResult>] {
-  const [isLoading, setIsLoading] = useState(false);
-
-  const wrappedFn = useCallback(
-    async (...args: TArgs) => {
-      setIsLoading(true);
-      try {
-        return await fn(...args);
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [fn]
-  );
-
-  return [isLoading, wrappedFn];
-}

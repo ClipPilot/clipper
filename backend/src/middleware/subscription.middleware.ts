@@ -8,8 +8,6 @@ import {
   usageStats,
 } from "@clipper/shared-db/src/schema";
 import { eq, and } from "drizzle-orm";
-import { getClipsLimitForPlan } from "../config/stripe.config";
-
 export async function requireActiveSubscription(
   req: AuthRequest,
   res: Response,
@@ -52,56 +50,6 @@ export async function requireActiveSubscription(
         error: "Active subscription required for business teams",
         requiresSubscription: true,
       });
-    }
-
-    next();
-  } catch (err) {
-    console.error("Subscription check error:", err);
-    Sentry.captureException(err);
-    return res.status(500).json({ error: "Failed to verify subscription" });
-  }
-}
-
-export async function requireSubscriptionForAction(
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) {
-  try {
-    const teamId = parseInt(req.params.teamId);
-
-    if (!teamId || isNaN(teamId)) {
-      return res.status(400).json({ error: "Team ID is required" });
-    }
-
-    const [team] = await db
-      .select()
-      .from(teams)
-      .where(eq(teams.id, teamId))
-      .limit(1);
-
-    if (!team) {
-      return res.status(404).json({ error: "Team not found" });
-    }
-
-    if (team.type !== "personal") {
-      const [subscription] = await db
-        .select()
-        .from(subscriptions)
-        .where(
-          and(
-            eq(subscriptions.team_id, teamId),
-            eq(subscriptions.status, "active")
-          )
-        )
-        .limit(1);
-
-      if (!subscription) {
-        return res.status(403).json({
-          error: "Active subscription required for this action on business teams",
-          requiresSubscription: true,
-        });
-      }
     }
 
     next();
@@ -256,33 +204,3 @@ export async function checkSubscriptionAndUsage(
   }
 }
 
-// Helper function to increment clip usage for a team
-export async function incrementClipUsage(teamId: number): Promise<boolean> {
-  try {
-    const [usage] = await db
-      .select()
-      .from(usageStats)
-      .where(eq(usageStats.team_id, teamId))
-      .limit(1);
-
-    if (!usage) return false;
-
-    if (usage.clips_created >= usage.limit) {
-      return false;
-    }
-
-    await db
-      .update(usageStats)
-      .set({
-        clips_created: usage.clips_created + 1,
-        updated_at: new Date(),
-      })
-      .where(eq(usageStats.team_id, teamId));
-
-    return true;
-  } catch (err) {
-    console.error("Failed to increment clip usage:", err);
-    Sentry.captureException(err);
-    return false;
-  }
-}

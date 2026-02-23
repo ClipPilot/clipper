@@ -22,7 +22,7 @@ const passwordResetLimiter = rateLimit({
 });
 
 /**
- * @swagger
+ * @openapi
  * /api/auth/signup:
  *   post:
  *     summary: Create a new user account
@@ -71,7 +71,7 @@ const passwordResetLimiter = rateLimit({
 router.post("/signup", authLimiter, authController.signUp.bind(authController));
 
 /**
- * @swagger
+ * @openapi
  * /api/auth/signin:
  *   post:
  *     summary: Sign in to an existing account
@@ -111,7 +111,7 @@ router.post("/signup", authLimiter, authController.signUp.bind(authController));
 router.post("/signin", authLimiter, authController.signIn.bind(authController));
 
 /**
- * @swagger
+ * @openapi
  * /api/auth/supabase:
  *   post:
  *     summary: Sign in using Supabase OAuth (Google)
@@ -143,7 +143,7 @@ router.post("/signin", authLimiter, authController.signIn.bind(authController));
 router.post("/supabase", authController.signInWithSupabase.bind(authController));
 
 /**
- * @swagger
+ * @openapi
  * /api/auth/signout:
  *   post:
  *     summary: Sign out from the current session
@@ -175,7 +175,7 @@ router.post(
 );
 
 /**
- * @swagger
+ * @openapi
  * /api/auth/me:
  *   get:
  *     summary: Get current authenticated user
@@ -202,7 +202,7 @@ router.post(
 router.get("/me", requireAuth, authController.getMe.bind(authController));
 
 /**
- * @swagger
+ * @openapi
  * /api/auth/refresh:
  *   post:
  *     summary: Refresh access token using refresh token
@@ -242,7 +242,7 @@ router.get("/me", requireAuth, authController.getMe.bind(authController));
 router.post("/refresh", authController.refreshSession.bind(authController));
 
 /**
- * @swagger
+ * @openapi
  * /api/auth/reset-password:
  *   post:
  *     summary: Request a password reset email
@@ -285,7 +285,7 @@ router.post(
 );
 
 /**
- * @swagger
+ * @openapi
  * /api/auth/update-password:
  *   post:
  *     summary: Update password using reset token

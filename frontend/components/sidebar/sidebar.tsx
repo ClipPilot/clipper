@@ -14,6 +14,7 @@ import {
   type SidebarItem,
   type SidebarSection,
 } from "./constants";
+import { getPlanName, getPlanColor, isPaidPlan } from "@/lib/plans";
 
 export type SidebarProps = {
   isCollapsed?: boolean;
@@ -33,9 +34,6 @@ export default function Sidebar({
   );
 
   const plan = selectedTeam?.plan || "free";
-  const isPaidPlan = ["creator", "studio", "scale", "enterprise"].includes(
-    plan
-  );
 
   const isItemLocked = (item: SidebarItem) =>
     item.requiredPlans ? !item.requiredPlans.includes(plan) : false;
@@ -63,36 +61,6 @@ export default function Sidebar({
   const usagePercentage = usageStats
     ? (usageStats.clipsCreated / usageStats.baseLimit) * 100
     : 0;
-
-  const getPlanName = () => {
-    switch (plan) {
-      case "enterprise":
-        return "Enterprise";
-      case "scale":
-        return "Scale";
-      case "studio":
-        return "Studio";
-      case "creator":
-        return "Creator";
-      default:
-        return "Free";
-    }
-  };
-
-  const getPlanColor = () => {
-    switch (plan) {
-      case "enterprise":
-        return "bg-emerald-500/10 text-emerald-500";
-      case "scale":
-        return "bg-purple-500/10 text-purple-500";
-      case "studio":
-        return "bg-accent-400/10 text-accent-400";
-      case "creator":
-        return "bg-orange-500/10 text-orange-500";
-      default:
-        return "bg-blue-500/10 text-blue-500";
-    }
-  };
 
   const handleNav = (item: SidebarItem) => {
     if (isItemLocked(item)) {
@@ -219,7 +187,7 @@ export default function Sidebar({
                 <div className="space-y-1 py-1">
                   <p className="font-medium">{selectedTeam.name}</p>
                   <p className="text-text-tertiary">
-                    {getPlanName()} — {usageStats.clipsCreated}/
+                    {getPlanName(plan)} — {usageStats.clipsCreated}/
                     {usageStats.baseLimit} clips
                   </p>
                   {usageStats.totalRemaining > 0 && (
@@ -239,10 +207,10 @@ export default function Sidebar({
                 <div
                   className={cn(
                     "text-[9px] px-1.5 py-0.5 rounded font-medium",
-                    getPlanColor()
+                    getPlanColor(plan)
                   )}
                 >
-                  {getPlanName()}
+                  {getPlanName(plan)}
                 </div>
                 <Progress
                   value={usagePercentage}
@@ -273,10 +241,10 @@ export default function Sidebar({
                 <span
                   className={cn(
                     "text-[10px] px-1.5 py-0.5 rounded font-medium",
-                    getPlanColor()
+                    getPlanColor(plan)
                   )}
                 >
-                  {getPlanName()}
+                  {getPlanName(plan)}
                 </span>
                 <span className="text-text-tertiary">
                   {usageStats.clipsCreated} / {usageStats.baseLimit}
@@ -311,7 +279,7 @@ export default function Sidebar({
               </div>
 
               {canViewPricing &&
-                (isPaidPlan ? (
+                (isPaidPlan(plan) ? (
                   <button
                     onClick={() => router.push("/dashboard/pricing")}
                     className={cn(
@@ -371,7 +339,7 @@ export default function Sidebar({
             </div>
           )}
 
-          {isCollapsed && canViewPricing && !isPaidPlan && (
+          {isCollapsed && canViewPricing && !isPaidPlan(plan) && (
             <Tooltip
               content="Upgrade workspace"
               placement="right"
@@ -393,7 +361,7 @@ export default function Sidebar({
             </Tooltip>
           )}
 
-          {isCollapsed && canViewPricing && isPaidPlan && (
+          {isCollapsed && canViewPricing && isPaidPlan(plan) && (
             <Tooltip
               content="Manage subscription"
               placement="right"

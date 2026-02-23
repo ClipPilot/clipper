@@ -25,12 +25,117 @@ const conditionalMulter = (req: any, res: any, next: any) => {
   next();
 };
 
+/**
+ * @openapi
+ * /comfy/ugc-upload-urls:
+ *   post:
+ *     summary: Get presigned S3 upload URLs for UGC assets
+ *     tags:
+ *       - ComfyUI
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - teamId
+ *               - files
+ *             properties:
+ *               teamId:
+ *                 type: integer
+ *                 description: The team ID
+ *               files:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     fileName:
+ *                       type: string
+ *                     contentType:
+ *                       type: string
+ *     responses:
+ *       200:
+ *         description: Presigned upload URLs generated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 urls:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       uploadUrl:
+ *                         type: string
+ *                         format: uri
+ *                       key:
+ *                         type: string
+ *       400:
+ *         description: Missing required fields
+ *       500:
+ *         description: Failed to generate upload URLs
+ */
 router.post(
   "/ugc-upload-urls",
   requireAuth,
   comfyController.getUGCUploadUrls.bind(comfyController)
 );
 
+/**
+ * @openapi
+ * /comfy/ugc-face-swap:
+ *   post:
+ *     summary: Create a UGC face swap job
+ *     description: Accepts either multipart/form-data with image/video files or JSON with S3 keys
+ *     tags:
+ *       - ComfyUI
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               teamId:
+ *                 type: integer
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *               video:
+ *                 type: string
+ *                 format: binary
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               teamId:
+ *                 type: integer
+ *               imageKey:
+ *                 type: string
+ *               videoKey:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Face swap job created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 jobId:
+ *                   type: string
+ *                   format: uuid
+ *       400:
+ *         description: Missing required fields
+ *       500:
+ *         description: Failed to create face swap job
+ */
 router.post(
   "/ugc-face-swap",
   requireAuth,
@@ -38,6 +143,56 @@ router.post(
   comfyController.createUGCFaceSwapJob.bind(comfyController)
 );
 
+/**
+ * @openapi
+ * /comfy/ugc-face-swap-upload:
+ *   post:
+ *     summary: Create a UGC face swap job with direct file upload
+ *     description: Uploads video and face images directly, then queues a face swap job
+ *     tags:
+ *       - ComfyUI
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - teamId
+ *               - video
+ *               - images
+ *             properties:
+ *               teamId:
+ *                 type: integer
+ *                 description: The team ID
+ *               video:
+ *                 type: string
+ *                 format: binary
+ *                 description: The source video file
+ *               images:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
+ *                 description: Up to 10 face image files
+ *     responses:
+ *       200:
+ *         description: Face swap job created with uploaded files
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 jobId:
+ *                   type: string
+ *                   format: uuid
+ *       400:
+ *         description: Missing required fields
+ *       500:
+ *         description: Failed to create face swap job
+ */
 router.post(
   "/ugc-face-swap-upload",
   requireAuth,

@@ -33,6 +33,50 @@ const clipJobSchema = z.object({
 
 const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB chunks
 
+/**
+ * Checks whether a free-plan team has exceeded its generation limit.
+ * Returns a 403-ready error payload if the limit is reached or exceeded,
+ * or null if the request may proceed.
+ */
+async function checkFreePlanGenerationLimit(
+  teamId: number,
+  requestedCount: number
+): Promise<{ error: string; message: string; usage: object } | null> {
+  const stats = await teamService.getTeamUsageStats(teamId);
+  const currentClipCount = await clipManagerService.getTeamClipsCount(teamId);
+  const generationLimit = stats.limit === 0 ? 0 : PLAN_LIMITS.FREE.generations;
+  const generationsRemaining = generationLimit - currentClipCount;
+
+  if (generationsRemaining <= 0) {
+    return {
+      error: "Generation limit reached",
+      message:
+        generationLimit === 0
+          ? "This team has no generation allowance. Upgrade to generate clips."
+          : `You have generated all ${generationLimit} clips allowed on the free plan. Upgrade to generate unlimited clips.`,
+      usage: {
+        clipsGenerated: currentClipCount,
+        generationLimit,
+        generationsRemaining: 0,
+      },
+    };
+  }
+
+  if (requestedCount > generationsRemaining) {
+    return {
+      error: "Generation limit exceeded",
+      message: `You can only generate ${generationsRemaining} more clip(s). You requested ${requestedCount}.`,
+      usage: {
+        clipsGenerated: currentClipCount,
+        generationLimit,
+        generationsRemaining,
+      },
+    };
+  }
+
+  return null;
+}
+
 export const initiateMultipartUpload = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) {
@@ -209,36 +253,8 @@ export const submitClipJob = async (req: AuthRequest, res: Response) => {
     const plan = team.plan || "free";
 
     if (plan === "free") {
-      const stats = await teamService.getTeamUsageStats(parsedTeamId);
-      const currentClipCount = await clipManagerService.getTeamClipsCount(parsedTeamId);
-      const generationLimit = stats.limit === 0 ? 0 : PLAN_LIMITS.FREE.generations;
-      const generationsRemaining = generationLimit - currentClipCount;
-
-      if (generationsRemaining <= 0) {
-        return res.status(403).json({
-          error: "Generation limit reached",
-          message: generationLimit === 0
-            ? "This team has no generation allowance. Upgrade to generate clips."
-            : `You have generated all ${generationLimit} clips allowed on the free plan. Upgrade to generate unlimited clips.`,
-          usage: {
-            clipsGenerated: currentClipCount,
-            generationLimit,
-            generationsRemaining: 0,
-          },
-        });
-      }
-
-      if (parsedNumberOfVideos > generationsRemaining) {
-        return res.status(403).json({
-          error: "Generation limit exceeded",
-          message: `You can only generate ${generationsRemaining} more clip(s). You requested ${parsedNumberOfVideos}.`,
-          usage: {
-            clipsGenerated: currentClipCount,
-            generationLimit,
-            generationsRemaining,
-          },
-        });
-      }
+      const limitError = await checkFreePlanGenerationLimit(parsedTeamId, parsedNumberOfVideos);
+      if (limitError) return res.status(403).json(limitError);
     }
 
     if (promptType && !isValidPromptType(promptType)) {
@@ -382,36 +398,8 @@ export const submitBatchClipJob = async (req: AuthRequest, res: Response) => {
     const plan = team.plan || "free";
 
     if (plan === "free") {
-      const stats = await teamService.getTeamUsageStats(parsedTeamId);
-      const currentClipCount = await clipManagerService.getTeamClipsCount(parsedTeamId);
-      const generationLimit = stats.limit === 0 ? 0 : PLAN_LIMITS.FREE.generations;
-      const generationsRemaining = generationLimit - currentClipCount;
-
-      if (generationsRemaining <= 0) {
-        return res.status(403).json({
-          error: "Generation limit reached",
-          message: generationLimit === 0
-            ? "This team has no generation allowance. Upgrade to generate clips."
-            : `You have generated all ${generationLimit} clips allowed on the free plan. Upgrade to generate unlimited clips.`,
-          usage: {
-            clipsGenerated: currentClipCount,
-            generationLimit,
-            generationsRemaining: 0,
-          },
-        });
-      }
-
-      if (parsedNumberOfVideos > generationsRemaining) {
-        return res.status(403).json({
-          error: "Generation limit exceeded",
-          message: `You can only generate ${generationsRemaining} more clip(s). You requested ${parsedNumberOfVideos}.`,
-          usage: {
-            clipsGenerated: currentClipCount,
-            generationLimit,
-            generationsRemaining,
-          },
-        });
-      }
+      const limitError = await checkFreePlanGenerationLimit(parsedTeamId, parsedNumberOfVideos);
+      if (limitError) return res.status(403).json(limitError);
     }
 
     if (length && (length < 10 || length > 120)) {
