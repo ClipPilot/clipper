@@ -7,7 +7,7 @@ import { userAtom, selectedTeamAtom } from "@/store/auth";
 import { Button, Card, CardBody, Progress, addToast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { authAPI } from "@/api/auth";
-import { videoAPI, BatchUploadedVideo } from "@/api/video";
+import { videoAPI, BatchUploadedVideo, ConversionMode } from "@/api/video";
 import { useUsageStats } from "@/hooks/useUsageStats";
 import { useUsageStatsRefresh } from "@/contexts/UsageStatsContext";
 import {
@@ -80,7 +80,10 @@ export default function CreateClipPage() {
   const [batchVideos, setBatchVideos] = useState<BatchUploadedVideo[]>([]);
   const [length, setLength] = useState(40);
   const [hookLength, setHookLength] = useState(6);
-  const [promptType, setPromptType] = useState<PromptType>("business");
+  const [autoLength, setAutoLength] = useState(true);
+  const [autoHookLength, setAutoHookLength] = useState(true);
+  const [conversionMode, setConversionMode] = useState<ConversionMode>("standard");
+  const [promptType, setPromptType] = useState<PromptType>("viral");
   const [customPrompt, setCustomPrompt] = useState("");
   const [numberOfVideos, setNumberOfVideos] = useState(1);
   const [customText, setCustomText] = useState("");
@@ -281,8 +284,8 @@ export default function CreateClipPage() {
             fileSize: v.fileSize,
             duration: v.duration,
           })),
-          length,
-          hookLength,
+          length: autoLength ? undefined : length,
+          hookLength: autoHookLength ? undefined : hookLength,
           promptType,
           customPrompt: customPrompt || undefined,
           textPrompt: customPrompt || undefined,
@@ -294,6 +297,7 @@ export default function CreateClipPage() {
           captions,
           captionColor,
           captionFont,
+          conversionMode,
         });
 
         addToast({
@@ -308,8 +312,8 @@ export default function CreateClipPage() {
           s3Key: uploadedVideo!.s3Key,
           originalFileName: uploadedVideo!.fileName,
           fileSize: uploadedVideo!.fileSize,
-          length,
-          hookLength,
+          length: autoLength ? undefined : length,
+          hookLength: autoHookLength ? undefined : hookLength,
           promptType,
           customPrompt: customPrompt || undefined,
           numberOfVideos,
@@ -320,6 +324,7 @@ export default function CreateClipPage() {
           captions,
           captionColor,
           captionFont,
+          conversionMode,
         });
 
         addToast({
@@ -662,6 +667,12 @@ export default function CreateClipPage() {
                         setLength={setLength}
                         hookLength={hookLength}
                         setHookLength={setHookLength}
+                        autoLength={autoLength}
+                        setAutoLength={setAutoLength}
+                        autoHookLength={autoHookLength}
+                        setAutoHookLength={setAutoHookLength}
+                        conversionMode={conversionMode}
+                        setConversionMode={setConversionMode}
                         numberOfVideos={numberOfVideos}
                         setNumberOfVideos={setNumberOfVideos}
                         maxClips={

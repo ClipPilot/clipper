@@ -212,6 +212,80 @@ def select_facecam_face(faces: List[Dict], frame_w: int, frame_h: int) -> Option
     return best_face
 
 
+def compute_face_motion(frame_paths: List[str], face_bbox: Dict, threshold: float = 3.0) -> float:
+    """Measure how much a face region changes across consecutive frames.
+
+    Static images (memes, PNGs) will have near-zero motion.
+    A real person's face will have expression changes and micro-movements.
+
+    Returns the mean absolute pixel difference across frame pairs.
+    """
+    diffs = []
+    prev_crop = None
+
+    for frame_path in frame_paths:
+        img = cv2.imread(frame_path)
+        if img is None:
+            continue
+
+        h, w = img.shape[:2]
+        x = max(0, min(face_bbox['x'], w - 1))
+        y = max(0, min(face_bbox['y'], h - 1))
+        x2 = min(x + face_bbox['w'], w)
+        y2 = min(y + face_bbox['h'], h)
+
+        crop = img[y:y2, x:x2]
+        if crop.size == 0:
+            continue
+
+        # Resize to fixed size for consistent comparison
+        crop = cv2.resize(crop, (64, 64))
+        crop_gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY).astype(np.float32)
+
+        if prev_crop is not None:
+            diff = np.mean(np.abs(crop_gray - prev_crop))
+            diffs.append(diff)
+
+        prev_crop = crop_gray
+
+    if not diffs:
+        return 0.0
+
+    return float(np.mean(diffs))
+
+
+def group_faces_by_position(all_frame_faces: List[List[Dict]], threshold_px: float = 50) -> List[List[Dict]]:
+    """Group faces across frames by spatial proximity.
+
+    Each group represents the same face source (streamer, meme image, etc.)
+    appearing at roughly the same screen position across multiple frames.
+    """
+    groups: List[List[Dict]] = []
+
+    for frame_faces in all_frame_faces:
+        for face in frame_faces:
+            cx = face['x'] + face['w'] / 2
+            cy = face['y'] + face['h'] / 2
+
+            matched = False
+            for group in groups:
+                # Compare against the group's median center
+                gcxs = [f['x'] + f['w'] / 2 for f in group]
+                gcys = [f['y'] + f['h'] / 2 for f in group]
+                gcx = statistics.median(gcxs)
+                gcy = statistics.median(gcys)
+
+                if abs(cx - gcx) <= threshold_px and abs(cy - gcy) <= threshold_px:
+                    group.append(face)
+                    matched = True
+                    break
+
+            if not matched:
+                groups.append([face])
+
+    return groups
+
+
 def cluster_face_positions(all_faces: List[Dict]) -> Optional[Dict]:
     """Take median of all face positions across frames, filter outliers.
 
@@ -351,26 +425,50 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             )
             print(f"[FACECAM-DETECT] Extracted {len(frame_paths)} sample frames")
 
-            # Detect faces in each frame, keeping the best candidate per frame
-            all_faces = []
+            # Detect ALL faces in each frame (not just the best per frame)
+            all_frame_faces: List[List[Dict]] = []
             for i, frame_path in enumerate(frame_paths):
                 faces = detect_face_bboxes_in_frame(net, frame_path)
-                if faces:
-                    best = select_facecam_face(faces, frame_w, frame_h)
-                    if best:
-                        all_faces.append(best)
+                all_frame_faces.append(faces)
 
                 if context and (i + 1) % 4 == 0:
                     remaining_ms = context.get_remaining_time_in_millis()
                     print(f"[KEEP-ALIVE] Processed {i + 1}/{len(frame_paths)} frames | Lambda time remaining: {remaining_ms // 1000}s")
 
-            print(f"[FACECAM-DETECT] Found faces in {len(all_faces)}/{len(frame_paths)} frames")
+            total_detections = sum(len(ff) for ff in all_frame_faces)
+            frames_with_faces = sum(1 for ff in all_frame_faces if ff)
+            print(f"[FACECAM-DETECT] Found {total_detections} faces across {frames_with_faces}/{len(frame_paths)} frames")
 
-            # Cluster face positions to find stable facecam location
-            face_bbox = cluster_face_positions(all_faces)
+            # Group faces by position, then filter out static ones (memes, images)
+            face_groups = group_faces_by_position(all_frame_faces, threshold_px=config['outlier_threshold_px'])
+            print(f"[FACECAM-DETECT] Found {len(face_groups)} face groups")
+
+            MOTION_THRESHOLD = 3.0  # Below this = static image
+            live_groups = []
+            for group in face_groups:
+                if len(group) < config['min_consistent_detections']:
+                    continue
+                median_bbox = cluster_face_positions(group)
+                if median_bbox is None:
+                    continue
+                motion = compute_face_motion(frame_paths, median_bbox, threshold=MOTION_THRESHOLD)
+                print(f"[FACECAM-DETECT] Group at ({median_bbox['x']},{median_bbox['y']}): {len(group)} detections, motion={motion:.1f}")
+                if motion >= MOTION_THRESHOLD:
+                    live_groups.append((median_bbox, motion))
+                else:
+                    print(f"[FACECAM-DETECT] Filtered out static face (motion={motion:.1f})")
+
+            # From live face groups, pick the one closest to a corner (facecams live in corners)
+            face_bbox: Optional[Dict] = None
+            if live_groups:
+                face_bbox = select_facecam_face(
+                    [g[0] for g in live_groups], frame_w, frame_h
+                )
+
+            detection_rate = frames_with_faces / max(len(frame_paths), 1)
 
             if face_bbox is None:
-                print("[FACECAM-DETECT] No consistent facecam detected")
+                print("[FACECAM-DETECT] No consistent live facecam detected")
                 return {
                     'statusCode': 200,
                     'headers': {'Content-Type': 'application/json'},
@@ -380,7 +478,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                         'facecamRegion': None,
                         'corner': None,
                         'faceRegion': None,
-                        'detectionRate': len(all_faces) / max(len(frame_paths), 1),
+                        'detectionRate': round(detection_rate, 2),
                         'frameWidth': frame_w,
                         'frameHeight': frame_h,
                     }),
@@ -389,7 +487,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             # Expand face to webcam region
             facecam_region = expand_face_to_webcam_region(face_bbox, frame_w, frame_h)
             corner = detect_corner(facecam_region, frame_w, frame_h)
-            detection_rate = len(all_faces) / max(len(frame_paths), 1)
 
             print(f"[FACECAM-DETECT] Facecam detected at {corner}: region={facecam_region}, face={face_bbox}")
 

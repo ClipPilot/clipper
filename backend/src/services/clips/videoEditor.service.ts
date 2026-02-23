@@ -600,25 +600,66 @@ export const convertToGamingVertical = async (
   const fcW = Math.min(facecam.w, width - fcX);
   const fcH = Math.min(facecam.h, height - fcY);
 
-  // Gameplay crop: center of the frame, 16:9 region excluding facecam.
-  // Use the full frame as gameplay — the facecam overlay is small enough
-  // that center-cropping to 16:9 and then scaling works well.
+  // Gameplay "corner cut": slice off the facecam strip first, then
+  // center-crop the remaining area to 16:9 so the game center is preserved.
+  const fcCenterX = fcX + fcW / 2;
+  const fcCenterY = fcY + fcH / 2;
+  const fcOnLeft = fcCenterX < width / 2;
+  const fcOnTop = fcCenterY < height / 2;
+
+  // Step 1: Remove the facecam strip (whichever axis it's closer to the edge on)
+  const distToVerticalEdge = fcOnLeft ? (fcX + fcW) : (width - fcX);
+  const distToHorizontalEdge = fcOnTop ? (fcY + fcH) : (height - fcY);
+
+  let stripX: number, stripY: number, stripW: number, stripH: number;
+
+  if (distToVerticalEdge <= distToHorizontalEdge) {
+    // Facecam hugs a vertical edge — slice off that side
+    if (fcOnLeft) {
+      stripX = fcX + fcW;
+      stripY = 0;
+      stripW = width - (fcX + fcW);
+      stripH = height;
+    } else {
+      stripX = 0;
+      stripY = 0;
+      stripW = fcX;
+      stripH = height;
+    }
+  } else {
+    // Facecam hugs a horizontal edge — slice off that side
+    if (fcOnTop) {
+      stripX = 0;
+      stripY = fcY + fcH;
+      stripW = width;
+      stripH = height - (fcY + fcH);
+    } else {
+      stripX = 0;
+      stripY = 0;
+      stripW = width;
+      stripH = fcY;
+    }
+  }
+
+  // Step 2: Center-crop the remaining strip to 16:9
   const gameplayRatio = 16 / 9;
   let gpW: number, gpH: number, gpX: number, gpY: number;
 
-  if (width / height > gameplayRatio) {
-    // Source wider than 16:9 — crop width
-    gpH = height;
-    gpW = Math.round(height * gameplayRatio);
-    gpX = Math.round((width - gpW) / 2);
-    gpY = 0;
+  if (stripW / stripH > gameplayRatio) {
+    // Remaining area is wider than 16:9 — crop width from center
+    gpH = stripH;
+    gpW = Math.round(stripH * gameplayRatio);
+    gpX = stripX + Math.round((stripW - gpW) / 2);
+    gpY = stripY;
   } else {
-    // Source taller than 16:9 — crop height
-    gpW = width;
-    gpH = Math.round(width / gameplayRatio);
-    gpX = 0;
-    gpY = Math.round((height - gpH) / 2);
+    // Remaining area is taller than 16:9 — crop height from center
+    gpW = stripW;
+    gpH = Math.round(stripW / gameplayRatio);
+    gpX = stripX;
+    gpY = stripY + Math.round((stripH - gpH) / 2);
   }
+
+  console.log(`[GAMING] Facecam at ${fcOnLeft ? "left" : "right"}/${fcOnTop ? "top" : "bottom"}, gameplay crop: ${gpW}x${gpH}+${gpX}+${gpY}`);
 
   return new Promise((resolve, reject) => {
     ffmpeg()
