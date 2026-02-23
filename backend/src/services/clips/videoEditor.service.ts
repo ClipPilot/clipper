@@ -4,6 +4,14 @@ import fs from "fs";
 import puppeteer from "puppeteer";
 import path from "path";
 import { MOBILE_VIDEO_SETTINGS, COMPRESSION } from "../../config/ffmpegSettings";
+import type { ConversionMode } from "../../constants/conversionModes";
+
+export interface FacecamRegion {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
 
 interface VideoMetadata {
   width: number;
@@ -563,6 +571,230 @@ export const convertToVerticalBlur = async (
         reject(err);
       });
   });
+};
+
+/**
+ * Convert a horizontal video to 9:16 gaming layout:
+ * Facecam on top half, center-cropped gameplay on bottom half.
+ * Requires a facecam bounding box from the facecam-detect Lambda.
+ */
+export const convertToGamingVertical = async (
+  inputPath: string,
+  outputPath: string,
+  facecam: FacecamRegion,
+): Promise<string> => {
+  const metadata = await getVideoMetadata(inputPath);
+  const { width, height } = metadata;
+
+  if (height >= width) {
+    console.log(`[GAMING] Already vertical (${width}x${height}), skipping`);
+    fs.copyFileSync(inputPath, outputPath);
+    return outputPath;
+  }
+
+  console.log(`[GAMING] Converting ${width}x${height} to gaming layout (facecam: ${JSON.stringify(facecam)})`);
+
+  // Clamp facecam region to frame bounds
+  const fcX = Math.max(0, Math.min(facecam.x, width - 1));
+  const fcY = Math.max(0, Math.min(facecam.y, height - 1));
+  const fcW = Math.min(facecam.w, width - fcX);
+  const fcH = Math.min(facecam.h, height - fcY);
+
+  // Gameplay crop: center of the frame, 16:9 region excluding facecam.
+  // Use the full frame as gameplay — the facecam overlay is small enough
+  // that center-cropping to 16:9 and then scaling works well.
+  const gameplayRatio = 16 / 9;
+  let gpW: number, gpH: number, gpX: number, gpY: number;
+
+  if (width / height > gameplayRatio) {
+    // Source wider than 16:9 — crop width
+    gpH = height;
+    gpW = Math.round(height * gameplayRatio);
+    gpX = Math.round((width - gpW) / 2);
+    gpY = 0;
+  } else {
+    // Source taller than 16:9 — crop height
+    gpW = width;
+    gpH = Math.round(width / gameplayRatio);
+    gpX = 0;
+    gpY = Math.round((height - gpH) / 2);
+  }
+
+  return new Promise((resolve, reject) => {
+    ffmpeg()
+      .input(inputPath)
+      .complexFilter([
+        // Facecam: crop from source, scale to 1080x960, pad if aspect ratio doesn't match
+        `[0:v]crop=${fcW}:${fcH}:${fcX}:${fcY},scale=1080:960:force_original_aspect_ratio=decrease,pad=1080:960:(ow-iw)/2:(oh-ih)/2:color=black[cam]`,
+        // Gameplay: center-crop to 16:9, scale to 1080x960
+        `[0:v]crop=${gpW}:${gpH}:${gpX}:${gpY},scale=1080:960[game]`,
+        // Stack: facecam on top, gameplay on bottom
+        `[cam][game]vstack=inputs=2[v]`,
+      ])
+      .outputOptions([
+        "-map", "[v]",
+        "-map", "0:a?",
+        "-c:v libx264",
+        "-preset fast",
+        "-crf 23",
+        ...MOBILE_VIDEO_SETTINGS,
+        "-c:a aac",
+        "-b:a 128k",
+        "-ar 48000",
+        "-movflags +faststart",
+      ])
+      .save(outputPath)
+      .on("end", () => {
+        console.log(`[GAMING] Converted to gaming layout: ${outputPath}`);
+        resolve(outputPath);
+      })
+      .on("error", (err) => {
+        console.error(`[GAMING] Conversion failed: ${err.message}`);
+        reject(err);
+      });
+  });
+};
+
+/**
+ * Convert a horizontal video to 9:16 by cropping a region centered on a face.
+ * Good for talking-head / speaker content where you want to zoom into the speaker.
+ */
+export const convertToSpeakerZoom = async (
+  inputPath: string,
+  outputPath: string,
+  faceRegion: FacecamRegion,
+): Promise<string> => {
+  const metadata = await getVideoMetadata(inputPath);
+  const { width, height } = metadata;
+
+  if (height >= width) {
+    console.log(`[SPEAKER-ZOOM] Already vertical (${width}x${height}), skipping`);
+    fs.copyFileSync(inputPath, outputPath);
+    return outputPath;
+  }
+
+  // Calculate a 9:16 crop centered on the face
+  const targetRatio = 9 / 16;
+  let cropW: number;
+  let cropH: number;
+
+  // Start with the full height and calculate width from ratio
+  cropH = height;
+  cropW = Math.round(height * targetRatio);
+
+  // If that's wider than the source, constrain by width
+  if (cropW > width) {
+    cropW = width;
+    cropH = Math.round(width / targetRatio);
+  }
+
+  // Center the crop on the face's center X position
+  const faceCenterX = faceRegion.x + faceRegion.w / 2;
+  let cropX = Math.round(faceCenterX - cropW / 2);
+  cropX = Math.max(0, Math.min(cropX, width - cropW));
+
+  // Center vertically on the face as well
+  const faceCenterY = faceRegion.y + faceRegion.h / 2;
+  let cropY = Math.round(faceCenterY - cropH / 2);
+  cropY = Math.max(0, Math.min(cropY, height - cropH));
+
+  console.log(`[SPEAKER-ZOOM] Cropping ${cropW}x${cropH} at (${cropX},${cropY}) centered on face, then scaling to 1080x1920`);
+
+  return new Promise((resolve, reject) => {
+    ffmpeg(inputPath)
+      .complexFilter([
+        {
+          filter: "crop",
+          options: { w: cropW, h: cropH, x: cropX, y: cropY },
+          inputs: "0:v",
+          outputs: "cropped",
+        },
+        {
+          filter: "scale",
+          options: { w: 1080, h: 1920 },
+          inputs: "cropped",
+          outputs: "v",
+        },
+      ])
+      .outputOptions([
+        "-map", "[v]",
+        "-map", "0:a?",
+        "-c:v libx264",
+        "-preset fast",
+        "-crf 23",
+        ...MOBILE_VIDEO_SETTINGS,
+        "-c:a aac",
+        "-b:a 128k",
+        "-ar 48000",
+        "-movflags +faststart",
+      ])
+      .save(outputPath)
+      .on("end", () => {
+        console.log(`[SPEAKER-ZOOM] Converted: ${outputPath}`);
+        resolve(outputPath);
+      })
+      .on("error", (err) => {
+        console.error(`[SPEAKER-ZOOM] Failed: ${err.message}`);
+        reject(err);
+      });
+  });
+};
+
+/**
+ * Convert a horizontal video to 9:16 via center crop (no blur, no letterbox).
+ * Thin wrapper around changeAspectRatio.
+ */
+export const convertToCenterCrop = async (
+  inputPath: string,
+  outputPath: string,
+): Promise<string> => {
+  const metadata = await getVideoMetadata(inputPath);
+  const { width, height } = metadata;
+
+  if (height >= width) {
+    console.log(`[CENTER-CROP] Already vertical (${width}x${height}), skipping`);
+    fs.copyFileSync(inputPath, outputPath);
+    return outputPath;
+  }
+
+  console.log(`[CENTER-CROP] Cropping ${width}x${height} to 9:16`);
+  return changeAspectRatio(inputPath, outputPath, "9:16");
+};
+
+/**
+ * Dispatcher: convert horizontal video to vertical using the specified mode.
+ * Falls back to blurred-bg when face detection returns null for modes that need it.
+ */
+export const convertToVertical = async (
+  inputPath: string,
+  outputPath: string,
+  mode?: ConversionMode,
+  facecamRegion?: FacecamRegion | null,
+): Promise<string> => {
+  const effectiveMode = mode || "standard";
+
+  switch (effectiveMode) {
+    case "center-crop":
+      return convertToCenterCrop(inputPath, outputPath);
+
+    case "gaming":
+      if (facecamRegion) {
+        return convertToGamingVertical(inputPath, outputPath, facecamRegion);
+      }
+      console.warn("[VERTICAL] Gaming mode but no facecam detected — falling back to standard");
+      return convertToVerticalBlur(inputPath, outputPath);
+
+    case "speaker-zoom":
+      if (facecamRegion) {
+        return convertToSpeakerZoom(inputPath, outputPath, facecamRegion);
+      }
+      console.warn("[VERTICAL] Speaker-zoom mode but no face region — falling back to standard");
+      return convertToVerticalBlur(inputPath, outputPath);
+
+    case "standard":
+    default:
+      return convertToVerticalBlur(inputPath, outputPath);
+  }
 };
 
 export const mergeClipsWithCrossfade = async (

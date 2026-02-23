@@ -29,6 +29,7 @@ const clipJobSchema = z.object({
   captions: z.boolean().optional(),
   captionColor: z.string().regex(hexColorRegex, "Invalid hex color").optional(),
   captionFont: z.string().max(100).optional(),
+  conversionMode: z.enum(["standard", "gaming", "speaker-zoom", "center-crop"]).optional(),
 });
 
 const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB chunks
@@ -243,6 +244,7 @@ export const submitClipJob = async (req: AuthRequest, res: Response) => {
       captions,
       captionColor,
       captionFont,
+      conversionMode,
     } = parseResult.data;
 
     if (parsedNumberOfVideos < 1 || parsedNumberOfVideos > 25) {
@@ -299,6 +301,7 @@ export const submitClipJob = async (req: AuthRequest, res: Response) => {
         captions: captions === true,
         captionColor,
         captionFont,
+        conversionMode,
       },
       originalFileName,
       fileSize,
@@ -345,6 +348,7 @@ export const submitBatchClipJob = async (req: AuthRequest, res: Response) => {
       captions,
       captionColor,
       captionFont,
+      conversionMode,
     } = req.body;
 
     if (!teamId || !videos) {
@@ -471,6 +475,7 @@ export const submitBatchClipJob = async (req: AuthRequest, res: Response) => {
         captions: captions === true || captions === "true",
         captionColor,
         captionFont,
+        conversionMode,
       },
     });
 

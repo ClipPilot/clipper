@@ -1,6 +1,7 @@
 import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import { config } from "../config/env";
 import { PromptType } from "../constants/promptTypes";
+import type { ConversionMode } from "../constants/conversionModes";
 import type { ShotType } from "../types/ugcScript.types";
 
 const sqsClient = new SQSClient({
@@ -53,6 +54,7 @@ export interface ClipVideoJob extends BaseJob {
     captions?: boolean;
     captionColor?: string;
     captionFont?: string;
+    conversionMode?: ConversionMode;
   };
   originalFileName?: string;
   fileSize?: number;
