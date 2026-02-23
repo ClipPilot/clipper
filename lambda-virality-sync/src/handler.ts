@@ -19,7 +19,6 @@ const SYNCS_PER_WEEK = SYNCS_PER_DAY * 7; // 14 syncs = 1 credit
 const SCRAPE_WINDOW_DAYS = 31;
 const MAX_METRICS_HISTORY = SCRAPE_WINDOW_DAYS * SYNCS_PER_DAY;
 const MAX_FOLLOWER_HISTORY = 180; // ~6 months of daily syncs
-const ACTOR_TIMEOUT_SECS = 600; // 10 minutes
 const STALE_SYNC_MINUTES = 15;
 
 let pool: Pool | null = null;
@@ -122,7 +121,7 @@ async function scrapeInstagramAccount(
 
   console.log(`[Apify] Calling actor with input:`, JSON.stringify(input, null, 2));
 
-  const run = await client.actor(INSTAGRAM_SCRAPER_ACTOR).call(input, { timeout: ACTOR_TIMEOUT_SECS });
+  const run = await client.actor(INSTAGRAM_SCRAPER_ACTOR).call(input);
   console.log(`[Apify] Run completed: runId=${run.id}, datasetId=${run.defaultDatasetId}`);
 
   const { items } = await client.dataset(run.defaultDatasetId).listItems();
@@ -161,7 +160,7 @@ async function scrapeInstagramProfile(
   };
 
   console.log(`[Apify] Fetching profile details for @${username}`);
-  const run = await client.actor(INSTAGRAM_PROFILE_SCRAPER_ACTOR).call(input, { timeout: ACTOR_TIMEOUT_SECS });
+  const run = await client.actor(INSTAGRAM_PROFILE_SCRAPER_ACTOR).call(input);
   const { items } = await client.dataset(run.defaultDatasetId).listItems();
 
   if (items.length > 0) {
@@ -210,7 +209,7 @@ async function scrapeTikTokAccount(
 
   console.log(`[Apify/TikTok] Calling actor with input:`, JSON.stringify(input, null, 2));
 
-  const run = await client.actor(TIKTOK_SCRAPER_ACTOR).call(input, { timeout: ACTOR_TIMEOUT_SECS });
+  const run = await client.actor(TIKTOK_SCRAPER_ACTOR).call(input);
   console.log(`[Apify/TikTok] Run completed: runId=${run.id}, datasetId=${run.defaultDatasetId}`);
 
   const { items } = await client.dataset(run.defaultDatasetId).listItems();
@@ -264,7 +263,7 @@ async function scrapeInstagramHashtag(
   };
 
   console.log(`[Apify/IG-Hashtag] Calling actor with input:`, JSON.stringify(input, null, 2));
-  const run = await client.actor(INSTAGRAM_SCRAPER_ACTOR).call(input, { timeout: ACTOR_TIMEOUT_SECS });
+  const run = await client.actor(INSTAGRAM_SCRAPER_ACTOR).call(input);
   const { items } = await client.dataset(run.defaultDatasetId).listItems();
   console.log(`[Apify/IG-Hashtag] Dataset returned ${items.length} items`);
 
@@ -291,7 +290,7 @@ async function scrapeTikTokHashtag(
   };
 
   console.log(`[Apify/TikTok-Hashtag] Calling actor with input:`, JSON.stringify(input, null, 2));
-  const run = await client.actor(TIKTOK_SCRAPER_ACTOR).call(input, { timeout: ACTOR_TIMEOUT_SECS });
+  const run = await client.actor(TIKTOK_SCRAPER_ACTOR).call(input);
   const { items } = await client.dataset(run.defaultDatasetId).listItems();
   console.log(`[Apify/TikTok-Hashtag] Dataset returned ${items.length} items`);
 
@@ -319,7 +318,7 @@ async function scrapeXKeywordSearch(
   };
 
   console.log(`[Apify/X-Search] Calling actor with input:`, JSON.stringify(postsInput, null, 2));
-  const postsRun = await client.actor(X_POSTS_SCRAPER_ACTOR).call(postsInput, { timeout: ACTOR_TIMEOUT_SECS });
+  const postsRun = await client.actor(X_POSTS_SCRAPER_ACTOR).call(postsInput);
   const { items: tweetItems } = await client.dataset(postsRun.defaultDatasetId).listItems();
   console.log(`[Apify/X-Search] Dataset returned ${tweetItems.length} tweets`);
 
@@ -333,7 +332,7 @@ async function scrapeXKeywordSearch(
         max_results: 100,
         mode: "Get a Few Tweets",
       };
-      const viewsRun = await client.actor(X_VIEWS_SCRAPER_ACTOR).call(viewsInput, { timeout: ACTOR_TIMEOUT_SECS });
+      const viewsRun = await client.actor(X_VIEWS_SCRAPER_ACTOR).call(viewsInput);
       const { items: viewItems } = await client.dataset(viewsRun.defaultDatasetId).listItems();
       for (const item of viewItems) {
         const vi = item as any;
@@ -403,7 +402,7 @@ async function scrapeXAccount(
 
   console.log(`[Apify/X] Calling posts actor with input:`, JSON.stringify(postsInput, null, 2));
 
-  const postsRun = await client.actor(X_POSTS_SCRAPER_ACTOR).call(postsInput, { timeout: ACTOR_TIMEOUT_SECS });
+  const postsRun = await client.actor(X_POSTS_SCRAPER_ACTOR).call(postsInput);
   console.log(`[Apify/X] Posts run completed: runId=${postsRun.id}, datasetId=${postsRun.defaultDatasetId}`);
 
   const { items: tweetItems } = await client.dataset(postsRun.defaultDatasetId).listItems();
@@ -427,7 +426,7 @@ async function scrapeXAccount(
 
       console.log(`[Apify/X] Fetching view counts for ${tweetIds.length} tweets...`);
 
-      const viewsRun = await client.actor(X_VIEWS_SCRAPER_ACTOR).call(viewsInput, { timeout: ACTOR_TIMEOUT_SECS });
+      const viewsRun = await client.actor(X_VIEWS_SCRAPER_ACTOR).call(viewsInput);
       const { items: viewItems } = await client.dataset(viewsRun.defaultDatasetId).listItems();
 
       for (const item of viewItems) {
