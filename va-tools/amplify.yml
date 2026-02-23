@@ -1,0 +1,19 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm install -g pnpm@9
+        - pnpm install --frozen-lockfile
+    build:
+      commands:
+        - pnpm --filter va-tools build
+  artifacts:
+    baseDirectory: va-tools/.next
+    files:
+      - "**/*"
+  cache:
+    paths:
+      - node_modules/**/*
+      - va-tools/node_modules/**/*
+      - va-tools/.next/cache/**/*
