@@ -1,5 +1,4 @@
-import { fal } from "@fal-ai/client";
-import { config } from "../../config/env";
+import { fal } from "./falClient";
 import { openaiClient } from "../openai.service";
 import {
   PRODUCT_NEGATIVE_PROMPT,
@@ -14,6 +13,7 @@ import {
   generateGroundedCinematicSystemPrompt,
   generateGroundedCinematicUserPrompt,
 } from "../../config/groundedPrompts";
+import type { ShotType } from "../../types/ugcScript.types";
 
 export {
   PRODUCT_NEGATIVE_PROMPT,
@@ -27,11 +27,7 @@ export {
 
 export const KLING_MAX_PROMPT_LENGTH = 2500;
 
-fal.config({
-  credentials: config.fal.apiKey,
-});
-
-export type ShotType = "a-roll" | "b-roll" | "mixed";
+export type { ShotType };
 export type KlingV3Duration = 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15;
 export type CharacterOrientation = "image" | "video";
 
@@ -361,19 +357,15 @@ export function buildKlingPrompt(
   cinematicPrompt: string,
   shotType: ShotType,
   emotion: string,
-  action: string,
 ): string {
   let basePrompt: string;
 
   if (shotType === "a-roll") {
     // A-roll: Focus on natural speaking motion, subtle movements
     basePrompt = `${cinematicPrompt}. ++Person speaks naturally to camera++, subtle lip movements, ${emotion} expression. Gentle head micro-movements, relaxed eye contact with lens. ++Face maintains exact appearance throughout++ - no morphing. ${GENTLE_MOTION_MODIFIERS}`;
-  } else if (shotType === "b-roll") {
+  } else {
     // B-roll: Focus on product motion and camera movement, always include screen stability
     basePrompt = `${cinematicPrompt}. Smooth camera glide showcasing product. ++Product remains solid and unchanged++ - no warping or morphing. ${SCREEN_STABILITY_MODIFIERS} ${BROLL_MOTION_MODIFIERS}`;
-  } else {
-    // Mixed: Person interacting with product, not speaking to camera
-    basePrompt = `${cinematicPrompt}. Person performs: ${action}. Natural body motion, ${emotion} expression. ++Hands have 5 fingers each++ - no extra or missing. ++Product stays solid throughout++. ${SCREEN_STABILITY_MODIFIERS} ${GENTLE_MOTION_MODIFIERS}`;
   }
 
   return basePrompt;

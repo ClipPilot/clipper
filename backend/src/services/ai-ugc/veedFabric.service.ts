@@ -1,9 +1,4 @@
-import { fal } from "@fal-ai/client";
-import { config } from "../../config/env";
-
-fal.config({
-  credentials: config.fal.apiKey,
-});
+import { fal } from "./falClient";
 
 export type VeedResolution = "720p" | "480p";
 

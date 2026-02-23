@@ -189,7 +189,6 @@ export const generateClipSuggestionsService = async (
   }
 };
 
-// Batch clip generation options
 export interface BatchClipGenerationOptions extends ClipGenerationOptions {
   batchTranscripts: Array<{
     videoIndex: number;

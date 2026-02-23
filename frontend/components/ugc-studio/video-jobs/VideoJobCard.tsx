@@ -4,21 +4,8 @@ import { memo, useRef } from "react";
 import { Card, Chip, Progress } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { UGCVideoJob } from "@/api/ugc/video";
-
-function formatRelativeTime(date: Date): string {
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffSec = Math.floor(diffMs / 1000);
-  const diffMin = Math.floor(diffSec / 60);
-  const diffHour = Math.floor(diffMin / 60);
-  const diffDay = Math.floor(diffHour / 24);
-
-  if (diffSec < 60) return "just now";
-  if (diffMin < 60) return `${diffMin}m ago`;
-  if (diffHour < 24) return `${diffHour}h ago`;
-  if (diffDay < 7) return `${diffDay}d ago`;
-  return date.toLocaleDateString();
-}
+import { timeAgo } from "@/lib/platformUtils";
+import { formatDuration } from "@/lib/videoUrlUtils";
 
 interface VideoJobCardProps {
   job: UGCVideoJob;
@@ -54,12 +41,6 @@ function getStatusLabel(status: UGCVideoJob["status"], isFinalized: boolean) {
     default:
       return status;
   }
-}
-
-function formatDuration(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.round(seconds % 60);
-  return mins > 0 ? `${mins}:${secs.toString().padStart(2, "0")}` : `0:${secs.toString().padStart(2, "0")}`;
 }
 
 export const VideoJobCard = memo(
@@ -193,7 +174,7 @@ export const VideoJobCard = memo(
             </h3>
             {/* Time */}
             <span className="text-[11px] text-white/60">
-              {formatRelativeTime(new Date(job.createdAt))}
+              {timeAgo(job.createdAt)}
             </span>
 
             {/* Failed error */}

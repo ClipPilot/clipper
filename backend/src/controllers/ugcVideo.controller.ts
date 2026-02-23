@@ -20,6 +20,7 @@ import { convertWordsToCaptionEntries, CaptionEntry } from "../services/clips/ca
 import { getTeamUsage } from "../middleware/subscription.middleware";
 import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
 import { ugcScriptService } from "../services/ai-ugc/ugcScript.service";
+import type { ShotType } from "../types/ugcScript.types";
 
 interface AuthRequest extends Request {
   user?: { id: string; email: string; dbUserId: number };
@@ -39,7 +40,7 @@ interface SceneData {
   action: string;
   dialogue: string;
   emotion: string;
-  shotType: "a-roll" | "b-roll" | "mixed";
+  shotType: ShotType;
   cameraAngle: string;
   cinematicPrompt: string;
   durationSeconds: number;

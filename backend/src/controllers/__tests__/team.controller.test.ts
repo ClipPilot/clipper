@@ -18,7 +18,6 @@ const { mockTeamService, mockUserService, mockClipManagerService, mockS3Service 
     leaveTeam: vi.fn(),
     updateTeamName: vi.fn(),
     deleteTeam: vi.fn(),
-    canUserCreateTeam: vi.fn(),
     createTeam: vi.fn(),
     getTeamMember: vi.fn(),
     updateTeamLogo: vi.fn(),
@@ -250,18 +249,8 @@ describe("createTeamController", () => {
     expect(res.status).toHaveBeenCalledWith(400);
   });
 
-  it("returns 403 when user can't create team", async () => {
-    mockUserService.getUserBySupabaseUid.mockResolvedValue({ id: 1 });
-    mockTeamService.canUserCreateTeam.mockResolvedValue({ canCreate: false, reason: "Limit reached" });
-    const req = createReq({ user: { id: "s", email: "t@t.com", dbUserId: 1 }, body: { name: "New" } });
-    const res = createMockResponse();
-    await createTeamController(req, res);
-    expect(res.status).toHaveBeenCalledWith(403);
-  });
-
   it("returns 201 on success", async () => {
     mockUserService.getUserBySupabaseUid.mockResolvedValue({ id: 1 });
-    mockTeamService.canUserCreateTeam.mockResolvedValue({ canCreate: true });
     mockTeamService.createTeam.mockResolvedValue({ id: 20, name: "New" });
     const req = createReq({ user: { id: "s", email: "t@t.com", dbUserId: 1 }, body: { name: "New" } });
     const res = createMockResponse();

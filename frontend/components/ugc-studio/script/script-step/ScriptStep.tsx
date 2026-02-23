@@ -6,7 +6,7 @@ import { Card, CardBody, Button, Input, Textarea, Tabs, Tab } from "@heroui/reac
 import { Icon } from "@iconify/react";
 import { ProductImageUploader } from "../ProductImageUploader";
 import { ugcScriptAPI } from "@/api/ugc";
-import { scriptIdAtom, scriptsAtom, selectedVariantIndexAtom, productImageKeysAtom, sceneImagesAtom, videoJobIdAtom, videoStatusAtom, videoPreviewUrlAtom, freshStartAtom } from "@/store/ugc";
+import { scriptIdAtom, scriptsAtom, selectedVariantIndexAtom, productImageKeysAtom, sceneImagesAtom, videoJobIdAtom, videoStatusAtom, freshStartAtom } from "@/store/ugc";
 import type { UGCScript, UGCScene, ProductImage, ScriptSummary } from "../types";
 import type { ScriptStepProps, ScriptPhase, CustomPatternStep } from "./types";
 import { CharacterPreviewCard } from "./CharacterPreviewCard";
@@ -31,7 +31,6 @@ export function ScriptStep({
   const [, setSceneImages] = useAtom(sceneImagesAtom);
   const [, setVideoJobId] = useAtom(videoJobIdAtom);
   const [, setVideoStatus] = useAtom(videoStatusAtom);
-  const [, setVideoPreviewUrl] = useAtom(videoPreviewUrlAtom);
   const [, setFreshStart] = useAtom(freshStartAtom);
 
   // Phase state
@@ -69,8 +68,7 @@ export function ScriptStep({
     setSceneImages({});
     setVideoJobId(null);
     setVideoStatus(null);
-    setVideoPreviewUrl(null);
-  }, [setSceneImages, setVideoJobId, setVideoStatus, setVideoPreviewUrl]);
+  }, [setSceneImages, setVideoJobId, setVideoStatus]);
 
   // Script generation hook
   const {

@@ -139,7 +139,6 @@ app.use("/api/virality", viralityRoutes);
 app.use("/api/voice-clones", voiceCloneRoutes);
 app.use("/api/platform", apiPlatformRoutes);
 
-// Sentry test route
 app.get("/debug-sentry", function mainHandler(req, res) {
   throw new Error("My first Sentry error!");
 });

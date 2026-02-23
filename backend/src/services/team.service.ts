@@ -640,14 +640,6 @@ class TeamService {
   }
 
   /**
-   * Check if user can create a new team
-   * Users can create unlimited teams - each team starts on free plan
-   */
-  async canUserCreateTeam(userId: number): Promise<{ canCreate: boolean; reason?: string }> {
-    return { canCreate: true };
-  }
-
-  /**
    * Get team by ID with type info
    */
   async getTeamWithType(teamId: number) {

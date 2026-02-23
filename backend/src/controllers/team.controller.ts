@@ -7,6 +7,28 @@ import { clipManagerService } from "../services/clips/clipManager.service";
 import { s3Service } from "../services/s3.service";
 import { PLAN_LIMITS } from "../config/stripe.config";
 
+/**
+ * Verifies that the authenticated user has access to the given team.
+ * Sends a 401/403 response and returns null on failure; returns the db user on success.
+ */
+async function verifyTeamAccessOrFail(
+  req: AuthRequest,
+  teamId: number,
+  res: Response
+): Promise<{ id: number } | null> {
+  if (!req.user?.id) {
+    res.status(401).json({ error: "Unauthorized" });
+    return null;
+  }
+  const user = await userService.getUserBySupabaseUid(req.user.id);
+  const hasAccess = await teamService.verifyTeamAccess(teamId, user.id);
+  if (!hasAccess) {
+    res.status(403).json({ error: "Access denied to this team" });
+    return null;
+  }
+  return user;
+}
+
 export const getUserTeamsController = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user?.id) {
@@ -55,23 +77,13 @@ export const getDefaultTeamController = async (req: AuthRequest, res: Response) 
 
 export const getTeamUsageStatsController = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user?.id) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-
     const teamId = parseInt(req.params.teamId);
     if (isNaN(teamId)) {
       return res.status(400).json({ error: "Invalid team ID" });
     }
 
-    // Get user to verify access
-    const user = await userService.getUserBySupabaseUid(req.user.id);
-
-    // Verify user has access to this team
-    const hasAccess = await teamService.verifyTeamAccess(teamId, user.id);
-    if (!hasAccess) {
-      return res.status(403).json({ error: "Access denied to this team" });
-    }
+    const user = await verifyTeamAccessOrFail(req, teamId, res);
+    if (!user) return;
 
     const stats = await teamService.getTeamUsageStats(teamId);
     const team = await teamService.getTeamById(teamId);
@@ -113,23 +125,13 @@ export const getTeamUsageStatsController = async (req: AuthRequest, res: Respons
 
 export const getTeamMembersController = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user?.id) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-
     const teamId = parseInt(req.params.teamId);
     if (isNaN(teamId)) {
       return res.status(400).json({ error: "Invalid team ID" });
     }
 
-    // Get user to verify access
-    const user = await userService.getUserBySupabaseUid(req.user.id);
-
-    // Verify user has access to this team
-    const hasAccess = await teamService.verifyTeamAccess(teamId, user.id);
-    if (!hasAccess) {
-      return res.status(403).json({ error: "Access denied to this team" });
-    }
+    const user = await verifyTeamAccessOrFail(req, teamId, res);
+    if (!user) return;
 
     const members = await teamService.getTeamMembers(teamId);
 
@@ -167,7 +169,6 @@ export const addTeamMemberController = async (req: AuthRequest, res: Response) =
       });
     }
 
-    // Get user to verify permissions
     const user = await userService.getUserBySupabaseUid(req.user.id);
     const userRole = await teamService.getUserTeamRole(teamId, user.id);
 
@@ -200,7 +201,6 @@ export const removeTeamMemberController = async (req: AuthRequest, res: Response
       return res.status(400).json({ error: "Invalid team ID or member ID" });
     }
 
-    // Get user to verify permissions
     const user = await userService.getUserBySupabaseUid(req.user.id);
     const userRole = await teamService.getUserTeamRole(teamId, user.id);
 
@@ -246,7 +246,6 @@ export const updateTeamMemberRoleController = async (req: AuthRequest, res: Resp
       return res.status(400).json({ error: "Invalid role" });
     }
 
-    // Get user to verify permissions (only owners can change roles)
     const user = await userService.getUserBySupabaseUid(req.user.id);
     const userRole = await teamService.getUserTeamRole(teamId, user.id);
 
@@ -307,7 +306,6 @@ export const updateTeamNameController = async (req: AuthRequest, res: Response) 
       return res.status(400).json({ error: "Team name is required" });
     }
 
-    // Get user to verify permissions (only owners can rename)
     const user = await userService.getUserBySupabaseUid(req.user.id);
     const userRole = await teamService.getUserTeamRole(teamId, user.id);
 
@@ -370,14 +368,6 @@ export const createTeamController = async (req: AuthRequest, res: Response) => {
 
     const user = await userService.getUserBySupabaseUid(req.user.id);
 
-    const { canCreate, reason } = await teamService.canUserCreateTeam(user.id);
-    if (!canCreate) {
-      return res.status(403).json({
-        error: reason,
-        requiresSubscription: true,
-      });
-    }
-
     const team = await teamService.createTeam(name.trim(), user.id, "business");
 
     res.status(201).json({ team });
@@ -412,17 +402,15 @@ export const uploadTeamLogoController = async (req: AuthRequest, res: Response) 
       return res.status(400).json({ error: "No file uploaded" });
     }
 
-    // Upload to S3
     const logoKey = await s3Service.uploadTeamLogo(
       req.file.buffer,
       teamId,
       req.file.mimetype
     );
 
-    // Store the S3 key in database (not presigned URL)
+    // Store the S3 key rather than a presigned URL so the stored value stays valid long-term
     const updatedTeam = await teamService.updateTeamLogo(teamId, logoKey);
 
-    // Generate a presigned URL for the response (1 hour)
     const logoUrl = await s3Service.getPresignedUrl(logoKey, 3600);
 
     res.json({ team: { ...updatedTeam, logo_url: logoUrl, role: membership.role } });
@@ -453,7 +441,6 @@ export const removeTeamLogoController = async (req: AuthRequest, res: Response) 
       return res.status(403).json({ error: "Only team owners can remove the logo" });
     }
 
-    // Update team with null logo URL
     const updatedTeam = await teamService.updateTeamLogo(teamId, null);
 
     res.json({ team: { ...updatedTeam, role: membership.role } });

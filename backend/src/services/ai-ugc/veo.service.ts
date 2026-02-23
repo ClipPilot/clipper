@@ -1,9 +1,4 @@
-import { fal } from "@fal-ai/client";
-import { config } from "../../config/env";
-
-fal.config({
-  credentials: config.fal.apiKey,
-});
+import { fal } from "./falClient";
 
 // Default negative prompt for photorealistic human movement
 export const VEO_DEFAULT_NEGATIVE_PROMPT =

@@ -739,7 +739,6 @@ async function processBrollScene(
         groundedPrompt,
         "b-roll" as ShotType,
         emotion,
-        shot.action,
       );
 
       const { videoUrl: shotVideoUrl } =
@@ -868,7 +867,6 @@ async function processBrollScene(
       groundedCinematicPrompt,
       shotType,
       emotion,
-      action,
     );
 
     // Generate just enough video to cover audio + 1s buffer, clamped to 3-15s

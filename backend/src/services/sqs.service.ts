@@ -1,6 +1,7 @@
 import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import { config } from "../config/env";
 import { PromptType } from "../constants/promptTypes";
+import type { ShotType } from "../types/ugcScript.types";
 
 const sqsClient = new SQSClient({
   region: config.aws.region,
@@ -304,7 +305,7 @@ export interface GenerateUGCVideoJob extends BaseJob {
   scenes: Array<{
     sceneId: string;
     sceneNumber: number;
-    shotType: "a-roll" | "b-roll" | "mixed";
+    shotType: ShotType;
     imageKey: string;
     dialogue: string;
     duration: number;

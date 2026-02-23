@@ -1,9 +1,4 @@
-import { fal } from "@fal-ai/client";
-import { config } from "../../config/env";
-
-fal.config({
-  credentials: config.fal.apiKey,
-});
+import { fal } from "./falClient";
 
 const FACE_SWAP_TIMEOUT_MS = 600000; // 10 minutes - video processing takes longer
 

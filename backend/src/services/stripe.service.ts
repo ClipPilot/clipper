@@ -23,6 +23,20 @@ import { apiBillingService } from "./apiBilling.service";
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://platform.cuttr.com";
 
+/**
+ * Converts a Stripe period timestamp (Unix seconds, Date object, or ISO string)
+ * to a JavaScript Date.
+ */
+const parseDate = (val: any): Date => {
+  if (typeof val === "number") {
+    return new Date(val * 1000);
+  }
+  if (val instanceof Date) {
+    return val;
+  }
+  return new Date(val);
+};
+
 class StripeService {
   private async getTeamOwner(teamId: number) {
     const [owner] = await db
@@ -39,6 +53,25 @@ class StripeService {
       )
       .limit(1);
     return owner;
+  }
+
+  /**
+   * Fetches the team owner and passes them to the provided email callback.
+   * Swallows errors so that a failed email never breaks the main webhook flow.
+   */
+  private async notifyTeamOwner(
+    teamId: number,
+    emailFn: (owner: NonNullable<Awaited<ReturnType<StripeService["getTeamOwner"]>>>) => Promise<unknown>,
+    errorLabel: string,
+  ): Promise<void> {
+    try {
+      const owner = await this.getTeamOwner(teamId);
+      if (!owner) return;
+      await emailFn(owner);
+    } catch (emailError) {
+      console.error(`Failed to ${errorLabel}:`, emailError);
+      Sentry.captureException(emailError);
+    }
   }
 
   async getOrCreateCustomer(teamId: number, email: string): Promise<string> {
@@ -249,16 +282,6 @@ class StripeService {
       return;
     }
 
-    const parseDate = (val: any): Date => {
-      if (typeof val === "number") {
-        return new Date(val * 1000);
-      }
-      if (val instanceof Date) {
-        return val;
-      }
-      return new Date(val);
-    };
-
     const periodStart = parseDate(periodStartTs);
     const periodEnd = parseDate(periodEndTs);
 
@@ -341,26 +364,25 @@ class StripeService {
       Sentry.captureException(refError);
     }
 
-    try {
-      const [team] = await db
-        .select()
-        .from(teams)
-        .where(eq(teams.id, teamId))
-        .limit(1);
-      const owner = await this.getTeamOwner(teamId);
+    const [teamForEmail] = await db
+      .select()
+      .from(teams)
+      .where(eq(teams.id, teamId))
+      .limit(1);
 
-      if (owner && team) {
-        await emailNotiService.sendSubscriptionWelcome(owner.email, {
-          userName: owner.firstName,
-          planName: plan.charAt(0).toUpperCase() + plan.slice(1),
-          teamName: team.name,
-          clipsLimit: clipsLimit,
-          dashboardUrl: `${FRONTEND_URL}/dashboard`,
-        });
-      }
-    } catch (emailError) {
-      console.error("Failed to send subscription welcome email:", emailError);
-      Sentry.captureException(emailError);
+    if (teamForEmail) {
+      await this.notifyTeamOwner(
+        teamId,
+        (owner) =>
+          emailNotiService.sendSubscriptionWelcome(owner.email, {
+            userName: owner.firstName,
+            planName: plan.charAt(0).toUpperCase() + plan.slice(1),
+            teamName: teamForEmail.name,
+            clipsLimit: clipsLimit,
+            dashboardUrl: `${FRONTEND_URL}/dashboard`,
+          }),
+        "send subscription welcome email",
+      );
     }
   }
 
@@ -395,17 +417,6 @@ class StripeService {
       );
       return;
     }
-
-    // Handle both Unix timestamps (numbers) and Date strings
-    const parseDate = (val: any): Date => {
-      if (typeof val === "number") {
-        return new Date(val * 1000);
-      }
-      if (val instanceof Date) {
-        return val;
-      }
-      return new Date(val);
-    };
 
     const [team] = await db
       .select()
@@ -568,36 +579,32 @@ class StripeService {
       })
       .where(eq(usageStats.team_id, existingSub.team_id));
 
-    try {
-      const [team] = await db
-        .select()
-        .from(teams)
-        .where(eq(teams.id, existingSub.team_id))
-        .limit(1);
-      const owner = await this.getTeamOwner(existingSub.team_id);
+    const [teamForEmail] = await db
+      .select()
+      .from(teams)
+      .where(eq(teams.id, existingSub.team_id))
+      .limit(1);
 
-      if (owner && team) {
-        const endDate = existingSub.current_period_end
-          ? new Date(existingSub.current_period_end).toLocaleDateString(
-              "en-US",
-              {
-                month: "long",
-                day: "numeric",
-                year: "numeric",
-              },
-            )
-          : "soon";
+    if (teamForEmail) {
+      const endDate = existingSub.current_period_end
+        ? new Date(existingSub.current_period_end).toLocaleDateString("en-US", {
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+          })
+        : "soon";
 
-        await emailNotiService.sendSubscriptionCancelled(owner.email, {
-          userName: owner.firstName,
-          teamName: team.name,
-          endDate,
-          reactivateUrl: `${FRONTEND_URL}/dashboard/pricing`,
-        });
-      }
-    } catch (emailError) {
-      console.error("Failed to send subscription cancelled email:", emailError);
-      Sentry.captureException(emailError);
+      await this.notifyTeamOwner(
+        existingSub.team_id,
+        (owner) =>
+          emailNotiService.sendSubscriptionCancelled(owner.email, {
+            userName: owner.firstName,
+            teamName: teamForEmail.name,
+            endDate,
+            reactivateUrl: `${FRONTEND_URL}/dashboard/pricing`,
+          }),
+        "send subscription cancelled email",
+      );
     }
   }
 
@@ -804,24 +811,18 @@ class StripeService {
     );
 
     // Send welcome email
-    try {
-      const owner = await this.getTeamOwner(teamId);
-      if (owner) {
-        await emailNotiService.sendSubscriptionWelcome(owner.email, {
+    await this.notifyTeamOwner(
+      teamId,
+      (owner) =>
+        emailNotiService.sendSubscriptionWelcome(owner.email, {
           userName: owner.firstName,
           planName: plan.charAt(0).toUpperCase() + plan.slice(1),
           teamName: team.name,
           clipsLimit,
           dashboardUrl: `${FRONTEND_URL}/dashboard`,
-        });
-      }
-    } catch (emailError) {
-      console.error(
-        "[Subscription Checkout] Failed to send welcome email:",
-        emailError,
-      );
-      Sentry.captureException(emailError);
-    }
+        }),
+      "[Subscription Checkout] send welcome email",
+    );
   }
 
   async handleAsyncPaymentFailed(session: any): Promise<void> {
@@ -1015,43 +1016,39 @@ class StripeService {
 
     if (!existingSub) return;
 
-    try {
-      const [team] = await db
-        .select()
-        .from(teams)
-        .where(eq(teams.id, existingSub.team_id))
-        .limit(1);
-      const owner = await this.getTeamOwner(existingSub.team_id);
+    const [teamForEmail] = await db
+      .select()
+      .from(teams)
+      .where(eq(teams.id, existingSub.team_id))
+      .limit(1);
 
-      if (owner && team) {
-        const amount = invoice.amount_paid
-          ? `$${(invoice.amount_paid / 100).toFixed(2)}`
-          : "N/A";
-        const renewalDate = existingSub.current_period_end
-          ? new Date(existingSub.current_period_end).toLocaleDateString(
-              "en-US",
-              {
-                month: "long",
-                day: "numeric",
-                year: "numeric",
-              },
-            )
-          : "N/A";
+    if (teamForEmail) {
+      const amount = invoice.amount_paid
+        ? `$${(invoice.amount_paid / 100).toFixed(2)}`
+        : "N/A";
+      const renewalDate = existingSub.current_period_end
+        ? new Date(existingSub.current_period_end).toLocaleDateString("en-US", {
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+          })
+        : "N/A";
 
-        await emailNotiService.sendSubscriptionRenewal(owner.email, {
-          userName: owner.firstName,
-          teamName: team.name,
-          planName:
-            existingSub.plan.charAt(0).toUpperCase() +
-            existingSub.plan.slice(1),
-          amount,
-          renewalDate,
-          manageUrl: `${FRONTEND_URL}/dashboard/settings`,
-        });
-      }
-    } catch (emailError) {
-      console.error("Failed to send renewal email:", emailError);
-      Sentry.captureException(emailError);
+      await this.notifyTeamOwner(
+        existingSub.team_id,
+        (owner) =>
+          emailNotiService.sendSubscriptionRenewal(owner.email, {
+            userName: owner.firstName,
+            teamName: teamForEmail.name,
+            planName:
+              existingSub.plan.charAt(0).toUpperCase() +
+              existingSub.plan.slice(1),
+            amount,
+            renewalDate,
+            manageUrl: `${FRONTEND_URL}/dashboard/settings`,
+          }),
+        "send renewal email",
+      );
     }
   }
 
@@ -1066,40 +1063,39 @@ class StripeService {
 
     if (!existingSub) return;
 
-    try {
-      const [team] = await db
-        .select()
-        .from(teams)
-        .where(eq(teams.id, existingSub.team_id))
-        .limit(1);
-      const owner = await this.getTeamOwner(existingSub.team_id);
+    const [teamForEmail] = await db
+      .select()
+      .from(teams)
+      .where(eq(teams.id, existingSub.team_id))
+      .limit(1);
 
-      if (owner && team) {
-        const amount = invoice.amount_due
-          ? `$${(invoice.amount_due / 100).toFixed(2)}`
-          : "N/A";
-        const retryDate = invoice.next_payment_attempt
-          ? new Date(invoice.next_payment_attempt * 1000).toLocaleDateString(
-              "en-US",
-              {
-                month: "long",
-                day: "numeric",
-                year: "numeric",
-              },
-            )
-          : "soon";
+    if (teamForEmail) {
+      const amount = invoice.amount_due
+        ? `$${(invoice.amount_due / 100).toFixed(2)}`
+        : "N/A";
+      const retryDate = invoice.next_payment_attempt
+        ? new Date(invoice.next_payment_attempt * 1000).toLocaleDateString(
+            "en-US",
+            {
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+            },
+          )
+        : "soon";
 
-        await emailNotiService.sendPaymentFailed(owner.email, {
-          userName: owner.firstName,
-          teamName: team.name,
-          amount,
-          retryDate,
-          updatePaymentUrl: `${FRONTEND_URL}/dashboard/settings`,
-        });
-      }
-    } catch (emailError) {
-      console.error("Failed to send payment failed email:", emailError);
-      Sentry.captureException(emailError);
+      await this.notifyTeamOwner(
+        existingSub.team_id,
+        (owner) =>
+          emailNotiService.sendPaymentFailed(owner.email, {
+            userName: owner.firstName,
+            teamName: teamForEmail.name,
+            amount,
+            retryDate,
+            updatePaymentUrl: `${FRONTEND_URL}/dashboard/settings`,
+          }),
+        "send payment failed email",
+      );
     }
   }
 }
