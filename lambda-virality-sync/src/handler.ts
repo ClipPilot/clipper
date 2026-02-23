@@ -3,7 +3,7 @@ import { ApifyClient } from "apify-client";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import * as schema from "@clipper/shared-db";
-import { eq, and, inArray, sql } from "drizzle-orm";
+import { eq, and, or, lte, inArray, sql } from "drizzle-orm";
 
 const DATABASE_URL = process.env.DATABASE_URL!;
 const APIFY_API_TOKEN = process.env.APIFY_API_TOKEN!;
@@ -19,6 +19,8 @@ const SYNCS_PER_WEEK = SYNCS_PER_DAY * 7; // 14 syncs = 1 credit
 const SCRAPE_WINDOW_DAYS = 31;
 const MAX_METRICS_HISTORY = SCRAPE_WINDOW_DAYS * SYNCS_PER_DAY;
 const MAX_FOLLOWER_HISTORY = 180; // ~6 months of daily syncs
+const ACTOR_TIMEOUT_SECS = 600; // 10 minutes
+const STALE_SYNC_MINUTES = 15;
 
 let pool: Pool | null = null;
 
@@ -120,7 +122,7 @@ async function scrapeInstagramAccount(
 
   console.log(`[Apify] Calling actor with input:`, JSON.stringify(input, null, 2));
 
-  const run = await client.actor(INSTAGRAM_SCRAPER_ACTOR).call(input);
+  const run = await client.actor(INSTAGRAM_SCRAPER_ACTOR).call(input, { timeout: ACTOR_TIMEOUT_SECS });
   console.log(`[Apify] Run completed: runId=${run.id}, datasetId=${run.defaultDatasetId}`);
 
   const { items } = await client.dataset(run.defaultDatasetId).listItems();
@@ -159,7 +161,7 @@ async function scrapeInstagramProfile(
   };
 
   console.log(`[Apify] Fetching profile details for @${username}`);
-  const run = await client.actor(INSTAGRAM_PROFILE_SCRAPER_ACTOR).call(input);
+  const run = await client.actor(INSTAGRAM_PROFILE_SCRAPER_ACTOR).call(input, { timeout: ACTOR_TIMEOUT_SECS });
   const { items } = await client.dataset(run.defaultDatasetId).listItems();
 
   if (items.length > 0) {
@@ -208,7 +210,7 @@ async function scrapeTikTokAccount(
 
   console.log(`[Apify/TikTok] Calling actor with input:`, JSON.stringify(input, null, 2));
 
-  const run = await client.actor(TIKTOK_SCRAPER_ACTOR).call(input);
+  const run = await client.actor(TIKTOK_SCRAPER_ACTOR).call(input, { timeout: ACTOR_TIMEOUT_SECS });
   console.log(`[Apify/TikTok] Run completed: runId=${run.id}, datasetId=${run.defaultDatasetId}`);
 
   const { items } = await client.dataset(run.defaultDatasetId).listItems();
@@ -262,7 +264,7 @@ async function scrapeInstagramHashtag(
   };
 
   console.log(`[Apify/IG-Hashtag] Calling actor with input:`, JSON.stringify(input, null, 2));
-  const run = await client.actor(INSTAGRAM_SCRAPER_ACTOR).call(input);
+  const run = await client.actor(INSTAGRAM_SCRAPER_ACTOR).call(input, { timeout: ACTOR_TIMEOUT_SECS });
   const { items } = await client.dataset(run.defaultDatasetId).listItems();
   console.log(`[Apify/IG-Hashtag] Dataset returned ${items.length} items`);
 
@@ -289,7 +291,7 @@ async function scrapeTikTokHashtag(
   };
 
   console.log(`[Apify/TikTok-Hashtag] Calling actor with input:`, JSON.stringify(input, null, 2));
-  const run = await client.actor(TIKTOK_SCRAPER_ACTOR).call(input);
+  const run = await client.actor(TIKTOK_SCRAPER_ACTOR).call(input, { timeout: ACTOR_TIMEOUT_SECS });
   const { items } = await client.dataset(run.defaultDatasetId).listItems();
   console.log(`[Apify/TikTok-Hashtag] Dataset returned ${items.length} items`);
 
@@ -317,7 +319,7 @@ async function scrapeXKeywordSearch(
   };
 
   console.log(`[Apify/X-Search] Calling actor with input:`, JSON.stringify(postsInput, null, 2));
-  const postsRun = await client.actor(X_POSTS_SCRAPER_ACTOR).call(postsInput);
+  const postsRun = await client.actor(X_POSTS_SCRAPER_ACTOR).call(postsInput, { timeout: ACTOR_TIMEOUT_SECS });
   const { items: tweetItems } = await client.dataset(postsRun.defaultDatasetId).listItems();
   console.log(`[Apify/X-Search] Dataset returned ${tweetItems.length} tweets`);
 
@@ -331,7 +333,7 @@ async function scrapeXKeywordSearch(
         max_results: 100,
         mode: "Get a Few Tweets",
       };
-      const viewsRun = await client.actor(X_VIEWS_SCRAPER_ACTOR).call(viewsInput);
+      const viewsRun = await client.actor(X_VIEWS_SCRAPER_ACTOR).call(viewsInput, { timeout: ACTOR_TIMEOUT_SECS });
       const { items: viewItems } = await client.dataset(viewsRun.defaultDatasetId).listItems();
       for (const item of viewItems) {
         const vi = item as any;
@@ -401,7 +403,7 @@ async function scrapeXAccount(
 
   console.log(`[Apify/X] Calling posts actor with input:`, JSON.stringify(postsInput, null, 2));
 
-  const postsRun = await client.actor(X_POSTS_SCRAPER_ACTOR).call(postsInput);
+  const postsRun = await client.actor(X_POSTS_SCRAPER_ACTOR).call(postsInput, { timeout: ACTOR_TIMEOUT_SECS });
   console.log(`[Apify/X] Posts run completed: runId=${postsRun.id}, datasetId=${postsRun.defaultDatasetId}`);
 
   const { items: tweetItems } = await client.dataset(postsRun.defaultDatasetId).listItems();
@@ -425,7 +427,7 @@ async function scrapeXAccount(
 
       console.log(`[Apify/X] Fetching view counts for ${tweetIds.length} tweets...`);
 
-      const viewsRun = await client.actor(X_VIEWS_SCRAPER_ACTOR).call(viewsInput);
+      const viewsRun = await client.actor(X_VIEWS_SCRAPER_ACTOR).call(viewsInput, { timeout: ACTOR_TIMEOUT_SECS });
       const { items: viewItems } = await client.dataset(viewsRun.defaultDatasetId).listItems();
 
       for (const item of viewItems) {
@@ -456,6 +458,14 @@ async function upsertPost(
   platform: string
 ): Promise<boolean> {
   if (!postData.id) return false;
+
+  // Skip posts outside the scrape window
+  if (postData.timestamp) {
+    const postDate = new Date(postData.timestamp);
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - SCRAPE_WINDOW_DAYS);
+    if (postDate < cutoff) return false;
+  }
 
   const [existingPost] = await db
     .select()
@@ -525,9 +535,13 @@ async function upsertPost(
   return true;
 }
 
-async function fetchXProfile(username: string): Promise<InstagramProfile | null> {
+/**
+ * Fetch X follower count from SocialData API.
+ * Only returns followersCount — all other profile fields come from Apify scrapers.
+ */
+async function fetchXFollowerCount(username: string): Promise<Partial<InstagramProfile> | null> {
   if (!SOCIALDATA_API_KEY) {
-    console.warn("[SocialData] SOCIALDATA_API_KEY not configured, skipping X profile fetch");
+    console.warn("[SocialData] SOCIALDATA_API_KEY not configured, skipping X follower fetch");
     return null;
   }
 
@@ -545,22 +559,13 @@ async function fetchXProfile(username: string): Promise<InstagramProfile | null>
     }
 
     const data: any = await res.json();
+    console.log(`[SocialData] Fetched X follower count for @${username}: ${data.followers_count}`);
 
-    const profile: InstagramProfile = {
-      username: data.screen_name || username,
-      fullName: data.name || "",
-      biography: data.description || "",
-      profilePicUrl: data.profile_image_url_https?.replace("_normal", "") || "",
+    return {
       followersCount: data.followers_count ?? 0,
-      followsCount: data.friends_count ?? 0,
-      postsCount: data.statuses_count ?? 0,
-      isVerified: data.verified || false,
     };
-
-    console.log(`[SocialData] Fetched X profile for @${username}: followers=${profile.followersCount}`);
-    return profile;
   } catch (err) {
-    console.warn(`[SocialData] Failed to fetch X profile for @${username}:`, err);
+    console.warn(`[SocialData] Failed to fetch X follower count for @${username}:`, err);
     return null;
   }
 }
@@ -568,7 +573,7 @@ async function fetchXProfile(username: string): Promise<InstagramProfile | null>
 async function updateAccountProfile(
   db: ReturnType<typeof drizzle>,
   accountId: number,
-  profile: InstagramProfile
+  profile: Partial<InstagramProfile>
 ) {
   // Fetch existing follower_history
   const [existing] = await db
@@ -592,22 +597,24 @@ async function updateAccountProfile(
     ? history.slice(-MAX_FOLLOWER_HISTORY)
     : history;
 
+  const updates: Record<string, any> = {
+    follower_history: trimmed,
+    updated_at: new Date(),
+  };
+  if (profile.fullName !== undefined) updates.display_name = profile.fullName;
+  if (profile.profilePicUrl !== undefined) updates.avatar_url = profile.profilePicUrl;
+  if (profile.biography !== undefined) updates.bio = profile.biography;
+  if (profile.followersCount !== undefined) updates.follower_count = profile.followersCount;
+  if (profile.followsCount !== undefined) updates.following_count = profile.followsCount;
+  if (profile.postsCount !== undefined) updates.post_count = profile.postsCount;
+  if (profile.isVerified !== undefined) updates.is_verified = profile.isVerified;
+
   await db
     .update(schema.viralityAccounts)
-    .set({
-      display_name: profile.fullName,
-      avatar_url: profile.profilePicUrl,
-      bio: profile.biography,
-      follower_count: profile.followersCount,
-      following_count: profile.followsCount,
-      post_count: profile.postsCount,
-      follower_history: trimmed,
-      is_verified: profile.isVerified || false,
-      updated_at: new Date(),
-    })
+    .set(updates)
     .where(eq(schema.viralityAccounts.id, accountId));
 
-  console.log(`[DB] Updated profile for account ${accountId}: ${profile.fullName} | followers=${profile.followersCount} following=${profile.followsCount} posts=${profile.postsCount} | follower_history: ${trimmed.length} entries`);
+  console.log(`[DB] Updated profile for account ${accountId}: followers=${profile.followersCount ?? "N/A"} | follower_history: ${trimmed.length} entries`);
 }
 
 // ── Credit helpers ──
@@ -679,6 +686,30 @@ export const handler: Handler = async (event: any, context: Context) => {
   let postsUpserted = 0;
 
   try {
+    // Clean up stale syncs stuck in pending/syncing for more than 15 minutes
+    const cutoff = new Date(Date.now() - STALE_SYNC_MINUTES * 60 * 1000);
+    const stale = await db
+      .update(schema.viralityAccounts)
+      .set({
+        sync_status: "failed",
+        sync_error: `Sync timed out (stuck for more than ${STALE_SYNC_MINUTES} minutes)`,
+        updated_at: new Date(),
+      })
+      .where(
+        and(
+          or(
+            eq(schema.viralityAccounts.sync_status, "pending"),
+            eq(schema.viralityAccounts.sync_status, "syncing")
+          ),
+          lte(schema.viralityAccounts.updated_at, cutoff)
+        )
+      )
+      .returning({ id: schema.viralityAccounts.id, username: schema.viralityAccounts.username });
+
+    if (stale.length > 0) {
+      console.log(`[Cleanup] Reset ${stale.length} stale syncs: ${stale.map((s) => `@${s.username}`).join(", ")}`);
+    }
+
     const accounts = await db
       .select()
       .from(schema.viralityAccounts)
@@ -760,15 +791,22 @@ export const handler: Handler = async (event: any, context: Context) => {
 
         // Only update profile for profile-type accounts
         if (accountType === "profile") {
+          // For IG/TikTok: use the full profile from Apify (or fetch it separately for IG)
           const resolvedProfile = profile
             ?? (account.platform === "instagram"
               ? await scrapeInstagramProfile(apifyClient, account.username)
-              : account.platform === "x"
-                ? await fetchXProfile(account.username)
-                : null);
+              : null);
 
           if (resolvedProfile) {
             await updateAccountProfile(db, account.id, resolvedProfile);
+          }
+
+          // For X: fetch follower count separately from SocialData (only source for X followers)
+          if (account.platform === "x") {
+            const xFollowers = await fetchXFollowerCount(account.username);
+            if (xFollowers) {
+              await updateAccountProfile(db, account.id, xFollowers);
+            }
           }
         }
 

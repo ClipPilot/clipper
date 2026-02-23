@@ -17,12 +17,6 @@ export const AVATAR_COLORS = [
   "border-pink-500 text-pink-500",
 ];
 
-export const PLATFORM_DOTS: Record<string, string> = {
-  instagram: "bg-pink-500",
-  tiktok: "bg-cyan-400",
-  x: "bg-foreground",
-};
-
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface CompetitorCardData {
@@ -118,17 +112,9 @@ export function CompetitorCard({
             ) : (
               <>
                 <p className="text-sm font-medium text-text-primary truncate">{competitor.name}</p>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  {platforms.map((p) => (
-                    <span
-                      key={p}
-                      className={cn("w-1.5 h-1.5 rounded-full", PLATFORM_DOTS[p] || "bg-default-400")}
-                    />
-                  ))}
-                  <span className="text-[10px] text-text-tertiary">
-                    {competitor.accounts.length} account{competitor.accounts.length !== 1 ? "s" : ""}
-                  </span>
-                </div>
+                <p className="text-[10px] text-text-tertiary mt-0.5">
+                  {competitor.accounts.length} account{competitor.accounts.length !== 1 ? "s" : ""}
+                </p>
               </>
             )}
           </div>

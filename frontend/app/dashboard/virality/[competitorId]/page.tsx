@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef, Fragment } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -42,6 +42,7 @@ import {
   getNextSyncCountdown,
 } from "./utils";
 import { canAccessViralityTracker } from "@/lib/plans";
+import { useViralitySyncSocket } from "@/hooks/useViralitySyncSocket";
 
 // ─── Page Component ──────────────────────────────────────────────────────────
 
@@ -95,6 +96,24 @@ export default function CompetitorDetailPage() {
   }, [selectedTeam?.id, competitorId, dateRange]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Track accounts doing their initial sync (never synced before + pending/syncing).
+  // Background lambda syncs (account already has data) are silent.
+  const syncingAccountIds = useMemo(() => {
+    if (!competitor) return [];
+    return competitor.accounts
+      .filter((a) => !a.last_synced_at && (a.sync_status === "pending" || a.sync_status === "syncing"))
+      .map((a) => a.id);
+  }, [competitor]);
+
+  // Listen for sync completion via WebSocket and refetch data
+  useViralitySyncSocket({
+    teamId: selectedTeam?.id,
+    accountIds: syncingAccountIds,
+    onSyncComplete: () => {
+      fetchData();
+    },
+  });
 
   const handleSyncAll = async () => {
     if (!selectedTeam?.id || !competitor) return;
@@ -421,6 +440,27 @@ export default function CompetitorDetailPage() {
           <div className="flex flex-col items-center justify-center py-8 gap-2">
             <Icon icon="solar:users-group-rounded-linear" width={40} className="text-text-tertiary" />
             <p className="text-text-secondary text-sm">No accounts in this competitor group yet</p>
+          </div>
+        )}
+
+        {/* Syncing accounts banner */}
+        {syncingAccountIds.length > 0 && (
+          <div className="flex items-center gap-3 rounded-xl border border-accent-400/30 bg-accent-400/5 px-4 py-3">
+            <Spinner size="sm" color="primary" />
+            <p className="text-sm text-text-secondary">
+              Syncing{" "}
+              {competitor.accounts
+                .filter((a) => syncingAccountIds.includes(a.id))
+                .map((a, i, arr) => (
+                  <Fragment key={a.id}>
+                    <span className="font-medium text-text-primary">
+                      {a.account_type === "hashtag" ? "#" : "@"}{a.username}
+                    </span>
+                    {i < arr.length - 1 && ", "}
+                  </Fragment>
+                ))}
+              &hellip; Data will appear once the sync is complete.
+            </p>
           </div>
         )}
 

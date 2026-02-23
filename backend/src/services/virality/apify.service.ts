@@ -3,6 +3,8 @@ import { config } from "../../config/env";
 import { APIFY_ACTORS, SCRAPE_WINDOW_DAYS } from "../../config/virality";
 import { parseXUsername } from "../../utils/parseUsername";
 
+const ACTOR_TIMEOUT_SECS = 600; // 10 minutes
+
 interface InstagramPost {
   id: string;
   shortCode: string;
@@ -68,7 +70,7 @@ class ApifyService {
         directUrls: [url],
         resultsLimit: 1,
         resultsType: "posts",
-      });
+      }, { timeout: ACTOR_TIMEOUT_SECS });
 
     const { items } = await client
       .dataset(run.defaultDatasetId)
@@ -112,7 +114,7 @@ class ApifyService {
     const client = this.getClient();
     const run = await client
       .actor(APIFY_ACTORS.INSTAGRAM_SCRAPER)
-      .call(input);
+      .call(input, { timeout: ACTOR_TIMEOUT_SECS });
 
     const { items } = await client
       .dataset(run.defaultDatasetId)
@@ -148,7 +150,7 @@ class ApifyService {
     const client = this.getClient();
     const run = await client
       .actor(APIFY_ACTORS.INSTAGRAM_PROFILE_SCRAPER)
-      .call(input);
+      .call(input, { timeout: ACTOR_TIMEOUT_SECS });
 
     const { items } = await client
       .dataset(run.defaultDatasetId)
@@ -211,7 +213,7 @@ class ApifyService {
     const client = this.getClient();
     const run = await client
       .actor(APIFY_ACTORS.INSTAGRAM_SCRAPER)
-      .call(input);
+      .call(input, { timeout: ACTOR_TIMEOUT_SECS });
 
     const { items } = await client
       .dataset(run.defaultDatasetId)
@@ -242,7 +244,7 @@ class ApifyService {
     const client = this.getClient();
     const run = await client
       .actor(APIFY_ACTORS.TIKTOK_SCRAPER)
-      .call(input);
+      .call(input, { timeout: ACTOR_TIMEOUT_SECS });
 
     const { items } = await client
       .dataset(run.defaultDatasetId)
@@ -294,7 +296,7 @@ class ApifyService {
     const client = this.getClient();
     const run = await client
       .actor(APIFY_ACTORS.TIKTOK_SCRAPER)
-      .call(input);
+      .call(input, { timeout: ACTOR_TIMEOUT_SECS });
 
     const { items } = await client
       .dataset(run.defaultDatasetId)
@@ -329,7 +331,7 @@ class ApifyService {
     const client = this.getClient();
     const postsRun = await client
       .actor(APIFY_ACTORS.X_POSTS_SCRAPER)
-      .call(postsInput);
+      .call(postsInput, { timeout: ACTOR_TIMEOUT_SECS });
 
     const { items: tweetItems } = await client
       .dataset(postsRun.defaultDatasetId)
@@ -358,7 +360,7 @@ class ApifyService {
 
         const viewsRun = await client
           .actor(APIFY_ACTORS.X_VIEWS_SCRAPER)
-          .call(viewsInput);
+          .call(viewsInput, { timeout: ACTOR_TIMEOUT_SECS });
 
         const { items: viewItems } = await client
           .dataset(viewsRun.defaultDatasetId)
@@ -403,7 +405,7 @@ class ApifyService {
     const client = this.getClient();
     const postsRun = await client
       .actor(APIFY_ACTORS.X_POSTS_SCRAPER)
-      .call(postsInput);
+      .call(postsInput, { timeout: ACTOR_TIMEOUT_SECS });
 
     const { items: tweetItems } = await client
       .dataset(postsRun.defaultDatasetId)
@@ -426,7 +428,7 @@ class ApifyService {
 
         const viewsRun = await client
           .actor(APIFY_ACTORS.X_VIEWS_SCRAPER)
-          .call(viewsInput);
+          .call(viewsInput, { timeout: ACTOR_TIMEOUT_SECS });
 
         const { items: viewItems } = await client
           .dataset(viewsRun.defaultDatasetId)
@@ -480,7 +482,11 @@ class ApifyService {
   /**
    * Fetch X/Twitter profile using SocialData API (follower count, etc.)
    */
-  async fetchXProfile(username: string): Promise<InstagramProfile | null> {
+  /**
+   * Fetch X follower count from SocialData API.
+   * Only returns followersCount — all other profile fields come from Apify scrapers.
+   */
+  async fetchXFollowerCount(username: string): Promise<Partial<InstagramProfile> | null> {
     const apiKey = config.socialData.apiKey;
     if (!apiKey) {
       console.warn("SOCIALDATA_API_KEY not configured, skipping X profile fetch");
@@ -501,16 +507,10 @@ class ApifyService {
       }
 
       const data: any = await res.json();
+      console.log(`[SocialData] Fetched X follower count for @${username}: ${data.followers_count}`);
 
       return {
-        username: data.screen_name || username,
-        fullName: data.name || "",
-        biography: data.description || "",
-        profilePicUrl: data.profile_image_url_https?.replace("_normal", "") || "",
         followersCount: data.followers_count ?? 0,
-        followsCount: data.friends_count ?? 0,
-        postsCount: data.statuses_count ?? 0,
-        isVerified: data.verified || false,
       };
     } catch (err) {
       console.warn(`Failed to fetch X profile for @${username}:`, err);
