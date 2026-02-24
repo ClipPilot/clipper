@@ -47,25 +47,6 @@ export const SIDEBAR_SECTIONS: SidebarSection[] = [
     ],
   },
   {
-    title: "Distribution",
-    items: [
-      {
-        key: "publish-posts",
-        title: "Publish Posts",
-        icon: "solar:posts-carousel-vertical-bold-duotone",
-        href: "/dashboard/publish-posts",
-        requiredPlans: ["studio", "scale", "enterprise"],
-      },
-      {
-        key: "mass-posting",
-        title: "Posts Published",
-        icon: "solar:checklist-minimalistic-bold-duotone",
-        href: "/dashboard/mass-posting",
-        requiredPlans: ["studio", "scale", "enterprise"],
-      },
-    ],
-  },
-  {
     title: "Intelligence",
     items: [
       {

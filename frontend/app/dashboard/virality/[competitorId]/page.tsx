@@ -59,7 +59,6 @@ export default function CompetitorDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRecalculating, setIsRecalculating] = useState(false);
   const initialLoadDone = useRef(false);
-  const [isSyncing, setIsSyncing] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState("");
   const [selectedAccountIds, setSelectedAccountIds] = useState<number[]>(() => {
@@ -114,22 +113,6 @@ export default function CompetitorDetailPage() {
       fetchData();
     },
   });
-
-  const handleSyncAll = async () => {
-    if (!selectedTeam?.id || !competitor) return;
-    setIsSyncing(true);
-    try {
-      for (const account of competitor.accounts) {
-        await viralityAPI.syncAccount(selectedTeam.id, account.id);
-      }
-      addToast({ title: "Sync complete", color: "success" });
-      await fetchData();
-    } catch (err: any) {
-      addToast({ title: "Sync failed", description: err.message, color: "danger" });
-    } finally {
-      setIsSyncing(false);
-    }
-  };
 
   const handleSaveName = async () => {
     if (!selectedTeam?.id || !editName.trim()) return;
@@ -416,16 +399,6 @@ export default function CompetitorDetailPage() {
           </div>
           <div className="flex items-center gap-3">
             <DateRangeFilter value={dateRange} onChange={setDateRange} />
-            <Button
-              className="bg-accent-400 text-white"
-              startContent={
-                isSyncing ? <Spinner size="sm" color="white" /> : <Icon icon="solar:refresh-bold" width={18} />
-              }
-              isDisabled={isSyncing || competitor.accounts.length === 0}
-              onPress={handleSyncAll}
-            >
-              {isSyncing ? "Syncing..." : "Sync All"}
-            </Button>
           </div>
         </div>
 
