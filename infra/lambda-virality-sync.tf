@@ -101,9 +101,7 @@ resource "aws_lambda_function" "virality_sync_orchestrator" {
 
   environment {
     variables = {
-      DATABASE_URL       = var.database_url
-      APIFY_API_TOKEN    = var.apify_api_token
-      SOCIALDATA_API_KEY = var.socialdata_api_key
+      DATABASE_URL = var.database_url
     }
   }
 
@@ -226,10 +224,53 @@ resource "aws_iam_role_policy" "virality_sync_sfn_invoke_lambda" {
   })
 }
 
+# CloudWatch Log Group for Step Functions execution logs
+resource "aws_cloudwatch_log_group" "virality_sync_sfn" {
+  name              = "/aws/states/${var.project_name}-virality-sync-${var.environment}"
+  retention_in_days = 14
+
+  tags = {
+    Name        = "${var.project_name}-virality-sync-sfn-logs-${var.environment}"
+    Environment = var.environment
+  }
+}
+
+# Allow Step Functions to write execution logs
+resource "aws_iam_role_policy" "virality_sync_sfn_logs" {
+  name = "${var.project_name}-virality-sync-sfn-logs-${var.environment}"
+  role = aws_iam_role.virality_sync_sfn.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "logs:CreateLogDelivery",
+        "logs:CreateLogStream",
+        "logs:GetLogDelivery",
+        "logs:UpdateLogDelivery",
+        "logs:DeleteLogDelivery",
+        "logs:ListLogDeliveries",
+        "logs:PutLogEvents",
+        "logs:PutResourcePolicy",
+        "logs:DescribeResourcePolicies",
+        "logs:DescribeLogGroups",
+      ]
+      Resource = "*"
+    }]
+  })
+}
+
 # State Machine
 resource "aws_sfn_state_machine" "virality_sync" {
   name     = "${var.project_name}-virality-sync-${var.environment}"
   role_arn = aws_iam_role.virality_sync_sfn.arn
+
+  logging_configuration {
+    log_destination        = "${aws_cloudwatch_log_group.virality_sync_sfn.arn}:*"
+    include_execution_data = true
+    level                  = "ERROR"
+  }
+
   definition = jsonencode({
     Comment = "Virality Sync - parallel fan-out per account"
     StartAt = "FetchAccounts"

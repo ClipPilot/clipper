@@ -630,32 +630,35 @@ async function consumeOneCredit(
     .orderBy(sql`${schema.usageStats.created_at} DESC`)
     .limit(1);
 
-  const [team] = await db
-    .select()
-    .from(schema.teams)
-    .where(eq(schema.teams.id, teamId))
-    .limit(1);
+  if (!stats) return false;
 
-  if (!stats || !team) return false;
+  // Atomic increment: only succeeds if clips_created < limit (prevents double-charge under concurrency)
+  const baseUpdated = await db
+    .update(schema.usageStats)
+    .set({ clips_created: sql`${schema.usageStats.clips_created} + 1`, updated_at: new Date() })
+    .where(
+      and(
+        eq(schema.usageStats.id, stats.id),
+        sql`${schema.usageStats.clips_created} < ${schema.usageStats.limit}`
+      )
+    )
+    .returning({ id: schema.usageStats.id });
 
-  const baseRemaining = Math.max(0, stats.limit - stats.clips_created);
-  const addonRemaining = team.addon_clips_remaining || 0;
+  if (baseUpdated.length > 0) return true;
 
-  if (baseRemaining > 0) {
-    await db
-      .update(schema.usageStats)
-      .set({ clips_created: stats.clips_created + 1, updated_at: new Date() })
-      .where(eq(schema.usageStats.id, stats.id));
-    return true;
-  } else if (addonRemaining > 0) {
-    await db
-      .update(schema.teams)
-      .set({ addon_clips_remaining: addonRemaining - 1, updated_at: new Date() })
-      .where(eq(schema.teams.id, teamId));
-    return true;
-  }
+  // Atomic decrement: only succeeds if addon_clips_remaining > 0
+  const addonUpdated = await db
+    .update(schema.teams)
+    .set({ addon_clips_remaining: sql`${schema.teams.addon_clips_remaining} - 1`, updated_at: new Date() })
+    .where(
+      and(
+        eq(schema.teams.id, teamId),
+        sql`${schema.teams.addon_clips_remaining} > 0`
+      )
+    )
+    .returning({ id: schema.teams.id });
 
-  return false;
+  return addonUpdated.length > 0;
 }
 
 // ── Lambda handler ──
@@ -762,7 +765,7 @@ export const handler: Handler = async (event: any, context: Context) => {
       try {
         let posts: InstagramPost[];
         let profile: InstagramProfile | null = null;
-        const accountType = (account as any).account_type || "profile";
+        const accountType = account.account_type || "profile";
 
         if (accountType === "hashtag") {
           const result = account.platform === "tiktok"
@@ -974,15 +977,27 @@ export const workerHandler: Handler = async (event: any, context: Context) => {
 
     console.log(`[Sync] @${account.username} [${account.platform}] syncs_remaining=${account.syncs_remaining}`);
 
-    // Credit check: charge 1 credit when syncs_remaining hits 0
-    if (account.syncs_remaining <= 0) {
+    // Atomic decrement: only succeeds if syncs_remaining > 0 (prevents race between parallel workers)
+    const decremented = await db
+      .update(schema.viralityAccounts)
+      .set({ syncs_remaining: sql`${schema.viralityAccounts.syncs_remaining} - 1`, updated_at: new Date() })
+      .where(
+        and(
+          eq(schema.viralityAccounts.id, account.id),
+          sql`${schema.viralityAccounts.syncs_remaining} > 0`
+        )
+      )
+      .returning({ id: schema.viralityAccounts.id });
+
+    if (decremented.length === 0) {
+      // syncs_remaining was 0 — need to charge a credit
       const charged = await consumeOneCredit(db, account.team_id);
       if (charged) {
         await db
           .update(schema.viralityAccounts)
-          .set({ syncs_remaining: SYNCS_PER_WEEK, updated_at: new Date() })
+          .set({ syncs_remaining: SYNCS_PER_WEEK - 1, updated_at: new Date() })
           .where(eq(schema.viralityAccounts.id, account.id));
-        console.log(`[Credit] Charged 1 credit for @${account.username} (team=${account.team_id}), reset syncs_remaining=${SYNCS_PER_WEEK}`);
+        console.log(`[Credit] Charged 1 credit for @${account.username} (team=${account.team_id}), reset syncs_remaining=${SYNCS_PER_WEEK - 1}`);
       } else {
         // No credits — deactivate account
         await db
@@ -992,12 +1007,6 @@ export const workerHandler: Handler = async (event: any, context: Context) => {
         console.log(`[Credit] No credits for team=${account.team_id}, deactivated @${account.username}`);
         return { accountId, username: account.username, status: "deactivated", postsUpserted: 0 };
       }
-    } else {
-      // Decrement syncs_remaining
-      await db
-        .update(schema.viralityAccounts)
-        .set({ syncs_remaining: account.syncs_remaining - 1, updated_at: new Date() })
-        .where(eq(schema.viralityAccounts.id, account.id));
     }
 
     // Set sync_status to syncing
@@ -1009,7 +1018,7 @@ export const workerHandler: Handler = async (event: any, context: Context) => {
     try {
       let posts: InstagramPost[];
       let profile: InstagramProfile | null = null;
-      const accountType = (account as any).account_type || "profile";
+      const accountType = account.account_type || "profile";
 
       if (accountType === "hashtag") {
         const result = account.platform === "tiktok"

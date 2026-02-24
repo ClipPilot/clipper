@@ -53,17 +53,19 @@ jobs:
         run: |
           aws lambda update-function-code \
             --function-name ${{ env.LAMBDA_ORCHESTRATOR }} \
-            --image-uri ${{ steps.build-image.outputs.image }}
+            --image-uri ${{ steps.build-image.outputs.image }} &
           aws lambda update-function-code \
             --function-name ${{ env.LAMBDA_WORKER }} \
-            --image-uri ${{ steps.build-image.outputs.image }}
+            --image-uri ${{ steps.build-image.outputs.image }} &
+          wait
 
       - name: Wait for Lambda updates
         run: |
           aws lambda wait function-updated \
-            --function-name ${{ env.LAMBDA_ORCHESTRATOR }}
+            --function-name ${{ env.LAMBDA_ORCHESTRATOR }} &
           aws lambda wait function-updated \
-            --function-name ${{ env.LAMBDA_WORKER }}
+            --function-name ${{ env.LAMBDA_WORKER }} &
+          wait
 
       - name: Verify deployment
         run: |
