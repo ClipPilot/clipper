@@ -49,6 +49,12 @@ const CONVERSION_MODE_OPTIONS: {
     description: "Tight center crop to 9:16",
     icon: "solar:crop-bold-duotone",
   },
+  {
+    key: "active-speaker",
+    label: "Active Speaker",
+    description: "Dynamically follows the active speaker",
+    icon: "solar:users-group-rounded-bold-duotone",
+  },
 ];
 
 interface SettingsPanelProps {

@@ -29,7 +29,7 @@ const clipJobSchema = z.object({
   captions: z.boolean().optional(),
   captionColor: z.string().regex(hexColorRegex, "Invalid hex color").optional(),
   captionFont: z.string().max(100).optional(),
-  conversionMode: z.enum(["standard", "gaming", "speaker-zoom", "center-crop"]).optional(),
+  conversionMode: z.enum(["standard", "gaming", "speaker-zoom", "center-crop", "active-speaker"]).optional(),
 });
 
 const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB chunks
