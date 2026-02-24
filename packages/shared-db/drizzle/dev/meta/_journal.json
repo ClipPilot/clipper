@@ -267,6 +267,13 @@
       "when": 1771756866466,
       "tag": "0037_green_magik",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1771912267630,
+      "tag": "0038_amazing_invisible_woman",
+      "breakpoints": true
     }
   ]
 }

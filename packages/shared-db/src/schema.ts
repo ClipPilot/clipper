@@ -991,6 +991,79 @@ export const viralityPosts = pgTable(
   }),
 ).enableRLS();
 
+// ── User's own accounts for performance tracking ──
+
+export const userAccounts = pgTable(
+  "user_accounts",
+  {
+    id: serial("id").primaryKey(),
+    team_id: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    platform: viralityPlatformEnum("platform").notNull(),
+    account_type: varchar("account_type", { length: 20 }).notNull().default("profile"),
+    username: varchar("username", { length: 255 }).notNull(),
+    profile_url: text("profile_url").notNull(),
+    display_name: varchar("display_name", { length: 255 }),
+    avatar_url: text("avatar_url"),
+    bio: text("bio"),
+    follower_count: integer("follower_count"),
+    following_count: integer("following_count"),
+    total_likes: integer("total_likes"),
+    post_count: integer("post_count"),
+    follower_history: jsonb("follower_history"),
+    is_verified: boolean("is_verified").default(false),
+    last_synced_at: timestamp("last_synced_at"),
+    sync_status: viralitySyncStatusEnum("sync_status").default("pending"),
+    sync_error: text("sync_error"),
+    alert_enabled: boolean("alert_enabled").notNull().default(false),
+    is_active: boolean("is_active").notNull().default(true),
+    syncs_remaining: integer("syncs_remaining").notNull().default(14),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    teamIdx: index("user_accounts_team_id_idx").on(table.team_id),
+    uniqueTeamPlatformUsername: unique("user_accounts_unique").on(
+      table.team_id,
+      table.platform,
+      table.username,
+    ),
+  }),
+).enableRLS();
+
+export const userPosts = pgTable(
+  "user_posts",
+  {
+    id: serial("id").primaryKey(),
+    account_id: integer("account_id")
+      .notNull()
+      .references(() => userAccounts.id, { onDelete: "cascade" }),
+    platform_post_id: varchar("platform_post_id", { length: 255 }).notNull(),
+    post_url: text("post_url").notNull(),
+    thumbnail_url: text("thumbnail_url"),
+    caption: text("caption"),
+    hashtags: jsonb("hashtags"),
+    post_type: varchar("post_type", { length: 50 }),
+    posted_at: timestamp("posted_at"),
+    like_count: integer("like_count").default(0),
+    comment_count: integer("comment_count").default(0),
+    video_view_count: integer("video_view_count"),
+    video_play_count: integer("video_play_count"),
+    metrics_history: jsonb("metrics_history").default([]),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    accountIdx: index("user_posts_account_id_idx").on(table.account_id),
+    uniqueAccountPost: unique("user_posts_unique").on(
+      table.account_id,
+      table.platform_post_id,
+    ),
+    postedAtIdx: index("user_posts_posted_at_idx").on(table.posted_at),
+  }),
+).enableRLS();
+
 export const viralityAlertStatusEnum = pgEnum("virality_alert_status", [
   "sent",
   "failed",
