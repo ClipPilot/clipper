@@ -1095,6 +1095,13 @@ router.post(
   clipManagerController.updateCaptions.bind(clipManagerController)
 );
 
+router.post(
+  "/teams/:teamId/clips/:clipId/generate-captions",
+  requireAuth,
+  requireSeatAccess,
+  clipManagerController.generateCaptions.bind(clipManagerController)
+);
+
 /**
  * @openapi
  * /clip-video/teams/{teamId}/clips/{clipId}/text-overlay:

@@ -5,6 +5,7 @@ export const APIFY_ACTORS = {
   TIKTOK_SCRAPER: "clockworks/tiktok-scraper",
   X_POSTS_SCRAPER: "apidojo/twitter-scraper-lite",
   X_VIEWS_SCRAPER: "scrape.badger/twitter-tweets-scraper",
+  YOUTUBE_DOWNLOADER: "epctex/youtube-video-downloader",
 } as const;
 
 export const SCRAPE_WINDOW_DAYS = 31;

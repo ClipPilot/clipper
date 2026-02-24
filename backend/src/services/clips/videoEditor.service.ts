@@ -535,10 +535,10 @@ export const convertToVerticalBlur = async (
           inputs: "bg2",
           outputs: "bg",
         },
-        // Foreground: scale to fit within 1080x1920
+        // Foreground: scale to fill 1080 width, maintain aspect ratio
         {
           filter: "scale",
-          options: { w: "min(iw\\,1080)", h: "min(ih\\,1920)", force_original_aspect_ratio: "decrease" },
+          options: { w: 1080, h: -2 },
           inputs: "0:v",
           outputs: "fg",
         },

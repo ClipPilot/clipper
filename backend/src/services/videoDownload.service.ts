@@ -23,13 +23,34 @@ const OUTPUT_DIR = path.resolve(__dirname, "../../output");
 const INFO_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes
 const DOWNLOAD_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
-const FORMAT_SELECTION =
-  "bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4][height<=1080]/best";
+// Prefer smallest viable quality: 480p first, then 720p, then 1080p
+const FORMAT_SELECTION = [
+  "bestvideo[ext=mp4][height<=480]+bestaudio[ext=m4a]",
+  "bestvideo[ext=mp4][height<=720]+bestaudio[ext=m4a]",
+  "bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]",
+  "best[ext=mp4][height<=480]",
+  "best[ext=mp4][height<=720]",
+  "best[ext=mp4][height<=1080]",
+  "best",
+].join("/");
+
+function baseYtDlpArgs(): string[] {
+  return ["--js-runtimes", "node"];
+}
 
 function isInstagramUrl(url: string): boolean {
   try {
     const hostname = new URL(url).hostname.replace("www.", "");
     return hostname === "instagram.com" || hostname === "instagr.am";
+  } catch {
+    return false;
+  }
+}
+
+function isYouTubeUrl(url: string): boolean {
+  try {
+    const hostname = new URL(url).hostname.replace("www.", "");
+    return hostname === "youtube.com" || hostname === "youtu.be" || hostname === "m.youtube.com";
   } catch {
     return false;
   }
@@ -50,8 +71,12 @@ class VideoDownloadService {
       };
     }
 
+    if (isYouTubeUrl(url)) {
+      return this.getYouTubeInfo(url);
+    }
+
     return new Promise((resolve, reject) => {
-      const args = ["--dump-json", "--no-download", url];
+      const args = [...baseYtDlpArgs(), "--dump-json", "--no-download", url];
       const proc = spawn("yt-dlp", args);
 
       let stdout = "";
@@ -105,10 +130,14 @@ class VideoDownloadService {
     onProgress?: (progress: DownloadProgress) => void
   ): Promise<{ s3Key: string; fileName: string; fileSize: number }> {
     if (isInstagramUrl(url)) {
-      return this.downloadInstagramToS3(url, teamId, onProgress);
+      return this.downloadViaApifyToS3(url, "instagram", teamId, onProgress);
     }
 
-    // Ensure output directory exists
+    if (isYouTubeUrl(url)) {
+      return this.downloadViaApifyToS3(url, "youtube", teamId, onProgress);
+    }
+
+    // Twitch, Kick, Vimeo, etc. — use yt-dlp directly (no proxy needed)
     if (!fs.existsSync(OUTPUT_DIR)) {
       fs.mkdirSync(OUTPUT_DIR, { recursive: true });
     }
@@ -119,6 +148,7 @@ class VideoDownloadService {
     );
 
     const args = [
+      ...baseYtDlpArgs(),
       "-f",
       FORMAT_SELECTION,
       "--merge-output-format",
@@ -237,6 +267,7 @@ class VideoDownloadService {
       }
     }
   }
+
   async downloadToPath(url: string, outputPath: string): Promise<void> {
     if (isInstagramUrl(url)) {
       const reel = await getApifyService().scrapeInstagramReel(url);
@@ -248,6 +279,17 @@ class VideoDownloadService {
       return;
     }
 
+    if (isYouTubeUrl(url)) {
+      const yt = await getApifyService().downloadYouTubeVideo(url);
+      const dir = path.dirname(outputPath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      await s3Service.downloadVideoFromUrl(yt.downloadUrl, outputPath);
+      return;
+    }
+
+    // Twitch, Kick, Vimeo, etc. — use yt-dlp directly
     const dir = path.dirname(outputPath);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
@@ -255,6 +297,7 @@ class VideoDownloadService {
 
     return new Promise((resolve, reject) => {
       const args = [
+        ...baseYtDlpArgs(),
         "-f", FORMAT_SELECTION,
         "--merge-output-format", "mp4",
         "-o", outputPath,
@@ -291,8 +334,40 @@ class VideoDownloadService {
       });
     });
   }
-  private async downloadInstagramToS3(
+
+  private async getYouTubeInfo(url: string): Promise<VideoInfo> {
+    // Use YouTube oEmbed API for metadata — free, no auth, no download
+    const oEmbedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
+    const res = await fetch(oEmbedUrl);
+
+    if (!res.ok) {
+      throw new Error(`Failed to fetch YouTube video info (status ${res.status})`);
+    }
+
+    const data: any = await res.json();
+
+    // Extract video ID for high-res thumbnail
+    let videoId = "";
+    try {
+      const parsed = new URL(url);
+      videoId = parsed.searchParams.get("v") || parsed.pathname.slice(1);
+    } catch { /* ignore */ }
+
+    return {
+      title: data.title || "YouTube Video",
+      duration: 0, // oEmbed doesn't provide duration
+      filesize: 0,
+      thumbnail: videoId
+        ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
+        : data.thumbnail_url || "",
+      uploader: data.author_name || "",
+      platform: "YouTube",
+    };
+  }
+
+  private async downloadViaApifyToS3(
     url: string,
+    platform: "instagram" | "youtube",
     teamId: number,
     onProgress?: (progress: DownloadProgress) => void
   ): Promise<{ s3Key: string; fileName: string; fileSize: number }> {
@@ -300,17 +375,24 @@ class VideoDownloadService {
       fs.mkdirSync(OUTPUT_DIR, { recursive: true });
     }
 
-    const reel = await getApifyService().scrapeInstagramReel(url);
+    let videoUrl: string;
+    if (platform === "instagram") {
+      const reel = await getApifyService().scrapeInstagramReel(url);
+      videoUrl = reel.videoUrl;
+    } else {
+      const yt = await getApifyService().downloadYouTubeVideo(url);
+      videoUrl = yt.downloadUrl;
+    }
 
     onProgress?.({ percent: 50, speed: "N/A", eta: "N/A" });
 
     const localPath = path.join(
       OUTPUT_DIR,
-      `${teamId}_${Date.now()}_instagram_reel.mp4`
+      `${teamId}_${Date.now()}_${platform}_video.mp4`
     );
 
     try {
-      await s3Service.downloadVideoFromUrl(reel.videoUrl, localPath);
+      await s3Service.downloadVideoFromUrl(videoUrl, localPath);
 
       onProgress?.({ percent: 90, speed: "N/A", eta: "N/A" });
 

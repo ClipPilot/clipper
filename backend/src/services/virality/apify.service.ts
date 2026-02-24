@@ -62,6 +62,39 @@ class ApifyService {
     return this.client;
   }
 
+  async downloadYouTubeVideo(url: string): Promise<{ downloadUrl: string; title: string; duration: number; thumbnail: string; uploader: string; fileSize: number }> {
+    const client = this.getClient();
+    const run = await client
+      .actor(APIFY_ACTORS.YOUTUBE_DOWNLOADER)
+      .call({
+        startUrls: [url],
+        quality: "480",
+        proxy: { useApifyProxy: true },
+      }, { timeout: ACTOR_TIMEOUT_SECS });
+
+    const { items } = await client
+      .dataset(run.defaultDatasetId)
+      .listItems();
+
+    if (items.length === 0) {
+      throw new Error("Failed to download YouTube video via Apify — no results returned");
+    }
+
+    const item = items[0] as any;
+    if (!item.downloadUrl) {
+      throw new Error("Apify returned no download URL for this YouTube video");
+    }
+
+    return {
+      downloadUrl: item.downloadUrl,
+      title: item.title || "YouTube Video",
+      duration: item.duration || 0,
+      thumbnail: item.thumbnail || "",
+      uploader: item.uploader || item.channelName || "",
+      fileSize: item.fileSize || 0,
+    };
+  }
+
   async scrapeInstagramReel(url: string): Promise<InstagramReelResult> {
     const client = this.getClient();
     const run = await client
