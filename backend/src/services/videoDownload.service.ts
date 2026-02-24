@@ -23,24 +23,21 @@ const OUTPUT_DIR = path.resolve(__dirname, "../../output");
 const INFO_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes
 const DOWNLOAD_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
+// Prefer smallest viable quality: 480p first, then 720p, then 1080p
 const FORMAT_SELECTION = [
-  "bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]",
-  "bestvideo[ext=mp4][height<=720]+bestaudio[ext=m4a]",
   "bestvideo[ext=mp4][height<=480]+bestaudio[ext=m4a]",
-  "best[ext=mp4][height<=1080]",
+  "bestvideo[ext=mp4][height<=720]+bestaudio[ext=m4a]",
+  "bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]",
+  "best[ext=mp4][height<=480]",
   "best[ext=mp4][height<=720]",
+  "best[ext=mp4][height<=1080]",
   "best",
 ].join("/");
 
-const COOKIES_FILE = process.env.YTDLP_COOKIES_FILE || "";
-const MAX_FILESIZE = process.env.YTDLP_MAX_FILESIZE || "2G";
+const PROXY_URL = "http://sp1q8gm4p6:CTqwuDZo122~1swvbe@gate.decodo.com:10001";
 
 function baseYtDlpArgs(): string[] {
-  const args = ["--js-runtimes", "nodejs", "--max-filesize", MAX_FILESIZE];
-  if (COOKIES_FILE && fs.existsSync(COOKIES_FILE)) {
-    args.push("--cookies", COOKIES_FILE);
-  }
-  return args;
+  return ["--js-runtimes", "node", "--proxy", PROXY_URL];
 }
 
 function isInstagramUrl(url: string): boolean {
