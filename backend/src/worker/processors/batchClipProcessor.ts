@@ -17,6 +17,7 @@ import { ensureOutputDir } from "../../utils/fileUtils";
 import { sanitizeErrorForFrontend } from "../../utils/errorSanitizer";
 import { detectFacecamFromS3Key, detectMultipleFacesFromS3Key } from "../../services/facecamDetect.service";
 import type { FacecamRegion } from "../../services/clips/videoEditor.service";
+import type { ClipServiceOptions } from "../../services/clips/clip.service";
 import { buildSpeakerSegments, mapSpeakersToFaces } from "../../services/clips/speakerSegments.service";
 import type { ActiveSpeakerSegment } from "../../services/clips/speakerSegments.service";
 
@@ -100,52 +101,55 @@ export async function processBatchClipVideoJob(
       fs.unlinkSync(thumbnailPath);
     }
 
-    // Detect facecam region from first video if gaming or speaker-zoom mode
-    let facecamRegion: FacecamRegion | null = null;
-    if (options.conversionMode === "gaming" || options.conversionMode === "speaker-zoom") {
-      console.log(`[BATCH-PROCESSOR] Detecting facecam for ${options.conversionMode} mode...`);
-      const firstVideoS3Key = videos[0].s3Key;
-      const result = await detectFacecamFromS3Key(firstVideoS3Key);
-      if (result?.facecamDetected) {
-        if (options.conversionMode === "speaker-zoom" && result.faceRegion) {
-          facecamRegion = result.faceRegion;
-          console.log(`[BATCH-PROCESSOR] Face detected (raw): ${JSON.stringify(facecamRegion)}`);
-        } else if (result.facecamRegion) {
-          facecamRegion = result.facecamRegion;
-          console.log(`[BATCH-PROCESSOR] Facecam detected at ${result.corner}: ${JSON.stringify(facecamRegion)}`);
+    const allWords = videoSources.flatMap(s => s.transcriptionWords);
+
+    // Per-clip facecam detection callback
+    const needsFacecamDetect = options.conversionMode === "gaming" || options.conversionMode === "speaker-zoom";
+    const needsMultiFaceDetect = options.conversionMode === "active-speaker";
+
+    const onMergedRaw = (needsFacecamDetect || needsMultiFaceDetect)
+      ? async (localMergedPath: string): Promise<ClipServiceOptions | null> => {
+          const tempS3Key = `temp/facecam-detect/${teamId}/${Date.now()}.mp4`;
+          try {
+            await s3Service.uploadFile(localMergedPath, tempS3Key, "video/mp4");
+
+            if (needsFacecamDetect) {
+              console.log(`[BATCH-PROCESSOR] Detecting facecam on merged clip...`);
+              const result = await detectFacecamFromS3Key(tempS3Key);
+              if (result?.facecamDetected) {
+                if (options.conversionMode === "speaker-zoom" && result.faceRegion) {
+                  return { facecamRegion: result.faceRegion };
+                } else if (result.facecamRegion) {
+                  return { facecamRegion: result.facecamRegion };
+                }
+              }
+              console.warn(`[BATCH-PROCESSOR] No facecam detected — will fall back to blurred-bg`);
+              return null;
+            }
+
+            if (needsMultiFaceDetect) {
+              console.log(`[BATCH-PROCESSOR] Detecting multiple faces on merged clip...`);
+              const multiFaceResult = await detectMultipleFacesFromS3Key(tempS3Key);
+              if (multiFaceResult && multiFaceResult.faceCount > 0) {
+                const segments = buildSpeakerSegments(allWords);
+                const uniqueSpeakers = [...new Set(segments.map(s => s.speaker))];
+                if (segments.length > 1 && multiFaceResult.faceCount >= 2) {
+                  const faceMap = mapSpeakersToFaces(uniqueSpeakers, multiFaceResult.faces);
+                  return { activeSpeakerSegments: segments, speakerFaceMap: faceMap };
+                } else if (multiFaceResult.faceCount >= 1) {
+                  return { facecamRegion: multiFaceResult.faces[0] };
+                }
+              }
+              console.warn(`[BATCH-PROCESSOR] No faces detected — falling back to blurred-bg`);
+              return null;
+            }
+
+            return null;
+          } finally {
+            try { await s3Service.deleteObject(tempS3Key); } catch { /* best effort */ }
+          }
         }
-      } else {
-        console.warn(`[BATCH-PROCESSOR] No facecam detected — will fall back to blurred-bg`);
-      }
-    }
-
-    // Active-speaker mode: detect multiple faces from first video
-    let activeSpeakerSegments: ActiveSpeakerSegment[] | undefined;
-    let speakerFaceMap: Map<number, FacecamRegion> | undefined;
-
-    if (options.conversionMode === "active-speaker") {
-      console.log(`[BATCH-PROCESSOR] Active-speaker mode: detecting multiple faces...`);
-      const firstVideoS3Key = videos[0].s3Key;
-      const multiFaceResult = await detectMultipleFacesFromS3Key(firstVideoS3Key);
-
-      if (multiFaceResult && multiFaceResult.faceCount > 0) {
-        // Combine words from all video sources for diarization
-        const allWords = videoSources.flatMap(s => s.transcriptionWords);
-        const segments = buildSpeakerSegments(allWords);
-        const uniqueSpeakers = [...new Set(segments.map(s => s.speaker))];
-
-        if (segments.length > 1 && multiFaceResult.faceCount >= 2) {
-          speakerFaceMap = mapSpeakersToFaces(uniqueSpeakers, multiFaceResult.faces);
-          activeSpeakerSegments = segments;
-          console.log(`[BATCH-PROCESSOR] Active speaker mapping: ${uniqueSpeakers.length} speakers → ${multiFaceResult.faceCount} faces`);
-        } else if (multiFaceResult.faceCount >= 1) {
-          facecamRegion = multiFaceResult.faces[0];
-          console.log(`[BATCH-PROCESSOR] Single speaker/face — using static zoom`);
-        }
-      } else {
-        console.warn(`[BATCH-PROCESSOR] No faces detected — falling back to blurred-bg`);
-      }
-    }
+      : undefined;
 
     const clipServiceOptions = {
       customText: options.customText,
@@ -156,9 +160,6 @@ export async function processBatchClipVideoJob(
       captionColor: options.captionColor,
       captionFont: options.captionFont,
       conversionMode: options.conversionMode,
-      facecamRegion,
-      activeSpeakerSegments,
-      speakerFaceMap,
     };
 
     console.log(`Processing ${batchClipSuggestions.length} batch clips sequentially...`);
@@ -176,8 +177,9 @@ export async function processBatchClipVideoJob(
         const result = await createBatchCombinedClipService(
           videoSources,
           suggestions,
-          clipServiceOptions,
-          i
+          { ...clipServiceOptions },
+          i,
+          onMergedRaw,
         );
 
         console.log(`Batch clip ${i + 1} created, uploading to S3...`);

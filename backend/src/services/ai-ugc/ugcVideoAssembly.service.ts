@@ -711,68 +711,69 @@ async function processBrollScene(
       `[UGC Assembly] Montage: ${numShots} shots, audio ${audioDuration.toFixed(2)}s → durations: [${shotDurations.map((d) => d.trim + "s").join(", ")}]`,
     );
 
-    const shotVideoPaths: string[] = [];
+    onProgress?.(
+      `Scene ${sceneNumber}: Generating ${bRollShots.length} montage shots in parallel...`,
+    );
 
-    for (let i = 0; i < bRollShots.length; i++) {
-      const shot = bRollShots[i];
-      const { videoDuration, trim: trimDuration } = shotDurations[i];
+    // Generate all montage shots concurrently — Kling is the bottleneck
+    const shotVideoPaths = await Promise.all(
+      bRollShots.map(async (shot, i) => {
+        const { videoDuration, trim: trimDuration } = shotDurations[i];
 
-      onProgress?.(
-        `Scene ${sceneNumber}: Generating montage shot ${i + 1}/${bRollShots.length}...`,
-      );
+        console.log(
+          `[UGC Assembly] Montage shot ${i + 1}: "${shot.action.substring(0, 40)}..." (kling v3: ${videoDuration}s, trim: ${trimDuration}s)`,
+        );
 
-      console.log(
-        `[UGC Assembly] Montage shot ${i + 1}: "${shot.action.substring(0, 40)}..." (kling v3: ${videoDuration}s, trim: ${trimDuration}s)`,
-      );
+        const shotImageUrl = await s3Service.getPresignedUrl(shot.imageKey, 3600);
 
-      const shotImageUrl = await s3Service.getPresignedUrl(shot.imageKey, 3600);
-
-      const groundedPrompt = await generateGroundedCinematicPrompt({
-        originalCinematicPrompt: shot.cinematicPrompt,
-        startImageUrl: shotImageUrl,
-        shotType: "b-roll" as ShotType,
-        emotion,
-        action: shot.action,
-      });
-
-      const shotPrompt = buildKlingPrompt(
-        groundedPrompt,
-        "b-roll" as ShotType,
-        emotion,
-      );
-
-      const { videoUrl: shotVideoUrl } =
-        await klingService.generateVideoV3WithRetry({
-          imageUrl: shotImageUrl,
-          prompt: groundedPrompt,
-          duration: videoDuration as any,
-          negativePrompt: PRODUCT_NEGATIVE_PROMPT,
+        const groundedPrompt = await generateGroundedCinematicPrompt({
+          originalCinematicPrompt: shot.cinematicPrompt,
+          startImageUrl: shotImageUrl,
+          shotType: "b-roll" as ShotType,
+          emotion,
+          action: shot.action,
         });
 
-      const shotVideoPath = path.join(
-        OUTPUT_DIR,
-        `montage_shot_${sceneNumber}_${i}_${Date.now()}.mp4`,
-      );
-      await s3Service.downloadVideoFromUrl(shotVideoUrl, shotVideoPath);
+        const shotPrompt = buildKlingPrompt(
+          groundedPrompt,
+          "b-roll" as ShotType,
+          emotion,
+        );
 
-      const trimmedShotPath = path.join(
-        OUTPUT_DIR,
-        `montage_trimmed_${sceneNumber}_${i}_${Date.now()}.mp4`,
-      );
-      const trimCmd = `ffmpeg -y -i "${shotVideoPath}" -t ${trimDuration.toFixed(3)} \
-        ${VIDEO_ENCODE_SETTINGS} \
-        -an -avoid_negative_ts make_zero "${trimmedShotPath}"`;
-      execSync(trimCmd, { stdio: "pipe" });
+        const { videoUrl: shotVideoUrl } =
+          await klingService.generateVideoV3WithRetry({
+            imageUrl: shotImageUrl,
+            prompt: groundedPrompt,
+            duration: videoDuration as any,
+            negativePrompt: PRODUCT_NEGATIVE_PROMPT,
+          });
 
-      if (fs.existsSync(shotVideoPath)) {
-        fs.unlinkSync(shotVideoPath);
-      }
+        const shotVideoPath = path.join(
+          OUTPUT_DIR,
+          `montage_shot_${sceneNumber}_${i}_${Date.now()}.mp4`,
+        );
+        await s3Service.downloadVideoFromUrl(shotVideoUrl, shotVideoPath);
 
-      shotVideoPaths.push(trimmedShotPath);
-      console.log(
-        `[UGC Assembly] Montage shot ${i + 1} complete: ${trimDuration}s`,
-      );
-    }
+        const trimmedShotPath = path.join(
+          OUTPUT_DIR,
+          `montage_trimmed_${sceneNumber}_${i}_${Date.now()}.mp4`,
+        );
+        const trimCmd = `ffmpeg -y -i "${shotVideoPath}" -t ${trimDuration.toFixed(3)} \
+          ${VIDEO_ENCODE_SETTINGS} \
+          -an -avoid_negative_ts make_zero "${trimmedShotPath}"`;
+        execSync(trimCmd, { stdio: "pipe" });
+
+        if (fs.existsSync(shotVideoPath)) {
+          fs.unlinkSync(shotVideoPath);
+        }
+
+        console.log(
+          `[UGC Assembly] Montage shot ${i + 1} complete: ${trimDuration}s`,
+        );
+
+        return trimmedShotPath;
+      }),
+    );
 
     onProgress?.(`Scene ${sceneNumber}: Concatenating shots...`);
     const concatenatedPath = path.join(

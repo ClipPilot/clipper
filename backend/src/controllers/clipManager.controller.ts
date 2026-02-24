@@ -9,6 +9,10 @@ import { userService } from "../services/user.service";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { getTeamUsage } from "../middleware/subscription.middleware";
 import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
+import { transcribeVideoService } from "../services/clips/transcription.service";
+import { TranscriptionWord, CaptionEntry } from "../services/clips/captions.service";
+import { ensureOutputDir, safeUnlink } from "../utils/fileUtils";
+import path from "path";
 
 async function verifyTeamAccessOrFail(
   req: AuthRequest,
@@ -454,6 +458,88 @@ export class ClipManagerController {
       return res.status(500).json({
         error: sanitizeErrorForFrontend(error, "Failed to queue captions update"),
       });
+    }
+  }
+
+  async generateCaptions(req: AuthRequest, res: Response) {
+    const localPath: string[] = [];
+
+    try {
+      const clipId = parseInt(req.params.clipId);
+      const teamId = parseInt(req.params.teamId);
+
+      if (isNaN(clipId) || isNaN(teamId)) {
+        return res.status(400).json({ error: "Invalid clip ID or team ID" });
+      }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
+
+      const clip = await clipManagerService.getClipById(clipId, teamId);
+
+      if (!clip.blank_video_path) {
+        return res.status(400).json({ error: "No blank video available for this clip" });
+      }
+
+      // Download blank video to temp file
+      const outDir = ensureOutputDir();
+      const videoPath = path.join(outDir, `transcribe_${clipId}_${Date.now()}.mp4`);
+      localPath.push(videoPath);
+
+      console.log(`[generate-captions] Downloading blank video for clip ${clipId}`);
+      await s3Service.downloadFile(clip.blank_video_path, videoPath);
+
+      // Transcribe with Deepgram
+      console.log(`[generate-captions] Transcribing clip ${clipId}...`);
+      const transcription = await transcribeVideoService(videoPath);
+
+      // Extract words with timing
+      const words: TranscriptionWord[] =
+        transcription?.results?.channels?.[0]?.alternatives?.[0]?.words?.map(
+          (w: any) => ({
+            start: w.start,
+            end: w.end,
+            punctuated_word: w.punctuated_word || w.word,
+          })
+        ) || [];
+
+      if (words.length === 0) {
+        return res.status(200).json({
+          captionsData: [],
+          message: "No speech detected in this video",
+        });
+      }
+
+      // Group words into caption entries (4 words per segment)
+      const WORDS_PER_GROUP = 4;
+      const captionsData: CaptionEntry[] = [];
+      for (let i = 0; i < words.length; i += WORDS_PER_GROUP) {
+        const group = words.slice(i, i + WORDS_PER_GROUP);
+        if (group.length === 0) continue;
+        captionsData.push({
+          index: captionsData.length + 1,
+          startTime: group[0].start,
+          endTime: group[group.length - 1].end,
+          text: group.map((w) => w.punctuated_word || "").join(" "),
+        });
+      }
+
+      // Update DB with generated captions
+      await clipManagerService.updateClipCaptions(clipId, teamId, {
+        captionsData,
+      });
+
+      console.log(`[generate-captions] Generated ${captionsData.length} caption segments for clip ${clipId}`);
+
+      return res.status(200).json({ captionsData });
+    } catch (error) {
+      console.error("Generate captions error:", error);
+      Sentry.captureException(error);
+      return res.status(500).json({
+        error: sanitizeErrorForFrontend(error, "Failed to generate captions"),
+      });
+    } finally {
+      localPath.forEach(safeUnlink);
     }
   }
 

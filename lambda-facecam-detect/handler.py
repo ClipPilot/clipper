@@ -15,10 +15,10 @@ s3_client = boto3.client('s3')
 
 # Facecam-specific config: tuned for small webcam overlays in gaming streams
 FACECAM_CONFIG = {
-    'min_confidence': 0.5,
-    'min_face_size_percent': 0.005,   # Facecams are small — min 0.5% of frame
+    'min_confidence': 0.45,
+    'min_face_size_percent': 0.003,   # Facecams are small — min 0.3% of frame
     'max_face_size_percent': 0.25,    # Reject large faces (talking-head, not a facecam)
-    'num_sample_frames': 12,
+    'num_sample_frames': 16,
     'skip_percent': 0.05,             # Skip first/last 5% of video
     'min_consistent_detections': 3,   # Need 3+ consistent face positions
     'outlier_threshold_px': 50,       # Faces >50px from median are outliers
@@ -189,6 +189,102 @@ def detect_face_bboxes_in_frame(net, frame_path: str, config: Optional[Dict] = N
             })
 
     return faces
+
+
+def detect_faces_multiscale(net, frame_path: str, config: Optional[Dict] = None) -> List[Dict[str, Any]]:
+    """Multi-scale face detection: full frame + corner crops for small facecams.
+
+    Small facecams in corners get missed at 300x300 on a full 1080p frame because
+    the face gets downsampled to ~9px. By cropping each corner (45% of frame) and
+    running detection on the crop, we get ~2x effective resolution where facecams live.
+    """
+    image = cv2.imread(frame_path)
+    if image is None:
+        return []
+
+    (h, w) = image.shape[:2]
+    frame_area = w * h
+    if config is None:
+        config = FACECAM_CONFIG
+
+    # 1. Standard full-frame detection
+    all_faces = detect_face_bboxes_in_frame(net, frame_path, config)
+
+    # 2. Corner-crop detection — each crop is 45% of frame to overlap slightly
+    crop_frac = 0.45
+    cw = int(w * crop_frac)
+    ch = int(h * crop_frac)
+
+    corners = [
+        (0, 0),            # top-left
+        (w - cw, 0),       # top-right
+        (0, h - ch),       # bottom-left
+        (w - cw, h - ch),  # bottom-right
+    ]
+
+    # Lower confidence for corner crops — higher effective resolution means
+    # the model sees more detail, but small faces still score lower
+    corner_conf = max(config['min_confidence'] - 0.1, 0.30)
+
+    for (ox, oy) in corners:
+        crop = image[oy:oy + ch, ox:ox + cw]
+        if crop.size == 0:
+            continue
+
+        ch_actual, cw_actual = crop.shape[:2]
+
+        blob = cv2.dnn.blobFromImage(
+            cv2.resize(crop, (300, 300)), 1.0, (300, 300), (104.0, 177.0, 123.0)
+        )
+        net.setInput(blob)
+        detections = net.forward()
+
+        for i in range(detections.shape[2]):
+            conf = float(detections[0, 0, i, 2])
+            if conf < corner_conf:
+                continue
+
+            box = detections[0, 0, i, 3:7] * [cw_actual, ch_actual, cw_actual, ch_actual]
+            (sx, sy, ex, ey) = box.astype("int")
+
+            # Map back to full-frame coordinates
+            sx += ox
+            sy += oy
+            ex += ox
+            ey += oy
+
+            fw = max(0, ex - sx)
+            fh = max(0, ey - sy)
+            fa = fw * fh
+            pct = fa / frame_area if frame_area > 0 else 0
+
+            if not (config['min_face_size_percent'] <= pct <= config['max_face_size_percent']):
+                continue
+
+            # Deduplicate: skip if >50% overlap with an existing detection
+            is_dup = False
+            for ef in all_faces:
+                ix1 = max(sx, ef['x'])
+                iy1 = max(sy, ef['y'])
+                ix2 = min(sx + fw, ef['x'] + ef['w'])
+                iy2 = min(sy + fh, ef['y'] + ef['h'])
+                if ix1 < ix2 and iy1 < iy2:
+                    inter = (ix2 - ix1) * (iy2 - iy1)
+                    smaller = min(fa, ef['w'] * ef['h'])
+                    if smaller > 0 and inter / smaller > 0.5:
+                        # Keep the higher-confidence detection
+                        if conf > ef['confidence']:
+                            ef['confidence'] = conf
+                        is_dup = True
+                        break
+
+            if not is_dup:
+                all_faces.append({
+                    'x': max(0, sx), 'y': max(0, sy),
+                    'w': fw, 'h': fh, 'confidence': conf,
+                })
+
+    return all_faces
 
 
 def select_facecam_face(faces: List[Dict], frame_w: int, frame_h: int) -> Optional[Dict]:
@@ -524,10 +620,10 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             )
             print(f"[FACECAM-DETECT] Extracted {len(frame_paths)} sample frames")
 
-            # Detect ALL faces in each frame (not just the best per frame)
+            # Detect ALL faces in each frame using multi-scale (corner crops for small facecams)
             all_frame_faces: List[List[Dict]] = []
             for i, frame_path in enumerate(frame_paths):
-                faces = detect_face_bboxes_in_frame(net, frame_path)
+                faces = detect_faces_multiscale(net, frame_path, config)
                 all_frame_faces.append(faces)
 
                 if context and (i + 1) % 4 == 0:

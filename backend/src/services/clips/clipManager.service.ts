@@ -370,17 +370,21 @@ export class ClipManagerService {
     clipId: number,
     teamId: number,
     data: {
-      clipPath: string;
+      clipPath?: string;
       captionsData: any;
     }
   ) {
+    const setData: Record<string, any> = {
+      captions_data: data.captionsData,
+      updated_at: new Date(),
+    };
+    if (data.clipPath) {
+      setData.clip_path = data.clipPath;
+    }
+
     const [updatedClip] = await db
       .update(clips)
-      .set({
-        clip_path: data.clipPath,
-        captions_data: data.captionsData,
-        updated_at: new Date(),
-      })
+      .set(setData)
       .where(and(eq(clips.id, clipId), eq(clips.team_id, teamId)))
       .returning();
 

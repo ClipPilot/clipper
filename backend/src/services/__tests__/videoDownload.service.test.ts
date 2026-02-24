@@ -5,8 +5,9 @@ const { mockSpawn } = vi.hoisted(() => ({
   mockSpawn: vi.fn(),
 }));
 
-const { mockUploadRawVideo } = vi.hoisted(() => ({
+const { mockUploadRawVideo, mockDownloadVideoFromUrl } = vi.hoisted(() => ({
   mockUploadRawVideo: vi.fn(),
+  mockDownloadVideoFromUrl: vi.fn(),
 }));
 
 const { mockExistsSync, mockMkdirSync, mockStatSync, mockUnlinkSync, mockReaddirSync } = vi.hoisted(() => ({
@@ -17,6 +18,11 @@ const { mockExistsSync, mockMkdirSync, mockStatSync, mockUnlinkSync, mockReaddir
   mockReaddirSync: vi.fn(),
 }));
 
+const { mockDownloadYouTubeVideo, mockScrapeInstagramReel } = vi.hoisted(() => ({
+  mockDownloadYouTubeVideo: vi.fn(),
+  mockScrapeInstagramReel: vi.fn(),
+}));
+
 vi.mock("child_process", () => ({
   spawn: mockSpawn,
 }));
@@ -24,6 +30,7 @@ vi.mock("child_process", () => ({
 vi.mock("../s3.service", () => ({
   s3Service: {
     uploadRawVideo: mockUploadRawVideo,
+    downloadVideoFromUrl: mockDownloadVideoFromUrl,
   },
 }));
 
@@ -40,6 +47,13 @@ vi.mock("fs", () => ({
   statSync: mockStatSync,
   unlinkSync: mockUnlinkSync,
   readdirSync: mockReaddirSync,
+}));
+
+vi.mock("../virality/apify.service", () => ({
+  getApifyService: () => ({
+    downloadYouTubeVideo: mockDownloadYouTubeVideo,
+    scrapeInstagramReel: mockScrapeInstagramReel,
+  }),
 }));
 
 import { videoDownloadService } from "../videoDownload.service";
@@ -63,42 +77,64 @@ describe("VideoDownloadService", () => {
   });
 
   describe("getVideoInfo", () => {
-    it("parses yt-dlp JSON output correctly", async () => {
+    it("uses oEmbed for YouTube metadata", async () => {
+      const mockFetch = vi.spyOn(global, "fetch").mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          title: "Test Video",
+          author_name: "Test Channel",
+          thumbnail_url: "https://i.ytimg.com/vi/abc/hqdefault.jpg",
+        }),
+      } as Response);
+
+      const info = await videoDownloadService.getVideoInfo("https://youtube.com/watch?v=abc");
+      expect(info).toEqual({
+        title: "Test Video",
+        duration: 0,
+        filesize: 0,
+        thumbnail: "https://i.ytimg.com/vi/abc/hqdefault.jpg",
+        uploader: "Test Channel",
+        platform: "YouTube",
+      });
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining("youtube.com/oembed"),
+      );
+      expect(mockSpawn).not.toHaveBeenCalled();
+      mockFetch.mockRestore();
+    });
+
+    it("uses yt-dlp for non-YouTube URLs (Twitch, Kick, etc.)", async () => {
       const proc = createMockProcess();
       mockSpawn.mockReturnValue(proc);
 
-      const promise = videoDownloadService.getVideoInfo("https://youtube.com/watch?v=abc");
+      const promise = videoDownloadService.getVideoInfo("https://twitch.tv/videos/123");
 
-      const ytdlpOutput = JSON.stringify({
-        title: "Test Video",
-        duration: 120,
-        filesize_approx: 50000000,
-        thumbnail: "https://img.youtube.com/thumb.jpg",
-        uploader: "Test Channel",
-        extractor_key: "Youtube",
-      });
-
-      proc.stdout.emit("data", Buffer.from(ytdlpOutput));
+      proc.stdout.emit("data", Buffer.from(JSON.stringify({
+        title: "Twitch Stream",
+        duration: 3600,
+        filesize_approx: 100000000,
+        thumbnail: "https://thumb.twitch.tv/img.jpg",
+        uploader: "StreamerName",
+        extractor_key: "TwitchVod",
+      })));
       proc.emit("close", 0);
 
       const info = await promise;
       expect(info).toEqual({
-        title: "Test Video",
-        duration: 120,
-        filesize: 50000000,
-        thumbnail: "https://img.youtube.com/thumb.jpg",
-        uploader: "Test Channel",
-        platform: "Youtube",
+        title: "Twitch Stream",
+        duration: 3600,
+        filesize: 100000000,
+        thumbnail: "https://thumb.twitch.tv/img.jpg",
+        uploader: "StreamerName",
+        platform: "TwitchVod",
       });
 
       expect(mockSpawn).toHaveBeenCalledWith("yt-dlp", [
         "--js-runtimes",
-        "nodejs",
-        "--max-filesize",
-        "2G",
+        "node",
         "--dump-json",
         "--no-download",
-        "https://youtube.com/watch?v=abc",
+        "https://twitch.tv/videos/123",
       ]);
     });
 
@@ -118,7 +154,7 @@ describe("VideoDownloadService", () => {
       const proc = createMockProcess();
       mockSpawn.mockReturnValue(proc);
 
-      const promise = videoDownloadService.getVideoInfo("https://youtube.com/watch?v=abc");
+      const promise = videoDownloadService.getVideoInfo("https://twitch.tv/videos/123");
 
       proc.emit("error", new Error("yt-dlp not found"));
 
@@ -144,7 +180,31 @@ describe("VideoDownloadService", () => {
   });
 
   describe("downloadToS3", () => {
-    it("downloads, uploads to S3, and cleans up temp file", async () => {
+    it("uses Apify for YouTube downloads", async () => {
+      mockDownloadYouTubeVideo.mockResolvedValue({
+        downloadUrl: "https://apify.com/video.mp4",
+        title: "YT Video",
+        duration: 120,
+        thumbnail: "",
+        uploader: "",
+        fileSize: 50000,
+      });
+      mockExistsSync.mockReturnValue(true);
+      mockDownloadVideoFromUrl.mockResolvedValue(undefined);
+      mockStatSync.mockReturnValue({ size: 50000 });
+      mockUploadRawVideo.mockResolvedValue("raw-videos/1/video.mp4");
+
+      const result = await videoDownloadService.downloadToS3(
+        "https://youtube.com/watch?v=abc",
+        1
+      );
+
+      expect(result.s3Key).toBe("raw-videos/1/video.mp4");
+      expect(mockDownloadYouTubeVideo).toHaveBeenCalledWith("https://youtube.com/watch?v=abc");
+      expect(mockSpawn).not.toHaveBeenCalled();
+    });
+
+    it("uses yt-dlp for Twitch/Kick downloads", async () => {
       const proc = createMockProcess();
       mockSpawn.mockReturnValue(proc);
       mockExistsSync.mockReturnValue(true);
@@ -154,18 +214,16 @@ describe("VideoDownloadService", () => {
       const onProgress = vi.fn();
 
       const promise = videoDownloadService.downloadToS3(
-        "https://youtube.com/watch?v=abc",
+        "https://twitch.tv/videos/123",
         1,
         onProgress
       );
 
-      // Emit progress
       proc.stdout.emit(
         "data",
         Buffer.from("download: 50.0%  5.2MiB/s  00:10\n")
       );
 
-      // Emit merge destination
       proc.stdout.emit(
         "data",
         Buffer.from('[Merger] Merging formats into "/app/backend/output/1_123_Test Video.mp4"\n')
@@ -180,7 +238,6 @@ describe("VideoDownloadService", () => {
       expect(onProgress).toHaveBeenCalledWith(
         expect.objectContaining({ percent: 50, speed: "5.2MiB/s" })
       );
-      // Temp file cleanup
       expect(mockUnlinkSync).toHaveBeenCalled();
     });
 
@@ -192,7 +249,7 @@ describe("VideoDownloadService", () => {
       mockUploadRawVideo.mockRejectedValue(new Error("S3 upload failed"));
 
       const promise = videoDownloadService.downloadToS3(
-        "https://youtube.com/watch?v=abc",
+        "https://twitch.tv/videos/123",
         1
       );
 
@@ -212,7 +269,7 @@ describe("VideoDownloadService", () => {
       mockExistsSync.mockReturnValue(true);
 
       const promise = videoDownloadService.downloadToS3(
-        "https://youtube.com/watch?v=bad",
+        "https://kick.com/video/bad",
         1
       );
 
