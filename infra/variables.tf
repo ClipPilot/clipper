@@ -236,6 +236,13 @@ variable "apify_api_token" {
   sensitive   = true
 }
 
+variable "socialdata_api_key" {
+  description = "SocialData API key for Twitter/X profile data"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 # Status Dashboard
 variable "status_domain" {
   description = "Domain for the status dashboard (e.g., status.cuttr.com)"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef, Fragment } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -8,24 +8,23 @@ import {
   Input,
   addToast,
   Spinner,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useTeams } from "@/hooks/useTeams";
+import { useViralityDateRange } from "@/contexts/ViralityContext";
 import {
   viralityAPI,
   type CompetitorWithAccounts,
   type ViralityPost,
 } from "@/api/virality";
-import { formatNumber } from "@/lib/formatters";
-import { CHART_COLORS, timeAgo } from "@/lib/platformUtils";
-import {
-  DateRangeFilter,
-  type DateRangeValue,
-} from "@/components/virality/DateRangeFilter";
-import {
-  type ComparisonMode,
-} from "@/components/virality/ComparisonModeSelector";
-import { StatCards, type StatCardItem } from "@/components/virality/StatCards";
+import { CHART_COLORS, timeAgo, platformIcon, platformIconColor } from "@/lib/platformUtils";
+import { DateRangeFilter } from "@/components/virality/DateRangeFilter";
+import { type ComparisonMode } from "@/components/virality/ComparisonModeSelector";
+import { StatCards } from "@/components/virality/StatCards";
 import { PostsTable } from "@/components/virality/PostsTable";
 import { AnalyticsChart } from "@/components/virality/AnalyticsChart";
 import { PostFrequencyChart } from "@/components/virality/PostFrequencyChart";
@@ -33,8 +32,17 @@ import { AccountBreakdownChart } from "@/components/virality/AccountBreakdownCha
 import { BestPerformingAccounts } from "@/components/virality/BestPerformingAccounts";
 import { RecalcOverlay } from "@/components/virality/RecalcOverlay";
 import { AccountFilterPopover } from "@/components/virality/AccountFilterPopover";
-import { findClosestEntry, getComparisonDate, pct, computePostsPerWeek } from "./utils";
+import { ViralityUpgradeWall } from "@/components/virality/ViralityUpgradeWall";
+import {
+  findClosestEntry,
+  getComparisonDate,
+  pct,
+  computePostsPerWeek,
+  buildStatCards,
+  getNextSyncCountdown,
+} from "./utils";
 import { canAccessViralityTracker } from "@/lib/plans";
+import { useViralitySyncSocket } from "@/hooks/useViralitySyncSocket";
 
 // ─── Page Component ──────────────────────────────────────────────────────────
 
@@ -43,6 +51,7 @@ export default function CompetitorDetailPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const { selectedTeam } = useTeams();
+  const { dateRange, setDateRange } = useViralityDateRange();
   const competitorId = Number(params.competitorId);
 
   const [competitor, setCompetitor] = useState<CompetitorWithAccounts | null>(null);
@@ -56,11 +65,6 @@ export default function CompetitorDetailPage() {
   const [selectedAccountIds, setSelectedAccountIds] = useState<number[]>(() => {
     const accountId = searchParams.get("accountId");
     return accountId ? [Number(accountId)] : [];
-  });
-  const [dateRange, setDateRange] = useState<DateRangeValue>(() => {
-    const startDate = searchParams.get("startDate") || undefined;
-    const endDate = searchParams.get("endDate") || undefined;
-    return { startDate, endDate };
   });
   const [comparisonMode, setComparisonMode] = useState<ComparisonMode>({ type: "last-sync" });
 
@@ -93,9 +97,23 @@ export default function CompetitorDetailPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const handleDateRangeChange = (value: DateRangeValue) => {
-    setDateRange(value);
-  };
+  // Track accounts doing their initial sync (never synced before + pending/syncing).
+  // Background lambda syncs (account already has data) are silent.
+  const syncingAccountIds = useMemo(() => {
+    if (!competitor) return [];
+    return competitor.accounts
+      .filter((a) => !a.last_synced_at && (a.sync_status === "pending" || a.sync_status === "syncing"))
+      .map((a) => a.id);
+  }, [competitor]);
+
+  // Listen for sync completion via WebSocket and refetch data
+  useViralitySyncSocket({
+    teamId: selectedTeam?.id,
+    accountIds: syncingAccountIds,
+    onSyncComplete: () => {
+      fetchData();
+    },
+  });
 
   const handleSyncAll = async () => {
     if (!selectedTeam?.id || !competitor) return;
@@ -264,39 +282,7 @@ export default function CompetitorDetailPage() {
   // ─── Loading / Error states ──────────────────────────────────────────────────
 
   if (!canAccessViralityTracker(selectedTeam?.plan)) {
-    return (
-      <div className="min-h-screen bg-surface-dark flex flex-col items-center justify-center p-6">
-        <div className="flex flex-col items-center gap-6 max-w-sm">
-          <div className="relative">
-            <div className="flex items-center justify-center w-20 h-20 rounded-2xl bg-purple-500/10">
-              <Icon icon="solar:chart-bold-duotone" className="text-purple-500" width={40} />
-            </div>
-            <div className="absolute -bottom-1 -right-1 flex items-center justify-center w-7 h-7 rounded-full bg-surface-dark border-2 border-surface-dark">
-              <Icon icon="solar:lock-keyhole-bold" className="text-text-tertiary" width={14} />
-            </div>
-          </div>
-          <div className="text-center space-y-2">
-            <h2 className="text-xl font-bold text-text-primary">Virality Tracker</h2>
-            <p className="text-sm text-text-secondary leading-relaxed">
-              Track competitor performance, monitor viral trends, and benchmark your content against the competition.
-            </p>
-          </div>
-          <div className="flex flex-col items-center gap-3 w-full">
-            <Button
-              size="lg"
-              className="w-full bg-purple-500 text-white font-semibold"
-              onPress={() => router.push("/dashboard/pricing")}
-              startContent={<Icon icon="solar:rocket-bold" width={18} />}
-            >
-              Upgrade to Studio
-            </Button>
-            <p className="text-xs text-text-tertiary">
-              Available on Studio, Scale & Enterprise
-            </p>
-          </div>
-        </div>
-      </div>
-    );
+    return <ViralityUpgradeWall />;
   }
 
   if (isLoading) {
@@ -321,60 +307,7 @@ export default function CompetitorDetailPage() {
 
   // ─── Stat card data ──────────────────────────────────────────────────────────
 
-  const statCards: StatCardItem[] = [
-    {
-      title: "TOTAL VIEWS",
-      value: formatNumber(stats.totalViews),
-      icon: "solar:eye-bold",
-      iconColor: "text-blue-500",
-      iconBg: "bg-blue-500/10",
-      change: stats.viewsChange,
-      tooltip: "Only counts views on video posts (Reels)",
-    },
-    {
-      title: "TOTAL ENGAGEMENTS",
-      value: formatNumber(stats.totalEngagements),
-      icon: "solar:heart-bold",
-      iconColor: "text-red-500",
-      iconBg: "bg-red-500/10",
-      change: stats.engagementsChange,
-      tooltip: "Sum of likes and comments",
-    },
-    {
-      title: "TOTAL POSTS",
-      value: formatNumber(activePosts.length),
-      icon: "solar:document-bold",
-      iconColor: "text-emerald-500",
-      iconBg: "bg-emerald-500/10",
-      change: null,
-    },
-    {
-      title: "FOLLOWERS",
-      value: formatNumber(stats.followers),
-      icon: "solar:users-group-rounded-bold",
-      iconColor: "text-accent-400",
-      iconBg: "bg-accent-400/10",
-      change: stats.followersChange,
-    },
-    {
-      title: "AVG ENG RATE",
-      value: stats.engagementRate.toFixed(2) + "%",
-      icon: "solar:chart-2-bold",
-      iconColor: "text-amber-500",
-      iconBg: "bg-amber-500/10",
-      change: stats.engRateChange,
-      tooltip: "(Likes + Comments) / Views x 100",
-    },
-    {
-      title: "CONTENT VELOCITY",
-      value: String(postsPerWeek),
-      icon: "solar:rocket-2-bold",
-      iconColor: "text-purple-500",
-      iconBg: "bg-purple-500/10",
-      change: null,
-      tooltip: "Average posts per week based on post date range",
-    },
-  ];
+  const statCards = buildStatCards(stats, activePosts.length, postsPerWeek);
 
   // ─── Render ──────────────────────────────────────────────────────────────────
 
@@ -428,6 +361,42 @@ export default function CompetitorDetailPage() {
                   >
                     <Icon icon="solar:pen-2-linear" width={16} className="text-text-tertiary" />
                   </Button>
+                  {competitor.accounts.length === 1 ? (
+                    <Button
+                      size="sm"
+                      isIconOnly
+                      variant="light"
+                      as="a"
+                      href={competitor.accounts[0].profile_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Icon icon="solar:arrow-right-up-linear" width={16} className="text-text-tertiary" />
+                    </Button>
+                  ) : competitor.accounts.length > 1 ? (
+                    <Dropdown>
+                      <DropdownTrigger>
+                        <Button size="sm" isIconOnly variant="light">
+                          <Icon icon="solar:arrow-right-up-linear" width={16} className="text-text-tertiary" />
+                        </Button>
+                      </DropdownTrigger>
+                      <DropdownMenu aria-label="Open profile">
+                        {competitor.accounts.map((a) => (
+                          <DropdownItem
+                            key={a.id}
+                            startContent={<Icon icon={platformIcon(a.platform)} width={14} className={platformIconColor(a.platform)} />}
+                            onPress={() => window.open(a.profile_url, "_blank", "noopener,noreferrer")}
+                          >
+                            {a.account_type === "hashtag"
+                              ? `#${a.username}`
+                              : a.account_type === "keyword"
+                                ? a.username
+                                : `@${a.username}`}
+                          </DropdownItem>
+                        ))}
+                      </DropdownMenu>
+                    </Dropdown>
+                  ) : null}
                 </div>
               )}
               {competitor.description && (
@@ -437,18 +406,7 @@ export default function CompetitorDetailPage() {
                 {lastSyncedAt ? (
                   <>
                     Last synced {timeAgo(lastSyncedAt.toISOString())} · Next sync in{" "}
-                    {(() => {
-                      const now = new Date();
-                      const utcH = now.getUTCHours();
-                      const nextSlot = Math.ceil((utcH + 1) / 6) * 6;
-                      const nextSync = new Date(now);
-                      nextSync.setUTCHours(nextSlot, 0, 0, 0);
-                      if (nextSync.getTime() <= now.getTime()) nextSync.setUTCDate(nextSync.getUTCDate() + 1);
-                      const diff = nextSync.getTime() - now.getTime();
-                      const hrs = Math.floor(diff / (1000 * 60 * 60));
-                      const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                      return hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
-                    })()}
+                    {getNextSyncCountdown()}
                   </>
                 ) : (
                   "No syncs yet"
@@ -457,7 +415,7 @@ export default function CompetitorDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <DateRangeFilter value={dateRange} onChange={handleDateRangeChange} />
+            <DateRangeFilter value={dateRange} onChange={setDateRange} />
             <Button
               className="bg-accent-400 text-white"
               startContent={
@@ -482,6 +440,27 @@ export default function CompetitorDetailPage() {
           <div className="flex flex-col items-center justify-center py-8 gap-2">
             <Icon icon="solar:users-group-rounded-linear" width={40} className="text-text-tertiary" />
             <p className="text-text-secondary text-sm">No accounts in this competitor group yet</p>
+          </div>
+        )}
+
+        {/* Syncing accounts banner */}
+        {syncingAccountIds.length > 0 && (
+          <div className="flex items-center gap-3 rounded-xl border border-accent-400/30 bg-accent-400/5 px-4 py-3">
+            <Spinner size="sm" color="primary" />
+            <p className="text-sm text-text-secondary">
+              Syncing{" "}
+              {competitor.accounts
+                .filter((a) => syncingAccountIds.includes(a.id))
+                .map((a, i, arr) => (
+                  <Fragment key={a.id}>
+                    <span className="font-medium text-text-primary">
+                      {a.account_type === "hashtag" ? "#" : "@"}{a.username}
+                    </span>
+                    {i < arr.length - 1 && ", "}
+                  </Fragment>
+                ))}
+              &hellip; Data will appear once the sync is complete.
+            </p>
           </div>
         )}
 

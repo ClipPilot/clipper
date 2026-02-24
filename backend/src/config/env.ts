@@ -41,6 +41,9 @@ export const config = {
   apify: {
     apiToken: getEnv("APIFY_API_TOKEN", ""),
   },
+  socialData: {
+    apiKey: getEnv("SOCIALDATA_API_KEY", ""),
+  },
   sync: {
     apiKey: process.env.SYNC_KEY || "",
   },

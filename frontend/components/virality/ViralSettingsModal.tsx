@@ -22,7 +22,7 @@ const PLATFORM_ICONS: Record<string, { icon: string; color: string }> = {
   x: { icon: "ri:twitter-x-fill", color: "text-foreground" },
 };
 
-type TimeFrame = "6" | "12" | "24";
+type TimeFrame = "12" | "24" | "48";
 type ThresholdMode = "and" | "or";
 
 export interface ViralSettings {
@@ -64,7 +64,11 @@ export function ViralSettingsModal({
   const [useAbsolute, setUseAbsolute] = useState(settings.absoluteThreshold !== null);
   const [absoluteValue, setAbsoluteValue] = useState(String(settings.absoluteThreshold ?? 10000));
   const [thresholdMode, setThresholdMode] = useState<ThresholdMode>(settings.thresholdMode);
-  const [timeFrame, setTimeFrame] = useState<TimeFrame>(settings.timeFrameHours);
+  const [timeFrame, setTimeFrame] = useState<TimeFrame>(
+    (["12", "24", "48"] as TimeFrame[]).includes(settings.timeFrameHours as TimeFrame)
+      ? (settings.timeFrameHours as TimeFrame)
+      : "12"
+  );
 
   const toggleAccount = (id: number) => {
     setEnabledIds((prev) =>
@@ -98,7 +102,11 @@ export function ViralSettingsModal({
     setUseAbsolute(settings.absoluteThreshold !== null);
     setAbsoluteValue(String(settings.absoluteThreshold ?? 10000));
     setThresholdMode(settings.thresholdMode);
-    setTimeFrame(settings.timeFrameHours);
+    setTimeFrame(
+      (["12", "24", "48"] as TimeFrame[]).includes(settings.timeFrameHours as TimeFrame)
+        ? (settings.timeFrameHours as TimeFrame)
+        : "12"
+    );
     onClose();
   };
 
@@ -379,9 +387,9 @@ export function ViralSettingsModal({
                   cursor: "bg-accent-400 rounded-lg",
                 }}
               >
-                <Tab key="6" title="6 hours" />
                 <Tab key="12" title="12 hours" />
                 <Tab key="24" title="24 hours" />
+                <Tab key="48" title="48 hours" />
               </Tabs>
             </section>
           </div>

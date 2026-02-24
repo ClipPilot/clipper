@@ -112,6 +112,7 @@ jobs:
 
           # Virality
           apify_api_token    = "${{ secrets.APIFY_API_TOKEN }}"
+          socialdata_api_key = "${{ secrets.SOCIALDATA_API_KEY }}"
 
           # Custom Domain
           api_domain          = "api-staging.cuttr.com"
@@ -262,6 +263,7 @@ jobs:
 
           # Virality
           apify_api_token    = "${{ secrets.APIFY_API_TOKEN }}"
+          socialdata_api_key = "${{ secrets.SOCIALDATA_API_KEY }}"
 
           # Custom Domain
           api_domain          = "api-staging.cuttr.com"

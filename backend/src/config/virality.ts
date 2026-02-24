@@ -8,8 +8,7 @@ export const APIFY_ACTORS = {
 } as const;
 
 export const SCRAPE_WINDOW_DAYS = 31;
-export const MAX_ACCOUNTS_PER_TEAM = 10;
-export const SYNC_INTERVAL_HOURS = 6;
+export const SYNC_INTERVAL_HOURS = 12;
 export const SYNCS_PER_DAY = Math.floor(24 / SYNC_INTERVAL_HOURS);
 export const MAX_METRICS_HISTORY = SCRAPE_WINDOW_DAYS * SYNCS_PER_DAY;
 export const MAX_FOLLOWER_HISTORY = 180;
