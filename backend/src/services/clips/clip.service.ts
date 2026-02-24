@@ -138,7 +138,8 @@ export const createCombinedClipService = async (
   clipData: ClipSuggestions,
   transcriptionWords: TranscriptionWord[],
   options: ClipServiceOptions = {},
-  videoIndex: number = 0
+  videoIndex: number = 0,
+  onMergedRaw?: (localPath: string) => Promise<ClipServiceOptions | null>,
 ): Promise<ClipResult> => {
   const outDir = path.join(process.cwd(), "output");
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
@@ -171,6 +172,17 @@ export const createCombinedClipService = async (
 
   const mergedRawPath = path.join(outDir, `merged_raw_${videoIndex}_temp.mp4`);
   await mergeClips(tempFiles, mergedRawPath);
+
+  // If callback provided, run per-clip detection on the merged horizontal clip
+  // and override facecam/active-speaker options with the result
+  if (onMergedRaw) {
+    const detected = await onMergedRaw(mergedRawPath);
+    if (detected) {
+      if (detected.facecamRegion !== undefined) options.facecamRegion = detected.facecamRegion;
+      if (detected.activeSpeakerSegments) options.activeSpeakerSegments = detected.activeSpeakerSegments;
+      if (detected.speakerFaceMap) options.speakerFaceMap = detected.speakerFaceMap;
+    }
+  }
 
   // Convert horizontal videos to 9:16 using selected conversion mode
   const mergedPath = path.join(outDir, `merged_${videoIndex}_temp.mp4`);
@@ -417,7 +429,8 @@ export const createBatchCombinedClipService = async (
   videoSources: BatchVideoSource[],
   clipData: BatchClipSuggestions,
   options: ClipServiceOptions = {},
-  outputIndex: number = 0
+  outputIndex: number = 0,
+  onMergedRaw?: (localPath: string) => Promise<ClipServiceOptions | null>,
 ): Promise<ClipResult> => {
   const outDir = path.join(process.cwd(), "output");
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
@@ -465,6 +478,16 @@ export const createBatchCombinedClipService = async (
   // Merge all clips
   const mergedRawPath = path.join(outDir, `batch_merged_raw_${outputIndex}_temp.mp4`);
   await mergeClips(tempFiles, mergedRawPath);
+
+  // If callback provided, run per-clip detection on the merged horizontal clip
+  if (onMergedRaw) {
+    const detected = await onMergedRaw(mergedRawPath);
+    if (detected) {
+      if (detected.facecamRegion !== undefined) options.facecamRegion = detected.facecamRegion;
+      if (detected.activeSpeakerSegments) options.activeSpeakerSegments = detected.activeSpeakerSegments;
+      if (detected.speakerFaceMap) options.speakerFaceMap = detected.speakerFaceMap;
+    }
+  }
 
   // Convert horizontal videos to 9:16 using selected conversion mode
   const mergedPath = path.join(outDir, `batch_merged_${outputIndex}_temp.mp4`);

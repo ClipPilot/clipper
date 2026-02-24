@@ -98,6 +98,10 @@ resource "aws_lambda_function" "facecam_detect" {
   timeout       = 300  # 5 minutes — lighter than face-detect (only 12 frames, no edge refinement)
   memory_size   = 2048 # 2GB — less memory needed since we process fewer frames sequentially
 
+  ephemeral_storage {
+    size = 5120 # 5GB — clips can be large, especially longer combined clips
+  }
+
   environment {
     variables = {
       ENVIRONMENT = var.environment
