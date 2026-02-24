@@ -219,6 +219,27 @@ resource "aws_iam_role_policy" "ecs_worker_sqs" {
   })
 }
 
+# Worker Lambda invoke policy (facecam-detect, face-detect, scene-detect)
+resource "aws_iam_role_policy" "ecs_worker_lambda_invoke" {
+  name = "${var.project_name}-ecs-worker-lambda-invoke-${var.environment}"
+  role = aws_iam_role.ecs_worker_task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "lambda:InvokeFunction"
+      ]
+      Resource = [
+        "arn:aws:lambda:${var.aws_region}:${data.aws_caller_identity.current.account_id}:function:${var.project_name}-facecam-detect-${var.environment}",
+        "arn:aws:lambda:${var.aws_region}:${data.aws_caller_identity.current.account_id}:function:${var.project_name}-face-detect-${var.environment}",
+        "arn:aws:lambda:${var.aws_region}:${data.aws_caller_identity.current.account_id}:function:${var.project_name}-scene-detect-${var.environment}"
+      ]
+    }]
+  })
+}
+
 # Worker ECS task protection policy (prevent scale-in during job processing)
 resource "aws_iam_role_policy" "ecs_worker_task_protection" {
   name = "${var.project_name}-ecs-worker-task-protection-${var.environment}"
