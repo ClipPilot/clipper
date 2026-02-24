@@ -630,32 +630,35 @@ async function consumeOneCredit(
     .orderBy(sql`${schema.usageStats.created_at} DESC`)
     .limit(1);
 
-  const [team] = await db
-    .select()
-    .from(schema.teams)
-    .where(eq(schema.teams.id, teamId))
-    .limit(1);
+  if (!stats) return false;
 
-  if (!stats || !team) return false;
+  // Atomic increment: only succeeds if clips_created < limit (prevents double-charge under concurrency)
+  const baseUpdated = await db
+    .update(schema.usageStats)
+    .set({ clips_created: sql`${schema.usageStats.clips_created} + 1`, updated_at: new Date() })
+    .where(
+      and(
+        eq(schema.usageStats.id, stats.id),
+        sql`${schema.usageStats.clips_created} < ${schema.usageStats.limit}`
+      )
+    )
+    .returning({ id: schema.usageStats.id });
 
-  const baseRemaining = Math.max(0, stats.limit - stats.clips_created);
-  const addonRemaining = team.addon_clips_remaining || 0;
+  if (baseUpdated.length > 0) return true;
 
-  if (baseRemaining > 0) {
-    await db
-      .update(schema.usageStats)
-      .set({ clips_created: stats.clips_created + 1, updated_at: new Date() })
-      .where(eq(schema.usageStats.id, stats.id));
-    return true;
-  } else if (addonRemaining > 0) {
-    await db
-      .update(schema.teams)
-      .set({ addon_clips_remaining: addonRemaining - 1, updated_at: new Date() })
-      .where(eq(schema.teams.id, teamId));
-    return true;
-  }
+  // Atomic decrement: only succeeds if addon_clips_remaining > 0
+  const addonUpdated = await db
+    .update(schema.teams)
+    .set({ addon_clips_remaining: sql`${schema.teams.addon_clips_remaining} - 1`, updated_at: new Date() })
+    .where(
+      and(
+        eq(schema.teams.id, teamId),
+        sql`${schema.teams.addon_clips_remaining} > 0`
+      )
+    )
+    .returning({ id: schema.teams.id });
 
-  return false;
+  return addonUpdated.length > 0;
 }
 
 // ── Lambda handler ──
@@ -762,7 +765,7 @@ export const handler: Handler = async (event: any, context: Context) => {
       try {
         let posts: InstagramPost[];
         let profile: InstagramProfile | null = null;
-        const accountType = (account as any).account_type || "profile";
+        const accountType = account.account_type || "profile";
 
         if (accountType === "hashtag") {
           const result = account.platform === "tiktok"
@@ -863,4 +866,231 @@ export const handler: Handler = async (event: any, context: Context) => {
   console.log(JSON.stringify(result, null, 2));
 
   return { statusCode: 200, body: JSON.stringify(result) };
+};
+
+// ── Orchestrator handler (Step Functions) ──
+
+export const orchestratorHandler: Handler = async (event: any, context: Context) => {
+  console.log(`\n========================================`);
+  console.log(`  VIRALITY SYNC ORCHESTRATOR - ${new Date().toISOString()}`);
+  console.log(`========================================\n`);
+
+  if (!DATABASE_URL) {
+    throw new Error("DATABASE_URL not configured");
+  }
+
+  const localPool = new Pool({ connectionString: DATABASE_URL });
+  const db = drizzle(localPool, { schema });
+
+  try {
+    // Clean up stale syncs stuck in pending/syncing for more than 15 minutes
+    const cutoff = new Date(Date.now() - STALE_SYNC_MINUTES * 60 * 1000);
+    const stale = await db
+      .update(schema.viralityAccounts)
+      .set({
+        sync_status: "failed",
+        sync_error: `Sync timed out (stuck for more than ${STALE_SYNC_MINUTES} minutes)`,
+        updated_at: new Date(),
+      })
+      .where(
+        and(
+          or(
+            eq(schema.viralityAccounts.sync_status, "pending"),
+            eq(schema.viralityAccounts.sync_status, "syncing")
+          ),
+          lte(schema.viralityAccounts.updated_at, cutoff)
+        )
+      )
+      .returning({ id: schema.viralityAccounts.id, username: schema.viralityAccounts.username });
+
+    if (stale.length > 0) {
+      console.log(`[Cleanup] Reset ${stale.length} stale syncs: ${stale.map((s) => `@${s.username}`).join(", ")}`);
+    }
+
+    const accounts = await db
+      .select({
+        id: schema.viralityAccounts.id,
+        username: schema.viralityAccounts.username,
+        platform: schema.viralityAccounts.platform,
+        team_id: schema.viralityAccounts.team_id,
+        syncs_remaining: schema.viralityAccounts.syncs_remaining,
+        account_type: schema.viralityAccounts.account_type,
+      })
+      .from(schema.viralityAccounts)
+      .where(
+        and(
+          inArray(schema.viralityAccounts.platform, ["instagram", "tiktok", "x"]),
+          eq(schema.viralityAccounts.is_active, true)
+        )
+      );
+
+    console.log(`[DB] Found ${accounts.length} active accounts to sync`);
+    for (const a of accounts) {
+      console.log(`  - id=${a.id} @${a.username} (team=${a.team_id})`);
+    }
+
+    return { accounts };
+  } finally {
+    await localPool.end();
+  }
+};
+
+// ── Worker handler (Step Functions Map iterator) ──
+
+export const workerHandler: Handler = async (event: any, context: Context) => {
+  const { id: accountId, username } = event;
+
+  console.log(`\n========================================`);
+  console.log(`  VIRALITY SYNC WORKER - @${username} (id=${accountId})`);
+  console.log(`  ${new Date().toISOString()}`);
+  console.log(`========================================\n`);
+
+  if (!DATABASE_URL) {
+    throw new Error("DATABASE_URL not configured");
+  }
+  if (!APIFY_API_TOKEN) {
+    throw new Error("APIFY_API_TOKEN not configured");
+  }
+
+  const localPool = new Pool({ connectionString: DATABASE_URL });
+  const db = drizzle(localPool, { schema });
+  const apifyClient = new ApifyClient({ token: APIFY_API_TOKEN });
+  let postsUpserted = 0;
+
+  try {
+    // Re-fetch full account from DB for latest state
+    const [account] = await db
+      .select()
+      .from(schema.viralityAccounts)
+      .where(eq(schema.viralityAccounts.id, accountId))
+      .limit(1);
+
+    if (!account) {
+      console.log(`[Skip] Account id=${accountId} not found`);
+      return { accountId, username, status: "skipped", reason: "not_found", postsUpserted: 0 };
+    }
+
+    if (!account.is_active) {
+      console.log(`[Skip] @${account.username} is no longer active`);
+      return { accountId, username: account.username, status: "skipped", reason: "inactive", postsUpserted: 0 };
+    }
+
+    console.log(`[Sync] @${account.username} [${account.platform}] syncs_remaining=${account.syncs_remaining}`);
+
+    // Atomic decrement: only succeeds if syncs_remaining > 0 (prevents race between parallel workers)
+    const decremented = await db
+      .update(schema.viralityAccounts)
+      .set({ syncs_remaining: sql`${schema.viralityAccounts.syncs_remaining} - 1`, updated_at: new Date() })
+      .where(
+        and(
+          eq(schema.viralityAccounts.id, account.id),
+          sql`${schema.viralityAccounts.syncs_remaining} > 0`
+        )
+      )
+      .returning({ id: schema.viralityAccounts.id });
+
+    if (decremented.length === 0) {
+      // syncs_remaining was 0 — need to charge a credit
+      const charged = await consumeOneCredit(db, account.team_id);
+      if (charged) {
+        await db
+          .update(schema.viralityAccounts)
+          .set({ syncs_remaining: SYNCS_PER_WEEK - 1, updated_at: new Date() })
+          .where(eq(schema.viralityAccounts.id, account.id));
+        console.log(`[Credit] Charged 1 credit for @${account.username} (team=${account.team_id}), reset syncs_remaining=${SYNCS_PER_WEEK - 1}`);
+      } else {
+        // No credits — deactivate account
+        await db
+          .update(schema.viralityAccounts)
+          .set({ is_active: false, updated_at: new Date() })
+          .where(eq(schema.viralityAccounts.id, account.id));
+        console.log(`[Credit] No credits for team=${account.team_id}, deactivated @${account.username}`);
+        return { accountId, username: account.username, status: "deactivated", postsUpserted: 0 };
+      }
+    }
+
+    // Set sync_status to syncing
+    await db
+      .update(schema.viralityAccounts)
+      .set({ sync_status: "syncing", sync_error: null, updated_at: new Date() })
+      .where(eq(schema.viralityAccounts.id, account.id));
+
+    try {
+      let posts: InstagramPost[];
+      let profile: InstagramProfile | null = null;
+      const accountType = account.account_type || "profile";
+
+      if (accountType === "hashtag") {
+        const result = account.platform === "tiktok"
+          ? await scrapeTikTokHashtag(apifyClient, account.username)
+          : account.platform === "x"
+            ? await scrapeXKeywordSearch(apifyClient, `#${account.username}`)
+            : await scrapeInstagramHashtag(apifyClient, account.username);
+        posts = result.posts;
+      } else if (accountType === "keyword") {
+        const result = account.platform === "x"
+          ? await scrapeXKeywordSearch(apifyClient, account.username)
+          : account.platform === "tiktok"
+            ? await scrapeTikTokHashtag(apifyClient, account.username)
+            : await scrapeInstagramHashtag(apifyClient, account.username);
+        posts = result.posts;
+      } else {
+        const result = account.platform === "tiktok"
+          ? await scrapeTikTokAccount(apifyClient, account.username)
+          : account.platform === "x"
+            ? await scrapeXAccount(apifyClient, account.username)
+            : await scrapeInstagramAccount(apifyClient, account.username);
+        posts = result.posts;
+        profile = result.profile;
+      }
+
+      // Only update profile for profile-type accounts
+      if (accountType === "profile") {
+        const resolvedProfile = profile
+          ?? (account.platform === "instagram"
+            ? await scrapeInstagramProfile(apifyClient, account.username)
+            : null);
+
+        if (resolvedProfile) {
+          await updateAccountProfile(db, account.id, resolvedProfile);
+        }
+
+        if (account.platform === "x") {
+          const xFollowers = await fetchXFollowerCount(account.username);
+          if (xFollowers) {
+            await updateAccountProfile(db, account.id, xFollowers);
+          }
+        }
+      }
+
+      console.log(`[DB] Upserting ${posts.length} posts...`);
+      for (const post of posts) {
+        const ok = await upsertPost(db, account.id, post, account.platform);
+        if (ok) postsUpserted++;
+      }
+
+      // Compute total_likes from all posts for this account
+      const [likesResult] = await db
+        .select({ total: sql<number>`COALESCE(SUM(${schema.viralityPosts.like_count}), 0)` })
+        .from(schema.viralityPosts)
+        .where(eq(schema.viralityPosts.account_id, account.id));
+
+      await db
+        .update(schema.viralityAccounts)
+        .set({ sync_status: "completed", last_synced_at: new Date(), total_likes: Number(likesResult.total), updated_at: new Date() })
+        .where(eq(schema.viralityAccounts.id, account.id));
+
+      console.log(`[OK] @${account.username} completed: ${posts.length} posts upserted`);
+      return { accountId, username: account.username, status: "completed", postsUpserted };
+    } catch (error: any) {
+      console.error(`[FAIL] @${account.username}: ${error.message}`);
+      await db
+        .update(schema.viralityAccounts)
+        .set({ sync_status: "failed", sync_error: error.message || "Unknown error", updated_at: new Date() })
+        .where(eq(schema.viralityAccounts.id, account.id));
+      throw error; // Re-throw so Step Functions sees the failure
+    }
+  } finally {
+    await localPool.end();
+  }
 };
