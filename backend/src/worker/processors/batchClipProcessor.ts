@@ -15,8 +15,10 @@ import { emailNotiService } from "../../services/emailNoti.service";
 import { userService } from "../../services/user.service";
 import { ensureOutputDir } from "../../utils/fileUtils";
 import { sanitizeErrorForFrontend } from "../../utils/errorSanitizer";
-import { detectFacecamFromS3Key } from "../../services/facecamDetect.service";
+import { detectFacecamFromS3Key, detectMultipleFacesFromS3Key } from "../../services/facecamDetect.service";
 import type { FacecamRegion } from "../../services/clips/videoEditor.service";
+import { buildSpeakerSegments, mapSpeakersToFaces } from "../../services/clips/speakerSegments.service";
+import type { ActiveSpeakerSegment } from "../../services/clips/speakerSegments.service";
 
 export async function processBatchClipVideoJob(
   job: BatchClipVideoJob
@@ -80,7 +82,12 @@ export async function processBatchClipVideoJob(
       videoIndex: t.videoIndex,
       localPath: t.filePath,
       transcriptionWords:
-        t.transcription.results.channels[0].alternatives[0].words,
+        t.transcription.results.channels[0].alternatives[0].words.map(w => ({
+          start: w.start,
+          end: w.end,
+          punctuated_word: w.punctuated_word,
+          speaker: w.speaker,
+        })),
     }));
 
     // Step 5: Extract thumbnail from first video
@@ -99,11 +106,44 @@ export async function processBatchClipVideoJob(
       console.log(`[BATCH-PROCESSOR] Detecting facecam for ${options.conversionMode} mode...`);
       const firstVideoS3Key = videos[0].s3Key;
       const result = await detectFacecamFromS3Key(firstVideoS3Key);
-      if (result?.facecamDetected && result.facecamRegion) {
-        facecamRegion = result.facecamRegion;
-        console.log(`[BATCH-PROCESSOR] Facecam detected at ${result.corner}: ${JSON.stringify(facecamRegion)}`);
+      if (result?.facecamDetected) {
+        if (options.conversionMode === "speaker-zoom" && result.faceRegion) {
+          facecamRegion = result.faceRegion;
+          console.log(`[BATCH-PROCESSOR] Face detected (raw): ${JSON.stringify(facecamRegion)}`);
+        } else if (result.facecamRegion) {
+          facecamRegion = result.facecamRegion;
+          console.log(`[BATCH-PROCESSOR] Facecam detected at ${result.corner}: ${JSON.stringify(facecamRegion)}`);
+        }
       } else {
         console.warn(`[BATCH-PROCESSOR] No facecam detected — will fall back to blurred-bg`);
+      }
+    }
+
+    // Active-speaker mode: detect multiple faces from first video
+    let activeSpeakerSegments: ActiveSpeakerSegment[] | undefined;
+    let speakerFaceMap: Map<number, FacecamRegion> | undefined;
+
+    if (options.conversionMode === "active-speaker") {
+      console.log(`[BATCH-PROCESSOR] Active-speaker mode: detecting multiple faces...`);
+      const firstVideoS3Key = videos[0].s3Key;
+      const multiFaceResult = await detectMultipleFacesFromS3Key(firstVideoS3Key);
+
+      if (multiFaceResult && multiFaceResult.faceCount > 0) {
+        // Combine words from all video sources for diarization
+        const allWords = videoSources.flatMap(s => s.transcriptionWords);
+        const segments = buildSpeakerSegments(allWords);
+        const uniqueSpeakers = [...new Set(segments.map(s => s.speaker))];
+
+        if (segments.length > 1 && multiFaceResult.faceCount >= 2) {
+          speakerFaceMap = mapSpeakersToFaces(uniqueSpeakers, multiFaceResult.faces);
+          activeSpeakerSegments = segments;
+          console.log(`[BATCH-PROCESSOR] Active speaker mapping: ${uniqueSpeakers.length} speakers → ${multiFaceResult.faceCount} faces`);
+        } else if (multiFaceResult.faceCount >= 1) {
+          facecamRegion = multiFaceResult.faces[0];
+          console.log(`[BATCH-PROCESSOR] Single speaker/face — using static zoom`);
+        }
+      } else {
+        console.warn(`[BATCH-PROCESSOR] No faces detected — falling back to blurred-bg`);
       }
     }
 
@@ -117,6 +157,8 @@ export async function processBatchClipVideoJob(
       captionFont: options.captionFont,
       conversionMode: options.conversionMode,
       facecamRegion,
+      activeSpeakerSegments,
+      speakerFaceMap,
     };
 
     console.log(`Processing ${batchClipSuggestions.length} batch clips sequentially...`);

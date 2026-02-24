@@ -23,8 +23,25 @@ const OUTPUT_DIR = path.resolve(__dirname, "../../output");
 const INFO_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes
 const DOWNLOAD_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
-const FORMAT_SELECTION =
-  "bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4][height<=1080]/best";
+const FORMAT_SELECTION = [
+  "bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]",
+  "bestvideo[ext=mp4][height<=720]+bestaudio[ext=m4a]",
+  "bestvideo[ext=mp4][height<=480]+bestaudio[ext=m4a]",
+  "best[ext=mp4][height<=1080]",
+  "best[ext=mp4][height<=720]",
+  "best",
+].join("/");
+
+const COOKIES_FILE = process.env.YTDLP_COOKIES_FILE || "";
+const MAX_FILESIZE = process.env.YTDLP_MAX_FILESIZE || "2G";
+
+function baseYtDlpArgs(): string[] {
+  const args = ["--js-runtimes", "nodejs", "--max-filesize", MAX_FILESIZE];
+  if (COOKIES_FILE && fs.existsSync(COOKIES_FILE)) {
+    args.push("--cookies", COOKIES_FILE);
+  }
+  return args;
+}
 
 function isInstagramUrl(url: string): boolean {
   try {
@@ -51,7 +68,7 @@ class VideoDownloadService {
     }
 
     return new Promise((resolve, reject) => {
-      const args = ["--dump-json", "--no-download", url];
+      const args = [...baseYtDlpArgs(), "--dump-json", "--no-download", url];
       const proc = spawn("yt-dlp", args);
 
       let stdout = "";
@@ -119,6 +136,7 @@ class VideoDownloadService {
     );
 
     const args = [
+      ...baseYtDlpArgs(),
       "-f",
       FORMAT_SELECTION,
       "--merge-output-format",
@@ -255,6 +273,7 @@ class VideoDownloadService {
 
     return new Promise((resolve, reject) => {
       const args = [
+        ...baseYtDlpArgs(),
         "-f", FORMAT_SELECTION,
         "--merge-output-format", "mp4",
         "-o", outputPath,

@@ -3,6 +3,7 @@ export const CONVERSION_MODES = [
   "gaming",
   "speaker-zoom",
   "center-crop",
+  "active-speaker",
 ] as const;
 
 export type ConversionMode = (typeof CONVERSION_MODES)[number];

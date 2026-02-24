@@ -19,6 +19,7 @@ export interface TranscriptionWord {
   start: number;
   end: number;
   punctuated_word?: string | undefined;
+  speaker?: number;
 }
 
 export interface CaptionEntry {

@@ -8,6 +8,7 @@ import {
 } from "./videoEditor.service";
 import type { FacecamRegion } from "./videoEditor.service";
 import type { ConversionMode } from "../../constants/conversionModes";
+import type { ActiveSpeakerSegment } from "./speakerSegments.service";
 import path from "path";
 import fs from "fs";
 import { ClipSuggestions, BatchClipSuggestions } from "../../types/ai.types";
@@ -35,6 +36,8 @@ export interface ClipServiceOptions {
   captionFont?: string;
   conversionMode?: ConversionMode;
   facecamRegion?: FacecamRegion | null;
+  activeSpeakerSegments?: ActiveSpeakerSegment[];
+  speakerFaceMap?: Map<number, FacecamRegion>;
 }
 
 export interface CaptionEntry {
@@ -171,7 +174,10 @@ export const createCombinedClipService = async (
 
   // Convert horizontal videos to 9:16 using selected conversion mode
   const mergedPath = path.join(outDir, `merged_${videoIndex}_temp.mp4`);
-  await convertToVertical(mergedRawPath, mergedPath, options.conversionMode, options.facecamRegion);
+  const activeSpeakerOpts = (options.activeSpeakerSegments && options.speakerFaceMap)
+    ? { segments: options.activeSpeakerSegments, speakerFaceMap: options.speakerFaceMap }
+    : null;
+  await convertToVertical(mergedRawPath, mergedPath, options.conversionMode, options.facecamRegion, activeSpeakerOpts);
   if (fs.existsSync(mergedRawPath) && mergedRawPath !== mergedPath) {
     fs.unlinkSync(mergedRawPath);
   }
@@ -462,7 +468,10 @@ export const createBatchCombinedClipService = async (
 
   // Convert horizontal videos to 9:16 using selected conversion mode
   const mergedPath = path.join(outDir, `batch_merged_${outputIndex}_temp.mp4`);
-  await convertToVertical(mergedRawPath, mergedPath, options.conversionMode, options.facecamRegion);
+  const batchActiveSpeakerOpts = (options.activeSpeakerSegments && options.speakerFaceMap)
+    ? { segments: options.activeSpeakerSegments, speakerFaceMap: options.speakerFaceMap }
+    : null;
+  await convertToVertical(mergedRawPath, mergedPath, options.conversionMode, options.facecamRegion, batchActiveSpeakerOpts);
   if (fs.existsSync(mergedRawPath) && mergedRawPath !== mergedPath) {
     fs.unlinkSync(mergedRawPath);
   }

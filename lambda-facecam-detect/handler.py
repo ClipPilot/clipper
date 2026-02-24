@@ -26,6 +26,19 @@ FACECAM_CONFIG = {
     'edge_snap_px': 30,               # Snap to edge if within 30px
 }
 
+# Multi-face config: tuned for podcast/interview content with 2+ visible speakers
+MULTI_FACE_CONFIG = {
+    'min_confidence': 0.5,
+    'min_face_size_percent': 0.005,   # Keep min small for flexibility
+    'max_face_size_percent': 0.9,     # Podcast faces can be large
+    'num_sample_frames': 24,          # More frames for better consistency
+    'skip_percent': 0.05,
+    'min_consistent_detections': 3,
+    'outlier_threshold_px': 80,       # Wider threshold for talking head movement
+    'expand_factor': 2.5,
+    'edge_snap_px': 30,
+}
+
 BAKED_MODEL_DIR = "/var/task/models"
 CACHE_MODEL_DIR = "/tmp/face_models"
 
@@ -127,7 +140,7 @@ def extract_sample_frames(video_path: str, num_frames: int = 12, skip_percent: f
     return frame_paths
 
 
-def detect_face_bboxes_in_frame(net, frame_path: str) -> List[Dict[str, Any]]:
+def detect_face_bboxes_in_frame(net, frame_path: str, config: Optional[Dict] = None) -> List[Dict[str, Any]]:
     """Detect faces and return bounding boxes with confidence scores.
 
     Returns list of {x, y, w, h, confidence} in pixel coordinates.
@@ -139,7 +152,8 @@ def detect_face_bboxes_in_frame(net, frame_path: str) -> List[Dict[str, Any]]:
 
     (h, w) = image.shape[:2]
     frame_area = w * h
-    config = FACECAM_CONFIG
+    if config is None:
+        config = FACECAM_CONFIG
 
     blob = cv2.dnn.blobFromImage(
         cv2.resize(image, (300, 300)),
@@ -381,6 +395,86 @@ def detect_corner(region: Dict[str, int], frame_w: int, frame_h: int) -> str:
     return f'{vertical}-{horizontal}'
 
 
+def handle_multi_face(net, video_path: str, frame_w: int, frame_h: int, context: Any) -> Dict[str, Any]:
+    """Detect ALL face positions for active-speaker mode.
+
+    Returns all live face clusters sorted left-to-right by center X.
+    Used for podcast/interview content with 2+ speakers.
+    """
+    config = MULTI_FACE_CONFIG
+
+    frame_paths = extract_sample_frames(
+        video_path,
+        num_frames=config['num_sample_frames'],
+        skip_percent=config['skip_percent'],
+    )
+    print(f"[MULTI-FACE] Extracted {len(frame_paths)} sample frames")
+
+    # Detect ALL faces in each frame using multi-face config
+    all_frame_faces: List[List[Dict]] = []
+    for i, frame_path in enumerate(frame_paths):
+        faces = detect_face_bboxes_in_frame(net, frame_path, config)
+        all_frame_faces.append(faces)
+
+        if context and (i + 1) % 6 == 0:
+            remaining_ms = context.get_remaining_time_in_millis()
+            print(f"[KEEP-ALIVE] Processed {i + 1}/{len(frame_paths)} frames | Lambda time remaining: {remaining_ms // 1000}s")
+
+    total_detections = sum(len(ff) for ff in all_frame_faces)
+    frames_with_faces = sum(1 for ff in all_frame_faces if ff)
+    print(f"[MULTI-FACE] Found {total_detections} faces across {frames_with_faces}/{len(frame_paths)} frames")
+
+    # Group faces by position
+    face_groups = group_faces_by_position(all_frame_faces, threshold_px=config['outlier_threshold_px'])
+    print(f"[MULTI-FACE] Found {len(face_groups)} face groups")
+
+    MOTION_THRESHOLD = 3.0
+    live_faces = []
+    for group in face_groups:
+        if len(group) < config['min_consistent_detections']:
+            continue
+        median_bbox = cluster_face_positions(group)
+        if median_bbox is None:
+            continue
+        motion = compute_face_motion(frame_paths, median_bbox, threshold=MOTION_THRESHOLD)
+        print(f"[MULTI-FACE] Group at ({median_bbox['x']},{median_bbox['y']}): {len(group)} detections, motion={motion:.1f}")
+        if motion >= MOTION_THRESHOLD:
+            live_faces.append(median_bbox)
+        else:
+            print(f"[MULTI-FACE] Filtered out static face (motion={motion:.1f})")
+
+    # Sort faces left-to-right by center X
+    live_faces.sort(key=lambda f: f['x'] + f['w'] / 2)
+
+    detection_rate = frames_with_faces / max(len(frame_paths), 1)
+
+    # Clean up frame temp directory
+    if frame_paths:
+        frame_dir = os.path.dirname(frame_paths[0])
+        shutil.rmtree(frame_dir, ignore_errors=True)
+
+    face_regions = [
+        {'x': f['x'], 'y': f['y'], 'w': f['w'], 'h': f['h']}
+        for f in live_faces
+    ]
+
+    print(f"[MULTI-FACE] Returning {len(face_regions)} live faces sorted left-to-right")
+
+    return {
+        'statusCode': 200,
+        'headers': {'Content-Type': 'application/json'},
+        'body': json.dumps({
+            'success': True,
+            'mode': 'multi-face',
+            'faces': face_regions,
+            'faceCount': len(face_regions),
+            'detectionRate': round(detection_rate, 2),
+            'frameWidth': frame_w,
+            'frameHeight': frame_h,
+        }),
+    }
+
+
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     print(f"[FACECAM-DETECT] Received event: {json.dumps(event)}")
 
@@ -392,6 +486,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             body = event
 
         video_url = body.get('video_url') or body.get('videoUrl')
+        mode = body.get('mode', 'facecam')  # 'facecam' (default) or 'multi-face'
 
         if not video_url:
             return {
@@ -410,7 +505,11 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             download_from_s3(video_url, video_path)
 
             duration, frame_w, frame_h = get_video_info(video_path)
-            print(f"[FACECAM-DETECT] Video: {duration:.1f}s, {frame_w}x{frame_h}")
+            print(f"[FACECAM-DETECT] Video: {duration:.1f}s, {frame_w}x{frame_h}, mode={mode}")
+
+            # Route to multi-face handler if requested
+            if mode == 'multi-face':
+                return handle_multi_face(net, video_path, frame_w, frame_h, context)
 
             if context:
                 remaining_ms = context.get_remaining_time_in_millis()

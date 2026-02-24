@@ -16,8 +16,10 @@ import { emailNotiService } from "../../services/emailNoti.service";
 import { userService } from "../../services/user.service";
 import { ensureOutputDir } from "../../utils/fileUtils";
 import { sanitizeErrorForFrontend } from "../../utils/errorSanitizer";
-import { detectFacecamFromS3Key } from "../../services/facecamDetect.service";
+import { detectFacecamFromS3Key, detectMultipleFacesFromS3Key } from "../../services/facecamDetect.service";
 import type { FacecamRegion } from "../../services/clips/videoEditor.service";
+import { buildSpeakerSegments, mapSpeakersToFaces } from "../../services/clips/speakerSegments.service";
+import type { ActiveSpeakerSegment } from "../../services/clips/speakerSegments.service";
 
 export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
   const { clipIds, teamId, userId, s3Key, options, originalFileName, fileSize } = job;
@@ -77,17 +79,60 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
     if (options.conversionMode === "gaming" || options.conversionMode === "speaker-zoom") {
       console.log(`[CLIP-PROCESSOR] Detecting facecam for ${options.conversionMode} mode...`);
       const result = await detectFacecamFromS3Key(s3Key);
-      if (result?.facecamDetected && result.facecamRegion) {
-        facecamRegion = result.facecamRegion;
-        console.log(`[CLIP-PROCESSOR] Facecam detected at ${result.corner}: ${JSON.stringify(facecamRegion)}`);
+      if (result?.facecamDetected) {
+        // Gaming uses the expanded webcam region; speaker-zoom uses the raw face bbox
+        if (options.conversionMode === "speaker-zoom" && result.faceRegion) {
+          facecamRegion = result.faceRegion;
+          console.log(`[CLIP-PROCESSOR] Face detected (raw): ${JSON.stringify(facecamRegion)}`);
+        } else if (result.facecamRegion) {
+          facecamRegion = result.facecamRegion;
+          console.log(`[CLIP-PROCESSOR] Facecam detected at ${result.corner}: ${JSON.stringify(facecamRegion)}`);
+        }
       } else {
         console.warn(`[CLIP-PROCESSOR] No facecam detected — will fall back to blurred-bg`);
       }
     }
 
+    // Active-speaker mode: detect multiple faces and build speaker-face mapping
+    let activeSpeakerSegments: ActiveSpeakerSegment[] | undefined;
+    let speakerFaceMap: Map<number, FacecamRegion> | undefined;
+
     const transcriptionWords = transcriptionData
-      ? transcriptionData.results.channels[0].alternatives[0].words
+      ? transcriptionData.results.channels[0].alternatives[0].words.map(w => ({
+          start: w.start,
+          end: w.end,
+          punctuated_word: w.punctuated_word,
+          speaker: w.speaker,
+        }))
       : [];
+
+    if (options.conversionMode === "active-speaker") {
+      console.log(`[CLIP-PROCESSOR] Active-speaker mode: detecting multiple faces...`);
+      const multiFaceResult = await detectMultipleFacesFromS3Key(s3Key);
+
+      if (multiFaceResult && multiFaceResult.faceCount > 0) {
+        console.log(`[CLIP-PROCESSOR] Found ${multiFaceResult.faceCount} faces`);
+
+        // Build speaker segments from diarized words
+        const segments = buildSpeakerSegments(transcriptionWords);
+        const uniqueSpeakers = [...new Set(segments.map(s => s.speaker))];
+        console.log(`[CLIP-PROCESSOR] Found ${segments.length} segments from ${uniqueSpeakers.length} speakers`);
+
+        if (segments.length > 1 && multiFaceResult.faceCount >= 2) {
+          // Map speakers to faces
+          speakerFaceMap = mapSpeakersToFaces(uniqueSpeakers, multiFaceResult.faces);
+          activeSpeakerSegments = segments;
+          console.log(`[CLIP-PROCESSOR] Active speaker mapping ready: ${uniqueSpeakers.length} speakers → ${multiFaceResult.faceCount} faces`);
+        } else if (multiFaceResult.faceCount >= 1) {
+          // Single speaker or single face — use first face as static zoom fallback
+          facecamRegion = multiFaceResult.faces[0];
+          console.log(`[CLIP-PROCESSOR] Single speaker/face — using static zoom on first face`);
+        }
+      } else {
+        console.warn(`[CLIP-PROCESSOR] No faces detected for active-speaker — will fall back to blurred-bg`);
+      }
+    }
+
     const clipServiceOptions = {
       customText: options.customText,
       textPosition: options.textPosition,
@@ -98,6 +143,8 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
       captionFont: options.captionFont,
       conversionMode: options.conversionMode,
       facecamRegion,
+      activeSpeakerSegments,
+      speakerFaceMap,
     };
 
     console.log(`Processing ${clipSuggestionsArray.length} clips sequentially...`);

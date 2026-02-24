@@ -5,6 +5,7 @@ import puppeteer from "puppeteer";
 import path from "path";
 import { MOBILE_VIDEO_SETTINGS, COMPRESSION } from "../../config/ffmpegSettings";
 import type { ConversionMode } from "../../constants/conversionModes";
+import type { ActiveSpeakerSegment } from "./speakerSegments.service";
 
 export interface FacecamRegion {
   x: number;
@@ -803,6 +804,154 @@ export const convertToCenterCrop = async (
 };
 
 /**
+ * Convert a horizontal video to 9:16 with dynamic active speaker zoom.
+ *
+ * For each speaker segment, crops a 9:16 region centered on that speaker's face,
+ * then concatenates all segments. Uses trim→crop→scale per segment with concat demuxer.
+ */
+export const convertToActiveSpeakerZoom = async (
+  inputPath: string,
+  outputPath: string,
+  segments: ActiveSpeakerSegment[],
+  speakerFaceMap: Map<number, FacecamRegion>,
+): Promise<string> => {
+  const metadata = await getVideoMetadata(inputPath);
+  const { width, height } = metadata;
+
+  if (height >= width) {
+    console.log(`[ACTIVE-SPEAKER] Already vertical (${width}x${height}), skipping`);
+    fs.copyFileSync(inputPath, outputPath);
+    return outputPath;
+  }
+
+  console.log(`[ACTIVE-SPEAKER] Processing ${segments.length} speaker segments from ${width}x${height}`);
+
+  // Calculate 9:16 crop dimensions (same logic as speaker-zoom)
+  const targetRatio = 9 / 16;
+  let cropW: number;
+  let cropH: number;
+
+  cropH = height;
+  cropW = Math.round(height * targetRatio);
+
+  if (cropW > width) {
+    cropW = width;
+    cropH = Math.round(width / targetRatio);
+  }
+
+  const tempDir = path.dirname(outputPath);
+  const timestamp = Date.now();
+  const segmentPaths: string[] = [];
+
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
+    const face = speakerFaceMap.get(seg.speaker);
+
+    if (!face) {
+      console.warn(`[ACTIVE-SPEAKER] No face for speaker ${seg.speaker}, using center crop`);
+    }
+
+    // Center crop on the speaker's face (or center of frame if no face)
+    const faceCenterX = face ? face.x + face.w / 2 : width / 2;
+    const faceCenterY = face ? face.y + face.h / 2 : height / 2;
+
+    let cropX = Math.round(faceCenterX - cropW / 2);
+    cropX = Math.max(0, Math.min(cropX, width - cropW));
+
+    let cropY = Math.round(faceCenterY - cropH / 2);
+    cropY = Math.max(0, Math.min(cropY, height - cropH));
+
+    const segmentPath = path.join(tempDir, `as_seg_${i}_${timestamp}.mp4`);
+    const duration = seg.end - seg.start;
+
+    console.log(`[ACTIVE-SPEAKER] Segment ${i}: speaker=${seg.speaker} ${seg.start.toFixed(2)}s-${seg.end.toFixed(2)}s crop=(${cropX},${cropY}) ${cropW}x${cropH}`);
+
+    await new Promise<void>((resolve, reject) => {
+      ffmpeg(inputPath)
+        .setStartTime(seg.start)
+        .setDuration(duration)
+        .complexFilter([
+          {
+            filter: "crop",
+            options: { w: cropW, h: cropH, x: cropX, y: cropY },
+            inputs: "0:v",
+            outputs: "cropped",
+          },
+          {
+            filter: "scale",
+            options: { w: 1080, h: 1920 },
+            inputs: "cropped",
+            outputs: "v",
+          },
+        ])
+        .outputOptions([
+          "-map", "[v]",
+          "-map", "0:a?",
+          "-c:v libx264",
+          "-preset fast",
+          "-crf 23",
+          ...MOBILE_VIDEO_SETTINGS,
+          "-c:a aac",
+          "-b:a 128k",
+          "-ar 48000",
+          "-avoid_negative_ts make_zero",
+          "-reset_timestamps 1",
+          "-movflags +faststart",
+        ])
+        .save(segmentPath)
+        .on("end", () => resolve())
+        .on("error", (err) => reject(err));
+    });
+
+    segmentPaths.push(segmentPath);
+  }
+
+  // Concatenate all segments
+  if (segmentPaths.length === 1) {
+    fs.renameSync(segmentPaths[0], outputPath);
+  } else {
+    const concatListPath = path.join(tempDir, `as_concat_${timestamp}.txt`);
+    const concatContent = segmentPaths
+      .map((p) => `file '${p.replace(/'/g, "'\\''")}'`)
+      .join("\n");
+    fs.writeFileSync(concatListPath, concatContent);
+
+    await new Promise<void>((resolve, reject) => {
+      ffmpeg()
+        .input(concatListPath)
+        .inputOptions(["-f concat", "-safe 0"])
+        .outputOptions([
+          "-c:v libx264",
+          "-preset fast",
+          "-crf 23",
+          ...MOBILE_VIDEO_SETTINGS,
+          "-c:a aac",
+          "-b:a 128k",
+          "-ar 48000",
+          "-movflags +faststart",
+        ])
+        .save(outputPath)
+        .on("end", () => {
+          fs.unlinkSync(concatListPath);
+          resolve();
+        })
+        .on("error", (err) => {
+          if (fs.existsSync(concatListPath)) fs.unlinkSync(concatListPath);
+          reject(err);
+        });
+    });
+
+    // Clean up segment temp files
+    for (const p of segmentPaths) {
+      if (fs.existsSync(p)) fs.unlinkSync(p);
+    }
+  }
+
+  console.log(`[ACTIVE-SPEAKER] Converted: ${outputPath}`);
+  return outputPath;
+};
+
+/**
  * Dispatcher: convert horizontal video to vertical using the specified mode.
  * Falls back to blurred-bg when face detection returns null for modes that need it.
  */
@@ -811,6 +960,10 @@ export const convertToVertical = async (
   outputPath: string,
   mode?: ConversionMode,
   facecamRegion?: FacecamRegion | null,
+  activeSpeakerOptions?: {
+    segments: ActiveSpeakerSegment[];
+    speakerFaceMap: Map<number, FacecamRegion>;
+  } | null,
 ): Promise<string> => {
   const effectiveMode = mode || "standard";
 
@@ -830,6 +983,22 @@ export const convertToVertical = async (
         return convertToSpeakerZoom(inputPath, outputPath, facecamRegion);
       }
       console.warn("[VERTICAL] Speaker-zoom mode but no face region — falling back to standard");
+      return convertToVerticalBlur(inputPath, outputPath);
+
+    case "active-speaker":
+      if (activeSpeakerOptions && activeSpeakerOptions.segments.length > 1) {
+        return convertToActiveSpeakerZoom(
+          inputPath, outputPath,
+          activeSpeakerOptions.segments,
+          activeSpeakerOptions.speakerFaceMap,
+        );
+      }
+      // Fallback: single speaker with face → static zoom, no face → blurred bg
+      if (facecamRegion) {
+        console.warn("[VERTICAL] Active-speaker but single speaker/face — falling back to speaker-zoom");
+        return convertToSpeakerZoom(inputPath, outputPath, facecamRegion);
+      }
+      console.warn("[VERTICAL] Active-speaker but no faces detected — falling back to standard");
       return convertToVerticalBlur(inputPath, outputPath);
 
     case "standard":

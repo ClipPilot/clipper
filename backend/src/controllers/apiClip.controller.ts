@@ -243,7 +243,7 @@ async function uploadAndDispatch(params: {
   captionColor: string;
   originalFileName?: string;
   fileSize?: number;
-  conversionMode?: "standard" | "gaming" | "speaker-zoom" | "center-crop";
+  conversionMode?: "standard" | "gaming" | "speaker-zoom" | "center-crop" | "active-speaker";
 }) {
   const {
     teamId, userId, clipIds, localVideoPath,
