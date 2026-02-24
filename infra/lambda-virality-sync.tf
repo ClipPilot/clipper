@@ -1,5 +1,9 @@
 # Lambda function to sync virality targets via Apify
+<<<<<<< HEAD
 # Runs every 12 hours via EventBridge -> Step Functions
+=======
+# Runs every 12 hours via EventBridge
+>>>>>>> 341a7487ba04629b122909390709e27fdee68f45
 
 # Import existing resources into state (remove these blocks after first successful apply)
 import {
@@ -179,7 +183,11 @@ resource "aws_cloudwatch_log_group" "virality_sync_lambda" {
 # EventBridge Rule - Run every 12 hours
 resource "aws_cloudwatch_event_rule" "virality_sync_schedule" {
   name                = "${var.project_name}-virality-sync-schedule-${var.environment}"
+<<<<<<< HEAD
   description         = "Trigger virality-sync Step Function every 12 hours"
+=======
+  description         = "Trigger virality-sync Lambda every 12 hours"
+>>>>>>> 341a7487ba04629b122909390709e27fdee68f45
   schedule_expression = "cron(0 */12 * * ? *)"
 
   tags = {

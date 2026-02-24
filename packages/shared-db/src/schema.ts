@@ -813,6 +813,9 @@ export const massPostingApplications = pgTable(
     admin_notes: text("admin_notes"),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
+    quoted_cpm: decimal("quoted_cpm", { precision: 10, scale: 2 }),
+    budget: decimal("budget", { precision: 12, scale: 2 }),
+    videoMinimum: integer("video_minimum"),
   },
   (table) => ({
     teamIdx: index("mass_posting_applications_team_id_idx").on(table.team_id),
@@ -928,7 +931,9 @@ export const viralityAccounts = pgTable(
       { onDelete: "cascade" },
     ),
     platform: viralityPlatformEnum("platform").notNull(),
-    account_type: varchar("account_type", { length: 20 }).notNull().default("profile"),
+    account_type: varchar("account_type", { length: 20 })
+      .notNull()
+      .default("profile"),
     username: varchar("username", { length: 255 }).notNull(),
     profile_url: text("profile_url").notNull(),
     display_name: varchar("display_name", { length: 255 }),
@@ -1103,7 +1108,9 @@ export const viralitySettings = pgTable(
       .references(() => teams.id, { onDelete: "cascade" }),
     percent_threshold: integer("percent_threshold"),
     absolute_threshold: integer("absolute_threshold"),
-    threshold_mode: viralityThresholdModeEnum("threshold_mode").notNull().default("or"),
+    threshold_mode: viralityThresholdModeEnum("threshold_mode")
+      .notNull()
+      .default("or"),
     time_frame_hours: integer("time_frame_hours").notNull().default(24),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
@@ -1112,7 +1119,6 @@ export const viralitySettings = pgTable(
     uniqueTeam: unique("virality_settings_team_unique").on(table.team_id),
   }),
 ).enableRLS();
-
 
 export const genderEnum = pgEnum("gender_enum", ["male", "female", "other"]);
 export const clonedVoices = pgTable("cloned_voices", {

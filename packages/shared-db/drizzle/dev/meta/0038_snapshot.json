@@ -1,5 +1,9 @@
 {
+<<<<<<< HEAD
   "id": "bbadb01a-423c-43c6-b1fb-e98d5758ba9c",
+=======
+  "id": "bc08f62a-dce6-42b8-b2a7-11406bb3e49b",
+>>>>>>> 341a7487ba04629b122909390709e27fdee68f45
   "prevId": "795efc6b-26f0-4b83-8a7c-ba0e50573b7e",
   "version": "7",
   "dialect": "postgresql",
@@ -2362,6 +2366,27 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+<<<<<<< HEAD
+=======
+        },
+        "quoted_cpm": {
+          "name": "quoted_cpm",
+          "type": "numeric(10, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "budget": {
+          "name": "budget",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "video_minimum": {
+          "name": "video_minimum",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+>>>>>>> 341a7487ba04629b122909390709e27fdee68f45
         }
       },
       "indexes": {
@@ -4397,6 +4422,7 @@
       "checkConstraints": {},
       "isRLSEnabled": true
     },
+<<<<<<< HEAD
     "public.user_accounts": {
       "name": "user_accounts",
       "schema": "",
@@ -4598,6 +4624,8 @@
       "checkConstraints": {},
       "isRLSEnabled": true
     },
+=======
+>>>>>>> 341a7487ba04629b122909390709e27fdee68f45
     "public.user_announcement_dismissals": {
       "name": "user_announcement_dismissals",
       "schema": "",
@@ -4703,6 +4731,7 @@
       "checkConstraints": {},
       "isRLSEnabled": true
     },
+<<<<<<< HEAD
     "public.user_posts": {
       "name": "user_posts",
       "schema": "",
@@ -4871,6 +4900,8 @@
       "checkConstraints": {},
       "isRLSEnabled": true
     },
+=======
+>>>>>>> 341a7487ba04629b122909390709e27fdee68f45
     "public.user_preferences": {
       "name": "user_preferences",
       "schema": "",

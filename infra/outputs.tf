@@ -116,3 +116,4 @@ output "status_dynamodb_table" {
   value       = aws_dynamodb_table.status_checks.name
 }
 
+

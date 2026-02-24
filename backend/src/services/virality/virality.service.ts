@@ -39,10 +39,13 @@ interface FollowerEntry {
 // ── Base class: shared account tracking logic ───────────────────────────────
 
 export class AccountTrackingService {
-  constructor(
-    protected accountsTable: any,
-    protected postsTable: any
-  ) {}
+  protected accountsTable: any;
+  protected postsTable: any;
+
+  constructor(accountsTable: any, postsTable: any) {
+    this.accountsTable = accountsTable;
+    this.postsTable = postsTable;
+  }
 
   // ── Stale sync cleanup ──
 
@@ -64,7 +67,7 @@ export class AccountTrackingService {
           lte(this.accountsTable.updated_at, cutoff)
         )
       )
-      .returning({ id: this.accountsTable.id, username: this.accountsTable.username });
+      .returning({ id: this.accountsTable.id, username: this.accountsTable.username }) as any[];
 
     if (stale.length > 0) {
       console.log(`[Cleanup] Reset ${stale.length} stale syncs: ${stale.map((s: any) => `@${s.username}`).join(", ")}`);
@@ -84,20 +87,20 @@ export class AccountTrackingService {
   }
 
   async getAccountById(accountId: number) {
-    const [account] = await db
+    const rows = await db
       .select()
       .from(this.accountsTable)
       .where(eq(this.accountsTable.id, accountId))
-      .limit(1);
-    return account || null;
+      .limit(1) as any[];
+    return rows[0] || null;
   }
 
   async getAccountCount(teamId: number): Promise<number> {
-    const [result] = await db
+    const rows = await db
       .select({ count: count() })
       .from(this.accountsTable)
-      .where(eq(this.accountsTable.team_id, teamId));
-    return result?.count || 0;
+      .where(eq(this.accountsTable.team_id, teamId)) as any[];
+    return rows[0]?.count || 0;
   }
 
   async addAccount(
@@ -120,7 +123,7 @@ export class AccountTrackingService {
     }
 
     // Check if account already exists
-    const [existing] = await db
+    const existingRows = await db
       .select()
       .from(this.accountsTable)
       .where(
@@ -130,9 +133,9 @@ export class AccountTrackingService {
           eq(this.accountsTable.username, username)
         )
       )
-      .limit(1);
+      .limit(1) as any[];
 
-    if (existing) {
+    if (existingRows[0]) {
       const label = accountType === "hashtag" ? `#${username}` : accountType === "keyword" ? `"${username}"` : `@${username}`;
       throw new Error(`${label} is already being tracked`);
     }
@@ -163,7 +166,7 @@ export class AccountTrackingService {
       profile_url = keywordUrlMap[platform];
     }
 
-    const [account] = await db
+    const inserted = await db
       .insert(this.accountsTable)
       .values({
         team_id: teamId,
@@ -173,7 +176,9 @@ export class AccountTrackingService {
         profile_url,
         sync_status: "pending",
       })
-      .returning();
+      .returning() as any[];
+
+    const account = inserted[0];
 
     // Charge 1 credit immediately on account creation
     const { success } = await teamService.consumeClip(teamId);
@@ -202,16 +207,16 @@ export class AccountTrackingService {
       throw new Error("Account not found or access denied");
     }
 
-    const [updated] = await db
+    const updated = await db
       .update(this.accountsTable)
       .set({
         is_active: isActive,
         updated_at: new Date(),
       })
       .where(eq(this.accountsTable.id, accountId))
-      .returning();
+      .returning() as any[];
 
-    return updated;
+    return updated[0];
   }
 
   async syncAccount(accountId: number, teamId: number) {
@@ -269,7 +274,6 @@ export class AccountTrackingService {
       let profile: InstagramProfile | null = null;
 
       if (account.account_type === "hashtag") {
-        // Hashtag search
         const result = account.platform === "tiktok"
           ? await apify.scrapeTikTokHashtag(account.username)
           : account.platform === "x"
@@ -277,7 +281,6 @@ export class AccountTrackingService {
             : await apify.scrapeInstagramHashtag(account.username);
         posts = result.posts;
       } else if (account.account_type === "keyword") {
-        // Keyword search — X uses searchTerms, IG/TikTok fall back to hashtag
         const result = account.platform === "x"
           ? await apify.scrapeXKeywordSearch(account.username)
           : account.platform === "tiktok"
@@ -285,7 +288,6 @@ export class AccountTrackingService {
             : await apify.scrapeInstagramHashtag(account.username);
         posts = result.posts;
       } else {
-        // Profile (default)
         const result = account.platform === "tiktok"
           ? await apify.scrapeTikTokPosts(account.username)
           : account.platform === "x"
@@ -299,7 +301,6 @@ export class AccountTrackingService {
 
       // Only update profile for profile-type accounts
       if (account.account_type === "profile") {
-        // For IG/TikTok: use the full profile from Apify (or fetch it separately for IG)
         const resolvedProfile = profile
           ?? (account.platform === "instagram"
             ? await apify.scrapeInstagramProfile(account.username)
@@ -309,7 +310,6 @@ export class AccountTrackingService {
           await this.updateAccountProfile(accountId, resolvedProfile);
         }
 
-        // For X: fetch follower count separately from SocialData (only source for X followers)
         if (account.platform === "x") {
           const xFollowers = await apify.fetchXFollowerCount(account.username);
           if (xFollowers) {
@@ -324,10 +324,10 @@ export class AccountTrackingService {
       }
 
       // Compute total_likes from all posts for this account
-      const [likesResult] = await db
+      const likesRows = await db
         .select({ total: sql<number>`COALESCE(SUM(${this.postsTable.like_count}), 0)` })
         .from(this.postsTable)
-        .where(eq(this.postsTable.account_id, accountId));
+        .where(eq(this.postsTable.account_id, accountId)) as any[];
 
       // Update sync status + total_likes
       await db
@@ -335,7 +335,7 @@ export class AccountTrackingService {
         .set({
           sync_status: "completed",
           last_synced_at: new Date(),
-          total_likes: Number(likesResult.total),
+          total_likes: Number(likesRows[0].total),
           updated_at: new Date(),
         })
         .where(eq(this.accountsTable.id, accountId));
@@ -366,14 +366,14 @@ export class AccountTrackingService {
     accountId: number,
     profileData: Partial<InstagramProfile>
   ) {
-    // Fetch existing account to get current follower_history
-    const [existing] = await db
+    const existingRows = await db
       .select({ follower_history: this.accountsTable.follower_history })
       .from(this.accountsTable)
       .where(eq(this.accountsTable.id, accountId))
-      .limit(1);
+      .limit(1) as any[];
 
-    // Append to follower_history
+    const existing = existingRows[0];
+
     const history: FollowerEntry[] = Array.isArray(existing?.follower_history)
       ? [...(existing.follower_history as FollowerEntry[])]
       : [];
@@ -414,7 +414,6 @@ export class AccountTrackingService {
   ) {
     if (!postData.id) return;
 
-    // Skip posts outside the scrape window
     if (postData.timestamp) {
       const postDate = new Date(postData.timestamp);
       const cutoff = new Date();
@@ -422,7 +421,7 @@ export class AccountTrackingService {
       if (postDate < cutoff) return;
     }
 
-    const [existingPost] = await db
+    const existingRows = await db
       .select()
       .from(this.postsTable)
       .where(
@@ -431,7 +430,9 @@ export class AccountTrackingService {
           eq(this.postsTable.platform_post_id, postData.id)
         )
       )
-      .limit(1);
+      .limit(1) as any[];
+
+    const existingPost = existingRows[0];
 
     const newMetric: MetricsEntry = {
       recorded_at: new Date().toISOString(),
@@ -492,7 +493,6 @@ export class AccountTrackingService {
     startDate?: Date,
     endDate?: Date
   ) {
-    // Verify ownership
     const account = await this.getAccountById(accountId);
     if (!account || account.team_id !== teamId) {
       throw new Error("Account not found or access denied");
@@ -524,7 +524,7 @@ export class AccountTrackingService {
     if (startDate) conditions.push(gte(this.postsTable.posted_at, startDate));
     if (endDate) conditions.push(lte(this.postsTable.posted_at, endDate));
 
-    const [result] = await db
+    const rows = await db
       .select({
         totalLikes: sql<number>`COALESCE(SUM(${this.postsTable.like_count}), 0)`,
         totalComments: sql<number>`COALESCE(SUM(${this.postsTable.comment_count}), 0)`,
@@ -532,7 +532,9 @@ export class AccountTrackingService {
         postCount: count(),
       })
       .from(this.postsTable)
-      .where(and(...conditions));
+      .where(and(...conditions)) as any[];
+
+    const result = rows[0];
 
     return {
       totalLikes: Number(result.totalLikes),
@@ -561,7 +563,7 @@ export class AccountTrackingService {
       })
       .from(this.postsTable)
       .where(and(...conditions))
-      .groupBy(this.postsTable.account_id);
+      .groupBy(this.postsTable.account_id) as any[];
 
     const stats: Record<number, { totalViews: number; postCount: number }> = {};
     for (const row of rows) {
@@ -574,7 +576,7 @@ export class AccountTrackingService {
   }
 
   async getDashboardStats(teamId: number, startDate?: Date, endDate?: Date) {
-    const accounts = await this.getAccountsByTeam(teamId);
+    const accounts = await this.getAccountsByTeam(teamId) as any[];
     const accountIds = accounts.map((a: any) => a.id);
 
     let totalFollowers = 0;
@@ -592,7 +594,6 @@ export class AccountTrackingService {
     let avgViewsPerPost: number;
 
     if (hasDateFilter) {
-      // Use post-level aggregation filtered by date
       const postsStats = await this.getPostsStatsByAccounts(accountIds, startDate, endDate);
       totalLikes = postsStats.totalLikes;
       totalPosts = postsStats.postCount;
@@ -601,14 +602,12 @@ export class AccountTrackingService {
         ? Math.round(postsStats.totalViews / postsStats.postCount)
         : 0;
     } else {
-      // Use profile-level stats for likes/posts (backward compatible)
       totalLikes = 0;
       totalPosts = 0;
       for (const account of accounts) {
         totalLikes += account.total_likes || 0;
         totalPosts += account.post_count || 0;
       }
-      // Views must come from posts table (not stored on accounts)
       const postsStats = await this.getPostsStatsByAccounts(accountIds);
       totalViews = postsStats.totalViews;
       avgViewsPerPost = postsStats.postCount > 0
@@ -616,7 +615,6 @@ export class AccountTrackingService {
         : 0;
     }
 
-    // Per-account post stats for the AccountsTable
     const accountPostStats = await this.getPostsStatsByAccount(accountIds, startDate, endDate);
 
     return {
@@ -760,7 +758,6 @@ class ViralityService extends AccountTrackingService {
       throw new Error("Competitor not found or access denied");
     }
 
-    // Clean up stale syncs so the UI doesn't show ghost spinners
     await this.cleanupStaleSyncs();
 
     const accounts = await db

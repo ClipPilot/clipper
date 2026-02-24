@@ -30,68 +30,75 @@ function ninetyDaysAgo(): string {
 }
 
 export async function recordCheck(check: ServiceCheck): Promise<void> {
-  const client = getClient();
-  if (!client) return;
+  try {
+    const client = getClient();
 
-  const failed = check.status === "outage" ? 1 : 0;
-  const ttl = Math.floor(Date.now() / 1000) + TTL_DAYS * 86400;
+    const failed = check.status === "outage" ? 1 : 0;
+    const ttl = Math.floor(Date.now() / 1000) + TTL_DAYS * 86400;
 
-  await client.send(
-    new UpdateCommand({
-      TableName: TABLE_NAME,
-      Key: { serviceId: check.id, date: todayUTC() },
-      UpdateExpression:
-        "ADD checks :one, failures :f, totalResponseTime :rt SET expiresAt = :ttl",
-      ExpressionAttributeValues: {
-        ":one": 1,
-        ":f": failed,
-        ":rt": check.responseTime,
-        ":ttl": ttl,
-      },
-    })
-  );
+    await client.send(
+      new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: { serviceId: check.id, date: todayUTC() },
+        UpdateExpression:
+          "ADD checks :one, failures :f, totalResponseTime :rt SET expiresAt = :ttl",
+        ExpressionAttributeValues: {
+          ":one": 1,
+          ":f": failed,
+          ":rt": check.responseTime,
+          ":ttl": ttl,
+        },
+      })
+    );
+  } catch (err) {
+    console.error(`[store] Failed to record check for ${check.id}:`, err);
+  }
 }
 
 export async function recordChecks(checks: ServiceCheck[]): Promise<void> {
-  await Promise.all(checks.map(recordCheck));
+  await Promise.allSettled(checks.map(recordCheck));
 }
 
 export async function getHistory(serviceId: string): Promise<DailyUptime[]> {
-  const client = getClient();
-  if (!client) return [];
+  try {
+    const client = getClient();
 
-  const result = await client.send(
-    new QueryCommand({
-      TableName: TABLE_NAME,
-      KeyConditionExpression: "serviceId = :sid AND #d >= :start",
-      ExpressionAttributeNames: { "#d": "date" },
-      ExpressionAttributeValues: {
-        ":sid": serviceId,
-        ":start": ninetyDaysAgo(),
-      },
-      ScanIndexForward: true,
-    })
-  );
+    const result = await client.send(
+      new QueryCommand({
+        TableName: TABLE_NAME,
+        KeyConditionExpression: "serviceId = :sid AND #d >= :start",
+        ExpressionAttributeNames: { "#d": "date" },
+        ExpressionAttributeValues: {
+          ":sid": serviceId,
+          ":start": ninetyDaysAgo(),
+        },
+        ScanIndexForward: true,
+      })
+    );
 
-  return (result.Items || []).map((item) => ({
-    date: item.date as string,
-    checks: (item.checks as number) || 0,
-    failures: (item.failures as number) || 0,
-    avgResponseTime:
-      (item.checks as number) > 0
-        ? Math.round((item.totalResponseTime as number) / (item.checks as number))
-        : 0,
-    uptimePercent:
-      (item.checks as number) > 0
-        ? Number(
-            (
-              (((item.checks as number) - (item.failures as number)) /
-                (item.checks as number)) *
-              100
-            ).toFixed(2)
-          )
-        : 100,
-  }));
+    return (result.Items || []).map((item) => ({
+      date: item.date as string,
+      checks: (item.checks as number) || 0,
+      failures: (item.failures as number) || 0,
+      avgResponseTime:
+        (item.checks as number) > 0
+          ? Math.round((item.totalResponseTime as number) / (item.checks as number))
+          : 0,
+      uptimePercent:
+        (item.checks as number) > 0
+          ? Number(
+              (
+                (((item.checks as number) - (item.failures as number)) /
+                  (item.checks as number)) *
+                100
+              ).toFixed(2)
+            )
+          : 100,
+    }));
+  } catch (err) {
+    console.error(`[store] Failed to get history for ${serviceId}:`, err);
+    return [];
+  }
 }
 
 export async function getAllHistory(

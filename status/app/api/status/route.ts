@@ -15,34 +15,42 @@ function calcUptime90d(history: DailyUptime[]): number | null {
 }
 
 export async function GET() {
-  const serviceIds = serviceConfigs.map((s) => s.id);
-  const [checks, historyMap] = await Promise.all([
-    checkAllServices(),
-    getAllHistory(serviceIds),
-  ]);
+  try {
+    const serviceIds = serviceConfigs.map((s) => s.id);
+    const [checks, historyMap] = await Promise.all([
+      checkAllServices(),
+      getAllHistory(serviceIds),
+    ]);
 
-  recordChecks(checks.services).catch((err) => {
-    console.error("[status] Failed to record checks to DynamoDB:", err);
-  });
+    recordChecks(checks.services).catch((err) => {
+      console.error("[status] Failed to record checks to DynamoDB:", err);
+    });
 
-  const services: ServiceWithHistory[] = checks.services.map((check) => {
-    const history = historyMap[check.id] || [];
-    return {
-      ...check,
-      history,
-      uptimePercent90d: calcUptime90d(history),
+    const services: ServiceWithHistory[] = checks.services.map((check) => {
+      const history = historyMap[check.id] || [];
+      return {
+        ...check,
+        history,
+        uptimePercent90d: calcUptime90d(history),
+      };
+    });
+
+    const response: StatusResponse = {
+      overall: checks.overall,
+      services,
+      checkedAt: checks.checkedAt,
     };
-  });
 
-  const response: StatusResponse = {
-    overall: checks.overall,
-    services,
-    checkedAt: checks.checkedAt,
-  };
-
-  return NextResponse.json(response, {
-    headers: {
-      "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
-    },
-  });
+    return NextResponse.json(response, {
+      headers: {
+        "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
+      },
+    });
+  } catch (err) {
+    console.error("[/api/status] Error:", err);
+    return NextResponse.json(
+      { error: "Failed to check services", message: String(err) },
+      { status: 500 }
+    );
+  }
 }

@@ -92,6 +92,10 @@ describe("VideoDownloadService", () => {
       });
 
       expect(mockSpawn).toHaveBeenCalledWith("yt-dlp", [
+        "--js-runtimes",
+        "nodejs",
+        "--max-filesize",
+        "2G",
         "--dump-json",
         "--no-download",
         "https://youtube.com/watch?v=abc",

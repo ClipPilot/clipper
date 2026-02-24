@@ -23,7 +23,7 @@ export interface UploadProgress {
   speed: number;
 }
 
-export type ConversionMode = "standard" | "gaming" | "speaker-zoom" | "center-crop";
+export type ConversionMode = "standard" | "gaming" | "speaker-zoom" | "center-crop" | "active-speaker";
 
 export interface SubmitClipParams {
   teamId: number;
