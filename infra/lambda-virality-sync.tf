@@ -1,5 +1,5 @@
 # Lambda function to sync virality targets via Apify
-# Runs every 12 hours via EventBridge
+# Runs every 12 hours via EventBridge -> Step Functions
 
 # Import existing resources into state (remove these blocks after first successful apply)
 import {
@@ -86,14 +86,18 @@ resource "aws_iam_role_policy_attachment" "virality_sync_lambda_basic" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
-# Virality Sync Lambda Function
-resource "aws_lambda_function" "virality_sync" {
-  function_name = "${var.project_name}-virality-sync-${var.environment}"
+# Orchestrator Lambda — lightweight, fetches accounts only
+resource "aws_lambda_function" "virality_sync_orchestrator" {
+  function_name = "${var.project_name}-virality-sync-orchestrator-${var.environment}"
   role          = aws_iam_role.virality_sync_lambda.arn
   package_type  = "Image"
   image_uri     = "${aws_ecr_repository.virality_sync_lambda.repository_url}:latest"
-  timeout       = 900
-  memory_size   = 512
+  timeout       = 60
+  memory_size   = 256
+
+  image_config {
+    command = ["lambda-virality-sync/dist/handler.orchestratorHandler"]
+  }
 
   environment {
     variables = {
@@ -103,21 +107,67 @@ resource "aws_lambda_function" "virality_sync" {
     }
   }
 
-  depends_on = [
-    aws_iam_role_policy_attachment.virality_sync_lambda_basic
-  ]
-
-  lifecycle {
-    ignore_changes = [image_uri]
-  }
+  depends_on = [aws_iam_role_policy_attachment.virality_sync_lambda_basic]
+  lifecycle { ignore_changes = [image_uri] }
 
   tags = {
-    Name        = "${var.project_name}-virality-sync-${var.environment}"
+    Name        = "${var.project_name}-virality-sync-orchestrator-${var.environment}"
     Environment = var.environment
   }
 }
 
-# CloudWatch Log Group for Virality Sync Lambda
+# Worker Lambda — handles single account sync
+resource "aws_lambda_function" "virality_sync_worker" {
+  function_name = "${var.project_name}-virality-sync-worker-${var.environment}"
+  role          = aws_iam_role.virality_sync_lambda.arn
+  package_type  = "Image"
+  image_uri     = "${aws_ecr_repository.virality_sync_lambda.repository_url}:latest"
+  timeout       = 900
+  memory_size   = 512
+
+  image_config {
+    command = ["lambda-virality-sync/dist/handler.workerHandler"]
+  }
+
+  environment {
+    variables = {
+      DATABASE_URL       = var.database_url
+      APIFY_API_TOKEN    = var.apify_api_token
+      SOCIALDATA_API_KEY = var.socialdata_api_key
+    }
+  }
+
+  depends_on = [aws_iam_role_policy_attachment.virality_sync_lambda_basic]
+  lifecycle { ignore_changes = [image_uri] }
+
+  tags = {
+    Name        = "${var.project_name}-virality-sync-worker-${var.environment}"
+    Environment = var.environment
+  }
+}
+
+# CloudWatch Log Groups
+resource "aws_cloudwatch_log_group" "virality_sync_orchestrator" {
+  name              = "/aws/lambda/${var.project_name}-virality-sync-orchestrator-${var.environment}"
+  retention_in_days = 14
+
+  tags = {
+    Name        = "${var.project_name}-virality-sync-orchestrator-logs-${var.environment}"
+    Environment = var.environment
+  }
+}
+
+resource "aws_cloudwatch_log_group" "virality_sync_worker" {
+  name              = "/aws/lambda/${var.project_name}-virality-sync-worker-${var.environment}"
+  retention_in_days = 14
+
+  tags = {
+    Name        = "${var.project_name}-virality-sync-worker-logs-${var.environment}"
+    Environment = var.environment
+  }
+}
+
+# Keep old log group import alive during transition (can remove after migration)
 resource "aws_cloudwatch_log_group" "virality_sync_lambda" {
   name              = "/aws/lambda/${var.project_name}-virality-sync-${var.environment}"
   retention_in_days = 14
@@ -131,7 +181,7 @@ resource "aws_cloudwatch_log_group" "virality_sync_lambda" {
 # EventBridge Rule - Run every 12 hours
 resource "aws_cloudwatch_event_rule" "virality_sync_schedule" {
   name                = "${var.project_name}-virality-sync-schedule-${var.environment}"
-  description         = "Trigger virality-sync Lambda every 12 hours"
+  description         = "Trigger virality-sync Step Function every 12 hours"
   schedule_expression = "cron(0 */12 * * ? *)"
 
   tags = {
@@ -140,18 +190,144 @@ resource "aws_cloudwatch_event_rule" "virality_sync_schedule" {
   }
 }
 
-# EventBridge Target - Connect rule to Lambda
-resource "aws_cloudwatch_event_target" "virality_sync_target" {
-  rule      = aws_cloudwatch_event_rule.virality_sync_schedule.name
-  target_id = "virality-sync-lambda"
-  arn       = aws_lambda_function.virality_sync.arn
+# ── Step Functions ──
+
+# Step Functions IAM Role
+resource "aws_iam_role" "virality_sync_sfn" {
+  name = "${var.project_name}-virality-sync-sfn-role-${var.environment}"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
+      Principal = { Service = "states.amazonaws.com" }
+    }]
+  })
+  tags = {
+    Name        = "${var.project_name}-virality-sync-sfn-role-${var.environment}"
+    Environment = var.environment
+  }
 }
 
-# Permission for EventBridge to invoke Lambda
-resource "aws_lambda_permission" "allow_eventbridge_virality_sync" {
-  statement_id  = "AllowEventBridgeInvoke"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.virality_sync.function_name
-  principal     = "events.amazonaws.com"
-  source_arn    = aws_cloudwatch_event_rule.virality_sync_schedule.arn
+# Allow Step Functions to invoke both Lambdas
+resource "aws_iam_role_policy" "virality_sync_sfn_invoke_lambda" {
+  name = "${var.project_name}-virality-sync-sfn-lambda-${var.environment}"
+  role = aws_iam_role.virality_sync_sfn.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = "lambda:InvokeFunction"
+      Resource = [
+        aws_lambda_function.virality_sync_orchestrator.arn,
+        aws_lambda_function.virality_sync_worker.arn,
+      ]
+    }]
+  })
+}
+
+# State Machine
+resource "aws_sfn_state_machine" "virality_sync" {
+  name     = "${var.project_name}-virality-sync-${var.environment}"
+  role_arn = aws_iam_role.virality_sync_sfn.arn
+  definition = jsonencode({
+    Comment = "Virality Sync - parallel fan-out per account"
+    StartAt = "FetchAccounts"
+    States = {
+      FetchAccounts = {
+        Type     = "Task"
+        Resource = "arn:aws:states:::lambda:invoke"
+        Parameters = {
+          FunctionName = aws_lambda_function.virality_sync_orchestrator.arn
+          Payload      = { source = "step-functions" }
+        }
+        ResultSelector = { "accounts.$" = "$.Payload.accounts" }
+        ResultPath     = "$.orchestratorResult"
+        Next           = "SyncAllAccounts"
+      }
+      SyncAllAccounts = {
+        Type           = "Map"
+        ItemsPath      = "$.orchestratorResult.accounts"
+        MaxConcurrency = var.virality_sync_max_concurrency
+        Iterator = {
+          StartAt = "SyncOneAccount"
+          States = {
+            SyncOneAccount = {
+              Type     = "Task"
+              Resource = "arn:aws:states:::lambda:invoke"
+              Parameters = {
+                FunctionName = aws_lambda_function.virality_sync_worker.arn
+                "Payload.$"  = "$"
+              }
+              ResultSelector = { "result.$" = "$.Payload" }
+              Retry = [{
+                ErrorEquals     = ["States.TaskFailed", "Lambda.ServiceException"]
+                IntervalSeconds = 30
+                MaxAttempts     = 1
+                BackoffRate     = 2
+              }]
+              Catch = [{
+                ErrorEquals = ["States.ALL"]
+                ResultPath  = "$.error"
+                Next        = "AccountSyncFailed"
+              }]
+              End = true
+            }
+            AccountSyncFailed = {
+              Type   = "Pass"
+              Result = { status = "failed" }
+              End    = true
+            }
+          }
+        }
+        ResultPath = "$.mapResults"
+        Next       = "Done"
+      }
+      Done = { Type = "Succeed" }
+    }
+  })
+  tags = {
+    Name        = "${var.project_name}-virality-sync-${var.environment}"
+    Environment = var.environment
+  }
+}
+
+# ── EventBridge -> Step Functions ──
+
+# EventBridge IAM role to start Step Function executions
+resource "aws_iam_role" "virality_sync_eventbridge" {
+  name = "${var.project_name}-virality-sync-eb-role-${var.environment}"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+    }]
+  })
+  tags = {
+    Name        = "${var.project_name}-virality-sync-eb-role-${var.environment}"
+    Environment = var.environment
+  }
+}
+
+resource "aws_iam_role_policy" "virality_sync_eventbridge_sfn" {
+  name = "${var.project_name}-virality-sync-eb-sfn-${var.environment}"
+  role = aws_iam_role.virality_sync_eventbridge.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = "states:StartExecution"
+      Resource = aws_sfn_state_machine.virality_sync.arn
+    }]
+  })
+}
+
+# EventBridge Target - Connect rule to Step Function
+resource "aws_cloudwatch_event_target" "virality_sync_target" {
+  rule      = aws_cloudwatch_event_rule.virality_sync_schedule.name
+  target_id = "virality-sync-sfn"
+  arn       = aws_sfn_state_machine.virality_sync.arn
+  role_arn  = aws_iam_role.virality_sync_eventbridge.arn
 }
