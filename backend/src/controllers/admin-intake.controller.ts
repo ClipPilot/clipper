@@ -92,6 +92,38 @@ export async function rejectApplication(req: AdminRequest, res: Response) {
   }
 }
 
+export async function updateApplicationCPM(req: AdminRequest, res: Response) {
+  try {
+    const id = parseInt(req.params.applicationId);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: "Invalid application ID" });
+    }
+
+    const { quotedCpm, videoMinimum } = req.body;
+
+    if (!quotedCpm) {
+      return res.status(400).json({ error: "quotedCpm is required" });
+    }
+
+    const application = await intakeService.updateApplicationCPM(
+      id,
+      String(quotedCpm),
+      videoMinimum != null ? Number(videoMinimum) : undefined,
+    );
+
+    return res.json({ application });
+  } catch (error: any) {
+    console.error("Update application CPM error:", error);
+
+    if (error.message === "Application not found") {
+      return res.status(404).json({ error: "Application not found" });
+    }
+
+    Sentry.captureException(error);
+    return res.status(500).json({ error: "Failed to update application" });
+  }
+}
+
 export async function retryDriveFolder(req: AdminRequest, res: Response) {
   try {
     const id = parseInt(req.params.applicationId);

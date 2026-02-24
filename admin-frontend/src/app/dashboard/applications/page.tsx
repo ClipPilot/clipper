@@ -1,6 +1,16 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+
+function getTierCpm(budget: string | null): string {
+  if (!budget) return "";
+  const b = Number(budget);
+  if (b >= 80000) return "1.50";
+  if (b >= 40000) return "1.75";
+  if (b >= 15000) return "2.00";
+  if (b >= 5000) return "2.50";
+  return "";
+}
 import {
   adminAPI,
   MassPostingApplication,
@@ -22,6 +32,7 @@ function DetailModal({ applicationId, onClose, onAction }: DetailModalProps) {
   const [actionLoading, setActionLoading] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [adminNotes, setAdminNotes] = useState("");
+  const [quotedCpmInput, setQuotedCpmInput] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -29,9 +40,10 @@ function DetailModal({ applicationId, onClose, onAction }: DetailModalProps) {
       try {
         const { application } = await adminAPI.getApplication(applicationId);
         setDetail(application);
+        setQuotedCpmInput(application.quoted_cpm ?? getTierCpm(application.budget));
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : "Failed to load application"
+          err instanceof Error ? err.message : "Failed to load application",
         );
       } finally {
         setLoading(false);
@@ -49,7 +61,7 @@ function DetailModal({ applicationId, onClose, onAction }: DetailModalProps) {
       onClose();
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to approve application"
+        err instanceof Error ? err.message : "Failed to approve application",
       );
     } finally {
       setActionLoading(false);
@@ -67,13 +79,13 @@ function DetailModal({ applicationId, onClose, onAction }: DetailModalProps) {
       await adminAPI.rejectApplication(
         applicationId,
         rejectionReason,
-        adminNotes || undefined
+        adminNotes || undefined,
       );
       onAction();
       onClose();
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to reject application"
+        err instanceof Error ? err.message : "Failed to reject application",
       );
     } finally {
       setActionLoading(false);
@@ -89,14 +101,13 @@ function DetailModal({ applicationId, onClose, onAction }: DetailModalProps) {
       onClose();
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to create Drive folder"
+        err instanceof Error ? err.message : "Failed to create Drive folder",
       );
     } finally {
       setActionLoading(false);
     }
   };
 
-  // TODO(human): Implement the renderIntakeFormDetails function
   const renderIntakeFormDetails = (form: IntakeForm) => {
     return (
       <div className="space-y-4">
@@ -105,7 +116,9 @@ function DetailModal({ applicationId, onClose, onAction }: DetailModalProps) {
             <h4 className="text-xs font-medium text-text-tertiary uppercase tracking-wider mb-1">
               Brand Description
             </h4>
-            <p className="text-sm text-text-primary">{form.brand_description}</p>
+            <p className="text-sm text-text-primary">
+              {form.brand_description}
+            </p>
           </div>
         )}
 
@@ -236,7 +249,9 @@ function DetailModal({ applicationId, onClose, onAction }: DetailModalProps) {
             Loading application details...
           </div>
         ) : !detail ? (
-          <div className="p-12 text-center text-red-400">{error || "Application not found"}</div>
+          <div className="p-12 text-center text-red-400">
+            {error || "Application not found"}
+          </div>
         ) : (
           <>
             <div className="flex justify-between items-start mb-6">
@@ -280,6 +295,87 @@ function DetailModal({ applicationId, onClose, onAction }: DetailModalProps) {
                 </div>
               </div>
             )}
+
+            {/* Budget & CPM — always shown so admin can set quoted CPM even if user skipped */}
+            <div className="mb-6">
+                <h3 className="text-sm font-semibold text-text-primary mb-3">
+                  Budget & CPM
+                </h3>
+                <div className="p-4 rounded-xl bg-surface-elevated border border-border space-y-3">
+                  {detail.budget && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-text-tertiary uppercase tracking-wider">
+                        Monthly Budget
+                      </span>
+                      <span className="text-sm font-semibold text-text-primary">
+                        ${Number(detail.budget).toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center gap-4">
+                    <span className="text-xs text-text-tertiary uppercase tracking-wider flex-shrink-0">
+                      Quoted CPM
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-text-tertiary text-sm">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={quotedCpmInput}
+                        onChange={(e) => setQuotedCpmInput(e.target.value)}
+                        className="w-24 px-2 py-1 rounded-lg bg-surface border border-border focus:border-emerald outline-none text-text-primary text-sm text-right"
+                        placeholder="0.00"
+                      />
+                      <button
+                        onClick={async () => {
+                          if (!quotedCpmInput) return;
+                          setActionLoading(true);
+                          setError("");
+                          try {
+                            const { application } =
+                              await adminAPI.updateApplicationCPM(
+                                applicationId,
+                                quotedCpmInput,
+                              );
+                            setDetail((d) =>
+                              d
+                                ? { ...d, quoted_cpm: application.quoted_cpm }
+                                : d,
+                            );
+                          } catch (err) {
+                            setError(
+                              err instanceof Error
+                                ? err.message
+                                : "Failed to update CPM",
+                            );
+                          } finally {
+                            setActionLoading(false);
+                          }
+                        }}
+                        disabled={actionLoading}
+                        className="px-2 py-1 text-xs rounded-lg bg-emerald/10 border border-emerald/20 text-emerald hover:bg-emerald/20 transition-colors disabled:opacity-50"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </div>
+                  {detail.budget &&
+                    quotedCpmInput &&
+                    Number(quotedCpmInput) > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-text-tertiary uppercase tracking-wider">
+                          Guaranteed Views
+                        </span>
+                        <span className="text-sm text-text-secondary">
+                          {Math.floor(
+                            Number(detail.budget) / Number(quotedCpmInput),
+                          ).toLocaleString()}
+                        </span>
+                      </div>
+                    )}
+                </div>
+            </div>
 
             {/* Google Drive */}
             {detail.status === "accepted" && (
@@ -429,7 +525,7 @@ function getStatusBadgeClass(status: string) {
 
 export default function ApplicationsPage() {
   const [applications, setApplications] = useState<MassPostingApplication[]>(
-    []
+    [],
   );
   const [total, setTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -516,6 +612,12 @@ export default function ApplicationsPage() {
                   Plan
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-text-tertiary uppercase tracking-wider">
+                  Budget
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-text-tertiary uppercase tracking-wider">
+                  CPM
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-text-tertiary uppercase tracking-wider">
                   Submitted
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-text-tertiary uppercase tracking-wider">
@@ -552,6 +654,20 @@ export default function ApplicationsPage() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm text-text-secondary">
+                      {app.budget ? `$${Number(app.budget).toLocaleString()}` : <span className="text-text-tertiary">—</span>}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="text-sm text-text-secondary">
+                      {app.quoted_cpm
+                        ? `$${Number(app.quoted_cpm).toFixed(2)}`
+                        : app.budget
+                          ? <span className="text-text-tertiary text-xs">${getTierCpm(app.budget)} (tier)</span>
+                          : <span className="text-text-tertiary">—</span>}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="text-sm text-text-secondary">
                       {new Date(app.created_at).toLocaleDateString("en-US", {
                         month: "short",
                         day: "numeric",
@@ -582,7 +698,7 @@ export default function ApplicationsPage() {
                                 alert(
                                   err instanceof Error
                                     ? err.message
-                                    : "Failed to create Drive folder"
+                                    : "Failed to create Drive folder",
                                 );
                               }
                             }}

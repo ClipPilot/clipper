@@ -18,6 +18,7 @@ import {
   approveApplication,
   rejectApplication,
   retryDriveFolder,
+  updateApplicationCPM,
 } from "../controllers/admin-intake.controller";
 
 const router = Router();
@@ -607,5 +608,6 @@ router.post("/applications/:applicationId/reject", requireAdminAuth, rejectAppli
  *         description: Failed to create Drive folder
  */
 router.post("/applications/:applicationId/retry-drive", requireAdminAuth, retryDriveFolder);
+router.patch("/applications/:applicationId", requireAdminAuth, updateApplicationCPM);
 
 export default router;

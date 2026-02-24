@@ -53,7 +53,7 @@ class IntakeService {
 
   // ── Application Lifecycle ──────────────────────
 
-  async submitApplication(teamId: number, formData: IntakeFormData) {
+  async submitApplication(teamId: number, formData: IntakeFormData, budget?: number) {
     // Block if already pending or accepted
     const latest = await this.getLatestApplication(teamId);
     if (
@@ -80,13 +80,14 @@ class IntakeService {
         team_id: teamId,
         intake_form_id: form.id,
         status: "pending",
+        budget: budget != null ? budget.toString() : null,
       })
       .returning();
 
     return application;
   }
 
-  async submitAppeal(teamId: number, formData: IntakeFormData) {
+  async submitAppeal(teamId: number, formData: IntakeFormData, budget?: number) {
     const latest = await this.getLatestApplication(teamId);
     if (!latest || latest.status !== "rejected") {
       throw new Error("Can only appeal a rejected application");
@@ -104,10 +105,37 @@ class IntakeService {
         team_id: teamId,
         intake_form_id: form.id,
         status: "appeal",
+        budget: budget != null ? budget.toString() : null,
       })
       .returning();
 
     return application;
+  }
+
+  async updateApplicationCPM(id: number, quotedCpm: string, videoMinimum?: number) {
+    const [application] = await db
+      .select()
+      .from(massPostingApplications)
+      .where(eq(massPostingApplications.id, id))
+      .limit(1);
+
+    if (!application) {
+      throw new Error("Application not found");
+    }
+
+    const updateData: Record<string, any> = {
+      quoted_cpm: quotedCpm,
+      updated_at: new Date(),
+    };
+    if (videoMinimum != null) updateData.videoMinimum = videoMinimum;
+
+    const [updated] = await db
+      .update(massPostingApplications)
+      .set(updateData)
+      .where(eq(massPostingApplications.id, id))
+      .returning();
+
+    return updated;
   }
 
   async getLatestApplication(teamId: number) {
@@ -159,6 +187,9 @@ class IntakeService {
           admin_notes: massPostingApplications.admin_notes,
           created_at: massPostingApplications.created_at,
           updated_at: massPostingApplications.updated_at,
+          budget: massPostingApplications.budget,
+          quoted_cpm: massPostingApplications.quoted_cpm,
+          video_minimum: massPostingApplications.videoMinimum,
           team_name: teams.name,
           team_plan: teams.plan,
         })
@@ -196,6 +227,9 @@ class IntakeService {
         admin_notes: massPostingApplications.admin_notes,
         created_at: massPostingApplications.created_at,
         updated_at: massPostingApplications.updated_at,
+        budget: massPostingApplications.budget,
+        quoted_cpm: massPostingApplications.quoted_cpm,
+        video_minimum: massPostingApplications.videoMinimum,
         team_name: teams.name,
         team_plan: teams.plan,
       })
@@ -324,6 +358,39 @@ class IntakeService {
       .set(updateData)
       .where(eq(massPostingApplications.id, id))
       .returning();
+
+    // Send rejection email to team owner
+    try {
+      const [team] = await db
+        .select()
+        .from(teams)
+        .where(eq(teams.id, application.team_id))
+        .limit(1);
+
+      const [owner] = await db
+        .select({ email: users.email, firstName: users.first_name })
+        .from(teamMembers)
+        .innerJoin(users, eq(teamMembers.user_id, users.id))
+        .where(
+          and(
+            eq(teamMembers.team_id, application.team_id),
+            eq(teamMembers.role, "owner"),
+          ),
+        )
+        .limit(1);
+
+      if (owner?.email) {
+        const frontendUrl = process.env.FRONTEND_URL || "https://platform.cuttr.com";
+        await emailNotiService.sendMassPostingRejected(owner.email, {
+          userName: owner.firstName || "there",
+          teamName: team.name,
+          rejectionReason: reason,
+          reapplyUrl: `${frontendUrl}/dashboard/mass-posting`,
+        });
+      }
+    } catch (emailError) {
+      console.error("Failed to send mass posting rejection email:", emailError);
+    }
 
     return updated;
   }

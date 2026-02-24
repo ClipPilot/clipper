@@ -109,7 +109,7 @@ export function DashboardGrid() {
           ugcVideoAPI.listVideoJobs(selectedTeam.id, 20, 0).catch(() => ({ jobs: [] })),
         ]);
         setRecentClips(saved.clips);
-        setPendingClips(pending);
+        setPendingClips(pending.filter((clip) => clip.status !== "failed"));
         const activeFaceSwaps = faceSwapJobs.jobs.filter(
           (job) => job.status === "uploading" || job.status === "queued" || job.status === "running"
         );

@@ -159,6 +159,9 @@ export interface MassPostingApplication {
   admin_notes: string | null;
   created_at: string;
   updated_at: string;
+  budget: string | null;
+  quoted_cpm: string | null;
+  video_minimum: number | null;
   team_name: string;
   team_plan: string;
 }
@@ -418,6 +421,22 @@ export const adminAPI = {
     const response = await fetch(`${API_URL}/admin/applications/${id}/retry-drive`, {
       method: "POST",
       headers: { ...getAuthHeaders() },
+    });
+    return handleResponse(response);
+  },
+
+  async updateApplicationCPM(
+    id: number,
+    quotedCpm: string,
+    videoMinimum?: number,
+  ): Promise<{ application: MassPostingApplication }> {
+    const response = await fetch(`${API_URL}/admin/applications/${id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify({ quotedCpm, videoMinimum }),
     });
     return handleResponse(response);
   },

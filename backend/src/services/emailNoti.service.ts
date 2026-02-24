@@ -26,6 +26,8 @@ import {
   UgcReadyEmailData,
   massPostingApprovedEmail,
   MassPostingApprovedEmailData,
+  massPostingRejectedEmail,
+  MassPostingRejectedEmailData,
   adPostingReadyEmail,
   AdPostingReadyEmailData,
 } from "../templates/emailTemplates";
@@ -135,6 +137,11 @@ export class EmailNotiService {
   async sendMassPostingApproved(to: string, data: MassPostingApprovedEmailData) {
     const html = massPostingApprovedEmail(data);
     return this.sendEmailNotification(to, `${data.teamName} is approved for Mass Posting!`, html);
+  }
+
+  async sendMassPostingRejected(to: string, data: MassPostingRejectedEmailData) {
+    const html = massPostingRejectedEmail(data);
+    return this.sendEmailNotification(to, `Update on your Mass Posting application`, html);
   }
 
   async sendAdPostingReady(to: string, data: AdPostingReadyEmailData) {

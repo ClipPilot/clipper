@@ -4,7 +4,7 @@ import React from "react";
 import { Button, Chip, Divider } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { IntakeFormData } from "@/api/intake";
-import { SOCIAL_PLATFORMS } from "@/constants/massPosting";
+import { SOCIAL_PLATFORMS, getActiveTier } from "@/constants/massPosting";
 
 interface StepReviewProps {
   data: IntakeFormData;
@@ -14,6 +14,9 @@ interface StepReviewProps {
 }
 
 export function StepReview({ data, isAppeal, isSubmitting, onSubmit }: StepReviewProps) {
+  const activeTier = data.budget ? getActiveTier(data.budget) : null;
+  const guaranteedViews = activeTier && data.budget ? Math.floor(data.budget / activeTier.cpm) : null;
+
   return (
     <div className="space-y-6">
       <div>
@@ -87,6 +90,21 @@ export function StepReview({ data, isAppeal, isSubmitting, onSubmit }: StepRevie
           </div>
         ))}
       </ReviewSection>
+
+      {/* Budget */}
+      {data.budget && (
+        <ReviewSection title="Budget" icon="solar:wallet-money-bold-duotone">
+          <ReviewField label="Monthly Budget" value={`$${data.budget.toLocaleString()}`} />
+          {activeTier && (
+            <>
+              <ReviewField label="CPM Tier" value={`${activeTier.label} — $${activeTier.cpm.toFixed(2)} CPM`} />
+              {guaranteedViews && (
+                <ReviewField label="Guaranteed Views" value={guaranteedViews.toLocaleString()} />
+              )}
+            </>
+          )}
+        </ReviewSection>
+      )}
 
       <Divider />
 

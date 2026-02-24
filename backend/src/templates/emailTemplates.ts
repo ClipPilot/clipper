@@ -264,6 +264,30 @@ export const massPostingApprovedEmail = (data: MassPostingApprovedEmailData): st
   return wrapInBase(content);
 };
 
+export interface MassPostingRejectedEmailData {
+  userName: string;
+  teamName: string;
+  rejectionReason: string;
+  reapplyUrl: string;
+}
+
+export const massPostingRejectedEmail = (data: MassPostingRejectedEmailData): string => {
+  const content = `
+    <h1 style="color: #ffffff; font-size: 24px; margin-bottom: 16px;">Mass Posting Application Update</h1>
+    <p style="color: #a0a0a0; font-size: 16px; line-height: 1.6;">Hey ${data.userName},</p>
+    <p style="color: #a0a0a0; font-size: 16px; line-height: 1.6;">Thank you for applying for mass posting. After reviewing your application for <strong style="color: #ffffff;">${data.teamName}</strong>, we're unable to approve it at this time.</p>
+    <div style="background: #1a1a1a; border-left: 3px solid #ef4444; border-radius: 4px; padding: 16px; margin: 24px 0;">
+      <p style="color: #a0a0a0; font-size: 13px; margin: 0 0 6px 0; text-transform: uppercase; letter-spacing: 0.05em;">Reason</p>
+      <p style="color: #ffffff; font-size: 15px; margin: 0;">${data.rejectionReason}</p>
+    </div>
+    <p style="color: #a0a0a0; font-size: 16px; line-height: 1.6;">You're welcome to update your application and reapply at any time.</p>
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${data.reapplyUrl}" style="display: inline-block; background: linear-gradient(135deg, #9333EA, #7C3AED); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">Update & Reapply</a>
+    </div>
+  `;
+  return wrapInBase(content);
+};
+
 export interface AdPostingReadyEmailData {
   userName: string;
   clipTitle: string;

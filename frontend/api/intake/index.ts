@@ -27,6 +27,7 @@ export interface IntakeFormData {
     accounts: Array<{ platform: string; url: string }>;
   }>;
   completed?: boolean;
+  budget?: number | null;
 }
 
 export interface IntakeForm extends IntakeFormData {

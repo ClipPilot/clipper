@@ -33,6 +33,7 @@ export function StepBrandInfo({
         onValueChange={setBrandDescription}
         minRows={4}
         maxRows={8}
+        isRequired
       />
       <Input
         label="Company Website"
