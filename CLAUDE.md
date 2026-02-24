@@ -1,5 +1,9 @@
 # CLAUDE.md
 
+## Critical Rules
+
+- **NEVER run `terraform apply`**. Only use `terraform validate` and `terraform plan` for local checks. All infrastructure changes are deployed through CI/CD.
+
 ## Project Overview
 
 **Clipper** (brand name: **Cuttr**) is an AI-powered video clipping and content creation platform. It automatically detects and extracts compelling video clips from long-form content using face detection, scene detection, transcription, and virality metrics. The product also supports UGC script generation, ad cloning, face swaps, voice cloning, and social media mass posting.

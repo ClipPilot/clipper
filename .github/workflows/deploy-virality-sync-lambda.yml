@@ -13,7 +13,8 @@ on:
 env:
   AWS_REGION: us-west-2
   ECR_REPOSITORY: clipster-virality-sync-lambda
-  LAMBDA_FUNCTION: clipster-virality-sync-prod
+  LAMBDA_ORCHESTRATOR: clipster-virality-sync-orchestrator-prod
+  LAMBDA_WORKER: clipster-virality-sync-worker-prod
 
 jobs:
   deploy:
@@ -48,19 +49,27 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-      - name: Update Lambda function
+      - name: Update Lambda functions
         run: |
           aws lambda update-function-code \
-            --function-name ${{ env.LAMBDA_FUNCTION }} \
-            --image-uri ${{ steps.build-image.outputs.image }}
+            --function-name ${{ env.LAMBDA_ORCHESTRATOR }} \
+            --image-uri ${{ steps.build-image.outputs.image }} &
+          aws lambda update-function-code \
+            --function-name ${{ env.LAMBDA_WORKER }} \
+            --image-uri ${{ steps.build-image.outputs.image }} &
+          wait
 
-      - name: Wait for Lambda update
+      - name: Wait for Lambda updates
         run: |
           aws lambda wait function-updated \
-            --function-name ${{ env.LAMBDA_FUNCTION }}
+            --function-name ${{ env.LAMBDA_ORCHESTRATOR }} &
+          aws lambda wait function-updated \
+            --function-name ${{ env.LAMBDA_WORKER }} &
+          wait
 
       - name: Verify deployment
         run: |
           echo "Virality Sync Lambda (Production) deployment completed!"
-          echo "Function: ${{ env.LAMBDA_FUNCTION }}"
+          echo "Orchestrator: ${{ env.LAMBDA_ORCHESTRATOR }}"
+          echo "Worker: ${{ env.LAMBDA_WORKER }}"
           echo "Image: ${{ steps.build-image.outputs.image }}"
