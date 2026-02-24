@@ -68,9 +68,9 @@ export default function CompetitorDetailPage() {
   });
   const [comparisonMode, setComparisonMode] = useState<ComparisonMode>({ type: "last-sync" });
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (silent = false) => {
     if (!selectedTeam?.id || isNaN(competitorId) || !canAccessViralityTracker(selectedTeam.plan)) return;
-    if (initialLoadDone.current) setIsRecalculating(true);
+    if (initialLoadDone.current && !silent) setIsRecalculating(true);
     try {
       const comp = await viralityAPI.getCompetitor(selectedTeam.id, competitorId);
       setCompetitor(comp);
@@ -111,7 +111,7 @@ export default function CompetitorDetailPage() {
     teamId: selectedTeam?.id,
     accountIds: syncingAccountIds,
     onSyncComplete: () => {
-      fetchData();
+      fetchData(true);
     },
   });
 

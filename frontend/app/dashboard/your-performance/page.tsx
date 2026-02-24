@@ -21,7 +21,7 @@ import { PostsTable } from "@/components/virality/PostsTable";
 import { AnalyticsChart } from "@/components/virality/AnalyticsChart";
 import { PostFrequencyChart } from "@/components/virality/PostFrequencyChart";
 import { AccountBreakdownChart } from "@/components/virality/AccountBreakdownChart";
-import { BestPerformingAccounts } from "@/components/virality/BestPerformingAccounts";
+import { YourAccountsList } from "@/components/virality/YourAccountsList";
 import { ActivityFeed } from "@/components/virality/ActivityFeed";
 import { RecalcOverlay } from "@/components/virality/RecalcOverlay";
 import { AccountFilterPopover } from "@/components/virality/AccountFilterPopover";
@@ -52,9 +52,9 @@ export default function YourPerformancePage() {
   const [selectedAccountIds, setSelectedAccountIds] = useState<number[]>([]);
   const [comparisonMode, setComparisonMode] = useState<ComparisonMode>({ type: "last-sync" });
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (silent = false) => {
     if (!selectedTeam?.id || !canAccessViralityTracker(selectedTeam.plan)) return;
-    if (initialLoadDone.current) setIsRecalculating(true);
+    if (initialLoadDone.current && !silent) setIsRecalculating(true);
     try {
       const accts = await userPerformanceAPI.getAccounts(selectedTeam.id);
       setAccounts(accts);
@@ -91,7 +91,7 @@ export default function YourPerformancePage() {
   useViralitySyncSocket({
     teamId: selectedTeam?.id,
     accountIds: syncingAccountIds,
-    onSyncComplete: () => { fetchData(); },
+    onSyncComplete: () => { fetchData(true); },
   });
 
   const handleSyncAll = async () => {
@@ -373,9 +373,10 @@ export default function YourPerformancePage() {
         <RecalcOverlay active={isRecalculating}>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
             <StatCards items={statCards} gridClassName="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" />
-            <BestPerformingAccounts
+            <YourAccountsList
               accounts={activeAccounts}
               postsByAccount={activePostsByAccount}
+              onAccountDeleted={fetchData}
             />
           </div>
         </RecalcOverlay>
