@@ -1,18 +1,7 @@
-import * as Sentry from "@sentry/node";
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { viralityService } from "../services/virality/virality.service";
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-function parseId(value: string): number | null {
-  const n = parseInt(value);
-  return isNaN(n) ? null : n;
-}
-
-function parseDateQuery(value: unknown): Date | undefined {
-  return value ? new Date(value as string) : undefined;
-}
+import { parseId, parseDateQuery, handleControllerError as handleError } from "../utils/controllerHelpers";
 
 const PLAN_REQUIRED_RESPONSE = {
   error: "Virality tracking requires a Studio plan or higher",
@@ -26,19 +15,6 @@ async function requirePlanAccess(teamId: number, res: Response): Promise<boolean
     return false;
   }
   return true;
-}
-
-function handleError(res: Response, label: string, error: any, fallbackMessage: string) {
-  console.error(`${label}:`, error);
-  Sentry.captureException(error);
-
-  if (error.message?.includes("not found")) {
-    return res.status(404).json({ error: error.message });
-  }
-  if (error.message?.includes("already being tracked")) {
-    return res.status(409).json({ error: error.message });
-  }
-  return res.status(500).json({ error: fallbackMessage });
 }
 
 // ── Controller ───────────────────────────────────────────────────────────────

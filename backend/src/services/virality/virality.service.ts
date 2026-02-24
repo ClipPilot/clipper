@@ -233,15 +233,30 @@ export class AccountTrackingService {
       throw new Error("Account is inactive and cannot be synced");
     }
 
-    // Syncs/credits gating — same logic as the lambda
-    if (account.syncs_remaining <= 0) {
+    // Syncs/credits gating — atomic decrement to avoid race conditions
+    const decremented = await db
+      .update(this.accountsTable)
+      .set({
+        syncs_remaining: sql`${this.accountsTable.syncs_remaining} - 1`,
+        updated_at: new Date(),
+      })
+      .where(
+        and(
+          eq(this.accountsTable.id, accountId),
+          sql`${this.accountsTable.syncs_remaining} > 0`
+        )
+      )
+      .returning() as any[];
+
+    if (decremented.length === 0) {
+      // No syncs remaining — charge a credit and reset
       const { success: charged } = await teamService.consumeClip(teamId);
       if (charged) {
         await db
           .update(this.accountsTable)
-          .set({ syncs_remaining: SYNCS_PER_WEEK, updated_at: new Date() })
+          .set({ syncs_remaining: SYNCS_PER_WEEK - 1, updated_at: new Date() })
           .where(eq(this.accountsTable.id, accountId));
-        console.log(`[Credit] Charged 1 credit for account ${accountId} (team=${teamId}), reset syncs_remaining=${SYNCS_PER_WEEK}`);
+        console.log(`[Credit] Charged 1 credit for account ${accountId} (team=${teamId}), reset syncs_remaining=${SYNCS_PER_WEEK - 1}`);
       } else {
         // No credits — deactivate account
         await db
@@ -250,11 +265,6 @@ export class AccountTrackingService {
           .where(eq(this.accountsTable.id, accountId));
         throw new Error("No credits available. Account has been deactivated.");
       }
-    } else {
-      await db
-        .update(this.accountsTable)
-        .set({ syncs_remaining: account.syncs_remaining - 1, updated_at: new Date() })
-        .where(eq(this.accountsTable.id, accountId));
     }
 
     // Update status to syncing

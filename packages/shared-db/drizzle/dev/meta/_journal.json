@@ -271,13 +271,15 @@
     {
       "idx": 38,
       "version": "7",
-<<<<<<< HEAD
-      "when": 1771912267630,
-      "tag": "0038_amazing_invisible_woman",
-=======
       "when": 1771898692414,
       "tag": "0038_aspiring_vivisector",
->>>>>>> 341a7487ba04629b122909390709e27fdee68f45
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1771912267630,
+      "tag": "0039_amazing_invisible_woman",
       "breakpoints": true
     }
   ]

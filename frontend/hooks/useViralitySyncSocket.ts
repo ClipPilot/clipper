@@ -10,7 +10,7 @@ interface ViralitySyncUpdate {
 interface UseViralitySyncSocketOptions {
   teamId: number | undefined;
   accountIds: number[];
-  onSyncComplete: (update: ViralitySyncUpdate) => void;
+  onSyncComplete: (update?: ViralitySyncUpdate) => void;
 }
 
 const POLL_INTERVAL_MS = 5_000;
@@ -57,13 +57,13 @@ export function useViralitySyncSocket({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamId, accountIds.length]);
 
-  // Polling fallback — catches missed socket events
+  // Polling fallback — catches missed socket events by re-fetching data
   useEffect(() => {
     if (!teamId || accountIds.length === 0) return;
 
     const interval = setInterval(() => {
       if (accountIdsRef.current.length > 0) {
-        onSyncCompleteRef.current({ accountId: 0, syncStatus: "completed" });
+        onSyncCompleteRef.current();
       }
     }, POLL_INTERVAL_MS);
 

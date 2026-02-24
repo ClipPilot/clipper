@@ -1,18 +1,7 @@
-import * as Sentry from "@sentry/node";
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { userPerformanceService } from "../services/virality/virality.service";
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-function parseId(value: string): number | null {
-  const n = parseInt(value);
-  return isNaN(n) ? null : n;
-}
-
-function parseDateQuery(value: unknown): Date | undefined {
-  return value ? new Date(value as string) : undefined;
-}
+import { parseId, parseDateQuery, handleControllerError } from "../utils/controllerHelpers";
 
 const PLAN_REQUIRED_RESPONSE = {
   error: "Performance tracking requires a Studio plan or higher",
@@ -28,19 +17,6 @@ async function requirePlanAccess(teamId: number, res: Response): Promise<boolean
   return true;
 }
 
-function handleError(res: Response, label: string, error: any, fallbackMessage: string) {
-  console.error(`${label}:`, error);
-  Sentry.captureException(error);
-
-  if (error.message?.includes("not found")) {
-    return res.status(404).json({ error: error.message });
-  }
-  if (error.message?.includes("already being tracked")) {
-    return res.status(409).json({ error: error.message });
-  }
-  return res.status(500).json({ error: fallbackMessage });
-}
-
 // ── Controller ───────────────────────────────────────────────────────────────
 
 class UserPerformanceController {
@@ -53,7 +29,7 @@ class UserPerformanceController {
       const accounts = await userPerformanceService.getAccountsByTeam(teamId);
       return res.json({ accounts });
     } catch (error) {
-      return handleError(res, "List user accounts error", error, "Failed to list accounts");
+      return handleControllerError(res, "List user accounts error", error, "Failed to list accounts");
     }
   }
 
@@ -91,7 +67,7 @@ class UserPerformanceController {
 
       return res.status(201).json({ account });
     } catch (error) {
-      return handleError(res, "Add user account error", error, "Failed to add account");
+      return handleControllerError(res, "Add user account error", error, "Failed to add account");
     }
   }
 
@@ -100,6 +76,7 @@ class UserPerformanceController {
       const teamId = parseId(req.params.teamId);
       const accountId = parseId(req.params.accountId);
       if (!teamId || !accountId) return res.status(400).json({ error: "Invalid team or account ID" });
+      if (!(await requirePlanAccess(teamId, res))) return;
 
       const account = await userPerformanceService.getAccountById(accountId);
       if (!account || account.team_id !== teamId) {
@@ -108,7 +85,7 @@ class UserPerformanceController {
 
       return res.json({ account });
     } catch (error) {
-      return handleError(res, "Get user account error", error, "Failed to get account");
+      return handleControllerError(res, "Get user account error", error, "Failed to get account");
     }
   }
 
@@ -117,11 +94,12 @@ class UserPerformanceController {
       const teamId = parseId(req.params.teamId);
       const accountId = parseId(req.params.accountId);
       if (!teamId || !accountId) return res.status(400).json({ error: "Invalid team or account ID" });
+      if (!(await requirePlanAccess(teamId, res))) return;
 
       await userPerformanceService.deleteAccount(accountId, teamId);
       return res.json({ success: true });
     } catch (error) {
-      return handleError(res, "Delete user account error", error, "Failed to delete account");
+      return handleControllerError(res, "Delete user account error", error, "Failed to delete account");
     }
   }
 
@@ -139,7 +117,7 @@ class UserPerformanceController {
       const account = await userPerformanceService.updateAccountStatus(accountId, teamId, is_active);
       return res.json({ account });
     } catch (error) {
-      return handleError(res, "Update user account status error", error, "Failed to update account status");
+      return handleControllerError(res, "Update user account status error", error, "Failed to update account status");
     }
   }
 
@@ -153,7 +131,7 @@ class UserPerformanceController {
       const result = await userPerformanceService.syncAccount(accountId, teamId);
       return res.json(result);
     } catch (error: any) {
-      return handleError(res, "Sync user account error", error, "Sync failed: " + error.message);
+      return handleControllerError(res, "Sync user account error", error, "Sync failed: " + error.message);
     }
   }
 
@@ -162,6 +140,7 @@ class UserPerformanceController {
       const teamId = parseId(req.params.teamId);
       const accountId = parseId(req.params.accountId);
       if (!teamId || !accountId) return res.status(400).json({ error: "Invalid team or account ID" });
+      if (!(await requirePlanAccess(teamId, res))) return;
 
       const limit = parseInt(req.query.limit as string) || 20;
       const offset = parseInt(req.query.offset as string) || 0;
@@ -178,7 +157,7 @@ class UserPerformanceController {
       );
       return res.json({ posts });
     } catch (error) {
-      return handleError(res, "Get user posts error", error, "Failed to get posts");
+      return handleControllerError(res, "Get user posts error", error, "Failed to get posts");
     }
   }
 
@@ -194,7 +173,7 @@ class UserPerformanceController {
       const stats = await userPerformanceService.getDashboardStats(teamId, startDate, endDate);
       return res.json(stats);
     } catch (error) {
-      return handleError(res, "Get user performance dashboard error", error, "Failed to get dashboard stats");
+      return handleControllerError(res, "Get user performance dashboard error", error, "Failed to get dashboard stats");
     }
   }
 }
