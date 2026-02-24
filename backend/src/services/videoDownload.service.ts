@@ -35,9 +35,14 @@ const FORMAT_SELECTION = [
 ].join("/");
 
 const PROXY_URL = "http://sp1q8gm4p6:CTqwuDZo122~1swvbe@gate.decodo.com:10001";
+const USE_PROXY = process.env.NODE_ENV === "production";
 
 function baseYtDlpArgs(): string[] {
-  return ["--js-runtimes", "node", "--proxy", PROXY_URL];
+  const args = ["--js-runtimes", "node"];
+  if (USE_PROXY) {
+    args.push("--proxy", PROXY_URL);
+  }
+  return args;
 }
 
 function isInstagramUrl(url: string): boolean {
