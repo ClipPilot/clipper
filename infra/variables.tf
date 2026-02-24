@@ -243,15 +243,12 @@ variable "socialdata_api_key" {
   default     = ""
 }
 
-<<<<<<< HEAD
 variable "virality_sync_max_concurrency" {
   description = "Max parallel account syncs in Step Functions Map state"
   type        = number
   default     = 20
 }
 
-=======
->>>>>>> 341a7487ba04629b122909390709e27fdee68f45
 # Status Dashboard
 variable "status_domain" {
   description = "Domain for the status dashboard (e.g., status.cuttr.com)"

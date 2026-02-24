@@ -9,3 +9,5 @@ backend/.DS_Store
 .claude
 .vscode
 .claude/agents
+infra/.terraform/
+infra/.terraform.lock.hcl

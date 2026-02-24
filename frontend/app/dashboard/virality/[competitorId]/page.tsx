@@ -119,10 +119,15 @@ export default function CompetitorDetailPage() {
     if (!selectedTeam?.id || !competitor) return;
     setIsSyncing(true);
     try {
-      for (const account of competitor.accounts) {
-        await viralityAPI.syncAccount(selectedTeam.id, account.id);
+      const results = await Promise.allSettled(
+        competitor.accounts.map((account) => viralityAPI.syncAccount(selectedTeam.id, account.id))
+      );
+      const failed = results.filter((r) => r.status === "rejected");
+      if (failed.length > 0) {
+        addToast({ title: `${failed.length} account(s) failed to sync`, color: "warning" });
+      } else {
+        addToast({ title: "Sync complete", color: "success" });
       }
-      addToast({ title: "Sync complete", color: "success" });
       await fetchData();
     } catch (err: any) {
       addToast({ title: "Sync failed", description: err.message, color: "danger" });

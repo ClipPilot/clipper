@@ -22,9 +22,9 @@ import { AnalyticsChart } from "@/components/virality/AnalyticsChart";
 import { PostFrequencyChart } from "@/components/virality/PostFrequencyChart";
 import { AccountBreakdownChart } from "@/components/virality/AccountBreakdownChart";
 import { BestPerformingAccounts } from "@/components/virality/BestPerformingAccounts";
+import { ActivityFeed } from "@/components/virality/ActivityFeed";
 import { RecalcOverlay } from "@/components/virality/RecalcOverlay";
 import { AccountFilterPopover } from "@/components/virality/AccountFilterPopover";
-import { ActivityFeed } from "@/components/virality/ActivityFeed";
 import { AddAccountModal } from "@/components/virality/AddAccountModal";
 import { ViralityUpgradeWall } from "@/components/virality/ViralityUpgradeWall";
 import {
@@ -98,10 +98,15 @@ export default function YourPerformancePage() {
     if (!selectedTeam?.id || accounts.length === 0) return;
     setIsSyncing(true);
     try {
-      for (const account of accounts) {
-        await userPerformanceAPI.syncAccount(selectedTeam.id, account.id);
+      const results = await Promise.allSettled(
+        accounts.map((account) => userPerformanceAPI.syncAccount(selectedTeam.id, account.id))
+      );
+      const failed = results.filter((r) => r.status === "rejected");
+      if (failed.length > 0) {
+        addToast({ title: `${failed.length} account(s) failed to sync`, color: "warning" });
+      } else {
+        addToast({ title: "Sync complete", color: "success" });
       }
-      addToast({ title: "Sync complete", color: "success" });
       await fetchData();
     } catch (err: any) {
       addToast({ title: "Sync failed", description: err.message, color: "danger" });
@@ -364,12 +369,18 @@ export default function YourPerformancePage() {
           </div>
         )}
 
-        {/* Stats Cards */}
+        {/* Stats Cards + Best Performing Accounts */}
         <RecalcOverlay active={isRecalculating}>
-          <StatCards items={statCards} />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+            <StatCards items={statCards} gridClassName="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" />
+            <BestPerformingAccounts
+              accounts={activeAccounts}
+              postsByAccount={activePostsByAccount}
+            />
+          </div>
         </RecalcOverlay>
 
-        {/* Performance Over Time + Account Breakdown */}
+        {/* Performance Over Time + Best Performing Content */}
         <RecalcOverlay active={isRecalculating}>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
             <div className="lg:col-span-2">
@@ -384,43 +395,6 @@ export default function YourPerformancePage() {
               />
             </div>
             <div className="lg:col-span-1">
-              <AccountBreakdownChart
-                accounts={activeAccounts}
-                postsByAccount={activePostsByAccount}
-              />
-            </div>
-          </div>
-        </RecalcOverlay>
-
-        {/* Post Frequency + Best Performing Accounts (always both) */}
-        <RecalcOverlay active={isRecalculating}>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <PostFrequencyChart
-              posts={activePosts}
-              startDate={dateRange.startDate}
-              endDate={dateRange.endDate}
-            />
-            <BestPerformingAccounts
-              accounts={activeAccounts}
-              postsByAccount={activePostsByAccount}
-            />
-          </div>
-        </RecalcOverlay>
-
-        {/* Posts Table + Activity Feed */}
-        <RecalcOverlay active={isRecalculating}>
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-            <div className="xl:col-span-2">
-              <PostsTable
-                key={selectedAccountIds.join(",") + (dateRange.startDate || "") + (dateRange.endDate || "")}
-                posts={activePosts}
-                accountPlatformMap={accountPlatformMap}
-                accountSyncMap={accountSyncMap}
-                comparisonMode={comparisonMode}
-                onComparisonModeChange={setComparisonMode}
-              />
-            </div>
-            <div className="xl:col-span-1">
               <ActivityFeed
                 posts={activePosts}
                 allPosts={Object.values(postsByAccount).flat()}
@@ -429,6 +403,37 @@ export default function YourPerformancePage() {
               />
             </div>
           </div>
+        </RecalcOverlay>
+
+        {/* Post Frequency + Account Breakdown */}
+        <RecalcOverlay active={isRecalculating}>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
+            <div className="lg:col-span-2">
+              <PostFrequencyChart
+                posts={activePosts}
+                startDate={dateRange.startDate}
+                endDate={dateRange.endDate}
+              />
+            </div>
+            <div className="lg:col-span-1">
+              <AccountBreakdownChart
+                accounts={activeAccounts}
+                postsByAccount={activePostsByAccount}
+              />
+            </div>
+          </div>
+        </RecalcOverlay>
+
+        {/* Top Performing Content Table (full width) */}
+        <RecalcOverlay active={isRecalculating}>
+          <PostsTable
+            key={selectedAccountIds.join(",") + (dateRange.startDate || "") + (dateRange.endDate || "")}
+            posts={activePosts}
+            accountPlatformMap={accountPlatformMap}
+            accountSyncMap={accountSyncMap}
+            comparisonMode={comparisonMode}
+            onComparisonModeChange={setComparisonMode}
+          />
         </RecalcOverlay>
       </div>
 
