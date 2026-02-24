@@ -38,10 +38,6 @@ function handleError(res: Response, label: string, error: any, fallbackMessage: 
   if (error.message?.includes("already being tracked")) {
     return res.status(409).json({ error: error.message });
   }
-  if (error.message?.includes("Maximum")) {
-    return res.status(400).json({ error: error.message });
-  }
-
   return res.status(500).json({ error: fallbackMessage });
 }
 
@@ -129,6 +125,24 @@ class ViralityController {
       return res.json({ success: true });
     } catch (error) {
       return handleError(res, "Delete virality account error", error, "Failed to delete account");
+    }
+  }
+
+  async updateAccountStatus(req: AuthRequest, res: Response) {
+    try {
+      const teamId = parseId(req.params.teamId);
+      const accountId = parseId(req.params.accountId);
+      if (!teamId || !accountId) return res.status(400).json({ error: "Invalid team or account ID" });
+
+      const { is_active } = req.body;
+      if (typeof is_active !== "boolean") {
+        return res.status(400).json({ error: "is_active must be a boolean" });
+      }
+
+      const account = await viralityService.updateAccountStatus(accountId, teamId, is_active);
+      return res.json({ account });
+    } catch (error) {
+      return handleError(res, "Update account status error", error, "Failed to update account status");
     }
   }
 

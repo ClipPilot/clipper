@@ -56,12 +56,12 @@ const LIKE_FILTER_OPTIONS: { key: LikesFilter; label: string; min: number }[] = 
   { key: "1m", label: "1M+", min: 1_000_000 },
 ];
 
-function MetricChangeIndicator({ change }: { change: number | null }) {
+function MetricChangeIndicator({ change, absolute }: { change: number | null; absolute?: boolean }) {
   if (change == null) return null;
   return (
     <div className={cn("flex items-center gap-0.5", change >= 0 ? "text-green-500" : "text-red-500")}>
       <Icon icon={change >= 0 ? "solar:arrow-up-linear" : "solar:arrow-down-linear"} width={10} />
-      <span className="text-[10px] font-medium">{Math.abs(change).toFixed(1)}%</span>
+      <span className="text-[10px] font-medium">{absolute ? (change >= 0 ? "+" : "") + change.toFixed(2) : Math.abs(change).toFixed(1) + "%"}</span>
     </div>
   );
 }
@@ -366,7 +366,7 @@ export function PostsTable({ posts, accountPlatformMap, comparisonMode, onCompar
                       ? (((post.like_count + post.comment_count) / post.video_play_count) * 100).toFixed(2) + "%"
                       : "—"}
                   </span>
-                  <MetricChangeIndicator change={getPostEngRateChange(post, comparisonDate)} />
+                  <MetricChangeIndicator change={getPostEngRateChange(post, comparisonDate)} absolute />
                 </div>
               </TableCell>
               <TableCell>

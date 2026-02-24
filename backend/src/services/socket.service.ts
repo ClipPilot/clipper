@@ -184,6 +184,18 @@ export const emitAdPostingUpdate = (teamId: number, update: AdPostingUpdate) => 
   }
 };
 
+export interface ViralitySyncUpdate {
+  accountId: number;
+  syncStatus: "completed" | "failed";
+  syncError?: string;
+}
+
+export const emitViralitySyncUpdate = (teamId: number, update: ViralitySyncUpdate) => {
+  if (io) {
+    io.to(`team-${teamId}`).emit("virality-sync-update", update);
+  }
+};
+
 export const emitNewAnnouncement = (announcement: NewAnnouncement) => {
   if (io) {
     // Broadcast to ALL connected clients (not team-specific)

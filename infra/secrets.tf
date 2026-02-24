@@ -230,3 +230,17 @@ resource "aws_secretsmanager_secret_version" "apify_api_token" {
   secret_id     = aws_secretsmanager_secret.apify_api_token.id
   secret_string = var.apify_api_token
 }
+
+# SocialData API Key (Twitter/X profile data)
+resource "aws_secretsmanager_secret" "socialdata_api_key" {
+  name                    = "${var.project_name}-${var.environment}/socialdata-api-key"
+  recovery_window_in_days = 0
+
+  tags = {
+    Name = "${var.project_name}-socialdata-api-key-${var.environment}"
+  }
+}
+resource "aws_secretsmanager_secret_version" "socialdata_api_key" {
+  secret_id     = aws_secretsmanager_secret.socialdata_api_key.id
+  secret_string = var.socialdata_api_key
+}

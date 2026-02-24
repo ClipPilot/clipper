@@ -31,8 +31,8 @@ interface AddAccountModalProps {
 
 const accountTypes: { value: AccountType; label: string; icon: string }[] = [
   { value: "profile", label: "Profile", icon: "solar:user-bold" },
-  { value: "hashtag", label: "Hashtag", icon: "solar:hashtag-bold" },
-  { value: "keyword", label: "Keyword", icon: "solar:magnifer-bold" },
+  // { value: "hashtag", label: "Hashtag", icon: "solar:hashtag-bold" },
+  // { value: "keyword", label: "Keyword", icon: "solar:magnifer-bold" },
 ];
 
 const platforms: { value: Platform; label: string; icon: string; enabled: boolean }[] = [
@@ -124,7 +124,7 @@ export function AddAccountModal({
           </div>
 
           {/* Account Type Toggle */}
-          <div className="space-y-3">
+          {/* <div className="space-y-3">
             <label className="text-sm text-gray-400">Search Type</label>
             <div className="grid grid-cols-3 gap-3">
               {accountTypes.map((type) => (
@@ -148,7 +148,7 @@ export function AddAccountModal({
                 </button>
               ))}
             </div>
-          </div>
+          </div> */}
 
           {/* Profile URL / Username / Hashtag / Keyword Input */}
           <div className="space-y-2">
@@ -281,7 +281,7 @@ export function AddAccountModal({
             )}
           </div>
 
-          {/* Enable Instant Alerts */}
+          {/* Enable Instant Alerts
           <div className="flex items-center justify-between p-4 bg-[#0d0f1a] rounded-xl border border-[#2a2d3e]">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-green-500/10 rounded-lg">
@@ -301,7 +301,7 @@ export function AddAccountModal({
                 wrapper: enableAlerts ? "bg-accent-400" : "bg-gray-600",
               }}
             />
-          </div>
+          </div> */}
 
           {/* Error Message */}
           {error && (
@@ -323,6 +323,9 @@ export function AddAccountModal({
           >
             Start Tracking
           </Button>
+          <p className="text-xs text-text-tertiary text-center underline">
+            1 credit/account/week
+          </p>
         </ModalBody>
       </ModalContent>
     </Modal>

@@ -190,6 +190,10 @@ resource "aws_ecs_task_definition" "backend" {
       {
         name      = "APIFY_API_TOKEN"
         valueFrom = aws_secretsmanager_secret.apify_api_token.arn
+      },
+      {
+        name      = "SOCIALDATA_API_KEY"
+        valueFrom = aws_secretsmanager_secret.socialdata_api_key.arn
       }
     ]
 
