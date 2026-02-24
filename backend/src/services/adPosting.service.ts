@@ -2,9 +2,9 @@ import { db } from "../db";
 import {
   clips,
   posts,
-  massPostingApplications,
+  campaigns,
 } from "@clipper/shared-db/src/schema";
-import { eq, and, or, sql, desc, asc, ilike, gte, inArray, isNotNull, count as drizzleCount } from "drizzle-orm";
+import { eq, and, or, sql, desc, asc, ilike, gte, inArray, isNotNull } from "drizzle-orm";
 import { teamService } from "./team.service";
 import { getTeamUsage } from "../middleware/subscription.middleware";
 import { sqsService } from "./sqs.service";
@@ -62,22 +62,26 @@ class AdPostingService {
       0
     );
 
-    const [application] = await db
+    // Check for any accepted or started campaign for this team
+    const [campaign] = await db
       .select()
-      .from(massPostingApplications)
+      .from(campaigns)
       .where(
         and(
-          eq(massPostingApplications.team_id, teamId),
-          eq(massPostingApplications.status, "accepted")
+          eq(campaigns.team_id, teamId),
+          or(
+            eq(campaigns.status, "accepted"),
+            eq(campaigns.status, "started"),
+          )!,
         )
       )
       .limit(1);
 
-    if (!application) {
+    if (!campaign) {
       throw new AdPostingError("Team is not approved for mass posting", 403);
     }
 
-    const driveFolderId = application.google_drive_folder_id;
+    const driveFolderId = campaign.google_drive_folder_id;
     if (!driveFolderId) {
       throw new AdPostingError("Team does not have a Google Drive folder configured", 403);
     }

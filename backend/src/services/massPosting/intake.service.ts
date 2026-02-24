@@ -1,5 +1,5 @@
 import {
-  massPostingApplications,
+  campaigns,
   intakeForms,
   teams,
   teamMembers,
@@ -51,11 +51,11 @@ class IntakeService {
     return created;
   }
 
-  // ── Application Lifecycle ──────────────────────
+  // ── Application Lifecycle (now creates campaigns) ──
 
-  async submitApplication(teamId: number, formData: IntakeFormData, budget?: number) {
+  async submitApplication(teamId: number, formData: IntakeFormData, budget?: number, name?: string) {
     // Block if already pending or accepted
-    const latest = await this.getLatestApplication(teamId);
+    const latest = await this.getLatestCampaign(teamId);
     if (
       latest &&
       (latest.status === "pending" || latest.status === "accepted")
@@ -73,22 +73,32 @@ class IntakeService {
       completed: true,
     });
 
-    // Create the application
-    const [application] = await db
-      .insert(massPostingApplications)
+    // Get team name for campaign naming
+    const [team] = await db
+      .select({ name: teams.name })
+      .from(teams)
+      .where(eq(teams.id, teamId))
+      .limit(1);
+
+    const campaignName = name || `${team?.name || "Team"} Campaign`;
+
+    // Create a campaign
+    const [campaign] = await db
+      .insert(campaigns)
       .values({
         team_id: teamId,
         intake_form_id: form.id,
+        name: campaignName,
         status: "pending",
         budget: budget != null ? budget.toString() : null,
       })
       .returning();
 
-    return application;
+    return campaign;
   }
 
   async submitAppeal(teamId: number, formData: IntakeFormData, budget?: number) {
-    const latest = await this.getLatestApplication(teamId);
+    const latest = await this.getLatestCampaign(teamId);
     if (!latest || latest.status !== "rejected") {
       throw new Error("Can only appeal a rejected application");
     }
@@ -99,59 +109,35 @@ class IntakeService {
       completed: true,
     });
 
-    const [application] = await db
-      .insert(massPostingApplications)
-      .values({
-        team_id: teamId,
-        intake_form_id: form.id,
-        status: "appeal",
-        budget: budget != null ? budget.toString() : null,
-      })
-      .returning();
-
-    return application;
-  }
-
-  async updateApplicationCPM(id: number, quotedCpm: string, videoMinimum?: number) {
-    const [application] = await db
-      .select()
-      .from(massPostingApplications)
-      .where(eq(massPostingApplications.id, id))
-      .limit(1);
-
-    if (!application) {
-      throw new Error("Application not found");
-    }
-
-    const updateData: Record<string, any> = {
-      quoted_cpm: quotedCpm,
-      updated_at: new Date(),
-    };
-    if (videoMinimum != null) updateData.videoMinimum = videoMinimum;
-
+    // Update the campaign status to appeal
     const [updated] = await db
-      .update(massPostingApplications)
-      .set(updateData)
-      .where(eq(massPostingApplications.id, id))
+      .update(campaigns)
+      .set({
+        status: "appeal",
+        intake_form_id: form.id,
+        budget: budget != null ? budget.toString() : null,
+        updated_at: new Date(),
+      })
+      .where(eq(campaigns.id, latest.id))
       .returning();
 
     return updated;
   }
 
-  async getLatestApplication(teamId: number) {
-    const [application] = await db
+  async getLatestCampaign(teamId: number) {
+    const [campaign] = await db
       .select()
-      .from(massPostingApplications)
-      .where(eq(massPostingApplications.team_id, teamId))
-      .orderBy(desc(massPostingApplications.created_at))
+      .from(campaigns)
+      .where(eq(campaigns.team_id, teamId))
+      .orderBy(desc(campaigns.created_at))
       .limit(1);
 
-    return application || null;
+    return campaign || null;
   }
 
   async getApplicationStatus(teamId: number) {
     const form = await this.getIntakeForm(teamId);
-    const latest = await this.getLatestApplication(teamId);
+    const latest = await this.getLatestCampaign(teamId);
 
     return {
       hasIntakeForm: !!form,
@@ -172,36 +158,39 @@ class IntakeService {
     const offset = options?.offset ?? 0;
 
     const conditions = options?.status
-      ? eq(massPostingApplications.status, options.status)
+      ? eq(campaigns.status, options.status as any)
       : undefined;
 
     const [applicationRows, countResult] = await Promise.all([
       db
         .select({
-          id: massPostingApplications.id,
-          team_id: massPostingApplications.team_id,
-          status: massPostingApplications.status,
-          google_drive_folder_id:
-            massPostingApplications.google_drive_folder_id,
-          rejection_reason: massPostingApplications.rejection_reason,
-          admin_notes: massPostingApplications.admin_notes,
-          created_at: massPostingApplications.created_at,
-          updated_at: massPostingApplications.updated_at,
-          budget: massPostingApplications.budget,
-          quoted_cpm: massPostingApplications.quoted_cpm,
-          video_minimum: massPostingApplications.videoMinimum,
+          id: campaigns.id,
+          team_id: campaigns.team_id,
+          name: campaigns.name,
+          status: campaigns.status,
+          google_drive_folder_id: campaigns.google_drive_folder_id,
+          rejection_reason: campaigns.rejection_reason,
+          admin_notes: campaigns.admin_notes,
+          created_at: campaigns.created_at,
+          updated_at: campaigns.updated_at,
+          budget: campaigns.budget,
+          quoted_cpm: campaigns.quoted_cpm,
+          video_minimum: campaigns.video_minimum,
+          videos_ready: campaigns.videos_ready,
+          payment_ready: campaigns.payment_ready,
+          contract_ready: campaigns.contract_ready,
           team_name: teams.name,
           team_plan: teams.plan,
         })
-        .from(massPostingApplications)
-        .innerJoin(teams, eq(massPostingApplications.team_id, teams.id))
+        .from(campaigns)
+        .innerJoin(teams, eq(campaigns.team_id, teams.id))
         .where(conditions)
-        .orderBy(desc(massPostingApplications.created_at))
+        .orderBy(desc(campaigns.created_at))
         .limit(limit)
         .offset(offset),
       db
         .select({ count: sql<number>`count(*)::int` })
-        .from(massPostingApplications)
+        .from(campaigns)
         .where(conditions),
     ]);
 
@@ -217,25 +206,28 @@ class IntakeService {
   async getApplicationById(id: number) {
     const [application] = await db
       .select({
-        id: massPostingApplications.id,
-        team_id: massPostingApplications.team_id,
-        intake_form_id: massPostingApplications.intake_form_id,
-        status: massPostingApplications.status,
-        details: massPostingApplications.details,
-        google_drive_folder_id: massPostingApplications.google_drive_folder_id,
-        rejection_reason: massPostingApplications.rejection_reason,
-        admin_notes: massPostingApplications.admin_notes,
-        created_at: massPostingApplications.created_at,
-        updated_at: massPostingApplications.updated_at,
-        budget: massPostingApplications.budget,
-        quoted_cpm: massPostingApplications.quoted_cpm,
-        video_minimum: massPostingApplications.videoMinimum,
+        id: campaigns.id,
+        team_id: campaigns.team_id,
+        intake_form_id: campaigns.intake_form_id,
+        name: campaigns.name,
+        status: campaigns.status,
+        google_drive_folder_id: campaigns.google_drive_folder_id,
+        rejection_reason: campaigns.rejection_reason,
+        admin_notes: campaigns.admin_notes,
+        created_at: campaigns.created_at,
+        updated_at: campaigns.updated_at,
+        budget: campaigns.budget,
+        quoted_cpm: campaigns.quoted_cpm,
+        video_minimum: campaigns.video_minimum,
+        videos_ready: campaigns.videos_ready,
+        payment_ready: campaigns.payment_ready,
+        contract_ready: campaigns.contract_ready,
         team_name: teams.name,
         team_plan: teams.plan,
       })
-      .from(massPostingApplications)
-      .innerJoin(teams, eq(massPostingApplications.team_id, teams.id))
-      .where(eq(massPostingApplications.id, id))
+      .from(campaigns)
+      .innerJoin(teams, eq(campaigns.team_id, teams.id))
+      .where(eq(campaigns.id, id))
       .limit(1);
 
     if (!application) {
@@ -257,13 +249,13 @@ class IntakeService {
   }
 
   async approveApplication(id: number, adminNotes?: string) {
-    const [application] = await db
+    const [campaign] = await db
       .select()
-      .from(massPostingApplications)
-      .where(eq(massPostingApplications.id, id))
+      .from(campaigns)
+      .where(eq(campaigns.id, id))
       .limit(1);
 
-    if (!application) {
+    if (!campaign) {
       throw new Error("Application not found");
     }
 
@@ -271,7 +263,7 @@ class IntakeService {
     const [team] = await db
       .select()
       .from(teams)
-      .where(eq(teams.id, application.team_id))
+      .where(eq(teams.id, campaign.team_id))
       .limit(1);
 
     let googleDriveFolderId: string | null = null;
@@ -296,9 +288,9 @@ class IntakeService {
       updateData.google_drive_folder_id = googleDriveFolderId;
 
     const [updated] = await db
-      .update(massPostingApplications)
+      .update(campaigns)
       .set(updateData)
-      .where(eq(massPostingApplications.id, id))
+      .where(eq(campaigns.id, id))
       .returning();
 
     // Send approval email to team owner if Drive folder was created
@@ -310,7 +302,7 @@ class IntakeService {
           .innerJoin(users, eq(teamMembers.user_id, users.id))
           .where(
             and(
-              eq(teamMembers.team_id, application.team_id),
+              eq(teamMembers.team_id, campaign.team_id),
               eq(teamMembers.role, "owner"),
             ),
           )
@@ -322,7 +314,7 @@ class IntakeService {
           await emailNotiService.sendMassPostingApproved(owner.email, {
             userName: owner.firstName || "there",
             teamName: team.name,
-            dashboardUrl: `${frontendUrl}/dashboard/mass-posting`,
+            dashboardUrl: `${frontendUrl}/dashboard/publish-posts`,
             driveFolderUrl: googleDriveService.getFolderLink(googleDriveFolderId),
           });
         }
@@ -335,13 +327,13 @@ class IntakeService {
   }
 
   async rejectApplication(id: number, reason: string, adminNotes?: string) {
-    const [application] = await db
+    const [campaign] = await db
       .select()
-      .from(massPostingApplications)
-      .where(eq(massPostingApplications.id, id))
+      .from(campaigns)
+      .where(eq(campaigns.id, id))
       .limit(1);
 
-    if (!application) {
+    if (!campaign) {
       throw new Error("Application not found");
     }
 
@@ -354,9 +346,9 @@ class IntakeService {
     if (adminNotes) updateData.admin_notes = adminNotes;
 
     const [updated] = await db
-      .update(massPostingApplications)
+      .update(campaigns)
       .set(updateData)
-      .where(eq(massPostingApplications.id, id))
+      .where(eq(campaigns.id, id))
       .returning();
 
     // Send rejection email to team owner
@@ -364,7 +356,7 @@ class IntakeService {
       const [team] = await db
         .select()
         .from(teams)
-        .where(eq(teams.id, application.team_id))
+        .where(eq(teams.id, campaign.team_id))
         .limit(1);
 
       const [owner] = await db
@@ -373,7 +365,7 @@ class IntakeService {
         .innerJoin(users, eq(teamMembers.user_id, users.id))
         .where(
           and(
-            eq(teamMembers.team_id, application.team_id),
+            eq(teamMembers.team_id, campaign.team_id),
             eq(teamMembers.role, "owner"),
           ),
         )
@@ -385,7 +377,7 @@ class IntakeService {
           userName: owner.firstName || "there",
           teamName: team.name,
           rejectionReason: reason,
-          reapplyUrl: `${frontendUrl}/dashboard/mass-posting`,
+          reapplyUrl: `${frontendUrl}/dashboard/publish-posts`,
         });
       }
     } catch (emailError) {
@@ -395,29 +387,55 @@ class IntakeService {
     return updated;
   }
 
-  async retryDriveFolder(id: number) {
-    const [application] = await db
+  async updateApplicationCPM(id: number, quotedCpm: string, videoMinimum?: number) {
+    const [campaign] = await db
       .select()
-      .from(massPostingApplications)
-      .where(eq(massPostingApplications.id, id))
+      .from(campaigns)
+      .where(eq(campaigns.id, id))
       .limit(1);
 
-    if (!application) {
+    if (!campaign) {
       throw new Error("Application not found");
     }
 
-    if (application.status !== "accepted") {
+    const updateData: Record<string, any> = {
+      quoted_cpm: quotedCpm,
+      updated_at: new Date(),
+    };
+    if (videoMinimum != null) updateData.video_minimum = videoMinimum;
+
+    const [updated] = await db
+      .update(campaigns)
+      .set(updateData)
+      .where(eq(campaigns.id, id))
+      .returning();
+
+    return updated;
+  }
+
+  async retryDriveFolder(id: number) {
+    const [campaign] = await db
+      .select()
+      .from(campaigns)
+      .where(eq(campaigns.id, id))
+      .limit(1);
+
+    if (!campaign) {
+      throw new Error("Application not found");
+    }
+
+    if (campaign.status !== "accepted") {
       throw new Error("Can only retry Drive folder for accepted applications");
     }
 
-    if (application.google_drive_folder_id) {
+    if (campaign.google_drive_folder_id) {
       throw new Error("Drive folder already exists");
     }
 
     const [team] = await db
       .select()
       .from(teams)
-      .where(eq(teams.id, application.team_id))
+      .where(eq(teams.id, campaign.team_id))
       .limit(1);
 
     const folderId = await googleDriveService.createTeamFolder(
@@ -426,12 +444,12 @@ class IntakeService {
     );
 
     const [updated] = await db
-      .update(massPostingApplications)
+      .update(campaigns)
       .set({
         google_drive_folder_id: folderId,
         updated_at: new Date(),
       })
-      .where(eq(massPostingApplications.id, id))
+      .where(eq(campaigns.id, id))
       .returning();
 
     return updated;
