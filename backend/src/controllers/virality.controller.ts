@@ -83,8 +83,8 @@ class ViralityController {
         teamId,
         platform,
         profileUrl,
-        competitorId ? parseInt(competitorId) : undefined,
-        accountType || "profile"
+        accountType || "profile",
+        competitorId ? parseInt(competitorId) : undefined
       );
 
       // Trigger first sync in the background

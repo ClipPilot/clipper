@@ -454,7 +454,8 @@ async function upsertPost(
   db: ReturnType<typeof drizzle>,
   accountId: number,
   postData: InstagramPost,
-  platform: string
+  platform: string,
+  postsTable: any = schema.viralityPosts
 ): Promise<boolean> {
   if (!postData.id) return false;
 
@@ -468,11 +469,11 @@ async function upsertPost(
 
   const [existingPost] = await db
     .select()
-    .from(schema.viralityPosts)
+    .from(postsTable)
     .where(
       and(
-        eq(schema.viralityPosts.account_id, accountId),
-        eq(schema.viralityPosts.platform_post_id, postData.id)
+        eq(postsTable.account_id, accountId),
+        eq(postsTable.platform_post_id, postData.id)
       )
     )
     .limit(1);
@@ -494,7 +495,7 @@ async function upsertPost(
       : history;
 
     await db
-      .update(schema.viralityPosts)
+      .update(postsTable)
       .set({
         like_count: postData.likesCount || 0,
         comment_count: postData.commentsCount || 0,
@@ -503,11 +504,11 @@ async function upsertPost(
         metrics_history: trimmed,
         updated_at: new Date(),
       })
-      .where(eq(schema.viralityPosts.id, existingPost.id));
+      .where(eq(postsTable.id, existingPost.id));
 
     console.log(`[DB] Updated post ${postData.id} (${postData.shortCode}) | likes=${postData.likesCount} comments=${postData.commentsCount} views=${postData.videoPlayCount ?? "N/A"} | metrics_history: ${trimmed.length} entries`);
   } else {
-    await db.insert(schema.viralityPosts).values({
+    await db.insert(postsTable).values({
       account_id: accountId,
       platform_post_id: postData.id,
       post_url: postData.url || (platform === "x"
@@ -572,13 +573,14 @@ async function fetchXFollowerCount(username: string): Promise<Partial<InstagramP
 async function updateAccountProfile(
   db: ReturnType<typeof drizzle>,
   accountId: number,
-  profile: Partial<InstagramProfile>
+  profile: Partial<InstagramProfile>,
+  accountsTable: any = schema.viralityAccounts
 ) {
   // Fetch existing follower_history
   const [existing] = await db
-    .select({ follower_history: schema.viralityAccounts.follower_history })
-    .from(schema.viralityAccounts)
-    .where(eq(schema.viralityAccounts.id, accountId))
+    .select({ follower_history: accountsTable.follower_history })
+    .from(accountsTable)
+    .where(eq(accountsTable.id, accountId))
     .limit(1);
 
   const history: FollowerEntry[] = Array.isArray(existing?.follower_history)
@@ -609,9 +611,9 @@ async function updateAccountProfile(
   if (profile.isVerified !== undefined) updates.is_verified = profile.isVerified;
 
   await db
-    .update(schema.viralityAccounts)
+    .update(accountsTable)
     .set(updates)
-    .where(eq(schema.viralityAccounts.id, accountId));
+    .where(eq(accountsTable.id, accountId));
 
   console.log(`[DB] Updated profile for account ${accountId}: followers=${profile.followersCount ?? "N/A"} | follower_history: ${trimmed.length} entries`);
 }
@@ -839,6 +841,142 @@ export const handler: Handler = async (event: any, context: Context) => {
           .update(schema.viralityAccounts)
           .set({ sync_status: "failed", sync_error: error.message || "Unknown error", updated_at: new Date() })
           .where(eq(schema.viralityAccounts.id, account.id));
+      }
+    }
+
+    // ── Sync user's own accounts (userAccounts → userPosts) ──
+    console.log(`\n--- User Performance Accounts ---`);
+
+    const userAccountsCutoff = new Date(Date.now() - STALE_SYNC_MINUTES * 60 * 1000);
+    await db
+      .update(schema.userAccounts)
+      .set({
+        sync_status: "failed",
+        sync_error: `Sync timed out (stuck for more than ${STALE_SYNC_MINUTES} minutes)`,
+        updated_at: new Date(),
+      })
+      .where(
+        and(
+          or(
+            eq(schema.userAccounts.sync_status, "pending"),
+            eq(schema.userAccounts.sync_status, "syncing")
+          ),
+          lte(schema.userAccounts.updated_at, userAccountsCutoff)
+        )
+      );
+
+    const userAcctList = await db
+      .select()
+      .from(schema.userAccounts)
+      .where(
+        and(
+          inArray(schema.userAccounts.platform, ["instagram", "tiktok", "x"]),
+          eq(schema.userAccounts.is_active, true)
+        )
+      );
+
+    console.log(`[DB] Found ${userAcctList.length} active user accounts to sync`);
+
+    for (const account of userAcctList) {
+      console.log(`\n--- Syncing user @${account.username} [${account.platform}] (id=${account.id}, syncs_remaining=${account.syncs_remaining}) ---`);
+
+      if (account.syncs_remaining <= 0) {
+        const charged = await consumeOneCredit(db, account.team_id);
+        if (charged) {
+          await db
+            .update(schema.userAccounts)
+            .set({ syncs_remaining: SYNCS_PER_WEEK, updated_at: new Date() })
+            .where(eq(schema.userAccounts.id, account.id));
+        } else {
+          await db
+            .update(schema.userAccounts)
+            .set({ is_active: false, updated_at: new Date() })
+            .where(eq(schema.userAccounts.id, account.id));
+          accountsDeactivated++;
+          console.log(`[Credit] No credits for team=${account.team_id}, deactivated user @${account.username}`);
+          continue;
+        }
+      } else {
+        await db
+          .update(schema.userAccounts)
+          .set({ syncs_remaining: account.syncs_remaining - 1, updated_at: new Date() })
+          .where(eq(schema.userAccounts.id, account.id));
+      }
+
+      await db
+        .update(schema.userAccounts)
+        .set({ sync_status: "syncing", sync_error: null, updated_at: new Date() })
+        .where(eq(schema.userAccounts.id, account.id));
+
+      try {
+        let posts: InstagramPost[];
+        let profile: InstagramProfile | null = null;
+        const accountType = account.account_type || "profile";
+
+        if (accountType === "hashtag") {
+          const result = account.platform === "tiktok"
+            ? await scrapeTikTokHashtag(apifyClient, account.username)
+            : account.platform === "x"
+              ? await scrapeXKeywordSearch(apifyClient, `#${account.username}`)
+              : await scrapeInstagramHashtag(apifyClient, account.username);
+          posts = result.posts;
+        } else if (accountType === "keyword") {
+          const result = account.platform === "x"
+            ? await scrapeXKeywordSearch(apifyClient, account.username)
+            : account.platform === "tiktok"
+              ? await scrapeTikTokHashtag(apifyClient, account.username)
+              : await scrapeInstagramHashtag(apifyClient, account.username);
+          posts = result.posts;
+        } else {
+          const result = account.platform === "tiktok"
+            ? await scrapeTikTokAccount(apifyClient, account.username)
+            : account.platform === "x"
+              ? await scrapeXAccount(apifyClient, account.username)
+              : await scrapeInstagramAccount(apifyClient, account.username);
+          posts = result.posts;
+          profile = result.profile;
+        }
+
+        if (accountType === "profile") {
+          const resolvedProfile = profile
+            ?? (account.platform === "instagram"
+              ? await scrapeInstagramProfile(apifyClient, account.username)
+              : null);
+          if (resolvedProfile) {
+            await updateAccountProfile(db, account.id, resolvedProfile, schema.userAccounts);
+          }
+          if (account.platform === "x") {
+            const xFollowers = await fetchXFollowerCount(account.username);
+            if (xFollowers) {
+              await updateAccountProfile(db, account.id, xFollowers, schema.userAccounts);
+            }
+          }
+        }
+
+        for (const post of posts) {
+          const ok = await upsertPost(db, account.id, post, account.platform, schema.userPosts);
+          if (ok) postsUpserted++;
+        }
+
+        const [likesResult] = await db
+          .select({ total: sql<number>`COALESCE(SUM(${schema.userPosts.like_count}), 0)` })
+          .from(schema.userPosts)
+          .where(eq(schema.userPosts.account_id, account.id));
+
+        await db
+          .update(schema.userAccounts)
+          .set({ sync_status: "completed", last_synced_at: new Date(), total_likes: Number(likesResult.total), updated_at: new Date() })
+          .where(eq(schema.userAccounts.id, account.id));
+
+        accountsSynced++;
+        console.log(`[OK] user @${account.username} completed: ${posts.length} posts upserted`);
+      } catch (error: any) {
+        accountsFailed++;
+        console.error(`[FAIL] user @${account.username}: ${error.message}`);
+        await db
+          .update(schema.userAccounts)
+          .set({ sync_status: "failed", sync_error: error.message || "Unknown error", updated_at: new Date() })
+          .where(eq(schema.userAccounts.id, account.id));
       }
     }
   } catch (error) {

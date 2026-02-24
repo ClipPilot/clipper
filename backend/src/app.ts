@@ -25,6 +25,7 @@ import announcementRoutes from "./routes/announcement.routes";
 import intakeRoutes from "./routes/intake.routes";
 import adPostingRoutes from "./routes/adPosting.routes";
 import viralityRoutes from "./routes/virality.routes";
+import userPerformanceRoutes from "./routes/userPerformance.routes";
 import voiceCloneRoutes from "./routes/voiceClone.routes";
 import apiPlatformRoutes from "./routes/api-platform/main.routes";
 import { swaggerSpec } from "./config/swagger";
@@ -138,6 +139,7 @@ app.use("/api/announcements", announcementRoutes);
 app.use("/api/intake", intakeRoutes);
 app.use("/api/ad-posting", adPostingRoutes);
 app.use("/api/virality", viralityRoutes);
+app.use("/api/user-performance", userPerformanceRoutes);
 app.use("/api/voice-clones", voiceCloneRoutes);
 app.use("/api/platform", apiPlatformRoutes);
 

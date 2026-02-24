@@ -1,0 +1,443 @@
+"use client";
+
+import { useState, useEffect, useMemo, useCallback, useRef, Fragment } from "react";
+import { motion } from "framer-motion";
+import {
+  Button,
+  addToast,
+  Spinner,
+  useDisclosure,
+} from "@heroui/react";
+import { Icon } from "@iconify/react";
+import { useTeams } from "@/hooks/useTeams";
+import { useViralityDateRange } from "@/contexts/ViralityContext";
+import { userPerformanceAPI } from "@/api/userPerformance";
+import type { ViralityAccount, ViralityPost } from "@/api/virality";
+import { CHART_COLORS, timeAgo, platformIcon, platformIconColor } from "@/lib/platformUtils";
+import { DateRangeFilter } from "@/components/virality/DateRangeFilter";
+import { type ComparisonMode } from "@/components/virality/ComparisonModeSelector";
+import { StatCards } from "@/components/virality/StatCards";
+import { PostsTable } from "@/components/virality/PostsTable";
+import { AnalyticsChart } from "@/components/virality/AnalyticsChart";
+import { PostFrequencyChart } from "@/components/virality/PostFrequencyChart";
+import { AccountBreakdownChart } from "@/components/virality/AccountBreakdownChart";
+import { BestPerformingAccounts } from "@/components/virality/BestPerformingAccounts";
+import { RecalcOverlay } from "@/components/virality/RecalcOverlay";
+import { AccountFilterPopover } from "@/components/virality/AccountFilterPopover";
+import { ActivityFeed } from "@/components/virality/ActivityFeed";
+import { AddAccountModal } from "@/components/virality/AddAccountModal";
+import { ViralityUpgradeWall } from "@/components/virality/ViralityUpgradeWall";
+import {
+  findClosestEntry,
+  getComparisonDate,
+  pct,
+  computePostsPerWeek,
+  buildStatCards,
+  getNextSyncCountdown,
+} from "@/app/dashboard/virality/[competitorId]/utils";
+import { canAccessViralityTracker } from "@/lib/plans";
+import { useViralitySyncSocket } from "@/hooks/useViralitySyncSocket";
+
+export default function YourPerformancePage() {
+  const { selectedTeam } = useTeams();
+  const { dateRange, setDateRange } = useViralityDateRange();
+  const { isOpen, onOpen, onClose } = useDisclosure();
+
+  const [accounts, setAccounts] = useState<ViralityAccount[]>([]);
+  const [postsByAccount, setPostsByAccount] = useState<Record<number, ViralityPost[]>>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRecalculating, setIsRecalculating] = useState(false);
+  const initialLoadDone = useRef(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [selectedAccountIds, setSelectedAccountIds] = useState<number[]>([]);
+  const [comparisonMode, setComparisonMode] = useState<ComparisonMode>({ type: "last-sync" });
+
+  const fetchData = useCallback(async () => {
+    if (!selectedTeam?.id || !canAccessViralityTracker(selectedTeam.plan)) return;
+    if (initialLoadDone.current) setIsRecalculating(true);
+    try {
+      const accts = await userPerformanceAPI.getAccounts(selectedTeam.id);
+      setAccounts(accts);
+
+      const { startDate, endDate } = dateRange;
+      const postsMap: Record<number, ViralityPost[]> = {};
+      await Promise.all(
+        accts.map(async (a) => {
+          const posts = await userPerformanceAPI.getAccountPosts(
+            selectedTeam.id, a.id, 100, 0, startDate, endDate
+          );
+          postsMap[a.id] = posts;
+        })
+      );
+      setPostsByAccount(postsMap);
+    } catch (err: any) {
+      addToast({ title: "Failed to load data", description: err.message, color: "danger" });
+    } finally {
+      setIsLoading(false);
+      setIsRecalculating(false);
+      initialLoadDone.current = true;
+    }
+  }, [selectedTeam?.id, dateRange]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Track accounts doing their initial sync
+  const syncingAccountIds = useMemo(() => {
+    return accounts
+      .filter((a) => !a.last_synced_at && (a.sync_status === "pending" || a.sync_status === "syncing"))
+      .map((a) => a.id);
+  }, [accounts]);
+
+  useViralitySyncSocket({
+    teamId: selectedTeam?.id,
+    accountIds: syncingAccountIds,
+    onSyncComplete: () => { fetchData(); },
+  });
+
+  const handleSyncAll = async () => {
+    if (!selectedTeam?.id || accounts.length === 0) return;
+    setIsSyncing(true);
+    try {
+      for (const account of accounts) {
+        await userPerformanceAPI.syncAccount(selectedTeam.id, account.id);
+      }
+      addToast({ title: "Sync complete", color: "success" });
+      await fetchData();
+    } catch (err: any) {
+      addToast({ title: "Sync failed", description: err.message, color: "danger" });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleAddAccount = async (
+    platform: "tiktok" | "instagram" | "x",
+    profileUrl: string,
+    options: {
+      enableAlerts: boolean;
+      competitorId?: number;
+      newCompetitorName?: string;
+      accountType: "profile" | "hashtag" | "keyword";
+    }
+  ) => {
+    if (!selectedTeam?.id) return;
+    await userPerformanceAPI.addAccount(
+      selectedTeam.id,
+      platform,
+      profileUrl,
+      options.accountType
+    );
+    addToast({ title: "Account added", color: "success" });
+    await fetchData();
+  };
+
+  // ─── Derived data ────────────────────────────────────────────────────────────
+
+  const activeAccounts = useMemo(() => {
+    if (selectedAccountIds.length === 0) return accounts;
+    return accounts.filter((a) => selectedAccountIds.includes(a.id));
+  }, [accounts, selectedAccountIds]);
+
+  const activePosts = useMemo(() => {
+    const posts: ViralityPost[] = [];
+    for (const a of activeAccounts) {
+      const accountPosts = postsByAccount[a.id] || [];
+      posts.push(...accountPosts);
+    }
+    return posts.sort(
+      (a, b) => new Date(b.posted_at || 0).getTime() - new Date(a.posted_at || 0).getTime()
+    );
+  }, [activeAccounts, postsByAccount]);
+
+  const activePostsByAccount = useMemo(() => {
+    const map: Record<number, ViralityPost[]> = {};
+    for (const a of activeAccounts) {
+      map[a.id] = postsByAccount[a.id] || [];
+    }
+    return map;
+  }, [activeAccounts, postsByAccount]);
+
+  const allFilteredPostsByAccount = useMemo(() => {
+    const map: Record<number, ViralityPost[]> = {};
+    for (const a of accounts) {
+      map[a.id] = postsByAccount[a.id] || [];
+    }
+    return map;
+  }, [accounts, postsByAccount]);
+
+  const accountPlatformMap = useMemo(() => {
+    const map: Record<number, string> = {};
+    for (const a of accounts) map[a.id] = a.platform;
+    return map;
+  }, [accounts]);
+
+  const accountSyncMap = useMemo(() => {
+    const map: Record<number, string | null> = {};
+    for (const a of accounts) map[a.id] = a.last_synced_at;
+    return map;
+  }, [accounts]);
+
+  const accountColorMap = useMemo(() => {
+    const map: Record<number, string> = {};
+    accounts.forEach((a, i) => {
+      map[a.id] = CHART_COLORS[i % CHART_COLORS.length];
+    });
+    return map;
+  }, [accounts]);
+
+  const accountMap = useMemo(() => {
+    const map: Record<number, ViralityAccount> = {};
+    for (const a of accounts) map[a.id] = a;
+    return map;
+  }, [accounts]);
+
+  const stats = useMemo(() => {
+    const followers = activeAccounts.reduce((sum, a) => sum + (a.follower_count || 0), 0);
+    const totalLikes = activePosts.reduce((sum, p) => sum + (p.like_count || 0), 0);
+    const totalComments = activePosts.reduce((sum, p) => sum + (p.comment_count || 0), 0);
+    const totalViews = activePosts.reduce((sum, p) => sum + (p.video_play_count || 0), 0);
+
+    const comparisonDate = getComparisonDate(comparisonMode);
+
+    let prevLikes = 0, prevComments = 0, prevViews = 0;
+    let latestLikes = 0, latestComments = 0, latestViews = 0;
+    let hasHistory = false;
+
+    for (const post of activePosts) {
+      const h = post.metrics_history;
+      if (!h || h.length < 2) continue;
+      const latest = h[h.length - 1];
+      const prev = comparisonDate === null ? h[h.length - 2] : findClosestEntry(h, comparisonDate);
+      if (!prev) continue;
+
+      hasHistory = true;
+      prevLikes += prev.likes;
+      prevComments += prev.comments;
+      prevViews += prev.views ?? 0;
+      latestLikes += latest.likes;
+      latestComments += latest.comments;
+      latestViews += latest.views ?? 0;
+    }
+
+    let prevFollowers = 0, latestFollowers = 0;
+    let hasFollowerHistory = false;
+    for (const a of activeAccounts) {
+      const fh = a.follower_history;
+      if (!fh || fh.length < 2) continue;
+      const latestF = fh[fh.length - 1];
+      const prevF = comparisonDate === null ? fh[fh.length - 2] : findClosestEntry(fh, comparisonDate);
+      if (!prevF) continue;
+      hasFollowerHistory = true;
+      prevFollowers += prevF.followers;
+      latestFollowers += latestF.followers;
+    }
+
+    const totalEngagements = totalLikes + totalComments;
+    const engagementRate = totalViews > 0 ? (totalEngagements / totalViews) * 100 : 0;
+
+    const prevEngagements = prevLikes + prevComments;
+    const latestEngagements = latestLikes + latestComments;
+    const engagementsChange = hasHistory ? pct(latestEngagements, prevEngagements) : null;
+
+    const prevEngRate = prevViews > 0 ? (prevEngagements / prevViews) * 100 : 0;
+    const latestEngRate = latestViews > 0 ? (latestEngagements / latestViews) * 100 : 0;
+    const engRateChange = hasHistory ? latestEngRate - prevEngRate : null;
+
+    return {
+      followers, totalLikes, totalComments, totalViews,
+      totalEngagements, engagementsChange, engagementRate, engRateChange,
+      followersChange: hasFollowerHistory ? pct(latestFollowers, prevFollowers) : null,
+      likesChange: hasHistory ? pct(latestLikes, prevLikes) : null,
+      commentsChange: hasHistory ? pct(latestComments, prevComments) : null,
+      viewsChange: hasHistory ? pct(latestViews, prevViews) : null,
+    };
+  }, [activeAccounts, activePosts, comparisonMode]);
+
+  const postsPerWeek = useMemo(() => computePostsPerWeek(activePosts), [activePosts]);
+
+  const lastSyncedAt = useMemo(() => {
+    let latest: Date | null = null;
+    for (const a of accounts) {
+      if (a.last_synced_at) {
+        const d = new Date(a.last_synced_at);
+        if (!latest || d > latest) latest = d;
+      }
+    }
+    return latest;
+  }, [accounts]);
+
+  // ─── Loading / Error states ──────────────────────────────────────────────────
+
+  if (!canAccessViralityTracker(selectedTeam?.plan)) {
+    return <ViralityUpgradeWall />;
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-surface-dark flex items-center justify-center">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  // ─── Stat card data ──────────────────────────────────────────────────────────
+
+  const statCards = buildStatCards(stats, activePosts.length, postsPerWeek);
+
+  // ─── Render ──────────────────────────────────────────────────────────────────
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="min-h-screen bg-surface-dark p-6 lg:p-8"
+    >
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-text-primary">Your Performance</h1>
+            <p className="text-text-secondary text-sm mt-1">
+              Real-time performance metrics for your own accounts
+            </p>
+            {lastSyncedAt && (
+              <p className="text-text-tertiary text-xs mt-0.5">
+                Last synced {timeAgo(lastSyncedAt.toISOString())} · Next sync in{" "}
+                {getNextSyncCountdown()}
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <DateRangeFilter value={dateRange} onChange={setDateRange} />
+            <Button
+              className="bg-accent-400 text-white"
+              startContent={<Icon icon="solar:add-circle-bold" width={18} />}
+              onPress={onOpen}
+            >
+              Add Account
+            </Button>
+            <Button
+              className="bg-surface-base text-text-primary border border-border-base"
+              startContent={
+                isSyncing ? <Spinner size="sm" /> : <Icon icon="solar:refresh-bold" width={18} />
+              }
+              isDisabled={isSyncing || accounts.length === 0}
+              onPress={handleSyncAll}
+            >
+              {isSyncing ? "Syncing..." : "Sync All"}
+            </Button>
+          </div>
+        </div>
+
+        {/* Account Filter */}
+        {accounts.length > 0 ? (
+          <AccountFilterPopover
+            accounts={accounts}
+            selectedAccountIds={selectedAccountIds}
+            onChange={setSelectedAccountIds}
+          />
+        ) : (
+          <div className="flex flex-col items-center justify-center py-8 gap-2">
+            <Icon icon="solar:users-group-rounded-linear" width={40} className="text-text-tertiary" />
+            <p className="text-text-secondary text-sm">No accounts added yet. Add your first account to get started.</p>
+          </div>
+        )}
+
+        {/* Syncing accounts banner */}
+        {syncingAccountIds.length > 0 && (
+          <div className="flex items-center gap-3 rounded-xl border border-accent-400/30 bg-accent-400/5 px-4 py-3">
+            <Spinner size="sm" color="primary" />
+            <p className="text-sm text-text-secondary">
+              Syncing{" "}
+              {accounts
+                .filter((a) => syncingAccountIds.includes(a.id))
+                .map((a, i, arr) => (
+                  <Fragment key={a.id}>
+                    <span className="font-medium text-text-primary">
+                      {a.account_type === "hashtag" ? "#" : "@"}{a.username}
+                    </span>
+                    {i < arr.length - 1 && ", "}
+                  </Fragment>
+                ))}
+              &hellip; Data will appear once the sync is complete.
+            </p>
+          </div>
+        )}
+
+        {/* Stats Cards */}
+        <RecalcOverlay active={isRecalculating}>
+          <StatCards items={statCards} />
+        </RecalcOverlay>
+
+        {/* Performance Over Time + Account Breakdown */}
+        <RecalcOverlay active={isRecalculating}>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
+            <div className="lg:col-span-2">
+              <AnalyticsChart
+                accounts={activeAccounts}
+                postsByAccount={activePostsByAccount}
+                allAccounts={accounts}
+                allPostsByAccount={allFilteredPostsByAccount}
+                colorMap={accountColorMap}
+                startDate={dateRange.startDate}
+                endDate={dateRange.endDate}
+              />
+            </div>
+            <div className="lg:col-span-1">
+              <AccountBreakdownChart
+                accounts={activeAccounts}
+                postsByAccount={activePostsByAccount}
+              />
+            </div>
+          </div>
+        </RecalcOverlay>
+
+        {/* Post Frequency + Best Performing Accounts (always both) */}
+        <RecalcOverlay active={isRecalculating}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <PostFrequencyChart
+              posts={activePosts}
+              startDate={dateRange.startDate}
+              endDate={dateRange.endDate}
+            />
+            <BestPerformingAccounts
+              accounts={activeAccounts}
+              postsByAccount={activePostsByAccount}
+            />
+          </div>
+        </RecalcOverlay>
+
+        {/* Posts Table + Activity Feed */}
+        <RecalcOverlay active={isRecalculating}>
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <div className="xl:col-span-2">
+              <PostsTable
+                key={selectedAccountIds.join(",") + (dateRange.startDate || "") + (dateRange.endDate || "")}
+                posts={activePosts}
+                accountPlatformMap={accountPlatformMap}
+                accountSyncMap={accountSyncMap}
+                comparisonMode={comparisonMode}
+                onComparisonModeChange={setComparisonMode}
+              />
+            </div>
+            <div className="xl:col-span-1">
+              <ActivityFeed
+                posts={activePosts}
+                allPosts={Object.values(postsByAccount).flat()}
+                accountMap={accountMap}
+                dateRange={dateRange}
+              />
+            </div>
+          </div>
+        </RecalcOverlay>
+      </div>
+
+      <AddAccountModal
+        isOpen={isOpen}
+        onClose={onClose}
+        hideCompetitorSelect
+        onSubmit={handleAddAccount}
+      />
+    </motion.div>
+  );
+}
