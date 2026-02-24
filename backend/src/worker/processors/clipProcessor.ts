@@ -93,6 +93,7 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
       ? async (localMergedPath: string): Promise<ClipServiceOptions | null> => {
           const tempS3Key = `temp/facecam-detect/${teamId}/${Date.now()}.mp4`;
           try {
+            console.log(`[CLIP-PROCESSOR] Uploading merged clip to temp S3 for facecam detection: ${tempS3Key}`);
             await s3Service.uploadFile(localMergedPath, tempS3Key, "video/mp4");
 
             if (needsFacecamDetect) {
