@@ -4,15 +4,8 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Button, Card, CardBody, Progress, Input, Tabs, Tab } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { videoAPI, UploadProgress, MultipartUploadResponse, VideoUrlInfo, VideoDownloadProgress } from "@/api/video";
-// TODO: Re-enable when Google Drive integration is complete
-// import { DrivePicker } from "./DrivePicker";
-
-const PLAN_UPLOAD_LIMITS: Record<string, number> = {
-  free: 2 * 1024 * 1024 * 1024,
-  studio: 2 * 1024 * 1024 * 1024,
-  scale: 3 * 1024 * 1024 * 1024,
-  enterprise: 3 * 1024 * 1024 * 1024,
-};
+import { formatBytes, formatDuration } from "@/lib/videoUrlUtils";
+import { PLAN_UPLOAD_LIMITS } from "@/lib/constants";
 
 interface UploadSectionProps {
   teamId: number;
@@ -52,26 +45,10 @@ const formatTime = (seconds: number): string => {
   return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
 };
 
-const formatBytes = (bytes: number): string => {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024)
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
-};
-
 const formatSpeed = (bytesPerSecond: number): string => {
   if (bytesPerSecond < 1024 * 1024)
     return `${(bytesPerSecond / 1024).toFixed(1)} KB/s`;
   return `${(bytesPerSecond / (1024 * 1024)).toFixed(1)} MB/s`;
-};
-
-const formatDuration = (seconds: number): string => {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
-  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-  return `${m}:${String(s).padStart(2, "0")}`;
 };
 
 export const UploadSection: React.FC<UploadSectionProps> = ({
@@ -419,9 +396,6 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                 Browse Files
               </Button>
 
-              {/* TODO: Re-enable when Google Drive integration is complete
-              <DrivePicker setDownloading={setDownloading} downloading={downloading} processFile={processFile} />
-              */}
             </div>
 
             <div className="flex items-start gap-2 text-xs text-text-tertiary">
@@ -629,9 +603,6 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                 Browse Files
               </Button>
 
-              {/* TODO: Re-enable when Google Drive integration is complete
-              <DrivePicker setDownloading={setDownloading} disabled />
-              */}
             </div>
           </div>
         </CardBody>

@@ -1,11 +1,13 @@
 import {
   cutClip,
   mergeClips,
-  convertToVerticalBlur,
+  convertToVertical,
   addTextOverlay,
   addTextOverlayAtPosition,
   addPreviewWatermark,
 } from "./videoEditor.service";
+import type { FacecamRegion } from "./videoEditor.service";
+import type { ConversionMode } from "../../constants/conversionModes";
 import path from "path";
 import fs from "fs";
 import { ClipSuggestions, BatchClipSuggestions } from "../../types/ai.types";
@@ -31,6 +33,8 @@ export interface ClipServiceOptions {
   captions?: boolean;
   captionColor?: string;
   captionFont?: string;
+  conversionMode?: ConversionMode;
+  facecamRegion?: FacecamRegion | null;
 }
 
 export interface CaptionEntry {
@@ -165,9 +169,9 @@ export const createCombinedClipService = async (
   const mergedRawPath = path.join(outDir, `merged_raw_${videoIndex}_temp.mp4`);
   await mergeClips(tempFiles, mergedRawPath);
 
-  // Convert horizontal videos to 9:16 with blurred background
+  // Convert horizontal videos to 9:16 using selected conversion mode
   const mergedPath = path.join(outDir, `merged_${videoIndex}_temp.mp4`);
-  await convertToVerticalBlur(mergedRawPath, mergedPath);
+  await convertToVertical(mergedRawPath, mergedPath, options.conversionMode, options.facecamRegion);
   if (fs.existsSync(mergedRawPath) && mergedRawPath !== mergedPath) {
     fs.unlinkSync(mergedRawPath);
   }
@@ -456,9 +460,9 @@ export const createBatchCombinedClipService = async (
   const mergedRawPath = path.join(outDir, `batch_merged_raw_${outputIndex}_temp.mp4`);
   await mergeClips(tempFiles, mergedRawPath);
 
-  // Convert horizontal videos to 9:16 with blurred background
+  // Convert horizontal videos to 9:16 using selected conversion mode
   const mergedPath = path.join(outDir, `batch_merged_${outputIndex}_temp.mp4`);
-  await convertToVerticalBlur(mergedRawPath, mergedPath);
+  await convertToVertical(mergedRawPath, mergedPath, options.conversionMode, options.facecamRegion);
   if (fs.existsSync(mergedRawPath) && mergedRawPath !== mergedPath) {
     fs.unlinkSync(mergedRawPath);
   }

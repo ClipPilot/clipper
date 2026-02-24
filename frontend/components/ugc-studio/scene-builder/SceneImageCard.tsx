@@ -53,6 +53,8 @@ interface SceneImageCardProps {
   onSavingStateChange?: (isSaving: boolean) => void;
   /** When true, always shows expanded view (used in storyboard mode) */
   isStoryboardMode?: boolean;
+  /** Called when user requests AI regeneration of dialogue + action with optional custom prompt */
+  onRegenerateScene?: (customPrompt?: string) => Promise<void>;
   /** Override for single B-roll prompt regeneration (ad clone uses different API) */
   onRegenerateBRollPrompt?: (params: {
     sceneId: string;
@@ -97,6 +99,7 @@ export function SceneImageCard({
   onSavingStateChange,
   onCustomBRollImageChange,
   isStoryboardMode = false,
+  onRegenerateScene,
   onRegenerateBRollPrompt,
   onRegenerateAllBRollShots,
 }: SceneImageCardProps) {
@@ -128,6 +131,25 @@ export function SceneImageCard({
   const [editingField, setEditingField] = useState<"dialogue" | "action" | null>(null);
   const [editingBRollIndex, setEditingBRollIndex] = useState<number | null>(null);
   const [editValue, setEditValue] = useState("");
+
+  // Scene regeneration state
+  const [showRegenInput, setShowRegenInput] = useState(false);
+  const [regenPrompt, setRegenPrompt] = useState("");
+  const [isRegeneratingScene, setIsRegeneratingScene] = useState(false);
+
+  const handleRegenerateScene = async () => {
+    if (!onRegenerateScene) return;
+    setIsRegeneratingScene(true);
+    try {
+      await onRegenerateScene(regenPrompt.trim() || undefined);
+      setShowRegenInput(false);
+      setRegenPrompt("");
+    } catch (error) {
+      console.error("Failed to regenerate scene:", error);
+    } finally {
+      setIsRegeneratingScene(false);
+    }
+  };
 
   const startEditing = (field: "dialogue" | "action") => {
     if (!onSceneUpdate) return;
@@ -609,18 +631,65 @@ export function SceneImageCard({
               {scene.estimatedDurationSeconds}s
             </span>
           </div>
-          {/* Hide collapse button in storyboard mode - use timeline for navigation */}
-          {!isStoryboardMode && (
-            <Button
-              isIconOnly
-              size="sm"
-              variant="light"
-              onPress={() => setIsExpanded(false)}
-            >
-              <Icon icon="solar:alt-arrow-up-linear" width={16} />
-            </Button>
-          )}
+          <div className="flex items-center gap-1">
+            {onRegenerateScene && (
+              <Button
+                size="sm"
+                variant="flat"
+                className="bg-purple-500/20 text-purple-400 h-7"
+                onPress={() => setShowRegenInput(!showRegenInput)}
+                isLoading={isRegeneratingScene}
+                startContent={!isRegeneratingScene ? <Icon icon="solar:magic-stick-3-bold" width={14} /> : undefined}
+              >
+                Regen Scene
+              </Button>
+            )}
+            {/* Hide collapse button in storyboard mode - use timeline for navigation */}
+            {!isStoryboardMode && (
+              <Button
+                isIconOnly
+                size="sm"
+                variant="light"
+                onPress={() => setIsExpanded(false)}
+              >
+                <Icon icon="solar:alt-arrow-up-linear" width={16} />
+              </Button>
+            )}
+          </div>
         </div>
+
+        {/* Regenerate scene inline input */}
+        {showRegenInput && onRegenerateScene && (
+          <div className="flex items-center gap-2 bg-purple-500/10 border border-purple-500/30 rounded-lg p-2">
+            <Icon icon="solar:magic-stick-3-bold" width={16} className="text-purple-400 shrink-0" />
+            <input
+              type="text"
+              value={regenPrompt}
+              onChange={(e) => setRegenPrompt(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleRegenerateScene();
+                if (e.key === "Escape") { setShowRegenInput(false); setRegenPrompt(""); }
+              }}
+              placeholder="Custom direction (optional)..."
+              className="flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-muted outline-none"
+              autoFocus
+            />
+            <Button
+              size="sm"
+              className="bg-purple-500 text-white h-7 min-w-0 px-3"
+              onPress={handleRegenerateScene}
+              isLoading={isRegeneratingScene}
+            >
+              Regenerate
+            </Button>
+            <button
+              onClick={() => { setShowRegenInput(false); setRegenPrompt(""); }}
+              className="p-1 rounded hover:bg-red-500/20 text-text-muted hover:text-red-400 transition-colors"
+            >
+              <Icon icon="solar:close-circle-bold" width={16} />
+            </button>
+          </div>
+        )}
 
         {/* Dialogue */}
         <div className="bg-surface-base rounded-lg p-3">
@@ -719,7 +788,7 @@ export function SceneImageCard({
           )}
         </div>
 
-        {/* Metadata row — emotion + camera angle selectors */}
+        {/* Metadata row — emotion + camera angle selectors (camera angle hidden for b-roll) */}
         {onSceneUpdate && (
           <div className="flex items-center gap-4">
             <EmotionSelector
@@ -727,13 +796,15 @@ export function SceneImageCard({
               onChange={(emotion) => onSceneUpdate({ ...scene, emotion })}
               compact
             />
-            <CameraAngleSelector
-              value={scene.cameraAngle}
-              customValue={scene.customCameraAngle}
-              onChange={(cameraAngle, customCameraAngle) =>
-                onSceneUpdate({ ...scene, cameraAngle, customCameraAngle })
-              }
-            />
+            {scene.shotType !== "b-roll" && (
+              <CameraAngleSelector
+                value={scene.cameraAngle}
+                customValue={scene.customCameraAngle}
+                onChange={(cameraAngle, customCameraAngle) =>
+                  onSceneUpdate({ ...scene, cameraAngle, customCameraAngle })
+                }
+              />
+            )}
           </div>
         )}
 

@@ -6,6 +6,7 @@ import {
   ugcVideoGenerationJobs,
   ugcScripts,
   sceneImages,
+  sceneImageGenerationJobs,
   clips,
   adCloneProjects,
 } from "@clipper/shared-db/src/schema";
@@ -19,6 +20,7 @@ import { convertWordsToCaptionEntries, CaptionEntry } from "../services/clips/ca
 import { getTeamUsage } from "../middleware/subscription.middleware";
 import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
 import { ugcScriptService } from "../services/ai-ugc/ugcScript.service";
+import type { ShotType } from "../types/ugcScript.types";
 
 interface AuthRequest extends Request {
   user?: { id: string; email: string; dbUserId: number };
@@ -38,7 +40,7 @@ interface SceneData {
   action: string;
   dialogue: string;
   emotion: string;
-  shotType: "a-roll" | "b-roll" | "mixed";
+  shotType: ShotType;
   cameraAngle: string;
   cinematicPrompt: string;
   durationSeconds: number;
@@ -328,10 +330,21 @@ export class UGCVideoController {
         };
 
         if (scene.bRollShots && scene.bRollShots.length > 0 && scene.shotType === "b-roll") {
-          const baseKey = savedImage.image_key;
+          // Look up per-shot keys from the generation job
+          let shotKeys: string[] | undefined;
+          if (savedImage.generation_job_id) {
+            const [job] = await db
+              .select({ generated_images: sceneImageGenerationJobs.generated_images })
+              .from(sceneImageGenerationJobs)
+              .where(eq(sceneImageGenerationJobs.id, savedImage.generation_job_id))
+              .limit(1);
+            if (job?.generated_images) {
+              shotKeys = job.generated_images as string[];
+            }
+          }
 
           sceneData.bRollShots = scene.bRollShots.map((shot, index) => {
-            const shotImageKey = baseKey.replace(/variant_\d+/, `variant_${index}`);
+            const shotImageKey = shotKeys?.[index] || savedImage.image_key;
 
             return {
               action: shot.action,

@@ -109,6 +109,7 @@ export interface RegenerateSceneParams {
   currentDialogue: string;
   currentEmotion: string;
   regenerationType: "dialogue" | "full";
+  customPrompt?: string;
 }
 
 export interface RegenerateBRollPromptParams {
@@ -358,7 +359,9 @@ Return a JSON object with a "descriptions" array of strings, one description per
       currentDialogue,
       currentEmotion,
       currentScript.title,
-      "the character"
+      "the character",
+      currentScene.shotType,
+      params.customPrompt
     );
 
     const response = await client.responses.parse({

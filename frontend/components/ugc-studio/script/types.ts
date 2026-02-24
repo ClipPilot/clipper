@@ -131,6 +131,7 @@ export interface RegenerateSceneRequest {
   currentDialogue: string;
   currentEmotion: string;
   regenerationType: "dialogue" | "full";
+  customPrompt?: string;
 }
 
 export interface RegenerateSceneResponse {
@@ -401,6 +402,16 @@ export const SCRIPT_STRUCTURES: ScriptStructure[] = [
     ],
     bestFor: ["Disruptive products", "Bold brands", "Standing out"],
     icon: "solar:chat-square-call-bold-duotone",
+  },
+  {
+    id: "long-form",
+    name: "Long-Form Speech",
+    description: "Single continuous monologue — testimonials, stories, speeches",
+    pattern: [
+      { type: "testimonial", shot: "a-roll", duration: "30-180s" },
+    ],
+    bestFor: ["Testimonials", "Personal stories", "Long monologues"],
+    icon: "solar:microphone-3-bold-duotone",
   },
   {
     id: "custom",

@@ -200,45 +200,6 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
         buttonClass="bg-accent-400 text-white font-semibold"
       />
 
-      <Card className="bg-surface-elevated border border-border-base">
-        <CardBody className="p-6">
-          <h3 className="text-lg font-semibold text-text-primary mb-4">What happens next?</h3>
-          <div className="space-y-3">
-            <div className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-accent-400/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-xs font-bold text-accent-400">1</span>
-              </div>
-              <p className="text-sm text-text-secondary">
-                AI generates voice-over audio for each scene using {selectedVoice.name}
-              </p>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-accent-400/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-xs font-bold text-accent-400">2</span>
-              </div>
-              <p className="text-sm text-text-secondary">
-                Each scene image is animated into a video clip with realistic motion
-              </p>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-accent-400/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-xs font-bold text-accent-400">3</span>
-              </div>
-              <p className="text-sm text-text-secondary">
-                Video clips are assembled with audio into your final video
-              </p>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-accent-400/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-xs font-bold text-accent-400">4</span>
-              </div>
-              <p className="text-sm text-text-secondary">
-                Preview your video and save it to your clip library for editing
-              </p>
-            </div>
-          </div>
-        </CardBody>
-      </Card>
     </div>
   );
 }

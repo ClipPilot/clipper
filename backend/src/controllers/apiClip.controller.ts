@@ -243,6 +243,7 @@ async function uploadAndDispatch(params: {
   captionColor: string;
   originalFileName?: string;
   fileSize?: number;
+  conversionMode?: "standard" | "gaming" | "speaker-zoom" | "center-crop";
 }) {
   const {
     teamId, userId, clipIds, localVideoPath,
@@ -262,6 +263,7 @@ async function uploadAndDispatch(params: {
       promptType,
       captions: captionsEnabled,
       captionColor,
+      conversionMode: params.conversionMode,
     },
     originalFileName,
     fileSize,

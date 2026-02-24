@@ -31,14 +31,14 @@ const adminAuthLimiter = rateLimit({
 });
 
 /**
- * @swagger
+ * @openapi
  * tags:
  *   name: Admin
  *   description: Admin dashboard endpoints for enterprise management
  */
 
 /**
- * @swagger
+ * @openapi
  * /api/admin/login:
  *   post:
  *     summary: Admin login - Step 1 (credentials validation)
@@ -73,7 +73,7 @@ const adminAuthLimiter = rateLimit({
 router.post("/login", adminAuthLimiter, login);
 
 /**
- * @swagger
+ * @openapi
  * /api/admin/verify-2fa:
  *   post:
  *     summary: Admin login - Step 2 (2FA verification)
@@ -110,7 +110,7 @@ router.post("/login", adminAuthLimiter, login);
 router.post("/verify-2fa", adminAuthLimiter, verify2FA);
 
 /**
- * @swagger
+ * @openapi
  * /api/admin/resend-2fa:
  *   post:
  *     summary: Resend 2FA code
@@ -141,7 +141,7 @@ router.post("/verify-2fa", adminAuthLimiter, verify2FA);
 router.post("/resend-2fa", resend2FA);
 
 /**
- * @swagger
+ * @openapi
  * /api/admin/teams:
  *   get:
  *     summary: Get all teams
@@ -166,7 +166,7 @@ router.post("/resend-2fa", resend2FA);
 router.get("/teams", requireAdminAuth, getAllTeams);
 
 /**
- * @swagger
+ * @openapi
  * /api/admin/teams/{teamId}:
  *   get:
  *     summary: Get team by ID
@@ -198,7 +198,7 @@ router.get("/teams", requireAdminAuth, getAllTeams);
 router.get("/teams/:teamId", requireAdminAuth, getTeam);
 
 /**
- * @swagger
+ * @openapi
  * /api/admin/enterprise/setup:
  *   post:
  *     summary: Setup enterprise subscription for a team
@@ -317,7 +317,7 @@ router.post("/referrals/reward", requireAdminAuth, setReferralReward);
 // Mass Posting Applications
 
 /**
- * @swagger
+ * @openapi
  * /api/admin/applications:
  *   get:
  *     summary: Get all mass-posting applications
@@ -403,7 +403,7 @@ router.post("/referrals/reward", requireAdminAuth, setReferralReward);
 router.get("/applications", requireAdminAuth, getAllApplications);
 
 /**
- * @swagger
+ * @openapi
  * /api/admin/applications/{applicationId}:
  *   get:
  *     summary: Get application by ID
@@ -469,7 +469,7 @@ router.get("/applications", requireAdminAuth, getAllApplications);
 router.get("/applications/:applicationId", requireAdminAuth, getApplication);
 
 /**
- * @swagger
+ * @openapi
  * /api/admin/applications/{applicationId}/approve:
  *   post:
  *     summary: Approve an application
@@ -515,7 +515,7 @@ router.get("/applications/:applicationId", requireAdminAuth, getApplication);
 router.post("/applications/:applicationId/approve", requireAdminAuth, approveApplication);
 
 /**
- * @swagger
+ * @openapi
  * /api/admin/applications/{applicationId}/reject:
  *   post:
  *     summary: Reject an application
@@ -567,7 +567,7 @@ router.post("/applications/:applicationId/approve", requireAdminAuth, approveApp
 router.post("/applications/:applicationId/reject", requireAdminAuth, rejectApplication);
 
 /**
- * @swagger
+ * @openapi
  * /api/admin/applications/{applicationId}/retry-drive:
  *   post:
  *     summary: Retry Google Drive folder creation

@@ -3,6 +3,7 @@ packages:
   - backend
   - lambda-expire-clips
   - lambda-virality-sync
+  - va-tools
 
 ignoredBuiltDependencies:
   - puppeteer

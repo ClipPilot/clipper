@@ -95,7 +95,6 @@ export const adCloneProductDescriptionAtom = atom("");
 export const adCloneAdDirectionAtom = atom("");
 
 export const adCloneProjectIdAtom = atom<string | null>(null);
-export const adCloneProjectDataAtom = atom<AdCloneProjectData | null>(null);
 export const adCloneStatusAtom = atom<AdCloneProjectStatus | null>(null);
 
 export const adCloneAnalysisAtom = atom<VideoAnalysis | null>(null);
@@ -168,7 +167,6 @@ export const resetAdCloneAtom = atom(null, (get, set) => {
   set(adCloneAdDirectionAtom, "");
 
   set(adCloneProjectIdAtom, null);
-  set(adCloneProjectDataAtom, null);
   set(adCloneStatusAtom, null);
 
   set(adCloneAnalysisAtom, null);

@@ -24,7 +24,7 @@ export function ScriptStructureSelector({
   };
 
   const removeScene = (index: number) => {
-    if (customPattern.length <= 3) return;
+    if (customPattern.length <= 1) return;
     onCustomPatternChange(customPattern.filter((_, i) => i !== index));
   };
 
@@ -185,7 +185,7 @@ export function ScriptStructureSelector({
                   size="sm"
                   variant="light"
                   onPress={() => removeScene(i)}
-                  isDisabled={customPattern.length <= 3}
+                  isDisabled={customPattern.length <= 1}
                   className="text-text-muted hover:text-red-400 min-w-7 w-7 h-7"
                 >
                   <Icon icon="solar:trash-bin-minimalistic-linear" width={16} />
@@ -193,7 +193,7 @@ export function ScriptStructureSelector({
               </div>
             ))}
           </div>
-          <p className="text-[10px] text-text-muted">Min 3 scenes, max 8. Start with hook, end with CTA.</p>
+          <p className="text-[10px] text-text-muted">Min 1 scene, max 8. Start with hook, end with CTA.</p>
         </div>
       ) : (
         <div className="bg-surface-base rounded-lg p-3 border border-border-base">

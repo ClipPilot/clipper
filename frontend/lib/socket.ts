@@ -95,3 +95,19 @@ export function leaveTeam(teamId: number): void {
     s.emit("leave-team", teamId);
   }
 }
+
+/**
+ * Derives the WebSocket server origin from NEXT_PUBLIC_API_URL.
+ * Strips any trailing /api path so socket.io can connect to the root.
+ * Used by hooks that spin up their own socket.io connections.
+ */
+export function getSocketUrl(): string {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl) return "http://localhost:3001";
+  try {
+    const url = new URL(apiUrl);
+    return url.origin;
+  } catch {
+    return apiUrl.replace(/\/api\/?$/, "");
+  }
+}

@@ -13,7 +13,7 @@ export const AnalyzedSceneSchema = z.object({
   endTime: z.number().describe("End time in seconds"),
   durationSeconds: z.number().describe("Scene duration in seconds"),
   sceneType: z.enum(SCENE_TYPES).describe("Inferred scene type (hook, problem, solution, demo, testimonial, cta)"),
-  shotType: z.enum(SHOT_TYPES).describe("Whether this is A-roll (person talking), B-roll (product/cutaway), or mixed"),
+  shotType: z.enum(SHOT_TYPES).describe("Whether this is A-roll (person talking) or B-roll (product/cutaway)"),
   transcribedDialogue: z.string().nullable().describe("Transcribed speech in this scene, null if no speech"),
   actionDescription: z.string().describe("What is happening visually in this scene"),
   settingDescription: z.string().describe("Description of the environment/location"),

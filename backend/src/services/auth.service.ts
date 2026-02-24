@@ -18,6 +18,43 @@ class AuthService {
     this.supabase = createClient(ENV.SUPABASE_URL, ENV.SUPABASE_ANON_KEY);
   }
 
+  /**
+   * Creates the default personal workspace team for a newly registered user,
+   * adds them as owner, and seeds the initial usage stats record.
+   * Returns the created team record.
+   */
+  private async bootstrapUserTeam(userId: number, firstName: string) {
+    const teamName = `${firstName || "My"}'s Workspace`;
+
+    const [team] = await db
+      .insert(teams)
+      .values({
+        name: teamName,
+        type: "personal",
+      })
+      .returning();
+
+    await db.insert(teamMembers).values({
+      team_id: team.id,
+      user_id: userId,
+      role: "owner",
+    });
+
+    const resetsDate = new Date();
+    resetsDate.setDate(resetsDate.getDate() + 30);
+
+    await db.insert(usageStats).values({
+      team_id: team.id,
+      date: new Date(),
+      clips_created: 0,
+      limit: PLAN_LIMITS.FREE.clips,
+      resets_date: resetsDate,
+      rollover: false,
+    });
+
+    return team;
+  }
+
   async signUp(
     email: string,
     password: string,
@@ -68,35 +105,8 @@ class AuthService {
       })
       .returning();
 
-    // Create default personal team for the user
-    const teamName = `${firstName}'s Workspace`;
-    const [team] = await db
-      .insert(teams)
-      .values({
-        name: teamName,
-        type: "personal",
-      })
-      .returning();
-
-    // Add user as owner of the team
-    await db.insert(teamMembers).values({
-      team_id: team.id,
-      user_id: user.id,
-      role: "owner",
-    });
-
-    // Create initial usage stats for the team
-    const resetsDate = new Date();
-    resetsDate.setDate(resetsDate.getDate() + 30); // Set reset date to 30 days from now
-
-    await db.insert(usageStats).values({
-      team_id: team.id,
-      date: new Date(),
-      clips_created: 0,
-      limit: PLAN_LIMITS.FREE.clips,
-      resets_date: resetsDate,
-      rollover: false,
-    });
+    // Create default personal workspace for the new user
+    const team = await this.bootstrapUserTeam(user.id, firstName);
 
     const acceptedTeams =
       await teamInviteService.acceptAllPendingInvitesForUser(user.id, email);
@@ -183,33 +193,8 @@ class AuthService {
         })
         .returning();
 
-      // * optional but recommended (matches signUp)
-      const teamName = `${firstName || "My"}'s Workspace`;
-      const [team] = await db
-        .insert(teams)
-        .values({
-          name: teamName,
-          type: "personal",
-        })
-        .returning();
-
-      await db.insert(teamMembers).values({
-        team_id: team.id,
-        user_id: dbUser.id,
-        role: "owner",
-      });
-
-      const resetsDate = new Date();
-      resetsDate.setDate(resetsDate.getDate() + 30);
-
-      await db.insert(usageStats).values({
-        team_id: team.id,
-        date: new Date(),
-        clips_created: 0,
-        limit: PLAN_LIMITS.FREE.clips,
-        resets_date: resetsDate,
-        rollover: false,
-      });
+      // Create default personal workspace for the new OAuth user
+      await this.bootstrapUserTeam(dbUser.id, firstName || "My");
 
       await teamInviteService.acceptAllPendingInvitesForUser(
         dbUser.id,

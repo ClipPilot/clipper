@@ -15,6 +15,8 @@ import { emailNotiService } from "../../services/emailNoti.service";
 import { userService } from "../../services/user.service";
 import { ensureOutputDir } from "../../utils/fileUtils";
 import { sanitizeErrorForFrontend } from "../../utils/errorSanitizer";
+import { detectFacecamFromS3Key } from "../../services/facecamDetect.service";
+import type { FacecamRegion } from "../../services/clips/videoEditor.service";
 
 export async function processBatchClipVideoJob(
   job: BatchClipVideoJob
@@ -91,6 +93,20 @@ export async function processBatchClipVideoJob(
       fs.unlinkSync(thumbnailPath);
     }
 
+    // Detect facecam region from first video if gaming or speaker-zoom mode
+    let facecamRegion: FacecamRegion | null = null;
+    if (options.conversionMode === "gaming" || options.conversionMode === "speaker-zoom") {
+      console.log(`[BATCH-PROCESSOR] Detecting facecam for ${options.conversionMode} mode...`);
+      const firstVideoS3Key = videos[0].s3Key;
+      const result = await detectFacecamFromS3Key(firstVideoS3Key);
+      if (result?.facecamDetected && result.facecamRegion) {
+        facecamRegion = result.facecamRegion;
+        console.log(`[BATCH-PROCESSOR] Facecam detected at ${result.corner}: ${JSON.stringify(facecamRegion)}`);
+      } else {
+        console.warn(`[BATCH-PROCESSOR] No facecam detected — will fall back to blurred-bg`);
+      }
+    }
+
     const clipServiceOptions = {
       customText: options.customText,
       textPosition: options.textPosition,
@@ -99,6 +115,8 @@ export async function processBatchClipVideoJob(
       captions: options.captions,
       captionColor: options.captionColor,
       captionFont: options.captionFont,
+      conversionMode: options.conversionMode,
+      facecamRegion,
     };
 
     console.log(`Processing ${batchClipSuggestions.length} batch clips sequentially...`);
@@ -162,6 +180,7 @@ export async function processBatchClipVideoJob(
               captions: options.captions || false,
               captionColor: options.captionColor,
               captionFont: options.captionFont,
+              conversionMode: options.conversionMode,
             },
             batchInfo: {
               isBatch: true,

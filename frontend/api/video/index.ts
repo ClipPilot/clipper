@@ -23,6 +23,8 @@ export interface UploadProgress {
   speed: number;
 }
 
+export type ConversionMode = "standard" | "gaming" | "speaker-zoom" | "center-crop";
+
 export interface SubmitClipParams {
   teamId: number;
   s3Key: string;
@@ -40,6 +42,7 @@ export interface SubmitClipParams {
   captions?: boolean;
   captionColor?: string;
   captionFont?: string;
+  conversionMode?: ConversionMode;
 }
 
 export interface SubmitClipResponse {
@@ -79,6 +82,7 @@ export interface SubmitBatchClipParams {
   captions?: boolean;
   captionColor?: string;
   captionFont?: string;
+  conversionMode?: ConversionMode;
 }
 
 export interface VideoUrlInfo {

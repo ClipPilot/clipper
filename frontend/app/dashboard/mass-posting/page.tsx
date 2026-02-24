@@ -7,6 +7,7 @@ import { Icon } from "@iconify/react";
 import { selectedTeamAtom } from "@/store/auth";
 import { useMassPosting } from "@/hooks/useMassPosting";
 import { LoadingView, ApprovedView } from "@/components/mass-posting/StatusViews";
+import { PlanUpgradeWall } from "@/components/mass-posting/PlanUpgradeWall";
 import { canAccessMassPosting } from "@/lib/plans";
 
 export default function MassPostingPage() {
@@ -16,43 +17,11 @@ export default function MassPostingPage() {
 
   if (!canAccessMassPosting(selectedTeam?.plan)) {
     return (
-      <div className="min-h-screen bg-surface-dark flex flex-col items-center justify-center p-6">
-        <div className="flex flex-col items-center gap-6 max-w-sm">
-          <div className="relative">
-            <div className="flex items-center justify-center w-20 h-20 rounded-2xl bg-accent-400/10">
-              <Icon
-                icon="solar:checklist-minimalistic-bold-duotone"
-                className="text-accent-400"
-                width={40}
-              />
-            </div>
-            <div className="absolute -bottom-1 -right-1 flex items-center justify-center w-7 h-7 rounded-full bg-surface-dark border-2 border-surface-dark">
-              <Icon
-                icon="solar:lock-keyhole-bold"
-                className="text-text-tertiary"
-                width={14}
-              />
-            </div>
-          </div>
-          <div className="text-center space-y-2">
-            <h2 className="text-xl font-bold text-text-primary">
-              Posts Published
-            </h2>
-            <p className="text-sm text-text-secondary leading-relaxed">
-              Track your queued and published posts across all platforms.
-              Available on Studio plan and above.
-            </p>
-          </div>
-          <Button
-            size="lg"
-            className="w-full bg-accent-400 text-white font-semibold"
-            onPress={() => router.push("/dashboard/pricing")}
-            startContent={<Icon icon="solar:rocket-bold" width={18} />}
-          >
-            Upgrade to Studio
-          </Button>
-        </div>
-      </div>
+      <PlanUpgradeWall
+        title="Posts Published"
+        description="Track your queued and published posts across all platforms. Available on Studio plan and above."
+        icon="solar:checklist-minimalistic-bold-duotone"
+      />
     );
   }
 
