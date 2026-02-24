@@ -23,7 +23,7 @@ export const services: ServiceConfig[] = [
     id: "worker",
     name: "Worker",
     description: "Video processing pipeline",
-    url: process.env.CHECK_WORKER_URL || "https://api.cuttr.com/health/worker",
+    url: process.env.CHECK_WORKER_URL || "https://api.cuttr.com/health",
     method: "GET",
     timeout: 10000,
     degradedThreshold: 2000,
