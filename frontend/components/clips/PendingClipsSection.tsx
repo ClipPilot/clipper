@@ -185,11 +185,6 @@ export default function PendingClipsSection({
                       </div>
                     </div>
                     <span className="text-sm font-medium text-danger-400">Failed</span>
-                    {clip.error_message && (
-                      <p className="text-xs text-text-tertiary mt-2 px-3 text-center line-clamp-3">
-                        {clip.error_message}
-                      </p>
-                    )}
                   </div>
                   <div className="mt-2 flex items-center justify-between">
                     <p className="text-xs text-text-tertiary truncate mr-1">

@@ -1,4 +1,6 @@
 import { fal } from "./falClient";
+import { generateImageWithGeminiDirect } from "../ad-clone/gemini.service";
+import { s3Service } from "../s3.service";
 
 const FAL_TIMEOUT_MS = 300000; // 5 minutes max per image generation
 
@@ -9,6 +11,23 @@ function withTimeout<T>(promise: Promise<T>, ms: number, operation: string): Pro
       setTimeout(() => reject(new Error(`${operation} timed out after ${ms / 1000}s`)), ms)
     ),
   ]);
+}
+
+/**
+ * Fallback: generate image via Gemini API (Nano Banana Pro) and upload to S3.
+ * Returns a presigned URL so callers can fetch the image the same way as FAL results.
+ */
+async function geminiFallback(
+  prompt: string,
+  imageUrls?: string[],
+  aspectRatio?: string,
+): Promise<GenerateImageResult> {
+  console.log("[FAL_IMAGE] Falling back to Gemini API (Nano Banana Pro)...");
+  const buffer = await generateImageWithGeminiDirect({ prompt, imageUrls, aspectRatio: aspectRatio || "9:16" });
+  const tempKey = `temp/gemini-fallback/${Date.now()}_${Math.random().toString(36).slice(2)}.png`;
+  await s3Service.uploadBuffer(buffer, tempKey, "image/png");
+  const imageUrl = await s3Service.getPresignedUrl(tempKey, 3600);
+  return { imageUrl };
 }
 
 export type AspectRatio =
@@ -59,58 +78,67 @@ interface FalImageResponse {
 /**
  * Generate image using FAL AI's nano-banana model (text-to-image)
  * Use this when NO reference images are provided
+ * Falls back to Gemini API if FAL fails
  */
 export async function generateImage(
   options: GenerateImageOptions & { usePro?: boolean },
 ): Promise<GenerateImageResult> {
-  const { prompt, aspectRatio = "3:4", numImages = 1, usePro = false } = options;
+  const { prompt, aspectRatio = "9:16", numImages = 1, usePro = false } = options;
 
   const model = usePro ? "fal-ai/nano-banana-pro" : "fal-ai/nano-banana";
   console.log(`[FAL_IMAGE] Text-to-image with ${model}, aspect ratio ${aspectRatio}`);
 
-  const result = (await withTimeout(
-    fal.subscribe(model, {
-      input: {
-        prompt,
-        num_images: numImages,
-        aspect_ratio: aspectRatio,
-        output_format: "png",
-        limit_generations: true,
-      },
-      logs: true,
-      onQueueUpdate: (update) => {
-        if (update.status === "IN_PROGRESS" && update.logs) {
-          update.logs
-            .map((log: { message: string }) => log.message)
-            .forEach((msg: string) => {
-              console.log(`[FAL_IMAGE] ${msg}`);
-            });
-        }
-      },
-    }),
-    FAL_TIMEOUT_MS,
-    "FAL text-to-image"
-  )) as { data: FalImageResponse };
+  try {
+    const result = (await withTimeout(
+      fal.subscribe(model, {
+        input: {
+          prompt,
+          num_images: numImages,
+          aspect_ratio: aspectRatio,
+          output_format: "png",
+          limit_generations: true,
+        },
+        logs: true,
+        onQueueUpdate: (update) => {
+          if (update.status === "IN_PROGRESS" && update.logs) {
+            update.logs
+              .map((log: { message: string }) => log.message)
+              .forEach((msg: string) => {
+                console.log(`[FAL_IMAGE] ${msg}`);
+              });
+          }
+        },
+      }),
+      FAL_TIMEOUT_MS,
+      "FAL text-to-image"
+    )) as { data: FalImageResponse };
 
-  if (!result.data?.images?.[0]?.url) {
-    throw new Error("Image generation did not return an image");
+    if (!result.data?.images?.[0]?.url) {
+      throw new Error("Image generation did not return an image");
+    }
+
+    return {
+      imageUrl: result.data.images[0].url,
+      description: result.data.description,
+    };
+  } catch (falError) {
+    console.warn(
+      `[FAL_IMAGE] FAL text-to-image failed: ${falError instanceof Error ? falError.message : falError}`,
+    );
+    return geminiFallback(prompt, undefined, aspectRatio);
   }
-
-  return {
-    imageUrl: result.data.images[0].url,
-    description: result.data.description,
-  };
 }
 
 /**
  * Generate image using FAL AI's nano-banana/edit model (image-to-image)
  * Use this when reference images ARE provided
  * The reference images guide the generation to maintain consistency
+ * Falls back to Gemini API if FAL fails
  */
 export async function generateImageWithReferences(
   options: GenerateImageWithReferencesOptions & { usePro?: boolean },
 ): Promise<GenerateImageResult> {
-  const { prompt, imageUrls, aspectRatio = "3:4", numImages = 1, usePro = false, negativePrompt } = options;
+  const { prompt, imageUrls, aspectRatio = "9:16", numImages = 1, usePro = false, negativePrompt } = options;
 
   const model = usePro ? "fal-ai/nano-banana-pro/edit" : "fal-ai/nano-banana/edit";
 
@@ -131,32 +159,39 @@ export async function generateImageWithReferences(
     input.negative_prompt = negativePrompt;
   }
 
-  const result = (await withTimeout(
-    fal.subscribe(model, {
-      input: input as Parameters<typeof fal.subscribe>[1] extends { input: infer I } ? I : never,
-      logs: true,
-      onQueueUpdate: (update) => {
-        if (update.status === "IN_PROGRESS" && update.logs) {
-          update.logs
-            .map((log: { message: string }) => log.message)
-            .forEach((msg: string) => {
-              console.log(`[FAL_IMAGE] ${msg}`);
-            });
-        }
-      },
-    }),
-    FAL_TIMEOUT_MS,
-    "FAL image-to-image"
-  )) as { data: FalImageResponse };
+  try {
+    const result = (await withTimeout(
+      fal.subscribe(model, {
+        input: input as Parameters<typeof fal.subscribe>[1] extends { input: infer I } ? I : never,
+        logs: true,
+        onQueueUpdate: (update) => {
+          if (update.status === "IN_PROGRESS" && update.logs) {
+            update.logs
+              .map((log: { message: string }) => log.message)
+              .forEach((msg: string) => {
+                console.log(`[FAL_IMAGE] ${msg}`);
+              });
+          }
+        },
+      }),
+      FAL_TIMEOUT_MS,
+      "FAL image-to-image"
+    )) as { data: FalImageResponse };
 
-  if (!result.data?.images?.[0]?.url) {
-    throw new Error("Image generation did not return an image");
+    if (!result.data?.images?.[0]?.url) {
+      throw new Error("Image generation did not return an image");
+    }
+
+    return {
+      imageUrl: result.data.images[0].url,
+      description: result.data.description,
+    };
+  } catch (falError) {
+    console.warn(
+      `[FAL_IMAGE] FAL image-to-image failed: ${falError instanceof Error ? falError.message : falError}`,
+    );
+    return geminiFallback(prompt, imageUrls, aspectRatio === "auto" ? "9:16" : aspectRatio);
   }
-
-  return {
-    imageUrl: result.data.images[0].url,
-    description: result.data.description,
-  };
 }
 
 /**
@@ -166,7 +201,7 @@ export async function generateImageWithReferences(
 export async function generateMultipleImages(
   options: GenerateImageOptions & { usePro?: boolean },
 ): Promise<GenerateMultipleImagesResult> {
-  const { prompt, aspectRatio = "3:4", numImages = 4, usePro = false } = options;
+  const { prompt, aspectRatio = "9:16", numImages = 4, usePro = false } = options;
 
   const model = usePro ? "fal-ai/nano-banana-pro" : "fal-ai/nano-banana";
   console.log(`[FAL_IMAGE] Multi text-to-image with ${model}, ${numImages} images, aspect ratio ${aspectRatio}`);
@@ -212,7 +247,7 @@ export async function generateMultipleImages(
 export async function generateMultipleImagesWithReferences(
   options: GenerateImageWithReferencesOptions & { usePro?: boolean },
 ): Promise<GenerateMultipleImagesResult> {
-  const { prompt, imageUrls, aspectRatio = "3:4", numImages = 4, usePro = false, negativePrompt } = options;
+  const { prompt, imageUrls, aspectRatio = "9:16", numImages = 4, usePro = false, negativePrompt } = options;
 
   const model = usePro ? "fal-ai/nano-banana-pro/edit" : "fal-ai/nano-banana/edit";
 

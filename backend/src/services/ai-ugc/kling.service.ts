@@ -717,6 +717,7 @@ export async function klingProMotion(
     video_url: videoUrl,
     character_orientation: characterOrientation,
     keep_original_sound: keepOriginalSound,
+    aspect_ratio: "9:16",
   };
 
   if (prompt) {

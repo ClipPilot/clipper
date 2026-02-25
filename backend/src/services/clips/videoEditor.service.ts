@@ -595,7 +595,7 @@ export const convertToGamingVertical = async (
 
   console.log(`[GAMING] Converting ${width}x${height} to gaming layout (facecam: ${JSON.stringify(facecam)})`);
 
-  // Clamp facecam region to frame bounds
+  // Clamp facecam region to frame bounds (Lambda returns face+torso box)
   const fcX = Math.max(0, Math.min(facecam.x, width - 1));
   const fcY = Math.max(0, Math.min(facecam.y, height - 1));
   const fcW = Math.min(facecam.w, width - fcX);
@@ -666,8 +666,8 @@ export const convertToGamingVertical = async (
     ffmpeg()
       .input(inputPath)
       .complexFilter([
-        // Facecam: crop from source, scale to 1080x960, pad if aspect ratio doesn't match
-        `[0:v]crop=${fcW}:${fcH}:${fcX}:${fcY},scale=1080:960:force_original_aspect_ratio=decrease,pad=1080:960:(ow-iw)/2:(oh-ih)/2:color=black[cam]`,
+        // Facecam: crop face region, zoom to fill 1080x960 (no black bars)
+        `[0:v]crop=${fcW}:${fcH}:${fcX}:${fcY},scale=1080:960:force_original_aspect_ratio=increase,crop=1080:960[cam]`,
         // Gameplay: center-crop to 16:9, scale to 1080x960
         `[0:v]crop=${gpW}:${gpH}:${gpX}:${gpY},scale=1080:960[game]`,
         // Stack: facecam on top, gameplay on bottom
