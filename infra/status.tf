@@ -137,10 +137,31 @@ resource "aws_lambda_permission" "status_cron_eventbridge" {
   source_arn    = aws_cloudwatch_event_rule.status_cron.arn
 }
 
-# IAM policy for Amplify status app to access DynamoDB
+# IAM compute role for Amplify SSR (Next.js API routes)
+# Must be set as the "Compute role" in Amplify Console > App settings > IAM roles
+resource "aws_iam_role" "amplify_status_compute" {
+  name = "${var.project_name}-amplify-status-compute-${var.environment}"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "amplify.amazonaws.com"
+      }
+    }]
+  })
+
+  tags = {
+    Name = "${var.project_name}-amplify-status-compute-${var.environment}"
+  }
+}
+
+# Grant the compute role DynamoDB access for status checks
 resource "aws_iam_role_policy" "amplify_status_dynamodb" {
   name = "${var.project_name}-amplify-status-dynamodb-${var.environment}"
-  role = aws_iam_role.amplify.id
+  role = aws_iam_role.amplify_status_compute.id
 
   policy = jsonencode({
     Version = "2012-10-17"
