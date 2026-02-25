@@ -44,7 +44,11 @@ export function YourAccountsList({
           (sum, p) => sum + (p.video_play_count || 0),
           0
         );
-        return { account, totalViews };
+        const totalLikes = posts.reduce(
+          (sum, p) => sum + (p.like_count || 0),
+          0
+        );
+        return { account, totalViews, totalLikes, totalPosts: posts.length };
       })
       .sort((a, b) => b.totalViews - a.totalViews);
   }, [accounts, postsByAccount]);
@@ -99,7 +103,7 @@ export function YourAccountsList({
           ACCOUNTS
         </p>
         <div className="space-y-0.5 max-h-[280px] overflow-y-auto">
-          {ranked.map(({ account, totalViews }, index) => (
+          {ranked.map(({ account, totalViews, totalLikes, totalPosts }, index) => (
             <div
               key={account.id}
               className="flex items-center gap-2 px-1.5 py-1.5 rounded-md hover:bg-surface-hover transition-colors group"
@@ -115,8 +119,12 @@ export function YourAccountsList({
               <span className="text-xs text-text-primary truncate flex-1 min-w-0">
                 @{account.username}
               </span>
-              <span className="text-xs font-medium text-text-secondary flex-shrink-0">
-                {formatNumber(totalViews)} views
+              <span className="text-[10px] text-text-tertiary flex-shrink-0 flex items-center gap-1.5">
+                <span>{formatNumber(totalViews)} views</span>
+                <span>·</span>
+                <span>{formatNumber(totalLikes)} likes</span>
+                <span>·</span>
+                <span>{totalPosts} posts</span>
               </span>
               <Button
                 size="sm"
