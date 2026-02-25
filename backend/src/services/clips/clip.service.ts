@@ -173,6 +173,11 @@ export const createCombinedClipService = async (
   const mergedRawPath = path.join(outDir, `merged_raw_${videoIndex}_temp.mp4`);
   await mergeClips(tempFiles, mergedRawPath);
 
+  // Validate merged file before proceeding
+  if (!fs.existsSync(mergedRawPath) || fs.statSync(mergedRawPath).size < 1024) {
+    throw new Error(`Merged clip is missing or too small (${mergedRawPath})`);
+  }
+
   // If callback provided, run per-clip detection on the merged horizontal clip
   // and override facecam/active-speaker options with the result
   if (onMergedRaw) {
