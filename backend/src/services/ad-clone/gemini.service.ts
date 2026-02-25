@@ -249,3 +249,54 @@ export async function createGeminiContent(
 
   return prompt;
 }
+
+/**
+ * Generate an image using Gemini's native image generation (Nano Banana Pro).
+ * Used as a fallback when FAL is unavailable or times out.
+ *
+ * Accepts a text prompt and optional reference image URLs.
+ * Returns the generated image as a Buffer.
+ */
+export async function generateImageWithGeminiDirect(options: {
+  prompt: string;
+  imageUrls?: string[];
+}): Promise<Buffer> {
+  const client = await getGeminiClient();
+
+  const parts: any[] = [{ text: options.prompt }];
+
+  if (options.imageUrls && options.imageUrls.length > 0) {
+    for (const url of options.imageUrls) {
+      const response = await fetch(url);
+      const buffer = Buffer.from(await response.arrayBuffer());
+      const base64 = buffer.toString("base64");
+      parts.push({
+        inlineData: {
+          mimeType: "image/jpeg",
+          data: base64,
+        },
+      });
+    }
+  }
+
+  console.log(
+    `[GEMINI_IMAGE] Generating image with gemini-3-pro-image-preview (${options.imageUrls?.length || 0} reference images)`
+  );
+
+  const response = await client.models.generateContent({
+    model: "gemini-3-pro-image-preview",
+    contents: parts,
+    config: {
+      responseModalities: ["IMAGE"],
+    },
+  });
+
+  for (const part of response.candidates[0].content.parts) {
+    if (part.inlineData) {
+      console.log("[GEMINI_IMAGE] Image generated successfully");
+      return Buffer.from(part.inlineData.data, "base64");
+    }
+  }
+
+  throw new Error("Gemini did not return an image");
+}

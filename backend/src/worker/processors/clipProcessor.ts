@@ -100,7 +100,8 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
               console.log(`[CLIP-PROCESSOR] Detecting facecam on merged clip...`);
               const result = await detectFacecamFromS3Key(tempS3Key);
               if (result?.facecamDetected) {
-                if (options.conversionMode === "speaker-zoom" && result.faceRegion) {
+                // Prefer faceRegion (tight face box) for both gaming and speaker-zoom
+                if (result.faceRegion) {
                   console.log(`[CLIP-PROCESSOR] Face detected (raw): ${JSON.stringify(result.faceRegion)}`);
                   return { facecamRegion: result.faceRegion };
                 } else if (result.facecamRegion) {

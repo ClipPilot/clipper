@@ -595,11 +595,22 @@ export const convertToGamingVertical = async (
 
   console.log(`[GAMING] Converting ${width}x${height} to gaming layout (facecam: ${JSON.stringify(facecam)})`);
 
-  // Clamp facecam region to frame bounds
-  const fcX = Math.max(0, Math.min(facecam.x, width - 1));
-  const fcY = Math.max(0, Math.min(facecam.y, height - 1));
-  const fcW = Math.min(facecam.w, width - fcX);
-  const fcH = Math.min(facecam.h, height - fcY);
+  // Add padding around face region (80% extra on each side) so it's not too tight
+  const padFactor = 0.8;
+  const padW = Math.round(facecam.w * padFactor);
+  const padH = Math.round(facecam.h * padFactor);
+  const expandedX = facecam.x - padW;
+  const expandedY = facecam.y - padH;
+  const expandedW = facecam.w + padW * 2;
+  const expandedH = facecam.h + padH * 2;
+
+  // Clamp expanded facecam region to frame bounds
+  const fcX = Math.max(0, Math.min(expandedX, width - 1));
+  const fcY = Math.max(0, Math.min(expandedY, height - 1));
+  const fcW = Math.min(expandedW, width - fcX);
+  const fcH = Math.min(expandedH, height - fcY);
+
+  console.log(`[GAMING] Expanded face region: ${fcW}x${fcH}+${fcX}+${fcY} (padding: ${padFactor * 100}%)`);
 
   // Gameplay "corner cut": slice off the facecam strip first, then
   // center-crop the remaining area to 16:9 so the game center is preserved.
@@ -666,8 +677,8 @@ export const convertToGamingVertical = async (
     ffmpeg()
       .input(inputPath)
       .complexFilter([
-        // Facecam: crop from source, scale to 1080x960, pad if aspect ratio doesn't match
-        `[0:v]crop=${fcW}:${fcH}:${fcX}:${fcY},scale=1080:960:force_original_aspect_ratio=decrease,pad=1080:960:(ow-iw)/2:(oh-ih)/2:color=black[cam]`,
+        // Facecam: crop face region, zoom to fill 1080x960 (no black bars)
+        `[0:v]crop=${fcW}:${fcH}:${fcX}:${fcY},scale=1080:960:force_original_aspect_ratio=increase,crop=1080:960[cam]`,
         // Gameplay: center-crop to 16:9, scale to 1080x960
         `[0:v]crop=${gpW}:${gpH}:${gpX}:${gpY},scale=1080:960[game]`,
         // Stack: facecam on top, gameplay on bottom
