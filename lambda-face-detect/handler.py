@@ -243,21 +243,43 @@ def detect_face_boxes_in_frame(net, frame_path: str, min_confidence: float = 0.5
 
 def expand_face_to_torso(face: Dict[str, int], frame_w: int, frame_h: int) -> Dict[str, int]:
     """
-    Expand a face bounding box to include head room and torso (head-and-shoulders framing).
-    - Above head: 30% of face height
-    - Below chin to torso: 150% of face height
-    - Sides for shoulders: 80% of face width each side
+    Expand a face bounding box to a comfortable framing that won't look
+    overly zoomed when scaled to fit the facecam panel (1080x960, ~9:8).
+
+    Uses face-relative padding, then enforces a minimum crop size of
+    40% of the frame in each dimension so small faces don't produce
+    extreme zoom.
     """
     fx, fy, fw, fh = face['x'], face['y'], face['w'], face['h']
+    face_cx = fx + fw // 2
+    face_cy = fy + fh // 2
 
-    pad_top = int(fh * 0.3)
-    pad_bottom = int(fh * 1.5)
-    pad_side = int(fw * 0.8)
+    # Face-relative expansion
+    pad_top = int(fh * 1.0)
+    pad_bottom = int(fh * 3.5)
+    pad_side = int(fw * 2.0)
 
-    new_x = max(0, fx - pad_side)
-    new_y = max(0, fy - pad_top)
-    new_w = min(fw + pad_side * 2, frame_w - new_x)
-    new_h = min(fh + pad_top + pad_bottom, frame_h - new_y)
+    exp_x = fx - pad_side
+    exp_y = fy - pad_top
+    exp_w = fw + pad_side * 2
+    exp_h = fh + pad_top + pad_bottom
+
+    # Enforce minimum crop: at least 40% of frame width and height
+    min_w = int(frame_w * 0.4)
+    min_h = int(frame_h * 0.4)
+
+    if exp_w < min_w:
+        exp_x = face_cx - min_w // 2
+        exp_w = min_w
+    if exp_h < min_h:
+        exp_y = face_cy - min_h // 2
+        exp_h = min_h
+
+    # Clamp to frame bounds
+    new_x = max(0, exp_x)
+    new_y = max(0, exp_y)
+    new_w = min(exp_w, frame_w - new_x)
+    new_h = min(exp_h, frame_h - new_y)
 
     return {'x': new_x, 'y': new_y, 'w': new_w, 'h': new_h}
 

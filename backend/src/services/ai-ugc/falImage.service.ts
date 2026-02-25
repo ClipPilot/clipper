@@ -20,9 +20,10 @@ function withTimeout<T>(promise: Promise<T>, ms: number, operation: string): Pro
 async function geminiFallback(
   prompt: string,
   imageUrls?: string[],
+  aspectRatio?: string,
 ): Promise<GenerateImageResult> {
   console.log("[FAL_IMAGE] Falling back to Gemini API (Nano Banana Pro)...");
-  const buffer = await generateImageWithGeminiDirect({ prompt, imageUrls });
+  const buffer = await generateImageWithGeminiDirect({ prompt, imageUrls, aspectRatio: aspectRatio || "9:16" });
   const tempKey = `temp/gemini-fallback/${Date.now()}_${Math.random().toString(36).slice(2)}.png`;
   await s3Service.uploadBuffer(buffer, tempKey, "image/png");
   const imageUrl = await s3Service.getPresignedUrl(tempKey, 3600);
@@ -82,7 +83,7 @@ interface FalImageResponse {
 export async function generateImage(
   options: GenerateImageOptions & { usePro?: boolean },
 ): Promise<GenerateImageResult> {
-  const { prompt, aspectRatio = "3:4", numImages = 1, usePro = false } = options;
+  const { prompt, aspectRatio = "9:16", numImages = 1, usePro = false } = options;
 
   const model = usePro ? "fal-ai/nano-banana-pro" : "fal-ai/nano-banana";
   console.log(`[FAL_IMAGE] Text-to-image with ${model}, aspect ratio ${aspectRatio}`);
@@ -124,7 +125,7 @@ export async function generateImage(
     console.warn(
       `[FAL_IMAGE] FAL text-to-image failed: ${falError instanceof Error ? falError.message : falError}`,
     );
-    return geminiFallback(prompt);
+    return geminiFallback(prompt, undefined, aspectRatio);
   }
 }
 
@@ -137,7 +138,7 @@ export async function generateImage(
 export async function generateImageWithReferences(
   options: GenerateImageWithReferencesOptions & { usePro?: boolean },
 ): Promise<GenerateImageResult> {
-  const { prompt, imageUrls, aspectRatio = "3:4", numImages = 1, usePro = false, negativePrompt } = options;
+  const { prompt, imageUrls, aspectRatio = "9:16", numImages = 1, usePro = false, negativePrompt } = options;
 
   const model = usePro ? "fal-ai/nano-banana-pro/edit" : "fal-ai/nano-banana/edit";
 
@@ -189,7 +190,7 @@ export async function generateImageWithReferences(
     console.warn(
       `[FAL_IMAGE] FAL image-to-image failed: ${falError instanceof Error ? falError.message : falError}`,
     );
-    return geminiFallback(prompt, imageUrls);
+    return geminiFallback(prompt, imageUrls, aspectRatio === "auto" ? "9:16" : aspectRatio);
   }
 }
 
@@ -200,7 +201,7 @@ export async function generateImageWithReferences(
 export async function generateMultipleImages(
   options: GenerateImageOptions & { usePro?: boolean },
 ): Promise<GenerateMultipleImagesResult> {
-  const { prompt, aspectRatio = "3:4", numImages = 4, usePro = false } = options;
+  const { prompt, aspectRatio = "9:16", numImages = 4, usePro = false } = options;
 
   const model = usePro ? "fal-ai/nano-banana-pro" : "fal-ai/nano-banana";
   console.log(`[FAL_IMAGE] Multi text-to-image with ${model}, ${numImages} images, aspect ratio ${aspectRatio}`);
@@ -246,7 +247,7 @@ export async function generateMultipleImages(
 export async function generateMultipleImagesWithReferences(
   options: GenerateImageWithReferencesOptions & { usePro?: boolean },
 ): Promise<GenerateMultipleImagesResult> {
-  const { prompt, imageUrls, aspectRatio = "3:4", numImages = 4, usePro = false, negativePrompt } = options;
+  const { prompt, imageUrls, aspectRatio = "9:16", numImages = 4, usePro = false, negativePrompt } = options;
 
   const model = usePro ? "fal-ai/nano-banana-pro/edit" : "fal-ai/nano-banana/edit";
 

@@ -260,6 +260,7 @@ export async function createGeminiContent(
 export async function generateImageWithGeminiDirect(options: {
   prompt: string;
   imageUrls?: string[];
+  aspectRatio?: string;
 }): Promise<Buffer> {
   const client = await getGeminiClient();
 
@@ -288,6 +289,9 @@ export async function generateImageWithGeminiDirect(options: {
     contents: parts,
     config: {
       responseModalities: ["IMAGE"],
+      ...(options.aspectRatio && {
+        imageGenerationConfig: { aspectRatio: options.aspectRatio },
+      }),
     },
   });
 
