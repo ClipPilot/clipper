@@ -59,7 +59,7 @@ export async function submitApplication(req: AuthRequest, res: Response) {
       return res.status(403).json({ error: "Mass posting requires a Studio plan or higher" });
     }
 
-    const { brand_description, company_website_url, icps, company_socials, competitor_socials, budget } = req.body;
+    const { brand_description, company_website_url, icps, company_socials, competitor_socials, budget, name } = req.body;
 
     if (!brand_description) {
       return res.status(400).json({ error: "Brand description is required" });
@@ -69,6 +69,7 @@ export async function submitApplication(req: AuthRequest, res: Response) {
       teamId,
       { brand_description, company_website_url, icps, company_socials, competitor_socials },
       budget != null ? Number(budget) : undefined,
+      name,
     );
 
     return res.status(201).json({ application });

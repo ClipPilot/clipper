@@ -15,7 +15,6 @@ interface StepReviewProps {
 
 export function StepReview({ data, isAppeal, isSubmitting, onSubmit }: StepReviewProps) {
   const activeTier = data.budget ? getActiveTier(data.budget) : null;
-  const guaranteedViews = activeTier && data.budget ? Math.floor(data.budget / activeTier.cpm) : null;
 
   return (
     <div className="space-y-6">
@@ -28,8 +27,9 @@ export function StepReview({ data, isAppeal, isSubmitting, onSubmit }: StepRevie
         </p>
       </div>
 
-      {/* Brand Info */}
-      <ReviewSection title="Brand Info" icon="solar:buildings-bold-duotone">
+      {/* Campaign & Brand Info */}
+      <ReviewSection title="Campaign & Brand Info" icon="solar:buildings-bold-duotone">
+        <ReviewField label="Campaign Name" value={data.name} />
         <ReviewField label="Description" value={data.brand_description} />
         <ReviewField label="Website" value={data.company_website_url} />
       </ReviewSection>
@@ -98,9 +98,6 @@ export function StepReview({ data, isAppeal, isSubmitting, onSubmit }: StepRevie
           {activeTier && (
             <>
               <ReviewField label="CPM Tier" value={`${activeTier.label} — $${activeTier.cpm.toFixed(2)} CPM`} />
-              {guaranteedViews && (
-                <ReviewField label="Guaranteed Views" value={guaranteedViews.toLocaleString()} />
-              )}
             </>
           )}
         </ReviewSection>

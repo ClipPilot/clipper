@@ -11,8 +11,47 @@ import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import { s3Service } from "../s3.service";
 import { emailNotiService } from "../emailNoti.service";
 
+export interface ContractClauses {
+  parties?: string;
+  providerObligations?: string;
+  clientObligations?: string;
+  paymentTerms?: string;
+  additionalClauses?: string[];
+}
+
+const DEFAULT_CLAUSES: Required<Omit<ContractClauses, "additionalClauses">> & {
+  additionalClauses: string[];
+} = {
+  parties:
+    'This Agreement is entered into between Cuttr Inc. ("Provider") and {{TEAM_NAME}} ("Client") for the campaign "{{CAMPAIGN_NAME}}".',
+  providerObligations:
+    "Provider agrees to distribute Client's video content across its network of social media accounts to achieve the guaranteed view count specified above.",
+  clientObligations:
+    "Client agrees to provide the minimum number of videos as specified above, deposit the agreed campaign budget, and ensure all content complies with platform guidelines.",
+  paymentTerms:
+    "Campaign budget must be deposited in full before the campaign can start. Funds will be drawn from the campaign wallet as posts are distributed.",
+  additionalClauses: [],
+};
+
 class CampaignContractService {
-  async generateContract(campaignId: number) {
+  private buildPdf(
+    campaign: { name: string; quoted_cpm: string | null; budget: string | null; video_minimum: number | null },
+    teamName: string,
+    clauses: ContractClauses,
+  ) {
+    const merged = {
+      parties: (clauses.parties || DEFAULT_CLAUSES.parties)
+        .replace(/\{\{TEAM_NAME\}\}/g, teamName)
+        .replace(/\{\{CAMPAIGN_NAME\}\}/g, campaign.name),
+      providerObligations: clauses.providerObligations || DEFAULT_CLAUSES.providerObligations,
+      clientObligations: clauses.clientObligations || DEFAULT_CLAUSES.clientObligations,
+      paymentTerms: clauses.paymentTerms || DEFAULT_CLAUSES.paymentTerms,
+      additionalClauses: clauses.additionalClauses || DEFAULT_CLAUSES.additionalClauses,
+    };
+    return { merged, campaign, teamName };
+  }
+
+  async generateContract(campaignId: number, customClauses?: ContractClauses) {
     const [campaign] = await db
       .select()
       .from(campaigns)
@@ -29,7 +68,9 @@ class CampaignContractService {
 
     if (!team) throw new Error("Team not found");
 
-    // Build contract terms
+    const clauses = customClauses || {};
+
+    // Build contract terms (stored in DB)
     const terms = {
       cpmRate: campaign.quoted_cpm,
       budget: campaign.budget,
@@ -37,129 +78,19 @@ class CampaignContractService {
       teamName: team.name,
       campaignName: campaign.name,
       date: new Date().toISOString(),
+      clauses: {
+        parties: clauses.parties || DEFAULT_CLAUSES.parties,
+        providerObligations: clauses.providerObligations || DEFAULT_CLAUSES.providerObligations,
+        clientObligations: clauses.clientObligations || DEFAULT_CLAUSES.clientObligations,
+        paymentTerms: clauses.paymentTerms || DEFAULT_CLAUSES.paymentTerms,
+        additionalClauses: clauses.additionalClauses || DEFAULT_CLAUSES.additionalClauses,
+      },
     };
+
+    const { merged } = this.buildPdf(campaign, team.name, terms.clauses);
 
     // Generate PDF
-    const pdfDoc = await PDFDocument.create();
-    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-    const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-    const page = pdfDoc.addPage([612, 792]); // Letter size
-    const { height } = page.getSize();
-    const margin = 60;
-    let y = height - margin;
-
-    const drawText = (text: string, size: number, isBold = false) => {
-      page.drawText(text, {
-        x: margin,
-        y,
-        size,
-        font: isBold ? boldFont : font,
-        color: rgb(0.1, 0.1, 0.1),
-      });
-      y -= size + 8;
-    };
-
-    const drawWrapped = (text: string, size: number) => {
-      const maxWidth = 612 - margin * 2;
-      const words = text.split(" ");
-      let line = "";
-      for (const word of words) {
-        const testLine = line ? `${line} ${word}` : word;
-        const width = font.widthOfTextAtSize(testLine, size);
-        if (width > maxWidth && line) {
-          page.drawText(line, {
-            x: margin,
-            y,
-            size,
-            font,
-            color: rgb(0.1, 0.1, 0.1),
-          });
-          y -= size + 6;
-          line = word;
-        } else {
-          line = testLine;
-        }
-      }
-      if (line) {
-        page.drawText(line, {
-          x: margin,
-          y,
-          size,
-          font,
-          color: rgb(0.1, 0.1, 0.1),
-        });
-        y -= size + 8;
-      }
-    };
-
-    // Header
-    drawText("CAMPAIGN SERVICE AGREEMENT", 18, true);
-    y -= 10;
-    drawText(`Campaign: ${campaign.name}`, 12, true);
-    drawText(`Date: ${new Date().toLocaleDateString()}`, 11);
-    y -= 10;
-
-    // Parties
-    drawText("1. PARTIES", 13, true);
-    drawWrapped(
-      `This Agreement is entered into between Cuttr Inc. ("Provider") and ${team.name} ("Client") for the campaign "${campaign.name}".`,
-      11,
-    );
-    y -= 8;
-
-    // Terms
-    drawText("2. CAMPAIGN TERMS", 13, true);
-    drawText(`   CPM Rate: $${campaign.quoted_cpm || "TBD"}`, 11);
-    drawText(`   Campaign Budget: $${campaign.budget || "TBD"}`, 11);
-    drawText(`   Minimum Videos Required: ${campaign.video_minimum || "TBD"}`, 11);
-
-    if (campaign.quoted_cpm && campaign.budget) {
-      const cpm = parseFloat(campaign.quoted_cpm);
-      const budget = parseFloat(campaign.budget);
-      if (cpm > 0) {
-        const guaranteedViews = Math.floor((budget / cpm) * 1000);
-        drawText(
-          `   Guaranteed Views: ${guaranteedViews.toLocaleString()}`,
-          11,
-        );
-      }
-    }
-    y -= 8;
-
-    // Obligations
-    drawText("3. PROVIDER OBLIGATIONS", 13, true);
-    drawWrapped(
-      "Provider agrees to distribute Client's video content across its network of social media accounts to achieve the guaranteed view count specified above.",
-      11,
-    );
-    y -= 8;
-
-    drawText("4. CLIENT OBLIGATIONS", 13, true);
-    drawWrapped(
-      "Client agrees to provide the minimum number of videos as specified above, deposit the agreed campaign budget, and ensure all content complies with platform guidelines.",
-      11,
-    );
-    y -= 8;
-
-    drawText("5. PAYMENT TERMS", 13, true);
-    drawWrapped(
-      "Campaign budget must be deposited in full before the campaign can start. Funds will be drawn from the campaign wallet as posts are distributed.",
-      11,
-    );
-    y -= 8;
-
-    // Signature block
-    y -= 20;
-    drawText("SIGNATURES", 13, true);
-    y -= 10;
-    drawText("Client Signature: ____________________________", 11);
-    y -= 5;
-    drawText("Name: ____________________________", 11);
-    y -= 5;
-    drawText("Date: ____________________________", 11);
-
-    const pdfBytes = await pdfDoc.save();
-    const pdfBuffer = Buffer.from(pdfBytes);
+    const pdfBuffer = await this.renderPdf(campaign, merged);
 
     // Upload to S3
     const s3Key = `contracts/${campaign.team_id}/${campaignId}/unsigned_${Date.now()}.pdf`;
@@ -200,6 +131,340 @@ class CampaignContractService {
     return contract;
   }
 
+  async updateAndRegenerate(campaignId: number, clauses: ContractClauses) {
+    // Verify contract exists and isn't signed
+    const [contract] = await db
+      .select()
+      .from(campaignContracts)
+      .where(eq(campaignContracts.campaign_id, campaignId))
+      .limit(1);
+
+    if (!contract) throw new Error("Contract not found");
+    if (contract.status === "signed") throw new Error("Cannot edit a signed contract");
+
+    return this.generateContract(campaignId, clauses);
+  }
+
+  private async renderPdf(
+    campaign: { name: string; quoted_cpm: string | null; budget: string | null; video_minimum: number | null },
+    clauses: {
+      parties: string;
+      providerObligations: string;
+      clientObligations: string;
+      paymentTerms: string;
+      additionalClauses: string[];
+    },
+  ): Promise<Buffer> {
+    const pdfDoc = await PDFDocument.create();
+    const bodyFont = await pdfDoc.embedFont(StandardFonts.TimesRoman);
+    const bodyBoldFont = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
+    const headingFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const labelFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+    const pageWidth = 612;
+    const pageHeight = 792;
+    const margin = 72; // 1-inch margins
+    const contentWidth = pageWidth - margin * 2;
+    const darkColor = rgb(0.12, 0.12, 0.12);
+    const grayColor = rgb(0.45, 0.45, 0.45);
+    const ruleColor = rgb(0.78, 0.78, 0.78);
+    const accentColor = rgb(0.16, 0.65, 0.53); // teal accent
+
+    let page = pdfDoc.addPage([pageWidth, pageHeight]);
+    let y = pageHeight - margin;
+
+    const ensureSpace = (needed: number) => {
+      if (y - needed < margin + 30) { // 30px footer reserve
+        // Footer on current page
+        drawFooter();
+        page = pdfDoc.addPage([pageWidth, pageHeight]);
+        y = pageHeight - margin;
+      }
+    };
+
+    const drawFooter = () => {
+      const pageCount = pdfDoc.getPageCount();
+      const footerText = `Cuttr Inc. — Campaign Service Agreement — Page ${pageCount}`;
+      const footerWidth = labelFont.widthOfTextAtSize(footerText, 8);
+      page.drawText(footerText, {
+        x: (pageWidth - footerWidth) / 2,
+        y: 36,
+        size: 8,
+        font: labelFont,
+        color: grayColor,
+      });
+    };
+
+    const drawRule = (thickness = 0.5, color = ruleColor) => {
+      ensureSpace(10);
+      page.drawLine({
+        start: { x: margin, y },
+        end: { x: pageWidth - margin, y },
+        thickness,
+        color,
+      });
+      y -= 12;
+    };
+
+    const drawHeading = (text: string, size: number) => {
+      ensureSpace(size + 16);
+      page.drawText(text, {
+        x: margin,
+        y,
+        size,
+        font: headingFont,
+        color: darkColor,
+      });
+      y -= size + 6;
+    };
+
+    const drawSectionTitle = (number: number, title: string) => {
+      ensureSpace(30);
+      y -= 8;
+      const numText = `${number}.`;
+      page.drawText(numText, {
+        x: margin,
+        y,
+        size: 11,
+        font: headingFont,
+        color: accentColor,
+      });
+      page.drawText(title.toUpperCase(), {
+        x: margin + 18,
+        y,
+        size: 11,
+        font: headingFont,
+        color: darkColor,
+      });
+      y -= 18;
+    };
+
+    const drawBody = (text: string, indent = 0) => {
+      const fontSize = 10.5;
+      const lineHeight = fontSize + 5;
+      const maxWidth = contentWidth - indent;
+      const words = text.split(" ");
+      let line = "";
+      for (const word of words) {
+        const testLine = line ? `${line} ${word}` : word;
+        const width = bodyFont.widthOfTextAtSize(testLine, fontSize);
+        if (width > maxWidth && line) {
+          ensureSpace(lineHeight);
+          page.drawText(line, {
+            x: margin + indent,
+            y,
+            size: fontSize,
+            font: bodyFont,
+            color: darkColor,
+          });
+          y -= lineHeight;
+          line = word;
+        } else {
+          line = testLine;
+        }
+      }
+      if (line) {
+        ensureSpace(lineHeight);
+        page.drawText(line, {
+          x: margin + indent,
+          y,
+          size: fontSize,
+          font: bodyFont,
+          color: darkColor,
+        });
+        y -= lineHeight;
+      }
+    };
+
+    const drawTermRow = (label: string, value: string) => {
+      ensureSpace(20);
+      page.drawText(label, {
+        x: margin + 12,
+        y,
+        size: 10,
+        font: labelFont,
+        color: grayColor,
+      });
+      page.drawText(value, {
+        x: margin + 200,
+        y,
+        size: 10.5,
+        font: bodyBoldFont,
+        color: darkColor,
+      });
+      y -= 18;
+    };
+
+    // ── Header ──────────────────────────────────────────────────
+
+    page.drawText("CUTTR INC.", {
+      x: margin,
+      y,
+      size: 10,
+      font: headingFont,
+      color: accentColor,
+    });
+
+    const dateStr = new Date().toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    const dateWidth = labelFont.widthOfTextAtSize(dateStr, 9);
+    page.drawText(dateStr, {
+      x: pageWidth - margin - dateWidth,
+      y,
+      size: 9,
+      font: labelFont,
+      color: grayColor,
+    });
+    y -= 24;
+
+    // Thick accent line
+    page.drawLine({
+      start: { x: margin, y: y + 4 },
+      end: { x: pageWidth - margin, y: y + 4 },
+      thickness: 2,
+      color: accentColor,
+    });
+    y -= 8;
+
+    // Title
+    drawHeading("Campaign Service Agreement", 20);
+    y -= 2;
+
+    // Campaign name subtitle
+    page.drawText(campaign.name, {
+      x: margin,
+      y,
+      size: 13,
+      font: bodyBoldFont,
+      color: grayColor,
+    });
+    y -= 26;
+
+    drawRule(0.5);
+
+    // ── Section 1: Parties ──────────────────────────────────────
+
+    drawSectionTitle(1, "Parties");
+    drawBody(clauses.parties);
+    y -= 6;
+
+    // ── Section 2: Campaign Terms ───────────────────────────────
+
+    drawSectionTitle(2, "Campaign Terms");
+
+    // Terms in a clean table-like layout
+    drawTermRow("CPM Rate", `$${campaign.quoted_cpm || "TBD"}`);
+    drawTermRow("Campaign Budget", campaign.budget ? `$${Number(campaign.budget).toLocaleString()}` : "TBD");
+    drawTermRow("Minimum Videos", campaign.video_minimum != null ? String(campaign.video_minimum) : "TBD");
+    y -= 6;
+
+    // ── Section 3: Provider Obligations ─────────────────────────
+
+    drawSectionTitle(3, "Provider Obligations");
+    drawBody(clauses.providerObligations);
+    y -= 6;
+
+    // ── Section 4: Client Obligations ───────────────────────────
+
+    drawSectionTitle(4, "Client Obligations");
+    drawBody(clauses.clientObligations);
+    y -= 6;
+
+    // ── Section 5: Payment Terms ────────────────────────────────
+
+    drawSectionTitle(5, "Payment Terms");
+    drawBody(clauses.paymentTerms);
+    y -= 6;
+
+    // ── Additional Clauses ──────────────────────────────────────
+
+    let sectionNum = 6;
+    for (const clause of clauses.additionalClauses) {
+      drawSectionTitle(sectionNum, "Additional Terms");
+      drawBody(clause);
+      y -= 6;
+      sectionNum++;
+    }
+
+    // ── Signature Block ─────────────────────────────────────────
+
+    ensureSpace(160);
+    y -= 12;
+    drawRule(0.5);
+    y -= 4;
+    drawHeading("Signatures", 14);
+    y -= 8;
+
+    // Client signature area
+    page.drawText("CLIENT", {
+      x: margin,
+      y,
+      size: 8,
+      font: headingFont,
+      color: grayColor,
+    });
+    y -= 20;
+
+    // Signature line
+    page.drawLine({
+      start: { x: margin, y },
+      end: { x: margin + 240, y },
+      thickness: 0.5,
+      color: darkColor,
+    });
+    y -= 14;
+    page.drawText("Signature", {
+      x: margin,
+      y,
+      size: 8,
+      font: labelFont,
+      color: grayColor,
+    });
+    y -= 24;
+
+    // Name line
+    page.drawLine({
+      start: { x: margin, y },
+      end: { x: margin + 240, y },
+      thickness: 0.5,
+      color: darkColor,
+    });
+    y -= 14;
+    page.drawText("Printed Name", {
+      x: margin,
+      y,
+      size: 8,
+      font: labelFont,
+      color: grayColor,
+    });
+    y -= 24;
+
+    // Date line
+    page.drawLine({
+      start: { x: margin, y },
+      end: { x: margin + 160, y },
+      thickness: 0.5,
+      color: darkColor,
+    });
+    y -= 14;
+    page.drawText("Date", {
+      x: margin,
+      y,
+      size: 8,
+      font: labelFont,
+      color: grayColor,
+    });
+
+    // Footer on last page
+    drawFooter();
+
+    const pdfBytes = await pdfDoc.save();
+    return Buffer.from(pdfBytes);
+  }
+
   async getContract(campaignId: number) {
     const [contract] = await db
       .select()
@@ -215,14 +480,27 @@ class CampaignContractService {
         ? contract.signed_pdf_key
         : contract.unsigned_pdf_key;
 
-    let pdfUrl: string | null = null;
+    let presigned_pdf_url: string | null = null;
     if (pdfKey) {
       try {
-        pdfUrl = await s3Service.getPresignedUrl(pdfKey);
-      } catch {}
+        presigned_pdf_url = await s3Service.getPresignedUrl(pdfKey);
+      } catch (err) {
+        console.error("[CampaignContract] Failed to generate presigned URL:", err);
+      }
     }
 
-    return { ...contract, pdfUrl };
+    return {
+      id: contract.id,
+      campaign_id: contract.campaign_id,
+      team_id: contract.team_id,
+      status: contract.status,
+      terms: contract.terms,
+      legal_name: contract.signer_legal_name,
+      signed_at: contract.signed_at?.toISOString() ?? null,
+      created_at: contract.created_at?.toISOString() ?? null,
+      updated_at: contract.updated_at?.toISOString() ?? null,
+      presigned_pdf_url,
+    };
   }
 
   async signContract(
@@ -297,7 +575,6 @@ class CampaignContractService {
         );
       } catch (err) {
         console.error("[CampaignContract] Failed to stamp signature on PDF:", err);
-        // Continue without stamped PDF — the signature image is still saved
       }
     }
 

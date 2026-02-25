@@ -2,6 +2,8 @@ import {
   campaigns,
   campaignVideos,
   clips,
+  tags,
+  clipTags,
 } from "@clipper/shared-db";
 import { db } from "../../db";
 import { eq, and, inArray, sql } from "drizzle-orm";
@@ -30,8 +32,23 @@ class CampaignVideoService {
       throw new Error(`Clips not found or not owned: ${invalidIds.join(", ")}`);
     }
 
+    // Filter out clips already in this campaign
+    const existing = await db
+      .select({ clip_id: campaignVideos.clip_id })
+      .from(campaignVideos)
+      .where(
+        and(
+          eq(campaignVideos.campaign_id, campaignId),
+          inArray(campaignVideos.clip_id, clipIds),
+        ),
+      );
+    const existingIds = new Set(existing.map((r) => r.clip_id));
+    const newClipIds = clipIds.filter((id) => !existingIds.has(id));
+
+    if (newClipIds.length === 0) return [];
+
     // Bulk insert
-    const values = clipIds.map((clipId) => ({
+    const values = newClipIds.map((clipId) => ({
       campaign_id: campaignId,
       clip_id: clipId,
     }));
@@ -73,7 +90,12 @@ class CampaignVideoService {
     return { video, uploadUrl, s3Key };
   }
 
-  async completeCustomUpload(campaignId: number, videoId: number) {
+  async completeCustomUpload(
+    campaignId: number,
+    videoId: number,
+    teamId: number,
+    userId: number,
+  ) {
     const [video] = await db
       .select()
       .from(campaignVideos)
@@ -89,10 +111,67 @@ class CampaignVideoService {
       throw new Error("Video not found");
     }
 
+    // Create a clip in the library so the upload shows in My Clips
+    if (video.custom_video_key) {
+      try {
+        const title = (video.custom_video_name || "Campaign Upload").replace(
+          /\.[^.]+$/,
+          "",
+        );
+
+        const [clip] = await db
+          .insert(clips)
+          .values({
+            team_id: teamId,
+            generated_by_user_id: userId,
+            clip_path: video.custom_video_key,
+            title,
+            status: "completed",
+            saved: true,
+            input_metadata: { source: "campaign_upload" },
+          })
+          .returning();
+
+        // Link the campaign video to the new clip
+        await db
+          .update(campaignVideos)
+          .set({ clip_id: clip.id })
+          .where(eq(campaignVideos.id, videoId));
+
+        // Auto-tag with "Campaign Upload"
+        await this.ensureCampaignUploadTag(teamId, clip.id);
+      } catch (err) {
+        console.error("[CampaignVideo] Failed to create library clip:", err);
+      }
+    }
+
     // Re-check video gate after upload completes
     await this.checkVideoGate(campaignId);
 
     return video;
+  }
+
+  /** Find or create the "Campaign Upload" tag and assign it to a clip */
+  private async ensureCampaignUploadTag(teamId: number, clipId: number) {
+    const TAG_NAME = "Campaign Upload";
+    const TAG_COLOR = "#f59e0b"; // amber
+
+    let [tag] = await db
+      .select()
+      .from(tags)
+      .where(and(eq(tags.team_id, teamId), eq(tags.name, TAG_NAME)))
+      .limit(1);
+
+    if (!tag) {
+      [tag] = await db
+        .insert(tags)
+        .values({ team_id: teamId, name: TAG_NAME, color: TAG_COLOR })
+        .returning();
+    }
+
+    await db
+      .insert(clipTags)
+      .values({ clip_id: clipId, tag_id: tag.id });
   }
 
   async removeVideo(campaignId: number, videoId: number) {
@@ -160,13 +239,14 @@ class CampaignVideoService {
         }
         return {
           id: row.id,
-          campaignId: row.campaign_id,
-          clipId: row.clip_id,
-          customVideoName: row.custom_video_name,
-          clipTitle: row.clip_title,
-          durationSeconds: row.duration_seconds,
-          videoUrl,
-          createdAt: row.created_at,
+          campaign_id: row.campaign_id,
+          clip_id: row.clip_id,
+          file_name: row.custom_video_name,
+          title: row.clip_title || row.custom_video_name,
+          duration_seconds: row.duration_seconds,
+          presigned_url: videoUrl,
+          status: "ready" as const,
+          created_at: row.created_at,
         };
       }),
     );
@@ -196,6 +276,46 @@ class CampaignVideoService {
       .where(eq(campaigns.id, campaignId));
 
     return ready;
+  }
+
+  async getClipIdsForCampaign(campaignId: number): Promise<number[]> {
+    const rows = await db
+      .select({ clip_id: campaignVideos.clip_id })
+      .from(campaignVideos)
+      .where(
+        and(
+          eq(campaignVideos.campaign_id, campaignId),
+          sql`${campaignVideos.clip_id} IS NOT NULL`,
+        ),
+      );
+    return rows.map((r) => r.clip_id!);
+  }
+
+  async getClipIdsInCampaigns(teamId: number): Promise<{
+    clipIds: number[];
+    campaignClipMap: Record<number, number[]>;
+  }> {
+    const rows = await db
+      .select({
+        clip_id: campaignVideos.clip_id,
+        campaign_id: campaignVideos.campaign_id,
+      })
+      .from(campaignVideos)
+      .innerJoin(campaigns, eq(campaigns.id, campaignVideos.campaign_id))
+      .where(and(eq(campaigns.team_id, teamId), sql`${campaignVideos.clip_id} IS NOT NULL`));
+
+    const clipIdSet = new Set<number>();
+    const campaignClipMap: Record<number, number[]> = {};
+
+    for (const row of rows) {
+      clipIdSet.add(row.clip_id!);
+      if (!campaignClipMap[row.campaign_id]) {
+        campaignClipMap[row.campaign_id] = [];
+      }
+      campaignClipMap[row.campaign_id].push(row.clip_id!);
+    }
+
+    return { clipIds: Array.from(clipIdSet), campaignClipMap };
   }
 }
 

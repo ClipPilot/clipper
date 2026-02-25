@@ -21,6 +21,7 @@ interface IntakeFormProps {
 
 // ── All form state in one bag ──
 interface FormState {
+  campaignName: string;
   brandDescription: string;
   companyWebsite: string;
   companySocials: CompanySocial[];
@@ -32,6 +33,7 @@ interface FormState {
 interface StepContext {
   formState: FormState;
   setters: {
+    setCampaignName: (v: string) => void;
     setBrandDescription: (v: string) => void;
     setCompanyWebsite: (v: string) => void;
     setCompanySocials: (v: CompanySocial[]) => void;
@@ -47,7 +49,7 @@ interface StepContext {
 
 // ── Validation: return true if user can proceed from this step ──
 const STEP_VALIDATION_MAP: Record<string, (s: FormState) => boolean> = {
-  brand: (s) => s.brandDescription.trim().length > 0,
+  brand: (s) => s.campaignName.trim().length > 0 && s.brandDescription.trim().length > 0,
   socials: (s) => s.companySocials.some((c) => c.url.trim().length > 0),
   icps: (s) =>
     s.icps.length > 0 &&
@@ -60,6 +62,8 @@ const STEP_VALIDATION_MAP: Record<string, (s: FormState) => boolean> = {
 const STEP_RENDER_MAP: Record<string, (ctx: StepContext) => React.ReactNode> = {
   brand: ({ formState, setters }) => (
     <StepBrandInfo
+      campaignName={formState.campaignName}
+      setCampaignName={setters.setCampaignName}
       brandDescription={formState.brandDescription}
       setBrandDescription={setters.setBrandDescription}
       companyWebsite={formState.companyWebsite}
@@ -100,6 +104,7 @@ export function IntakeForm({ teamId, isAppeal, onSubmitted }: IntakeFormProps) {
   const [isLoadingForm, setIsLoadingForm] = useState(true);
 
   // ── Form state ──
+  const [campaignName, setCampaignName] = useState("");
   const [brandDescription, setBrandDescription] = useState("");
   const [companyWebsite, setCompanyWebsite] = useState("");
   const [companySocials, setCompanySocials] = useState<CompanySocial[]>([emptySocial()]);
@@ -108,6 +113,7 @@ export function IntakeForm({ teamId, isAppeal, onSubmitted }: IntakeFormProps) {
   const [budget, setBudget] = useState<number | null>(null);
 
   const formState: FormState = {
+    campaignName,
     brandDescription,
     companyWebsite,
     companySocials,
@@ -117,6 +123,7 @@ export function IntakeForm({ teamId, isAppeal, onSubmitted }: IntakeFormProps) {
   };
 
   const setters = {
+    setCampaignName,
     setBrandDescription,
     setCompanyWebsite,
     setCompanySocials,
@@ -144,13 +151,14 @@ export function IntakeForm({ teamId, isAppeal, onSubmitted }: IntakeFormProps) {
   }, [teamId]);
 
   const buildFormData = useCallback((): IntakeFormData => ({
+    name: campaignName,
     brand_description: brandDescription,
     company_website_url: companyWebsite,
     company_socials: companySocials,
     competitor_socials: competitorSocials,
     icps,
     budget,
-  }), [brandDescription, companyWebsite, companySocials, competitorSocials, icps, budget]);
+  }), [campaignName, brandDescription, companyWebsite, companySocials, competitorSocials, icps, budget]);
 
   // ── Auto-save on step change ──
   const saveForm = useCallback(async () => {

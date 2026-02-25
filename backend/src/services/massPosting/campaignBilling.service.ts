@@ -104,9 +104,33 @@ class CampaignBillingService {
     return !!topUp;
   }
 
+  async savePaymentMethod(campaignId: number, teamId: number, paymentMethodId: string) {
+    await this.getOrCreateWallet(campaignId, teamId);
+    await db
+      .update(campaignWallets)
+      .set({
+        stripe_payment_method_id: paymentMethodId,
+        updated_at: new Date(),
+      })
+      .where(eq(campaignWallets.campaign_id, campaignId));
+  }
+
   async checkPaymentGate(campaignId: number): Promise<boolean> {
     const wallet = await this.getWallet(campaignId);
-    const ready = !!wallet && wallet.balance_cents > 0;
+
+    // Look up campaign budget to compare against
+    const [campaign] = await db
+      .select({ budget: campaigns.budget })
+      .from(campaigns)
+      .where(eq(campaigns.id, campaignId))
+      .limit(1);
+
+    const budgetCents = campaign?.budget
+      ? Math.round(parseFloat(campaign.budget) * 100)
+      : 0;
+
+    // Gate complete when wallet balance meets or exceeds the budget
+    const ready = !!wallet && wallet.balance_cents >= budgetCents && budgetCents > 0;
 
     await db
       .update(campaigns)

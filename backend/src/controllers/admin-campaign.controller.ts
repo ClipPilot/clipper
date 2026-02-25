@@ -2,13 +2,13 @@ import * as Sentry from "@sentry/node";
 import { Response } from "express";
 import { AdminRequest } from "../middleware/admin.middleware";
 import { campaignService } from "../services/massPosting/campaign.service";
-import { intakeService } from "../services/massPosting/intake.service";
+import { campaignContractService } from "../services/massPosting/campaignContract.service";
 
 export async function getAllCampaigns(req: AdminRequest, res: Response) {
   try {
     const { status, limit, offset } = req.query;
 
-    const result = await intakeService.getAllApplications({
+    const result = await campaignService.getAllCampaigns({
       status: status as string | undefined,
       limit: limit ? parseInt(limit as string) : undefined,
       offset: offset ? parseInt(offset as string) : undefined,
@@ -27,12 +27,12 @@ export async function getCampaignDetail(req: AdminRequest, res: Response) {
     const id = parseInt(req.params.campaignId);
     if (isNaN(id)) return res.status(400).json({ error: "Invalid campaign ID" });
 
-    const application = await intakeService.getApplicationById(id);
-    return res.json({ application });
+    const campaign = await campaignService.getCampaignDetail(id);
+    return res.json({ campaign });
   } catch (error: any) {
     console.error("Get campaign detail error:", error);
-    if (error.message === "Application not found") {
-      return res.status(404).json({ error: "Campaign not found" });
+    if (error.message === "Campaign not found") {
+      return res.status(404).json({ error: error.message });
     }
     Sentry.captureException(error);
     return res.status(500).json({ error: "Failed to fetch campaign" });
@@ -131,5 +131,68 @@ export async function pauseCampaign(req: AdminRequest, res: Response) {
     }
     Sentry.captureException(error);
     return res.status(500).json({ error: "Failed to pause campaign" });
+  }
+}
+
+export async function getContractAdmin(req: AdminRequest, res: Response) {
+  try {
+    const id = parseInt(req.params.campaignId);
+    if (isNaN(id)) return res.status(400).json({ error: "Invalid campaign ID" });
+
+    const contract = await campaignContractService.getContract(id);
+    return res.json({ contract });
+  } catch (error) {
+    console.error("Get contract error:", error);
+    Sentry.captureException(error);
+    return res.status(500).json({ error: "Failed to fetch contract" });
+  }
+}
+
+export async function generateContractAdmin(req: AdminRequest, res: Response) {
+  try {
+    const id = parseInt(req.params.campaignId);
+    if (isNaN(id)) return res.status(400).json({ error: "Invalid campaign ID" });
+
+    await campaignContractService.generateContract(id);
+    const contractWithUrl = await campaignContractService.getContract(id);
+    return res.json({ contract: contractWithUrl });
+  } catch (error: any) {
+    console.error("Generate contract error:", error);
+    if (error.message === "Campaign not found" || error.message === "Team not found") {
+      return res.status(404).json({ error: error.message });
+    }
+    Sentry.captureException(error);
+    return res.status(500).json({ error: error.message || "Failed to generate contract" });
+  }
+}
+
+export async function updateContractAdmin(req: AdminRequest, res: Response) {
+  try {
+    const id = parseInt(req.params.campaignId);
+    if (isNaN(id)) return res.status(400).json({ error: "Invalid campaign ID" });
+
+    const { parties, providerObligations, clientObligations, paymentTerms, additionalClauses } = req.body;
+
+    const contract = await campaignContractService.updateAndRegenerate(id, {
+      parties,
+      providerObligations,
+      clientObligations,
+      paymentTerms,
+      additionalClauses,
+    });
+
+    // Return the contract with presigned URL
+    const contractWithUrl = await campaignContractService.getContract(id);
+    return res.json({ contract: contractWithUrl });
+  } catch (error: any) {
+    console.error("Update contract error:", error);
+    if (error.message === "Contract not found") {
+      return res.status(404).json({ error: error.message });
+    }
+    if (error.message === "Cannot edit a signed contract") {
+      return res.status(409).json({ error: error.message });
+    }
+    Sentry.captureException(error);
+    return res.status(500).json({ error: "Failed to update contract" });
   }
 }

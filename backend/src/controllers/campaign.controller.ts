@@ -151,12 +151,14 @@ export async function uploadVideo(req: AuthRequest, res: Response) {
 export async function completeVideoUpload(req: AuthRequest, res: Response) {
   try {
     const campaignId = parseInt(req.params.campaignId);
+    const teamId = parseInt(req.params.teamId);
     const videoId = parseInt(req.params.videoId);
-    if (isNaN(campaignId) || isNaN(videoId)) {
+    if (isNaN(campaignId) || isNaN(videoId) || isNaN(teamId)) {
       return res.status(400).json({ error: "Invalid ID" });
     }
 
-    const video = await campaignVideoService.completeCustomUpload(campaignId, videoId);
+    const userId = req.user!.dbUserId;
+    const video = await campaignVideoService.completeCustomUpload(campaignId, videoId, teamId, userId);
     return res.json({ video });
   } catch (error: any) {
     console.error("Complete video upload error:", error);
@@ -213,7 +215,38 @@ export async function getWallet(req: AuthRequest, res: Response) {
     }
 
     const wallet = await campaignBillingService.getOrCreateWallet(campaignId, teamId);
-    return res.json({ wallet });
+
+    let paymentMethod: {
+      type: "card" | "us_bank_account";
+      brand?: string;
+      last4: string;
+      exp_month?: number;
+      exp_year?: number;
+      bank_name?: string;
+    } | null = null;
+
+    if (wallet.stripe_payment_method_id) {
+      try {
+        const pm = await stripe.paymentMethods.retrieve(wallet.stripe_payment_method_id);
+        if (pm.card) {
+          paymentMethod = {
+            type: "card",
+            brand: pm.card.brand,
+            last4: pm.card.last4,
+            exp_month: pm.card.exp_month,
+            exp_year: pm.card.exp_year,
+          };
+        } else if (pm.us_bank_account) {
+          paymentMethod = {
+            type: "us_bank_account",
+            last4: pm.us_bank_account.last4 ?? "",
+            bank_name: pm.us_bank_account.bank_name ?? undefined,
+          };
+        }
+      } catch {}
+    }
+
+    return res.json({ wallet, card: paymentMethod });
   } catch (error) {
     console.error("Get wallet error:", error);
     Sentry.captureException(error);
@@ -229,7 +262,7 @@ export async function createTopUp(req: AuthRequest, res: Response) {
       return res.status(400).json({ error: "Invalid ID" });
     }
 
-    const { amount_cents } = req.body;
+    const amount_cents = req.body.amount_cents ?? req.body.amountCents;
     if (!amount_cents || amount_cents < 100) {
       return res.status(400).json({ error: "amount_cents must be at least 100" });
     }
@@ -239,12 +272,52 @@ export async function createTopUp(req: AuthRequest, res: Response) {
       req.user!.email,
     );
 
+    // Check if wallet has a saved payment method
+    const wallet = await campaignBillingService.getWallet(campaignId);
+    const savedPm = wallet?.stripe_payment_method_id;
+
+    if (savedPm) {
+      // Check if saved PM is a card (can confirm instantly) or bank account (async)
+      const pm = await stripe.paymentMethods.retrieve(savedPm);
+      const isCard = pm.type === "card";
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount_cents,
+        currency: "usd",
+        customer: customerId,
+        payment_method: savedPm,
+        payment_method_types: ["card", "us_bank_account"],
+        confirm: true,
+        off_session: isCard,
+        metadata: {
+          teamId: teamId.toString(),
+          campaignId: campaignId.toString(),
+          type: "campaign_topup",
+          amount_cents: amount_cents.toString(),
+        },
+      });
+
+      // Cards settle instantly — credit wallet now (idempotent, webhook is a safe no-op).
+      // ACH goes to "processing" — webhook credits wallet when the bank transfer clears.
+      if (paymentIntent.status === "succeeded") {
+        await campaignBillingService.topUp(campaignId, teamId, amount_cents, paymentIntent.id);
+      }
+
+      return res.json({
+        confirmed: paymentIntent.status === "succeeded",
+        processing: paymentIntent.status === "processing",
+        paymentIntentId: paymentIntent.id,
+        clientSecret: paymentIntent.client_secret,
+      });
+    }
+
+    // No saved payment method — return clientSecret for manual payment
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amount_cents,
       currency: "usd",
       customer: customerId,
       setup_future_usage: "off_session",
-      automatic_payment_methods: { enabled: true },
+      payment_method_types: ["card", "us_bank_account"],
       metadata: {
         teamId: teamId.toString(),
         campaignId: campaignId.toString(),
@@ -254,6 +327,7 @@ export async function createTopUp(req: AuthRequest, res: Response) {
     });
 
     return res.json({
+      confirmed: false,
       clientSecret: paymentIntent.client_secret,
       paymentIntentId: paymentIntent.id,
     });
@@ -261,6 +335,64 @@ export async function createTopUp(req: AuthRequest, res: Response) {
     console.error("Create top-up error:", error);
     Sentry.captureException(error);
     return res.status(500).json({ error: "Failed to create top-up" });
+  }
+}
+
+export async function createSetupIntent(req: AuthRequest, res: Response) {
+  try {
+    const teamId = parseInt(req.params.teamId);
+    const campaignId = parseInt(req.params.campaignId);
+    if (isNaN(teamId) || isNaN(campaignId)) {
+      return res.status(400).json({ error: "Invalid ID" });
+    }
+
+    const customerId = await stripeService.getOrCreateCustomer(teamId, req.user!.email);
+
+    const setupIntent = await stripe.setupIntents.create({
+      customer: customerId,
+      payment_method_types: ["card", "us_bank_account"],
+      metadata: {
+        teamId: teamId.toString(),
+        campaignId: campaignId.toString(),
+        type: "campaign_payment_setup",
+      },
+    });
+
+    return res.json({
+      clientSecret: setupIntent.client_secret,
+    });
+  } catch (error) {
+    console.error("Create setup intent error:", error);
+    Sentry.captureException(error);
+    return res.status(500).json({ error: "Failed to create setup intent" });
+  }
+}
+
+export async function saveCard(req: AuthRequest, res: Response) {
+  try {
+    const teamId = parseInt(req.params.teamId);
+    const campaignId = parseInt(req.params.campaignId);
+    if (isNaN(teamId) || isNaN(campaignId)) {
+      return res.status(400).json({ error: "Invalid ID" });
+    }
+
+    const { paymentMethodId } = req.body;
+    if (!paymentMethodId) {
+      return res.status(400).json({ error: "paymentMethodId is required" });
+    }
+
+    const pm = await stripe.paymentMethods.retrieve(paymentMethodId);
+
+    await campaignBillingService.savePaymentMethod(campaignId, teamId, paymentMethodId);
+
+    return res.json({
+      saved: true,
+      card: pm.card ? { brand: pm.card.brand, last4: pm.card.last4, exp_month: pm.card.exp_month, exp_year: pm.card.exp_year } : null,
+    });
+  } catch (error) {
+    console.error("Save card error:", error);
+    Sentry.captureException(error);
+    return res.status(500).json({ error: "Failed to save card" });
   }
 }
 
@@ -333,6 +465,22 @@ export async function signContract(req: AuthRequest, res: Response) {
     }
     Sentry.captureException(error);
     return res.status(500).json({ error: "Failed to sign contract" });
+  }
+}
+
+// ── Campaign Clip IDs ────────────────────────────
+
+export async function getCampaignClipIds(req: AuthRequest, res: Response) {
+  try {
+    const teamId = parseInt(req.params.teamId);
+    if (isNaN(teamId)) return res.status(400).json({ error: "Invalid team ID" });
+
+    const result = await campaignVideoService.getClipIdsInCampaigns(teamId);
+    return res.json(result);
+  } catch (error) {
+    console.error("Get campaign clip IDs error:", error);
+    Sentry.captureException(error);
+    return res.status(500).json({ error: "Failed to fetch campaign clip IDs" });
   }
 }
 

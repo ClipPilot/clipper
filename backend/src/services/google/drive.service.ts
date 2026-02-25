@@ -65,8 +65,8 @@ class GoogleDriveService {
   ): Promise<string> {
     const drive = this.getDrive();
     const folderName = campaignName
-      ? `${teamName} - ${campaignName}`
-      : `${teamName} (Team ${teamId}) - Campaign ${campaignId}`;
+      ? `${teamName}, ${campaignName} (${teamId})`
+      : `${teamName} (${teamId}) - Campaign ${campaignId}`;
 
     const folderMetadata = {
       name: folderName,

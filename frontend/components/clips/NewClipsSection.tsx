@@ -12,6 +12,7 @@ interface NewClipsSectionProps {
   onClipClick: (clip: Clip) => void;
   onEditClick?: (clip: Clip) => void;
   onAdPosting?: (clip: Clip) => void;
+  campaignClipIds?: Set<number>;
   selectedClipId?: number | null;
 }
 
@@ -21,6 +22,7 @@ export default function NewClipsSection({
   onClipClick,
   onEditClick,
   onAdPosting,
+  campaignClipIds,
   selectedClipId,
 }: NewClipsSectionProps) {
   if (clips.length === 0) return null;
@@ -48,6 +50,7 @@ export default function NewClipsSection({
               onView={() => onClipClick(clip)}
               onEdit={onEditClick ? () => onEditClick(clip) : undefined}
               onAdPosting={onAdPosting ? () => onAdPosting(clip) : undefined}
+              isInCampaign={campaignClipIds?.has(clip.id)}
               isSelected={selectedClipId === clip.id}
             />
           </div>

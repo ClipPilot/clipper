@@ -12,7 +12,6 @@ interface StepBudgetProps {
 
 export function StepBudget({ budget, setBudget }: StepBudgetProps) {
   const activeTier = budget !== null && budget >= 5000 ? getActiveTier(budget) : null;
-  const guaranteedViews = activeTier && budget ? Math.floor(budget / activeTier.cpm) : null;
 
   return (
     <div className="space-y-6">
@@ -66,13 +65,7 @@ export function StepBudget({ budget, setBudget }: StepBudgetProps) {
                 ${tier.cpm.toFixed(2)} <span className="text-sm font-normal">CPM</span>
               </p>
 
-              <p className="text-xs text-text-tertiary mb-2">{tier.budgetRange}</p>
-
-              {isActive && guaranteedViews && (
-                <div className="text-xs text-accent-400/80">
-                  <span className="font-semibold">{guaranteedViews.toLocaleString()} views</span>
-                </div>
-              )}
+              <p className="text-xs text-text-tertiary">{tier.budgetRange}</p>
             </div>
           );
         })}

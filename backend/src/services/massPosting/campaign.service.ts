@@ -1,12 +1,14 @@
 import {
   campaigns,
+  campaignContracts,
+  campaignVideos,
   intakeForms,
   teams,
   teamMembers,
   users,
 } from "@clipper/shared-db";
 import { db } from "../../db";
-import { eq, desc, sql, and, or } from "drizzle-orm";
+import { eq, desc, sql, and } from "drizzle-orm";
 import { googleDriveService } from "../google/drive.service";
 import { emailNotiService } from "../emailNoti.service";
 import { campaignContractService } from "./campaignContract.service";
@@ -162,6 +164,100 @@ class CampaignService {
     return updated;
   }
 
+  // ── Admin List/Detail ─────────────────────────
+
+  async getAllCampaigns(options?: { status?: string; limit?: number; offset?: number }) {
+    const limit = options?.limit ?? 10;
+    const offset = options?.offset ?? 0;
+
+    const conditions = options?.status
+      ? eq(campaigns.status, options.status as any)
+      : undefined;
+
+    const [rows, countResult] = await Promise.all([
+      db
+        .select({
+          id: campaigns.id,
+          team_id: campaigns.team_id,
+          name: campaigns.name,
+          status: campaigns.status,
+          google_drive_folder_id: campaigns.google_drive_folder_id,
+          rejection_reason: campaigns.rejection_reason,
+          admin_notes: campaigns.admin_notes,
+          created_at: campaigns.created_at,
+          updated_at: campaigns.updated_at,
+          budget: campaigns.budget,
+          quoted_cpm: campaigns.quoted_cpm,
+          video_minimum: campaigns.video_minimum,
+          videos_ready: campaigns.videos_ready,
+          payment_ready: campaigns.payment_ready,
+          contract_ready: campaigns.contract_ready,
+          team_name: teams.name,
+          team_plan: teams.plan,
+        })
+        .from(campaigns)
+        .innerJoin(teams, eq(campaigns.team_id, teams.id))
+        .where(conditions)
+        .orderBy(desc(campaigns.created_at))
+        .limit(limit)
+        .offset(offset),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(campaigns)
+        .where(conditions),
+    ]);
+
+    const total = countResult[0]?.count ?? 0;
+
+    return {
+      campaigns: rows,
+      total,
+      pagination: { limit, offset, total, hasMore: offset + limit < total },
+    };
+  }
+
+  async getCampaignDetail(campaignId: number) {
+    const [campaign] = await db
+      .select({
+        id: campaigns.id,
+        team_id: campaigns.team_id,
+        intake_form_id: campaigns.intake_form_id,
+        name: campaigns.name,
+        status: campaigns.status,
+        google_drive_folder_id: campaigns.google_drive_folder_id,
+        rejection_reason: campaigns.rejection_reason,
+        admin_notes: campaigns.admin_notes,
+        created_at: campaigns.created_at,
+        updated_at: campaigns.updated_at,
+        budget: campaigns.budget,
+        quoted_cpm: campaigns.quoted_cpm,
+        video_minimum: campaigns.video_minimum,
+        videos_ready: campaigns.videos_ready,
+        payment_ready: campaigns.payment_ready,
+        contract_ready: campaigns.contract_ready,
+        team_name: teams.name,
+        team_plan: teams.plan,
+      })
+      .from(campaigns)
+      .innerJoin(teams, eq(campaigns.team_id, teams.id))
+      .where(eq(campaigns.id, campaignId))
+      .limit(1);
+
+    if (!campaign) throw new Error("Campaign not found");
+
+    let intakeForm: typeof intakeForms.$inferSelect | null = null;
+    if (campaign.intake_form_id) {
+      const [form] = await db
+        .select()
+        .from(intakeForms)
+        .where(eq(intakeForms.id, campaign.intake_form_id))
+        .limit(1);
+      intakeForm = form ?? null;
+    }
+
+    return { ...campaign, intakeForm };
+  }
+
   // ── Admin Operations ───────────────────────────
 
   async approveCampaign(
@@ -189,6 +285,27 @@ class CampaignService {
 
     if (adminNotes) updateData.admin_notes = adminNotes;
 
+    // Fetch team (needed for folder + email)
+    const [team] = await db
+      .select()
+      .from(teams)
+      .where(eq(teams.id, campaign.team_id))
+      .limit(1);
+
+    // Create Google Drive folder
+    let driveFolderId: string | null = null;
+    try {
+      driveFolderId = await googleDriveService.createCampaignFolder(
+        team?.name || "Unknown",
+        campaign.team_id,
+        id,
+        campaign.name,
+      );
+      updateData.google_drive_folder_id = driveFolderId;
+    } catch (error) {
+      console.error("Failed to create Drive folder on approval:", error);
+    }
+
     const [updated] = await db
       .update(campaigns)
       .set(updateData)
@@ -196,20 +313,17 @@ class CampaignService {
       .returning();
 
     // Auto-generate contract PDF
+    let contractWarning: string | undefined;
     try {
       await campaignContractService.generateContract(id);
-    } catch (error) {
+      console.log(`[Campaign] Contract auto-generated for campaign ${id}`);
+    } catch (error: any) {
+      contractWarning = error.message || "Unknown error";
       console.error("Failed to auto-generate contract on approval:", error);
     }
 
     // Send approval email to team owner
     try {
-      const [team] = await db
-        .select()
-        .from(teams)
-        .where(eq(teams.id, campaign.team_id))
-        .limit(1);
-
       const [owner] = await db
         .select({ email: users.email, firstName: users.first_name })
         .from(teamMembers)
@@ -225,18 +339,21 @@ class CampaignService {
       if (owner?.email) {
         const frontendUrl =
           process.env.FRONTEND_URL || "https://platform.cuttr.com";
+        const driveFolderUrl = driveFolderId
+          ? `https://drive.google.com/drive/folders/${driveFolderId}`
+          : "";
         await emailNotiService.sendMassPostingApproved(owner.email, {
           userName: owner.firstName || "there",
-          teamName: team.name,
+          teamName: team?.name || "your team",
           dashboardUrl: `${frontendUrl}/dashboard/publish-posts`,
-          driveFolderUrl: "",
+          driveFolderUrl,
         });
       }
     } catch (emailError) {
       console.error("Failed to send campaign approval email:", emailError);
     }
 
-    return updated;
+    return { ...updated, contractWarning };
   }
 
   async rejectCampaign(id: number, reason: string, adminNotes?: string) {
@@ -357,10 +474,39 @@ class CampaignService {
     const campaign = await this.getCampaignById(campaignId);
     if (!campaign) throw new Error("Campaign not found");
 
+    // Get video count
+    const [videoCount] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(campaignVideos)
+      .where(eq(campaignVideos.campaign_id, campaignId));
+
+    // Get wallet balance
+    const wallet = await campaignBillingService.getWallet(campaignId);
+
+    // Get contract signed_at
+    const [contract] = await db
+      .select({ status: campaignContracts.status, signed_at: campaignContracts.signed_at })
+      .from(campaignContracts)
+      .where(eq(campaignContracts.campaign_id, campaignId))
+      .limit(1);
+
+    const budgetCents = campaign.budget ? Math.round(parseFloat(campaign.budget) * 100) : 0;
+
     return {
-      videosReady: campaign.videos_ready,
-      paymentReady: campaign.payment_ready,
-      contractReady: campaign.contract_ready,
+      videos: {
+        complete: campaign.videos_ready ?? false,
+        videoCount: videoCount?.count ?? 0,
+        videoMinimum: campaign.video_minimum ?? 0,
+      },
+      payment: {
+        complete: campaign.payment_ready ?? false,
+        balanceCents: wallet?.balance_cents ?? 0,
+        requiredCents: budgetCents,
+      },
+      contract: {
+        complete: campaign.contract_ready ?? false,
+        signedAt: contract?.signed_at?.toISOString() ?? null,
+      },
     };
   }
 
@@ -379,31 +525,10 @@ class CampaignService {
       throw new Error("All gates must be completed before starting the campaign");
     }
 
-    // Create Drive folder if not already created
-    let driveFolderId = campaign.google_drive_folder_id;
-    if (!driveFolderId) {
-      const [team] = await db
-        .select()
-        .from(teams)
-        .where(eq(teams.id, teamId))
-        .limit(1);
-
-      try {
-        driveFolderId = await googleDriveService.createTeamFolder(
-          `${team.name} - ${campaign.name}`,
-          teamId,
-        );
-      } catch (error) {
-        console.error("Failed to create campaign Drive folder:", error);
-        throw new Error("Failed to create Google Drive folder for campaign");
-      }
-    }
-
     const [updated] = await db
       .update(campaigns)
       .set({
         status: "started",
-        google_drive_folder_id: driveFolderId,
         started_at: new Date(),
         updated_at: new Date(),
       })

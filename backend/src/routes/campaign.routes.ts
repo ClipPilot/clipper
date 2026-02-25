@@ -10,7 +10,10 @@ import {
   completeVideoUpload,
   removeVideo,
   listVideos,
+  getCampaignClipIds,
   getWallet,
+  createSetupIntent,
+  saveCard,
   createTopUp,
   getTopUpStatus,
   getContract,
@@ -501,6 +504,42 @@ router.delete("/teams/:teamId/campaigns/:campaignId/videos/:videoId", requireAut
  */
 router.get("/teams/:teamId/campaigns/:campaignId/videos", requireAuth, requireSeatAccess, listVideos);
 
+// Campaign clip IDs (for library "already added" checks)
+
+/**
+ * @openapi
+ * /api/campaigns/teams/{teamId}/campaign-clip-ids:
+ *   get:
+ *     summary: Get all clip IDs in campaigns
+ *     description: Returns all unique clip IDs across all campaigns for the team
+ *     tags: [Campaigns]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Array of clip IDs
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 clipIds:
+ *                   type: array
+ *                   items:
+ *                     type: integer
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.get("/teams/:teamId/campaign-clip-ids", requireAuth, requireSeatAccess, getCampaignClipIds);
+
 // Wallet
 
 /**
@@ -550,6 +589,109 @@ router.get("/teams/:teamId/campaigns/:campaignId/videos", requireAuth, requireSe
  *         description: Server error
  */
 router.get("/teams/:teamId/campaigns/:campaignId/wallet", requireAuth, requireSeatAccess, getWallet);
+
+/**
+ * @openapi
+ * /api/campaigns/teams/{teamId}/campaigns/{campaignId}/wallet/setup-intent:
+ *   post:
+ *     summary: Create a Stripe SetupIntent for saving a card
+ *     description: Creates a Stripe SetupIntent so the user can securely save a payment method to the campaign wallet without an immediate charge.
+ *     tags: [Campaigns]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: campaignId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Stripe SetupIntent client secret
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 clientSecret:
+ *                   type: string
+ *                   description: Stripe SetupIntent client_secret for use with Stripe.js
+ *       400:
+ *         description: Invalid ID
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.post("/teams/:teamId/campaigns/:campaignId/wallet/setup-intent", requireAuth, requireSeatAccess, createSetupIntent);
+
+/**
+ * @openapi
+ * /api/campaigns/teams/{teamId}/campaigns/{campaignId}/wallet/save-card:
+ *   post:
+ *     summary: Save a payment method to the campaign wallet
+ *     description: Stores the Stripe PaymentMethod ID (returned after SetupIntent confirmation) on the campaign wallet for future charges.
+ *     tags: [Campaigns]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: campaignId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - paymentMethodId
+ *             properties:
+ *               paymentMethodId:
+ *                 type: string
+ *                 description: Stripe PaymentMethod ID (e.g. pm_xxx)
+ *     responses:
+ *       200:
+ *         description: Card saved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 saved:
+ *                   type: boolean
+ *                 card:
+ *                   type: object
+ *                   nullable: true
+ *                   properties:
+ *                     brand:
+ *                       type: string
+ *                     last4:
+ *                       type: string
+ *                     exp_month:
+ *                       type: integer
+ *                     exp_year:
+ *                       type: integer
+ *       400:
+ *         description: Missing or invalid paymentMethodId
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.post("/teams/:teamId/campaigns/:campaignId/wallet/save-card", requireAuth, requireSeatAccess, saveCard);
 
 /**
  * @openapi

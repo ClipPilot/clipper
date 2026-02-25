@@ -36,7 +36,7 @@ export function useMassPosting() {
   }, [fetchStatus]);
 
   return {
-    isApproved: status?.applicationStatus === "accepted",
+    isApproved: status?.applicationStatus === "accepted" || status?.applicationStatus === "started" || status?.applicationStatus === "paused" || status?.applicationStatus === "completed",
     isPending: status?.applicationStatus === "pending" || status?.applicationStatus === "appeal",
     isRejected: status?.applicationStatus === "rejected",
     hasIntakeForm: status?.hasIntakeForm ?? false,
