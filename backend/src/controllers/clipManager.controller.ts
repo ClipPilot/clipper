@@ -12,8 +12,32 @@ import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
 import { transcribeVideoService } from "../services/clips/transcription.service";
 import { TranscriptionWord, CaptionEntry } from "../services/clips/captions.service";
 import { ensureOutputDir, safeUnlink } from "../utils/fileUtils";
-import { verifyTeamAccessOrFail } from "../utils/controllerHelpers";
 import path from "path";
+
+async function verifyTeamAccessOrFail(
+  req: AuthRequest,
+  teamId: number,
+  res: Response
+): Promise<{ id: number } | null> {
+  if (!req.user?.id) {
+    res.status(401).json({ error: "Authentication required" });
+    return null;
+  }
+
+  const user = await userService.getUserBySupabaseUid(req.user.id);
+  if (!user) {
+    res.status(401).json({ error: "User not found" });
+    return null;
+  }
+
+  const hasAccess = await teamService.verifyTeamAccess(teamId, user.id);
+  if (!hasAccess) {
+    res.status(403).json({ error: "Access denied to this team" });
+    return null;
+  }
+
+  return user;
+}
 
 /**
  * Enriches a list of clips (with clip_path and source_video_path fields)

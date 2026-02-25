@@ -6,7 +6,28 @@ import { userService } from "../services/user.service";
 import { clipManagerService } from "../services/clips/clipManager.service";
 import { s3Service } from "../services/s3.service";
 import { PLAN_LIMITS } from "../config/stripe.config";
-import { verifyTeamAccessOrFail } from "../utils/controllerHelpers";
+
+/**
+ * Verifies that the authenticated user has access to the given team.
+ * Sends a 401/403 response and returns null on failure; returns the db user on success.
+ */
+async function verifyTeamAccessOrFail(
+  req: AuthRequest,
+  teamId: number,
+  res: Response
+): Promise<{ id: number } | null> {
+  if (!req.user?.id) {
+    res.status(401).json({ error: "Unauthorized" });
+    return null;
+  }
+  const user = await userService.getUserBySupabaseUid(req.user.id);
+  const hasAccess = await teamService.verifyTeamAccess(teamId, user.id);
+  if (!hasAccess) {
+    res.status(403).json({ error: "Access denied to this team" });
+    return null;
+  }
+  return user;
+}
 
 export const getUserTeamsController = async (req: AuthRequest, res: Response) => {
   try {
