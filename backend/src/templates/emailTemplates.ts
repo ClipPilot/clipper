@@ -310,3 +310,45 @@ export const adPostingReadyEmail = (data: AdPostingReadyEmailData): string => {
   `;
   return wrapInBase(content);
 };
+
+// Campaign emails
+
+export interface CampaignStartedEmailData {
+  userName: string;
+  teamName: string;
+  campaignName: string;
+  dashboardUrl: string;
+}
+
+export const campaignStartedEmail = (data: CampaignStartedEmailData): string => {
+  const content = `
+    <h1 style="color: #ffffff; font-size: 24px; margin-bottom: 16px;">Your Campaign is Live!</h1>
+    <p style="color: #a0a0a0; font-size: 16px; line-height: 1.6;">Hey ${data.userName},</p>
+    <p style="color: #a0a0a0; font-size: 16px; line-height: 1.6;">Great news! Your campaign <strong style="color: #ffffff;">${data.campaignName}</strong> for <strong style="color: #ffffff;">${data.teamName}</strong> is now live. Your videos will start being distributed across our network.</p>
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${data.dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #9333EA, #7C3AED); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">View Campaign</a>
+    </div>
+  `;
+  return wrapInBase(content);
+};
+
+export interface ContractSignedEmailData {
+  userName: string;
+  teamName: string;
+  campaignName: string;
+  signerName: string;
+  signedDate: string;
+}
+
+export const contractSignedEmail = (data: ContractSignedEmailData): string => {
+  const content = `
+    <h1 style="color: #ffffff; font-size: 24px; margin-bottom: 16px;">Contract Signed</h1>
+    <p style="color: #a0a0a0; font-size: 16px; line-height: 1.6;">The contract for campaign <strong style="color: #ffffff;">${data.campaignName}</strong> has been signed.</p>
+    <div style="background: #1a1a1a; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <p style="color: #a0a0a0; font-size: 14px; margin: 8px 0;"><strong style="color: #ffffff;">Team:</strong> ${data.teamName}</p>
+      <p style="color: #a0a0a0; font-size: 14px; margin: 8px 0;"><strong style="color: #ffffff;">Signed by:</strong> ${data.signerName}</p>
+      <p style="color: #a0a0a0; font-size: 14px; margin: 8px 0;"><strong style="color: #ffffff;">Date:</strong> ${data.signedDate}</p>
+    </div>
+  `;
+  return wrapInBase(content);
+};

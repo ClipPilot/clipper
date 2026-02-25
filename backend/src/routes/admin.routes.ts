@@ -20,6 +20,14 @@ import {
   retryDriveFolder,
   updateApplicationCPM,
 } from "../controllers/admin-intake.controller";
+import {
+  getAllCampaigns,
+  getCampaignDetail,
+  approveCampaign,
+  rejectCampaign,
+  updateCampaign,
+  pauseCampaign,
+} from "../controllers/admin-campaign.controller";
 
 const router = Router();
 
@@ -609,5 +617,277 @@ router.post("/applications/:applicationId/reject", requireAdminAuth, rejectAppli
  */
 router.post("/applications/:applicationId/retry-drive", requireAdminAuth, retryDriveFolder);
 router.patch("/applications/:applicationId", requireAdminAuth, updateApplicationCPM);
+
+// Campaign Management
+
+/**
+ * @openapi
+ * /api/admin/campaigns:
+ *   get:
+ *     summary: List all campaigns
+ *     description: Returns a paginated list of all campaigns with team info, filterable by status
+ *     tags: [Admin]
+ *     security:
+ *       - adminAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [pending, accepted, rejected, appeal, started, paused, completed]
+ *         description: Filter by campaign status
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 50
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *     responses:
+ *       200:
+ *         description: Paginated list of campaigns
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 campaigns:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 total:
+ *                   type: integer
+ *                 pagination:
+ *                   type: object
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.get("/campaigns", requireAdminAuth, getAllCampaigns);
+
+/**
+ * @openapi
+ * /api/admin/campaigns/{campaignId}:
+ *   get:
+ *     summary: Get campaign detail
+ *     description: Returns full campaign detail including gate statuses, video count, wallet balance, and contract status
+ *     tags: [Admin]
+ *     security:
+ *       - adminAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: campaignId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Campaign details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 campaign:
+ *                   type: object
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Campaign not found
+ *       500:
+ *         description: Server error
+ */
+router.get("/campaigns/:campaignId", requireAdminAuth, getCampaignDetail);
+
+/**
+ * @openapi
+ * /api/admin/campaigns/{campaignId}/approve:
+ *   post:
+ *     summary: Approve a campaign
+ *     description: Approves a pending campaign. Requires quotedCpm and videoMinimum. Auto-generates the contract PDF.
+ *     tags: [Admin]
+ *     security:
+ *       - adminAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: campaignId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - quotedCpm
+ *               - videoMinimum
+ *             properties:
+ *               quotedCpm:
+ *                 type: number
+ *                 description: CPM rate quoted for the campaign
+ *               videoMinimum:
+ *                 type: integer
+ *                 description: Minimum number of videos required
+ *               adminNotes:
+ *                 type: string
+ *                 description: Optional admin notes
+ *     responses:
+ *       200:
+ *         description: Campaign approved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 campaign:
+ *                   type: object
+ *       400:
+ *         description: Missing quotedCpm or videoMinimum
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Campaign not found
+ *       500:
+ *         description: Server error
+ */
+router.post("/campaigns/:campaignId/approve", requireAdminAuth, approveCampaign);
+
+/**
+ * @openapi
+ * /api/admin/campaigns/{campaignId}/reject:
+ *   post:
+ *     summary: Reject a campaign
+ *     description: Rejects a pending campaign with a required reason
+ *     tags: [Admin]
+ *     security:
+ *       - adminAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: campaignId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - reason
+ *             properties:
+ *               reason:
+ *                 type: string
+ *                 description: Reason for rejection
+ *               adminNotes:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Campaign rejected
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 campaign:
+ *                   type: object
+ *       400:
+ *         description: Missing rejection reason
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Campaign not found
+ *       500:
+ *         description: Server error
+ */
+router.post("/campaigns/:campaignId/reject", requireAdminAuth, rejectCampaign);
+
+/**
+ * @openapi
+ * /api/admin/campaigns/{campaignId}:
+ *   patch:
+ *     summary: Update campaign settings
+ *     description: Updates campaign CPM, video minimum, or admin notes
+ *     tags: [Admin]
+ *     security:
+ *       - adminAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: campaignId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               quotedCpm:
+ *                 type: number
+ *               videoMinimum:
+ *                 type: integer
+ *               adminNotes:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Campaign updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 campaign:
+ *                   type: object
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Campaign not found
+ *       500:
+ *         description: Server error
+ */
+router.patch("/campaigns/:campaignId", requireAdminAuth, updateCampaign);
+
+/**
+ * @openapi
+ * /api/admin/campaigns/{campaignId}/pause:
+ *   post:
+ *     summary: Pause a started campaign
+ *     description: Pauses a currently running campaign
+ *     tags: [Admin]
+ *     security:
+ *       - adminAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: campaignId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Campaign paused
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 campaign:
+ *                   type: object
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Campaign not found
+ *       409:
+ *         description: Campaign is not in started status
+ *       500:
+ *         description: Server error
+ */
+router.post("/campaigns/:campaignId/pause", requireAdminAuth, pauseCampaign);
 
 export default router;

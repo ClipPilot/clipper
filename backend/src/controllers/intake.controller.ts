@@ -140,7 +140,7 @@ export async function getLatestApplication(req: AuthRequest, res: Response) {
       return res.status(400).json({ error: "Invalid team ID" });
     }
 
-    const application = await intakeService.getLatestApplication(teamId);
+    const application = await intakeService.getLatestCampaign(teamId);
     return res.json({ application });
   } catch (error) {
     console.error("Get latest application error:", error);
