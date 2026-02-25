@@ -1,0 +1,1 @@
+ALTER TABLE "virality_accounts" ADD COLUMN "account_type" varchar(20) DEFAULT 'profile' NOT NULL;

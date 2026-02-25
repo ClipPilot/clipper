@@ -121,10 +121,6 @@ resource "aws_ecs_task_definition" "backend" {
         value = "redis://${aws_elasticache_cluster.redis.cache_nodes[0].address}:6379"
       },
       {
-        name  = "YOUTUBE_LAMBDA_URL"
-        value = aws_lambda_function_url.youtube_downloader.function_url
-      },
-      {
         name  = "GOOGLE_SERVICE_ACCOUNT_EMAIL"
         value = var.google_service_account_email
       },
@@ -194,6 +190,10 @@ resource "aws_ecs_task_definition" "backend" {
       {
         name      = "APIFY_API_TOKEN"
         valueFrom = aws_secretsmanager_secret.apify_api_token.arn
+      },
+      {
+        name      = "SOCIALDATA_API_KEY"
+        valueFrom = aws_secretsmanager_secret.socialdata_api_key.arn
       }
     ]
 

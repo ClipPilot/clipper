@@ -1,21 +1,52 @@
-export type Platform = "instagram" | "tiktok" | "x";
+export type Platform = "instagram" | "tiktok" | "x" | "youtube" | "facebook" | "linkedin";
 
 export function platformIcon(platform: string): string {
   if (platform === "x") return "ri:twitter-x-fill";
   if (platform === "tiktok") return "ri:tiktok-fill";
+  if (platform === "youtube") return "ri:youtube-fill";
+  if (platform === "facebook") return "ri:facebook-fill";
+  if (platform === "linkedin") return "ri:linkedin-fill";
   return "ri:instagram-fill";
 }
 
 export function platformIconColor(platform: string): string {
   if (platform === "tiktok") return "text-cyan-400";
   if (platform === "x") return "text-foreground";
+  if (platform === "youtube") return "text-red-500";
+  if (platform === "facebook") return "text-blue-500";
+  if (platform === "linkedin") return "text-blue-400";
   return "text-pink-500";
 }
 
 export function platformChipClass(platform: string): string {
   if (platform === "tiktok") return "bg-cyan-500/10 text-cyan-500";
   if (platform === "x") return "bg-foreground/10 text-foreground";
+  if (platform === "youtube") return "bg-red-500/10 text-red-500";
+  if (platform === "facebook") return "bg-blue-500/10 text-blue-500";
+  if (platform === "linkedin") return "bg-blue-400/10 text-blue-400";
   return "bg-pink-500/10 text-pink-500";
+}
+
+export function platformDisplayName(platform: string): string {
+  const names: Record<string, string> = {
+    tiktok: "TikTok",
+    instagram: "Instagram",
+    youtube: "YouTube",
+    x: "X (Twitter)",
+    facebook: "Facebook",
+    linkedin: "LinkedIn",
+  };
+  return names[platform] ?? platform;
+}
+
+export function platformShortLabel(platform: string): string {
+  if (platform === "instagram") return "IG";
+  if (platform === "tiktok") return "TT";
+  if (platform === "youtube") return "YT";
+  if (platform === "x") return "X";
+  if (platform === "facebook") return "FB";
+  if (platform === "linkedin") return "LI";
+  return "?";
 }
 
 export function syncStatusColor(status: string): "success" | "danger" | "warning" | "default" {

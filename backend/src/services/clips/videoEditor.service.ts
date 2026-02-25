@@ -4,6 +4,15 @@ import fs from "fs";
 import puppeteer from "puppeteer";
 import path from "path";
 import { MOBILE_VIDEO_SETTINGS, COMPRESSION } from "../../config/ffmpegSettings";
+import type { ConversionMode } from "../../constants/conversionModes";
+import type { ActiveSpeakerSegment } from "./speakerSegments.service";
+
+export interface FacecamRegion {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
 
 interface VideoMetadata {
   width: number;
@@ -526,10 +535,10 @@ export const convertToVerticalBlur = async (
           inputs: "bg2",
           outputs: "bg",
         },
-        // Foreground: scale to fit within 1080x1920
+        // Foreground: scale to fill 1080 width, maintain aspect ratio
         {
           filter: "scale",
-          options: { w: "min(iw\\,1080)", h: "min(ih\\,1920)", force_original_aspect_ratio: "decrease" },
+          options: { w: 1080, h: -2 },
           inputs: "0:v",
           outputs: "fg",
         },
@@ -563,6 +572,439 @@ export const convertToVerticalBlur = async (
         reject(err);
       });
   });
+};
+
+/**
+ * Convert a horizontal video to 9:16 gaming layout:
+ * Facecam on top half, center-cropped gameplay on bottom half.
+ * Requires a facecam bounding box from the facecam-detect Lambda.
+ */
+export const convertToGamingVertical = async (
+  inputPath: string,
+  outputPath: string,
+  facecam: FacecamRegion,
+): Promise<string> => {
+  const metadata = await getVideoMetadata(inputPath);
+  const { width, height } = metadata;
+
+  if (height >= width) {
+    console.log(`[GAMING] Already vertical (${width}x${height}), skipping`);
+    fs.copyFileSync(inputPath, outputPath);
+    return outputPath;
+  }
+
+  console.log(`[GAMING] Converting ${width}x${height} to gaming layout (facecam: ${JSON.stringify(facecam)})`);
+
+  // Clamp facecam region to frame bounds
+  const fcX = Math.max(0, Math.min(facecam.x, width - 1));
+  const fcY = Math.max(0, Math.min(facecam.y, height - 1));
+  const fcW = Math.min(facecam.w, width - fcX);
+  const fcH = Math.min(facecam.h, height - fcY);
+
+  // Gameplay "corner cut": slice off the facecam strip first, then
+  // center-crop the remaining area to 16:9 so the game center is preserved.
+  const fcCenterX = fcX + fcW / 2;
+  const fcCenterY = fcY + fcH / 2;
+  const fcOnLeft = fcCenterX < width / 2;
+  const fcOnTop = fcCenterY < height / 2;
+
+  // Step 1: Remove the facecam strip (whichever axis it's closer to the edge on)
+  const distToVerticalEdge = fcOnLeft ? (fcX + fcW) : (width - fcX);
+  const distToHorizontalEdge = fcOnTop ? (fcY + fcH) : (height - fcY);
+
+  let stripX: number, stripY: number, stripW: number, stripH: number;
+
+  if (distToVerticalEdge <= distToHorizontalEdge) {
+    // Facecam hugs a vertical edge — slice off that side
+    if (fcOnLeft) {
+      stripX = fcX + fcW;
+      stripY = 0;
+      stripW = width - (fcX + fcW);
+      stripH = height;
+    } else {
+      stripX = 0;
+      stripY = 0;
+      stripW = fcX;
+      stripH = height;
+    }
+  } else {
+    // Facecam hugs a horizontal edge — slice off that side
+    if (fcOnTop) {
+      stripX = 0;
+      stripY = fcY + fcH;
+      stripW = width;
+      stripH = height - (fcY + fcH);
+    } else {
+      stripX = 0;
+      stripY = 0;
+      stripW = width;
+      stripH = fcY;
+    }
+  }
+
+  // Step 2: Center-crop the remaining strip to 16:9
+  const gameplayRatio = 16 / 9;
+  let gpW: number, gpH: number, gpX: number, gpY: number;
+
+  if (stripW / stripH > gameplayRatio) {
+    // Remaining area is wider than 16:9 — crop width from center
+    gpH = stripH;
+    gpW = Math.round(stripH * gameplayRatio);
+    gpX = stripX + Math.round((stripW - gpW) / 2);
+    gpY = stripY;
+  } else {
+    // Remaining area is taller than 16:9 — crop height from center
+    gpW = stripW;
+    gpH = Math.round(stripW / gameplayRatio);
+    gpX = stripX;
+    gpY = stripY + Math.round((stripH - gpH) / 2);
+  }
+
+  console.log(`[GAMING] Facecam at ${fcOnLeft ? "left" : "right"}/${fcOnTop ? "top" : "bottom"}, gameplay crop: ${gpW}x${gpH}+${gpX}+${gpY}`);
+
+  return new Promise((resolve, reject) => {
+    ffmpeg()
+      .input(inputPath)
+      .complexFilter([
+        // Facecam: crop from source, scale to 1080x960, pad if aspect ratio doesn't match
+        `[0:v]crop=${fcW}:${fcH}:${fcX}:${fcY},scale=1080:960:force_original_aspect_ratio=decrease,pad=1080:960:(ow-iw)/2:(oh-ih)/2:color=black[cam]`,
+        // Gameplay: center-crop to 16:9, scale to 1080x960
+        `[0:v]crop=${gpW}:${gpH}:${gpX}:${gpY},scale=1080:960[game]`,
+        // Stack: facecam on top, gameplay on bottom
+        `[cam][game]vstack=inputs=2[v]`,
+      ])
+      .outputOptions([
+        "-map", "[v]",
+        "-map", "0:a?",
+        "-c:v libx264",
+        "-preset fast",
+        "-crf 23",
+        ...MOBILE_VIDEO_SETTINGS,
+        "-c:a aac",
+        "-b:a 128k",
+        "-ar 48000",
+        "-movflags +faststart",
+      ])
+      .save(outputPath)
+      .on("end", () => {
+        console.log(`[GAMING] Converted to gaming layout: ${outputPath}`);
+        resolve(outputPath);
+      })
+      .on("error", (err) => {
+        console.error(`[GAMING] Conversion failed: ${err.message}`);
+        reject(err);
+      });
+  });
+};
+
+/**
+ * Convert a horizontal video to 9:16 by cropping a region centered on a face.
+ * Good for talking-head / speaker content where you want to zoom into the speaker.
+ */
+export const convertToSpeakerZoom = async (
+  inputPath: string,
+  outputPath: string,
+  faceRegion: FacecamRegion,
+): Promise<string> => {
+  const metadata = await getVideoMetadata(inputPath);
+  const { width, height } = metadata;
+
+  if (height >= width) {
+    console.log(`[SPEAKER-ZOOM] Already vertical (${width}x${height}), skipping`);
+    fs.copyFileSync(inputPath, outputPath);
+    return outputPath;
+  }
+
+  // Calculate a 9:16 crop centered on the face
+  const targetRatio = 9 / 16;
+  let cropW: number;
+  let cropH: number;
+
+  // Start with the full height and calculate width from ratio
+  cropH = height;
+  cropW = Math.round(height * targetRatio);
+
+  // If that's wider than the source, constrain by width
+  if (cropW > width) {
+    cropW = width;
+    cropH = Math.round(width / targetRatio);
+  }
+
+  // Center the crop on the face's center X position
+  const faceCenterX = faceRegion.x + faceRegion.w / 2;
+  let cropX = Math.round(faceCenterX - cropW / 2);
+  cropX = Math.max(0, Math.min(cropX, width - cropW));
+
+  // Center vertically on the face as well
+  const faceCenterY = faceRegion.y + faceRegion.h / 2;
+  let cropY = Math.round(faceCenterY - cropH / 2);
+  cropY = Math.max(0, Math.min(cropY, height - cropH));
+
+  console.log(`[SPEAKER-ZOOM] Cropping ${cropW}x${cropH} at (${cropX},${cropY}) centered on face, then scaling to 1080x1920`);
+
+  return new Promise((resolve, reject) => {
+    ffmpeg(inputPath)
+      .complexFilter([
+        {
+          filter: "crop",
+          options: { w: cropW, h: cropH, x: cropX, y: cropY },
+          inputs: "0:v",
+          outputs: "cropped",
+        },
+        {
+          filter: "scale",
+          options: { w: 1080, h: 1920 },
+          inputs: "cropped",
+          outputs: "v",
+        },
+      ])
+      .outputOptions([
+        "-map", "[v]",
+        "-map", "0:a?",
+        "-c:v libx264",
+        "-preset fast",
+        "-crf 23",
+        ...MOBILE_VIDEO_SETTINGS,
+        "-c:a aac",
+        "-b:a 128k",
+        "-ar 48000",
+        "-movflags +faststart",
+      ])
+      .save(outputPath)
+      .on("end", () => {
+        console.log(`[SPEAKER-ZOOM] Converted: ${outputPath}`);
+        resolve(outputPath);
+      })
+      .on("error", (err) => {
+        console.error(`[SPEAKER-ZOOM] Failed: ${err.message}`);
+        reject(err);
+      });
+  });
+};
+
+/**
+ * Convert a horizontal video to 9:16 via center crop (no blur, no letterbox).
+ * Thin wrapper around changeAspectRatio.
+ */
+export const convertToCenterCrop = async (
+  inputPath: string,
+  outputPath: string,
+): Promise<string> => {
+  const metadata = await getVideoMetadata(inputPath);
+  const { width, height } = metadata;
+
+  if (height >= width) {
+    console.log(`[CENTER-CROP] Already vertical (${width}x${height}), skipping`);
+    fs.copyFileSync(inputPath, outputPath);
+    return outputPath;
+  }
+
+  console.log(`[CENTER-CROP] Cropping ${width}x${height} to 9:16`);
+  return changeAspectRatio(inputPath, outputPath, "9:16");
+};
+
+/**
+ * Convert a horizontal video to 9:16 with dynamic active speaker zoom.
+ *
+ * For each speaker segment, crops a 9:16 region centered on that speaker's face,
+ * then concatenates all segments. Uses trim→crop→scale per segment with concat demuxer.
+ */
+export const convertToActiveSpeakerZoom = async (
+  inputPath: string,
+  outputPath: string,
+  segments: ActiveSpeakerSegment[],
+  speakerFaceMap: Map<number, FacecamRegion>,
+): Promise<string> => {
+  const metadata = await getVideoMetadata(inputPath);
+  const { width, height } = metadata;
+
+  if (height >= width) {
+    console.log(`[ACTIVE-SPEAKER] Already vertical (${width}x${height}), skipping`);
+    fs.copyFileSync(inputPath, outputPath);
+    return outputPath;
+  }
+
+  console.log(`[ACTIVE-SPEAKER] Processing ${segments.length} speaker segments from ${width}x${height}`);
+
+  // Calculate 9:16 crop dimensions (same logic as speaker-zoom)
+  const targetRatio = 9 / 16;
+  let cropW: number;
+  let cropH: number;
+
+  cropH = height;
+  cropW = Math.round(height * targetRatio);
+
+  if (cropW > width) {
+    cropW = width;
+    cropH = Math.round(width / targetRatio);
+  }
+
+  const tempDir = path.dirname(outputPath);
+  const timestamp = Date.now();
+  const segmentPaths: string[] = [];
+
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
+    const face = speakerFaceMap.get(seg.speaker);
+
+    if (!face) {
+      console.warn(`[ACTIVE-SPEAKER] No face for speaker ${seg.speaker}, using center crop`);
+    }
+
+    // Center crop on the speaker's face (or center of frame if no face)
+    const faceCenterX = face ? face.x + face.w / 2 : width / 2;
+    const faceCenterY = face ? face.y + face.h / 2 : height / 2;
+
+    let cropX = Math.round(faceCenterX - cropW / 2);
+    cropX = Math.max(0, Math.min(cropX, width - cropW));
+
+    let cropY = Math.round(faceCenterY - cropH / 2);
+    cropY = Math.max(0, Math.min(cropY, height - cropH));
+
+    const segmentPath = path.join(tempDir, `as_seg_${i}_${timestamp}.mp4`);
+    const duration = seg.end - seg.start;
+
+    console.log(`[ACTIVE-SPEAKER] Segment ${i}: speaker=${seg.speaker} ${seg.start.toFixed(2)}s-${seg.end.toFixed(2)}s crop=(${cropX},${cropY}) ${cropW}x${cropH}`);
+
+    await new Promise<void>((resolve, reject) => {
+      ffmpeg(inputPath)
+        .setStartTime(seg.start)
+        .setDuration(duration)
+        .complexFilter([
+          {
+            filter: "crop",
+            options: { w: cropW, h: cropH, x: cropX, y: cropY },
+            inputs: "0:v",
+            outputs: "cropped",
+          },
+          {
+            filter: "scale",
+            options: { w: 1080, h: 1920 },
+            inputs: "cropped",
+            outputs: "v",
+          },
+        ])
+        .outputOptions([
+          "-map", "[v]",
+          "-map", "0:a?",
+          "-c:v libx264",
+          "-preset fast",
+          "-crf 23",
+          ...MOBILE_VIDEO_SETTINGS,
+          "-c:a aac",
+          "-b:a 128k",
+          "-ar 48000",
+          "-avoid_negative_ts make_zero",
+          "-reset_timestamps 1",
+          "-movflags +faststart",
+        ])
+        .save(segmentPath)
+        .on("end", () => resolve())
+        .on("error", (err) => reject(err));
+    });
+
+    segmentPaths.push(segmentPath);
+  }
+
+  // Concatenate all segments
+  if (segmentPaths.length === 1) {
+    fs.renameSync(segmentPaths[0], outputPath);
+  } else {
+    const concatListPath = path.join(tempDir, `as_concat_${timestamp}.txt`);
+    const concatContent = segmentPaths
+      .map((p) => `file '${p.replace(/'/g, "'\\''")}'`)
+      .join("\n");
+    fs.writeFileSync(concatListPath, concatContent);
+
+    await new Promise<void>((resolve, reject) => {
+      ffmpeg()
+        .input(concatListPath)
+        .inputOptions(["-f concat", "-safe 0"])
+        .outputOptions([
+          "-c:v libx264",
+          "-preset fast",
+          "-crf 23",
+          ...MOBILE_VIDEO_SETTINGS,
+          "-c:a aac",
+          "-b:a 128k",
+          "-ar 48000",
+          "-movflags +faststart",
+        ])
+        .save(outputPath)
+        .on("end", () => {
+          fs.unlinkSync(concatListPath);
+          resolve();
+        })
+        .on("error", (err) => {
+          if (fs.existsSync(concatListPath)) fs.unlinkSync(concatListPath);
+          reject(err);
+        });
+    });
+
+    // Clean up segment temp files
+    for (const p of segmentPaths) {
+      if (fs.existsSync(p)) fs.unlinkSync(p);
+    }
+  }
+
+  console.log(`[ACTIVE-SPEAKER] Converted: ${outputPath}`);
+  return outputPath;
+};
+
+/**
+ * Dispatcher: convert horizontal video to vertical using the specified mode.
+ * Falls back to blurred-bg when face detection returns null for modes that need it.
+ */
+export const convertToVertical = async (
+  inputPath: string,
+  outputPath: string,
+  mode?: ConversionMode,
+  facecamRegion?: FacecamRegion | null,
+  activeSpeakerOptions?: {
+    segments: ActiveSpeakerSegment[];
+    speakerFaceMap: Map<number, FacecamRegion>;
+  } | null,
+): Promise<string> => {
+  const effectiveMode = mode || "standard";
+
+  switch (effectiveMode) {
+    case "center-crop":
+      return convertToCenterCrop(inputPath, outputPath);
+
+    case "gaming":
+      if (facecamRegion) {
+        return convertToGamingVertical(inputPath, outputPath, facecamRegion);
+      }
+      console.warn("[VERTICAL] Gaming mode but no facecam detected — falling back to standard");
+      return convertToVerticalBlur(inputPath, outputPath);
+
+    case "speaker-zoom":
+      if (facecamRegion) {
+        return convertToSpeakerZoom(inputPath, outputPath, facecamRegion);
+      }
+      console.warn("[VERTICAL] Speaker-zoom mode but no face region — falling back to standard");
+      return convertToVerticalBlur(inputPath, outputPath);
+
+    case "active-speaker":
+      if (activeSpeakerOptions && activeSpeakerOptions.segments.length > 1) {
+        return convertToActiveSpeakerZoom(
+          inputPath, outputPath,
+          activeSpeakerOptions.segments,
+          activeSpeakerOptions.speakerFaceMap,
+        );
+      }
+      // Fallback: single speaker with face → static zoom, no face → blurred bg
+      if (facecamRegion) {
+        console.warn("[VERTICAL] Active-speaker but single speaker/face — falling back to speaker-zoom");
+        return convertToSpeakerZoom(inputPath, outputPath, facecamRegion);
+      }
+      console.warn("[VERTICAL] Active-speaker but no faces detected — falling back to standard");
+      return convertToVerticalBlur(inputPath, outputPath);
+
+    case "standard":
+    default:
+      return convertToVerticalBlur(inputPath, outputPath);
+  }
 };
 
 export const mergeClipsWithCrossfade = async (
@@ -1684,4 +2126,208 @@ export const applyMediaOverlays = async (
       reject(err);
     }
   });
+};
+
+// =============================================================================
+// COMMENT OVERLAY: Generate social media comment images via Puppeteer
+// =============================================================================
+
+export interface CommentOverlayConfig {
+  platform: "tiktok" | "youtube" | "instagram";
+  username: string;
+  commentText: string;
+  profilePicturePath?: string; // Local file path (downloaded from S3)
+  likesCount: number;
+  isVerified: boolean;
+  timeAgo?: string;
+}
+
+const formatLikesCount = (count: number): string => {
+  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
+  if (count >= 1_000) return `${(count / 1_000).toFixed(1)}K`;
+  return count.toString();
+};
+
+const hashColor = (str: string): string => {
+  const colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E9"];
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return colors[Math.abs(hash) % colors.length];
+};
+
+const escapeHtml = (text: string): string =>
+  text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+const VERIFIED_BADGE_SVG = {
+  tiktok: `<svg width="14" height="14" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="10" fill="#20D5EC"/><path d="M8.5 13.5L5 10l1.4-1.4 2.1 2.1 4.6-4.6L14.5 7.5l-6 6z" fill="#fff"/></svg>`,
+  youtube: `<svg width="14" height="14" viewBox="0 0 24 24" fill="#aaa"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`,
+  instagram: `<svg width="14" height="14" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="10" fill="#3897F0"/><path d="M8.5 13.5L5 10l1.4-1.4 2.1 2.1 4.6-4.6L14.5 7.5l-6 6z" fill="#fff"/></svg>`,
+};
+
+const HEART_ICON_SVG = `<svg width="20" height="20" viewBox="0 0 24 24" fill="rgba(255,255,255,0.5)" xmlns="http://www.w3.org/2000/svg"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`;
+
+const THUMBS_UP_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="#aaa" xmlns="http://www.w3.org/2000/svg"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>`;
+
+const getDefaultAvatarDataUri = (username: string): string => {
+  const color = hashColor(username);
+  const initial = username.charAt(0).toUpperCase();
+  return `data:image/svg+xml,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72"><circle cx="36" cy="36" r="36" fill="${color}"/><text x="36" y="48" text-anchor="middle" fill="#fff" font-size="32" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-weight="600">${initial}</text></svg>`
+  )}`;
+};
+
+const getCommentHtml = (
+  config: CommentOverlayConfig,
+  profilePicSrc: string
+): string => {
+  const { platform, username, commentText, likesCount, isVerified, timeAgo } = config;
+  const likes = formatLikesCount(likesCount);
+  const badge = isVerified ? VERIFIED_BADGE_SVG[platform] : "";
+  const safeUsername = escapeHtml(username);
+  const safeComment = escapeHtml(commentText);
+  const time = escapeHtml(timeAgo || "2h");
+
+  if (platform === "tiktok") {
+    return `
+      <!DOCTYPE html><html><head><style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { width: 800px; background: transparent; padding: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        .comment { background: rgba(37,37,37,0.92); border-radius: 12px; padding: 14px 16px; display: inline-flex; align-items: flex-start; gap: 10px; max-width: 760px; }
+        .avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+        .body { flex: 1; min-width: 0; }
+        .username-row { display: flex; align-items: center; gap: 4px; }
+        .username { color: rgba(255,255,255,0.55); font-size: 13px; font-weight: 600; }
+        .text { color: #fff; font-size: 15px; margin-top: 4px; line-height: 1.35; word-wrap: break-word; }
+        .meta { display: flex; align-items: center; gap: 16px; margin-top: 6px; }
+        .meta span { color: rgba(255,255,255,0.4); font-size: 12px; }
+        .likes { display: flex; flex-direction: column; align-items: center; gap: 2px; margin-left: 8px; flex-shrink: 0; }
+        .likes span { color: rgba(255,255,255,0.5); font-size: 11px; }
+      </style></head><body>
+        <div class="comment">
+          <img class="avatar" src="${profilePicSrc}" />
+          <div class="body">
+            <div class="username-row"><span class="username">${safeUsername}</span>${badge}</div>
+            <div class="text">${safeComment}</div>
+            <div class="meta"><span>${time}</span><span>Reply</span></div>
+          </div>
+          <div class="likes">${HEART_ICON_SVG}<span>${likes}</span></div>
+        </div>
+      </body></html>
+    `;
+  }
+
+  if (platform === "youtube") {
+    return `
+      <!DOCTYPE html><html><head><style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { width: 800px; background: transparent; padding: 16px; font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        .comment { background: rgba(28,28,28,0.92); border-radius: 12px; padding: 14px 16px; display: inline-flex; align-items: flex-start; gap: 12px; max-width: 760px; }
+        .avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+        .body { flex: 1; min-width: 0; }
+        .username-row { display: flex; align-items: center; gap: 6px; }
+        .username { color: #aaa; font-size: 13px; font-weight: 500; }
+        .time { color: #717171; font-size: 12px; }
+        .text { color: #fff; font-size: 14px; margin-top: 4px; line-height: 1.4; word-wrap: break-word; }
+        .actions { display: flex; align-items: center; gap: 4px; margin-top: 8px; }
+        .actions span { color: #aaa; font-size: 12px; }
+      </style></head><body>
+        <div class="comment">
+          <img class="avatar" src="${profilePicSrc}" />
+          <div class="body">
+            <div class="username-row"><span class="username">@${safeUsername}</span>${badge}<span class="time">${time}</span></div>
+            <div class="text">${safeComment}</div>
+            <div class="actions">${THUMBS_UP_SVG}<span>${likes}</span></div>
+          </div>
+        </div>
+      </body></html>
+    `;
+  }
+
+  // Instagram
+  return `
+    <!DOCTYPE html><html><head><style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { width: 800px; background: transparent; padding: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+      .comment { background: rgba(0,0,0,0.6); border-radius: 20px; padding: 12px 16px; display: inline-flex; align-items: flex-start; gap: 10px; max-width: 760px; }
+      .avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+      .body { flex: 1; min-width: 0; }
+      .username-row { display: flex; align-items: center; gap: 4px; }
+      .username { color: #fff; font-size: 13px; font-weight: 600; }
+      .time { color: rgba(255,255,255,0.4); font-size: 12px; }
+      .text { color: #fff; font-size: 13px; margin-top: 3px; line-height: 1.35; word-wrap: break-word; }
+      .likes { display: flex; flex-direction: column; align-items: center; gap: 1px; margin-left: 8px; flex-shrink: 0; }
+      .likes svg { width: 16px; height: 16px; fill: rgba(255,255,255,0.7); }
+      .likes span { color: rgba(255,255,255,0.6); font-size: 11px; }
+    </style></head><body>
+      <div class="comment">
+        <img class="avatar" src="${profilePicSrc}" />
+        <div class="body">
+          <div class="username-row"><span class="username">${safeUsername}</span>${badge}<span class="time">${time}</span></div>
+          <div class="text">${safeComment}</div>
+        </div>
+        <div class="likes">${HEART_ICON_SVG}<span>${likes}</span></div>
+      </div>
+    </body></html>
+  `;
+};
+
+/**
+ * Generate a social media comment overlay image using Puppeteer.
+ * Returns the rendered dimensions (CSS pixels) for FFmpeg positioning.
+ */
+export const generateCommentImage = async (
+  config: CommentOverlayConfig,
+  outputPath: string
+): Promise<{ width: number; height: number }> => {
+  console.log(`[COMMENT] Generating ${config.platform} comment image for @${config.username}`);
+
+  // Build profile picture data URI
+  let profilePicSrc = getDefaultAvatarDataUri(config.username);
+  if (config.profilePicturePath && fs.existsSync(config.profilePicturePath)) {
+    const imageBuffer = fs.readFileSync(config.profilePicturePath);
+    const ext = path.extname(config.profilePicturePath).toLowerCase();
+    const mime = ext === ".png" ? "image/png" : ext === ".webp" ? "image/webp" : "image/jpeg";
+    profilePicSrc = `data:${mime};base64,${imageBuffer.toString("base64")}`;
+  }
+
+  const htmlContent = getCommentHtml(config, profilePicSrc);
+
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width: 800, height: 400, deviceScaleFactor: 2 });
+    await page.setContent(htmlContent, { waitUntil: "networkidle0" });
+
+    // Get actual bounding box of the comment element (runs in Puppeteer's browser context)
+    const commentEl = await page.$(".comment");
+    let dimensions = { width: 800, height: 200 };
+    if (commentEl) {
+      const box = await commentEl.boundingBox();
+      if (box) {
+        dimensions = { width: Math.ceil(box.width) + 32, height: Math.ceil(box.height) + 32 }; // +32 for body padding
+      }
+    }
+
+    await page.screenshot({
+      path: outputPath,
+      type: "png",
+      omitBackground: true,
+      clip: { x: 0, y: 0, width: dimensions.width, height: dimensions.height },
+    });
+
+    if (!fs.existsSync(outputPath)) {
+      throw new Error(`Failed to create comment image at ${outputPath}`);
+    }
+
+    console.log(`[COMMENT] Generated ${config.platform} comment: ${dimensions.width}x${dimensions.height}px -> ${outputPath}`);
+    return dimensions;
+  } finally {
+    await browser.close();
+  }
 };

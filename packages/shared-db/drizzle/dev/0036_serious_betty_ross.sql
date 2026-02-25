@@ -1,0 +1,1 @@
+ALTER TABLE "virality_accounts" ADD COLUMN "last_credit_charged_at" timestamp;

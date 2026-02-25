@@ -38,10 +38,6 @@ function handleError(res: Response, label: string, error: any, fallbackMessage: 
   if (error.message?.includes("already being tracked")) {
     return res.status(409).json({ error: error.message });
   }
-  if (error.message?.includes("Maximum")) {
-    return res.status(400).json({ error: error.message });
-  }
-
   return res.status(500).json({ error: fallbackMessage });
 }
 
@@ -69,7 +65,7 @@ class ViralityController {
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
       if (!(await requirePlanAccess(teamId, res))) return;
 
-      const { platform, profileUrl, competitorId } = req.body;
+      const { platform, profileUrl, competitorId, accountType } = req.body;
 
       if (!platform || !profileUrl) {
         return res.status(400).json({ error: "Platform and profile URL are required" });
@@ -78,12 +74,24 @@ class ViralityController {
         return res.status(400).json({ error: "Only Instagram, TikTok, and X are supported" });
       }
 
+      const validAccountTypes = ["profile", "hashtag", "keyword"];
+      if (accountType && !validAccountTypes.includes(accountType)) {
+        return res.status(400).json({ error: "Account type must be profile, hashtag, or keyword" });
+      }
+
       const account = await viralityService.addAccount(
         teamId,
         platform,
         profileUrl,
-        competitorId ? parseInt(competitorId) : undefined
+        competitorId ? parseInt(competitorId) : undefined,
+        accountType || "profile"
       );
+
+      // Trigger first sync in the background
+      viralityService.syncAccount(account.id, teamId).catch((err) => {
+        console.error(`Initial sync failed for account ${account.id}:`, err);
+      });
+
       return res.status(201).json({ account });
     } catch (error) {
       return handleError(res, "Add virality account error", error, "Failed to add account");
@@ -117,6 +125,24 @@ class ViralityController {
       return res.json({ success: true });
     } catch (error) {
       return handleError(res, "Delete virality account error", error, "Failed to delete account");
+    }
+  }
+
+  async updateAccountStatus(req: AuthRequest, res: Response) {
+    try {
+      const teamId = parseId(req.params.teamId);
+      const accountId = parseId(req.params.accountId);
+      if (!teamId || !accountId) return res.status(400).json({ error: "Invalid team or account ID" });
+
+      const { is_active } = req.body;
+      if (typeof is_active !== "boolean") {
+        return res.status(400).json({ error: "is_active must be a boolean" });
+      }
+
+      const account = await viralityService.updateAccountStatus(accountId, teamId, is_active);
+      return res.json({ account });
+    } catch (error) {
+      return handleError(res, "Update account status error", error, "Failed to update account status");
     }
   }
 

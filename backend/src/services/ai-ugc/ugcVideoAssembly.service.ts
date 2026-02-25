@@ -12,7 +12,6 @@ import {
   SCREEN_STABILITY_MODIFIERS,
 } from "./kling.service";
 import { veedFabricService } from "./veedFabric.service";
-import { grokImagineService } from "./grokImagine.service";
 import { openaiClient } from "../openai.service";
 import { generateJumbledMetadataString } from "../../utils/videoMetadata";
 import {
@@ -20,8 +19,8 @@ import {
   AUDIO_SETTINGS,
 } from "../../config/ffmpegSettings";
 
-const MAX_KLING_VIDEO_DURATION = 10;
-const MAX_AROLL_VIDEO_DURATION = 60;
+const MAX_KLING_VIDEO_DURATION = 15;
+const MAX_AROLL_VIDEO_DURATION = 180;
 const KLING_EXTENSION_DURATION = 5;
 const PARALLEL_SCENES = 2;
 const AUDIO_SAMPLE_RATE = AUDIO_SETTINGS.sampleRate;
@@ -205,19 +204,20 @@ function getMediaDuration(filePath: string): number {
 function calculateMontageShots(
   audioDuration: number,
   numShots: number,
-): Array<{ kling: 5 | 10; trim: number }> {
+): Array<{ videoDuration: number; trim: number }> {
   const perShotDuration = audioDuration / numShots;
-  const results: Array<{ kling: 5 | 10; trim: number }> = [];
+  const results: Array<{ videoDuration: number; trim: number }> = [];
 
   let remaining = audioDuration;
 
   for (let i = 0; i < numShots; i++) {
     const isLast = i === numShots - 1;
     const targetTrim = isLast ? remaining : perShotDuration;
-    const klingDuration: 5 | 10 = targetTrim > 5 ? 10 : 5;
-    const actualTrim = Math.min(targetTrim, klingDuration);
+    // Kling v3 supports 3-15s — generate just enough video + 1s buffer
+    const videoDuration = Math.max(3, Math.min(15, Math.ceil(targetTrim) + 1));
+    const actualTrim = Math.min(targetTrim, videoDuration);
 
-    results.push({ kling: klingDuration, trim: actualTrim });
+    results.push({ videoDuration, trim: actualTrim });
     remaining -= actualTrim;
   }
 
@@ -365,7 +365,7 @@ async function extendVideoToMatchAudio(
 
     // Generate extension video using last frame + same prompt
     const { videoUrl: extensionVideoUrl } =
-      await klingService.generateVideoWithRetry({
+      await klingService.generateVideoV3WithRetry({
         imageUrl: lastFrameUrl,
         prompt: `${prompt} ${SCREEN_STABILITY_MODIFIERS}`,
         duration: extensionDuration,
@@ -711,68 +711,69 @@ async function processBrollScene(
       `[UGC Assembly] Montage: ${numShots} shots, audio ${audioDuration.toFixed(2)}s → durations: [${shotDurations.map((d) => d.trim + "s").join(", ")}]`,
     );
 
-    const shotVideoPaths: string[] = [];
+    onProgress?.(
+      `Scene ${sceneNumber}: Generating ${bRollShots.length} montage shots in parallel...`,
+    );
 
-    for (let i = 0; i < bRollShots.length; i++) {
-      const shot = bRollShots[i];
-      const { kling: klingDuration, trim: trimDuration } = shotDurations[i];
+    // Generate all montage shots concurrently — Kling is the bottleneck
+    const shotVideoPaths = await Promise.all(
+      bRollShots.map(async (shot, i) => {
+        const { videoDuration, trim: trimDuration } = shotDurations[i];
 
-      onProgress?.(
-        `Scene ${sceneNumber}: Generating montage shot ${i + 1}/${bRollShots.length}...`,
-      );
+        console.log(
+          `[UGC Assembly] Montage shot ${i + 1}: "${shot.action.substring(0, 40)}..." (kling v3: ${videoDuration}s, trim: ${trimDuration}s)`,
+        );
 
-      console.log(
-        `[UGC Assembly] Montage shot ${i + 1}: "${shot.action.substring(0, 40)}..." (kling: ${klingDuration}s, trim: ${trimDuration}s)`,
-      );
+        const shotImageUrl = await s3Service.getPresignedUrl(shot.imageKey, 3600);
 
-      const shotImageUrl = await s3Service.getPresignedUrl(shot.imageKey, 3600);
-
-      const groundedPrompt = await generateGroundedCinematicPrompt({
-        originalCinematicPrompt: shot.cinematicPrompt,
-        startImageUrl: shotImageUrl,
-        shotType: "b-roll" as ShotType,
-        emotion,
-        action: shot.action,
-      });
-
-      const shotPrompt = buildKlingPrompt(
-        groundedPrompt,
-        "b-roll" as ShotType,
-        emotion,
-        shot.action,
-      );
-
-      // Use Grok Imagine for B-roll (6s fixed duration, better product shots)
-      const { videoUrl: shotVideoUrl } =
-        await grokImagineService.generateVideoWithRetry({
-          imageUrl: shotImageUrl,
-          prompt: groundedPrompt, // Use grounded prompt directly (Grok doesn't need Kling-specific formatting)
+        const groundedPrompt = await generateGroundedCinematicPrompt({
+          originalCinematicPrompt: shot.cinematicPrompt,
+          startImageUrl: shotImageUrl,
+          shotType: "b-roll" as ShotType,
+          emotion,
+          action: shot.action,
         });
 
-      const shotVideoPath = path.join(
-        OUTPUT_DIR,
-        `montage_shot_${sceneNumber}_${i}_${Date.now()}.mp4`,
-      );
-      await s3Service.downloadVideoFromUrl(shotVideoUrl, shotVideoPath);
+        const shotPrompt = buildKlingPrompt(
+          groundedPrompt,
+          "b-roll" as ShotType,
+          emotion,
+        );
 
-      const trimmedShotPath = path.join(
-        OUTPUT_DIR,
-        `montage_trimmed_${sceneNumber}_${i}_${Date.now()}.mp4`,
-      );
-      const trimCmd = `ffmpeg -y -i "${shotVideoPath}" -t ${trimDuration.toFixed(3)} \
-        ${VIDEO_ENCODE_SETTINGS} \
-        -an -avoid_negative_ts make_zero "${trimmedShotPath}"`;
-      execSync(trimCmd, { stdio: "pipe" });
+        const { videoUrl: shotVideoUrl } =
+          await klingService.generateVideoV3WithRetry({
+            imageUrl: shotImageUrl,
+            prompt: groundedPrompt,
+            duration: videoDuration as any,
+            negativePrompt: PRODUCT_NEGATIVE_PROMPT,
+          });
 
-      if (fs.existsSync(shotVideoPath)) {
-        fs.unlinkSync(shotVideoPath);
-      }
+        const shotVideoPath = path.join(
+          OUTPUT_DIR,
+          `montage_shot_${sceneNumber}_${i}_${Date.now()}.mp4`,
+        );
+        await s3Service.downloadVideoFromUrl(shotVideoUrl, shotVideoPath);
 
-      shotVideoPaths.push(trimmedShotPath);
-      console.log(
-        `[UGC Assembly] Montage shot ${i + 1} complete: ${trimDuration}s`,
-      );
-    }
+        const trimmedShotPath = path.join(
+          OUTPUT_DIR,
+          `montage_trimmed_${sceneNumber}_${i}_${Date.now()}.mp4`,
+        );
+        const trimCmd = `ffmpeg -y -i "${shotVideoPath}" -t ${trimDuration.toFixed(3)} \
+          ${VIDEO_ENCODE_SETTINGS} \
+          -an -avoid_negative_ts make_zero "${trimmedShotPath}"`;
+        execSync(trimCmd, { stdio: "pipe" });
+
+        if (fs.existsSync(shotVideoPath)) {
+          fs.unlinkSync(shotVideoPath);
+        }
+
+        console.log(
+          `[UGC Assembly] Montage shot ${i + 1} complete: ${trimDuration}s`,
+        );
+
+        return trimmedShotPath;
+      }),
+    );
 
     onProgress?.(`Scene ${sceneNumber}: Concatenating shots...`);
     const concatenatedPath = path.join(
@@ -867,25 +868,28 @@ async function processBrollScene(
       groundedCinematicPrompt,
       shotType,
       emotion,
-      action,
     );
 
-    // Use Grok Imagine for B-roll (6s fixed duration, better product shots)
-    const { videoUrl: grokVideoUrl } =
-      await grokImagineService.generateVideoWithRetry({
+    // Generate just enough video to cover audio + 1s buffer, clamped to 3-15s
+    const brollDuration = Math.max(3, Math.min(15, Math.ceil(audioDuration) + 1));
+    const { videoUrl: brollVideoUrl } =
+      await klingService.generateVideoV3WithRetry({
         imageUrl,
-        prompt: groundedCinematicPrompt, // Use grounded prompt directly
+        ...(tailImageUrl && { endImageUrl: tailImageUrl }),
+        prompt: groundedCinematicPrompt,
+        duration: brollDuration as any,
+        negativePrompt: PRODUCT_NEGATIVE_PROMPT,
       });
 
     console.log(
-      `[UGC Assembly] B-Roll Scene ${sceneNumber}: Grok generated 6s video`,
+      `[UGC Assembly] B-Roll Scene ${sceneNumber}: Kling v3 generated ${brollDuration}s video`,
     );
 
     const silentVideoPath = path.join(
       OUTPUT_DIR,
       `silent_${sceneNumber}_${Date.now()}.mp4`,
     );
-    await s3Service.downloadVideoFromUrl(grokVideoUrl, silentVideoPath);
+    await s3Service.downloadVideoFromUrl(brollVideoUrl, silentVideoPath);
 
     processedVideoPath = silentVideoPath;
   }

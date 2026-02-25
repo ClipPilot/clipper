@@ -1,0 +1,1 @@
+ALTER TYPE "public"."post_status_enum" ADD VALUE 'processing' BEFORE 'scheduled';

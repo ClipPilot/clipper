@@ -127,6 +127,47 @@ router.delete("/:teamId/accounts/:accountId", requireAuth, (req, res) => viralit
 
 /**
  * @openapi
+ * /virality/{teamId}/accounts/{accountId}/status:
+ *   patch:
+ *     summary: Update account active status
+ *     tags:
+ *       - Virality
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: accountId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - is_active
+ *             properties:
+ *               is_active:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Account status updated
+ *       400:
+ *         description: Invalid input
+ *       404:
+ *         description: Account not found
+ */
+router.patch("/:teamId/accounts/:accountId/status", requireAuth, (req, res) => viralityController.updateAccountStatus(req, res));
+
+/**
+ * @openapi
  * /virality/{teamId}/accounts/{accountId}/sync:
  *   post:
  *     summary: Trigger a sync for an account

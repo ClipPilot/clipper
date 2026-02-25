@@ -16,6 +16,7 @@ import { selectedTeamAtom } from "@/store/auth";
 import { useTeams } from "@/hooks/useTeams";
 import { useUsageStats } from "@/hooks/useUsageStats";
 import { useRouter } from "next/navigation";
+import { getPlanName, getPlanColor, isPaidPlan } from "@/lib/plans";
 
 interface WorkspaceSelectorProps extends CardProps {
   onCreateTeam?: () => void;
@@ -70,38 +71,7 @@ export default function WorkspaceSelector({
     }
   };
 
-  const getPlanName = (plan?: string) => {
-    switch (plan) {
-      case "enterprise":
-        return "Enterprise";
-      case "scale":
-        return "Scale";
-      case "studio":
-        return "Studio";
-      case "creator":
-        return "Creator";
-      default:
-        return "Free";
-    }
-  };
-
-  const getPlanColor = (plan?: string) => {
-    switch (plan) {
-      case "enterprise":
-        return "bg-emerald-500/10 text-emerald-500";
-      case "scale":
-        return "bg-purple-500/10 text-purple-500";
-      case "studio":
-        return "bg-accent-400/10 text-accent-400";
-      case "creator":
-        return "bg-orange-500/10 text-orange-500";
-      default:
-        return "bg-blue-500/10 text-blue-500";
-    }
-  };
-
   const currentPlan = selectedTeam?.plan || "free";
-  const isPaidPlan = ["creator", "studio", "scale", "enterprise"].includes(currentPlan);
 
   return (
       <Card
@@ -265,7 +235,7 @@ export default function WorkspaceSelector({
           )}
         </CardBody>
 
-        {!isPaidPlan && (
+        {!isPaidPlan(currentPlan) && (
           <div className="px-4 py-3 border-t border-border-base">
             <button
               onClick={() => router.push("/dashboard/pricing")}
@@ -291,7 +261,7 @@ export default function WorkspaceSelector({
           </div>
         )}
 
-        {isPaidPlan && (
+        {isPaidPlan(currentPlan) && (
           <div className="px-4 py-3 border-t border-border-base">
             <button
               onClick={() => router.push("/dashboard/pricing")}

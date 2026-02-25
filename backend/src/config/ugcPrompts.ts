@@ -130,6 +130,13 @@ const SCRIPT_STRUCTURES: Record<
       { type: "cta", shot: "a-roll", duration: "3-4s" },
     ],
   },
+  "long-form": {
+    name: "Long-Form Speech",
+    description: "Single continuous monologue — testimonials, stories, long speeches",
+    pattern: [
+      { type: "testimonial", shot: "a-roll", duration: "30-180s" },
+    ],
+  },
   custom: {
     name: "Custom (AI Decides)",
     description: "Let AI choose the best structure based on your direction",
@@ -141,6 +148,28 @@ const formatStructure = (
   structureId: string,
   customPattern?: { type: string; shot: string }[],
 ): string => {
+  if (structureId === "long-form") {
+    return `
+===== LONG-FORM SPEECH MODE =====
+
+Generate EXACTLY 1 scene — a single continuous a-roll monologue.
+
+STRICT RULES:
+1. ONE scene only — do NOT split into multiple scenes
+2. shotType MUST be "a-roll"
+3. The dialogue is one long, continuous speech — NOT multiple short lines
+4. Word limits are LIFTED — scale dialogue to fill the target duration (~150 words per 60 seconds)
+5. EVERY sentence MUST still start with an emotion tag
+6. Use natural pauses ("...") and varied emotions throughout to keep it dynamic
+7. The speech should flow like a real person talking to camera — raw, emotional, conversational
+8. estimatedDurationSeconds should match the full target duration
+9. sceneType should be "testimonial" (or whatever best fits the user direction)
+
+This is for testimonials, personal stories, motivational speeches, and long-form content.
+The user's direction describes the content — execute it as one powerful continuous take.
+`;
+  }
+
   if (structureId === "custom" && customPattern && customPattern.length > 0) {
     const sceneBreakdown = customPattern
       .map(
@@ -345,12 +374,16 @@ NEVER START WITH:
 
 **THE SECRET:** Write it like you're texting a friend about something cool you found, NOT like you're trying to sell them something.
 
-CRITICAL WORD LIMIT (MUST FOLLOW):
+CRITICAL WORD LIMIT (DEFAULT):
 - Each scene MUST have 15-30 words in dialogue (aim for ~20 words)
 - Keep it punchy and concise - short lines hit harder
 - If you have more to say, SPLIT into multiple shorter scenes
 - Count your words - scenes with 40+ words will cause audio overflow
 - Target: 75-120 words total for a 30-second script
+
+===== LONG-FORM SPEECH MODE =====
+When the structure is "long-form", ALL word limits and scene count rules are OVERRIDDEN.
+See the structure section above for exact rules. This mode produces a single long a-roll monologue.
 
 ===== REAL UGC EXAMPLES (STUDY THESE) =====
 
@@ -411,7 +444,7 @@ Food/Meal Prep:
 1. CONVERSATIONAL FLOW:
    - Use natural pauses (mark with "...")
    - Strategic filler words: "like", "literally", "honestly", "lowkey", "okay so", "I mean"
-   - Short punchy lines - don't ramble. Real people don't monologue.
+   - Short punchy lines - don't ramble (unless user explicitly requests a monologue/long testimonial).
    - Use contractions ALWAYS (can't, won't, it's, that's, I'm, you're)
    - Self-corrections feel authentic: "it's not good, it's amazing"
    - Trailing thoughts: "and I was like... wait what?"
@@ -447,7 +480,7 @@ Food/Meal Prep:
    - Avoid unnatural capitalization (don't write "SO GOOD" - write "so good")
    - Write for SPOKEN audio, not reading
    - Keep sentences under 12 words for natural breath pacing
-   - TOTAL dialogue per scene: 15-30 words MAX
+   - TOTAL dialogue per scene: 15-30 words MAX (unless monologue mode)
 
 ===== CINEMATIC PROMPTS (CRITICAL FOR KLING 2.6 VIDEO QUALITY) =====
 
@@ -1148,7 +1181,7 @@ Score 95+ means: irresistible hook, perfect pacing, genuine emotion, share-worth
 
 ===== FINAL CHECKS =====
 - viralScore is 95 or higher (MANDATORY - if below 95, your script is rejected)
-- WORD COUNT: Each scene has 15-30 words in dialogue (CRITICAL - longer scenes will fail)
+- WORD COUNT: Each scene has 15-30 words in dialogue (UNLESS monologue mode is activated by user direction)
 - Dialogue sounds like something a real person would actually say
 - Hook makes you want to keep watching (test: would YOU stop scrolling?)
 - Emotions flow naturally through the script
@@ -1164,7 +1197,7 @@ Score 95+ means: irresistible hook, perfect pacing, genuine emotion, share-worth
 - B-ROLL: Use bRollShots array with as many shots as needed
 - productImageNeeded based on scene type: PROBLEM/HOOK = false, SOLUTION/DEMO/CTA = true where product shown
 - VERIFY: Every a-roll scene has a non-null ambientSound describing background audio
-- VERIFY: No scene exceeds 50 words
+- VERIFY: No scene exceeds 50 words (UNLESS monologue mode is activated by user direction)
 - VERIFY: If bRollShots is used, total duration of shots = estimatedDurationSeconds
 `;
 };
@@ -1176,6 +1209,7 @@ export const generateSceneRegenerationPrompt = (
   productContext: string,
   characterContext: string,
   shotType?: string,
+  customPrompt?: string,
 ): string => {
   const voiceTagInstruction = `
 VOICE DIRECTION TAGS (REQUIRED for every a-roll sentence):
@@ -1215,7 +1249,7 @@ CHARACTER: ${characterContext}
 
 ${guidance}
 
-CREATIVE DIRECTION:
+CREATIVE DIRECTION:${customPrompt ? `\nUSER CUSTOM DIRECTION (FOLLOW THIS CLOSELY): ${customPrompt}\n` : ""}
 - Write something that makes people STOP scrolling
 - Be bold, authentic, raw, and unfiltered
 - Profanity, innuendo, and adult humor are ALLOWED

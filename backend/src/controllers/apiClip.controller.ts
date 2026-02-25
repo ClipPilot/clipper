@@ -7,6 +7,7 @@ import { apiBillingService } from "../services/apiBilling.service";
 import { clipManagerService } from "../services/clips/clipManager.service";
 import { s3Service } from "../services/s3.service";
 import { sqsService } from "../services/sqs.service";
+import { videoDownloadService } from "../services/videoDownload.service";
 import { API_PRODUCTS } from "../config/api-products";
 import { isValidPromptType, PromptType } from "../constants/promptTypes";
 import { ensureOutputDir } from "../utils/fileUtils";
@@ -131,7 +132,7 @@ export const createClipJobController = async (
 
     // --- Respond immediately ---
     res.json({
-      job_id: rawVideo.id,
+      job_id: rawVideo.public_id,
       num_clips: numClips,
       cost_cents: totalCostCents,
       status: "processing",
@@ -168,14 +169,14 @@ export const getClipJobStatusController = async (
   res: Response,
 ) => {
   const { teamId } = req.apiKey!;
-  const jobId = parseInt(req.params.jobId);
+  const jobId = req.params.jobId;
 
-  if (isNaN(jobId)) {
-    return res.status(400).json({ error: "Invalid job ID" });
+  if (!jobId) {
+    return res.status(400).json({ error: "Missing job ID" });
   }
 
   try {
-    const jobClips = await clipManagerService.getClipsByRawVideoId(jobId, teamId);
+    const jobClips = await clipManagerService.getClipsByPublicId(jobId, teamId);
 
     if (jobClips.length === 0) {
       return res.status(404).json({ error: "Job not found" });
@@ -191,7 +192,7 @@ export const getClipJobStatusController = async (
   }
 };
 
-async function buildJobResponse(jobId: number, jobClips: any[]) {
+async function buildJobResponse(jobId: string, jobClips: any[]) {
   const total = jobClips.length;
   const done = jobClips.filter((c) => c.status !== "pending");
 
@@ -242,6 +243,7 @@ async function uploadAndDispatch(params: {
   captionColor: string;
   originalFileName?: string;
   fileSize?: number;
+  conversionMode?: "standard" | "gaming" | "speaker-zoom" | "center-crop" | "active-speaker";
 }) {
   const {
     teamId, userId, clipIds, localVideoPath,
@@ -261,6 +263,7 @@ async function uploadAndDispatch(params: {
       promptType,
       captions: captionsEnabled,
       captionColor,
+      conversionMode: params.conversionMode,
     },
     originalFileName,
     fileSize,
@@ -294,7 +297,7 @@ function processInBackground(params: {
       } else {
         const outDir = ensureOutputDir();
         tempPath = path.join(outDir, `api_download_${Date.now()}.mp4`);
-        await s3Service.downloadVideoFromUrl(videoUrl!, tempPath);
+        await videoDownloadService.downloadToPath(videoUrl!, tempPath);
         videoFilePath = tempPath;
       }
 

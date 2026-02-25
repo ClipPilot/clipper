@@ -1,9 +1,4 @@
-import { fal } from "@fal-ai/client";
-import { config } from "../../config/env";
-
-fal.config({
-  credentials: config.fal.apiKey,
-});
+import { fal } from "./falClient";
 
 const FAL_TIMEOUT_MS = 300000; // 5 minutes max per image generation
 

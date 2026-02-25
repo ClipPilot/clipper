@@ -65,6 +65,10 @@ RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key
 
 RUN npm install -g pnpm
 
+# Install yt-dlp binary
+RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp \
+    && chmod a+rx /usr/local/bin/yt-dlp
+
 WORKDIR /app
 
 COPY --from=builder /app ./

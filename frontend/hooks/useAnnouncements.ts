@@ -3,6 +3,7 @@
 import { useEffect, useCallback, useRef } from "react";
 import { useAtom } from "jotai";
 import { io, Socket } from "socket.io-client";
+import { getSocketUrl } from "@/lib/socket";
 import {
   unreadAnnouncementsAtom,
   allAnnouncementsAtom,
@@ -11,18 +12,6 @@ import {
   Announcement,
 } from "@/store/announcements";
 import { announcementsAPI } from "@/api/announcements";
-
-const getSocketUrl = (): string => {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (!apiUrl) return "http://localhost:3001";
-
-  try {
-    const url = new URL(apiUrl);
-    return url.origin;
-  } catch {
-    return apiUrl.replace(/\/api\/?$/, "");
-  }
-};
 
 const SOCKET_URL = getSocketUrl();
 
@@ -33,7 +22,6 @@ export function useAnnouncements() {
   const [isLoading, setIsLoading] = useAtom(isLoadingAnnouncementsAtom);
   const socketRef = useRef<Socket | null>(null);
 
-  // Fetch unread announcements (for badge count)
   const fetchUnread = useCallback(async () => {
     try {
       const announcements = await announcementsAPI.getUnreadAnnouncements();
@@ -44,7 +32,6 @@ export function useAnnouncements() {
     }
   }, [setUnread]);
 
-  // Fetch all announcements (for inbox display)
   const fetchAll = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -60,7 +47,6 @@ export function useAnnouncements() {
     }
   }, [setAllAnnouncements, setIsLoading, fetchUnread]);
 
-  // Dismiss single announcement
   const dismiss = useCallback(
     async (id: number) => {
       try {
@@ -81,7 +67,6 @@ export function useAnnouncements() {
     [setUnread, setAllAnnouncements, fetchUnread, fetchAll]
   );
 
-  // Dismiss all announcements
   const dismissAll = useCallback(async () => {
     try {
       await announcementsAPI.dismissAllAnnouncements();
@@ -96,9 +81,7 @@ export function useAnnouncements() {
     }
   }, [setUnread, setAllAnnouncements, fetchUnread, fetchAll]);
 
-  // Socket listener for new announcements
   useEffect(() => {
-    // Initialize socket connection
     if (!socketRef.current) {
       socketRef.current = io(SOCKET_URL, {
         transports: ["websocket", "polling"],
@@ -110,7 +93,6 @@ export function useAnnouncements() {
       });
     }
 
-    // Cleanup on unmount
     return () => {
       if (socketRef.current) {
         socketRef.current.off("new-announcement");

@@ -1,8 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useState, useCallback } from "react";
 import { useAtom, useAtomValue } from "jotai";
-import { Input, Switch } from "@heroui/react";
+import { Input, Switch, Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import {
   captionsEnabledAtom,
@@ -10,9 +10,10 @@ import {
   captionColorAtom,
   captionFontAtom,
   currentTimeAtom,
+  editorClipAtom,
 } from "@/store/videoEditor";
 import { OVERLAY_COLORS, CAPTION_FONTS } from "@/constants/overlayStyles";
-import { CaptionEntry } from "@/api/clips";
+import { CaptionEntry, clipsAPI } from "@/api/clips";
 
 export function CaptionsTool() {
   const [captionsEnabled, setCaptionsEnabled] = useAtom(captionsEnabledAtom);
@@ -20,6 +21,28 @@ export function CaptionsTool() {
   const [captionColor, setCaptionColor] = useAtom(captionColorAtom);
   const [captionFont, setCaptionFont] = useAtom(captionFontAtom);
   const currentTime = useAtomValue(currentTimeAtom);
+  const clip = useAtomValue(editorClipAtom);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+
+  const handleGenerateCaptions = useCallback(async () => {
+    if (!clip) return;
+    setIsGenerating(true);
+    setGenerateError(null);
+    try {
+      const { captionsData } = await clipsAPI.generateCaptions(clip.team_id, clip.id);
+      if (captionsData.length > 0) {
+        setCaptions(captionsData);
+        setCaptionsEnabled(true);
+      } else {
+        setGenerateError("No speech detected in this video");
+      }
+    } catch (err: any) {
+      setGenerateError(err.message || "Failed to generate captions");
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [clip, setCaptions, setCaptionsEnabled]);
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -112,8 +135,8 @@ export function CaptionsTool() {
                   onClick={() => setCaptionFont(font.name)}
                   className={`h-12 w-12 rounded-lg border transition-all flex items-center justify-center flex-shrink-0 ${
                     captionFont === font.name
-                      ? "bg-white text-black border-white scale-105"
-                      : "bg-surface-base text-white border-border-base hover:scale-105"
+                      ? "bg-accent-400 text-white border-accent-400 scale-105"
+                      : "bg-surface-base text-text-primary border-border-base hover:scale-105"
                   }`}
                   title={font.name}
                 >
@@ -159,7 +182,20 @@ export function CaptionsTool() {
           {captions.length === 0 && (
             <div className="text-center py-8">
               <Icon icon="solar:subtitles-outline" className="text-4xl text-text-tertiary mb-2 mx-auto" />
-              <p className="text-text-secondary">No captions available</p>
+              <p className="text-text-secondary mb-4">No captions available</p>
+              <Button
+                color="primary"
+                variant="flat"
+                size="sm"
+                isLoading={isGenerating}
+                onPress={handleGenerateCaptions}
+                startContent={!isGenerating ? <Icon icon="solar:magic-stick-3-bold" /> : undefined}
+              >
+                {isGenerating ? "Generating..." : "Generate Captions"}
+              </Button>
+              {generateError && (
+                <p className="text-xs text-danger mt-2">{generateError}</p>
+              )}
             </div>
           )}
         </div>

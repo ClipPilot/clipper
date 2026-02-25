@@ -9,6 +9,10 @@ import { userService } from "../services/user.service";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { getTeamUsage } from "../middleware/subscription.middleware";
 import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
+import { transcribeVideoService } from "../services/clips/transcription.service";
+import { TranscriptionWord, CaptionEntry } from "../services/clips/captions.service";
+import { ensureOutputDir, safeUnlink } from "../utils/fileUtils";
+import path from "path";
 
 async function verifyTeamAccessOrFail(
   req: AuthRequest,
@@ -35,6 +39,33 @@ async function verifyTeamAccessOrFail(
   return user;
 }
 
+/**
+ * Enriches a list of clips (with clip_path and source_video_path fields)
+ * with presigned S3 URLs for both the clip and its source thumbnail.
+ */
+async function enrichClipsWithSignedUrls<
+  T extends { clip_path?: string | null; source_video_path?: string | null }
+>(clips: T[]): Promise<(T & { clipUrl: string | null; sourceVideoUrl: string | null })[]> {
+  const clipKeys = clips
+    .filter((clip) => clip.clip_path)
+    .map((clip) => clip.clip_path!);
+
+  const thumbnailKeys = clips
+    .filter((clip) => clip.source_video_path)
+    .map((clip) => clip.source_video_path!);
+
+  const allKeys = [...new Set([...clipKeys, ...thumbnailKeys])];
+  const presignedUrls = await s3Service.getMultiplePresignedUrls(allKeys);
+
+  return clips.map((clip) => ({
+    ...clip,
+    clipUrl: clip.clip_path ? presignedUrls[clip.clip_path] : null,
+    sourceVideoUrl: clip.source_video_path
+      ? presignedUrls[clip.source_video_path]
+      : null,
+  }));
+}
+
 export class ClipManagerController {
   async getClips(req: AuthRequest, res: Response) {
     try {
@@ -47,25 +78,7 @@ export class ClipManagerController {
       if (!user) return;
 
       const clips = await clipManagerService.getClipsByTeam(teamId);
-
-      const clipKeys = clips
-        .filter((clip) => clip.clip_path)
-        .map((clip) => clip.clip_path!);
-
-      const thumbnailKeys = clips
-        .filter((clip) => clip.source_video_path)
-        .map((clip) => clip.source_video_path!);
-
-      const allKeys = [...new Set([...clipKeys, ...thumbnailKeys])];
-      const presignedUrls = await s3Service.getMultiplePresignedUrls(allKeys);
-
-      const clipsWithUrls = clips.map((clip) => ({
-        ...clip,
-        clipUrl: clip.clip_path ? presignedUrls[clip.clip_path] : null,
-        sourceVideoUrl: clip.source_video_path
-          ? presignedUrls[clip.source_video_path]
-          : null,
-      }));
+      const clipsWithUrls = await enrichClipsWithSignedUrls(clips);
 
       return res.status(200).json({ clips: clipsWithUrls });
     } catch (error) {
@@ -110,10 +123,7 @@ export class ClipManagerController {
       console.error("Get pending clips error:", error);
       Sentry.captureException(error);
       return res.status(500).json({
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to get pending clips",
+        error: sanitizeErrorForFrontend(error, "Failed to get pending clips"),
       });
     }
   }
@@ -143,24 +153,7 @@ export class ClipManagerController {
         offset
       );
 
-      const clipKeys = clips
-        .filter((clip) => clip.clip_path)
-        .map((clip) => clip.clip_path!);
-
-      const thumbnailKeys = clips
-        .filter((clip) => clip.source_video_path)
-        .map((clip) => clip.source_video_path!);
-
-      const allKeys = [...new Set([...clipKeys, ...thumbnailKeys])];
-      const presignedUrls = await s3Service.getMultiplePresignedUrls(allKeys);
-
-      const clipsWithUrls = clips.map((clip) => ({
-        ...clip,
-        clipUrl: clip.clip_path ? presignedUrls[clip.clip_path] : null,
-        sourceVideoUrl: clip.source_video_path
-          ? presignedUrls[clip.source_video_path]
-          : null,
-      }));
+      const clipsWithUrls = await enrichClipsWithSignedUrls(clips);
 
       return res.status(200).json({
         clips: clipsWithUrls,
@@ -174,10 +167,7 @@ export class ClipManagerController {
       console.error("Get completed clips error:", error);
       Sentry.captureException(error);
       return res.status(500).json({
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to get completed clips",
+        error: sanitizeErrorForFrontend(error, "Failed to get completed clips"),
       });
     }
   }
@@ -350,31 +340,17 @@ export class ClipManagerController {
       if (!user) return;
 
       const clips = await clipManagerService.getClipsByFolder(teamId, folderId);
-
-      const clipKeys = clips
-        .filter((clip) => clip.clip_path)
-        .map((clip) => clip.clip_path!);
-
-      const thumbnailKeys = clips
-        .filter((clip) => clip.source_video_path)
-        .map((clip) => clip.source_video_path!);
-
-      const allKeys = [...new Set([...clipKeys, ...thumbnailKeys])];
-      const presignedUrls = await s3Service.getMultiplePresignedUrls(allKeys);
+      const clipsWithUrls = await enrichClipsWithSignedUrls(clips);
 
       const clipIds = clips.map((clip) => clip.id);
       const tagsByClip = await tagService.getTagsForClips(clipIds);
 
-      const clipsWithUrls = clips.map((clip) => ({
+      const clipsWithUrlsAndTags = clipsWithUrls.map((clip) => ({
         ...clip,
-        clipUrl: clip.clip_path ? presignedUrls[clip.clip_path] : null,
-        sourceVideoUrl: clip.source_video_path
-          ? presignedUrls[clip.source_video_path]
-          : null,
         tags: tagsByClip[clip.id] || [],
       }));
 
-      return res.status(200).json({ clips: clipsWithUrls });
+      return res.status(200).json({ clips: clipsWithUrlsAndTags });
     } catch (error) {
       console.error("Get clips by folder error:", error);
       Sentry.captureException(error);
@@ -480,11 +456,90 @@ export class ClipManagerController {
       console.error("Update captions error:", error);
       Sentry.captureException(error);
       return res.status(500).json({
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to queue captions update",
+        error: sanitizeErrorForFrontend(error, "Failed to queue captions update"),
       });
+    }
+  }
+
+  async generateCaptions(req: AuthRequest, res: Response) {
+    const localPath: string[] = [];
+
+    try {
+      const clipId = parseInt(req.params.clipId);
+      const teamId = parseInt(req.params.teamId);
+
+      if (isNaN(clipId) || isNaN(teamId)) {
+        return res.status(400).json({ error: "Invalid clip ID or team ID" });
+      }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
+
+      const clip = await clipManagerService.getClipById(clipId, teamId);
+
+      if (!clip.blank_video_path) {
+        return res.status(400).json({ error: "No blank video available for this clip" });
+      }
+
+      // Download blank video to temp file
+      const outDir = ensureOutputDir();
+      const videoPath = path.join(outDir, `transcribe_${clipId}_${Date.now()}.mp4`);
+      localPath.push(videoPath);
+
+      console.log(`[generate-captions] Downloading blank video for clip ${clipId}`);
+      await s3Service.downloadFile(clip.blank_video_path, videoPath);
+
+      // Transcribe with Deepgram
+      console.log(`[generate-captions] Transcribing clip ${clipId}...`);
+      const transcription = await transcribeVideoService(videoPath);
+
+      // Extract words with timing
+      const words: TranscriptionWord[] =
+        transcription?.results?.channels?.[0]?.alternatives?.[0]?.words?.map(
+          (w: any) => ({
+            start: w.start,
+            end: w.end,
+            punctuated_word: w.punctuated_word || w.word,
+          })
+        ) || [];
+
+      if (words.length === 0) {
+        return res.status(200).json({
+          captionsData: [],
+          message: "No speech detected in this video",
+        });
+      }
+
+      // Group words into caption entries (4 words per segment)
+      const WORDS_PER_GROUP = 4;
+      const captionsData: CaptionEntry[] = [];
+      for (let i = 0; i < words.length; i += WORDS_PER_GROUP) {
+        const group = words.slice(i, i + WORDS_PER_GROUP);
+        if (group.length === 0) continue;
+        captionsData.push({
+          index: captionsData.length + 1,
+          startTime: group[0].start,
+          endTime: group[group.length - 1].end,
+          text: group.map((w) => w.punctuated_word || "").join(" "),
+        });
+      }
+
+      // Update DB with generated captions
+      await clipManagerService.updateClipCaptions(clipId, teamId, {
+        captionsData,
+      });
+
+      console.log(`[generate-captions] Generated ${captionsData.length} caption segments for clip ${clipId}`);
+
+      return res.status(200).json({ captionsData });
+    } catch (error) {
+      console.error("Generate captions error:", error);
+      Sentry.captureException(error);
+      return res.status(500).json({
+        error: sanitizeErrorForFrontend(error, "Failed to generate captions"),
+      });
+    } finally {
+      localPath.forEach(safeUnlink);
     }
   }
 
@@ -543,10 +598,7 @@ export class ClipManagerController {
       console.error("Update text overlay error:", error);
       Sentry.captureException(error);
       return res.status(500).json({
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to queue text overlay",
+        error: sanitizeErrorForFrontend(error, "Failed to queue text overlay"),
       });
     }
   }
@@ -609,10 +661,7 @@ export class ClipManagerController {
       console.error("Update overlays error:", error);
       Sentry.captureException(error);
       return res.status(500).json({
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to queue overlays update",
+        error: sanitizeErrorForFrontend(error, "Failed to queue overlays update"),
       });
     }
   }
@@ -744,10 +793,7 @@ export class ClipManagerController {
       console.error("Get unsaved clips error:", error);
       Sentry.captureException(error);
       return res.status(500).json({
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to get unsaved clips",
+        error: sanitizeErrorForFrontend(error, "Failed to get unsaved clips"),
       });
     }
   }
@@ -777,31 +823,18 @@ export class ClipManagerController {
         offset
       );
 
-      const clipKeys = clips
-        .filter((clip) => clip.clip_path)
-        .map((clip) => clip.clip_path!);
-
-      const thumbnailKeys = clips
-        .filter((clip) => clip.source_video_path)
-        .map((clip) => clip.source_video_path!);
-
-      const allKeys = [...new Set([...clipKeys, ...thumbnailKeys])];
-      const presignedUrls = await s3Service.getMultiplePresignedUrls(allKeys);
+      const clipsWithUrls = await enrichClipsWithSignedUrls(clips);
 
       const clipIds = clips.map((clip) => clip.id);
       const tagsByClip = await tagService.getTagsForClips(clipIds);
 
-      const clipsWithUrls = clips.map((clip) => ({
+      const clipsWithUrlsAndTags = clipsWithUrls.map((clip) => ({
         ...clip,
-        clipUrl: clip.clip_path ? presignedUrls[clip.clip_path] : null,
-        sourceVideoUrl: clip.source_video_path
-          ? presignedUrls[clip.source_video_path]
-          : null,
         tags: tagsByClip[clip.id] || [],
       }));
 
       return res.status(200).json({
-        clips: clipsWithUrls,
+        clips: clipsWithUrlsAndTags,
         pagination: {
           limit,
           offset,
@@ -885,10 +918,7 @@ export class ClipManagerController {
       console.error("Generate share link error:", error);
       Sentry.captureException(error);
       return res.status(500).json({
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to generate share link",
+        error: sanitizeErrorForFrontend(error, "Failed to generate share link"),
       });
     }
   }
@@ -914,10 +944,7 @@ export class ClipManagerController {
       console.error("Remove share link error:", error);
       Sentry.captureException(error);
       return res.status(500).json({
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to remove share link",
+        error: sanitizeErrorForFrontend(error, "Failed to remove share link"),
       });
     }
   }
@@ -1065,32 +1092,19 @@ export class ClipManagerController {
         offset,
       });
 
-      // Generate presigned URLs
-      const clipKeys = result.clips
-        .filter((clip: any) => clip.clip_path)
-        .map((clip: any) => clip.clip_path!);
+      // Generate presigned URLs and fetch tags
+      const clipsWithUrls = await enrichClipsWithSignedUrls(result.clips);
 
-      const sourceKeys = result.clips
-        .filter((clip: any) => clip.source_video_path)
-        .map((clip: any) => clip.source_video_path!);
-
-      const allKeys = [...new Set([...clipKeys, ...sourceKeys])];
-      const presignedUrls = await s3Service.getMultiplePresignedUrls(allKeys);
-
-      // Fetch tags for all clips
       const clipIds = result.clips.map((clip: any) => clip.id);
       const tagsByClip = clipIds.length > 0 ? await tagService.getTagsForClips(clipIds) : {};
 
-      // Build response
-      const clipsWithUrls = result.clips.map((clip: any) => ({
+      const clipsWithUrlsAndTags = clipsWithUrls.map((clip: any) => ({
         ...clip,
-        clipUrl: clip.clip_path ? presignedUrls[clip.clip_path] : null,
-        sourceVideoUrl: clip.source_video_path ? presignedUrls[clip.source_video_path] : null,
         tags: tagsByClip[clip.id] || [],
       }));
 
       return res.status(200).json({
-        clips: clipsWithUrls,
+        clips: clipsWithUrlsAndTags,
         pagination: result.pagination,
         query: query || null,
         filters: {
@@ -1221,10 +1235,7 @@ export class ClipManagerController {
       console.error("Submit video edit error:", error);
       Sentry.captureException(error);
       return res.status(500).json({
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to queue video edit",
+        error: sanitizeErrorForFrontend(error, "Failed to queue video edit"),
       });
     }
   }
@@ -1281,10 +1292,7 @@ export class ClipManagerController {
       console.error("Get music upload URL error:", error);
       Sentry.captureException(error);
       return res.status(500).json({
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to get upload URL",
+        error: sanitizeErrorForFrontend(error, "Failed to get upload URL"),
       });
     }
   }

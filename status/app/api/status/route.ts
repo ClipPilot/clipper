@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { checkAllServices } from "@/lib/checker";
-import { getAllHistory } from "@/lib/store";
+import { getAllHistory, recordChecks } from "@/lib/store";
 import { services as serviceConfigs } from "@/lib/services";
 import { ServiceWithHistory, StatusResponse, DailyUptime } from "@/lib/types";
 
@@ -21,6 +21,10 @@ export async function GET() {
       checkAllServices(),
       getAllHistory(serviceIds),
     ]);
+
+    recordChecks(checks.services).catch((err) => {
+      console.error("[status] Failed to record checks to DynamoDB:", err);
+    });
 
     const services: ServiceWithHistory[] = checks.services.map((check) => {
       const history = historyMap[check.id] || [];

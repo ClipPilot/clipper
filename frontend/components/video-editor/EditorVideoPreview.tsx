@@ -21,6 +21,7 @@ import {
 } from "@/store/videoEditor";
 import { CAPTION_FONTS, HEADING_FONTS } from "@/constants/overlayStyles";
 import { CaptionEntry } from "@/api/clips";
+import { CommentPreview } from "./CommentPreview";
 
 interface EditorVideoPreviewProps {
   videoRef: React.RefObject<HTMLVideoElement>;
@@ -51,7 +52,15 @@ export function EditorVideoPreview({
   const setOverlays = useSetAtom(mediaOverlaysAtom);
   const setSelectedOverlayId = useSetAtom(selectedOverlayIdAtom);
   const selectedOverlayId = useAtomValue(selectedOverlayIdAtom);
-  const dragRef = useRef<{ overlayId: string; startMouseX: number; startMouseY: number; startX: number; startY: number } | null>(null);
+  const dragRef = useRef<{
+    overlayId: string;
+    mode: "move" | "resize";
+    startMouseX: number;
+    startMouseY: number;
+    startX: number;
+    startY: number;
+    startScale: number;
+  } | null>(null);
 
   // Atom values
   const captionsEnabled = useAtomValue(captionsEnabledAtom);
@@ -197,7 +206,7 @@ export function EditorVideoPreview({
 
   // Overlay drag handlers
   const handleOverlayMouseDown = useCallback(
-    (e: React.MouseEvent, overlayId: string, currentX: number, currentY: number) => {
+    (e: React.MouseEvent, overlayId: string, currentX: number, currentY: number, currentScale: number) => {
       e.stopPropagation();
       e.preventDefault();
       if (selectedOverlayId !== overlayId) {
@@ -205,30 +214,64 @@ export function EditorVideoPreview({
         setSelectedOverlayId(overlayId);
         return;
       }
-      // Already selected — start drag
+      // Already selected — start move drag
       dragRef.current = {
         overlayId,
+        mode: "move",
         startMouseX: e.clientX,
         startMouseY: e.clientY,
         startX: currentX,
         startY: currentY,
+        startScale: currentScale,
       };
     },
     [selectedOverlayId, setSelectedOverlayId]
   );
 
+  const handleResizeMouseDown = useCallback(
+    (e: React.MouseEvent, overlayId: string, currentScale: number) => {
+      e.stopPropagation();
+      e.preventDefault();
+      dragRef.current = {
+        overlayId,
+        mode: "resize",
+        startMouseX: e.clientX,
+        startMouseY: e.clientY,
+        startX: 0,
+        startY: 0,
+        startScale: currentScale,
+      };
+    },
+    []
+  );
+
   const handleContainerMouseMove = useCallback(
     (e: React.MouseEvent) => {
       if (!dragRef.current || !containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      const deltaXPercent = ((e.clientX - dragRef.current.startMouseX) / rect.width) * 100;
-      const deltaYPercent = ((e.clientY - dragRef.current.startMouseY) / rect.height) * 100;
-      const newX = Math.max(0, Math.min(100, dragRef.current.startX + deltaXPercent));
-      const newY = Math.max(0, Math.min(100, dragRef.current.startY + deltaYPercent));
       const id = dragRef.current.overlayId;
-      setOverlays((prev) =>
-        prev.map((o) => (o.id === id ? { ...o, x: newX, y: newY } : o))
-      );
+
+      if (dragRef.current.mode === "resize") {
+        // Resize: use horizontal + vertical delta to adjust scale
+        const deltaX = e.clientX - dragRef.current.startMouseX;
+        const deltaY = e.clientY - dragRef.current.startMouseY;
+        const delta = (deltaX + deltaY) / 2;
+        const rect = containerRef.current.getBoundingClientRect();
+        const scaleFactor = delta / (rect.width * 0.3);
+        const newScale = Math.max(0.1, Math.min(5, dragRef.current.startScale + scaleFactor));
+        setOverlays((prev) =>
+          prev.map((o) => (o.id === id ? { ...o, scale: newScale } : o))
+        );
+      } else {
+        // Move
+        const rect = containerRef.current.getBoundingClientRect();
+        const deltaXPercent = ((e.clientX - dragRef.current.startMouseX) / rect.width) * 100;
+        const deltaYPercent = ((e.clientY - dragRef.current.startMouseY) / rect.height) * 100;
+        const newX = Math.max(0, Math.min(100, dragRef.current.startX + deltaXPercent));
+        const newY = Math.max(0, Math.min(100, dragRef.current.startY + deltaYPercent));
+        setOverlays((prev) =>
+          prev.map((o) => (o.id === id ? { ...o, x: newX, y: newY } : o))
+        );
+      }
     },
     [setOverlays]
   );
@@ -288,10 +331,45 @@ export function EditorVideoPreview({
               // Time-gate: only show if current time is within overlay range
               if (currentTime < overlay.startTime || currentTime > overlay.endTime) return null;
 
+              const isSelected = selectedOverlayId === overlay.id;
+
+              // Resize handle (shown on all selected overlays)
+              const resizeHandle = isSelected ? (
+                <div
+                  className="absolute -bottom-2 -right-2 w-5 h-5 bg-purple-500 rounded-full cursor-se-resize flex items-center justify-center shadow-lg border-2 border-white z-20"
+                  onMouseDown={(e) => handleResizeMouseDown(e, overlay.id, overlay.scale)}
+                >
+                  <Icon icon="solar:maximize-bold" className="text-white text-[8px]" />
+                </div>
+              ) : null;
+
+              // Comment overlays render as React components
+              if (overlay.type === "comment" && overlay.commentData) {
+                return (
+                  <div
+                    key={overlay.id}
+                    className={`absolute pointer-events-auto ${isSelected ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"}`}
+                    style={{
+                      left: `${overlay.x}%`,
+                      top: `${overlay.y}%`,
+                      transform: `translate(-50%, -50%) scale(${overlay.scale})`,
+                      transformOrigin: "center center",
+                      opacity: overlay.opacity,
+                      outline: isSelected ? "2px solid rgba(139, 92, 246, 0.8)" : "none",
+                      outlineOffset: "2px",
+                      zIndex: isSelected ? 10 : 1,
+                    }}
+                    onMouseDown={(e) => handleOverlayMouseDown(e, overlay.id, overlay.x, overlay.y, overlay.scale)}
+                  >
+                    <CommentPreview commentData={overlay.commentData} scale={scale} />
+                    {resizeHandle}
+                  </div>
+                );
+              }
+
+              // Image/video overlays render as media elements
               const scaledWidth = overlay.naturalWidth * overlay.scale * scale;
               const scaledHeight = overlay.naturalHeight * overlay.scale * scale;
-
-              const isSelected = selectedOverlayId === overlay.id;
 
               return (
                 <div
@@ -308,7 +386,7 @@ export function EditorVideoPreview({
                     outlineOffset: "2px",
                     zIndex: isSelected ? 10 : 1,
                   }}
-                  onMouseDown={(e) => handleOverlayMouseDown(e, overlay.id, overlay.x, overlay.y)}
+                  onMouseDown={(e) => handleOverlayMouseDown(e, overlay.id, overlay.x, overlay.y, overlay.scale)}
                 >
                   {overlay.type === "image" ? (
                     <img
@@ -326,6 +404,7 @@ export function EditorVideoPreview({
                       autoPlay={isPlaying}
                     />
                   )}
+                  {resizeHandle}
                 </div>
               );
             })}
@@ -351,7 +430,7 @@ export function EditorVideoPreview({
                       color: "#FFFFFF",
                       textAlign: "center",
                       lineHeight: 1.2,
-                      letterSpacing: `${Math.round(2 * scale)}px`,
+                      letterSpacing: /[\u0900-\u097F]/.test(activeCaption.text) ? "0px" : `${Math.round(2 * scale)}px`,
                       WebkitTextStroke: `${Math.max(1, Math.round(4 * scale))}px black`,
                       paintOrder: "stroke fill",
                       maxWidth: "100%",

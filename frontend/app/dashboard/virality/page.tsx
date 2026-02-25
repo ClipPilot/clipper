@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Button, Input, useDisclosure, addToast, Spinner, Card, CardBody, cn } from "@heroui/react";
+import { Button, Input, useDisclosure, addToast, Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import {
   AccountsTable,
@@ -12,10 +12,13 @@ import {
   DateRangeFilter,
   ActivityFeed,
   HeadToHeadTable,
+  RecalcOverlay,
 } from "@/components/virality";
 import type { Platform } from "@/components/virality/AccountsTable";
-import type { DateRangeValue } from "@/components/virality/DateRangeFilter";
+import { CompetitorCard } from "@/components/virality/CompetitorCard";
+import { ViralityUpgradeWall } from "@/components/virality/ViralityUpgradeWall";
 import { useTeams } from "@/hooks/useTeams";
+import { useViralityDateRange } from "@/contexts/ViralityContext";
 import {
   viralityAPI,
   type CompetitorWithAccounts,
@@ -24,32 +27,15 @@ import {
   type ViralityPost,
   type ViralityAccount,
 } from "@/api/virality";
-import { formatNumber } from "@/lib/formatters";
-import { RecalcOverlay } from "@/components/virality/RecalcOverlay";
 import { pct, computePostsPerWeek } from "@/app/dashboard/virality/[competitorId]/utils";
 import { canAccessViralityTracker } from "@/lib/plans";
-
-const AVATAR_COLORS = [
-  "border-accent-400 text-accent-400",
-  "border-purple-500 text-purple-500",
-  "border-emerald-500 text-emerald-500",
-  "border-amber-500 text-amber-500",
-  "border-blue-500 text-blue-500",
-  "border-pink-500 text-pink-500",
-];
-
-const PLATFORM_DOTS: Record<string, string> = {
-  instagram: "bg-pink-500",
-  tiktok: "bg-cyan-400",
-  x: "bg-foreground",
-};
 
 export default function ViralityPage() {
   const router = useRouter();
   const { selectedTeam } = useTeams();
+  const { dateRange, setDateRange } = useViralityDateRange();
   const [platformFilter, setPlatformFilter] = useState<Platform | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [dateRange, setDateRange] = useState<DateRangeValue>({});
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [competitors, setCompetitors] = useState<CompetitorWithAccounts[]>([]);
   const [simpleCompetitors, setSimpleCompetitors] = useState<ViralityCompetitor[]>([]);
@@ -59,6 +45,8 @@ export default function ViralityPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [cardsExpanded, setCardsExpanded] = useState(false);
+  const [editingCompetitorId, setEditingCompetitorId] = useState<number | null>(null);
+  const [editingName, setEditingName] = useState("");
   const initialLoadDone = useRef(false);
 
   const fetchData = useCallback(async () => {
@@ -131,6 +119,17 @@ export default function ViralityPage() {
     return map;
   }, [competitors]);
 
+  // Derive account statuses from real data (is_active defaults to true if missing)
+  const accountStatuses = useMemo(() => {
+    const map: Record<number, "active" | "inactive"> = {};
+    for (const c of competitors) {
+      for (const a of c.accounts) {
+        map[a.id] = a.is_active === false ? "inactive" : "active";
+      }
+    }
+    return map;
+  }, [competitors]);
+
   // Date-filtered posts for viral/recent tabs
   const allPosts = useMemo(() => {
     return Object.values(postsByAccount).flat();
@@ -141,6 +140,7 @@ export default function ViralityPage() {
     return Object.values(allPostsByAccountUnfiltered).flat();
   }, [allPostsByAccountUnfiltered]);
 
+  /** Most recent sync timestamp across all accounts */
   const competitorCards = useMemo(() => {
     return competitors.map((comp) => {
       const posts = comp.accounts.flatMap((a) => postsByAccount[a.id] || []);
@@ -186,7 +186,7 @@ export default function ViralityPage() {
 
       const prevEngRate = prevViews > 0 ? ((prevLikes + prevComments) / prevViews) * 100 : 0;
       const latestEngRate = latestViews > 0 ? ((latestLikes + latestComments) / latestViews) * 100 : 0;
-      const engRateChange = hasHistory && prevEngRate > 0 ? pct(latestEngRate, prevEngRate) : null;
+      const engRateChange = hasHistory ? latestEngRate - prevEngRate : null;
 
       const platforms = Array.from(new Set(comp.accounts.map((a) => a.platform)));
 
@@ -198,6 +198,60 @@ export default function ViralityPage() {
     router.push(`/dashboard/virality/${competitorId}`);
   };
 
+  const handleViewAccount = (competitorId: number, accountId: number) => {
+    router.push(`/dashboard/virality/${competitorId}?accountId=${accountId}`);
+  };
+
+  const handleDeleteAccount = async (accountId: number) => {
+    if (!selectedTeam?.id) return;
+    try {
+      await viralityAPI.deleteAccount(selectedTeam.id, accountId);
+      addToast({ title: "Account deleted", color: "success" });
+      await fetchData();
+    } catch (err: any) {
+      addToast({ title: "Failed to delete account", description: err.message, color: "danger" });
+    }
+  };
+
+  const handleToggleAccountStatus = async (accountId: number, newStatus: "active" | "inactive") => {
+    if (!selectedTeam?.id) return;
+    try {
+      await viralityAPI.updateAccountStatus(selectedTeam.id, accountId, newStatus === "active");
+      // Update local state only — no need to refetch everything
+      setCompetitors((prev) =>
+        prev.map((c) => ({
+          ...c,
+          accounts: c.accounts.map((a) =>
+            a.id === accountId ? { ...a, is_active: newStatus === "active" } : a
+          ),
+        }))
+      );
+      addToast({
+        title: `Account ${newStatus === "active" ? "activated" : "deactivated"}`,
+        color: "success",
+      });
+    } catch (err: any) {
+      addToast({ title: "Failed to update status", description: err.message, color: "danger" });
+    }
+  };
+
+  const handleSaveCompetitorName = async (competitorId: number) => {
+    if (!selectedTeam?.id || !editingName.trim()) return;
+    try {
+      await viralityAPI.updateCompetitor(selectedTeam.id, competitorId, { name: editingName.trim() });
+      setCompetitors((prev) =>
+        prev.map((c) => c.id === competitorId ? { ...c, name: editingName.trim() } : c)
+      );
+      setSimpleCompetitors((prev) =>
+        prev.map((c) => c.id === competitorId ? { ...c, name: editingName.trim() } : c)
+      );
+      setEditingCompetitorId(null);
+      addToast({ title: "Competitor renamed", color: "success" });
+    } catch (err: any) {
+      addToast({ title: "Failed to rename competitor", description: err.message, color: "danger" });
+    }
+  };
+
   const handleAddAccount = async (
     platform: "tiktok" | "instagram" | "x",
     profileUrl: string,
@@ -205,6 +259,7 @@ export default function ViralityPage() {
       enableAlerts: boolean;
       competitorId?: number;
       newCompetitorName?: string;
+      accountType: "profile" | "hashtag" | "keyword";
     }
   ) => {
     if (!selectedTeam?.id) return;
@@ -225,79 +280,18 @@ export default function ViralityPage() {
 
     await viralityAPI.addAccount(
       selectedTeam.id,
-      platform as "instagram" | "tiktok",
+      platform,
       profileUrl,
-      competitorId
+      competitorId,
+      options.accountType
     );
 
     addToast({ title: "Account added", color: "success" });
     await fetchData();
   };
 
-  const handleSyncAccount = async (accountId: number) => {
-    if (!selectedTeam?.id) return;
-    try {
-      await viralityAPI.syncAccount(selectedTeam.id, accountId);
-      addToast({ title: "Sync complete", color: "success" });
-      await fetchData();
-    } catch (err: any) {
-      addToast({
-        title: "Sync failed",
-        description: err.message,
-        color: "danger",
-      });
-    }
-  };
-
-  const handleDeleteAccount = async (accountId: number) => {
-    if (!selectedTeam?.id) return;
-    try {
-      await viralityAPI.deleteAccount(selectedTeam.id, accountId);
-      addToast({ title: "Account removed", color: "success" });
-      await fetchData();
-    } catch (err: any) {
-      addToast({
-        title: "Delete failed",
-        description: err.message,
-        color: "danger",
-      });
-    }
-  };
-
   if (!canAccessViralityTracker(selectedTeam?.plan)) {
-    return (
-      <div className="min-h-screen bg-surface-dark flex flex-col items-center justify-center p-6">
-        <div className="flex flex-col items-center gap-6 max-w-sm">
-          <div className="relative">
-            <div className="flex items-center justify-center w-20 h-20 rounded-2xl bg-purple-500/10">
-              <Icon icon="solar:chart-bold-duotone" className="text-purple-500" width={40} />
-            </div>
-            <div className="absolute -bottom-1 -right-1 flex items-center justify-center w-7 h-7 rounded-full bg-surface-dark border-2 border-surface-dark">
-              <Icon icon="solar:lock-keyhole-bold" className="text-text-tertiary" width={14} />
-            </div>
-          </div>
-          <div className="text-center space-y-2">
-            <h2 className="text-xl font-bold text-text-primary">Virality Tracker</h2>
-            <p className="text-sm text-text-secondary leading-relaxed">
-              Track competitor performance, monitor viral trends, and benchmark your content against the competition.
-            </p>
-          </div>
-          <div className="flex flex-col items-center gap-3 w-full">
-            <Button
-              size="lg"
-              className="w-full bg-purple-500 text-white font-semibold"
-              onPress={() => router.push("/dashboard/pricing")}
-              startContent={<Icon icon="solar:rocket-bold" width={18} />}
-            >
-              Upgrade to Studio
-            </Button>
-            <p className="text-xs text-text-tertiary">
-              Available on Studio, Scale & Enterprise
-            </p>
-          </div>
-        </div>
-      </div>
-    );
+    return <ViralityUpgradeWall />;
   }
 
   if (isLoading) {
@@ -312,7 +306,7 @@ export default function ViralityPage() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="min-h-screen bg-surface-dark p-6 lg:p-8"
+      className="min-h-screen bg-surface-dark p-6 lg:p-8 overflow-x-hidden"
     >
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
@@ -321,7 +315,7 @@ export default function ViralityPage() {
             <h1 className="text-2xl font-bold text-text-primary">
               Tracked Competitors
             </h1>
-            <p className="text-text-secondary mt-1">
+            <p className="text-text-secondary text-sm mt-1">
               Real-time performance metrics for your monitored competitors
             </p>
           </div>
@@ -340,80 +334,22 @@ export default function ViralityPage() {
         {/* Competitor Cards */}
         <RecalcOverlay active={isRecalculating}>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {competitorCards.map(({ competitor, followers, postsPerWeek, engRate, avgViews, platforms, followersChange, viewsChange, engRateChange }, idx) => (
-              <Card key={competitor.id} className="bg-surface-base border border-border-base overflow-hidden">
-                <CardBody className="p-4 flex flex-col gap-0">
-                  {/* Top: identity */}
-                  <div className="flex items-center gap-3">
-                    <div className={cn(
-                      "w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 border-2 bg-transparent",
-                      AVATAR_COLORS[idx % AVATAR_COLORS.length]
-                    )}>
-                      {competitor.name.slice(0, 2).toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-text-primary truncate">{competitor.name}</p>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        {platforms.map((p) => (
-                          <span key={p} className={cn("w-1.5 h-1.5 rounded-full", PLATFORM_DOTS[p] || "bg-default-400")} />
-                        ))}
-                        <span className="text-[10px] text-text-tertiary">
-                          {competitor.accounts.length} account{competitor.accounts.length !== 1 ? "s" : ""}
-                        </span>
-                      </div>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="flat"
-                      className="bg-accent-400/10 text-accent-400 text-[11px] h-7 min-w-0 px-2.5"
-                      onPress={() => handleViewCompetitor(competitor.id)}
-                    >
-                      View
-                    </Button>
-                  </div>
-
-                  {/* Collapsible metrics grid */}
-                  <motion.div
-                    initial={false}
-                    animate={{ height: cardsExpanded ? "auto" : 0, opacity: cardsExpanded ? 1 : 0 }}
-                    transition={{ duration: 0.2, ease: "easeInOut" }}
-                    className="overflow-hidden"
-                  >
-                    <div className="grid grid-cols-2 gap-2 pt-3">
-                      {[
-                        { label: "Followers", value: formatNumber(followers), change: followersChange },
-                        { label: "Posts/Wk", value: String(postsPerWeek), change: null },
-                        { label: "Eng. Rate", value: engRate.toFixed(2) + "%", change: engRateChange },
-                        { label: "Avg. Views", value: formatNumber(avgViews), change: viewsChange },
-                      ].map((m) => (
-                        <div key={m.label} className="bg-surface-elevated rounded-lg px-3 py-2.5">
-                          <p className="text-[10px] text-text-tertiary font-medium">{m.label}</p>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            <p className="text-sm font-bold text-text-primary">{m.value}</p>
-                            {m.change != null && (
-                              <span className={cn("text-[10px] font-medium", m.change >= 0 ? "text-green-500" : "text-red-500")}>
-                                {m.change >= 0 ? "+" : ""}{m.change.toFixed(1)}%
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </motion.div>
-
-                  {/* Expand/collapse toggle */}
-                  <button
-                    onClick={() => setCardsExpanded((v) => !v)}
-                    className="w-full flex items-center justify-center pt-2"
-                  >
-                    <Icon
-                      icon="solar:alt-arrow-down-linear"
-                      width={16}
-                      className={cn("text-text-tertiary transition-transform", cardsExpanded && "rotate-180")}
-                    />
-                  </button>
-                </CardBody>
-              </Card>
+            {competitorCards.map((card, idx) => (
+              <CompetitorCard
+                key={card.competitor.id}
+                {...card}
+                index={idx}
+                isExpanded={cardsExpanded}
+                onToggleExpand={() => setCardsExpanded((v) => !v)}
+                postsByAccount={postsByAccount}
+                editingCompetitorId={editingCompetitorId}
+                editingName={editingName}
+                onEditStart={(id, name) => { setEditingName(name); setEditingCompetitorId(id); }}
+                onEditNameChange={setEditingName}
+                onEditSave={handleSaveCompetitorName}
+                onEditCancel={() => setEditingCompetitorId(null)}
+                onViewCompetitor={handleViewCompetitor}
+              />
             ))}
           </div>
         </RecalcOverlay>
@@ -426,7 +362,7 @@ export default function ViralityPage() {
                 name: competitor.name,
                 followers,
                 totalViews,
-                totalPosts: competitor.accounts.flatMap((a) => postsByAccount[a.id] || []).length,
+                totalPosts: competitor.accounts.reduce((s, a) => s + (dashboardStats?.accountPostStats?.[a.id]?.postCount || 0), 0),
                 engRate,
                 postsPerWeek,
                 avgViews,
@@ -436,9 +372,9 @@ export default function ViralityPage() {
         )}
 
         {/* Accounts Table + Top Performing Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Accounts Table (2/3 width) */}
-          <div className="lg:col-span-2 space-y-4">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          {/* Accounts Table (2/3 width on xl+ screens) */}
+          <div className="xl:col-span-2 space-y-4">
             <div className="flex items-center justify-between">
               <PlatformFilter
                 selected={platformFilter}
@@ -468,14 +404,16 @@ export default function ViralityPage() {
                 searchQuery={searchQuery}
                 accountPostStats={dashboardStats?.accountPostStats}
                 onViewCompetitor={handleViewCompetitor}
-                onSyncAccount={handleSyncAccount}
+                onViewAccount={handleViewAccount}
                 onDeleteAccount={handleDeleteAccount}
+                onToggleAccountStatus={handleToggleAccountStatus}
+                accountStatuses={accountStatuses}
               />
             </RecalcOverlay>
           </div>
 
-          {/* Top Performing Content (1/3 width) */}
-          <div className="lg:col-span-1">
+          {/* Top Performing Content (1/3 width on xl+ screens) */}
+          <div className="xl:col-span-1">
             <RecalcOverlay active={isRecalculating}>
               <ActivityFeed
                 posts={allPosts}

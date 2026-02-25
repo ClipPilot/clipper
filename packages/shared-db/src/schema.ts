@@ -42,12 +42,6 @@ export const inviteStatusEnum = pgEnum("invite_status", [
   "revoked",
 ]);
 
-export const gpuPodStatusEnum = pgEnum("gpu_pod_status", [
-  "idle",
-  "busy",
-  "offline",
-]);
-
 export const comfyJobStatusEnum = pgEnum("comfy_job_status", [
   "pending_upload",
   "queued",
@@ -273,6 +267,7 @@ export const uploadedRawVideos = pgTable(
   "uploaded_raw_videos",
   {
     id: serial("id").primaryKey(),
+    public_id: uuid("public_id").notNull().defaultRandom().unique(),
     team_id: integer("team_id")
       .notNull()
       .references(() => teams.id, { onDelete: "cascade" }),
@@ -812,6 +807,9 @@ export const massPostingApplications = pgTable(
     admin_notes: text("admin_notes"),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
+    quoted_cpm: decimal("quoted_cpm", { precision: 10, scale: 2 }),
+    budget: decimal("budget", { precision: 12, scale: 2 }),
+    videoMinimum: integer("video_minimum"),
   },
   (table) => ({
     teamIdx: index("mass_posting_applications_team_id_idx").on(table.team_id),
@@ -848,6 +846,7 @@ export const platformEnum = pgEnum("platform_enum", [
 ]);
 
 export const postStatusEnum = pgEnum("post_status_enum", [
+  "processing",
   "scheduled",
   "posted",
   "cancelled",
@@ -870,6 +869,7 @@ export const posts = pgTable(
     post_url: text("post_url"),
     drive_file_id: varchar("drive_file_id", { length: 255 }),
     status: postStatusEnum("status").notNull().default("scheduled"),
+    accountHandle: varchar("account_handle", { length: 255 }),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },
@@ -877,6 +877,7 @@ export const posts = pgTable(
     teamIdx: index("posts_team_id_idx").on(table.team_id),
     platformIdx: index("posts_platform_idx").on(table.platform),
     clipIdx: index("posts_clip_id_idx").on(table.clip_id),
+    accountIdx: index("posts_account_handle_idx").on(table.accountHandle),
   }),
 ).enableRLS();
 
@@ -924,6 +925,9 @@ export const viralityAccounts = pgTable(
       { onDelete: "cascade" },
     ),
     platform: viralityPlatformEnum("platform").notNull(),
+    account_type: varchar("account_type", { length: 20 })
+      .notNull()
+      .default("profile"),
     username: varchar("username", { length: 255 }).notNull(),
     profile_url: text("profile_url").notNull(),
     display_name: varchar("display_name", { length: 255 }),
@@ -938,6 +942,9 @@ export const viralityAccounts = pgTable(
     last_synced_at: timestamp("last_synced_at"),
     sync_status: viralitySyncStatusEnum("sync_status").default("pending"),
     sync_error: text("sync_error"),
+    alert_enabled: boolean("alert_enabled").notNull().default(false),
+    is_active: boolean("is_active").notNull().default(true),
+    syncs_remaining: integer("syncs_remaining").notNull().default(14),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },
@@ -950,7 +957,6 @@ export const viralityAccounts = pgTable(
     ),
   }),
 ).enableRLS();
-
 
 export const viralityPosts = pgTable(
   "virality_posts",
@@ -981,6 +987,57 @@ export const viralityPosts = pgTable(
       table.platform_post_id,
     ),
     postedAtIdx: index("virality_posts_posted_at_idx").on(table.posted_at),
+  }),
+).enableRLS();
+
+export const viralityAlertStatusEnum = pgEnum("virality_alert_status", [
+  "sent",
+  "failed",
+]);
+
+export const viralityAlertLogs = pgTable("virality_alert_logs", {
+  id: serial("id").primaryKey(),
+  team_id: integer("team_id")
+    .notNull()
+    .references(() => teams.id, { onDelete: "cascade" }),
+  user_id: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  email: varchar("email", { length: 255 }).notNull(),
+  subject: varchar("subject", { length: 500 }).notNull(),
+  email_body: text("email_body").notNull(),
+  viral_post_ids: jsonb("viral_post_ids").notNull().$type<number[]>(),
+  status: viralityAlertStatusEnum("status").notNull(),
+  error_message: text("error_message"),
+  sent_at: timestamp("sent_at").notNull().defaultNow(),
+  created_at: timestamp("created_at").notNull().defaultNow(),
+}).enableRLS();
+
+// Viral alert threshold condition logic
+export const viralityThresholdModeEnum = pgEnum("virality_threshold_mode", [
+  "and",
+  "or",
+]);
+
+// Per-team viral alert settings (one row per team)
+export const viralitySettings = pgTable(
+  "virality_settings",
+  {
+    id: serial("id").primaryKey(),
+    team_id: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    percent_threshold: integer("percent_threshold"),
+    absolute_threshold: integer("absolute_threshold"),
+    threshold_mode: viralityThresholdModeEnum("threshold_mode")
+      .notNull()
+      .default("or"),
+    time_frame_hours: integer("time_frame_hours").notNull().default(24),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    uniqueTeam: unique("virality_settings_team_unique").on(table.team_id),
   }),
 ).enableRLS();
 
@@ -1034,12 +1091,18 @@ export const apiBillingAccounts = pgTable(
       .references(() => teams.id, { onDelete: "cascade" }),
     balance_cents: integer("balance_cents").notNull().default(0),
     total_spent_cents: integer("total_spent_cents").notNull().default(0),
-    total_topped_up_cents: integer("total_topped_up_cents").notNull().default(0),
+    total_topped_up_cents: integer("total_topped_up_cents")
+      .notNull()
+      .default(0),
     active: boolean("active").notNull().default(false),
     auto_refill: boolean("auto_refill").notNull().default(false),
-    refill_threshold_cents: integer("refill_threshold_cents").notNull().default(500),
+    refill_threshold_cents: integer("refill_threshold_cents")
+      .notNull()
+      .default(500),
     refill_amount_cents: integer("refill_amount_cents").notNull().default(2500),
-    stripe_payment_method_id: varchar("stripe_payment_method_id", { length: 255 }),
+    stripe_payment_method_id: varchar("stripe_payment_method_id", {
+      length: 255,
+    }),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },
@@ -1057,8 +1120,12 @@ export const apiWalletTopUps = pgTable(
       .references(() => teams.id, { onDelete: "cascade" }),
     amount_cents: integer("amount_cents").notNull(),
     credits_cents: integer("credits_cents").notNull(),
-    stripe_payment_intent_id: varchar("stripe_payment_intent_id", { length: 255 }),
-    stripe_checkout_session_id: varchar("stripe_checkout_session_id", { length: 255 }),
+    stripe_payment_intent_id: varchar("stripe_payment_intent_id", {
+      length: 255,
+    }),
+    stripe_checkout_session_id: varchar("stripe_checkout_session_id", {
+      length: 255,
+    }),
     created_at: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => ({

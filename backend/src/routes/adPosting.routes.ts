@@ -4,6 +4,10 @@ import {
   postClipToPlatforms,
   getClipPosts,
   webhookMarkAsPosted,
+  getPostsForTeam,
+  getAccountStats,
+  uploadCustomVideo,
+  completeCustomVideo,
 } from "../controllers/adPosting.controller";
 
 const router = Router();
@@ -84,7 +88,7 @@ router.post(
   "/teams/:teamId/post",
   requireAuth,
   requireSeatAccess,
-  postClipToPlatforms
+  postClipToPlatforms,
 );
 
 /**
@@ -153,7 +157,7 @@ router.get(
   "/teams/:teamId/clips/:clipId/posts",
   requireAuth,
   requireSeatAccess,
-  getClipPosts
+  getClipPosts,
 );
 
 /**
@@ -208,5 +212,143 @@ router.get(
  *         description: Server error
  */
 router.post("/webhook/posted", webhookMarkAsPosted);
+
+/**
+ * @openapi
+ * /api/ad-posting/teams/{teamId}/posts:
+ *   get:
+ *     summary: Get paginated posts for a team
+ *     description: >
+ *       Returns a paginated list of posts for the team, joined with clip data.
+ *       Supports filtering by status group (queued or published), platform,
+ *       date range, and search by clip title.
+ *     tags:
+ *       - Ad Posting
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: The team ID
+ *       - in: query
+ *         name: tab
+ *         schema:
+ *           type: string
+ *           enum: [queued, published]
+ *           default: queued
+ *         description: >
+ *           Filter group — "queued" returns scheduled/processing/failed posts,
+ *           "published" returns posted posts.
+ *       - in: query
+ *         name: platform
+ *         schema:
+ *           type: string
+ *           enum: [tiktok, instagram, facebook, youtube, x]
+ *         description: Filter by platform
+ *       - in: query
+ *         name: dateRange
+ *         schema:
+ *           type: string
+ *           enum: [7days, 30days, 90days, all]
+ *           default: all
+ *         description: Filter by date range relative to today
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search by clip title (case-insensitive partial match)
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           enum: [created_at, posted_time]
+ *           default: created_at
+ *         description: Field to sort by
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *           default: desc
+ *         description: Sort direction
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number (1-based)
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *           maximum: 100
+ *         description: Number of rows per page
+ *     responses:
+ *       200:
+ *         description: Paginated list of posts with clip data
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 posts:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       clip_id:
+ *                         type: integer
+ *                         nullable: true
+ *                       clip_title:
+ *                         type: string
+ *                         nullable: true
+ *                       clip_url:
+ *                         type: string
+ *                         nullable: true
+ *                       platform:
+ *                         type: string
+ *                       status:
+ *                         type: string
+ *                       content:
+ *                         type: string
+ *                       post_url:
+ *                         type: string
+ *                         nullable: true
+ *                       posted_time:
+ *                         type: string
+ *                         format: date-time
+ *                         nullable: true
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     page:
+ *                       type: integer
+ *                     pageSize:
+ *                       type: integer
+ *                     total:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *       400:
+ *         description: Invalid team ID or query parameters
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.get("/teams/:teamId/posts", requireAuth, requireSeatAccess, getPostsForTeam);
+router.get("/teams/:teamId/accounts", requireAuth, requireSeatAccess, getAccountStats);
+
+router.post("/teams/:teamId/custom-video", requireAuth, requireSeatAccess, uploadCustomVideo);
+router.post("/teams/:teamId/custom-video/:clipId/complete", requireAuth, requireSeatAccess, completeCustomVideo);
 
 export default router;

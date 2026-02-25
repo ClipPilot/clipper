@@ -9,15 +9,8 @@ import {
   MultipartUploadResponse,
   BatchUploadedVideo,
 } from "@/api/video";
-// TODO: Re-enable when Google Drive integration is complete
-// import { DrivePicker } from "./DrivePicker";
-
-const PLAN_UPLOAD_LIMITS: Record<string, number> = {
-  free: 2 * 1024 * 1024 * 1024,
-  studio: 2 * 1024 * 1024 * 1024,
-  scale: 3 * 1024 * 1024 * 1024,
-  enterprise: 3 * 1024 * 1024 * 1024,
-};
+import { formatBytes } from "@/lib/videoUrlUtils";
+import { PLAN_UPLOAD_LIMITS } from "@/lib/constants";
 
 interface BatchUploadSectionProps {
   teamId: number;
@@ -47,14 +40,6 @@ const formatTime = (seconds: number): string => {
   if (seconds < 3600)
     return `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`;
   return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
-};
-
-const formatBytes = (bytes: number): string => {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024)
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 };
 
 const formatSpeed = (bytesPerSecond: number): string => {
@@ -511,13 +496,6 @@ export const BatchUploadSection: React.FC<BatchUploadSectionProps> = ({
             Browse Files
           </Button>
 
-          {/* TODO: Re-enable when Google Drive integration is complete
-          <DrivePicker
-            processFiles={validateAndAddFiles}
-            setDownloading={setDownloading}
-            downloading={downloading}
-          />
-          */}
         </div>
 
         <div className="flex items-start gap-2 text-xs text-text-tertiary">

@@ -5,6 +5,7 @@ import { Card, CardBody, Button, addToast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { Clip, clipsAPI } from "@/api/clips";
 import { UnsavedClipCard } from "./UnsavedClipCard";
+import { formatDate } from "@/lib/formatters";
 
 interface ClipsToSaveSectionProps {
   clips: Clip[];
@@ -29,14 +30,6 @@ const getSourceVideoName = (clip: Clip): string => {
   return "Unknown video";
 };
 
-const formatDate = (dateString: string) => {
-  const date = new Date(dateString);
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(date);
-};
 
 export const ClipsToSaveSection: React.FC<ClipsToSaveSectionProps> = ({
   clips,

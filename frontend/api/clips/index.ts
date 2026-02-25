@@ -376,6 +376,26 @@ class ClipsAPI {
     return response.json();
   }
 
+  async generateCaptions(
+    teamId: number,
+    clipId: number
+  ): Promise<{ captionsData: CaptionEntry[]; message?: string }> {
+    const response = await apiFetch(
+      `${API_URL}/clip-video/teams/${teamId}/clips/${clipId}/generate-captions`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error || "Failed to generate captions");
+    }
+
+    return response.json();
+  }
+
   async updateTextOverlay(
     teamId: number,
     clipId: number,
@@ -781,7 +801,7 @@ class ClipsAPI {
       };
       overlays?: Array<{
         id: string;
-        type: "image" | "video";
+        type: "image" | "video" | "comment";
         s3Key: string;
         fileName: string;
         startTime: number;
@@ -792,6 +812,15 @@ class ClipsAPI {
         opacity: number;
         naturalWidth: number;
         naturalHeight: number;
+        commentData?: {
+          platform: "tiktok" | "youtube" | "instagram";
+          username: string;
+          commentText: string;
+          profilePictureS3Key?: string;
+          likesCount: number;
+          isVerified: boolean;
+          timeAgo?: string;
+        };
       }>;
     }
   ): Promise<{ message: string; jobId: string }> {

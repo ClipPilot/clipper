@@ -1,18 +1,11 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Button, Card, CardBody, Progress } from "@heroui/react";
+import { Button, Card, CardBody, Progress, Input, Tabs, Tab } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { videoAPI, UploadProgress, MultipartUploadResponse } from "@/api/video";
-// TODO: Re-enable when Google Drive integration is complete
-// import { DrivePicker } from "./DrivePicker";
-
-const PLAN_UPLOAD_LIMITS: Record<string, number> = {
-  free: 2 * 1024 * 1024 * 1024,
-  studio: 2 * 1024 * 1024 * 1024,
-  scale: 3 * 1024 * 1024 * 1024,
-  enterprise: 3 * 1024 * 1024 * 1024,
-};
+import { videoAPI, UploadProgress, MultipartUploadResponse, VideoUrlInfo, VideoDownloadProgress } from "@/api/video";
+import { formatBytes, formatDuration } from "@/lib/videoUrlUtils";
+import { PLAN_UPLOAD_LIMITS } from "@/lib/constants";
 
 interface UploadSectionProps {
   teamId: number;
@@ -52,14 +45,6 @@ const formatTime = (seconds: number): string => {
   return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
 };
 
-const formatBytes = (bytes: number): string => {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024)
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
-};
-
 const formatSpeed = (bytesPerSecond: number): string => {
   if (bytesPerSecond < 1024 * 1024)
     return `${(bytesPerSecond / 1024).toFixed(1)} KB/s`;
@@ -84,6 +69,13 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
   const [downloading, setDownloading] = useState(false);
   const multipartDataRef = useRef<MultipartUploadResponse | null>(null);
 
+  // URL download state
+  const [urlInput, setUrlInput] = useState("");
+  const [isFetchingInfo, setIsFetchingInfo] = useState(false);
+  const [videoInfo, setVideoInfo] = useState<VideoUrlInfo | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState<VideoDownloadProgress | null>(null);
+
   const MAX_FILE_SIZE = PLAN_UPLOAD_LIMITS[plan] ?? PLAN_UPLOAD_LIMITS.free;
   const validTypes = [
     "video/mp4",
@@ -95,7 +87,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isUploading) {
+      if (isUploading || isDownloading) {
         e.preventDefault();
         e.returnValue = "Upload in progress. Are you sure you want to leave?";
         return e.returnValue;
@@ -104,7 +96,7 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
 
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [isUploading]);
+  }, [isUploading, isDownloading]);
 
   const processFile = async (file: File) => {
     if (file.size > MAX_FILE_SIZE) {
@@ -237,6 +229,46 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
     [processFile]
   );
 
+  const handleFetchVideoInfo = async () => {
+    if (!urlInput.trim()) {
+      onError("Please enter a video URL");
+      return;
+    }
+
+    setIsFetchingInfo(true);
+    setVideoInfo(null);
+
+    try {
+      const info = await videoAPI.getVideoInfo(urlInput.trim());
+      setVideoInfo(info);
+    } catch (err: any) {
+      onError(err.message || "Failed to fetch video info");
+    } finally {
+      setIsFetchingInfo(false);
+    }
+  };
+
+  const handleUrlDownload = async () => {
+    if (!urlInput.trim()) return;
+
+    setIsDownloading(true);
+    setDownloadProgress(null);
+
+    try {
+      const result = await videoAPI.downloadFromUrl(
+        urlInput.trim(),
+        teamId,
+        (progress) => setDownloadProgress(progress)
+      );
+
+      onUploadComplete(result.s3Key, result.fileName, result.fileSize);
+    } catch (err: any) {
+      onError(err.message || "Failed to download video");
+      setIsDownloading(false);
+      setDownloadProgress(null);
+    }
+  };
+
   const renderFileUpload = () => (
     <div className="flex flex-col items-center justify-center space-y-4">
       {downloading ? (
@@ -364,9 +396,6 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                 Browse Files
               </Button>
 
-              {/* TODO: Re-enable when Google Drive integration is complete
-              <DrivePicker setDownloading={setDownloading} downloading={downloading} processFile={processFile} />
-              */}
             </div>
 
             <div className="flex items-start gap-2 text-xs text-text-tertiary">
@@ -380,6 +409,166 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
             </div>
           </div>
         </div>
+      )}
+    </div>
+  );
+
+  const renderUrlDownload = () => (
+    <div className="flex flex-col space-y-4">
+      {isDownloading ? (
+        <div className="flex flex-col items-center justify-center space-y-4">
+          <div className="w-full mb-4 p-3 rounded-lg bg-warning-500/10 border border-warning-500/20 flex items-center gap-2">
+            <Icon
+              icon="solar:danger-triangle-bold"
+              className="text-warning-500 flex-shrink-0"
+              width={20}
+            />
+            <p className="text-sm text-warning-500">
+              Do not leave this page while downloading
+            </p>
+          </div>
+
+          <div className="w-20 h-20 bg-accent-400/10 rounded-full flex items-center justify-center">
+            <Icon
+              icon="solar:download-bold-duotone"
+              className="text-4xl text-accent-400 animate-pulse"
+            />
+          </div>
+
+          <div className="text-center">
+            <h3 className="text-lg font-bold text-text-primary mb-2">
+              {downloadProgress?.type === "uploading"
+                ? "Uploading to Cloud..."
+                : "Downloading Video"}
+            </h3>
+            {videoInfo && (
+              <p className="text-sm text-text-secondary mb-4">
+                {videoInfo.title}
+              </p>
+            )}
+          </div>
+
+          <div className="w-full max-w-md">
+            <Progress
+              value={
+                downloadProgress?.type === "uploading"
+                  ? 100
+                  : downloadProgress?.percent || 0
+              }
+              color="primary"
+              className="mb-3"
+              isIndeterminate={
+                downloadProgress?.type === "start" ||
+                downloadProgress?.type === "uploading"
+              }
+              showValueLabel={
+                downloadProgress?.type !== "start" &&
+                downloadProgress?.type !== "uploading"
+              }
+            />
+            <div className="flex justify-between text-sm text-text-secondary">
+              <span>
+                {downloadProgress?.type === "uploading"
+                  ? "Saving to cloud..."
+                  : downloadProgress?.type === "progress"
+                    ? `${downloadProgress.percent?.toFixed(1)}%`
+                    : "Starting..."}
+              </span>
+              <span>{downloadProgress?.speed || ""}</span>
+            </div>
+            {downloadProgress?.eta && downloadProgress.type === "progress" && (
+              <div className="text-right text-xs text-text-tertiary mt-1">
+                ETA: {downloadProgress.eta}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="flex gap-2">
+            <Input
+              placeholder="Paste video URL (YouTube, Twitch, TikTok, etc.)"
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && urlInput.trim()) handleFetchVideoInfo();
+              }}
+              startContent={
+                <Icon
+                  icon="solar:link-bold"
+                  className="text-text-tertiary"
+                />
+              }
+              isDisabled={isFetchingInfo}
+              classNames={{
+                inputWrapper: "bg-surface-elevated border border-border-base",
+              }}
+            />
+            <Button
+              color="primary"
+              variant="flat"
+              onPress={handleFetchVideoInfo}
+              isLoading={isFetchingInfo}
+              isDisabled={!urlInput.trim()}
+            >
+              Fetch
+            </Button>
+          </div>
+
+          {videoInfo && (
+            <div className="rounded-lg border border-border-base bg-surface-elevated p-4">
+              <div className="flex gap-4">
+                {videoInfo.thumbnail && (
+                  <img
+                    src={videoInfo.thumbnail}
+                    alt={videoInfo.title}
+                    className="w-32 h-20 object-cover rounded-md flex-shrink-0"
+                  />
+                )}
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm font-semibold text-text-primary truncate">
+                    {videoInfo.title}
+                  </h4>
+                  <p className="text-xs text-text-secondary mt-1">
+                    {videoInfo.uploader}
+                    {videoInfo.platform && (
+                      <span className="ml-2 px-1.5 py-0.5 bg-accent-400/10 text-accent-400 rounded text-[10px]">
+                        {videoInfo.platform}
+                      </span>
+                    )}
+                  </p>
+                  <div className="flex gap-3 mt-2 text-xs text-text-tertiary">
+                    {videoInfo.duration > 0 && (
+                      <span>Duration: {formatDuration(videoInfo.duration)}</span>
+                    )}
+                    {videoInfo.filesize > 0 && (
+                      <span>~{formatBytes(videoInfo.filesize)}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                color="primary"
+                className="w-full mt-4"
+                onPress={handleUrlDownload}
+                startContent={<Icon icon="solar:download-bold" />}
+              >
+                Download & Import
+              </Button>
+            </div>
+          )}
+
+          <div className="flex items-start gap-2 text-xs text-text-tertiary">
+            <Icon
+              icon="solar:info-circle-outline"
+              className="text-base mt-0.5 flex-shrink-0"
+            />
+            <p>
+              Supports YouTube, Twitch, Kick, TikTok, Instagram, Vimeo, and 1000+ other sites
+            </p>
+          </div>
+        </>
       )}
     </div>
   );
@@ -414,9 +603,6 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
                 Browse Files
               </Button>
 
-              {/* TODO: Re-enable when Google Drive integration is complete
-              <DrivePicker setDownloading={setDownloading} disabled />
-              */}
             </div>
           </div>
         </CardBody>
@@ -424,9 +610,54 @@ export const UploadSection: React.FC<UploadSectionProps> = ({
     );
   }
 
+  // If currently uploading a file or downloading from URL, show just that view (no tabs)
+  if (isUploading || isDownloading) {
+    return (
+      <Card className="bg-surface-base border border-border-base">
+        <CardBody className="p-8">
+          {isDownloading ? renderUrlDownload() : renderFileUpload()}
+        </CardBody>
+      </Card>
+    );
+  }
+
   return (
     <Card className="bg-surface-base border border-border-base">
-      <CardBody className="p-8">{renderFileUpload()}</CardBody>
+      <CardBody className="p-8">
+        <Tabs
+          aria-label="Upload method"
+          variant="underlined"
+          classNames={{
+            tabList: "gap-4 w-full relative rounded-none p-0 border-b border-border-base mb-6",
+            cursor: "w-full bg-accent-400",
+            tab: "max-w-fit px-2 h-10",
+            tabContent: "group-data-[selected=true]:text-accent-400",
+          }}
+        >
+          <Tab
+            key="file"
+            title={
+              <div className="flex items-center gap-2">
+                <Icon icon="solar:upload-bold" />
+                <span>Upload File</span>
+              </div>
+            }
+          >
+            {renderFileUpload()}
+          </Tab>
+          <Tab
+            key="url"
+            title={
+              <div className="flex items-center gap-2">
+                <Icon icon="solar:link-bold" />
+                <span>Paste URL</span>
+              </div>
+            }
+          >
+            {renderUrlDownload()}
+          </Tab>
+        </Tabs>
+      </CardBody>
     </Card>
   );
 };

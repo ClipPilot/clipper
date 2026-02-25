@@ -17,6 +17,7 @@ import { useUsageStats } from "@/hooks/useUsageStats";
 import { stripeAPI, STRIPE_PRICES } from "@/api/stripe";
 import { apiJson } from "@/lib/apiClient";
 import API_URL from "@/config/constants";
+import { isPaidPlan } from "@/lib/plans";
 
 function PricingContent() {
   const searchParams = useSearchParams();
@@ -31,14 +32,13 @@ function PricingContent() {
   const [showReferralInput, setShowReferralInput] = useState(false);
 
   const currentPlan = selectedTeam?.plan || "free";
-  const isPaidPlan = ["creator", "studio", "scale", "enterprise"].includes(currentPlan);
   const isOwner = selectedTeam?.role === "owner";
 
   useEffect(() => {
     if (searchParams.get("success") === "true") {
       addToast({
         title: "Payment successful!",
-        description: isPaidPlan
+        description: isPaidPlan(currentPlan)
           ? "Your clips have been added."
           : "Your plan has been upgraded.",
         color: "success",
@@ -53,7 +53,7 @@ function PricingContent() {
         color: "warning",
       });
     }
-  }, [searchParams, fetchTeams, refetchUsage, isPaidPlan]);
+  }, [searchParams, fetchTeams, refetchUsage, currentPlan]);
 
   const handleUpgrade = async (tier: Tier) => {
     if (!selectedTeam) {
@@ -232,7 +232,7 @@ function PricingContent() {
     setReferralCode("");
   };
 
-  if (isPaidPlan) {
+  if (isPaidPlan(currentPlan)) {
     return (
       <PaidPlanView
         currentPlan={currentPlan as "creator" | "studio" | "scale" | "enterprise"}

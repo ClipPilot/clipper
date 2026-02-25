@@ -6,16 +6,21 @@ import {
   viralityCompetitors,
   teams,
 } from "@clipper/shared-db/src/schema";
-import { eq, and, desc, count, gte, lte, inArray, sql } from "drizzle-orm";
+import { eq, and, or, desc, count, gte, lte, inArray, sql } from "drizzle-orm";
 import { getApifyService, InstagramPost, InstagramProfile } from "./apify.service";
 import { parseInstagramUsername, parseTikTokUsername, parseXUsername } from "../../utils/parseUsername";
 import {
-  MAX_ACCOUNTS_PER_TEAM,
   SYNCS_PER_DAY,
+  SCRAPE_WINDOW_DAYS,
   MAX_METRICS_HISTORY,
   MAX_FOLLOWER_HISTORY,
 } from "../../config/virality";
 import { canAccessViralityTracker } from "../../utils/plans";
+import { teamService } from "../team.service";
+import { emitViralitySyncUpdate } from "../socket.service";
+
+const SYNCS_PER_WEEK = SYNCS_PER_DAY * 7;
+const STALE_SYNC_MINUTES = 15;
 
 interface MetricsEntry {
   recorded_at: string;
@@ -30,6 +35,35 @@ interface FollowerEntry {
 }
 
 class ViralityService {
+  // ── Stale sync cleanup ──
+
+  async cleanupStaleSyncs() {
+    const cutoff = new Date(Date.now() - STALE_SYNC_MINUTES * 60 * 1000);
+    const stale = await db
+      .update(viralityAccounts)
+      .set({
+        sync_status: "failed",
+        sync_error: `Sync timed out (stuck for more than ${STALE_SYNC_MINUTES} minutes)`,
+        updated_at: new Date(),
+      })
+      .where(
+        and(
+          or(
+            eq(viralityAccounts.sync_status, "pending"),
+            eq(viralityAccounts.sync_status, "syncing")
+          ),
+          lte(viralityAccounts.updated_at, cutoff)
+        )
+      )
+      .returning({ id: viralityAccounts.id, username: viralityAccounts.username });
+
+    if (stale.length > 0) {
+      console.log(`[Cleanup] Reset ${stale.length} stale syncs: ${stale.map((s) => `@${s.username}`).join(", ")}`);
+    }
+
+    return stale;
+  }
+
   // ── Competitor CRUD ──
 
   async getCompetitorsByTeam(teamId: number) {
@@ -86,6 +120,9 @@ class ViralityService {
       throw new Error("Competitor not found or access denied");
     }
 
+    // Clean up stale syncs so the UI doesn't show ghost spinners
+    await this.cleanupStaleSyncs();
+
     const accounts = await db
       .select()
       .from(viralityAccounts)
@@ -133,20 +170,25 @@ class ViralityService {
     return result?.count || 0;
   }
 
-  async addAccount(teamId: number, platform: "instagram" | "tiktok" | "x", profileUrl: string, competitorId?: number) {
-    // Check account limit
-    const currentCount = await this.getAccountCount(teamId);
-    if (currentCount >= MAX_ACCOUNTS_PER_TEAM) {
-      throw new Error(
-        `Maximum of ${MAX_ACCOUNTS_PER_TEAM} accounts per team reached`
-      );
+  async addAccount(
+    teamId: number,
+    platform: "instagram" | "tiktok" | "x",
+    profileUrl: string,
+    competitorId?: number,
+    accountType: "profile" | "hashtag" | "keyword" = "profile"
+  ) {
+    // Parse username based on account type
+    let username: string;
+    if (accountType === "profile") {
+      username = platform === "tiktok"
+        ? parseTikTokUsername(profileUrl)
+        : platform === "x"
+          ? parseXUsername(profileUrl)
+          : parseInstagramUsername(profileUrl);
+    } else {
+      // Hashtag/keyword: strip # and whitespace, lowercase
+      username = profileUrl.trim().replace(/^#/, "").toLowerCase();
     }
-
-    const username = platform === "tiktok"
-      ? parseTikTokUsername(profileUrl)
-      : platform === "x"
-        ? parseXUsername(profileUrl)
-        : parseInstagramUsername(profileUrl);
 
     // Check if account already exists
     const [existing] = await db
@@ -162,7 +204,8 @@ class ViralityService {
       .limit(1);
 
     if (existing) {
-      throw new Error(`Account @${username} is already being tracked`);
+      const label = accountType === "hashtag" ? `#${username}` : accountType === "keyword" ? `"${username}"` : `@${username}`;
+      throw new Error(`${label} is already being tracked`);
     }
 
     // Verify competitor ownership if provided
@@ -173,23 +216,52 @@ class ViralityService {
       }
     }
 
-    const profileUrlMap: Record<string, string> = {
-      instagram: `https://www.instagram.com/${username}/`,
-      tiktok: `https://www.tiktok.com/@${username}`,
-      x: `https://x.com/${username}`,
-    };
+    // Build profile_url based on account type
+    let profile_url: string;
+    if (accountType === "profile") {
+      const profileUrlMap: Record<string, string> = {
+        instagram: `https://www.instagram.com/${username}/`,
+        tiktok: `https://www.tiktok.com/@${username}`,
+        x: `https://x.com/${username}`,
+      };
+      profile_url = profileUrlMap[platform];
+    } else if (accountType === "hashtag") {
+      const hashtagUrlMap: Record<string, string> = {
+        instagram: `https://www.instagram.com/explore/tags/${username}/`,
+        tiktok: `https://www.tiktok.com/tag/${username}`,
+        x: `https://x.com/search?q=%23${username}`,
+      };
+      profile_url = hashtagUrlMap[platform];
+    } else {
+      // keyword
+      const keywordUrlMap: Record<string, string> = {
+        instagram: `https://www.instagram.com/explore/tags/${username}/`,
+        tiktok: `https://www.tiktok.com/tag/${username}`,
+        x: `https://x.com/search?q=${encodeURIComponent(username)}`,
+      };
+      profile_url = keywordUrlMap[platform];
+    }
 
     const [account] = await db
       .insert(viralityAccounts)
       .values({
         team_id: teamId,
         platform,
+        account_type: accountType,
         username,
-        profile_url: profileUrlMap[platform],
+        profile_url,
         sync_status: "pending",
         competitor_id: competitorId || null,
       })
       .returning();
+
+    // Charge 1 credit immediately on account creation
+    const { success } = await teamService.consumeClip(teamId);
+    if (!success) {
+      // Roll back: delete the just-created account
+      await db.delete(viralityAccounts).where(eq(viralityAccounts.id, account.id));
+      throw new Error("Insufficient credits to start tracking");
+    }
 
     return account;
   }
@@ -202,13 +274,74 @@ class ViralityService {
     }
 
     await db.delete(viralityAccounts).where(eq(viralityAccounts.id, accountId));
+
+    // If the competitor has no remaining accounts, delete it too
+    if (account.competitor_id) {
+      const [remaining] = await db
+        .select({ count: count() })
+        .from(viralityAccounts)
+        .where(eq(viralityAccounts.competitor_id, account.competitor_id));
+
+      if (remaining.count === 0) {
+        await db.delete(viralityCompetitors).where(eq(viralityCompetitors.id, account.competitor_id));
+      }
+    }
+  }
+
+  async updateAccountStatus(accountId: number, teamId: number, isActive: boolean) {
+    const account = await this.getAccountById(accountId);
+    if (!account || account.team_id !== teamId) {
+      throw new Error("Account not found or access denied");
+    }
+
+    const [updated] = await db
+      .update(viralityAccounts)
+      .set({
+        is_active: isActive,
+        updated_at: new Date(),
+      })
+      .where(eq(viralityAccounts.id, accountId))
+      .returning();
+
+    return updated;
   }
 
   async syncAccount(accountId: number, teamId: number) {
+    // Clean up any stale syncs before starting
+    await this.cleanupStaleSyncs();
+
     // Verify ownership
     const account = await this.getAccountById(accountId);
     if (!account || account.team_id !== teamId) {
       throw new Error("Account not found or access denied");
+    }
+
+    if (!account.is_active) {
+      throw new Error("Account is inactive and cannot be synced");
+    }
+
+    // Syncs/credits gating — same logic as the lambda
+    if (account.syncs_remaining <= 0) {
+      const { success: charged } = await teamService.consumeClip(teamId);
+      if (charged) {
+        await db
+          .update(viralityAccounts)
+          .set({ syncs_remaining: SYNCS_PER_WEEK, updated_at: new Date() })
+          .where(eq(viralityAccounts.id, accountId));
+        console.log(`[Credit] Charged 1 credit for account ${accountId} (team=${teamId}), reset syncs_remaining=${SYNCS_PER_WEEK}`);
+      } else {
+        // No credits — deactivate account
+        await db
+          .update(viralityAccounts)
+          .set({ is_active: false, updated_at: new Date() })
+          .where(eq(viralityAccounts.id, accountId));
+        throw new Error("No credits available. Account has been deactivated.");
+      }
+    } else {
+      await db
+        .update(viralityAccounts)
+        .set({ syncs_remaining: account.syncs_remaining - 1, updated_at: new Date() })
+        .where(eq(viralityAccounts.id, accountId));
     }
 
     // Update status to syncing
@@ -222,23 +355,59 @@ class ViralityService {
       .where(eq(viralityAccounts.id, accountId));
 
     try {
-      // Scrape posts using Apify SDK
-      const { posts, profile } = account.platform === "tiktok"
-        ? await getApifyService().scrapeTikTokPosts(account.username)
-        : account.platform === "x"
-          ? await getApifyService().scrapeXPosts(account.username)
-          : await getApifyService().scrapeInstagramPosts(account.username);
-      console.log(`Scraped ${posts.length} posts for @${account.username} (${account.platform})`);
+      // Scrape posts using Apify SDK — branch on account_type
+      const apify = getApifyService();
+      let posts: InstagramPost[];
+      let profile: InstagramProfile | null = null;
 
-      // Fallback: fetch profile separately if posts scrape didn't include it (Instagram only)
-      const resolvedProfile = profile
-        ?? (account.platform === "instagram"
-          ? await getApifyService().scrapeInstagramProfile(account.username)
-          : null);
+      if (account.account_type === "hashtag") {
+        // Hashtag search
+        const result = account.platform === "tiktok"
+          ? await apify.scrapeTikTokHashtag(account.username)
+          : account.platform === "x"
+            ? await apify.scrapeXKeywordSearch(`#${account.username}`)
+            : await apify.scrapeInstagramHashtag(account.username);
+        posts = result.posts;
+      } else if (account.account_type === "keyword") {
+        // Keyword search — X uses searchTerms, IG/TikTok fall back to hashtag
+        const result = account.platform === "x"
+          ? await apify.scrapeXKeywordSearch(account.username)
+          : account.platform === "tiktok"
+            ? await apify.scrapeTikTokHashtag(account.username)
+            : await apify.scrapeInstagramHashtag(account.username);
+        posts = result.posts;
+      } else {
+        // Profile (default)
+        const result = account.platform === "tiktok"
+          ? await apify.scrapeTikTokPosts(account.username)
+          : account.platform === "x"
+            ? await apify.scrapeXPosts(account.username)
+            : await apify.scrapeInstagramPosts(account.username);
+        posts = result.posts;
+        profile = result.profile;
+      }
 
-      // Update profile info if available
-      if (resolvedProfile) {
-        await this.updateAccountProfile(accountId, resolvedProfile);
+      console.log(`Scraped ${posts.length} posts for ${account.account_type === "hashtag" ? "#" : ""}${account.username} (${account.platform}, type=${account.account_type})`);
+
+      // Only update profile for profile-type accounts
+      if (account.account_type === "profile") {
+        // For IG/TikTok: use the full profile from Apify (or fetch it separately for IG)
+        const resolvedProfile = profile
+          ?? (account.platform === "instagram"
+            ? await apify.scrapeInstagramProfile(account.username)
+            : null);
+
+        if (resolvedProfile) {
+          await this.updateAccountProfile(accountId, resolvedProfile);
+        }
+
+        // For X: fetch follower count separately from SocialData (only source for X followers)
+        if (account.platform === "x") {
+          const xFollowers = await apify.fetchXFollowerCount(account.username);
+          if (xFollowers) {
+            await this.updateAccountProfile(accountId, xFollowers);
+          }
+        }
       }
 
       // Process and store posts
@@ -263,6 +432,8 @@ class ViralityService {
         })
         .where(eq(viralityAccounts.id, accountId));
 
+      emitViralitySyncUpdate(teamId, { accountId, syncStatus: "completed" });
+
       return { success: true, postsProcessed: posts.length };
     } catch (error: any) {
       console.error(`Sync failed for account ${accountId}:`, error);
@@ -276,6 +447,8 @@ class ViralityService {
           updated_at: new Date(),
         })
         .where(eq(viralityAccounts.id, accountId));
+
+      emitViralitySyncUpdate(teamId, { accountId, syncStatus: "failed", syncError: error.message });
 
       throw error;
     }
@@ -308,19 +481,21 @@ class ViralityService {
       ? history.slice(-MAX_FOLLOWER_HISTORY)
       : history;
 
+    const updates: Record<string, any> = {
+      follower_history: trimmed,
+      updated_at: new Date(),
+    };
+    if (profileData.fullName !== undefined) updates.display_name = profileData.fullName;
+    if (profileData.profilePicUrl !== undefined) updates.avatar_url = profileData.profilePicUrl;
+    if (profileData.biography !== undefined) updates.bio = profileData.biography;
+    if (profileData.followersCount !== undefined) updates.follower_count = profileData.followersCount;
+    if (profileData.followsCount !== undefined) updates.following_count = profileData.followsCount;
+    if (profileData.postsCount !== undefined) updates.post_count = profileData.postsCount;
+    if (profileData.isVerified !== undefined) updates.is_verified = profileData.isVerified;
+
     await db
       .update(viralityAccounts)
-      .set({
-        display_name: profileData.fullName,
-        avatar_url: profileData.profilePicUrl,
-        bio: profileData.biography,
-        follower_count: profileData.followersCount,
-        following_count: profileData.followsCount,
-        post_count: profileData.postsCount,
-        follower_history: trimmed,
-        is_verified: profileData.isVerified || false,
-        updated_at: new Date(),
-      })
+      .set(updates)
       .where(eq(viralityAccounts.id, accountId));
   }
 
@@ -330,6 +505,14 @@ class ViralityService {
     platform: string
   ) {
     if (!postData.id) return;
+
+    // Skip posts outside the scrape window
+    if (postData.timestamp) {
+      const postDate = new Date(postData.timestamp);
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - SCRAPE_WINDOW_DAYS);
+      if (postDate < cutoff) return;
+    }
 
     const [existingPost] = await db
       .select()
@@ -488,7 +671,9 @@ class ViralityService {
 
     let totalFollowers = 0;
     for (const account of accounts) {
-      totalFollowers += account.follower_count || 0;
+      if (account.account_type === "profile") {
+        totalFollowers += account.follower_count || 0;
+      }
     }
 
     const hasDateFilter = !!(startDate || endDate);
@@ -528,7 +713,6 @@ class ViralityService {
 
     return {
       accountsCount: accounts.length,
-      maxAccounts: MAX_ACCOUNTS_PER_TEAM,
       totalFollowers,
       totalLikes,
       totalPosts,

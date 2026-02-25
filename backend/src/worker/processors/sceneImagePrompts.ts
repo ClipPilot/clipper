@@ -29,6 +29,9 @@ export interface ImagePositions {
 const ANATOMY_NEGATIVE = [
   "extra limbs", "additional limbs", "three arms", "four arms", "multiple arms",
   "extra hands", "additional hands", "three hands", "four hands", "multiple hands",
+  "duplicate hand on same side", "two hands on one arm", "cloned hand next to original",
+  "phantom hand beside holding hand", "mirrored hand", "hand shadow duplicate",
+  "two left hands", "two right hands", "hands side by side on same arm",
   "extra fingers", "six fingers", "seven fingers", "eight fingers", "missing fingers",
   "fused fingers", "merged fingers", "webbed fingers", "stub fingers",
   "deformed hands", "mutated hands", "malformed hands", "twisted hands", "mangled hands",
@@ -138,27 +141,44 @@ The product must be clearly visible, accurately depicted, and the natural focal 
   sections.push(`SHOT DESCRIPTION:
 B-roll shot ${shotIndex + 1} of ${totalShots} in a montage sequence.
 
-Action: ${shot.action}
+VIDEO START FRAME — This image will be used as the FIRST FRAME of a ${shot.durationSeconds}-second video where the following action plays out:
+"${shot.action}"
 
-Context: ${sceneData.sceneType} scene, ${sceneData.cameraAngle} angle, ${shot.durationSeconds} second duration.`);
+Compose the image as the STARTING POSITION for this action — everything should be set up and ready for the motion to begin. Objects, hands (if any), and the product should be in their initial positions BEFORE the action happens. Leave visual room for the movement to unfold naturally.
 
-  sections.push(`OUTPUT REQUIREMENTS:
-Generate exactly ONE photograph. Not a collage, not a grid, not a comparison, not multiple panels. A single cohesive image.
+Context: ${sceneData.sceneType} scene.
+CAMERA: Use a natural product photography angle — straight-on, slight overhead, or tabletop level. Do NOT use the scene's speaker camera angle. Frame for the product/action, not a person.`);
 
-Zero text of any kind. No captions, no labels, no watermarks, no logos, no typography anywhere in the image.
+  // Detect if the shot involves hands/people or is a pure product/environment shot
+  const actionLower = shot.action.toLowerCase();
+  const involvesHands = /\b(hand|hands|hold|holding|grab|grip|pick|apply|applying|rub|rubbing|touch|touching|pour|pouring|squeeze|finger|fingers|palm|wrist)\b/.test(actionLower);
+  const involvesPerson = involvesHands || /\b(person|face|body|arm|arms|woman|man|girl|guy)\b/.test(actionLower);
 
-ANATOMY - CRITICAL:
-- A human has a MAXIMUM of TWO HANDS and TWO ARMS. Zero, one, or two hands may be visible — NEVER three or more.
-- Each hand has EXACTLY FIVE FINGERS: one thumb and four fingers. No sixth finger, no missing finger, no fused fingers.
-- Hands must be clearly separated from each other — never merged, blended, or overlapping unnaturally.
-- All fingers must have natural proportions and natural bending angles. No impossibly long, short, twisted, or boneless fingers.
-- Arms connect to shoulders, hands connect to wrists — standard human skeletal structure only.
-- Every visible hand MUST be attached to a visible arm. No floating or disembodied hands.
+  if (!involvesPerson) {
+    sections.push(`OUTPUT REQUIREMENTS:
+Generate exactly ONE photograph — not a collage, grid, or multi-panel layout. A single image.
+
+CRITICAL: NO PEOPLE. No hands, no fingers, no arms, no body parts anywhere in the frame. This is a PRODUCT-ONLY or ENVIRONMENT-ONLY shot. The product/scene exists by itself.
+
+Zero text of any kind. No captions, labels, watermarks, logos, or typography.
 
 TECHNICAL:
-Photorealistic product photography quality. Clean composition with the product as clear focal point. Professional but authentic aesthetic. Natural or softbox lighting with proper shadows. Vertical 9:16 aspect ratio.`);
+Photorealistic product photography. Clean composition, product as focal point. Natural or softbox lighting with proper shadows. Vertical 9:16 aspect ratio.`);
 
-  sections.push(`NEGATIVE: ${ANATOMY_NEGATIVE}, three hands, hand growing from product, hand emerging from nowhere, phantom hand, disembodied hand, hand without arm, extra arm, third arm, arm from wrong angle, weird fingers, boneless fingers, noodle fingers, ${STYLE_NEGATIVE}, blurry, out of focus, low quality, amateur, stock photo watermark`);
+    sections.push(`NEGATIVE: hands, fingers, arms, person, human, body parts, ${ANATOMY_NEGATIVE}, ${STYLE_NEGATIVE}, blurry, out of focus, low quality`);
+  } else {
+    sections.push(`OUTPUT REQUIREMENTS:
+Generate exactly ONE photograph — not a collage, grid, or multi-panel layout. A single image.
+
+Zero text of any kind. No captions, labels, watermarks, logos, or typography.
+
+HANDS (if visible): Maximum TWO hands total. Five fingers per hand — no more, no less. Natural relaxed positions only. If one hand holds the product, the other hand is elsewhere (not next to it). Keep hand poses simple.
+
+TECHNICAL:
+Photorealistic product photography. Clean composition, product as focal point. Natural or softbox lighting with proper shadows. Vertical 9:16 aspect ratio.`);
+
+    sections.push(`NEGATIVE: three hands, extra hands, extra fingers, six fingers, fused fingers, floating hands, disembodied hands, ${ANATOMY_NEGATIVE}, ${STYLE_NEGATIVE}, blurry, out of focus, low quality`);
+  }
 
   return sections.join("\n\n");
 }
@@ -233,7 +253,10 @@ SCENE CONTEXT:
 Type: ${sceneData.sceneType}
 Camera: ${sceneData.cameraAngle}
 Emotion: ${sceneData.emotion}
-Action: ${sceneData.action}`);
+Action: ${sceneData.action}
+
+CAMERA ANGLE - CRITICAL:
+Use a natural, realistic camera angle that a real person would capture on their phone. Avoid extreme angles (extreme low-angle, extreme overhead, tilted/dutch angle, fish-eye distortion). The framing should feel like genuine UGC content — straight-on, slight selfie angle, or natural eye-level. No dramatic cinematographic angles.`);
 
   const frameGuidance = frameType === "start"
     ? `FRAME TIMING: START
@@ -260,11 +283,11 @@ Generate exactly ONE photograph. Not a collage, grid, comparison, or multi-panel
 Zero text anywhere. No captions, titles, labels, watermarks, logos, speech bubbles, or any typography.
 
 ANATOMY - CRITICAL:
-The subject has exactly two arms naturally positioned at their sides or engaged in the action. If hands are visible, exactly two hands with five fingers each. Fingers are in natural positions - no impossible bends, no extra digits, no missing digits, no fused fingers. All limbs connect naturally to the body with standard human proportions.
+The subject has exactly two arms naturally positioned at their sides or engaged in the action. Each arm ends in exactly one hand — never two hands on the same arm or side. If hands are visible, exactly two hands with five fingers each. If one hand holds a product, the other hand must be clearly in a different position (at their side, gesturing, resting elsewhere) — never adjacent to the holding hand. Fingers are in natural positions - no impossible bends, no extra digits, no missing digits, no fused fingers. All limbs connect naturally to the body with standard human proportions.
 
 Expression matches the ${sceneData.emotion} emotion specified.`);
 
-  sections.push(`NEGATIVE: ${ANATOMY_NEGATIVE}, ${STYLE_NEGATIVE}, studio lighting, professional photography, perfect skin, airbrushed, beauty filter, cinematic lighting, dramatic shadows, posed model aesthetic`);
+  sections.push(`NEGATIVE: ${ANATOMY_NEGATIVE}, ${STYLE_NEGATIVE}, studio lighting, professional photography, perfect skin, airbrushed, beauty filter, cinematic lighting, dramatic shadows, posed model aesthetic, extreme low angle, extreme high angle, dutch angle, tilted camera, fish-eye, wide-angle distortion, dramatic camera angle`);
 
   return sections.join("\n\n");
 }

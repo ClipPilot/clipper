@@ -39,7 +39,7 @@ const adminAnnouncementLimiter = rateLimit({
  */
 
 /**
- * @swagger
+ * @openapi
  * /api/announcements/unread:
  *   get:
  *     summary: Get unread announcements for the authenticated user
@@ -83,7 +83,7 @@ const adminAnnouncementLimiter = rateLimit({
 router.get("/unread", requireAuth, userAnnouncementLimiter, getUnreadAnnouncements);
 
 /**
- * @swagger
+ * @openapi
  * /api/announcements/all:
  *   get:
  *     summary: Get all announcements (read and unread) for inbox view
@@ -129,7 +129,7 @@ router.get("/unread", requireAuth, userAnnouncementLimiter, getUnreadAnnouncemen
 router.get("/all", requireAuth, userAnnouncementLimiter, getAllAnnouncementsForUser);
 
 /**
- * @swagger
+ * @openapi
  * /api/announcements/{id}/dismiss:
  *   post:
  *     summary: Dismiss a single announcement
@@ -154,7 +154,7 @@ router.get("/all", requireAuth, userAnnouncementLimiter, getAllAnnouncementsForU
 router.post("/:id/dismiss", requireAuth, userAnnouncementLimiter, dismissAnnouncement);
 
 /**
- * @swagger
+ * @openapi
  * /api/announcements/dismiss-all:
  *   post:
  *     summary: Dismiss all unread announcements
@@ -174,7 +174,7 @@ router.post("/dismiss-all", requireAuth, userAnnouncementLimiter, dismissAllAnno
  */
 
 /**
- * @swagger
+ * @openapi
  * /api/admin/announcements:
  *   get:
  *     summary: Get all announcements with optional filters (Admin)
@@ -218,7 +218,7 @@ router.post("/dismiss-all", requireAuth, userAnnouncementLimiter, dismissAllAnno
 router.get("/admin", requireAdminAuth, adminAnnouncementLimiter, getAllAnnouncements);
 
 /**
- * @swagger
+ * @openapi
  * /api/admin/announcements/{id}:
  *   get:
  *     summary: Get a specific announcement by ID (Admin)
@@ -240,7 +240,7 @@ router.get("/admin", requireAdminAuth, adminAnnouncementLimiter, getAllAnnouncem
 router.get("/admin/:id", requireAdminAuth, adminAnnouncementLimiter, getAnnouncementById);
 
 /**
- * @swagger
+ * @openapi
  * /api/admin/announcements:
  *   post:
  *     summary: Create a new announcement (Admin)
@@ -283,7 +283,7 @@ router.get("/admin/:id", requireAdminAuth, adminAnnouncementLimiter, getAnnounce
 router.post("/admin", requireAdminAuth, adminAnnouncementLimiter, createAnnouncement);
 
 /**
- * @swagger
+ * @openapi
  * /api/admin/announcements/{id}:
  *   patch:
  *     summary: Update an announcement (Admin)
@@ -325,7 +325,7 @@ router.post("/admin", requireAdminAuth, adminAnnouncementLimiter, createAnnounce
 router.patch("/admin/:id", requireAdminAuth, adminAnnouncementLimiter, updateAnnouncement);
 
 /**
- * @swagger
+ * @openapi
  * /api/admin/announcements/{id}:
  *   delete:
  *     summary: Delete an announcement (Admin)
@@ -347,7 +347,7 @@ router.patch("/admin/:id", requireAdminAuth, adminAnnouncementLimiter, updateAnn
 router.delete("/admin/:id", requireAdminAuth, adminAnnouncementLimiter, deleteAnnouncement);
 
 /**
- * @swagger
+ * @openapi
  * /api/admin/announcements/{id}/publish:
  *   post:
  *     summary: Publish an announcement (Admin)

@@ -15,6 +15,7 @@ import { Icon } from "@iconify/react";
 import type { ViralityCompetitor } from "@/api/virality";
 
 type Platform = "tiktok" | "instagram" | "x";
+type AccountType = "profile" | "hashtag" | "keyword";
 
 interface AddAccountModalProps {
   isOpen: boolean;
@@ -24,8 +25,15 @@ interface AddAccountModalProps {
     enableAlerts: boolean;
     competitorId?: number;
     newCompetitorName?: string;
+    accountType: AccountType;
   }) => Promise<void>;
 }
+
+const accountTypes: { value: AccountType; label: string; icon: string }[] = [
+  { value: "profile", label: "Profile", icon: "solar:user-bold" },
+  // { value: "hashtag", label: "Hashtag", icon: "solar:hashtag-bold" },
+  // { value: "keyword", label: "Keyword", icon: "solar:magnifer-bold" },
+];
 
 const platforms: { value: Platform; label: string; icon: string; enabled: boolean }[] = [
   { value: "instagram", label: "Instagram", icon: "solar:camera-bold", enabled: true },
@@ -41,6 +49,7 @@ export function AddAccountModal({
 }: AddAccountModalProps) {
   const [profileUrl, setProfileUrl] = useState("");
   const [selectedPlatform, setSelectedPlatform] = useState<Platform>("instagram");
+  const [accountType, setAccountType] = useState<AccountType>("profile");
   const [enableAlerts, setEnableAlerts] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,9 +71,11 @@ export function AddAccountModal({
         enableAlerts,
         competitorId,
         newCompetitorName: competitorSelection === "new" ? newCompetitorName.trim() : undefined,
+        accountType,
       });
       setProfileUrl("");
       setSelectedPlatform("instagram");
+      setAccountType("profile");
       setEnableAlerts(true);
       setCompetitorSelection("new");
       setNewCompetitorName("");
@@ -78,6 +89,7 @@ export function AddAccountModal({
 
   const handleClose = () => {
     setProfileUrl("");
+    setAccountType("profile");
     setError(null);
     setCompetitorSelection("new");
     setNewCompetitorName("");
@@ -111,24 +123,69 @@ export function AddAccountModal({
             </Button>
           </div>
 
-          {/* Profile URL / Username Input */}
+          {/* Account Type Toggle */}
+          {/* <div className="space-y-3">
+            <label className="text-sm text-gray-400">Search Type</label>
+            <div className="grid grid-cols-3 gap-3">
+              {accountTypes.map((type) => (
+                <button
+                  key={type.value}
+                  onClick={() => setAccountType(type.value)}
+                  className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border transition-all ${
+                    accountType === type.value
+                      ? "bg-[#1e2140] border-accent-400"
+                      : "bg-[#0d0f1a] border-[#2a2d3e] hover:border-[#3a3d4e]"
+                  }`}
+                >
+                  <Icon
+                    icon={type.icon}
+                    width={20}
+                    className={accountType === type.value ? "text-white" : "text-gray-400"}
+                  />
+                  <span className={`text-xs ${accountType === type.value ? "text-white" : "text-gray-400"}`}>
+                    {type.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div> */}
+
+          {/* Profile URL / Username / Hashtag / Keyword Input */}
           <div className="space-y-2">
             <label className="text-sm text-gray-400">
-              {selectedPlatform === "instagram" ? "Profile URL" : "Username or Profile URL"}
+              {accountType === "hashtag"
+                ? "Hashtag"
+                : accountType === "keyword"
+                  ? "Keyword"
+                  : selectedPlatform === "instagram"
+                    ? "Profile URL"
+                    : "Username or Profile URL"}
             </label>
             <Input
               placeholder={
-                selectedPlatform === "tiktok"
-                  ? "e.g. @kotasyaps or tiktok.com/@kotasyaps"
-                  : selectedPlatform === "x"
-                    ? "e.g. @elonmusk or x.com/elonmusk"
-                    : "e.g. instagram.com/creatorscale"
+                accountType === "hashtag"
+                  ? "e.g. #fashion or fashion"
+                  : accountType === "keyword"
+                    ? "e.g. trending coffee"
+                    : selectedPlatform === "tiktok"
+                      ? "e.g. @kotasyaps or tiktok.com/@kotasyaps"
+                      : selectedPlatform === "x"
+                        ? "e.g. @elonmusk or x.com/elonmusk"
+                        : "e.g. instagram.com/creatorscale"
               }
               value={profileUrl}
               onValueChange={setProfileUrl}
               startContent={
                 <Icon
-                  icon={selectedPlatform === "instagram" ? "solar:link-linear" : "solar:at-linear"}
+                  icon={
+                    accountType === "hashtag"
+                      ? "solar:hashtag-bold"
+                      : accountType === "keyword"
+                        ? "solar:magnifer-bold"
+                        : selectedPlatform === "instagram"
+                          ? "solar:link-linear"
+                          : "solar:at-linear"
+                  }
                   width={18}
                   className="text-gray-500"
                 />
@@ -224,7 +281,7 @@ export function AddAccountModal({
             )}
           </div>
 
-          {/* Enable Instant Alerts */}
+          {/* Enable Instant Alerts
           <div className="flex items-center justify-between p-4 bg-[#0d0f1a] rounded-xl border border-[#2a2d3e]">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-green-500/10 rounded-lg">
@@ -244,7 +301,7 @@ export function AddAccountModal({
                 wrapper: enableAlerts ? "bg-accent-400" : "bg-gray-600",
               }}
             />
-          </div>
+          </div> */}
 
           {/* Error Message */}
           {error && (
@@ -266,6 +323,9 @@ export function AddAccountModal({
           >
             Start Tracking
           </Button>
+          <p className="text-xs text-text-tertiary text-center underline">
+            1 credit/account/week
+          </p>
         </ModalBody>
       </ModalContent>
     </Modal>

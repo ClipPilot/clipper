@@ -23,6 +23,8 @@ export interface UploadProgress {
   speed: number;
 }
 
+export type ConversionMode = "standard" | "gaming" | "speaker-zoom" | "center-crop" | "active-speaker";
+
 export interface SubmitClipParams {
   teamId: number;
   s3Key: string;
@@ -40,6 +42,7 @@ export interface SubmitClipParams {
   captions?: boolean;
   captionColor?: string;
   captionFont?: string;
+  conversionMode?: ConversionMode;
 }
 
 export interface SubmitClipResponse {
@@ -79,27 +82,28 @@ export interface SubmitBatchClipParams {
   captions?: boolean;
   captionColor?: string;
   captionFont?: string;
+  conversionMode?: ConversionMode;
 }
 
-export interface YouTubeVideoInfo {
+export interface VideoUrlInfo {
   title: string;
   duration: number;
   filesize: number;
   thumbnail: string;
   uploader: string;
+  platform: string;
 }
 
-export interface YouTubeDownloadProgress {
+export interface VideoDownloadProgress {
   type: "start" | "progress" | "uploading" | "complete" | "error";
   message?: string;
   percent?: number;
   speed?: string;
   eta?: string;
-  downloaded?: number;
-  total?: number;
   s3Key?: string;
   fileName?: string;
   fileSize?: number;
+  downloadUrl?: string;
   error?: string;
 }
 
@@ -497,8 +501,8 @@ class VideoAPI {
     return await response.json();
   }
 
-  async getYouTubeVideoInfo(url: string): Promise<YouTubeVideoInfo> {
-    const response = await apiFetch(`${API_URL}/clip-video/youtube/info`, {
+  async getVideoInfo(url: string): Promise<VideoUrlInfo> {
+    const response = await apiFetch(`${API_URL}/clip-video/url/info`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url }),
@@ -514,13 +518,13 @@ class VideoAPI {
     return await response.json();
   }
 
-  async downloadYouTubeVideo(
+  async downloadFromUrl(
     url: string,
     teamId: number,
-    onProgress?: (progress: YouTubeDownloadProgress) => void
-  ): Promise<{ s3Key: string; fileName: string; fileSize: number }> {
+    onProgress?: (progress: VideoDownloadProgress) => void
+  ): Promise<{ s3Key: string; fileName: string; fileSize: number; downloadUrl?: string }> {
     const token = localStorage.getItem("access_token");
-    const response = await fetch(`${API_URL}/clip-video/youtube/download`, {
+    const response = await fetch(`${API_URL}/clip-video/url/download`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -540,7 +544,7 @@ class VideoAPI {
     if (!reader) throw new Error("No response body");
 
     const decoder = new TextDecoder();
-    let result: { s3Key: string; fileName: string; fileSize: number } | null =
+    let result: { s3Key: string; fileName: string; fileSize: number; downloadUrl?: string } | null =
       null;
 
     while (true) {
@@ -553,14 +557,15 @@ class VideoAPI {
       for (const line of lines) {
         if (line.startsWith("data: ")) {
           try {
-            const data = JSON.parse(line.slice(6)) as YouTubeDownloadProgress;
+            const data = JSON.parse(line.slice(6)) as VideoDownloadProgress;
             if (onProgress) onProgress(data);
 
             if (data.type === "complete" && data.s3Key) {
               result = {
                 s3Key: data.s3Key,
-                fileName: data.fileName || "youtube_video.mp4",
+                fileName: data.fileName || "video.mp4",
                 fileSize: data.fileSize || 0,
+                downloadUrl: data.downloadUrl,
               };
             }
 

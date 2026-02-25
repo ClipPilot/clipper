@@ -12,7 +12,7 @@ import {
   getVideoInfo,
   downloadVideo,
   downloadVideoSync,
-} from "../controllers/youtube.controller";
+} from "../controllers/videoDownload.controller";
 import { requireAuth, requireSeatAccess } from "../middleware/auth.middleware";
 
 const router = Router();
@@ -244,11 +244,12 @@ router.post("/multipart/abort", requireAuth, abortMultipartUpload);
 
 /**
  * @openapi
- * /clip-video/youtube/info:
+ * /clip-video/url/info:
  *   post:
- *     summary: Get YouTube video info
+ *     summary: Get video info from URL
+ *     description: Fetches metadata for a video URL. Supports YouTube, Twitch, Kick, Vimeo, Instagram, TikTok, and 1000+ other sites via yt-dlp.
  *     tags:
- *       - Clips
+ *       - Video URL Download
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -266,44 +267,16 @@ router.post("/multipart/abort", requireAuth, abortMultipartUpload);
  *       200:
  *         description: Video info retrieved
  */
-router.post("/youtube/info", requireAuth, getVideoInfo);
+router.post("/url/info", requireAuth, getVideoInfo);
 
 /**
  * @openapi
- * /clip-video/youtube/download:
+ * /clip-video/url/download:
  *   post:
- *     summary: Start async YouTube video download
+ *     summary: Download video from URL with SSE progress
+ *     description: Downloads a video from any supported URL, uploads to S3, and streams progress via SSE.
  *     tags:
- *       - Clips
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - url
- *               - teamId
- *             properties:
- *               url:
- *                 type: string
- *               teamId:
- *                 type: integer
- *     responses:
- *       202:
- *         description: Download started
- */
-router.post("/youtube/download", requireAuth, downloadVideo);
-
-/**
- * @openapi
- * /clip-video/youtube/download-sync:
- *   post:
- *     summary: Download YouTube video synchronously
- *     tags:
- *       - Clips
+ *       - Video URL Download
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -322,9 +295,39 @@ router.post("/youtube/download", requireAuth, downloadVideo);
  *                 type: integer
  *     responses:
  *       200:
- *         description: Video downloaded
+ *         description: SSE stream with download progress
  */
-router.post("/youtube/download-sync", requireAuth, downloadVideoSync);
+router.post("/url/download", requireAuth, downloadVideo);
+
+/**
+ * @openapi
+ * /clip-video/url/download-sync:
+ *   post:
+ *     summary: Download video from URL synchronously
+ *     description: Downloads a video from any supported URL and uploads to S3. Returns result when complete.
+ *     tags:
+ *       - Video URL Download
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - url
+ *               - teamId
+ *             properties:
+ *               url:
+ *                 type: string
+ *               teamId:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Video downloaded and uploaded to S3
+ */
+router.post("/url/download-sync", requireAuth, downloadVideoSync);
 
 /**
  * @openapi
@@ -1090,6 +1093,13 @@ router.post(
   requireAuth,
   requireSeatAccess,
   clipManagerController.updateCaptions.bind(clipManagerController)
+);
+
+router.post(
+  "/teams/:teamId/clips/:clipId/generate-captions",
+  requireAuth,
+  requireSeatAccess,
+  clipManagerController.generateCaptions.bind(clipManagerController)
 );
 
 /**

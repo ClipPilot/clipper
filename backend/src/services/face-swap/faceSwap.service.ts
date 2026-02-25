@@ -9,7 +9,7 @@ import { applyJumbledMetadata } from "../../utils/videoMetadata";
 // Mobile-compatible H.264 encoding settings
 const MOBILE_VIDEO_SETTINGS = [
   "-profile:v main",
-  "-level 3.1",
+  "-level 4.0",
   "-pix_fmt yuv420p",
   "-r 30",
   "-g 30",

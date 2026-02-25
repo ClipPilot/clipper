@@ -274,7 +274,7 @@ router.get("/v1/wallet", validateAPIKey, getWalletV1Controller);
  *               video_url:
  *                 type: string
  *                 format: uri
- *                 description: Public URL of the video to clip
+ *                 description: URL of the video to clip. Supports direct video URLs, YouTube, Instagram, TikTok, and X links.
  *               num_clips:
  *                 type: integer
  *                 minimum: 1
@@ -313,14 +313,16 @@ router.get("/v1/wallet", validateAPIKey, getWalletV1Controller);
  *                 type: string
  *                 enum: [viral, business, general, gaming]
  *                 default: viral
- *               captions_enabled:
- *                 type: string
- *                 enum: ["true", "false"]
- *                 default: "false"
- *               captions_color:
- *                 type: string
- *                 enum: [white, black, red, orange, yellow, green, teal, blue, purple, pink]
- *                 default: white
+ *               captions:
+ *                 type: object
+ *                 properties:
+ *                   enabled:
+ *                     type: boolean
+ *                     default: false
+ *                   color:
+ *                     type: string
+ *                     enum: [white, black, red, orange, yellow, green, teal, blue, purple, pink]
+ *                     default: white
  *     responses:
  *       200:
  *         description: Clip job submitted
@@ -330,7 +332,8 @@ router.get("/v1/wallet", validateAPIKey, getWalletV1Controller);
  *               type: object
  *               properties:
  *                 job_id:
- *                   type: integer
+ *                   type: string
+ *                   format: uuid
  *                 num_clips:
  *                   type: integer
  *                 cost_cents:
@@ -364,8 +367,9 @@ router.post("/v1/clip", validateAPIKey, upload.single("video"), createClipJobCon
  *         name: jobId
  *         required: true
  *         schema:
- *           type: integer
- *         description: The job_id returned from POST /v1/clip
+ *           type: string
+ *           format: uuid
+ *         description: The job_id (UUID) returned from POST /v1/clip
  *     responses:
  *       200:
  *         description: Job status
@@ -377,7 +381,8 @@ router.post("/v1/clip", validateAPIKey, upload.single("video"), createClipJobCon
  *                   description: Job is still processing
  *                   properties:
  *                     job_id:
- *                       type: integer
+ *                       type: string
+ *                       format: uuid
  *                     status:
  *                       type: string
  *                       example: processing
@@ -392,7 +397,8 @@ router.post("/v1/clip", validateAPIKey, upload.single("video"), createClipJobCon
  *                   description: All clips finished
  *                   properties:
  *                     job_id:
- *                       type: integer
+ *                       type: string
+ *                       format: uuid
  *                     status:
  *                       type: string
  *                       example: completed

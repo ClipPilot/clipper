@@ -3,20 +3,23 @@ import { ApifyClient } from "apify-client";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import * as schema from "@clipper/shared-db";
-import { eq, and, inArray, sql } from "drizzle-orm";
+import { eq, and, or, lte, inArray, sql } from "drizzle-orm";
 
 const DATABASE_URL = process.env.DATABASE_URL!;
 const APIFY_API_TOKEN = process.env.APIFY_API_TOKEN!;
+const SOCIALDATA_API_KEY = process.env.SOCIALDATA_API_KEY || "";
 const INSTAGRAM_SCRAPER_ACTOR = "apify/instagram-scraper";
 const INSTAGRAM_PROFILE_SCRAPER_ACTOR = "apify/instagram-profile-scraper";
 const TIKTOK_SCRAPER_ACTOR = "clockworks/tiktok-scraper";
 const X_POSTS_SCRAPER_ACTOR = "apidojo/twitter-scraper-lite";
 const X_VIEWS_SCRAPER_ACTOR = "scrape.badger/twitter-tweets-scraper";
-const SYNC_INTERVAL = 6 // every 6 hours
+const SYNC_INTERVAL = 12 // every 12 hours
 const SYNCS_PER_DAY = Math.floor(24 / SYNC_INTERVAL)
-const MAX_METRICS_HISTORY = 28 * SYNCS_PER_DAY;
+const SYNCS_PER_WEEK = SYNCS_PER_DAY * 7; // 14 syncs = 1 credit
+const SCRAPE_WINDOW_DAYS = 31;
+const MAX_METRICS_HISTORY = SCRAPE_WINDOW_DAYS * SYNCS_PER_DAY;
 const MAX_FOLLOWER_HISTORY = 180; // ~6 months of daily syncs
-const SCRAPE_WINDOW_DAYS = 28;
+const STALE_SYNC_MINUTES = 15;
 
 let pool: Pool | null = null;
 
@@ -196,6 +199,9 @@ async function scrapeTikTokAccount(
 ): Promise<{ posts: InstagramPost[]; profile: InstagramProfile | null }> {
   const input = {
     profiles: [username],
+    oldestPostDateUnified: `${SCRAPE_WINDOW_DAYS} days`,
+    profileScrapeSections: ["videos"],
+    profileSorting: "latest",
     resultsPerPage: 100,
     shouldDownloadCovers: false,
     shouldDownloadVideos: false,
@@ -238,6 +244,111 @@ async function scrapeTikTokAccount(
   console.log(`[Apify/TikTok] Parsed ${posts.length} posts, profile=${profile ? "found" : "not found"}`);
 
   return { posts, profile };
+}
+
+// ── Instagram Hashtag ──
+
+async function scrapeInstagramHashtag(
+  client: ApifyClient,
+  hashtag: string
+): Promise<{ posts: InstagramPost[]; profile: null }> {
+  const tag = hashtag.replace(/^#/, "").toLowerCase();
+  const input = {
+    addParentData: false,
+    directUrls: [`https://www.instagram.com/explore/tags/${tag}/`],
+    onlyPostsNewerThan: `${SCRAPE_WINDOW_DAYS} days`,
+    resultsLimit: 100,
+    resultsType: "posts",
+    searchType: "hashtag",
+  };
+
+  console.log(`[Apify/IG-Hashtag] Calling actor with input:`, JSON.stringify(input, null, 2));
+  const run = await client.actor(INSTAGRAM_SCRAPER_ACTOR).call(input);
+  const { items } = await client.dataset(run.defaultDatasetId).listItems();
+  console.log(`[Apify/IG-Hashtag] Dataset returned ${items.length} items`);
+
+  const posts: InstagramPost[] = items
+    .filter((item: any) => item.type !== "profile" && !item.profilePicUrl)
+    .map((item) => normalizePostData(item));
+
+  return { posts, profile: null };
+}
+
+// ── TikTok Hashtag ──
+
+async function scrapeTikTokHashtag(
+  client: ApifyClient,
+  hashtag: string
+): Promise<{ posts: InstagramPost[]; profile: null }> {
+  const tag = hashtag.replace(/^#/, "").toLowerCase();
+  const input = {
+    hashtags: [`#${tag}`],
+    oldestPostDateUnified: `${SCRAPE_WINDOW_DAYS} days`,
+    resultsPerPage: 100,
+    shouldDownloadCovers: false,
+    shouldDownloadVideos: false,
+  };
+
+  console.log(`[Apify/TikTok-Hashtag] Calling actor with input:`, JSON.stringify(input, null, 2));
+  const run = await client.actor(TIKTOK_SCRAPER_ACTOR).call(input);
+  const { items } = await client.dataset(run.defaultDatasetId).listItems();
+  console.log(`[Apify/TikTok-Hashtag] Dataset returned ${items.length} items`);
+
+  const posts: InstagramPost[] = items.map((item) => normalizeTikTokPostData(item));
+  return { posts, profile: null };
+}
+
+// ── X Keyword/Hashtag Search ──
+
+async function scrapeXKeywordSearch(
+  client: ApifyClient,
+  term: string
+): Promise<{ posts: InstagramPost[]; profile: null }> {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(start.getDate() - SCRAPE_WINDOW_DAYS);
+
+  const postsInput = {
+    searchTerms: [term],
+    start: start.toISOString().split("T")[0],
+    end: end.toISOString().split("T")[0],
+    maxItems: 100,
+    sort: "Latest",
+    includeSearchTerms: false,
+  };
+
+  console.log(`[Apify/X-Search] Calling actor with input:`, JSON.stringify(postsInput, null, 2));
+  const postsRun = await client.actor(X_POSTS_SCRAPER_ACTOR).call(postsInput);
+  const { items: tweetItems } = await client.dataset(postsRun.defaultDatasetId).listItems();
+  console.log(`[Apify/X-Search] Dataset returned ${tweetItems.length} tweets`);
+
+  const tweetIds = tweetItems.map((item: any) => item.id).filter(Boolean);
+  const viewCountMap = new Map<string, number | null>();
+
+  if (tweetIds.length > 0) {
+    try {
+      const viewsInput = {
+        tweets: tweetIds.join(","),
+        max_results: 100,
+        mode: "Get a Few Tweets",
+      };
+      const viewsRun = await client.actor(X_VIEWS_SCRAPER_ACTOR).call(viewsInput);
+      const { items: viewItems } = await client.dataset(viewsRun.defaultDatasetId).listItems();
+      for (const item of viewItems) {
+        const vi = item as any;
+        viewCountMap.set(String(vi.id), vi.view_count ?? null);
+      }
+      console.log(`[Apify/X-Search] Got view counts for ${viewCountMap.size} tweets`);
+    } catch (err) {
+      console.warn(`[Apify/X-Search] Failed to fetch view counts for "${term}":`, err);
+    }
+  }
+
+  const posts: InstagramPost[] = tweetItems.map((item: any) =>
+    normalizeXPostData(item, viewCountMap.get(String(item.id)) ?? null)
+  );
+
+  return { posts, profile: null };
 }
 
 // ── X (Twitter) helpers ──
@@ -347,6 +458,14 @@ async function upsertPost(
 ): Promise<boolean> {
   if (!postData.id) return false;
 
+  // Skip posts outside the scrape window
+  if (postData.timestamp) {
+    const postDate = new Date(postData.timestamp);
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - SCRAPE_WINDOW_DAYS);
+    if (postDate < cutoff) return false;
+  }
+
   const [existingPost] = await db
     .select()
     .from(schema.viralityPosts)
@@ -360,8 +479,8 @@ async function upsertPost(
 
   const newMetric: MetricsEntry = {
     recorded_at: new Date().toISOString(),
-    likes: postData.likesCount,
-    comments: postData.commentsCount,
+    likes: postData.likesCount || 0,
+    comments: postData.commentsCount || 0,
     views: postData.videoPlayCount ?? null,
   };
 
@@ -377,9 +496,10 @@ async function upsertPost(
     await db
       .update(schema.viralityPosts)
       .set({
-        like_count: postData.likesCount,
-        comment_count: postData.commentsCount,
+        like_count: postData.likesCount || 0,
+        comment_count: postData.commentsCount || 0,
         video_play_count: postData.videoPlayCount,
+        thumbnail_url: postData.displayUrl || existingPost.thumbnail_url,
         metrics_history: trimmed,
         updated_at: new Date(),
       })
@@ -393,15 +513,15 @@ async function upsertPost(
       post_url: postData.url || (platform === "x"
         ? `https://x.com/i/status/${postData.id}`
         : platform === "tiktok"
-          ? postData.url
+          ? postData.url || ""
           : `https://www.instagram.com/p/${postData.shortCode}/`),
-      thumbnail_url: platform === "tiktok" ? postData.displayUrl : null,
+      thumbnail_url: postData.displayUrl || null,
       caption: postData.caption,
       hashtags: postData.hashtags || [],
       post_type: postData.type,
       posted_at: postData.timestamp ? new Date(postData.timestamp) : null,
-      like_count: postData.likesCount,
-      comment_count: postData.commentsCount,
+      like_count: postData.likesCount || 0,
+      comment_count: postData.commentsCount || 0,
       video_play_count: postData.videoPlayCount,
       metrics_history: [newMetric],
       created_at: new Date(),
@@ -414,10 +534,45 @@ async function upsertPost(
   return true;
 }
 
+/**
+ * Fetch X follower count from SocialData API.
+ * Only returns followersCount — all other profile fields come from Apify scrapers.
+ */
+async function fetchXFollowerCount(username: string): Promise<Partial<InstagramProfile> | null> {
+  if (!SOCIALDATA_API_KEY) {
+    console.warn("[SocialData] SOCIALDATA_API_KEY not configured, skipping X follower fetch");
+    return null;
+  }
+
+  try {
+    const res = await fetch(`https://api.socialdata.tools/twitter/user/${encodeURIComponent(username)}`, {
+      headers: {
+        Authorization: `Bearer ${SOCIALDATA_API_KEY}`,
+        Accept: "application/json",
+      },
+    });
+
+    if (!res.ok) {
+      console.warn(`[SocialData] API error for @${username}: ${res.status} ${res.statusText}`);
+      return null;
+    }
+
+    const data: any = await res.json();
+    console.log(`[SocialData] Fetched X follower count for @${username}: ${data.followers_count}`);
+
+    return {
+      followersCount: data.followers_count ?? 0,
+    };
+  } catch (err) {
+    console.warn(`[SocialData] Failed to fetch X follower count for @${username}:`, err);
+    return null;
+  }
+}
+
 async function updateAccountProfile(
   db: ReturnType<typeof drizzle>,
   accountId: number,
-  profile: InstagramProfile
+  profile: Partial<InstagramProfile>
 ) {
   // Fetch existing follower_history
   const [existing] = await db
@@ -441,22 +596,69 @@ async function updateAccountProfile(
     ? history.slice(-MAX_FOLLOWER_HISTORY)
     : history;
 
+  const updates: Record<string, any> = {
+    follower_history: trimmed,
+    updated_at: new Date(),
+  };
+  if (profile.fullName !== undefined) updates.display_name = profile.fullName;
+  if (profile.profilePicUrl !== undefined) updates.avatar_url = profile.profilePicUrl;
+  if (profile.biography !== undefined) updates.bio = profile.biography;
+  if (profile.followersCount !== undefined) updates.follower_count = profile.followersCount;
+  if (profile.followsCount !== undefined) updates.following_count = profile.followsCount;
+  if (profile.postsCount !== undefined) updates.post_count = profile.postsCount;
+  if (profile.isVerified !== undefined) updates.is_verified = profile.isVerified;
+
   await db
     .update(schema.viralityAccounts)
-    .set({
-      display_name: profile.fullName,
-      avatar_url: profile.profilePicUrl,
-      bio: profile.biography,
-      follower_count: profile.followersCount,
-      following_count: profile.followsCount,
-      post_count: profile.postsCount,
-      follower_history: trimmed,
-      is_verified: profile.isVerified || false,
-      updated_at: new Date(),
-    })
+    .set(updates)
     .where(eq(schema.viralityAccounts.id, accountId));
 
-  console.log(`[DB] Updated profile for account ${accountId}: ${profile.fullName} | followers=${profile.followersCount} following=${profile.followsCount} posts=${profile.postsCount} | follower_history: ${trimmed.length} entries`);
+  console.log(`[DB] Updated profile for account ${accountId}: followers=${profile.followersCount ?? "N/A"} | follower_history: ${trimmed.length} entries`);
+}
+
+// ── Credit helpers ──
+
+async function consumeOneCredit(
+  db: ReturnType<typeof drizzle>,
+  teamId: number
+): Promise<boolean> {
+  // Get latest usage stats for the team
+  const [stats] = await db
+    .select()
+    .from(schema.usageStats)
+    .where(eq(schema.usageStats.team_id, teamId))
+    .orderBy(sql`${schema.usageStats.created_at} DESC`)
+    .limit(1);
+
+  if (!stats) return false;
+
+  // Atomic increment: only succeeds if clips_created < limit (prevents double-charge under concurrency)
+  const baseUpdated = await db
+    .update(schema.usageStats)
+    .set({ clips_created: sql`${schema.usageStats.clips_created} + 1`, updated_at: new Date() })
+    .where(
+      and(
+        eq(schema.usageStats.id, stats.id),
+        sql`${schema.usageStats.clips_created} < ${schema.usageStats.limit}`
+      )
+    )
+    .returning({ id: schema.usageStats.id });
+
+  if (baseUpdated.length > 0) return true;
+
+  // Atomic decrement: only succeeds if addon_clips_remaining > 0
+  const addonUpdated = await db
+    .update(schema.teams)
+    .set({ addon_clips_remaining: sql`${schema.teams.addon_clips_remaining} - 1`, updated_at: new Date() })
+    .where(
+      and(
+        eq(schema.teams.id, teamId),
+        sql`${schema.teams.addon_clips_remaining} > 0`
+      )
+    )
+    .returning({ id: schema.teams.id });
+
+  return addonUpdated.length > 0;
 }
 
 // ── Lambda handler ──
@@ -482,21 +684,78 @@ export const handler: Handler = async (event: any, context: Context) => {
 
   let accountsSynced = 0;
   let accountsFailed = 0;
+  let accountsDeactivated = 0;
   let postsUpserted = 0;
 
   try {
+    // Clean up stale syncs stuck in pending/syncing for more than 15 minutes
+    const cutoff = new Date(Date.now() - STALE_SYNC_MINUTES * 60 * 1000);
+    const stale = await db
+      .update(schema.viralityAccounts)
+      .set({
+        sync_status: "failed",
+        sync_error: `Sync timed out (stuck for more than ${STALE_SYNC_MINUTES} minutes)`,
+        updated_at: new Date(),
+      })
+      .where(
+        and(
+          or(
+            eq(schema.viralityAccounts.sync_status, "pending"),
+            eq(schema.viralityAccounts.sync_status, "syncing")
+          ),
+          lte(schema.viralityAccounts.updated_at, cutoff)
+        )
+      )
+      .returning({ id: schema.viralityAccounts.id, username: schema.viralityAccounts.username });
+
+    if (stale.length > 0) {
+      console.log(`[Cleanup] Reset ${stale.length} stale syncs: ${stale.map((s) => `@${s.username}`).join(", ")}`);
+    }
+
     const accounts = await db
       .select()
       .from(schema.viralityAccounts)
-      .where(inArray(schema.viralityAccounts.platform, ["instagram", "tiktok", "x"]));
+      .where(
+        and(
+          inArray(schema.viralityAccounts.platform, ["instagram", "tiktok", "x"]),
+          eq(schema.viralityAccounts.is_active, true)
+        )
+      );
 
-    console.log(`\n[DB] Found ${accounts.length} accounts to sync:`);
+    console.log(`\n[DB] Found ${accounts.length} active accounts to sync:`);
     for (const a of accounts) {
       console.log(`  - id=${a.id} @${a.username} (team=${a.team_id}, last_synced=${a.last_synced_at || "never"})`);
     }
 
     for (const account of accounts) {
-      console.log(`\n--- Syncing @${account.username} [${account.platform}] (id=${account.id}) ---`);
+      console.log(`\n--- Syncing @${account.username} [${account.platform}] (id=${account.id}, syncs_remaining=${account.syncs_remaining}) ---`);
+
+      // Credit check: charge 1 credit when syncs_remaining hits 0
+      if (account.syncs_remaining <= 0) {
+        const charged = await consumeOneCredit(db, account.team_id);
+        if (charged) {
+          await db
+            .update(schema.viralityAccounts)
+            .set({ syncs_remaining: SYNCS_PER_WEEK, updated_at: new Date() })
+            .where(eq(schema.viralityAccounts.id, account.id));
+          console.log(`[Credit] Charged 1 credit for @${account.username} (team=${account.team_id}), reset syncs_remaining=${SYNCS_PER_WEEK}`);
+        } else {
+          // No credits — deactivate account
+          await db
+            .update(schema.viralityAccounts)
+            .set({ is_active: false, updated_at: new Date() })
+            .where(eq(schema.viralityAccounts.id, account.id));
+          accountsDeactivated++;
+          console.log(`[Credit] No credits for team=${account.team_id}, deactivated @${account.username}`);
+          continue;
+        }
+      } else {
+        // Decrement syncs_remaining
+        await db
+          .update(schema.viralityAccounts)
+          .set({ syncs_remaining: account.syncs_remaining - 1, updated_at: new Date() })
+          .where(eq(schema.viralityAccounts.id, account.id));
+      }
 
       await db
         .update(schema.viralityAccounts)
@@ -504,20 +763,53 @@ export const handler: Handler = async (event: any, context: Context) => {
         .where(eq(schema.viralityAccounts.id, account.id));
 
       try {
-        const { posts, profile } = account.platform === "tiktok"
-          ? await scrapeTikTokAccount(apifyClient, account.username)
-          : account.platform === "x"
-            ? await scrapeXAccount(apifyClient, account.username)
-            : await scrapeInstagramAccount(apifyClient, account.username);
+        let posts: InstagramPost[];
+        let profile: InstagramProfile | null = null;
+        const accountType = account.account_type || "profile";
 
-        // Fallback: fetch profile separately if posts scrape didn't include it (Instagram only)
-        const resolvedProfile = profile
-          ?? (account.platform === "instagram"
-            ? await scrapeInstagramProfile(apifyClient, account.username)
-            : null);
+        if (accountType === "hashtag") {
+          const result = account.platform === "tiktok"
+            ? await scrapeTikTokHashtag(apifyClient, account.username)
+            : account.platform === "x"
+              ? await scrapeXKeywordSearch(apifyClient, `#${account.username}`)
+              : await scrapeInstagramHashtag(apifyClient, account.username);
+          posts = result.posts;
+        } else if (accountType === "keyword") {
+          const result = account.platform === "x"
+            ? await scrapeXKeywordSearch(apifyClient, account.username)
+            : account.platform === "tiktok"
+              ? await scrapeTikTokHashtag(apifyClient, account.username)
+              : await scrapeInstagramHashtag(apifyClient, account.username);
+          posts = result.posts;
+        } else {
+          const result = account.platform === "tiktok"
+            ? await scrapeTikTokAccount(apifyClient, account.username)
+            : account.platform === "x"
+              ? await scrapeXAccount(apifyClient, account.username)
+              : await scrapeInstagramAccount(apifyClient, account.username);
+          posts = result.posts;
+          profile = result.profile;
+        }
 
-        if (resolvedProfile) {
-          await updateAccountProfile(db, account.id, resolvedProfile);
+        // Only update profile for profile-type accounts
+        if (accountType === "profile") {
+          // For IG/TikTok: use the full profile from Apify (or fetch it separately for IG)
+          const resolvedProfile = profile
+            ?? (account.platform === "instagram"
+              ? await scrapeInstagramProfile(apifyClient, account.username)
+              : null);
+
+          if (resolvedProfile) {
+            await updateAccountProfile(db, account.id, resolvedProfile);
+          }
+
+          // For X: fetch follower count separately from SocialData (only source for X followers)
+          if (account.platform === "x") {
+            const xFollowers = await fetchXFollowerCount(account.username);
+            if (xFollowers) {
+              await updateAccountProfile(db, account.id, xFollowers);
+            }
+          }
         }
 
         console.log(`[DB] Upserting ${posts.length} posts...`);
@@ -562,15 +854,243 @@ export const handler: Handler = async (event: any, context: Context) => {
   const result = {
     accounts_synced: accountsSynced,
     accounts_failed: accountsFailed,
+    accounts_deactivated: accountsDeactivated,
     posts_upserted: postsUpserted,
     timestamp: new Date().toISOString(),
   };
 
   console.log(`\n========================================`);
   console.log(`  SYNC COMPLETE`);
-  console.log(`  Synced: ${accountsSynced} | Failed: ${accountsFailed} | Posts: ${postsUpserted}`);
+  console.log(`  Synced: ${accountsSynced} | Failed: ${accountsFailed} | Deactivated: ${accountsDeactivated} | Posts: ${postsUpserted}`);
   console.log(`========================================\n`);
   console.log(JSON.stringify(result, null, 2));
 
   return { statusCode: 200, body: JSON.stringify(result) };
+};
+
+// ── Orchestrator handler (Step Functions) ──
+
+export const orchestratorHandler: Handler = async (event: any, context: Context) => {
+  console.log(`\n========================================`);
+  console.log(`  VIRALITY SYNC ORCHESTRATOR - ${new Date().toISOString()}`);
+  console.log(`========================================\n`);
+
+  if (!DATABASE_URL) {
+    throw new Error("DATABASE_URL not configured");
+  }
+
+  const localPool = new Pool({ connectionString: DATABASE_URL });
+  const db = drizzle(localPool, { schema });
+
+  try {
+    // Clean up stale syncs stuck in pending/syncing for more than 15 minutes
+    const cutoff = new Date(Date.now() - STALE_SYNC_MINUTES * 60 * 1000);
+    const stale = await db
+      .update(schema.viralityAccounts)
+      .set({
+        sync_status: "failed",
+        sync_error: `Sync timed out (stuck for more than ${STALE_SYNC_MINUTES} minutes)`,
+        updated_at: new Date(),
+      })
+      .where(
+        and(
+          or(
+            eq(schema.viralityAccounts.sync_status, "pending"),
+            eq(schema.viralityAccounts.sync_status, "syncing")
+          ),
+          lte(schema.viralityAccounts.updated_at, cutoff)
+        )
+      )
+      .returning({ id: schema.viralityAccounts.id, username: schema.viralityAccounts.username });
+
+    if (stale.length > 0) {
+      console.log(`[Cleanup] Reset ${stale.length} stale syncs: ${stale.map((s) => `@${s.username}`).join(", ")}`);
+    }
+
+    const accounts = await db
+      .select({
+        id: schema.viralityAccounts.id,
+        username: schema.viralityAccounts.username,
+        platform: schema.viralityAccounts.platform,
+        team_id: schema.viralityAccounts.team_id,
+        syncs_remaining: schema.viralityAccounts.syncs_remaining,
+        account_type: schema.viralityAccounts.account_type,
+      })
+      .from(schema.viralityAccounts)
+      .where(
+        and(
+          inArray(schema.viralityAccounts.platform, ["instagram", "tiktok", "x"]),
+          eq(schema.viralityAccounts.is_active, true)
+        )
+      );
+
+    console.log(`[DB] Found ${accounts.length} active accounts to sync`);
+    for (const a of accounts) {
+      console.log(`  - id=${a.id} @${a.username} (team=${a.team_id})`);
+    }
+
+    return { accounts };
+  } finally {
+    await localPool.end();
+  }
+};
+
+// ── Worker handler (Step Functions Map iterator) ──
+
+export const workerHandler: Handler = async (event: any, context: Context) => {
+  const { id: accountId, username } = event;
+
+  console.log(`\n========================================`);
+  console.log(`  VIRALITY SYNC WORKER - @${username} (id=${accountId})`);
+  console.log(`  ${new Date().toISOString()}`);
+  console.log(`========================================\n`);
+
+  if (!DATABASE_URL) {
+    throw new Error("DATABASE_URL not configured");
+  }
+  if (!APIFY_API_TOKEN) {
+    throw new Error("APIFY_API_TOKEN not configured");
+  }
+
+  const localPool = new Pool({ connectionString: DATABASE_URL });
+  const db = drizzle(localPool, { schema });
+  const apifyClient = new ApifyClient({ token: APIFY_API_TOKEN });
+  let postsUpserted = 0;
+
+  try {
+    // Re-fetch full account from DB for latest state
+    const [account] = await db
+      .select()
+      .from(schema.viralityAccounts)
+      .where(eq(schema.viralityAccounts.id, accountId))
+      .limit(1);
+
+    if (!account) {
+      console.log(`[Skip] Account id=${accountId} not found`);
+      return { accountId, username, status: "skipped", reason: "not_found", postsUpserted: 0 };
+    }
+
+    if (!account.is_active) {
+      console.log(`[Skip] @${account.username} is no longer active`);
+      return { accountId, username: account.username, status: "skipped", reason: "inactive", postsUpserted: 0 };
+    }
+
+    console.log(`[Sync] @${account.username} [${account.platform}] syncs_remaining=${account.syncs_remaining}`);
+
+    // Atomic decrement: only succeeds if syncs_remaining > 0 (prevents race between parallel workers)
+    const decremented = await db
+      .update(schema.viralityAccounts)
+      .set({ syncs_remaining: sql`${schema.viralityAccounts.syncs_remaining} - 1`, updated_at: new Date() })
+      .where(
+        and(
+          eq(schema.viralityAccounts.id, account.id),
+          sql`${schema.viralityAccounts.syncs_remaining} > 0`
+        )
+      )
+      .returning({ id: schema.viralityAccounts.id });
+
+    if (decremented.length === 0) {
+      // syncs_remaining was 0 — need to charge a credit
+      const charged = await consumeOneCredit(db, account.team_id);
+      if (charged) {
+        await db
+          .update(schema.viralityAccounts)
+          .set({ syncs_remaining: SYNCS_PER_WEEK - 1, updated_at: new Date() })
+          .where(eq(schema.viralityAccounts.id, account.id));
+        console.log(`[Credit] Charged 1 credit for @${account.username} (team=${account.team_id}), reset syncs_remaining=${SYNCS_PER_WEEK - 1}`);
+      } else {
+        // No credits — deactivate account
+        await db
+          .update(schema.viralityAccounts)
+          .set({ is_active: false, updated_at: new Date() })
+          .where(eq(schema.viralityAccounts.id, account.id));
+        console.log(`[Credit] No credits for team=${account.team_id}, deactivated @${account.username}`);
+        return { accountId, username: account.username, status: "deactivated", postsUpserted: 0 };
+      }
+    }
+
+    // Set sync_status to syncing
+    await db
+      .update(schema.viralityAccounts)
+      .set({ sync_status: "syncing", sync_error: null, updated_at: new Date() })
+      .where(eq(schema.viralityAccounts.id, account.id));
+
+    try {
+      let posts: InstagramPost[];
+      let profile: InstagramProfile | null = null;
+      const accountType = account.account_type || "profile";
+
+      if (accountType === "hashtag") {
+        const result = account.platform === "tiktok"
+          ? await scrapeTikTokHashtag(apifyClient, account.username)
+          : account.platform === "x"
+            ? await scrapeXKeywordSearch(apifyClient, `#${account.username}`)
+            : await scrapeInstagramHashtag(apifyClient, account.username);
+        posts = result.posts;
+      } else if (accountType === "keyword") {
+        const result = account.platform === "x"
+          ? await scrapeXKeywordSearch(apifyClient, account.username)
+          : account.platform === "tiktok"
+            ? await scrapeTikTokHashtag(apifyClient, account.username)
+            : await scrapeInstagramHashtag(apifyClient, account.username);
+        posts = result.posts;
+      } else {
+        const result = account.platform === "tiktok"
+          ? await scrapeTikTokAccount(apifyClient, account.username)
+          : account.platform === "x"
+            ? await scrapeXAccount(apifyClient, account.username)
+            : await scrapeInstagramAccount(apifyClient, account.username);
+        posts = result.posts;
+        profile = result.profile;
+      }
+
+      // Only update profile for profile-type accounts
+      if (accountType === "profile") {
+        const resolvedProfile = profile
+          ?? (account.platform === "instagram"
+            ? await scrapeInstagramProfile(apifyClient, account.username)
+            : null);
+
+        if (resolvedProfile) {
+          await updateAccountProfile(db, account.id, resolvedProfile);
+        }
+
+        if (account.platform === "x") {
+          const xFollowers = await fetchXFollowerCount(account.username);
+          if (xFollowers) {
+            await updateAccountProfile(db, account.id, xFollowers);
+          }
+        }
+      }
+
+      console.log(`[DB] Upserting ${posts.length} posts...`);
+      for (const post of posts) {
+        const ok = await upsertPost(db, account.id, post, account.platform);
+        if (ok) postsUpserted++;
+      }
+
+      // Compute total_likes from all posts for this account
+      const [likesResult] = await db
+        .select({ total: sql<number>`COALESCE(SUM(${schema.viralityPosts.like_count}), 0)` })
+        .from(schema.viralityPosts)
+        .where(eq(schema.viralityPosts.account_id, account.id));
+
+      await db
+        .update(schema.viralityAccounts)
+        .set({ sync_status: "completed", last_synced_at: new Date(), total_likes: Number(likesResult.total), updated_at: new Date() })
+        .where(eq(schema.viralityAccounts.id, account.id));
+
+      console.log(`[OK] @${account.username} completed: ${posts.length} posts upserted`);
+      return { accountId, username: account.username, status: "completed", postsUpserted };
+    } catch (error: any) {
+      console.error(`[FAIL] @${account.username}: ${error.message}`);
+      await db
+        .update(schema.viralityAccounts)
+        .set({ sync_status: "failed", sync_error: error.message || "Unknown error", updated_at: new Date() })
+        .where(eq(schema.viralityAccounts.id, account.id));
+      throw error; // Re-throw so Step Functions sees the failure
+    }
+  } finally {
+    await localPool.end();
+  }
 };

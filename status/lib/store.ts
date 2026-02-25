@@ -6,8 +6,8 @@ import {
 } from "@aws-sdk/lib-dynamodb";
 import { ServiceCheck, DailyUptime } from "./types";
 
-const TABLE_NAME = "clipster-status-checks-prod";
-const REGION = "us-west-2";
+const TABLE_NAME = process.env.DYNAMO_TABLE_NAME || "clipster-status-checks-prod";
+const REGION = process.env.AWS_REGION || "us-west-2";
 const TTL_DAYS = 91;
 
 let docClient: DynamoDBDocumentClient | null = null;
@@ -108,4 +108,12 @@ export async function getAllHistory(
     serviceIds.map(async (id) => [id, await getHistory(id)] as const)
   );
   return Object.fromEntries(entries);
+}
+
+export function isStoreConfigured(): boolean {
+  return true;
+}
+
+export function getTableInfo(): { table: string; region: string } {
+  return { table: TABLE_NAME, region: REGION };
 }

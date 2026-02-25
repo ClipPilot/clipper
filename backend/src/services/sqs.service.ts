@@ -1,6 +1,8 @@
 import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import { config } from "../config/env";
 import { PromptType } from "../constants/promptTypes";
+import type { ConversionMode } from "../constants/conversionModes";
+import type { ShotType } from "../types/ugcScript.types";
 
 const sqsClient = new SQSClient({
   region: config.aws.region,
@@ -52,6 +54,7 @@ export interface ClipVideoJob extends BaseJob {
     captions?: boolean;
     captionColor?: string;
     captionFont?: string;
+    conversionMode?: ConversionMode;
   };
   originalFileName?: string;
   fileSize?: number;
@@ -188,10 +191,10 @@ export interface VideoEditJob extends BaseJob {
       y: number;
       fontSize: number;
     };
-    // Media overlays (images/videos composited on top)
+    // Media overlays (images/videos/comments composited on top)
     overlays?: Array<{
       id: string;
-      type: "image" | "video";
+      type: "image" | "video" | "comment";
       s3Key: string;
       fileName: string;
       startTime: number;
@@ -202,6 +205,16 @@ export interface VideoEditJob extends BaseJob {
       opacity: number; // 0-1
       naturalWidth: number;
       naturalHeight: number;
+      // Comment-specific data (only when type === "comment")
+      commentData?: {
+        platform: "tiktok" | "youtube" | "instagram";
+        username: string;
+        commentText: string;
+        profilePictureS3Key?: string;
+        likesCount: number;
+        isVerified: boolean;
+        timeAgo?: string;
+      };
     }>;
   };
 }
@@ -294,7 +307,7 @@ export interface GenerateUGCVideoJob extends BaseJob {
   scenes: Array<{
     sceneId: string;
     sceneNumber: number;
-    shotType: "a-roll" | "b-roll" | "mixed";
+    shotType: ShotType;
     imageKey: string;
     dialogue: string;
     duration: number;
@@ -354,6 +367,7 @@ export interface AdPostingJob extends BaseJob {
   driveFolderId: string;
   clipPath: string;
   clipTitle: string;
+  postIds?: Array<{ id: number; platform: string }>;
 }
 
 export type VideoProcessingJob =
@@ -775,6 +789,7 @@ class SQSService {
     driveFolderId: string;
     clipPath: string;
     clipTitle: string;
+    postIds?: Array<{ id: number; platform: string }>;
   }): Promise<string> {
     const job: AdPostingJob = {
       type: "ad-posting",
@@ -785,6 +800,7 @@ class SQSService {
       driveFolderId: params.driveFolderId,
       clipPath: params.clipPath,
       clipTitle: params.clipTitle,
+      postIds: params.postIds,
       createdAt: new Date().toISOString(),
     };
 

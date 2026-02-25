@@ -1,11 +1,14 @@
 import {
   cutClip,
   mergeClips,
-  convertToVerticalBlur,
+  convertToVertical,
   addTextOverlay,
   addTextOverlayAtPosition,
   addPreviewWatermark,
 } from "./videoEditor.service";
+import type { FacecamRegion } from "./videoEditor.service";
+import type { ConversionMode } from "../../constants/conversionModes";
+import type { ActiveSpeakerSegment } from "./speakerSegments.service";
 import path from "path";
 import fs from "fs";
 import { ClipSuggestions, BatchClipSuggestions } from "../../types/ai.types";
@@ -31,6 +34,10 @@ export interface ClipServiceOptions {
   captions?: boolean;
   captionColor?: string;
   captionFont?: string;
+  conversionMode?: ConversionMode;
+  facecamRegion?: FacecamRegion | null;
+  activeSpeakerSegments?: ActiveSpeakerSegment[];
+  speakerFaceMap?: Map<number, FacecamRegion>;
 }
 
 export interface CaptionEntry {
@@ -131,7 +138,8 @@ export const createCombinedClipService = async (
   clipData: ClipSuggestions,
   transcriptionWords: TranscriptionWord[],
   options: ClipServiceOptions = {},
-  videoIndex: number = 0
+  videoIndex: number = 0,
+  onMergedRaw?: (localPath: string) => Promise<ClipServiceOptions | null>,
 ): Promise<ClipResult> => {
   const outDir = path.join(process.cwd(), "output");
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
@@ -165,9 +173,23 @@ export const createCombinedClipService = async (
   const mergedRawPath = path.join(outDir, `merged_raw_${videoIndex}_temp.mp4`);
   await mergeClips(tempFiles, mergedRawPath);
 
-  // Convert horizontal videos to 9:16 with blurred background
+  // If callback provided, run per-clip detection on the merged horizontal clip
+  // and override facecam/active-speaker options with the result
+  if (onMergedRaw) {
+    const detected = await onMergedRaw(mergedRawPath);
+    if (detected) {
+      if (detected.facecamRegion !== undefined) options.facecamRegion = detected.facecamRegion;
+      if (detected.activeSpeakerSegments) options.activeSpeakerSegments = detected.activeSpeakerSegments;
+      if (detected.speakerFaceMap) options.speakerFaceMap = detected.speakerFaceMap;
+    }
+  }
+
+  // Convert horizontal videos to 9:16 using selected conversion mode
   const mergedPath = path.join(outDir, `merged_${videoIndex}_temp.mp4`);
-  await convertToVerticalBlur(mergedRawPath, mergedPath);
+  const activeSpeakerOpts = (options.activeSpeakerSegments && options.speakerFaceMap)
+    ? { segments: options.activeSpeakerSegments, speakerFaceMap: options.speakerFaceMap }
+    : null;
+  await convertToVertical(mergedRawPath, mergedPath, options.conversionMode, options.facecamRegion, activeSpeakerOpts);
   if (fs.existsSync(mergedRawPath) && mergedRawPath !== mergedPath) {
     fs.unlinkSync(mergedRawPath);
   }
@@ -407,7 +429,8 @@ export const createBatchCombinedClipService = async (
   videoSources: BatchVideoSource[],
   clipData: BatchClipSuggestions,
   options: ClipServiceOptions = {},
-  outputIndex: number = 0
+  outputIndex: number = 0,
+  onMergedRaw?: (localPath: string) => Promise<ClipServiceOptions | null>,
 ): Promise<ClipResult> => {
   const outDir = path.join(process.cwd(), "output");
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
@@ -456,9 +479,22 @@ export const createBatchCombinedClipService = async (
   const mergedRawPath = path.join(outDir, `batch_merged_raw_${outputIndex}_temp.mp4`);
   await mergeClips(tempFiles, mergedRawPath);
 
-  // Convert horizontal videos to 9:16 with blurred background
+  // If callback provided, run per-clip detection on the merged horizontal clip
+  if (onMergedRaw) {
+    const detected = await onMergedRaw(mergedRawPath);
+    if (detected) {
+      if (detected.facecamRegion !== undefined) options.facecamRegion = detected.facecamRegion;
+      if (detected.activeSpeakerSegments) options.activeSpeakerSegments = detected.activeSpeakerSegments;
+      if (detected.speakerFaceMap) options.speakerFaceMap = detected.speakerFaceMap;
+    }
+  }
+
+  // Convert horizontal videos to 9:16 using selected conversion mode
   const mergedPath = path.join(outDir, `batch_merged_${outputIndex}_temp.mp4`);
-  await convertToVerticalBlur(mergedRawPath, mergedPath);
+  const batchActiveSpeakerOpts = (options.activeSpeakerSegments && options.speakerFaceMap)
+    ? { segments: options.activeSpeakerSegments, speakerFaceMap: options.speakerFaceMap }
+    : null;
+  await convertToVertical(mergedRawPath, mergedPath, options.conversionMode, options.facecamRegion, batchActiveSpeakerOpts);
   if (fs.existsSync(mergedRawPath) && mergedRawPath !== mergedPath) {
     fs.unlinkSync(mergedRawPath);
   }

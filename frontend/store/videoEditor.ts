@@ -56,10 +56,24 @@ export interface HeadingState {
   fontSize: number;
 }
 
+// Comment overlay types
+export type CommentPlatform = "tiktok" | "youtube" | "instagram";
+
+export interface CommentOverlayData {
+  platform: CommentPlatform;
+  username: string;
+  commentText: string;
+  profilePictureUrl?: string; // Blob URL for preview
+  profilePictureS3Key?: string; // S3 key after upload
+  likesCount: number;
+  isVerified: boolean;
+  timeAgo?: string; // e.g. "2h", "1d"
+}
+
 // Media overlay state
 export interface MediaOverlay {
   id: string;
-  type: "image" | "video";
+  type: "image" | "video" | "comment";
   s3Key: string;
   fileName: string;
   url: string; // Blob URL for preview
@@ -71,12 +85,13 @@ export interface MediaOverlay {
   opacity: number; // 0-1
   naturalWidth: number;
   naturalHeight: number;
+  commentData?: CommentOverlayData; // Only present when type === "comment"
 }
 
 // Media overlay config for API submission (no blob URLs)
 export interface MediaOverlayConfig {
   id: string;
-  type: "image" | "video";
+  type: "image" | "video" | "comment";
   s3Key: string;
   fileName: string;
   startTime: number;
@@ -87,9 +102,17 @@ export interface MediaOverlayConfig {
   opacity: number;
   naturalWidth: number;
   naturalHeight: number;
+  commentData?: {
+    platform: CommentPlatform;
+    username: string;
+    commentText: string;
+    profilePictureS3Key?: string;
+    likesCount: number;
+    isVerified: boolean;
+    timeAgo?: string;
+  };
 }
 
-// Helper to generate unique overlay IDs
 export const generateOverlayId = (): string =>
   `overlay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -119,19 +142,8 @@ export interface SegmentsState {
   selectedSegmentId: SegmentId | null;
 }
 
-// Helper to generate unique segment IDs
 export const generateSegmentId = (): SegmentId =>
   `seg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-// Full editor state for undo/redo
-export interface EditorSnapshot {
-  trim: TrimState;
-  crop: CropState;
-  speed: number;
-  audio: AudioState;
-  captions: CaptionsState;
-  heading: HeadingState | null;
-}
 
 // Segment config for API submission
 export interface SegmentConfig {
@@ -157,53 +169,44 @@ export interface VideoEditConfig {
 // Core Atoms
 // =============================================================================
 
-// Clip data
 export const editorClipAtom = atom<Clip | null>(null);
 export const editorLoadingAtom = atom<boolean>(true);
 export const editorAccessDeniedAtom = atom<boolean>(false);
 
-// Video playback
 export const videoDurationAtom = atom<number>(0);
 export const currentTimeAtom = atom<number>(0);
 export const isPlayingAtom = atom<boolean>(false);
 
-// Active tool
 export const activeToolAtom = atom<EditorTool>("trim");
 
 // =============================================================================
 // Tool State Atoms
 // =============================================================================
 
-// Trim
 export const trimStateAtom = atom<TrimState>({
   startTime: 0,
   endTime: 0,
 });
 
-// Crop
 export const cropStateAtom = atom<CropState>({
   aspectRatio: "9:16",
 });
 
-// Speed (1.0 = normal, 0.25-4.0 range)
+// 1.0 = normal playback; valid range 0.25-4.0
 export const speedStateAtom = atom<number>(1.0);
 
-// Audio
 export const audioStateAtom = atom<AudioState>({
   originalVolume: 1,
   originalMuted: false,
 });
 
-// Captions
 export const captionsEnabledAtom = atom<boolean>(true);
 export const captionsDataAtom = atom<CaptionEntry[]>([]);
 export const captionColorAtom = atom<string>("#FFD600");
 export const captionFontAtom = atom<string>("Luckiest Guy");
 
-// Heading
 export const headingStateAtom = atom<HeadingState | null>(null);
 
-// Media Overlays
 export const mediaOverlaysAtom = atom<MediaOverlay[]>([]);
 export const selectedOverlayIdAtom = atom<string | null>(null);
 export const selectedOverlayAtom = atom((get) => {
@@ -217,7 +220,6 @@ export const selectedOverlayAtom = atom((get) => {
 // Segment Atoms
 // =============================================================================
 
-// Main segments state
 export const segmentsStateAtom = atom<SegmentsState>({
   segments: [],
   selectedSegmentId: null,
@@ -227,7 +229,6 @@ export const segmentsStateAtom = atom<SegmentsState>({
 export const segmentHistoryAtom = atom<Segment[][]>([]);
 export const segmentHistoryIndexAtom = atom<number>(-1);
 
-// Derived: Get selected segment
 export const selectedSegmentAtom = atom((get) => {
   const state = get(segmentsStateAtom);
   if (!state.selectedSegmentId) return null;
@@ -240,20 +241,17 @@ export const activeSegmentsAtom = atom((get) => {
   return state.segments;
 });
 
-// Derived: Can undo
 export const canUndoAtom = atom((get) => {
   const index = get(segmentHistoryIndexAtom);
   return index > 0;
 });
 
-// Derived: Can redo
 export const canRedoAtom = atom((get) => {
   const history = get(segmentHistoryAtom);
   const index = get(segmentHistoryIndexAtom);
   return index < history.length - 1;
 });
 
-// Write atom: Undo
 export const undoSegmentsAtom = atom(null, (get, set) => {
   const history = get(segmentHistoryAtom);
   const index = get(segmentHistoryIndexAtom);
@@ -268,7 +266,6 @@ export const undoSegmentsAtom = atom(null, (get, set) => {
   }
 });
 
-// Write atom: Redo
 export const redoSegmentsAtom = atom(null, (get, set) => {
   const history = get(segmentHistoryAtom);
   const index = get(segmentHistoryIndexAtom);
@@ -283,7 +280,6 @@ export const redoSegmentsAtom = atom(null, (get, set) => {
   }
 });
 
-// Write atom: Split segment at given time
 export const splitSegmentAtom = atom(null, (get, set, splitTime: number) => {
   const state = get(segmentsStateAtom);
   const segmentToSplit = state.segments.find(
@@ -326,7 +322,6 @@ export const splitSegmentAtom = atom(null, (get, set, splitTime: number) => {
   });
 });
 
-// Write atom: Delete (cut) selected segment - actually removes it
 export const deleteSegmentAtom = atom(null, (get, set) => {
   const state = get(segmentsStateAtom);
   if (!state.selectedSegmentId) return;
@@ -349,7 +344,6 @@ export const deleteSegmentAtom = atom(null, (get, set) => {
   });
 });
 
-// Write atom: Select a segment
 export const selectSegmentAtom = atom(null, (get, set, segmentId: SegmentId | null) => {
   const state = get(segmentsStateAtom);
   set(segmentsStateAtom, {
@@ -358,7 +352,7 @@ export const selectSegmentAtom = atom(null, (get, set, segmentId: SegmentId | nu
   });
 });
 
-// Write atom: Update segment speed (no history - speed changes are frequent)
+// Speed updates skip history — changes are too frequent to record individually
 export const updateSegmentSpeedAtom = atom(
   null,
   (get, set, { segmentId, speed }: { segmentId: SegmentId; speed: number }) => {
@@ -371,7 +365,6 @@ export const updateSegmentSpeedAtom = atom(
   }
 );
 
-// Write atom: Update all segments speed (no history - speed changes are frequent)
 export const updateAllSegmentsSpeedAtom = atom(null, (get, set, speed: number) => {
   const state = get(segmentsStateAtom);
 
@@ -381,7 +374,7 @@ export const updateAllSegmentsSpeedAtom = atom(null, (get, set, speed: number) =
   });
 });
 
-// Write atom: Trim/resize a segment (no history during drag - too frequent)
+// Trim during drag skips history — commit is done on drag end via commitSegmentMoveAtom
 export const trimSegmentAtom = atom(
   null,
   (
@@ -409,7 +402,6 @@ export const trimSegmentAtom = atom(
   }
 );
 
-// Write atom: Move segment to new time position (shift start/end together)
 export const moveSegmentAtom = atom(
   null,
   (
@@ -437,7 +429,6 @@ export const moveSegmentAtom = atom(
   }
 );
 
-// Write atom: Save segment move to history (call after drag ends)
 export const commitSegmentMoveAtom = atom(null, (get, set) => {
   const state = get(segmentsStateAtom);
   const history = get(segmentHistoryAtom);
@@ -456,7 +447,6 @@ export const commitSegmentMoveAtom = atom(null, (get, set) => {
   set(segmentHistoryIndexAtom, newHistory.length - 1);
 });
 
-// Write atom: Reorder segments (swap positions in array)
 export const reorderSegmentsAtom = atom(
   null,
   (get, set, { fromIndex, toIndex }: { fromIndex: number; toIndex: number }) => {
@@ -486,7 +476,6 @@ export const reorderSegmentsAtom = atom(
   }
 );
 
-// Write atom: Initialize segments (called when video loads)
 export const initializeSegmentsAtom = atom(null, (get, set, duration: number) => {
   const initialSegment: Segment = {
     id: generateSegmentId(),
@@ -522,13 +511,6 @@ export const waveformDataAtom = atom<number[]>([]);
 export const isGeneratingWaveformAtom = atom<boolean>(false);
 
 // =============================================================================
-// Edit History Atoms (for undo/redo)
-// =============================================================================
-
-export const editHistoryAtom = atom<EditorSnapshot[]>([]);
-export const historyIndexAtom = atom<number>(-1);
-
-// =============================================================================
 // Derived Atoms
 // =============================================================================
 
@@ -551,7 +533,6 @@ export const finalDurationAtom = atom((get) => {
   return duration / speed;
 });
 
-// Captions state combined
 export const captionsStateAtom = atom((get) => ({
   enabled: get(captionsEnabledAtom),
   data: get(captionsDataAtom),
@@ -559,7 +540,6 @@ export const captionsStateAtom = atom((get) => ({
   font: get(captionFontAtom),
 }));
 
-// Combined edit config for API submission
 export const editConfigAtom = atom<VideoEditConfig>((get) => {
   const trim = get(trimStateAtom);
   const crop = get(cropStateAtom);
@@ -627,16 +607,26 @@ export const editConfigAtom = atom<VideoEditConfig>((get) => {
   const overlays = get(mediaOverlaysAtom);
   if (overlays.length > 0) {
     config.overlays = overlays
-      .filter((o) => o.s3Key) // Only include uploaded overlays
-      .map(({ id, type, s3Key, fileName, startTime, endTime, x, y, scale, opacity, naturalWidth, naturalHeight }) => ({
+      .filter((o) => o.s3Key || o.type === "comment") // Include uploaded overlays and comment overlays
+      .map(({ id, type, s3Key, fileName, startTime, endTime, x, y, scale, opacity, naturalWidth, naturalHeight, commentData }) => ({
         id, type, s3Key, fileName, startTime, endTime, x, y, scale, opacity, naturalWidth, naturalHeight,
+        ...(type === "comment" && commentData ? {
+          commentData: {
+            platform: commentData.platform,
+            username: commentData.username,
+            commentText: commentData.commentText,
+            profilePictureS3Key: commentData.profilePictureS3Key,
+            likesCount: commentData.likesCount,
+            isVerified: commentData.isVerified,
+            timeAgo: commentData.timeAgo,
+          },
+        } : {}),
       }));
   }
 
   return config;
 });
 
-// Check if any edits have been made
 export const hasEditsAtom = atom((get) => {
   const config = get(editConfigAtom);
   const duration = get(videoDurationAtom);

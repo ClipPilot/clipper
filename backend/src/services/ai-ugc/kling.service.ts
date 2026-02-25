@@ -1,5 +1,4 @@
-import { fal } from "@fal-ai/client";
-import { config } from "../../config/env";
+import { fal } from "./falClient";
 import { openaiClient } from "../openai.service";
 import {
   PRODUCT_NEGATIVE_PROMPT,
@@ -14,6 +13,7 @@ import {
   generateGroundedCinematicSystemPrompt,
   generateGroundedCinematicUserPrompt,
 } from "../../config/groundedPrompts";
+import type { ShotType } from "../../types/ugcScript.types";
 
 export {
   PRODUCT_NEGATIVE_PROMPT,
@@ -27,38 +27,39 @@ export {
 
 export const KLING_MAX_PROMPT_LENGTH = 2500;
 
-fal.config({
-  credentials: config.fal.apiKey,
-});
-
-export type ShotType = "a-roll" | "b-roll" | "mixed";
-export type KlingDuration = 5 | 10;
+export type { ShotType };
+export type KlingV3Duration = 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15;
 export type CharacterOrientation = "image" | "video";
-
-export interface ImageToVideoOptions {
-  imageUrl: string;
-  tailImageUrl?: string; // Optional end frame for better video interpolation
-  prompt: string;
-  duration?: KlingDuration;
-  negativePrompt?: string;
-  generateAudio?: boolean;
-  dialogue?: string;
-}
 
 export interface ImageToVideoResult {
   videoUrl: string;
   requestId: string;
 }
 
-export interface LipsyncOptions {
-  videoUrl: string;
-  audioUrl: string;
-  cfgScale?: number; // 0-1, default 0.5. Lower = more natural motion
+// Kling v3 Pro types
+export interface KlingV3Element {
+  frontalImageUrl?: string;
+  referenceImageUrls?: string[];
+  videoUrl?: string;
 }
 
-export interface LipsyncResult {
-  videoUrl: string;
-  requestId: string;
+export interface KlingV3MultiPromptElement {
+  prompt: string;
+}
+
+export interface ImageToVideoV3Options {
+  imageUrl: string;
+  endImageUrl?: string;
+  prompt: string;
+  duration?: KlingV3Duration;
+  negativePrompt?: string;
+  generateAudio?: boolean;
+  dialogue?: string;
+  cfgScale?: number; // 0-1, default 0.5
+  elements?: KlingV3Element[];
+  multiPrompt?: KlingV3MultiPromptElement[];
+  voiceIds?: string[];
+  aspectRatio?: "16:9" | "9:16" | "1:1";
 }
 
 // Kling Avatar v2 - optimized for talking heads (single step: image + audio → video)
@@ -76,7 +77,7 @@ export interface AvatarResult {
 
 export interface ExtendVideoOptions {
   videoUrl: string;
-  duration?: KlingDuration;
+  duration?: KlingV3Duration;
 }
 
 export interface ExtendVideoResult {
@@ -118,7 +119,6 @@ interface KlingVideoResponse {
 }
 
 type KlingImageToVideoResponse = KlingVideoResponse;
-type KlingLipsyncResponse = KlingVideoResponse;
 type KlingAvatarResponse = KlingVideoResponse;
 type KlingExtendVideoResponse = KlingVideoResponse;
 type KlingMotionControlResponse = KlingVideoResponse;
@@ -357,35 +357,38 @@ export function buildKlingPrompt(
   cinematicPrompt: string,
   shotType: ShotType,
   emotion: string,
-  action: string,
 ): string {
   let basePrompt: string;
 
   if (shotType === "a-roll") {
     // A-roll: Focus on natural speaking motion, subtle movements
     basePrompt = `${cinematicPrompt}. ++Person speaks naturally to camera++, subtle lip movements, ${emotion} expression. Gentle head micro-movements, relaxed eye contact with lens. ++Face maintains exact appearance throughout++ - no morphing. ${GENTLE_MOTION_MODIFIERS}`;
-  } else if (shotType === "b-roll") {
+  } else {
     // B-roll: Focus on product motion and camera movement, always include screen stability
     basePrompt = `${cinematicPrompt}. Smooth camera glide showcasing product. ++Product remains solid and unchanged++ - no warping or morphing. ${SCREEN_STABILITY_MODIFIERS} ${BROLL_MOTION_MODIFIERS}`;
-  } else {
-    // Mixed: Person interacting with product, not speaking to camera
-    basePrompt = `${cinematicPrompt}. Person performs: ${action}. Natural body motion, ${emotion} expression. ++Hands have 5 fingers each++ - no extra or missing. ++Product stays solid throughout++. ${SCREEN_STABILITY_MODIFIERS} ${GENTLE_MOTION_MODIFIERS}`;
   }
 
   return basePrompt;
 }
 
-export async function generateVideo(
-  options: ImageToVideoOptions,
+// ── Kling v3 Pro Image-to-Video ─────────────────────────────────────────
+
+export async function generateVideoV3(
+  options: ImageToVideoV3Options,
 ): Promise<ImageToVideoResult> {
   const {
     imageUrl,
-    tailImageUrl,
+    endImageUrl,
     prompt,
     duration = 5,
     negativePrompt,
     generateAudio = false,
     dialogue,
+    cfgScale,
+    elements,
+    multiPrompt,
+    voiceIds,
+    aspectRatio,
   } = options;
 
   let finalPrompt = prompt;
@@ -393,42 +396,67 @@ export async function generateVideo(
     finalPrompt = `${prompt}. The person speaks naturally and says "${dialogue}"`;
   }
 
-  // Shorten prompt if it exceeds Kling's limit
   finalPrompt = await shortenPromptIfNeeded(finalPrompt);
 
   const finalNegativePrompt = negativePrompt || PRODUCT_NEGATIVE_PROMPT;
 
   console.log(
-    `[Kling] Generating ${duration}s video from image (audio: ${generateAudio})`,
+    `[Kling v3] Generating ${duration}s video from image (audio: ${generateAudio})`,
   );
   console.log(
-    `[Kling] Prompt (${finalPrompt.length} chars): ${finalPrompt.substring(0, 200)}...`,
+    `[Kling v3] Prompt (${finalPrompt.length} chars): ${finalPrompt.substring(0, 200)}...`,
   );
-  console.log(
-    `[Kling] Negative prompt (${finalNegativePrompt.length} chars): ${finalNegativePrompt.substring(0, 100)}...`,
-  );
-  if (tailImageUrl) {
-    console.log(`[Kling] Using end frame (tail image) for interpolation`);
+  if (endImageUrl) {
+    console.log(`[Kling v3] Using end frame image for interpolation`);
+  }
+  if (elements?.length) {
+    console.log(`[Kling v3] Using ${elements.length} element(s) for consistency`);
   }
 
   try {
     const input: Record<string, unknown> = {
-      prompt: finalPrompt,
       start_image_url: imageUrl,
-      ...(tailImageUrl && { tail_image_url: tailImageUrl }),
-      duration: String(duration) as "5" | "10",
+      duration: String(duration),
       negative_prompt: finalNegativePrompt,
       generate_audio: generateAudio,
     };
 
+    // v3 uses multi_prompt OR prompt, not both
+    if (multiPrompt && multiPrompt.length > 0) {
+      input.multi_prompt = multiPrompt.map((mp) => ({ prompt: mp.prompt }));
+      input.shot_type = "customize";
+    } else {
+      input.prompt = finalPrompt;
+    }
+
+    if (endImageUrl) input.end_image_url = endImageUrl;
+    if (cfgScale !== undefined) input.cfg_scale = cfgScale;
+    if (aspectRatio) input.aspect_ratio = aspectRatio;
+
+    if (voiceIds && voiceIds.length > 0) {
+      input.voice_ids = voiceIds;
+    }
+
+    if (elements && elements.length > 0) {
+      input.elements = elements.map((el) => {
+        if (el.videoUrl) {
+          return { video_url: el.videoUrl };
+        }
+        return {
+          ...(el.frontalImageUrl && { frontal_image_url: el.frontalImageUrl }),
+          ...(el.referenceImageUrls && { reference_image_urls: el.referenceImageUrls }),
+        };
+      });
+    }
+
     const result = await fal.subscribe(
-      "fal-ai/kling-video/v2.6/pro/image-to-video",
+      "fal-ai/kling-video/v3/pro/image-to-video",
       {
         input,
         logs: true,
         onQueueUpdate: (update) => {
           if (update.status === "IN_PROGRESS" && update.logs) {
-            update.logs.forEach((log) => console.log(`[Kling] ${log.message}`));
+            update.logs.forEach((log) => console.log(`[Kling v3] ${log.message}`));
           }
         },
       },
@@ -437,65 +465,23 @@ export async function generateVideo(
     const data = result.data as KlingImageToVideoResponse;
 
     if (!data?.video?.url) {
-      throw new Error("No video URL in generation response");
+      throw new Error("No video URL in v3 generation response");
     }
 
-    console.log(`[Kling] Video generated: ${data.video.url}`);
+    console.log(`[Kling v3] Video generated: ${data.video.url}`);
 
     return {
       videoUrl: data.video.url,
       requestId: result.requestId,
     };
   } catch (error) {
-    console.error("[Kling] Video generation failed:", error);
+    console.error("[Kling v3] Video generation failed:", error);
     throw error;
   }
 }
 
-export async function applyLipsync(
-  options: LipsyncOptions,
-): Promise<LipsyncResult> {
-  const { videoUrl, audioUrl } = options;
-
-  try {
-    const result = await fal.subscribe(
-      "fal-ai/kling-video/lipsync/audio-to-video",
-      {
-        input: {
-          video_url: videoUrl,
-          audio_url: audioUrl,
-        },
-        logs: true,
-        onQueueUpdate: (update) => {
-          if (update.status === "IN_PROGRESS" && update.logs) {
-            update.logs.forEach((log) =>
-              console.log(`[Kling Lipsync] ${log.message}`),
-            );
-          }
-        },
-      },
-    );
-
-    const data = result.data as KlingLipsyncResponse;
-
-    if (!data?.video?.url) {
-      throw new Error("No video URL in lipsync response");
-    }
-
-    console.log(`[Kling] Lipsync complete: ${data.video.url}`);
-
-    return {
-      videoUrl: data.video.url,
-      requestId: result.requestId,
-    };
-  } catch (error) {
-    console.error("[Kling] Lipsync failed:", error);
-    throw error;
-  }
-}
-
-export async function generateVideoWithRetry(
-  options: ImageToVideoOptions,
+export async function generateVideoV3WithRetry(
+  options: ImageToVideoV3Options,
   maxRetries: number = 3,
 ): Promise<ImageToVideoResult> {
   let lastError: Error | null = null;
@@ -505,7 +491,7 @@ export async function generateVideoWithRetry(
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      return await generateVideo(currentOptions);
+      return await generateVideoV3(currentOptions);
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
       const errorMessage = lastError.message || String(error);
@@ -513,16 +499,15 @@ export async function generateVideoWithRetry(
         errorMessage.includes("422") || errorMessage.includes("Unprocessable");
 
       console.warn(
-        `[Kling] Video generation attempt ${attempt}/${maxRetries} failed:`,
+        `[Kling v3] Video generation attempt ${attempt}/${maxRetries} failed:`,
         errorMessage,
         is422 ? "(422 - will try rewriting prompt)" : "",
       );
 
-      // For 422 errors, try rewriting the prompt with OpenAI
       if (is422 && promptRewriteAttempts < maxPromptRewrites) {
         promptRewriteAttempts++;
         console.log(
-          `[Kling] 422 error - rewriting prompt (attempt ${promptRewriteAttempts}/${maxPromptRewrites})`,
+          `[Kling v3] 422 error - rewriting prompt (attempt ${promptRewriteAttempts}/${maxPromptRewrites})`,
         );
         const rewrittenPrompt = await rewritePromptFor422(
           currentOptions.prompt,
@@ -533,41 +518,13 @@ export async function generateVideoWithRetry(
 
       if (attempt < maxRetries) {
         const delay = Math.pow(2, attempt) * 1000;
-        console.log(`[Kling] Retrying in ${delay / 1000}s...`);
+        console.log(`[Kling v3] Retrying in ${delay / 1000}s...`);
         await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
   }
 
-  throw lastError || new Error("Video generation failed after retries");
-}
-
-export async function applyLipsyncWithRetry(
-  options: LipsyncOptions,
-  maxRetries: number = 3,
-): Promise<LipsyncResult> {
-  let lastError: Error | null = null;
-  const currentOptions = { ...options };
-
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await applyLipsync(currentOptions);
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-      console.warn(
-        `[Kling] Lipsync attempt ${attempt}/${maxRetries} failed:`,
-        lastError.message,
-      );
-
-      if (attempt < maxRetries) {
-        const delay = Math.pow(2, attempt) * 1000;
-        console.log(`[Kling] Retrying in ${delay / 1000}s...`);
-        await new Promise((resolve) => setTimeout(resolve, delay));
-      }
-    }
-  }
-
-  throw lastError || new Error("Lipsync failed after retries");
+  throw lastError || new Error("V3 video generation failed after retries");
 }
 
 export async function generateAvatar(
@@ -869,10 +826,8 @@ export async function klingProMotionWithRetry(
 }
 
 export const klingService = {
-  generateVideo,
-  generateVideoWithRetry,
-  applyLipsync,
-  applyLipsyncWithRetry,
+  generateVideoV3,
+  generateVideoV3WithRetry,
   generateAvatar,
   generateAvatarWithRetry,
   extendVideo,
