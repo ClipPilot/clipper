@@ -242,115 +242,154 @@ def detect_face_boxes_in_frame(net, frame_path: str, min_confidence: float = 0.5
     return faces
 
 
-def detect_facecam_overlay(frame, face: Dict[str, int], frame_w: int, frame_h: int) -> Optional[Dict[str, int]]:
+def _find_overlay_candidates(binary: np.ndarray, face: Dict[str, int],
+                              frame_w: int, frame_h: int) -> List[Dict[str, Any]]:
     """
-    Detect the actual facecam overlay rectangle in a gaming stream frame.
-
-    Gaming facecams sit in a corner. Two sides are the frame edges, two sides
-    are internal boundaries. We find the internal edges by computing Sobel
-    gradient profiles and looking for the strongest edge between the face and
-    the centre of the frame.
-
-    Returns the overlay bounding box, or None if boundary not found.
+    Shared helper: given a binary edge/mask image, find rectangular contours
+    that contain the detected face and are plausibly a facecam overlay.
     """
     fx, fy, fw, fh = face['x'], face['y'], face['w'], face['h']
-    face_cx = fx + fw // 2
-    face_cy = fy + fh // 2
-
-    in_left = face_cx < frame_w // 2
-    in_top = face_cy < frame_h // 2
-
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY).astype(np.float64)
-
-    # --- Vertical boundary (cam left/right edge) ---
-    sobelx = np.abs(cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=5))
-    # Average gradient over the face's vertical band
-    band_y1 = max(0, face_cy - fh)
-    band_y2 = min(frame_h, face_cy + fh)
-    h_profile = np.mean(sobelx[band_y1:band_y2, :], axis=0)
-    h_smooth = np.convolve(h_profile, np.ones(15) / 15, mode='same')
-
-    vert_edge = None
-    if in_left:
-        # Scan rightward — skip past face, stop at 55% of frame
-        start = min(fx + fw + fw // 2, frame_w - 1)
-        end = int(frame_w * 0.55)
-        if end > start:
-            region = h_smooth[start:end]
-            if len(region) > 10:
-                peak = int(np.argmax(region))
-                if region[peak] > np.percentile(h_smooth, 80):
-                    vert_edge = start + peak
-    else:
-        start = max(fx - fw // 2, 0)
-        end = int(frame_w * 0.45)
-        if start > end:
-            region = h_smooth[end:start][::-1]
-            if len(region) > 10:
-                peak = int(np.argmax(region))
-                if region[peak] > np.percentile(h_smooth, 80):
-                    vert_edge = start - peak
-
-    # --- Horizontal boundary (cam top/bottom edge) ---
-    sobely = np.abs(cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=5))
-    band_x1 = max(0, face_cx - fw)
-    band_x2 = min(frame_w, face_cx + fw)
-    v_profile = np.mean(sobely[:, band_x1:band_x2], axis=1)
-    v_smooth = np.convolve(v_profile, np.ones(15) / 15, mode='same')
-
-    horiz_edge = None
-    if in_top:
-        start = min(fy + fh + fh // 2, frame_h - 1)
-        end = int(frame_h * 0.55)
-        if end > start:
-            region = v_smooth[start:end]
-            if len(region) > 10:
-                peak = int(np.argmax(region))
-                if region[peak] > np.percentile(v_smooth, 80):
-                    horiz_edge = start + peak
-    else:
-        start = max(fy - fh // 2, 0)
-        end = int(frame_h * 0.45)
-        if start > end:
-            region = v_smooth[end:start][::-1]
-            if len(region) > 10:
-                peak = int(np.argmax(region))
-                if region[peak] > np.percentile(v_smooth, 80):
-                    horiz_edge = start - peak
-
-    # Need at least one detected internal edge
-    if vert_edge is None and horiz_edge is None:
-        return None
-
-    # Build rectangle from corner + detected edges
-    if in_left:
-        cam_x = 0
-        cam_w = vert_edge if vert_edge else int(frame_w * 0.30)
-    else:
-        cam_x = vert_edge if vert_edge else int(frame_w * 0.70)
-        cam_w = frame_w - cam_x
-
-    if in_top:
-        cam_y = 0
-        cam_h = horiz_edge if horiz_edge else int(frame_h * 0.30)
-    else:
-        cam_y = horiz_edge if horiz_edge else int(frame_h * 0.70)
-        cam_h = frame_h - cam_y
-
-    # Validate: must contain the face
-    if not (cam_x <= fx and cam_y <= fy and
-            cam_x + cam_w >= fx + fw and cam_y + cam_h >= fy + fh):
-        return None
-
-    # Sanity: cam overlay should be 3-40% of frame area
-    cam_area = cam_w * cam_h
     frame_area = frame_w * frame_h
-    if cam_area < frame_area * 0.03 or cam_area > frame_area * 0.40:
+    candidates = []
+
+    contours, _ = cv2.findContours(binary, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+
+    for contour in contours:
+        area = cv2.contourArea(contour)
+        area_pct = area / frame_area
+        if area_pct < 0.03 or area_pct > 0.40:
+            continue
+
+        peri = cv2.arcLength(contour, True)
+        approx = cv2.approxPolyDP(contour, 0.02 * peri, True)
+
+        # Allow 4-6 vertices (slight imperfections / rounded corners)
+        if len(approx) < 4 or len(approx) > 6:
+            continue
+
+        bx, by, bw, bh = cv2.boundingRect(approx)
+
+        # Must contain the face
+        if not (bx <= fx and by <= fy and bx + bw >= fx + fw and by + bh >= fy + fh):
+            continue
+
+        # Aspect ratio sanity (most cams are between 1:2 and 2:1)
+        aspect = bw / bh if bh > 0 else 0
+        if aspect < 0.4 or aspect > 2.5:
+            continue
+
+        rect_area = bw * bh
+        rectangularity = area / rect_area if rect_area > 0 else 0
+        if rectangularity < 0.65:
+            continue
+
+        candidates.append({
+            'x': bx, 'y': by, 'w': bw, 'h': bh,
+            'area_pct': area_pct,
+            'rectangularity': rectangularity,
+        })
+
+    # Best = most rectangular
+    candidates.sort(key=lambda c: c['rectangularity'], reverse=True)
+    return candidates
+
+
+def _detect_overlay_temporal(frames: List[np.ndarray], face: Dict[str, int],
+                              frame_w: int, frame_h: int) -> Optional[Dict[str, int]]:
+    """
+    Use temporal variance across multiple frames to find the overlay.
+
+    The cam border is pixel-identical across frames (perfectly static).
+    Game content varies rapidly. This creates a sharp variance boundary
+    at the overlay edge.
+    """
+    if len(frames) < 3:
         return None
 
-    print(f"[FACE-DETECT] Overlay detected: {cam_w}x{cam_h}+{cam_x}+{cam_y} "
-          f"({cam_area * 100 / frame_area:.1f}% of frame)")
-    return {'x': cam_x, 'y': cam_y, 'w': cam_w, 'h': cam_h}
+    grays = [cv2.cvtColor(f, cv2.COLOR_BGR2GRAY).astype(np.float32) for f in frames]
+    stack = np.stack(grays, axis=0)
+    variance_map = np.var(stack, axis=0)
+
+    var_norm = cv2.normalize(variance_map, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+    var_smooth = cv2.GaussianBlur(var_norm, (15, 15), 0)
+
+    # Threshold: dynamic content (game + cam) has variance, border region has ~zero
+    _, binary = cv2.threshold(var_smooth, 15, 255, cv2.THRESH_BINARY)
+
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+    binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel, iterations=2)
+    binary = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel, iterations=1)
+
+    candidates = _find_overlay_candidates(binary, face, frame_w, frame_h)
+    if candidates:
+        best = candidates[0]
+        print(f"[FACE-DETECT] Temporal variance found overlay: "
+              f"{best['w']}x{best['h']}+{best['x']}+{best['y']} "
+              f"(rect={best['rectangularity']:.2f}, {best['area_pct']*100:.1f}%)")
+        return {'x': best['x'], 'y': best['y'], 'w': best['w'], 'h': best['h']}
+    return None
+
+
+def _detect_overlay_contour(frame: np.ndarray, face: Dict[str, int],
+                             frame_w: int, frame_h: int) -> Optional[Dict[str, int]]:
+    """
+    Bilateral filter + Canny + contour detection.
+
+    Bilateral filter suppresses game textures while preserving the sharp
+    cam overlay border, making it one of the strongest edges in the frame.
+    """
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+    # Two-pass bilateral: kills game textures, preserves cam border
+    smooth = cv2.bilateralFilter(gray, 9, 75, 75)
+    smooth = cv2.bilateralFilter(smooth, 9, 75, 75)
+
+    # Adaptive Canny thresholds
+    median_val = float(np.median(smooth))
+    lower = int(max(0, 0.66 * median_val))
+    upper = int(min(255, 1.33 * median_val))
+    edges = cv2.Canny(smooth, lower, upper)
+
+    # Dilate to close small gaps
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+    edges = cv2.dilate(edges, kernel, iterations=1)
+
+    candidates = _find_overlay_candidates(edges, face, frame_w, frame_h)
+    if candidates:
+        best = candidates[0]
+        print(f"[FACE-DETECT] Contour detection found overlay: "
+              f"{best['w']}x{best['h']}+{best['x']}+{best['y']} "
+              f"(rect={best['rectangularity']:.2f}, {best['area_pct']*100:.1f}%)")
+        return {'x': best['x'], 'y': best['y'], 'w': best['w'], 'h': best['h']}
+    return None
+
+
+def detect_facecam_overlay(frames: List[np.ndarray], face: Dict[str, int],
+                           frame_w: int, frame_h: int) -> Optional[Dict[str, int]]:
+    """
+    Detect the facecam overlay rectangle using multiple techniques.
+
+    1. Temporal variance (most reliable — the cam border is perfectly static
+       across frames while game content changes rapidly)
+    2. Bilateral filter + contour (best single-frame technique — kills game
+       textures while preserving the cam border)
+
+    Works for cams anywhere on the frame — corners, edges, or floating.
+    Returns the overlay bounding box, or None if not detected.
+    """
+    # Strategy 1: temporal variance across all sampled frames
+    result = _detect_overlay_temporal(frames, face, frame_w, frame_h)
+    if result:
+        return result
+
+    # Strategy 2: bilateral + contour on the best frame (middle of list)
+    best_frame = frames[len(frames) // 2]
+    result = _detect_overlay_contour(best_frame, face, frame_w, frame_h)
+    if result:
+        return result
+
+    print("[FACE-DETECT] No overlay detected by any technique")
+    return None
 
 
 def expand_face_fallback(face: Dict[str, int], frame_w: int, frame_h: int) -> Dict[str, int]:
@@ -378,10 +417,9 @@ def detect_facecam_region(video_path: str, net) -> Dict[str, Any]:
     """
     Detect the primary face and the facecam overlay boundary.
 
-    1. Samples 5 frames, picks the highest-confidence face detection.
-    2. On the best frame, runs overlay edge detection to find the actual
-       cam rectangle (Sobel gradient scan).
-    3. Falls back to a generous face-centred crop if overlay detection fails.
+    1. Samples 5 frames, keeps ALL frames + picks highest-confidence face.
+    2. Runs overlay detection (temporal variance → bilateral contour).
+    3. Falls back to a generous face-centred crop if detection fails.
 
     Returns facecamRegion (overlay or fallback), faceRegion (raw face), corner.
     """
@@ -392,7 +430,7 @@ def detect_facecam_region(video_path: str, net) -> Dict[str, Any]:
     sample_times = [duration * i / 6 for i in range(1, 6)]
     best_face = None
     best_confidence = 0.0
-    best_frame = None
+    sampled_frames: List[np.ndarray] = []
     frame_w, frame_h = 0, 0
 
     for t in sample_times:
@@ -409,16 +447,16 @@ def detect_facecam_region(video_path: str, net) -> Dict[str, Any]:
             img = cv2.imread(frame_path)
             if img is not None:
                 frame_h, frame_w = img.shape[:2]
+                sampled_frames.append(img.copy())
 
                 faces = detect_face_boxes_in_frame(net, frame_path)
                 if faces and faces[0]['confidence'] > best_confidence:
                     best_face = faces[0]
                     best_confidence = faces[0]['confidence']
-                    best_frame = img.copy()
 
         shutil.rmtree(temp_dir, ignore_errors=True)
 
-    if not best_face or frame_w == 0 or best_frame is None:
+    if not best_face or frame_w == 0 or len(sampled_frames) == 0:
         return {
             'facecamDetected': False,
             'detectionRate': 0.0,
@@ -433,8 +471,8 @@ def detect_facecam_region(video_path: str, net) -> Dict[str, Any]:
         'h': best_face['h'],
     }
 
-    # Try to detect the actual cam overlay boundary
-    overlay = detect_facecam_overlay(best_frame, best_face, frame_w, frame_h)
+    # Try to detect the actual cam overlay boundary using all sampled frames
+    overlay = detect_facecam_overlay(sampled_frames, best_face, frame_w, frame_h)
     if overlay:
         facecam_region = overlay
         print(f"[FACE-DETECT] Using overlay-detected region: {facecam_region}")
