@@ -1,20 +1,10 @@
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { viralityService } from "../services/virality/virality.service";
-import { parseId, parseDateQuery, handleControllerError as handleError } from "../utils/controllerHelpers";
-
-const PLAN_REQUIRED_RESPONSE = {
-  error: "Virality tracking requires a Studio plan or higher",
-  code: "PLAN_REQUIRED",
-} as const;
+import { parseId, parseDateQuery, handleControllerError as handleError, requirePlanAccess as requirePlanAccessBase } from "../utils/controllerHelpers";
 
 async function requirePlanAccess(teamId: number, res: Response): Promise<boolean> {
-  const hasAccess = await viralityService.checkTeamPlanAccess(teamId);
-  if (!hasAccess) {
-    res.status(403).json(PLAN_REQUIRED_RESPONSE);
-    return false;
-  }
-  return true;
+  return requirePlanAccessBase(teamId, res, (id) => viralityService.checkTeamPlanAccess(id), "Virality tracking requires a Studio plan or higher");
 }
 
 // ── Controller ───────────────────────────────────────────────────────────────

@@ -26,6 +26,7 @@ import { TEMP_DIR } from "../utils/tempCleanup";
 import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
 import { faceSwapService } from "../services/ai-ugc/faceSwap.service";
 import { syncService } from "../services/sync.service";
+import { SegmentInput, SpliceSegment, calculateSpliceSegments } from "../utils/spliceSegments";
 
 const UGC_CREDIT_COST = 5;
 const MIN_SEGMENT_DURATION = 3;
@@ -52,55 +53,6 @@ setInterval(cleanExpiredIdempotencyKeys, 60 * 1000);
 
 interface AuthRequest extends Request {
   user?: { id: string; email: string; dbUserId: number };
-}
-
-interface SegmentInput {
-  start: number;
-  end: number;
-}
-
-interface SpliceSegment {
-  start: number;
-  end: number;
-  type: "processed" | "original";
-  chunkCount?: number;
-}
-
-function calculateSpliceSegments(
-  segments: SegmentInput[],
-  videoDuration: number,
-): SpliceSegment[] {
-  const sorted = [...segments].sort((a, b) => a.start - b.start);
-  const result: SpliceSegment[] = [];
-
-  if (sorted[0].start > 0.1) {
-    result.push({ start: 0, end: sorted[0].start, type: "original" });
-  }
-
-  for (let i = 0; i < sorted.length; i++) {
-    result.push({
-      start: sorted[i].start,
-      end: sorted[i].end,
-      type: "processed",
-    });
-    if (i < sorted.length - 1 && sorted[i].end < sorted[i + 1].start - 0.1) {
-      result.push({
-        start: sorted[i].end,
-        end: sorted[i + 1].start,
-        type: "original",
-      });
-    }
-  }
-
-  if (sorted[sorted.length - 1].end < videoDuration - 0.1) {
-    result.push({
-      start: sorted[sorted.length - 1].end,
-      end: videoDuration,
-      type: "original",
-    });
-  }
-
-  return result;
 }
 
 export class ComfyController {

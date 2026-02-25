@@ -41,12 +41,6 @@ export const inviteStatusEnum = pgEnum("invite_status", [
   "revoked",
 ]);
 
-export const gpuPodStatusEnum = pgEnum("gpu_pod_status", [
-  "idle",
-  "busy",
-  "offline",
-]);
-
 export const comfyJobStatusEnum = pgEnum("comfy_job_status", [
   "pending_upload",
   "queued",

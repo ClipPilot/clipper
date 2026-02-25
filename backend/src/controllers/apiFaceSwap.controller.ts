@@ -18,9 +18,10 @@ import { createSceneAwareChunks } from "../services/ai-ugc/sceneChunker.service"
 import { db } from "../db";
 import { comfyJobs, clips } from "@clipper/shared-db/src/schema";
 import { API_PRODUCTS } from "../config/api-products";
-import { ensureOutputDir } from "../utils/fileUtils";
+import { ensureOutputDir, safeUnlink } from "../utils/fileUtils";
 import { TEMP_DIR } from "../utils/tempCleanup";
 import { videoDownloadService } from "../services/videoDownload.service";
+import { SegmentInput, SpliceSegment, calculateSpliceSegments } from "../utils/spliceSegments";
 
 const FACE_SWAP_PRODUCT_SLUG = "face_swap";
 const MAX_DURATION_SECONDS = 300;
@@ -29,58 +30,6 @@ const KLING_CHUNK_LEEWAY = 5;
 const MIN_SEGMENT_DURATION = 3;
 
 type FaceSwapMode = "face" | "fullbody";
-
-// -------------------------------------------------------------------
-// Splice segment calculation (duplicated from comfy.controller.ts)
-// -------------------------------------------------------------------
-interface SegmentInput {
-  start: number;
-  end: number;
-}
-
-interface SpliceSegment {
-  start: number;
-  end: number;
-  type: "processed" | "original";
-  chunkCount?: number;
-}
-
-function calculateSpliceSegments(
-  segments: SegmentInput[],
-  videoDuration: number,
-): SpliceSegment[] {
-  const sorted = [...segments].sort((a, b) => a.start - b.start);
-  const result: SpliceSegment[] = [];
-
-  if (sorted[0].start > 0.1) {
-    result.push({ start: 0, end: sorted[0].start, type: "original" });
-  }
-
-  for (let i = 0; i < sorted.length; i++) {
-    result.push({
-      start: sorted[i].start,
-      end: sorted[i].end,
-      type: "processed",
-    });
-    if (i < sorted.length - 1 && sorted[i].end < sorted[i + 1].start - 0.1) {
-      result.push({
-        start: sorted[i].end,
-        end: sorted[i + 1].start,
-        type: "original",
-      });
-    }
-  }
-
-  if (sorted[sorted.length - 1].end < videoDuration - 0.1) {
-    result.push({
-      start: sorted[sorted.length - 1].end,
-      end: videoDuration,
-      type: "original",
-    });
-  }
-
-  return result;
-}
 
 // -------------------------------------------------------------------
 // POST /v1/face-swap
@@ -174,7 +123,7 @@ export const createFaceSwapJobController = async (
       try {
         await s3Service.downloadVideoFromUrl(faceImageUrl!, localFaceImagePath);
       } catch (err) {
-        cleanupFiles(tempFiles);
+        tempFiles.forEach(safeUnlink);
         return res.status(400).json({ error: "Failed to download image from face_image_url" });
       }
       tempFiles.push(localFaceImagePath);
@@ -185,12 +134,12 @@ export const createFaceSwapJobController = async (
     try {
       duration = await getVideoDuration(localVideoPath);
     } catch (err) {
-      cleanupFiles(tempFiles);
+      tempFiles.forEach(safeUnlink);
       return res.status(400).json({ error: "Could not read video duration. Ensure the file is a valid video." });
     }
 
     if (duration > MAX_DURATION_SECONDS) {
-      cleanupFiles(tempFiles);
+      tempFiles.forEach(safeUnlink);
       return res.status(400).json({
         error: `Video duration ${Math.ceil(duration)}s exceeds maximum of ${MAX_DURATION_SECONDS}s`,
       });
@@ -204,7 +153,7 @@ export const createFaceSwapJobController = async (
     // --- Check wallet balance ---
     const account = await apiBillingService.getAccount(teamId);
     if (!account || account.balance_cents < totalCostCents) {
-      cleanupFiles(tempFiles);
+      tempFiles.forEach(safeUnlink);
       return res.status(402).json({
         error: "Insufficient wallet balance",
         required_cents: totalCostCents,
@@ -379,9 +328,7 @@ function processBackgroundFaceSwap(params: {
         .where(eq(comfyJobs.id, jobId))
         .catch(() => {});
     } finally {
-      for (const f of [...tempFiles, ...additionalTempFiles]) {
-        try { if (fs.existsSync(f)) fs.unlinkSync(f); } catch {}
-      }
+      [...tempFiles, ...additionalTempFiles].forEach(safeUnlink);
     }
   })();
 }
@@ -553,30 +500,21 @@ async function processFullbodyMode(params: {
     await s3Service.uploadBuffer(chunkBuffer, chunkS3Key, "video/mp4");
   }
 
-  // Always splice in fullbody mode so the output is the full video
-  // (not just the detected face segments)
-  const isSpliceMode = duration > 0;
-  let originalVideoS3Key: string | undefined;
-
-  if (isSpliceMode) {
-    originalVideoS3Key = `ugc-inputs/${teamId}/${crypto.randomUUID()}_api_original.mp4`;
-    const originalBuffer = fs.readFileSync(localVideoPath);
-    await s3Service.uploadBuffer(originalBuffer, originalVideoS3Key, "video/mp4");
-  }
+  // Upload original video for splice reconstruction
+  const originalVideoS3Key = `ugc-inputs/${teamId}/${crypto.randomUUID()}_api_original.mp4`;
+  const originalBuffer = fs.readFileSync(localVideoPath);
+  await s3Service.uploadBuffer(originalBuffer, originalVideoS3Key, "video/mp4");
 
   // Build splice metadata
-  let spliceMetadata: { videoDuration: number; segments: SpliceSegment[] } | null = null;
-  if (isSpliceMode) {
-    const spliceSegments = calculateSpliceSegments(segments, duration);
-    let processedSegmentIndex = 0;
-    for (const seg of spliceSegments) {
-      if (seg.type === "processed") {
-        seg.chunkCount = chunkCountsPerSegment[processedSegmentIndex];
-        processedSegmentIndex++;
-      }
+  const spliceSegments = calculateSpliceSegments(segments, duration);
+  let processedSegmentIndex = 0;
+  for (const seg of spliceSegments) {
+    if (seg.type === "processed") {
+      seg.chunkCount = chunkCountsPerSegment[processedSegmentIndex];
+      processedSegmentIndex++;
     }
-    spliceMetadata = { videoDuration: duration, segments: spliceSegments };
   }
+  const spliceMetadata = { videoDuration: duration, segments: spliceSegments };
 
   // Update job record
   await db
@@ -585,9 +523,9 @@ async function processFullbodyMode(params: {
       status: "queued",
       imageFile: imageS3Key,
       videoFile: chunkS3Keys[0],
-      originalVideoS3Key: originalVideoS3Key,
-      spliceMode: isSpliceMode,
-      spliceMetadata: spliceMetadata || undefined,
+      originalVideoS3Key,
+      spliceMode: true,
+      spliceMetadata,
       progressMessage: "Waiting for worker",
     })
     .where(eq(comfyJobs.id, jobId));
@@ -602,8 +540,8 @@ async function processFullbodyMode(params: {
     originalVideoS3Key,
     segments,
     videoDuration: duration,
-    spliceMode: isSpliceMode,
-    spliceMetadata: spliceMetadata || undefined,
+    spliceMode: true,
+    spliceMetadata,
   });
 
   console.log(`[api-face-swap] Fullbody mode: job ${jobId} sent to Kling worker queue (${chunkS3Keys.length} chunks)`);
@@ -641,11 +579,3 @@ async function buildFaceSwapStatusResponse(job: typeof comfyJobs.$inferSelect) {
   };
 }
 
-// -------------------------------------------------------------------
-// Helpers
-// -------------------------------------------------------------------
-function cleanupFiles(files: string[]) {
-  for (const f of files) {
-    try { if (fs.existsSync(f)) fs.unlinkSync(f); } catch {}
-  }
-}

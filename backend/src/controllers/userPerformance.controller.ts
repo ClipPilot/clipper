@@ -1,20 +1,10 @@
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
-import { userPerformanceService } from "../services/virality/virality.service";
-import { parseId, parseDateQuery, handleControllerError } from "../utils/controllerHelpers";
-
-const PLAN_REQUIRED_RESPONSE = {
-  error: "Performance tracking requires a Studio plan or higher",
-  code: "PLAN_REQUIRED",
-} as const;
+import { userPerformanceService } from "../services/virality/userPerformance.service";
+import { parseId, parseDateQuery, handleControllerError, requirePlanAccess as requirePlanAccessBase } from "../utils/controllerHelpers";
 
 async function requirePlanAccess(teamId: number, res: Response): Promise<boolean> {
-  const hasAccess = await userPerformanceService.checkTeamPlanAccess(teamId);
-  if (!hasAccess) {
-    res.status(403).json(PLAN_REQUIRED_RESPONSE);
-    return false;
-  }
-  return true;
+  return requirePlanAccessBase(teamId, res, (id) => userPerformanceService.checkTeamPlanAccess(id), "Performance tracking requires a Studio plan or higher");
 }
 
 // ── Controller ───────────────────────────────────────────────────────────────

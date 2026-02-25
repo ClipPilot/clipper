@@ -59,7 +59,6 @@ export default function CompetitorDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRecalculating, setIsRecalculating] = useState(false);
   const initialLoadDone = useRef(false);
-  const [isSyncing, setIsSyncing] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState("");
   const [selectedAccountIds, setSelectedAccountIds] = useState<number[]>(() => {
@@ -115,6 +114,7 @@ export default function CompetitorDetailPage() {
     },
   });
 
+<<<<<<< HEAD
   const handleSyncAll = async () => {
     if (!selectedTeam?.id || !competitor) return;
     setIsSyncing(true);
@@ -136,6 +136,8 @@ export default function CompetitorDetailPage() {
     }
   };
 
+=======
+>>>>>>> 61ec73d4b165f76d5cda41a30af8fd51550af612
   const handleSaveName = async () => {
     if (!selectedTeam?.id || !editName.trim()) return;
     try {
@@ -421,16 +423,6 @@ export default function CompetitorDetailPage() {
           </div>
           <div className="flex items-center gap-3">
             <DateRangeFilter value={dateRange} onChange={setDateRange} />
-            <Button
-              className="bg-accent-400 text-white"
-              startContent={
-                isSyncing ? <Spinner size="sm" color="white" /> : <Icon icon="solar:refresh-bold" width={18} />
-              }
-              isDisabled={isSyncing || competitor.accounts.length === 0}
-              onPress={handleSyncAll}
-            >
-              {isSyncing ? "Syncing..." : "Sync All"}
-            </Button>
           </div>
         </div>
 
