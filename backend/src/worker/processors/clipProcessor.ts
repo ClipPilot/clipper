@@ -100,13 +100,13 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
               console.log(`[CLIP-PROCESSOR] Detecting facecam on merged clip...`);
               const result = await detectFacecamFromS3Key(tempS3Key);
               if (result?.facecamDetected) {
-                // Prefer faceRegion (tight face box) for both gaming and speaker-zoom
-                if (result.faceRegion) {
-                  console.log(`[CLIP-PROCESSOR] Face detected (raw): ${JSON.stringify(result.faceRegion)}`);
-                  return { facecamRegion: result.faceRegion };
-                } else if (result.facecamRegion) {
-                  console.log(`[CLIP-PROCESSOR] Facecam detected at ${result.corner}: ${JSON.stringify(result.facecamRegion)}`);
+                // Use facecamRegion (expanded face+torso box) — faceRegion is too tight
+                if (result.facecamRegion) {
+                  console.log(`[CLIP-PROCESSOR] Facecam region detected at ${result.corner}: ${JSON.stringify(result.facecamRegion)}`);
                   return { facecamRegion: result.facecamRegion };
+                } else if (result.faceRegion) {
+                  console.log(`[CLIP-PROCESSOR] Falling back to raw face region: ${JSON.stringify(result.faceRegion)}`);
+                  return { facecamRegion: result.faceRegion };
                 }
               }
               console.warn(`[CLIP-PROCESSOR] No facecam detected — will fall back to blurred-bg`);
