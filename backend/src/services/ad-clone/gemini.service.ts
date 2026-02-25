@@ -291,11 +291,10 @@ export async function generateImageWithGeminiDirect(options: {
     },
   });
 
-  for (const part of response.candidates[0].content.parts) {
-    if (part.inlineData) {
-      console.log("[GEMINI_IMAGE] Image generated successfully");
-      return Buffer.from(part.inlineData.data, "base64");
-    }
+  const imageData = response.data;
+  if (imageData) {
+    console.log("[GEMINI_IMAGE] Image generated successfully");
+    return Buffer.from(imageData, "base64");
   }
 
   throw new Error("Gemini did not return an image");

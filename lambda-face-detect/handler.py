@@ -195,6 +195,206 @@ def detect_faces_in_frame(net, frame_path: str) -> bool:
     return False
 
 
+def detect_face_boxes_in_frame(net, frame_path: str, min_confidence: float = 0.5) -> List[Dict[str, Any]]:
+    """Detect all faces in a frame and return their bounding boxes with confidence."""
+    image = cv2.imread(frame_path)
+    if image is None:
+        return []
+
+    (h, w) = image.shape[:2]
+    frame_area = w * h
+    faces = []
+
+    blob = cv2.dnn.blobFromImage(
+        cv2.resize(image, (300, 300)),
+        1.0, (300, 300), (104.0, 177.0, 123.0)
+    )
+    net.setInput(blob)
+    detections = net.forward()
+
+    for i in range(detections.shape[2]):
+        confidence = float(detections[0, 0, i, 2])
+        if confidence < min_confidence:
+            continue
+
+        box = detections[0, 0, i, 3:7] * [w, h, w, h]
+        (startX, startY, endX, endY) = box.astype("int")
+
+        face_w = endX - startX
+        face_h = endY - startY
+        face_area = face_w * face_h
+        face_pct = face_area / frame_area
+
+        if face_pct < 0.01 or face_pct > 0.9:
+            continue
+
+        faces.append({
+            'x': max(0, int(startX)),
+            'y': max(0, int(startY)),
+            'w': min(int(face_w), w - max(0, int(startX))),
+            'h': min(int(face_h), h - max(0, int(startY))),
+            'confidence': confidence,
+        })
+
+    # Sort by confidence descending
+    faces.sort(key=lambda f: f['confidence'], reverse=True)
+    return faces
+
+
+def expand_face_to_torso(face: Dict[str, int], frame_w: int, frame_h: int) -> Dict[str, int]:
+    """
+    Expand a face bounding box to include head room and torso (head-and-shoulders framing).
+    - Above head: 30% of face height
+    - Below chin to torso: 150% of face height
+    - Sides for shoulders: 80% of face width each side
+    """
+    fx, fy, fw, fh = face['x'], face['y'], face['w'], face['h']
+
+    pad_top = int(fh * 0.3)
+    pad_bottom = int(fh * 1.5)
+    pad_side = int(fw * 0.8)
+
+    new_x = max(0, fx - pad_side)
+    new_y = max(0, fy - pad_top)
+    new_w = min(fw + pad_side * 2, frame_w - new_x)
+    new_h = min(fh + pad_top + pad_bottom, frame_h - new_y)
+
+    return {'x': new_x, 'y': new_y, 'w': new_w, 'h': new_h}
+
+
+def detect_facecam_region(video_path: str, net) -> Dict[str, Any]:
+    """
+    Detect the primary face in the video and return bounding boxes.
+    Samples multiple frames and picks the highest-confidence detection.
+    Returns facecamRegion (face+torso) and faceRegion (raw face).
+    """
+    # Sample 5 frames evenly across the video
+    duration, _ = get_video_info(video_path)
+    if duration <= 0:
+        return {'facecamDetected': False}
+
+    sample_times = [duration * i / 6 for i in range(1, 6)]
+    best_face = None
+    best_confidence = 0.0
+    frame_w, frame_h = 0, 0
+
+    for t in sample_times:
+        temp_dir = tempfile.mkdtemp()
+        frame_path = os.path.join(temp_dir, "sample.jpg")
+        cmd = [
+            'ffmpeg', '-y', '-i', video_path, '-ss', str(t),
+            '-vframes', '1', '-q:v', '2', frame_path,
+            '-loglevel', 'warning'
+        ]
+        subprocess.run(cmd, capture_output=True)
+
+        if os.path.exists(frame_path):
+            img = cv2.imread(frame_path)
+            if img is not None:
+                frame_h, frame_w = img.shape[:2]
+
+            faces = detect_face_boxes_in_frame(net, frame_path)
+            if faces and faces[0]['confidence'] > best_confidence:
+                best_face = faces[0]
+                best_confidence = faces[0]['confidence']
+
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+    if not best_face or frame_w == 0:
+        return {
+            'facecamDetected': False,
+            'detectionRate': 0.0,
+            'frameWidth': frame_w,
+            'frameHeight': frame_h,
+        }
+
+    face_region = {
+        'x': best_face['x'],
+        'y': best_face['y'],
+        'w': best_face['w'],
+        'h': best_face['h'],
+    }
+    facecam_region = expand_face_to_torso(best_face, frame_w, frame_h)
+
+    # Determine which corner the face is in
+    face_cx = best_face['x'] + best_face['w'] / 2
+    face_cy = best_face['y'] + best_face['h'] / 2
+    h_pos = "left" if face_cx < frame_w / 2 else "right"
+    v_pos = "top" if face_cy < frame_h / 2 else "bottom"
+    corner = f"{v_pos}-{h_pos}"
+
+    return {
+        'facecamDetected': True,
+        'facecamRegion': facecam_region,
+        'faceRegion': face_region,
+        'corner': corner,
+        'detectionRate': best_confidence,
+        'frameWidth': frame_w,
+        'frameHeight': frame_h,
+    }
+
+
+def detect_multi_face_regions(video_path: str, net) -> Dict[str, Any]:
+    """
+    Detect all faces in the video and return their bounding boxes.
+    Samples multiple frames and merges detections.
+    """
+    duration, _ = get_video_info(video_path)
+    if duration <= 0:
+        return {'faces': [], 'faceCount': 0}
+
+    sample_times = [duration * i / 6 for i in range(1, 6)]
+    all_faces_per_frame = []
+    frame_w, frame_h = 0, 0
+
+    for t in sample_times:
+        temp_dir = tempfile.mkdtemp()
+        frame_path = os.path.join(temp_dir, "sample.jpg")
+        cmd = [
+            'ffmpeg', '-y', '-i', video_path, '-ss', str(t),
+            '-vframes', '1', '-q:v', '2', frame_path,
+            '-loglevel', 'warning'
+        ]
+        subprocess.run(cmd, capture_output=True)
+
+        if os.path.exists(frame_path):
+            img = cv2.imread(frame_path)
+            if img is not None:
+                frame_h, frame_w = img.shape[:2]
+            faces = detect_face_boxes_in_frame(net, frame_path)
+            if faces:
+                all_faces_per_frame.append(faces)
+
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+    if not all_faces_per_frame:
+        return {
+            'faces': [],
+            'faceCount': 0,
+            'detectionRate': 0.0,
+            'frameWidth': frame_w,
+            'frameHeight': frame_h,
+        }
+
+    # Use the frame with the most faces detected
+    best_frame_faces = max(all_faces_per_frame, key=len)
+    face_regions = [
+        {'x': f['x'], 'y': f['y'], 'w': f['w'], 'h': f['h']}
+        for f in best_frame_faces
+    ]
+
+    # Sort left to right by x position
+    face_regions.sort(key=lambda f: f['x'])
+
+    return {
+        'faces': face_regions,
+        'faceCount': len(face_regions),
+        'detectionRate': best_frame_faces[0]['confidence'] if best_frame_faces else 0.0,
+        'frameWidth': frame_w,
+        'frameHeight': frame_h,
+    }
+
+
 def filter_isolated_detections(
     times: List[float],
     sample_interval: float,
@@ -643,6 +843,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         video_url = body.get('video_url') or body.get('videoUrl')
         video_duration = body.get('video_duration') or body.get('videoDuration')
         frame_accurate = body.get('frame_accurate') or body.get('frameAccurate') or False
+        mode = body.get('mode', 'segments')  # "segments" (default), "facecam", "multi-face"
 
         if not video_url:
             return {
@@ -650,10 +851,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'body': json.dumps({'error': 'video_url is required'})
             }
 
-        config = FRAME_ACCURATE_CONFIG if frame_accurate else FACE_CONFIG
-        mode_name = "FRAME-ACCURATE" if frame_accurate else "STANDARD"
-        print(f"[FACE-DETECT] Mode: {mode_name}")
-
+        print(f"[FACE-DETECT] Mode: {mode}")
         print("[FACE-DETECT] Loading face detector...")
         net = get_face_detector()
 
@@ -673,6 +871,38 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             print(f"[FACE-DETECT] Downloading video from {video_url}")
             download_from_s3(video_url, video_path)
 
+            # ── Facecam mode: detect primary face + torso bounding box ──
+            if mode == 'facecam':
+                log_remaining_time("Detecting facecam region")
+                result = detect_facecam_region(video_path, net)
+                print(f"[FACE-DETECT] Facecam result: detected={result.get('facecamDetected')}, corner={result.get('corner')}")
+
+                return {
+                    'statusCode': 200,
+                    'headers': {'Content-Type': 'application/json'},
+                    'body': json.dumps({
+                        'success': True,
+                        **result,
+                    })
+                }
+
+            # ── Multi-face mode: detect all face bounding boxes ──
+            if mode == 'multi-face':
+                log_remaining_time("Detecting multiple faces")
+                result = detect_multi_face_regions(video_path, net)
+                print(f"[FACE-DETECT] Multi-face result: {result.get('faceCount')} faces")
+
+                return {
+                    'statusCode': 200,
+                    'headers': {'Content-Type': 'application/json'},
+                    'body': json.dumps({
+                        'success': True,
+                        **result,
+                    })
+                }
+
+            # ── Segments mode (default): detect face time segments ──
+            config = FRAME_ACCURATE_CONFIG if frame_accurate else FACE_CONFIG
             log_remaining_time("Download complete - extracting video info")
             detected_duration, native_fps = get_video_info(video_path)
             if not video_duration:
