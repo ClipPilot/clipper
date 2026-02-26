@@ -42,6 +42,7 @@ export async function processOverlaysJob(job: UpdateOverlaysJob): Promise<void> 
         x: heading.x ?? 50,
         y: heading.y ?? 10,
         fontSize: heading.fontSize ?? 48,
+        style: heading.style || "stroke",
       });
 
       // If we already have a processed video (not the original blank), delete it

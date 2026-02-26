@@ -39,7 +39,7 @@ async function generateSingleImage(
 
     const result = await falImageService.generateImageWithRetry({
       prompt,
-      aspectRatio: "3:4",
+      aspectRatio: "9:16",
       imageUrls: referenceImageUrls,
       usePro: true,
     });

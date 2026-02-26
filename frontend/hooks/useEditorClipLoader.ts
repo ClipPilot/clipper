@@ -74,9 +74,12 @@ export function useEditorClipLoader(clipId: number) {
           setCaptionsEnabled(metadata?.parameters?.captions !== false);
         }
 
-        // Initialise heading state from metadata
+        // Initialise heading state from metadata — always reset to prevent
+        // stale heading from previous clip leaking into the new editor session
         if (metadata?.editorConfig?.heading) {
           setHeadingState(metadata.editorConfig.heading);
+        } else {
+          setHeadingState(null);
         }
       } catch (error) {
         console.error("Failed to load clip:", error);

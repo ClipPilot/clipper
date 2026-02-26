@@ -45,7 +45,7 @@ export async function detectFacecamFromS3Key(
   try {
     const s3Url = `s3://${config.aws.s3Bucket}/${s3Key}`;
 
-    const payload = { video_url: s3Url };
+    const payload = { video_url: s3Url, mode: "facecam" };
 
     const command = new InvokeCommand({
       FunctionName: FACECAM_DETECT_LAMBDA,

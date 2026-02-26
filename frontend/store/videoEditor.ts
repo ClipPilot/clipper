@@ -47,6 +47,8 @@ export interface AudioState {
 }
 
 // Heading state
+export type HeadingStyle = "stroke" | "instagram";
+
 export interface HeadingState {
   text: string;
   color: string;
@@ -54,6 +56,7 @@ export interface HeadingState {
   x: number;
   y: number;
   fontSize: number;
+  style: HeadingStyle;
 }
 
 // Comment overlay types

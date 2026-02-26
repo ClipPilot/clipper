@@ -33,7 +33,7 @@ const CONVERSION_MODE_OPTIONS: {
   },
   {
     key: "gaming",
-    label: "Gaming",
+    label: "Facecam",
     description: "Facecam on top, gameplay on bottom",
     icon: "solar:gamepad-bold-duotone",
   },

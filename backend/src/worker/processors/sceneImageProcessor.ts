@@ -256,7 +256,7 @@ export async function processSceneImageJob(
 
         const result = await falImageService.generateImageWithRetry({
           prompt: shotPrompt,
-          aspectRatio: "3:4",
+          aspectRatio: "9:16",
           imageUrls: refs,
           usePro: true,
         });
@@ -398,7 +398,7 @@ export async function processSceneImageJob(
 
       const startResult = await falImageService.generateImageWithRetry({
         prompt: startPrompt,
-        aspectRatio: "3:4",
+        aspectRatio: "9:16",
         imageUrls: refs,
         usePro: true,
       });
@@ -496,7 +496,7 @@ export async function processSceneImageJob(
 
         const endResult = await falImageService.generateImageWithRetry({
           prompt: endPrompt,
-          aspectRatio: "3:4",
+          aspectRatio: "9:16",
           imageUrls: endReferenceUrls,
           usePro: true,
         });

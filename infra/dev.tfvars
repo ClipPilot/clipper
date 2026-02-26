@@ -13,3 +13,6 @@ backend_desired_count = 1
 
 # Frontend
 frontend_url = "http://localhost:3000"
+
+# Mac rendering - disabled in dev
+enable_mac_rendering = false

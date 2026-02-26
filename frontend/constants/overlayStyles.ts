@@ -55,8 +55,16 @@ export const CAPTION_FONTS: FontOption[] = [
 export const HEADING_FONTS: FontOption[] = [
   { id: "luckiest-guy", name: "Luckiest Guy" },
   { id: "montserrat", name: "Montserrat" },
+  { id: "everlasting", name: "Everlasting" },
+  { id: "komika", name: "Komika" },
+  { id: "burbank", name: "Burbank" },
   { id: "bebas-neue", name: "Bebas Neue" },
   { id: "anton", name: "Anton" },
+];
+
+export const HEADING_STYLES = [
+  { key: "stroke" as const, label: "Outlined", icon: "solar:text-bold" },
+  { key: "instagram" as const, label: "Instagram", icon: "solar:chat-square-bold" },
 ];
 
 export const TEXT_POSITIONS = [

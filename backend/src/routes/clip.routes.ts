@@ -1188,6 +1188,39 @@ router.post(
 
 /**
  * @openapi
+ * /clip-video/teams/{teamId}/clips/{clipId}/generate-heading:
+ *   post:
+ *     summary: AI-generate a viral heading for a clip
+ *     tags:
+ *       - Clips Management
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: clipId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Generated heading text
+ *       404:
+ *         description: Clip not found
+ */
+router.post(
+  "/teams/:teamId/clips/:clipId/generate-heading",
+  requireAuth,
+  requireSeatAccess,
+  clipManagerController.generateHeading.bind(clipManagerController)
+);
+
+/**
+ * @openapi
  * /clip-video/teams/{teamId}/clips/{clipId}/overlays:
  *   post:
  *     summary: Apply combined overlays to clip
