@@ -5,6 +5,6 @@
 export const PLAN_UPLOAD_LIMITS: Record<string, number> = {
   free: 2 * 1024 * 1024 * 1024,
   studio: 2 * 1024 * 1024 * 1024,
-  scale: 3 * 1024 * 1024 * 1024,
-  enterprise: 3 * 1024 * 1024 * 1024,
+  scale: 2 * 1024 * 1024 * 1024,
+  enterprise: 2 * 1024 * 1024 * 1024,
 };

@@ -15,7 +15,7 @@ import { notifyClipsRefresh } from "../notify";
 import { emailNotiService } from "../../services/emailNoti.service";
 import { userService } from "../../services/user.service";
 import { ensureOutputDir } from "../../utils/fileUtils";
-import { sanitizeErrorForFrontend } from "../../utils/errorSanitizer";
+
 import { detectFacecamFromS3Key, detectMultipleFacesFromS3Key } from "../../services/facecamDetect.service";
 import type { FacecamRegion } from "../../services/clips/videoEditor.service";
 import type { ClipServiceOptions } from "../../services/clips/clip.service";
@@ -100,12 +100,13 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
               console.log(`[CLIP-PROCESSOR] Detecting facecam on merged clip...`);
               const result = await detectFacecamFromS3Key(tempS3Key);
               if (result?.facecamDetected) {
-                if (options.conversionMode === "speaker-zoom" && result.faceRegion) {
-                  console.log(`[CLIP-PROCESSOR] Face detected (raw): ${JSON.stringify(result.faceRegion)}`);
-                  return { facecamRegion: result.faceRegion };
-                } else if (result.facecamRegion) {
-                  console.log(`[CLIP-PROCESSOR] Facecam detected at ${result.corner}: ${JSON.stringify(result.facecamRegion)}`);
+                // Use facecamRegion (expanded face+torso box) — faceRegion is too tight
+                if (result.facecamRegion) {
+                  console.log(`[CLIP-PROCESSOR] Facecam region detected at ${result.corner}: ${JSON.stringify(result.facecamRegion)}`);
                   return { facecamRegion: result.facecamRegion };
+                } else if (result.faceRegion) {
+                  console.log(`[CLIP-PROCESSOR] Falling back to raw face region: ${JSON.stringify(result.faceRegion)}`);
+                  return { facecamRegion: result.faceRegion };
                 }
               }
               console.warn(`[CLIP-PROCESSOR] No facecam detected — will fall back to blurred-bg`);
@@ -236,7 +237,7 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
           clipId,
           teamId,
           "failed",
-          clipError instanceof Error ? clipError.message : "Unknown error"
+          "Error"
         );
 
         await notifyClipsRefresh(teamId);
@@ -267,8 +268,8 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
   } catch (error) {
     console.error("Error processing clips:", error);
 
-    const errorMessage = sanitizeErrorForFrontend(error, "Operation failed. Please try again.");
-    const alreadyHandled = errorMessage.startsWith("All") && errorMessage.includes("clips failed");
+    const alreadyHandled = error instanceof Error
+      && error.message.startsWith("All") && error.message.includes("clips failed");
 
     if (!alreadyHandled) {
       for (const clipId of clipIds) {
@@ -276,7 +277,7 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
           clipId,
           teamId,
           "failed",
-          errorMessage
+          "Error"
         );
       }
       await notifyClipsRefresh(teamId);

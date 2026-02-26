@@ -14,7 +14,7 @@ import { notifyClipsRefresh } from "../notify";
 import { emailNotiService } from "../../services/emailNoti.service";
 import { userService } from "../../services/user.service";
 import { ensureOutputDir } from "../../utils/fileUtils";
-import { sanitizeErrorForFrontend } from "../../utils/errorSanitizer";
+
 import { detectFacecamFromS3Key, detectMultipleFacesFromS3Key } from "../../services/facecamDetect.service";
 import type { FacecamRegion } from "../../services/clips/videoEditor.service";
 import type { ClipServiceOptions } from "../../services/clips/clip.service";
@@ -256,7 +256,7 @@ export async function processBatchClipVideoJob(
           clipId,
           teamId,
           "failed",
-          clipError instanceof Error ? clipError.message : "Unknown error"
+          "Error"
         );
 
         await notifyClipsRefresh(teamId);
@@ -290,8 +290,8 @@ export async function processBatchClipVideoJob(
   } catch (error) {
     console.error("Error processing batch clips:", error);
 
-    const errorMessage = sanitizeErrorForFrontend(error, "Operation failed. Please try again.");
-    const alreadyHandled = errorMessage.startsWith("All") && errorMessage.includes("clips failed");
+    const alreadyHandled = error instanceof Error
+      && error.message.startsWith("All") && error.message.includes("clips failed");
 
     if (!alreadyHandled) {
       for (const clipId of clipIds) {
@@ -299,7 +299,7 @@ export async function processBatchClipVideoJob(
           clipId,
           teamId,
           "failed",
-          errorMessage
+          "Error"
         );
       }
       await notifyClipsRefresh(teamId);
