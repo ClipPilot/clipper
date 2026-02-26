@@ -198,7 +198,7 @@ def score_overlay_candidate(candidate: Dict[str, Any]) -> float:
     """Score an overlay candidate — higher = more likely to be a facecam."""
     score = 0.0
 
-    # Corner position is the strongest signal (most cams are in corners)
+    # Edge proximity — facecams are on edges (corners, mid-left, mid-bottom, etc.)
     score += candidate['corner_score'] * 3.0
 
     # Rectangularity — clean overlays are very rectangular
@@ -283,11 +283,11 @@ def _confirm_face_in_region(
     score_threshold: float = 0.4
 ) -> Optional[Dict[str, Any]]:
     """
-    Confirm a live face exists in the candidate region.
+    Confirm a LIVE face exists in the candidate region.
 
-    Checks 3 spread frames.  Requires face detected in at least 2 of 3,
-    AND the face center must shift by at least a few pixels between frames
-    (a static image will have the exact same face bbox every time).
+    Two-layer check:
+    1. Face must be detected in 2+ of 3 spread frames
+    2. Face center must shift by >= 5px (rejects static images; accounts for YuNet bbox jitter)
     """
     n = len(frames)
     check_indices = sorted(set([n // 4, n // 2, 3 * n // 4]))
@@ -312,22 +312,58 @@ def _confirm_face_in_region(
                 best_face = f
                 best_conf = f['confidence']
 
-    # Need face in at least 2 of 3 frames
     if len(face_centers) < 2:
         return None
 
-    # Check that face position shifts at least slightly (rejects identical static faces)
+    # Face center must shift by >= 5px across frames (YuNet jitter is ~1-3px)
     max_shift = 0.0
     for i in range(1, len(face_centers)):
         dx = abs(face_centers[i][0] - face_centers[0][0])
         dy = abs(face_centers[i][1] - face_centers[0][1])
         max_shift = max(max_shift, dx + dy)
 
-    if max_shift < 2.0:
+    if max_shift < 5.0:
         print(f"[FACECAM-DETECT] Rejected static face — shift={max_shift:.1f}px across {len(face_centers)} frames")
         return None
 
     return best_face
+
+
+def _compute_face_motion(
+    face_bbox: Dict[str, int],
+    frames: List[np.ndarray],
+    threshold: float = 5.0
+) -> bool:
+    """Check motion on the FACE region specifically (not the whole candidate).
+
+    This prevents surrounding gameplay from masking a static face.
+    """
+    if len(frames) < 3:
+        return True
+
+    x, y, w, h = face_bbox['x'], face_bbox['y'], face_bbox['w'], face_bbox['h']
+    n = len(frames)
+    pair_indices = [(0, n // 3), (n // 3, 2 * n // 3), (0, n - 1)]
+
+    diffs = []
+    for a, b in pair_indices:
+        crop_a = frames[a][y:y + h, x:x + w]
+        crop_b = frames[b][y:y + h, x:x + w]
+        if crop_a.size == 0 or crop_b.size == 0:
+            continue
+
+        ga = cv2.cvtColor(cv2.resize(crop_a, (64, 64)), cv2.COLOR_BGR2GRAY).astype(float)
+        gb = cv2.cvtColor(cv2.resize(crop_b, (64, 64)), cv2.COLOR_BGR2GRAY).astype(float)
+        diffs.append(float(np.mean(np.abs(ga - gb))))
+
+    if not diffs:
+        return True
+
+    avg = np.mean(diffs)
+    above = sum(1 for d in diffs if d >= threshold)
+    is_live = avg >= threshold and above >= 2
+    print(f"[FACECAM-DETECT] Face-region motion: avg={avg:.2f} above={above}/{len(diffs)} → {'LIVE' if is_live else 'STATIC'}")
+    return is_live
 
 
 # ── Pipeline ──
@@ -413,62 +449,93 @@ def handle_facecam(video_path: str, frame_w: int, frame_h: int, context: Any) ->
         remaining_ms = context.get_remaining_time_in_millis()
         print(f"[KEEP-ALIVE] Variance analysis complete | Lambda time remaining: {remaining_ms // 1000}s")
 
-    # ── Layer 2 + 3: YuNet confirmation (multi-frame) + motion check ──
+    # ── Filter: only keep candidates near edges (not center of frame) ──
+    # Facecams are always on edges/corners — reject anything in the middle 40%
+    edge_margin_x = frame_w * 0.30
+    edge_margin_y = frame_h * 0.30
+    edge_candidates = []
+    for c in candidates:
+        ccx = c['x'] + c['w'] / 2
+        ccy = c['y'] + c['h'] / 2
+        near_edge = (ccx < edge_margin_x or ccx > frame_w - edge_margin_x or
+                     ccy < edge_margin_y or ccy > frame_h - edge_margin_y)
+        if near_edge:
+            edge_candidates.append(c)
+        else:
+            print(f"[FACECAM-DETECT] Skipping center candidate at ({c['x']},{c['y']}) {c['w']}x{c['h']}")
+
+    print(f"[FACECAM-DETECT] {len(edge_candidates)} edge candidates (from {len(candidates)} total)")
+
+    # ── Layer 2 + 3: Check ALL edge candidates for a moving face ──
     confirmed_region = None
     confirmed_face = None
     best_confidence = 0.0
 
-    for candidate in candidates[:10]:
+    for candidate in edge_candidates[:10]:
         cx, cy, cw, ch = candidate['x'], candidate['y'], candidate['w'], candidate['h']
 
-        # Fix #4: Check 3 frames instead of just the middle one
         face = _confirm_face_in_region(candidate, sampled_frames, score_threshold=0.4)
         if not face:
             continue
 
-        print(f"[FACECAM-DETECT] Layer 2: YuNet confirmed face in {cw}x{ch}+{cx}+{cy} "
+        print(f"[FACECAM-DETECT] Layer 2: YuNet found face in {cw}x{ch}+{cx}+{cy} "
               f"(conf={face['confidence']:.2f})")
 
-        region = {'x': cx, 'y': cy, 'w': cw, 'h': ch}
-        if not compute_region_motion(region, sampled_frames):
-            print("[FACECAM-DETECT] Layer 3: Rejected — no motion (static image)")
+        # Motion check on the FACE region specifically (not the whole candidate)
+        abs_face = {
+            'x': cx + face['x'], 'y': cy + face['y'],
+            'w': face['w'], 'h': face['h'],
+        }
+        if not _compute_face_motion(abs_face, sampled_frames):
+            print(f"[FACECAM-DETECT] Layer 3: Rejected static face at ({abs_face['x']},{abs_face['y']})")
             continue
 
-        confirmed_region = region
-        confirmed_face = {
-            'x': cx + face['x'],
-            'y': cy + face['y'],
-            'w': face['w'],
-            'h': face['h'],
-        }
+        confirmed_region = {'x': cx, 'y': cy, 'w': cw, 'h': ch}
+        confirmed_face = abs_face
         best_confidence = face['confidence']
         print(f"[FACECAM-DETECT] Confirmed facecam: region={confirmed_region}")
         break
 
-    # ── Fallback: YuNet full-frame scan ──
+    # ── Fallback: YuNet full-frame → find moving face near edge ──
     if not confirmed_region:
         print("[FACECAM-DETECT] Variance pipeline found nothing — YuNet full-frame fallback")
 
-        fallback_face = None
-        for frame in sampled_frames:
+        # Collect faces from spread frames, deduplicate by position
+        all_faces: List[Dict[str, Any]] = []
+        for frame in sampled_frames[::3]:
             faces = detect_faces_yunet(frame, score_threshold=0.4)
-            if faces and faces[0]['confidence'] > best_confidence:
-                fallback_face = faces[0]
-                best_confidence = faces[0]['confidence']
+            all_faces.extend(faces)
 
-        if fallback_face:
-            fallback_region = expand_face_to_webcam_region(fallback_face, frame_w, frame_h)
+        # Score by edge proximity — facecams are near any edge, not just corners
+        scored = []
+        for f in all_faces:
+            fcx = f['x'] + f['w'] / 2
+            fcy = f['y'] + f['h'] / 2
+            # Skip faces in the center of the frame
+            if (edge_margin_x < fcx < frame_w - edge_margin_x and
+                    edge_margin_y < fcy < frame_h - edge_margin_y):
+                continue
+            # Distance to nearest edge (left, right, top, bottom)
+            dist_to_edge = min(fcx, frame_w - fcx, fcy, frame_h - fcy)
+            max_edge_dist = min(frame_w, frame_h) / 2
+            edge_score = 1.0 - (dist_to_edge / max_edge_dist)
+            combined = edge_score * 0.7 + f['confidence'] * 0.3
+            scored.append((combined, f))
+        scored.sort(key=lambda x: x[0], reverse=True)
 
-            # Fix #6: Fallback also checks motion to reject static face images
-            if compute_region_motion(fallback_region, sampled_frames):
+        for _, fallback_face in scored[:5]:
+            if _compute_face_motion(fallback_face, sampled_frames):
+                fallback_region = expand_face_to_webcam_region(fallback_face, frame_w, frame_h)
                 confirmed_face = {
                     'x': fallback_face['x'], 'y': fallback_face['y'],
                     'w': fallback_face['w'], 'h': fallback_face['h'],
                 }
                 confirmed_region = fallback_region
-                print(f"[FACECAM-DETECT] Fallback expansion: {confirmed_region}")
+                print(f"[FACECAM-DETECT] Fallback: moving face at ({fallback_face['x']},{fallback_face['y']}), "
+                      f"region={confirmed_region}")
+                break
             else:
-                print("[FACECAM-DETECT] Fallback rejected — static face image")
+                print(f"[FACECAM-DETECT] Fallback skip: static face at ({fallback_face['x']},{fallback_face['y']})")
 
     if not confirmed_region or not confirmed_face:
         return {
