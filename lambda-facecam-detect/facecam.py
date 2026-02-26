@@ -5,9 +5,10 @@ import tempfile
 import subprocess
 import cv2
 import numpy as np
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 
 from shared import (
+    FACECAM_CONFIG,
     get_yunet_model_path,
     get_video_info,
     expand_face_to_webcam_region,
@@ -229,32 +230,49 @@ def score_overlay_candidate(candidate: Dict[str, Any]) -> float:
 def compute_region_motion(
     region: Dict[str, int],
     frames: List[np.ndarray],
-    threshold: float = 3.0
+    threshold: float = 5.0
 ) -> bool:
-    """Check if a region has motion across frames (rejects static images/overlays)."""
-    if len(frames) < 2:
+    """Check if a region has real motion (rejects static images/memes).
+
+    Compares spread-apart frames (not just consecutive) so compression
+    noise between similar frames doesn't fool it.  Requires multiple
+    pairs to exceed the threshold — a single noisy pair isn't enough.
+    """
+    if len(frames) < 3:
         return True
 
     x, y, w, h = region['x'], region['y'], region['w'], region['h']
+
+    # Pick spread-apart pairs across the full sample range
+    n = len(frames)
+    pair_indices = []
+    if n >= 6:
+        pair_indices = [(0, n // 3), (n // 3, 2 * n // 3), (2 * n // 3, n - 1),
+                        (0, n // 2), (n // 2, n - 1)]
+    else:
+        pair_indices = [(0, n // 2), (n // 2, n - 1), (0, n - 1)]
+
     diffs = []
-    for i in range(1, min(len(frames), 6)):
-        prev_crop = frames[i - 1][y:y + h, x:x + w]
-        curr_crop = frames[i][y:y + h, x:x + w]
-        if prev_crop.size == 0 or curr_crop.size == 0:
+    for a, b in pair_indices:
+        crop_a = frames[a][y:y + h, x:x + w]
+        crop_b = frames[b][y:y + h, x:x + w]
+        if crop_a.size == 0 or crop_b.size == 0:
             continue
 
-        # Fix #5: Resize to 64x64 for consistent comparison (matches multi_face approach)
-        prev = cv2.cvtColor(cv2.resize(prev_crop, (64, 64)), cv2.COLOR_BGR2GRAY).astype(float)
-        curr = cv2.cvtColor(cv2.resize(curr_crop, (64, 64)), cv2.COLOR_BGR2GRAY).astype(float)
-        diff = np.mean(np.abs(curr - prev))
-        diffs.append(diff)
+        ga = cv2.cvtColor(cv2.resize(crop_a, (64, 64)), cv2.COLOR_BGR2GRAY).astype(float)
+        gb = cv2.cvtColor(cv2.resize(crop_b, (64, 64)), cv2.COLOR_BGR2GRAY).astype(float)
+        diffs.append(float(np.mean(np.abs(ga - gb))))
 
     if not diffs:
         return True
 
     avg_motion = np.mean(diffs)
-    print(f"[FACECAM-DETECT] Region motion: {avg_motion:.2f} (threshold: {threshold})")
-    return avg_motion >= threshold
+    # Require at least 2 pairs above threshold to confirm real motion
+    pairs_above = sum(1 for d in diffs if d >= threshold)
+    is_live = avg_motion >= threshold and pairs_above >= 2
+    print(f"[FACECAM-DETECT] Region motion: avg={avg_motion:.2f} "
+          f"pairs_above={pairs_above}/{len(diffs)} (threshold: {threshold}) → {'LIVE' if is_live else 'STATIC'}")
+    return is_live
 
 
 # ── Helpers for multi-frame face confirmation ──
@@ -265,17 +283,19 @@ def _confirm_face_in_region(
     score_threshold: float = 0.4
 ) -> Optional[Dict[str, Any]]:
     """
-    Fix #4: Check multiple frames for face confirmation.
-    If the streamer looks away in one frame, we still detect via others.
-    Returns the best face found, or None.
+    Confirm a live face exists in the candidate region.
+
+    Checks 3 spread frames.  Requires face detected in at least 2 of 3,
+    AND the face center must shift by at least a few pixels between frames
+    (a static image will have the exact same face bbox every time).
     """
     n = len(frames)
-    # Check frames at 1/4, 1/2, 3/4 positions
     check_indices = sorted(set([n // 4, n // 2, 3 * n // 4]))
 
     cx, cy, cw, ch = candidate['x'], candidate['y'], candidate['w'], candidate['h']
     best_face = None
     best_conf = 0.0
+    face_centers: List[Tuple[float, float]] = []
 
     for idx in check_indices:
         if idx >= n:
@@ -285,9 +305,27 @@ def _confirm_face_in_region(
             continue
 
         faces = detect_faces_yunet(crop, score_threshold=score_threshold)
-        if faces and faces[0]['confidence'] > best_conf:
-            best_face = faces[0]
-            best_conf = faces[0]['confidence']
+        if faces:
+            f = faces[0]
+            face_centers.append((f['x'] + f['w'] / 2, f['y'] + f['h'] / 2))
+            if f['confidence'] > best_conf:
+                best_face = f
+                best_conf = f['confidence']
+
+    # Need face in at least 2 of 3 frames
+    if len(face_centers) < 2:
+        return None
+
+    # Check that face position shifts at least slightly (rejects identical static faces)
+    max_shift = 0.0
+    for i in range(1, len(face_centers)):
+        dx = abs(face_centers[i][0] - face_centers[0][0])
+        dy = abs(face_centers[i][1] - face_centers[0][1])
+        max_shift = max(max_shift, dx + dy)
+
+    if max_shift < 2.0:
+        print(f"[FACECAM-DETECT] Rejected static face — shift={max_shift:.1f}px across {len(face_centers)} frames")
+        return None
 
     return best_face
 
@@ -447,6 +485,29 @@ def handle_facecam(video_path: str, frame_w: int, frame_h: int, context: Any) ->
                 'frameHeight': frame_h,
             }),
         }
+
+    # Pad region outward so the facecam isn't cropped too tight
+    pad = FACECAM_CONFIG['region_padding_factor']
+    cx = confirmed_region['x'] + confirmed_region['w'] / 2
+    cy = confirmed_region['y'] + confirmed_region['h'] / 2
+    pw = int(confirmed_region['w'] * pad)
+    ph = int(confirmed_region['h'] * pad)
+    px = max(0, int(cx - pw / 2))
+    py = max(0, int(cy - ph / 2))
+    pw = min(pw, frame_w - px)
+    ph = min(ph, frame_h - py)
+
+    snap = FACECAM_CONFIG['edge_snap_px']
+    if px < snap:
+        px = 0
+    if py < snap:
+        py = 0
+    if (px + pw) > (frame_w - snap):
+        pw = frame_w - px
+    if (py + ph) > (frame_h - snap):
+        ph = frame_h - py
+
+    confirmed_region = {'x': px, 'y': py, 'w': pw, 'h': ph}
 
     corner = detect_corner(confirmed_region, frame_w, frame_h)
     print(f"[FACECAM-DETECT] Facecam detected at {corner}: region={confirmed_region}")

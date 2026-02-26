@@ -5,16 +5,17 @@ import { s3Service } from "../s3.service";
 const FAL_TIMEOUT_MS = 150000; // 2.5 minutes max — fall back to Gemini if exceeded
 
 function withTimeout<T>(promise: Promise<T>, ms: number, operation: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
   return Promise.race([
-    promise,
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error(`${operation} timed out after ${ms / 1000}s`)), ms)
-    ),
+    promise.finally(() => clearTimeout(timer)),
+    new Promise<T>((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`${operation} timed out after ${ms / 1000}s`)), ms);
+    }),
   ]);
 }
 
 /**
- * Fallback: generate image via Gemini API (Nano Banana Pro) and upload to S3.
+ * Fallback: generate image via Gemini API and upload to S3.
  * Returns a presigned URL so callers can fetch the image the same way as FAL results.
  */
 async function geminiFallback(
@@ -22,12 +23,22 @@ async function geminiFallback(
   imageUrls?: string[],
   aspectRatio?: string,
 ): Promise<GenerateImageResult> {
-  console.log("[FAL_IMAGE] Falling back to Gemini API (Nano Banana Pro)...");
-  const buffer = await generateImageWithGeminiDirect({ prompt, imageUrls, aspectRatio: aspectRatio || "9:16" });
-  const tempKey = `temp/gemini-fallback/${Date.now()}_${Math.random().toString(36).slice(2)}.png`;
-  await s3Service.uploadBuffer(buffer, tempKey, "image/png");
-  const imageUrl = await s3Service.getPresignedUrl(tempKey, 3600);
-  return { imageUrl };
+  console.log("[FAL_IMAGE] Falling back to Gemini image generation...");
+  try {
+    const buffer = await generateImageWithGeminiDirect({ prompt, imageUrls, aspectRatio: aspectRatio || "9:16" });
+    const tempKey = `temp/gemini-fallback/${Date.now()}_${Math.random().toString(36).slice(2)}.png`;
+    await s3Service.uploadBuffer(buffer, tempKey, "image/png");
+    const imageUrl = await s3Service.getPresignedUrl(tempKey, 3600);
+    console.log("[FAL_IMAGE] Gemini fallback succeeded");
+    return { imageUrl };
+  } catch (geminiError) {
+    console.error(
+      `[FAL_IMAGE] Gemini fallback also failed: ${geminiError instanceof Error ? geminiError.message : geminiError}`,
+    );
+    throw new Error(
+      `Image generation failed: FAL unavailable and Gemini fallback failed — ${geminiError instanceof Error ? geminiError.message : geminiError}`,
+    );
+  }
 }
 
 export type AspectRatio =
@@ -88,8 +99,9 @@ export async function generateImage(
   const model = usePro ? "fal-ai/nano-banana-pro" : "fal-ai/nano-banana";
   console.log(`[FAL_IMAGE] Text-to-image with ${model}, aspect ratio ${aspectRatio}`);
 
+  let falResult: { data: FalImageResponse } | null = null;
   try {
-    const result = (await withTimeout(
+    falResult = (await withTimeout(
       fal.subscribe(model, {
         input: {
           prompt,
@@ -112,21 +124,20 @@ export async function generateImage(
       FAL_TIMEOUT_MS,
       "FAL text-to-image"
     )) as { data: FalImageResponse };
-
-    if (!result.data?.images?.[0]?.url) {
-      throw new Error("Image generation did not return an image");
-    }
-
-    return {
-      imageUrl: result.data.images[0].url,
-      description: result.data.description,
-    };
   } catch (falError) {
     console.warn(
       `[FAL_IMAGE] FAL text-to-image failed: ${falError instanceof Error ? falError.message : falError}`,
     );
     return geminiFallback(prompt, undefined, aspectRatio);
   }
+
+  const imageUrl = falResult?.data?.images?.[0]?.url;
+  if (!imageUrl) {
+    console.warn("[FAL_IMAGE] FAL text-to-image returned no image, falling back to Gemini");
+    return geminiFallback(prompt, undefined, aspectRatio);
+  }
+
+  return { imageUrl, description: falResult.data.description };
 }
 
 /**
@@ -141,6 +152,7 @@ export async function generateImageWithReferences(
   const { prompt, imageUrls, aspectRatio = "9:16", numImages = 1, usePro = false, negativePrompt } = options;
 
   const model = usePro ? "fal-ai/nano-banana-pro/edit" : "fal-ai/nano-banana/edit";
+  const fallbackAR = aspectRatio === "auto" ? "9:16" : aspectRatio;
 
   console.log(
     `[FAL_IMAGE] Image-to-image with ${imageUrls.length} reference images, aspect ratio ${aspectRatio}, model: ${model}`,
@@ -159,8 +171,9 @@ export async function generateImageWithReferences(
     input.negative_prompt = negativePrompt;
   }
 
+  let falResult: { data: FalImageResponse } | null = null;
   try {
-    const result = (await withTimeout(
+    falResult = (await withTimeout(
       fal.subscribe(model, {
         input: input as Parameters<typeof fal.subscribe>[1] extends { input: infer I } ? I : never,
         logs: true,
@@ -177,21 +190,20 @@ export async function generateImageWithReferences(
       FAL_TIMEOUT_MS,
       "FAL image-to-image"
     )) as { data: FalImageResponse };
-
-    if (!result.data?.images?.[0]?.url) {
-      throw new Error("Image generation did not return an image");
-    }
-
-    return {
-      imageUrl: result.data.images[0].url,
-      description: result.data.description,
-    };
   } catch (falError) {
     console.warn(
       `[FAL_IMAGE] FAL image-to-image failed: ${falError instanceof Error ? falError.message : falError}`,
     );
-    return geminiFallback(prompt, imageUrls, aspectRatio === "auto" ? "9:16" : aspectRatio);
+    return geminiFallback(prompt, imageUrls, fallbackAR);
   }
+
+  const imageUrl = falResult?.data?.images?.[0]?.url;
+  if (!imageUrl) {
+    console.warn("[FAL_IMAGE] FAL image-to-image returned no image, falling back to Gemini");
+    return geminiFallback(prompt, imageUrls, fallbackAR);
+  }
+
+  return { imageUrl, description: falResult.data.description };
 }
 
 /**

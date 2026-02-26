@@ -19,8 +19,9 @@ FACECAM_CONFIG = {
     'skip_percent': 0.05,             # Skip first/last 5% of video
     'min_consistent_detections': 3,   # Need 3+ consistent face positions
     'outlier_threshold_px': 50,       # Faces >50px from median are outliers
-    'expand_factor': 2.5,             # Expand face bbox by 2.5x to get webcam region
+    'expand_factor': 3.0,             # Expand face bbox by 3x to get webcam region
     'edge_snap_px': 30,               # Snap to edge if within 30px
+    'region_padding_factor': 1.15,    # Pad variance-detected region by 15%
 }
 
 # Multi-face config: tuned for podcast/interview content with 2+ visible speakers
