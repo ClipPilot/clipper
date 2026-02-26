@@ -125,7 +125,7 @@ resource "aws_instance" "mac_rendering" {
   key_name               = var.mac_ssh_public_key != "" ? aws_key_pair.mac_rendering[0].key_name : null
 
   root_block_device {
-    volume_size = 60
+    volume_size = 120
     volume_type = "gp3"
   }
 
