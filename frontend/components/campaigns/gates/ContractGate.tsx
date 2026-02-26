@@ -20,14 +20,14 @@ interface ContractGateProps {
   campaignId: number;
   gate: CampaignGates["contract"];
   contract: CampaignContract | null;
-  onRefresh: () => void;
+  onContractSigned: (contract: CampaignContract) => void;
 }
 
 export function ContractGate({
   campaignId,
   gate,
   contract,
-  onRefresh,
+  onContractSigned,
 }: ContractGateProps) {
   const selectedTeam = useAtomValue(selectedTeamAtom);
 
@@ -203,7 +203,7 @@ export function ContractGate({
     const signatureDataUrl = canvas.toDataURL("image/png");
     setIsSigning(true);
     try {
-      await campaignAPI.signContract(
+      const { contract: signed } = await campaignAPI.signContract(
         selectedTeam.id,
         campaignId,
         legalName.trim(),
@@ -214,7 +214,7 @@ export function ContractGate({
         description: "Your contract has been signed successfully.",
         color: "success",
       });
-      onRefresh();
+      onContractSigned(signed);
     } catch (err: any) {
       addToast({
         title: "Failed to sign contract",

@@ -8,6 +8,8 @@ import {
 import { db } from "../../db";
 import { eq, and } from "drizzle-orm";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
+import { readFileSync } from "fs";
+import { join } from "path";
 import { s3Service } from "../s3.service";
 import { emailNotiService } from "../emailNoti.service";
 
@@ -90,7 +92,10 @@ class CampaignContractService {
     const { merged } = this.buildPdf(campaign, team.name, terms.clauses);
 
     // Generate PDF
-    const pdfBuffer = await this.renderPdf(campaign, merged);
+    const { buffer: pdfBuffer, clientSignatureY } = await this.renderPdf(campaign, merged, team.name);
+
+    // Store signature position in terms for later stamping
+    (terms as any)._clientSignatureY = clientSignatureY;
 
     // Upload to S3
     const s3Key = `contracts/${campaign.team_id}/${campaignId}/unsigned_${Date.now()}.pdf`;
@@ -154,28 +159,38 @@ class CampaignContractService {
       paymentTerms: string;
       additionalClauses: string[];
     },
-  ): Promise<Buffer> {
+    teamName: string,
+  ): Promise<{ buffer: Buffer; clientSignatureY: number }> {
     const pdfDoc = await PDFDocument.create();
     const bodyFont = await pdfDoc.embedFont(StandardFonts.TimesRoman);
     const bodyBoldFont = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
     const headingFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
     const labelFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
+    // Embed Cuttr logo
+    let logoImage: Awaited<ReturnType<typeof pdfDoc.embedPng>> | null = null;
+    try {
+      const logoPath = join(__dirname, "../../templates/assets/cuttr-logo.png");
+      const logoBytes = readFileSync(logoPath);
+      logoImage = await pdfDoc.embedPng(logoBytes);
+    } catch (err) {
+      console.warn("[CampaignContract] Could not embed logo:", err);
+    }
+
     const pageWidth = 612;
     const pageHeight = 792;
-    const margin = 72; // 1-inch margins
+    const margin = 64;
     const contentWidth = pageWidth - margin * 2;
-    const darkColor = rgb(0.12, 0.12, 0.12);
-    const grayColor = rgb(0.45, 0.45, 0.45);
-    const ruleColor = rgb(0.78, 0.78, 0.78);
-    const accentColor = rgb(0.16, 0.65, 0.53); // teal accent
+    const darkColor = rgb(0.1, 0.1, 0.14);
+    const grayColor = rgb(0.42, 0.42, 0.48);
+    const lightGray = rgb(0.82, 0.82, 0.85);
+    const accentColor = rgb(0.22, 0.52, 1.0); // Cuttr blue
 
     let page = pdfDoc.addPage([pageWidth, pageHeight]);
     let y = pageHeight - margin;
 
     const ensureSpace = (needed: number) => {
-      if (y - needed < margin + 30) { // 30px footer reserve
-        // Footer on current page
+      if (y - needed < margin + 36) {
         drawFooter();
         page = pdfDoc.addPage([pageWidth, pageHeight]);
         y = pageHeight - margin;
@@ -184,18 +199,18 @@ class CampaignContractService {
 
     const drawFooter = () => {
       const pageCount = pdfDoc.getPageCount();
-      const footerText = `Cuttr Inc. — Campaign Service Agreement — Page ${pageCount}`;
-      const footerWidth = labelFont.widthOfTextAtSize(footerText, 8);
+      const footerText = `Cuttr Inc.  |  Campaign Service Agreement  |  Page ${pageCount}`;
+      const footerWidth = labelFont.widthOfTextAtSize(footerText, 7.5);
       page.drawText(footerText, {
         x: (pageWidth - footerWidth) / 2,
-        y: 36,
-        size: 8,
+        y: 32,
+        size: 7.5,
         font: labelFont,
         color: grayColor,
       });
     };
 
-    const drawRule = (thickness = 0.5, color = ruleColor) => {
+    const drawRule = (thickness = 0.5, color = lightGray) => {
       ensureSpace(10);
       page.drawLine({
         start: { x: margin, y },
@@ -203,7 +218,7 @@ class CampaignContractService {
         thickness,
         color,
       });
-      y -= 12;
+      y -= 14;
     };
 
     const drawHeading = (text: string, size: number) => {
@@ -215,33 +230,26 @@ class CampaignContractService {
         font: headingFont,
         color: darkColor,
       });
-      y -= size + 6;
+      y -= size + 8;
     };
 
     const drawSectionTitle = (number: number, title: string) => {
       ensureSpace(30);
-      y -= 8;
-      const numText = `${number}.`;
-      page.drawText(numText, {
+      y -= 10;
+      const label = `${number}.  ${title.toUpperCase()}`;
+      page.drawText(label, {
         x: margin,
         y,
-        size: 11,
+        size: 10.5,
         font: headingFont,
         color: accentColor,
-      });
-      page.drawText(title.toUpperCase(), {
-        x: margin + 18,
-        y,
-        size: 11,
-        font: headingFont,
-        color: darkColor,
       });
       y -= 18;
     };
 
     const drawBody = (text: string, indent = 0) => {
-      const fontSize = 10.5;
-      const lineHeight = fontSize + 5;
+      const fontSize = 10;
+      const lineHeight = fontSize + 5.5;
       const maxWidth = contentWidth - indent;
       const words = text.split(" ");
       let line = "";
@@ -279,31 +287,43 @@ class CampaignContractService {
     const drawTermRow = (label: string, value: string) => {
       ensureSpace(20);
       page.drawText(label, {
-        x: margin + 12,
+        x: margin + 8,
         y,
-        size: 10,
+        size: 9.5,
         font: labelFont,
         color: grayColor,
       });
       page.drawText(value, {
-        x: margin + 200,
+        x: margin + 180,
         y,
-        size: 10.5,
+        size: 10,
         font: bodyBoldFont,
         color: darkColor,
       });
       y -= 18;
     };
 
-    // ── Header ──────────────────────────────────────────────────
+    // ── Header with Logo ────────────────────────────────────────
 
-    page.drawText("CUTTR INC.", {
-      x: margin,
-      y,
-      size: 10,
-      font: headingFont,
-      color: accentColor,
-    });
+    if (logoImage) {
+      const logoScale = 36 / logoImage.height;
+      const logoW = logoImage.width * logoScale;
+      const logoH = 36;
+      page.drawImage(logoImage, {
+        x: margin,
+        y: y - logoH + 10,
+        width: logoW,
+        height: logoH,
+      });
+    } else {
+      page.drawText("CUTTR", {
+        x: margin,
+        y,
+        size: 16,
+        font: headingFont,
+        color: accentColor,
+      });
+    }
 
     const dateStr = new Date().toLocaleDateString("en-US", {
       year: "numeric",
@@ -313,21 +333,22 @@ class CampaignContractService {
     const dateWidth = labelFont.widthOfTextAtSize(dateStr, 9);
     page.drawText(dateStr, {
       x: pageWidth - margin - dateWidth,
-      y,
+      y: y - 6,
       size: 9,
       font: labelFont,
       color: grayColor,
     });
-    y -= 24;
+    y -= 46;
 
-    // Thick accent line
-    page.drawLine({
-      start: { x: margin, y: y + 4 },
-      end: { x: pageWidth - margin, y: y + 4 },
-      thickness: 2,
+    // Accent bar
+    page.drawRectangle({
+      x: margin,
+      y: y + 2,
+      width: contentWidth,
+      height: 3,
       color: accentColor,
     });
-    y -= 8;
+    y -= 14;
 
     // Title
     drawHeading("Campaign Service Agreement", 20);
@@ -337,11 +358,11 @@ class CampaignContractService {
     page.drawText(campaign.name, {
       x: margin,
       y,
-      size: 13,
+      size: 12,
       font: bodyBoldFont,
       color: grayColor,
     });
-    y -= 26;
+    y -= 24;
 
     drawRule(0.5);
 
@@ -355,10 +376,20 @@ class CampaignContractService {
 
     drawSectionTitle(2, "Campaign Terms");
 
-    // Terms in a clean table-like layout
+    // Terms with left accent border
+    ensureSpace(70);
+    const termsStartY = y;
     drawTermRow("CPM Rate", `$${campaign.quoted_cpm || "TBD"}`);
     drawTermRow("Campaign Budget", campaign.budget ? `$${Number(campaign.budget).toLocaleString()}` : "TBD");
     drawTermRow("Minimum Videos", campaign.video_minimum != null ? String(campaign.video_minimum) : "TBD");
+    // Left accent bar spanning the term rows
+    page.drawRectangle({
+      x: margin,
+      y,
+      width: 3,
+      height: termsStartY - y + 4,
+      color: accentColor,
+    });
     y -= 6;
 
     // ── Section 3: Provider Obligations ─────────────────────────
@@ -391,68 +422,156 @@ class CampaignContractService {
 
     // ── Signature Block ─────────────────────────────────────────
 
-    ensureSpace(160);
-    y -= 12;
-    drawRule(0.5);
-    y -= 4;
+    const sigBlockHeight = 170;
+    ensureSpace(sigBlockHeight);
+    y -= 14;
+    drawRule(0.75, accentColor);
+    y -= 2;
     drawHeading("Signatures", 14);
-    y -= 8;
+    y -= 6;
 
-    // Client signature area
-    page.drawText("CLIENT", {
-      x: margin,
-      y,
+    // Two-column layout: Provider (left) | Client (right)
+    const colWidth = (contentWidth - 40) / 2; // 40px gap
+    const leftX = margin;
+    const rightX = margin + colWidth + 40;
+    const sigTop = y;
+
+    // ── Provider column (left) — auto-signed ──
+    page.drawText("PROVIDER", {
+      x: leftX,
+      y: sigTop,
       size: 8,
       font: headingFont,
       color: grayColor,
     });
-    y -= 20;
 
-    // Signature line
+    // Auto-signature: "The Cuttr Team" in italic-style
+    const sigFont = await pdfDoc.embedFont(StandardFonts.TimesRomanBoldItalic);
+    page.drawText("The Cuttr Team", {
+      x: leftX,
+      y: sigTop - 28,
+      size: 16,
+      font: sigFont,
+      color: accentColor,
+    });
+
+    // Signature line below the auto-signature
     page.drawLine({
-      start: { x: margin, y },
-      end: { x: margin + 240, y },
+      start: { x: leftX, y: sigTop - 36 },
+      end: { x: leftX + colWidth, y: sigTop - 36 },
       thickness: 0.5,
       color: darkColor,
     });
-    y -= 14;
     page.drawText("Signature", {
-      x: margin,
-      y,
+      x: leftX,
+      y: sigTop - 48,
       size: 8,
       font: labelFont,
       color: grayColor,
     });
-    y -= 24;
+
+    // Printed name
+    page.drawText("Cuttr Inc.", {
+      x: leftX,
+      y: sigTop - 66,
+      size: 10,
+      font: bodyFont,
+      color: darkColor,
+    });
+    page.drawLine({
+      start: { x: leftX, y: sigTop - 72 },
+      end: { x: leftX + colWidth, y: sigTop - 72 },
+      thickness: 0.5,
+      color: darkColor,
+    });
+    page.drawText("Printed Name", {
+      x: leftX,
+      y: sigTop - 84,
+      size: 8,
+      font: labelFont,
+      color: grayColor,
+    });
+
+    // Date
+    page.drawText(dateStr, {
+      x: leftX,
+      y: sigTop - 102,
+      size: 10,
+      font: bodyFont,
+      color: darkColor,
+    });
+    page.drawLine({
+      start: { x: leftX, y: sigTop - 108 },
+      end: { x: leftX + colWidth * 0.65, y: sigTop - 108 },
+      thickness: 0.5,
+      color: darkColor,
+    });
+    page.drawText("Date", {
+      x: leftX,
+      y: sigTop - 120,
+      size: 8,
+      font: labelFont,
+      color: grayColor,
+    });
+
+    // ── Client column (right) — to be signed ──
+    page.drawText("CLIENT", {
+      x: rightX,
+      y: sigTop,
+      size: 8,
+      font: headingFont,
+      color: grayColor,
+    });
+
+    // Signature line (empty — filled when signed)
+    page.drawLine({
+      start: { x: rightX, y: sigTop - 36 },
+      end: { x: rightX + colWidth, y: sigTop - 36 },
+      thickness: 0.5,
+      color: darkColor,
+    });
+    page.drawText("Signature", {
+      x: rightX,
+      y: sigTop - 48,
+      size: 8,
+      font: labelFont,
+      color: grayColor,
+    });
 
     // Name line
     page.drawLine({
-      start: { x: margin, y },
-      end: { x: margin + 240, y },
+      start: { x: rightX, y: sigTop - 72 },
+      end: { x: rightX + colWidth, y: sigTop - 72 },
       thickness: 0.5,
       color: darkColor,
     });
-    y -= 14;
     page.drawText("Printed Name", {
-      x: margin,
-      y,
+      x: rightX,
+      y: sigTop - 84,
       size: 8,
       font: labelFont,
       color: grayColor,
     });
-    y -= 24;
 
     // Date line
     page.drawLine({
-      start: { x: margin, y },
-      end: { x: margin + 160, y },
+      start: { x: rightX, y: sigTop - 108 },
+      end: { x: rightX + colWidth * 0.65, y: sigTop - 108 },
       thickness: 0.5,
       color: darkColor,
     });
-    y -= 14;
     page.drawText("Date", {
-      x: margin,
-      y,
+      x: rightX,
+      y: sigTop - 120,
+      size: 8,
+      font: labelFont,
+      color: grayColor,
+    });
+
+    // Team name hint under client column
+    page.drawText(teamName, {
+      x: rightX,
+      y: sigTop - 136,
       size: 8,
       font: labelFont,
       color: grayColor,
@@ -461,8 +580,11 @@ class CampaignContractService {
     // Footer on last page
     drawFooter();
 
+    // Client signature line is at sigTop - 36
+    const clientSignatureY = sigTop - 36;
+
     const pdfBytes = await pdfDoc.save();
-    return Buffer.from(pdfBytes);
+    return { buffer: Buffer.from(pdfBytes), clientSignatureY };
   }
 
   async getContract(campaignId: number) {
@@ -527,7 +649,7 @@ class CampaignContractService {
     const signatureKey = `contracts/${contract.team_id}/${contract.campaign_id}/signature_${Date.now()}.png`;
     await s3Service.uploadBuffer(signatureBuffer, signatureKey, "image/png");
 
-    // Stamp signature onto the unsigned PDF
+    // Stamp signature onto the unsigned PDF (client = right column)
     let signedPdfKey: string | null = null;
     if (contract.unsigned_pdf_key) {
       try {
@@ -537,32 +659,51 @@ class CampaignContractService {
         const pdfDoc = await PDFDocument.load(pdfBuffer);
         const pages = pdfDoc.getPages();
         const lastPage = pages[pages.length - 1];
+        // Layout constants matching renderPdf's right column
+        const pageMargin = 64;
+        const pageContentWidth = 612 - pageMargin * 2;
+        const colWidth = (pageContentWidth - 40) / 2;
+        const rightX = pageMargin + colWidth + 40;
+
+        // Read exact signature line Y from stored metadata, fallback to estimate
+        const terms = contract.terms as Record<string, any> | null;
+        const sigLineY = terms?._clientSignatureY ?? (pageMargin + 80);
 
         // Embed signature image
         const sigImage = await pdfDoc.embedPng(signatureBuffer);
-        const sigDims = sigImage.scale(0.3);
+        const maxW = colWidth - 10;
+        const maxH = 30;
+        const scale = Math.min(maxW / sigImage.width, maxH / sigImage.height, 0.4);
+        const sigW = sigImage.width * scale;
+        const sigH = sigImage.height * scale;
         lastPage.drawImage(sigImage, {
-          x: 200,
-          y: 100,
-          width: Math.min(sigDims.width, 200),
-          height: Math.min(sigDims.height, 80),
+          x: rightX + 2,
+          y: sigLineY + 4,
+          width: sigW,
+          height: sigH,
         });
 
-        // Add name and date text
+        // Add name text (below sig line, on the name line)
         const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
         lastPage.drawText(legalName, {
-          x: 200,
-          y: 85,
+          x: rightX,
+          y: sigLineY - 28,
           size: 10,
           font,
-          color: rgb(0.1, 0.1, 0.1),
+          color: rgb(0.1, 0.1, 0.14),
         });
-        lastPage.drawText(new Date().toLocaleDateString(), {
-          x: 200,
-          y: 72,
+
+        // Add date text (on the date line)
+        lastPage.drawText(new Date().toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        }), {
+          x: rightX,
+          y: sigLineY - 64,
           size: 10,
           font,
-          color: rgb(0.1, 0.1, 0.1),
+          color: rgb(0.1, 0.1, 0.14),
         });
 
         const signedBytes = await pdfDoc.save();

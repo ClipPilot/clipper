@@ -440,7 +440,8 @@ interface PaymentGateProps {
   campaign: Campaign;
   gate: CampaignGates["payment"];
   savedCard: CampaignCard | null;
-  onRefresh: () => void;
+  onCardSaved: (card: CampaignCard) => void;
+  onPaymentComplete: (newBalanceCents: number) => void;
 }
 
 export function PaymentGate({
@@ -448,7 +449,8 @@ export function PaymentGate({
   campaign,
   gate,
   savedCard: initialCard,
-  onRefresh,
+  onCardSaved,
+  onPaymentComplete,
 }: PaymentGateProps) {
   const selectedTeam = useAtomValue(selectedTeamAtom);
 
@@ -508,7 +510,7 @@ export function PaymentGate({
     setCard(newCard);
     setIsSetupModalOpen(false);
     setSetupSecret(null);
-    onRefresh();
+    onCardSaved(newCard);
   };
 
   // ── Step 2 handlers ──────────────────────────────────────────────────────
@@ -537,7 +539,7 @@ export function PaymentGate({
           });
           setAmountInput("");
           setIsPolling(false);
-          onRefresh();
+          onPaymentComplete(gate.balanceCents + amountCents);
           return;
         }
       } catch {
@@ -551,7 +553,6 @@ export function PaymentGate({
       color: "warning",
     });
     setIsPolling(false);
-    onRefresh();
   };
 
   const handleAddFunds = async () => {
@@ -571,7 +572,7 @@ export function PaymentGate({
           color: "success",
         });
         setAmountInput("");
-        onRefresh();
+        onPaymentComplete(gate.balanceCents + cents);
       } else if (processing) {
         // ACH bank transfer — payment initiated, takes 3-5 business days
         setIsCreatingIntent(false);
@@ -607,7 +608,7 @@ export function PaymentGate({
   };
 
   const handlePaymentSuccess = () => {
-    onRefresh();
+    onPaymentComplete(gate.balanceCents + pendingAmountCents);
     handlePaymentModalClose();
   };
 

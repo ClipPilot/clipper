@@ -29,7 +29,7 @@ import { ContractGate } from "./gates/ContractGate";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function GateStatusIcon({ complete }: { complete: boolean }) {
+function StepStatusIcon({ complete }: { complete: boolean }) {
   if (complete) {
     return (
       <div className="w-6 h-6 rounded-full bg-success-500/20 flex items-center justify-center flex-shrink-0">
@@ -44,7 +44,7 @@ function GateStatusIcon({ complete }: { complete: boolean }) {
   );
 }
 
-interface GateSectionProps {
+interface StepSectionProps {
   number: number;
   title: string;
   description: string;
@@ -53,17 +53,17 @@ interface GateSectionProps {
   children: React.ReactNode;
 }
 
-function GateSection({
+function StepSection({
   number,
   title,
   description,
   icon,
   complete,
   children,
-}: GateSectionProps) {
+}: StepSectionProps) {
   const [isExpanded, setIsExpanded] = useState(!complete);
 
-  // Auto-collapse when gate becomes complete
+  // Auto-collapse when step becomes complete
   useEffect(() => {
     if (complete) setIsExpanded(false);
   }, [complete]);
@@ -93,7 +93,7 @@ function GateSection({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium text-text-tertiary">
-                Gate {number}
+                Step {number}
               </span>
               {complete && (
                 <Chip color="success" variant="flat" size="sm" className="h-5">
@@ -104,7 +104,7 @@ function GateSection({
             <p className="text-sm font-semibold text-text-primary">{title}</p>
             <p className="text-xs text-text-secondary">{description}</p>
           </div>
-          <GateStatusIcon complete={complete} />
+          <StepStatusIcon complete={complete} />
           <Icon
             icon={isExpanded ? "solar:alt-arrow-up-bold" : "solar:alt-arrow-down-bold"}
             className="text-text-tertiary ml-1 flex-shrink-0"
@@ -124,7 +124,7 @@ function GateSection({
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
-function GatesProgressBar({ gates }: { gates: CampaignGates }) {
+function StepsProgressBar({ gates }: { gates: CampaignGates }) {
   const completed = [
     gates.videos.complete,
     gates.payment.complete,
@@ -134,7 +134,7 @@ function GatesProgressBar({ gates }: { gates: CampaignGates }) {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between text-sm">
-        <span className="text-text-secondary">Gates complete</span>
+        <span className="text-text-secondary">Steps complete</span>
         <span className="font-semibold text-text-primary">{completed} / 3</span>
       </div>
       <div className="flex gap-1.5">
@@ -214,6 +214,99 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
     fetchAll();
   }, [fetchAll]);
 
+  // ── Targeted video state updates (no full refetch) ──────────────────────────
+
+  const handleVideoAdded = useCallback((video: CampaignVideo) => {
+    setVideos((prev) => [...prev, video]);
+    setGates((prev) =>
+      prev
+        ? {
+            ...prev,
+            videos: {
+              ...prev.videos,
+              videoCount: prev.videos.videoCount + 1,
+              complete:
+                prev.videos.videoCount + 1 >= prev.videos.videoMinimum,
+            },
+          }
+        : prev
+    );
+  }, []);
+
+  const handleVideosAdded = useCallback((newVideos: CampaignVideo[]) => {
+    setVideos((prev) => [...prev, ...newVideos]);
+    setGates((prev) =>
+      prev
+        ? {
+            ...prev,
+            videos: {
+              ...prev.videos,
+              videoCount: prev.videos.videoCount + newVideos.length,
+              complete:
+                prev.videos.videoCount + newVideos.length >=
+                prev.videos.videoMinimum,
+            },
+          }
+        : prev
+    );
+  }, []);
+
+  const handleVideoRemoved = useCallback((videoId: number) => {
+    setVideos((prev) => prev.filter((v) => v.id !== videoId));
+    setGates((prev) =>
+      prev
+        ? {
+            ...prev,
+            videos: {
+              ...prev.videos,
+              videoCount: Math.max(0, prev.videos.videoCount - 1),
+              complete:
+                prev.videos.videoCount - 1 >= prev.videos.videoMinimum,
+            },
+          }
+        : prev
+    );
+  }, []);
+
+  // ── Targeted payment state updates ─────────────────────────────────────────
+
+  const handleCardSaved = useCallback((card: CampaignCard) => {
+    setSavedCard(card);
+  }, []);
+
+  const handlePaymentComplete = useCallback((newBalanceCents: number) => {
+    setGates((prev) =>
+      prev
+        ? {
+            ...prev,
+            payment: {
+              ...prev.payment,
+              balanceCents: newBalanceCents,
+              complete: newBalanceCents >= prev.payment.requiredCents,
+            },
+          }
+        : prev
+    );
+  }, []);
+
+  // ── Targeted contract state update ─────────────────────────────────────────
+
+  const handleContractSigned = useCallback((updatedContract: CampaignContract) => {
+    setContract(updatedContract);
+    setGates((prev) =>
+      prev
+        ? {
+            ...prev,
+            contract: {
+              ...prev.contract,
+              complete: true,
+              signedAt: updatedContract.signed_at,
+            },
+          }
+        : prev
+    );
+  }, []);
+
   const handleStartCampaign = async () => {
     if (!selectedTeam?.id || !campaign) return;
     setIsStarting(true);
@@ -264,11 +357,11 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
     );
   }
 
-  const allGatesComplete =
+  const allStepsComplete =
     gates.videos.complete && gates.payment.complete && gates.contract.complete;
 
   const canStart =
-    allGatesComplete &&
+    allStepsComplete &&
     campaign.status !== "started" &&
     campaign.status !== "completed";
 
@@ -328,11 +421,11 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
           </div>
         </div>
 
-        {/* Gates progress bar */}
-        <GatesProgressBar gates={gates} />
+        {/* Steps progress bar */}
+        <StepsProgressBar gates={gates} />
 
-        {/* Gate 1: Videos */}
-        <GateSection
+        {/* Step1: Videos */}
+        <StepSection
           number={1}
           title="Upload Videos"
           description="Add the video creatives that will run in your campaign."
@@ -343,12 +436,14 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
             campaignId={campaignId}
             videos={videos}
             gate={gates.videos}
-            onRefresh={fetchAll}
+            onVideoAdded={handleVideoAdded}
+            onVideosAdded={handleVideosAdded}
+            onVideoRemoved={handleVideoRemoved}
           />
-        </GateSection>
+        </StepSection>
 
-        {/* Gate 2: Payment */}
-        <GateSection
+        {/* Step2: Payment */}
+        <StepSection
           number={2}
           title="Fund Campaign"
           description="Add funds to your campaign wallet to cover the ad spend."
@@ -360,12 +455,13 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
             campaign={campaign}
             gate={gates.payment}
             savedCard={savedCard}
-            onRefresh={fetchAll}
+            onCardSaved={handleCardSaved}
+            onPaymentComplete={handlePaymentComplete}
           />
-        </GateSection>
+        </StepSection>
 
-        {/* Gate 3: Contract */}
-        <GateSection
+        {/* Step3: Contract */}
+        <StepSection
           number={3}
           title="Sign Contract"
           description="Review and sign the campaign agreement to proceed."
@@ -376,9 +472,9 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
             campaignId={campaignId}
             gate={gates.contract}
             contract={contract}
-            onRefresh={fetchAll}
+            onContractSigned={handleContractSigned}
           />
-        </GateSection>
+        </StepSection>
 
         {/* Start campaign button */}
         <div className="pt-2 pb-8">
@@ -414,9 +510,9 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
                 )
               }
             >
-              {allGatesComplete
+              {allStepsComplete
                 ? "Start Campaign"
-                : `Complete ${3 - [gates.videos.complete, gates.payment.complete, gates.contract.complete].filter(Boolean).length} more gate${
+                : `Complete ${3 - [gates.videos.complete, gates.payment.complete, gates.contract.complete].filter(Boolean).length} more step${
                     3 - [gates.videos.complete, gates.payment.complete, gates.contract.complete].filter(Boolean).length !== 1 ? "s" : ""
                   } to start`}
             </Button>

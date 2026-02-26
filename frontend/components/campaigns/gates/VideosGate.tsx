@@ -37,7 +37,7 @@ interface ClipPickerModalProps {
   teamId: number;
   campaignId: number;
   existingClipIds: Set<number>;
-  onAdded: () => void;
+  onAdded: (videos: CampaignVideo[]) => void;
 }
 
 function ClipPickerModal({
@@ -146,13 +146,13 @@ function ClipPickerModal({
     if (selectedIds.size === 0) return;
     setIsAdding(true);
     try {
-      await campaignAPI.addVideos(teamId, campaignId, Array.from(selectedIds));
+      const result = await campaignAPI.addVideos(teamId, campaignId, Array.from(selectedIds));
       addToast({
         title: "Clips added",
         description: `${selectedIds.size} clip${selectedIds.size !== 1 ? "s" : ""} added to campaign.`,
         color: "success",
       });
-      onAdded();
+      onAdded(result.videos);
       onClose();
     } catch (err: any) {
       addToast({
@@ -656,14 +656,18 @@ interface VideosGateProps {
   campaignId: number;
   videos: CampaignVideo[];
   gate: CampaignGates["videos"];
-  onRefresh: () => void;
+  onVideoAdded: (video: CampaignVideo) => void;
+  onVideosAdded: (videos: CampaignVideo[]) => void;
+  onVideoRemoved: (videoId: number) => void;
 }
 
 export function VideosGate({
   campaignId,
   videos,
   gate,
-  onRefresh,
+  onVideoAdded,
+  onVideosAdded,
+  onVideoRemoved,
 }: VideosGateProps) {
   const selectedTeam = useAtomValue(selectedTeamAtom);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -686,6 +690,97 @@ export function VideosGate({
     videos.filter((v) => v.clip_id != null).map((v) => v.clip_id as number),
   );
 
+  const uploadSingleFile = useCallback(
+    async (file: File, key: string) => {
+      if (!selectedTeam?.id) return;
+
+      try {
+        // Step 1: get presigned URL
+        const { video, uploadUrl } = await campaignAPI.uploadVideo(
+          selectedTeam.id,
+          campaignId,
+          file.name,
+          file.type || "video/mp4",
+        );
+
+        // Step 2: PUT to presigned URL with progress tracking
+        await new Promise<void>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open("PUT", uploadUrl);
+          xhr.setRequestHeader("Content-Type", file.type || "video/mp4");
+
+          xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable) {
+              const pct = Math.round((event.loaded / event.total) * 100);
+              setUploadingFiles((prev) => {
+                const next = new Map(prev);
+                next.set(key, {
+                  name: file.name,
+                  progress: pct,
+                  status: "uploading",
+                });
+                return next;
+              });
+            }
+          };
+
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve();
+            } else {
+              reject(new Error(`Upload failed: ${xhr.status}`));
+            }
+          };
+
+          xhr.onerror = () => reject(new Error("Network error during upload"));
+          xhr.send(file);
+        });
+
+        // Step 3: notify backend
+        setUploadingFiles((prev) => {
+          const next = new Map(prev);
+          next.set(key, { name: file.name, progress: 100, status: "completing" });
+          return next;
+        });
+
+        const { video: completedVideo } = await campaignAPI.completeUpload(
+          selectedTeam.id,
+          campaignId,
+          video.id,
+        );
+
+        // Add to table dynamically — no full page refresh
+        onVideoAdded(completedVideo);
+
+        setUploadingFiles((prev) => {
+          const next = new Map(prev);
+          next.set(key, { name: file.name, progress: 100, status: "done" });
+          return next;
+        });
+
+        setTimeout(() => {
+          setUploadingFiles((prev) => {
+            const next = new Map(prev);
+            next.delete(key);
+            return next;
+          });
+        }, 1500);
+      } catch (err: any) {
+        setUploadingFiles((prev) => {
+          const next = new Map(prev);
+          next.set(key, { name: file.name, progress: 0, status: "error" });
+          return next;
+        });
+        addToast({
+          title: "Upload failed",
+          description: `${file.name}: ${err.message || "Something went wrong"}`,
+          color: "danger",
+        });
+      }
+    },
+    [selectedTeam?.id, campaignId, onVideoAdded],
+  );
+
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       if (!selectedTeam?.id) return;
@@ -695,96 +790,26 @@ export function VideosGate({
       // Reset input so same files can be re-selected
       e.target.value = "";
 
-      for (const file of files) {
-        const key = `${file.name}-${Date.now()}`;
+      // Show ALL files as uploading immediately
+      const entries: [string, File][] = files.map((file, i) => [
+        `${file.name}-${Date.now()}-${i}`,
+        file,
+      ]);
 
-        setUploadingFiles((prev) => {
-          const next = new Map(prev);
+      setUploadingFiles((prev) => {
+        const next = new Map(prev);
+        for (const [key, file] of entries) {
           next.set(key, { name: file.name, progress: 0, status: "uploading" });
-          return next;
-        });
-
-        try {
-          // Step 1: get presigned URL
-          const { video, uploadUrl } = await campaignAPI.uploadVideo(
-            selectedTeam.id,
-            campaignId,
-            file.name,
-            file.type || "video/mp4",
-          );
-
-          // Step 2: PUT to presigned URL with progress tracking
-          await new Promise<void>((resolve, reject) => {
-            const xhr = new XMLHttpRequest();
-            xhr.open("PUT", uploadUrl);
-            xhr.setRequestHeader("Content-Type", file.type || "video/mp4");
-
-            xhr.upload.onprogress = (event) => {
-              if (event.lengthComputable) {
-                const pct = Math.round((event.loaded / event.total) * 100);
-                setUploadingFiles((prev) => {
-                  const next = new Map(prev);
-                  next.set(key, {
-                    name: file.name,
-                    progress: pct,
-                    status: "uploading",
-                  });
-                  return next;
-                });
-              }
-            };
-
-            xhr.onload = () => {
-              if (xhr.status >= 200 && xhr.status < 300) {
-                resolve();
-              } else {
-                reject(new Error(`Upload failed: ${xhr.status}`));
-              }
-            };
-
-            xhr.onerror = () => reject(new Error("Network error during upload"));
-            xhr.send(file);
-          });
-
-          // Step 3: notify backend
-          setUploadingFiles((prev) => {
-            const next = new Map(prev);
-            next.set(key, { name: file.name, progress: 100, status: "completing" });
-            return next;
-          });
-
-          await campaignAPI.completeUpload(selectedTeam.id, campaignId, video.id);
-
-          setUploadingFiles((prev) => {
-            const next = new Map(prev);
-            next.set(key, { name: file.name, progress: 100, status: "done" });
-            return next;
-          });
-
-          setTimeout(() => {
-            setUploadingFiles((prev) => {
-              const next = new Map(prev);
-              next.delete(key);
-              return next;
-            });
-          }, 1500);
-
-          onRefresh();
-        } catch (err: any) {
-          setUploadingFiles((prev) => {
-            const next = new Map(prev);
-            next.set(key, { name: file.name, progress: 0, status: "error" });
-            return next;
-          });
-          addToast({
-            title: "Upload failed",
-            description: `${file.name}: ${err.message || "Something went wrong"}`,
-            color: "danger",
-          });
         }
-      }
+        return next;
+      });
+
+      // Upload all in parallel — each pops into the table as it completes
+      await Promise.allSettled(
+        entries.map(([key, file]) => uploadSingleFile(file, key)),
+      );
     },
-    [selectedTeam?.id, campaignId, onRefresh],
+    [selectedTeam?.id, uploadSingleFile],
   );
 
   const handleRemoveVideo = async (videoId: number) => {
@@ -792,8 +817,8 @@ export function VideosGate({
     setRemovingId(videoId);
     try {
       await campaignAPI.removeVideo(selectedTeam.id, campaignId, videoId);
+      onVideoRemoved(videoId);
       addToast({ title: "Video removed", color: "success" });
-      onRefresh();
     } catch (err: any) {
       addToast({
         title: "Failed to remove video",
@@ -953,7 +978,7 @@ export function VideosGate({
           teamId={selectedTeam.id}
           campaignId={campaignId}
           existingClipIds={existingClipIds}
-          onAdded={onRefresh}
+          onAdded={onVideosAdded}
         />
       )}
 
