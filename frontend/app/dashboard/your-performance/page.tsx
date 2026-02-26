@@ -138,65 +138,48 @@ export default function YourPerformancePage() {
 
   // ─── Derived data ────────────────────────────────────────────────────────────
 
-  const activeAccounts = useMemo(() => {
-    if (selectedAccountIds.length === 0) return accounts;
-    return accounts.filter((a) => selectedAccountIds.includes(a.id));
-  }, [accounts, selectedAccountIds]);
+  const derived = useMemo(() => {
+    const activeAccounts = selectedAccountIds.length === 0
+      ? accounts
+      : accounts.filter((a) => selectedAccountIds.includes(a.id));
 
-  const activePosts = useMemo(() => {
     const posts: ViralityPost[] = [];
-    for (const a of activeAccounts) {
-      const accountPosts = postsByAccount[a.id] || [];
-      posts.push(...accountPosts);
-    }
-    return posts.sort(
+    for (const a of activeAccounts) posts.push(...(postsByAccount[a.id] || []));
+    const activePosts = posts.sort(
       (a, b) => new Date(b.posted_at || 0).getTime() - new Date(a.posted_at || 0).getTime()
     );
-  }, [activeAccounts, postsByAccount]);
 
-  const activePostsByAccount = useMemo(() => {
-    const map: Record<number, ViralityPost[]> = {};
-    for (const a of activeAccounts) {
-      map[a.id] = postsByAccount[a.id] || [];
-    }
-    return map;
-  }, [activeAccounts, postsByAccount]);
+    const activePostsByAccount: Record<number, ViralityPost[]> = {};
+    for (const a of activeAccounts) activePostsByAccount[a.id] = postsByAccount[a.id] || [];
 
-  const allFilteredPostsByAccount = useMemo(() => {
-    const map: Record<number, ViralityPost[]> = {};
-    for (const a of accounts) {
-      map[a.id] = postsByAccount[a.id] || [];
-    }
-    return map;
-  }, [accounts, postsByAccount]);
+    const allFilteredPostsByAccount: Record<number, ViralityPost[]> = {};
+    const accountPlatformMap: Record<number, string> = {};
+    const accountSyncMap: Record<number, string | null> = {};
+    const accountColorMap: Record<number, string> = {};
+    const accountMap: Record<number, ViralityAccount> = {};
+    let lastSyncedAt: Date | null = null;
 
-  const accountPlatformMap = useMemo(() => {
-    const map: Record<number, string> = {};
-    for (const a of accounts) map[a.id] = a.platform;
-    return map;
-  }, [accounts]);
-
-  const accountSyncMap = useMemo(() => {
-    const map: Record<number, string | null> = {};
-    for (const a of accounts) map[a.id] = a.last_synced_at;
-    return map;
-  }, [accounts]);
-
-  const accountColorMap = useMemo(() => {
-    const map: Record<number, string> = {};
     accounts.forEach((a, i) => {
-      map[a.id] = CHART_COLORS[i % CHART_COLORS.length];
+      allFilteredPostsByAccount[a.id] = postsByAccount[a.id] || [];
+      accountPlatformMap[a.id] = a.platform;
+      accountSyncMap[a.id] = a.last_synced_at;
+      accountColorMap[a.id] = CHART_COLORS[i % CHART_COLORS.length];
+      accountMap[a.id] = a;
+      if (a.last_synced_at) {
+        const d = new Date(a.last_synced_at);
+        if (!lastSyncedAt || d > lastSyncedAt) lastSyncedAt = d;
+      }
     });
-    return map;
-  }, [accounts]);
 
-  const accountMap = useMemo(() => {
-    const map: Record<number, ViralityAccount> = {};
-    for (const a of accounts) map[a.id] = a;
-    return map;
-  }, [accounts]);
+    return {
+      activeAccounts, activePosts, activePostsByAccount, allFilteredPostsByAccount,
+      accountPlatformMap, accountSyncMap, accountColorMap, accountMap, lastSyncedAt,
+      postsPerWeek: computePostsPerWeek(activePosts),
+    };
+  }, [accounts, postsByAccount, selectedAccountIds]);
 
   const stats = useMemo(() => {
+    const { activeAccounts, activePosts } = derived;
     const followers = activeAccounts.reduce((sum, a) => sum + (a.follower_count || 0), 0);
     const totalLikes = activePosts.reduce((sum, p) => sum + (p.like_count || 0), 0);
     const totalComments = activePosts.reduce((sum, p) => sum + (p.comment_count || 0), 0);
@@ -256,20 +239,7 @@ export default function YourPerformancePage() {
       commentsChange: hasHistory ? pct(latestComments, prevComments) : null,
       viewsChange: hasHistory ? pct(latestViews, prevViews) : null,
     };
-  }, [activeAccounts, activePosts, comparisonMode]);
-
-  const postsPerWeek = useMemo(() => computePostsPerWeek(activePosts), [activePosts]);
-
-  const lastSyncedAt = useMemo(() => {
-    let latest: Date | null = null;
-    for (const a of accounts) {
-      if (a.last_synced_at) {
-        const d = new Date(a.last_synced_at);
-        if (!latest || d > latest) latest = d;
-      }
-    }
-    return latest;
-  }, [accounts]);
+  }, [derived, comparisonMode]);
 
   // ─── Loading / Error states ──────────────────────────────────────────────────
 
@@ -287,7 +257,7 @@ export default function YourPerformancePage() {
 
   // ─── Stat card data ──────────────────────────────────────────────────────────
 
-  const statCards = buildStatCards(stats, activePosts.length, postsPerWeek);
+  const statCards = buildStatCards(stats, derived.activePosts.length, derived.postsPerWeek);
 
   // ─── Render ──────────────────────────────────────────────────────────────────
 
@@ -305,9 +275,9 @@ export default function YourPerformancePage() {
             <p className="text-text-secondary text-sm mt-1">
               Real-time performance metrics for your own accounts
             </p>
-            {lastSyncedAt && (
+            {derived.lastSyncedAt !== null && (
               <p className="text-text-tertiary text-xs mt-0.5">
-                Last synced {timeAgo(lastSyncedAt.toISOString())} · Next sync in{" "}
+                Last synced {timeAgo((derived.lastSyncedAt as Date).toISOString())} · Next sync in{" "}
                 {getNextSyncCountdown()}
               </p>
             )}
@@ -374,8 +344,8 @@ export default function YourPerformancePage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
             <StatCards items={statCards} gridClassName="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" />
             <YourAccountsList
-              accounts={activeAccounts}
-              postsByAccount={activePostsByAccount}
+              accounts={derived.activeAccounts}
+              postsByAccount={derived.activePostsByAccount}
               onAccountDeleted={fetchData}
             />
           </div>
@@ -386,20 +356,20 @@ export default function YourPerformancePage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
             <div className="lg:col-span-2">
               <AnalyticsChart
-                accounts={activeAccounts}
-                postsByAccount={activePostsByAccount}
+                accounts={derived.activeAccounts}
+                postsByAccount={derived.activePostsByAccount}
                 allAccounts={accounts}
-                allPostsByAccount={allFilteredPostsByAccount}
-                colorMap={accountColorMap}
+                allPostsByAccount={derived.allFilteredPostsByAccount}
+                colorMap={derived.accountColorMap}
                 startDate={dateRange.startDate}
                 endDate={dateRange.endDate}
               />
             </div>
             <div className="lg:col-span-1">
               <ActivityFeed
-                posts={activePosts}
+                posts={derived.activePosts}
                 allPosts={Object.values(postsByAccount).flat()}
-                accountMap={accountMap}
+                accountMap={derived.accountMap}
                 dateRange={dateRange}
               />
             </div>
@@ -411,15 +381,15 @@ export default function YourPerformancePage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
             <div className="lg:col-span-2">
               <PostFrequencyChart
-                posts={activePosts}
+                posts={derived.activePosts}
                 startDate={dateRange.startDate}
                 endDate={dateRange.endDate}
               />
             </div>
             <div className="lg:col-span-1">
               <AccountBreakdownChart
-                accounts={activeAccounts}
-                postsByAccount={activePostsByAccount}
+                accounts={derived.activeAccounts}
+                postsByAccount={derived.activePostsByAccount}
               />
             </div>
           </div>
@@ -429,9 +399,9 @@ export default function YourPerformancePage() {
         <RecalcOverlay active={isRecalculating}>
           <PostsTable
             key={selectedAccountIds.join(",") + (dateRange.startDate || "") + (dateRange.endDate || "")}
-            posts={activePosts}
-            accountPlatformMap={accountPlatformMap}
-            accountSyncMap={accountSyncMap}
+            posts={derived.activePosts}
+            accountPlatformMap={derived.accountPlatformMap}
+            accountSyncMap={derived.accountSyncMap}
             comparisonMode={comparisonMode}
             onComparisonModeChange={setComparisonMode}
           />
