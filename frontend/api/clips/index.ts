@@ -399,7 +399,7 @@ class ClipsAPI {
   async updateTextOverlay(
     teamId: number,
     clipId: number,
-    overlay: { text: string; color: string; font?: string; x: number; y: number; fontSize: number }
+    overlay: { text: string; color: string; font?: string; x: number; y: number; fontSize: number; style?: "stroke" | "instagram" }
   ): Promise<{ clipUrl: string }> {
     const response = await apiFetch(
       `${API_URL}/clip-video/teams/${teamId}/clips/${clipId}/text-overlay`,
@@ -412,6 +412,25 @@ class ClipsAPI {
 
     if (!response.ok) {
       throw new Error("Failed to update text overlay");
+    }
+
+    return response.json();
+  }
+
+  async generateHeading(
+    teamId: number,
+    clipId: number,
+  ): Promise<{ heading: string }> {
+    const response = await apiFetch(
+      `${API_URL}/clip-video/teams/${teamId}/clips/${clipId}/generate-heading`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to generate heading");
     }
 
     return response.json();
@@ -434,6 +453,7 @@ class ClipsAPI {
         x: number;
         y: number;
         fontSize: number;
+        style?: "stroke" | "instagram";
       };
     }
   ): Promise<{ clipUrl: string }> {
@@ -798,6 +818,7 @@ class ClipsAPI {
         x: number;
         y: number;
         fontSize: number;
+        style?: "stroke" | "instagram";
       };
       overlays?: Array<{
         id: string;

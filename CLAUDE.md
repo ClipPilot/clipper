@@ -397,6 +397,11 @@ pnpm build          # TypeScript compile
 - Rebuild `@clipper/shared-db` after schema changes (`pnpm build`)
 - Use Drizzle query builder for type-safe queries
 
+### OpenAI Usage
+- **Always use the Responses API** (`openaiClient.responses.create`), never the Chat Completions API (`openaiClient.chat.completions.create`)
+- Use `instructions` for system-level prompts, `input` for user content, and read results from `response.output_text`
+- Default model: `gpt-5-mini` for lightweight tasks, `gpt-5.2` for complex/multimodal tasks
+
 ### General
 - Package manager: pnpm only (never npm or yarn)
 - Node.js v22+

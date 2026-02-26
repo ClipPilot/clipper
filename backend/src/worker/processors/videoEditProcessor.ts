@@ -254,6 +254,7 @@ export async function processVideoEditJob(job: VideoEditJob): Promise<void> {
         x: heading.x ?? 50,
         y: heading.y ?? 10,
         fontSize: heading.fontSize ?? 48,
+        style: heading.style || "stroke",
       });
 
       currentVideoPath = headingPath;

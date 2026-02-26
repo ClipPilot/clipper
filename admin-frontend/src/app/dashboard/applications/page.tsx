@@ -31,7 +31,7 @@ function DetailModal({ applicationId, onClose, onAction }: DetailModalProps) {
         setDetail(application);
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : "Failed to load application"
+          err instanceof Error ? err.message : "Failed to load application",
         );
       } finally {
         setLoading(false);
@@ -49,7 +49,7 @@ function DetailModal({ applicationId, onClose, onAction }: DetailModalProps) {
       onClose();
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to approve application"
+        err instanceof Error ? err.message : "Failed to approve application",
       );
     } finally {
       setActionLoading(false);
@@ -67,13 +67,13 @@ function DetailModal({ applicationId, onClose, onAction }: DetailModalProps) {
       await adminAPI.rejectApplication(
         applicationId,
         rejectionReason,
-        adminNotes || undefined
+        adminNotes || undefined,
       );
       onAction();
       onClose();
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to reject application"
+        err instanceof Error ? err.message : "Failed to reject application",
       );
     } finally {
       setActionLoading(false);
@@ -89,14 +89,13 @@ function DetailModal({ applicationId, onClose, onAction }: DetailModalProps) {
       onClose();
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to create Drive folder"
+        err instanceof Error ? err.message : "Failed to create Drive folder",
       );
     } finally {
       setActionLoading(false);
     }
   };
 
-  // TODO(human): Implement the renderIntakeFormDetails function
   const renderIntakeFormDetails = (form: IntakeForm) => {
     return (
       <div className="space-y-4">
@@ -105,7 +104,9 @@ function DetailModal({ applicationId, onClose, onAction }: DetailModalProps) {
             <h4 className="text-xs font-medium text-text-tertiary uppercase tracking-wider mb-1">
               Brand Description
             </h4>
-            <p className="text-sm text-text-primary">{form.brand_description}</p>
+            <p className="text-sm text-text-primary">
+              {form.brand_description}
+            </p>
           </div>
         )}
 
@@ -236,7 +237,9 @@ function DetailModal({ applicationId, onClose, onAction }: DetailModalProps) {
             Loading application details...
           </div>
         ) : !detail ? (
-          <div className="p-12 text-center text-red-400">{error || "Application not found"}</div>
+          <div className="p-12 text-center text-red-400">
+            {error || "Application not found"}
+          </div>
         ) : (
           <>
             <div className="flex justify-between items-start mb-6">
@@ -429,7 +432,7 @@ function getStatusBadgeClass(status: string) {
 
 export default function ApplicationsPage() {
   const [applications, setApplications] = useState<MassPostingApplication[]>(
-    []
+    [],
   );
   const [total, setTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -582,7 +585,7 @@ export default function ApplicationsPage() {
                                 alert(
                                   err instanceof Error
                                     ? err.message
-                                    : "Failed to create Drive folder"
+                                    : "Failed to create Drive folder",
                                 );
                               }
                             }}

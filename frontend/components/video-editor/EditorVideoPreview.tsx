@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useEffect, useState, useCallback } from "react";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom, useAtom } from "jotai";
 import { Icon } from "@iconify/react";
 import {
   captionsEnabledAtom,
@@ -18,6 +18,7 @@ import {
   activeSegmentsAtom,
   mediaOverlaysAtom,
   selectedOverlayIdAtom,
+  HeadingState,
 } from "@/store/videoEditor";
 import { CAPTION_FONTS, HEADING_FONTS } from "@/constants/overlayStyles";
 import { CaptionEntry } from "@/api/clips";
@@ -62,12 +63,25 @@ export function EditorVideoPreview({
     startScale: number;
   } | null>(null);
 
+  // Heading drag state
+  const [headingDrag, setHeadingDrag] = useState<{
+    startMouseX: number;
+    startMouseY: number;
+    startX: number;
+    startY: number;
+  } | null>(null);
+  const [headingResizing, setHeadingResizing] = useState<{
+    startMouseX: number;
+    startMouseY: number;
+    startFontSize: number;
+  } | null>(null);
+
   // Atom values
   const captionsEnabled = useAtomValue(captionsEnabledAtom);
   const captionsData = useAtomValue(captionsDataAtom);
   const captionColor = useAtomValue(captionColorAtom);
   const captionFont = useAtomValue(captionFontAtom);
-  const headingState = useAtomValue(headingStateAtom);
+  const [headingState, setHeadingState] = useAtom(headingStateAtom);
   const cropState = useAtomValue(cropStateAtom);
   const globalSpeed = useAtomValue(speedStateAtom);
   const audioState = useAtomValue(audioStateAtom);
@@ -247,23 +261,42 @@ export function EditorVideoPreview({
 
   const handleContainerMouseMove = useCallback(
     (e: React.MouseEvent) => {
-      if (!dragRef.current || !containerRef.current) return;
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+
+      // Heading drag
+      if (headingDrag) {
+        const deltaXPercent = ((e.clientX - headingDrag.startMouseX) / rect.width) * 100;
+        const deltaYPercent = ((e.clientY - headingDrag.startMouseY) / rect.height) * 100;
+        const newX = Math.max(0, Math.min(100, headingDrag.startX + deltaXPercent));
+        const newY = Math.max(0, Math.min(100, headingDrag.startY + deltaYPercent));
+        setHeadingState((prev) => prev ? { ...prev, x: newX, y: newY } : prev);
+        return;
+      }
+
+      // Heading resize
+      if (headingResizing) {
+        const delta = (e.clientX - headingResizing.startMouseX + e.clientY - headingResizing.startMouseY) / 2;
+        const sizeDelta = (delta / rect.height) * 120;
+        const newSize = Math.max(16, Math.min(120, Math.round(headingResizing.startFontSize + sizeDelta)));
+        setHeadingState((prev) => prev ? { ...prev, fontSize: newSize } : prev);
+        return;
+      }
+
+      // Overlay drag
+      if (!dragRef.current) return;
       const id = dragRef.current.overlayId;
 
       if (dragRef.current.mode === "resize") {
-        // Resize: use horizontal + vertical delta to adjust scale
         const deltaX = e.clientX - dragRef.current.startMouseX;
         const deltaY = e.clientY - dragRef.current.startMouseY;
         const delta = (deltaX + deltaY) / 2;
-        const rect = containerRef.current.getBoundingClientRect();
         const scaleFactor = delta / (rect.width * 0.3);
         const newScale = Math.max(0.1, Math.min(5, dragRef.current.startScale + scaleFactor));
         setOverlays((prev) =>
           prev.map((o) => (o.id === id ? { ...o, scale: newScale } : o))
         );
       } else {
-        // Move
-        const rect = containerRef.current.getBoundingClientRect();
         const deltaXPercent = ((e.clientX - dragRef.current.startMouseX) / rect.width) * 100;
         const deltaYPercent = ((e.clientY - dragRef.current.startMouseY) / rect.height) * 100;
         const newX = Math.max(0, Math.min(100, dragRef.current.startX + deltaXPercent));
@@ -273,11 +306,13 @@ export function EditorVideoPreview({
         );
       }
     },
-    [setOverlays]
+    [setOverlays, headingDrag, headingResizing, setHeadingState]
   );
 
   const handleContainerMouseUp = useCallback(() => {
     dragRef.current = null;
+    setHeadingDrag(null);
+    setHeadingResizing(null);
   }, []);
 
   return (
@@ -460,28 +495,77 @@ export function EditorVideoPreview({
               );
             })()}
 
-            {/* Heading Preview */}
-            {headingState && headingState.text && containerHeight > 0 && (
-              <div
-                className="absolute pointer-events-none px-3 py-1 rounded"
-                style={{
-                  left: `${headingState.x}%`,
-                  top: `${headingState.y}%`,
-                  transform: "translate(-50%, -50%)",
-                  color: headingState.color,
-                  fontSize: `${Math.round(headingState.fontSize * scale)}px`,
-                  fontWeight: 900,
-                  WebkitTextStroke: `${Math.max(1, Math.round(4 * scale))}px #000000`,
-                  paintOrder: "stroke fill",
-                  fontFamily: `var(--font-${getFontId(headingState.font, HEADING_FONTS)}), sans-serif`,
-                  textAlign: "center",
-                  lineHeight: 1.2,
-                  maxWidth: "90%",
-                }}
-              >
-                {headingState.text}
-              </div>
-            )}
+            {/* Heading Preview — draggable + resizable.
+                 Backend renders text in a 1080px-wide container (padding: 20px),
+                 screenshots it, then overlays the full-width PNG centered at (x%, y%). */}
+            {headingState && headingState.text && containerHeight > 0 && (() => {
+              const isInstagram = headingState.style === "instagram";
+              const isDragging = !!headingDrag || !!headingResizing;
+              return (
+                <div
+                  className={`absolute ${isDragging ? "cursor-grabbing" : "cursor-grab"}`}
+                  style={{
+                    width: "100%",
+                    left: `${headingState.x - 50}%`,
+                    top: `${headingState.y}%`,
+                    transform: "translateY(-50%)",
+                    textAlign: "center",
+                    padding: `0 ${Math.round(20 * scale)}px`,
+                    zIndex: 5,
+                  }}
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    setHeadingDrag({
+                      startMouseX: e.clientX,
+                      startMouseY: e.clientY,
+                      startX: headingState.x,
+                      startY: headingState.y,
+                    });
+                  }}
+                >
+                  <span
+                    style={{
+                      fontFamily: `var(--font-${getFontId(headingState.font, HEADING_FONTS)}), sans-serif`,
+                      fontSize: `${Math.round(headingState.fontSize * scale)}px`,
+                      fontWeight: 900,
+                      lineHeight: 1.2,
+                      position: "relative",
+                      ...(isInstagram
+                        ? {
+                            color: "#FFFFFF",
+                            background: "rgba(0, 0, 0, 0.85)",
+                            padding: `${Math.round(10 * scale)}px ${Math.round(24 * scale)}px`,
+                            borderRadius: `${Math.round(8 * scale)}px`,
+                          }
+                        : {
+                            color: headingState.color,
+                            WebkitTextStroke: `${Math.max(1, Math.round(4 * scale))}px #000000`,
+                            paintOrder: "stroke fill" as const,
+                          }),
+                    }}
+                  >
+                    {headingState.text}
+                    {/* Resize handle */}
+                    <span
+                      className="absolute -bottom-2 -right-2 w-4 h-4 bg-accent-400 rounded-full cursor-se-resize flex items-center justify-center shadow-lg border border-white"
+                      style={{ display: "inline-flex" }}
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        setHeadingResizing({
+                          startMouseX: e.clientX,
+                          startMouseY: e.clientY,
+                          startFontSize: headingState.fontSize,
+                        });
+                      }}
+                    >
+                      <Icon icon="solar:maximize-bold" className="text-white text-[7px]" />
+                    </span>
+                  </span>
+                </div>
+              );
+            })()}
 
             {/* Crop Overlay Preview */}
             {cropState.aspectRatio !== "9:16" && (
