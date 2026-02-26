@@ -119,6 +119,9 @@ jobs:
           # Status Dashboard
           status_cron_secret  = "${{ secrets.STATUS_CRON_SECRET }}"
           status_domain       = "status.cuttr.com"
+
+          # Mac Rendering Instance (Apple emoji fonts)
+          enable_mac_rendering = true
           EOF
 
       - name: Terraform Plan
@@ -253,6 +256,9 @@ jobs:
           # Status Dashboard
           status_cron_secret  = "${{ secrets.STATUS_CRON_SECRET }}"
           status_domain       = "status.cuttr.com"
+
+          # Mac Rendering Instance (Apple emoji fonts)
+          enable_mac_rendering = true
           EOF
 
       - name: Download Terraform Plan

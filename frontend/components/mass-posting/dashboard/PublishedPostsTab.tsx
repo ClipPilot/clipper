@@ -64,21 +64,28 @@ export function PublishedPostsTab({
       };
       onParamsChange(params);
     },
-    [searchQuery, platformFilter, dateRange, page, onParamsChange]
+    [searchQuery, platformFilter, dateRange, page, onParamsChange],
   );
 
   const totalPages = pagination?.totalPages ?? 1;
   const total = pagination?.total ?? 0;
-  const startItem = total === 0 ? 0 : (page - 1) * (pagination?.pageSize ?? 20) + 1;
+  const startItem =
+    total === 0 ? 0 : (page - 1) * (pagination?.pageSize ?? 20) + 1;
   const endItem = Math.min(page * (pagination?.pageSize ?? 20), total);
 
-  // TODO(human): Decide on export strategy — currently exports only the visible page.
-  // Options: (a) fetch all pages in a loop, (b) single call with large pageSize,
-  // (c) dedicated backend CSV endpoint. Implement your chosen approach below.
   const handleExportCSV = () => {
     if (posts.length === 0) return;
 
-    const headers = ["ID", "Clip Title", "Account", "Platform", "Status", "Post URL", "Published Date", "Created At"];
+    const headers = [
+      "ID",
+      "Clip Title",
+      "Account",
+      "Platform",
+      "Status",
+      "Post URL",
+      "Published Date",
+      "Created At",
+    ];
     const rows = posts.map((post) => [
       post.id,
       post.clip_title ?? "",
@@ -93,7 +100,7 @@ export function PublishedPostsTab({
     const csvContent = [
       headers.join(","),
       ...rows.map((row) =>
-        row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")
+        row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","),
       ),
     ].join("\n");
 
@@ -157,7 +164,11 @@ export function PublishedPostsTab({
           </div>
         ) : posts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-text-tertiary">
-            <Icon icon="solar:inbox-line-bold-duotone" width={48} className="mb-3 opacity-40" />
+            <Icon
+              icon="solar:inbox-line-bold-duotone"
+              width={48}
+              className="mb-3 opacity-40"
+            />
             <p className="text-sm">No published posts found</p>
           </div>
         ) : (
@@ -199,12 +210,20 @@ export function PublishedPostsTab({
                               preload="metadata"
                             />
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                              <Icon icon="solar:play-bold" width={20} className="text-white" />
+                              <Icon
+                                icon="solar:play-bold"
+                                width={20}
+                                className="text-white"
+                              />
                             </div>
                           </button>
                         ) : (
                           <div className="w-[72px] h-[48px] rounded-md bg-surface-elevated flex-shrink-0 flex items-center justify-center">
-                            <Icon icon="solar:videocamera-record-bold-duotone" width={24} className="text-text-tertiary" />
+                            <Icon
+                              icon="solar:videocamera-record-bold-duotone"
+                              width={24}
+                              className="text-text-tertiary"
+                            />
                           </div>
                         )}
                         <div className="min-w-0">
@@ -233,10 +252,7 @@ export function PublishedPostsTab({
                           base: `${platformChipClass(post.platform)} h-6 px-2`,
                         }}
                         startContent={
-                          <Icon
-                            icon={platformIcon(post.platform)}
-                            width={12}
-                          />
+                          <Icon icon={platformIcon(post.platform)} width={12} />
                         }
                       >
                         <span className="text-xs capitalize">
@@ -257,9 +273,7 @@ export function PublishedPostsTab({
                           variant="flat"
                           isIconOnly
                           className="bg-transparent hover:bg-surface-elevated"
-                          onPress={() =>
-                            window.open(post.post_url!, "_blank")
-                          }
+                          onPress={() => window.open(post.post_url!, "_blank")}
                         >
                           <Icon
                             icon="solar:square-arrow-right-up-linear"
