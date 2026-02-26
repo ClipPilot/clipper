@@ -109,6 +109,10 @@ resource "aws_ecs_task_definition" "worker" {
       {
         name  = "GOOGLE_DRIVE_PARENT_FOLDER_ID"
         value = var.google_drive_parent_folder_id
+      },
+      {
+        name  = "MAC_RENDERER_URL"
+        value = var.enable_mac_rendering ? "http://${aws_instance.mac_rendering[0].private_ip}:${var.mac_renderer_port}" : ""
       }
     ]
 

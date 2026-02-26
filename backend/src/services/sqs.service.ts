@@ -100,6 +100,7 @@ export interface TextOverlayJob extends BaseJob {
   x?: number;
   y?: number;
   fontSize?: number;
+  style?: "stroke" | "instagram";
 }
 
 // Combined overlays job payload (heading + captions)
@@ -124,6 +125,7 @@ export interface UpdateOverlaysJob extends BaseJob {
     x: number;
     y: number;
     fontSize: number;
+    style?: "stroke" | "instagram";
   };
 }
 
@@ -191,6 +193,7 @@ export interface VideoEditJob extends BaseJob {
       x: number;
       y: number;
       fontSize: number;
+      style?: "stroke" | "instagram";
     };
     // Media overlays (images/videos/comments composited on top)
     overlays?: Array<{
@@ -500,6 +503,7 @@ class SQSService {
     x?: number;
     y?: number;
     fontSize?: number;
+    style?: "stroke" | "instagram";
   }): Promise<string> {
     const job: TextOverlayJob = {
       type: "text-overlay",
@@ -512,6 +516,7 @@ class SQSService {
       x: params.x,
       y: params.y,
       fontSize: params.fontSize,
+      style: params.style,
       createdAt: new Date().toISOString(),
     };
 
