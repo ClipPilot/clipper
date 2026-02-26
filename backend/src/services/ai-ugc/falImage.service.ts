@@ -2,7 +2,7 @@ import { fal } from "./falClient";
 import { generateImageWithGeminiDirect } from "../ad-clone/gemini.service";
 import { s3Service } from "../s3.service";
 
-const FAL_TIMEOUT_MS = 300000; // 5 minutes max per image generation
+const FAL_TIMEOUT_MS = 150000; // 2.5 minutes max — fall back to Gemini if exceeded
 
 function withTimeout<T>(promise: Promise<T>, ms: number, operation: string): Promise<T> {
   return Promise.race([
