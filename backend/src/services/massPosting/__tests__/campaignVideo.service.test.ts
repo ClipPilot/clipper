@@ -49,6 +49,8 @@ vi.mock("@clipper/shared-db", () => ({
   campaigns: "campaigns",
   campaignVideos: "campaignVideos",
   clips: "clips",
+  tags: "tags",
+  clipTags: "clipTags",
 }));
 
 // ── Import service after all mocks ───────────────────────────────────────────
@@ -105,9 +107,11 @@ describe("CampaignVideoService", () => {
 
       // 1. validate ownership
       mockDb.select.mockReturnValueOnce(createDrizzleChain(ownedClips));
-      // 2. checkVideoGate — fetch campaign
+      // 2. filter out existing clips in campaign (none exist yet)
+      mockDb.select.mockReturnValueOnce(createDrizzleChain([]));
+      // 3. checkVideoGate — fetch campaign
       mockDb.select.mockReturnValueOnce(createDrizzleChain([{ video_minimum: 2 }]));
-      // 3. checkVideoGate — fetch count
+      // 4. checkVideoGate — fetch count
       mockDb.select.mockReturnValueOnce(createDrizzleChain([{ count: 2 }]));
 
       mockDb.insert.mockReturnValueOnce(createDrizzleChain(insertedRows));
@@ -182,29 +186,62 @@ describe("CampaignVideoService", () => {
   // ── completeCustomUpload ───────────────────────────────────────────────────
 
   describe("completeCustomUpload", () => {
-    it("returns the video and marks the gate as checked", async () => {
-      const video = makeVideo({ id: 7, custom_video_key: "campaign-videos/5/10/1234_clip.mp4" });
+    it("returns enriched video with presigned URL", async () => {
+      const video = makeVideo({
+        id: 7,
+        custom_video_key: "campaign-videos/5/10/1234_clip.mp4",
+        custom_video_name: "clip.mp4",
+      });
+      const createdClip = { id: 99 };
+      const existingTag = { id: 42 };
+      const refetchedRow = makeVideoRow({
+        id: 7,
+        campaign_id: 10,
+        clip_id: 99,
+        custom_video_key: "campaign-videos/5/10/1234_clip.mp4",
+        custom_video_name: "clip.mp4",
+        clip_path: "campaign-videos/5/10/1234_clip.mp4",
+        clip_title: "clip",
+      });
 
       // 1. fetch video
       mockDb.select.mockReturnValueOnce(createDrizzleChain([video]));
-      // 2. checkVideoGate — fetch campaign
-      mockDb.select.mockReturnValueOnce(createDrizzleChain([{ video_minimum: 1 }]));
-      // 3. checkVideoGate — fetch count
-      mockDb.select.mockReturnValueOnce(createDrizzleChain([{ count: 1 }]));
-
+      // 2. create clip in library
+      mockDb.insert.mockReturnValueOnce(createDrizzleChain([createdClip]));
+      // 3. link clip to campaign video
       mockDb.update.mockReturnValueOnce(createDrizzleChain([]));
+      // 4. ensureCampaignUploadTag — find tag
+      mockDb.select.mockReturnValueOnce(createDrizzleChain([existingTag]));
+      // 5. ensureCampaignUploadTag — insert clipTag
+      mockDb.insert.mockReturnValueOnce(createDrizzleChain([]));
+      // 6. checkVideoGate — fetch campaign
+      mockDb.select.mockReturnValueOnce(createDrizzleChain([{ video_minimum: 1 }]));
+      // 7. checkVideoGate — fetch count
+      mockDb.select.mockReturnValueOnce(createDrizzleChain([{ count: 1 }]));
+      // 8. checkVideoGate — update campaigns
+      mockDb.update.mockReturnValueOnce(createDrizzleChain([]));
+      // 9. re-fetch with joined clip data
+      mockDb.select.mockReturnValueOnce(createDrizzleChain([refetchedRow]));
+      // 10. presigned URL
+      mockGetPresignedUrl.mockResolvedValueOnce("https://cdn.example.com/vid.mp4");
 
-      const result = await campaignVideoService.completeCustomUpload(10, 7);
+      const result = await campaignVideoService.completeCustomUpload(10, 7, 5, 1);
 
-      expect(result).toEqual(video);
+      expect(result).toMatchObject({
+        id: 7,
+        campaign_id: 10,
+        clip_id: 99,
+        presigned_url: "https://cdn.example.com/vid.mp4",
+        status: "ready",
+      });
     });
 
     it("throws when video not found", async () => {
       mockDb.select.mockReturnValueOnce(createDrizzleChain([]));
 
-      await expect(campaignVideoService.completeCustomUpload(10, 999)).rejects.toThrow(
-        "Video not found",
-      );
+      await expect(
+        campaignVideoService.completeCustomUpload(10, 999, 5, 1),
+      ).rejects.toThrow("Video not found");
     });
   });
 
@@ -289,11 +326,11 @@ describe("CampaignVideoService", () => {
       const result = await campaignVideoService.listVideos(10);
 
       expect(result).toHaveLength(2);
-      expect(result[0].videoUrl).toBe("https://cdn.example.com/vid.mp4");
-      expect(result[1].videoUrl).toBe("https://cdn.example.com/clip.mp4");
+      expect(result[0].presigned_url).toBe("https://cdn.example.com/vid.mp4");
+      expect(result[1].presigned_url).toBe("https://cdn.example.com/clip.mp4");
     });
 
-    it("sets videoUrl to null when S3 presigning fails", async () => {
+    it("sets presigned_url to null when S3 presigning fails", async () => {
       const rows = [makeVideoRow({ id: 1, custom_video_key: "bad-key.mp4" })];
 
       mockDb.select.mockReturnValueOnce(createDrizzleChain(rows));
@@ -301,17 +338,17 @@ describe("CampaignVideoService", () => {
 
       const result = await campaignVideoService.listVideos(10);
 
-      expect(result[0].videoUrl).toBeNull();
+      expect(result[0].presigned_url).toBeNull();
     });
 
-    it("sets videoUrl to null when video has no key or clip path", async () => {
+    it("sets presigned_url to null when video has no key or clip path", async () => {
       const rows = [makeVideoRow({ id: 1, custom_video_key: null, clip_path: null })];
 
       mockDb.select.mockReturnValueOnce(createDrizzleChain(rows));
 
       const result = await campaignVideoService.listVideos(10);
 
-      expect(result[0].videoUrl).toBeNull();
+      expect(result[0].presigned_url).toBeNull();
       expect(mockGetPresignedUrl).not.toHaveBeenCalled();
     });
 
@@ -345,13 +382,14 @@ describe("CampaignVideoService", () => {
 
       expect(video).toMatchObject({
         id: 5,
-        campaignId: 10,
-        clipId: 7,
-        customVideoName: null,
-        clipTitle: "My Clip",
-        durationSeconds: 42,
-        videoUrl: "https://cdn.example.com/clip.mp4",
-        createdAt,
+        campaign_id: 10,
+        clip_id: 7,
+        file_name: null,
+        title: "My Clip",
+        duration_seconds: 42,
+        presigned_url: "https://cdn.example.com/clip.mp4",
+        status: "ready",
+        created_at: createdAt,
       });
     });
   });

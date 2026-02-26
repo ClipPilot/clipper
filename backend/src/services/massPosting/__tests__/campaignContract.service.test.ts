@@ -26,10 +26,15 @@ const {
   const mockDrawImage = vi.fn();
   const mockGetSize = vi.fn().mockReturnValue({ width: 612, height: 792 });
 
+  const mockDrawLine = vi.fn();
+  const mockDrawRectangle = vi.fn();
+
   const makeMockPage = () => ({
     getSize: mockGetSize,
     drawText: mockDrawText,
     drawImage: mockDrawImage,
+    drawLine: mockDrawLine,
+    drawRectangle: mockDrawRectangle,
   });
 
   const mockSave = vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3]));
@@ -47,6 +52,7 @@ const {
     addPage: mockAddPage,
     embedPng: mockEmbedPng,
     save: mockSave,
+    getPageCount: vi.fn().mockReturnValue(1),
   });
 
   const mockPdfDocLoad = vi.fn().mockResolvedValue({
@@ -108,6 +114,9 @@ vi.mock("pdf-lib", () => ({
   StandardFonts: {
     Helvetica: "Helvetica",
     HelveticaBold: "Helvetica-Bold",
+    TimesRoman: "Times-Roman",
+    TimesRomanBold: "Times-Roman-Bold",
+    TimesRomanBoldItalic: "Times-Roman-BoldItalic",
   },
 }));
 
@@ -253,8 +262,11 @@ describe("CampaignContractService.getContract", () => {
     const result = await campaignContractService.getContract(10);
 
     expect(result).toMatchObject({
-      ...contract,
-      pdfUrl: "https://s3.example.com/unsigned.pdf",
+      id: contract.id,
+      campaign_id: contract.campaign_id,
+      team_id: contract.team_id,
+      status: contract.status,
+      presigned_pdf_url: "https://s3.example.com/unsigned.pdf",
     });
     expect(mockGetPresignedUrl).toHaveBeenCalledWith(contract.unsigned_pdf_key);
   });
@@ -279,17 +291,21 @@ describe("CampaignContractService.getContract", () => {
     const result = await campaignContractService.getContract(10);
 
     expect(mockGetPresignedUrl).toHaveBeenCalledWith("contracts/5/10/signed_abc.pdf");
-    expect(result?.pdfUrl).toBe("https://s3.example.com/signed.pdf");
+    expect(result?.presigned_pdf_url).toBe("https://s3.example.com/signed.pdf");
   });
 
-  it("returns contract with pdfUrl null when S3 presign throws", async () => {
+  it("returns contract with presigned_pdf_url null when S3 presign throws", async () => {
     const contract = makeContract();
     mockDb.select.mockReturnValue(createDrizzleChain([contract]));
     mockGetPresignedUrl.mockRejectedValue(new Error("S3 error"));
 
     const result = await campaignContractService.getContract(10);
 
-    expect(result).toMatchObject({ ...contract, pdfUrl: null });
+    expect(result).toMatchObject({
+      id: contract.id,
+      status: contract.status,
+      presigned_pdf_url: null,
+    });
   });
 });
 

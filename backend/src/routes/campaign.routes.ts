@@ -19,6 +19,7 @@ import {
   getContract,
   signContract,
   startCampaign,
+  endCampaign,
 } from "../controllers/campaign.controller";
 
 const router = Router();
@@ -951,5 +952,48 @@ router.post("/teams/:teamId/campaigns/:campaignId/contract/sign", requireAuth, r
  *         description: Server error
  */
 router.post("/teams/:teamId/campaigns/:campaignId/start", requireAuth, requireSeatAccess, startCampaign);
+
+// End
+
+/**
+ * @openapi
+ * /api/campaigns/teams/{teamId}/campaigns/{campaignId}/end:
+ *   post:
+ *     summary: End a campaign
+ *     description: Ends a started or paused campaign by setting its status to completed
+ *     tags: [Campaigns]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: campaignId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Campaign ended
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 campaign:
+ *                   type: object
+ *       400:
+ *         description: Campaign is not in started or paused status
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Campaign not found
+ *       500:
+ *         description: Server error
+ */
+router.post("/teams/:teamId/campaigns/:campaignId/end", requireAuth, requireSeatAccess, endCampaign);
 
 export default router;

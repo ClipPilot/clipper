@@ -19,9 +19,13 @@ import {
   rejectCampaign,
   updateCampaign,
   pauseCampaign,
+  endCampaign,
   getContractAdmin,
   generateContractAdmin,
   updateContractAdmin,
+  getCampaignVideos,
+  getCampaignPosts,
+  postCampaignClip,
 } from "../controllers/admin-campaign.controller";
 
 const router = Router();
@@ -280,6 +284,27 @@ router.post("/teams/change-plan", requireAdminAuth, changePlan);
  *         description: Unauthorized
  */
 router.get("/referrals", requireAdminAuth, getAllReferrals);
+
+/**
+ * @openapi
+ * /admin/affiliates:
+ *   get:
+ *     summary: Get all affiliates (admin)
+ *     description: Returns all affiliate partnerships for admin management
+ *     tags:
+ *       - Admin
+ *     security:
+ *       - adminAuth: []
+ *     responses:
+ *       200:
+ *         description: List of all affiliates
+ *       401:
+ *         description: Unauthorized
+ */
+router.get("/affiliates", requireAdminAuth, (_req, res) => {
+  // Stub — affiliates table not yet created
+  return res.json({ affiliates: [] });
+});
 
 /**
  * @openapi
@@ -589,6 +614,186 @@ router.patch("/campaigns/:campaignId", requireAdminAuth, updateCampaign);
  *         description: Server error
  */
 router.post("/campaigns/:campaignId/pause", requireAdminAuth, pauseCampaign);
+
+/**
+ * @openapi
+ * /api/admin/campaigns/{campaignId}/end:
+ *   post:
+ *     summary: End a campaign
+ *     description: Ends a started or paused campaign by setting status to completed
+ *     tags: [Admin]
+ *     security:
+ *       - adminAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: campaignId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Campaign ended
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 campaign:
+ *                   type: object
+ *       400:
+ *         description: Campaign is not in started or paused status
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Campaign not found
+ *       500:
+ *         description: Server error
+ */
+router.post("/campaigns/:campaignId/end", requireAdminAuth, endCampaign);
+
+/**
+ * @openapi
+ * /api/admin/campaigns/{campaignId}/videos:
+ *   get:
+ *     summary: List campaign videos
+ *     description: Returns all videos associated with a campaign, with presigned URLs.
+ *     tags: [Admin - Campaigns]
+ *     security:
+ *       - adminAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: campaignId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Campaign videos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 videos:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       400:
+ *         description: Invalid campaign ID
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.get("/campaigns/:campaignId/videos", requireAdminAuth, getCampaignVideos);
+
+/**
+ * @openapi
+ * /admin/campaigns/{campaignId}/posts:
+ *   get:
+ *     summary: Get campaign posts (admin)
+ *     description: Returns all posts for a campaign with filtering and pagination
+ *     tags:
+ *       - Admin - Campaigns
+ *     security:
+ *       - adminAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: campaignId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: tab
+ *         schema:
+ *           type: string
+ *           enum: [queued, published]
+ *       - in: query
+ *         name: platform
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Campaign posts with pagination
+ *       404:
+ *         description: Campaign not found
+ *       500:
+ *         description: Server error
+ */
+router.get("/campaigns/:campaignId/posts", requireAdminAuth, getCampaignPosts);
+
+/**
+ * @openapi
+ * /api/admin/campaigns/{campaignId}/post:
+ *   post:
+ *     summary: Publish a campaign clip to platforms
+ *     description: >
+ *       Admin-initiated posting of a campaign clip. Creates posts with campaign_id,
+ *       skips credit deduction, and sends SQS job for metadata scrambling and Drive upload.
+ *     tags: [Admin - Campaigns]
+ *     security:
+ *       - adminAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: campaignId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - clipId
+ *               - platformQuantities
+ *             properties:
+ *               clipId:
+ *                 type: integer
+ *               platformQuantities:
+ *                 type: object
+ *                 additionalProperties:
+ *                   type: integer
+ *                   minimum: 1
+ *                   maximum: 50
+ *     responses:
+ *       202:
+ *         description: Posting job accepted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 postIds:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       platform:
+ *                         type: string
+ *       400:
+ *         description: Invalid input or missing fields
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Campaign or clip not found
+ *       500:
+ *         description: Server error
+ */
+router.post("/campaigns/:campaignId/post", requireAdminAuth, postCampaignClip);
 
 /**
  * @openapi

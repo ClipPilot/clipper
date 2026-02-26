@@ -470,6 +470,34 @@ class CampaignService {
     return updated;
   }
 
+  async endCampaign(id: number) {
+    const [campaign] = await db
+      .select()
+      .from(campaigns)
+      .where(eq(campaigns.id, id))
+      .limit(1);
+
+    if (!campaign) {
+      throw new Error("Campaign not found");
+    }
+
+    if (campaign.status !== "started" && campaign.status !== "paused") {
+      throw new Error("Can only end a started or paused campaign");
+    }
+
+    const [updated] = await db
+      .update(campaigns)
+      .set({
+        status: "completed",
+        completed_at: new Date(),
+        updated_at: new Date(),
+      })
+      .where(eq(campaigns.id, id))
+      .returning();
+
+    return updated;
+  }
+
   async checkGates(campaignId: number) {
     const campaign = await this.getCampaignById(campaignId);
     if (!campaign) throw new Error("Campaign not found");

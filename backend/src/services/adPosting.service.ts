@@ -148,6 +148,88 @@ class AdPostingService {
     });
   }
 
+  async startCampaignPosting(
+    campaignId: number,
+    clipId: number,
+    platformQuantities: PlatformQuantities,
+  ): Promise<{ postIds: Array<{ id: number; platform: string }> }> {
+    for (const [platform, qty] of Object.entries(platformQuantities)) {
+      if (!VALID_PLATFORMS.has(platform)) {
+        throw new AdPostingError(`Invalid platform: ${platform}`, 400);
+      }
+      if (!Number.isInteger(qty) || qty < 1 || qty > 50) {
+        throw new AdPostingError(
+          `Invalid quantity for ${platform}: must be 1-50`,
+          400
+        );
+      }
+    }
+
+    const [campaign] = await db
+      .select()
+      .from(campaigns)
+      .where(and(eq(campaigns.id, campaignId), eq(campaigns.status, "started")))
+      .limit(1);
+
+    if (!campaign) {
+      throw new AdPostingError("Campaign not found or not active", 404);
+    }
+
+    const driveFolderId = campaign.google_drive_folder_id;
+    if (!driveFolderId) {
+      throw new AdPostingError(
+        "Campaign does not have a Google Drive folder configured",
+        400
+      );
+    }
+
+    const [clip] = await db
+      .select()
+      .from(clips)
+      .where(and(eq(clips.id, clipId), eq(clips.team_id, campaign.team_id)))
+      .limit(1);
+
+    if (!clip) {
+      throw new AdPostingError("Clip not found", 404);
+    }
+    if (!clip.clip_path) {
+      throw new AdPostingError("Clip has no video file", 400);
+    }
+
+    // NO credit deduction — campaign billing is separate
+
+    const postIds: Array<{ id: number; platform: string }> = [];
+    for (const [platform, qty] of Object.entries(platformQuantities)) {
+      for (let i = 0; i < qty; i++) {
+        const [row] = await db
+          .insert(posts)
+          .values({
+            team_id: campaign.team_id,
+            clip_id: clipId,
+            campaign_id: campaignId,
+            content: clip.title || `clip-${clipId}`,
+            platform: platform as any,
+            status: "processing",
+          })
+          .returning({ id: posts.id });
+        postIds.push({ id: row.id, platform });
+      }
+    }
+
+    await sqsService.sendAdPostingJob({
+      clipId,
+      teamId: campaign.team_id,
+      userId: 0, // admin-initiated, no specific user
+      platformQuantities,
+      driveFolderId,
+      clipPath: clip.clip_path,
+      clipTitle: clip.title || `clip-${clipId}`,
+      postIds,
+    });
+
+    return { postIds };
+  }
+
   async createCustomVideo(
     teamId: number,
     userId: number,
@@ -201,6 +283,11 @@ class AdPostingService {
   }
 
   async markAsPosted(postId: number, postUrl?: string): Promise<void> {
+    // Sanitize Instagram /reels/ → /reel/ (scraper only supports /reel/)
+    if (postUrl) {
+      postUrl = postUrl.replace(/\/reels\//, "/reel/");
+    }
+
     const [post] = await db
       .select({ drive_file_id: posts.drive_file_id })
       .from(posts)
@@ -248,6 +335,7 @@ class AdPostingService {
       sortOrder?: "asc" | "desc";
       page?: number;
       pageSize?: number;
+      campaignId?: number;
     } = {}
   ) {
     const {
@@ -259,9 +347,15 @@ class AdPostingService {
       sortOrder = "desc",
       page = 1,
       pageSize = 20,
+      campaignId,
     } = options;
 
     const conditions = [eq(posts.team_id, teamId)];
+
+    // Campaign filter
+    if (campaignId) {
+      conditions.push(eq(posts.campaign_id, campaignId));
+    }
 
     // Status group filter
     if (tab === "queued") {

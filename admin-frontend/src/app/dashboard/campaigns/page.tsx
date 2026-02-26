@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   adminAPI,
   Campaign,
@@ -55,6 +56,8 @@ function DetailModal({ campaignId, onClose, onAction }: DetailModalProps) {
   const [contractSaving, setContractSaving] = useState(false);
   const [showContractEditor, setShowContractEditor] = useState(false);
   const [clauseEdits, setClauseEdits] = useState<ContractClauses>({});
+
+  const publishRouter = useRouter();
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -166,6 +169,20 @@ function DetailModal({ campaignId, onClose, onAction }: DetailModalProps) {
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to pause campaign");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleEnd = async () => {
+    setActionLoading(true);
+    setError("");
+    try {
+      await adminAPI.endCampaign(campaignId);
+      onAction();
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to end campaign");
     } finally {
       setActionLoading(false);
     }
@@ -763,6 +780,24 @@ function DetailModal({ campaignId, onClose, onAction }: DetailModalProps) {
               </div>
             )}
 
+            {/* Publish Videos link for started campaigns */}
+            {detail.status === "started" && (
+              <div className="border-t border-border pt-4 mt-4">
+                <button
+                  onClick={() => {
+                    onClose();
+                    publishRouter.push(`/dashboard/campaigns/${campaignId}/publish`);
+                  }}
+                  className="w-full py-2.5 rounded-lg bg-emerald/10 border border-emerald/20 text-emerald hover:bg-emerald/20 transition-colors font-medium flex items-center justify-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  Manage & Publish Videos
+                </button>
+              </div>
+            )}
+
             {/* Pause action for started campaigns */}
             {detail.status === "started" && (
               <div className="border-t border-border pt-4 mt-4">
@@ -772,6 +807,19 @@ function DetailModal({ campaignId, onClose, onAction }: DetailModalProps) {
                   className="w-full py-2.5 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 hover:bg-orange-500/20 transition-colors disabled:opacity-50 font-medium"
                 >
                   {actionLoading ? "Processing..." : "Pause Campaign"}
+                </button>
+              </div>
+            )}
+
+            {/* End action for started or paused campaigns */}
+            {(detail.status === "started" || detail.status === "paused") && (
+              <div className={detail.status === "paused" ? "border-t border-border pt-4 mt-4" : "mt-2"}>
+                <button
+                  onClick={handleEnd}
+                  disabled={actionLoading}
+                  className="w-full py-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50 font-medium"
+                >
+                  {actionLoading ? "Processing..." : "End Campaign"}
                 </button>
               </div>
             )}

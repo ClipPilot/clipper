@@ -188,10 +188,47 @@ export interface CampaignDetail extends Campaign {
   intakeForm: IntakeForm | null;
 }
 
+export interface CampaignVideo {
+  id: number;
+  campaign_id: number;
+  clip_id: number | null;
+  file_name: string | null;
+  title: string | null;
+  duration_seconds: number | null;
+  presigned_url: string | null;
+  status: string;
+  created_at: string;
+}
+
 export interface CampaignsResponse {
   campaigns: Campaign[];
   total: number;
   pagination: Pagination;
+}
+
+export interface CampaignPost {
+  id: number;
+  clip_id: number | null;
+  clip_title: string | null;
+  clip_url: string | null;
+  platform: string;
+  status: "processing" | "scheduled" | "posted" | "failed";
+  content: string;
+  post_url: string | null;
+  posted_time: string | null;
+  created_at: string;
+  accountHandle?: string | null;
+}
+
+export interface CampaignPostsResponse {
+  posts: CampaignPost[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+    totalPosts: number;
+  };
 }
 
 export interface ContractClauses {
@@ -527,6 +564,14 @@ export const adminAPI = {
     return handleResponse(response);
   },
 
+  async endCampaign(id: number): Promise<{ campaign: Campaign }> {
+    const response = await fetch(`${API_URL}/admin/campaigns/${id}/end`, {
+      method: "POST",
+      headers: { ...getAuthHeaders() },
+    });
+    return handleResponse(response);
+  },
+
   async getCampaignContract(
     campaignId: number,
   ): Promise<{ contract: CampaignContract | null }> {
@@ -565,6 +610,62 @@ export const adminAPI = {
           ...getAuthHeaders(),
         },
         body: JSON.stringify(clauses),
+      },
+    );
+    return handleResponse(response);
+  },
+
+  async getCampaignVideos(
+    campaignId: number,
+  ): Promise<{ videos: CampaignVideo[] }> {
+    const response = await fetch(
+      `${API_URL}/admin/campaigns/${campaignId}/videos`,
+      { headers: { ...getAuthHeaders() } },
+    );
+    return handleResponse(response);
+  },
+
+  async getCampaignPosts(
+    campaignId: number,
+    options?: {
+      tab?: "queued" | "published";
+      platform?: string;
+      page?: number;
+      pageSize?: number;
+      sortBy?: string;
+      sortOrder?: "asc" | "desc";
+    },
+  ): Promise<CampaignPostsResponse> {
+    const params = new URLSearchParams();
+    if (options?.tab) params.set("tab", options.tab);
+    if (options?.platform) params.set("platform", options.platform);
+    if (options?.page) params.set("page", options.page.toString());
+    if (options?.pageSize) params.set("pageSize", options.pageSize.toString());
+    if (options?.sortBy) params.set("sortBy", options.sortBy);
+    if (options?.sortOrder) params.set("sortOrder", options.sortOrder);
+
+    const qs = params.toString();
+    const response = await fetch(
+      `${API_URL}/admin/campaigns/${campaignId}/posts${qs ? `?${qs}` : ""}`,
+      { headers: { ...getAuthHeaders() } },
+    );
+    return handleResponse(response);
+  },
+
+  async postCampaignClip(
+    campaignId: number,
+    clipId: number,
+    platformQuantities: Record<string, number>,
+  ): Promise<{ message: string; postIds: Array<{ id: number; platform: string }> }> {
+    const response = await fetch(
+      `${API_URL}/admin/campaigns/${campaignId}/post`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({ clipId, platformQuantities }),
       },
     );
     return handleResponse(response);

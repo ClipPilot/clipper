@@ -200,7 +200,10 @@ describe("CampaignBillingService.checkPaymentGate", () => {
 
   it("returns true and marks campaign payment_ready when balance > 0", async () => {
     const wallet = makeWallet({ balance_cents: 250 });
-    mockDb.select.mockReturnValue(createDrizzleChain([wallet]));
+    // 1. getWallet → select from campaignWallets
+    mockDb.select.mockReturnValueOnce(createDrizzleChain([wallet]));
+    // 2. budget lookup → select from campaigns
+    mockDb.select.mockReturnValueOnce(createDrizzleChain([{ budget: "2.50" }]));
     mockDb.update.mockReturnValue(createDrizzleChain([]));
 
     const result = await campaignBillingService.checkPaymentGate(10);

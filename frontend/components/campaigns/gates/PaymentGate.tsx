@@ -310,7 +310,7 @@ function PaymentForm({
 
 // ── Setup Modal (Step 1) ─────────────────────────────────────────────────────
 
-interface SetupModalProps {
+export interface SetupModalProps {
   isOpen: boolean;
   onClose: () => void;
   clientSecret: string | null;
@@ -319,7 +319,7 @@ interface SetupModalProps {
   onSaved: (card: CampaignCard) => void;
 }
 
-function SetupModal({
+export function SetupModal({
   isOpen,
   onClose,
   clientSecret,

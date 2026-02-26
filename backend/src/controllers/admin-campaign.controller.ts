@@ -3,6 +3,8 @@ import { Response } from "express";
 import { AdminRequest } from "../middleware/admin.middleware";
 import { campaignService } from "../services/massPosting/campaign.service";
 import { campaignContractService } from "../services/massPosting/campaignContract.service";
+import { campaignVideoService } from "../services/massPosting/campaignVideo.service";
+import { adPostingService, AdPostingError } from "../services/adPosting.service";
 
 export async function getAllCampaigns(req: AdminRequest, res: Response) {
   try {
@@ -134,6 +136,26 @@ export async function pauseCampaign(req: AdminRequest, res: Response) {
   }
 }
 
+export async function endCampaign(req: AdminRequest, res: Response) {
+  try {
+    const id = parseInt(req.params.campaignId);
+    if (isNaN(id)) return res.status(400).json({ error: "Invalid campaign ID" });
+
+    const campaign = await campaignService.endCampaign(id);
+    return res.json({ campaign });
+  } catch (error: any) {
+    console.error("End campaign error:", error);
+    if (error.message === "Campaign not found") {
+      return res.status(404).json({ error: error.message });
+    }
+    if (error.message?.includes("Can only end")) {
+      return res.status(400).json({ error: error.message });
+    }
+    Sentry.captureException(error);
+    return res.status(500).json({ error: "Failed to end campaign" });
+  }
+}
+
 export async function getContractAdmin(req: AdminRequest, res: Response) {
   try {
     const id = parseInt(req.params.campaignId);
@@ -194,5 +216,80 @@ export async function updateContractAdmin(req: AdminRequest, res: Response) {
     }
     Sentry.captureException(error);
     return res.status(500).json({ error: "Failed to update contract" });
+  }
+}
+
+export async function getCampaignVideos(req: AdminRequest, res: Response) {
+  try {
+    const campaignId = parseInt(req.params.campaignId);
+    if (isNaN(campaignId)) return res.status(400).json({ error: "Invalid campaign ID" });
+
+    const videos = await campaignVideoService.listVideos(campaignId);
+    return res.json({ videos });
+  } catch (error) {
+    console.error("Get campaign videos error:", error);
+    Sentry.captureException(error);
+    return res.status(500).json({ error: "Failed to fetch campaign videos" });
+  }
+}
+
+export async function getCampaignPosts(req: AdminRequest, res: Response) {
+  try {
+    const campaignId = parseInt(req.params.campaignId);
+    if (isNaN(campaignId)) return res.status(400).json({ error: "Invalid campaign ID" });
+
+    // Look up team_id from the campaign
+    const campaign = await campaignService.getCampaignDetail(campaignId);
+    if (!campaign) return res.status(404).json({ error: "Campaign not found" });
+
+    const { tab, platform, dateRange, search, sortBy, sortOrder, page, pageSize } = req.query;
+
+    const result = await adPostingService.getPostsForTeam(campaign.team_id, {
+      tab: tab as "queued" | "published" | undefined,
+      platform: platform as string | undefined,
+      dateRange: dateRange as string | undefined,
+      search: search as string | undefined,
+      sortBy: sortBy as string | undefined,
+      sortOrder: sortOrder as "asc" | "desc" | undefined,
+      page: page ? parseInt(page as string) : undefined,
+      pageSize: pageSize ? Math.min(parseInt(pageSize as string), 100) : undefined,
+      campaignId,
+    });
+
+    return res.json(result);
+  } catch (error: any) {
+    console.error("Get campaign posts error:", error);
+    if (error.message === "Campaign not found") {
+      return res.status(404).json({ error: error.message });
+    }
+    Sentry.captureException(error);
+    return res.status(500).json({ error: "Failed to fetch campaign posts" });
+  }
+}
+
+export async function postCampaignClip(req: AdminRequest, res: Response) {
+  try {
+    const campaignId = parseInt(req.params.campaignId);
+    if (isNaN(campaignId)) return res.status(400).json({ error: "Invalid campaign ID" });
+
+    const { clipId, platformQuantities } = req.body;
+    if (!clipId || !platformQuantities) {
+      return res.status(400).json({ error: "clipId and platformQuantities are required" });
+    }
+
+    const result = await adPostingService.startCampaignPosting(
+      campaignId,
+      Number(clipId),
+      platformQuantities,
+    );
+
+    return res.status(202).json({ message: "Campaign posting started", ...result });
+  } catch (error: any) {
+    console.error("Post campaign clip error:", error);
+    if (error instanceof AdPostingError) {
+      return res.status(error.statusCode).json({ error: error.message });
+    }
+    Sentry.captureException(error);
+    return res.status(500).json({ error: "Failed to start campaign posting" });
   }
 }

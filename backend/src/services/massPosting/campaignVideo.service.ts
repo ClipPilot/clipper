@@ -148,7 +148,45 @@ class CampaignVideoService {
     // Re-check video gate after upload completes
     await this.checkVideoGate(campaignId);
 
-    return video;
+    // Re-fetch with joined clip data (clip_id may have been set above)
+    const [updated] = await db
+      .select({
+        id: campaignVideos.id,
+        campaign_id: campaignVideos.campaign_id,
+        clip_id: campaignVideos.clip_id,
+        custom_video_key: campaignVideos.custom_video_key,
+        custom_video_name: campaignVideos.custom_video_name,
+        duration_seconds: campaignVideos.duration_seconds,
+        created_at: campaignVideos.created_at,
+        clip_path: clips.clip_path,
+        clip_title: clips.title,
+      })
+      .from(campaignVideos)
+      .leftJoin(clips, eq(campaignVideos.clip_id, clips.id))
+      .where(eq(campaignVideos.id, videoId))
+      .limit(1);
+
+    // Generate presigned URL so the video is watchable immediately
+    let presignedUrl: string | null = null;
+    const key = updated.custom_video_key || updated.clip_path;
+    if (key) {
+      try {
+        presignedUrl = await s3Service.getPresignedUrl(key);
+      } catch {}
+    }
+
+    return {
+      id: updated.id,
+      campaign_id: updated.campaign_id,
+      clip_id: updated.clip_id,
+      s3_key: updated.custom_video_key,
+      file_name: updated.custom_video_name,
+      title: updated.clip_title || updated.custom_video_name,
+      duration_seconds: updated.duration_seconds,
+      presigned_url: presignedUrl,
+      status: "ready" as const,
+      created_at: updated.created_at,
+    };
   }
 
   /** Find or create the "Campaign Upload" tag and assign it to a clip */

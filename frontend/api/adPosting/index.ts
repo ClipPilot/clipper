@@ -21,6 +21,7 @@ export interface GetTeamPostsParams {
   sortOrder?: "asc" | "desc";
   page?: number;
   pageSize?: number;
+  campaignId?: number;
 }
 
 class AdPostingAPI {
@@ -80,6 +81,7 @@ class AdPostingAPI {
     if (params.sortOrder) searchParams.set("sortOrder", params.sortOrder);
     if (params.page) searchParams.set("page", params.page.toString());
     if (params.pageSize) searchParams.set("pageSize", params.pageSize.toString());
+    if (params.campaignId) searchParams.set("campaignId", params.campaignId.toString());
 
     const qs = searchParams.toString();
     const response = await apiFetch(

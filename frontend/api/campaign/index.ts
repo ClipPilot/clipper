@@ -17,6 +17,7 @@ export interface Campaign {
   payment_ready: boolean;
   contract_ready: boolean;
   started_at: string | null;
+  completed_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -434,6 +435,27 @@ class CampaignAPI {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || "Failed to sign contract");
+    }
+
+    return response.json();
+  }
+
+  async endCampaign(
+    teamId: number,
+    campaignId: number
+  ): Promise<{ campaign: Campaign }> {
+    const response = await apiFetch(
+      `${API_URL}/campaigns/teams/${teamId}/campaigns/${campaignId}/end`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to end campaign");
     }
 
     return response.json();

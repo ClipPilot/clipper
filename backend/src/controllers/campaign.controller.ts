@@ -484,6 +484,31 @@ export async function getCampaignClipIds(req: AuthRequest, res: Response) {
   }
 }
 
+// ── End Campaign ─────────────────────────────────
+
+export async function endCampaign(req: AuthRequest, res: Response) {
+  try {
+    const teamId = parseInt(req.params.teamId);
+    const campaignId = parseInt(req.params.campaignId);
+    if (isNaN(teamId) || isNaN(campaignId)) {
+      return res.status(400).json({ error: "Invalid ID" });
+    }
+
+    const campaign = await campaignService.endCampaign(campaignId);
+    return res.json({ campaign });
+  } catch (error: any) {
+    console.error("End campaign error:", error);
+    if (error.message?.includes("Can only end")) {
+      return res.status(400).json({ error: error.message });
+    }
+    if (error.message === "Campaign not found") {
+      return res.status(404).json({ error: error.message });
+    }
+    Sentry.captureException(error);
+    return res.status(500).json({ error: "Failed to end campaign" });
+  }
+}
+
 // ── Start Campaign ───────────────────────────────
 
 export async function startCampaign(req: AuthRequest, res: Response) {

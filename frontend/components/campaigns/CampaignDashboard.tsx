@@ -26,6 +26,7 @@ import {
 import { VideosGate } from "./gates/VideosGate";
 import { PaymentGate } from "./gates/PaymentGate";
 import { ContractGate } from "./gates/ContractGate";
+import { ActiveCampaignDashboard } from "./active/ActiveCampaignDashboard";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -291,6 +292,10 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
 
   // ── Targeted contract state update ─────────────────────────────────────────
 
+  const handleCampaignUpdated = useCallback((updated: Campaign) => {
+    setCampaign(updated);
+  }, []);
+
   const handleContractSigned = useCallback((updatedContract: CampaignContract) => {
     setContract(updatedContract);
     setGates((prev) =>
@@ -357,13 +362,79 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
     );
   }
 
+  // ── Active campaign dashboard ─────────────────────────────────────────────
+
+  if (campaign.status === "started" || campaign.status === "paused") {
+    return (
+      <ActiveCampaignDashboard
+        campaign={campaign}
+        videos={videos}
+        wallet={wallet}
+        savedCard={savedCard}
+        onBack={onBack}
+        onVideoAdded={handleVideoAdded}
+        onVideosAdded={handleVideosAdded}
+        onVideoRemoved={handleVideoRemoved}
+        onCampaignUpdated={handleCampaignUpdated}
+      />
+    );
+  }
+
+  // ── Completed campaign view ──────────────────────────────────────────────
+
+  if (campaign.status === "completed") {
+    const completedDate = campaign.completed_at
+      ? new Intl.DateTimeFormat("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        }).format(new Date(campaign.completed_at))
+      : null;
+
+    return (
+      <div className="min-h-screen bg-surface-dark p-4 sm:p-6 lg:p-8">
+        <div className="max-w-3xl mx-auto space-y-6">
+          <Button
+            variant="light"
+            size="sm"
+            className="text-text-secondary -ml-2"
+            onPress={onBack}
+            startContent={<Icon icon="solar:arrow-left-linear" width={16} />}
+          >
+            Back to Campaigns
+          </Button>
+
+          <div className="flex flex-col items-center gap-4 py-16 text-center">
+            <div className="w-16 h-16 rounded-full bg-default-100 flex items-center justify-center">
+              <Icon
+                icon="solar:check-circle-bold-duotone"
+                className="text-text-secondary"
+                width={36}
+              />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-text-primary">{campaign.name}</h1>
+              <Chip color="default" variant="flat" className="capitalize mt-2">
+                Completed
+              </Chip>
+            </div>
+            {completedDate && (
+              <p className="text-sm text-text-secondary">
+                Campaign completed on {completedDate}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Setup flow ────────────────────────────────────────────────────────────
+
   const allStepsComplete =
     gates.videos.complete && gates.payment.complete && gates.contract.complete;
 
-  const canStart =
-    allStepsComplete &&
-    campaign.status !== "started" &&
-    campaign.status !== "completed";
+  const canStart = allStepsComplete;
 
   const budget = campaign.budget ? parseFloat(campaign.budget) : 0;
   const cpm = campaign.quoted_cpm ? parseFloat(campaign.quoted_cpm) : 0;
@@ -405,13 +476,11 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
             </div>
             <Chip
               color={
-                campaign.status === "started"
-                  ? "success"
-                  : campaign.status === "rejected"
-                    ? "danger"
-                    : campaign.status === "pending"
-                      ? "warning"
-                      : "default"
+                campaign.status === "rejected"
+                  ? "danger"
+                  : campaign.status === "pending"
+                    ? "warning"
+                    : "default"
               }
               variant="flat"
               className="flex-shrink-0 capitalize"
@@ -478,45 +547,25 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
 
         {/* Start campaign button */}
         <div className="pt-2 pb-8">
-          {campaign.status === "started" ? (
-            <div className="flex items-center justify-center gap-2 p-4 rounded-xl bg-success-500/10 border border-success-500/20">
-              <Icon
-                icon="solar:play-circle-bold-duotone"
-                className="text-success-500"
-                width={22}
-              />
-              <p className="text-success-500 font-semibold">Campaign is live</p>
-            </div>
-          ) : campaign.status === "completed" ? (
-            <div className="flex items-center justify-center gap-2 p-4 rounded-xl bg-default-100 border border-border-base">
-              <Icon
-                icon="solar:check-circle-bold-duotone"
-                className="text-text-secondary"
-                width={22}
-              />
-              <p className="text-text-secondary font-semibold">Campaign completed</p>
-            </div>
-          ) : (
-            <Button
-              color="primary"
-              size="lg"
-              className="w-full"
-              onPress={handleStartCampaign}
-              isLoading={isStarting}
-              isDisabled={!canStart}
-              startContent={
-                !isStarting && (
-                  <Icon icon="solar:play-circle-bold-duotone" width={20} />
-                )
-              }
-            >
-              {allStepsComplete
-                ? "Start Campaign"
-                : `Complete ${3 - [gates.videos.complete, gates.payment.complete, gates.contract.complete].filter(Boolean).length} more step${
-                    3 - [gates.videos.complete, gates.payment.complete, gates.contract.complete].filter(Boolean).length !== 1 ? "s" : ""
-                  } to start`}
-            </Button>
-          )}
+          <Button
+            color="primary"
+            size="lg"
+            className="w-full"
+            onPress={handleStartCampaign}
+            isLoading={isStarting}
+            isDisabled={!canStart}
+            startContent={
+              !isStarting && (
+                <Icon icon="solar:play-circle-bold-duotone" width={20} />
+              )
+            }
+          >
+            {allStepsComplete
+              ? "Start Campaign"
+              : `Complete ${3 - [gates.videos.complete, gates.payment.complete, gates.contract.complete].filter(Boolean).length} more step${
+                  3 - [gates.videos.complete, gates.payment.complete, gates.contract.complete].filter(Boolean).length !== 1 ? "s" : ""
+                } to start`}
+          </Button>
         </div>
       </div>
     </div>
