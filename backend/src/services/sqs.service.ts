@@ -55,6 +55,7 @@ export interface ClipVideoJob extends BaseJob {
     captionColor?: string;
     captionFont?: string;
     conversionMode?: ConversionMode;
+    autoHeading?: boolean;
   };
   originalFileName?: string;
   fileSize?: number;

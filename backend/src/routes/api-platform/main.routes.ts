@@ -284,6 +284,15 @@ router.get("/v1/wallet", validateAPIKey, getWalletV1Controller);
  *                 type: string
  *                 enum: [viral, business, general, gaming]
  *                 default: viral
+ *               length:
+ *                 type: integer
+ *                 minimum: 10
+ *                 maximum: 180
+ *                 default: 40
+ *                 description: Target clip duration in seconds.
+ *               prompt:
+ *                 type: string
+ *                 description: Custom AI instructions for clip selection (e.g. "focus on product demos" or "find the funniest moments").
  *               captions:
  *                 type: object
  *                 properties:
@@ -294,6 +303,25 @@ router.get("/v1/wallet", validateAPIKey, getWalletV1Controller);
  *                     type: string
  *                     enum: [white, black, red, orange, yellow, green, teal, blue, purple, pink]
  *                     default: white
+ *                   font:
+ *                     type: string
+ *                     enum: [Montserrat, Luckiest Guy, Everlasting, Komika, Burbank, Bebas Neue, Anton]
+ *                     default: Montserrat
+ *               camera_mode:
+ *                 type: string
+ *                 enum: [standard, gaming, speaker-zoom, center-crop, active-speaker]
+ *                 default: standard
+ *                 description: |
+ *                   Controls how the video is framed for vertical output.
+ *                   - standard: blurred background with centered video
+ *                   - gaming: detects facecam overlay and separates gameplay + facecam
+ *                   - speaker-zoom: zooms into the speaker's face
+ *                   - center-crop: crops the center of the video
+ *                   - active-speaker: tracks and zooms into the active speaker (multi-person)
+ *               auto_heading:
+ *                 type: boolean
+ *                 default: true
+ *                 description: Automatically generate a short viral heading overlay for each clip using AI.
  *         multipart/form-data:
  *           schema:
  *             type: object
@@ -313,6 +341,15 @@ router.get("/v1/wallet", validateAPIKey, getWalletV1Controller);
  *                 type: string
  *                 enum: [viral, business, general, gaming]
  *                 default: viral
+ *               length:
+ *                 type: integer
+ *                 minimum: 10
+ *                 maximum: 180
+ *                 default: 40
+ *                 description: Target clip duration in seconds.
+ *               prompt:
+ *                 type: string
+ *                 description: Custom AI instructions for clip selection.
  *               captions:
  *                 type: object
  *                 properties:
@@ -323,6 +360,19 @@ router.get("/v1/wallet", validateAPIKey, getWalletV1Controller);
  *                     type: string
  *                     enum: [white, black, red, orange, yellow, green, teal, blue, purple, pink]
  *                     default: white
+ *                   font:
+ *                     type: string
+ *                     enum: [Montserrat, Luckiest Guy, Everlasting, Komika, Burbank, Bebas Neue, Anton]
+ *                     default: Montserrat
+ *               camera_mode:
+ *                 type: string
+ *                 enum: [standard, gaming, speaker-zoom, center-crop, active-speaker]
+ *                 default: standard
+ *                 description: Controls how the video is framed for vertical output.
+ *               auto_heading:
+ *                 type: boolean
+ *                 default: true
+ *                 description: Automatically generate a short viral heading overlay for each clip.
  *     responses:
  *       200:
  *         description: Clip job submitted
@@ -414,6 +464,9 @@ router.post("/v1/clip", validateAPIKey, upload.single("video"), createClipJobCon
  *                             enum: [completed, failed]
  *                           title:
  *                             type: string
+ *                           heading:
+ *                             type: string
+ *                             description: AI-generated viral heading overlay text (if auto_heading was enabled)
  *                           download_url:
  *                             type: string
  *                             format: uri

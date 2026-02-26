@@ -191,15 +191,17 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
 
         // Auto-generate a viral heading from the clip's transcript
         let autoHeading: string | undefined;
-        try {
-          const clipTranscript = result.captionsData?.map((c: { text: string }) => c.text).join(" ") || "";
-          autoHeading = await generateViralHeading({
-            transcription: clipTranscript,
-            title: suggestions.clipTitle || "",
-          });
-          console.log(`Clip ${i + 1} auto-heading: "${autoHeading}"`);
-        } catch (headingErr) {
-          console.warn(`Clip ${i + 1} heading generation failed, skipping:`, headingErr);
+        if (options.autoHeading !== false) {
+          try {
+            const clipTranscript = result.captionsData?.map((c: { text: string }) => c.text).join(" ") || "";
+            autoHeading = await generateViralHeading({
+              transcription: clipTranscript,
+              title: suggestions.clipTitle || "",
+            });
+            console.log(`Clip ${i + 1} auto-heading: "${autoHeading}"`);
+          } catch (headingErr) {
+            console.warn(`Clip ${i + 1} heading generation failed, skipping:`, headingErr);
+          }
         }
 
         await clipManagerService.updateClipComplete(clipId, teamId, {

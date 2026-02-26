@@ -89,7 +89,7 @@ resource "aws_key_pair" "mac_rendering" {
 resource "aws_instance" "mac_rendering" {
   count         = var.enable_mac_rendering ? 1 : 0
   ami           = var.mac_ami_id
-  instance_type = "mac2-m2.metal"
+  instance_type = "mac2.metal"
   host_id       = aws_ec2_host.mac_rendering[0].id
   subnet_id     = aws_subnet.private[0].id
 
