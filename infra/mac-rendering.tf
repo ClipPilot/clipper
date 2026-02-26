@@ -26,11 +26,39 @@ variable "mac_renderer_port" {
   default     = 3100
 }
 
+variable "mac_instance_type" {
+  description = "Mac EC2 instance type (mac1.metal = Intel, mac2.metal = M1)"
+  type        = string
+  default     = "mac2.metal"
+}
+
+variable "mac_availability_zone" {
+  description = "AZ for Mac dedicated host (must support Mac instances — check with: aws ec2 describe-instance-type-offerings --filters Name=instance-type,Values=mac2.metal --location-type availability-zone --region us-west-2)"
+  type        = string
+  default     = "us-west-2b"
+}
+
+# Look up which private subnet is in the Mac AZ
+data "aws_subnet" "mac_rendering" {
+  count  = var.enable_mac_rendering ? 1 : 0
+  vpc_id = aws_vpc.main.id
+
+  filter {
+    name   = "availability-zone"
+    values = [var.mac_availability_zone]
+  }
+
+  filter {
+    name   = "tag:Name"
+    values = ["${var.project_name}-private-subnet-*"]
+  }
+}
+
 # Dedicated Host (required for Mac instances — minimum 24hr allocation)
 resource "aws_ec2_host" "mac_rendering" {
   count             = var.enable_mac_rendering ? 1 : 0
-  instance_family   = "mac2"
-  availability_zone = data.aws_availability_zones.available.names[0]
+  instance_type     = var.mac_instance_type
+  availability_zone = var.mac_availability_zone
   auto_placement    = "on"
 
   tags = {
@@ -89,9 +117,9 @@ resource "aws_key_pair" "mac_rendering" {
 resource "aws_instance" "mac_rendering" {
   count         = var.enable_mac_rendering ? 1 : 0
   ami           = var.mac_ami_id
-  instance_type = "mac2.metal"
+  instance_type = var.mac_instance_type
   host_id       = aws_ec2_host.mac_rendering[0].id
-  subnet_id     = aws_subnet.private[0].id
+  subnet_id     = data.aws_subnet.mac_rendering[0].id
 
   vpc_security_group_ids = [aws_security_group.mac_rendering[0].id]
   key_name               = var.mac_ssh_public_key != "" ? aws_key_pair.mac_rendering[0].key_name : null
