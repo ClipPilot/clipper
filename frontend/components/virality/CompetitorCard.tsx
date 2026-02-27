@@ -44,6 +44,8 @@ interface CompetitorCardProps extends CompetitorCardData {
   onEditSave: (id: number) => void;
   onEditCancel: () => void;
   onViewCompetitor: (id: number) => void;
+  /** When true, renders a star icon instead of initials and hides the edit button */
+  isMyPerformance?: boolean;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -69,8 +71,9 @@ export function CompetitorCard({
   onEditSave,
   onEditCancel,
   onViewCompetitor,
+  isMyPerformance = false,
 }: CompetitorCardProps) {
-  const isEditing = editingCompetitorId === competitor.id;
+  const isEditing = !isMyPerformance && editingCompetitorId === competitor.id;
   const totalPosts = competitor.accounts.flatMap((a) => postsByAccount[a.id] || []).length;
 
   const metrics: { label: string; value: string; change: number | null; absoluteChange?: boolean }[] = [
@@ -88,10 +91,16 @@ export function CompetitorCard({
           <div
             className={cn(
               "w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 border-2 bg-transparent",
-              AVATAR_COLORS[index % AVATAR_COLORS.length]
+              isMyPerformance
+                ? "border-accent-400 text-accent-400 bg-accent-400/10"
+                : AVATAR_COLORS[index % AVATAR_COLORS.length]
             )}
           >
-            {competitor.name.slice(0, 2).toUpperCase()}
+            {isMyPerformance ? (
+              <Icon icon="solar:star-bold" width={18} />
+            ) : (
+              competitor.name.slice(0, 2).toUpperCase()
+            )}
           </div>
           <div className="flex-1 min-w-0">
             {isEditing ? (
@@ -142,15 +151,17 @@ export function CompetitorCard({
             </div>
           ) : (
             <div className="flex items-center gap-1 shrink-0">
-              <Button
-                size="sm"
-                isIconOnly
-                variant="light"
-                className="text-text-tertiary h-7 w-7 min-w-0"
-                onPress={() => onEditStart(competitor.id, competitor.name)}
-              >
-                <Icon icon="solar:pen-2-linear" width={14} />
-              </Button>
+              {!isMyPerformance && (
+                <Button
+                  size="sm"
+                  isIconOnly
+                  variant="light"
+                  className="text-text-tertiary h-7 w-7 min-w-0"
+                  onPress={() => onEditStart(competitor.id, competitor.name)}
+                >
+                  <Icon icon="solar:pen-2-linear" width={14} />
+                </Button>
+              )}
               <Button
                 size="sm"
                 variant="flat"

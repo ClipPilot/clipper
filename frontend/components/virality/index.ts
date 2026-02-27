@@ -16,3 +16,4 @@ export { RecalcOverlay } from "./RecalcOverlay";
 export { CompetitorCard } from "./CompetitorCard";
 export type { CompetitorCardData } from "./CompetitorCard";
 export { ViralityUpgradeWall } from "./ViralityUpgradeWall";
+export { MyPerformanceView } from "./MyPerformanceView";
