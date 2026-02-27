@@ -7,6 +7,7 @@ import {
   notifyUGCVideoJobUpdate,
   notifyAdCloneJobUpdate,
   notifyAdPostingUpdate,
+  triggerMassPostSync,
 } from "../controllers/internal.controller";
 
 const router = Router();
@@ -412,5 +413,23 @@ router.post("/notify/ad-clone-job-update", validateInternalKey, notifyAdCloneJob
  *         description: Invalid internal API key
  */
 router.post("/notify/ad-posting-update", validateInternalKey, notifyAdPostingUpdate);
+
+/**
+ * @openapi
+ * /internal/sync-mass-post-analytics:
+ *   post:
+ *     summary: Sync analytics for mass-posted posts
+ *     description: Scrapes per-post metrics for all mass-posted userPosts with syncs remaining. Triggered by CloudWatch/cron every 12h.
+ *     tags:
+ *       - Internal
+ *     security:
+ *       - internalApiKey: []
+ *     responses:
+ *       200:
+ *         description: Sync completed
+ *       401:
+ *         description: Invalid internal API key
+ */
+router.post("/sync-mass-post-analytics", validateInternalKey, triggerMassPostSync);
 
 export default router;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useRef } from "react";
-import { Card, CardBody, Tooltip, cn } from "@heroui/react";
+import { Card, CardBody, Tooltip, Chip, cn } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { ViralityPost, ViralityAccount } from "@/api/virality";
 import type { DateRangeValue } from "@/components/virality/DateRangeFilter";
@@ -197,6 +197,18 @@ export function ActivityFeed({ posts, allPosts, accountMap, dateRange }: TopPerf
                     <p className="text-xs text-text-secondary line-clamp-1">
                       {post.caption || "No caption"}
                     </p>
+                    {post.mass_post_id != null && (
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <Chip size="sm" variant="flat" classNames={{ base: "bg-violet-500/10 text-violet-500 h-4 px-1", content: "text-[9px] font-medium px-0" }}>
+                          Managed by Cuttr
+                        </Chip>
+                        {post.campaign_name && (
+                          <Chip size="sm" variant="flat" classNames={{ base: "bg-amber-500/10 text-amber-500 h-4 px-1", content: "text-[9px] font-medium px-0" }}>
+                            {post.campaign_name}
+                          </Chip>
+                        )}
+                      </div>
+                    )}
                     <div className="flex items-center gap-3 mt-1">
                       {isViral && viewsDelta != null ? (
                         <span className="flex items-center gap-1 text-[11px] text-green-500 font-medium">

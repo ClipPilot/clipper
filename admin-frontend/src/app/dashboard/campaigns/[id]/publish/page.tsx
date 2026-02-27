@@ -185,6 +185,21 @@ function PublishModal({
   );
 }
 
+// ── Video Player Modal ──────────────────────────────────────────
+function VideoPlayerModal({ url, title, onClose }: { url: string; title: string; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50" onClick={onClose}>
+      <div className="relative max-w-4xl w-full mx-4" onClick={(e) => e.stopPropagation()}>
+        <button onClick={onClose} className="absolute -top-10 right-0 w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors flex items-center justify-center">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+        <p className="absolute -top-10 left-0 text-sm text-white/70 truncate max-w-[80%]">{title}</p>
+        <video src={url} controls autoPlay className="w-full rounded-xl bg-black max-h-[80vh]" />
+      </div>
+    </div>
+  );
+}
+
 // ── Posts Table ──────────────────────────────────────────────────
 const POLL_INTERVAL = 8000;
 
@@ -195,7 +210,9 @@ function PostsTable({ campaignId }: { campaignId: number }) {
   const [totalPosts, setTotalPosts] = useState(0);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [playingVideo, setPlayingVideo] = useState<{ url: string; title: string } | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const postsRef = useRef<string>("");
 
   const fetchPosts = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -207,7 +224,12 @@ function PostsTable({ campaignId }: { campaignId: number }) {
         sortBy: tab === "published" ? "posted_time" : "created_at",
         sortOrder: "desc",
       });
-      setPosts(result.posts);
+      // Only update state when data actually changed to prevent video element remounts
+      const postsJson = JSON.stringify(result.posts);
+      if (postsJson !== postsRef.current) {
+        postsRef.current = postsJson;
+        setPosts(result.posts);
+      }
       setTotalPosts(result.pagination.totalPosts);
       setTotalPages(result.pagination.totalPages);
     } catch {
@@ -296,7 +318,15 @@ function PostsTable({ campaignId }: { campaignId: number }) {
                   <td className="px-6 py-3">
                     <div className="flex items-center gap-3">
                       {post.clip_url ? (
-                        <video src={post.clip_url} className="w-16 h-10 rounded object-cover bg-black flex-shrink-0" muted preload="metadata" />
+                        <button
+                          onClick={() => setPlayingVideo({ url: post.clip_url!, title: post.clip_title || `Post #${post.id}` })}
+                          className="relative group w-16 h-10 rounded overflow-hidden bg-black flex-shrink-0"
+                        >
+                          <video src={post.clip_url} className="w-full h-full object-cover" muted preload="metadata" />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                            <svg className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                          </div>
+                        </button>
                       ) : (
                         <div className="w-16 h-10 rounded bg-surface-elevated flex-shrink-0" />
                       )}
@@ -370,6 +400,11 @@ function PostsTable({ campaignId }: { campaignId: number }) {
           </div>
         </div>
       )}
+
+      {/* Video Player */}
+      {playingVideo && (
+        <VideoPlayerModal url={playingVideo.url} title={playingVideo.title} onClose={() => setPlayingVideo(null)} />
+      )}
     </div>
   );
 }
@@ -389,6 +424,7 @@ export default function CampaignPublishPage() {
 
   const [publishingVideo, setPublishingVideo] = useState<CampaignVideo | null>(null);
   const [postSuccess, setPostSuccess] = useState<string | null>(null);
+  const [playingVideo, setPlayingVideo] = useState<{ url: string; title: string } | null>(null);
 
   // Key to force PostsTable remount after publishing
   const [postsKey, setPostsKey] = useState(0);
@@ -515,7 +551,15 @@ export default function CampaignPublishPage() {
             {videos.map((video) => (
               <div key={video.id} className="px-6 py-4 flex items-center gap-4 hover:bg-surface-hover/50 transition-colors">
                 {video.presigned_url ? (
-                  <video src={video.presigned_url} className="w-24 h-14 rounded-lg object-cover flex-shrink-0 bg-black" muted preload="metadata" />
+                  <button
+                    onClick={() => setPlayingVideo({ url: video.presigned_url!, title: video.title ?? video.file_name ?? `Video #${video.id}` })}
+                    className="relative group w-24 h-14 rounded-lg overflow-hidden bg-black flex-shrink-0"
+                  >
+                    <video src={video.presigned_url} className="w-full h-full object-cover" muted preload="metadata" />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                      <svg className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                    </div>
+                  </button>
                 ) : (
                   <div className="w-24 h-14 rounded-lg bg-surface-elevated flex-shrink-0 flex items-center justify-center text-text-tertiary text-xs">No preview</div>
                 )}
@@ -548,6 +592,11 @@ export default function CampaignPublishPage() {
           onClose={() => setPublishingVideo(null)}
           onPublish={handlePublish}
         />
+      )}
+
+      {/* Video Player */}
+      {playingVideo && (
+        <VideoPlayerModal url={playingVideo.url} title={playingVideo.title} onClose={() => setPlayingVideo(null)} />
       )}
     </div>
   );

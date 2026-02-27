@@ -3,7 +3,7 @@ import { ApifyClient } from "apify-client";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import * as schema from "@clipper/shared-db";
-import { eq, and, or, lte, inArray, sql } from "drizzle-orm";
+import { eq, and, or, lte, inArray, sql, isNull, not } from "drizzle-orm";
 
 const DATABASE_URL = process.env.DATABASE_URL!;
 const APIFY_API_TOKEN = process.env.APIFY_API_TOKEN!;
@@ -735,7 +735,7 @@ export const orchestratorHandler: Handler = async (event: any, context: Context)
         )
       );
 
-    // Query active user accounts
+    // Query active user accounts (skip mass_posting source — those are synced per-post)
     const userAcctList = await db
       .select({
         id: schema.userAccounts.id,
@@ -749,7 +749,11 @@ export const orchestratorHandler: Handler = async (event: any, context: Context)
       .where(
         and(
           inArray(schema.userAccounts.platform, ["instagram", "tiktok", "x"]),
-          eq(schema.userAccounts.is_active, true)
+          eq(schema.userAccounts.is_active, true),
+          or(
+            isNull(schema.userAccounts.source),
+            not(eq(schema.userAccounts.source, "mass_posting"))
+          )
         )
       );
 

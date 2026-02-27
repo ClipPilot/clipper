@@ -3,6 +3,7 @@ import {
   clips,
   posts,
   campaigns,
+  userAccounts,
 } from "@clipper/shared-db/src/schema";
 import { eq, and, or, sql, desc, asc, ilike, gte, inArray, isNotNull } from "drizzle-orm";
 import { teamService } from "./team.service";
@@ -10,7 +11,9 @@ import { getTeamUsage } from "../middleware/subscription.middleware";
 import { sqsService } from "./sqs.service";
 import { googleDriveService } from "./google/drive.service";
 import { s3Service } from "./s3.service";
-import { resolveAccountFromUrl } from "../utils/accountResolver";
+import { resolveAccountFromUrl, detectPlatform } from "../utils/accountResolver";
+import { userPerformanceService } from "./virality/userPerformance.service";
+import { getApifyService } from "./virality/apify.service";
 
 const VALID_PLATFORMS = new Set(["tiktok", "instagram", "facebook", "youtube", "x"]);
 
@@ -282,14 +285,63 @@ class AdPostingService {
     return { clipId };
   }
 
+  private static readonly TRACKABLE_PLATFORMS = new Set(["instagram", "tiktok", "x"]);
+
+  private static readonly PROFILE_URL_MAP: Record<string, (u: string) => string> = {
+    instagram: (u) => `https://www.instagram.com/${u}/`,
+    tiktok: (u) => `https://www.tiktok.com/@${u}`,
+    x: (u) => `https://x.com/${u}`,
+  };
+
+  async findOrCreateMassPostingAccount(
+    teamId: number,
+    platform: "instagram" | "tiktok" | "x",
+    username: string
+  ): Promise<{ id: number; created: boolean }> {
+    const existing = await db
+      .select({ id: userAccounts.id })
+      .from(userAccounts)
+      .where(
+        and(
+          eq(userAccounts.team_id, teamId),
+          eq(userAccounts.platform, platform),
+          eq(userAccounts.username, username)
+        )
+      )
+      .limit(1);
+
+    if (existing.length > 0) return { id: existing[0].id, created: false };
+
+    const buildUrl = AdPostingService.PROFILE_URL_MAP[platform];
+    const [inserted] = await db
+      .insert(userAccounts)
+      .values({
+        team_id: teamId,
+        platform,
+        username,
+        profile_url: buildUrl(username),
+        source: "mass_posting",
+        is_active: true,
+        syncs_remaining: 14,
+      })
+      .returning({ id: userAccounts.id });
+
+    return { id: inserted.id, created: true };
+  }
+
   async markAsPosted(postId: number, postUrl?: string): Promise<void> {
-    // Sanitize Instagram /reels/ → /reel/ (scraper only supports /reel/)
     if (postUrl) {
       postUrl = postUrl.replace(/\/reels\//, "/reel/");
     }
 
     const [post] = await db
-      .select({ drive_file_id: posts.drive_file_id })
+      .select({
+        drive_file_id: posts.drive_file_id,
+        team_id: posts.team_id,
+        platform: posts.platform,
+        campaign_id: posts.campaign_id,
+        content: posts.content,
+      })
       .from(posts)
       .where(eq(posts.id, postId))
       .limit(1);
@@ -304,12 +356,14 @@ class AdPostingService {
       }
     }
 
+    const postedTime = new Date();
+
     await db
       .update(posts)
       .set({
         status: "posted",
         post_url: postUrl || null,
-        posted_time: new Date(),
+        posted_time: postedTime,
         updated_at: new Date(),
         ...(accountHandle && { accountHandle }),
       })
@@ -321,6 +375,68 @@ class AdPostingService {
       } catch (err) {
         console.error(`[AdPosting] Drive delete failed for file ${post.drive_file_id}:`, err);
       }
+    }
+
+    // Bridge to performance tracking for trackable platforms
+    const platform = post?.platform;
+    if (
+      postUrl &&
+      accountHandle &&
+      platform &&
+      AdPostingService.TRACKABLE_PLATFORMS.has(platform)
+    ) {
+      this.bridgeToPerformanceTracking(
+        post.team_id,
+        platform as "instagram" | "tiktok" | "x",
+        accountHandle,
+        postId,
+        postUrl,
+        post.content,
+        postedTime
+      ).catch((err) => {
+        console.error(`[AdPosting] Performance bridge failed for post ${postId}:`, err);
+      });
+    }
+  }
+
+  private async bridgeToPerformanceTracking(
+    teamId: number,
+    platform: "instagram" | "tiktok" | "x",
+    username: string,
+    postId: number,
+    postUrl: string,
+    caption: string | null,
+    postedAt: Date
+  ) {
+    const { id: accountId } = await this.findOrCreateMassPostingAccount(teamId, platform, username);
+
+    const userPost = await userPerformanceService.createMassPostUserPost(
+      accountId, postId, postUrl, platform, caption, postedAt
+    );
+    if (!userPost) return;
+
+    // Fire-and-forget: fetch initial metrics
+    const apify = getApifyService();
+    const metrics = await apify.scrapePostMetrics(postUrl, platform);
+    if (metrics) {
+      await db
+        .update(
+          (userPerformanceService as any).postsTable
+        )
+        .set({
+          like_count: metrics.likesCount,
+          comment_count: metrics.commentsCount,
+          video_play_count: metrics.viewCount,
+          thumbnail_url: metrics.thumbnailUrl,
+          metrics_history: [{
+            recorded_at: new Date().toISOString(),
+            likes: metrics.likesCount,
+            comments: metrics.commentsCount,
+            views: metrics.viewCount,
+          }],
+          updated_at: new Date(),
+        })
+        .where(eq((userPerformanceService as any).postsTable.id, userPost.id));
     }
   }
 
