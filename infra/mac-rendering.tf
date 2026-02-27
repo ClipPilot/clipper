@@ -38,20 +38,12 @@ variable "mac_availability_zone" {
   default     = "us-west-2a"
 }
 
-# Look up which private subnet is in the Mac AZ
-data "aws_subnet" "mac_rendering" {
-  count  = var.enable_mac_rendering ? 1 : 0
-  vpc_id = aws_vpc.main.id
-
-  filter {
-    name   = "availability-zone"
-    values = [var.mac_availability_zone]
-  }
-
-  filter {
-    name   = "tag:Name"
-    values = ["${var.project_name}-private-subnet-*"]
-  }
+# Find the private subnet index that matches the Mac AZ
+locals {
+  mac_subnet_index = var.enable_mac_rendering ? index(
+    data.aws_availability_zones.available.names,
+    var.mac_availability_zone
+  ) : 0
 }
 
 # Dedicated Host (required for Mac instances — minimum 24hr allocation)
@@ -63,10 +55,6 @@ resource "aws_ec2_host" "mac_rendering" {
 
   tags = {
     Name = "${var.project_name}-mac-rendering-host-${var.environment}"
-  }
-
-  lifecycle {
-    create_before_destroy = true
   }
 }
 
@@ -154,7 +142,7 @@ resource "aws_instance" "mac_rendering" {
   ami           = var.mac_ami_id
   instance_type = var.mac_instance_type
   host_id       = aws_ec2_host.mac_rendering[0].id
-  subnet_id     = data.aws_subnet.mac_rendering[0].id
+  subnet_id     = aws_subnet.private[local.mac_subnet_index].id
 
   vpc_security_group_ids = [aws_security_group.mac_rendering[0].id]
   iam_instance_profile   = aws_iam_instance_profile.mac_rendering[0].name
