@@ -15,7 +15,7 @@ from shared import (
     detect_corner,
 )
 
-# Fix #1: Cached YuNet detector — created once, reused across all calls
+# Cached YuNet detector — created once, reused across all calls
 _yunet_detector = None
 
 
@@ -61,289 +61,110 @@ def detect_faces_yunet(image: np.ndarray, score_threshold: float = 0.5) -> List[
     return results
 
 
-# ── Layer 1: Temporal Variance Map ──
-
-def compute_temporal_variance_map(frames: List[np.ndarray]) -> np.ndarray:
-    """
-    Per-pixel temporal variance across sampled frames (uint8, 0-255).
-    Gameplay = high variance, facecam = moderate, static HUD = near-zero.
-    """
-    grays = [cv2.cvtColor(f, cv2.COLOR_BGR2GRAY).astype(np.float32) for f in frames]
-    stack = np.stack(grays, axis=0)
-    variance = np.var(stack, axis=0)
-    return cv2.normalize(variance, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-
-
-def find_overlay_candidates_from_variance(
-    variance_map: np.ndarray,
+def _detect_faces_with_quadrants(
+    frame: np.ndarray,
     frame_w: int,
-    frame_h: int
+    frame_h: int,
+    score_threshold: float = 0.3
 ) -> List[Dict[str, Any]]:
+    """Detect faces on the full frame AND on each corner quadrant crop.
+
+    Quadrant crops run YuNet at 2x effective resolution, catching small
+    facecam faces that the full-frame pass misses.
     """
-    Find rectangular overlay candidates from the temporal variance map.
-    Uses edge detection + band-pass thresholding to find sharp rectangular
-    boundaries between facecam and gameplay regions.
-    """
-    frame_area = frame_w * frame_h
-    smoothed = cv2.GaussianBlur(variance_map, (15, 15), 0)
-    candidates = []
+    all_faces = []
 
-    # Strategy A: Edge detection on variance map finds sharp boundaries
-    edges = cv2.Canny(smoothed, 30, 100)
-    edge_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
-    edges = cv2.dilate(edges, edge_kernel, iterations=2)
-    edges = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, edge_kernel, iterations=2)
+    # Pass 1: Full frame
+    full_faces = detect_faces_yunet(frame, score_threshold=score_threshold)
+    all_faces.extend(full_faces)
 
-    # Strategy B: Band-pass threshold for moderate-variance regions (facecam)
-    # Fix #7: Robust thresholding that handles low-variance streams
-    otsu_thresh, _ = cv2.threshold(smoothed, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    if otsu_thresh < 50:
-        # Low-variance stream (mostly static) — widen the band
-        lower = 5
-        upper = max(45, int(otsu_thresh * 1.5))
-    else:
-        lower = max(10, int(otsu_thresh * 0.15))
-        upper = max(lower + 40, int(otsu_thresh * 0.85))
-    band = cv2.inRange(smoothed, lower, upper)
-    band_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
-    band = cv2.morphologyEx(band, cv2.MORPH_CLOSE, band_kernel, iterations=3)
-    band = cv2.morphologyEx(band, cv2.MORPH_OPEN, band_kernel, iterations=1)
+    # Pass 2: Corner quadrants (overlapping halves)
+    half_w = frame_w // 2
+    half_h = frame_h // 2
+    quadrants = [
+        (0, 0, half_w, half_h),                    # top-left
+        (frame_w - half_w, 0, half_w, half_h),     # top-right
+        (0, frame_h - half_h, half_w, half_h),     # bottom-left
+        (frame_w - half_w, frame_h - half_h, half_w, half_h),  # bottom-right
+    ]
 
-    for source_name, source in [("var_edges", edges), ("var_band", band)]:
-        contours, _ = cv2.findContours(source, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    for qx, qy, qw, qh in quadrants:
+        crop = frame[qy:qy + qh, qx:qx + qw]
+        if crop.size == 0:
+            continue
+        quad_faces = detect_faces_yunet(crop, score_threshold=score_threshold)
+        # Map coordinates back to full frame
+        for f in quad_faces:
+            f['x'] += qx
+            f['y'] += qy
+        all_faces.extend(quad_faces)
 
-        for contour in contours:
-            area = cv2.contourArea(contour)
-            area_pct = area / frame_area
-            if area_pct < 0.01 or area_pct > 0.40:
-                continue
-
-            peri = cv2.arcLength(contour, True)
-            approx = cv2.approxPolyDP(contour, 0.02 * peri, True)
-            if len(approx) < 4 or len(approx) > 6:
-                continue
-
-            bx, by, bw, bh = cv2.boundingRect(approx)
-
-            aspect = bw / bh if bh > 0 else 0
-            if aspect < 0.4 or aspect > 2.5:
-                continue
-
-            rect_area = bw * bh
-            rectangularity = area / rect_area if rect_area > 0 else 0
-            if rectangularity < 0.60:
-                continue
-
-            cx, cy = bx + bw / 2, by + bh / 2
-            corner_score = 0.0
-            if cx < frame_w * 0.3 or cx > frame_w * 0.7:
-                corner_score += 0.5
-            if cy < frame_h * 0.3 or cy > frame_h * 0.7:
-                corner_score += 0.5
-
-            candidates.append({
-                'x': bx, 'y': by, 'w': bw, 'h': bh,
-                'area_pct': area_pct,
-                'rectangularity': rectangularity,
-                'aspect_ratio': aspect,
-                'corner_score': corner_score,
-                'source': source_name,
-            })
-
-    candidates = _deduplicate_candidates(candidates)
-    return candidates
+    return all_faces
 
 
-def _compute_iou(a: Dict, b: Dict) -> float:
-    """Intersection over union of two boxes."""
-    x1 = max(a['x'], b['x'])
-    y1 = max(a['y'], b['y'])
-    x2 = min(a['x'] + a['w'], b['x'] + b['w'])
-    y2 = min(a['y'] + a['h'], b['y'] + b['h'])
+def _cluster_faces(
+    faces: List[Dict[str, Any]],
+    distance_threshold: int = 60
+) -> List[List[Dict[str, Any]]]:
+    """Group face detections by proximity into unique face regions."""
+    clusters: List[List[Dict[str, Any]]] = []
 
-    if x2 <= x1 or y2 <= y1:
-        return 0.0
+    for face in faces:
+        fcx = face['x'] + face['w'] / 2
+        fcy = face['y'] + face['h'] / 2
 
-    intersection = (x2 - x1) * (y2 - y1)
-    union = a['w'] * a['h'] + b['w'] * b['h'] - intersection
-    return intersection / union if union > 0 else 0.0
-
-
-def _deduplicate_candidates(
-    candidates: List[Dict[str, Any]],
-    iou_threshold: float = 0.5
-) -> List[Dict[str, Any]]:
-    """Remove overlapping candidates, keeping the more rectangular one."""
-    if not candidates:
-        return []
-
-    candidates.sort(key=lambda c: c['rectangularity'], reverse=True)
-    kept = []
-
-    for candidate in candidates:
-        overlaps = False
-        for existing in kept:
-            if _compute_iou(candidate, existing) > iou_threshold:
-                overlaps = True
+        matched = False
+        for cluster in clusters:
+            avg_cx = sum(f['x'] + f['w'] / 2 for f in cluster) / len(cluster)
+            avg_cy = sum(f['y'] + f['h'] / 2 for f in cluster) / len(cluster)
+            dist = ((fcx - avg_cx) ** 2 + (fcy - avg_cy) ** 2) ** 0.5
+            if dist < distance_threshold:
+                cluster.append(face)
+                matched = True
                 break
-        if not overlaps:
-            kept.append(candidate)
 
-    return kept
+        if not matched:
+            clusters.append([face])
 
-
-# ── Layer 2: Scoring ──
-
-def score_overlay_candidate(candidate: Dict[str, Any]) -> float:
-    """Score an overlay candidate — higher = more likely to be a facecam."""
-    score = 0.0
-
-    # Edge proximity — facecams are on edges (corners, mid-left, mid-bottom, etc.)
-    score += candidate['corner_score'] * 3.0
-
-    # Rectangularity — clean overlays are very rectangular
-    score += candidate['rectangularity'] * 2.0
-
-    # Aspect ratio — reward typical webcam ratios (4:3 and 16:9)
-    ar = candidate['aspect_ratio']
-    if 1.1 <= ar <= 2.0:       # sweet spot: 4:3 through 16:9
-        score += 1.5
-    elif 0.75 <= ar <= 2.2:    # acceptable: portrait-ish to wide
-        score += 0.7
-
-    # Area — typical facecams are 5-20% of frame
-    ap = candidate['area_pct']
-    if 0.04 <= ap <= 0.22:
-        score += 1.5
-    elif 0.02 <= ap <= 0.35:
-        score += 0.5
-
-    # Edge-detected boundaries are more reliable than band-pass
-    if candidate['source'] == 'var_edges':
-        score += 0.5
-
-    return score
+    # Sort by detection count (most consistent face first)
+    clusters.sort(key=lambda c: len(c), reverse=True)
+    return clusters
 
 
-# ── Layer 3: Motion Verification ──
-
-def compute_region_motion(
-    region: Dict[str, int],
-    frames: List[np.ndarray],
-    threshold: float = 5.0
-) -> bool:
-    """Check if a region has real motion (rejects static images/memes).
-
-    Compares spread-apart frames (not just consecutive) so compression
-    noise between similar frames doesn't fool it.  Requires multiple
-    pairs to exceed the threshold — a single noisy pair isn't enough.
-    """
-    if len(frames) < 3:
-        return True
-
-    x, y, w, h = region['x'], region['y'], region['w'], region['h']
-
-    # Pick spread-apart pairs across the full sample range
-    n = len(frames)
-    pair_indices = []
-    if n >= 6:
-        pair_indices = [(0, n // 3), (n // 3, 2 * n // 3), (2 * n // 3, n - 1),
-                        (0, n // 2), (n // 2, n - 1)]
-    else:
-        pair_indices = [(0, n // 2), (n // 2, n - 1), (0, n - 1)]
-
-    diffs = []
-    for a, b in pair_indices:
-        crop_a = frames[a][y:y + h, x:x + w]
-        crop_b = frames[b][y:y + h, x:x + w]
-        if crop_a.size == 0 or crop_b.size == 0:
-            continue
-
-        ga = cv2.cvtColor(cv2.resize(crop_a, (64, 64)), cv2.COLOR_BGR2GRAY).astype(float)
-        gb = cv2.cvtColor(cv2.resize(crop_b, (64, 64)), cv2.COLOR_BGR2GRAY).astype(float)
-        diffs.append(float(np.mean(np.abs(ga - gb))))
-
-    if not diffs:
-        return True
-
-    avg_motion = np.mean(diffs)
-    # Require at least 2 pairs above threshold to confirm real motion
-    pairs_above = sum(1 for d in diffs if d >= threshold)
-    is_live = avg_motion >= threshold and pairs_above >= 2
-    print(f"[FACECAM-DETECT] Region motion: avg={avg_motion:.2f} "
-          f"pairs_above={pairs_above}/{len(diffs)} (threshold: {threshold}) → {'LIVE' if is_live else 'STATIC'}")
-    return is_live
-
-
-# ── Helpers for multi-frame face confirmation ──
-
-def _confirm_face_in_region(
-    candidate: Dict[str, int],
-    frames: List[np.ndarray],
-    score_threshold: float = 0.4
-) -> Optional[Dict[str, Any]]:
-    """
-    Confirm a LIVE face exists in the candidate region.
-
-    Two-layer check:
-    1. Face must be detected in 2+ of 3 spread frames
-    2. Face center must shift by >= 5px (rejects static images; accounts for YuNet bbox jitter)
-    """
-    n = len(frames)
-    check_indices = sorted(set([n // 4, n // 2, 3 * n // 4]))
-
-    cx, cy, cw, ch = candidate['x'], candidate['y'], candidate['w'], candidate['h']
-    best_face = None
-    best_conf = 0.0
-    face_centers: List[Tuple[float, float]] = []
-
-    for idx in check_indices:
-        if idx >= n:
-            continue
-        crop = frames[idx][cy:cy + ch, cx:cx + cw]
-        if crop.size == 0 or crop.shape[0] < 10 or crop.shape[1] < 10:
-            continue
-
-        faces = detect_faces_yunet(crop, score_threshold=score_threshold)
-        if faces:
-            f = faces[0]
-            face_centers.append((f['x'] + f['w'] / 2, f['y'] + f['h'] / 2))
-            if f['confidence'] > best_conf:
-                best_face = f
-                best_conf = f['confidence']
-
-    if len(face_centers) < 2:
-        return None
-
-    # Face center must shift by >= 5px across frames (YuNet jitter is ~1-3px)
-    max_shift = 0.0
-    for i in range(1, len(face_centers)):
-        dx = abs(face_centers[i][0] - face_centers[0][0])
-        dy = abs(face_centers[i][1] - face_centers[0][1])
-        max_shift = max(max_shift, dx + dy)
-
-    if max_shift < 5.0:
-        print(f"[FACECAM-DETECT] Rejected static face — shift={max_shift:.1f}px across {len(face_centers)} frames")
-        return None
-
-    return best_face
+def _average_face(cluster: List[Dict[str, Any]]) -> Dict[str, int]:
+    """Compute average bounding box for a cluster of face detections."""
+    return {
+        'x': int(sum(f['x'] for f in cluster) / len(cluster)),
+        'y': int(sum(f['y'] for f in cluster) / len(cluster)),
+        'w': int(sum(f['w'] for f in cluster) / len(cluster)),
+        'h': int(sum(f['h'] for f in cluster) / len(cluster)),
+    }
 
 
 def _compute_face_motion(
     face_bbox: Dict[str, int],
     frames: List[np.ndarray],
-    threshold: float = 5.0
+    threshold: float = 3.0
 ) -> bool:
     """Check motion on the FACE region specifically (not the whole candidate).
 
-    This prevents surrounding gameplay from masking a static face.
+    Rejects static images/memes while accepting real but relatively still
+    streamers. Threshold lowered from 5.0 to 3.0 — compression noise is
+    typically 0.5-1.5, while a real person scores 2.0+.
     """
     if len(frames) < 3:
         return True
 
     x, y, w, h = face_bbox['x'], face_bbox['y'], face_bbox['w'], face_bbox['h']
     n = len(frames)
-    pair_indices = [(0, n // 3), (n // 3, 2 * n // 3), (0, n - 1)]
+
+    # Use more pairs with 16 frames for better accuracy
+    if n >= 8:
+        pair_indices = [(0, n // 4), (n // 4, n // 2), (n // 2, 3 * n // 4),
+                        (3 * n // 4, n - 1), (0, n // 2), (n // 4, 3 * n // 4),
+                        (0, n - 1)]
+    else:
+        pair_indices = [(0, n // 3), (n // 3, 2 * n // 3), (0, n - 1)]
 
     diffs = []
     for a, b in pair_indices:
@@ -361,22 +182,40 @@ def _compute_face_motion(
 
     avg = np.mean(diffs)
     above = sum(1 for d in diffs if d >= threshold)
-    is_live = avg >= threshold and above >= 2
-    print(f"[FACECAM-DETECT] Face-region motion: avg={avg:.2f} above={above}/{len(diffs)} → {'LIVE' if is_live else 'STATIC'}")
+    is_live = avg >= threshold and above >= 1
+    print(f"[FACECAM-DETECT] Face-region motion: avg={avg:.2f} above={above}/{len(diffs)} (thr={threshold}) → {'LIVE' if is_live else 'STATIC'}")
     return is_live
+
+
+def _no_facecam_response(frame_w: int, frame_h: int) -> Dict[str, Any]:
+    """Return a standard "no facecam found" response."""
+    return {
+        'statusCode': 200,
+        'headers': {'Content-Type': 'application/json'},
+        'body': json.dumps({
+            'success': True,
+            'facecamDetected': False,
+            'facecamRegion': None,
+            'corner': None,
+            'faceRegion': None,
+            'detectionRate': 0.0,
+            'frameWidth': frame_w,
+            'frameHeight': frame_h,
+        }),
+    }
 
 
 # ── Pipeline ──
 
 def handle_facecam(video_path: str, frame_w: int, frame_h: int, context: Any) -> Dict[str, Any]:
     """
-    3-layer facecam detection pipeline:
+    YuNet-based facecam detection pipeline:
 
-    Layer 1: Temporal Variance Map — find overlay rectangle (no ML needed)
-    Layer 2: YuNet Face Confirmation — verify a face in candidate regions
-    Layer 3: Motion Verification — reject static images / meme overlays
-
-    Fallback: YuNet full-frame → motion check → expand_face_to_webcam_region
+    1. Sample frames from video
+    2. Detect faces with YuNet (full-frame + quadrant crops for small faces)
+    3. Cluster detections into unique face regions
+    4. Check motion for each cluster — pick the moving face
+    5. Expand to webcam region
     """
     duration, _, _ = get_video_info(video_path)
 
@@ -393,14 +232,12 @@ def handle_facecam(video_path: str, frame_w: int, frame_h: int, context: Any) ->
         for i in range(num_samples)
     ]
 
-    # Fix #2: Single temp dir for all frame extraction
     temp_dir = tempfile.mkdtemp()
     sampled_frames: List[np.ndarray] = []
 
     try:
         for i, t in enumerate(sample_times):
             frame_path = os.path.join(temp_dir, f"sample_{i:02d}.jpg")
-            # Fix #3: -ss before -i for fast seeking
             cmd = [
                 'ffmpeg', '-y', '-ss', str(t),
                 '-i', video_path,
@@ -417,165 +254,65 @@ def handle_facecam(video_path: str, frame_w: int, frame_h: int, context: Any) ->
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
 
-    print(f"[FACECAM-DETECT] Sampled {len(sampled_frames)} frames for variance analysis")
+    print(f"[FACECAM-DETECT] Sampled {len(sampled_frames)} frames")
 
     if len(sampled_frames) < 3:
-        return {
-            'statusCode': 200,
-            'headers': {'Content-Type': 'application/json'},
-            'body': json.dumps({
-                'success': True,
-                'facecamDetected': False,
-                'facecamRegion': None,
-                'corner': None,
-                'faceRegion': None,
-                'detectionRate': 0.0,
-                'frameWidth': frame_w,
-                'frameHeight': frame_h,
-            }),
-        }
-
-    # ── Layer 1: Temporal Variance Map ──
-    print(f"[FACECAM-DETECT] Layer 1: Temporal variance from {len(sampled_frames)} frames")
-    variance_map = compute_temporal_variance_map(sampled_frames)
-    candidates = find_overlay_candidates_from_variance(variance_map, frame_w, frame_h)
-
-    for c in candidates:
-        c['score'] = score_overlay_candidate(c)
-    candidates.sort(key=lambda c: c['score'], reverse=True)
-    print(f"[FACECAM-DETECT] {len(candidates)} overlay candidates from variance analysis")
+        return _no_facecam_response(frame_w, frame_h)
 
     if context:
         remaining_ms = context.get_remaining_time_in_millis()
-        print(f"[KEEP-ALIVE] Variance analysis complete | Lambda time remaining: {remaining_ms // 1000}s")
+        print(f"[KEEP-ALIVE] Frame sampling done | Lambda time remaining: {remaining_ms // 1000}s")
 
-    # ── Filter: only keep candidates near edges (not center of frame) ──
-    # Facecams are always on edges/corners — reject anything in the middle 40%
-    edge_margin_x = frame_w * 0.30
-    edge_margin_y = frame_h * 0.30
-    edge_candidates = []
-    for c in candidates:
-        ccx = c['x'] + c['w'] / 2
-        ccy = c['y'] + c['h'] / 2
-        near_edge = (ccx < edge_margin_x or ccx > frame_w - edge_margin_x or
-                     ccy < edge_margin_y or ccy > frame_h - edge_margin_y)
-        if near_edge:
-            edge_candidates.append(c)
-        else:
-            print(f"[FACECAM-DETECT] Skipping center candidate at ({c['x']},{c['y']}) {c['w']}x{c['h']}")
+    # ── Step 1: Detect faces across all frames (full-frame + quadrant crops) ──
+    all_faces: List[Dict[str, Any]] = []
+    for frame in sampled_frames:
+        faces = _detect_faces_with_quadrants(frame, frame_w, frame_h, score_threshold=0.3)
+        all_faces.extend(faces)
 
-    print(f"[FACECAM-DETECT] {len(edge_candidates)} edge candidates (from {len(candidates)} total)")
+    print(f"[FACECAM-DETECT] YuNet found {len(all_faces)} total detections across {len(sampled_frames)} frames")
 
-    # ── Layer 2 + 3: Check ALL edge candidates for a moving face ──
-    confirmed_region = None
+    if not all_faces:
+        print("[FACECAM-DETECT] No faces detected in any frame")
+        return _no_facecam_response(frame_w, frame_h)
+
+    # ── Step 2: Cluster faces by position ──
+    clusters = _cluster_faces(all_faces, distance_threshold=60)
+    print(f"[FACECAM-DETECT] Clustered into {len(clusters)} unique face regions")
+
+    for i, cluster in enumerate(clusters[:5]):
+        avg = _average_face(cluster)
+        max_conf = max(f.get('confidence', 0) for f in cluster)
+        print(f"[FACECAM-DETECT]   Cluster {i}: ({avg['x']},{avg['y']}) {avg['w']}x{avg['h']}, "
+              f"detections={len(cluster)}, max_conf={max_conf:.2f}")
+
+    if context:
+        remaining_ms = context.get_remaining_time_in_millis()
+        print(f"[KEEP-ALIVE] Clustering done | Lambda time remaining: {remaining_ms // 1000}s")
+
+    # ── Step 3: Find the first moving face ──
     confirmed_face = None
+    confirmed_region = None
     best_confidence = 0.0
 
-    for candidate in edge_candidates[:10]:
-        cx, cy, cw, ch = candidate['x'], candidate['y'], candidate['w'], candidate['h']
+    for cluster in clusters:
+        avg_face = _average_face(cluster)
 
-        face = _confirm_face_in_region(candidate, sampled_frames, score_threshold=0.4)
-        if not face:
-            continue
-
-        print(f"[FACECAM-DETECT] Layer 2: YuNet found face in {cw}x{ch}+{cx}+{cy} "
-              f"(conf={face['confidence']:.2f})")
-
-        # Motion check on the FACE region specifically (not the whole candidate)
-        abs_face = {
-            'x': cx + face['x'], 'y': cy + face['y'],
-            'w': face['w'], 'h': face['h'],
-        }
-        if not _compute_face_motion(abs_face, sampled_frames):
-            print(f"[FACECAM-DETECT] Layer 3: Rejected static face at ({abs_face['x']},{abs_face['y']})")
-            continue
-
-        confirmed_region = {'x': cx, 'y': cy, 'w': cw, 'h': ch}
-        confirmed_face = abs_face
-        best_confidence = face['confidence']
-        print(f"[FACECAM-DETECT] Confirmed facecam: region={confirmed_region}")
-        break
-
-    # ── Fallback: YuNet full-frame → find moving face near edge ──
-    if not confirmed_region:
-        print("[FACECAM-DETECT] Variance pipeline found nothing — YuNet full-frame fallback")
-
-        # Collect faces from spread frames — lower threshold to catch small facecam faces,
-        # check every 2nd frame instead of every 3rd for better coverage
-        all_faces: List[Dict[str, Any]] = []
-        for frame in sampled_frames[::2]:
-            faces = detect_faces_yunet(frame, score_threshold=0.3)
-            all_faces.extend(faces)
-
-        # Score by edge proximity — facecams are near any edge, not just corners
-        scored = []
-        for f in all_faces:
-            fcx = f['x'] + f['w'] / 2
-            fcy = f['y'] + f['h'] / 2
-            # Skip faces in the center of the frame
-            if (edge_margin_x < fcx < frame_w - edge_margin_x and
-                    edge_margin_y < fcy < frame_h - edge_margin_y):
-                continue
-            # Distance to nearest edge (left, right, top, bottom)
-            dist_to_edge = min(fcx, frame_w - fcx, fcy, frame_h - fcy)
-            max_edge_dist = min(frame_w, frame_h) / 2
-            edge_score = 1.0 - (dist_to_edge / max_edge_dist)
-            combined = edge_score * 0.7 + f['confidence'] * 0.3
-            scored.append((combined, f))
-        scored.sort(key=lambda x: x[0], reverse=True)
-
-        for _, fallback_face in scored[:5]:
-            if _compute_face_motion(fallback_face, sampled_frames):
-                fallback_region = expand_face_to_webcam_region(fallback_face, frame_w, frame_h)
-                confirmed_face = {
-                    'x': fallback_face['x'], 'y': fallback_face['y'],
-                    'w': fallback_face['w'], 'h': fallback_face['h'],
-                }
-                confirmed_region = fallback_region
-                print(f"[FACECAM-DETECT] Fallback: moving face at ({fallback_face['x']},{fallback_face['y']}), "
-                      f"region={confirmed_region}")
-                break
-            else:
-                print(f"[FACECAM-DETECT] Fallback skip: static face at ({fallback_face['x']},{fallback_face['y']})")
+        if _compute_face_motion(avg_face, sampled_frames):
+            # This is a real, moving face — expand to webcam region
+            region = expand_face_to_webcam_region(avg_face, frame_w, frame_h)
+            confirmed_face = avg_face
+            confirmed_region = region
+            best_confidence = max(f.get('confidence', 0) for f in cluster)
+            print(f"[FACECAM-DETECT] Moving face found at ({avg_face['x']},{avg_face['y']}) "
+                  f"{avg_face['w']}x{avg_face['h']}, conf={best_confidence:.2f}, "
+                  f"expanded region={region}")
+            break
+        else:
+            print(f"[FACECAM-DETECT] Static face at ({avg_face['x']},{avg_face['y']}), skipping")
 
     if not confirmed_region or not confirmed_face:
-        return {
-            'statusCode': 200,
-            'headers': {'Content-Type': 'application/json'},
-            'body': json.dumps({
-                'success': True,
-                'facecamDetected': False,
-                'facecamRegion': None,
-                'corner': None,
-                'faceRegion': None,
-                'detectionRate': 0.0,
-                'frameWidth': frame_w,
-                'frameHeight': frame_h,
-            }),
-        }
-
-    # Pad region outward so the facecam isn't cropped too tight
-    pad = FACECAM_CONFIG['region_padding_factor']
-    cx = confirmed_region['x'] + confirmed_region['w'] / 2
-    cy = confirmed_region['y'] + confirmed_region['h'] / 2
-    pw = int(confirmed_region['w'] * pad)
-    ph = int(confirmed_region['h'] * pad)
-    px = max(0, int(cx - pw / 2))
-    py = max(0, int(cy - ph / 2))
-    pw = min(pw, frame_w - px)
-    ph = min(ph, frame_h - py)
-
-    snap = FACECAM_CONFIG['edge_snap_px']
-    if px < snap:
-        px = 0
-    if py < snap:
-        py = 0
-    if (px + pw) > (frame_w - snap):
-        pw = frame_w - px
-    if (py + ph) > (frame_h - snap):
-        ph = frame_h - py
-
-    confirmed_region = {'x': px, 'y': py, 'w': pw, 'h': ph}
+        print("[FACECAM-DETECT] No moving face found")
+        return _no_facecam_response(frame_w, frame_h)
 
     corner = detect_corner(confirmed_region, frame_w, frame_h)
     print(f"[FACECAM-DETECT] Facecam detected at {corner}: region={confirmed_region}")

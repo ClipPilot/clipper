@@ -456,6 +456,8 @@ export const mergeClipsFaceSwap = async (clips: string[], outputPath: string) =>
     const content = clips.map((c) => `file '${c.replace(/'/g, "'\\''")}'`).join("\n");
     fs.writeFileSync(listPath, content);
 
+    let stderrLog = "";
+
     ffmpeg()
       .input(listPath)
       .inputOptions(["-f concat", "-safe 0"])
@@ -476,12 +478,16 @@ export const mergeClipsFaceSwap = async (clips: string[], outputPath: string) =>
         "-map_metadata", "-1",
       ])
       .save(outputPath)
+      .on("stderr", (line: string) => { stderrLog += line + "\n"; })
       .on("end", () => {
         try {
           if (fs.existsSync(listPath)) fs.unlinkSync(listPath);
         } catch { /* best effort cleanup */ }
 
         if (!fs.existsSync(outputPath)) {
+          // Log inputs + FFmpeg stderr to diagnose why output is missing
+          const inputStatus = clips.map(c => `${path.basename(c)}: ${fs.existsSync(c) ? `${(fs.statSync(c).size / 1024).toFixed(0)}KB` : "MISSING"}`);
+          console.error(`[MERGE] Output missing after FFmpeg exit 0!\n  Inputs: ${inputStatus.join(", ")}\n  stderr: ${stderrLog.slice(-500)}`);
           reject(new Error(`[MERGE] FFmpeg reported success but output file missing: ${outputPath}`));
           return;
         }
@@ -490,7 +496,7 @@ export const mergeClipsFaceSwap = async (clips: string[], outputPath: string) =>
         resolve(outputPath);
       })
       .on("error", (err) => {
-        console.error(`[MERGE] Failed: ${err.message}`);
+        console.error(`[MERGE] Failed: ${err.message}\n  stderr: ${stderrLog.slice(-500)}`);
         try {
           if (fs.existsSync(listPath)) fs.unlinkSync(listPath);
         } catch { /* best effort cleanup */ }
@@ -611,12 +617,26 @@ export const convertToGamingVertical = async (
   let fcW = Math.min(facecam.w, width - fcX);
   let fcH = Math.min(facecam.h, height - fcY);
 
+  const originalCrop = { x: fcX, y: fcY, w: fcW, h: fcH };
+
+  // Cap zoom at 2x — minimum crop is half of output resolution (540x480).
+  // If the detected region is smaller, we grab more surrounding video to fill.
+  const minCropW = 540;  // 1080 / 2
+  const minCropH = 480;  // 960 / 2
+  const centerX = fcX + fcW / 2;
+  const centerY = fcY + fcH / 2;
+
+  if (fcW < minCropW) {
+    fcW = minCropW;
+  }
+  if (fcH < minCropH) {
+    fcH = minCropH;
+  }
+
   // Expand facecam crop to 9:8 aspect ratio (1080:960) by zooming out —
   // grabs more surrounding video instead of padding with black bars
   const targetAR = 1080 / 960; // 1.125
   const currentAR = fcW / fcH;
-  const centerX = fcX + fcW / 2;
-  const centerY = fcY + fcH / 2;
 
   if (currentAR < targetAR) {
     // Region is taller than 9:8 — expand width
@@ -631,6 +651,21 @@ export const convertToGamingVertical = async (
   fcY = Math.max(0, Math.round(centerY - fcH / 2));
   fcW = Math.min(fcW, width - fcX);
   fcH = Math.min(fcH, height - fcY);
+
+  // If clamping to bounds shrunk us below minimum, push the origin inward
+  if (fcW < minCropW && fcX > 0) {
+    fcX = Math.max(0, width - minCropW);
+    fcW = Math.min(minCropW, width - fcX);
+  }
+  if (fcH < minCropH && fcY > 0) {
+    fcY = Math.max(0, height - minCropH);
+    fcH = Math.min(minCropH, height - fcY);
+  }
+
+  const zoomFactor = Math.max(1080 / fcW, 960 / fcH);
+  if (fcW !== originalCrop.w || fcH !== originalCrop.h) {
+    console.log(`[GAMING] Crop expanded from ${originalCrop.w}x${originalCrop.h} to ${fcW}x${fcH} (zoom: ${zoomFactor.toFixed(1)}x)`);
+  }
 
   // Gameplay "corner cut": slice off the facecam strip first, then
   // center-crop the remaining area to 16:9 so the game center is preserved.
