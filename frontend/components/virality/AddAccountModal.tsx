@@ -21,6 +21,7 @@ interface AddAccountModalProps {
   isOpen: boolean;
   onClose: () => void;
   competitors?: ViralityCompetitor[];
+  hideCompetitorSelect?: boolean;
   onSubmit: (platform: Platform, profileUrl: string, options: {
     enableAlerts: boolean;
     competitorId?: number;
@@ -45,6 +46,7 @@ export function AddAccountModal({
   isOpen,
   onClose,
   competitors = [],
+  hideCompetitorSelect = false,
   onSubmit,
 }: AddAccountModalProps) {
   const [profileUrl, setProfileUrl] = useState("");
@@ -168,7 +170,7 @@ export function AddAccountModal({
                   : accountType === "keyword"
                     ? "e.g. trending coffee"
                     : selectedPlatform === "tiktok"
-                      ? "e.g. @kotasyaps or tiktok.com/@kotasyaps"
+                      ? "e.g. @selenagomez or tiktok.com/@selenagomez"
                       : selectedPlatform === "x"
                         ? "e.g. @elonmusk or x.com/elonmusk"
                         : "e.g. instagram.com/creatorscale"
@@ -248,38 +250,40 @@ export function AddAccountModal({
           </div>
 
           {/* Competitor Group */}
-          <div className="space-y-2">
-            <label className="text-sm text-gray-400">Competitor Group</label>
-            <Select
-              items={[
-                { key: "new", label: "Create New Competitor" },
-                ...competitors.map((c) => ({ key: String(c.id), label: c.name })),
-              ]}
-              selectedKeys={[competitorSelection]}
-              onSelectionChange={(keys) => {
-                const val = Array.from(keys)[0] as string;
-                if (val) setCompetitorSelection(val);
-              }}
-              classNames={{
-                trigger: "bg-[#0d0f1a] border border-[#2a2d3e] hover:border-[#3a3d4e] rounded-xl h-12",
-                value: "text-white",
-              }}
-            >
-              {(item) => <SelectItem key={item.key}>{item.label}</SelectItem>}
-            </Select>
-            {competitorSelection === "new" && (
-              <Input
-                placeholder="e.g. Nike, Adidas"
-                value={newCompetitorName}
-                onValueChange={setNewCompetitorName}
-                classNames={{
-                  inputWrapper:
-                    "bg-[#0d0f1a] border border-[#2a2d3e] hover:border-[#3a3d4e] rounded-xl h-12",
-                  input: "text-white placeholder:text-gray-500",
+          {!hideCompetitorSelect && (
+            <div className="space-y-2">
+              <label className="text-sm text-gray-400">Competitor Group</label>
+              <Select
+                items={[
+                  { key: "new", label: "Create New Competitor" },
+                  ...competitors.map((c) => ({ key: String(c.id), label: c.name })),
+                ]}
+                selectedKeys={[competitorSelection]}
+                onSelectionChange={(keys) => {
+                  const val = Array.from(keys)[0] as string;
+                  if (val) setCompetitorSelection(val);
                 }}
-              />
-            )}
-          </div>
+                classNames={{
+                  trigger: "bg-[#0d0f1a] border border-[#2a2d3e] hover:border-[#3a3d4e] rounded-xl h-12",
+                  value: "text-white",
+                }}
+              >
+                {(item) => <SelectItem key={item.key}>{item.label}</SelectItem>}
+              </Select>
+              {competitorSelection === "new" && (
+                <Input
+                  placeholder="e.g. Nike, Adidas"
+                  value={newCompetitorName}
+                  onValueChange={setNewCompetitorName}
+                  classNames={{
+                    inputWrapper:
+                      "bg-[#0d0f1a] border border-[#2a2d3e] hover:border-[#3a3d4e] rounded-xl h-12",
+                    input: "text-white placeholder:text-gray-500",
+                  }}
+                />
+              )}
+            </div>
+          )}
 
           {/* Enable Instant Alerts */}
           <div className="flex items-center justify-between p-4 bg-[#0d0f1a] rounded-xl border border-[#2a2d3e]">

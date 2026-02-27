@@ -3,10 +3,8 @@ import {
   viralityAccounts,
   viralityPosts,
   viralityCompetitors,
-  viralitySettings,
-  viralityAlertLogs,
 } from "@clipper/shared-db/src/schema";
-import { eq, desc, count, and, inArray, not } from "drizzle-orm";
+import { eq, desc, count } from "drizzle-orm";
 import { AccountTrackingService } from "./accountTracking.service";
 
 // ── Virality-specific service (adds competitor methods + overrides) ──────────
@@ -145,107 +143,6 @@ class ViralityService extends AccountTrackingService {
     await db
       .delete(viralityCompetitors)
       .where(eq(viralityCompetitors.id, competitorId));
-  }
-
-  // ── Viral Alert Settings ──
-
-  async getSettings(teamId: number) {
-    const [settings] = await db
-      .select()
-      .from(viralitySettings)
-      .where(eq(viralitySettings.team_id, teamId))
-      .limit(1);
-
-    const enabledAccounts = await db
-      .select({ id: viralityAccounts.id })
-      .from(viralityAccounts)
-      .where(
-        and(
-          eq(viralityAccounts.team_id, teamId),
-          eq(viralityAccounts.alert_enabled, true)
-        )
-      );
-
-    return {
-      percentThreshold: settings?.percent_threshold ?? 100,
-      absoluteThreshold: settings?.absolute_threshold ?? 100000,
-      thresholdMode: settings?.threshold_mode ?? "and",
-      timeFrameHours: settings?.time_frame_hours ?? 24,
-      enabledAccountIds: enabledAccounts.map((a) => a.id),
-    };
-  }
-
-  async saveSettings(
-    teamId: number,
-    data: {
-      percentThreshold: number | null;
-      absoluteThreshold: number | null;
-      thresholdMode: "and" | "or";
-      timeFrameHours: number;
-      enabledAccountIds: number[];
-    }
-  ) {
-    // Upsert viralitySettings
-    const [existing] = await db
-      .select({ id: viralitySettings.id })
-      .from(viralitySettings)
-      .where(eq(viralitySettings.team_id, teamId))
-      .limit(1);
-
-    if (existing) {
-      await db
-        .update(viralitySettings)
-        .set({
-          percent_threshold: data.percentThreshold,
-          absolute_threshold: data.absoluteThreshold,
-          threshold_mode: data.thresholdMode,
-          time_frame_hours: data.timeFrameHours,
-          updated_at: new Date(),
-        })
-        .where(eq(viralitySettings.id, existing.id));
-    } else {
-      await db.insert(viralitySettings).values({
-        team_id: teamId,
-        percent_threshold: data.percentThreshold,
-        absolute_threshold: data.absoluteThreshold,
-        threshold_mode: data.thresholdMode,
-        time_frame_hours: data.timeFrameHours,
-      });
-    }
-
-    // Bulk-update alert_enabled on all team accounts
-    // First disable all
-    await db
-      .update(viralityAccounts)
-      .set({ alert_enabled: false })
-      .where(eq(viralityAccounts.team_id, teamId));
-
-    // Then enable selected ones
-    if (data.enabledAccountIds.length > 0) {
-      await db
-        .update(viralityAccounts)
-        .set({ alert_enabled: true })
-        .where(
-          and(
-            eq(viralityAccounts.team_id, teamId),
-            inArray(viralityAccounts.id, data.enabledAccountIds)
-          )
-        );
-    }
-
-    return this.getSettings(teamId);
-  }
-
-  // ── Alert Logs ──
-
-  async getAlertLogs(teamId: number, limit: number = 20, offset: number = 0) {
-    return db
-      .select()
-      .from(viralityAlertLogs)
-      .where(eq(viralityAlertLogs.team_id, teamId))
-      .orderBy(desc(viralityAlertLogs.created_at))
-      .limit(limit)
-      .offset(offset);
   }
 }
 

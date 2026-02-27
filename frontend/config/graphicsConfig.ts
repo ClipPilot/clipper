@@ -38,6 +38,52 @@ export const GRAPHIC_TYPES: GraphicTypeConfig[] = [
   },
 ];
 
+export interface StylePresetConfig {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+}
+
+export const STYLE_PRESETS: StylePresetConfig[] = [
+  {
+    id: "tile-ad",
+    name: "Art Director",
+    description: "2D/3D fusion with brand simulation",
+    icon: "solar:layers-bold-duotone",
+  },
+  {
+    id: "collage",
+    name: "Collage",
+    description: "Layered photos and mixed media",
+    icon: "solar:gallery-bold-duotone",
+  },
+  {
+    id: "photoshoot",
+    name: "Photoshoot",
+    description: "Luxury campaign photography, no text",
+    icon: "solar:camera-bold-duotone",
+  },
+  {
+    id: "flat-lay",
+    name: "Flat Lay",
+    description: "Top-down product arrangement on styled surface",
+    icon: "solar:box-bold-duotone",
+  },
+  {
+    id: "ugc",
+    name: "UGC / Lo-fi",
+    description: "Organic, authentic content that blends into the feed",
+    icon: "solar:smartphone-bold-duotone",
+  },
+  {
+    id: "minimalist",
+    name: "Minimalist",
+    description: "Ultra clean with max white space",
+    icon: "solar:minimize-square-bold-duotone",
+  },
+];
+
 export interface AspectRatioConfig {
   value: string;
   label: string;

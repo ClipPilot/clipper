@@ -116,4 +116,9 @@ output "status_dynamodb_table" {
   value       = aws_dynamodb_table.status_checks.name
 }
 
+output "status_compute_role_arn" {
+  description = "ARN of the Amplify compute role for status app - set in Amplify Console > App settings > IAM roles"
+  value       = aws_iam_role.amplify_status_compute.arn
+}
+
 

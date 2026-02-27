@@ -60,6 +60,36 @@ export function getPostEngRateChange(
   return latestRate - prevRate;
 }
 
+/** Calculate views gained within a date range using metrics_history.
+ *  Falls back to total video_play_count when history is insufficient. */
+export function getViewsInRange(
+  post: ViralityPost,
+  startDate?: string,
+  endDate?: string
+): number {
+  const h = post.metrics_history;
+  if (!h || h.length === 0) return post.video_play_count ?? 0;
+
+  // If only one history entry, fall back to total views
+  if (h.length < 2) return post.video_play_count ?? 0;
+
+  // If no date range, return total views
+  if (!startDate && !endDate) return post.video_play_count ?? 0;
+
+  const start = startDate ? new Date(startDate) : null;
+  const end = endDate ? new Date(endDate) : new Date();
+
+  const startEntry = start ? findClosestEntry(h, start) : h[0];
+  const endEntry = end ? findClosestEntry(h, end) : h[h.length - 1];
+
+  if (!startEntry || !endEntry) return post.video_play_count ?? 0;
+
+  const startViews = startEntry.views ?? 0;
+  const endViews = endEntry.views ?? 0;
+
+  return Math.max(endViews - startViews, 0);
+}
+
 /** Find the history entry closest to a target date */
 export function findClosestEntry<T extends { recorded_at: string }>(
   history: T[],

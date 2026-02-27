@@ -152,6 +152,7 @@ export async function getPostsForTeam(req: AuthRequest, res: Response) {
       sortOrder,
       page,
       pageSize,
+      campaignId,
     } = req.query;
 
     const result = await adPostingService.getPostsForTeam(teamId, {
@@ -163,6 +164,7 @@ export async function getPostsForTeam(req: AuthRequest, res: Response) {
       sortOrder: sortOrder as "asc" | "desc" | undefined,
       page: page ? parseInt(page as string) : undefined,
       pageSize: pageSize ? Math.min(parseInt(pageSize as string), 100) : undefined,
+      campaignId: campaignId ? parseInt(campaignId as string) : undefined,
     });
 
     return res.status(200).json(result);

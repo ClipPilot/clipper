@@ -281,7 +281,6 @@ export async function processKlingFaceSwapJob(
         imageUrls: [referenceImageUrl, frameUrl],
         aspectRatio: "auto",
         numImages: 1,
-        usePro: true,
       });
 
       const poseImagePath = path.join(outDir, `pose_seg${segIdx}_${timestamp}.png`);

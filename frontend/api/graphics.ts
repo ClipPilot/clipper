@@ -22,6 +22,7 @@ class GraphicsAPI {
     teamId: number;
     prompt: string;
     graphicType: string;
+    stylePreset: string;
     aspectRatio: string;
     productImageKeys?: string[];
   }): Promise<GenerateGraphicsResponse> {

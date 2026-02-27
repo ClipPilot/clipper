@@ -264,6 +264,30 @@ export const massPostingApprovedEmail = (data: MassPostingApprovedEmailData): st
   return wrapInBase(content);
 };
 
+export interface MassPostingRejectedEmailData {
+  userName: string;
+  teamName: string;
+  rejectionReason: string;
+  reapplyUrl: string;
+}
+
+export const massPostingRejectedEmail = (data: MassPostingRejectedEmailData): string => {
+  const content = `
+    <h1 style="color: #ffffff; font-size: 24px; margin-bottom: 16px;">Mass Posting Application Update</h1>
+    <p style="color: #a0a0a0; font-size: 16px; line-height: 1.6;">Hey ${data.userName},</p>
+    <p style="color: #a0a0a0; font-size: 16px; line-height: 1.6;">Thank you for applying for mass posting. After reviewing your application for <strong style="color: #ffffff;">${data.teamName}</strong>, we're unable to approve it at this time.</p>
+    <div style="background: #1a1a1a; border-left: 3px solid #ef4444; border-radius: 4px; padding: 16px; margin: 24px 0;">
+      <p style="color: #a0a0a0; font-size: 13px; margin: 0 0 6px 0; text-transform: uppercase; letter-spacing: 0.05em;">Reason</p>
+      <p style="color: #ffffff; font-size: 15px; margin: 0;">${data.rejectionReason}</p>
+    </div>
+    <p style="color: #a0a0a0; font-size: 16px; line-height: 1.6;">You're welcome to update your application and reapply at any time.</p>
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${data.reapplyUrl}" style="display: inline-block; background: linear-gradient(135deg, #9333EA, #7C3AED); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">Update & Reapply</a>
+    </div>
+  `;
+  return wrapInBase(content);
+};
+
 export interface AdPostingReadyEmailData {
   userName: string;
   clipTitle: string;
@@ -282,6 +306,48 @@ export const adPostingReadyEmail = (data: AdPostingReadyEmailData): string => {
     <p style="color: #a0a0a0; font-size: 16px; line-height: 1.6;">It will be posted momentarily. You'll be able to see the live links in your dashboard once posted.</p>
     <div style="text-align: center; margin: 32px 0;">
       <a href="${data.dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #9333EA, #7C3AED); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">View in Dashboard</a>
+    </div>
+  `;
+  return wrapInBase(content);
+};
+
+// Campaign emails
+
+export interface CampaignStartedEmailData {
+  userName: string;
+  teamName: string;
+  campaignName: string;
+  dashboardUrl: string;
+}
+
+export const campaignStartedEmail = (data: CampaignStartedEmailData): string => {
+  const content = `
+    <h1 style="color: #ffffff; font-size: 24px; margin-bottom: 16px;">Your Campaign is Live!</h1>
+    <p style="color: #a0a0a0; font-size: 16px; line-height: 1.6;">Hey ${data.userName},</p>
+    <p style="color: #a0a0a0; font-size: 16px; line-height: 1.6;">Great news! Your campaign <strong style="color: #ffffff;">${data.campaignName}</strong> for <strong style="color: #ffffff;">${data.teamName}</strong> is now live. Your videos will start being distributed across our network.</p>
+    <div style="text-align: center; margin: 32px 0;">
+      <a href="${data.dashboardUrl}" style="display: inline-block; background: linear-gradient(135deg, #9333EA, #7C3AED); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">View Campaign</a>
+    </div>
+  `;
+  return wrapInBase(content);
+};
+
+export interface ContractSignedEmailData {
+  userName: string;
+  teamName: string;
+  campaignName: string;
+  signerName: string;
+  signedDate: string;
+}
+
+export const contractSignedEmail = (data: ContractSignedEmailData): string => {
+  const content = `
+    <h1 style="color: #ffffff; font-size: 24px; margin-bottom: 16px;">Contract Signed</h1>
+    <p style="color: #a0a0a0; font-size: 16px; line-height: 1.6;">The contract for campaign <strong style="color: #ffffff;">${data.campaignName}</strong> has been signed.</p>
+    <div style="background: #1a1a1a; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <p style="color: #a0a0a0; font-size: 14px; margin: 8px 0;"><strong style="color: #ffffff;">Team:</strong> ${data.teamName}</p>
+      <p style="color: #a0a0a0; font-size: 14px; margin: 8px 0;"><strong style="color: #ffffff;">Signed by:</strong> ${data.signerName}</p>
+      <p style="color: #a0a0a0; font-size: 14px; margin: 8px 0;"><strong style="color: #ffffff;">Date:</strong> ${data.signedDate}</p>
     </div>
   `;
   return wrapInBase(content);

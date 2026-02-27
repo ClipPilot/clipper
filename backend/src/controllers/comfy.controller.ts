@@ -1736,14 +1736,13 @@ export class ComfyController {
 
       // Generate pose using FAL AI (character first, pose reference second)
       console.log(
-        `[comfy] Generating pose with nano-banana-pro - character first, pose reference second`,
+        `[comfy] Generating pose with nano-banana-2 - character first, pose reference second`,
       );
       const result = await falImageService.generateImageWithReferences({
         prompt: POSE_GENERATION_PROMPT,
         imageUrls: [faceImageUrl, videoFrameUrl],
         aspectRatio: "auto",
         numImages: 1,
-        usePro: true,
       });
 
       console.log(`[comfy] Pose generation complete for team ${teamId}`);

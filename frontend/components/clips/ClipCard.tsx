@@ -13,6 +13,7 @@ interface ClipCardProps {
   onView?: () => void;
   onEdit?: () => void;
   onAdPosting?: () => void;
+  isInCampaign?: boolean;
   isSelected?: boolean;
   isUgcVideo?: boolean;
 }
@@ -24,6 +25,7 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
   onView,
   onEdit,
   onAdPosting,
+  isInCampaign = false,
   isSelected = false,
   isUgcVideo = false,
 }) => {
@@ -249,17 +251,18 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
           </Tooltip>
 
           {onAdPosting && (
-            <Tooltip content="Ad Post">
+            <Tooltip content={isInCampaign ? "In Campaign" : "Add to Campaign"}>
               <Button
                 isIconOnly
                 size="sm"
                 variant="light"
                 className="w-8 h-8 min-w-8"
-                onPress={onAdPosting}
+                onPress={isInCampaign ? undefined : onAdPosting}
+                isDisabled={isInCampaign}
               >
                 <Icon
-                  icon="mdi:megaphone"
-                  className="text-lg text-text-secondary"
+                  icon={isInCampaign ? "solar:check-circle-bold" : "mdi:megaphone"}
+                  className={`text-lg ${isInCampaign ? "text-success-500" : "text-text-secondary"}`}
                 />
               </Button>
             </Tooltip>
@@ -423,17 +426,18 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
             </Tooltip>
 
             {onAdPosting && (
-              <Tooltip content="Ad Post">
+              <Tooltip content={isInCampaign ? "In Campaign" : "Add to Campaign"}>
                 <Button
                   isIconOnly
                   size="sm"
                   variant="light"
                   className="w-7 h-7 min-w-7"
-                  onPress={onAdPosting}
+                  onPress={isInCampaign ? undefined : onAdPosting}
+                  isDisabled={isInCampaign}
                 >
                   <Icon
-                    icon="mdi:megaphone"
-                    className="text-base text-text-secondary"
+                    icon={isInCampaign ? "solar:check-circle-bold" : "mdi:megaphone"}
+                    className={`text-base ${isInCampaign ? "text-success-500" : "text-text-secondary"}`}
                   />
                 </Button>
               </Tooltip>
@@ -469,6 +473,7 @@ export const ClipCard = memo(ClipCardComponent, (prevProps, nextProps) => {
     prevProps.viewMode === nextProps.viewMode &&
     prevProps.isSelected === nextProps.isSelected &&
     prevProps.isUgcVideo === nextProps.isUgcVideo &&
-    !!prevProps.onAdPosting === !!nextProps.onAdPosting
+    !!prevProps.onAdPosting === !!nextProps.onAdPosting &&
+    prevProps.isInCampaign === nextProps.isInCampaign
   );
 });

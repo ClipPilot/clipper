@@ -1,6 +1,6 @@
 import * as Sentry from "@sentry/node";
 import { db } from "../../db";
-import { teams } from "@clipper/shared-db/src/schema";
+import { teams, posts, campaigns } from "@clipper/shared-db/src/schema";
 import { eq, and, or, desc, count, gte, lte, inArray, sql } from "drizzle-orm";
 import { getApifyService, InstagramPost, InstagramProfile } from "./apify.service";
 import { parseInstagramUsername, parseTikTokUsername, parseXUsername } from "../../utils/parseUsername";
@@ -10,6 +10,7 @@ import {
   MAX_METRICS_HISTORY,
   MAX_FOLLOWER_HISTORY,
 } from "../../config/virality";
+import { extractPostIdentifier } from "../../utils/postIdentifier";
 import { canAccessViralityTracker } from "../../utils/plans";
 import { teamService } from "../team.service";
 import { emitViralitySyncUpdate } from "../socket.service";
@@ -204,24 +205,6 @@ export class AccountTrackingService {
       .update(this.accountsTable)
       .set({
         is_active: isActive,
-        updated_at: new Date(),
-      })
-      .where(eq(this.accountsTable.id, accountId))
-      .returning() as any[];
-
-    return updated[0];
-  }
-
-  async updateAlertEnabled(accountId: number, teamId: number, alertEnabled: boolean) {
-    const account = await this.getAccountById(accountId);
-    if (!account || account.team_id !== teamId) {
-      throw new Error("Account not found or access denied");
-    }
-
-    const updated = await db
-      .update(this.accountsTable)
-      .set({
-        alert_enabled: alertEnabled,
         updated_at: new Date(),
       })
       .where(eq(this.accountsTable.id, accountId))
@@ -506,6 +489,50 @@ export class AccountTrackingService {
     }
   }
 
+  async createMassPostUserPost(
+    accountId: number,
+    postId: number,
+    postUrl: string,
+    platform: string,
+    caption: string | null,
+    postedAt: Date | null
+  ): Promise<{ id: number } | null> {
+    const platformPostId = extractPostIdentifier(postUrl, platform);
+    if (!platformPostId) return null;
+
+    const existing = await db
+      .select({ id: this.postsTable.id })
+      .from(this.postsTable)
+      .where(
+        and(
+          eq(this.postsTable.account_id, accountId),
+          eq(this.postsTable.platform_post_id, platformPostId)
+        )
+      )
+      .limit(1) as any[];
+
+    if (existing.length > 0) return existing[0];
+
+    const inserted = await db
+      .insert(this.postsTable)
+      .values({
+        account_id: accountId,
+        platform_post_id: platformPostId,
+        post_url: postUrl,
+        caption,
+        post_type: "Video",
+        posted_at: postedAt,
+        like_count: 0,
+        comment_count: 0,
+        mass_post_id: postId,
+        syncs_remaining: 28,
+        metrics_history: [],
+      })
+      .returning({ id: this.postsTable.id }) as any[];
+
+    return inserted[0] ?? null;
+  }
+
   async getPostsByAccount(
     accountId: number,
     teamId: number,
@@ -523,13 +550,36 @@ export class AccountTrackingService {
     if (startDate) conditions.push(gte(this.postsTable.posted_at, startDate));
     if (endDate) conditions.push(lte(this.postsTable.posted_at, endDate));
 
-    return db
-      .select()
+    const rows = await db
+      .select({
+        id: this.postsTable.id,
+        account_id: this.postsTable.account_id,
+        platform_post_id: this.postsTable.platform_post_id,
+        post_url: this.postsTable.post_url,
+        thumbnail_url: this.postsTable.thumbnail_url,
+        caption: this.postsTable.caption,
+        hashtags: this.postsTable.hashtags,
+        post_type: this.postsTable.post_type,
+        posted_at: this.postsTable.posted_at,
+        like_count: this.postsTable.like_count,
+        comment_count: this.postsTable.comment_count,
+        video_view_count: this.postsTable.video_view_count,
+        video_play_count: this.postsTable.video_play_count,
+        metrics_history: this.postsTable.metrics_history,
+        mass_post_id: this.postsTable.mass_post_id,
+        created_at: this.postsTable.created_at,
+        updated_at: this.postsTable.updated_at,
+        campaign_name: campaigns.name,
+      })
       .from(this.postsTable)
+      .leftJoin(posts, eq(this.postsTable.mass_post_id, posts.id))
+      .leftJoin(campaigns, eq(posts.campaign_id, campaigns.id))
       .where(and(...conditions))
       .orderBy(desc(this.postsTable.posted_at))
       .limit(limit)
       .offset(offset);
+
+    return rows;
   }
 
   async getPostsStatsByAccounts(

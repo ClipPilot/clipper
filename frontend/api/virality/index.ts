@@ -54,6 +54,8 @@ export interface ViralityPost {
   comment_count: number;
   video_play_count: number | null;
   metrics_history: MetricsEntry[];
+  mass_post_id?: number | null;
+  campaign_name?: string | null;
   created_at: string;
   updated_at: string;
 }

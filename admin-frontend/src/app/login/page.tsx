@@ -9,6 +9,12 @@ type LoginStep = "credentials" | "verify2FA";
 export default function LoginPage() {
   const router = useRouter();
   const [step, setStep] = useState<LoginStep>("credentials");
+
+  useEffect(() => {
+    if (localStorage.getItem("admin_token")) {
+      router.replace("/dashboard");
+    }
+  }, [router]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState(["", "", "", "", "", ""]);

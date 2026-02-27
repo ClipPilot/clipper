@@ -1,46 +1,18 @@
 "use client";
 
 import { useState, useMemo, useCallback, useRef } from "react";
-import { Card, CardBody, Tooltip, cn } from "@heroui/react";
+import { Card, CardBody, Tooltip, Chip, cn } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { ViralityPost, ViralityAccount } from "@/api/virality";
 import type { DateRangeValue } from "@/components/virality/DateRangeFilter";
 import { formatNumber } from "@/lib/formatters";
 import { platformIcon, platformIconColor, timeAgo } from "@/lib/platformUtils";
-import { findClosestEntry } from "@/app/dashboard/virality/[competitorId]/utils";
+import { getViewsInRange } from "@/app/dashboard/virality/[competitorId]/utils";
 
 type ContentFilter = "viral" | "recent";
 
 const VIRAL_VIEW_THRESHOLD = 50_000;
 const PAGE_SIZE = 20;
-
-/** Calculate views gained within a date range using metrics_history */
-function getViewsInRange(
-  post: ViralityPost,
-  startDate?: string,
-  endDate?: string
-): number {
-  const h = post.metrics_history;
-  if (!h || h.length === 0) return 0;
-
-  // If no date range, return total views
-  if (!startDate && !endDate) return post.video_play_count ?? 0;
-
-  const start = startDate ? new Date(startDate) : null;
-  const end = endDate ? new Date(endDate) : new Date();
-
-  // Find the entry closest to the start of the range
-  const startEntry = start ? findClosestEntry(h, start) : h[0];
-  // Find the entry closest to the end of the range
-  const endEntry = end ? findClosestEntry(h, end) : h[h.length - 1];
-
-  if (!startEntry || !endEntry) return 0;
-
-  const startViews = startEntry.views ?? 0;
-  const endViews = endEntry.views ?? 0;
-
-  return Math.max(endViews - startViews, 0);
-}
 
 interface TopPerformingContentProps {
   /** Posts filtered by the dashboard date range (used for viral + recent) */
@@ -225,6 +197,18 @@ export function ActivityFeed({ posts, allPosts, accountMap, dateRange }: TopPerf
                     <p className="text-xs text-text-secondary line-clamp-1">
                       {post.caption || "No caption"}
                     </p>
+                    {post.mass_post_id != null && (
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <Chip size="sm" variant="flat" classNames={{ base: "bg-violet-500/10 text-violet-500 h-4 px-1", content: "text-[9px] font-medium px-0" }}>
+                          Managed by Cuttr
+                        </Chip>
+                        {post.campaign_name && (
+                          <Chip size="sm" variant="flat" classNames={{ base: "bg-amber-500/10 text-amber-500 h-4 px-1", content: "text-[9px] font-medium px-0" }}>
+                            {post.campaign_name}
+                          </Chip>
+                        )}
+                      </div>
+                    )}
                     <div className="flex items-center gap-3 mt-1">
                       {isViral && viewsDelta != null ? (
                         <span className="flex items-center gap-1 text-[11px] text-green-500 font-medium">

@@ -1,44 +1,10 @@
-import * as Sentry from "@sentry/node";
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { viralityService } from "../services/virality/virality.service";
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-function parseId(value: string): number | null {
-  const n = parseInt(value);
-  return isNaN(n) ? null : n;
-}
-
-function parseDateQuery(value: unknown): Date | undefined {
-  return value ? new Date(value as string) : undefined;
-}
-
-const PLAN_REQUIRED_RESPONSE = {
-  error: "Virality tracking requires a Studio plan or higher",
-  code: "PLAN_REQUIRED",
-} as const;
+import { parseId, parseDateQuery, handleControllerError as handleError, requirePlanAccess as requirePlanAccessBase } from "../utils/controllerHelpers";
 
 async function requirePlanAccess(teamId: number, res: Response): Promise<boolean> {
-  const hasAccess = await viralityService.checkTeamPlanAccess(teamId);
-  if (!hasAccess) {
-    res.status(403).json(PLAN_REQUIRED_RESPONSE);
-    return false;
-  }
-  return true;
-}
-
-function handleError(res: Response, label: string, error: any, fallbackMessage: string) {
-  console.error(`${label}:`, error);
-  Sentry.captureException(error);
-
-  if (error.message?.includes("not found")) {
-    return res.status(404).json({ error: error.message });
-  }
-  if (error.message?.includes("already being tracked")) {
-    return res.status(409).json({ error: error.message });
-  }
-  return res.status(500).json({ error: fallbackMessage });
+  return requirePlanAccessBase(teamId, res, (id) => viralityService.checkTeamPlanAccess(id), "Virality tracking requires a Studio plan or higher");
 }
 
 // ── Controller ───────────────────────────────────────────────────────────────
@@ -83,8 +49,8 @@ class ViralityController {
         teamId,
         platform,
         profileUrl,
-        competitorId ? parseInt(competitorId) : undefined,
-        accountType || "profile"
+        accountType || "profile",
+        competitorId ? parseInt(competitorId) : undefined
       );
 
       // Trigger first sync in the background

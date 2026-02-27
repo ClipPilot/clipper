@@ -263,3 +263,11 @@ variable "status_cron_secret" {
   default     = ""
 }
 
+# Tailscale Relay
+variable "tailscale_auth_key" {
+  description = "Tailscale auth key for the VPC relay instance. Leave empty to disable the relay."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+

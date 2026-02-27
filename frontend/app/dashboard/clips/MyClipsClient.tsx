@@ -46,7 +46,8 @@ import {
   useClipModals,
 } from "@/hooks/useClips";
 import { useMassPosting } from "@/hooks/useMassPosting";
-import AdPostingModal from "@/components/clips/AdPostingModal";
+import AddToCampaignModal from "@/components/clips/AddToCampaignModal";
+import { campaignAPI } from "@/api/campaign";
 
 function MyClipsPageContent() {
   const router = useRouter();
@@ -58,6 +59,19 @@ function MyClipsPageContent() {
   const { isApproved, googleDriveFolderId } = useMassPosting();
   const canAdPost = isApproved && !!googleDriveFolderId;
   const [adPostClip, setAdPostClip] = useState<Clip | null>(null);
+  const [campaignClipIds, setCampaignClipIds] = useState<Set<number>>(new Set());
+  const [campaignClipMap, setCampaignClipMap] = useState<Record<number, number[]>>({});
+
+  const fetchCampaignClipIds = useCallback(async () => {
+    if (!selectedTeam?.id) return;
+    try {
+      const { clipIds, campaignClipMap: map } = await campaignAPI.getCampaignClipIds(selectedTeam.id);
+      setCampaignClipIds(new Set(clipIds));
+      setCampaignClipMap(map);
+    } catch {
+      // Non-critical — fail silently
+    }
+  }, [selectedTeam?.id]);
 
   // Ensure hydration consistency - only render dynamic content after mount
   useEffect(() => {
@@ -332,6 +346,7 @@ function MyClipsPageContent() {
       loadSavedClips(true);
       loadFolders();
       loadTags();
+      fetchCampaignClipIds();
     }
   }, [selectedTeam?.id]);
 
@@ -568,6 +583,7 @@ function MyClipsPageContent() {
                   onClipClick={(clip: any) => openViewModal(clip)}
                   onEditClick={(clip: any) => handleEditClip(clip)}
                   onAdPosting={canAdPost ? (clip: any) => setAdPostClip(clip) : undefined}
+                  campaignClipIds={campaignClipIds}
                   selectedClipId={isViewModalOpen ? selectedClip?.id : null}
                 />
               )}
@@ -633,6 +649,7 @@ function MyClipsPageContent() {
                             onView={() => openViewModal(clip)}
                             onEdit={() => handleEditClip(clip)}
                             onAdPosting={canAdPost ? () => setAdPostClip(clip) : undefined}
+                            isInCampaign={campaignClipIds.has(clip.id)}
                             isSelected={isViewModalOpen && selectedClip?.id === clip.id}
                           />
                         ))}
@@ -695,6 +712,7 @@ function MyClipsPageContent() {
                           onView={() => openViewModal(clip)}
                           onEdit={() => handleEditClip(clip)}
                           onAdPosting={canAdPost ? () => setAdPostClip(clip) : undefined}
+                          isInCampaign={campaignClipIds.has(clip.id)}
                           isSelected={isViewModalOpen && selectedClip?.id === clip.id}
                         />
                       ))}
@@ -787,10 +805,13 @@ function MyClipsPageContent() {
       />
 
       {adPostClip && (
-        <AdPostingModal
+        <AddToCampaignModal
           isOpen={!!adPostClip}
           onClose={() => setAdPostClip(null)}
-          clip={adPostClip}
+          clipId={adPostClip.id}
+          clipTitle={adPostClip.title}
+          onAdded={fetchCampaignClipIds}
+          campaignClipMap={campaignClipMap}
         />
       )}
     </div>

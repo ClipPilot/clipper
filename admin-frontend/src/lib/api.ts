@@ -1,13 +1,16 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api";
 
 function getAuthHeaders(): HeadersInit {
-  const token = typeof window !== "undefined" ? localStorage.getItem("admin_token") : null;
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("admin_token") : null;
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: "Request failed" }));
+    const error = await response
+      .json()
+      .catch(() => ({ error: "Request failed" }));
     throw new Error(error.error || error.message || `HTTP ${response.status}`);
   }
   return response.json();
@@ -150,29 +153,111 @@ export interface IntakeForm {
   updated_at: string;
 }
 
-export interface MassPostingApplication {
+// Campaign Management
+export interface Campaign {
   id: number;
   team_id: number;
-  status: "pending" | "accepted" | "rejected" | "appeal";
-  google_drive_folder_id: string | null;
+  name: string;
+  status:
+    | "pending"
+    | "accepted"
+    | "rejected"
+    | "appeal"
+    | "started"
+    | "paused"
+    | "completed";
+  quoted_cpm: string | null;
+  budget: string | null;
+  video_minimum: number | null;
   rejection_reason: string | null;
   admin_notes: string | null;
+  google_drive_folder_id: string | null;
+  videos_ready: boolean;
+  payment_ready: boolean;
+  contract_ready: boolean;
+  started_at: string | null;
+  completed_at: string | null;
   created_at: string;
   updated_at: string;
   team_name: string;
   team_plan: string;
 }
 
-export interface ApplicationDetail extends MassPostingApplication {
+export interface CampaignDetail extends Campaign {
   intake_form_id: number | null;
-  details: any;
   intakeForm: IntakeForm | null;
 }
 
-export interface ApplicationsResponse {
-  applications: MassPostingApplication[];
+export interface CampaignVideo {
+  id: number;
+  campaign_id: number;
+  clip_id: number | null;
+  file_name: string | null;
+  title: string | null;
+  duration_seconds: number | null;
+  presigned_url: string | null;
+  status: string;
+  created_at: string;
+}
+
+export interface CampaignsResponse {
+  campaigns: Campaign[];
   total: number;
   pagination: Pagination;
+}
+
+export interface CampaignPost {
+  id: number;
+  clip_id: number | null;
+  clip_title: string | null;
+  clip_url: string | null;
+  platform: string;
+  status: "processing" | "scheduled" | "posted" | "failed";
+  content: string;
+  post_url: string | null;
+  posted_time: string | null;
+  created_at: string;
+  accountHandle?: string | null;
+}
+
+export interface CampaignPostsResponse {
+  posts: CampaignPost[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+    totalPosts: number;
+  };
+}
+
+export interface ContractClauses {
+  parties?: string;
+  providerObligations?: string;
+  clientObligations?: string;
+  paymentTerms?: string;
+  additionalClauses?: string[];
+}
+
+export interface CampaignContract {
+  id: number;
+  campaign_id: number;
+  team_id: number;
+  terms: {
+    cpmRate: string | null;
+    budget: string | null;
+    videoMinimum: number | null;
+    teamName: string;
+    campaignName: string;
+    date: string;
+    clauses?: ContractClauses;
+  };
+  status: "pending" | "signed" | "voided";
+  signed_at: string | null;
+  legal_name: string | null;
+  presigned_pdf_url: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface LoginResponse {
@@ -208,7 +293,10 @@ export const adminAPI = {
   },
 
   // Resend 2FA code
-  async resend2FA(email: string, password: string): Promise<{ message: string; email: string }> {
+  async resend2FA(
+    email: string,
+    password: string,
+  ): Promise<{ message: string; email: string }> {
     const response = await fetch(`${API_URL}/admin/resend-2fa`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -217,7 +305,11 @@ export const adminAPI = {
     return handleResponse(response);
   },
 
-  async getTeams(options?: { search?: string; limit?: number; offset?: number }): Promise<TeamsResponse> {
+  async getTeams(options?: {
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<TeamsResponse> {
     const params = new URLSearchParams();
     if (options?.search) params.set("search", options.search);
     if (options?.limit) params.set("limit", options.limit.toString());
@@ -243,7 +335,7 @@ export const adminAPI = {
     teamId: string,
     clipLimit: number,
     monthlyPrice: number,
-    customerEmail: string
+    customerEmail: string,
   ): Promise<EnterpriseSetupResult> {
     const response = await fetch(`${API_URL}/admin/enterprise/setup`, {
       method: "POST",
@@ -261,7 +353,7 @@ export const adminAPI = {
     newPlan: string,
     clipLimit?: number,
     monthlyPrice?: number,
-    customerEmail?: string
+    customerEmail?: string,
   ): Promise<ChangePlanResult> {
     const response = await fetch(`${API_URL}/admin/teams/change-plan`, {
       method: "POST",
@@ -269,7 +361,13 @@ export const adminAPI = {
         "Content-Type": "application/json",
         ...getAuthHeaders(),
       },
-      body: JSON.stringify({ teamId, newPlan, clipLimit, monthlyPrice, customerEmail }),
+      body: JSON.stringify({
+        teamId,
+        newPlan,
+        clipLimit,
+        monthlyPrice,
+        customerEmail,
+      }),
     });
     return handleResponse(response);
   },
@@ -284,7 +382,7 @@ export const adminAPI = {
   async setReferralReward(
     referralId: number,
     bonusClips: number,
-    percentOff: number
+    percentOff: number,
   ): Promise<{ success: boolean }> {
     const response = await fetch(`${API_URL}/admin/referrals/reward`, {
       method: "POST",
@@ -305,7 +403,11 @@ export const adminAPI = {
   },
 
   // Announcements
-  async getAnnouncements(options?: { status?: string; limit?: number; offset?: number }): Promise<AnnouncementsResponse> {
+  async getAnnouncements(options?: {
+    status?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<AnnouncementsResponse> {
     const params = new URLSearchParams();
     if (options?.status) params.set("status", options.status);
     if (options?.limit) params.set("limit", options.limit.toString());
@@ -327,7 +429,9 @@ export const adminAPI = {
     return handleResponse(response);
   },
 
-  async createAnnouncement(data: CreateAnnouncementData): Promise<{ announcement: Announcement }> {
+  async createAnnouncement(
+    data: CreateAnnouncementData,
+  ): Promise<{ announcement: Announcement }> {
     const response = await fetch(`${API_URL}/announcements/admin`, {
       method: "POST",
       headers: {
@@ -339,7 +443,10 @@ export const adminAPI = {
     return handleResponse(response);
   },
 
-  async updateAnnouncement(id: number, data: Partial<CreateAnnouncementData>): Promise<{ announcement: Announcement }> {
+  async updateAnnouncement(
+    id: number,
+    data: Partial<CreateAnnouncementData>,
+  ): Promise<{ announcement: Announcement }> {
     const response = await fetch(`${API_URL}/announcements/admin/${id}`, {
       method: "PATCH",
       headers: {
@@ -351,7 +458,9 @@ export const adminAPI = {
     return handleResponse(response);
   },
 
-  async deleteAnnouncement(id: number): Promise<{ success: boolean; message: string }> {
+  async deleteAnnouncement(
+    id: number,
+  ): Promise<{ success: boolean; message: string }> {
     const response = await fetch(`${API_URL}/announcements/admin/${id}`, {
       method: "DELETE",
       headers: { ...getAuthHeaders() },
@@ -359,23 +468,32 @@ export const adminAPI = {
     return handleResponse(response);
   },
 
-  async publishAnnouncement(id: number): Promise<{ announcement: Announcement }> {
-    const response = await fetch(`${API_URL}/announcements/admin/${id}/publish`, {
-      method: "POST",
-      headers: { ...getAuthHeaders() },
-    });
+  async publishAnnouncement(
+    id: number,
+  ): Promise<{ announcement: Announcement }> {
+    const response = await fetch(
+      `${API_URL}/announcements/admin/${id}/publish`,
+      {
+        method: "POST",
+        headers: { ...getAuthHeaders() },
+      },
+    );
     return handleResponse(response);
   },
 
-  // Mass Posting Applications
-  async getApplications(options?: { status?: string; limit?: number; offset?: number }): Promise<ApplicationsResponse> {
+  // Campaign Management
+  async getCampaigns(options?: {
+    status?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<CampaignsResponse> {
     const params = new URLSearchParams();
     if (options?.status) params.set("status", options.status);
     if (options?.limit) params.set("limit", options.limit.toString());
     if (options?.offset) params.set("offset", options.offset.toString());
 
     const queryString = params.toString();
-    const url = `${API_URL}/admin/applications${queryString ? `?${queryString}` : ""}`;
+    const url = `${API_URL}/admin/campaigns${queryString ? `?${queryString}` : ""}`;
 
     const response = await fetch(url, {
       headers: { ...getAuthHeaders() },
@@ -383,27 +501,36 @@ export const adminAPI = {
     return handleResponse(response);
   },
 
-  async getApplication(id: number): Promise<{ application: ApplicationDetail }> {
-    const response = await fetch(`${API_URL}/admin/applications/${id}`, {
+  async getCampaign(id: number): Promise<{ campaign: CampaignDetail }> {
+    const response = await fetch(`${API_URL}/admin/campaigns/${id}`, {
       headers: { ...getAuthHeaders() },
     });
     return handleResponse(response);
   },
 
-  async approveApplication(id: number, adminNotes?: string): Promise<{ application: MassPostingApplication }> {
-    const response = await fetch(`${API_URL}/admin/applications/${id}/approve`, {
+  async approveCampaign(
+    id: number,
+    quotedCpm: string,
+    videoMinimum: number,
+    adminNotes?: string,
+  ): Promise<{ campaign: Campaign }> {
+    const response = await fetch(`${API_URL}/admin/campaigns/${id}/approve`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         ...getAuthHeaders(),
       },
-      body: JSON.stringify({ adminNotes }),
+      body: JSON.stringify({ quotedCpm, videoMinimum, adminNotes }),
     });
     return handleResponse(response);
   },
 
-  async rejectApplication(id: number, rejectionReason: string, adminNotes?: string): Promise<{ application: MassPostingApplication }> {
-    const response = await fetch(`${API_URL}/admin/applications/${id}/reject`, {
+  async rejectCampaign(
+    id: number,
+    rejectionReason: string,
+    adminNotes?: string,
+  ): Promise<{ campaign: Campaign }> {
+    const response = await fetch(`${API_URL}/admin/campaigns/${id}/reject`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -414,11 +541,133 @@ export const adminAPI = {
     return handleResponse(response);
   },
 
-  async retryDriveFolder(id: number): Promise<{ application: MassPostingApplication }> {
-    const response = await fetch(`${API_URL}/admin/applications/${id}/retry-drive`, {
+  async updateCampaign(
+    id: number,
+    data: { quotedCpm?: string; videoMinimum?: number; adminNotes?: string },
+  ): Promise<{ campaign: Campaign }> {
+    const response = await fetch(`${API_URL}/admin/campaigns/${id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response);
+  },
+
+  async pauseCampaign(id: number): Promise<{ campaign: Campaign }> {
+    const response = await fetch(`${API_URL}/admin/campaigns/${id}/pause`, {
       method: "POST",
       headers: { ...getAuthHeaders() },
     });
+    return handleResponse(response);
+  },
+
+  async endCampaign(id: number): Promise<{ campaign: Campaign }> {
+    const response = await fetch(`${API_URL}/admin/campaigns/${id}/end`, {
+      method: "POST",
+      headers: { ...getAuthHeaders() },
+    });
+    return handleResponse(response);
+  },
+
+  async getCampaignContract(
+    campaignId: number,
+  ): Promise<{ contract: CampaignContract | null }> {
+    const response = await fetch(
+      `${API_URL}/admin/campaigns/${campaignId}/contract`,
+      {
+        headers: { ...getAuthHeaders() },
+      },
+    );
+    return handleResponse(response);
+  },
+
+  async generateCampaignContract(
+    campaignId: number,
+  ): Promise<{ contract: CampaignContract }> {
+    const response = await fetch(
+      `${API_URL}/admin/campaigns/${campaignId}/contract/generate`,
+      {
+        method: "POST",
+        headers: { ...getAuthHeaders() },
+      },
+    );
+    return handleResponse(response);
+  },
+
+  async updateCampaignContract(
+    campaignId: number,
+    clauses: ContractClauses,
+  ): Promise<{ contract: CampaignContract }> {
+    const response = await fetch(
+      `${API_URL}/admin/campaigns/${campaignId}/contract`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify(clauses),
+      },
+    );
+    return handleResponse(response);
+  },
+
+  async getCampaignVideos(
+    campaignId: number,
+  ): Promise<{ videos: CampaignVideo[] }> {
+    const response = await fetch(
+      `${API_URL}/admin/campaigns/${campaignId}/videos`,
+      { headers: { ...getAuthHeaders() } },
+    );
+    return handleResponse(response);
+  },
+
+  async getCampaignPosts(
+    campaignId: number,
+    options?: {
+      tab?: "queued" | "published";
+      platform?: string;
+      page?: number;
+      pageSize?: number;
+      sortBy?: string;
+      sortOrder?: "asc" | "desc";
+    },
+  ): Promise<CampaignPostsResponse> {
+    const params = new URLSearchParams();
+    if (options?.tab) params.set("tab", options.tab);
+    if (options?.platform) params.set("platform", options.platform);
+    if (options?.page) params.set("page", options.page.toString());
+    if (options?.pageSize) params.set("pageSize", options.pageSize.toString());
+    if (options?.sortBy) params.set("sortBy", options.sortBy);
+    if (options?.sortOrder) params.set("sortOrder", options.sortOrder);
+
+    const qs = params.toString();
+    const response = await fetch(
+      `${API_URL}/admin/campaigns/${campaignId}/posts${qs ? `?${qs}` : ""}`,
+      { headers: { ...getAuthHeaders() } },
+    );
+    return handleResponse(response);
+  },
+
+  async postCampaignClip(
+    campaignId: number,
+    clipId: number,
+    platformQuantities: Record<string, number>,
+  ): Promise<{ message: string; postIds: Array<{ id: number; platform: string }> }> {
+    const response = await fetch(
+      `${API_URL}/admin/campaigns/${campaignId}/post`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({ clipId, platformQuantities }),
+      },
+    );
     return handleResponse(response);
   },
 };
