@@ -4,6 +4,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import * as schema from "@clipper/shared-db";
 import { eq, and, or, lte, inArray, sql, isNull, not } from "drizzle-orm";
+import { checkAndSendViralAlertsForTeam } from "./viralAlerts";
 
 const DATABASE_URL = process.env.DATABASE_URL!;
 const APIFY_API_TOKEN = process.env.APIFY_API_TOKEN!;
@@ -924,7 +925,7 @@ export const workerHandler: Handler = async (event: any, context: Context) => {
         .where(eq(accountsTable.id, account.id));
 
       console.log(`[OK] @${account.username} (${sourceLabel}) completed: ${posts.length} posts upserted`);
-      return { accountId, username: account.username, source: sourceLabel, status: "completed", postsUpserted };
+      return { accountId, username: account.username, source: sourceLabel, status: "completed", postsUpserted, teamId: account.team_id };
     } catch (error: any) {
       console.error(`[FAIL] @${account.username} (${sourceLabel}): ${error.message}`);
       await db
@@ -933,6 +934,53 @@ export const workerHandler: Handler = async (event: any, context: Context) => {
         .where(eq(accountsTable.id, account.id));
       throw error; // Re-throw so Step Functions sees the failure
     }
+  } finally {
+    await localPool.end();
+  }
+};
+
+// ── Team Extractor handler (Step Functions — deduplicates teamIds from sync results) ──
+
+export const teamExtractorHandler: Handler = async (event: any) => {
+  const mapResults: any[] = event.mapResults || [];
+  const teamIds = new Set<number>();
+
+  for (const item of mapResults) {
+    const result = item?.result;
+    if (result?.status === "completed" && result?.teamId) {
+      teamIds.add(result.teamId);
+    }
+  }
+
+  const teams = Array.from(teamIds).map((id) => ({ teamId: id }));
+  console.log(`[Extractor] Found ${teams.length} unique teams from ${mapResults.length} sync results`);
+
+  return { teams };
+};
+
+// ── Reporter handler (Step Functions — runs once per team after extraction) ──
+
+export const reporterHandler: Handler = async (event: any, context: Context) => {
+  const teamId: number | undefined = event.teamId;
+  console.log(`\n========================================`);
+  console.log(`  VIRALITY SYNC REPORTER - team=${teamId} - ${new Date().toISOString()}`);
+  console.log(`========================================\n`);
+
+  if (!teamId) {
+    console.log("[Reporter] No teamId in event, skipping");
+    return { status: "skipped", reason: "no_team_id" };
+  }
+
+  if (!DATABASE_URL) {
+    throw new Error("DATABASE_URL not configured");
+  }
+
+  const localPool = new Pool({ connectionString: DATABASE_URL });
+  const db = drizzle(localPool, { schema });
+
+  try {
+    await checkAndSendViralAlertsForTeam(db, teamId);
+    return { status: "completed", teamId };
   } finally {
     await localPool.end();
   }

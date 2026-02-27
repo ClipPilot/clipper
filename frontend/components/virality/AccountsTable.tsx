@@ -42,6 +42,7 @@ interface AccountsTableProps {
   onViewAccount?: (competitorId: number, accountId: number) => void;
   onDeleteAccount?: (accountId: number) => void;
   onToggleAccountStatus?: (accountId: number, newStatus: "active" | "inactive") => void;
+  onToggleAlert?: (accountId: number, enabled: boolean) => void;
   accountStatuses?: Record<number, "active" | "inactive">;
 }
 
@@ -55,6 +56,7 @@ export function AccountsTable({
   onViewAccount,
   onDeleteAccount,
   onToggleAccountStatus,
+  onToggleAlert,
   accountStatuses,
 }: AccountsTableProps) {
   const [page, setPage] = useState(1);
@@ -136,6 +138,19 @@ export function AccountsTable({
               STATUS
               <Tooltip
                 content="Active accounts are synced and billed 1 credit per account per week. Inactive accounts are skipped during sync and not billed."
+                classNames={{ content: "max-w-[220px] text-xs m-2" }}
+              >
+                <span className="cursor-help">
+                  <Icon icon="solar:info-circle-linear" width={13} className="text-text-tertiary" />
+                </span>
+              </Tooltip>
+            </div>
+          </TableColumn>
+          <TableColumn>
+            <div className="flex items-center gap-1">
+              ALERTS
+              <Tooltip
+                content="When enabled, you'll receive email alerts when this account's posts go viral based on your alert settings."
                 classNames={{ content: "max-w-[220px] text-xs m-2" }}
               >
                 <span className="cursor-help">
@@ -240,6 +255,21 @@ export function AccountsTable({
                   })()}
                 </TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
+                  <Chip
+                    size="sm"
+                    variant="flat"
+                    className="cursor-pointer"
+                    classNames={{
+                      base: fa.account.alert_enabled
+                        ? "bg-accent-400/10 text-accent-400 h-6 px-2"
+                        : "bg-default-100 text-text-tertiary h-6 px-2",
+                    }}
+                    onClick={() => onToggleAlert?.(fa.account.id, !fa.account.alert_enabled)}
+                  >
+                    <span className="text-xs">{fa.account.alert_enabled ? "On" : "Off"}</span>
+                  </Chip>
+                </TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
                   <Dropdown>
                     <DropdownTrigger>
                       <Button
@@ -259,9 +289,22 @@ export function AccountsTable({
                         } else if (key === "toggle-status") {
                           const current = accountStatuses?.[fa.account.id] ?? "active";
                           onToggleAccountStatus?.(fa.account.id, current === "active" ? "inactive" : "active");
+                        } else if (key === "toggle-alerts") {
+                          onToggleAlert?.(fa.account.id, !fa.account.alert_enabled);
                         }
                       }}
                     >
+                      <DropdownItem
+                        key="toggle-alerts"
+                        startContent={
+                          <Icon
+                            icon={fa.account.alert_enabled ? "solar:bell-off-linear" : "solar:bell-bold"}
+                            width={16}
+                          />
+                        }
+                      >
+                        {fa.account.alert_enabled ? "Disable Alerts" : "Enable Alerts"}
+                      </DropdownItem>
                       <DropdownItem
                         key="toggle-status"
                         startContent={

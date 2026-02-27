@@ -3,8 +3,10 @@ import {
   viralityAccounts,
   viralityPosts,
   viralityCompetitors,
+  viralitySettings,
+  viralityAlertLogs,
 } from "@clipper/shared-db/src/schema";
-import { eq, desc, count } from "drizzle-orm";
+import { eq, desc, count, and, inArray, gte, lte } from "drizzle-orm";
 import { AccountTrackingService } from "./accountTracking.service";
 
 // ── Virality-specific service (adds competitor methods + overrides) ──────────
@@ -65,6 +67,52 @@ class ViralityService extends AccountTrackingService {
         await db.delete(viralityCompetitors).where(eq(viralityCompetitors.id, account.competitor_id));
       }
     }
+  }
+
+  // Override getPostsByAccount — viralityPosts has no mass_post_id / campaign join
+  async getPostsByAccount(
+    accountId: number,
+    teamId: number,
+    limit: number = 20,
+    offset: number = 0,
+    startDate?: Date,
+    endDate?: Date
+  ) {
+    const account = await this.getAccountById(accountId);
+    if (!account || account.team_id !== teamId) {
+      throw new Error("Account not found or access denied");
+    }
+
+    const conditions = [eq(viralityPosts.account_id, accountId)];
+    if (startDate) conditions.push(gte(viralityPosts.posted_at, startDate));
+    if (endDate) conditions.push(lte(viralityPosts.posted_at, endDate));
+
+    const rows = await db
+      .select({
+        id: viralityPosts.id,
+        account_id: viralityPosts.account_id,
+        platform_post_id: viralityPosts.platform_post_id,
+        post_url: viralityPosts.post_url,
+        thumbnail_url: viralityPosts.thumbnail_url,
+        caption: viralityPosts.caption,
+        hashtags: viralityPosts.hashtags,
+        post_type: viralityPosts.post_type,
+        posted_at: viralityPosts.posted_at,
+        like_count: viralityPosts.like_count,
+        comment_count: viralityPosts.comment_count,
+        video_view_count: viralityPosts.video_view_count,
+        video_play_count: viralityPosts.video_play_count,
+        metrics_history: viralityPosts.metrics_history,
+        created_at: viralityPosts.created_at,
+        updated_at: viralityPosts.updated_at,
+      })
+      .from(viralityPosts)
+      .where(and(...conditions))
+      .orderBy(desc(viralityPosts.posted_at))
+      .limit(limit)
+      .offset(offset);
+
+    return rows.map((r) => ({ ...r, mass_post_id: null, campaign_name: null }));
   }
 
   // ── Competitor CRUD ──
@@ -143,6 +191,123 @@ class ViralityService extends AccountTrackingService {
     await db
       .delete(viralityCompetitors)
       .where(eq(viralityCompetitors.id, competitorId));
+  }
+
+  // ── Viral Alert Settings ──
+
+  async getSettings(teamId: number) {
+    const [settings] = await db
+      .select()
+      .from(viralitySettings)
+      .where(eq(viralitySettings.team_id, teamId))
+      .limit(1);
+
+    const enabledAccounts = await db
+      .select({ id: viralityAccounts.id })
+      .from(viralityAccounts)
+      .where(
+        and(
+          eq(viralityAccounts.team_id, teamId),
+          eq(viralityAccounts.alert_enabled, true)
+        )
+      );
+
+    return {
+      percentThreshold: settings?.percent_threshold ?? 100,
+      absoluteThreshold: settings?.absolute_threshold ?? 100000,
+      thresholdMode: settings?.threshold_mode ?? "and",
+      timeFrameHours: settings?.time_frame_hours ?? 24,
+      enabledAccountIds: enabledAccounts.map((a) => a.id),
+    };
+  }
+
+  async saveSettings(
+    teamId: number,
+    data: {
+      percentThreshold: number | null;
+      absoluteThreshold: number | null;
+      thresholdMode: "and" | "or";
+      timeFrameHours: number;
+      enabledAccountIds: number[];
+    }
+  ) {
+    const percentThreshold = data.percentThreshold ?? 100;
+    const absoluteThreshold = data.absoluteThreshold ?? 100000;
+
+    // Upsert viralitySettings
+    const [existing] = await db
+      .select({ id: viralitySettings.id })
+      .from(viralitySettings)
+      .where(eq(viralitySettings.team_id, teamId))
+      .limit(1);
+
+    if (existing) {
+      await db
+        .update(viralitySettings)
+        .set({
+          percent_threshold: percentThreshold,
+          absolute_threshold: absoluteThreshold,
+          threshold_mode: data.thresholdMode,
+          time_frame_hours: data.timeFrameHours,
+          updated_at: new Date(),
+        })
+        .where(eq(viralitySettings.id, existing.id));
+    } else {
+      await db.insert(viralitySettings).values({
+        team_id: teamId,
+        percent_threshold: percentThreshold,
+        absolute_threshold: absoluteThreshold,
+        threshold_mode: data.thresholdMode,
+        time_frame_hours: data.timeFrameHours,
+      });
+    }
+
+    // Bulk-update alert_enabled on all team accounts
+    await db
+      .update(viralityAccounts)
+      .set({ alert_enabled: false })
+      .where(eq(viralityAccounts.team_id, teamId));
+
+    if (data.enabledAccountIds.length > 0) {
+      await db
+        .update(viralityAccounts)
+        .set({ alert_enabled: true })
+        .where(
+          and(
+            eq(viralityAccounts.team_id, teamId),
+            inArray(viralityAccounts.id, data.enabledAccountIds)
+          )
+        );
+    }
+
+    return this.getSettings(teamId);
+  }
+
+  async updateAlertEnabled(accountId: number, teamId: number, alertEnabled: boolean) {
+    const account = await this.getAccountById(accountId);
+    if (!account || account.team_id !== teamId) {
+      throw new Error("Account not found or access denied");
+    }
+
+    const [updated] = await db
+      .update(viralityAccounts)
+      .set({ alert_enabled: alertEnabled, updated_at: new Date() })
+      .where(eq(viralityAccounts.id, accountId))
+      .returning();
+
+    return updated;
+  }
+
+  // ── Alert Logs ──
+
+  async getAlertLogs(teamId: number, limit: number = 20, offset: number = 0) {
+    return db
+      .select()
+      .from(viralityAlertLogs)
+      .where(eq(viralityAlertLogs.team_id, teamId))
+      .orderBy(desc(viralityAlertLogs.created_at))
+      .limit(limit)
+      .offset(offset);
   }
 }
 

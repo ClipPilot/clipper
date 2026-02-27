@@ -30,6 +30,7 @@ export interface ViralityAccount {
   post_count: number | null;
   follower_history: FollowerEntry[] | null;
   is_verified: boolean;
+  alert_enabled: boolean;
   is_active: boolean;
   syncs_remaining: number;
   last_synced_at: string | null;
@@ -356,6 +357,71 @@ class ViralityAPI {
       throw new Error(error.error || "Failed to delete competitor");
     }
   }
+
+  // ── Alert Settings ──
+
+  async updateAlertEnabled(teamId: number, accountId: number, alertEnabled: boolean): Promise<ViralityAccount> {
+    const response = await apiFetch(
+      `${API_URL}/virality/${teamId}/accounts/${accountId}/alerts`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ alert_enabled: alertEnabled }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to update alert setting");
+    }
+
+    const data = await response.json();
+    return data.account;
+  }
+
+  async getSettings(teamId: number): Promise<ViralSettings> {
+    const response = await apiFetch(
+      `${API_URL}/virality/${teamId}/settings`,
+      { credentials: "include" }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to get settings");
+    }
+
+    const data = await response.json();
+    return data.settings;
+  }
+
+  async saveSettings(teamId: number, settings: ViralSettings): Promise<ViralSettings> {
+    const response = await apiFetch(
+      `${API_URL}/virality/${teamId}/settings`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(settings),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to save settings");
+    }
+
+    const data = await response.json();
+    return data.settings;
+  }
+}
+
+export interface ViralSettings {
+  percentThreshold: number | null;
+  absoluteThreshold: number | null;
+  thresholdMode: "and" | "or";
+  timeFrameHours: number;
+  enabledAccountIds: number[];
 }
 
 export const viralityAPI = new ViralityAPI();

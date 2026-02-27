@@ -14,6 +14,7 @@ import {
   HeadToHeadTable,
   RecalcOverlay,
 } from "@/components/virality";
+import { ViralSettingsModal } from "@/components/virality/ViralSettingsModal";
 import type { Platform } from "@/components/virality/AccountsTable";
 import { CompetitorCard } from "@/components/virality/CompetitorCard";
 import { ViralityUpgradeWall } from "@/components/virality/ViralityUpgradeWall";
@@ -26,7 +27,9 @@ import {
   type ViralityCompetitor,
   type ViralityPost,
   type ViralityAccount,
+  type ViralSettings,
 } from "@/api/virality";
+
 import { pct, computePostsPerWeek } from "@/app/dashboard/virality/[competitorId]/utils";
 import { canAccessViralityTracker } from "@/lib/plans";
 
@@ -37,6 +40,8 @@ export default function ViralityPage() {
   const [platformFilter, setPlatformFilter] = useState<Platform | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const { isOpen: isSettingsOpen, onOpen: onSettingsOpen, onClose: onSettingsClose } = useDisclosure();
+  const [viralSettings, setViralSettings] = useState<ViralSettings | null>(null);
   const [competitors, setCompetitors] = useState<CompetitorWithAccounts[]>([]);
   const [simpleCompetitors, setSimpleCompetitors] = useState<ViralityCompetitor[]>([]);
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
@@ -278,7 +283,7 @@ export default function ViralityPage() {
       throw new Error("Please select or create a competitor group");
     }
 
-    await viralityAPI.addAccount(
+    const account = await viralityAPI.addAccount(
       selectedTeam.id,
       platform,
       profileUrl,
@@ -286,8 +291,55 @@ export default function ViralityPage() {
       options.accountType
     );
 
+    // Enable alerts on the newly created account if requested
+    if (options.enableAlerts) {
+      await viralityAPI.updateAlertEnabled(selectedTeam.id, account.id, true);
+    }
+
     addToast({ title: "Account added", color: "success" });
     await fetchData();
+  };
+
+  const handleToggleAlert = async (accountId: number, enabled: boolean) => {
+    if (!selectedTeam?.id) return;
+    try {
+      await viralityAPI.updateAlertEnabled(selectedTeam.id, accountId, enabled);
+      setCompetitors((prev) =>
+        prev.map((c) => ({
+          ...c,
+          accounts: c.accounts.map((a) =>
+            a.id === accountId ? { ...a, alert_enabled: enabled } : a
+          ),
+        }))
+      );
+      addToast({ title: `Alerts ${enabled ? "enabled" : "disabled"}`, color: "success" });
+    } catch (err: any) {
+      addToast({ title: "Failed to update alerts", description: err.message, color: "danger" });
+    }
+  };
+
+  const handleOpenSettings = async () => {
+    if (!selectedTeam?.id) return;
+    try {
+      const settings = await viralityAPI.getSettings(selectedTeam.id);
+      setViralSettings(settings);
+      onSettingsOpen();
+    } catch (err: any) {
+      addToast({ title: "Failed to load settings", description: err.message, color: "danger" });
+    }
+  };
+
+  const handleSaveSettings = async (settings: ViralSettings) => {
+    if (!selectedTeam?.id) return;
+    try {
+      const saved = await viralityAPI.saveSettings(selectedTeam.id, settings);
+      setViralSettings(saved);
+      // Refresh competitors to reflect updated alert_enabled flags
+      await fetchData();
+      addToast({ title: "Alert settings saved", color: "success" });
+    } catch (err: any) {
+      addToast({ title: "Failed to save settings", description: err.message, color: "danger" });
+    }
   };
 
   if (!canAccessViralityTracker(selectedTeam?.plan)) {
@@ -321,6 +373,14 @@ export default function ViralityPage() {
           </div>
           <div className="flex items-center gap-3">
             <DateRangeFilter value={dateRange} onChange={setDateRange} />
+            <Button
+              variant="bordered"
+              className="border-border-base text-text-secondary"
+              startContent={<Icon icon="solar:bell-bold" width={18} />}
+              onPress={handleOpenSettings}
+            >
+              Alert Settings
+            </Button>
             <Button
               className="bg-accent-400 text-white"
               startContent={<Icon icon="solar:add-circle-bold" width={18} />}
@@ -407,6 +467,7 @@ export default function ViralityPage() {
                 onViewAccount={handleViewAccount}
                 onDeleteAccount={handleDeleteAccount}
                 onToggleAccountStatus={handleToggleAccountStatus}
+                onToggleAlert={handleToggleAlert}
                 accountStatuses={accountStatuses}
               />
             </RecalcOverlay>
@@ -432,6 +493,16 @@ export default function ViralityPage() {
         competitors={simpleCompetitors}
         onSubmit={handleAddAccount}
       />
+
+      {viralSettings && (
+        <ViralSettingsModal
+          isOpen={isSettingsOpen}
+          onClose={onSettingsClose}
+          accounts={competitors.flatMap((c) => c.accounts)}
+          settings={viralSettings}
+          onSave={handleSaveSettings}
+        />
+      )}
     </motion.div>
   );
 }
