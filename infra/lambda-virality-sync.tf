@@ -144,7 +144,47 @@ resource "aws_lambda_function" "virality_sync_worker" {
   }
 }
 
+# Reporter Lambda — runs after all workers complete, sends consolidated viral alerts
+resource "aws_lambda_function" "virality_sync_reporter" {
+  function_name = "${var.project_name}-virality-sync-reporter-${var.environment}"
+  role          = aws_iam_role.virality_sync_lambda.arn
+  package_type  = "Image"
+  image_uri     = "${aws_ecr_repository.virality_sync_lambda.repository_url}:latest"
+  timeout       = 900
+  memory_size   = 512
+
+  image_config {
+    command = ["lambda-virality-sync/dist/handler.reporterHandler"]
+  }
+
+  environment {
+    variables = {
+      DATABASE_URL   = var.database_url
+      RESEND_API_KEY = var.resend_api_key
+      FRONTEND_URL   = var.frontend_url
+    }
+  }
+
+  depends_on = [aws_iam_role_policy_attachment.virality_sync_lambda_basic]
+  lifecycle { ignore_changes = [image_uri] }
+
+  tags = {
+    Name        = "${var.project_name}-virality-sync-reporter-${var.environment}"
+    Environment = var.environment
+  }
+}
+
 # CloudWatch Log Groups
+resource "aws_cloudwatch_log_group" "virality_sync_reporter" {
+  name              = "/aws/lambda/${var.project_name}-virality-sync-reporter-${var.environment}"
+  retention_in_days = 14
+
+  tags = {
+    Name        = "${var.project_name}-virality-sync-reporter-logs-${var.environment}"
+    Environment = var.environment
+  }
+}
+
 resource "aws_cloudwatch_log_group" "virality_sync_orchestrator" {
   name              = "/aws/lambda/${var.project_name}-virality-sync-orchestrator-${var.environment}"
   retention_in_days = 14
@@ -214,11 +254,12 @@ resource "aws_iam_role_policy" "virality_sync_sfn_invoke_lambda" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect   = "Allow"
-      Action   = "lambda:InvokeFunction"
+      Effect = "Allow"
+      Action = "lambda:InvokeFunction"
       Resource = [
         aws_lambda_function.virality_sync_orchestrator.arn,
         aws_lambda_function.virality_sync_worker.arn,
+        aws_lambda_function.virality_sync_reporter.arn,
       ]
     }]
   })
@@ -322,7 +363,29 @@ resource "aws_sfn_state_machine" "virality_sync" {
           }
         }
         ResultPath = "$.mapResults"
-        Next       = "Done"
+        Next       = "SendViralReports"
+      }
+      SendViralReports = {
+        Type     = "Task"
+        Resource = "arn:aws:states:::lambda:invoke"
+        Parameters = {
+          FunctionName = aws_lambda_function.virality_sync_reporter.arn
+          "Payload.$"  = "$"
+        }
+        ResultSelector = { "reporterResult.$" = "$.Payload" }
+        ResultPath     = "$.reporterOutput"
+        Retry = [{
+          ErrorEquals     = ["States.TaskFailed", "Lambda.ServiceException"]
+          IntervalSeconds = 10
+          MaxAttempts     = 1
+          BackoffRate     = 2
+        }]
+        Catch = [{
+          ErrorEquals = ["States.ALL"]
+          ResultPath  = "$.reporterError"
+          Next        = "Done"
+        }]
+        Next = "Done"
       }
       Done = { Type = "Succeed" }
     }

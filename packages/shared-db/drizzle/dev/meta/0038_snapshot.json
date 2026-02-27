@@ -5439,15 +5439,6 @@
         "other"
       ]
     },
-    "public.gpu_pod_status": {
-      "name": "gpu_pod_status",
-      "schema": "public",
-      "values": [
-        "idle",
-        "busy",
-        "offline"
-      ]
-    },
     "public.invite_status": {
       "name": "invite_status",
       "schema": "public",

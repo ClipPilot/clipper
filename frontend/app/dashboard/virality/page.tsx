@@ -27,6 +27,8 @@ import {
   type ViralityPost,
   type ViralityAccount,
 } from "@/api/virality";
+import { ViralSettingsModal, defaultViralSettings } from "@/components/virality/ViralSettingsModal";
+import type { ViralSettings } from "@/components/virality/ViralSettingsModal";
 import { pct, computePostsPerWeek } from "@/app/dashboard/virality/[competitorId]/utils";
 import { canAccessViralityTracker } from "@/lib/plans";
 
@@ -37,6 +39,7 @@ export default function ViralityPage() {
   const [platformFilter, setPlatformFilter] = useState<Platform | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const { isOpen: isSettingsOpen, onOpen: onSettingsOpen, onClose: onSettingsClose } = useDisclosure();
   const [competitors, setCompetitors] = useState<CompetitorWithAccounts[]>([]);
   const [simpleCompetitors, setSimpleCompetitors] = useState<ViralityCompetitor[]>([]);
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
@@ -47,6 +50,8 @@ export default function ViralityPage() {
   const [cardsExpanded, setCardsExpanded] = useState(false);
   const [editingCompetitorId, setEditingCompetitorId] = useState<number | null>(null);
   const [editingName, setEditingName] = useState("");
+  const [viralSettings, setViralSettings] = useState<ViralSettings>(defaultViralSettings);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
   const initialLoadDone = useRef(false);
 
   const fetchData = useCallback(async () => {
@@ -235,6 +240,27 @@ export default function ViralityPage() {
     }
   };
 
+  const handleToggleAlerts = async (accountId: number, alertEnabled: boolean) => {
+    if (!selectedTeam?.id) return;
+    try {
+      await viralityAPI.updateAlertEnabled(selectedTeam.id, accountId, alertEnabled);
+      setCompetitors((prev) =>
+        prev.map((c) => ({
+          ...c,
+          accounts: c.accounts.map((a) =>
+            a.id === accountId ? { ...a, alert_enabled: alertEnabled } : a
+          ),
+        }))
+      );
+      addToast({
+        title: alertEnabled ? "Alerts enabled" : "Alerts disabled",
+        color: "success",
+      });
+    } catch (err: any) {
+      addToast({ title: "Failed to update alerts", description: err.message, color: "danger" });
+    }
+  };
+
   const handleSaveCompetitorName = async (competitorId: number) => {
     if (!selectedTeam?.id || !editingName.trim()) return;
     try {
@@ -249,6 +275,45 @@ export default function ViralityPage() {
       addToast({ title: "Competitor renamed", color: "success" });
     } catch (err: any) {
       addToast({ title: "Failed to rename competitor", description: err.message, color: "danger" });
+    }
+  };
+
+  // Load viral alert settings when settings modal opens
+  const handleOpenSettings = async () => {
+    if (!selectedTeam?.id) return;
+    try {
+      const saved = await viralityAPI.getSettings(selectedTeam.id);
+      setViralSettings({
+        enabledAccountIds: saved.enabledAccountIds,
+        percentThreshold: saved.percentThreshold,
+        absoluteThreshold: saved.absoluteThreshold,
+        thresholdMode: saved.thresholdMode as "and" | "or",
+        timeFrameHours: String(saved.timeFrameHours) as "12" | "24" | "48",
+      });
+    } catch {
+      // Use defaults if no settings saved yet
+      setViralSettings(defaultViralSettings);
+    }
+    onSettingsOpen();
+  };
+
+  const handleSaveSettings = async (settings: ViralSettings) => {
+    if (!selectedTeam?.id) return;
+    setIsSavingSettings(true);
+    try {
+      await viralityAPI.saveSettings(selectedTeam.id, {
+        percentThreshold: settings.percentThreshold,
+        absoluteThreshold: settings.absoluteThreshold,
+        thresholdMode: settings.thresholdMode,
+        timeFrameHours: parseInt(settings.timeFrameHours),
+        enabledAccountIds: settings.enabledAccountIds,
+      });
+      setViralSettings(settings);
+      addToast({ title: "Viral alert settings saved", color: "success" });
+    } catch (err: any) {
+      addToast({ title: "Failed to save settings", description: err.message, color: "danger" });
+    } finally {
+      setIsSavingSettings(false);
     }
   };
 
@@ -278,13 +343,17 @@ export default function ViralityPage() {
       throw new Error("Please select or create a competitor group");
     }
 
-    await viralityAPI.addAccount(
+    const account = await viralityAPI.addAccount(
       selectedTeam.id,
       platform,
       profileUrl,
       competitorId,
       options.accountType
     );
+
+    if (options.enableAlerts) {
+      await viralityAPI.updateAlertEnabled(selectedTeam.id, account.id, true);
+    }
 
     addToast({ title: "Account added", color: "success" });
     await fetchData();
@@ -321,6 +390,14 @@ export default function ViralityPage() {
           </div>
           <div className="flex items-center gap-3">
             <DateRangeFilter value={dateRange} onChange={setDateRange} />
+            <Button
+              variant="flat"
+              className="bg-surface-base border border-border-base text-text-secondary"
+              startContent={<Icon icon="solar:settings-bold" width={18} />}
+              onPress={handleOpenSettings}
+            >
+              Alert Settings
+            </Button>
             <Button
               className="bg-accent-400 text-white"
               startContent={<Icon icon="solar:add-circle-bold" width={18} />}
@@ -407,6 +484,7 @@ export default function ViralityPage() {
                 onViewAccount={handleViewAccount}
                 onDeleteAccount={handleDeleteAccount}
                 onToggleAccountStatus={handleToggleAccountStatus}
+                onToggleAlerts={handleToggleAlerts}
                 accountStatuses={accountStatuses}
               />
             </RecalcOverlay>
@@ -431,6 +509,14 @@ export default function ViralityPage() {
         onClose={onClose}
         competitors={simpleCompetitors}
         onSubmit={handleAddAccount}
+      />
+
+      <ViralSettingsModal
+        isOpen={isSettingsOpen}
+        onClose={onSettingsClose}
+        accounts={competitors.flatMap((c) => c.accounts)}
+        settings={viralSettings}
+        onSave={handleSaveSettings}
       />
     </motion.div>
   );

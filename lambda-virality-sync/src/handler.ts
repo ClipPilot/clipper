@@ -4,6 +4,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import * as schema from "@clipper/shared-db";
 import { eq, and, or, lte, inArray, sql } from "drizzle-orm";
+import { checkAndSendViralAlertsForTeams } from "./viralAlerts";
 
 const DATABASE_URL = process.env.DATABASE_URL!;
 const APIFY_API_TOKEN = process.env.APIFY_API_TOKEN!;
@@ -1080,8 +1081,9 @@ export const workerHandler: Handler = async (event: any, context: Context) => {
         .set({ sync_status: "completed", last_synced_at: new Date(), total_likes: Number(likesResult.total), updated_at: new Date() })
         .where(eq(schema.viralityAccounts.id, account.id));
 
-      console.log(`[OK] @${account.username} completed: ${posts.length} posts upserted`);
-      return { accountId, username: account.username, status: "completed", postsUpserted };
+      console.log(`[OK] @${account.username} (${sourceLabel}) completed: ${posts.length} posts upserted`);
+
+      return { accountId, username: account.username, source: sourceLabel, status: "completed", postsUpserted, teamId: account.team_id };
     } catch (error: any) {
       console.error(`[FAIL] @${account.username}: ${error.message}`);
       await db
@@ -1090,6 +1092,47 @@ export const workerHandler: Handler = async (event: any, context: Context) => {
         .where(eq(schema.viralityAccounts.id, account.id));
       throw error; // Re-throw so Step Functions sees the failure
     }
+  } finally {
+    await localPool.end();
+  }
+};
+
+// ── Reporter handler (Step Functions — runs after all workers complete) ──
+
+export const reporterHandler: Handler = async (event: any, context: Context) => {
+  console.log(`\n========================================`);
+  console.log(`  VIRALITY SYNC REPORTER - ${new Date().toISOString()}`);
+  console.log(`========================================\n`);
+
+  if (!DATABASE_URL) {
+    throw new Error("DATABASE_URL not configured");
+  }
+
+  const localPool = new Pool({ connectionString: DATABASE_URL });
+  const db = drizzle(localPool, { schema });
+
+  try {
+    // Extract unique team IDs from completed virality (non-user) sync results
+    const mapResults: any[] = event.mapResults || [];
+    const teamIds = new Set<number>();
+
+    for (const item of mapResults) {
+      const result = item?.result;
+      if (result?.status === "completed" && result?.source === "virality" && result?.teamId) {
+        teamIds.add(result.teamId);
+      }
+    }
+
+    if (teamIds.size === 0) {
+      console.log("[Reporter] No completed virality syncs found, skipping alerts");
+      return { status: "skipped", reason: "no_completed_syncs", teamsProcessed: 0 };
+    }
+
+    console.log(`[Reporter] Processing viral alerts for ${teamIds.size} teams`);
+
+    await checkAndSendViralAlertsForTeams(db, Array.from(teamIds));
+
+    return { status: "completed", teamsProcessed: teamIds.size };
   } finally {
     await localPool.end();
   }

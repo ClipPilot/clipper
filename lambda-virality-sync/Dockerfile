@@ -45,8 +45,9 @@ COPY packages/shared-db/package.json ./packages/shared-db/
 # Install production dependencies only
 RUN pnpm install --prod
 
-# Copy built files
+# Copy built files + assets
 COPY --from=builder /app/lambda-virality-sync/dist ./lambda-virality-sync/dist
+COPY --from=builder /app/lambda-virality-sync/assets ./lambda-virality-sync/assets
 COPY --from=builder /app/packages/shared-db/dist ./packages/shared-db/dist
 
 CMD [ "lambda-virality-sync/dist/handler.handler" ]

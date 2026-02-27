@@ -31,6 +31,7 @@ export interface ViralityAccount {
   follower_history: FollowerEntry[] | null;
   is_verified: boolean;
   is_active: boolean;
+  alert_enabled: boolean;
   syncs_remaining: number;
   last_synced_at: string | null;
   sync_status: "pending" | "syncing" | "completed" | "failed";
@@ -84,6 +85,28 @@ export interface DashboardStats {
   avgViewsPerPost: number;
   accountPostStats: Record<number, AccountPostStats>;
   accounts: ViralityAccount[];
+}
+
+export interface ViralAlertSettings {
+  percentThreshold: number | null;
+  absoluteThreshold: number | null;
+  thresholdMode: "and" | "or";
+  timeFrameHours: number;
+  enabledAccountIds: number[];
+}
+
+export interface ViralAlertLog {
+  id: number;
+  team_id: number;
+  user_id: number;
+  email: string;
+  subject: string;
+  email_body: string;
+  viral_post_ids: number[];
+  status: "sent" | "failed";
+  error_message: string | null;
+  sent_at: string;
+  created_at: string;
 }
 
 class ViralityAPI {
@@ -142,6 +165,26 @@ class ViralityAPI {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || "Failed to update account status");
+    }
+
+    const data = await response.json();
+    return data.account;
+  }
+
+  async updateAlertEnabled(teamId: number, accountId: number, alertEnabled: boolean): Promise<ViralityAccount> {
+    const response = await apiFetch(
+      `${API_URL}/virality/${teamId}/accounts/${accountId}/alerts`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ alert_enabled: alertEnabled }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to update alert setting");
     }
 
     const data = await response.json();
@@ -353,6 +396,75 @@ class ViralityAPI {
       const error = await response.json();
       throw new Error(error.error || "Failed to delete competitor");
     }
+  }
+
+  // ── Settings ──
+
+  async getSettings(teamId: number): Promise<ViralAlertSettings> {
+    const response = await apiFetch(
+      `${API_URL}/virality/${teamId}/settings`,
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to fetch settings");
+    }
+
+    const data = await response.json();
+    return data.settings;
+  }
+
+  async saveSettings(teamId: number, settings: ViralAlertSettings): Promise<ViralAlertSettings> {
+    const response = await apiFetch(
+      `${API_URL}/virality/${teamId}/settings`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(settings),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to save settings");
+    }
+
+    const data = await response.json();
+    return data.settings;
+  }
+
+  async getAlertLogs(
+    teamId: number,
+    limit: number = 20,
+    offset: number = 0
+  ): Promise<ViralAlertLog[]> {
+    const params = new URLSearchParams({
+      limit: String(limit),
+      offset: String(offset),
+    });
+
+    const response = await apiFetch(
+      `${API_URL}/virality/${teamId}/alert-logs?${params}`,
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to fetch alert logs");
+    }
+
+    const data = await response.json();
+    return data.logs;
   }
 }
 

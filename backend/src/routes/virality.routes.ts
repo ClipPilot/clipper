@@ -168,6 +168,47 @@ router.patch("/:teamId/accounts/:accountId/status", requireAuth, (req, res) => v
 
 /**
  * @openapi
+ * /virality/{teamId}/accounts/{accountId}/alerts:
+ *   patch:
+ *     summary: Toggle alert enabled for an account
+ *     tags:
+ *       - Virality
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: accountId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - alert_enabled
+ *             properties:
+ *               alert_enabled:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Alert setting updated
+ *       400:
+ *         description: Invalid input
+ *       404:
+ *         description: Account not found
+ */
+router.patch("/:teamId/accounts/:accountId/alerts", requireAuth, (req, res) => viralityController.updateAlertEnabled(req, res));
+
+/**
+ * @openapi
  * /virality/{teamId}/accounts/{accountId}/sync:
  *   post:
  *     summary: Trigger a sync for an account
@@ -421,5 +462,103 @@ router.get("/:teamId/competitors/:competitorId", requireAuth, (req, res) => vira
  *         description: Competitor not found
  */
 router.delete("/:teamId/competitors/:competitorId", requireAuth, (req, res) => viralityController.deleteCompetitor(req, res));
+
+// ── Settings routes ──
+
+/**
+ * @openapi
+ * /virality/{teamId}/settings:
+ *   get:
+ *     summary: Get viral alert settings for a team
+ *     tags:
+ *       - Virality
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Viral alert settings
+ */
+router.get("/:teamId/settings", requireAuth, (req, res) => viralityController.getSettings(req, res));
+
+/**
+ * @openapi
+ * /virality/{teamId}/settings:
+ *   put:
+ *     summary: Save viral alert settings for a team
+ *     tags:
+ *       - Virality
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               percentThreshold:
+ *                 type: integer
+ *                 nullable: true
+ *               absoluteThreshold:
+ *                 type: integer
+ *                 nullable: true
+ *               thresholdMode:
+ *                 type: string
+ *                 enum: [and, or]
+ *               timeFrameHours:
+ *                 type: integer
+ *                 enum: [12, 24, 48]
+ *               enabledAccountIds:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *     responses:
+ *       200:
+ *         description: Settings saved
+ */
+router.put("/:teamId/settings", requireAuth, (req, res) => viralityController.saveSettings(req, res));
+
+/**
+ * @openapi
+ * /virality/{teamId}/alert-logs:
+ *   get:
+ *     summary: Get viral alert email logs
+ *     tags:
+ *       - Virality
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *     responses:
+ *       200:
+ *         description: List of alert logs
+ */
+router.get("/:teamId/alert-logs", requireAuth, (req, res) => viralityController.getAlertLogs(req, res));
 
 export default router;

@@ -146,6 +146,24 @@ class ViralityController {
     }
   }
 
+  async updateAlertEnabled(req: AuthRequest, res: Response) {
+    try {
+      const teamId = parseId(req.params.teamId);
+      const accountId = parseId(req.params.accountId);
+      if (!teamId || !accountId) return res.status(400).json({ error: "Invalid team or account ID" });
+
+      const { alert_enabled } = req.body;
+      if (typeof alert_enabled !== "boolean") {
+        return res.status(400).json({ error: "alert_enabled must be a boolean" });
+      }
+
+      const account = await viralityService.updateAlertEnabled(accountId, teamId, alert_enabled);
+      return res.json({ account });
+    } catch (error) {
+      return handleError(res, "Update alert enabled error", error, "Failed to update alert setting");
+    }
+  }
+
   async syncAccount(req: AuthRequest, res: Response) {
     try {
       const teamId = parseId(req.params.teamId);
@@ -279,6 +297,65 @@ class ViralityController {
       return res.json({ success: true });
     } catch (error) {
       return handleError(res, "Delete competitor error", error, "Failed to delete competitor");
+    }
+  }
+
+  // ── Settings Controllers ──
+
+  async getSettings(req: AuthRequest, res: Response) {
+    try {
+      const teamId = parseId(req.params.teamId);
+      if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
+
+      const settings = await viralityService.getSettings(teamId);
+      return res.json({ settings });
+    } catch (error) {
+      return handleError(res, "Get viral settings error", error, "Failed to get settings");
+    }
+  }
+
+  async saveSettings(req: AuthRequest, res: Response) {
+    try {
+      const teamId = parseId(req.params.teamId);
+      if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
+
+      const { percentThreshold, absoluteThreshold, thresholdMode, timeFrameHours, enabledAccountIds } = req.body;
+
+      if (thresholdMode && !["and", "or"].includes(thresholdMode)) {
+        return res.status(400).json({ error: "thresholdMode must be 'and' or 'or'" });
+      }
+      if (timeFrameHours && ![12, 24, 48].includes(timeFrameHours)) {
+        return res.status(400).json({ error: "timeFrameHours must be 12, 24, or 48" });
+      }
+      if (enabledAccountIds && !Array.isArray(enabledAccountIds)) {
+        return res.status(400).json({ error: "enabledAccountIds must be an array" });
+      }
+
+      const settings = await viralityService.saveSettings(teamId, {
+        percentThreshold: percentThreshold ?? null,
+        absoluteThreshold: absoluteThreshold ?? null,
+        thresholdMode: thresholdMode || "or",
+        timeFrameHours: timeFrameHours || 24,
+        enabledAccountIds: enabledAccountIds || [],
+      });
+      return res.json({ settings });
+    } catch (error) {
+      return handleError(res, "Save viral settings error", error, "Failed to save settings");
+    }
+  }
+
+  async getAlertLogs(req: AuthRequest, res: Response) {
+    try {
+      const teamId = parseId(req.params.teamId);
+      if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
+
+      const limit = parseInt(req.query.limit as string) || 20;
+      const offset = parseInt(req.query.offset as string) || 0;
+
+      const logs = await viralityService.getAlertLogs(teamId, Math.min(limit, 100), offset);
+      return res.json({ logs });
+    } catch (error) {
+      return handleError(res, "Get alert logs error", error, "Failed to get alert logs");
     }
   }
 }
