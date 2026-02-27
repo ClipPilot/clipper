@@ -2248,11 +2248,9 @@ const HEART_ICON_SVG = `<svg width="20" height="20" viewBox="0 0 24 24" fill="rg
 
 const THUMBS_UP_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="#aaa" xmlns="http://www.w3.org/2000/svg"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>`;
 
-const getDefaultAvatarDataUri = (username: string): string => {
-  const color = hashColor(username);
-  const initial = username.charAt(0).toUpperCase();
+const getDefaultAvatarDataUri = (_username: string): string => {
   return `data:image/svg+xml,${encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72"><circle cx="36" cy="36" r="36" fill="${color}"/><text x="36" y="48" text-anchor="middle" fill="#fff" font-size="32" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-weight="600">${initial}</text></svg>`
+    `<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72"><circle cx="36" cy="36" r="36" fill="#C4C4C4"/><path d="M36 36c5.4 0 9.6-4.2 9.6-9.6S41.4 16.8 36 16.8 26.4 21 26.4 26.4 30.6 36 36 36zm0 4.8c-6.4 0-19.2 3.2-19.2 9.6v2.4c0 1.32 1.08 2.4 2.4 2.4h33.6c1.32 0 2.4-1.08 2.4-2.4v-2.4c0-6.4-12.8-9.6-19.2-9.6z" fill="#fff"/></svg>`
   )}`;
 };
 
@@ -2272,25 +2270,18 @@ const getCommentHtml = (
       <!DOCTYPE html><html><head><style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { width: 800px; background: transparent; padding: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
-        .comment { background: rgba(37,37,37,0.92); border-radius: 12px; padding: 14px 16px; display: inline-flex; align-items: flex-start; gap: 10px; max-width: 760px; }
-        .avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
-        .body { flex: 1; min-width: 0; }
-        .username-row { display: flex; align-items: center; gap: 4px; }
-        .username { color: rgba(255,255,255,0.55); font-size: 13px; font-weight: 600; }
-        .text { color: #fff; font-size: 15px; margin-top: 4px; line-height: 1.35; word-wrap: break-word; }
-        .meta { display: flex; align-items: center; gap: 16px; margin-top: 6px; }
-        .meta span { color: rgba(255,255,255,0.4); font-size: 12px; }
-        .likes { display: flex; flex-direction: column; align-items: center; gap: 2px; margin-left: 8px; flex-shrink: 0; }
-        .likes span { color: rgba(255,255,255,0.5); font-size: 11px; }
+        .comment { background: rgba(255,255,255,0.95); border-radius: 16px; padding: 16px 20px; display: inline-flex; flex-direction: column; gap: 10px; max-width: 760px; }
+        .header { color: #8A8A8A; font-size: 16px; font-weight: 600; }
+        .content { display: flex; align-items: center; gap: 14px; }
+        .avatar { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+        .text { color: #000; font-size: 20px; font-weight: 700; line-height: 1.3; word-wrap: break-word; flex: 1; min-width: 0; }
       </style></head><body>
         <div class="comment">
-          <img class="avatar" src="${profilePicSrc}" />
-          <div class="body">
-            <div class="username-row"><span class="username">${safeUsername}</span>${badge}</div>
+          <div class="header">Reply to @${safeUsername}'s comment</div>
+          <div class="content">
+            <img class="avatar" src="${profilePicSrc}" />
             <div class="text">${safeComment}</div>
-            <div class="meta"><span>${time}</span><span>Reply</span></div>
           </div>
-          <div class="likes">${HEART_ICON_SVG}<span>${likes}</span></div>
         </div>
       </body></html>
     `;
