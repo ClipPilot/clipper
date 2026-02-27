@@ -58,12 +58,6 @@ jobs:
       - name: Terraform Validate
         run: terraform validate
 
-      # One-time cleanup: remove orphaned Mac dedicated host from state (24hr min allocation prevents destroy)
-      - name: Cleanup orphaned Mac host from state
-        run: |
-          terraform state rm 'aws_ec2_host.mac_rendering[0]' 2>/dev/null || true
-        continue-on-error: true
-
       - name: Create terraform.tfvars from secrets
         run: |
           cat > terraform.tfvars <<EOF
@@ -126,8 +120,9 @@ jobs:
           status_cron_secret  = "${{ secrets.STATUS_CRON_SECRET }}"
           status_domain       = "status.cuttr.com"
 
-          # Mac Rendering Instance (managed manually, set URL once instance is up)
-          mac_renderer_url = ""
+          # Tailscale Relay + Mac Rendering
+          tailscale_auth_key = "${{ secrets.TAILSCALE_AUTH_KEY }}"
+          mac_renderer_url   = "${{ secrets.MAC_RENDERER_URL }}"
           EOF
 
       - name: Terraform Plan
@@ -263,8 +258,9 @@ jobs:
           status_cron_secret  = "${{ secrets.STATUS_CRON_SECRET }}"
           status_domain       = "status.cuttr.com"
 
-          # Mac Rendering Instance (managed manually, set URL once instance is up)
-          mac_renderer_url = ""
+          # Tailscale Relay + Mac Rendering
+          tailscale_auth_key = "${{ secrets.TAILSCALE_AUTH_KEY }}"
+          mac_renderer_url   = "${{ secrets.MAC_RENDERER_URL }}"
           EOF
 
       - name: Download Terraform Plan

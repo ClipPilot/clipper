@@ -1,0 +1,10 @@
+{
+  "name": "mac-renderer",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "express": "^5.1.0",
+    "puppeteer": "^24.0.0"
+  }
+}
