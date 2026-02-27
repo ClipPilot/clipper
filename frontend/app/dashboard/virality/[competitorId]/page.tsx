@@ -59,6 +59,7 @@ export default function CompetitorDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRecalculating, setIsRecalculating] = useState(false);
   const initialLoadDone = useRef(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState("");
   const [selectedAccountIds, setSelectedAccountIds] = useState<number[]>(() => {
@@ -67,9 +68,9 @@ export default function CompetitorDetailPage() {
   });
   const [comparisonMode, setComparisonMode] = useState<ComparisonMode>({ type: "last-sync" });
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (silent = false) => {
     if (!selectedTeam?.id || isNaN(competitorId) || !canAccessViralityTracker(selectedTeam.plan)) return;
-    if (initialLoadDone.current) setIsRecalculating(true);
+    if (initialLoadDone.current && !silent) setIsRecalculating(true);
     try {
       const comp = await viralityAPI.getCompetitor(selectedTeam.id, competitorId);
       setCompetitor(comp);
@@ -110,9 +111,30 @@ export default function CompetitorDetailPage() {
     teamId: selectedTeam?.id,
     accountIds: syncingAccountIds,
     onSyncComplete: () => {
-      fetchData();
+      fetchData(true);
     },
   });
+
+  const handleSyncAll = async () => {
+    if (!selectedTeam?.id || !competitor) return;
+    setIsSyncing(true);
+    try {
+      const results = await Promise.allSettled(
+        competitor.accounts.map((account) => viralityAPI.syncAccount(selectedTeam.id, account.id))
+      );
+      const failed = results.filter((r) => r.status === "rejected");
+      if (failed.length > 0) {
+        addToast({ title: `${failed.length} account(s) failed to sync`, color: "warning" });
+      } else {
+        addToast({ title: "Sync complete", color: "success" });
+      }
+      await fetchData();
+    } catch (err: any) {
+      addToast({ title: "Sync failed", description: err.message, color: "danger" });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const handleSaveName = async () => {
     if (!selectedTeam?.id || !editName.trim()) return;
@@ -399,6 +421,16 @@ export default function CompetitorDetailPage() {
           </div>
           <div className="flex items-center gap-3">
             <DateRangeFilter value={dateRange} onChange={setDateRange} />
+            <Button
+              className="bg-accent-400 text-white"
+              startContent={
+                isSyncing ? <Spinner size="sm" color="white" /> : <Icon icon="solar:refresh-bold" width={18} />
+              }
+              isDisabled={isSyncing || competitor.accounts.length === 0}
+              onPress={handleSyncAll}
+            >
+              {isSyncing ? "Syncing..." : "Sync All"}
+            </Button>
           </div>
         </div>
 

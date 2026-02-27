@@ -93,10 +93,10 @@ export function StepSocials({
       {/* Company Socials */}
       <div>
         <h3 className="text-lg font-semibold text-text-primary mb-1">
-          Your Social Accounts
+          Your Social Accounts <span className="text-danger text-sm">*</span>
         </h3>
         <p className="text-sm text-text-secondary mb-4">
-          Add the social media accounts associated with your brand.
+          Add at least one social media account associated with your brand.
         </p>
         <div className="space-y-3">
           {companySocials.map((social, idx) => (

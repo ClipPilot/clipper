@@ -2,15 +2,18 @@ import { db } from "../db";
 import {
   clips,
   posts,
-  massPostingApplications,
+  campaigns,
+  userAccounts,
 } from "@clipper/shared-db/src/schema";
-import { eq, and, or, sql, desc, asc, ilike, gte, inArray, isNotNull, count as drizzleCount } from "drizzle-orm";
+import { eq, and, or, sql, desc, asc, ilike, gte, inArray, isNotNull } from "drizzle-orm";
 import { teamService } from "./team.service";
 import { getTeamUsage } from "../middleware/subscription.middleware";
 import { sqsService } from "./sqs.service";
 import { googleDriveService } from "./google/drive.service";
 import { s3Service } from "./s3.service";
-import { resolveAccountFromUrl } from "../utils/accountResolver";
+import { resolveAccountFromUrl, detectPlatform } from "../utils/accountResolver";
+import { userPerformanceService } from "./virality/userPerformance.service";
+import { getApifyService } from "./virality/apify.service";
 
 const VALID_PLATFORMS = new Set(["tiktok", "instagram", "facebook", "youtube", "x"]);
 
@@ -62,22 +65,26 @@ class AdPostingService {
       0
     );
 
-    const [application] = await db
+    // Check for any accepted or started campaign for this team
+    const [campaign] = await db
       .select()
-      .from(massPostingApplications)
+      .from(campaigns)
       .where(
         and(
-          eq(massPostingApplications.team_id, teamId),
-          eq(massPostingApplications.status, "accepted")
+          eq(campaigns.team_id, teamId),
+          or(
+            eq(campaigns.status, "accepted"),
+            eq(campaigns.status, "started"),
+          )!,
         )
       )
       .limit(1);
 
-    if (!application) {
+    if (!campaign) {
       throw new AdPostingError("Team is not approved for mass posting", 403);
     }
 
-    const driveFolderId = application.google_drive_folder_id;
+    const driveFolderId = campaign.google_drive_folder_id;
     if (!driveFolderId) {
       throw new AdPostingError("Team does not have a Google Drive folder configured", 403);
     }
@@ -144,6 +151,88 @@ class AdPostingService {
     });
   }
 
+  async startCampaignPosting(
+    campaignId: number,
+    clipId: number,
+    platformQuantities: PlatformQuantities,
+  ): Promise<{ postIds: Array<{ id: number; platform: string }> }> {
+    for (const [platform, qty] of Object.entries(platformQuantities)) {
+      if (!VALID_PLATFORMS.has(platform)) {
+        throw new AdPostingError(`Invalid platform: ${platform}`, 400);
+      }
+      if (!Number.isInteger(qty) || qty < 1 || qty > 50) {
+        throw new AdPostingError(
+          `Invalid quantity for ${platform}: must be 1-50`,
+          400
+        );
+      }
+    }
+
+    const [campaign] = await db
+      .select()
+      .from(campaigns)
+      .where(and(eq(campaigns.id, campaignId), eq(campaigns.status, "started")))
+      .limit(1);
+
+    if (!campaign) {
+      throw new AdPostingError("Campaign not found or not active", 404);
+    }
+
+    const driveFolderId = campaign.google_drive_folder_id;
+    if (!driveFolderId) {
+      throw new AdPostingError(
+        "Campaign does not have a Google Drive folder configured",
+        400
+      );
+    }
+
+    const [clip] = await db
+      .select()
+      .from(clips)
+      .where(and(eq(clips.id, clipId), eq(clips.team_id, campaign.team_id)))
+      .limit(1);
+
+    if (!clip) {
+      throw new AdPostingError("Clip not found", 404);
+    }
+    if (!clip.clip_path) {
+      throw new AdPostingError("Clip has no video file", 400);
+    }
+
+    // NO credit deduction — campaign billing is separate
+
+    const postIds: Array<{ id: number; platform: string }> = [];
+    for (const [platform, qty] of Object.entries(platformQuantities)) {
+      for (let i = 0; i < qty; i++) {
+        const [row] = await db
+          .insert(posts)
+          .values({
+            team_id: campaign.team_id,
+            clip_id: clipId,
+            campaign_id: campaignId,
+            content: clip.title || `clip-${clipId}`,
+            platform: platform as any,
+            status: "processing",
+          })
+          .returning({ id: posts.id });
+        postIds.push({ id: row.id, platform });
+      }
+    }
+
+    await sqsService.sendAdPostingJob({
+      clipId,
+      teamId: campaign.team_id,
+      userId: 0, // admin-initiated, no specific user
+      platformQuantities,
+      driveFolderId,
+      clipPath: clip.clip_path,
+      clipTitle: clip.title || `clip-${clipId}`,
+      postIds,
+    });
+
+    return { postIds };
+  }
+
   async createCustomVideo(
     teamId: number,
     userId: number,
@@ -196,9 +285,63 @@ class AdPostingService {
     return { clipId };
   }
 
+  private static readonly TRACKABLE_PLATFORMS = new Set(["instagram", "tiktok", "x"]);
+
+  private static readonly PROFILE_URL_MAP: Record<string, (u: string) => string> = {
+    instagram: (u) => `https://www.instagram.com/${u}/`,
+    tiktok: (u) => `https://www.tiktok.com/@${u}`,
+    x: (u) => `https://x.com/${u}`,
+  };
+
+  async findOrCreateMassPostingAccount(
+    teamId: number,
+    platform: "instagram" | "tiktok" | "x",
+    username: string
+  ): Promise<{ id: number; created: boolean }> {
+    const existing = await db
+      .select({ id: userAccounts.id })
+      .from(userAccounts)
+      .where(
+        and(
+          eq(userAccounts.team_id, teamId),
+          eq(userAccounts.platform, platform),
+          eq(userAccounts.username, username)
+        )
+      )
+      .limit(1);
+
+    if (existing.length > 0) return { id: existing[0].id, created: false };
+
+    const buildUrl = AdPostingService.PROFILE_URL_MAP[platform];
+    const [inserted] = await db
+      .insert(userAccounts)
+      .values({
+        team_id: teamId,
+        platform,
+        username,
+        profile_url: buildUrl(username),
+        source: "mass_posting",
+        is_active: true,
+        syncs_remaining: 14,
+      })
+      .returning({ id: userAccounts.id });
+
+    return { id: inserted.id, created: true };
+  }
+
   async markAsPosted(postId: number, postUrl?: string): Promise<void> {
+    if (postUrl) {
+      postUrl = postUrl.replace(/\/reels\//, "/reel/");
+    }
+
     const [post] = await db
-      .select({ drive_file_id: posts.drive_file_id })
+      .select({
+        drive_file_id: posts.drive_file_id,
+        team_id: posts.team_id,
+        platform: posts.platform,
+        campaign_id: posts.campaign_id,
+        content: posts.content,
+      })
       .from(posts)
       .where(eq(posts.id, postId))
       .limit(1);
@@ -213,12 +356,14 @@ class AdPostingService {
       }
     }
 
+    const postedTime = new Date();
+
     await db
       .update(posts)
       .set({
         status: "posted",
         post_url: postUrl || null,
-        posted_time: new Date(),
+        posted_time: postedTime,
         updated_at: new Date(),
         ...(accountHandle && { accountHandle }),
       })
@@ -230,6 +375,68 @@ class AdPostingService {
       } catch (err) {
         console.error(`[AdPosting] Drive delete failed for file ${post.drive_file_id}:`, err);
       }
+    }
+
+    // Bridge to performance tracking for trackable platforms
+    const platform = post?.platform;
+    if (
+      postUrl &&
+      accountHandle &&
+      platform &&
+      AdPostingService.TRACKABLE_PLATFORMS.has(platform)
+    ) {
+      this.bridgeToPerformanceTracking(
+        post.team_id,
+        platform as "instagram" | "tiktok" | "x",
+        accountHandle,
+        postId,
+        postUrl,
+        post.content,
+        postedTime
+      ).catch((err) => {
+        console.error(`[AdPosting] Performance bridge failed for post ${postId}:`, err);
+      });
+    }
+  }
+
+  private async bridgeToPerformanceTracking(
+    teamId: number,
+    platform: "instagram" | "tiktok" | "x",
+    username: string,
+    postId: number,
+    postUrl: string,
+    caption: string | null,
+    postedAt: Date
+  ) {
+    const { id: accountId } = await this.findOrCreateMassPostingAccount(teamId, platform, username);
+
+    const userPost = await userPerformanceService.createMassPostUserPost(
+      accountId, postId, postUrl, platform, caption, postedAt
+    );
+    if (!userPost) return;
+
+    // Fire-and-forget: fetch initial metrics
+    const apify = getApifyService();
+    const metrics = await apify.scrapePostMetrics(postUrl, platform);
+    if (metrics) {
+      await db
+        .update(
+          (userPerformanceService as any).postsTable
+        )
+        .set({
+          like_count: metrics.likesCount,
+          comment_count: metrics.commentsCount,
+          video_play_count: metrics.viewCount,
+          thumbnail_url: metrics.thumbnailUrl,
+          metrics_history: [{
+            recorded_at: new Date().toISOString(),
+            likes: metrics.likesCount,
+            comments: metrics.commentsCount,
+            views: metrics.viewCount,
+          }],
+          updated_at: new Date(),
+        })
+        .where(eq((userPerformanceService as any).postsTable.id, userPost.id));
     }
   }
 
@@ -244,6 +451,7 @@ class AdPostingService {
       sortOrder?: "asc" | "desc";
       page?: number;
       pageSize?: number;
+      campaignId?: number;
     } = {}
   ) {
     const {
@@ -255,9 +463,15 @@ class AdPostingService {
       sortOrder = "desc",
       page = 1,
       pageSize = 20,
+      campaignId,
     } = options;
 
     const conditions = [eq(posts.team_id, teamId)];
+
+    // Campaign filter
+    if (campaignId) {
+      conditions.push(eq(posts.campaign_id, campaignId));
+    }
 
     // Status group filter
     if (tab === "queued") {

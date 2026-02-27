@@ -551,6 +551,91 @@ class ApifyService {
     }
   }
 
+  async scrapePostMetrics(postUrl: string, platform: string): Promise<{
+    likesCount: number;
+    commentsCount: number;
+    viewCount: number | null;
+    thumbnailUrl: string | null;
+  } | null> {
+    try {
+      const client = this.getClient();
+
+      if (platform === "instagram") {
+        const result = await this.scrapeInstagramReel(postUrl);
+        return {
+          likesCount: result.likesCount,
+          commentsCount: result.commentsCount,
+          viewCount: result.viewCount,
+          thumbnailUrl: result.thumbnail || null,
+        };
+      }
+
+      if (platform === "tiktok") {
+        const run = await client
+          .actor(APIFY_ACTORS.TIKTOK_SCRAPER)
+          .call({
+            postURLs: [postUrl],
+            shouldDownloadCovers: false,
+            shouldDownloadVideos: false,
+          }, { timeout: ACTOR_TIMEOUT_SECS });
+
+        const { items } = await client.dataset(run.defaultDatasetId).listItems();
+        if (items.length === 0) return null;
+
+        const item = items[0] as any;
+        return {
+          likesCount: item.diggCount || 0,
+          commentsCount: item.commentCount || 0,
+          viewCount: item.playCount ?? null,
+          thumbnailUrl: item.videoMeta?.coverUrl || null,
+        };
+      }
+
+      if (platform === "x") {
+        const tweetId = postUrl.match(/\/status\/(\d+)/)?.[1];
+        if (!tweetId) return null;
+
+        const postsRun = await client
+          .actor(APIFY_ACTORS.X_POSTS_SCRAPER)
+          .call({
+            tweetIDs: [tweetId],
+            maxItems: 1,
+          }, { timeout: ACTOR_TIMEOUT_SECS });
+
+        const { items: tweetItems } = await client.dataset(postsRun.defaultDatasetId).listItems();
+        if (tweetItems.length === 0) return null;
+
+        const tweet = tweetItems[0] as any;
+        let viewCount: number | null = null;
+
+        try {
+          const viewsRun = await client
+            .actor(APIFY_ACTORS.X_VIEWS_SCRAPER)
+            .call({ tweets: tweetId, max_results: 1, mode: "Get a Few Tweets" }, { timeout: ACTOR_TIMEOUT_SECS });
+
+          const { items: viewItems } = await client.dataset(viewsRun.defaultDatasetId).listItems();
+          if (viewItems.length > 0) {
+            viewCount = (viewItems[0] as any).view_count ?? null;
+          }
+        } catch {
+          // view scraper failed, continue without views
+        }
+
+        return {
+          likesCount: tweet.likeCount || 0,
+          commentsCount: tweet.replyCount || 0,
+          viewCount,
+          thumbnailUrl: null,
+        };
+      }
+
+      return null;
+    } catch (err) {
+      console.warn(`[Apify] scrapePostMetrics failed for ${postUrl}:`, err);
+      return null;
+    }
+  }
+
   private normalizeTikTokPostData(rawPost: any): InstagramPost {
     // Extract video ID from webVideoUrl
     const urlMatch = rawPost.webVideoUrl?.match(/\/video\/(\d+)/);

@@ -62,6 +62,13 @@ export const SIDEBAR_SECTIONS: SidebarSection[] = [
     title: "Intelligence",
     items: [
       {
+        key: "your-performance",
+        title: "Your Performance",
+        icon: "solar:chart-square-bold-duotone",
+        href: "/dashboard/your-performance",
+        requiredPlans: ["studio", "scale", "enterprise"],
+      },
+      {
         key: "virality-tracker",
         title: "Competitor Performance",
         icon: "solar:chart-bold-duotone",

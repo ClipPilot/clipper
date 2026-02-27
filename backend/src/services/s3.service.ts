@@ -688,6 +688,27 @@ class S3Service {
     console.log(`[S3] Uploaded Ad Clone final video: ${key}`);
     return key;
   }
+
+  async uploadContractPdf(
+    buffer: Buffer,
+    teamId: number,
+    contractId: number,
+    type: "unsigned" | "signed",
+  ): Promise<string> {
+    const key = `contracts/${teamId}/${contractId}/${type}_${Date.now()}.pdf`;
+    await this.uploadBuffer(buffer, key, "application/pdf");
+    return key;
+  }
+
+  async uploadSignatureImage(
+    buffer: Buffer,
+    teamId: number,
+    contractId: number,
+  ): Promise<string> {
+    const key = `contracts/${teamId}/${contractId}/signature_${Date.now()}.png`;
+    await this.uploadBuffer(buffer, key, "image/png");
+    return key;
+  }
 }
 
 export const s3Service = new S3Service();

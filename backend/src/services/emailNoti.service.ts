@@ -26,8 +26,14 @@ import {
   UgcReadyEmailData,
   massPostingApprovedEmail,
   MassPostingApprovedEmailData,
+  massPostingRejectedEmail,
+  MassPostingRejectedEmailData,
   adPostingReadyEmail,
   AdPostingReadyEmailData,
+  campaignStartedEmail,
+  CampaignStartedEmailData,
+  contractSignedEmail,
+  ContractSignedEmailData,
 } from "../templates/emailTemplates";
 
 export class EmailNotiService {
@@ -137,9 +143,24 @@ export class EmailNotiService {
     return this.sendEmailNotification(to, `${data.teamName} is approved for Mass Posting!`, html);
   }
 
+  async sendMassPostingRejected(to: string, data: MassPostingRejectedEmailData) {
+    const html = massPostingRejectedEmail(data);
+    return this.sendEmailNotification(to, `Update on your Mass Posting application`, html);
+  }
+
   async sendAdPostingReady(to: string, data: AdPostingReadyEmailData) {
     const html = adPostingReadyEmail(data);
     return this.sendEmailNotification(to, "Your clip is prepared and will be posted momentarily!", html);
+  }
+
+  async sendCampaignStarted(to: string, data: CampaignStartedEmailData) {
+    const html = campaignStartedEmail(data);
+    return this.sendEmailNotification(to, `Campaign "${data.campaignName}" is live!`, html);
+  }
+
+  async sendContractSigned(to: string, data: ContractSignedEmailData) {
+    const html = contractSignedEmail(data);
+    return this.sendEmailNotification(to, `Contract signed for ${data.campaignName}`, html);
   }
 }
 

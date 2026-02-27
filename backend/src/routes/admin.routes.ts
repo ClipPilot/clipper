@@ -13,12 +13,20 @@ import {
   setReferralReward,
 } from "../controllers/admin.controller";
 import {
-  getAllApplications,
-  getApplication,
-  approveApplication,
-  rejectApplication,
-  retryDriveFolder,
-} from "../controllers/admin-intake.controller";
+  getAllCampaigns,
+  getCampaignDetail,
+  approveCampaign,
+  rejectCampaign,
+  updateCampaign,
+  pauseCampaign,
+  endCampaign,
+  getContractAdmin,
+  generateContractAdmin,
+  updateContractAdmin,
+  getCampaignVideos,
+  getCampaignPosts,
+  postCampaignClip,
+} from "../controllers/admin-campaign.controller";
 
 const router = Router();
 
@@ -279,6 +287,27 @@ router.get("/referrals", requireAdminAuth, getAllReferrals);
 
 /**
  * @openapi
+ * /admin/affiliates:
+ *   get:
+ *     summary: Get all affiliates (admin)
+ *     description: Returns all affiliate partnerships for admin management
+ *     tags:
+ *       - Admin
+ *     security:
+ *       - adminAuth: []
+ *     responses:
+ *       200:
+ *         description: List of all affiliates
+ *       401:
+ *         description: Unauthorized
+ */
+router.get("/affiliates", requireAdminAuth, (_req, res) => {
+  // Stub — affiliates table not yet created
+  return res.json({ affiliates: [] });
+});
+
+/**
+ * @openapi
  * /admin/referrals/reward:
  *   post:
  *     summary: Set referral reward (admin)
@@ -314,14 +343,14 @@ router.get("/referrals", requireAdminAuth, getAllReferrals);
  */
 router.post("/referrals/reward", requireAdminAuth, setReferralReward);
 
-// Mass Posting Applications
+// Campaign Management
 
 /**
  * @openapi
- * /api/admin/applications:
+ * /api/admin/campaigns:
  *   get:
- *     summary: Get all mass-posting applications
- *     description: Returns a paginated list of mass-posting applications, optionally filtered by status
+ *     summary: List all campaigns
+ *     description: Returns a paginated list of all campaigns with team info, filterable by status
  *     tags: [Admin]
  *     security:
  *       - adminAuth: []
@@ -330,206 +359,90 @@ router.post("/referrals/reward", requireAdminAuth, setReferralReward);
  *         name: status
  *         schema:
  *           type: string
- *           enum: [pending, accepted, rejected, appeal]
- *         description: Filter by application status
+ *           enum: [pending, accepted, rejected, appeal, started, paused, completed]
+ *         description: Filter by campaign status
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
- *           default: 10
- *         description: Number of results per page
+ *           default: 50
  *       - in: query
  *         name: offset
  *         schema:
  *           type: integer
  *           default: 0
- *         description: Number of results to skip
  *     responses:
  *       200:
- *         description: Paginated list of applications
+ *         description: Paginated list of campaigns
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 applications:
+ *                 campaigns:
  *                   type: array
  *                   items:
  *                     type: object
- *                     properties:
- *                       id:
- *                         type: integer
- *                       team_id:
- *                         type: integer
- *                       status:
- *                         type: string
- *                       google_drive_folder_id:
- *                         type: string
- *                         nullable: true
- *                       rejection_reason:
- *                         type: string
- *                         nullable: true
- *                       admin_notes:
- *                         type: string
- *                         nullable: true
- *                       created_at:
- *                         type: string
- *                         format: date-time
- *                       updated_at:
- *                         type: string
- *                         format: date-time
- *                       team_name:
- *                         type: string
- *                       team_plan:
- *                         type: string
  *                 total:
  *                   type: integer
  *                 pagination:
  *                   type: object
- *                   properties:
- *                     limit:
- *                       type: integer
- *                     offset:
- *                       type: integer
- *                     total:
- *                       type: integer
- *                     hasMore:
- *                       type: boolean
  *       401:
  *         description: Unauthorized
  *       500:
- *         description: Failed to fetch applications
+ *         description: Server error
  */
-router.get("/applications", requireAdminAuth, getAllApplications);
+router.get("/campaigns", requireAdminAuth, getAllCampaigns);
 
 /**
  * @openapi
- * /api/admin/applications/{applicationId}:
+ * /api/admin/campaigns/{campaignId}:
  *   get:
- *     summary: Get application by ID
- *     description: Returns a single mass-posting application with its intake form data
+ *     summary: Get campaign detail
+ *     description: Returns full campaign detail including gate statuses, video count, wallet balance, and contract status
  *     tags: [Admin]
  *     security:
  *       - adminAuth: []
  *     parameters:
  *       - in: path
- *         name: applicationId
+ *         name: campaignId
  *         required: true
  *         schema:
  *           type: integer
- *         description: Application ID
  *     responses:
  *       200:
- *         description: Application details
+ *         description: Campaign details
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 application:
+ *                 campaign:
  *                   type: object
- *                   properties:
- *                     id:
- *                       type: integer
- *                     team_id:
- *                       type: integer
- *                     status:
- *                       type: string
- *                     google_drive_folder_id:
- *                       type: string
- *                       nullable: true
- *                     rejection_reason:
- *                       type: string
- *                       nullable: true
- *                     admin_notes:
- *                       type: string
- *                       nullable: true
- *                     created_at:
- *                       type: string
- *                       format: date-time
- *                     updated_at:
- *                       type: string
- *                       format: date-time
- *                     team_name:
- *                       type: string
- *                     team_plan:
- *                       type: string
- *                     intakeForm:
- *                       type: object
- *                       nullable: true
- *       400:
- *         description: Invalid application ID
  *       401:
  *         description: Unauthorized
  *       404:
- *         description: Application not found
+ *         description: Campaign not found
  *       500:
- *         description: Failed to fetch application
+ *         description: Server error
  */
-router.get("/applications/:applicationId", requireAdminAuth, getApplication);
+router.get("/campaigns/:campaignId", requireAdminAuth, getCampaignDetail);
 
 /**
  * @openapi
- * /api/admin/applications/{applicationId}/approve:
+ * /api/admin/campaigns/{campaignId}/approve:
  *   post:
- *     summary: Approve an application
- *     description: Approves a mass-posting application and creates a Google Drive folder for the team
+ *     summary: Approve a campaign
+ *     description: Approves a pending campaign. Requires quotedCpm and videoMinimum. Auto-generates the contract PDF.
  *     tags: [Admin]
  *     security:
  *       - adminAuth: []
  *     parameters:
  *       - in: path
- *         name: applicationId
+ *         name: campaignId
  *         required: true
  *         schema:
  *           type: integer
- *         description: Application ID
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               adminNotes:
- *                 type: string
- *                 description: Optional notes from admin
- *     responses:
- *       200:
- *         description: Application approved
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 application:
- *                   type: object
- *       400:
- *         description: Invalid application ID
- *       401:
- *         description: Unauthorized
- *       404:
- *         description: Application not found
- *       500:
- *         description: Failed to approve application
- */
-router.post("/applications/:applicationId/approve", requireAdminAuth, approveApplication);
-
-/**
- * @openapi
- * /api/admin/applications/{applicationId}/reject:
- *   post:
- *     summary: Reject an application
- *     description: Rejects a mass-posting application with a required reason
- *     tags: [Admin]
- *     security:
- *       - adminAuth: []
- *     parameters:
- *       - in: path
- *         name: applicationId
- *         required: true
- *         schema:
- *           type: integer
- *         description: Application ID
  *     requestBody:
  *       required: true
  *       content:
@@ -537,75 +450,471 @@ router.post("/applications/:applicationId/approve", requireAdminAuth, approveApp
  *           schema:
  *             type: object
  *             required:
- *               - rejectionReason
+ *               - quotedCpm
+ *               - videoMinimum
  *             properties:
- *               rejectionReason:
- *                 type: string
- *                 description: Reason for rejecting the application
+ *               quotedCpm:
+ *                 type: number
+ *                 description: CPM rate quoted for the campaign
+ *               videoMinimum:
+ *                 type: integer
+ *                 description: Minimum number of videos required
  *               adminNotes:
  *                 type: string
- *                 description: Optional notes from admin
+ *                 description: Optional admin notes
  *     responses:
  *       200:
- *         description: Application rejected
+ *         description: Campaign approved
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 application:
+ *                 campaign:
  *                   type: object
  *       400:
- *         description: Invalid application ID or missing rejection reason
+ *         description: Missing quotedCpm or videoMinimum
  *       401:
  *         description: Unauthorized
  *       404:
- *         description: Application not found
+ *         description: Campaign not found
  *       500:
- *         description: Failed to reject application
+ *         description: Server error
  */
-router.post("/applications/:applicationId/reject", requireAdminAuth, rejectApplication);
+router.post("/campaigns/:campaignId/approve", requireAdminAuth, approveCampaign);
 
 /**
  * @openapi
- * /api/admin/applications/{applicationId}/retry-drive:
+ * /api/admin/campaigns/{campaignId}/reject:
  *   post:
- *     summary: Retry Google Drive folder creation
- *     description: Retries creating a Google Drive folder for an approved application that failed folder creation
+ *     summary: Reject a campaign
+ *     description: Rejects a pending campaign with a required reason
  *     tags: [Admin]
  *     security:
  *       - adminAuth: []
  *     parameters:
  *       - in: path
- *         name: applicationId
+ *         name: campaignId
  *         required: true
  *         schema:
  *           type: integer
- *         description: Application ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - reason
+ *             properties:
+ *               reason:
+ *                 type: string
+ *                 description: Reason for rejection
+ *               adminNotes:
+ *                 type: string
  *     responses:
  *       200:
- *         description: Drive folder created successfully
+ *         description: Campaign rejected
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 application:
+ *                 campaign:
  *                   type: object
- *                   properties:
- *                     google_drive_folder_id:
- *                       type: string
  *       400:
- *         description: Invalid application ID
+ *         description: Missing rejection reason
  *       401:
  *         description: Unauthorized
  *       404:
- *         description: Application not found
- *       409:
- *         description: Drive folder already exists or application not in correct status
+ *         description: Campaign not found
  *       500:
- *         description: Failed to create Drive folder
+ *         description: Server error
  */
-router.post("/applications/:applicationId/retry-drive", requireAdminAuth, retryDriveFolder);
+router.post("/campaigns/:campaignId/reject", requireAdminAuth, rejectCampaign);
+
+/**
+ * @openapi
+ * /api/admin/campaigns/{campaignId}:
+ *   patch:
+ *     summary: Update campaign settings
+ *     description: Updates campaign CPM, video minimum, or admin notes
+ *     tags: [Admin]
+ *     security:
+ *       - adminAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: campaignId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               quotedCpm:
+ *                 type: number
+ *               videoMinimum:
+ *                 type: integer
+ *               adminNotes:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Campaign updated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 campaign:
+ *                   type: object
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Campaign not found
+ *       500:
+ *         description: Server error
+ */
+router.patch("/campaigns/:campaignId", requireAdminAuth, updateCampaign);
+
+/**
+ * @openapi
+ * /api/admin/campaigns/{campaignId}/pause:
+ *   post:
+ *     summary: Pause a started campaign
+ *     description: Pauses a currently running campaign
+ *     tags: [Admin]
+ *     security:
+ *       - adminAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: campaignId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Campaign paused
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 campaign:
+ *                   type: object
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Campaign not found
+ *       409:
+ *         description: Campaign is not in started status
+ *       500:
+ *         description: Server error
+ */
+router.post("/campaigns/:campaignId/pause", requireAdminAuth, pauseCampaign);
+
+/**
+ * @openapi
+ * /api/admin/campaigns/{campaignId}/end:
+ *   post:
+ *     summary: End a campaign
+ *     description: Ends a started or paused campaign by setting status to completed
+ *     tags: [Admin]
+ *     security:
+ *       - adminAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: campaignId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Campaign ended
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 campaign:
+ *                   type: object
+ *       400:
+ *         description: Campaign is not in started or paused status
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Campaign not found
+ *       500:
+ *         description: Server error
+ */
+router.post("/campaigns/:campaignId/end", requireAdminAuth, endCampaign);
+
+/**
+ * @openapi
+ * /api/admin/campaigns/{campaignId}/videos:
+ *   get:
+ *     summary: List campaign videos
+ *     description: Returns all videos associated with a campaign, with presigned URLs.
+ *     tags: [Admin - Campaigns]
+ *     security:
+ *       - adminAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: campaignId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Campaign videos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 videos:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       400:
+ *         description: Invalid campaign ID
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.get("/campaigns/:campaignId/videos", requireAdminAuth, getCampaignVideos);
+
+/**
+ * @openapi
+ * /admin/campaigns/{campaignId}/posts:
+ *   get:
+ *     summary: Get campaign posts (admin)
+ *     description: Returns all posts for a campaign with filtering and pagination
+ *     tags:
+ *       - Admin - Campaigns
+ *     security:
+ *       - adminAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: campaignId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: tab
+ *         schema:
+ *           type: string
+ *           enum: [queued, published]
+ *       - in: query
+ *         name: platform
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Campaign posts with pagination
+ *       404:
+ *         description: Campaign not found
+ *       500:
+ *         description: Server error
+ */
+router.get("/campaigns/:campaignId/posts", requireAdminAuth, getCampaignPosts);
+
+/**
+ * @openapi
+ * /api/admin/campaigns/{campaignId}/post:
+ *   post:
+ *     summary: Publish a campaign clip to platforms
+ *     description: >
+ *       Admin-initiated posting of a campaign clip. Creates posts with campaign_id,
+ *       skips credit deduction, and sends SQS job for metadata scrambling and Drive upload.
+ *     tags: [Admin - Campaigns]
+ *     security:
+ *       - adminAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: campaignId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - clipId
+ *               - platformQuantities
+ *             properties:
+ *               clipId:
+ *                 type: integer
+ *               platformQuantities:
+ *                 type: object
+ *                 additionalProperties:
+ *                   type: integer
+ *                   minimum: 1
+ *                   maximum: 50
+ *     responses:
+ *       202:
+ *         description: Posting job accepted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 postIds:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       platform:
+ *                         type: string
+ *       400:
+ *         description: Invalid input or missing fields
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Campaign or clip not found
+ *       500:
+ *         description: Server error
+ */
+router.post("/campaigns/:campaignId/post", requireAdminAuth, postCampaignClip);
+
+/**
+ * @openapi
+ * /api/admin/campaigns/{campaignId}/contract:
+ *   get:
+ *     summary: Get campaign contract with presigned PDF URL
+ *     description: Returns the contract for a campaign including a presigned URL to preview the PDF and editable clause text
+ *     tags: [Admin]
+ *     security:
+ *       - adminAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: campaignId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Contract details with PDF URL
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 contract:
+ *                   type: object
+ *                   nullable: true
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.get("/campaigns/:campaignId/contract", requireAdminAuth, getContractAdmin);
+
+/**
+ * @openapi
+ * /api/admin/campaigns/{campaignId}/contract/generate:
+ *   post:
+ *     summary: Generate contract PDF
+ *     description: Generates (or regenerates) the contract PDF for a campaign. Used when auto-generation on approval failed.
+ *     tags: [Admin]
+ *     security:
+ *       - adminAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: campaignId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Contract generated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 contract:
+ *                   type: object
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Campaign or team not found
+ *       500:
+ *         description: Failed to generate contract
+ */
+router.post("/campaigns/:campaignId/contract/generate", requireAdminAuth, generateContractAdmin);
+
+/**
+ * @openapi
+ * /api/admin/campaigns/{campaignId}/contract:
+ *   put:
+ *     summary: Update contract clauses and regenerate PDF
+ *     description: Edits contract clause text and regenerates the unsigned PDF. Cannot edit signed contracts.
+ *     tags: [Admin]
+ *     security:
+ *       - adminAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: campaignId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               parties:
+ *                 type: string
+ *               providerObligations:
+ *                 type: string
+ *               clientObligations:
+ *                 type: string
+ *               paymentTerms:
+ *                 type: string
+ *               additionalClauses:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: Contract updated and PDF regenerated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 contract:
+ *                   type: object
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Contract not found
+ *       409:
+ *         description: Cannot edit a signed contract
+ *       500:
+ *         description: Server error
+ */
+router.put("/campaigns/:campaignId/contract", requireAdminAuth, updateContractAdmin);
 
 export default router;

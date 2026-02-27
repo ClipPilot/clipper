@@ -85,6 +85,7 @@ export function StepICPs({ icps, setIcps }: StepICPsProps) {
                 placeholder="e.g. Small Business Owner, Fitness Enthusiast"
                 value={icp.name}
                 onValueChange={(v) => updateICP(idx, "name", v)}
+                isRequired
               />
               <Textarea
                 label="Description"
@@ -92,6 +93,7 @@ export function StepICPs({ icps, setIcps }: StepICPsProps) {
                 value={icp.description}
                 onValueChange={(v) => updateICP(idx, "description", v)}
                 minRows={2}
+                isRequired
               />
               <Input
                 label="Demographics"

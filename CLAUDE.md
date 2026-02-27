@@ -417,6 +417,7 @@ pnpm build          # TypeScript compile
 3. Create/update service in `backend/src/services/<feature>.service.ts`
 4. Add route mounting in `backend/src/app.ts` if new route file
 5. Apply `requireAuth` or `validateAPIKey` middleware as appropriate
+6. **Always add `@openapi` JSDoc comments** above every route definition. Include summary, description, tags, security, parameters, requestBody (if applicable), and responses. See `backend/src/routes/intake.routes.ts` or `campaign.routes.ts` for reference patterns. This powers the Swagger UI at `/api-docs`.
 
 ### Adding a New Database Table
 1. Define table in `packages/shared-db/src/schema.ts`

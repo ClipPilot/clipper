@@ -18,6 +18,7 @@ import {
 } from "@clipper/shared-db/src/schema";
 import { eq, and, not, sql } from "drizzle-orm";
 import { emailNotiService } from "./emailNoti.service";
+import { campaignBillingService } from "./massPosting/campaignBilling.service";
 import { referralService } from "./referral.service";
 import { apiBillingService } from "./apiBilling.service";
 
@@ -662,7 +663,15 @@ class StripeService {
   }
 
   async handlePaymentIntentSucceeded(paymentIntent: any): Promise<void> {
-    if (paymentIntent.metadata?.type !== "api_topup") {
+    const metadataType = paymentIntent.metadata?.type;
+
+    // Handle campaign top-ups
+    if (metadataType === "campaign_topup") {
+      await this.handleCampaignTopUp(paymentIntent);
+      return;
+    }
+
+    if (metadataType !== "api_topup") {
       return;
     }
 
@@ -703,6 +712,37 @@ class StripeService {
 
     console.log(
       `[PaymentIntent] Added $${(amountCents / 100).toFixed(2)} to team ${teamId}. New balance: $${(balanceCents / 100).toFixed(2)}`,
+    );
+  }
+
+  private async handleCampaignTopUp(paymentIntent: any): Promise<void> {
+    const teamId = parseInt(paymentIntent.metadata.teamId);
+    const campaignId = parseInt(paymentIntent.metadata.campaignId);
+    const amountCents = parseInt(paymentIntent.metadata.amount_cents);
+
+    if (!teamId || !campaignId || !amountCents) {
+      console.error("[CampaignTopUp] Missing metadata fields");
+      return;
+    }
+
+    const already = await campaignBillingService.isTopUpCredited(
+      campaignId,
+      paymentIntent.id,
+    );
+    if (already) {
+      console.log(`[CampaignTopUp] Already credited PI ${paymentIntent.id}, skipping`);
+      return;
+    }
+
+    const { balanceCents } = await campaignBillingService.topUp(
+      campaignId,
+      teamId,
+      amountCents,
+      paymentIntent.id,
+    );
+
+    console.log(
+      `[CampaignTopUp] Added $${(amountCents / 100).toFixed(2)} to campaign ${campaignId}. New balance: $${(balanceCents / 100).toFixed(2)}`,
     );
   }
 
