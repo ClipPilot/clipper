@@ -162,29 +162,32 @@ resource "aws_instance" "mac_rendering" {
   }
 
   user_data = base64encode(<<-USERDATA
-#!/bin/zsh
+#!/bin/bash
+# ec2-macos-init runs this as root via the Execute-User-Data module (RunPerInstance)
+# SSM Agent is pre-installed on AWS macOS AMIs — no install needed
 
-# Log everything for debugging
+# Log everything for debugging (check via: cat /var/log/user-data.log)
 exec > /var/log/user-data.log 2>&1
 echo "=== user_data started at $(date) ==="
+echo "=== Running as: $(whoami) ==="
+echo "=== Instance: $(curl -s http://169.254.169.254/latest/meta-data/instance-id) ==="
+
+# Ensure SSM Agent is running (pre-installed on AMI, just verify)
+echo "=== Verifying SSM Agent ==="
+launchctl load -w /Library/LaunchDaemons/com.amazon.aws.ssm.plist 2>/dev/null || true
+launchctl start com.amazon.aws.ssm 2>/dev/null || true
+echo "SSM Agent status: $(launchctl list | grep ssm || echo 'not found')"
 
 export HOME=/Users/ec2-user
+export HOMEBREW_PREFIX="/opt/homebrew"
+export PATH="$HOMEBREW_PREFIX/opt/node@22/bin:$HOMEBREW_PREFIX/bin:$PATH"
 
-# Install SSM Agent (required for Session Manager access)
-echo "=== Installing SSM Agent ==="
-brew_prefix=$(/usr/bin/sudo -u ec2-user /opt/homebrew/bin/brew --prefix 2>/dev/null || echo "/opt/homebrew")
-if ! command -v amazon-ssm-agent &>/dev/null; then
-  /usr/bin/sudo -u ec2-user /opt/homebrew/bin/brew install --cask amazon-ssm-agent || true
-  /opt/homebrew/bin/amazon-ssm-agent -register -y || true
-  launchctl load /Library/LaunchDaemons/com.amazon.aws.ssm.plist 2>/dev/null || true
-fi
-
-# Install Node.js via Homebrew (retry once if needed)
+# Install Node.js via Homebrew
 echo "=== Installing Node.js ==="
-/usr/bin/sudo -u ec2-user /opt/homebrew/bin/brew update
-/usr/bin/sudo -u ec2-user /opt/homebrew/bin/brew install node@22 || /usr/bin/sudo -u ec2-user /opt/homebrew/bin/brew install node@22
-/usr/bin/sudo -u ec2-user bash -c 'echo "export PATH=/opt/homebrew/opt/node@22/bin:\$PATH" >> ~/.zshrc'
-export PATH="/opt/homebrew/opt/node@22/bin:$PATH"
+sudo -u ec2-user $HOMEBREW_PREFIX/bin/brew update 2>&1 || true
+sudo -u ec2-user $HOMEBREW_PREFIX/bin/brew install node@22 2>&1
+echo "Node version: $(node --version 2>&1 || echo 'not found')"
+echo "npm version: $(npm --version 2>&1 || echo 'not found')"
 
 # Create the rendering service directory
 mkdir -p $HOME/mac-renderer
@@ -322,7 +325,8 @@ SERVERJS
 chown -R ec2-user:staff $HOME/mac-renderer
 
 # Install dependencies
-/usr/bin/sudo -u ec2-user /opt/homebrew/opt/node@22/bin/npm install --prefix $HOME/mac-renderer
+echo "=== Installing npm dependencies ==="
+sudo -u ec2-user bash -c "cd $HOME/mac-renderer && $HOMEBREW_PREFIX/opt/node@22/bin/npm install" 2>&1
 
 # Create launchd plist to run on boot
 cat > /Library/LaunchDaemons/com.cuttr.mac-renderer.plist << 'PLIST'
@@ -359,9 +363,17 @@ cat > /Library/LaunchDaemons/com.cuttr.mac-renderer.plist << 'PLIST'
 PLIST
 
 # Load and start the service
-launchctl load /Library/LaunchDaemons/com.cuttr.mac-renderer.plist
+echo "=== Starting mac-renderer service ==="
+launchctl load -w /Library/LaunchDaemons/com.cuttr.mac-renderer.plist
 
-echo "=== Mac renderer setup complete at $(date) ==="
+# Wait a moment and verify it's running
+sleep 5
+echo "=== Service status ==="
+launchctl list | grep cuttr || echo "Service not found in launchctl"
+curl -s http://localhost:${var.mac_renderer_port}/health || echo "Health check failed (service may still be starting)"
+
+echo "=== user_data complete at $(date) ==="
+echo "=== Logs: /Users/ec2-user/mac-renderer/stdout.log and stderr.log ==="
 USERDATA
   )
 
