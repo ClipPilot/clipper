@@ -1232,8 +1232,8 @@ export const viralitySettings = pgTable(
     team_id: integer("team_id")
       .notNull()
       .references(() => teams.id, { onDelete: "cascade" }),
-      percent_threshold: integer("percent_threshold").notNull().default(100),
-      absolute_threshold: integer("absolute_threshold").notNull().default(100000),
+    percent_threshold: integer("percent_threshold").notNull().default(100),
+    absolute_threshold: integer("absolute_threshold").notNull().default(100000),
     threshold_mode: viralityThresholdModeEnum("threshold_mode")
       .notNull()
       .default("and"),
