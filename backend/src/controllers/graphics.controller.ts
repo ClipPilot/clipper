@@ -6,6 +6,7 @@ import { s3Service } from "../services/s3.service";
 import { getTeamUsage } from "../middleware/subscription.middleware";
 import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
 import type { AspectRatio } from "../services/ai-ugc/falImage.service";
+import type { StylePreset } from "../services/ai-ugc/graphicsPrompts";
 
 interface AuthRequest extends Request {
   user?: { id: string; email: string; dbUserId: number };
@@ -19,6 +20,15 @@ const VALID_GRAPHIC_TYPES: GraphicType[] = [
   "custom",
 ];
 
+const VALID_STYLE_PRESETS: StylePreset[] = [
+  "tile-ad",
+  "collage",
+  "photoshoot",
+  "flat-lay",
+  "ugc",
+  "minimalist",
+];
+
 const VALID_ASPECT_RATIOS: AspectRatio[] = [
   "1:1", "9:16", "16:9", "4:5", "3:4", "2:3",
 ];
@@ -30,7 +40,7 @@ const CREDIT_COST = 4;
 export class GraphicsController {
   async generate(req: AuthRequest, res: Response) {
     try {
-      const { teamId, prompt, graphicType, aspectRatio, productImageKeys, mode = "variations" } = req.body;
+      const { teamId, prompt, graphicType, aspectRatio, productImageKeys, mode = "variations", stylePreset = "tile-ad" } = req.body;
 
       if (!teamId || !prompt || !graphicType || !aspectRatio) {
         return res.status(400).json({
@@ -44,6 +54,10 @@ export class GraphicsController {
 
       if (!VALID_GRAPHIC_TYPES.includes(graphicType)) {
         return res.status(400).json({ error: "Invalid graphic type" });
+      }
+
+      if (!VALID_STYLE_PRESETS.includes(stylePreset)) {
+        return res.status(400).json({ error: "Invalid style preset" });
       }
 
       if (!VALID_ASPECT_RATIOS.includes(aspectRatio)) {
@@ -83,6 +97,7 @@ export class GraphicsController {
           teamId,
           prompt,
           graphicType,
+          stylePreset,
           aspectRatio,
           mode,
           productImageKeys,

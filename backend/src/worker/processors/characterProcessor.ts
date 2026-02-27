@@ -41,7 +41,6 @@ async function generateSingleImage(
       prompt,
       aspectRatio: "9:16",
       imageUrls: referenceImageUrls,
-      usePro: true,
     });
 
     const response = await fetch(result.imageUrl);

@@ -10,7 +10,7 @@ import { canAccessUGCStudio } from "@/lib/plans";
 import { ScalePlanRequired } from "@/components/ugc-studio";
 import { ProductImageUploader } from "@/components/ugc-studio/script/ProductImageUploader";
 import { graphicsAPI, type GeneratedGraphic } from "@/api/graphics";
-import { GRAPHIC_TYPES, ASPECT_RATIOS } from "@/config/graphicsConfig";
+import { GRAPHIC_TYPES, ASPECT_RATIOS, STYLE_PRESETS } from "@/config/graphicsConfig";
 import type { ProductImage } from "@/components/ugc-studio/script/types";
 
 export default function GraphicsPage() {
@@ -27,6 +27,7 @@ export default function GraphicsPage() {
 function GraphicsContent({ teamId, router }: { teamId: number; router: ReturnType<typeof useRouter> }) {
   const [prompt, setPrompt] = useState("");
   const [graphicType, setGraphicType] = useState("instagram-ad");
+  const [stylePreset, setStylePreset] = useState("tile-ad");
   const [aspectRatio, setAspectRatio] = useState("1:1");
   const [productImages, setProductImages] = useState<ProductImage[]>([]);
   const [generating, setGenerating] = useState(false);
@@ -45,6 +46,7 @@ function GraphicsContent({ teamId, router }: { teamId: number; router: ReturnTyp
         teamId,
         prompt: prompt.trim(),
         graphicType,
+        stylePreset,
         aspectRatio,
         productImageKeys: productImages.map((img) => img.key),
       });
@@ -183,6 +185,32 @@ function GraphicsContent({ teamId, router }: { teamId: number; router: ReturnTyp
                   </SelectItem>
                 ))}
               </Select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-3">
+                Style Preset
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {STYLE_PRESETS.map((preset) => (
+                  <button
+                    key={preset.id}
+                    onClick={() => setStylePreset(preset.id)}
+                    title={preset.description}
+                    className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left transition-all ${
+                      stylePreset === preset.id
+                        ? "bg-pink-500/10 border border-pink-500 text-text-primary"
+                        : "bg-surface-base border border-border-base text-text-secondary hover:border-pink-400/50"
+                    }`}
+                  >
+                    <Icon icon={preset.icon} width={18} className={stylePreset === preset.id ? "text-pink-400" : "text-text-tertiary"} />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{preset.name}</p>
+                      <p className="text-[11px] text-text-tertiary truncate">{preset.description}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div>

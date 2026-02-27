@@ -1,6 +1,8 @@
 import { generateImage, generateImageWithReferences, generateMultipleImages, generateMultipleImagesWithReferences } from "./falImage.service";
 import { s3Service } from "../s3.service";
+import { composePrompt } from "./graphicsPrompts";
 import type { AspectRatio } from "./falImage.service";
+import type { StylePreset } from "./graphicsPrompts";
 
 export type GraphicType =
   | "instagram-ad"
@@ -9,35 +11,13 @@ export type GraphicType =
   | "banner-display-ad"
   | "custom";
 
-const GRAPHIC_TYPE_PROMPTS: Record<GraphicType, { clean: string; bold: string }> = {
-  "instagram-ad": {
-    clean: "Professional, polished Instagram ad. Clean minimal layout with muted, sophisticated color palette. Realistic product photography style, not illustrated or cartoonish. Subtle neutral background, no excessive gradients or neon colors. Leave negative space for text. The look should match real brand ads from Apple, Nike, or Glossier — understated, elegant, commercial.",
-    bold: "High-impact Instagram ad with one striking accent color against a dark or contrasting background. Bold, editorial feel — think a fashion campaign or a premium tech launch. Dramatic lighting, strong contrast, cinematic mood. Still professional and polished, not chaotic.",
-  },
-  "facebook-ad": {
-    clean: "Professional Facebook ad graphic. Clean, corporate, trustworthy feel. Realistic photography style with natural lighting. Muted tones, white or light neutral backgrounds. Simple composition with one clear focal point. No busy patterns, no oversaturated colors. Should look like a real paid ad from a Fortune 500 brand.",
-    bold: "Eye-catching Facebook ad with a bold color pop and strong contrast. One dominant accent color against a clean background. Confident, modern, slightly editorial. Think a Spotify Wrapped or Mailchimp campaign — playful but still polished and professional.",
-  },
-  "product-showcase": {
-    clean: "Premium e-commerce product photo on a clean white or light gray seamless background. Studio photography with soft, even lighting. Subtle shadow grounding the product. No props, no text, no decorations — just the product presented cleanly. Think Amazon hero image or Shopify product listing. Photorealistic, commercial grade.",
-    bold: "Dramatic product hero shot with moody, cinematic lighting. Dark or rich colored background with the product lit by a single strong light source. High contrast, luxurious feel. Think Apple product reveal or premium fragrance ad. Still photorealistic, not illustrated.",
-  },
-  "banner-display-ad": {
-    clean: "Clean, professional display ad graphic. Flat, minimal design with one or two brand colors max. Simple layout with clear visual hierarchy. Solid or subtly textured background — no busy patterns. Should look like a real Google Display Network or programmatic ad. Corporate, restrained, conversion-focused.",
-    bold: "Bold display banner with a striking color block design and strong geometric composition. High contrast, attention-grabbing from a distance. One punchy accent color. Think a premium brand takeover ad — impactful but not cluttered.",
-  },
-  custom: {
-    clean: "Professional, clean advertising graphic. Realistic style, not illustrated or AI-looking. Muted, sophisticated color palette with neutral backgrounds. Minimal composition, no clutter. Should look like it was produced by a professional design agency for a real brand campaign.",
-    bold: "Creative, editorial advertising graphic with bold color choices and dramatic composition. Striking visual impact with one strong accent. Confident and artistic but still commercially polished. Think award-winning ad campaign.",
-  },
-};
-
 export type GenerationMode = "variations" | "carousel";
 
 export interface GenerateGraphicsOptions {
   teamId: number;
   prompt: string;
   graphicType: GraphicType;
+  stylePreset: StylePreset;
   aspectRatio: AspectRatio;
   mode: GenerationMode;
   productImageKeys?: string[];
@@ -69,7 +49,6 @@ async function generateBatch(
       imageUrls: referenceUrls,
       aspectRatio,
       numImages,
-      usePro: true,
     });
     return result.imageUrls;
   }
@@ -77,23 +56,30 @@ async function generateBatch(
     prompt,
     aspectRatio,
     numImages,
-    usePro: true,
   });
   return result.imageUrls;
+}
+
+function buildPrompt(
+  userPrompt: string,
+  graphicType: GraphicType,
+  stylePreset: StylePreset,
+  variant: "clean" | "bold",
+  hasReferences: boolean,
+): string {
+  return composePrompt({ stylePreset, graphicType, variant, userPrompt, hasReferences });
 }
 
 async function generateVariations(
   prompt: string,
   graphicType: GraphicType,
+  stylePreset: StylePreset,
   aspectRatio: AspectRatio,
   referenceUrls?: string[],
 ): Promise<string[]> {
-  const { clean, bold } = GRAPHIC_TYPE_PROMPTS[graphicType];
-  const refInstruction = referenceUrls?.length
-    ? "IMPORTANT: Reference images are provided. You MUST use them as the primary visual basis. Keep the same subject, product, colors, and composition from the reference images. The user's request describes how to modify or build upon the reference — do NOT ignore the reference images or generate unrelated content.\n\n"
-    : "";
-  const cleanPrompt = `${refInstruction}${clean}\n\nUser request: ${prompt}`;
-  const boldPrompt = `${refInstruction}${bold}\n\nUser request: ${prompt}`;
+  const hasRefs = !!referenceUrls?.length;
+  const cleanPrompt = buildPrompt(prompt, graphicType, stylePreset, "clean", hasRefs);
+  const boldPrompt = buildPrompt(prompt, graphicType, stylePreset, "bold", hasRefs);
 
   const [cleanUrls, boldUrls] = await Promise.all([
     generateBatch(cleanPrompt, 3, aspectRatio, referenceUrls),
@@ -106,14 +92,12 @@ async function generateVariations(
 async function generateCarousel(
   prompt: string,
   graphicType: GraphicType,
+  stylePreset: StylePreset,
   aspectRatio: AspectRatio,
   referenceUrls?: string[],
 ): Promise<string[]> {
-  const { clean } = GRAPHIC_TYPE_PROMPTS[graphicType];
-  const refInstruction = referenceUrls?.length
-    ? "IMPORTANT: Reference images are provided. You MUST use them as the primary visual basis. Keep the same subject, product, colors, and composition from the reference images. The user's request describes how to modify or build upon the reference — do NOT ignore the reference images or generate unrelated content.\n\n"
-    : "";
-  const heroPrompt = `${refInstruction}${clean}\n\nUser request: ${prompt}`;
+  const hasRefs = !!referenceUrls?.length;
+  const heroPrompt = buildPrompt(prompt, graphicType, stylePreset, "clean", hasRefs);
 
   console.log("[GRAPHICS] Carousel: generating hero image...");
 
@@ -124,7 +108,6 @@ async function generateCarousel(
       imageUrls: referenceUrls,
       aspectRatio,
       numImages: 1,
-      usePro: true,
     });
     heroUrl = result.imageUrl;
   } else {
@@ -132,14 +115,19 @@ async function generateCarousel(
       prompt: heroPrompt,
       aspectRatio,
       numImages: 1,
-      usePro: true,
     });
     heroUrl = result.imageUrl;
   }
 
   console.log("[GRAPHICS] Carousel: generating 3 continuation slides from hero...");
 
-  const continuationPrompt = `${clean}\n\nThis image is part of an Instagram carousel series. Create a visually cohesive continuation slide that matches the exact same style, color palette, lighting, and mood as the reference image. Explore a different angle, composition, or perspective of the same concept — be creative with the framing while keeping the brand feel consistent.\n\nUser request: ${prompt}`;
+  const continuationPrompt = buildPrompt(
+    `${prompt}\n\nThis is part of a carousel series. Create a visually cohesive continuation slide matching the exact style, color palette, lighting, and mood of the reference. Explore a different angle or perspective — creative framing while keeping brand feel consistent.`,
+    graphicType,
+    stylePreset,
+    "clean",
+    true,
+  );
 
   const allRefs = [heroUrl, ...(referenceUrls || [])];
   const continuationResult = await generateMultipleImagesWithReferences({
@@ -147,7 +135,6 @@ async function generateCarousel(
     imageUrls: allRefs,
     aspectRatio,
     numImages: 3,
-    usePro: true,
   });
 
   return [heroUrl, ...continuationResult.imageUrls];
@@ -156,9 +143,9 @@ async function generateCarousel(
 export async function generateGraphics(
   options: GenerateGraphicsOptions,
 ): Promise<GeneratedGraphic[]> {
-  const { teamId, prompt, graphicType, aspectRatio, mode, productImageKeys } = options;
+  const { teamId, prompt, graphicType, stylePreset, aspectRatio, mode, productImageKeys } = options;
 
-  console.log(`[GRAPHICS] Generating 4 graphics (mode: ${mode}) for team ${teamId}, type: ${graphicType}, ratio: ${aspectRatio}`);
+  console.log(`[GRAPHICS] Generating 4 graphics (mode: ${mode}, preset: ${stylePreset}) for team ${teamId}, type: ${graphicType}, ratio: ${aspectRatio}`);
 
   let referenceUrls: string[] | undefined;
   if (productImageKeys && productImageKeys.length > 0) {
@@ -168,8 +155,8 @@ export async function generateGraphics(
   }
 
   const imageUrls = mode === "carousel"
-    ? await generateCarousel(prompt, graphicType, aspectRatio, referenceUrls)
-    : await generateVariations(prompt, graphicType, aspectRatio, referenceUrls);
+    ? await generateCarousel(prompt, graphicType, stylePreset, aspectRatio, referenceUrls)
+    : await generateVariations(prompt, graphicType, stylePreset, aspectRatio, referenceUrls);
 
   const timestamp = Date.now();
   const results: GeneratedGraphic[] = [];
