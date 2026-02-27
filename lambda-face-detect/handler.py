@@ -395,18 +395,18 @@ def detect_facecam_overlay(frames: List[np.ndarray], face: Dict[str, int],
 def expand_face_fallback(face: Dict[str, int], frame_w: int, frame_h: int) -> Dict[str, int]:
     """
     Fallback: if overlay edge detection fails, use a generous expansion
-    centred on the face. The crop is at least 30% of the frame in each
-    dimension so it never looks hyper-zoomed.
+    centred on the face. The crop captures the full facecam area so the
+    face is clearly visible, not hyper-zoomed.
     """
     fx, fy, fw, fh = face['x'], face['y'], face['w'], face['h']
     face_cx = fx + fw // 2
     face_cy = fy + fh // 2
 
-    target_w = max(int(frame_w * 0.30), fw + int(fw * 2.0) * 2)
-    target_h = max(int(frame_h * 0.30), fh + int(fh * 1.0) + int(fh * 3.5))
+    target_w = max(int(frame_w * 0.40), fw * 6)
+    target_h = max(int(frame_h * 0.40), fh * 6)
 
     new_x = max(0, face_cx - target_w // 2)
-    new_y = max(0, face_cy - target_h // 3)  # bias upward for headroom
+    new_y = max(0, face_cy - target_h // 3)
     new_w = min(target_w, frame_w - new_x)
     new_h = min(target_h, frame_h - new_y)
 
@@ -417,7 +417,7 @@ def detect_facecam_region(video_path: str, net) -> Dict[str, Any]:
     """
     Detect the primary face and the facecam overlay boundary.
 
-    1. Samples 5 frames, keeps ALL frames + picks highest-confidence face.
+    1. Samples frames across the video, keeps ALL frames + picks highest-confidence face.
     2. Runs overlay detection (temporal variance → bilateral contour).
     3. Falls back to a generous face-centred crop if detection fails.
 
@@ -427,7 +427,8 @@ def detect_facecam_region(video_path: str, net) -> Dict[str, Any]:
     if duration <= 0:
         return {'facecamDetected': False}
 
-    sample_times = [duration * i / 6 for i in range(1, 6)]
+    num_samples = min(max(int(duration / 5), 5), 20)  # 1 frame per 5s, min 5, max 20
+    sample_times = [duration * i / (num_samples + 1) for i in range(1, num_samples + 1)]
     best_face = None
     best_confidence = 0.0
     sampled_frames: List[np.ndarray] = []
@@ -501,13 +502,14 @@ def detect_facecam_region(video_path: str, net) -> Dict[str, Any]:
 def detect_multi_face_regions(video_path: str, net) -> Dict[str, Any]:
     """
     Detect all faces in the video and return their bounding boxes.
-    Samples multiple frames and merges detections.
+    Samples frames across the video and merges detections.
     """
     duration, _ = get_video_info(video_path)
     if duration <= 0:
         return {'faces': [], 'faceCount': 0}
 
-    sample_times = [duration * i / 6 for i in range(1, 6)]
+    num_samples = min(max(int(duration / 5), 5), 20)
+    sample_times = [duration * i / (num_samples + 1) for i in range(1, num_samples + 1)]
     all_faces_per_frame = []
     frame_w, frame_h = 0, 0
 

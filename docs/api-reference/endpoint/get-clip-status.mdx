@@ -14,16 +14,16 @@ Check the status of a clip job. When all clips are finished, the response includ
 
 ### Path parameters
 
-<ParamField path="jobId" type="integer" required>
-  The `job_id` returned from [Create Clip](/api-reference/endpoint/create-clip).
+<ParamField path="jobId" type="string" required>
+  The `job_id` (UUID) returned from [Create Clip](/api-reference/endpoint/create-clip).
 </ParamField>
 
 ### Response
 
 When the job is still processing:
 
-<ResponseField name="job_id" type="integer">
-  The job identifier.
+<ResponseField name="job_id" type="string">
+  The job identifier (UUID).
 </ResponseField>
 
 <ResponseField name="status" type="string">
@@ -44,8 +44,8 @@ When the job is still processing:
 
 When all clips are finished:
 
-<ResponseField name="job_id" type="integer">
-  The job identifier.
+<ResponseField name="job_id" type="string">
+  The job identifier (UUID).
 </ResponseField>
 
 <ResponseField name="status" type="string">
@@ -64,8 +64,11 @@ When all clips are finished:
     <ResponseField name="clips[].title" type="string">
       AI-generated clip title (when completed).
     </ResponseField>
+    <ResponseField name="clips[].heading" type="string">
+      AI-generated viral heading text (when `auto_heading` was enabled). This text appears as a heading overlay on the clip.
+    </ResponseField>
     <ResponseField name="clips[].download_url" type="string">
-      Permanent download URL (when completed). These URLs do not expire.
+      Presigned download URL (when completed). Valid for 7 days.
     </ResponseField>
     <ResponseField name="clips[].error" type="string">
       Error message (when failed).
@@ -79,7 +82,7 @@ When all clips are finished:
 <ResponseExample>
 ```json Processing
 {
-  "job_id": 42,
+  "job_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "status": "processing",
   "progress": {
     "completed": 1,
@@ -90,13 +93,14 @@ When all clips are finished:
 
 ```json Completed
 {
-  "job_id": 42,
+  "job_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "status": "completed",
   "clips": [
     {
       "clip_id": 1234,
       "status": "completed",
       "title": "The Best Moment",
+      "heading": "YOU WON'T BELIEVE THIS",
       "download_url": "https://clipster-videos-prod.s3.us-west-2.amazonaws.com/generated-clips/...",
       "created_at": "2026-02-16T12:00:00.000Z"
     },
@@ -104,6 +108,7 @@ When all clips are finished:
       "clip_id": 1235,
       "status": "completed",
       "title": "Key Insight",
+      "heading": "GAME CHANGING STRATEGY",
       "download_url": "https://clipster-videos-prod.s3.us-west-2.amazonaws.com/generated-clips/...",
       "created_at": "2026-02-16T12:00:00.000Z"
     }
@@ -113,7 +118,7 @@ When all clips are finished:
 
 ```json Failed
 {
-  "job_id": 42,
+  "job_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "status": "completed",
   "clips": [
     {

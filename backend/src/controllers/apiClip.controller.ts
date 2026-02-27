@@ -54,9 +54,12 @@ export const createClipJobController = async (
   const { teamId, userId, id: apiKeyId } = req.apiKey!;
 
   try {
-    // --- Resolve video source ---
-    const uploadedFile = (req as any).file as Express.Multer.File | undefined;
+    // --- Resolve video + music sources ---
+    const files = (req as any).files as Record<string, Express.Multer.File[]> | undefined;
+    const uploadedFile = files?.video?.[0];
+    const uploadedMusic = files?.music?.[0];
     const videoUrl: string | undefined = req.body.video_url;
+    const musicUrl: string | undefined = req.body.music_url;
 
     if (!uploadedFile && !videoUrl) {
       return res.status(400).json({
@@ -140,6 +143,100 @@ export const createClipJobController = async (
     // Auto heading (default true — generates a viral heading per clip)
     const autoHeading = req.body.auto_heading !== false && req.body.auto_heading !== "false";
 
+    // Heading style customization (nested object or flat fields)
+    const headingParam = req.body.heading;
+    const rawHeadingStyle = (
+      typeof headingParam === "object" ? headingParam?.style : req.body.heading_style
+    ) as string | undefined;
+    let textStyle: "stroke" | "instagram" = "stroke";
+    if (rawHeadingStyle) {
+      if (!["stroke", "instagram"].includes(rawHeadingStyle)) {
+        return res.status(400).json({
+          error: `Invalid heading style "${rawHeadingStyle}". Must be one of: stroke, instagram`,
+        });
+      }
+      textStyle = rawHeadingStyle as "stroke" | "instagram";
+    }
+
+    const rawHeadingColor = (
+      typeof headingParam === "object" ? headingParam?.color : req.body.heading_color
+    ) as string | undefined;
+    let textColor: string | undefined;
+    if (rawHeadingColor) {
+      const resolved = CAPTION_COLORS[rawHeadingColor.toLowerCase()];
+      if (!resolved) {
+        return res.status(400).json({
+          error: `Invalid heading color "${rawHeadingColor}". Must be one of: ${Object.keys(CAPTION_COLORS).join(", ")}`,
+        });
+      }
+      textColor = resolved;
+    }
+
+    const rawHeadingFont = (
+      typeof headingParam === "object" ? headingParam?.font : req.body.heading_font
+    ) as string | undefined;
+    let textFont: string | undefined;
+    if (rawHeadingFont) {
+      if (!isValidCaptionFont(rawHeadingFont)) {
+        return res.status(400).json({
+          error: `Invalid heading font "${rawHeadingFont}". Must be one of: ${CAPTION_FONTS.join(", ")}`,
+        });
+      }
+      textFont = resolveCaptionFont(rawHeadingFont);
+    }
+
+    // Custom heading text (takes priority over auto_heading)
+    const customText: string | undefined = (
+      typeof headingParam === "object" ? headingParam?.text : req.body.heading_text
+    ) || undefined;
+
+    // Heading position (default top)
+    const rawHeadingPosition = (
+      typeof headingParam === "object" ? headingParam?.position : req.body.heading_position
+    ) as string | undefined;
+    let textPosition: "top" | "bottom" | "middle" | undefined;
+    if (rawHeadingPosition) {
+      if (!["top", "middle", "bottom"].includes(rawHeadingPosition)) {
+        return res.status(400).json({
+          error: `Invalid heading position "${rawHeadingPosition}". Must be one of: top, middle, bottom`,
+        });
+      }
+      textPosition = rawHeadingPosition as "top" | "bottom" | "middle";
+    }
+
+    // Hook length (seconds) — default undefined (AI decides, typically 6s)
+    const rawHookLength = parseInt(req.body.hook_length);
+    let hookLength: number | undefined;
+    if (!isNaN(rawHookLength)) {
+      if (rawHookLength < 2 || rawHookLength > 15) {
+        return res.status(400).json({
+          error: `Invalid hook_length "${rawHookLength}". Must be between 2 and 15 seconds.`,
+        });
+      }
+      hookLength = rawHookLength;
+    }
+
+    // --- Background music ---
+    let backgroundMusicS3Key: string | undefined;
+    try {
+      if (uploadedMusic) {
+        backgroundMusicS3Key = await s3Service.uploadRawVideo(uploadedMusic.path, teamId);
+      } else if (musicUrl) {
+        try {
+          new URL(musicUrl);
+        } catch {
+          return res.status(400).json({ error: "music_url must be a valid URL" });
+        }
+        const outDir = ensureOutputDir();
+        const musicTempPath = path.join(outDir, `api_music_${Date.now()}.mp3`);
+        await videoDownloadService.downloadToPath(musicUrl, musicTempPath);
+        backgroundMusicS3Key = await s3Service.uploadRawVideo(musicTempPath, teamId);
+        if (fs.existsSync(musicTempPath)) fs.unlinkSync(musicTempPath);
+      }
+    } catch (musicErr) {
+      console.warn("Failed to process background music:", musicErr);
+    }
+
     // --- Check balance upfront ---
     const product = API_PRODUCTS[CLIP_PRODUCT_SLUG];
     const totalCostCents = product.priceCents * numClips;
@@ -189,10 +286,13 @@ export const createClipJobController = async (
     processInBackground({
       teamId, userId, clipIds, numClips, promptType,
       captionsEnabled, captionColor, captionFont, conversionMode,
-      clipLength, prompt, autoHeading,
+      clipLength, prompt, autoHeading, hookLength,
+      textStyle, textColor, textFont, textPosition, customText,
+      backgroundMusicS3Key,
       originalFileName: uploadedFile?.originalname,
       fileSize: uploadedFile?.size,
       localVideoPath: uploadedFile?.path,
+      localMusicPath: uploadedMusic?.path,
       videoUrl,
     });
   } catch (err) {
@@ -296,13 +396,22 @@ async function uploadAndDispatch(params: {
   clipLength: number;
   prompt?: string;
   autoHeading: boolean;
+  hookLength?: number;
+  textStyle?: "stroke" | "instagram";
+  textColor?: string;
+  textFont?: string;
+  textPosition?: "top" | "bottom" | "middle";
+  customText?: string;
+  backgroundMusicS3Key?: string;
   originalFileName?: string;
   fileSize?: number;
 }) {
   const {
     teamId, userId, clipIds, localVideoPath,
     numClips, promptType, captionsEnabled, captionColor, captionFont,
-    conversionMode, clipLength, prompt, autoHeading, originalFileName, fileSize,
+    conversionMode, clipLength, prompt, autoHeading, hookLength,
+    textStyle, textColor, textFont, textPosition, customText, backgroundMusicS3Key,
+    originalFileName, fileSize,
   } = params;
 
   const s3Key = await s3Service.uploadRawVideo(localVideoPath, teamId);
@@ -315,6 +424,7 @@ async function uploadAndDispatch(params: {
     options: {
       numberOfVideos: numClips,
       length: clipLength,
+      hookLength,
       promptType,
       textPrompt: prompt,
       captions: captionsEnabled,
@@ -322,6 +432,12 @@ async function uploadAndDispatch(params: {
       captionFont,
       conversionMode,
       autoHeading,
+      textStyle,
+      textColor,
+      textFont,
+      textPosition,
+      customText,
+      backgroundMusicS3Key,
     },
     originalFileName,
     fileSize,
@@ -342,12 +458,20 @@ function processInBackground(params: {
   clipLength: number;
   prompt?: string;
   autoHeading: boolean;
+  hookLength?: number;
+  textStyle?: "stroke" | "instagram";
+  textColor?: string;
+  textFont?: string;
+  textPosition?: "top" | "bottom" | "middle";
+  customText?: string;
+  backgroundMusicS3Key?: string;
   originalFileName?: string;
   fileSize?: number;
   localVideoPath?: string;
+  localMusicPath?: string;
   videoUrl?: string;
 }) {
-  const { teamId, clipIds, numClips, videoUrl, localVideoPath } = params;
+  const { teamId, clipIds, numClips, videoUrl, localVideoPath, localMusicPath } = params;
 
   (async () => {
     let tempPath: string | undefined;
@@ -378,6 +502,13 @@ function processInBackground(params: {
         clipLength: params.clipLength,
         prompt: params.prompt,
         autoHeading: params.autoHeading,
+        hookLength: params.hookLength,
+        textStyle: params.textStyle,
+        textColor: params.textColor,
+        textFont: params.textFont,
+        textPosition: params.textPosition,
+        customText: params.customText,
+        backgroundMusicS3Key: params.backgroundMusicS3Key,
         originalFileName: params.originalFileName,
         fileSize: params.fileSize,
       });
@@ -398,6 +529,7 @@ function processInBackground(params: {
     } finally {
       if (tempPath && fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
       if (localVideoPath && fs.existsSync(localVideoPath)) fs.unlinkSync(localVideoPath);
+      if (localMusicPath && fs.existsSync(localMusicPath)) fs.unlinkSync(localMusicPath);
     }
   })();
 }

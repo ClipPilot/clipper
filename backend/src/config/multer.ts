@@ -156,6 +156,60 @@ export const audioUpload = multer({
   },
 });
 
+const apiClipFileFilter = (
+  req: Express.Request,
+  file: Express.Multer.File,
+  cb: multer.FileFilterCallback
+) => {
+  if (file.fieldname === "video") {
+    const allowedVideoMimes = [
+      "video/mp4",
+      "video/quicktime",
+      "video/x-msvideo",
+      "video/x-matroska",
+      "video/webm",
+    ];
+    if (allowedVideoMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Invalid video type. Only mp4, mov, avi, mkv, webm are allowed."));
+    }
+  } else if (file.fieldname === "music") {
+    const allowedAudioMimes = [
+      "audio/mpeg",
+      "audio/wav",
+      "audio/aac",
+      "audio/mp4",
+      "audio/ogg",
+    ];
+    if (allowedAudioMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Invalid audio type. Only mp3, wav, aac, m4a are allowed."));
+    }
+  } else {
+    cb(new Error("Unexpected field"));
+  }
+};
+
+export const apiClipUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, uploadsDir);
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+      const prefix = file.fieldname === "video" ? "api-clip-video" : "api-clip-music";
+      cb(null, `${prefix}-${uniqueSuffix}${path.extname(file.originalname)}`);
+    },
+  }),
+  fileFilter: apiClipFileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024 * 1024, // 10GB max
+    files: 2, // 1 video + 1 music
+  },
+});
+
 const apiFaceSwapFileFilter = (
   req: Express.Request,
   file: Express.Multer.File,

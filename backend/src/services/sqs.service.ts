@@ -56,6 +56,8 @@ export interface ClipVideoJob extends BaseJob {
     captionFont?: string;
     conversionMode?: ConversionMode;
     autoHeading?: boolean;
+    textStyle?: "stroke" | "instagram";
+    backgroundMusicS3Key?: string;
   };
   originalFileName?: string;
   fileSize?: number;

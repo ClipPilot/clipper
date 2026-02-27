@@ -43,6 +43,9 @@ export interface SubmitClipParams {
   captionColor?: string;
   captionFont?: string;
   conversionMode?: ConversionMode;
+  textStyle?: "stroke" | "instagram";
+  autoHeading?: boolean;
+  backgroundMusicS3Key?: string;
 }
 
 export interface SubmitClipResponse {
@@ -83,6 +86,9 @@ export interface SubmitBatchClipParams {
   captionColor?: string;
   captionFont?: string;
   conversionMode?: ConversionMode;
+  textStyle?: "stroke" | "instagram";
+  autoHeading?: boolean;
+  backgroundMusicS3Key?: string;
 }
 
 export interface VideoUrlInfo {

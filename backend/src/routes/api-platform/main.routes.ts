@@ -21,7 +21,7 @@ import {
   getFaceSwapStatusController,
 } from "../../controllers/apiFaceSwap.controller";
 import { requireAuth, validateAPIKey } from "../../middleware/auth.middleware";
-import { upload, apiFaceSwapUpload } from "../../config/multer";
+import { upload, apiFaceSwapUpload, apiClipUpload } from "../../config/multer";
 
 const router = Router();
 
@@ -318,10 +318,46 @@ router.get("/v1/wallet", validateAPIKey, getWalletV1Controller);
  *                   - speaker-zoom: zooms into the speaker's face
  *                   - center-crop: crops the center of the video
  *                   - active-speaker: tracks and zooms into the active speaker (multi-person)
+ *               hook_length:
+ *                 type: integer
+ *                 minimum: 2
+ *                 maximum: 15
+ *                 default: 6
+ *                 description: Hook duration in seconds. The hook is the attention-grabbing opening of each clip.
  *               auto_heading:
  *                 type: boolean
  *                 default: true
  *                 description: Automatically generate a short viral heading overlay for each clip using AI.
+ *               heading:
+ *                 type: object
+ *                 description: Heading style customization. Applies to both auto-generated and custom headings.
+ *                 properties:
+ *                   text:
+ *                     type: string
+ *                     description: Custom heading text. When provided, overrides auto_heading.
+ *                   style:
+ *                     type: string
+ *                     enum: [stroke, instagram]
+ *                     default: stroke
+ *                     description: "stroke = outlined text, instagram = white text on dark background"
+ *                   color:
+ *                     type: string
+ *                     enum: [white, black, red, orange, yellow, green, teal, blue, purple, pink]
+ *                     default: white
+ *                     description: Text color (only applies to stroke style).
+ *                   font:
+ *                     type: string
+ *                     enum: [Montserrat, Luckiest Guy, Everlasting, Komika, Burbank, Bebas Neue, Anton]
+ *                     default: Montserrat
+ *                   position:
+ *                     type: string
+ *                     enum: [top, middle, bottom]
+ *                     default: top
+ *                     description: Heading vertical position on the video.
+ *               music_url:
+ *                 type: string
+ *                 format: uri
+ *                 description: URL to a background music file (mp3, wav, aac). Will be mixed into all clips at 30% volume.
  *         multipart/form-data:
  *           schema:
  *             type: object
@@ -369,10 +405,42 @@ router.get("/v1/wallet", validateAPIKey, getWalletV1Controller);
  *                 enum: [standard, gaming, speaker-zoom, center-crop, active-speaker]
  *                 default: standard
  *                 description: Controls how the video is framed for vertical output.
+ *               hook_length:
+ *                 type: integer
+ *                 minimum: 2
+ *                 maximum: 15
+ *                 default: 6
+ *                 description: Hook duration in seconds.
  *               auto_heading:
  *                 type: boolean
  *                 default: true
  *                 description: Automatically generate a short viral heading overlay for each clip.
+ *               music:
+ *                 type: string
+ *                 format: binary
+ *                 description: Background music file (mp3, wav, aac). Will be mixed into all clips at 30% volume.
+ *               heading_text:
+ *                 type: string
+ *                 description: Custom heading text. When provided, overrides auto_heading.
+ *               heading_style:
+ *                 type: string
+ *                 enum: [stroke, instagram]
+ *                 default: stroke
+ *                 description: Heading style. stroke = outlined, instagram = white on dark bg.
+ *               heading_color:
+ *                 type: string
+ *                 enum: [white, black, red, orange, yellow, green, teal, blue, purple, pink]
+ *                 default: white
+ *                 description: Heading text color.
+ *               heading_font:
+ *                 type: string
+ *                 enum: [Montserrat, Luckiest Guy, Everlasting, Komika, Burbank, Bebas Neue, Anton]
+ *                 default: Montserrat
+ *               heading_position:
+ *                 type: string
+ *                 enum: [top, middle, bottom]
+ *                 default: top
+ *                 description: Heading vertical position.
  *     responses:
  *       200:
  *         description: Clip job submitted
@@ -398,7 +466,15 @@ router.get("/v1/wallet", validateAPIKey, getWalletV1Controller);
  *       402:
  *         description: Insufficient wallet balance
  */
-router.post("/v1/clip", validateAPIKey, upload.single("video"), createClipJobController);
+router.post(
+  "/v1/clip",
+  validateAPIKey,
+  apiClipUpload.fields([
+    { name: "video", maxCount: 1 },
+    { name: "music", maxCount: 1 },
+  ]),
+  createClipJobController,
+);
 
 /**
  * @openapi

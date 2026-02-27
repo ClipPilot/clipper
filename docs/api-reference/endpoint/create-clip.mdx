@@ -22,7 +22,12 @@ curl -X POST https://api.cuttr.com/api/platform/v1/clip \
     "video_url": "https://example.com/video.mp4",
     "num_clips": 3,
     "style": "viral",
-    "captions": { "enabled": true, "color": "yellow" }
+    "length": 45,
+    "prompt": "focus on the product demo moments",
+    "camera_mode": "speaker-zoom",
+    "auto_heading": true,
+    "heading": { "style": "instagram", "color": "yellow", "font": "Luckiest Guy" },
+    "captions": { "enabled": true, "color": "yellow", "font": "Luckiest Guy" }
   }'
 ```
 
@@ -34,8 +39,14 @@ curl -X POST https://api.cuttr.com/api/platform/v1/clip \
   -F "video=@/path/to/video.mp4" \
   -F "num_clips=3" \
   -F "style=viral" \
+  -F "length=45" \
+  -F "camera_mode=speaker-zoom" \
+  -F "auto_heading=true" \
+  -F "heading_style=instagram" \
+  -F "heading_color=yellow" \
   -F "captions_enabled=true" \
-  -F "captions_color=yellow"
+  -F "captions_color=yellow" \
+  -F "captions_font=Luckiest Guy"
 ```
 
 ### Headers
@@ -58,6 +69,52 @@ curl -X POST https://api.cuttr.com/api/platform/v1/clip \
   Clipping style. One of `viral`, `business`, `general`, or `gaming`.
 </ParamField>
 
+<ParamField body="length" type="integer" default="40">
+  Target clip duration in seconds (10-180).
+</ParamField>
+
+<ParamField body="prompt" type="string">
+  Custom AI instructions for clip selection (e.g. "focus on product demos" or "find the funniest moments").
+</ParamField>
+
+<ParamField body="camera_mode" type="string" default="standard">
+  Controls how the video is framed for vertical (9:16) output. One of:
+  - `standard` — blurred background with centered video
+  - `gaming` — detects facecam overlay and separates gameplay + facecam
+  - `speaker-zoom` — zooms into the speaker's face
+  - `center-crop` — crops the center of the video
+  - `active-speaker` — tracks and zooms into the active speaker (multi-person)
+</ParamField>
+
+<ParamField body="hook_length" type="integer" default="6">
+  Hook duration in seconds (2-15). The hook is the attention-grabbing opening of each clip. Omit to let the AI decide.
+</ParamField>
+
+<ParamField body="auto_heading" type="boolean" default="true">
+  Automatically generate a short viral heading overlay for each clip using AI.
+</ParamField>
+
+<ParamField body="heading" type="object">
+  Heading style customization. Applies to both auto-generated and custom headings.
+  <Expandable title="properties">
+    <ParamField body="heading.text" type="string">
+      Custom heading text. When provided, overrides `auto_heading`.
+    </ParamField>
+    <ParamField body="heading.style" type="string" default="stroke">
+      Heading style. `stroke` = outlined text, `instagram` = white text on dark background.
+    </ParamField>
+    <ParamField body="heading.color" type="string" default="white">
+      Text color. One of `white`, `black`, `red`, `orange`, `yellow`, `green`, `teal`, `blue`, `purple`, `pink`. Only applies to `stroke` style.
+    </ParamField>
+    <ParamField body="heading.font" type="string" default="Montserrat">
+      Heading font. One of `Montserrat`, `Luckiest Guy`, `Everlasting`, `Komika`, `Burbank`, `Bebas Neue`, `Anton`.
+    </ParamField>
+    <ParamField body="heading.position" type="string" default="top">
+      Heading vertical position. One of `top`, `middle`, `bottom`.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
 <ParamField body="captions" type="object">
   Caption settings.
   <Expandable title="properties">
@@ -65,9 +122,16 @@ curl -X POST https://api.cuttr.com/api/platform/v1/clip \
       Whether to burn captions into the clip.
     </ParamField>
     <ParamField body="captions.color" type="string" default="white">
-      Caption text color. One of `white`, `black`, `red`, `orange`, `yellow`, `green`, `teal`, `blue`, `purple`, `pink`.
+      Caption highlight color. One of `white`, `black`, `red`, `orange`, `yellow`, `green`, `teal`, `blue`, `purple`, `pink`.
+    </ParamField>
+    <ParamField body="captions.font" type="string" default="Montserrat">
+      Caption font. One of `Montserrat`, `Luckiest Guy`, `Everlasting`, `Komika`, `Burbank`, `Bebas Neue`, `Anton`.
     </ParamField>
   </Expandable>
+</ParamField>
+
+<ParamField body="music_url" type="string">
+  URL to a background music file (MP3, WAV, AAC). The music will be mixed into all generated clips at 30% volume.
 </ParamField>
 
 ### Form data fields (multipart upload)
@@ -84,18 +148,66 @@ curl -X POST https://api.cuttr.com/api/platform/v1/clip \
   Clipping style. One of `viral`, `business`, `general`, or `gaming`.
 </ParamField>
 
+<ParamField body="length" type="string" default="40">
+  Target clip duration in seconds (10-180).
+</ParamField>
+
+<ParamField body="prompt" type="string">
+  Custom AI instructions for clip selection.
+</ParamField>
+
+<ParamField body="camera_mode" type="string" default="standard">
+  How the video is framed. One of `standard`, `gaming`, `speaker-zoom`, `center-crop`, `active-speaker`.
+</ParamField>
+
+<ParamField body="hook_length" type="string" default="6">
+  Hook duration in seconds (2-15).
+</ParamField>
+
+<ParamField body="music" type="file">
+  Background music file (MP3, WAV, AAC). Will be mixed into all clips at 30% volume.
+</ParamField>
+
+<ParamField body="auto_heading" type="string" default="true">
+  `"true"` or `"false"` — auto-generate a viral heading per clip.
+</ParamField>
+
+<ParamField body="heading_text" type="string">
+  Custom heading text. Overrides auto-generated heading.
+</ParamField>
+
+<ParamField body="heading_style" type="string" default="stroke">
+  `stroke` (outlined) or `instagram` (white text on dark background).
+</ParamField>
+
+<ParamField body="heading_color" type="string" default="white">
+  Heading text color. One of `white`, `black`, `red`, `orange`, `yellow`, `green`, `teal`, `blue`, `purple`, `pink`.
+</ParamField>
+
+<ParamField body="heading_font" type="string" default="Montserrat">
+  Heading font. One of `Montserrat`, `Luckiest Guy`, `Everlasting`, `Komika`, `Burbank`, `Bebas Neue`, `Anton`.
+</ParamField>
+
+<ParamField body="heading_position" type="string" default="top">
+  Heading vertical position. One of `top`, `middle`, `bottom`.
+</ParamField>
+
 <ParamField body="captions_enabled" type="string" default="false">
   `"true"` or `"false"` — whether to burn captions.
 </ParamField>
 
 <ParamField body="captions_color" type="string" default="white">
-  Caption text color. One of `white`, `black`, `red`, `orange`, `yellow`, `green`, `teal`, `blue`, `purple`, `pink`.
+  Caption highlight color. One of `white`, `black`, `red`, `orange`, `yellow`, `green`, `teal`, `blue`, `purple`, `pink`.
+</ParamField>
+
+<ParamField body="captions_font" type="string" default="Montserrat">
+  Caption font. One of `Montserrat`, `Luckiest Guy`, `Everlasting`, `Komika`, `Burbank`, `Bebas Neue`, `Anton`.
 </ParamField>
 
 ### Response
 
-<ResponseField name="job_id" type="integer">
-  Job ID to poll for results via [Get Job Status](/api-reference/endpoint/get-clip-status).
+<ResponseField name="job_id" type="string">
+  Job ID (UUID) to poll for results via [Get Job Status](/api-reference/endpoint/get-clip-status).
 </ResponseField>
 
 <ResponseField name="num_clips" type="integer">
@@ -113,7 +225,7 @@ curl -X POST https://api.cuttr.com/api/platform/v1/clip \
 <ResponseExample>
 ```json 200
 {
-  "job_id": 42,
+  "job_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "num_clips": 3,
   "cost_cents": 450,
   "status": "processing"
