@@ -275,12 +275,14 @@ export function PostsTable({ posts, accountPlatformMap, comparisonMode, onCompar
         </div>
       </div>
 
+      <div className="overflow-x-auto">
       <Table
         aria-label="Posts table"
         removeWrapper
         classNames={{
-          th: "bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4",
+          th: "bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 whitespace-nowrap",
           td: "py-4 px-4 border-t border-border-base",
+          table: "min-w-[700px]",
         }}
       >
         <TableHeader>
@@ -403,6 +405,7 @@ export function PostsTable({ posts, accountPlatformMap, comparisonMode, onCompar
           ))}
         </TableBody>
       </Table>
+      </div>
 
       <div className="flex items-center justify-between px-4 py-4 border-t border-border-base">
         <p className="text-sm text-text-tertiary">

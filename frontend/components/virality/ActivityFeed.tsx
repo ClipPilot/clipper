@@ -7,40 +7,12 @@ import type { ViralityPost, ViralityAccount } from "@/api/virality";
 import type { DateRangeValue } from "@/components/virality/DateRangeFilter";
 import { formatNumber } from "@/lib/formatters";
 import { platformIcon, platformIconColor, timeAgo } from "@/lib/platformUtils";
-import { findClosestEntry } from "@/app/dashboard/virality/[competitorId]/utils";
+import { getViewsInRange } from "@/app/dashboard/virality/[competitorId]/utils";
 
 type ContentFilter = "viral" | "recent";
 
 const VIRAL_VIEW_THRESHOLD = 50_000;
 const PAGE_SIZE = 20;
-
-/** Calculate views gained within a date range using metrics_history */
-function getViewsInRange(
-  post: ViralityPost,
-  startDate?: string,
-  endDate?: string
-): number {
-  const h = post.metrics_history;
-  if (!h || h.length === 0) return 0;
-
-  // If no date range, return total views
-  if (!startDate && !endDate) return post.video_play_count ?? 0;
-
-  const start = startDate ? new Date(startDate) : null;
-  const end = endDate ? new Date(endDate) : new Date();
-
-  // Find the entry closest to the start of the range
-  const startEntry = start ? findClosestEntry(h, start) : h[0];
-  // Find the entry closest to the end of the range
-  const endEntry = end ? findClosestEntry(h, end) : h[h.length - 1];
-
-  if (!startEntry || !endEntry) return 0;
-
-  const startViews = startEntry.views ?? 0;
-  const endViews = endEntry.views ?? 0;
-
-  return Math.max(endViews - startViews, 0);
-}
 
 interface TopPerformingContentProps {
   /** Posts filtered by the dashboard date range (used for viral + recent) */

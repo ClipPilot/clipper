@@ -281,6 +281,13 @@
       "when": 1771972448820,
       "tag": "0039_glossy_maggott",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1771912267630,
+      "tag": "0040_amazing_invisible_woman",
+      "breakpoints": true
     }
   ]
 }
