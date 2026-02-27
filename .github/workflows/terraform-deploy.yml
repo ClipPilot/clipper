@@ -120,8 +120,8 @@ jobs:
           status_cron_secret  = "${{ secrets.STATUS_CRON_SECRET }}"
           status_domain       = "status.cuttr.com"
 
-          # Mac Rendering Instance (Apple emoji fonts)
-          enable_mac_rendering = true
+          # Mac Rendering Instance (managed manually, set URL once instance is up)
+          mac_renderer_url = ""
           EOF
 
       - name: Terraform Plan
@@ -257,8 +257,8 @@ jobs:
           status_cron_secret  = "${{ secrets.STATUS_CRON_SECRET }}"
           status_domain       = "status.cuttr.com"
 
-          # Mac Rendering Instance (Apple emoji fonts)
-          enable_mac_rendering = true
+          # Mac Rendering Instance (managed manually, set URL once instance is up)
+          mac_renderer_url = ""
           EOF
 
       - name: Download Terraform Plan

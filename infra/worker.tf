@@ -112,7 +112,7 @@ resource "aws_ecs_task_definition" "worker" {
       },
       {
         name  = "MAC_RENDERER_URL"
-        value = var.enable_mac_rendering ? "http://${aws_instance.mac_rendering[0].private_ip}:${var.mac_renderer_port}" : ""
+        value = var.mac_renderer_url
       }
     ]
 
