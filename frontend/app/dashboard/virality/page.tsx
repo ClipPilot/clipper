@@ -159,9 +159,9 @@ export default function ViralityPage() {
 
   // ─── Virtual My Performance competitor ──────────────────────────────────────
 
-  /** Build a virtual CompetitorWithAccounts for My Performance using negative IDs */
-  const myPerformanceCompetitor = useMemo<CompetitorWithAccounts | null>(() => {
-    if (myAccounts.length === 0) return null;
+  /** Build a virtual CompetitorWithAccounts for My Performance using negative IDs.
+   *  Always present (even with 0 accounts) so the card shows as an invite. */
+  const myPerformanceCompetitor = useMemo<CompetitorWithAccounts>(() => {
     const now = new Date().toISOString();
     return {
       id: MY_PERFORMANCE_COMPETITOR_ID,
@@ -174,11 +174,9 @@ export default function ViralityPage() {
     };
   }, [myAccounts, selectedTeam?.id]);
 
-  /** All competitors including the virtual My Performance group */
+  /** All competitors including the virtual My Performance group (always first) */
   const allCompetitors = useMemo(() => {
-    return myPerformanceCompetitor
-      ? [myPerformanceCompetitor, ...competitors]
-      : competitors;
+    return [myPerformanceCompetitor, ...competitors];
   }, [myPerformanceCompetitor, competitors]);
 
   // Build account lookup map for Top Performing Content (includes My Perf accounts)

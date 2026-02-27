@@ -1,7 +1,5 @@
-"use client";
-
-import { MyPerformanceView } from "@/components/virality/MyPerformanceView";
+import { redirect } from "next/navigation";
 
 export default function YourPerformancePage() {
-  return <MyPerformanceView />;
+  redirect("/dashboard/virality/my-performance");
 }

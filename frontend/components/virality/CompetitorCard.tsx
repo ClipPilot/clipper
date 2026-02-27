@@ -122,7 +122,9 @@ export function CompetitorCard({
               <>
                 <p className="text-sm font-medium text-text-primary truncate">{competitor.name}</p>
                 <p className="text-[10px] text-text-tertiary mt-0.5">
-                  {competitor.accounts.length} account{competitor.accounts.length !== 1 ? "s" : ""}
+                  {isMyPerformance && competitor.accounts.length === 0
+                    ? "Track your own accounts"
+                    : `${competitor.accounts.length} account${competitor.accounts.length !== 1 ? "s" : ""}`}
                 </p>
               </>
             )}
@@ -168,7 +170,7 @@ export function CompetitorCard({
                 className="bg-accent-400/10 text-accent-400 text-[11px] h-7 min-w-0 px-2.5"
                 onPress={() => onViewCompetitor(competitor.id)}
               >
-                View
+                {isMyPerformance && competitor.accounts.length === 0 ? "Add Accounts" : "View"}
               </Button>
             </div>
           )}
