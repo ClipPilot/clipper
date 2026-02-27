@@ -102,6 +102,37 @@ resource "aws_security_group" "mac_rendering" {
   }
 }
 
+# IAM Role for SSM Session Manager access
+resource "aws_iam_role" "mac_rendering" {
+  count = var.enable_mac_rendering ? 1 : 0
+  name  = "${var.project_name}-mac-rendering-${var.environment}"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = { Service = "ec2.amazonaws.com" }
+    }]
+  })
+
+  tags = {
+    Name = "${var.project_name}-mac-rendering-role-${var.environment}"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "mac_rendering_ssm" {
+  count      = var.enable_mac_rendering ? 1 : 0
+  role       = aws_iam_role.mac_rendering[0].name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+resource "aws_iam_instance_profile" "mac_rendering" {
+  count = var.enable_mac_rendering ? 1 : 0
+  name  = "${var.project_name}-mac-rendering-${var.environment}"
+  role  = aws_iam_role.mac_rendering[0].name
+}
+
 # SSH Key Pair
 resource "aws_key_pair" "mac_rendering" {
   count      = var.enable_mac_rendering && var.mac_ssh_public_key != "" ? 1 : 0
@@ -122,6 +153,7 @@ resource "aws_instance" "mac_rendering" {
   subnet_id     = data.aws_subnet.mac_rendering[0].id
 
   vpc_security_group_ids = [aws_security_group.mac_rendering[0].id]
+  iam_instance_profile   = aws_iam_instance_profile.mac_rendering[0].name
   key_name               = var.mac_ssh_public_key != "" ? aws_key_pair.mac_rendering[0].key_name : null
 
   root_block_device {
