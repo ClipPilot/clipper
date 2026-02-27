@@ -115,7 +115,7 @@ def find_overlay_candidates_from_variance(
         for contour in contours:
             area = cv2.contourArea(contour)
             area_pct = area / frame_area
-            if area_pct < 0.02 or area_pct > 0.40:
+            if area_pct < 0.01 or area_pct > 0.40:
                 continue
 
             peri = cv2.arcLength(contour, True)
@@ -384,10 +384,10 @@ def handle_facecam(video_path: str, frame_w: int, frame_h: int, context: Any) ->
         remaining_ms = context.get_remaining_time_in_millis()
         print(f"[KEEP-ALIVE] Starting facecam detection | Lambda time remaining: {remaining_ms // 1000}s")
 
-    # Sample 10 frames (skip first/last 5%)
+    # Sample frames (skip first/last 5%)
     safe_start = duration * 0.05
     safe_end = duration * 0.95
-    num_samples = 10
+    num_samples = FACECAM_CONFIG['num_sample_frames']  # 16
     sample_times = [
         safe_start + (safe_end - safe_start) * i / (num_samples - 1)
         for i in range(num_samples)
@@ -500,10 +500,11 @@ def handle_facecam(video_path: str, frame_w: int, frame_h: int, context: Any) ->
     if not confirmed_region:
         print("[FACECAM-DETECT] Variance pipeline found nothing — YuNet full-frame fallback")
 
-        # Collect faces from spread frames, deduplicate by position
+        # Collect faces from spread frames — lower threshold to catch small facecam faces,
+        # check every 2nd frame instead of every 3rd for better coverage
         all_faces: List[Dict[str, Any]] = []
-        for frame in sampled_frames[::3]:
-            faces = detect_faces_yunet(frame, score_threshold=0.4)
+        for frame in sampled_frames[::2]:
+            faces = detect_faces_yunet(frame, score_threshold=0.3)
             all_faces.extend(faces)
 
         # Score by edge proximity — facecams are near any edge, not just corners
