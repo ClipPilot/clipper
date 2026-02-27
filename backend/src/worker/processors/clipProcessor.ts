@@ -21,6 +21,7 @@ import type { FacecamRegion } from "../../services/clips/videoEditor.service";
 import type { ClipServiceOptions } from "../../services/clips/clip.service";
 import { buildSpeakerSegments, mapSpeakersToFaces } from "../../services/clips/speakerSegments.service";
 import type { ActiveSpeakerSegment } from "../../services/clips/speakerSegments.service";
+import { generateViralHeading } from "../../services/clips/headingAI.service";
 
 export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
   const { clipIds, teamId, userId, s3Key, options, originalFileName, fileSize } = job;
@@ -188,6 +189,21 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
 
         console.log(`Clip ${i + 1} uploaded, updating database...`);
 
+        // Auto-generate a viral heading from the clip's transcript
+        let autoHeading: string | undefined;
+        if (options.autoHeading !== false) {
+          try {
+            const clipTranscript = result.captionsData?.map((c: { text: string }) => c.text).join(" ") || "";
+            autoHeading = await generateViralHeading({
+              transcription: clipTranscript,
+              title: suggestions.clipTitle || "",
+            });
+            console.log(`Clip ${i + 1} auto-heading: "${autoHeading}"`);
+          } catch (headingErr) {
+            console.warn(`Clip ${i + 1} heading generation failed, skipping:`, headingErr);
+          }
+        }
+
         await clipManagerService.updateClipComplete(clipId, teamId, {
           clipPath: clipS3Key,
           blankVideoPath: blankS3Key,
@@ -198,6 +214,19 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
           title: suggestions.clipTitle,
           clipMetadata: {
             clipSuggestions: suggestions,
+            ...(autoHeading ? {
+              editorConfig: {
+                heading: {
+                  text: autoHeading,
+                  color: "#FFFFFF",
+                  font: "Montserrat",
+                  x: 50,
+                  y: 10,
+                  fontSize: 48,
+                  style: "stroke",
+                },
+              },
+            } : {}),
             parameters: {
               length: options.length || 40,
               hookLength: options.hookLength || 6,

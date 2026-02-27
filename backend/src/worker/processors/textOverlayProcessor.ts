@@ -12,7 +12,7 @@ import { sanitizeErrorForFrontend } from "../../utils/errorSanitizer";
 export async function processTextOverlayJob(
   job: TextOverlayJob
 ): Promise<void> {
-  const { clipId, teamId, text, color, font, x, y, fontSize } = job;
+  const { clipId, teamId, text, color, font, x, y, fontSize, style } = job;
 
   const outDir = ensureOutputDir();
 
@@ -43,6 +43,7 @@ export async function processTextOverlayJob(
       x: x ?? 50,
       y: y ?? 10,
       fontSize: fontSize ?? 48,
+      style: style || "stroke",
     });
 
     // Check if clip has captions - if so, apply them on top of the text overlay

@@ -170,7 +170,7 @@ export function AddAccountModal({
                   : accountType === "keyword"
                     ? "e.g. trending coffee"
                     : selectedPlatform === "tiktok"
-                      ? "e.g. @kotasyaps or tiktok.com/@kotasyaps"
+                      ? "e.g. @selenagomez or tiktok.com/@selenagomez"
                       : selectedPlatform === "x"
                         ? "e.g. @elonmusk or x.com/elonmusk"
                         : "e.g. instagram.com/creatorscale"

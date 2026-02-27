@@ -1,6 +1,17 @@
 # Lambda function for facecam detection using Python + OpenCV DNN
 # Detects webcam overlay bounding boxes in gaming streams
 
+# Import existing shared resources (ECR + IAM are shared across environments)
+import {
+  to = aws_ecr_repository.facecam_detect_lambda
+  id = "clipster-facecam-detect-lambda"
+}
+
+import {
+  to = aws_iam_role.facecam_detect_lambda
+  id = "clipster-facecam-detect-lambda-role"
+}
+
 # ECR Repository for Facecam Detect Lambda
 # Prod uses 'clipster-facecam-detect-lambda', staging uses 'clipster-facecam-detect-lambda-staging'
 resource "aws_ecr_repository" "facecam_detect_lambda" {

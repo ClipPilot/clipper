@@ -1082,7 +1082,14 @@ export const mergeClipsWithCrossfade = async (
 };
 
 // Map font names to Google Fonts URLs and CSS font-family values
-const FONT_CONFIG: Record<string, { url: string; family: string }> = {
+// Local fonts use @font-face with the TTF/OTF files bundled in dist/fonts/
+interface FontConfig {
+  url?: string; // Google Fonts URL (omit for local fonts)
+  family: string;
+  localFile?: string; // filename in fonts/ dir for @font-face
+}
+
+const FONT_CONFIG: Record<string, FontConfig> = {
   "Luckiest Guy": {
     url: "https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap",
     family: "'Luckiest Guy', cursive",
@@ -1099,89 +1106,157 @@ const FONT_CONFIG: Record<string, { url: string; family: string }> = {
     url: "https://fonts.googleapis.com/css2?family=Anton&display=swap",
     family: "'Anton', sans-serif",
   },
+  Everlasting: {
+    family: "'Everlasting', cursive",
+    localFile: "Everlasting.ttf",
+  },
+  Komika: {
+    family: "'Komika', sans-serif",
+    localFile: "Komika.ttf",
+  },
+  Burbank: {
+    family: "'Burbank', sans-serif",
+    localFile: "Burbank.otf",
+  },
 };
+
+const EMOJI_FONT = "'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji'";
+
+const MAC_RENDERER_URL = process.env.MAC_RENDERER_URL || "";
+
+/**
+ * Render HTML to PNG via the remote Mac renderer, or fall back to local Puppeteer.
+ * When MAC_RENDERER_URL is set, sends HTML to the Mac for Apple-native font rendering.
+ */
+async function renderHtmlToPng(
+  html: string,
+  outputPath: string,
+  opts: { width?: number; height?: number; deviceScaleFactor?: number } = {}
+): Promise<void> {
+  const { width = 1080, height = 400, deviceScaleFactor = 1 } = opts;
+
+  if (MAC_RENDERER_URL) {
+    try {
+      const response = await fetch(`${MAC_RENDERER_URL}/render`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ html, width, height, deviceScaleFactor }),
+        signal: AbortSignal.timeout(15_000),
+      });
+
+      if (response.ok) {
+        const buffer = Buffer.from(await response.arrayBuffer());
+        fs.writeFileSync(outputPath, buffer);
+        console.log(`[renderHtmlToPng] Rendered via Mac renderer`);
+        return;
+      }
+      console.warn(`[renderHtmlToPng] Mac renderer returned ${response.status}, falling back to local`);
+    } catch (err: any) {
+      console.warn(`[renderHtmlToPng] Mac renderer unavailable (${err.message}), falling back to local`);
+    }
+  }
+
+  // Fallback: local Puppeteer
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ["--no-sandbox", "--disable-setuid-sandbox", "--font-render-hinting=none"],
+  });
+  try {
+    const page = await browser.newPage();
+    await page.setViewport({ width, height, deviceScaleFactor });
+    await page.setContent(html);
+    await page.evaluate("document.fonts.ready");
+    await page.screenshot({ path: outputPath, type: "png", omitBackground: true });
+  } finally {
+    await browser.close();
+  }
+}
+
+function buildFontFaceCSS(fontConfig: FontConfig): string {
+  if (!fontConfig.localFile) return "";
+  const fontPath = path.join(__dirname, "../../fonts", fontConfig.localFile);
+  if (!fs.existsSync(fontPath)) return "";
+  const fontData = fs.readFileSync(fontPath);
+  const base64 = fontData.toString("base64");
+  const ext = fontConfig.localFile.endsWith(".otf") ? "opentype" : "truetype";
+  const familyName = fontConfig.family.replace(/'/g, "").split(",")[0].trim();
+  return `@font-face { font-family: '${familyName}'; src: url(data:font/${ext};base64,${base64}) format('${ext}'); font-weight: 900; }`;
+}
 
 const generateTextImage = async (
   text: string,
   outputPath: string,
   fillColor: string = "#FFFFFF",
   strokeColor: string = "#000000",
-  fontName: string = "Montserrat"
+  fontName: string = "Montserrat",
+  style: "stroke" | "instagram" = "stroke"
 ): Promise<void> => {
   // Get font config or fallback to Montserrat
   const fontConfig = FONT_CONFIG[fontName] || FONT_CONFIG["Montserrat"];
+  const fontFaceCSS = buildFontFaceCSS(fontConfig);
+  const googleFontLink = fontConfig.url
+    ? `<link rel="preconnect" href="https://fonts.googleapis.com">
+       <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+       <link href="${fontConfig.url}" rel="stylesheet">`
+    : "";
 
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
-  });
+  const isInstagram = style === "instagram";
 
-  try {
-    const page = await browser.newPage();
+  const textStyle = isInstagram
+    ? `color: #FFFFFF;
+       background: rgba(0, 0, 0, 0.85);
+       padding: 12px 28px;
+       border-radius: 8px;
+       display: inline-block;`
+    : `color: ${fillColor};
+       -webkit-text-stroke: 6px ${strokeColor};
+       paint-order: stroke fill;`;
 
-    await page.setViewport({
-      width: 1080,
-      height: 400,
-      deviceScaleFactor: 2,
-    });
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        ${googleFontLink}
+        <style>
+          ${fontFaceCSS}
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          body {
+            width: 1080px;
+            height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            padding: 30px 50px;
+          }
+          .text {
+            font-size: 52px;
+            font-weight: 900;
+            font-family: ${fontConfig.family}, ${EMOJI_FONT}, sans-serif;
+            text-align: center;
+            line-height: 1.25;
+            letter-spacing: -0.01em;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            max-width: 100%;
+            ${textStyle}
+          }
+        </style>
+      </head>
+      <body>
+        <div class="text">${text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
+      </body>
+    </html>
+  `;
 
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <link rel="preconnect" href="https://fonts.googleapis.com">
-          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-          <link href="${fontConfig.url}" rel="stylesheet">
-          <style>
-            * {
-              margin: 0;
-              padding: 0;
-              box-sizing: border-box;
-            }
-            body {
-              width: 1080px;
-              height: 400px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              background: transparent;
-              padding: 30px 50px;
-            }
-            .text {
-              font-size: 52px;
-              font-weight: 900;
-              font-family: ${fontConfig.family}, 'Apple Color Emoji', sans-serif;
-              color: ${fillColor};
-              text-align: center;
-              -webkit-text-stroke: 6px ${strokeColor};
-              paint-order: stroke fill;
-              line-height: 1.25;
-              letter-spacing: -0.01em;
-              word-wrap: break-word;
-              overflow-wrap: break-word;
-              max-width: 100%;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="text">${text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
-        </body>
-      </html>
-    `;
+  await renderHtmlToPng(htmlContent, outputPath, { width: 1080, height: 400, deviceScaleFactor: 1 });
 
-    await page.setContent(htmlContent);
-
-    await page.screenshot({
-      path: outputPath,
-      type: "png",
-      omitBackground: true,
-    });
-
-    if (!fs.existsSync(outputPath)) {
-      throw new Error(`Failed to create text image at ${outputPath}`);
-    }
-  } finally {
-    await browser.close();
+  if (!fs.existsSync(outputPath)) {
+    throw new Error(`Failed to create text image at ${outputPath}`);
   }
 };
 
@@ -1194,7 +1269,8 @@ export const addTextOverlayAtPosition = async (
   fontSize: number,
   fillColor: string = "#FFFFFF",
   strokeColor: string = "#000000",
-  fontName: string = "Montserrat"
+  fontName: string = "Montserrat",
+  style: "stroke" | "instagram" = "stroke"
 ): Promise<string> => {
   const textImagePath = path.join(
     path.dirname(outputPath),
@@ -1203,22 +1279,30 @@ export const addTextOverlayAtPosition = async (
 
   // Get font config or fallback to Montserrat
   const fontConfig = FONT_CONFIG[fontName] || FONT_CONFIG["Montserrat"];
+  const fontFaceCSS = buildFontFaceCSS(fontConfig);
+  const googleFontLink = fontConfig.url
+    ? `<link href="${fontConfig.url}" rel="stylesheet">`
+    : "";
+  const isInstagram = style === "instagram";
 
   try {
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
-
-    const page = await browser.newPage();
-    await page.setViewport({ width: 1080, height: 400, deviceScaleFactor: 2 });
+    const textStyle = isInstagram
+      ? `color: #FFFFFF;
+         background: rgba(0, 0, 0, 0.85);
+         padding: 10px 24px;
+         border-radius: 8px;
+         display: inline-block;`
+      : `color: ${fillColor};
+         -webkit-text-stroke: 4px ${strokeColor};
+         paint-order: stroke fill;`;
 
     const htmlContent = `
       <!DOCTYPE html>
       <html>
         <head>
-          <link href="${fontConfig.url}" rel="stylesheet">
+          ${googleFontLink}
           <style>
+            ${fontFaceCSS}
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body {
               width: 1080px;
@@ -1232,13 +1316,11 @@ export const addTextOverlayAtPosition = async (
             .text {
               font-size: ${fontSize}px;
               font-weight: 900;
-              font-family: ${fontConfig.family}, 'Apple Color Emoji', sans-serif;
-              color: ${fillColor};
+              font-family: ${fontConfig.family}, ${EMOJI_FONT}, sans-serif;
               text-align: center;
-              -webkit-text-stroke: 4px ${strokeColor};
-              paint-order: stroke fill;
               line-height: 1.2;
               max-width: 100%;
+              ${textStyle}
             }
           </style>
         </head>
@@ -1248,13 +1330,7 @@ export const addTextOverlayAtPosition = async (
       </html>
     `;
 
-    await page.setContent(htmlContent);
-    await page.screenshot({
-      path: textImagePath,
-      type: "png",
-      omitBackground: true,
-    });
-    await browser.close();
+    await renderHtmlToPng(htmlContent, textImagePath, { width: 1080, height: 400, deviceScaleFactor: 1 });
 
     const xPos = `(W*${xPercent / 100})-(w/2)`;
     const yPos = `(H*${yPercent / 100})-(h/2)`;
@@ -1355,7 +1431,8 @@ export const addTextOverlay = async (
   position: "top" | "center" | "bottom" = "top",
   fillColor: string = "#FFFFFF",
   strokeColor: string = "#000000",
-  fontName: string = "Montserrat"
+  fontName: string = "Montserrat",
+  style: "stroke" | "instagram" = "stroke"
 ): Promise<string> => {
   const textImagePath = path.join(
     path.dirname(outputPath),
@@ -1369,7 +1446,8 @@ export const addTextOverlay = async (
       textImagePath,
       fillColor,
       strokeColor,
-      fontName
+      fontName,
+      style
     );
     console.log("Text image created at:", textImagePath);
 
@@ -2170,11 +2248,9 @@ const HEART_ICON_SVG = `<svg width="20" height="20" viewBox="0 0 24 24" fill="rg
 
 const THUMBS_UP_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="#aaa" xmlns="http://www.w3.org/2000/svg"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>`;
 
-const getDefaultAvatarDataUri = (username: string): string => {
-  const color = hashColor(username);
-  const initial = username.charAt(0).toUpperCase();
+const getDefaultAvatarDataUri = (_username: string): string => {
   return `data:image/svg+xml,${encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72"><circle cx="36" cy="36" r="36" fill="${color}"/><text x="36" y="48" text-anchor="middle" fill="#fff" font-size="32" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-weight="600">${initial}</text></svg>`
+    `<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72"><circle cx="36" cy="36" r="36" fill="#C4C4C4"/><path d="M36 36c5.4 0 9.6-4.2 9.6-9.6S41.4 16.8 36 16.8 26.4 21 26.4 26.4 30.6 36 36 36zm0 4.8c-6.4 0-19.2 3.2-19.2 9.6v2.4c0 1.32 1.08 2.4 2.4 2.4h33.6c1.32 0 2.4-1.08 2.4-2.4v-2.4c0-6.4-12.8-9.6-19.2-9.6z" fill="#fff"/></svg>`
   )}`;
 };
 
@@ -2194,25 +2270,18 @@ const getCommentHtml = (
       <!DOCTYPE html><html><head><style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { width: 800px; background: transparent; padding: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
-        .comment { background: rgba(37,37,37,0.92); border-radius: 12px; padding: 14px 16px; display: inline-flex; align-items: flex-start; gap: 10px; max-width: 760px; }
-        .avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
-        .body { flex: 1; min-width: 0; }
-        .username-row { display: flex; align-items: center; gap: 4px; }
-        .username { color: rgba(255,255,255,0.55); font-size: 13px; font-weight: 600; }
-        .text { color: #fff; font-size: 15px; margin-top: 4px; line-height: 1.35; word-wrap: break-word; }
-        .meta { display: flex; align-items: center; gap: 16px; margin-top: 6px; }
-        .meta span { color: rgba(255,255,255,0.4); font-size: 12px; }
-        .likes { display: flex; flex-direction: column; align-items: center; gap: 2px; margin-left: 8px; flex-shrink: 0; }
-        .likes span { color: rgba(255,255,255,0.5); font-size: 11px; }
+        .comment { background: rgba(255,255,255,0.95); border-radius: 16px; padding: 16px 20px; display: inline-flex; flex-direction: column; gap: 10px; max-width: 760px; }
+        .header { color: #8A8A8A; font-size: 16px; font-weight: 600; }
+        .content { display: flex; align-items: center; gap: 14px; }
+        .avatar { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+        .text { color: #000; font-size: 20px; font-weight: 700; line-height: 1.3; word-wrap: break-word; flex: 1; min-width: 0; }
       </style></head><body>
         <div class="comment">
-          <img class="avatar" src="${profilePicSrc}" />
-          <div class="body">
-            <div class="username-row"><span class="username">${safeUsername}</span>${badge}</div>
+          <div class="header">Reply to @${safeUsername}'s comment</div>
+          <div class="content">
+            <img class="avatar" src="${profilePicSrc}" />
             <div class="text">${safeComment}</div>
-            <div class="meta"><span>${time}</span><span>Reply</span></div>
           </div>
-          <div class="likes">${HEART_ICON_SVG}<span>${likes}</span></div>
         </div>
       </body></html>
     `;
@@ -2294,6 +2363,40 @@ export const generateCommentImage = async (
 
   const htmlContent = getCommentHtml(config, profilePicSrc);
 
+  // Try Mac renderer first (render-and-measure returns PNG + dimensions in headers)
+  if (MAC_RENDERER_URL) {
+    try {
+      const response = await fetch(`${MAC_RENDERER_URL}/render-and-measure`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          html: htmlContent,
+          selector: ".comment",
+          width: 800,
+          height: 400,
+          deviceScaleFactor: 2,
+          padding: 32,
+        }),
+        signal: AbortSignal.timeout(15_000),
+      });
+
+      if (response.ok) {
+        const buffer = Buffer.from(await response.arrayBuffer());
+        fs.writeFileSync(outputPath, buffer);
+        const dimensions = {
+          width: parseInt(response.headers.get("X-Render-Width") || "800", 10),
+          height: parseInt(response.headers.get("X-Render-Height") || "200", 10),
+        };
+        console.log(`[COMMENT] Generated via Mac renderer: ${dimensions.width}x${dimensions.height}px`);
+        return dimensions;
+      }
+      console.warn(`[COMMENT] Mac renderer returned ${response.status}, falling back to local`);
+    } catch (err: any) {
+      console.warn(`[COMMENT] Mac renderer unavailable (${err.message}), falling back to local`);
+    }
+  }
+
+  // Fallback: local Puppeteer
   const browser = await puppeteer.launch({
     headless: true,
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
@@ -2304,13 +2407,12 @@ export const generateCommentImage = async (
     await page.setViewport({ width: 800, height: 400, deviceScaleFactor: 2 });
     await page.setContent(htmlContent, { waitUntil: "networkidle0" });
 
-    // Get actual bounding box of the comment element (runs in Puppeteer's browser context)
     const commentEl = await page.$(".comment");
     let dimensions = { width: 800, height: 200 };
     if (commentEl) {
       const box = await commentEl.boundingBox();
       if (box) {
-        dimensions = { width: Math.ceil(box.width) + 32, height: Math.ceil(box.height) + 32 }; // +32 for body padding
+        dimensions = { width: Math.ceil(box.width) + 32, height: Math.ceil(box.height) + 32 };
       }
     }
 

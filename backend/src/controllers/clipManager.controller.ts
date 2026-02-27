@@ -12,6 +12,7 @@ import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
 import { transcribeVideoService } from "../services/clips/transcription.service";
 import { TranscriptionWord, CaptionEntry } from "../services/clips/captions.service";
 import { ensureOutputDir, safeUnlink } from "../utils/fileUtils";
+import { generateViralHeading } from "../services/clips/headingAI.service";
 import path from "path";
 
 async function verifyTeamAccessOrFail(
@@ -547,7 +548,7 @@ export class ClipManagerController {
     try {
       const clipId = parseInt(req.params.clipId);
       const teamId = parseInt(req.params.teamId);
-      const { text, color, font, x, y, fontSize } = req.body;
+      const { text, color, font, x, y, fontSize, style } = req.body;
 
       if (isNaN(clipId) || isNaN(teamId)) {
         return res.status(400).json({ error: "Invalid clip ID or team ID" });
@@ -585,6 +586,7 @@ export class ClipManagerController {
         x,
         y,
         fontSize,
+        style,
       });
 
       console.log(`Text overlay job sent to SQS with messageId: ${messageId}`);
@@ -599,6 +601,44 @@ export class ClipManagerController {
       Sentry.captureException(error);
       return res.status(500).json({
         error: sanitizeErrorForFrontend(error, "Failed to queue text overlay"),
+      });
+    }
+  }
+
+  async generateHeading(req: AuthRequest, res: Response) {
+    try {
+      const clipId = parseInt(req.params.clipId);
+      const teamId = parseInt(req.params.teamId);
+
+      if (isNaN(clipId) || isNaN(teamId)) {
+        return res.status(400).json({ error: "Invalid clip ID or team ID" });
+      }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
+
+      const clip = await clipManagerService.getClipById(clipId, teamId);
+
+      // Build context from clip data — use captions for transcript,
+      // fall back to clipSuggestions.finalMessage or clip title
+      const metadata = clip.clip_metadata as any;
+      const captionsData = clip.captions_data as Array<{ text: string }> | null;
+      const transcription = captionsData?.map((c) => c.text).join(" ")
+        || metadata?.clipSuggestions?.finalMessage
+        || "";
+      const title = metadata?.clipSuggestions?.clipTitle
+        || metadata?.title
+        || clip.prompt
+        || "";
+
+      const heading = await generateViralHeading({ transcription, title });
+
+      return res.status(200).json({ heading });
+    } catch (error) {
+      console.error("Generate heading error:", error);
+      Sentry.captureException(error);
+      return res.status(500).json({
+        error: sanitizeErrorForFrontend(error, "Failed to generate heading"),
       });
     }
   }

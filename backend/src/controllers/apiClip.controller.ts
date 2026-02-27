@@ -10,6 +10,7 @@ import { sqsService } from "../services/sqs.service";
 import { videoDownloadService } from "../services/videoDownload.service";
 import { API_PRODUCTS } from "../config/api-products";
 import { isValidPromptType, PromptType } from "../constants/promptTypes";
+import { isValidConversionMode, ConversionMode } from "../constants/conversionModes";
 import { ensureOutputDir } from "../utils/fileUtils";
 
 const CLIP_PRODUCT_SLUG = "clip_save";
@@ -27,6 +28,17 @@ const CAPTION_COLORS: Record<string, string> = {
   purple: "#7B2CBF",
   pink: "#FF006E",
 };
+
+const CAPTION_FONTS = [
+  "Montserrat", "Luckiest Guy", "Everlasting", "Komika",
+  "Burbank", "Bebas Neue", "Anton",
+] as const;
+
+const isValidCaptionFont = (v: string): boolean =>
+  CAPTION_FONTS.some((f) => f.toLowerCase() === v.toLowerCase());
+
+const resolveCaptionFont = (v: string): string =>
+  CAPTION_FONTS.find((f) => f.toLowerCase() === v.toLowerCase()) || "Montserrat";
 
 /**
  * POST /v1/clip
@@ -93,6 +105,41 @@ export const createClipJobController = async (
       });
     }
 
+    // Caption font
+    const rawCaptionFont = (
+      typeof captions === "object" ? captions?.font : req.body.captions_font
+    ) as string | undefined;
+    let captionFont: string | undefined;
+    if (rawCaptionFont) {
+      if (!isValidCaptionFont(rawCaptionFont)) {
+        return res.status(400).json({
+          error: `Invalid captions font "${rawCaptionFont}". Must be one of: ${CAPTION_FONTS.join(", ")}`,
+        });
+      }
+      captionFont = resolveCaptionFont(rawCaptionFont);
+    }
+
+    // Camera mode (conversion mode)
+    const rawCameraMode = req.body.camera_mode;
+    let conversionMode: ConversionMode = "standard";
+    if (rawCameraMode) {
+      if (!isValidConversionMode(rawCameraMode)) {
+        return res.status(400).json({
+          error: `Invalid camera_mode "${rawCameraMode}". Must be one of: standard, gaming, speaker-zoom, center-crop, active-speaker`,
+        });
+      }
+      conversionMode = rawCameraMode;
+    }
+
+    // Clip length (seconds) — default 40, range 10–180
+    const clipLength = Math.min(Math.max(parseInt(req.body.length) || 40, 10), 180);
+
+    // Custom prompt — additional AI instructions for clip selection
+    const prompt: string | undefined = req.body.prompt || undefined;
+
+    // Auto heading (default true — generates a viral heading per clip)
+    const autoHeading = req.body.auto_heading !== false && req.body.auto_heading !== "false";
+
     // --- Check balance upfront ---
     const product = API_PRODUCTS[CLIP_PRODUCT_SLUG];
     const totalCostCents = product.priceCents * numClips;
@@ -141,7 +188,8 @@ export const createClipJobController = async (
     // --- Process in background ---
     processInBackground({
       teamId, userId, clipIds, numClips, promptType,
-      captionsEnabled, captionColor,
+      captionsEnabled, captionColor, captionFont, conversionMode,
+      clipLength, prompt, autoHeading,
       originalFileName: uploadedFile?.originalname,
       fileSize: uploadedFile?.size,
       localVideoPath: uploadedFile?.path,
@@ -207,10 +255,12 @@ async function buildJobResponse(jobId: string, jobClips: any[]) {
   const clips = await Promise.all(
     jobClips.map(async (clip) => {
       if (clip.status === "completed" && clip.clip_path) {
+        const heading = clip.clip_metadata?.editorConfig?.heading?.text;
         return {
           clip_id: clip.id,
           status: "completed",
           title: clip.title,
+          ...(heading ? { heading } : {}),
           download_url: await s3Service.getPresignedUrl(clip.clip_path, 604800),
           created_at: clip.created_at,
         };
@@ -241,14 +291,18 @@ async function uploadAndDispatch(params: {
   promptType: PromptType;
   captionsEnabled: boolean;
   captionColor: string;
+  captionFont?: string;
+  conversionMode: ConversionMode;
+  clipLength: number;
+  prompt?: string;
+  autoHeading: boolean;
   originalFileName?: string;
   fileSize?: number;
-  conversionMode?: "standard" | "gaming" | "speaker-zoom" | "center-crop" | "active-speaker";
 }) {
   const {
     teamId, userId, clipIds, localVideoPath,
-    numClips, promptType, captionsEnabled, captionColor,
-    originalFileName, fileSize,
+    numClips, promptType, captionsEnabled, captionColor, captionFont,
+    conversionMode, clipLength, prompt, autoHeading, originalFileName, fileSize,
   } = params;
 
   const s3Key = await s3Service.uploadRawVideo(localVideoPath, teamId);
@@ -260,10 +314,14 @@ async function uploadAndDispatch(params: {
     s3Key,
     options: {
       numberOfVideos: numClips,
+      length: clipLength,
       promptType,
+      textPrompt: prompt,
       captions: captionsEnabled,
       captionColor,
-      conversionMode: params.conversionMode,
+      captionFont,
+      conversionMode,
+      autoHeading,
     },
     originalFileName,
     fileSize,
@@ -279,6 +337,11 @@ function processInBackground(params: {
   promptType: PromptType;
   captionsEnabled: boolean;
   captionColor: string;
+  captionFont?: string;
+  conversionMode: ConversionMode;
+  clipLength: number;
+  prompt?: string;
+  autoHeading: boolean;
   originalFileName?: string;
   fileSize?: number;
   localVideoPath?: string;
@@ -310,6 +373,11 @@ function processInBackground(params: {
         promptType: params.promptType,
         captionsEnabled: params.captionsEnabled,
         captionColor: params.captionColor,
+        captionFont: params.captionFont,
+        conversionMode: params.conversionMode,
+        clipLength: params.clipLength,
+        prompt: params.prompt,
+        autoHeading: params.autoHeading,
         originalFileName: params.originalFileName,
         fileSize: params.fileSize,
       });

@@ -109,6 +109,10 @@ resource "aws_ecs_task_definition" "worker" {
       {
         name  = "GOOGLE_DRIVE_PARENT_FOLDER_ID"
         value = var.google_drive_parent_folder_id
+      },
+      {
+        name  = "MAC_RENDERER_URL"
+        value = var.mac_renderer_url
       }
     ]
 
