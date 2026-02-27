@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import {
   Modal,
   ModalContent,
@@ -13,6 +13,8 @@ import {
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { ViralityCompetitor } from "@/api/virality";
+import { MY_PERFORMANCE_NAME } from "@/lib/viralityConstants";
+import { detectPlatformFromUrl } from "@/lib/platformUtils";
 
 type Platform = "tiktok" | "instagram" | "x";
 type AccountType = "profile" | "hashtag" | "keyword";
@@ -27,6 +29,7 @@ interface AddAccountModalProps {
     competitorId?: number;
     newCompetitorName?: string;
     accountType: AccountType;
+    isMyPerformance?: boolean;
   }) => Promise<void>;
 }
 
@@ -58,6 +61,12 @@ export function AddAccountModal({
   const [competitorSelection, setCompetitorSelection] = useState<string>("new");
   const [newCompetitorName, setNewCompetitorName] = useState("");
 
+  const handleUrlChange = useCallback((value: string) => {
+    setProfileUrl(value);
+    const detected = detectPlatformFromUrl(value);
+    if (detected) setSelectedPlatform(detected as Platform);
+  }, []);
+
   const handleSubmit = async () => {
     if (!profileUrl.trim()) return;
 
@@ -65,7 +74,8 @@ export function AddAccountModal({
     setError(null);
 
     try {
-      const competitorId = competitorSelection !== "new"
+      const isMyPerf = competitorSelection === "my-performance";
+      const competitorId = competitorSelection !== "new" && !isMyPerf
         ? parseInt(competitorSelection)
         : undefined;
 
@@ -74,6 +84,7 @@ export function AddAccountModal({
         competitorId,
         newCompetitorName: competitorSelection === "new" ? newCompetitorName.trim() : undefined,
         accountType,
+        isMyPerformance: isMyPerf || undefined,
       });
       setProfileUrl("");
       setSelectedPlatform("instagram");
@@ -176,7 +187,7 @@ export function AddAccountModal({
                         : "e.g. instagram.com/creatorscale"
               }
               value={profileUrl}
-              onValueChange={setProfileUrl}
+              onValueChange={handleUrlChange}
               startContent={
                 <Icon
                   icon={
@@ -255,6 +266,7 @@ export function AddAccountModal({
               <label className="text-sm text-gray-400">Competitor Group</label>
               <Select
                 items={[
+                  { key: "my-performance", label: MY_PERFORMANCE_NAME },
                   { key: "new", label: "Create New Competitor" },
                   ...competitors.map((c) => ({ key: String(c.id), label: c.name })),
                 ]}
