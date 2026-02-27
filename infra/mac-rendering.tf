@@ -35,7 +35,7 @@ variable "mac_instance_type" {
 variable "mac_availability_zone" {
   description = "AZ for Mac dedicated host (must support Mac instances — check with: aws ec2 describe-instance-type-offerings --filters Name=instance-type,Values=mac2.metal --location-type availability-zone --region us-west-2)"
   type        = string
-  default     = "us-west-2b"
+  default     = "us-west-2a"
 }
 
 # Look up which private subnet is in the Mac AZ
@@ -63,6 +63,10 @@ resource "aws_ec2_host" "mac_rendering" {
 
   tags = {
     Name = "${var.project_name}-mac-rendering-host-${var.environment}"
+  }
+
+  lifecycle {
+    create_before_destroy = true
   }
 }
 
