@@ -25,28 +25,28 @@ const PLATFORM_ICONS: Record<string, { icon: string; color: string }> = {
 type TimeFrame = "12" | "24" | "48";
 type ThresholdMode = "and" | "or";
 
-export interface ViralSettings {
+export interface ViralSettingsModalData {
   enabledAccountIds: number[];
   percentThreshold: number | null;
   absoluteThreshold: number | null;
   thresholdMode: ThresholdMode;
-  timeFrameHours: TimeFrame;
+  timeFrameHours: number;
 }
 
 interface ViralSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   accounts: ViralityAccount[];
-  settings: ViralSettings;
-  onSave: (settings: ViralSettings) => void;
+  settings: ViralSettingsModalData;
+  onSave: (settings: ViralSettingsModalData) => void;
 }
 
-const DEFAULT_SETTINGS: ViralSettings = {
+const DEFAULT_SETTINGS: ViralSettingsModalData = {
   enabledAccountIds: [],
   percentThreshold: 200,
   absoluteThreshold: null,
   thresholdMode: "or",
-  timeFrameHours: "24",
+  timeFrameHours: 24,
 };
 
 export { DEFAULT_SETTINGS as defaultViralSettings };
@@ -65,9 +65,9 @@ export function ViralSettingsModal({
   const [absoluteValue, setAbsoluteValue] = useState(String(settings.absoluteThreshold ?? 10000));
   const [thresholdMode, setThresholdMode] = useState<ThresholdMode>(settings.thresholdMode);
   const [timeFrame, setTimeFrame] = useState<TimeFrame>(
-    (["12", "24", "48"] as TimeFrame[]).includes(settings.timeFrameHours as TimeFrame)
-      ? (settings.timeFrameHours as TimeFrame)
-      : "12"
+    (["12", "24", "48"] as TimeFrame[]).includes(String(settings.timeFrameHours) as TimeFrame)
+      ? (String(settings.timeFrameHours) as TimeFrame)
+      : "24"
   );
 
   const toggleAccount = (id: number) => {
@@ -90,7 +90,7 @@ export function ViralSettingsModal({
       percentThreshold: usePercent ? Number(percentValue) || null : null,
       absoluteThreshold: useAbsolute ? Number(absoluteValue) || null : null,
       thresholdMode,
-      timeFrameHours: timeFrame,
+      timeFrameHours: parseInt(timeFrame),
     });
     onClose();
   };
@@ -103,9 +103,9 @@ export function ViralSettingsModal({
     setAbsoluteValue(String(settings.absoluteThreshold ?? 10000));
     setThresholdMode(settings.thresholdMode);
     setTimeFrame(
-      (["12", "24", "48"] as TimeFrame[]).includes(settings.timeFrameHours as TimeFrame)
-        ? (settings.timeFrameHours as TimeFrame)
-        : "12"
+      (["12", "24", "48"] as TimeFrame[]).includes(String(settings.timeFrameHours) as TimeFrame)
+        ? (String(settings.timeFrameHours) as TimeFrame)
+        : "24"
     );
     onClose();
   };
