@@ -30,6 +30,9 @@ const clipJobSchema = z.object({
   captionColor: z.string().regex(hexColorRegex, "Invalid hex color").optional(),
   captionFont: z.string().max(100).optional(),
   conversionMode: z.enum(["standard", "gaming", "speaker-zoom", "center-crop", "active-speaker"]).optional(),
+  textStyle: z.enum(["stroke", "instagram"]).optional(),
+  autoHeading: z.boolean().optional(),
+  backgroundMusicS3Key: z.string().max(500).optional(),
 });
 
 const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB chunks
@@ -192,9 +195,12 @@ export const getPresignedUploadUrl = async (req: AuthRequest, res: Response) => 
       return res.status(400).json({ error: `File size exceeds maximum limit of ${limitGB}GB for your plan` });
     }
 
-    const validTypes = ["video/mp4", "video/quicktime", "video/x-msvideo", "video/x-matroska", "video/webm"];
+    const validTypes = [
+      "video/mp4", "video/quicktime", "video/x-msvideo", "video/x-matroska", "video/webm",
+      "audio/mpeg", "audio/wav", "audio/aac", "audio/mp4",
+    ];
     if (!validTypes.includes(contentType)) {
-      return res.status(400).json({ error: "Invalid file type. Supported: MP4, MOV, AVI, MKV, WebM" });
+      return res.status(400).json({ error: "Invalid file type. Supported: MP4, MOV, AVI, MKV, WebM, MP3, WAV, AAC" });
     }
 
     const { uploadUrl, s3Key } = await s3Service.getPresignedUploadUrl(
@@ -245,6 +251,9 @@ export const submitClipJob = async (req: AuthRequest, res: Response) => {
       captionColor,
       captionFont,
       conversionMode,
+      textStyle,
+      autoHeading,
+      backgroundMusicS3Key,
     } = parseResult.data;
 
     if (parsedNumberOfVideos < 1 || parsedNumberOfVideos > 25) {
@@ -302,6 +311,9 @@ export const submitClipJob = async (req: AuthRequest, res: Response) => {
         captionColor,
         captionFont,
         conversionMode,
+        textStyle,
+        autoHeading,
+        backgroundMusicS3Key,
       },
       originalFileName,
       fileSize,
@@ -349,6 +361,9 @@ export const submitBatchClipJob = async (req: AuthRequest, res: Response) => {
       captionColor,
       captionFont,
       conversionMode,
+      textStyle,
+      autoHeading,
+      backgroundMusicS3Key,
     } = req.body;
 
     if (!teamId || !videos) {
@@ -476,6 +491,9 @@ export const submitBatchClipJob = async (req: AuthRequest, res: Response) => {
         captionColor,
         captionFont,
         conversionMode,
+        textStyle,
+        autoHeading,
+        backgroundMusicS3Key,
       },
     });
 

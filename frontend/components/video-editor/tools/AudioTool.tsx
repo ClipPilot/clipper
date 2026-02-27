@@ -249,21 +249,9 @@ export function AudioTool() {
               />
             </div>
 
-            <div>
-              <div className="flex justify-between text-xs text-text-tertiary mb-2">
-                <span>Start at</span>
-                <span>{formatTime(audioState.backgroundMusic.startTime)}</span>
-              </div>
-              <Slider
-                value={audioState.backgroundMusic.startTime}
-                onChange={(val) => handleMusicStartTimeChange(val as number)}
-                minValue={0}
-                maxValue={60}
-                step={0.1}
-                color="secondary"
-                size="sm"
-              />
-            </div>
+            <p className="text-xs text-text-tertiary">
+              Drag the green music track on the timeline to adjust start position.
+            </p>
           </div>
         ) : (
           <div>

@@ -92,9 +92,15 @@ export default function CreateClipPage() {
   );
   const [textColor, setTextColor] = useState("#FFFFFF");
   const [textFont, setTextFont] = useState("Montserrat");
+  const [textStyle, setTextStyle] = useState<"stroke" | "instagram">("stroke");
+  const [autoHeading, setAutoHeading] = useState(true);
   const [captions, setCaptions] = useState(false);
   const [captionColor, setCaptionColor] = useState("#FFD600");
   const [captionFont, setCaptionFont] = useState("Luckiest Guy");
+  const [musicFile, setMusicFile] = useState<File | null>(null);
+  const [musicS3Key, setMusicS3Key] = useState("");
+  const [musicFileName, setMusicFileName] = useState("");
+  const [isMusicUploading, setIsMusicUploading] = useState(false);
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
@@ -219,6 +225,29 @@ export default function CreateClipPage() {
     setError(errorMessage);
   };
 
+  const handleMusicUpload = async (file: File) => {
+    if (!selectedTeam) return;
+    setIsMusicUploading(true);
+    try {
+      const { uploadUrl, s3Key } = await videoAPI.getPresignedUploadUrl(
+        selectedTeam.id,
+        file.name,
+        file.type,
+        file.size,
+      );
+      await videoAPI.uploadToS3(uploadUrl, file);
+      setMusicS3Key(s3Key);
+    } catch (err: any) {
+      console.error("Music upload failed:", err);
+      setMusicFile(null);
+      setMusicFileName("");
+      setMusicS3Key("");
+      addToast({ title: "Failed to upload music", description: err.message, color: "danger" });
+    } finally {
+      setIsMusicUploading(false);
+    }
+  };
+
   const handleClipSaved = async () => {
     await loadPendingClips();
     await loadUnsavedClips();
@@ -298,6 +327,9 @@ export default function CreateClipPage() {
           captionColor,
           captionFont,
           conversionMode,
+          textStyle,
+          autoHeading: !customText ? autoHeading : undefined,
+          backgroundMusicS3Key: musicS3Key || undefined,
         });
 
         addToast({
@@ -325,6 +357,9 @@ export default function CreateClipPage() {
           captionColor,
           captionFont,
           conversionMode,
+          textStyle,
+          autoHeading: !customText ? autoHeading : undefined,
+          backgroundMusicS3Key: musicS3Key || undefined,
         });
 
         addToast({
@@ -372,6 +407,9 @@ export default function CreateClipPage() {
     setBatchVideos([]);
     setCustomPrompt("");
     setCustomText("");
+    setMusicFile(null);
+    setMusicS3Key("");
+    setMusicFileName("");
     setError("");
   };
 
@@ -699,12 +737,24 @@ export default function CreateClipPage() {
                         setTextColor={setTextColor}
                         textFont={textFont}
                         setTextFont={setTextFont}
+                        textStyle={textStyle}
+                        setTextStyle={setTextStyle}
+                        autoHeading={autoHeading}
+                        setAutoHeading={setAutoHeading}
                         captions={captions}
                         setCaptions={setCaptions}
                         captionColor={captionColor}
                         setCaptionColor={setCaptionColor}
                         captionFont={captionFont}
                         setCaptionFont={setCaptionFont}
+                        musicFile={musicFile}
+                        setMusicFile={setMusicFile}
+                        musicS3Key={musicS3Key}
+                        setMusicS3Key={setMusicS3Key}
+                        musicFileName={musicFileName}
+                        setMusicFileName={setMusicFileName}
+                        onMusicUpload={handleMusicUpload}
+                        isMusicUploading={isMusicUploading}
                       />
 
                       {isProcessing && (

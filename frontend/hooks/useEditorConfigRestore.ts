@@ -101,7 +101,48 @@ export function useEditorConfigRestore(
       setCropState(savedConfig.crop);
     }
     if (savedConfig?.audio) {
-      setAudioState(savedConfig.audio);
+      const audioConfig = { ...savedConfig.audio };
+
+      if (audioConfig.backgroundMusic?.s3Key && selectedTeam?.id) {
+        try {
+          const urlMap = await clipsAPI.getOverlayViewUrls(
+            selectedTeam.id,
+            clipId,
+            [audioConfig.backgroundMusic.s3Key],
+          );
+          const musicUrl = urlMap[audioConfig.backgroundMusic.s3Key];
+          if (musicUrl) {
+            const audioDuration = await new Promise<number>((resolve) => {
+              const audio = new Audio(musicUrl);
+              const timeout = setTimeout(() => resolve(audioConfig.backgroundMusic.trimEnd || 60), 5000);
+              audio.onloadedmetadata = () => { clearTimeout(timeout); resolve(audio.duration); };
+              audio.onerror = () => { clearTimeout(timeout); resolve(audioConfig.backgroundMusic.trimEnd || 60); };
+            });
+
+            audioConfig.backgroundMusic = {
+              s3Key: audioConfig.backgroundMusic.s3Key,
+              url: musicUrl,
+              fileName: audioConfig.backgroundMusic.fileName
+                || audioConfig.backgroundMusic.s3Key.split("/").pop()
+                || "Background Music",
+              volume: audioConfig.backgroundMusic.volume ?? 0.3,
+              startTime: audioConfig.backgroundMusic.startTime ?? 0,
+              trimStart: audioConfig.backgroundMusic.trimStart ?? 0,
+              trimEnd: audioConfig.backgroundMusic.trimEnd ?? audioDuration,
+              duration: audioDuration,
+            };
+          } else {
+            audioConfig.backgroundMusic = undefined;
+          }
+        } catch (err) {
+          console.error("Failed to fetch music URL:", err);
+          audioConfig.backgroundMusic = undefined;
+        }
+      } else if (audioConfig.backgroundMusic && !audioConfig.backgroundMusic.url) {
+        audioConfig.backgroundMusic = undefined;
+      }
+
+      setAudioState(audioConfig);
     }
 
     // Reset overlays and restore from saved config

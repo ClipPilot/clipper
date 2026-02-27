@@ -75,6 +75,18 @@ export function timeAgo(dateStr: string | null): string {
   });
 }
 
+/** Detect platform from a URL string (returns null if no match) */
+export function detectPlatformFromUrl(input: string): Platform | null {
+  const lower = input.toLowerCase();
+  if (lower.includes("instagram.com") || lower.includes("instagr.am")) return "instagram";
+  if (lower.includes("tiktok.com")) return "tiktok";
+  if (lower.includes("x.com") || lower.includes("twitter.com")) return "x";
+  if (lower.includes("youtube.com") || lower.includes("youtu.be")) return "youtube";
+  if (lower.includes("facebook.com") || lower.includes("fb.com")) return "facebook";
+  if (lower.includes("linkedin.com")) return "linkedin";
+  return null;
+}
+
 export const CHART_COLORS = [
   "#6366F1",
   "#22D3EE",

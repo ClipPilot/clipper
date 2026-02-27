@@ -104,63 +104,72 @@ export async function processBatchClipVideoJob(
 
     const allWords = videoSources.flatMap(s => s.transcriptionWords);
 
-    // Per-clip facecam detection callback
+    // Detect faces on the FULL source video once, then reuse for all clips.
+    // Use the first source video's S3 key for detection.
     const needsFacecamDetect = options.conversionMode === "gaming" || options.conversionMode === "speaker-zoom";
     const needsMultiFaceDetect = options.conversionMode === "active-speaker";
+    const sourceS3Key = videos[0]?.s3Key;
 
-    const onMergedRaw = (needsFacecamDetect || needsMultiFaceDetect)
-      ? async (localMergedPath: string): Promise<ClipServiceOptions | null> => {
-          const tempS3Key = `temp/facecam-detect/${teamId}/${Date.now()}.mp4`;
-          try {
-            await s3Service.uploadFile(localMergedPath, tempS3Key, "video/mp4");
+    let detectedFacecamRegion: FacecamRegion | null = null;
+    let detectedActiveSpeakerSegments: ActiveSpeakerSegment[] | undefined;
+    let detectedSpeakerFaceMap: Map<number, FacecamRegion> | undefined;
 
-            if (needsFacecamDetect) {
-              console.log(`[BATCH-PROCESSOR] Detecting facecam on merged clip...`);
-              const result = await detectFacecamFromS3Key(tempS3Key);
-              if (result?.facecamDetected) {
-                if (options.conversionMode === "speaker-zoom" && result.faceRegion) {
-                  return { facecamRegion: result.faceRegion };
-                } else if (result.facecamRegion) {
-                  return { facecamRegion: result.facecamRegion };
-                }
-              }
-              console.warn(`[BATCH-PROCESSOR] No facecam detected — will fall back to blurred-bg`);
-              return null;
-            }
-
-            if (needsMultiFaceDetect) {
-              console.log(`[BATCH-PROCESSOR] Detecting multiple faces on merged clip...`);
-              const multiFaceResult = await detectMultipleFacesFromS3Key(tempS3Key);
-              if (multiFaceResult && multiFaceResult.faceCount > 0) {
-                const segments = buildSpeakerSegments(allWords);
-                const uniqueSpeakers = [...new Set(segments.map(s => s.speaker))];
-                if (segments.length > 1 && multiFaceResult.faceCount >= 2) {
-                  const faceMap = mapSpeakersToFaces(uniqueSpeakers, multiFaceResult.faces);
-                  return { activeSpeakerSegments: segments, speakerFaceMap: faceMap };
-                } else if (multiFaceResult.faceCount >= 1) {
-                  return { facecamRegion: multiFaceResult.faces[0] };
-                }
-              }
-              console.warn(`[BATCH-PROCESSOR] No faces detected — falling back to blurred-bg`);
-              return null;
-            }
-
-            return null;
-          } finally {
-            try { await s3Service.deleteObject(tempS3Key); } catch { /* best effort */ }
+    if (needsFacecamDetect && sourceS3Key) {
+      console.log(`[BATCH-PROCESSOR] Detecting facecam on FULL source video: ${sourceS3Key}`);
+      try {
+        const result = await detectFacecamFromS3Key(sourceS3Key);
+        if (result?.facecamDetected) {
+          if (options.conversionMode === "speaker-zoom" && result.faceRegion) {
+            detectedFacecamRegion = result.faceRegion;
+          } else if (result.facecamRegion) {
+            detectedFacecamRegion = result.facecamRegion;
           }
         }
-      : undefined;
+        if (!detectedFacecamRegion) {
+          console.warn(`[BATCH-PROCESSOR] No facecam detected — will fall back to blurred-bg`);
+        }
+      } catch (err) {
+        console.warn(`[BATCH-PROCESSOR] Face detection failed:`, err);
+      }
+    }
+
+    if (needsMultiFaceDetect && sourceS3Key) {
+      console.log(`[BATCH-PROCESSOR] Detecting multiple faces on FULL source video: ${sourceS3Key}`);
+      try {
+        const multiFaceResult = await detectMultipleFacesFromS3Key(sourceS3Key);
+        if (multiFaceResult && multiFaceResult.faceCount > 0) {
+          const segments = buildSpeakerSegments(allWords);
+          const uniqueSpeakers = [...new Set(segments.map(s => s.speaker))];
+          if (segments.length > 1 && multiFaceResult.faceCount >= 2) {
+            const faceMap = mapSpeakersToFaces(uniqueSpeakers, multiFaceResult.faces);
+            detectedActiveSpeakerSegments = segments;
+            detectedSpeakerFaceMap = faceMap;
+          } else if (multiFaceResult.faceCount >= 1) {
+            detectedFacecamRegion = multiFaceResult.faces[0];
+          }
+        }
+        if (!detectedFacecamRegion && !detectedActiveSpeakerSegments) {
+          console.warn(`[BATCH-PROCESSOR] No faces detected — falling back to blurred-bg`);
+        }
+      } catch (err) {
+        console.warn(`[BATCH-PROCESSOR] Multi-face detection failed:`, err);
+      }
+    }
 
     const clipServiceOptions = {
+      facecamRegion: detectedFacecamRegion || undefined,
+      activeSpeakerSegments: detectedActiveSpeakerSegments,
+      speakerFaceMap: detectedSpeakerFaceMap,
       customText: options.customText,
       textPosition: options.textPosition,
       textColor: options.textColor,
       textFont: options.textFont,
+      textStyle: options.textStyle,
       captions: options.captions,
       captionColor: options.captionColor,
       captionFont: options.captionFont,
       conversionMode: options.conversionMode,
+      backgroundMusicS3Key: options.backgroundMusicS3Key,
     };
 
     console.log(`Processing ${batchClipSuggestions.length} batch clips sequentially...`);
@@ -175,12 +184,29 @@ export async function processBatchClipVideoJob(
       try {
         console.log(`\n=== Creating batch clip ${i + 1}/${batchClipSuggestions.length} ===`);
 
+        // Auto-generate a viral heading BEFORE rendering so it gets burned into the video
+        let autoHeading: string | undefined;
+        const perClipOptions = { ...clipServiceOptions };
+        if (options.autoHeading !== false && !options.customText) {
+          try {
+            const clipTranscript = suggestions.combined_script
+              || [suggestions.hook.text, ...suggestions.main.map(m => m.text)].join(" ");
+            autoHeading = await generateViralHeading({
+              transcription: clipTranscript,
+              title: suggestions.clipTitle || "",
+            });
+            console.log(`Batch clip ${i + 1} auto-heading: "${autoHeading}"`);
+            perClipOptions.customText = autoHeading;
+          } catch (headingErr) {
+            console.warn(`Batch clip ${i + 1} heading generation failed, skipping:`, headingErr);
+          }
+        }
+
         const result = await createBatchCombinedClipService(
           videoSources,
           suggestions,
-          { ...clipServiceOptions },
+          perClipOptions,
           i,
-          onMergedRaw,
         );
 
         console.log(`Batch clip ${i + 1} created, uploading to S3...`);
@@ -195,23 +221,6 @@ export async function processBatchClipVideoJob(
         fs.writeFileSync(srtPath, result.srtContent);
         const srtS3Key = await s3Service.uploadSrtFile(srtPath, teamId, clipId);
         fs.unlinkSync(srtPath);
-
-        console.log(`Batch clip ${i + 1} uploaded, updating database...`);
-
-        // Auto-generate a viral heading from the clip's transcript
-        let autoHeading: string | undefined;
-        if (options.autoHeading !== false) {
-          try {
-            const clipTranscript = result.captionsData?.map((c: { text: string }) => c.text).join(" ") || "";
-            autoHeading = await generateViralHeading({
-              transcription: clipTranscript,
-              title: suggestions.clipTitle || "",
-            });
-            console.log(`Batch clip ${i + 1} auto-heading: "${autoHeading}"`);
-          } catch (headingErr) {
-            console.warn(`Batch clip ${i + 1} heading generation failed, skipping:`, headingErr);
-          }
-        }
 
         const sourceVideosMetadata = videos.map((v) => ({
           videoIndex: v.videoIndex,
@@ -233,12 +242,39 @@ export async function processBatchClipVideoJob(
               editorConfig: {
                 heading: {
                   text: autoHeading,
-                  color: "#FFFFFF",
-                  font: "Montserrat",
+                  color: options.textColor || "#FFFFFF",
+                  font: options.textFont || "Montserrat",
                   x: 50,
                   y: 10,
                   fontSize: 48,
-                  style: "stroke",
+                  style: options.textStyle || "stroke",
+                },
+                ...(options.backgroundMusicS3Key ? {
+                  audio: {
+                    originalVolume: 1,
+                    originalMuted: false,
+                    backgroundMusic: {
+                      s3Key: options.backgroundMusicS3Key,
+                      volume: 0.3,
+                      startTime: 0,
+                      trimStart: 0,
+                      trimEnd: 60,
+                    },
+                  },
+                } : {}),
+              },
+            } : options.backgroundMusicS3Key ? {
+              editorConfig: {
+                audio: {
+                  originalVolume: 1,
+                  originalMuted: false,
+                  backgroundMusic: {
+                    s3Key: options.backgroundMusicS3Key,
+                    volume: 0.3,
+                    startTime: 0,
+                    trimStart: 0,
+                    trimEnd: 60,
+                  },
                 },
               },
             } : {}),
@@ -250,6 +286,7 @@ export async function processBatchClipVideoJob(
               textPosition: options.textPosition,
               textColor: options.textColor,
               textFont: options.textFont,
+              textStyle: options.textStyle,
               captions: options.captions || false,
               captionColor: options.captionColor,
               captionFont: options.captionFont,

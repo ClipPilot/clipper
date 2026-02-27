@@ -5,6 +5,7 @@ import {
   addTextOverlay,
   addTextOverlayAtPosition,
   addPreviewWatermark,
+  mixBackgroundMusic,
 } from "./videoEditor.service";
 import type { FacecamRegion } from "./videoEditor.service";
 import type { ConversionMode } from "../../constants/conversionModes";
@@ -18,6 +19,7 @@ import {
   addCaptionsFromData,
 } from "./captions.service";
 import { applyJumbledMetadata } from "../../utils/videoMetadata";
+import { s3Service } from "../s3.service";
 
 // Batch video source for multi-video clip creation
 export interface BatchVideoSource {
@@ -31,10 +33,12 @@ export interface ClipServiceOptions {
   textPosition?: "top" | "bottom" | "middle";
   textColor?: string;
   textFont?: string;
+  textStyle?: "stroke" | "instagram";
   captions?: boolean;
   captionColor?: string;
   captionFont?: string;
   conversionMode?: ConversionMode;
+  backgroundMusicS3Key?: string;
   facecamRegion?: FacecamRegion | null;
   activeSpeakerSegments?: ActiveSpeakerSegment[];
   speakerFaceMap?: Map<number, FacecamRegion>;
@@ -219,6 +223,7 @@ export const createCombinedClipService = async (
     const fillColor = options.textColor || "#FFFFFF";
     const strokeColor = "#000000";
     const fontName = options.textFont || "Montserrat";
+    const textStyle = options.textStyle || "stroke";
     await addTextOverlay(
       currentVideoPath,
       headingPath,
@@ -226,10 +231,33 @@ export const createCombinedClipService = async (
       mappedPosition,
       fillColor,
       strokeColor,
-      fontName
+      fontName,
+      textStyle,
     );
     currentVideoPath = headingPath;
     tempFiles.push(headingPath);
+  }
+
+  // Step 1b: Mix background music if provided
+  if (options.backgroundMusicS3Key) {
+    const musicTempPath = path.join(outDir, `music_${videoIndex}_temp.mp3`);
+    const musicMixedPath = path.join(outDir, `music_mixed_${videoIndex}_temp.mp4`);
+    try {
+      await s3Service.downloadFile(options.backgroundMusicS3Key, musicTempPath);
+      await mixBackgroundMusic(currentVideoPath, musicTempPath, musicMixedPath, {
+        originalVolume: 1,
+        musicVolume: 0.3,
+        musicStartTime: 0,
+        musicTrimStart: 0,
+        musicTrimEnd: 60,
+      });
+      currentVideoPath = musicMixedPath;
+      tempFiles.push(musicMixedPath);
+    } catch (musicErr) {
+      console.warn(`[Clip ${videoIndex}] Background music mixing failed, skipping:`, musicErr);
+    } finally {
+      if (fs.existsSync(musicTempPath)) fs.unlinkSync(musicTempPath);
+    }
   }
 
   // Step 2: Apply captions on top if enabled
@@ -509,7 +537,6 @@ export const createBatchCombinedClipService = async (
   const blankPath = path.join(outDir, `batch_blank_${outputIndex}.mp4`);
   fs.copyFileSync(mergedPath, blankPath);
 
-  // Generate captions from the appropriate source transcriptions
   const { captionsData, srtContent } = generateBatchCaptionsData(
     clipData,
     videoSources
@@ -530,6 +557,7 @@ export const createBatchCombinedClipService = async (
     const fillColor = options.textColor || "#FFFFFF";
     const strokeColor = "#000000";
     const fontName = options.textFont || "Montserrat";
+    const textStyle = options.textStyle || "stroke";
     await addTextOverlay(
       currentVideoPath,
       headingPath,
@@ -537,10 +565,33 @@ export const createBatchCombinedClipService = async (
       mappedPosition,
       fillColor,
       strokeColor,
-      fontName
+      fontName,
+      textStyle,
     );
     currentVideoPath = headingPath;
     tempFiles.push(headingPath);
+  }
+
+  // Step 1b: Mix background music if provided
+  if (options.backgroundMusicS3Key) {
+    const musicTempPath = path.join(outDir, `batch_music_${outputIndex}_temp.mp3`);
+    const musicMixedPath = path.join(outDir, `batch_music_mixed_${outputIndex}_temp.mp4`);
+    try {
+      await s3Service.downloadFile(options.backgroundMusicS3Key, musicTempPath);
+      await mixBackgroundMusic(currentVideoPath, musicTempPath, musicMixedPath, {
+        originalVolume: 1,
+        musicVolume: 0.3,
+        musicStartTime: 0,
+        musicTrimStart: 0,
+        musicTrimEnd: 60,
+      });
+      currentVideoPath = musicMixedPath;
+      tempFiles.push(musicMixedPath);
+    } catch (musicErr) {
+      console.warn(`[Batch Clip ${outputIndex}] Background music mixing failed, skipping:`, musicErr);
+    } finally {
+      if (fs.existsSync(musicTempPath)) fs.unlinkSync(musicTempPath);
+    }
   }
 
   // Step 2: Apply captions on top if enabled
