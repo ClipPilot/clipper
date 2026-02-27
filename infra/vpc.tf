@@ -92,7 +92,7 @@ resource "aws_route_table" "private" {
 
   # Route Tailscale CGNAT range (100.64.0.0/10) through the relay instance
   dynamic "route" {
-    for_each = local.tailscale_enabled ? [1] : []
+    for_each = local.tailscale_enabled ? toset(["tailscale"]) : toset([])
     content {
       cidr_block           = "100.64.0.0/10"
       network_interface_id = aws_instance.tailscale_relay[0].primary_network_interface_id

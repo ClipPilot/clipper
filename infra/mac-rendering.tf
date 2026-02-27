@@ -164,9 +164,11 @@ resource "aws_instance" "tailscale_relay" {
 output "tailscale_relay_private_ip" {
   description = "Private IP of the Tailscale relay instance"
   value       = local.tailscale_enabled ? aws_instance.tailscale_relay[0].private_ip : ""
+  sensitive   = true
 }
 
 output "tailscale_relay_instance_id" {
   description = "Instance ID of the Tailscale relay (use with SSM)"
   value       = local.tailscale_enabled ? aws_instance.tailscale_relay[0].id : ""
+  sensitive   = true
 }
