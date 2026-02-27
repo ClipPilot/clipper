@@ -23,7 +23,7 @@ variable "mac_renderer_port" {
 }
 
 locals {
-  tailscale_enabled = var.tailscale_auth_key != ""
+  tailscale_enabled = nonsensitive(var.tailscale_auth_key != "")
 }
 
 # --- AMI ---
