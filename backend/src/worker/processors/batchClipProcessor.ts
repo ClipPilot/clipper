@@ -104,62 +104,56 @@ export async function processBatchClipVideoJob(
 
     const allWords = videoSources.flatMap(s => s.transcriptionWords);
 
-    // Detect faces on the FULL source video once, then reuse for all clips.
-    // Use the first source video's S3 key for detection.
+    // Per-clip facecam detection callback — runs on each clip's merged horizontal
+    // video instead of the full raw upload (smaller file, more accurate per-clip)
     const needsFacecamDetect = options.conversionMode === "gaming" || options.conversionMode === "speaker-zoom";
     const needsMultiFaceDetect = options.conversionMode === "active-speaker";
-    const sourceS3Key = videos[0]?.s3Key;
 
-    let detectedFacecamRegion: FacecamRegion | null = null;
-    let detectedActiveSpeakerSegments: ActiveSpeakerSegment[] | undefined;
-    let detectedSpeakerFaceMap: Map<number, FacecamRegion> | undefined;
+    const onMergedRaw = (needsFacecamDetect || needsMultiFaceDetect)
+      ? async (localMergedPath: string): Promise<ClipServiceOptions | null> => {
+          const tempS3Key = `temp/facecam-detect/${teamId}/${Date.now()}.mp4`;
+          try {
+            await s3Service.uploadFile(localMergedPath, tempS3Key, "video/mp4");
 
-    if (needsFacecamDetect && sourceS3Key) {
-      console.log(`[BATCH-PROCESSOR] Detecting facecam on FULL source video: ${sourceS3Key}`);
-      try {
-        const result = await detectFacecamFromS3Key(sourceS3Key);
-        if (result?.facecamDetected) {
-          if (options.conversionMode === "speaker-zoom" && result.faceRegion) {
-            detectedFacecamRegion = result.faceRegion;
-          } else if (result.facecamRegion) {
-            detectedFacecamRegion = result.facecamRegion;
+            if (needsFacecamDetect) {
+              console.log(`[BATCH-PROCESSOR] Detecting facecam on merged clip...`);
+              const result = await detectFacecamFromS3Key(tempS3Key);
+              if (result?.facecamDetected) {
+                if (options.conversionMode === "speaker-zoom" && result.faceRegion) {
+                  return { facecamRegion: result.faceRegion };
+                } else if (result.facecamRegion) {
+                  return { facecamRegion: result.facecamRegion };
+                }
+              }
+              console.warn(`[BATCH-PROCESSOR] No facecam detected — will fall back to blurred-bg`);
+              return null;
+            }
+
+            if (needsMultiFaceDetect) {
+              console.log(`[BATCH-PROCESSOR] Detecting multiple faces on merged clip...`);
+              const multiFaceResult = await detectMultipleFacesFromS3Key(tempS3Key);
+              if (multiFaceResult && multiFaceResult.faceCount > 0) {
+                const segments = buildSpeakerSegments(allWords);
+                const uniqueSpeakers = [...new Set(segments.map(s => s.speaker))];
+                if (segments.length > 1 && multiFaceResult.faceCount >= 2) {
+                  const faceMap = mapSpeakersToFaces(uniqueSpeakers, multiFaceResult.faces);
+                  return { activeSpeakerSegments: segments, speakerFaceMap: faceMap };
+                } else if (multiFaceResult.faceCount >= 1) {
+                  return { facecamRegion: multiFaceResult.faces[0] };
+                }
+              }
+              console.warn(`[BATCH-PROCESSOR] No faces detected — falling back to blurred-bg`);
+              return null;
+            }
+
+            return null;
+          } finally {
+            try { await s3Service.deleteObject(tempS3Key); } catch { /* best effort */ }
           }
         }
-        if (!detectedFacecamRegion) {
-          console.warn(`[BATCH-PROCESSOR] No facecam detected — will fall back to blurred-bg`);
-        }
-      } catch (err) {
-        console.warn(`[BATCH-PROCESSOR] Face detection failed:`, err);
-      }
-    }
-
-    if (needsMultiFaceDetect && sourceS3Key) {
-      console.log(`[BATCH-PROCESSOR] Detecting multiple faces on FULL source video: ${sourceS3Key}`);
-      try {
-        const multiFaceResult = await detectMultipleFacesFromS3Key(sourceS3Key);
-        if (multiFaceResult && multiFaceResult.faceCount > 0) {
-          const segments = buildSpeakerSegments(allWords);
-          const uniqueSpeakers = [...new Set(segments.map(s => s.speaker))];
-          if (segments.length > 1 && multiFaceResult.faceCount >= 2) {
-            const faceMap = mapSpeakersToFaces(uniqueSpeakers, multiFaceResult.faces);
-            detectedActiveSpeakerSegments = segments;
-            detectedSpeakerFaceMap = faceMap;
-          } else if (multiFaceResult.faceCount >= 1) {
-            detectedFacecamRegion = multiFaceResult.faces[0];
-          }
-        }
-        if (!detectedFacecamRegion && !detectedActiveSpeakerSegments) {
-          console.warn(`[BATCH-PROCESSOR] No faces detected — falling back to blurred-bg`);
-        }
-      } catch (err) {
-        console.warn(`[BATCH-PROCESSOR] Multi-face detection failed:`, err);
-      }
-    }
+      : undefined;
 
     const clipServiceOptions = {
-      facecamRegion: detectedFacecamRegion || undefined,
-      activeSpeakerSegments: detectedActiveSpeakerSegments,
-      speakerFaceMap: detectedSpeakerFaceMap,
       customText: options.customText,
       textPosition: options.textPosition,
       textColor: options.textColor,
@@ -207,6 +201,7 @@ export async function processBatchClipVideoJob(
           suggestions,
           perClipOptions,
           i,
+          onMergedRaw,
         );
 
         console.log(`Batch clip ${i + 1} created, uploading to S3...`);

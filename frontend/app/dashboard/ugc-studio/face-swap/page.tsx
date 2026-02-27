@@ -341,7 +341,7 @@ function FaceSwapContent({
                 onVideoChange={handleVideoChange}
                 onSegmentsChange={setSegments}
                 showEditor={showEditor && swapType === "fullbody"}
-                onToggleEditor={() => setShowEditor((v) => !v)}
+                onToggleEditor={swapType === "fullbody" ? () => setShowEditor((v) => !v) : undefined}
                 teamId={selectedTeam?.id}
               />
             </div>

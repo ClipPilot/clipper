@@ -85,67 +85,63 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
         }))
       : [];
 
-    // Detect faces on the FULL source video once, then reuse for all clips.
-    // The source video is already in S3 (s3Key), so no re-upload needed.
+    // Per-clip facecam detection callback — runs on each clip's merged horizontal
+    // video instead of the full raw upload (smaller file, more accurate per-clip)
     const needsFacecamDetect = options.conversionMode === "gaming" || options.conversionMode === "speaker-zoom";
     const needsMultiFaceDetect = options.conversionMode === "active-speaker";
 
-    let detectedFacecamRegion: FacecamRegion | null = null;
-    let detectedActiveSpeakerSegments: ActiveSpeakerSegment[] | undefined;
-    let detectedSpeakerFaceMap: Map<number, FacecamRegion> | undefined;
+    const onMergedRaw = (needsFacecamDetect || needsMultiFaceDetect)
+      ? async (localMergedPath: string): Promise<ClipServiceOptions | null> => {
+          const tempS3Key = `temp/facecam-detect/${teamId}/${Date.now()}.mp4`;
+          try {
+            console.log(`[CLIP-PROCESSOR] Uploading merged clip to temp S3 for facecam detection: ${tempS3Key}`);
+            await s3Service.uploadFile(localMergedPath, tempS3Key, "video/mp4");
 
-    if (needsFacecamDetect) {
-      console.log(`[CLIP-PROCESSOR] Detecting facecam on FULL source video: ${s3Key}`);
-      try {
-        const result = await detectFacecamFromS3Key(s3Key);
-        if (result?.facecamDetected) {
-          if (result.facecamRegion) {
-            console.log(`[CLIP-PROCESSOR] Facecam region detected at ${result.corner}: ${JSON.stringify(result.facecamRegion)}`);
-            detectedFacecamRegion = result.facecamRegion;
-          } else if (result.faceRegion) {
-            console.log(`[CLIP-PROCESSOR] Falling back to raw face region: ${JSON.stringify(result.faceRegion)}`);
-            detectedFacecamRegion = result.faceRegion;
+            if (needsFacecamDetect) {
+              console.log(`[CLIP-PROCESSOR] Detecting facecam on merged clip...`);
+              const result = await detectFacecamFromS3Key(tempS3Key);
+              if (result?.facecamDetected) {
+                if (result.facecamRegion) {
+                  console.log(`[CLIP-PROCESSOR] Facecam region detected at ${result.corner}: ${JSON.stringify(result.facecamRegion)}`);
+                  return { facecamRegion: result.facecamRegion };
+                } else if (result.faceRegion) {
+                  console.log(`[CLIP-PROCESSOR] Falling back to raw face region: ${JSON.stringify(result.faceRegion)}`);
+                  return { facecamRegion: result.faceRegion };
+                }
+              }
+              console.warn(`[CLIP-PROCESSOR] No facecam detected — will fall back to blurred-bg`);
+              return null;
+            }
+
+            if (needsMultiFaceDetect) {
+              console.log(`[CLIP-PROCESSOR] Detecting multiple faces on merged clip...`);
+              const multiFaceResult = await detectMultipleFacesFromS3Key(tempS3Key);
+              if (multiFaceResult && multiFaceResult.faceCount > 0) {
+                console.log(`[CLIP-PROCESSOR] Found ${multiFaceResult.faceCount} faces`);
+                const segments = buildSpeakerSegments(transcriptionWords);
+                const uniqueSpeakers = [...new Set(segments.map(s => s.speaker))];
+
+                if (segments.length > 1 && multiFaceResult.faceCount >= 2) {
+                  const faceMap = mapSpeakersToFaces(uniqueSpeakers, multiFaceResult.faces);
+                  console.log(`[CLIP-PROCESSOR] Active speaker mapping: ${uniqueSpeakers.length} speakers → ${multiFaceResult.faceCount} faces`);
+                  return { activeSpeakerSegments: segments, speakerFaceMap: faceMap };
+                } else if (multiFaceResult.faceCount >= 1) {
+                  console.log(`[CLIP-PROCESSOR] Single face — using static zoom`);
+                  return { facecamRegion: multiFaceResult.faces[0] };
+                }
+              }
+              console.warn(`[CLIP-PROCESSOR] No faces detected — will fall back to blurred-bg`);
+              return null;
+            }
+
+            return null;
+          } finally {
+            try { await s3Service.deleteObject(tempS3Key); } catch { /* best effort */ }
           }
         }
-        if (!detectedFacecamRegion) {
-          console.warn(`[CLIP-PROCESSOR] No facecam detected on source — will fall back to blurred-bg`);
-        }
-      } catch (err) {
-        console.warn(`[CLIP-PROCESSOR] Face detection failed:`, err);
-      }
-    }
-
-    if (needsMultiFaceDetect) {
-      console.log(`[CLIP-PROCESSOR] Detecting multiple faces on FULL source video: ${s3Key}`);
-      try {
-        const multiFaceResult = await detectMultipleFacesFromS3Key(s3Key);
-        if (multiFaceResult && multiFaceResult.faceCount > 0) {
-          console.log(`[CLIP-PROCESSOR] Found ${multiFaceResult.faceCount} faces`);
-          const segments = buildSpeakerSegments(transcriptionWords);
-          const uniqueSpeakers = [...new Set(segments.map(s => s.speaker))];
-
-          if (segments.length > 1 && multiFaceResult.faceCount >= 2) {
-            const faceMap = mapSpeakersToFaces(uniqueSpeakers, multiFaceResult.faces);
-            console.log(`[CLIP-PROCESSOR] Active speaker mapping: ${uniqueSpeakers.length} speakers → ${multiFaceResult.faceCount} faces`);
-            detectedActiveSpeakerSegments = segments;
-            detectedSpeakerFaceMap = faceMap;
-          } else if (multiFaceResult.faceCount >= 1) {
-            console.log(`[CLIP-PROCESSOR] Single face — using static zoom`);
-            detectedFacecamRegion = multiFaceResult.faces[0];
-          }
-        }
-        if (!detectedFacecamRegion && !detectedActiveSpeakerSegments) {
-          console.warn(`[CLIP-PROCESSOR] No faces detected — will fall back to blurred-bg`);
-        }
-      } catch (err) {
-        console.warn(`[CLIP-PROCESSOR] Multi-face detection failed:`, err);
-      }
-    }
+      : undefined;
 
     const clipServiceOptions = {
-      facecamRegion: detectedFacecamRegion || undefined,
-      activeSpeakerSegments: detectedActiveSpeakerSegments,
-      speakerFaceMap: detectedSpeakerFaceMap,
       customText: options.customText,
       textPosition: options.textPosition,
       textColor: options.textColor,
@@ -194,6 +190,7 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
           transcriptionWords,
           perClipOptions,
           i,
+          onMergedRaw,
         );
 
         console.log(`Clip ${i + 1} created, uploading to S3...`);
