@@ -477,13 +477,23 @@ export const mergeClipsFaceSwap = async (clips: string[], outputPath: string) =>
       ])
       .save(outputPath)
       .on("end", () => {
-        fs.unlinkSync(listPath);
+        try {
+          if (fs.existsSync(listPath)) fs.unlinkSync(listPath);
+        } catch { /* best effort cleanup */ }
+
+        if (!fs.existsSync(outputPath)) {
+          reject(new Error(`[MERGE] FFmpeg reported success but output file missing: ${outputPath}`));
+          return;
+        }
         const finalStats = fs.statSync(outputPath);
         console.log(`[MERGE] Success: ${outputPath} (${(finalStats.size / 1024 / 1024).toFixed(2)}MB)`);
         resolve(outputPath);
       })
       .on("error", (err) => {
         console.error(`[MERGE] Failed: ${err.message}`);
+        try {
+          if (fs.existsSync(listPath)) fs.unlinkSync(listPath);
+        } catch { /* best effort cleanup */ }
         reject(err);
       });
   });
@@ -596,10 +606,31 @@ export const convertToGamingVertical = async (
   console.log(`[GAMING] Converting ${width}x${height} to gaming layout (facecam: ${JSON.stringify(facecam)})`);
 
   // Clamp facecam region to frame bounds (Lambda returns face+torso box)
-  const fcX = Math.max(0, Math.min(facecam.x, width - 1));
-  const fcY = Math.max(0, Math.min(facecam.y, height - 1));
-  const fcW = Math.min(facecam.w, width - fcX);
-  const fcH = Math.min(facecam.h, height - fcY);
+  let fcX = Math.max(0, Math.min(facecam.x, width - 1));
+  let fcY = Math.max(0, Math.min(facecam.y, height - 1));
+  let fcW = Math.min(facecam.w, width - fcX);
+  let fcH = Math.min(facecam.h, height - fcY);
+
+  // Expand facecam crop to 9:8 aspect ratio (1080:960) by zooming out —
+  // grabs more surrounding video instead of padding with black bars
+  const targetAR = 1080 / 960; // 1.125
+  const currentAR = fcW / fcH;
+  const centerX = fcX + fcW / 2;
+  const centerY = fcY + fcH / 2;
+
+  if (currentAR < targetAR) {
+    // Region is taller than 9:8 — expand width
+    fcW = Math.round(fcH * targetAR);
+  } else if (currentAR > targetAR) {
+    // Region is wider than 9:8 — expand height
+    fcH = Math.round(fcW / targetAR);
+  }
+
+  // Re-center on the face and clamp to video bounds
+  fcX = Math.max(0, Math.round(centerX - fcW / 2));
+  fcY = Math.max(0, Math.round(centerY - fcH / 2));
+  fcW = Math.min(fcW, width - fcX);
+  fcH = Math.min(fcH, height - fcY);
 
   // Gameplay "corner cut": slice off the facecam strip first, then
   // center-crop the remaining area to 16:9 so the game center is preserved.
@@ -666,8 +697,8 @@ export const convertToGamingVertical = async (
     ffmpeg()
       .input(inputPath)
       .complexFilter([
-        // Facecam: crop face region, zoom to fill 1080x960 (no black bars)
-        `[0:v]crop=${fcW}:${fcH}:${fcX}:${fcY},scale=1080:960:force_original_aspect_ratio=increase,crop=1080:960[cam]`,
+        // Facecam: crop face region (aspect-matched to 9:8), scale to fill 1080x960
+        `[0:v]crop=${fcW}:${fcH}:${fcX}:${fcY},scale=1080:960[cam]`,
         // Gameplay: center-crop to 16:9, scale to 1080x960
         `[0:v]crop=${gpW}:${gpH}:${gpX}:${gpY},scale=1080:960[game]`,
         // Stack: facecam on top, gameplay on bottom
@@ -932,11 +963,15 @@ export const convertToActiveSpeakerZoom = async (
         ])
         .save(outputPath)
         .on("end", () => {
-          fs.unlinkSync(concatListPath);
+          try {
+            if (fs.existsSync(concatListPath)) fs.unlinkSync(concatListPath);
+          } catch { /* best effort cleanup */ }
           resolve();
         })
         .on("error", (err) => {
-          if (fs.existsSync(concatListPath)) fs.unlinkSync(concatListPath);
+          try {
+            if (fs.existsSync(concatListPath)) fs.unlinkSync(concatListPath);
+          } catch { /* best effort cleanup */ }
           reject(err);
         });
     });
