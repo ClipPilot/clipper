@@ -1,5 +1,5 @@
 import { NodePgDatabase } from "drizzle-orm/node-postgres";
-import { eq, and, gte } from "drizzle-orm";
+import { eq, and, gte, inArray } from "drizzle-orm";
 import * as schema from "@clipper/shared-db";
 import { Resend } from "resend";
 import { jsPDF } from "jspdf";
@@ -80,37 +80,59 @@ function detectViralPostsForAccount(
 
   for (const post of posts) {
     const history = (post.metrics_history as MetricsEntry[] | null) ?? [];
-    if (history.length < 2) continue;
 
     // Find the earliest entry within the time frame window
     const entriesInWindow = history.filter((e) => e.recorded_at >= cutoff);
-    if (entriesInWindow.length < 2) continue;
 
-    const earliest = entriesInWindow[0];
-    const latest = entriesInWindow[entriesInWindow.length - 1];
+    let prevViews: number;
+    let currViews: number;
 
-    const prevViews = earliest.views ?? 0;
-    const currViews = latest.views ?? 0;
+    if (entriesInWindow.length >= 2) {
+      // Normal case: multiple data points in the window
+      const earliest = entriesInWindow[0];
+      const latest = entriesInWindow[entriesInWindow.length - 1];
+      prevViews = earliest.views ?? 0;
+      currViews = latest.views ?? 0;
+    } else if (entriesInWindow.length === 1) {
+      // Only one sync in the window (e.g. freshly added account).
+      // Use 0 as baseline only if the post was actually posted within the detection window.
+      // Otherwise skip — an old post with one data point has no meaningful growth signal.
+      const postedAt = post.posted_at ? new Date(post.posted_at).toISOString() : null;
+      if (!postedAt || postedAt < cutoff) continue;
+      prevViews = 0;
+      currViews = entriesInWindow[0].views ?? 0;
+    } else {
+      // No data points in window
+      continue;
+    }
+
     if (currViews <= prevViews || prevViews < 0) continue;
 
     const viewsIncrease = currViews - prevViews;
-    const percentIncrease = prevViews > 0 ? (viewsIncrease / prevViews) * 100 : 0;
-
-    const passesPercent = settings.percent_threshold != null && percentIncrease >= settings.percent_threshold;
-    const passesAbsolute = settings.absolute_threshold != null && viewsIncrease >= settings.absolute_threshold;
 
     let isViral = false;
-    if (settings.threshold_mode === "and") {
-      isViral =
-        (settings.percent_threshold != null && settings.absolute_threshold != null)
-          ? passesPercent && passesAbsolute
-          : passesPercent || passesAbsolute;
+
+    if (prevViews === 0) {
+      // Post was posted within the detection window but we have no prior baseline.
+      // Only the absolute threshold is meaningful here — percent growth is undefined.
+      isViral = settings.absolute_threshold != null && viewsIncrease >= settings.absolute_threshold;
     } else {
-      // "or" mode — either threshold passing is enough
-      isViral = passesPercent || passesAbsolute;
+      const percentIncrease = (viewsIncrease / prevViews) * 100;
+      const passesPercent = settings.percent_threshold != null && percentIncrease >= settings.percent_threshold;
+      const passesAbsolute = settings.absolute_threshold != null && viewsIncrease >= settings.absolute_threshold;
+
+      if (settings.threshold_mode === "and") {
+        isViral =
+          (settings.percent_threshold != null && settings.absolute_threshold != null)
+            ? passesPercent && passesAbsolute
+            : passesPercent || passesAbsolute;
+      } else {
+        isViral = passesPercent || passesAbsolute;
+      }
     }
 
     if (isViral) {
+      const percentIncrease = prevViews > 0 ? (viewsIncrease / prevViews) * 100 : 0;
       viralPosts.push({
         postId: post.id,
         postUrl: post.post_url,
@@ -582,14 +604,24 @@ export async function checkAndSendViralAlertsForTeam(
     return;
   }
 
-  // 4. For each alert-enabled account, get posts and detect viral ones
+  // 4. Batch-fetch all posts for alert-enabled accounts, then detect viral ones
+  const accountIds = alertAccounts.map((a) => a.id);
+  const allPosts = await db
+    .select()
+    .from(schema.viralityPosts)
+    .where(inArray(schema.viralityPosts.account_id, accountIds));
+
+  const postsByAccountId = new Map<number, (typeof allPosts)[number][]>();
+  for (const post of allPosts) {
+    const bucket = postsByAccountId.get(post.account_id) ?? [];
+    bucket.push(post);
+    postsByAccountId.set(post.account_id, bucket);
+  }
+
   const viralResults: ViralAccountResult[] = [];
 
   for (const acc of alertAccounts) {
-    const posts = await db
-      .select()
-      .from(schema.viralityPosts)
-      .where(eq(schema.viralityPosts.account_id, acc.id));
+    const posts = postsByAccountId.get(acc.id) ?? [];
 
     const result = detectViralPostsForAccount(
       posts,
@@ -693,7 +725,10 @@ export async function checkAndSendViralAlertsForTeam(
   const reportDate = new Date().toISOString().split("T")[0];
   const subject = `🚨 ${allViralPostIds.length} viral post${allViralPostIds.length !== 1 ? "s" : ""} detected from your competitors`;
 
-  // 7. Send emails and log
+  // 7. Build a lightweight summary for the alert log (avoid storing full HTML)
+  const logSummary = `${allViralPostIds.length} viral post(s) across ${competitorGroups.length} competitor(s): ${competitorGroups.map((g) => `${g.competitorName} (${g.accounts.reduce((s, a) => s + a.viralPosts.length, 0)} posts)`).join(", ")}`;
+
+  // 8. Send emails and log
   const resend = new Resend(RESEND_API_KEY);
 
   for (const member of members) {
@@ -716,7 +751,7 @@ export async function checkAndSendViralAlertsForTeam(
         user_id: member.userId,
         email: member.email,
         subject,
-        email_body: emailHtml!,
+        email_body: logSummary,
         viral_post_ids: allViralPostIds,
         status: "sent",
         sent_at: new Date(),
@@ -731,7 +766,7 @@ export async function checkAndSendViralAlertsForTeam(
         user_id: member.userId,
         email: member.email,
         subject,
-        email_body: emailHtml!,
+        email_body: logSummary,
         viral_post_ids: allViralPostIds,
         status: "failed",
         error_message: err.message || "Unknown error",

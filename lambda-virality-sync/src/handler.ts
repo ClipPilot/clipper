@@ -947,7 +947,7 @@ export const teamExtractorHandler: Handler = async (event: any) => {
 
   for (const item of mapResults) {
     const result = item?.result;
-    if (result?.status === "completed" && result?.teamId) {
+    if (result?.status === "completed" && result?.teamId && result?.source === "virality") {
       teamIds.add(result.teamId);
     }
   }

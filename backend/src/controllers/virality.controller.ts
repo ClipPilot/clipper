@@ -272,6 +272,7 @@ class ViralityController {
     try {
       const teamId = parseId(req.params.teamId);
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
+      if (!(await requirePlanAccess(teamId, res))) return;
 
       const settings = await viralityService.getSettings(teamId);
       return res.json({ settings });
@@ -284,6 +285,7 @@ class ViralityController {
     try {
       const teamId = parseId(req.params.teamId);
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
+      if (!(await requirePlanAccess(teamId, res))) return;
 
       const { percentThreshold, absoluteThreshold, thresholdMode, timeFrameHours, enabledAccountIds } = req.body;
 
@@ -292,6 +294,15 @@ class ViralityController {
       }
       if (!Array.isArray(enabledAccountIds)) {
         return res.status(400).json({ error: "enabledAccountIds must be an array" });
+      }
+      if (![12, 24, 48].includes(timeFrameHours)) {
+        return res.status(400).json({ error: "timeFrameHours must be 12, 24, or 48" });
+      }
+      if (percentThreshold != null && (typeof percentThreshold !== "number" || percentThreshold <= 0)) {
+        return res.status(400).json({ error: "percentThreshold must be a positive number" });
+      }
+      if (absoluteThreshold != null && (typeof absoluteThreshold !== "number" || absoluteThreshold <= 0)) {
+        return res.status(400).json({ error: "absoluteThreshold must be a positive number" });
       }
 
       const settings = await viralityService.saveSettings(teamId, {
@@ -312,6 +323,7 @@ class ViralityController {
     try {
       const teamId = parseId(req.params.teamId);
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
+      if (!(await requirePlanAccess(teamId, res))) return;
 
       const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
       const offset = parseInt(req.query.offset as string) || 0;
