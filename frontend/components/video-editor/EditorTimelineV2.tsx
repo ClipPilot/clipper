@@ -189,14 +189,16 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
     // Background music track (if music exists)
     if (audioState.backgroundMusic) {
       const bgMusic = audioState.backgroundMusic;
-      const musicDuration = (bgMusic.trimEnd || 60) - (bgMusic.trimStart || 0);
+      const musicDuration = (bgMusic.trimEnd || bgMusic.duration || 60) - (bgMusic.trimStart || 0);
+      const musicStart = bgMusic.startTime || 0;
+      const musicEnd = Math.min(musicStart + musicDuration, duration);
       rows.push({
         id: "music-track",
         actions: [
           {
             id: "music-bg",
-            start: bgMusic.startTime || 0,
-            end: (bgMusic.startTime || 0) + musicDuration,
+            start: musicStart,
+            end: musicEnd,
             effectId: "music",
             flexible: true,
             movable: true,
@@ -323,7 +325,7 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
       if (musicTrack && musicTrack.actions.length > 0 && audioState.backgroundMusic) {
         const musicAction = musicTrack.actions[0];
         const cur = audioState.backgroundMusic;
-        const curVisibleDuration = (cur.trimEnd || 60) - (cur.trimStart || 0);
+        const curVisibleDuration = (cur.trimEnd || cur.duration || 60) - (cur.trimStart || 0);
         const curStart = cur.startTime || 0;
         const curEnd = curStart + curVisibleDuration;
         const newDuration = musicAction.end - musicAction.start;

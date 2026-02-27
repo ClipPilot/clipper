@@ -109,13 +109,18 @@ export function AudioTool() {
     }));
   };
 
-  const handleMusicStartTimeChange = (time: number) => {
-    setAudioState((prev) => ({
-      ...prev,
-      backgroundMusic: prev.backgroundMusic
-        ? { ...prev.backgroundMusic, startTime: time }
-        : undefined,
-    }));
+  const handleMusicTrimStartChange = (time: number) => {
+    setAudioState((prev) => {
+      if (!prev.backgroundMusic) return prev;
+      const trimEnd = prev.backgroundMusic.trimEnd || prev.backgroundMusic.duration;
+      return {
+        ...prev,
+        backgroundMusic: {
+          ...prev.backgroundMusic,
+          trimStart: Math.min(time, trimEnd - 1),
+        },
+      };
+    });
   };
 
   const formatTime = (seconds: number): string => {
@@ -249,9 +254,23 @@ export function AudioTool() {
               />
             </div>
 
-            <p className="text-xs text-text-tertiary">
-              Drag the green music track on the timeline to adjust start position.
-            </p>
+            <div>
+              <div className="flex justify-between text-xs text-text-tertiary mb-2">
+                <span>Song Start</span>
+                <span>
+                  {formatTime(audioState.backgroundMusic.trimStart || 0)} / {formatTime(audioState.backgroundMusic.duration)}
+                </span>
+              </div>
+              <Slider
+                value={audioState.backgroundMusic.trimStart || 0}
+                onChange={(val) => handleMusicTrimStartChange(val as number)}
+                minValue={0}
+                maxValue={Math.max(audioState.backgroundMusic.duration - 1, 0)}
+                step={1}
+                color="secondary"
+                size="sm"
+              />
+            </div>
           </div>
         ) : (
           <div>

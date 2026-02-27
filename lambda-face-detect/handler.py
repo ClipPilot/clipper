@@ -394,19 +394,43 @@ def detect_facecam_overlay(frames: List[np.ndarray], face: Dict[str, int],
 
 def expand_face_fallback(face: Dict[str, int], frame_w: int, frame_h: int) -> Dict[str, int]:
     """
-    Fallback: if overlay edge detection fails, use a generous expansion
-    centred on the face. The crop captures the full facecam area so the
-    face is clearly visible, not hyper-zoomed.
+    Fallback: if overlay edge detection fails, dynamically calculate a crop
+    region that shows the full head + upper shoulders at a natural framing.
+    Adapts to face size — small webcam overlays get tighter crops,
+    large faces get wider framing.
     """
     fx, fy, fw, fh = face['x'], face['y'], face['w'], face['h']
     face_cx = fx + fw // 2
     face_cy = fy + fh // 2
 
-    target_w = max(int(frame_w * 0.40), fw * 6)
-    target_h = max(int(frame_h * 0.40), fh * 6)
+    face_area_ratio = (fw * fh) / (frame_w * frame_h)
+
+    if face_area_ratio < 0.01:
+        # Tiny face (webcam overlay in corner) — crop the corner quadrant
+        target_w = int(frame_w * 0.30)
+        target_h = int(frame_h * 0.30)
+    elif face_area_ratio < 0.05:
+        # Small face — show head + shoulders with room
+        target_w = fw * 4
+        target_h = fh * 5
+    else:
+        # Larger face (speaker video) — tighter natural framing
+        target_w = int(fw * 3)
+        target_h = int(fh * 3.5)
+
+    # Match gaming output aspect ratio (9:8 = 1.125) for minimal distortion
+    target_ratio = 9 / 8
+    current_ratio = target_w / max(target_h, 1)
+    if current_ratio > target_ratio:
+        target_h = int(target_w / target_ratio)
+    else:
+        target_w = int(target_h * target_ratio)
+
+    target_w = max(target_w, fw * 2)
+    target_h = max(target_h, fh * 2)
 
     new_x = max(0, face_cx - target_w // 2)
-    new_y = max(0, face_cy - target_h // 3)
+    new_y = max(0, face_cy - int(target_h * 0.4))
     new_w = min(target_w, frame_w - new_x)
     new_h = min(target_h, frame_h - new_y)
 

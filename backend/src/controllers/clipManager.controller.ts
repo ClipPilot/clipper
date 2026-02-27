@@ -1410,6 +1410,7 @@ export class ClipManagerController {
         `teams/${teamId}/clips/${clipId}/overlays/`,
         `teams/${teamId}/clips/${clipId}/music/`,
         `uploads/${teamId}/`,
+        `raw-videos/${teamId}/`,
       ];
       for (const key of s3Keys) {
         if (!allowedPrefixes.some(p => key.startsWith(p))) {
