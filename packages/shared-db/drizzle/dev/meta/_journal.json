@@ -288,6 +288,13 @@
       "when": 1771912267630,
       "tag": "0040_amazing_invisible_woman",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1772153080401,
+      "tag": "0041_faithful_sauron",
+      "breakpoints": true
     }
   ]
 }
