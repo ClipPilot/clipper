@@ -163,14 +163,27 @@ resource "aws_instance" "mac_rendering" {
 
   user_data = base64encode(<<-USERDATA
 #!/bin/zsh
-set -e
+
+# Log everything for debugging
+exec > /var/log/user-data.log 2>&1
+echo "=== user_data started at $(date) ==="
 
 export HOME=/Users/ec2-user
-cd $HOME
 
-# Install Node.js via Homebrew
-su - ec2-user -c 'brew install node@22'
-su - ec2-user -c 'echo "export PATH=/opt/homebrew/opt/node@22/bin:\$PATH" >> ~/.zshrc'
+# Install SSM Agent (required for Session Manager access)
+echo "=== Installing SSM Agent ==="
+brew_prefix=$(/usr/bin/sudo -u ec2-user /opt/homebrew/bin/brew --prefix 2>/dev/null || echo "/opt/homebrew")
+if ! command -v amazon-ssm-agent &>/dev/null; then
+  /usr/bin/sudo -u ec2-user /opt/homebrew/bin/brew install --cask amazon-ssm-agent || true
+  /opt/homebrew/bin/amazon-ssm-agent -register -y || true
+  launchctl load /Library/LaunchDaemons/com.amazon.aws.ssm.plist 2>/dev/null || true
+fi
+
+# Install Node.js via Homebrew (retry once if needed)
+echo "=== Installing Node.js ==="
+/usr/bin/sudo -u ec2-user /opt/homebrew/bin/brew update
+/usr/bin/sudo -u ec2-user /opt/homebrew/bin/brew install node@22 || /usr/bin/sudo -u ec2-user /opt/homebrew/bin/brew install node@22
+/usr/bin/sudo -u ec2-user bash -c 'echo "export PATH=/opt/homebrew/opt/node@22/bin:\$PATH" >> ~/.zshrc'
 export PATH="/opt/homebrew/opt/node@22/bin:$PATH"
 
 # Create the rendering service directory
@@ -305,8 +318,11 @@ app.listen(PORT, "0.0.0.0", () => {
 });
 SERVERJS
 
+# Fix ownership (files created by root above)
+chown -R ec2-user:staff $HOME/mac-renderer
+
 # Install dependencies
-su - ec2-user -c 'cd $HOME/mac-renderer && /opt/homebrew/opt/node@22/bin/npm install'
+/usr/bin/sudo -u ec2-user /opt/homebrew/opt/node@22/bin/npm install --prefix $HOME/mac-renderer
 
 # Create launchd plist to run on boot
 cat > /Library/LaunchDaemons/com.cuttr.mac-renderer.plist << 'PLIST'
@@ -345,7 +361,7 @@ PLIST
 # Load and start the service
 launchctl load /Library/LaunchDaemons/com.cuttr.mac-renderer.plist
 
-echo "Mac renderer setup complete"
+echo "=== Mac renderer setup complete at $(date) ==="
 USERDATA
   )
 
