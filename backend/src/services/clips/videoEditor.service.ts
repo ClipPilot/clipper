@@ -624,15 +624,33 @@ export const convertToGamingVertical = async (
 
   console.log(`[GAMING] Face crop: ${fcW}x${fcH} at (${fcX},${fcY}) → ${faceOutW}x${faceOutH} (scale=${faceScale.toFixed(2)}), gameplay: 1080x${gameOutH}`);
 
-  // Center-crop gameplay from the full frame to fill remaining space
+  // Determine available gameplay region by excluding the facecam strip
+  const fcOnLeft = fcX + fcW / 2 < width / 2;
+  const fcOnTop = fcY + fcH / 2 < height / 2;
+  const distToVerticalEdge = fcOnLeft ? (fcX + fcW) : (width - fcX);
+  const distToHorizontalEdge = fcOnTop ? (fcY + fcH) : (height - fcY);
+
+  // Exclude the thinner strip (removes least gameplay)
+  let availX = 0, availY = 0, availW = width, availH = height;
+  if (distToVerticalEdge <= distToHorizontalEdge) {
+    // Exclude left or right strip
+    if (fcOnLeft) { availX = fcX + fcW; availW = width - availX; }
+    else { availW = fcX; }
+  } else {
+    // Exclude top or bottom strip
+    if (fcOnTop) { availY = fcY + fcH; availH = height - availY; }
+    else { availH = fcY; }
+  }
+
+  // Center-crop within the available (facecam-free) region
   const gameplayAR = 1080 / gameOutH;
   let gpW: number, gpH: number, gpX: number, gpY: number;
-  if (width / height > gameplayAR) {
-    gpH = height; gpW = Math.round(height * gameplayAR);
-    gpX = Math.round((width - gpW) / 2); gpY = 0;
+  if (availW / availH > gameplayAR) {
+    gpH = availH; gpW = Math.round(availH * gameplayAR);
+    gpX = availX + Math.round((availW - gpW) / 2); gpY = availY;
   } else {
-    gpW = width; gpH = Math.round(width / gameplayAR);
-    gpX = 0; gpY = Math.round((height - gpH) / 2);
+    gpW = availW; gpH = Math.round(availW / gameplayAR);
+    gpX = availX; gpY = availY + Math.round((availH - gpH) / 2);
   }
 
   // If facecam is narrower than 1080 (height-constrained), pad with black to center it
