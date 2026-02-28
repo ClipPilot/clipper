@@ -31,6 +31,7 @@ export async function generateViralHeading(input: GenerateHeadingInput): Promise
       "- 3 to 6 words max\n" +
       "- ALL CAPS\n" +
       "- Create curiosity, urgency, or shock value\n" +
+      "- Add 1-2 relevant emojis that match the content (e.g. 🔥 💀 😱 🤯 💰 🚀)\n" +
       "- No hashtags, no quotes, no punctuation except !, ?, or emojis\n" +
       "- Return ONLY the heading text, nothing else",
     input: `Generate a viral heading for this clip:\n${context}`,

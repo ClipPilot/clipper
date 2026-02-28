@@ -2,6 +2,7 @@ import API_URL from "@/config/constants";
 import { apiFetch } from "@/lib/apiClient";
 
 export interface IntakeFormData {
+  name?: string;
   brand_description?: string;
   company_website_url?: string;
   icps?: Array<{
@@ -27,6 +28,7 @@ export interface IntakeFormData {
     accounts: Array<{ platform: string; url: string }>;
   }>;
   completed?: boolean;
+  budget?: number | null;
 }
 
 export interface IntakeForm extends IntakeFormData {

@@ -14,5 +14,6 @@ backend_desired_count = 1
 # Frontend
 frontend_url = "http://localhost:3000"
 
-# Mac rendering - disabled in dev (managed manually in prod)
-mac_renderer_url = ""
+# Tailscale relay + Mac rendering - disabled in dev
+tailscale_auth_key = ""
+mac_renderer_url   = ""

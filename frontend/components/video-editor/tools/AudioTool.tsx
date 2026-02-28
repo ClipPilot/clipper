@@ -109,13 +109,18 @@ export function AudioTool() {
     }));
   };
 
-  const handleMusicStartTimeChange = (time: number) => {
-    setAudioState((prev) => ({
-      ...prev,
-      backgroundMusic: prev.backgroundMusic
-        ? { ...prev.backgroundMusic, startTime: time }
-        : undefined,
-    }));
+  const handleMusicTrimStartChange = (time: number) => {
+    setAudioState((prev) => {
+      if (!prev.backgroundMusic) return prev;
+      const trimEnd = prev.backgroundMusic.trimEnd || prev.backgroundMusic.duration;
+      return {
+        ...prev,
+        backgroundMusic: {
+          ...prev.backgroundMusic,
+          trimStart: Math.min(time, trimEnd - 1),
+        },
+      };
+    });
   };
 
   const formatTime = (seconds: number): string => {
@@ -251,15 +256,17 @@ export function AudioTool() {
 
             <div>
               <div className="flex justify-between text-xs text-text-tertiary mb-2">
-                <span>Start at</span>
-                <span>{formatTime(audioState.backgroundMusic.startTime)}</span>
+                <span>Song Start</span>
+                <span>
+                  {formatTime(audioState.backgroundMusic.trimStart || 0)} / {formatTime(audioState.backgroundMusic.duration)}
+                </span>
               </div>
               <Slider
-                value={audioState.backgroundMusic.startTime}
-                onChange={(val) => handleMusicStartTimeChange(val as number)}
+                value={audioState.backgroundMusic.trimStart || 0}
+                onChange={(val) => handleMusicTrimStartChange(val as number)}
                 minValue={0}
-                maxValue={60}
-                step={0.1}
+                maxValue={Math.max(audioState.backgroundMusic.duration - 1, 0)}
+                step={1}
                 color="secondary"
                 size="sm"
               />

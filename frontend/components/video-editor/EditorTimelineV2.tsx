@@ -54,7 +54,7 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
   const [trimState, setTrimState] = useAtom(trimStateAtom);
   const thumbnails = useAtomValue(thumbnailsAtom);
   const isGeneratingThumbnails = useAtomValue(isGeneratingThumbnailsAtom);
-  const audioState = useAtomValue(audioStateAtom);
+  const [audioState, setAudioState] = useAtom(audioStateAtom);
   const clip = useAtomValue(editorClipAtom);
 
   // Segment atoms
@@ -186,8 +186,30 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
       rowHeight: 36,
     });
 
+    // Background music track (if music exists)
+    if (audioState.backgroundMusic) {
+      const bgMusic = audioState.backgroundMusic;
+      const musicDuration = (bgMusic.trimEnd || bgMusic.duration || 60) - (bgMusic.trimStart || 0);
+      const musicStart = bgMusic.startTime || 0;
+      const musicEnd = Math.min(musicStart + musicDuration, duration);
+      rows.push({
+        id: "music-track",
+        actions: [
+          {
+            id: "music-bg",
+            start: musicStart,
+            end: musicEnd,
+            effectId: "music",
+            flexible: true,
+            movable: true,
+          },
+        ],
+        rowHeight: 36,
+      });
+    }
+
     return rows;
-  }, [activeSegments, selectedSegmentId, overlayRows]);
+  }, [activeSegments, selectedSegmentId, overlayRows, audioState.backgroundMusic]);
 
   // Define effects
   const effects: Record<string, TimelineEffect> = useMemo(
@@ -203,6 +225,10 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
       overlay: {
         id: "overlay",
         name: "Overlay",
+      },
+      music: {
+        id: "music",
+        name: "Background Music",
       },
     }),
     []
@@ -294,8 +320,40 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
           );
         }
       }
+
+      const musicTrack = newEditorData.find((row) => row.id === "music-track");
+      if (musicTrack && musicTrack.actions.length > 0 && audioState.backgroundMusic) {
+        const musicAction = musicTrack.actions[0];
+        const cur = audioState.backgroundMusic;
+        const curVisibleDuration = (cur.trimEnd || cur.duration || 60) - (cur.trimStart || 0);
+        const curStart = cur.startTime || 0;
+        const curEnd = curStart + curVisibleDuration;
+        const newDuration = musicAction.end - musicAction.start;
+        const leftEdgeMoved = Math.abs(musicAction.start - curStart) > 0.01;
+        const rightEdgeMoved = Math.abs(musicAction.end - curEnd) > 0.01;
+
+        if (leftEdgeMoved || rightEdgeMoved) {
+          setAudioState((prev) => {
+            if (!prev.backgroundMusic) return prev;
+            const bg = prev.backgroundMusic;
+            const updates: Partial<typeof bg> = {};
+
+            if (leftEdgeMoved && !rightEdgeMoved) {
+              const delta = musicAction.start - (bg.startTime || 0);
+              updates.startTime = musicAction.start;
+              updates.trimStart = Math.max(0, (bg.trimStart || 0) + delta);
+            } else if (rightEdgeMoved && !leftEdgeMoved) {
+              updates.trimEnd = (bg.trimStart || 0) + newDuration;
+            } else {
+              updates.startTime = musicAction.start;
+            }
+
+            return { ...prev, backgroundMusic: { ...bg, ...updates } };
+          });
+        }
+      }
     },
-    [setSegmentsState, segmentsState.selectedSegmentId, setTrimState, setOverlays, overlays, activeSegments]
+    [setSegmentsState, segmentsState.selectedSegmentId, setTrimState, setOverlays, overlays, activeSegments, audioState.backgroundMusic, setAudioState]
   );
 
   // Handle action click (select segment — ignore audio track)
@@ -499,6 +557,31 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
             <span className="text-[10px] text-purple-300 truncate">
               {label}
             </span>
+          </div>
+        );
+      }
+
+      // Music track renderer
+      if (row.id === "music-track") {
+        return (
+          <div className="h-full w-full rounded flex items-center overflow-hidden bg-green-500/10">
+            <Icon
+              icon="solar:music-note-2-bold"
+              className="text-xs shrink-0 ml-1.5 z-10 text-green-400"
+            />
+            <svg
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+              className="flex-1 h-full"
+            >
+              <path
+                d={audioWavePath}
+                fill="rgba(34,197,94,0.3)"
+                stroke="rgba(34,197,94,0.5)"
+                strokeWidth="0.5"
+              />
+            </svg>
+            <span className="text-[9px] text-green-400 mr-1.5 shrink-0 z-10">Music</span>
           </div>
         );
       }
@@ -746,7 +829,7 @@ export function EditorTimelineV2({ videoRef, onSeek }: EditorTimelineV2Props) {
           onActionResizeStart={handleActionResizeStart}
           getActionRender={getActionRender}
           getScaleRender={getScaleRender}
-          style={{ height: 60 + overlays.length * 36 + 36 + 40, width: "100%", backgroundColor: "var(--surface-elevated)" }}
+          style={{ height: 60 + overlays.length * 36 + 36 + (audioState.backgroundMusic ? 36 : 0) + 40, width: "100%", backgroundColor: "var(--surface-elevated)" }}
         />
       </div>
 

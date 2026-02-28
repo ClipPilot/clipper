@@ -25,8 +25,10 @@ import announcementRoutes from "./routes/announcement.routes";
 import intakeRoutes from "./routes/intake.routes";
 import adPostingRoutes from "./routes/adPosting.routes";
 import viralityRoutes from "./routes/virality.routes";
+import userPerformanceRoutes from "./routes/userPerformance.routes";
 import voiceCloneRoutes from "./routes/voiceClone.routes";
 import apiPlatformRoutes from "./routes/api-platform/main.routes";
+import campaignRoutes from "./routes/campaign.routes";
 import { swaggerSpec } from "./config/swagger";
 
 const app = express();
@@ -138,8 +140,10 @@ app.use("/api/announcements", announcementRoutes);
 app.use("/api/intake", intakeRoutes);
 app.use("/api/ad-posting", adPostingRoutes);
 app.use("/api/virality", viralityRoutes);
+app.use("/api/user-performance", userPerformanceRoutes);
 app.use("/api/voice-clones", voiceCloneRoutes);
 app.use("/api/platform", apiPlatformRoutes);
+app.use("/api/campaigns", campaignRoutes);
 
 app.get("/debug-sentry", function mainHandler(req, res) {
   throw new Error("My first Sentry error!");

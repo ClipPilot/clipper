@@ -94,9 +94,21 @@ export function PostCard({ post, platform }: PostCardProps) {
         </div>
 
         <div className="p-3">
-          <p className="text-sm text-text-secondary line-clamp-2 mb-3">
+          <p className="text-sm text-text-secondary line-clamp-2 mb-2">
             {truncateCaption(post.caption)}
           </p>
+          {post.mass_post_id != null && (
+            <div className="flex flex-wrap items-center gap-1 mb-2">
+              <Chip size="sm" variant="flat" classNames={{ base: "bg-violet-500/10 text-violet-500 h-5 px-1.5", content: "text-[10px] font-medium px-0" }}>
+                Managed by Cuttr
+              </Chip>
+              {post.campaign_name && (
+                <Chip size="sm" variant="flat" classNames={{ base: "bg-amber-500/10 text-amber-500 h-5 px-1.5", content: "text-[10px] font-medium px-0" }}>
+                  {post.campaign_name}
+                </Chip>
+              )}
+            </div>
+          )}
 
           <div className="flex items-center justify-between text-xs text-text-tertiary mb-2">
             <span>{formatDate(post.posted_at)}</span>

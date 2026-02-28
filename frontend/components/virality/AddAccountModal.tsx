@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import {
   Modal,
   ModalContent,
@@ -13,6 +13,8 @@ import {
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { ViralityCompetitor } from "@/api/virality";
+import { MY_PERFORMANCE_NAME } from "@/lib/viralityConstants";
+import { detectPlatformFromUrl } from "@/lib/platformUtils";
 
 type Platform = "tiktok" | "instagram" | "x";
 type AccountType = "profile" | "hashtag" | "keyword";
@@ -21,11 +23,13 @@ interface AddAccountModalProps {
   isOpen: boolean;
   onClose: () => void;
   competitors?: ViralityCompetitor[];
+  hideCompetitorSelect?: boolean;
   onSubmit: (platform: Platform, profileUrl: string, options: {
     enableAlerts: boolean;
     competitorId?: number;
     newCompetitorName?: string;
     accountType: AccountType;
+    isMyPerformance?: boolean;
   }) => Promise<void>;
 }
 
@@ -45,6 +49,7 @@ export function AddAccountModal({
   isOpen,
   onClose,
   competitors = [],
+  hideCompetitorSelect = false,
   onSubmit,
 }: AddAccountModalProps) {
   const [profileUrl, setProfileUrl] = useState("");
@@ -56,6 +61,12 @@ export function AddAccountModal({
   const [competitorSelection, setCompetitorSelection] = useState<string>("new");
   const [newCompetitorName, setNewCompetitorName] = useState("");
 
+  const handleUrlChange = useCallback((value: string) => {
+    setProfileUrl(value);
+    const detected = detectPlatformFromUrl(value);
+    if (detected) setSelectedPlatform(detected as Platform);
+  }, []);
+
   const handleSubmit = async () => {
     if (!profileUrl.trim()) return;
 
@@ -63,7 +74,8 @@ export function AddAccountModal({
     setError(null);
 
     try {
-      const competitorId = competitorSelection !== "new"
+      const isMyPerf = competitorSelection === "my-performance";
+      const competitorId = competitorSelection !== "new" && !isMyPerf
         ? parseInt(competitorSelection)
         : undefined;
 
@@ -72,6 +84,7 @@ export function AddAccountModal({
         competitorId,
         newCompetitorName: competitorSelection === "new" ? newCompetitorName.trim() : undefined,
         accountType,
+        isMyPerformance: isMyPerf || undefined,
       });
       setProfileUrl("");
       setSelectedPlatform("instagram");
@@ -174,7 +187,7 @@ export function AddAccountModal({
                         : "e.g. instagram.com/creatorscale"
               }
               value={profileUrl}
-              onValueChange={setProfileUrl}
+              onValueChange={handleUrlChange}
               startContent={
                 <Icon
                   icon={
@@ -248,40 +261,43 @@ export function AddAccountModal({
           </div>
 
           {/* Competitor Group */}
-          <div className="space-y-2">
-            <label className="text-sm text-gray-400">Competitor Group</label>
-            <Select
-              items={[
-                { key: "new", label: "Create New Competitor" },
-                ...competitors.map((c) => ({ key: String(c.id), label: c.name })),
-              ]}
-              selectedKeys={[competitorSelection]}
-              onSelectionChange={(keys) => {
-                const val = Array.from(keys)[0] as string;
-                if (val) setCompetitorSelection(val);
-              }}
-              classNames={{
-                trigger: "bg-[#0d0f1a] border border-[#2a2d3e] hover:border-[#3a3d4e] rounded-xl h-12",
-                value: "text-white",
-              }}
-            >
-              {(item) => <SelectItem key={item.key}>{item.label}</SelectItem>}
-            </Select>
-            {competitorSelection === "new" && (
-              <Input
-                placeholder="e.g. Nike, Adidas"
-                value={newCompetitorName}
-                onValueChange={setNewCompetitorName}
-                classNames={{
-                  inputWrapper:
-                    "bg-[#0d0f1a] border border-[#2a2d3e] hover:border-[#3a3d4e] rounded-xl h-12",
-                  input: "text-white placeholder:text-gray-500",
+          {!hideCompetitorSelect && (
+            <div className="space-y-2">
+              <label className="text-sm text-gray-400">Competitor Group</label>
+              <Select
+                items={[
+                  { key: "my-performance", label: MY_PERFORMANCE_NAME },
+                  { key: "new", label: "Create New Competitor" },
+                  ...competitors.map((c) => ({ key: String(c.id), label: c.name })),
+                ]}
+                selectedKeys={[competitorSelection]}
+                onSelectionChange={(keys) => {
+                  const val = Array.from(keys)[0] as string;
+                  if (val) setCompetitorSelection(val);
                 }}
-              />
-            )}
-          </div>
+                classNames={{
+                  trigger: "bg-[#0d0f1a] border border-[#2a2d3e] hover:border-[#3a3d4e] rounded-xl h-12",
+                  value: "text-white",
+                }}
+              >
+                {(item) => <SelectItem key={item.key}>{item.label}</SelectItem>}
+              </Select>
+              {competitorSelection === "new" && (
+                <Input
+                  placeholder="e.g. Nike, Adidas"
+                  value={newCompetitorName}
+                  onValueChange={setNewCompetitorName}
+                  classNames={{
+                    inputWrapper:
+                      "bg-[#0d0f1a] border border-[#2a2d3e] hover:border-[#3a3d4e] rounded-xl h-12",
+                    input: "text-white placeholder:text-gray-500",
+                  }}
+                />
+              )}
+            </div>
+          )}
 
-          {/* Enable Instant Alerts
+          {/* Enable Instant Alerts */}
           <div className="flex items-center justify-between p-4 bg-[#0d0f1a] rounded-xl border border-[#2a2d3e]">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-green-500/10 rounded-lg">
@@ -301,7 +317,7 @@ export function AddAccountModal({
                 wrapper: enableAlerts ? "bg-accent-400" : "bg-gray-600",
               }}
             />
-          </div> */}
+          </div>
 
           {/* Error Message */}
           {error && (

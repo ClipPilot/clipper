@@ -281,7 +281,6 @@ export async function processKlingFaceSwapJob(
         imageUrls: [referenceImageUrl, frameUrl],
         aspectRatio: "auto",
         numImages: 1,
-        usePro: true,
       });
 
       const poseImagePath = path.join(outDir, `pose_seg${segIdx}_${timestamp}.png`);
@@ -581,6 +580,18 @@ export async function processKlingFaceSwapJob(
           })
           .returning();
         console.log(`[kling-face-swap] Created clip ${clip.id} in library`);
+
+        // Emit updated job with clipId so frontend can show Edit button
+        emitJobUpdate(teamId, {
+          id: jobId,
+          status: "completed",
+          progress: 100,
+          progressMessage: "Completed",
+          outputUrl: outputUrl || null,
+          errorMessage: null,
+          finishedAt: new Date().toISOString(),
+          clipId: clip.id,
+        });
 
         try {
           const tempDir = path.join(

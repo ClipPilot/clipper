@@ -2,7 +2,7 @@
 
 import React, { useRef, useState } from "react";
 import { useAtom, useAtomValue } from "jotai";
-import { Input, Textarea, Button, Switch } from "@heroui/react";
+import { Input, Textarea, Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { selectedTeamAtom } from "@/store/auth";
 import {
@@ -13,11 +13,10 @@ import {
   videoDurationAtom,
   generateOverlayId,
   MediaOverlay,
-  CommentPlatform,
   CommentOverlayData,
 } from "@/store/videoEditor";
 import { clipsAPI } from "@/api/clips";
-import { COMMENT_DIMENSIONS, PLATFORMS } from "@/constants/comments";
+import { COMMENT_DIMENSIONS } from "@/constants/comments";
 
 interface CommentOverlayFormProps {
   editingOverlayId?: string | null;
@@ -35,13 +34,9 @@ export function CommentOverlayForm({ editingOverlayId }: CommentOverlayFormProps
   const [uploadingPfp, setUploadingPfp] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
-  // Form state
-  const [platform, setPlatform] = useState<CommentPlatform>("tiktok");
+  // Form state (TikTok only)
   const [username, setUsername] = useState("");
   const [commentText, setCommentText] = useState("");
-  const [likesCount, setLikesCount] = useState(1234);
-  const [isVerified, setIsVerified] = useState(false);
-  const [timeAgo, setTimeAgo] = useState("2h");
   const [profilePictureUrl, setProfilePictureUrl] = useState<string | undefined>();
   const [profilePictureS3Key, setProfilePictureS3Key] = useState<string | undefined>();
 
@@ -50,12 +45,8 @@ export function CommentOverlayForm({ editingOverlayId }: CommentOverlayFormProps
 
   const loadFromOverlay = (overlay: MediaOverlay) => {
     if (overlay.commentData) {
-      setPlatform(overlay.commentData.platform);
       setUsername(overlay.commentData.username);
       setCommentText(overlay.commentData.commentText);
-      setLikesCount(overlay.commentData.likesCount);
-      setIsVerified(overlay.commentData.isVerified);
-      setTimeAgo(overlay.commentData.timeAgo || "2h");
       setProfilePictureUrl(overlay.commentData.profilePictureUrl);
       setProfilePictureS3Key(overlay.commentData.profilePictureS3Key);
     }
@@ -115,17 +106,17 @@ export function CommentOverlayForm({ editingOverlayId }: CommentOverlayFormProps
     if (!username.trim() || !commentText.trim()) return;
 
     const commentData: CommentOverlayData = {
-      platform,
+      platform: "tiktok",
       username: username.trim(),
       commentText: commentText.trim(),
       profilePictureUrl,
       profilePictureS3Key,
-      likesCount,
-      isVerified,
-      timeAgo: timeAgo.trim() || "2h",
+      likesCount: 0,
+      isVerified: false,
+      timeAgo: "",
     };
 
-    const dims = COMMENT_DIMENSIONS[platform];
+    const dims = COMMENT_DIMENSIONS.tiktok;
 
     if (isEditing && editingOverlayId) {
       // Update existing overlay
@@ -142,7 +133,7 @@ export function CommentOverlayForm({ editingOverlayId }: CommentOverlayFormProps
         id: generateOverlayId(),
         type: "comment",
         s3Key: "",
-        fileName: `${platform}_comment`,
+        fileName: "tiktok_comment",
         url: "",
         startTime: 0,
         endTime: videoDuration,
@@ -167,12 +158,8 @@ export function CommentOverlayForm({ editingOverlayId }: CommentOverlayFormProps
   };
 
   const resetForm = (keepBlobUrl = false) => {
-    setPlatform("tiktok");
     setUsername("");
     setCommentText("");
-    setLikesCount(1234);
-    setIsVerified(false);
-    setTimeAgo("2h");
     if (!keepBlobUrl && profilePictureUrl) URL.revokeObjectURL(profilePictureUrl);
     setProfilePictureUrl(undefined);
     setProfilePictureS3Key(undefined);
@@ -195,8 +182,8 @@ export function CommentOverlayForm({ editingOverlayId }: CommentOverlayFormProps
     <div className="space-y-4 bg-surface-elevated rounded-lg p-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm font-medium text-text-primary">
-          <Icon icon="solar:chat-round-dots-bold" className="text-accent-400" />
-          {isEditing ? "Edit Comment" : "New Comment Overlay"}
+          <Icon icon="simple-icons:tiktok" className="text-accent-400" />
+          {isEditing ? "Edit TikTok Comment" : "New TikTok Comment"}
         </div>
         {!isEditing && (
           <Button
@@ -208,27 +195,6 @@ export function CommentOverlayForm({ editingOverlayId }: CommentOverlayFormProps
             <Icon icon="solar:close-circle-bold" />
           </Button>
         )}
-      </div>
-
-      {/* Platform Selector */}
-      <div>
-        <p className="text-xs text-text-tertiary mb-2">Platform Style</p>
-        <div className="flex gap-2">
-          {PLATFORMS.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => setPlatform(p.id)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors flex-1 justify-center ${
-                platform === p.id
-                  ? "bg-accent-400/20 text-accent-400 ring-1 ring-accent-400"
-                  : "bg-surface-base text-text-secondary hover:bg-surface-hover"
-              }`}
-            >
-              <Icon icon={p.icon} className="text-sm" />
-              {p.label}
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* Profile Picture */}
@@ -294,40 +260,6 @@ export function CommentOverlayForm({ editingOverlayId }: CommentOverlayFormProps
         minRows={2}
         maxRows={4}
       />
-
-      {/* Likes & Verified Row */}
-      <div className="flex gap-3">
-        <Input
-          label="Likes"
-          type="number"
-          value={String(likesCount)}
-          onValueChange={(val) => setLikesCount(Math.max(0, parseInt(val) || 0))}
-          size="sm"
-          className="flex-1"
-          startContent={<Icon icon="solar:heart-bold" className="text-text-tertiary text-sm" />}
-        />
-        <Input
-          label="Time ago"
-          placeholder="2h"
-          value={timeAgo}
-          onValueChange={setTimeAgo}
-          size="sm"
-          className="w-24"
-        />
-      </div>
-
-      {/* Verified Badge */}
-      {/* <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Icon icon="solar:verified-check-bold" className="text-blue-400" />
-          <span className="text-sm text-text-secondary">Verified Badge</span>
-        </div>
-        <Switch
-          size="sm"
-          isSelected={isVerified}
-          onValueChange={setIsVerified}
-        />
-      </div> */}
 
       {/* Add/Update Button */}
       <Button

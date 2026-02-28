@@ -4,6 +4,8 @@ import { Input, Textarea } from "@heroui/react";
 import { Icon } from "@iconify/react";
 
 interface StepBrandInfoProps {
+  campaignName: string;
+  setCampaignName: (v: string) => void;
   brandDescription: string;
   setBrandDescription: (v: string) => void;
   companyWebsite: string;
@@ -11,6 +13,8 @@ interface StepBrandInfoProps {
 }
 
 export function StepBrandInfo({
+  campaignName,
+  setCampaignName,
   brandDescription,
   setBrandDescription,
   companyWebsite,
@@ -20,12 +24,22 @@ export function StepBrandInfo({
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold text-text-primary mb-1">
-          Brand Information
+          Campaign & Brand Information
         </h3>
         <p className="text-sm text-text-secondary mb-4">
-          Help us understand your brand and what you do.
+          Name your campaign and tell us about your brand.
         </p>
       </div>
+      <Input
+        label="Campaign Name"
+        placeholder="e.g. Summer Launch 2026"
+        value={campaignName}
+        onValueChange={setCampaignName}
+        isRequired
+        startContent={
+          <Icon icon="solar:flag-bold-duotone" className="text-text-tertiary" />
+        }
+      />
       <Textarea
         label="Brand Description"
         placeholder="Describe your brand, products/services, and target market..."
@@ -33,6 +47,7 @@ export function StepBrandInfo({
         onValueChange={setBrandDescription}
         minRows={4}
         maxRows={8}
+        isRequired
       />
       <Input
         label="Company Website"

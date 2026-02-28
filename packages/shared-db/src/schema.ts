@@ -1,4 +1,3 @@
-import { float } from "drizzle-orm/mysql-core";
 import { sql } from "drizzle-orm";
 import {
   pgTable,
@@ -784,37 +783,6 @@ export const userAnnouncementDismissals = pgTable(
   }),
 ).enableRLS();
 
-export const massPostingStatusEnum = pgEnum("mass_posting_status", [
-  "pending",
-  "accepted",
-  "rejected",
-  "appeal",
-]);
-export const massPostingApplications = pgTable(
-  "mass_posting_applications",
-  {
-    id: serial("id").primaryKey(),
-    team_id: integer("team_id")
-      .notNull()
-      .references(() => teams.id, { onDelete: "cascade" }),
-    intake_form_id: integer("intake_form_id").references(() => intakeForms.id, {
-      onDelete: "set null",
-    }),
-    status: varchar("status", { length: 50 }).notNull().default("pending"),
-    details: jsonb("details"),
-    google_drive_folder_id: varchar("google_drive_folder_id", { length: 255 }),
-    rejection_reason: text("rejection_reason"),
-    admin_notes: text("admin_notes"),
-    created_at: timestamp("created_at").notNull().defaultNow(),
-    updated_at: timestamp("updated_at").notNull().defaultNow(),
-    quoted_cpm: decimal("quoted_cpm", { precision: 10, scale: 2 }),
-    budget: decimal("budget", { precision: 12, scale: 2 }),
-    videoMinimum: integer("video_minimum"),
-  },
-  (table) => ({
-    teamIdx: index("mass_posting_applications_team_id_idx").on(table.team_id),
-  }),
-).enableRLS();
 export const intakeForms = pgTable(
   "intake_forms",
   {
@@ -834,6 +802,163 @@ export const intakeForms = pgTable(
   },
   (table) => ({
     teamIdx: index("intake_forms_team_id_idx").on(table.team_id),
+  }),
+).enableRLS();
+
+// Campaign-based distribution system
+export const campaignStatusEnum = pgEnum("campaign_status", [
+  "pending",
+  "accepted",
+  "rejected",
+  "appeal",
+  "started",
+  "paused",
+  "completed",
+]);
+
+export const campaignContractStatusEnum = pgEnum("campaign_contract_status", [
+  "pending",
+  "signed",
+  "voided",
+]);
+
+export const campaigns = pgTable(
+  "campaigns",
+  {
+    id: serial("id").primaryKey(),
+    team_id: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    intake_form_id: integer("intake_form_id").references(() => intakeForms.id, {
+      onDelete: "set null",
+    }),
+    name: varchar("name", { length: 255 }).notNull(),
+    status: campaignStatusEnum("status").notNull().default("pending"),
+    quoted_cpm: decimal("quoted_cpm", { precision: 10, scale: 2 }),
+    budget: decimal("budget", { precision: 12, scale: 2 }),
+    video_minimum: integer("video_minimum"),
+    rejection_reason: text("rejection_reason"),
+    admin_notes: text("admin_notes"),
+    google_drive_folder_id: varchar("google_drive_folder_id", { length: 255 }),
+    videos_ready: boolean("videos_ready").notNull().default(false),
+    payment_ready: boolean("payment_ready").notNull().default(false),
+    contract_ready: boolean("contract_ready").notNull().default(false),
+    started_at: timestamp("started_at"),
+    completed_at: timestamp("completed_at"),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    teamIdx: index("campaigns_team_id_idx").on(table.team_id),
+    statusIdx: index("campaigns_status_idx").on(table.status),
+    teamStatusIdx: index("campaigns_team_id_status_idx").on(
+      table.team_id,
+      table.status,
+    ),
+  }),
+).enableRLS();
+
+export const campaignVideos = pgTable(
+  "campaign_videos",
+  {
+    id: serial("id").primaryKey(),
+    campaign_id: integer("campaign_id")
+      .notNull()
+      .references(() => campaigns.id, { onDelete: "cascade" }),
+    clip_id: integer("clip_id").references(() => clips.id, {
+      onDelete: "set null",
+    }),
+    custom_video_key: text("custom_video_key"),
+    custom_video_name: varchar("custom_video_name", { length: 255 }),
+    duration_seconds: integer("duration_seconds"),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    campaignIdx: index("campaign_videos_campaign_id_idx").on(table.campaign_id),
+    clipIdx: index("campaign_videos_clip_id_idx").on(table.clip_id),
+  }),
+).enableRLS();
+
+export const campaignWallets = pgTable(
+  "campaign_wallets",
+  {
+    id: serial("id").primaryKey(),
+    campaign_id: integer("campaign_id")
+      .notNull()
+      .unique()
+      .references(() => campaigns.id, { onDelete: "cascade" }),
+    team_id: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    balance_cents: integer("balance_cents").notNull().default(0),
+    total_deposited_cents: integer("total_deposited_cents").notNull().default(0),
+    total_spent_cents: integer("total_spent_cents").notNull().default(0),
+    stripe_payment_method_id: varchar("stripe_payment_method_id", {
+      length: 255,
+    }),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    campaignIdx: index("campaign_wallets_campaign_id_idx").on(table.campaign_id),
+    teamIdx: index("campaign_wallets_team_id_idx").on(table.team_id),
+  }),
+).enableRLS();
+
+export const campaignWalletTopUps = pgTable(
+  "campaign_wallet_top_ups",
+  {
+    id: serial("id").primaryKey(),
+    campaign_id: integer("campaign_id")
+      .notNull()
+      .references(() => campaigns.id, { onDelete: "cascade" }),
+    team_id: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    amount_cents: integer("amount_cents").notNull(),
+    stripe_payment_intent_id: varchar("stripe_payment_intent_id", {
+      length: 255,
+    }),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    campaignIdx: index("campaign_wallet_top_ups_campaign_id_idx").on(
+      table.campaign_id,
+    ),
+    teamIdx: index("campaign_wallet_top_ups_team_id_idx").on(table.team_id),
+  }),
+).enableRLS();
+
+export const campaignContracts = pgTable(
+  "campaign_contracts",
+  {
+    id: serial("id").primaryKey(),
+    campaign_id: integer("campaign_id")
+      .notNull()
+      .references(() => campaigns.id, { onDelete: "cascade" }),
+    team_id: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    signed_by_user_id: integer("signed_by_user_id").references(
+      () => users.id,
+      { onDelete: "set null" },
+    ),
+    terms: jsonb("terms"),
+    unsigned_pdf_key: text("unsigned_pdf_key"),
+    signed_pdf_key: text("signed_pdf_key"),
+    signature_image_key: text("signature_image_key"),
+    signer_legal_name: varchar("signer_legal_name", { length: 255 }),
+    signer_ip_address: varchar("signer_ip_address", { length: 45 }),
+    signed_at: timestamp("signed_at"),
+    status: campaignContractStatusEnum("status").notNull().default("pending"),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    campaignIdx: index("campaign_contracts_campaign_id_idx").on(
+      table.campaign_id,
+    ),
+    teamIdx: index("campaign_contracts_team_id_idx").on(table.team_id),
   }),
 ).enableRLS();
 
@@ -863,6 +988,9 @@ export const posts = pgTable(
     clip_id: integer("clip_id").references(() => clips.id, {
       onDelete: "set null",
     }),
+    campaign_id: integer("campaign_id").references(() => campaigns.id, {
+      onDelete: "set null",
+    }),
     content: text("content").notNull(),
     platform: platformEnum("platform").notNull(),
     posted_time: timestamp("posted_time").notNull().defaultNow(),
@@ -877,6 +1005,7 @@ export const posts = pgTable(
     teamIdx: index("posts_team_id_idx").on(table.team_id),
     platformIdx: index("posts_platform_idx").on(table.platform),
     clipIdx: index("posts_clip_id_idx").on(table.clip_id),
+    campaignIdx: index("posts_campaign_id_idx").on(table.campaign_id),
     accountIdx: index("posts_account_handle_idx").on(table.accountHandle),
   }),
 ).enableRLS();
@@ -990,6 +1119,82 @@ export const viralityPosts = pgTable(
   }),
 ).enableRLS();
 
+// ── User's own accounts for performance tracking ──
+
+export const userAccounts = pgTable(
+  "user_accounts",
+  {
+    id: serial("id").primaryKey(),
+    team_id: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    platform: viralityPlatformEnum("platform").notNull(),
+    account_type: varchar("account_type", { length: 20 }).notNull().default("profile"),
+    username: varchar("username", { length: 255 }).notNull(),
+    profile_url: text("profile_url").notNull(),
+    display_name: varchar("display_name", { length: 255 }),
+    avatar_url: text("avatar_url"),
+    bio: text("bio"),
+    follower_count: integer("follower_count"),
+    following_count: integer("following_count"),
+    total_likes: integer("total_likes"),
+    post_count: integer("post_count"),
+    follower_history: jsonb("follower_history"),
+    is_verified: boolean("is_verified").default(false),
+    last_synced_at: timestamp("last_synced_at"),
+    sync_status: viralitySyncStatusEnum("sync_status").default("pending"),
+    sync_error: text("sync_error"),
+    alert_enabled: boolean("alert_enabled").notNull().default(false),
+    is_active: boolean("is_active").notNull().default(true),
+    syncs_remaining: integer("syncs_remaining").notNull().default(14),
+    source: varchar("source", { length: 20 }),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    teamIdx: index("user_accounts_team_id_idx").on(table.team_id),
+    uniqueTeamPlatformUsername: unique("user_accounts_unique").on(
+      table.team_id,
+      table.platform,
+      table.username,
+    ),
+  }),
+).enableRLS();
+
+export const userPosts = pgTable(
+  "user_posts",
+  {
+    id: serial("id").primaryKey(),
+    account_id: integer("account_id")
+      .notNull()
+      .references(() => userAccounts.id, { onDelete: "cascade" }),
+    platform_post_id: varchar("platform_post_id", { length: 255 }).notNull(),
+    post_url: text("post_url").notNull(),
+    thumbnail_url: text("thumbnail_url"),
+    caption: text("caption"),
+    hashtags: jsonb("hashtags"),
+    post_type: varchar("post_type", { length: 50 }),
+    posted_at: timestamp("posted_at"),
+    like_count: integer("like_count").default(0),
+    comment_count: integer("comment_count").default(0),
+    video_view_count: integer("video_view_count"),
+    video_play_count: integer("video_play_count"),
+    metrics_history: jsonb("metrics_history").default([]),
+    mass_post_id: integer("mass_post_id").references(() => posts.id, { onDelete: "set null" }),
+    syncs_remaining: integer("syncs_remaining").notNull().default(28),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    accountIdx: index("user_posts_account_id_idx").on(table.account_id),
+    uniqueAccountPost: unique("user_posts_unique").on(
+      table.account_id,
+      table.platform_post_id,
+    ),
+    postedAtIdx: index("user_posts_posted_at_idx").on(table.posted_at),
+  }),
+).enableRLS();
+
 export const viralityAlertStatusEnum = pgEnum("virality_alert_status", [
   "sent",
   "failed",
@@ -1027,11 +1232,11 @@ export const viralitySettings = pgTable(
     team_id: integer("team_id")
       .notNull()
       .references(() => teams.id, { onDelete: "cascade" }),
-    percent_threshold: integer("percent_threshold"),
-    absolute_threshold: integer("absolute_threshold"),
+    percent_threshold: integer("percent_threshold").notNull().default(100),
+    absolute_threshold: integer("absolute_threshold").notNull().default(100000),
     threshold_mode: viralityThresholdModeEnum("threshold_mode")
       .notNull()
-      .default("or"),
+      .default("and"),
     time_frame_hours: integer("time_frame_hours").notNull().default(24),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),

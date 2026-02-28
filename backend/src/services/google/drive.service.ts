@@ -57,6 +57,36 @@ class GoogleDriveService {
     return folderId;
   }
 
+  async createCampaignFolder(
+    teamName: string,
+    teamId: number,
+    campaignId: number,
+    campaignName?: string,
+  ): Promise<string> {
+    const drive = this.getDrive();
+    const folderName = campaignName
+      ? `${teamName}, ${campaignName} (${teamId})`
+      : `${teamName} (${teamId}) - Campaign ${campaignId}`;
+
+    const folderMetadata = {
+      name: folderName,
+      mimeType: "application/vnd.google-apps.folder",
+      parents: [config.google.driveParentFolderId],
+    };
+
+    const response = await drive.files.create({
+      requestBody: folderMetadata,
+      fields: "id",
+    });
+
+    const folderId = response.data.id;
+    if (!folderId) {
+      throw new Error("Failed to create campaign Drive folder - no ID returned");
+    }
+
+    return folderId;
+  }
+
   getFolderLink(folderId: string): string {
     return `https://drive.google.com/drive/folders/${folderId}`;
   }

@@ -1,22 +1,6 @@
 # Lambda function to sync virality targets via Apify
 # Runs every 12 hours via EventBridge -> Step Functions
 
-# Import existing resources into state (remove these blocks after first successful apply)
-import {
-  to = aws_ecr_repository.virality_sync_lambda
-  id = "clipster-virality-sync-lambda"
-}
-
-import {
-  to = aws_iam_role.virality_sync_lambda
-  id = "clipster-virality-sync-lambda-role"
-}
-
-import {
-  to = aws_cloudwatch_log_group.virality_sync_lambda
-  id = "/aws/lambda/clipster-virality-sync"
-}
-
 # ECR Repository for Virality Sync Lambda
 # Note: Prod uses 'clipster-virality-sync-lambda', staging uses 'clipster-virality-sync-lambda-staging'
 # This separation prevents staging deployments from triggering ECR lifecycle policy
@@ -144,7 +128,75 @@ resource "aws_lambda_function" "virality_sync_worker" {
   }
 }
 
+# Team Extractor Lambda — deduplicates team IDs from sync results (lightweight)
+resource "aws_lambda_function" "virality_sync_extractor" {
+  function_name = "${var.project_name}-virality-sync-extractor-${var.environment}"
+  role          = aws_iam_role.virality_sync_lambda.arn
+  package_type  = "Image"
+  image_uri     = "${aws_ecr_repository.virality_sync_lambda.repository_url}:latest"
+  timeout       = 30
+  memory_size   = 256
+
+  image_config {
+    command = ["lambda-virality-sync/dist/handler.teamExtractorHandler"]
+  }
+
+  environment {
+    variables = {
+      DATABASE_URL = var.database_url
+    }
+  }
+
+  depends_on = [aws_iam_role_policy_attachment.virality_sync_lambda_basic]
+  lifecycle { ignore_changes = [image_uri] }
+
+  tags = {
+    Name        = "${var.project_name}-virality-sync-extractor-${var.environment}"
+    Environment = var.environment
+  }
+}
+
+# Reporter Lambda — runs once per team, detects viral posts, sends email alerts
+resource "aws_lambda_function" "virality_sync_reporter" {
+  function_name = "${var.project_name}-virality-sync-reporter-${var.environment}"
+  role          = aws_iam_role.virality_sync_lambda.arn
+  package_type  = "Image"
+  image_uri     = "${aws_ecr_repository.virality_sync_lambda.repository_url}:latest"
+  timeout       = 120
+  memory_size   = 512
+
+  image_config {
+    command = ["lambda-virality-sync/dist/handler.reporterHandler"]
+  }
+
+  environment {
+    variables = {
+      DATABASE_URL   = var.database_url
+      RESEND_API_KEY = var.resend_api_key
+      FRONTEND_URL   = var.frontend_url
+    }
+  }
+
+  depends_on = [aws_iam_role_policy_attachment.virality_sync_lambda_basic]
+  lifecycle { ignore_changes = [image_uri] }
+
+  tags = {
+    Name        = "${var.project_name}-virality-sync-reporter-${var.environment}"
+    Environment = var.environment
+  }
+}
+
 # CloudWatch Log Groups
+resource "aws_cloudwatch_log_group" "virality_sync_extractor" {
+  name              = "/aws/lambda/${var.project_name}-virality-sync-extractor-${var.environment}"
+  retention_in_days = 14
+
+  tags = {
+    Name        = "${var.project_name}-virality-sync-extractor-logs-${var.environment}"
+    Environment = var.environment
+  }
+}
+
 resource "aws_cloudwatch_log_group" "virality_sync_orchestrator" {
   name              = "/aws/lambda/${var.project_name}-virality-sync-orchestrator-${var.environment}"
   retention_in_days = 14
@@ -165,13 +217,12 @@ resource "aws_cloudwatch_log_group" "virality_sync_worker" {
   }
 }
 
-# Keep old log group import alive during transition (can remove after migration)
-resource "aws_cloudwatch_log_group" "virality_sync_lambda" {
-  name              = "/aws/lambda/${var.project_name}-virality-sync-${var.environment}"
+resource "aws_cloudwatch_log_group" "virality_sync_reporter" {
+  name              = "/aws/lambda/${var.project_name}-virality-sync-reporter-${var.environment}"
   retention_in_days = 14
 
   tags = {
-    Name        = "${var.project_name}-virality-sync-logs-${var.environment}"
+    Name        = "${var.project_name}-virality-sync-reporter-logs-${var.environment}"
     Environment = var.environment
   }
 }
@@ -214,11 +265,13 @@ resource "aws_iam_role_policy" "virality_sync_sfn_invoke_lambda" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect   = "Allow"
-      Action   = "lambda:InvokeFunction"
+      Effect = "Allow"
+      Action = "lambda:InvokeFunction"
       Resource = [
         aws_lambda_function.virality_sync_orchestrator.arn,
         aws_lambda_function.virality_sync_worker.arn,
+        aws_lambda_function.virality_sync_extractor.arn,
+        aws_lambda_function.virality_sync_reporter.arn,
       ]
     }]
   })
@@ -322,6 +375,55 @@ resource "aws_sfn_state_machine" "virality_sync" {
           }
         }
         ResultPath = "$.mapResults"
+        Next       = "ExtractTeams"
+      }
+      ExtractTeams = {
+        Type     = "Task"
+        Resource = "arn:aws:states:::lambda:invoke"
+        Parameters = {
+          FunctionName = aws_lambda_function.virality_sync_extractor.arn
+          Payload      = { "mapResults.$" = "$.mapResults" }
+        }
+        ResultSelector = { "teams.$" = "$.Payload.teams" }
+        ResultPath     = "$.extractorResult"
+        Next           = "ReportPerTeam"
+      }
+      ReportPerTeam = {
+        Type           = "Map"
+        ItemsPath      = "$.extractorResult.teams"
+        MaxConcurrency = 5
+        Iterator = {
+          StartAt = "ReportOneTeam"
+          States = {
+            ReportOneTeam = {
+              Type     = "Task"
+              Resource = "arn:aws:states:::lambda:invoke"
+              Parameters = {
+                FunctionName = aws_lambda_function.virality_sync_reporter.arn
+                "Payload.$"  = "$"
+              }
+              ResultSelector = { "result.$" = "$.Payload" }
+              Retry = [{
+                ErrorEquals     = ["States.TaskFailed", "Lambda.ServiceException"]
+                IntervalSeconds = 10
+                MaxAttempts     = 1
+                BackoffRate     = 2
+              }]
+              Catch = [{
+                ErrorEquals = ["States.ALL"]
+                ResultPath  = "$.error"
+                Next        = "ReportFailed"
+              }]
+              End = true
+            }
+            ReportFailed = {
+              Type   = "Pass"
+              Result = { status = "report_failed" }
+              End    = true
+            }
+          }
+        }
+        ResultPath = "$.reporterResults"
         Next       = "Done"
       }
       Done = { Type = "Succeed" }

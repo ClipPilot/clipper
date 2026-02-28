@@ -258,7 +258,6 @@ export async function processSceneImageJob(
           prompt: shotPrompt,
           aspectRatio: "9:16",
           imageUrls: refs,
-          usePro: true,
         });
 
         const response = await fetch(result.imageUrl);
@@ -400,7 +399,6 @@ export async function processSceneImageJob(
         prompt: startPrompt,
         aspectRatio: "9:16",
         imageUrls: refs,
-        usePro: true,
       });
 
       const startResponse = await fetch(startResult.imageUrl);
@@ -498,7 +496,6 @@ export async function processSceneImageJob(
           prompt: endPrompt,
           aspectRatio: "9:16",
           imageUrls: endReferenceUrls,
-          usePro: true,
         });
 
         const endResponse = await fetch(endResult.imageUrl);

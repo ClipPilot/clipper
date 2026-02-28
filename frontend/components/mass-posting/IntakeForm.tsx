@@ -10,6 +10,7 @@ import { LoadingView } from "./StatusViews";
 import { StepBrandInfo } from "./StepBrandInfo";
 import { StepSocials } from "./StepSocials";
 import { StepICPs } from "./StepICPs";
+import { StepBudget } from "./StepBudget";
 import { StepReview } from "./StepReview";
 
 interface IntakeFormProps {
@@ -18,6 +19,83 @@ interface IntakeFormProps {
   onSubmitted: () => void;
 }
 
+// ── All form state in one bag ──
+interface FormState {
+  campaignName: string;
+  brandDescription: string;
+  companyWebsite: string;
+  companySocials: CompanySocial[];
+  competitorSocials: CompetitorSocial[];
+  icps: ICP[];
+  budget: number | null;
+}
+
+interface StepContext {
+  formState: FormState;
+  setters: {
+    setCampaignName: (v: string) => void;
+    setBrandDescription: (v: string) => void;
+    setCompanyWebsite: (v: string) => void;
+    setCompanySocials: (v: CompanySocial[]) => void;
+    setCompetitorSocials: (v: CompetitorSocial[]) => void;
+    setIcps: (v: ICP[]) => void;
+    setBudget: (v: number | null) => void;
+  };
+  isAppeal: boolean;
+  isSubmitting: boolean;
+  onSubmit: () => void;
+  buildFormData: () => IntakeFormData;
+}
+
+// ── Validation: return true if user can proceed from this step ──
+const STEP_VALIDATION_MAP: Record<string, (s: FormState) => boolean> = {
+  brand: (s) => s.campaignName.trim().length > 0 && s.brandDescription.trim().length > 0,
+  socials: (s) => s.companySocials.some((c) => c.url.trim().length > 0),
+  icps: (s) =>
+    s.icps.length > 0 &&
+    s.icps.every((icp) => icp.name.trim().length > 0 && icp.description.trim().length > 0),
+  budget: (s) => s.budget !== null && s.budget >= 5000,
+  review: () => true,
+};
+
+// ── Step registry: add a new step here + one entry in INTAKE_STEPS ──
+const STEP_RENDER_MAP: Record<string, (ctx: StepContext) => React.ReactNode> = {
+  brand: ({ formState, setters }) => (
+    <StepBrandInfo
+      campaignName={formState.campaignName}
+      setCampaignName={setters.setCampaignName}
+      brandDescription={formState.brandDescription}
+      setBrandDescription={setters.setBrandDescription}
+      companyWebsite={formState.companyWebsite}
+      setCompanyWebsite={setters.setCompanyWebsite}
+    />
+  ),
+  socials: ({ formState, setters }) => (
+    <StepSocials
+      companySocials={formState.companySocials}
+      setCompanySocials={setters.setCompanySocials}
+      competitorSocials={formState.competitorSocials}
+      setCompetitorSocials={setters.setCompetitorSocials}
+    />
+  ),
+  icps: ({ formState, setters }) => (
+    <StepICPs icps={formState.icps} setIcps={setters.setIcps} />
+  ),
+  budget: ({ formState, setters }) => (
+    <StepBudget budget={formState.budget} setBudget={setters.setBudget} />
+  ),
+  review: ({ buildFormData, isAppeal, isSubmitting, onSubmit }) => (
+    <StepReview
+      data={buildFormData()}
+      isAppeal={isAppeal}
+      isSubmitting={isSubmitting}
+      onSubmit={onSubmit}
+    />
+  ),
+};
+
+const LAST_STEP = INTAKE_STEPS.length - 1;
+
 export function IntakeForm({ teamId, isAppeal, onSubmitted }: IntakeFormProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [justCompleted, setJustCompleted] = useState<number | null>(null);
@@ -25,16 +103,34 @@ export function IntakeForm({ teamId, isAppeal, onSubmitted }: IntakeFormProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingForm, setIsLoadingForm] = useState(true);
 
-  // ── Form state (concrete types, never undefined) ──
+  // ── Form state ──
+  const [campaignName, setCampaignName] = useState("");
   const [brandDescription, setBrandDescription] = useState("");
   const [companyWebsite, setCompanyWebsite] = useState("");
-  const [companySocials, setCompanySocials] = useState<CompanySocial[]>([
-    emptySocial(),
-  ]);
-  const [competitorSocials, setCompetitorSocials] = useState<CompetitorSocial[]>([
-    emptyCompetitor(),
-  ]);
+  const [companySocials, setCompanySocials] = useState<CompanySocial[]>([emptySocial()]);
+  const [competitorSocials, setCompetitorSocials] = useState<CompetitorSocial[]>([emptyCompetitor()]);
   const [icps, setIcps] = useState<ICP[]>([emptyICP()]);
+  const [budget, setBudget] = useState<number | null>(null);
+
+  const formState: FormState = {
+    campaignName,
+    brandDescription,
+    companyWebsite,
+    companySocials,
+    competitorSocials,
+    icps,
+    budget,
+  };
+
+  const setters = {
+    setCampaignName,
+    setBrandDescription,
+    setCompanyWebsite,
+    setCompanySocials,
+    setCompetitorSocials,
+    setIcps,
+    setBudget,
+  };
 
   // ── Load existing form data ──
   useEffect(() => {
@@ -45,10 +141,8 @@ export function IntakeForm({ teamId, isAppeal, onSubmitted }: IntakeFormProps) {
         if (form) {
           setBrandDescription(form.brand_description ?? "");
           setCompanyWebsite(form.company_website_url ?? "");
-          if (form.company_socials?.length)
-            setCompanySocials(form.company_socials as CompanySocial[]);
-          if (form.competitor_socials?.length)
-            setCompetitorSocials(form.competitor_socials as CompetitorSocial[]);
+          if (form.company_socials?.length) setCompanySocials(form.company_socials as CompanySocial[]);
+          if (form.competitor_socials?.length) setCompetitorSocials(form.competitor_socials as CompetitorSocial[]);
           if (form.icps?.length) setIcps(form.icps as ICP[]);
         }
       })
@@ -56,15 +150,15 @@ export function IntakeForm({ teamId, isAppeal, onSubmitted }: IntakeFormProps) {
       .finally(() => setIsLoadingForm(false));
   }, [teamId]);
 
-  const buildFormData = useCallback((): IntakeFormData => {
-    return {
-      brand_description: brandDescription,
-      company_website_url: companyWebsite,
-      company_socials: companySocials,
-      competitor_socials: competitorSocials,
-      icps,
-    };
-  }, [brandDescription, companyWebsite, companySocials, competitorSocials, icps]);
+  const buildFormData = useCallback((): IntakeFormData => ({
+    name: campaignName,
+    brand_description: brandDescription,
+    company_website_url: companyWebsite,
+    company_socials: companySocials,
+    competitor_socials: competitorSocials,
+    icps,
+    budget,
+  }), [campaignName, brandDescription, companyWebsite, companySocials, competitorSocials, icps, budget]);
 
   // ── Auto-save on step change ──
   const saveForm = useCallback(async () => {
@@ -99,34 +193,25 @@ export function IntakeForm({ teamId, isAppeal, onSubmitted }: IntakeFormProps) {
       const data: IntakeFormData = { ...buildFormData(), completed: true };
       if (isAppeal) {
         await intakeAPI.submitAppeal(teamId, data);
-        addToast({
-          title: "Appeal submitted",
-          description: "Your updated application has been submitted for review.",
-          color: "success",
-        });
+        addToast({ title: "Appeal submitted", description: "Your updated application has been submitted for review.", color: "success" });
       } else {
         await intakeAPI.submitApplication(teamId, data);
-        addToast({
-          title: "Application submitted",
-          description: "Your application is now under review.",
-          color: "success",
-        });
+        addToast({ title: "Application submitted", description: "Your application is now under review.", color: "success" });
       }
       onSubmitted();
     } catch (err: any) {
-      addToast({
-        title: "Submission failed",
-        description: err.message || "Something went wrong",
-        color: "danger",
-      });
+      addToast({ title: "Submission failed", description: err.message || "Something went wrong", color: "danger" });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (isLoadingForm) {
-    return <LoadingView />;
-  }
+  if (isLoadingForm) return <LoadingView />;
+
+  const stepCtx: StepContext = { formState, setters, isAppeal, isSubmitting, onSubmit: handleSubmit, buildFormData };
+  const currentStepConfig = INTAKE_STEPS[currentStep];
+  const renderCurrentStep = STEP_RENDER_MAP[currentStepConfig.key];
+  const canProceed = STEP_VALIDATION_MAP[currentStepConfig.key]?.(formState) ?? true;
 
   return (
     <div className="min-h-screen bg-surface-dark p-4 sm:p-6 lg:p-8">
@@ -160,21 +245,13 @@ export function IntakeForm({ teamId, isAppeal, onSubmitted }: IntakeFormProps) {
               >
                 <Icon
                   icon={i < currentStep ? "solar:check-circle-bold" : step.icon}
-                  className={`text-lg ${
-                    i === justCompleted
-                      ? "animate-[checkPop_0.4s_ease-out]"
-                      : ""
-                  }`}
+                  className={`text-lg ${i === justCompleted ? "animate-[checkPop_0.4s_ease-out]" : ""}`}
                 />
                 <span className="hidden sm:inline">{step.label}</span>
                 <span className="sm:hidden">{i + 1}</span>
               </button>
               {i < INTAKE_STEPS.length - 1 && (
-                <div
-                  className={`w-8 h-0.5 flex-shrink-0 ${
-                    i < currentStep ? "bg-success-500" : "bg-border-base"
-                  }`}
-                />
+                <div className={`w-8 h-0.5 flex-shrink-0 ${i < currentStep ? "bg-success-500" : "bg-border-base"}`} />
               )}
             </React.Fragment>
           ))}
@@ -186,41 +263,15 @@ export function IntakeForm({ teamId, isAppeal, onSubmitted }: IntakeFormProps) {
           )}
         </div>
 
-        {/* Step Content */}
+        {/* Step Content — driven by STEP_RENDER_MAP */}
         <Card className="bg-surface-base border border-border-base">
           <CardBody className="p-4 sm:p-6 lg:p-8">
-            {currentStep === 0 && (
-              <StepBrandInfo
-                brandDescription={brandDescription}
-                setBrandDescription={setBrandDescription}
-                companyWebsite={companyWebsite}
-                setCompanyWebsite={setCompanyWebsite}
-              />
-            )}
-            {currentStep === 1 && (
-              <StepSocials
-                companySocials={companySocials}
-                setCompanySocials={setCompanySocials}
-                competitorSocials={competitorSocials}
-                setCompetitorSocials={setCompetitorSocials}
-              />
-            )}
-            {currentStep === 2 && (
-              <StepICPs icps={icps} setIcps={setIcps} />
-            )}
-            {currentStep === 3 && (
-              <StepReview
-                data={buildFormData()}
-                isAppeal={isAppeal}
-                isSubmitting={isSubmitting}
-                onSubmit={handleSubmit}
-              />
-            )}
+            {renderCurrentStep ? renderCurrentStep(stepCtx) : null}
           </CardBody>
         </Card>
 
         {/* Navigation */}
-        {currentStep < 3 && (
+        {currentStep < LAST_STEP && (
           <div className="flex justify-between mt-6">
             <Button
               variant="flat"
@@ -232,6 +283,7 @@ export function IntakeForm({ teamId, isAppeal, onSubmitted }: IntakeFormProps) {
             </Button>
             <Button
               color="primary"
+              isDisabled={!canProceed}
               onPress={handleNext}
               endContent={<Icon icon="solar:arrow-right-linear" />}
             >

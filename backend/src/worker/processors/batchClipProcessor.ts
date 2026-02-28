@@ -104,7 +104,8 @@ export async function processBatchClipVideoJob(
 
     const allWords = videoSources.flatMap(s => s.transcriptionWords);
 
-    // Per-clip facecam detection callback
+    // Per-clip facecam detection callback — runs on each clip's merged horizontal
+    // video instead of the full raw upload (smaller file, more accurate per-clip)
     const needsFacecamDetect = options.conversionMode === "gaming" || options.conversionMode === "speaker-zoom";
     const needsMultiFaceDetect = options.conversionMode === "active-speaker";
 
@@ -157,10 +158,12 @@ export async function processBatchClipVideoJob(
       textPosition: options.textPosition,
       textColor: options.textColor,
       textFont: options.textFont,
+      textStyle: options.textStyle,
       captions: options.captions,
       captionColor: options.captionColor,
       captionFont: options.captionFont,
       conversionMode: options.conversionMode,
+      backgroundMusicS3Key: options.backgroundMusicS3Key,
     };
 
     console.log(`Processing ${batchClipSuggestions.length} batch clips sequentially...`);
@@ -175,10 +178,28 @@ export async function processBatchClipVideoJob(
       try {
         console.log(`\n=== Creating batch clip ${i + 1}/${batchClipSuggestions.length} ===`);
 
+        // Auto-generate a viral heading BEFORE rendering so it gets burned into the video
+        let autoHeading: string | undefined;
+        const perClipOptions = { ...clipServiceOptions };
+        if (options.autoHeading !== false && !options.customText) {
+          try {
+            const clipTranscript = suggestions.combined_script
+              || [suggestions.hook.text, ...suggestions.main.map(m => m.text)].join(" ");
+            autoHeading = await generateViralHeading({
+              transcription: clipTranscript,
+              title: suggestions.clipTitle || "",
+            });
+            console.log(`Batch clip ${i + 1} auto-heading: "${autoHeading}"`);
+            perClipOptions.customText = autoHeading;
+          } catch (headingErr) {
+            console.warn(`Batch clip ${i + 1} heading generation failed, skipping:`, headingErr);
+          }
+        }
+
         const result = await createBatchCombinedClipService(
           videoSources,
           suggestions,
-          { ...clipServiceOptions },
+          perClipOptions,
           i,
           onMergedRaw,
         );
@@ -195,23 +216,6 @@ export async function processBatchClipVideoJob(
         fs.writeFileSync(srtPath, result.srtContent);
         const srtS3Key = await s3Service.uploadSrtFile(srtPath, teamId, clipId);
         fs.unlinkSync(srtPath);
-
-        console.log(`Batch clip ${i + 1} uploaded, updating database...`);
-
-        // Auto-generate a viral heading from the clip's transcript
-        let autoHeading: string | undefined;
-        if (options.autoHeading !== false) {
-          try {
-            const clipTranscript = result.captionsData?.map((c: { text: string }) => c.text).join(" ") || "";
-            autoHeading = await generateViralHeading({
-              transcription: clipTranscript,
-              title: suggestions.clipTitle || "",
-            });
-            console.log(`Batch clip ${i + 1} auto-heading: "${autoHeading}"`);
-          } catch (headingErr) {
-            console.warn(`Batch clip ${i + 1} heading generation failed, skipping:`, headingErr);
-          }
-        }
 
         const sourceVideosMetadata = videos.map((v) => ({
           videoIndex: v.videoIndex,
@@ -233,12 +237,39 @@ export async function processBatchClipVideoJob(
               editorConfig: {
                 heading: {
                   text: autoHeading,
-                  color: "#FFFFFF",
-                  font: "Montserrat",
+                  color: options.textColor || "#FFFFFF",
+                  font: options.textFont || "Montserrat",
                   x: 50,
                   y: 10,
                   fontSize: 48,
-                  style: "stroke",
+                  style: options.textStyle || "stroke",
+                },
+                ...(options.backgroundMusicS3Key ? {
+                  audio: {
+                    originalVolume: 1,
+                    originalMuted: false,
+                    backgroundMusic: {
+                      s3Key: options.backgroundMusicS3Key,
+                      volume: 0.3,
+                      startTime: 0,
+                      trimStart: 0,
+                      trimEnd: 60,
+                    },
+                  },
+                } : {}),
+              },
+            } : options.backgroundMusicS3Key ? {
+              editorConfig: {
+                audio: {
+                  originalVolume: 1,
+                  originalMuted: false,
+                  backgroundMusic: {
+                    s3Key: options.backgroundMusicS3Key,
+                    volume: 0.3,
+                    startTime: 0,
+                    trimStart: 0,
+                    trimEnd: 60,
+                  },
                 },
               },
             } : {}),
@@ -250,6 +281,7 @@ export async function processBatchClipVideoJob(
               textPosition: options.textPosition,
               textColor: options.textColor,
               textFont: options.textFont,
+              textStyle: options.textStyle,
               captions: options.captions || false,
               captionColor: options.captionColor,
               captionFont: options.captionFont,

@@ -4,7 +4,7 @@ import React from "react";
 import { Button, Chip, Divider } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { IntakeFormData } from "@/api/intake";
-import { SOCIAL_PLATFORMS } from "@/constants/massPosting";
+import { SOCIAL_PLATFORMS, getActiveTier } from "@/constants/massPosting";
 
 interface StepReviewProps {
   data: IntakeFormData;
@@ -14,6 +14,8 @@ interface StepReviewProps {
 }
 
 export function StepReview({ data, isAppeal, isSubmitting, onSubmit }: StepReviewProps) {
+  const activeTier = data.budget ? getActiveTier(data.budget) : null;
+
   return (
     <div className="space-y-6">
       <div>
@@ -25,8 +27,9 @@ export function StepReview({ data, isAppeal, isSubmitting, onSubmit }: StepRevie
         </p>
       </div>
 
-      {/* Brand Info */}
-      <ReviewSection title="Brand Info" icon="solar:buildings-bold-duotone">
+      {/* Campaign & Brand Info */}
+      <ReviewSection title="Campaign & Brand Info" icon="solar:buildings-bold-duotone">
+        <ReviewField label="Campaign Name" value={data.name} />
         <ReviewField label="Description" value={data.brand_description} />
         <ReviewField label="Website" value={data.company_website_url} />
       </ReviewSection>
@@ -87,6 +90,18 @@ export function StepReview({ data, isAppeal, isSubmitting, onSubmit }: StepRevie
           </div>
         ))}
       </ReviewSection>
+
+      {/* Budget */}
+      {data.budget && (
+        <ReviewSection title="Budget" icon="solar:wallet-money-bold-duotone">
+          <ReviewField label="Monthly Budget" value={`$${data.budget.toLocaleString()}`} />
+          {activeTier && (
+            <>
+              <ReviewField label="CPM Tier" value={`${activeTier.label} — $${activeTier.cpm.toFixed(2)} CPM`} />
+            </>
+          )}
+        </ReviewSection>
+      )}
 
       <Divider />
 

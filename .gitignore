@@ -9,3 +9,12 @@ backend/.DS_Store
 .claude
 .vscode
 .claude/agents
+infra/.terraform/
+infra/.terraform.lock.hcl
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+!infra/dev.tfvars

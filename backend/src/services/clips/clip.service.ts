@@ -5,6 +5,7 @@ import {
   addTextOverlay,
   addTextOverlayAtPosition,
   addPreviewWatermark,
+  mixBackgroundMusic,
 } from "./videoEditor.service";
 import type { FacecamRegion } from "./videoEditor.service";
 import type { ConversionMode } from "../../constants/conversionModes";
@@ -18,6 +19,7 @@ import {
   addCaptionsFromData,
 } from "./captions.service";
 import { applyJumbledMetadata } from "../../utils/videoMetadata";
+import { s3Service } from "../s3.service";
 
 // Batch video source for multi-video clip creation
 export interface BatchVideoSource {
@@ -31,10 +33,12 @@ export interface ClipServiceOptions {
   textPosition?: "top" | "bottom" | "middle";
   textColor?: string;
   textFont?: string;
+  textStyle?: "stroke" | "instagram";
   captions?: boolean;
   captionColor?: string;
   captionFont?: string;
   conversionMode?: ConversionMode;
+  backgroundMusicS3Key?: string;
   facecamRegion?: FacecamRegion | null;
   activeSpeakerSegments?: ActiveSpeakerSegment[];
   speakerFaceMap?: Map<number, FacecamRegion>;
@@ -144,6 +148,7 @@ export const createCombinedClipService = async (
   const outDir = path.join(process.cwd(), "output");
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
   const tempFiles: string[] = [];
+  const jobId = Date.now();
 
   // Log and validate all segments
   console.log(
@@ -159,18 +164,18 @@ export const createCombinedClipService = async (
     validateSegment(seg, `Main[${i}]`);
   }
 
-  const hookPath = path.join(outDir, `hook_${videoIndex}_temp.mp4`);
+  const hookPath = path.join(outDir, `hook_${jobId}_${videoIndex}_temp.mp4`);
   await cutClip(videoPath, hookPath, clipData.hook.start, clipData.hook.end);
   tempFiles.push(hookPath);
 
   for (let i = 0; i < clipData.main.length; i++) {
     const mainClip = clipData.main[i];
-    const mainPath = path.join(outDir, `main_${videoIndex}_${i}_temp.mp4`);
+    const mainPath = path.join(outDir, `main_${jobId}_${videoIndex}_${i}_temp.mp4`);
     await cutClip(videoPath, mainPath, mainClip.start, mainClip.end);
     tempFiles.push(mainPath);
   }
 
-  const mergedRawPath = path.join(outDir, `merged_raw_${videoIndex}_temp.mp4`);
+  const mergedRawPath = path.join(outDir, `merged_raw_${jobId}_${videoIndex}_temp.mp4`);
   await mergeClips(tempFiles, mergedRawPath);
 
   // Validate merged file before proceeding
@@ -190,7 +195,7 @@ export const createCombinedClipService = async (
   }
 
   // Convert horizontal videos to 9:16 using selected conversion mode
-  const mergedPath = path.join(outDir, `merged_${videoIndex}_temp.mp4`);
+  const mergedPath = path.join(outDir, `merged_${jobId}_${videoIndex}_temp.mp4`);
   const activeSpeakerOpts = (options.activeSpeakerSegments && options.speakerFaceMap)
     ? { segments: options.activeSpeakerSegments, speakerFaceMap: options.speakerFaceMap }
     : null;
@@ -199,7 +204,7 @@ export const createCombinedClipService = async (
     fs.unlinkSync(mergedRawPath);
   }
 
-  const blankPath = path.join(outDir, `blank_${videoIndex}.mp4`);
+  const blankPath = path.join(outDir, `blank_${jobId}_${videoIndex}.mp4`);
   fs.copyFileSync(mergedPath, blankPath);
 
   const { captionsData, srtContent } = generateCaptionsData(
@@ -207,18 +212,19 @@ export const createCombinedClipService = async (
     transcriptionWords
   );
 
-  const finalPath = path.join(outDir, `combined_${videoIndex}.mp4`);
+  const finalPath = path.join(outDir, `combined_${jobId}_${videoIndex}.mp4`);
 
   let currentVideoPath = mergedPath;
 
   // Step 1: Apply heading (customText) if provided
   if (options.customText) {
-    const headingPath = path.join(outDir, `heading_${videoIndex}_temp.mp4`);
+    const headingPath = path.join(outDir, `heading_${jobId}_${videoIndex}_temp.mp4`);
     const position = options.textPosition || "top";
     const mappedPosition = position === "middle" ? "center" : position;
     const fillColor = options.textColor || "#FFFFFF";
     const strokeColor = "#000000";
     const fontName = options.textFont || "Montserrat";
+    const textStyle = options.textStyle || "stroke";
     await addTextOverlay(
       currentVideoPath,
       headingPath,
@@ -226,10 +232,33 @@ export const createCombinedClipService = async (
       mappedPosition,
       fillColor,
       strokeColor,
-      fontName
+      fontName,
+      textStyle,
     );
     currentVideoPath = headingPath;
     tempFiles.push(headingPath);
+  }
+
+  // Step 1b: Mix background music if provided
+  if (options.backgroundMusicS3Key) {
+    const musicTempPath = path.join(outDir, `music_${jobId}_${videoIndex}_temp.mp3`);
+    const musicMixedPath = path.join(outDir, `music_mixed_${jobId}_${videoIndex}_temp.mp4`);
+    try {
+      await s3Service.downloadFile(options.backgroundMusicS3Key, musicTempPath);
+      await mixBackgroundMusic(currentVideoPath, musicTempPath, musicMixedPath, {
+        originalVolume: 1,
+        musicVolume: 0.3,
+        musicStartTime: 0,
+        musicTrimStart: 0,
+        musicTrimEnd: 60,
+      });
+      currentVideoPath = musicMixedPath;
+      tempFiles.push(musicMixedPath);
+    } catch (musicErr) {
+      console.warn(`[Clip ${videoIndex}] Background music mixing failed, skipping:`, musicErr);
+    } finally {
+      if (fs.existsSync(musicTempPath)) fs.unlinkSync(musicTempPath);
+    }
   }
 
   // Step 2: Apply captions on top if enabled
@@ -248,11 +277,11 @@ export const createCombinedClipService = async (
   }
 
   // Step 3: Apply jumbled metadata to final video
-  const metadataPath = path.join(outDir, `metadata_${videoIndex}_temp.mp4`);
+  const metadataPath = path.join(outDir, `metadata_${jobId}_${videoIndex}_temp.mp4`);
   await applyJumbledMetadata(finalPath, metadataPath);
   fs.renameSync(metadataPath, finalPath);
 
-  const watermarkedPath = path.join(outDir, `watermarked_${videoIndex}.mp4`);
+  const watermarkedPath = path.join(outDir, `watermarked_${jobId}_${videoIndex}.mp4`);
   fs.copyFileSync(finalPath, watermarkedPath);
 
   tempFiles.push(mergedPath);
@@ -442,6 +471,7 @@ export const createBatchCombinedClipService = async (
   const outDir = path.join(process.cwd(), "output");
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir);
   const tempFiles: string[] = [];
+  const jobId = Date.now();
 
   // Cut hook from its source video
   const hookSource = videoSources.find(
@@ -453,7 +483,7 @@ export const createBatchCombinedClipService = async (
     );
   }
 
-  const hookPath = path.join(outDir, `batch_hook_${outputIndex}_temp.mp4`);
+  const hookPath = path.join(outDir, `batch_hook_${jobId}_${outputIndex}_temp.mp4`);
   await cutClip(
     hookSource.localPath,
     hookPath,
@@ -476,14 +506,14 @@ export const createBatchCombinedClipService = async (
 
     const mainPath = path.join(
       outDir,
-      `batch_main_${outputIndex}_${i}_temp.mp4`
+      `batch_main_${jobId}_${outputIndex}_${i}_temp.mp4`
     );
     await cutClip(mainSource.localPath, mainPath, mainClip.start, mainClip.end);
     tempFiles.push(mainPath);
   }
 
   // Merge all clips
-  const mergedRawPath = path.join(outDir, `batch_merged_raw_${outputIndex}_temp.mp4`);
+  const mergedRawPath = path.join(outDir, `batch_merged_raw_${jobId}_${outputIndex}_temp.mp4`);
   await mergeClips(tempFiles, mergedRawPath);
 
   // If callback provided, run per-clip detection on the merged horizontal clip
@@ -497,7 +527,7 @@ export const createBatchCombinedClipService = async (
   }
 
   // Convert horizontal videos to 9:16 using selected conversion mode
-  const mergedPath = path.join(outDir, `batch_merged_${outputIndex}_temp.mp4`);
+  const mergedPath = path.join(outDir, `batch_merged_${jobId}_${outputIndex}_temp.mp4`);
   const batchActiveSpeakerOpts = (options.activeSpeakerSegments && options.speakerFaceMap)
     ? { segments: options.activeSpeakerSegments, speakerFaceMap: options.speakerFaceMap }
     : null;
@@ -506,16 +536,15 @@ export const createBatchCombinedClipService = async (
     fs.unlinkSync(mergedRawPath);
   }
 
-  const blankPath = path.join(outDir, `batch_blank_${outputIndex}.mp4`);
+  const blankPath = path.join(outDir, `batch_blank_${jobId}_${outputIndex}.mp4`);
   fs.copyFileSync(mergedPath, blankPath);
 
-  // Generate captions from the appropriate source transcriptions
   const { captionsData, srtContent } = generateBatchCaptionsData(
     clipData,
     videoSources
   );
 
-  const finalPath = path.join(outDir, `batch_combined_${outputIndex}.mp4`);
+  const finalPath = path.join(outDir, `batch_combined_${jobId}_${outputIndex}.mp4`);
 
   let currentVideoPath = mergedPath;
 
@@ -523,13 +552,14 @@ export const createBatchCombinedClipService = async (
   if (options.customText) {
     const headingPath = path.join(
       outDir,
-      `batch_heading_${outputIndex}_temp.mp4`
+      `batch_heading_${jobId}_${outputIndex}_temp.mp4`
     );
     const position = options.textPosition || "top";
     const mappedPosition = position === "middle" ? "center" : position;
     const fillColor = options.textColor || "#FFFFFF";
     const strokeColor = "#000000";
     const fontName = options.textFont || "Montserrat";
+    const textStyle = options.textStyle || "stroke";
     await addTextOverlay(
       currentVideoPath,
       headingPath,
@@ -537,10 +567,33 @@ export const createBatchCombinedClipService = async (
       mappedPosition,
       fillColor,
       strokeColor,
-      fontName
+      fontName,
+      textStyle,
     );
     currentVideoPath = headingPath;
     tempFiles.push(headingPath);
+  }
+
+  // Step 1b: Mix background music if provided
+  if (options.backgroundMusicS3Key) {
+    const musicTempPath = path.join(outDir, `batch_music_${jobId}_${outputIndex}_temp.mp3`);
+    const musicMixedPath = path.join(outDir, `batch_music_mixed_${jobId}_${outputIndex}_temp.mp4`);
+    try {
+      await s3Service.downloadFile(options.backgroundMusicS3Key, musicTempPath);
+      await mixBackgroundMusic(currentVideoPath, musicTempPath, musicMixedPath, {
+        originalVolume: 1,
+        musicVolume: 0.3,
+        musicStartTime: 0,
+        musicTrimStart: 0,
+        musicTrimEnd: 60,
+      });
+      currentVideoPath = musicMixedPath;
+      tempFiles.push(musicMixedPath);
+    } catch (musicErr) {
+      console.warn(`[Batch Clip ${outputIndex}] Background music mixing failed, skipping:`, musicErr);
+    } finally {
+      if (fs.existsSync(musicTempPath)) fs.unlinkSync(musicTempPath);
+    }
   }
 
   // Step 2: Apply captions on top if enabled
@@ -560,14 +613,14 @@ export const createBatchCombinedClipService = async (
   // Step 3: Apply jumbled metadata to final video
   const metadataPath = path.join(
     outDir,
-    `batch_metadata_${outputIndex}_temp.mp4`
+    `batch_metadata_${jobId}_${outputIndex}_temp.mp4`
   );
   await applyJumbledMetadata(finalPath, metadataPath);
   fs.renameSync(metadataPath, finalPath);
 
   const watermarkedPath = path.join(
     outDir,
-    `batch_watermarked_${outputIndex}.mp4`
+    `batch_watermarked_${jobId}_${outputIndex}.mp4`
   );
   // WATERMARK DISABLED - just copy the file
   fs.copyFileSync(finalPath, watermarkedPath);

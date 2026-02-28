@@ -124,6 +124,10 @@ jobs:
           # Status Dashboard
           status_cron_secret  = "${{ secrets.STATUS_CRON_SECRET }}"
           status_domain       = "status-staging.cuttr.com"
+
+          # Tailscale Relay + Mac Rendering
+          tailscale_auth_key = "${{ secrets.TAILSCALE_AUTH_KEY }}"
+          mac_renderer_url   = "${{ secrets.MAC_RENDERER_URL }}"
           EOF
 
       - name: Import existing ECR repos (if not in state)
@@ -275,6 +279,10 @@ jobs:
           # Status Dashboard
           status_cron_secret  = "${{ secrets.STATUS_CRON_SECRET }}"
           status_domain       = "status-staging.cuttr.com"
+
+          # Tailscale Relay + Mac Rendering
+          tailscale_auth_key = "${{ secrets.TAILSCALE_AUTH_KEY }}"
+          mac_renderer_url   = "${{ secrets.MAC_RENDERER_URL }}"
           EOF
 
       - name: Import existing ECR repos (if not in state)

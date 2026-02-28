@@ -63,7 +63,7 @@ export const SIDEBAR_SECTIONS: SidebarSection[] = [
     items: [
       {
         key: "virality-tracker",
-        title: "Competitor Performance",
+        title: "Performance Tracker",
         icon: "solar:chart-bold-duotone",
         href: "/dashboard/virality",
         requiredPlans: ["studio", "scale", "enterprise"],

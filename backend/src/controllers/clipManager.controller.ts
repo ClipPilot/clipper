@@ -1406,10 +1406,14 @@ export class ClipManagerController {
       const user = await verifyTeamAccessOrFail(req, teamId, res);
       if (!user) return;
 
-      // Validate all keys belong to this team/clip's overlay path
-      const expectedPrefix = `teams/${teamId}/clips/${clipId}/overlays/`;
+      const allowedPrefixes = [
+        `teams/${teamId}/clips/${clipId}/overlays/`,
+        `teams/${teamId}/clips/${clipId}/music/`,
+        `uploads/${teamId}/`,
+        `raw-videos/${teamId}/`,
+      ];
       for (const key of s3Keys) {
-        if (!key.startsWith(expectedPrefix)) {
+        if (!allowedPrefixes.some(p => key.startsWith(p))) {
           return res.status(403).json({ error: "Invalid S3 key for this clip" });
         }
       }

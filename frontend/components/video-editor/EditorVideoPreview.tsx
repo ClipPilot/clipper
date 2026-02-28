@@ -132,13 +132,11 @@ export function EditorVideoPreview({
     const bgMusic = audioState.backgroundMusic;
 
     if (bgMusic?.url) {
-      // Create audio element if it doesn't exist or URL changed
       if (!bgMusicRef.current || bgMusicRef.current.src !== bgMusic.url) {
         if (bgMusicRef.current) {
           bgMusicRef.current.pause();
         }
         bgMusicRef.current = new Audio(bgMusic.url);
-        bgMusicRef.current.loop = true;
       }
       bgMusicRef.current.volume = bgMusic.volume;
     } else if (bgMusicRef.current) {
@@ -158,23 +156,26 @@ export function EditorVideoPreview({
     const bgMusic = audioState.backgroundMusic;
     if (!bgMusicRef.current || !bgMusic) return;
 
-    // Determine end time (use trim end if set, otherwise video duration)
-    const endTime = trimState.endTime > 0 ? trimState.endTime : videoDuration;
+    const musicStart = bgMusic.startTime || 0;
+    const trimStart = bgMusic.trimStart || 0;
+    const trimEnd = bgMusic.trimEnd || bgMusic.duration;
+    const trimmedDuration = trimEnd - trimStart;
+    const musicEnd = musicStart + trimmedDuration;
 
     if (isPlaying) {
-      // Check if we're within the valid playback range for music
-      const isInMusicRange = currentTime >= bgMusic.startTime && currentTime < endTime;
+      const isInMusicRange = currentTime >= musicStart && currentTime < musicEnd;
 
       if (isInMusicRange) {
-        // Calculate where in the music track we should be
-        const musicTime = (currentTime - bgMusic.startTime) % bgMusic.duration;
+        const offset = currentTime - musicStart;
+        const musicTime = trimStart + offset;
 
-        // Only seek if we're significantly out of sync (>0.3s)
         if (Math.abs(bgMusicRef.current.currentTime - musicTime) > 0.3) {
           bgMusicRef.current.currentTime = musicTime;
         }
 
-        if (bgMusicRef.current.paused) {
+        if (bgMusicRef.current.currentTime >= trimEnd) {
+          bgMusicRef.current.pause();
+        } else if (bgMusicRef.current.paused) {
           bgMusicRef.current.play().catch(() => {});
         }
       } else {

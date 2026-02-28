@@ -14,6 +14,7 @@ import {
   HeadToHeadTable,
   RecalcOverlay,
 } from "@/components/virality";
+import { ViralSettingsModal } from "@/components/virality/ViralSettingsModal";
 import type { Platform } from "@/components/virality/AccountsTable";
 import { CompetitorCard } from "@/components/virality/CompetitorCard";
 import { ViralityUpgradeWall } from "@/components/virality/ViralityUpgradeWall";
@@ -26,9 +27,18 @@ import {
   type ViralityCompetitor,
   type ViralityPost,
   type ViralityAccount,
+  type ViralSettings,
 } from "@/api/virality";
+import { userPerformanceAPI } from "@/api/userPerformance";
 import { pct, computePostsPerWeek } from "@/app/dashboard/virality/[competitorId]/utils";
 import { canAccessViralityTracker } from "@/lib/plans";
+import {
+  MY_PERFORMANCE_NAME,
+  MY_PERFORMANCE_COMPETITOR_ID,
+  toMyPerfId,
+  fromMyPerfId,
+  isMyPerfId,
+} from "@/lib/viralityConstants";
 
 export default function ViralityPage() {
   const router = useRouter();
@@ -37,6 +47,8 @@ export default function ViralityPage() {
   const [platformFilter, setPlatformFilter] = useState<Platform | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const { isOpen: isSettingsOpen, onOpen: onSettingsOpen, onClose: onSettingsClose } = useDisclosure();
+  const [viralSettings, setViralSettings] = useState<ViralSettings | null>(null);
   const [competitors, setCompetitors] = useState<CompetitorWithAccounts[]>([]);
   const [simpleCompetitors, setSimpleCompetitors] = useState<ViralityCompetitor[]>([]);
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
@@ -49,18 +61,29 @@ export default function ViralityPage() {
   const [editingName, setEditingName] = useState("");
   const initialLoadDone = useRef(false);
 
+  // My Performance state
+  const [myAccounts, setMyAccounts] = useState<ViralityAccount[]>([]);
+  const [myPostsByAccount, setMyPostsByAccount] = useState<Record<number, ViralityPost[]>>({});
+  const [myDashboardStats, setMyDashboardStats] = useState<DashboardStats | null>(null);
+
   const fetchData = useCallback(async () => {
     if (!selectedTeam?.id || !canAccessViralityTracker(selectedTeam.plan)) return;
     if (initialLoadDone.current) setIsRecalculating(true);
     try {
       const { startDate, endDate } = dateRange;
-      const [competitorsList, stats] = await Promise.all([
+
+      // Fetch competitor data + My Performance data in parallel
+      const [competitorsList, stats, myAccts, myStats] = await Promise.all([
         viralityAPI.getCompetitors(selectedTeam.id),
         viralityAPI.getDashboardStats(selectedTeam.id, startDate, endDate),
+        userPerformanceAPI.getAccounts(selectedTeam.id),
+        userPerformanceAPI.getDashboardStats(selectedTeam.id, startDate, endDate),
       ]);
 
       setSimpleCompetitors(competitorsList);
       setDashboardStats(stats);
+      setMyAccounts(myAccts);
+      setMyDashboardStats(myStats);
 
       const withAccounts: CompetitorWithAccounts[] = await Promise.all(
         competitorsList.map((c) =>
@@ -69,13 +92,15 @@ export default function ViralityPage() {
       );
       setCompetitors(withAccounts);
 
-      // Fetch posts for all accounts (filtered + unfiltered for top content)
-      const allAccounts = withAccounts.flatMap((c) => c.accounts);
+      // Fetch posts for all competitor accounts (filtered + unfiltered for top content)
+      const allCompAccounts = withAccounts.flatMap((c) => c.accounts);
       const postsMap: Record<number, ViralityPost[]> = {};
       const unfilteredMap: Record<number, ViralityPost[]> = {};
       const hasDateFilter = !!(startDate || endDate);
-      await Promise.all(
-        allAccounts.flatMap((a) => {
+
+      await Promise.all([
+        // Competitor account posts
+        ...allCompAccounts.flatMap((a) => {
           const filtered = viralityAPI.getAccountPosts(
             selectedTeam.id, a.id, 50, 0, startDate, endDate
           ).then((posts) => { postsMap[a.id] = posts; });
@@ -87,8 +112,36 @@ export default function ViralityPage() {
             return [filtered, unfiltered];
           }
           return [filtered];
-        })
-      );
+        }),
+        // My Performance account posts (stored with negative IDs)
+        ...myAccts.flatMap((a) => {
+          const negId = toMyPerfId(a.id);
+          const filtered = userPerformanceAPI.getAccountPosts(
+            selectedTeam.id, a.id, 50, 0, startDate, endDate
+          ).then((posts) => {
+            postsMap[negId] = posts.map((p) => ({ ...p, account_id: negId }));
+          });
+
+          if (hasDateFilter) {
+            const unfiltered = userPerformanceAPI.getAccountPosts(
+              selectedTeam.id, a.id, 100, 0
+            ).then((posts) => {
+              unfilteredMap[negId] = posts.map((p) => ({ ...p, account_id: negId }));
+            });
+            return [filtered, unfiltered];
+          }
+          return [filtered];
+        }),
+      ]);
+
+      // Also store My Performance posts under their negative IDs separately
+      const myPostsMap: Record<number, ViralityPost[]> = {};
+      for (const a of myAccts) {
+        const negId = toMyPerfId(a.id);
+        myPostsMap[negId] = postsMap[negId] || [];
+      }
+      setMyPostsByAccount(myPostsMap);
+
       setPostsByAccount(postsMap);
       setAllPostsByAccountUnfiltered(hasDateFilter ? unfilteredMap : postsMap);
     } catch (err: any) {
@@ -108,27 +161,62 @@ export default function ViralityPage() {
     fetchData();
   }, [fetchData]);
 
-  // Build account lookup map for Top Performing Content
+  // ─── Virtual My Performance competitor ──────────────────────────────────────
+
+  /** Build a virtual CompetitorWithAccounts for My Performance using negative IDs.
+   *  Always present (even with 0 accounts) so the card shows as an invite. */
+  const myPerformanceCompetitor = useMemo<CompetitorWithAccounts>(() => {
+    const now = new Date().toISOString();
+    return {
+      id: MY_PERFORMANCE_COMPETITOR_ID,
+      name: MY_PERFORMANCE_NAME,
+      description: null,
+      team_id: selectedTeam?.id ?? 0,
+      created_at: now,
+      updated_at: now,
+      accounts: myAccounts.map((a) => ({ ...a, id: toMyPerfId(a.id) })),
+    };
+  }, [myAccounts, selectedTeam?.id]);
+
+  /** All competitors including the virtual My Performance group (always first) */
+  const allCompetitors = useMemo(() => {
+    return [myPerformanceCompetitor, ...competitors];
+  }, [myPerformanceCompetitor, competitors]);
+
+  // Build account lookup map for Top Performing Content (includes My Perf accounts)
   const accountMap = useMemo(() => {
     const map: Record<number, ViralityAccount> = {};
-    for (const c of competitors) {
+    for (const c of allCompetitors) {
       for (const a of c.accounts) {
         map[a.id] = a;
       }
     }
     return map;
-  }, [competitors]);
+  }, [allCompetitors]);
 
   // Derive account statuses from real data (is_active defaults to true if missing)
   const accountStatuses = useMemo(() => {
     const map: Record<number, "active" | "inactive"> = {};
-    for (const c of competitors) {
+    for (const c of allCompetitors) {
       for (const a of c.accounts) {
         map[a.id] = a.is_active === false ? "inactive" : "active";
       }
     }
     return map;
-  }, [competitors]);
+  }, [allCompetitors]);
+
+  // Merged accountPostStats (competitor stats + My Performance stats with negative IDs)
+  const mergedAccountPostStats = useMemo(() => {
+    const merged: Record<number, { postCount: number; totalViews: number }> = {
+      ...dashboardStats?.accountPostStats,
+    };
+    if (myDashboardStats?.accountPostStats) {
+      for (const [idStr, stats] of Object.entries(myDashboardStats.accountPostStats)) {
+        merged[toMyPerfId(Number(idStr))] = stats;
+      }
+    }
+    return merged;
+  }, [dashboardStats, myDashboardStats]);
 
   // Date-filtered posts for viral/recent tabs
   const allPosts = useMemo(() => {
@@ -140,9 +228,9 @@ export default function ViralityPage() {
     return Object.values(allPostsByAccountUnfiltered).flat();
   }, [allPostsByAccountUnfiltered]);
 
-  /** Most recent sync timestamp across all accounts */
+  /** Compute card data for all competitors including My Performance */
   const competitorCards = useMemo(() => {
-    return competitors.map((comp) => {
+    return allCompetitors.map((comp) => {
       const posts = comp.accounts.flatMap((a) => postsByAccount[a.id] || []);
       const followers = comp.accounts.reduce((s, a) => s + (a.follower_count || 0), 0);
       const totalViews = posts.reduce((s, p) => s + (p.video_play_count || 0), 0);
@@ -190,22 +278,41 @@ export default function ViralityPage() {
 
       const platforms = Array.from(new Set(comp.accounts.map((a) => a.platform)));
 
-      return { competitor: comp, followers, totalViews, engRate, avgViews, postsPerWeek, platforms, followersChange, viewsChange, engRateChange };
+      return {
+        competitor: comp,
+        followers, totalViews, engRate, avgViews, postsPerWeek, platforms,
+        followersChange, viewsChange, engRateChange,
+        isMyPerformance: comp.id === MY_PERFORMANCE_COMPETITOR_ID,
+      };
     });
-  }, [competitors, postsByAccount]);
+  }, [allCompetitors, postsByAccount]);
+
+  // ─── Handlers ────────────────────────────────────────────────────────────────
 
   const handleViewCompetitor = (competitorId: number) => {
-    router.push(`/dashboard/virality/${competitorId}`);
+    if (competitorId === MY_PERFORMANCE_COMPETITOR_ID) {
+      router.push("/dashboard/virality/my-performance");
+    } else {
+      router.push(`/dashboard/virality/${competitorId}`);
+    }
   };
 
   const handleViewAccount = (competitorId: number, accountId: number) => {
-    router.push(`/dashboard/virality/${competitorId}?accountId=${accountId}`);
+    if (competitorId === MY_PERFORMANCE_COMPETITOR_ID) {
+      router.push(`/dashboard/virality/my-performance`);
+    } else {
+      router.push(`/dashboard/virality/${competitorId}?accountId=${accountId}`);
+    }
   };
 
   const handleDeleteAccount = async (accountId: number) => {
     if (!selectedTeam?.id) return;
     try {
-      await viralityAPI.deleteAccount(selectedTeam.id, accountId);
+      if (isMyPerfId(accountId)) {
+        await userPerformanceAPI.deleteAccount(selectedTeam.id, fromMyPerfId(accountId));
+      } else {
+        await viralityAPI.deleteAccount(selectedTeam.id, accountId);
+      }
       addToast({ title: "Account deleted", color: "success" });
       await fetchData();
     } catch (err: any) {
@@ -216,16 +323,26 @@ export default function ViralityPage() {
   const handleToggleAccountStatus = async (accountId: number, newStatus: "active" | "inactive") => {
     if (!selectedTeam?.id) return;
     try {
-      await viralityAPI.updateAccountStatus(selectedTeam.id, accountId, newStatus === "active");
-      // Update local state only — no need to refetch everything
-      setCompetitors((prev) =>
-        prev.map((c) => ({
-          ...c,
-          accounts: c.accounts.map((a) =>
-            a.id === accountId ? { ...a, is_active: newStatus === "active" } : a
-          ),
-        }))
-      );
+      if (isMyPerfId(accountId)) {
+        await userPerformanceAPI.updateAccountStatus(selectedTeam.id, fromMyPerfId(accountId), newStatus === "active");
+        // Update local state
+        setMyAccounts((prev) =>
+          prev.map((a) =>
+            a.id === fromMyPerfId(accountId) ? { ...a, is_active: newStatus === "active" } : a
+          )
+        );
+      } else {
+        await viralityAPI.updateAccountStatus(selectedTeam.id, accountId, newStatus === "active");
+        // Update local state only — no need to refetch everything
+        setCompetitors((prev) =>
+          prev.map((c) => ({
+            ...c,
+            accounts: c.accounts.map((a) =>
+              a.id === accountId ? { ...a, is_active: newStatus === "active" } : a
+            ),
+          }))
+        );
+      }
       addToast({
         title: `Account ${newStatus === "active" ? "activated" : "deactivated"}`,
         color: "success",
@@ -260,9 +377,23 @@ export default function ViralityPage() {
       competitorId?: number;
       newCompetitorName?: string;
       accountType: "profile" | "hashtag" | "keyword";
+      isMyPerformance?: boolean;
     }
   ) => {
     if (!selectedTeam?.id) return;
+
+    // Route to userPerformance API if My Performance is selected
+    if (options.isMyPerformance) {
+      await userPerformanceAPI.addAccount(
+        selectedTeam.id,
+        platform,
+        profileUrl,
+        options.accountType
+      );
+      addToast({ title: "Account added to My Performance", color: "success" });
+      await fetchData();
+      return;
+    }
 
     let competitorId = options.competitorId;
 
@@ -278,7 +409,7 @@ export default function ViralityPage() {
       throw new Error("Please select or create a competitor group");
     }
 
-    await viralityAPI.addAccount(
+    const account = await viralityAPI.addAccount(
       selectedTeam.id,
       platform,
       profileUrl,
@@ -286,8 +417,55 @@ export default function ViralityPage() {
       options.accountType
     );
 
+    // Enable alerts on the newly created account if requested
+    if (options.enableAlerts) {
+      await viralityAPI.updateAlertEnabled(selectedTeam.id, account.id, true);
+    }
+
     addToast({ title: "Account added", color: "success" });
     await fetchData();
+  };
+
+  const handleToggleAlert = async (accountId: number, enabled: boolean) => {
+    if (!selectedTeam?.id) return;
+    try {
+      await viralityAPI.updateAlertEnabled(selectedTeam.id, accountId, enabled);
+      setCompetitors((prev) =>
+        prev.map((c) => ({
+          ...c,
+          accounts: c.accounts.map((a) =>
+            a.id === accountId ? { ...a, alert_enabled: enabled } : a
+          ),
+        }))
+      );
+      addToast({ title: `Alerts ${enabled ? "enabled" : "disabled"}`, color: "success" });
+    } catch (err: any) {
+      addToast({ title: "Failed to update alerts", description: err.message, color: "danger" });
+    }
+  };
+
+  const handleOpenSettings = async () => {
+    if (!selectedTeam?.id) return;
+    try {
+      const settings = await viralityAPI.getSettings(selectedTeam.id);
+      setViralSettings(settings);
+      onSettingsOpen();
+    } catch (err: any) {
+      addToast({ title: "Failed to load settings", description: err.message, color: "danger" });
+    }
+  };
+
+  const handleSaveSettings = async (settings: ViralSettings) => {
+    if (!selectedTeam?.id) return;
+    try {
+      const saved = await viralityAPI.saveSettings(selectedTeam.id, settings);
+      setViralSettings(saved);
+      // Refresh competitors to reflect updated alert_enabled flags
+      await fetchData();
+      addToast({ title: "Alert settings saved", color: "success" });
+    } catch (err: any) {
+      addToast({ title: "Failed to save settings", description: err.message, color: "danger" });
+    }
   };
 
   if (!canAccessViralityTracker(selectedTeam?.plan)) {
@@ -322,6 +500,14 @@ export default function ViralityPage() {
           <div className="flex items-center gap-3">
             <DateRangeFilter value={dateRange} onChange={setDateRange} />
             <Button
+              variant="bordered"
+              className="border-border-base text-text-secondary"
+              startContent={<Icon icon="solar:bell-bold" width={18} />}
+              onPress={handleOpenSettings}
+            >
+              Alert Settings
+            </Button>
+            <Button
               className="bg-accent-400 text-white"
               startContent={<Icon icon="solar:add-circle-bold" width={18} />}
               onPress={onOpen}
@@ -331,7 +517,7 @@ export default function ViralityPage() {
           </div>
         </div>
 
-        {/* Competitor Cards */}
+        {/* Competitor Cards (My Performance first, then competitors) */}
         <RecalcOverlay active={isRecalculating}>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {competitorCards.map((card, idx) => (
@@ -349,6 +535,7 @@ export default function ViralityPage() {
                 onEditSave={handleSaveCompetitorName}
                 onEditCancel={() => setEditingCompetitorId(null)}
                 onViewCompetitor={handleViewCompetitor}
+                isMyPerformance={card.isMyPerformance}
               />
             ))}
           </div>
@@ -362,7 +549,7 @@ export default function ViralityPage() {
                 name: competitor.name,
                 followers,
                 totalViews,
-                totalPosts: competitor.accounts.reduce((s, a) => s + (dashboardStats?.accountPostStats?.[a.id]?.postCount || 0), 0),
+                totalPosts: competitor.accounts.reduce((s, a) => s + (mergedAccountPostStats[a.id]?.postCount || 0), 0),
                 engRate,
                 postsPerWeek,
                 avgViews,
@@ -399,14 +586,15 @@ export default function ViralityPage() {
             </div>
             <RecalcOverlay active={isRecalculating}>
               <AccountsTable
-                competitors={competitors}
+                competitors={allCompetitors}
                 platformFilter={platformFilter}
                 searchQuery={searchQuery}
-                accountPostStats={dashboardStats?.accountPostStats}
+                accountPostStats={mergedAccountPostStats}
                 onViewCompetitor={handleViewCompetitor}
                 onViewAccount={handleViewAccount}
                 onDeleteAccount={handleDeleteAccount}
                 onToggleAccountStatus={handleToggleAccountStatus}
+                onToggleAlert={handleToggleAlert}
                 accountStatuses={accountStatuses}
               />
             </RecalcOverlay>
@@ -432,6 +620,16 @@ export default function ViralityPage() {
         competitors={simpleCompetitors}
         onSubmit={handleAddAccount}
       />
+
+      {viralSettings && (
+        <ViralSettingsModal
+          isOpen={isSettingsOpen}
+          onClose={onSettingsClose}
+          accounts={competitors.flatMap((c) => c.accounts)}
+          settings={viralSettings}
+          onSave={handleSaveSettings}
+        />
+      )}
     </motion.div>
   );
 }

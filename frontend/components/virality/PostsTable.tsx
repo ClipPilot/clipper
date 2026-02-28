@@ -15,6 +15,7 @@ import {
   DropdownTrigger,
   DropdownMenu,
   DropdownItem,
+  Chip,
   cn,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
@@ -275,12 +276,14 @@ export function PostsTable({ posts, accountPlatformMap, comparisonMode, onCompar
         </div>
       </div>
 
+      <div className="overflow-x-auto">
       <Table
         aria-label="Posts table"
         removeWrapper
         classNames={{
-          th: "bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4",
+          th: "bg-surface-elevated text-text-tertiary text-xs font-medium uppercase tracking-wider py-4 px-4 whitespace-nowrap",
           td: "py-4 px-4 border-t border-border-base",
+          table: "min-w-[700px]",
         }}
       >
         <TableHeader>
@@ -337,9 +340,23 @@ export function PostsTable({ posts, accountPlatformMap, comparisonMode, onCompar
                       }}
                     />
                   )}
-                  <p className="text-sm text-text-primary truncate">
-                    {post.caption || "No caption"}
-                  </p>
+                  <div className="min-w-0">
+                    <p className="text-sm text-text-primary truncate">
+                      {post.caption || "No caption"}
+                    </p>
+                    {post.mass_post_id != null && (
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <Chip size="sm" variant="flat" classNames={{ base: "bg-violet-500/10 text-violet-500 h-5 px-1.5", content: "text-[10px] font-medium px-0" }}>
+                          Managed by Cuttr
+                        </Chip>
+                        {post.campaign_name && (
+                          <Chip size="sm" variant="flat" classNames={{ base: "bg-amber-500/10 text-amber-500 h-5 px-1.5", content: "text-[10px] font-medium px-0" }}>
+                            {post.campaign_name}
+                          </Chip>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </TableCell>
               <TableCell>
@@ -403,6 +420,7 @@ export function PostsTable({ posts, accountPlatformMap, comparisonMode, onCompar
           ))}
         </TableBody>
       </Table>
+      </div>
 
       <div className="flex items-center justify-between px-4 py-4 border-t border-border-base">
         <p className="text-sm text-text-tertiary">

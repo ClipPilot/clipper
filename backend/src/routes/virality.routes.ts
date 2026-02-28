@@ -422,4 +422,148 @@ router.get("/:teamId/competitors/:competitorId", requireAuth, (req, res) => vira
  */
 router.delete("/:teamId/competitors/:competitorId", requireAuth, (req, res) => viralityController.deleteCompetitor(req, res));
 
+// ── Alert Settings routes ──
+
+/**
+ * @openapi
+ * /virality/{teamId}/accounts/{accountId}/alerts:
+ *   patch:
+ *     summary: Toggle alert_enabled for an account
+ *     tags:
+ *       - Virality
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: accountId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - alert_enabled
+ *             properties:
+ *               alert_enabled:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Alert setting updated
+ *       400:
+ *         description: Invalid input
+ *       404:
+ *         description: Account not found
+ */
+router.patch("/:teamId/accounts/:accountId/alerts", requireAuth, (req, res) => viralityController.updateAlertEnabled(req, res));
+
+/**
+ * @openapi
+ * /virality/{teamId}/settings:
+ *   get:
+ *     summary: Get viral alert settings for a team
+ *     tags:
+ *       - Virality
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Viral alert settings including enabled account IDs
+ */
+router.get("/:teamId/settings", requireAuth, (req, res) => viralityController.getSettings(req, res));
+
+/**
+ * @openapi
+ * /virality/{teamId}/settings:
+ *   put:
+ *     summary: Save viral alert settings for a team
+ *     tags:
+ *       - Virality
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - thresholdMode
+ *               - enabledAccountIds
+ *             properties:
+ *               percentThreshold:
+ *                 type: integer
+ *                 nullable: true
+ *               absoluteThreshold:
+ *                 type: integer
+ *                 nullable: true
+ *               thresholdMode:
+ *                 type: string
+ *                 enum: [and, or]
+ *               timeFrameHours:
+ *                 type: integer
+ *                 default: 24
+ *               enabledAccountIds:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *     responses:
+ *       200:
+ *         description: Settings saved successfully
+ *       400:
+ *         description: Invalid input
+ */
+router.put("/:teamId/settings", requireAuth, (req, res) => viralityController.saveSettings(req, res));
+
+/**
+ * @openapi
+ * /virality/{teamId}/alert-logs:
+ *   get:
+ *     summary: Get alert log history for a team
+ *     tags:
+ *       - Virality
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *     responses:
+ *       200:
+ *         description: List of alert logs
+ */
+router.get("/:teamId/alert-logs", requireAuth, (req, res) => viralityController.getAlertLogs(req, res));
+
 export default router;

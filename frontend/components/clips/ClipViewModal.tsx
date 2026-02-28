@@ -963,10 +963,10 @@ export default function ClipViewModal({
             {onAdPosting && clip.clipUrl && (
               <Button
                 variant="flat"
-                startContent={<Icon icon="mdi:megaphone" />}
+                startContent={<Icon icon="solar:video-library-bold-duotone" />}
                 onPress={onAdPosting}
               >
-                Ad Post
+                Add to Campaign
               </Button>
             )}
             {clip.clipUrl && (

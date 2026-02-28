@@ -1,44 +1,10 @@
-import * as Sentry from "@sentry/node";
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { viralityService } from "../services/virality/virality.service";
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-function parseId(value: string): number | null {
-  const n = parseInt(value);
-  return isNaN(n) ? null : n;
-}
-
-function parseDateQuery(value: unknown): Date | undefined {
-  return value ? new Date(value as string) : undefined;
-}
-
-const PLAN_REQUIRED_RESPONSE = {
-  error: "Virality tracking requires a Studio plan or higher",
-  code: "PLAN_REQUIRED",
-} as const;
+import { parseId, parseDateQuery, handleControllerError as handleError, requirePlanAccess as requirePlanAccessBase } from "../utils/controllerHelpers";
 
 async function requirePlanAccess(teamId: number, res: Response): Promise<boolean> {
-  const hasAccess = await viralityService.checkTeamPlanAccess(teamId);
-  if (!hasAccess) {
-    res.status(403).json(PLAN_REQUIRED_RESPONSE);
-    return false;
-  }
-  return true;
-}
-
-function handleError(res: Response, label: string, error: any, fallbackMessage: string) {
-  console.error(`${label}:`, error);
-  Sentry.captureException(error);
-
-  if (error.message?.includes("not found")) {
-    return res.status(404).json({ error: error.message });
-  }
-  if (error.message?.includes("already being tracked")) {
-    return res.status(409).json({ error: error.message });
-  }
-  return res.status(500).json({ error: fallbackMessage });
+  return requirePlanAccessBase(teamId, res, (id) => viralityService.checkTeamPlanAccess(id), "Virality tracking requires a Studio plan or higher");
 }
 
 // ── Controller ───────────────────────────────────────────────────────────────
@@ -83,8 +49,8 @@ class ViralityController {
         teamId,
         platform,
         profileUrl,
-        competitorId ? parseInt(competitorId) : undefined,
-        accountType || "profile"
+        accountType || "profile",
+        competitorId ? parseInt(competitorId) : undefined
       );
 
       // Trigger first sync in the background
@@ -279,6 +245,93 @@ class ViralityController {
       return res.json({ success: true });
     } catch (error) {
       return handleError(res, "Delete competitor error", error, "Failed to delete competitor");
+    }
+  }
+
+  // ── Alert Settings Controllers ──
+
+  async updateAlertEnabled(req: AuthRequest, res: Response) {
+    try {
+      const teamId = parseId(req.params.teamId);
+      const accountId = parseId(req.params.accountId);
+      if (!teamId || !accountId) return res.status(400).json({ error: "Invalid team or account ID" });
+
+      const { alert_enabled } = req.body;
+      if (typeof alert_enabled !== "boolean") {
+        return res.status(400).json({ error: "alert_enabled must be a boolean" });
+      }
+
+      const account = await viralityService.updateAlertEnabled(accountId, teamId, alert_enabled);
+      return res.json({ account });
+    } catch (error) {
+      return handleError(res, "Update alert enabled error", error, "Failed to update alert setting");
+    }
+  }
+
+  async getSettings(req: AuthRequest, res: Response) {
+    try {
+      const teamId = parseId(req.params.teamId);
+      if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
+      if (!(await requirePlanAccess(teamId, res))) return;
+
+      const settings = await viralityService.getSettings(teamId);
+      return res.json({ settings });
+    } catch (error) {
+      return handleError(res, "Get settings error", error, "Failed to get viral alert settings");
+    }
+  }
+
+  async saveSettings(req: AuthRequest, res: Response) {
+    try {
+      const teamId = parseId(req.params.teamId);
+      if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
+      if (!(await requirePlanAccess(teamId, res))) return;
+
+      const { percentThreshold, absoluteThreshold, thresholdMode, timeFrameHours, enabledAccountIds } = req.body;
+
+      if (!["and", "or"].includes(thresholdMode)) {
+        return res.status(400).json({ error: "thresholdMode must be 'and' or 'or'" });
+      }
+      if (!Array.isArray(enabledAccountIds)) {
+        return res.status(400).json({ error: "enabledAccountIds must be an array" });
+      }
+      if (![12, 24, 48].includes(timeFrameHours)) {
+        return res.status(400).json({ error: "timeFrameHours must be 12, 24, or 48" });
+      }
+      if (percentThreshold != null && (typeof percentThreshold !== "number" || percentThreshold <= 0)) {
+        return res.status(400).json({ error: "percentThreshold must be a positive number" });
+      }
+      if (absoluteThreshold != null && (typeof absoluteThreshold !== "number" || absoluteThreshold <= 0)) {
+        return res.status(400).json({ error: "absoluteThreshold must be a positive number" });
+      }
+
+      const settings = await viralityService.saveSettings(teamId, {
+        percentThreshold: percentThreshold ?? null,
+        absoluteThreshold: absoluteThreshold ?? null,
+        thresholdMode,
+        timeFrameHours: timeFrameHours ?? 24,
+        enabledAccountIds,
+      });
+
+      return res.json({ settings });
+    } catch (error) {
+      return handleError(res, "Save settings error", error, "Failed to save viral alert settings");
+    }
+  }
+
+  async getAlertLogs(req: AuthRequest, res: Response) {
+    try {
+      const teamId = parseId(req.params.teamId);
+      if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
+      if (!(await requirePlanAccess(teamId, res))) return;
+
+      const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+      const offset = parseInt(req.query.offset as string) || 0;
+
+      const logs = await viralityService.getAlertLogs(teamId, limit, offset);
+      return res.json({ logs });
+    } catch (error) {
+      return handleError(res, "Get alert logs error", error, "Failed to get alert logs");
     }
   }
 }

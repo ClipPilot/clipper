@@ -456,6 +456,10 @@ export const mergeClipsFaceSwap = async (clips: string[], outputPath: string) =>
     const content = clips.map((c) => `file '${c.replace(/'/g, "'\\''")}'`).join("\n");
     fs.writeFileSync(listPath, content);
 
+    let stderrLog = "";
+
+    let settled = false;
+
     ffmpeg()
       .input(listPath)
       .inputOptions(["-f concat", "-safe 0"])
@@ -476,14 +480,22 @@ export const mergeClipsFaceSwap = async (clips: string[], outputPath: string) =>
         "-map_metadata", "-1",
       ])
       .save(outputPath)
+      .on("stderr", (line: string) => { stderrLog += line + "\n"; })
       .on("end", () => {
-        fs.unlinkSync(listPath);
-        const finalStats = fs.statSync(outputPath);
-        console.log(`[MERGE] Success: ${outputPath} (${(finalStats.size / 1024 / 1024).toFixed(2)}MB)`);
+        if (settled) return;
+        settled = true;
+        try { if (fs.existsSync(listPath)) fs.unlinkSync(listPath); } catch {}
+        if (!fs.existsSync(outputPath)) {
+          reject(new Error(`[MERGE] FFmpeg reported success but output file missing: ${outputPath}`));
+          return;
+        }
+        console.log(`[MERGE] Success: ${outputPath} (${(fs.statSync(outputPath).size / 1024 / 1024).toFixed(2)}MB)`);
         resolve(outputPath);
       })
       .on("error", (err) => {
-        console.error(`[MERGE] Failed: ${err.message}`);
+        if (settled) return;
+        settled = true;
+        try { if (fs.existsSync(listPath)) fs.unlinkSync(listPath); } catch {}
         reject(err);
       });
   });
@@ -595,82 +607,58 @@ export const convertToGamingVertical = async (
 
   console.log(`[GAMING] Converting ${width}x${height} to gaming layout (facecam: ${JSON.stringify(facecam)})`);
 
-  // Clamp facecam region to frame bounds (Lambda returns face+torso box)
   const fcX = Math.max(0, Math.min(facecam.x, width - 1));
   const fcY = Math.max(0, Math.min(facecam.y, height - 1));
   const fcW = Math.min(facecam.w, width - fcX);
   const fcH = Math.min(facecam.h, height - fcY);
 
-  // Gameplay "corner cut": slice off the facecam strip first, then
-  // center-crop the remaining area to 16:9 so the game center is preserved.
+  // Scale face to fill 1080 width, proportional height, cap at half frame
+  let faceOutH = Math.round(fcH * (1080 / fcW));
+  if (faceOutH > 960) faceOutH = 960;
+  faceOutH += faceOutH % 2;
+  const gameOutH = 1920 - faceOutH;
+
+  console.log(`[GAMING] Face crop: ${fcW}x${fcH} at (${fcX},${fcY}) → 1080x${faceOutH} (${(1080 / fcW).toFixed(1)}x), gameplay: 1080x${gameOutH}`);
+
+  // Remove facecam strip from gameplay area
   const fcCenterX = fcX + fcW / 2;
   const fcCenterY = fcY + fcH / 2;
   const fcOnLeft = fcCenterX < width / 2;
   const fcOnTop = fcCenterY < height / 2;
-
-  // Step 1: Remove the facecam strip (whichever axis it's closer to the edge on)
   const distToVerticalEdge = fcOnLeft ? (fcX + fcW) : (width - fcX);
   const distToHorizontalEdge = fcOnTop ? (fcY + fcH) : (height - fcY);
 
   let stripX: number, stripY: number, stripW: number, stripH: number;
-
   if (distToVerticalEdge <= distToHorizontalEdge) {
-    // Facecam hugs a vertical edge — slice off that side
     if (fcOnLeft) {
-      stripX = fcX + fcW;
-      stripY = 0;
-      stripW = width - (fcX + fcW);
-      stripH = height;
+      stripX = fcX + fcW; stripY = 0; stripW = width - (fcX + fcW); stripH = height;
     } else {
-      stripX = 0;
-      stripY = 0;
-      stripW = fcX;
-      stripH = height;
+      stripX = 0; stripY = 0; stripW = fcX; stripH = height;
     }
   } else {
-    // Facecam hugs a horizontal edge — slice off that side
     if (fcOnTop) {
-      stripX = 0;
-      stripY = fcY + fcH;
-      stripW = width;
-      stripH = height - (fcY + fcH);
+      stripX = 0; stripY = fcY + fcH; stripW = width; stripH = height - (fcY + fcH);
     } else {
-      stripX = 0;
-      stripY = 0;
-      stripW = width;
-      stripH = fcY;
+      stripX = 0; stripY = 0; stripW = width; stripH = fcY;
     }
   }
 
-  // Step 2: Center-crop the remaining strip to 16:9
-  const gameplayRatio = 16 / 9;
+  const gameplayAR = 1080 / gameOutH;
   let gpW: number, gpH: number, gpX: number, gpY: number;
-
-  if (stripW / stripH > gameplayRatio) {
-    // Remaining area is wider than 16:9 — crop width from center
-    gpH = stripH;
-    gpW = Math.round(stripH * gameplayRatio);
-    gpX = stripX + Math.round((stripW - gpW) / 2);
-    gpY = stripY;
+  if (stripW / stripH > gameplayAR) {
+    gpH = stripH; gpW = Math.round(stripH * gameplayAR);
+    gpX = stripX + Math.round((stripW - gpW) / 2); gpY = stripY;
   } else {
-    // Remaining area is taller than 16:9 — crop height from center
-    gpW = stripW;
-    gpH = Math.round(stripW / gameplayRatio);
-    gpX = stripX;
-    gpY = stripY + Math.round((stripH - gpH) / 2);
+    gpW = stripW; gpH = Math.round(stripW / gameplayAR);
+    gpX = stripX; gpY = stripY + Math.round((stripH - gpH) / 2);
   }
-
-  console.log(`[GAMING] Facecam at ${fcOnLeft ? "left" : "right"}/${fcOnTop ? "top" : "bottom"}, gameplay crop: ${gpW}x${gpH}+${gpX}+${gpY}`);
 
   return new Promise((resolve, reject) => {
     ffmpeg()
       .input(inputPath)
       .complexFilter([
-        // Facecam: crop face region, zoom to fill 1080x960 (no black bars)
-        `[0:v]crop=${fcW}:${fcH}:${fcX}:${fcY},scale=1080:960:force_original_aspect_ratio=increase,crop=1080:960[cam]`,
-        // Gameplay: center-crop to 16:9, scale to 1080x960
-        `[0:v]crop=${gpW}:${gpH}:${gpX}:${gpY},scale=1080:960[game]`,
-        // Stack: facecam on top, gameplay on bottom
+        `[0:v]crop=${fcW}:${fcH}:${fcX}:${fcY},scale=1080:${faceOutH}[cam]`,
+        `[0:v]crop=${gpW}:${gpH}:${gpX}:${gpY},scale=1080:${gameOutH}[game]`,
         `[cam][game]vstack=inputs=2[v]`,
       ])
       .outputOptions([
@@ -932,11 +920,15 @@ export const convertToActiveSpeakerZoom = async (
         ])
         .save(outputPath)
         .on("end", () => {
-          fs.unlinkSync(concatListPath);
+          try {
+            if (fs.existsSync(concatListPath)) fs.unlinkSync(concatListPath);
+          } catch { /* best effort cleanup */ }
           resolve();
         })
         .on("error", (err) => {
-          if (fs.existsSync(concatListPath)) fs.unlinkSync(concatListPath);
+          try {
+            if (fs.existsSync(concatListPath)) fs.unlinkSync(concatListPath);
+          } catch { /* best effort cleanup */ }
           reject(err);
         });
     });
@@ -2248,11 +2240,9 @@ const HEART_ICON_SVG = `<svg width="20" height="20" viewBox="0 0 24 24" fill="rg
 
 const THUMBS_UP_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="#aaa" xmlns="http://www.w3.org/2000/svg"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>`;
 
-const getDefaultAvatarDataUri = (username: string): string => {
-  const color = hashColor(username);
-  const initial = username.charAt(0).toUpperCase();
+const getDefaultAvatarDataUri = (_username: string): string => {
   return `data:image/svg+xml,${encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72"><circle cx="36" cy="36" r="36" fill="${color}"/><text x="36" y="48" text-anchor="middle" fill="#fff" font-size="32" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-weight="600">${initial}</text></svg>`
+    `<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72"><circle cx="36" cy="36" r="36" fill="#C4C4C4"/><path d="M36 36c5.4 0 9.6-4.2 9.6-9.6S41.4 16.8 36 16.8 26.4 21 26.4 26.4 30.6 36 36 36zm0 4.8c-6.4 0-19.2 3.2-19.2 9.6v2.4c0 1.32 1.08 2.4 2.4 2.4h33.6c1.32 0 2.4-1.08 2.4-2.4v-2.4c0-6.4-12.8-9.6-19.2-9.6z" fill="#fff"/></svg>`
   )}`;
 };
 
@@ -2272,25 +2262,18 @@ const getCommentHtml = (
       <!DOCTYPE html><html><head><style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { width: 800px; background: transparent; padding: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
-        .comment { background: rgba(37,37,37,0.92); border-radius: 12px; padding: 14px 16px; display: inline-flex; align-items: flex-start; gap: 10px; max-width: 760px; }
-        .avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
-        .body { flex: 1; min-width: 0; }
-        .username-row { display: flex; align-items: center; gap: 4px; }
-        .username { color: rgba(255,255,255,0.55); font-size: 13px; font-weight: 600; }
-        .text { color: #fff; font-size: 15px; margin-top: 4px; line-height: 1.35; word-wrap: break-word; }
-        .meta { display: flex; align-items: center; gap: 16px; margin-top: 6px; }
-        .meta span { color: rgba(255,255,255,0.4); font-size: 12px; }
-        .likes { display: flex; flex-direction: column; align-items: center; gap: 2px; margin-left: 8px; flex-shrink: 0; }
-        .likes span { color: rgba(255,255,255,0.5); font-size: 11px; }
+        .comment { background: rgba(255,255,255,0.95); border-radius: 16px; padding: 16px 20px; display: inline-flex; flex-direction: column; gap: 10px; max-width: 760px; }
+        .header { color: #8A8A8A; font-size: 16px; font-weight: 600; }
+        .content { display: flex; align-items: center; gap: 14px; }
+        .avatar { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+        .text { color: #000; font-size: 20px; font-weight: 700; line-height: 1.3; word-wrap: break-word; flex: 1; min-width: 0; }
       </style></head><body>
         <div class="comment">
-          <img class="avatar" src="${profilePicSrc}" />
-          <div class="body">
-            <div class="username-row"><span class="username">${safeUsername}</span>${badge}</div>
+          <div class="header">Reply to @${safeUsername}'s comment</div>
+          <div class="content">
+            <img class="avatar" src="${profilePicSrc}" />
             <div class="text">${safeComment}</div>
-            <div class="meta"><span>${time}</span><span>Reply</span></div>
           </div>
-          <div class="likes">${HEART_ICON_SVG}<span>${likes}</span></div>
         </div>
       </body></html>
     `;

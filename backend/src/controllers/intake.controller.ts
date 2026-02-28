@@ -59,19 +59,18 @@ export async function submitApplication(req: AuthRequest, res: Response) {
       return res.status(403).json({ error: "Mass posting requires a Studio plan or higher" });
     }
 
-    const { brand_description, company_website_url, icps, company_socials, competitor_socials } = req.body;
+    const { brand_description, company_website_url, icps, company_socials, competitor_socials, budget, name } = req.body;
 
     if (!brand_description) {
       return res.status(400).json({ error: "Brand description is required" });
     }
 
-    const application = await intakeService.submitApplication(teamId, {
-      brand_description,
-      company_website_url,
-      icps,
-      company_socials,
-      competitor_socials,
-    });
+    const application = await intakeService.submitApplication(
+      teamId,
+      { brand_description, company_website_url, icps, company_socials, competitor_socials },
+      budget != null ? Number(budget) : undefined,
+      name,
+    );
 
     return res.status(201).json({ application });
   } catch (error: any) {
@@ -98,15 +97,13 @@ export async function submitAppeal(req: AuthRequest, res: Response) {
       return res.status(403).json({ error: "Mass posting requires a Studio plan or higher" });
     }
 
-    const { brand_description, company_website_url, icps, company_socials, competitor_socials } = req.body;
+    const { brand_description, company_website_url, icps, company_socials, competitor_socials, budget } = req.body;
 
-    const application = await intakeService.submitAppeal(teamId, {
-      brand_description,
-      company_website_url,
-      icps,
-      company_socials,
-      competitor_socials,
-    });
+    const application = await intakeService.submitAppeal(
+      teamId,
+      { brand_description, company_website_url, icps, company_socials, competitor_socials },
+      budget != null ? Number(budget) : undefined,
+    );
 
     return res.status(201).json({ application });
   } catch (error: any) {
@@ -144,7 +141,7 @@ export async function getLatestApplication(req: AuthRequest, res: Response) {
       return res.status(400).json({ error: "Invalid team ID" });
     }
 
-    const application = await intakeService.getLatestApplication(teamId);
+    const application = await intakeService.getLatestCampaign(teamId);
     return res.json({ application });
   } catch (error) {
     console.error("Get latest application error:", error);
