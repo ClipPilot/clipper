@@ -612,52 +612,58 @@ export const convertToGamingVertical = async (
   const fcW = Math.min(facecam.w, width - fcX);
   const fcH = Math.min(facecam.h, height - fcY);
 
-  // Scale face to fill 1080 width, proportional height, cap at half frame
-  let faceOutH = Math.round(fcH * (1080 / fcW));
-  if (faceOutH > 960) faceOutH = 960;
+  // Scale facecam proportionally — fit within 1080 wide, max 960 tall (half screen)
+  // Uses the tighter constraint so aspect ratio is always preserved (no distortion)
+  const maxFaceH = 960;
+  const faceScale = Math.min(1080 / fcW, maxFaceH / fcH);
+  let faceOutW = Math.round(fcW * faceScale);
+  let faceOutH = Math.round(fcH * faceScale);
+  faceOutW += faceOutW % 2;
   faceOutH += faceOutH % 2;
   const gameOutH = 1920 - faceOutH;
 
-  console.log(`[GAMING] Face crop: ${fcW}x${fcH} at (${fcX},${fcY}) → 1080x${faceOutH} (${(1080 / fcW).toFixed(1)}x), gameplay: 1080x${gameOutH}`);
+  console.log(`[GAMING] Face crop: ${fcW}x${fcH} at (${fcX},${fcY}) → ${faceOutW}x${faceOutH} (scale=${faceScale.toFixed(2)}), gameplay: 1080x${gameOutH}`);
 
-  // Remove facecam strip from gameplay area
-  const fcCenterX = fcX + fcW / 2;
-  const fcCenterY = fcY + fcH / 2;
-  const fcOnLeft = fcCenterX < width / 2;
-  const fcOnTop = fcCenterY < height / 2;
+  // Determine available gameplay region by excluding the facecam strip
+  const fcOnLeft = fcX + fcW / 2 < width / 2;
+  const fcOnTop = fcY + fcH / 2 < height / 2;
   const distToVerticalEdge = fcOnLeft ? (fcX + fcW) : (width - fcX);
   const distToHorizontalEdge = fcOnTop ? (fcY + fcH) : (height - fcY);
 
-  let stripX: number, stripY: number, stripW: number, stripH: number;
+  // Exclude the thinner strip (removes least gameplay)
+  let availX = 0, availY = 0, availW = width, availH = height;
   if (distToVerticalEdge <= distToHorizontalEdge) {
-    if (fcOnLeft) {
-      stripX = fcX + fcW; stripY = 0; stripW = width - (fcX + fcW); stripH = height;
-    } else {
-      stripX = 0; stripY = 0; stripW = fcX; stripH = height;
-    }
+    // Exclude left or right strip
+    if (fcOnLeft) { availX = fcX + fcW; availW = width - availX; }
+    else { availW = fcX; }
   } else {
-    if (fcOnTop) {
-      stripX = 0; stripY = fcY + fcH; stripW = width; stripH = height - (fcY + fcH);
-    } else {
-      stripX = 0; stripY = 0; stripW = width; stripH = fcY;
-    }
+    // Exclude top or bottom strip
+    if (fcOnTop) { availY = fcY + fcH; availH = height - availY; }
+    else { availH = fcY; }
   }
 
+  // Center-crop within the available (facecam-free) region
   const gameplayAR = 1080 / gameOutH;
   let gpW: number, gpH: number, gpX: number, gpY: number;
-  if (stripW / stripH > gameplayAR) {
-    gpH = stripH; gpW = Math.round(stripH * gameplayAR);
-    gpX = stripX + Math.round((stripW - gpW) / 2); gpY = stripY;
+  if (availW / availH > gameplayAR) {
+    gpH = availH; gpW = Math.round(availH * gameplayAR);
+    gpX = availX + Math.round((availW - gpW) / 2); gpY = availY;
   } else {
-    gpW = stripW; gpH = Math.round(stripW / gameplayAR);
-    gpX = stripX; gpY = stripY + Math.round((stripH - gpH) / 2);
+    gpW = availW; gpH = Math.round(availW / gameplayAR);
+    gpX = availX; gpY = availY + Math.round((availH - gpH) / 2);
   }
+
+  // If facecam is narrower than 1080 (height-constrained), pad with black to center it
+  const needsPad = faceOutW < 1080;
+  const camFilter = needsPad
+    ? `[0:v]crop=${fcW}:${fcH}:${fcX}:${fcY},scale=${faceOutW}:${faceOutH},pad=1080:${faceOutH}:(1080-${faceOutW})/2:0:black[cam]`
+    : `[0:v]crop=${fcW}:${fcH}:${fcX}:${fcY},scale=1080:${faceOutH}[cam]`;
 
   return new Promise((resolve, reject) => {
     ffmpeg()
       .input(inputPath)
       .complexFilter([
-        `[0:v]crop=${fcW}:${fcH}:${fcX}:${fcY},scale=1080:${faceOutH}[cam]`,
+        camFilter,
         `[0:v]crop=${gpW}:${gpH}:${gpX}:${gpY},scale=1080:${gameOutH}[game]`,
         `[cam][game]vstack=inputs=2[v]`,
       ])
