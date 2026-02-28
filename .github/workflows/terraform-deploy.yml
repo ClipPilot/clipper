@@ -137,6 +137,13 @@ jobs:
           path: infra/tfplan
           retention-days: 5
 
+      - name: Upload Terraform Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tf-build
+          path: infra/.build/
+          retention-days: 5
+
       - name: Comment PR with Plan
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
@@ -269,8 +276,12 @@ jobs:
           name: tfplan
           path: infra/
 
-      - name: Rebuild Terraform data artifacts
-        run: terraform plan -target='data.archive_file.status_cron_lambda' -out=/dev/null 2>/dev/null || true
+      - name: Download Terraform Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: tf-build
+          path: infra/.build/
+        continue-on-error: true
 
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
