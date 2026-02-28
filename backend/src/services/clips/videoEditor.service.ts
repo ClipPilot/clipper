@@ -458,6 +458,8 @@ export const mergeClipsFaceSwap = async (clips: string[], outputPath: string) =>
 
     let stderrLog = "";
 
+    let settled = false;
+
     ffmpeg()
       .input(listPath)
       .inputOptions(["-f concat", "-safe 0"])
@@ -480,26 +482,20 @@ export const mergeClipsFaceSwap = async (clips: string[], outputPath: string) =>
       .save(outputPath)
       .on("stderr", (line: string) => { stderrLog += line + "\n"; })
       .on("end", () => {
-        try {
-          if (fs.existsSync(listPath)) fs.unlinkSync(listPath);
-        } catch { /* best effort cleanup */ }
-
+        if (settled) return;
+        settled = true;
+        try { if (fs.existsSync(listPath)) fs.unlinkSync(listPath); } catch {}
         if (!fs.existsSync(outputPath)) {
-          // Log inputs + FFmpeg stderr to diagnose why output is missing
-          const inputStatus = clips.map(c => `${path.basename(c)}: ${fs.existsSync(c) ? `${(fs.statSync(c).size / 1024).toFixed(0)}KB` : "MISSING"}`);
-          console.error(`[MERGE] Output missing after FFmpeg exit 0!\n  Inputs: ${inputStatus.join(", ")}\n  stderr: ${stderrLog.slice(-500)}`);
           reject(new Error(`[MERGE] FFmpeg reported success but output file missing: ${outputPath}`));
           return;
         }
-        const finalStats = fs.statSync(outputPath);
-        console.log(`[MERGE] Success: ${outputPath} (${(finalStats.size / 1024 / 1024).toFixed(2)}MB)`);
+        console.log(`[MERGE] Success: ${outputPath} (${(fs.statSync(outputPath).size / 1024 / 1024).toFixed(2)}MB)`);
         resolve(outputPath);
       })
       .on("error", (err) => {
-        console.error(`[MERGE] Failed: ${err.message}\n  stderr: ${stderrLog.slice(-500)}`);
-        try {
-          if (fs.existsSync(listPath)) fs.unlinkSync(listPath);
-        } catch { /* best effort cleanup */ }
+        if (settled) return;
+        settled = true;
+        try { if (fs.existsSync(listPath)) fs.unlinkSync(listPath); } catch {}
         reject(err);
       });
   });
@@ -611,132 +607,58 @@ export const convertToGamingVertical = async (
 
   console.log(`[GAMING] Converting ${width}x${height} to gaming layout (facecam: ${JSON.stringify(facecam)})`);
 
-  // Clamp facecam region to frame bounds (Lambda returns face+torso box)
-  let fcX = Math.max(0, Math.min(facecam.x, width - 1));
-  let fcY = Math.max(0, Math.min(facecam.y, height - 1));
-  let fcW = Math.min(facecam.w, width - fcX);
-  let fcH = Math.min(facecam.h, height - fcY);
+  const fcX = Math.max(0, Math.min(facecam.x, width - 1));
+  const fcY = Math.max(0, Math.min(facecam.y, height - 1));
+  const fcW = Math.min(facecam.w, width - fcX);
+  const fcH = Math.min(facecam.h, height - fcY);
 
-  const originalCrop = { x: fcX, y: fcY, w: fcW, h: fcH };
+  // Scale face to fill 1080 width, proportional height, cap at half frame
+  let faceOutH = Math.round(fcH * (1080 / fcW));
+  if (faceOutH > 960) faceOutH = 960;
+  faceOutH += faceOutH % 2;
+  const gameOutH = 1920 - faceOutH;
 
-  // Cap zoom at 2x — minimum crop is half of output resolution (540x480).
-  // If the detected region is smaller, we grab more surrounding video to fill.
-  const minCropW = 540;  // 1080 / 2
-  const minCropH = 480;  // 960 / 2
-  const centerX = fcX + fcW / 2;
-  const centerY = fcY + fcH / 2;
+  console.log(`[GAMING] Face crop: ${fcW}x${fcH} at (${fcX},${fcY}) → 1080x${faceOutH} (${(1080 / fcW).toFixed(1)}x), gameplay: 1080x${gameOutH}`);
 
-  if (fcW < minCropW) {
-    fcW = minCropW;
-  }
-  if (fcH < minCropH) {
-    fcH = minCropH;
-  }
-
-  // Expand facecam crop to 9:8 aspect ratio (1080:960) by zooming out —
-  // grabs more surrounding video instead of padding with black bars
-  const targetAR = 1080 / 960; // 1.125
-  const currentAR = fcW / fcH;
-
-  if (currentAR < targetAR) {
-    // Region is taller than 9:8 — expand width
-    fcW = Math.round(fcH * targetAR);
-  } else if (currentAR > targetAR) {
-    // Region is wider than 9:8 — expand height
-    fcH = Math.round(fcW / targetAR);
-  }
-
-  // Re-center on the face and clamp to video bounds
-  fcX = Math.max(0, Math.round(centerX - fcW / 2));
-  fcY = Math.max(0, Math.round(centerY - fcH / 2));
-  fcW = Math.min(fcW, width - fcX);
-  fcH = Math.min(fcH, height - fcY);
-
-  // If clamping to bounds shrunk us below minimum, push the origin inward
-  if (fcW < minCropW && fcX > 0) {
-    fcX = Math.max(0, width - minCropW);
-    fcW = Math.min(minCropW, width - fcX);
-  }
-  if (fcH < minCropH && fcY > 0) {
-    fcY = Math.max(0, height - minCropH);
-    fcH = Math.min(minCropH, height - fcY);
-  }
-
-  const zoomFactor = Math.max(1080 / fcW, 960 / fcH);
-  if (fcW !== originalCrop.w || fcH !== originalCrop.h) {
-    console.log(`[GAMING] Crop expanded from ${originalCrop.w}x${originalCrop.h} to ${fcW}x${fcH} (zoom: ${zoomFactor.toFixed(1)}x)`);
-  }
-
-  // Gameplay "corner cut": slice off the facecam strip first, then
-  // center-crop the remaining area to 16:9 so the game center is preserved.
+  // Remove facecam strip from gameplay area
   const fcCenterX = fcX + fcW / 2;
   const fcCenterY = fcY + fcH / 2;
   const fcOnLeft = fcCenterX < width / 2;
   const fcOnTop = fcCenterY < height / 2;
-
-  // Step 1: Remove the facecam strip (whichever axis it's closer to the edge on)
   const distToVerticalEdge = fcOnLeft ? (fcX + fcW) : (width - fcX);
   const distToHorizontalEdge = fcOnTop ? (fcY + fcH) : (height - fcY);
 
   let stripX: number, stripY: number, stripW: number, stripH: number;
-
   if (distToVerticalEdge <= distToHorizontalEdge) {
-    // Facecam hugs a vertical edge — slice off that side
     if (fcOnLeft) {
-      stripX = fcX + fcW;
-      stripY = 0;
-      stripW = width - (fcX + fcW);
-      stripH = height;
+      stripX = fcX + fcW; stripY = 0; stripW = width - (fcX + fcW); stripH = height;
     } else {
-      stripX = 0;
-      stripY = 0;
-      stripW = fcX;
-      stripH = height;
+      stripX = 0; stripY = 0; stripW = fcX; stripH = height;
     }
   } else {
-    // Facecam hugs a horizontal edge — slice off that side
     if (fcOnTop) {
-      stripX = 0;
-      stripY = fcY + fcH;
-      stripW = width;
-      stripH = height - (fcY + fcH);
+      stripX = 0; stripY = fcY + fcH; stripW = width; stripH = height - (fcY + fcH);
     } else {
-      stripX = 0;
-      stripY = 0;
-      stripW = width;
-      stripH = fcY;
+      stripX = 0; stripY = 0; stripW = width; stripH = fcY;
     }
   }
 
-  // Step 2: Center-crop the remaining strip to 16:9
-  const gameplayRatio = 16 / 9;
+  const gameplayAR = 1080 / gameOutH;
   let gpW: number, gpH: number, gpX: number, gpY: number;
-
-  if (stripW / stripH > gameplayRatio) {
-    // Remaining area is wider than 16:9 — crop width from center
-    gpH = stripH;
-    gpW = Math.round(stripH * gameplayRatio);
-    gpX = stripX + Math.round((stripW - gpW) / 2);
-    gpY = stripY;
+  if (stripW / stripH > gameplayAR) {
+    gpH = stripH; gpW = Math.round(stripH * gameplayAR);
+    gpX = stripX + Math.round((stripW - gpW) / 2); gpY = stripY;
   } else {
-    // Remaining area is taller than 16:9 — crop height from center
-    gpW = stripW;
-    gpH = Math.round(stripW / gameplayRatio);
-    gpX = stripX;
-    gpY = stripY + Math.round((stripH - gpH) / 2);
+    gpW = stripW; gpH = Math.round(stripW / gameplayAR);
+    gpX = stripX; gpY = stripY + Math.round((stripH - gpH) / 2);
   }
-
-  console.log(`[GAMING] Facecam at ${fcOnLeft ? "left" : "right"}/${fcOnTop ? "top" : "bottom"}, gameplay crop: ${gpW}x${gpH}+${gpX}+${gpY}`);
 
   return new Promise((resolve, reject) => {
     ffmpeg()
       .input(inputPath)
       .complexFilter([
-        // Facecam: crop face region (aspect-matched to 9:8), scale to fill 1080x960
-        `[0:v]crop=${fcW}:${fcH}:${fcX}:${fcY},scale=1080:960[cam]`,
-        // Gameplay: center-crop to 16:9, scale to 1080x960
-        `[0:v]crop=${gpW}:${gpH}:${gpX}:${gpY},scale=1080:960[game]`,
-        // Stack: facecam on top, gameplay on bottom
+        `[0:v]crop=${fcW}:${fcH}:${fcX}:${fcY},scale=1080:${faceOutH}[cam]`,
+        `[0:v]crop=${gpW}:${gpH}:${gpX}:${gpY},scale=1080:${gameOutH}[game]`,
         `[cam][game]vstack=inputs=2[v]`,
       ])
       .outputOptions([
