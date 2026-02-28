@@ -612,45 +612,22 @@ export const convertToGamingVertical = async (
   const fcW = Math.min(facecam.w, width - fcX);
   const fcH = Math.min(facecam.h, height - fcY);
 
-  // Scale face to fill 1080 width, proportional height, cap at half frame
+  // Scale facecam proportionally to 1080 width — pure resize, no distortion
   let faceOutH = Math.round(fcH * (1080 / fcW));
-  if (faceOutH > 960) faceOutH = 960;
   faceOutH += faceOutH % 2;
   const gameOutH = 1920 - faceOutH;
 
-  console.log(`[GAMING] Face crop: ${fcW}x${fcH} at (${fcX},${fcY}) → 1080x${faceOutH} (${(1080 / fcW).toFixed(1)}x), gameplay: 1080x${gameOutH}`);
+  console.log(`[GAMING] Face crop: ${fcW}x${fcH} at (${fcX},${fcY}) → 1080x${faceOutH}, gameplay: 1080x${gameOutH}`);
 
-  // Remove facecam strip from gameplay area
-  const fcCenterX = fcX + fcW / 2;
-  const fcCenterY = fcY + fcH / 2;
-  const fcOnLeft = fcCenterX < width / 2;
-  const fcOnTop = fcCenterY < height / 2;
-  const distToVerticalEdge = fcOnLeft ? (fcX + fcW) : (width - fcX);
-  const distToHorizontalEdge = fcOnTop ? (fcY + fcH) : (height - fcY);
-
-  let stripX: number, stripY: number, stripW: number, stripH: number;
-  if (distToVerticalEdge <= distToHorizontalEdge) {
-    if (fcOnLeft) {
-      stripX = fcX + fcW; stripY = 0; stripW = width - (fcX + fcW); stripH = height;
-    } else {
-      stripX = 0; stripY = 0; stripW = fcX; stripH = height;
-    }
-  } else {
-    if (fcOnTop) {
-      stripX = 0; stripY = fcY + fcH; stripW = width; stripH = height - (fcY + fcH);
-    } else {
-      stripX = 0; stripY = 0; stripW = width; stripH = fcY;
-    }
-  }
-
+  // Center-crop gameplay from the full frame to fill remaining space
   const gameplayAR = 1080 / gameOutH;
   let gpW: number, gpH: number, gpX: number, gpY: number;
-  if (stripW / stripH > gameplayAR) {
-    gpH = stripH; gpW = Math.round(stripH * gameplayAR);
-    gpX = stripX + Math.round((stripW - gpW) / 2); gpY = stripY;
+  if (width / height > gameplayAR) {
+    gpH = height; gpW = Math.round(height * gameplayAR);
+    gpX = Math.round((width - gpW) / 2); gpY = 0;
   } else {
-    gpW = stripW; gpH = Math.round(stripW / gameplayAR);
-    gpX = stripX; gpY = stripY + Math.round((stripH - gpH) / 2);
+    gpW = width; gpH = Math.round(width / gameplayAR);
+    gpX = 0; gpY = Math.round((height - gpH) / 2);
   }
 
   return new Promise((resolve, reject) => {
