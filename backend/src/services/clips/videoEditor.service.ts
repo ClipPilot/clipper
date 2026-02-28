@@ -612,12 +612,17 @@ export const convertToGamingVertical = async (
   const fcW = Math.min(facecam.w, width - fcX);
   const fcH = Math.min(facecam.h, height - fcY);
 
-  // Scale facecam proportionally to 1080 width — pure resize, no distortion
-  let faceOutH = Math.round(fcH * (1080 / fcW));
+  // Scale facecam proportionally — fit within 1080 wide, max 960 tall (half screen)
+  // Uses the tighter constraint so aspect ratio is always preserved (no distortion)
+  const maxFaceH = 960;
+  const faceScale = Math.min(1080 / fcW, maxFaceH / fcH);
+  let faceOutW = Math.round(fcW * faceScale);
+  let faceOutH = Math.round(fcH * faceScale);
+  faceOutW += faceOutW % 2;
   faceOutH += faceOutH % 2;
   const gameOutH = 1920 - faceOutH;
 
-  console.log(`[GAMING] Face crop: ${fcW}x${fcH} at (${fcX},${fcY}) → 1080x${faceOutH}, gameplay: 1080x${gameOutH}`);
+  console.log(`[GAMING] Face crop: ${fcW}x${fcH} at (${fcX},${fcY}) → ${faceOutW}x${faceOutH} (scale=${faceScale.toFixed(2)}), gameplay: 1080x${gameOutH}`);
 
   // Center-crop gameplay from the full frame to fill remaining space
   const gameplayAR = 1080 / gameOutH;
@@ -630,11 +635,17 @@ export const convertToGamingVertical = async (
     gpX = 0; gpY = Math.round((height - gpH) / 2);
   }
 
+  // If facecam is narrower than 1080 (height-constrained), pad with black to center it
+  const needsPad = faceOutW < 1080;
+  const camFilter = needsPad
+    ? `[0:v]crop=${fcW}:${fcH}:${fcX}:${fcY},scale=${faceOutW}:${faceOutH},pad=1080:${faceOutH}:(1080-${faceOutW})/2:0:black[cam]`
+    : `[0:v]crop=${fcW}:${fcH}:${fcX}:${fcY},scale=1080:${faceOutH}[cam]`;
+
   return new Promise((resolve, reject) => {
     ffmpeg()
       .input(inputPath)
       .complexFilter([
-        `[0:v]crop=${fcW}:${fcH}:${fcX}:${fcY},scale=1080:${faceOutH}[cam]`,
+        camFilter,
         `[0:v]crop=${gpW}:${gpH}:${gpX}:${gpY},scale=1080:${gameOutH}[game]`,
         `[cam][game]vstack=inputs=2[v]`,
       ])
