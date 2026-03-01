@@ -30,6 +30,8 @@ import {
   type Wallet,
   type AutoRefillSettings,
   type UsageLog,
+  type ClipJobStatus,
+  type FaceSwapJobStatus,
 } from "@/api/apiPlatform";
 import TopUpModal from "@/components/api-platform/TopUpModal";
 
@@ -76,6 +78,37 @@ export default function ApiPlatformPage() {
   const [createdKeyRaw, setCreatedKeyRaw] = useState("");
   const [createdKeyName, setCreatedKeyName] = useState("");
   const [copied, setCopied] = useState(false);
+
+  // Job result modal
+  const [jobModalOpen, setJobModalOpen] = useState(false);
+  const [jobModalLoading, setJobModalLoading] = useState(false);
+  const [jobModalType, setJobModalType] = useState<"clip" | "face-swap">("clip");
+  const [clipJobResult, setClipJobResult] = useState<ClipJobStatus | null>(null);
+  const [faceSwapJobResult, setFaceSwapJobResult] = useState<FaceSwapJobStatus | null>(null);
+
+  const openJobModal = async (log: UsageLog) => {
+    if (!teamId || !log.metadata?.jobId) return;
+    const isClip = log.endpoint.includes("/v1/clip");
+    setJobModalType(isClip ? "clip" : "face-swap");
+    setClipJobResult(null);
+    setFaceSwapJobResult(null);
+    setJobModalOpen(true);
+    setJobModalLoading(true);
+    try {
+      if (isClip) {
+        const result = await apiPlatformAPI.getClipJobStatus(teamId, String(log.metadata.jobId));
+        setClipJobResult(result);
+      } else {
+        const result = await apiPlatformAPI.getFaceSwapJobStatus(teamId, String(log.metadata.jobId));
+        setFaceSwapJobResult(result);
+      }
+    } catch {
+      addToast({ title: "Error", description: "Failed to load job results", color: "danger" });
+      setJobModalOpen(false);
+    } finally {
+      setJobModalLoading(false);
+    }
+  };
 
   const teamId = selectedTeam?.id;
 
@@ -854,13 +887,21 @@ export default function ApiPlatformPage() {
                         <th className="text-right text-text-tertiary font-medium py-2 px-3">
                           Cost
                         </th>
-                        <th className="text-right text-text-tertiary font-medium py-2 px-3">
-                          Latency
-                        </th>
                       </tr>
                     </thead>
                     <tbody>
-                      {usageLogs.map((log) => (
+                      {usageLogs.reduce<UsageLog[]>((acc, log) => {
+                        const jobId = log.metadata?.jobId;
+                        if (jobId) {
+                          const existing = acc.find((l) => l.metadata?.jobId === jobId);
+                          if (existing) {
+                            existing.cost_cents += log.cost_cents;
+                            return acc;
+                          }
+                        }
+                        acc.push({ ...log });
+                        return acc;
+                      }, []).map((log) => (
                         <tr
                           key={log.id}
                           className="border-b border-border-base/50 hover:bg-surface-elevated/50"
@@ -913,16 +954,42 @@ export default function ApiPlatformPage() {
                             </Chip>
                           </td>
                           <td className="py-2.5 px-3 text-text-secondary font-mono text-xs">
-                            {log.metadata?.jobId ?? "—"}
+                            {log.metadata?.jobId ? (
+                              <div className="flex items-center gap-1.5">
+                                <span className="truncate max-w-[80px]" title={String(log.metadata.jobId)}>
+                                  {String(log.metadata.jobId).length > 8
+                                    ? `${String(log.metadata.jobId).slice(0, 8)}…`
+                                    : log.metadata.jobId}
+                                </span>
+                                <Button
+                                  size="sm"
+                                  variant="light"
+                                  isIconOnly
+                                  className="min-w-6 w-6 h-6"
+                                  onPress={() => {
+                                    navigator.clipboard.writeText(String(log.metadata!.jobId));
+                                    addToast({ title: "Copied", description: "Job ID copied to clipboard", color: "success" });
+                                  }}
+                                >
+                                  <Icon icon="solar:copy-bold" width={14} className="text-text-tertiary" />
+                                </Button>
+                                {log.status_code < 400 && (
+                                  <Button
+                                    size="sm"
+                                    variant="light"
+                                    isIconOnly
+                                    className="min-w-6 w-6 h-6"
+                                    onPress={() => openJobModal(log)}
+                                  >
+                                    <Icon icon="solar:eye-bold" width={14} className="text-accent-400" />
+                                  </Button>
+                                )}
+                              </div>
+                            ) : "—"}
                           </td>
                           <td className="py-2.5 px-3 text-right text-text-primary">
                             {log.cost_cents > 0
                               ? formatCents(log.cost_cents)
-                              : "—"}
-                          </td>
-                          <td className="py-2.5 px-3 text-right text-text-tertiary">
-                            {log.response_time_ms
-                              ? `${log.response_time_ms}ms`
                               : "—"}
                           </td>
                         </tr>
@@ -954,6 +1021,159 @@ export default function ApiPlatformPage() {
           fetchAutoRefill();
         }}
       />
+
+      {/* Job Result Modal */}
+      <Modal
+        isOpen={jobModalOpen}
+        onClose={() => setJobModalOpen(false)}
+        size="2xl"
+        scrollBehavior="inside"
+        classNames={{
+          base: "bg-surface-base border border-border-base",
+          header: "border-b border-border-base",
+          body: "py-4",
+        }}
+      >
+        <ModalContent>
+          <ModalHeader className="text-text-primary">
+            {jobModalType === "clip" ? "Clip Job Results" : "Face Swap Job Results"}
+          </ModalHeader>
+          <ModalBody>
+            {jobModalLoading ? (
+              <div className="flex flex-col items-center gap-3 py-8">
+                <Icon icon="solar:refresh-bold-duotone" className="text-accent-400 animate-spin" width={32} />
+                <p className="text-text-secondary text-sm">Loading results...</p>
+              </div>
+            ) : jobModalType === "clip" && clipJobResult ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-text-tertiary text-sm">Status:</span>
+                  <Chip
+                    size="sm"
+                    variant="flat"
+                    classNames={{
+                      base: clipJobResult.status === "completed" ? "bg-green-500/10" : "bg-yellow-500/10",
+                      content: clipJobResult.status === "completed" ? "text-green-500 text-xs" : "text-yellow-500 text-xs",
+                    }}
+                  >
+                    {clipJobResult.status}
+                  </Chip>
+                  {clipJobResult.progress && (
+                    <span className="text-text-tertiary text-xs">
+                      ({clipJobResult.progress.completed}/{clipJobResult.progress.total})
+                    </span>
+                  )}
+                </div>
+                {clipJobResult.clips?.map((clip) => (
+                  <Card key={clip.clip_id} className="bg-surface-elevated border border-border-base">
+                    <CardBody className="gap-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-text-primary font-medium text-sm">
+                            {clip.title || `Clip #${clip.clip_id}`}
+                          </p>
+                          {clip.heading && (
+                            <p className="text-text-tertiary text-xs mt-0.5">{clip.heading}</p>
+                          )}
+                        </div>
+                        <Chip
+                          size="sm"
+                          variant="flat"
+                          classNames={{
+                            base: clip.status === "completed" ? "bg-green-500/10" : "bg-red-500/10",
+                            content: clip.status === "completed" ? "text-green-500 text-xs" : "text-red-500 text-xs",
+                          }}
+                        >
+                          {clip.status}
+                        </Chip>
+                      </div>
+                      {clip.status === "completed" && clip.download_url && (
+                        <div className="space-y-2">
+                          <video
+                            src={clip.download_url}
+                            controls
+                            className="w-full max-h-[300px] rounded-lg bg-black"
+                          />
+                          <Button
+                            size="sm"
+                            variant="flat"
+                            as="a"
+                            href={clip.download_url}
+                            target="_blank"
+                            startContent={<Icon icon="solar:download-bold" width={16} />}
+                          >
+                            Download
+                          </Button>
+                        </div>
+                      )}
+                      {clip.status === "failed" && clip.error && (
+                        <p className="text-red-500 text-xs">{clip.error}</p>
+                      )}
+                    </CardBody>
+                  </Card>
+                ))}
+              </div>
+            ) : jobModalType === "face-swap" && faceSwapJobResult ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-text-tertiary text-sm">Status:</span>
+                  <Chip
+                    size="sm"
+                    variant="flat"
+                    classNames={{
+                      base: faceSwapJobResult.status === "completed"
+                        ? "bg-green-500/10"
+                        : faceSwapJobResult.status === "failed"
+                          ? "bg-red-500/10"
+                          : "bg-yellow-500/10",
+                      content: faceSwapJobResult.status === "completed"
+                        ? "text-green-500 text-xs"
+                        : faceSwapJobResult.status === "failed"
+                          ? "text-red-500 text-xs"
+                          : "text-yellow-500 text-xs",
+                    }}
+                  >
+                    {faceSwapJobResult.status}
+                  </Chip>
+                </div>
+                {faceSwapJobResult.status === "completed" && faceSwapJobResult.download_url && (
+                  <div className="space-y-2">
+                    <video
+                      src={faceSwapJobResult.download_url}
+                      controls
+                      className="w-full max-h-[400px] rounded-lg bg-black"
+                    />
+                    <Button
+                      size="sm"
+                      variant="flat"
+                      as="a"
+                      href={faceSwapJobResult.download_url}
+                      target="_blank"
+                      startContent={<Icon icon="solar:download-bold" width={16} />}
+                    >
+                      Download
+                    </Button>
+                  </div>
+                )}
+                {faceSwapJobResult.status === "failed" && faceSwapJobResult.error && (
+                  <p className="text-red-500 text-sm">{faceSwapJobResult.error}</p>
+                )}
+                {faceSwapJobResult.status === "processing" && (
+                  <div className="text-center py-4">
+                    <Icon icon="solar:refresh-bold-duotone" className="text-yellow-500 animate-spin mx-auto mb-2" width={24} />
+                    <p className="text-text-secondary text-sm">Still processing...</p>
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="flat" onPress={() => setJobModalOpen(false)}>
+              Close
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </motion.div>
   );
 }

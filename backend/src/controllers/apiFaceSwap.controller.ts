@@ -4,7 +4,7 @@ import fs from "fs";
 import path from "path";
 import { Response } from "express";
 import { eq } from "drizzle-orm";
-import { ApiKeyRequest } from "../middleware/auth.middleware";
+import { ApiKeyRequest, AuthRequest } from "../middleware/auth.middleware";
 import { apiBillingService } from "../services/apiBilling.service";
 import { s3Service } from "../services/s3.service";
 import { sqsService } from "../services/sqs.service";
@@ -649,3 +649,38 @@ function cleanupFiles(files: string[]) {
     try { if (fs.existsSync(f)) fs.unlinkSync(f); } catch {}
   }
 }
+
+/**
+ * GET /platform/teams/:teamId/jobs/face-swap/:jobId
+ * Bearer-auth version of getFaceSwapStatusController for the dashboard.
+ */
+export const getFaceSwapStatusBearerController = async (
+  req: AuthRequest,
+  res: Response,
+) => {
+  const teamId = parseInt(req.params.teamId);
+  const jobId = req.params.jobId;
+
+  if (!jobId || isNaN(teamId)) {
+    return res.status(400).json({ error: "Missing job ID or team ID" });
+  }
+
+  try {
+    const [job] = await db
+      .select()
+      .from(comfyJobs)
+      .where(eq(comfyJobs.id, jobId))
+      .limit(1);
+
+    if (!job || job.teamId !== teamId) {
+      return res.status(404).json({ error: "Job not found" });
+    }
+
+    const response = await buildFaceSwapStatusResponse(job);
+    return res.json(response);
+  } catch (err) {
+    console.error("[api-face-swap] Error in getFaceSwapStatusBearerController:", err);
+    Sentry.captureException(err);
+    return res.status(500).json({ error: "Failed to get job status" });
+  }
+};

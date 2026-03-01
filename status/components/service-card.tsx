@@ -34,15 +34,15 @@ export default function ServiceCard({ service }: { service: ServiceWithHistory }
 
   return (
     <div
-      className="rounded-xl p-5 transition-colors duration-200"
+      className="rounded-xl p-4 sm:p-5 transition-colors duration-200 min-w-0"
       style={{
         backgroundColor: "var(--surface-base)",
         border: "1px solid var(--border-base)",
       }}
     >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="relative flex items-center justify-center w-3 h-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="relative flex items-center justify-center w-3 h-3 flex-shrink-0">
             <div
               className={`absolute inset-0 rounded-full ${config.dotClass}`}
             />
@@ -51,15 +51,15 @@ export default function ServiceCard({ service }: { service: ServiceWithHistory }
               style={{ backgroundColor: config.color }}
             />
           </div>
-          <div>
+          <div className="min-w-0">
             <h3
-              className="text-sm font-semibold"
+              className="text-sm font-semibold truncate"
               style={{ color: "var(--text-primary)" }}
             >
               {service.name}
             </h3>
             <p
-              className="text-xs mt-0.5"
+              className="text-xs mt-0.5 truncate"
               style={{ color: "var(--text-tertiary)" }}
             >
               {service.description}
@@ -67,7 +67,7 @@ export default function ServiceCard({ service }: { service: ServiceWithHistory }
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 pl-6 sm:pl-0 flex-shrink-0">
           <span
             className="text-xs tabular-nums"
             style={{ color: "var(--text-muted)" }}
@@ -75,7 +75,7 @@ export default function ServiceCard({ service }: { service: ServiceWithHistory }
             {service.responseTime}ms
           </span>
           <span
-            className="text-xs font-medium px-2.5 py-1 rounded-md"
+            className="text-xs font-medium px-2.5 py-1 rounded-md whitespace-nowrap"
             style={{
               color: config.color,
               backgroundColor: `${config.color}12`,

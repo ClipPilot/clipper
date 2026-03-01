@@ -2,7 +2,7 @@ import * as Sentry from "@sentry/node";
 import fs from "fs";
 import path from "path";
 import { Response } from "express";
-import { ApiKeyRequest } from "../middleware/auth.middleware";
+import { ApiKeyRequest, AuthRequest } from "../middleware/auth.middleware";
 import { apiBillingService } from "../services/apiBilling.service";
 import { clipManagerService } from "../services/clips/clipManager.service";
 import { s3Service } from "../services/s3.service";
@@ -122,16 +122,17 @@ export const createClipJobController = async (
       captionFont = resolveCaptionFont(rawCaptionFont);
     }
 
-    // Camera mode (conversion mode)
+    // Camera mode (conversion mode) — public API accepts "facecam", mapped to internal "gaming"
     const rawCameraMode = req.body.camera_mode;
     let conversionMode: ConversionMode = "standard";
     if (rawCameraMode) {
-      if (!isValidConversionMode(rawCameraMode)) {
+      const mapped = rawCameraMode === "facecam" ? "gaming" : rawCameraMode;
+      if (!isValidConversionMode(mapped)) {
         return res.status(400).json({
-          error: `Invalid camera_mode "${rawCameraMode}". Must be one of: standard, gaming, speaker-zoom, center-crop, active-speaker`,
+          error: `Invalid camera_mode "${rawCameraMode}". Must be one of: standard, facecam, speaker-zoom, center-crop, active-speaker`,
         });
       }
-      conversionMode = rawCameraMode;
+      conversionMode = mapped;
     }
 
     // Clip length (seconds) — default 40, range 10–180
@@ -270,7 +271,7 @@ export const createClipJobController = async (
       await apiBillingService.consume(
         apiKeyId, teamId, CLIP_PRODUCT_SLUG,
         "/v1/clip", "POST", 200,
-        undefined, { clipId, jobId: rawVideo.id },
+        undefined, { clipId, jobId: rawVideo.public_id },
       );
     }
 
@@ -533,3 +534,34 @@ function processInBackground(params: {
     }
   })();
 }
+
+/**
+ * GET /platform/teams/:teamId/jobs/clip/:jobId
+ * Bearer-auth version of getClipJobStatusController for the dashboard.
+ */
+export const getClipJobStatusBearerController = async (
+  req: AuthRequest,
+  res: Response,
+) => {
+  const teamId = parseInt(req.params.teamId);
+  const jobId = req.params.jobId;
+
+  if (!jobId || isNaN(teamId)) {
+    return res.status(400).json({ error: "Missing job ID or team ID" });
+  }
+
+  try {
+    const jobClips = await clipManagerService.getClipsByPublicId(jobId, teamId);
+
+    if (jobClips.length === 0) {
+      return res.status(404).json({ error: "Job not found" });
+    }
+
+    const response = await buildJobResponse(jobId, jobClips);
+    return res.json(response);
+  } catch (err) {
+    console.error("Error in getClipJobStatusBearerController:", err);
+    Sentry.captureException(err);
+    return res.status(500).json({ error: "Failed to get job status" });
+  }
+};

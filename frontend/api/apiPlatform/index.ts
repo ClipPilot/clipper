@@ -32,7 +32,7 @@ export interface UsageLog {
   cost_cents: number;
   quantity: number;
   response_time_ms: number | null;
-  metadata: { jobId?: number; clipId?: number } | null;
+  metadata: { jobId?: string | number; clipId?: number } | null;
   created_at: string;
 }
 
@@ -180,6 +180,62 @@ class ApiPlatformAPI {
 
     return response.json();
   }
+
+  async getClipJobStatus(
+    teamId: number,
+    jobId: string,
+  ): Promise<ClipJobStatus> {
+    const response = await apiFetch(
+      `${API_URL}/platform/teams/${teamId}/jobs/clip/${jobId}`,
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to get clip job status");
+    }
+
+    return response.json();
+  }
+
+  async getFaceSwapJobStatus(
+    teamId: number,
+    jobId: string,
+  ): Promise<FaceSwapJobStatus> {
+    const response = await apiFetch(
+      `${API_URL}/platform/teams/${teamId}/jobs/face-swap/${jobId}`,
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to get face swap job status");
+    }
+
+    return response.json();
+  }
+}
+
+export interface ClipJobStatus {
+  job_id: string;
+  status: "processing" | "completed";
+  progress?: { completed: number; total: number };
+  clips?: Array<{
+    clip_id: number;
+    status: "completed" | "failed";
+    title?: string;
+    heading?: string;
+    download_url?: string;
+    error?: string;
+    created_at: string;
+  }>;
+}
+
+export interface FaceSwapJobStatus {
+  job_id: string;
+  status: "processing" | "completed" | "failed";
+  created_at: string;
+  download_url?: string | null;
+  progress?: number;
+  error?: string;
 }
 
 export const apiPlatformAPI = new ApiPlatformAPI();

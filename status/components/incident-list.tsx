@@ -40,24 +40,24 @@ export default function IncidentList({ incidents }: { incidents: Incident[] }) {
             }}
           >
             <div
-              className="px-5 py-4 flex items-center justify-between"
+              className="px-4 sm:px-5 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0"
               style={{ borderBottom: "1px solid var(--border-base)" }}
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 min-w-0">
                 <div
                   className="w-2 h-2 rounded-full flex-shrink-0"
                   style={{ backgroundColor: config.color }}
                 />
                 <h4
-                  className="text-sm font-semibold"
+                  className="text-sm font-semibold truncate"
                   style={{ color: "var(--text-primary)" }}
                 >
                   {incident.title}
                 </h4>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 pl-5 sm:pl-0 flex-shrink-0">
                 <span
-                  className="text-xs font-medium px-2.5 py-1 rounded-md"
+                  className="text-xs font-medium px-2.5 py-1 rounded-md whitespace-nowrap"
                   style={{
                     color: config.color,
                     backgroundColor: `${config.color}12`,
@@ -75,7 +75,7 @@ export default function IncidentList({ incidents }: { incidents: Incident[] }) {
               </div>
             </div>
 
-            <div className="px-5 py-4 space-y-3">
+            <div className="px-4 sm:px-5 py-3 sm:py-4 space-y-3">
               {incident.updates.map((update, i) => {
                 const updateConfig = STATUS_CONFIG[update.status];
                 return (
