@@ -137,6 +137,14 @@ const SCRIPT_STRUCTURES: Record<
       { type: "testimonial", shot: "a-roll", duration: "30-180s" },
     ],
   },
+  "silent-before-after": {
+    name: "Silent Before/After",
+    description: "Two silent B-roll scenes — no voiceover, just visual transformation",
+    pattern: [
+      { type: "problem", shot: "b-roll", duration: "5s" },
+      { type: "transformation", shot: "b-roll", duration: "5s" },
+    ],
+  },
   custom: {
     name: "Custom (AI Decides)",
     description: "Let AI choose the best structure based on your direction",
@@ -167,6 +175,27 @@ STRICT RULES:
 
 This is for testimonials, personal stories, motivational speeches, and long-form content.
 The user's direction describes the content — execute it as one powerful continuous take.
+`;
+  }
+
+  if (structureId === "silent-before-after") {
+    return `
+===== SILENT BEFORE/AFTER MODE =====
+
+Generate EXACTLY 2 B-roll scenes with NO voiceover. These are purely visual scenes.
+
+1. PROBLEM (5s) - shotType: "b-roll" — The "before" state. Show the problem visually.
+2. TRANSFORMATION (5s) - shotType: "b-roll" — The "after" state. Show the result/improvement.
+
+STRICT RULES:
+1. EXACTLY 2 scenes — no more, no less
+2. Both scenes MUST have shotType: "b-roll"
+3. dialogue MUST be "" (empty string) for BOTH scenes — these are SILENT scenes with no voiceover
+4. estimatedDurationSeconds should be 5 for each scene
+5. Each scene should have a strong cinematic prompt describing the visual
+6. The action should describe what is visually happening (no speaking)
+7. ambientSound should be null for both scenes
+8. Focus on visual storytelling — the transformation should be obvious from imagery alone
 `;
   }
 
@@ -1162,10 +1191,14 @@ For b-roll scenes: set ambientSound to null (voiceover only, no background)
 
 bRollShots field (FOR ALL B-ROLL SCENES):
 - Provide an array of shots (1, 2, 3, 4, etc - as many as the scene needs)
-- Each shot needs: action, cinematicPrompt, durationSeconds (1-4s each), productImageNeeded (boolean)
+- Each shot needs: action, cinematicPrompt, durationSeconds (1-4s each), productImageNeeded (boolean), shotType (string)
 - productImageNeeded depends on SCENE TYPE:
   * PROBLEM/HOOK scenes: usually ALL false (no product yet in the story)
   * SOLUTION/DEMO/CTA scenes: true where product is shown
+- shotType classifies what this shot features:
+  * "CHARACTER" — the character/person doing an action (e.g., "she stands tall", "woman stretching", "person walks in")
+  * "PRODUCT" — product-only or environment shot with NO person (e.g., "serum bottle on marble counter", "supplement jar close-up")
+  * "CHARACTER_AND_PRODUCT" — person interacting with the product (e.g., "she applies the serum", "he holds up the bottle")
 - Total duration of all bRollShots should equal estimatedDurationSeconds
 
 DURATION RULES:

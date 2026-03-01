@@ -281,6 +281,7 @@ export interface GenerateSceneImageJob extends BaseJob {
     cinematicPrompt: string;
     durationSeconds: number;
     productImageNeeded: boolean;
+    shotType?: "CHARACTER" | "PRODUCT" | "CHARACTER_AND_PRODUCT";
   }>;
   singleBRollShotIndex?: number;
   existingBRollImages?: string[];
@@ -289,6 +290,7 @@ export interface GenerateSceneImageJob extends BaseJob {
   previousSceneSetting?: string;
   adCloneReferenceVideoKey?: string;
   adCloneSceneTimestamp?: number;
+  existingSceneImageKey?: string;
 }
 
 // Script generation job payload
@@ -595,6 +597,7 @@ class SQSService {
     previousSceneSetting?: string;
     adCloneReferenceVideoKey?: string;
     adCloneSceneTimestamp?: number;
+    existingSceneImageKey?: string;
   }): Promise<string> {
     const job: GenerateSceneImageJob = {
       type: "generate-scene-image",
@@ -621,6 +624,7 @@ class SQSService {
       previousSceneSetting: params.previousSceneSetting,
       adCloneReferenceVideoKey: params.adCloneReferenceVideoKey,
       adCloneSceneTimestamp: params.adCloneSceneTimestamp,
+      existingSceneImageKey: params.existingSceneImageKey,
       createdAt: new Date().toISOString(),
     };
 

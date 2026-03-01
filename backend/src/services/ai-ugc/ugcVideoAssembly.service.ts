@@ -935,6 +935,195 @@ async function processBrollScene(
   };
 }
 
+/**
+ * Process a silent B-Roll scene — no voiceover, just animated video with silent audio track.
+ * Used for b-roll scenes where dialogue is empty (user toggled "No voiceover").
+ *
+ * Supports two modes:
+ * 1. Single-shot: one image → one video for the scene duration
+ * 2. Multi-shot montage: bRollShots array → N short videos split evenly across scene duration
+ *
+ * Always adds a silent audio track so mergeUGCClips concat works when mixing with voiced scenes.
+ */
+async function processSilentBrollScene(
+  scene: SceneVideoData,
+  teamId: number,
+  scriptId: string,
+  onProgress?: (message: string) => void,
+): Promise<ProcessedScene> {
+  const {
+    sceneId,
+    sceneNumber,
+    shotType,
+    imageKey,
+    endImageKey,
+    cinematicPrompt,
+    action,
+    emotion,
+    duration: requestedDuration,
+    bRollShots,
+  } = scene;
+
+  const targetDuration = Math.max(3, Math.min(10, requestedDuration));
+
+  console.log(
+    `[UGC Assembly] Silent B-Roll Scene ${sceneNumber}: ${targetDuration}s (no voiceover)`,
+  );
+
+  let processedVideoPath: string;
+
+  if (bRollShots && bRollShots.length > 0) {
+    // Multi-shot montage — split duration evenly across shots
+    console.log(
+      `[UGC Assembly] Silent B-Roll Scene ${sceneNumber}: Processing ${bRollShots.length}-shot montage (${targetDuration}s total)`,
+    );
+
+    const shotDurations = calculateMontageShots(targetDuration, bRollShots.length);
+
+    onProgress?.(
+      `Scene ${sceneNumber}: Generating ${bRollShots.length} silent montage shots...`,
+    );
+
+    const shotVideoPaths = await Promise.all(
+      bRollShots.map(async (shot, i) => {
+        const { videoDuration, trim: trimDuration } = shotDurations[i];
+
+        const shotImageUrl = await s3Service.getPresignedUrl(shot.imageKey, 3600);
+
+        const groundedPrompt = await generateGroundedCinematicPrompt({
+          originalCinematicPrompt: shot.cinematicPrompt,
+          startImageUrl: shotImageUrl,
+          shotType: "b-roll" as ShotType,
+          emotion,
+          action: shot.action,
+        });
+
+        const { videoUrl: shotVideoUrl } =
+          await klingService.generateVideoV3WithRetry({
+            imageUrl: shotImageUrl,
+            prompt: groundedPrompt,
+            duration: videoDuration as any,
+            negativePrompt: PRODUCT_NEGATIVE_PROMPT,
+          });
+
+        const shotVideoPath = path.join(
+          OUTPUT_DIR,
+          `silent_montage_shot_${sceneNumber}_${i}_${Date.now()}.mp4`,
+        );
+        await s3Service.downloadVideoFromUrl(shotVideoUrl, shotVideoPath);
+
+        const trimmedShotPath = path.join(
+          OUTPUT_DIR,
+          `silent_montage_trimmed_${sceneNumber}_${i}_${Date.now()}.mp4`,
+        );
+        const trimCmd = `ffmpeg -y -i "${shotVideoPath}" -t ${trimDuration.toFixed(3)} \
+          ${VIDEO_ENCODE_SETTINGS} \
+          -an -avoid_negative_ts make_zero "${trimmedShotPath}"`;
+        execSync(trimCmd, { stdio: "pipe" });
+
+        if (fs.existsSync(shotVideoPath)) {
+          fs.unlinkSync(shotVideoPath);
+        }
+
+        return trimmedShotPath;
+      }),
+    );
+
+    onProgress?.(`Scene ${sceneNumber}: Concatenating silent montage...`);
+    const concatenatedPath = path.join(
+      OUTPUT_DIR,
+      `silent_montage_concat_${sceneNumber}_${Date.now()}.mp4`,
+    );
+    mergeUGCClips(shotVideoPaths, concatenatedPath);
+
+    for (const shotPath of shotVideoPaths) {
+      if (fs.existsSync(shotPath)) {
+        fs.unlinkSync(shotPath);
+      }
+    }
+
+    processedVideoPath = concatenatedPath;
+  } else {
+    // Single-shot silent b-roll
+    onProgress?.(`Scene ${sceneNumber}: Generating silent video...`);
+    const imageUrl = await s3Service.getPresignedUrl(imageKey, 3600);
+
+    const tailImageUrl = endImageKey
+      ? await s3Service.getPresignedUrl(endImageKey, 3600)
+      : undefined;
+
+    onProgress?.(`Scene ${sceneNumber}: Analyzing...`);
+    const groundedCinematicPrompt = await generateGroundedCinematicPrompt({
+      originalCinematicPrompt: cinematicPrompt,
+      startImageUrl: imageUrl,
+      endImageUrl: tailImageUrl,
+      shotType,
+      emotion,
+      action,
+    });
+
+    const brollDuration = Math.max(3, Math.min(15, Math.ceil(targetDuration) + 1));
+    const { videoUrl: brollVideoUrl } =
+      await klingService.generateVideoV3WithRetry({
+        imageUrl,
+        ...(tailImageUrl && { endImageUrl: tailImageUrl }),
+        prompt: groundedCinematicPrompt,
+        duration: brollDuration as any,
+        negativePrompt: PRODUCT_NEGATIVE_PROMPT,
+      });
+
+    const silentVideoPath = path.join(
+      OUTPUT_DIR,
+      `silent_broll_${sceneNumber}_${Date.now()}.mp4`,
+    );
+    await s3Service.downloadVideoFromUrl(brollVideoUrl, silentVideoPath);
+
+    processedVideoPath = silentVideoPath;
+  }
+
+  // Add silent audio track and trim to exact duration
+  onProgress?.(`Scene ${sceneNumber}: Finalizing silent scene...`);
+  const finalPath = path.join(
+    OUTPUT_DIR,
+    `silent_final_${sceneNumber}_${Date.now()}.mp4`,
+  );
+  const silentCmd = `ffmpeg -y -i "${processedVideoPath}" \
+    -f lavfi -i anullsrc=r=${AUDIO_SAMPLE_RATE}:cl=stereo \
+    -t ${targetDuration.toFixed(3)} \
+    ${VIDEO_ENCODE_SETTINGS} \
+    -c:a aac -ar ${AUDIO_SAMPLE_RATE} -ac ${AUDIO_CHANNELS} -b:a ${AUDIO_BITRATE} \
+    -map 0:v:0 -map 1:a:0 -shortest \
+    -avoid_negative_ts make_zero "${finalPath}"`;
+  execSync(silentCmd, { stdio: "pipe" });
+
+  if (fs.existsSync(processedVideoPath) && processedVideoPath !== finalPath) {
+    fs.unlinkSync(processedVideoPath);
+  }
+
+  // Upload processed scene
+  const videoBuffer = fs.readFileSync(finalPath);
+  const videoKey = await s3Service.uploadUGCSceneVideo(
+    videoBuffer,
+    teamId,
+    scriptId,
+    sceneNumber,
+    "processed",
+  );
+
+  console.log(
+    `[UGC Assembly] Silent B-Roll Scene ${sceneNumber} complete: ${targetDuration}s`,
+  );
+
+  return {
+    sceneId,
+    sceneNumber,
+    audioKey: "",
+    videoKey,
+    localVideoPath: finalPath,
+    duration: targetDuration,
+  };
+}
+
 async function processScene(
   scene: SceneVideoData,
   teamId: number,
@@ -953,6 +1142,12 @@ async function processScene(
       speedBoost,
     );
   }
+
+  // Silent b-roll: no dialogue means skip TTS entirely
+  if (!scene.dialogue || scene.dialogue.trim() === "") {
+    return processSilentBrollScene(scene, teamId, scriptId, onProgress);
+  }
+
   return processBrollScene(
     scene,
     teamId,

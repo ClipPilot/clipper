@@ -120,6 +120,7 @@ export async function processSceneImageJob(
     previousSceneSetting,
     adCloneReferenceVideoKey,
     adCloneSceneTimestamp,
+    existingSceneImageKey,
   } = job;
 
   const includeProductImages = shouldIncludeProductImages(sceneData.sceneType);
@@ -150,6 +151,7 @@ export async function processSceneImageJob(
 
       let characterReferenceUrl: string | null = null;
       let characterAppearance: CharacterAppearance | undefined;
+      let characterNameForPrompt: string | undefined;
 
       if (characterId) {
         const [character] = await db
@@ -158,6 +160,7 @@ export async function processSceneImageJob(
           .where(eq(schema.characters.id, characterId));
 
         if (character) {
+          characterNameForPrompt = character.name ?? undefined;
           const characterImages = character.character_images as string[];
           const primaryIndex = character.primary_image_index || 0;
           if (characterImages && characterImages[primaryIndex]) {
@@ -252,6 +255,7 @@ export async function processSceneImageJob(
           userRefinement,
           characterAppearance,
           imagePositions,
+          characterNameForPrompt,
         );
 
         const result = await falImageService.generateImageWithRetry({
@@ -330,6 +334,12 @@ export async function processSceneImageJob(
         console.log(`[SCENE_IMAGE] Using previous A-roll image for visual consistency`);
       }
 
+      // Include existing scene image as reference during regeneration
+      if (existingSceneImageKey) {
+        allReferenceKeys.push(existingSceneImageKey);
+        console.log(`[SCENE_IMAGE] Using existing scene image for regeneration reference`);
+      }
+
       if (characterId) {
         const [character] = await db
           .select()
@@ -393,6 +403,7 @@ export async function processSceneImageJob(
         isConsecutiveAroll,
         previousSceneSetting,
         hasVideoFrameReference,
+        !!existingSceneImageKey,
       );
 
       const startResult = await falImageService.generateImageWithRetry({

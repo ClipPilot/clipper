@@ -347,6 +347,8 @@ export function SceneImageCard({
       generateEndFrame: false,
       singleBRollShotIndex: singleShotIndex,
       existingBRollImages: existingImages,
+      // Pass existing scene image for regeneration reference
+      existingSceneImageKey: imageKey || undefined,
     };
 
     try {
@@ -691,55 +693,104 @@ export function SceneImageCard({
           </div>
         )}
 
-        {/* Dialogue */}
-        <div className="bg-surface-base rounded-lg p-3">
-          <div className="flex items-start gap-2">
-            <div className="flex-1 min-w-0">
-              {editingField === "dialogue" ? (
-                <textarea
-                  autoFocus
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  onKeyDown={handleEditKeyDown}
-                  className="w-full bg-surface-base/50 text-text-primary text-sm leading-relaxed resize-none outline-none border border-accent-400/30 rounded px-2 py-1 focus:ring-1 focus:ring-accent-400/50"
-                  style={{ fieldSizing: "content" } as React.CSSProperties}
-                  rows={1}
-                />
-              ) : (
-                <p className="text-text-primary text-sm leading-relaxed">
-                  &ldquo;{scene.dialogue}&rdquo;
-                </p>
+        {/* Dialogue (or silent b-roll indicator) */}
+        {scene.shotType === "b-roll" && !scene.dialogue ? (
+          <div className="bg-amber-500/10 rounded-lg p-3 border border-amber-500/20">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Icon icon="solar:volume-cross-bold" width={14} className="text-amber-400" />
+                <span className="text-xs text-amber-400 font-medium">Silent B-roll</span>
+                <span className="text-xs text-text-muted">{scene.estimatedDurationSeconds}s</span>
+              </div>
+              {onSceneUpdate && (
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    {[3, 5, 7, 10].map((d) => (
+                      <button
+                        key={d}
+                        onClick={() => onSceneUpdate({ ...scene, estimatedDurationSeconds: d })}
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                          scene.estimatedDurationSeconds === d
+                            ? "bg-amber-500 text-white"
+                            : "bg-surface-base text-text-muted hover:text-amber-400"
+                        }`}
+                      >
+                        {d}s
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => onSceneUpdate({ ...scene, dialogue: "Add voiceover text here..." })}
+                    className="p-1 rounded hover:bg-accent-400/20 text-text-muted hover:text-accent-400 transition-colors"
+                    title="Add voiceover"
+                  >
+                    <Icon icon="solar:volume-loud-bold" width={14} />
+                  </button>
+                </div>
               )}
             </div>
-            {onSceneUpdate && (
-              <div className="flex items-center gap-0.5 shrink-0">
+          </div>
+        ) : (
+          <div className="bg-surface-base rounded-lg p-3">
+            <div className="flex items-start gap-2">
+              <div className="flex-1 min-w-0">
                 {editingField === "dialogue" ? (
-                  <>
-                    <button
-                      onClick={saveEdit}
-                      className="p-1 rounded hover:bg-green-500/20 text-green-400 transition-colors"
-                    >
-                      <Icon icon="solar:check-circle-bold" width={18} />
-                    </button>
-                    <button
-                      onClick={cancelEdit}
-                      className="p-1 rounded hover:bg-red-500/20 text-text-muted hover:text-red-400 transition-colors"
-                    >
-                      <Icon icon="solar:close-circle-bold" width={18} />
-                    </button>
-                  </>
+                  <textarea
+                    autoFocus
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    onKeyDown={handleEditKeyDown}
+                    className="w-full bg-surface-base/50 text-text-primary text-sm leading-relaxed resize-none outline-none border border-accent-400/30 rounded px-2 py-1 focus:ring-1 focus:ring-accent-400/50"
+                    style={{ fieldSizing: "content" } as React.CSSProperties}
+                    rows={1}
+                  />
                 ) : (
-                  <button
-                    onClick={() => startEditing("dialogue")}
-                    className="p-1 rounded hover:bg-accent-400/20 text-text-muted hover:text-accent-400 transition-colors"
-                  >
-                    <Icon icon="solar:pen-2-bold" width={16} />
-                  </button>
+                  <p className="text-text-primary text-sm leading-relaxed">
+                    &ldquo;{scene.dialogue}&rdquo;
+                  </p>
                 )}
               </div>
-            )}
+              {onSceneUpdate && (
+                <div className="flex items-center gap-0.5 shrink-0">
+                  {editingField === "dialogue" ? (
+                    <>
+                      <button
+                        onClick={saveEdit}
+                        className="p-1 rounded hover:bg-green-500/20 text-green-400 transition-colors"
+                      >
+                        <Icon icon="solar:check-circle-bold" width={18} />
+                      </button>
+                      <button
+                        onClick={cancelEdit}
+                        className="p-1 rounded hover:bg-red-500/20 text-text-muted hover:text-red-400 transition-colors"
+                      >
+                        <Icon icon="solar:close-circle-bold" width={18} />
+                      </button>
+                    </>
+                  ) : (
+                    <div className="flex items-center gap-0.5">
+                      <button
+                        onClick={() => startEditing("dialogue")}
+                        className="p-1 rounded hover:bg-accent-400/20 text-text-muted hover:text-accent-400 transition-colors"
+                      >
+                        <Icon icon="solar:pen-2-bold" width={16} />
+                      </button>
+                      {scene.shotType === "b-roll" && (
+                        <button
+                          onClick={() => onSceneUpdate({ ...scene, dialogue: "", estimatedDurationSeconds: scene.estimatedDurationSeconds || 5 })}
+                          className="p-1 rounded hover:bg-amber-500/20 text-text-muted hover:text-amber-400 transition-colors"
+                          title="Remove voiceover (silent b-roll)"
+                        >
+                          <Icon icon="solar:volume-cross-bold" width={16} />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Action */}
         <div className="flex items-start gap-2 text-sm text-text-secondary">

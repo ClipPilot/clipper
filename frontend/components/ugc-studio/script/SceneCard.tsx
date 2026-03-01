@@ -12,6 +12,8 @@ import {
   DropdownMenu,
   DropdownItem,
   Tooltip,
+  Switch,
+  Slider,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { EmotionSelector } from "./EmotionSelector";
@@ -243,7 +245,19 @@ export function SceneCard({
                 aria-label="Select shot type"
                 selectionMode="single"
                 selectedKeys={[scene.shotType]}
-                onAction={(key) => onUpdate({ shotType: key as ShotType })}
+                onAction={(key) => {
+                  const newShotType = key as ShotType;
+                  const updates: Partial<UGCScene> = { shotType: newShotType };
+                  if (newShotType === "a-roll") {
+                    // A-roll requires dialogue and ambient sound
+                    if (!scene.dialogue) updates.dialogue = "Add dialogue here...";
+                    if (!scene.ambientSound) updates.ambientSound = "quiet indoor room tone";
+                  } else {
+                    // Switching to b-roll — clear ambient sound
+                    updates.ambientSound = undefined;
+                  }
+                  onUpdate(updates);
+                }}
                 className="bg-surface-elevated"
               >
                 {SHOT_TYPES.map((shotType) => (
@@ -313,43 +327,86 @@ export function SceneCard({
           </div>
         )}
 
-        {isEditingDialogue ? (
-          <div className="space-y-2">
-            <Textarea
-              value={editedDialogue}
-              onChange={(e) => setEditedDialogue(e.target.value)}
-              placeholder="Enter dialogue..."
-              minRows={2}
-              classNames={{
-                input: "bg-surface-base text-text-primary",
-                inputWrapper: "bg-surface-base border-border-base",
+        {scene.shotType === "b-roll" && (
+          <div className="flex items-center justify-between">
+            <Switch
+              size="sm"
+              isSelected={!scene.dialogue}
+              onValueChange={(noVoiceover) => {
+                if (noVoiceover) {
+                  onUpdate({ dialogue: "", estimatedDurationSeconds: scene.estimatedDurationSeconds || 5 });
+                } else {
+                  onUpdate({ dialogue: "Add voiceover text here..." });
+                }
               }}
-            />
-            <div className="flex justify-end gap-2">
-              <Button size="sm" variant="flat" onPress={handleCancelDialogueEdit}>
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                className="bg-accent-400 text-white"
-                onPress={handleSaveDialogue}
-              >
-                Save
-              </Button>
-            </div>
+              classNames={{
+                wrapper: "group-data-[selected=true]:bg-amber-500",
+              }}
+            >
+              <span className="text-xs text-text-secondary">No voiceover</span>
+            </Switch>
+            {!scene.dialogue && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-text-muted">Duration:</span>
+                <Slider
+                  size="sm"
+                  step={1}
+                  minValue={3}
+                  maxValue={10}
+                  value={scene.estimatedDurationSeconds}
+                  onChange={(val) => onUpdate({ estimatedDurationSeconds: val as number })}
+                  className="w-24"
+                  classNames={{
+                    track: "bg-surface-base",
+                    filler: "bg-amber-500",
+                    thumb: "bg-amber-500",
+                  }}
+                />
+                <span className="text-xs text-amber-400 font-medium w-6 text-right">{scene.estimatedDurationSeconds}s</span>
+              </div>
+            )}
           </div>
-        ) : (
-          <div
-            className="bg-surface-base rounded-lg p-3 cursor-pointer hover:bg-surface-base/80 transition-colors group"
-            onClick={() => setIsEditingDialogue(true)}
-          >
-            <div className="flex items-start justify-between gap-2">
-              <p className="text-text-primary text-sm leading-relaxed flex-1">
-                "{scene.dialogue}"
-              </p>
-              <Icon icon="solar:pen-2-linear" width={12} className="text-text-muted opacity-0 group-hover:opacity-100 transition-opacity mt-1" />
+        )}
+
+        {(scene.shotType !== "b-roll" || scene.dialogue) && (
+          isEditingDialogue ? (
+            <div className="space-y-2">
+              <Textarea
+                value={editedDialogue}
+                onChange={(e) => setEditedDialogue(e.target.value)}
+                placeholder="Enter dialogue..."
+                minRows={2}
+                classNames={{
+                  input: "bg-surface-base text-text-primary",
+                  inputWrapper: "bg-surface-base border-border-base",
+                }}
+              />
+              <div className="flex justify-end gap-2">
+                <Button size="sm" variant="flat" onPress={handleCancelDialogueEdit}>
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  className="bg-accent-400 text-white"
+                  onPress={handleSaveDialogue}
+                >
+                  Save
+                </Button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div
+              className="bg-surface-base rounded-lg p-3 cursor-pointer hover:bg-surface-base/80 transition-colors group"
+              onClick={() => setIsEditingDialogue(true)}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-text-primary text-sm leading-relaxed flex-1">
+                  &quot;{scene.dialogue}&quot;
+                </p>
+                <Icon icon="solar:pen-2-linear" width={12} className="text-text-muted opacity-0 group-hover:opacity-100 transition-opacity mt-1" />
+              </div>
+            </div>
+          )
         )}
 
         {showBRollSection && (

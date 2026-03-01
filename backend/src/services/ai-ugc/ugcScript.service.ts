@@ -430,24 +430,31 @@ Keep it professional and suitable for AI video generation. Return ONLY the cinem
       throw new Error("B-roll shot not found");
     }
 
-    const prompt = `Generate a detailed cinematicPrompt for a B-roll shot with this action: "${newAction}"
+    const BRollRegenSchema = z.object({
+      cinematicPrompt: z.string().describe("Detailed cinematic description (2-3 sentences) for AI image generation describing composition, lighting, and framing. No text/caption mentions."),
+      shotType: z.enum(["CHARACTER", "PRODUCT", "CHARACTER_AND_PRODUCT"]).describe("CHARACTER = person doing an action, PRODUCT = product-only/environment with NO person, CHARACTER_AND_PRODUCT = person interacting with the product"),
+    });
 
-The cinematicPrompt should be 2-3 paragraphs describing:
-1. Visual composition, lighting, and framing
-2. Camera movement and timing
-3. Technical style and what to avoid
+    const prompt = `Generate a cinematicPrompt and classify the shotType for a B-roll shot with this action: "${newAction}"
 
-Keep it professional and suitable for AI video generation. Return ONLY the cinematicPrompt text, no JSON or extra formatting.`;
+cinematicPrompt: 2-3 sentences describing visual composition, lighting, and framing. Professional and suitable for AI image generation.
+
+shotType: Classify what this shot features:
+- "CHARACTER" — a person doing an action (e.g., "she stands tall", "woman stretching")
+- "PRODUCT" — product-only or environment shot with NO person (e.g., "bottle on counter")
+- "CHARACTER_AND_PRODUCT" — person interacting with the product (e.g., "she applies the serum")`;
 
     const response = await client.responses.create({
       model: "gpt-5-mini",
       input: [{ role: "user", content: prompt }],
+      text: { format: zodTextFormat(BRollRegenSchema, "b_roll_regen") },
     });
 
-    const newCinematicPrompt = response.output_text?.trim() || scene.bRollShots[bRollShotIndex].cinematicPrompt;
+    const parsed = BRollRegenSchema.parse(JSON.parse(response.output_text));
 
     scene.bRollShots[bRollShotIndex].action = newAction;
-    scene.bRollShots[bRollShotIndex].cinematicPrompt = newCinematicPrompt;
+    scene.bRollShots[bRollShotIndex].cinematicPrompt = parsed.cinematicPrompt;
+    scene.bRollShots[bRollShotIndex].shotType = parsed.shotType;
 
     await db
       .update(ugcScripts)
@@ -457,7 +464,7 @@ Keep it professional and suitable for AI video generation. Return ONLY the cinem
       })
       .where(eq(ugcScripts.id, scriptId));
 
-    return newCinematicPrompt;
+    return parsed.cinematicPrompt;
   }
 
   async regenerateAllBRollShots(params: {
@@ -495,6 +502,10 @@ Each shot should have:
 - "cinematicPrompt": A detailed cinematic description (2-3 sentences) for AI image generation describing composition, lighting, and framing.
 - "durationSeconds": Use these durations in order: [${shotDurations.join(", ")}]
 - "productImageNeeded": true if the shot shows the product, false for lifestyle/mood shots.
+- "shotType": Classify what this shot features:
+  * "CHARACTER" — a person doing an action (e.g., "she stands tall", "woman stretching")
+  * "PRODUCT" — product-only or environment shot with NO person (e.g., "bottle on counter")
+  * "CHARACTER_AND_PRODUCT" — person interacting with the product (e.g., "she applies the serum")
 
 Return a JSON object with a "shots" array of exactly ${shotCount} shot objects.`;
 

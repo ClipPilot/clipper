@@ -607,14 +607,28 @@ export const convertToGamingVertical = async (
 
   console.log(`[GAMING] Converting ${width}x${height} to gaming layout (facecam: ${JSON.stringify(facecam)})`);
 
-  const fcX = Math.max(0, Math.min(facecam.x, width - 1));
+  let fcX = Math.max(0, Math.min(facecam.x, width - 1));
   const fcY = Math.max(0, Math.min(facecam.y, height - 1));
-  const fcW = Math.min(facecam.w, width - fcX);
+  let fcW = Math.min(facecam.w, width - fcX);
   const fcH = Math.min(facecam.h, height - fcY);
 
   // Scale facecam proportionally — fit within 1080 wide, max 960 tall (half screen)
   // Uses the tighter constraint so aspect ratio is always preserved (no distortion)
   const maxFaceH = 960;
+
+  // If the facecam region is too narrow (height-constrained scaling would produce
+  // black padding), expand the crop on the x-axis to grab real video content instead
+  const neededFcW = Math.ceil((1080 * fcH) / maxFaceH);
+  if (fcW < neededFcW && neededFcW <= width) {
+    const expand = neededFcW - fcW;
+    const halfExpand = Math.floor(expand / 2);
+    fcX = Math.max(0, fcX - halfExpand);
+    if (fcX + neededFcW > width) {
+      fcX = width - neededFcW;
+    }
+    fcW = neededFcW;
+    console.log(`[GAMING] Expanded narrow facecam crop to ${fcW}x${fcH} at x=${fcX} (needed ${neededFcW}px wide to fill 1080)`);
+  }
   const faceScale = Math.min(1080 / fcW, maxFaceH / fcH);
   let faceOutW = Math.round(fcW * faceScale);
   let faceOutH = Math.round(fcH * faceScale);
