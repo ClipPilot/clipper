@@ -148,6 +148,8 @@ uploads
 
 temp
 
+debug_output
+
 *.DS_Store
 .env*
 .flaskenv*

@@ -736,6 +736,14 @@ export const convertToSpeakerZoom = async (
 
   console.log(`[SPEAKER-ZOOM] Cropping ${cropW}x${cropH} at (${cropX},${cropY}) centered on face, then scaling to 1080x1920`);
 
+  // DEBUG: draw face box + crop window on original video
+  try {
+    const faceMap = new Map<number, FacecamRegion>([[0, faceRegion]]);
+    await debugActiveSpeakerOverlay(inputPath, faceMap, width, height, cropW, cropH);
+  } catch (err) {
+    console.error(`[DEBUG-SPEAKER-ZOOM] Debug overlay failed (non-fatal):`, err);
+  }
+
   return new Promise((resolve, reject) => {
     ffmpeg(inputPath)
       .complexFilter([
@@ -798,6 +806,78 @@ export const convertToCenterCrop = async (
 };
 
 /**
+ * DEBUG: Draw face bounding boxes + 9:16 crop windows on the original video.
+ * Saves to /tmp/debug_active_speaker_<timestamp>.mp4 so you can inspect locally.
+ */
+const debugActiveSpeakerOverlay = async (
+  inputPath: string,
+  speakerFaceMap: Map<number, FacecamRegion>,
+  width: number,
+  height: number,
+  cropW: number,
+  cropH: number,
+): Promise<string> => {
+  const debugDir = path.join(process.cwd(), "debug_output");
+  if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
+  const debugPath = path.join(debugDir, `debug_active_speaker_${Date.now()}.mp4`);
+  const colors = ["red", "blue", "green", "yellow", "magenta", "cyan"];
+
+  // Build drawbox filters: one for each face bbox + its 9:16 crop window
+  const drawboxFilters: string[] = [];
+  let idx = 0;
+  for (const [speaker, face] of speakerFaceMap.entries()) {
+    const color = colors[idx % colors.length];
+
+    // Face bbox (solid border)
+    drawboxFilters.push(
+      `drawbox=x=${face.x}:y=${face.y}:w=${face.w}:h=${face.h}:color=${color}@0.9:t=4`
+    );
+
+    // 9:16 crop window centered on this face (dashed-style via thinner line)
+    const faceCenterX = face.x + face.w / 2;
+    const faceCenterY = face.y + face.h / 2;
+    let cropX = Math.round(faceCenterX - cropW / 2);
+    cropX = Math.max(0, Math.min(cropX, width - cropW));
+    let cropY = Math.round(faceCenterY - cropH / 2);
+    cropY = Math.max(0, Math.min(cropY, height - cropH));
+
+    drawboxFilters.push(
+      `drawbox=x=${cropX}:y=${cropY}:w=${cropW}:h=${cropH}:color=${color}@0.5:t=2`
+    );
+
+    // Label with speaker number
+    drawboxFilters.push(
+      `drawtext=text='S${speaker} (${face.x}\\,${face.y} ${face.w}x${face.h})':x=${face.x}:y=${Math.max(0, face.y - 25)}:fontsize=20:fontcolor=${color}:borderw=2:bordercolor=black`
+    );
+
+    idx++;
+  }
+
+  const filterStr = drawboxFilters.join(",");
+
+  return new Promise((resolve, reject) => {
+    ffmpeg(inputPath)
+      .videoFilter(filterStr)
+      .outputOptions([
+        "-c:v libx264",
+        "-preset ultrafast",
+        "-crf 28",
+        "-c:a copy",
+        "-t 10", // only first 10 seconds for quick debug
+      ])
+      .save(debugPath)
+      .on("end", () => {
+        console.log(`[DEBUG-ACTIVE-SPEAKER] Saved debug overlay to: ${debugPath}`);
+        resolve(debugPath);
+      })
+      .on("error", (err) => {
+        console.error(`[DEBUG-ACTIVE-SPEAKER] Failed: ${err.message}`);
+        reject(err);
+      });
+  });
+};
+
+/**
  * Convert a horizontal video to 9:16 with dynamic active speaker zoom.
  *
  * For each speaker segment, crops a 9:16 region centered on that speaker's face,
@@ -831,6 +911,13 @@ export const convertToActiveSpeakerZoom = async (
   if (cropW > width) {
     cropW = width;
     cropH = Math.round(width / targetRatio);
+  }
+
+  // DEBUG: draw face boxes + crop windows on original video
+  try {
+    await debugActiveSpeakerOverlay(inputPath, speakerFaceMap, width, height, cropW, cropH);
+  } catch (err) {
+    console.error(`[DEBUG-ACTIVE-SPEAKER] Debug overlay failed (non-fatal):`, err);
   }
 
   const tempDir = path.dirname(outputPath);
