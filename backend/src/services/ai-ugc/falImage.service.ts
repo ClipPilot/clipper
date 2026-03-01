@@ -3,8 +3,8 @@ import { generateImageWithGeminiDirect } from "../ad-clone/gemini.service";
 import { s3Service } from "../s3.service";
 
 const FAL_TIMEOUT_MS = 120_000;
-const FAL_MODEL = "fal-ai/nano-banana-2";
-const FAL_MODEL_EDIT = "fal-ai/nano-banana-2/edit";
+const FAL_MODEL = "fal-ai/nano-banana-pro";
+const FAL_MODEL_EDIT = "fal-ai/nano-banana-pro/edit";
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout>;
