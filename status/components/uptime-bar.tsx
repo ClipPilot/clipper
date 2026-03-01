@@ -66,16 +66,15 @@ export default function UptimeBar({ history, uptimePercent }: UptimeBarProps) {
           </span>
         )}
       </div>
-      <div className="flex gap-[2px] items-end h-8">
+      <div className="flex gap-[2px] items-end h-8 min-w-0 overflow-hidden">
         {days.map((day, i) => (
           <div
             key={i}
-            className="uptime-day flex-1 rounded-[1px] transition-all duration-150 hover:brightness-125 cursor-default"
+            className="uptime-day flex-1 rounded-[1px] transition-all duration-150 hover:brightness-125 cursor-default min-w-0"
             style={{
               backgroundColor: barColor(day),
               height: day ? "100%" : "40%",
               opacity: day ? (day.uptimePercent >= 99.5 ? 0.7 : 1) : 0.2,
-              minWidth: "2px",
             }}
             data-tooltip={tooltipText(day, i)}
           />

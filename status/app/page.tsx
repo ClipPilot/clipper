@@ -82,7 +82,7 @@ export default function StatusPage() {
         className="border-b"
         style={{ borderColor: "var(--border-base)" }}
       >
-        <div className="max-w-3xl mx-auto px-6 py-5 flex items-center justify-between">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between">
           <span
             className="text-sm font-semibold tracking-tight"
             style={{ color: "var(--text-primary)" }}
@@ -95,17 +95,17 @@ export default function StatusPage() {
         </div>
       </header>
 
-      <main className="flex-1 max-w-3xl mx-auto w-full px-6 py-10">
+      <main className="flex-1 max-w-3xl mx-auto w-full px-4 sm:px-6 py-6 sm:py-10">
         <div
-          className="rounded-xl p-6 mb-8"
+          className="rounded-xl p-4 sm:p-6 mb-6 sm:mb-8"
           style={{
             background: `linear-gradient(135deg, ${overall.color}08, ${overall.color}04)`,
             border: `1px solid ${overall.color}18`,
           }}
         >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="relative flex items-center justify-center w-4 h-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+              <div className="relative flex items-center justify-center w-4 h-4 flex-shrink-0">
                 <div
                   className={`absolute inset-0 rounded-full ${overall.dotClass}`}
                 />
@@ -114,9 +114,9 @@ export default function StatusPage() {
                   style={{ backgroundColor: overall.color }}
                 />
               </div>
-              <div>
+              <div className="min-w-0">
                 <h1
-                  className="text-lg font-semibold tracking-tight"
+                  className="text-base sm:text-lg font-semibold tracking-tight"
                   style={{ color: "var(--text-primary)" }}
                 >
                   {overall.label}
@@ -129,9 +129,9 @@ export default function StatusPage() {
               </div>
             </div>
             {lastChecked && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <span
-                  className="text-xs tabular-nums"
+                  className="text-xs tabular-nums hidden sm:inline"
                   style={{ color: "var(--text-muted)" }}
                 >
                   {timeAgo(lastChecked)}
@@ -203,11 +203,11 @@ export default function StatusPage() {
         className="border-t"
         style={{ borderColor: "var(--border-base)" }}
       >
-        <div className="max-w-3xl mx-auto px-6 py-6 flex items-center justify-between">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-5 sm:py-6 flex items-center justify-between">
           <span className="text-xs" style={{ color: "var(--text-muted)" }}>
             &copy; {new Date().getFullYear()} Cuttr
           </span>
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-4 sm:gap-5">
             {[
               { label: "Website", href: "https://cuttr.com" },
               { label: "Docs", href: "https://docs.cuttr.com" },

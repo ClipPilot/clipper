@@ -15,10 +15,12 @@ import {
 import {
   createClipJobController,
   getClipJobStatusController,
+  getClipJobStatusBearerController,
 } from "../../controllers/apiClip.controller";
 import {
   createFaceSwapJobController,
   getFaceSwapStatusController,
+  getFaceSwapStatusBearerController,
 } from "../../controllers/apiFaceSwap.controller";
 import { requireAuth, validateAPIKey } from "../../middleware/auth.middleware";
 import { upload, apiFaceSwapUpload, apiClipUpload } from "../../config/multer";
@@ -177,6 +179,8 @@ router.get("/teams/:teamId/wallet/topup/:paymentIntentId/status", requireAuth, g
 router.get("/teams/:teamId/wallet/auto-refill", requireAuth, getAutoRefillController);
 router.put("/teams/:teamId/wallet/auto-refill", requireAuth, updateAutoRefillController);
 router.get("/teams/:teamId/usage", requireAuth, getUsageLogsController);
+router.get("/teams/:teamId/jobs/clip/:jobId", requireAuth, getClipJobStatusBearerController);
+router.get("/teams/:teamId/jobs/face-swap/:jobId", requireAuth, getFaceSwapStatusBearerController);
 
 /**
  * @openapi
@@ -309,12 +313,12 @@ router.get("/v1/wallet", validateAPIKey, getWalletV1Controller);
  *                     default: Montserrat
  *               camera_mode:
  *                 type: string
- *                 enum: [standard, gaming, speaker-zoom, center-crop, active-speaker]
+ *                 enum: [standard, facecam, speaker-zoom, center-crop, active-speaker]
  *                 default: standard
  *                 description: |
  *                   Controls how the video is framed for vertical output.
  *                   - standard: blurred background with centered video
- *                   - gaming: detects facecam overlay and separates gameplay + facecam
+ *                   - facecam: detects facecam overlay and separates gameplay + facecam
  *                   - speaker-zoom: zooms into the speaker's face
  *                   - center-crop: crops the center of the video
  *                   - active-speaker: tracks and zooms into the active speaker (multi-person)
@@ -402,7 +406,7 @@ router.get("/v1/wallet", validateAPIKey, getWalletV1Controller);
  *                     default: Montserrat
  *               camera_mode:
  *                 type: string
- *                 enum: [standard, gaming, speaker-zoom, center-crop, active-speaker]
+ *                 enum: [standard, facecam, speaker-zoom, center-crop, active-speaker]
  *                 default: standard
  *                 description: Controls how the video is framed for vertical output.
  *               hook_length:
