@@ -48,15 +48,24 @@ def detect_face_bboxes_in_frame(net, frame_path: str, config: Optional[Dict] = N
         box = detections[0, 0, i, 3:7] * [w, h, w, h]
         (startX, startY, endX, endY) = box.astype("int")
 
-        face_w = max(0, endX - startX)
-        face_h = max(0, endY - startY)
+        # Clamp all coordinates to frame bounds BEFORE computing dimensions
+        startX = max(0, min(startX, w))
+        startY = max(0, min(startY, h))
+        endX = max(0, min(endX, w))
+        endY = max(0, min(endY, h))
+
+        face_w = endX - startX
+        face_h = endY - startY
+        if face_w <= 0 or face_h <= 0:
+            continue
+
         face_area = face_w * face_h
         face_size_pct = face_area / frame_area if frame_area > 0 else 0
 
         if config['min_face_size_percent'] <= face_size_pct <= config['max_face_size_percent']:
             faces.append({
-                'x': max(0, startX),
-                'y': max(0, startY),
+                'x': startX,
+                'y': startY,
                 'w': face_w,
                 'h': face_h,
                 'confidence': confidence,
