@@ -13,6 +13,104 @@ from shared import (
     extract_sample_frames,
 )
 
+# Scene detection config (lightweight, borrowed from lambda-scene-detect)
+SCENE_DETECT_CONFIG = {
+    'threshold': 30.0,         # Mean pixel diff threshold for scene cut
+    'min_scene_length': 0.5,   # Min scene duration in seconds
+    'sample_fps': 8,           # Frames per second to analyze
+    'frame_width': 320,        # Downscale width
+    'frame_height': 180,       # Downscale height
+}
+
+
+def detect_scene_boundaries(video_path: str) -> List[float]:
+    """Detect scene cut timestamps using frame differencing.
+
+    Returns boundary timestamps: [0.0, t1, t2, ..., duration].
+    Lightweight version of lambda-scene-detect's algorithm — uses grayscale
+    downscaled frames at 8 FPS to find visual cuts.
+    """
+    cfg = SCENE_DETECT_CONFIG
+    video = cv2.VideoCapture(video_path)
+    if not video.isOpened():
+        raise RuntimeError(f"Could not open video: {video_path}")
+
+    native_fps = video.get(cv2.CAP_PROP_FPS)
+    total_frames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
+    duration = total_frames / native_fps if native_fps > 0 else 0
+
+    frame_skip = max(1, int(native_fps / cfg['sample_fps']))
+    min_frames_between = int(cfg['sample_fps'] * cfg['min_scene_length'])
+
+    boundaries = [0.0]
+    prev_frame = None
+    frame_count = 0
+    samples_processed = 0
+    last_scene_sample = 0
+
+    while True:
+        ret, frame = video.read()
+        if not ret:
+            break
+
+        if frame_count % frame_skip == 0:
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            gray = cv2.resize(gray, (cfg['frame_width'], cfg['frame_height']))
+
+            if prev_frame is not None:
+                diff = np.mean(cv2.absdiff(prev_frame, gray))
+                frames_since_last = samples_processed - last_scene_sample
+                if diff > cfg['threshold'] and frames_since_last >= min_frames_between:
+                    timestamp = frame_count / native_fps
+                    boundaries.append(timestamp)
+                    last_scene_sample = samples_processed
+                    print(f"[SCENE-DETECT] Scene cut at {timestamp:.2f}s (diff={diff:.1f})")
+
+            prev_frame = gray.copy()
+            samples_processed += 1
+
+        frame_count += 1
+
+    boundaries.append(duration)
+    video.release()
+
+    print(f"[SCENE-DETECT] Found {len(boundaries) - 2} scene cuts → {len(boundaries) - 1} scenes")
+    return boundaries
+
+
+def extract_sample_frames_for_range(
+    video_path: str, start: float, end: float, num_frames: int
+) -> List[str]:
+    """Extract evenly-spaced sample frames within a specific time range.
+
+    Like shared.py's extract_sample_frames but constrained to [start, end].
+    """
+    import tempfile
+    import subprocess
+
+    if num_frames <= 0:
+        return []
+
+    interval = (end - start) / (num_frames + 1)
+    temp_dir = tempfile.mkdtemp()
+    frame_paths = []
+
+    for i in range(num_frames):
+        timestamp = start + interval * (i + 1)
+        frame_path = os.path.join(temp_dir, f'frame_{i:04d}.jpg')
+        cmd = [
+            'ffmpeg', '-y', '-ss', str(timestamp),
+            '-i', video_path,
+            '-vframes', '1', '-q:v', '2',
+            frame_path,
+            '-loglevel', 'warning',
+        ]
+        subprocess.run(cmd, capture_output=True)
+        if os.path.exists(frame_path):
+            frame_paths.append(frame_path)
+
+    return frame_paths
+
 
 def detect_face_bboxes_in_frame(net, frame_path: str, config: Optional[Dict] = None) -> List[Dict[str, Any]]:
     """Detect faces and return bounding boxes with confidence scores.
@@ -227,70 +325,153 @@ def cluster_face_positions(all_faces: List[Dict], config: Optional[Dict] = None)
     }
 
 
-def handle_multi_face(net, video_path: str, frame_w: int, frame_h: int, context: Any) -> Dict[str, Any]:
-    """Detect ALL face positions for active-speaker mode.
+def _detect_faces_in_scene(
+    net, frame_paths: List[str], config: Dict, min_detections: int
+) -> List[Dict]:
+    """Run face detection pipeline on a set of frames for one scene.
 
-    Returns all live face clusters sorted left-to-right by center X.
-    Used for podcast/interview content with 2+ speakers.
+    Groups → clusters → motion-filters → sorts left-to-right.
+    Returns list of live face regions (x, y, w, h).
     """
-    config = MULTI_FACE_CONFIG
+    MOTION_THRESHOLD = 3.0
 
-    frame_paths = extract_sample_frames(
-        video_path,
-        num_frames=config['num_sample_frames'],
-        skip_percent=config['skip_percent'],
-    )
-    print(f"[MULTI-FACE] Extracted {len(frame_paths)} sample frames")
-
-    # Detect ALL faces in each frame using multi-face config
     all_frame_faces: List[List[Dict]] = []
-    for i, frame_path in enumerate(frame_paths):
+    for frame_path in frame_paths:
         faces = detect_face_bboxes_in_frame(net, frame_path, config)
         all_frame_faces.append(faces)
 
-        if context and (i + 1) % 6 == 0:
-            remaining_ms = context.get_remaining_time_in_millis()
-            print(f"[KEEP-ALIVE] Processed {i + 1}/{len(frame_paths)} frames | Lambda time remaining: {remaining_ms // 1000}s")
+    face_groups = group_faces_by_position(
+        all_frame_faces, threshold_px=config['outlier_threshold_px']
+    )
 
-    total_detections = sum(len(ff) for ff in all_frame_faces)
-    frames_with_faces = sum(1 for ff in all_frame_faces if ff)
-    print(f"[MULTI-FACE] Found {total_detections} faces across {frames_with_faces}/{len(frame_paths)} frames")
+    # Override min_consistent_detections for this scene's scale
+    scene_config = {**config, 'min_consistent_detections': min_detections}
 
-    # Group faces by position
-    face_groups = group_faces_by_position(all_frame_faces, threshold_px=config['outlier_threshold_px'])
-    print(f"[MULTI-FACE] Found {len(face_groups)} face groups")
-
-    MOTION_THRESHOLD = 3.0
     live_faces = []
     for group in face_groups:
-        if len(group) < config['min_consistent_detections']:
+        if len(group) < min_detections:
             continue
-        median_bbox = cluster_face_positions(group, config)
+        median_bbox = cluster_face_positions(group, scene_config)
         if median_bbox is None:
             continue
         motion = compute_face_motion(frame_paths, median_bbox, threshold=MOTION_THRESHOLD)
-        print(f"[MULTI-FACE] Group at ({median_bbox['x']},{median_bbox['y']}): {len(group)} detections, motion={motion:.1f}")
         if motion >= MOTION_THRESHOLD:
             live_faces.append(median_bbox)
         else:
-            print(f"[MULTI-FACE] Filtered out static face (motion={motion:.1f})")
+            print(f"[MULTI-FACE] Filtered static face at ({median_bbox['x']},{median_bbox['y']}), motion={motion:.1f}")
 
-    # Sort faces left-to-right by center X
     live_faces.sort(key=lambda f: f['x'] + f['w'] / 2)
+    return [{'x': f['x'], 'y': f['y'], 'w': f['w'], 'h': f['h']} for f in live_faces]
 
-    detection_rate = frames_with_faces / max(len(frame_paths), 1)
 
-    # Clean up frame temp directory
-    if frame_paths:
-        frame_dir = os.path.dirname(frame_paths[0])
-        shutil.rmtree(frame_dir, ignore_errors=True)
+def handle_multi_face(net, video_path: str, frame_w: int, frame_h: int, context: Any) -> Dict[str, Any]:
+    """Detect ALL face positions for active-speaker mode, scene-aware.
 
-    face_regions = [
-        {'x': f['x'], 'y': f['y'], 'w': f['w'], 'h': f['h']}
-        for f in live_faces
+    Detects scene cuts first, then runs face detection independently per scene.
+    Returns per-scene face data plus a backward-compatible global faces array.
+    """
+    config = MULTI_FACE_CONFIG
+    total_frames_budget = config['num_sample_frames']  # 24
+
+    # --- Step 1: Detect scene boundaries ---
+    print("[MULTI-FACE] Detecting scene boundaries...")
+    boundaries = detect_scene_boundaries(video_path)
+    scene_ranges = [
+        (boundaries[i], boundaries[i + 1])
+        for i in range(len(boundaries) - 1)
+        if boundaries[i + 1] - boundaries[i] >= 0.5
     ]
 
-    print(f"[MULTI-FACE] Returning {len(face_regions)} live faces sorted left-to-right")
+    if not scene_ranges:
+        # Fallback: treat entire video as one scene
+        duration, _, _ = get_video_info(video_path)
+        scene_ranges = [(0.0, duration)]
+
+    print(f"[MULTI-FACE] {len(scene_ranges)} scene(s): {[(round(s,1), round(e,1)) for s, e in scene_ranges]}")
+
+    # --- Step 2: Distribute frame budget across scenes proportionally ---
+    total_duration = sum(e - s for s, e in scene_ranges)
+    frames_per_scene = []
+    for start, end in scene_ranges:
+        proportion = (end - start) / total_duration if total_duration > 0 else 1.0 / len(scene_ranges)
+        n = max(2, round(proportion * total_frames_budget))
+        frames_per_scene.append(n)
+
+    # Adjust to hit exact budget
+    diff = total_frames_budget - sum(frames_per_scene)
+    if diff > 0:
+        # Add extra frames to longest scene
+        longest_idx = max(range(len(scene_ranges)), key=lambda i: scene_ranges[i][1] - scene_ranges[i][0])
+        frames_per_scene[longest_idx] += diff
+    elif diff < 0:
+        # Remove frames from longest scene (but keep min 2)
+        longest_idx = max(range(len(scene_ranges)), key=lambda i: frames_per_scene[i])
+        frames_per_scene[longest_idx] = max(2, frames_per_scene[longest_idx] + diff)
+
+    # --- Step 3: Detect faces per scene ---
+    scenes_output = []
+    all_faces_union = []
+    total_frames_processed = 0
+    total_frames_with_faces = 0
+    temp_dirs = []
+
+    for scene_idx, ((start, end), num_frames) in enumerate(zip(scene_ranges, frames_per_scene)):
+        print(f"[MULTI-FACE] Scene {scene_idx}: {start:.1f}s-{end:.1f}s ({num_frames} frames)")
+
+        frame_paths = extract_sample_frames_for_range(video_path, start, end, num_frames)
+        if frame_paths:
+            temp_dirs.append(os.path.dirname(frame_paths[0]))
+
+        total_frames_processed += len(frame_paths)
+
+        # Scale min_consistent_detections proportionally (floor at 2)
+        min_detections = max(2, round(
+            config['min_consistent_detections'] * (num_frames / total_frames_budget) * len(scene_ranges)
+        ))
+        min_detections = min(min_detections, num_frames)
+
+        scene_faces = _detect_faces_in_scene(net, frame_paths, config, min_detections)
+
+        # Estimate frames-with-faces from scene results (at least 1 if faces found)
+        total_frames_with_faces += len(frame_paths) if scene_faces else 0
+
+        scenes_output.append({
+            'start': round(start, 3),
+            'end': round(end, 3),
+            'faces': scene_faces,
+            'faceCount': len(scene_faces),
+        })
+        all_faces_union.extend(scene_faces)
+
+        print(f"[MULTI-FACE] Scene {scene_idx}: {len(scene_faces)} live faces")
+
+        if context:
+            remaining_ms = context.get_remaining_time_in_millis()
+            print(f"[KEEP-ALIVE] Scene {scene_idx + 1}/{len(scene_ranges)} done | Lambda time: {remaining_ms // 1000}s")
+
+    # Clean up all temp directories
+    for d in temp_dirs:
+        shutil.rmtree(d, ignore_errors=True)
+
+    # Deduplicate global faces union (faces at same position across scenes)
+    deduped_faces = []
+    for face in all_faces_union:
+        cx = face['x'] + face['w'] / 2
+        cy = face['y'] + face['h'] / 2
+        is_dupe = False
+        for existing in deduped_faces:
+            ecx = existing['x'] + existing['w'] / 2
+            ecy = existing['y'] + existing['h'] / 2
+            if abs(cx - ecx) <= config['outlier_threshold_px'] and abs(cy - ecy) <= config['outlier_threshold_px']:
+                is_dupe = True
+                break
+        if not is_dupe:
+            deduped_faces.append(face)
+    deduped_faces.sort(key=lambda f: f['x'] + f['w'] / 2)
+
+    detection_rate = total_frames_with_faces / max(total_frames_processed, 1)
+
+    print(f"[MULTI-FACE] Returning {len(deduped_faces)} global faces, {len(scenes_output)} scenes")
 
     return {
         'statusCode': 200,
@@ -298,8 +479,10 @@ def handle_multi_face(net, video_path: str, frame_w: int, frame_h: int, context:
         'body': json.dumps({
             'success': True,
             'mode': 'multi-face',
-            'faces': face_regions,
-            'faceCount': len(face_regions),
+            'faces': deduped_faces,
+            'faceCount': len(deduped_faces),
+            'scenes': scenes_output,
+            'sceneCount': len(scenes_output),
             'detectionRate': round(detection_rate, 2),
             'frameWidth': frame_w,
             'frameHeight': frame_h,

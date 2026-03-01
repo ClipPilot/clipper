@@ -1,10 +1,12 @@
 import type { TranscriptionWord } from "./captions.service";
 import type { FacecamRegion } from "./videoEditor.service";
+import type { SceneFaces } from "../facecamDetect.service";
 
 export interface ActiveSpeakerSegment {
   speaker: number;
   start: number;
   end: number;
+  face?: FacecamRegion;
 }
 
 /**
@@ -76,6 +78,54 @@ export function buildSpeakerSegments(
  * @param faces - Face regions detected by Lambda, already sorted left-to-right
  * @returns Map from speaker ID to face region
  */
+/**
+ * Resolve per-segment face regions using scene-aware face data.
+ *
+ * For each speaker segment, finds which scene contains it, then maps
+ * that segment's speaker to the correct face within that scene.
+ *
+ * @param segments - Speaker segments from diarization
+ * @param scenes - Per-scene face data from multi-face Lambda
+ * @returns New segments array with `face` populated where possible
+ */
+export function resolveSegmentFaces(
+  segments: ActiveSpeakerSegment[],
+  scenes: SceneFaces[]
+): ActiveSpeakerSegment[] {
+  const findScene = (time: number) =>
+    scenes.find((s) => time >= s.start && time <= s.end) ?? null;
+
+  // Group segments by their scene to build per-scene speaker lists
+  const sceneSegments = new Map<SceneFaces, ActiveSpeakerSegment[]>();
+  for (const seg of segments) {
+    const mid = (seg.start + seg.end) / 2;
+    const scene = findScene(mid);
+    if (!scene || scene.faceCount === 0) continue;
+    const list = sceneSegments.get(scene) ?? [];
+    list.push(seg);
+    sceneSegments.set(scene, list);
+  }
+
+  // Build per-scene speaker→face maps
+  const sceneFaceMaps = new Map<SceneFaces, Map<number, FacecamRegion>>();
+  for (const [scene, segs] of sceneSegments) {
+    const speakers = [...new Set(segs.map((s) => s.speaker))].sort((a, b) => a - b);
+    const faceMap = new Map<number, FacecamRegion>();
+    for (let i = 0; i < speakers.length; i++) {
+      faceMap.set(speakers[i], scene.faces[Math.min(i, scene.faces.length - 1)]);
+    }
+    sceneFaceMaps.set(scene, faceMap);
+  }
+
+  return segments.map((seg) => {
+    const scene = findScene((seg.start + seg.end) / 2);
+    if (!scene) return seg;
+    const faceMap = sceneFaceMaps.get(scene);
+    const face = faceMap?.get(seg.speaker);
+    return face ? { ...seg, face } : seg;
+  });
+}
+
 export function mapSpeakersToFaces(
   speakerIds: number[],
   faces: FacecamRegion[]

@@ -19,9 +19,18 @@ export interface FacecamDetectResult {
   frameHeight: number;
 }
 
+export interface SceneFaces {
+  start: number;
+  end: number;
+  faces: FacecamRegion[];
+  faceCount: number;
+}
+
 export interface MultiFaceDetectResult {
   faces: FacecamRegion[];
   faceCount: number;
+  scenes?: SceneFaces[];
+  sceneCount?: number;
   detectionRate: number;
   frameWidth: number;
   frameHeight: number;
@@ -142,11 +151,13 @@ export async function detectMultipleFacesFromS3Key(
       return null;
     }
 
-    console.log(`[MULTI-FACE-DETECT] Found ${body.faceCount} faces, rate=${body.detectionRate}`);
+    console.log(`[MULTI-FACE-DETECT] Found ${body.faceCount} faces, ${body.sceneCount ?? 1} scene(s), rate=${body.detectionRate}`);
 
     return {
       faces: body.faces || [],
       faceCount: body.faceCount || 0,
+      scenes: body.scenes || undefined,
+      sceneCount: body.sceneCount || undefined,
       detectionRate: body.detectionRate,
       frameWidth: body.frameWidth,
       frameHeight: body.frameHeight,

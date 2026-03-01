@@ -18,7 +18,7 @@ import { ensureOutputDir } from "../../utils/fileUtils";
 import { detectFacecamFromS3Key, detectMultipleFacesFromS3Key } from "../../services/facecamDetect.service";
 import type { FacecamRegion } from "../../services/clips/videoEditor.service";
 import type { ClipServiceOptions } from "../../services/clips/clip.service";
-import { buildSpeakerSegments, mapSpeakersToFaces } from "../../services/clips/speakerSegments.service";
+import { buildSpeakerSegments, mapSpeakersToFaces, resolveSegmentFaces } from "../../services/clips/speakerSegments.service";
 import type { ActiveSpeakerSegment } from "../../services/clips/speakerSegments.service";
 import { generateViralHeading } from "../../services/clips/headingAI.service";
 
@@ -133,9 +133,13 @@ export async function processBatchClipVideoJob(
               console.log(`[BATCH-PROCESSOR] Detecting multiple faces on merged clip...`);
               const multiFaceResult = await detectMultipleFacesFromS3Key(tempS3Key);
               if (multiFaceResult && multiFaceResult.faceCount > 0) {
-                const segments = buildSpeakerSegments(allWords);
+                let segments = buildSpeakerSegments(allWords);
                 const uniqueSpeakers = [...new Set(segments.map(s => s.speaker))];
                 if (segments.length > 1 && multiFaceResult.faceCount >= 2) {
+                  if (multiFaceResult.scenes && multiFaceResult.scenes.length > 1) {
+                    segments = resolveSegmentFaces(segments, multiFaceResult.scenes);
+                    console.log(`[BATCH-PROCESSOR] Scene-aware face resolution: ${multiFaceResult.scenes.length} scenes`);
+                  }
                   const faceMap = mapSpeakersToFaces(uniqueSpeakers, multiFaceResult.faces);
                   return { activeSpeakerSegments: segments, speakerFaceMap: faceMap };
                 } else if (multiFaceResult.faceCount >= 1) {

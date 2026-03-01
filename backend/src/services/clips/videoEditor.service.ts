@@ -926,7 +926,7 @@ export const convertToActiveSpeakerZoom = async (
 
   for (let i = 0; i < segments.length; i++) {
     const seg = segments[i];
-    const face = speakerFaceMap.get(seg.speaker);
+    const face = seg.face ?? speakerFaceMap.get(seg.speaker);
 
     if (!face) {
       console.warn(`[ACTIVE-SPEAKER] No face for speaker ${seg.speaker}, using center crop`);
