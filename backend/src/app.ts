@@ -29,6 +29,7 @@ import userPerformanceRoutes from "./routes/userPerformance.routes";
 import voiceCloneRoutes from "./routes/voiceClone.routes";
 import apiPlatformRoutes from "./routes/api-platform/main.routes";
 import campaignRoutes from "./routes/campaign.routes";
+import incidentRoutes from "./routes/incident.routes";
 import { swaggerSpec } from "./config/swagger";
 
 const app = express();
@@ -144,6 +145,7 @@ app.use("/api/user-performance", userPerformanceRoutes);
 app.use("/api/voice-clones", voiceCloneRoutes);
 app.use("/api/platform", apiPlatformRoutes);
 app.use("/api/campaigns", campaignRoutes);
+app.use("/api/incidents", incidentRoutes);
 
 app.get("/debug-sentry", function mainHandler(req, res) {
   throw new Error("My first Sentry error!");

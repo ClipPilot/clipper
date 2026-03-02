@@ -1367,3 +1367,32 @@ export const apiUsageLogs = pgTable(
     ),
   }),
 ).enableRLS();
+
+// ── Incidents (status page) ──
+
+export const incidentStatusEnum = pgEnum("incident_status", [
+  "investigating",
+  "identified",
+  "monitoring",
+  "resolved",
+]);
+
+export const incidents = pgTable("incidents", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  status: incidentStatusEnum("status").notNull().default("investigating"),
+  affected_services: jsonb("affected_services")
+    .notNull()
+    .$type<string[]>()
+    .default([]),
+  updates: jsonb("updates")
+    .notNull()
+    .$type<{ status: string; message: string; timestamp: string }[]>()
+    .default([]),
+  created_by_admin_email: varchar("created_by_admin_email", {
+    length: 255,
+  }).notNull(),
+  resolved_at: timestamp("resolved_at"),
+  created_at: timestamp("created_at").notNull().defaultNow(),
+  updated_at: timestamp("updated_at").notNull().defaultNow(),
+}).enableRLS();

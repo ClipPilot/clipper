@@ -1793,4 +1793,41 @@ router.get(
   clipManagerController.searchClips.bind(clipManagerController)
 );
 
+/**
+ * @openapi
+ * /api/clip-video/teams/{teamId}/folders/{folderId}/download:
+ *   get:
+ *     summary: Download all clips in a folder as a ZIP archive
+ *     description: Streams all completed clips in the specified folder as a ZIP file. Videos are stored without re-compression (level 0).
+ *     tags: [Clips]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: teamId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - name: folderId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: ZIP archive of clips
+ *         content:
+ *           application/zip:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: No completed clips in folder
+ */
+router.get(
+  "/teams/:teamId/folders/:folderId/download",
+  requireAuth,
+  clipManagerController.downloadFolderAsZip.bind(clipManagerController)
+);
+
 export default router;

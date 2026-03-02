@@ -41,6 +41,7 @@
     "@socket.io/redis-adapter": "^8.3.0",
     "@supabase/supabase-js": "^2.87.1",
     "apify-client": "^2.22.0",
+    "archiver": "^7.0.1",
     "cors": "^2.8.5",
     "drizzle-orm": "^0.44.7",
     "express-rate-limit": "^8.2.1",
@@ -68,6 +69,7 @@
     "zod-to-json-schema": "^3.25.1"
   },
   "devDependencies": {
+    "@types/archiver": "^7.0.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.5",
     "@types/fluent-ffmpeg": "^2.1.28",

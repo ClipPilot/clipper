@@ -255,6 +255,7 @@ Notes:
 - "start" and "end" must correspond to timestamps from the transcript
 - Prioritize moments with high energy and strong emotional reactions
 - The hook should be the MOST viral-worthy moment, even if it comes later in the original video
+- CRITICAL: The main array must include build-up/context segments, not JUST the hook timestamps repeated. If the only main segment is the same timestamps as the hook, the viewer sees the exact same moment twice with no context — that is broken. It's fine to include the hook moment again in main IF there are other segments before it providing build-up.
 - Combined length should be AROUND ${length} seconds (hook ~${hookLength}s, main ~${mainLength}s). These are targets, not hard limits.
 - CLIP FLEXIBILITY: Use 1-3 clips total for the main content - whatever works best
   * 1 clip = One perfect, self-contained viral moment
@@ -360,17 +361,20 @@ TARGET: AROUND ${length} seconds total (±15% is fine — quality matters more t
 CRITICAL STRUCTURE:
 1. Video STARTS with hook (climax teaser to grab attention)
 2. Main segments play (build-up, context, can be from different parts of video)
-3. Main ENDS with the climax moment (same timestamps as hook for satisfying payoff)
+3. Main ENDS with the climax moment again (same timestamps as hook for satisfying payoff) followed by reaction/aftermath
 
 EXAMPLE: If climax is at 1904-1909s:
-- hook: { start: 1904, end: 1909 }  ← climax shown first
+- hook: { start: 1904, end: 1909 }  ← climax shown first as teaser
 - main: [
     { start: 1850, end: 1865 },    ← earlier context/setup
     { start: 1890, end: 1904 },    ← build-up right before climax
     { start: 1904, end: 1910 }     ← climax AGAIN as the payoff ending
+    { start: 1909, end: 1916 }     ← reaction/aftermath
   ]
 
-This way viewers see: CLIMAX → "wait what?" → build-up → CLIMAX AGAIN → satisfied!
+This way viewers see: CLIMAX TEASER → "wait what?" → build-up → CLIMAX AGAIN → reaction → satisfied!
+
+CRITICAL: The main array MUST ALWAYS include build-up/context segments BEFORE the climax. NEVER return a main array where the ONLY segment is the hook repeated. If main has just one segment with the same timestamps as the hook, the viewer sees the exact same 5 seconds twice with no context — that is broken. The hook repetition only works when it comes AFTER build-up segments that give it meaning.
 
 MAIN CAN BE A MONTAGE: You can pull clips from DIFFERENT parts of the video to tell a story or show multiple related moments leading to the climax. Be creative!
 
@@ -411,12 +415,17 @@ CRITICAL: Each of the ${numberOfVideos} clips MUST showcase a COMPLETELY DIFFERE
           "text": "The Evo Cannon snipe connects and tower falls",
           "start": 1904,
           "end": 1910
+        },
+        {
+          "text": "Celebration and reaction after the clutch win",
+          "start": 1909,
+          "end": 1920
         }
       ],
   ]
 }
 
-LENGTH CHECK: Hook (5.5s) + Main (15s + 14s + 6s = 35s) = 40.5s total ✓
+LENGTH CHECK: Hook (5.5s) + Main (15s + 14s + 6s + 11s = 46s) = 51.5s total ✓
 
 ===== CRITICAL TIMESTAMP RULES =====
 
@@ -443,7 +452,7 @@ If a segment contains a dull, low-energy, or filler section in the middle:
 
 ===== FINAL RULES =====
 - The "text" fields should describe VISUAL ACTION not dialogue
-- MAIN MUST have 2-3 segments minimum, and the LAST segment should include/overlap with hook timestamps
+- MAIN MUST have 2-3 segments minimum including build-up BEFORE the climax. NEVER return main with ONLY the hook timestamps repeated — that creates a broken clip with the same moment twice and no context
 - STITCHING IS ENCOURAGED: Main segments can be from DIFFERENT parts of the video (montage style) — pull the best moments from anywhere. BUT the final stitched clip must still tell a coherent story that makes sense to the viewer — don't just mash random moments together.
 - evalScore: 90+ = insane clip, 80-89 = great clip, 70-79 = good clip
 - Each video should be AROUND ${length} seconds total - ADD MORE SEGMENTS if too short!

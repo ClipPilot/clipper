@@ -139,6 +139,44 @@ export interface CreateAnnouncementData {
   action_url?: string;
 }
 
+// Incidents
+export type IncidentStatus = "investigating" | "identified" | "monitoring" | "resolved";
+
+export interface IncidentUpdate {
+  status: string;
+  message: string;
+  timestamp: string;
+}
+
+export interface Incident {
+  id: number;
+  title: string;
+  status: IncidentStatus;
+  affected_services: string[];
+  updates: IncidentUpdate[];
+  created_by_admin_email: string;
+  resolved_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IncidentsResponse {
+  incidents: Incident[];
+  total: number;
+}
+
+export interface CreateIncidentData {
+  title: string;
+  status?: IncidentStatus;
+  affected_services: string[];
+  message: string;
+}
+
+export interface AddIncidentUpdateData {
+  status: IncidentStatus;
+  message: string;
+}
+
 // Mass Posting Applications
 export interface IntakeForm {
   id: number;
@@ -478,6 +516,80 @@ export const adminAPI = {
         headers: { ...getAuthHeaders() },
       },
     );
+    return handleResponse(response);
+  },
+
+  // Incidents
+  async getIncidents(options?: {
+    status?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<IncidentsResponse> {
+    const params = new URLSearchParams();
+    if (options?.status) params.set("status", options.status);
+    if (options?.limit) params.set("limit", options.limit.toString());
+    if (options?.offset) params.set("offset", options.offset.toString());
+
+    const queryString = params.toString();
+    const url = `${API_URL}/incidents/admin${queryString ? `?${queryString}` : ""}`;
+
+    const response = await fetch(url, {
+      headers: { ...getAuthHeaders() },
+    });
+    return handleResponse(response);
+  },
+
+  async createIncident(
+    data: CreateIncidentData,
+  ): Promise<{ incident: Incident }> {
+    const response = await fetch(`${API_URL}/incidents/admin`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response);
+  },
+
+  async updateIncident(
+    id: number,
+    data: { title?: string; affected_services?: string[] },
+  ): Promise<{ incident: Incident }> {
+    const response = await fetch(`${API_URL}/incidents/admin/${id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response);
+  },
+
+  async addIncidentUpdate(
+    id: number,
+    data: AddIncidentUpdateData,
+  ): Promise<{ incident: Incident }> {
+    const response = await fetch(`${API_URL}/incidents/admin/${id}/update`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response);
+  },
+
+  async deleteIncident(
+    id: number,
+  ): Promise<{ success: boolean; message: string }> {
+    const response = await fetch(`${API_URL}/incidents/admin/${id}`, {
+      method: "DELETE",
+      headers: { ...getAuthHeaders() },
+    });
     return handleResponse(response);
   },
 

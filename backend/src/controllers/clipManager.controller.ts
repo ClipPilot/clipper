@@ -14,6 +14,8 @@ import { TranscriptionWord, CaptionEntry } from "../services/clips/captions.serv
 import { ensureOutputDir, safeUnlink } from "../utils/fileUtils";
 import { generateViralHeading } from "../services/clips/headingAI.service";
 import path from "path";
+import archiver from "archiver";
+import { Readable } from "stream";
 
 async function verifyTeamAccessOrFail(
   req: AuthRequest,
@@ -1427,6 +1429,68 @@ export class ClipManagerController {
       return res.status(500).json({
         error: sanitizeErrorForFrontend(error, "Failed to get overlay URLs"),
       });
+    }
+  }
+
+  async downloadFolderAsZip(req: AuthRequest, res: Response) {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      const folderId = parseInt(req.params.folderId);
+
+      if (isNaN(teamId) || isNaN(folderId)) {
+        return res.status(400).json({ error: "Invalid team ID or folder ID" });
+      }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
+
+      const clips = await clipManagerService.getClipsByFolder(teamId, folderId);
+      const completedClips = clips.filter(
+        (clip) => clip.status === "completed" && clip.clip_path,
+      );
+
+      if (completedClips.length === 0) {
+        return res.status(404).json({ error: "No completed clips in this folder" });
+      }
+
+      const archive = archiver("zip", { zlib: { level: 0 } });
+
+      const folderName = `clips-folder-${folderId}`;
+      res.setHeader("Content-Type", "application/zip");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${folderName}.zip"`,
+      );
+
+      archive.on("error", (err) => {
+        Sentry.captureException(err);
+        if (!res.headersSent) {
+          res.status(500).json({ error: "Failed to create archive" });
+        }
+      });
+
+      archive.pipe(res);
+
+      for (const clip of completedClips) {
+        const s3Response = await s3Service.getObject(clip.clip_path!);
+        const filename = `${clip.title || `clip_${clip.id}`}.mp4`.replace(
+          /[^a-zA-Z0-9._-]/g,
+          "_",
+        );
+        archive.append(s3Response.Body as unknown as Readable, {
+          name: filename,
+        });
+      }
+
+      await archive.finalize();
+    } catch (error) {
+      console.error("Download folder as ZIP error:", error);
+      Sentry.captureException(error);
+      if (!res.headersSent) {
+        return res.status(500).json({
+          error: sanitizeErrorForFrontend(error, "Failed to download folder"),
+        });
+      }
     }
   }
 }
