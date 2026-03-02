@@ -224,6 +224,7 @@ export class ClipManagerService {
     teamId: number;
     userId: number;
     rawVideoId?: number;
+    saved?: boolean;
   }) {
     const [clip] = await db
       .insert(clips)
@@ -232,6 +233,7 @@ export class ClipManagerService {
         generated_by_user_id: data.userId,
         status: "pending",
         raw_video_id: data.rawVideoId,
+        ...(data.saved != null && { saved: data.saved }),
       })
       .returning();
 

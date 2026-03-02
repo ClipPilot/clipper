@@ -46,7 +46,7 @@ export async function approveCampaign(req: AdminRequest, res: Response) {
     const id = parseInt(req.params.campaignId);
     if (isNaN(id)) return res.status(400).json({ error: "Invalid campaign ID" });
 
-    const { quotedCpm, videoMinimum, adminNotes } = req.body;
+    const { quotedCpm, videoMinimum, adminNotes, minimumFund } = req.body;
 
     if (!quotedCpm || videoMinimum == null) {
       return res.status(400).json({ error: "quotedCpm and videoMinimum are required" });
@@ -57,6 +57,7 @@ export async function approveCampaign(req: AdminRequest, res: Response) {
       String(quotedCpm),
       Number(videoMinimum),
       adminNotes,
+      minimumFund != null ? Number(minimumFund) : undefined,
     );
 
     return res.json({ campaign });
@@ -97,11 +98,13 @@ export async function updateCampaign(req: AdminRequest, res: Response) {
     const id = parseInt(req.params.campaignId);
     if (isNaN(id)) return res.status(400).json({ error: "Invalid campaign ID" });
 
-    const { quotedCpm, videoMinimum, adminNotes } = req.body;
+    const { quotedCpm, videoMinimum, adminNotes, minimumFund, budget } = req.body;
 
     const campaign = await campaignService.updateCampaign(id, {
       quotedCpm: quotedCpm != null ? String(quotedCpm) : undefined,
       videoMinimum: videoMinimum != null ? Number(videoMinimum) : undefined,
+      minimumFund: minimumFund != null ? Number(minimumFund) : undefined,
+      budget: budget != null ? Number(budget) : undefined,
       adminNotes,
     });
 

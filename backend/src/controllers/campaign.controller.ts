@@ -449,7 +449,7 @@ export async function signContract(req: AuthRequest, res: Response) {
       || req.socket.remoteAddress
       || "unknown";
 
-    const signed = await campaignContractService.signContract(
+    await campaignContractService.signContract(
       contract.id,
       req.user!.dbUserId,
       legalName,
@@ -457,7 +457,8 @@ export async function signContract(req: AuthRequest, res: Response) {
       ipAddress,
     );
 
-    return res.json({ contract: signed });
+    const formatted = await campaignContractService.getContract(campaignId);
+    return res.json({ contract: formatted });
   } catch (error: any) {
     console.error("Sign contract error:", error);
     if (error.message === "Contract already signed") {

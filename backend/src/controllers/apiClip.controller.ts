@@ -262,7 +262,7 @@ export const createClipJobController = async (
     const clipIds: number[] = [];
     for (let i = 0; i < numClips; i++) {
       const clip = await clipManagerService.createPendingClip({
-        teamId, userId, rawVideoId: rawVideo.id,
+        teamId, userId, rawVideoId: rawVideo.id, saved: true,
       });
       clipIds.push(clip.id);
     }

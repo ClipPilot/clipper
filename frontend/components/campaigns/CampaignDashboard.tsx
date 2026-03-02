@@ -362,6 +362,45 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
     );
   }
 
+  // ── Pending / Appeal — awaiting admin review ────────────────────────────
+
+  if (campaign.status === "pending" || campaign.status === "appeal") {
+    return (
+      <div className="min-h-screen bg-surface-dark p-4 sm:p-6 lg:p-8">
+        <div className="max-w-3xl mx-auto space-y-6">
+          <Button
+            variant="light"
+            size="sm"
+            className="text-text-secondary -ml-2"
+            onPress={onBack}
+            startContent={<Icon icon="solar:arrow-left-linear" width={16} />}
+          >
+            Back to Campaigns
+          </Button>
+
+          <div className="flex flex-col items-center gap-4 py-16 text-center">
+            <div className="w-16 h-16 rounded-full bg-warning-500/10 flex items-center justify-center">
+              <Icon
+                icon="solar:clock-circle-bold-duotone"
+                className="text-warning-500"
+                width={36}
+              />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-text-primary">{campaign.name}</h1>
+              <Chip color="warning" variant="flat" className="capitalize mt-2">
+                {campaign.status === "appeal" ? "Under Appeal" : "Pending Review"}
+              </Chip>
+            </div>
+            <p className="text-sm text-text-secondary max-w-md">
+              This campaign is under review. You&apos;ll be notified when it&apos;s approved and ready to set up.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // ── Active campaign dashboard ─────────────────────────────────────────────
 
   if (campaign.status === "started" || campaign.status === "paused") {
@@ -475,13 +514,7 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
               </div>
             </div>
             <Chip
-              color={
-                campaign.status === "rejected"
-                  ? "danger"
-                  : campaign.status === "pending"
-                    ? "warning"
-                    : "default"
-              }
+              color={campaign.status === "rejected" ? "danger" : "default"}
               variant="flat"
               className="flex-shrink-0 capitalize"
             >

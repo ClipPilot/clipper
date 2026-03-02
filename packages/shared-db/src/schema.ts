@@ -837,6 +837,7 @@ export const campaigns = pgTable(
     quoted_cpm: decimal("quoted_cpm", { precision: 10, scale: 2 }),
     budget: decimal("budget", { precision: 12, scale: 2 }),
     video_minimum: integer("video_minimum"),
+    minimum_fund: decimal("minimum_fund", { precision: 12, scale: 2 }),
     rejection_reason: text("rejection_reason"),
     admin_notes: text("admin_notes"),
     google_drive_folder_id: varchar("google_drive_folder_id", { length: 255 }),

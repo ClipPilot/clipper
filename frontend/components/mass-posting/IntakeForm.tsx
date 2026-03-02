@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardBody, Button, addToast } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { intakeAPI, IntakeFormData } from "@/api/intake";
+import { campaignAPI } from "@/api/campaign";
 import type { CompanySocial, CompetitorSocial, ICP } from "@/types/massPosting";
 import { INTAKE_STEPS, emptySocial, emptyCompetitor, emptyICP } from "@/constants/massPosting";
 import { LoadingView } from "./StatusViews";
@@ -16,7 +17,8 @@ import { StepReview } from "./StepReview";
 interface IntakeFormProps {
   teamId: number | null;
   isAppeal: boolean;
-  onSubmitted: () => void;
+  onSubmitted: (campaignId?: number) => void;
+  mode?: "application" | "create";
 }
 
 // ── All form state in one bag ──
@@ -96,7 +98,7 @@ const STEP_RENDER_MAP: Record<string, (ctx: StepContext) => React.ReactNode> = {
 
 const LAST_STEP = INTAKE_STEPS.length - 1;
 
-export function IntakeForm({ teamId, isAppeal, onSubmitted }: IntakeFormProps) {
+export function IntakeForm({ teamId, isAppeal, onSubmitted, mode = "application" }: IntakeFormProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [justCompleted, setJustCompleted] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -191,14 +193,28 @@ export function IntakeForm({ teamId, isAppeal, onSubmitted }: IntakeFormProps) {
     setIsSubmitting(true);
     try {
       const data: IntakeFormData = { ...buildFormData(), completed: true };
-      if (isAppeal) {
+
+      if (mode === "create") {
+        const { campaign } = await campaignAPI.createCampaign(teamId, {
+          name: campaignName,
+          budget: budget ?? undefined,
+          brand_description: brandDescription,
+          company_website_url: companyWebsite,
+          icps,
+          company_socials: companySocials,
+          competitor_socials: competitorSocials,
+        });
+        addToast({ title: "Campaign created", description: `"${campaign.name}" has been submitted for review.`, color: "success" });
+        onSubmitted(campaign.id);
+      } else if (isAppeal) {
         await intakeAPI.submitAppeal(teamId, data);
         addToast({ title: "Appeal submitted", description: "Your updated application has been submitted for review.", color: "success" });
+        onSubmitted();
       } else {
         await intakeAPI.submitApplication(teamId, data);
         addToast({ title: "Application submitted", description: "Your application is now under review.", color: "success" });
+        onSubmitted();
       }
-      onSubmitted();
     } catch (err: any) {
       addToast({ title: "Submission failed", description: err.message || "Something went wrong", color: "danger" });
     } finally {
@@ -219,12 +235,14 @@ export function IntakeForm({ teamId, isAppeal, onSubmitted }: IntakeFormProps) {
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold text-text-primary mb-1">
-            {isAppeal ? "Update Your Application" : "Mass Posting Application"}
+            {mode === "create" ? "New Campaign" : isAppeal ? "Update Your Application" : "Mass Posting Application"}
           </h1>
           <p className="text-sm sm:text-base text-text-secondary">
-            {isAppeal
-              ? "Update your details and resubmit for review."
-              : "Tell us about your brand so we can tailor mass posting to your needs."}
+            {mode === "create"
+              ? "Set up your new campaign details for review."
+              : isAppeal
+                ? "Update your details and resubmit for review."
+                : "Tell us about your brand so we can tailor mass posting to your needs."}
           </p>
         </div>
 
