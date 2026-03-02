@@ -12,6 +12,7 @@ import { API_PRODUCTS } from "../config/api-products";
 import { isValidPromptType, PromptType } from "../constants/promptTypes";
 import { isValidConversionMode, ConversionMode } from "../constants/conversionModes";
 import { ensureOutputDir } from "../utils/fileUtils";
+import { verifyTeamAccessOrFail } from "../utils/controllerHelpers";
 
 const CLIP_PRODUCT_SLUG = "clip_save";
 const MAX_CLIPS = 10;
@@ -549,6 +550,9 @@ export const getClipJobStatusBearerController = async (
   if (!jobId || isNaN(teamId)) {
     return res.status(400).json({ error: "Missing job ID or team ID" });
   }
+
+  const team = await verifyTeamAccessOrFail(req, teamId, res);
+  if (!team) return;
 
   try {
     const jobClips = await clipManagerService.getClipsByPublicId(jobId, teamId);

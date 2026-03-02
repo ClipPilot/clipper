@@ -1,6 +1,7 @@
 import * as Sentry from "@sentry/node";
 import { Response } from "express";
 import { AuthRequest, ApiKeyRequest } from "../middleware/auth.middleware";
+import { verifyTeamAccessOrFail } from "../utils/controllerHelpers";
 import { apiKeyService } from "../services/apiKey.service";
 import { apiBillingService } from "../services/apiBilling.service";
 import { stripeService } from "../services/stripe.service";
@@ -15,6 +16,9 @@ export const createApiKeyController = async (req: AuthRequest, res: Response) =>
     if (isNaN(teamId)) {
       return res.status(400).json({ error: "Invalid team ID" });
     }
+
+    const team = await verifyTeamAccessOrFail(req, teamId, res);
+    if (!team) return;
 
     if (!name || typeof name !== "string") {
       return res.status(400).json({ error: "name is required" });
@@ -52,6 +56,9 @@ export const listApiKeysController = async (req: AuthRequest, res: Response) => 
       return res.status(400).json({ error: "Invalid team ID" });
     }
 
+    const team = await verifyTeamAccessOrFail(req, teamId, res);
+    if (!team) return;
+
     const keys = await apiKeyService.listByTeam(teamId);
     return res.json({ keys });
   } catch (err) {
@@ -71,6 +78,9 @@ export const revokeApiKeyController = async (req: AuthRequest, res: Response) =>
     if (isNaN(teamId) || isNaN(keyId)) {
       return res.status(400).json({ error: "Invalid team ID or key ID" });
     }
+
+    const team = await verifyTeamAccessOrFail(req, teamId, res);
+    if (!team) return;
 
     const revoked = await apiKeyService.revoke(teamId, keyId);
 
@@ -95,6 +105,9 @@ export const getWalletController = async (req: AuthRequest, res: Response) => {
     if (isNaN(teamId)) {
       return res.status(400).json({ error: "Invalid team ID" });
     }
+
+    const team = await verifyTeamAccessOrFail(req, teamId, res);
+    if (!team) return;
 
     const account = await apiBillingService.getOrCreateAccount(teamId);
 
@@ -121,6 +134,9 @@ export const createWalletTopUpController = async (req: AuthRequest, res: Respons
     if (isNaN(teamId)) {
       return res.status(400).json({ error: "Invalid team ID" });
     }
+
+    const team = await verifyTeamAccessOrFail(req, teamId, res);
+    if (!team) return;
 
     if (!amount_cents || amount_cents < 500) {
       return res.status(400).json({ error: "Minimum top-up is $5.00" });
@@ -166,6 +182,9 @@ export const getTopUpStatusController = async (req: AuthRequest, res: Response) 
       return res.status(400).json({ error: "Invalid team ID" });
     }
 
+    const team = await verifyTeamAccessOrFail(req, teamId, res);
+    if (!team) return;
+
     if (!paymentIntentId) {
       return res.status(400).json({ error: "Missing paymentIntentId" });
     }
@@ -189,6 +208,9 @@ export const getAutoRefillController = async (req: AuthRequest, res: Response) =
     if (isNaN(teamId)) {
       return res.status(400).json({ error: "Invalid team ID" });
     }
+
+    const team = await verifyTeamAccessOrFail(req, teamId, res);
+    if (!team) return;
 
     const account = await apiBillingService.getOrCreateAccount(teamId);
 
@@ -215,6 +237,9 @@ export const updateAutoRefillController = async (req: AuthRequest, res: Response
     if (isNaN(teamId)) {
       return res.status(400).json({ error: "Invalid team ID" });
     }
+
+    const team = await verifyTeamAccessOrFail(req, teamId, res);
+    if (!team) return;
 
     if (auto_refill === true) {
       const account = await apiBillingService.getAccount(teamId);
@@ -263,6 +288,9 @@ export const getUsageLogsController = async (req: AuthRequest, res: Response) =>
     if (isNaN(teamId)) {
       return res.status(400).json({ error: "Invalid team ID" });
     }
+
+    const team = await verifyTeamAccessOrFail(req, teamId, res);
+    if (!team) return;
 
     const { logs, total } = await apiBillingService.getUsageLogs(teamId, limit, offset);
 

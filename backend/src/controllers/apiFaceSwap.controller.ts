@@ -5,6 +5,7 @@ import path from "path";
 import { Response } from "express";
 import { eq } from "drizzle-orm";
 import { ApiKeyRequest, AuthRequest } from "../middleware/auth.middleware";
+import { verifyTeamAccessOrFail } from "../utils/controllerHelpers";
 import { apiBillingService } from "../services/apiBilling.service";
 import { s3Service } from "../services/s3.service";
 import { sqsService } from "../services/sqs.service";
@@ -664,6 +665,9 @@ export const getFaceSwapStatusBearerController = async (
   if (!jobId || isNaN(teamId)) {
     return res.status(400).json({ error: "Missing job ID or team ID" });
   }
+
+  const team = await verifyTeamAccessOrFail(req, teamId, res);
+  if (!team) return;
 
   try {
     const [job] = await db
