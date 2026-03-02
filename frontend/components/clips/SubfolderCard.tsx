@@ -11,6 +11,7 @@ interface SubfolderCardProps {
   onOpen: (folderId: number) => void;
   onDelete?: (folderId: number) => void;
   onDropClip?: (clipId: number, folderId: number) => void;
+  onDownload?: (folderId: number) => void;
 }
 
 const SubfolderCardComponent: React.FC<SubfolderCardProps> = ({
@@ -19,6 +20,7 @@ const SubfolderCardComponent: React.FC<SubfolderCardProps> = ({
   onOpen,
   onDelete,
   onDropClip,
+  onDownload,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -143,6 +145,14 @@ const SubfolderCardComponent: React.FC<SubfolderCardProps> = ({
             </Button>
           </Tooltip>
 
+          {onDownload && (
+            <Tooltip content="Download as ZIP">
+              <Button isIconOnly size="sm" variant="light" className="w-8 h-8 min-w-8" onPress={() => onDownload(folder.id)}>
+                <Icon icon="solar:download-minimalistic-outline" className="text-lg text-text-secondary" />
+              </Button>
+            </Tooltip>
+          )}
+
           {onDelete && (
             <Tooltip content="Delete">
               <Button isIconOnly size="sm" variant="light" color="danger" className="w-8 h-8 min-w-8" onPress={handleDelete}>
@@ -201,6 +211,14 @@ const SubfolderCardComponent: React.FC<SubfolderCardProps> = ({
             </Button>
           </Tooltip>
 
+          {onDownload && (
+            <Tooltip content="Download as ZIP">
+              <Button isIconOnly size="sm" variant="light" className="w-8 h-8 min-w-8" onPress={() => onDownload(folder.id)}>
+                <Icon icon="solar:download-minimalistic-outline" className="text-lg text-text-secondary" />
+              </Button>
+            </Tooltip>
+          )}
+
           {onDelete && (
             <Tooltip content="Delete">
               <Button isIconOnly size="sm" variant="light" color="danger" className="w-8 h-8 min-w-8" onPress={handleDelete}>
@@ -219,6 +237,7 @@ export const SubfolderCard = memo(SubfolderCardComponent, (prevProps, nextProps)
     prevProps.folder.id === nextProps.folder.id &&
     prevProps.folder.updated_at === nextProps.folder.updated_at &&
     prevProps.viewMode === nextProps.viewMode &&
-    prevProps.onDropClip === nextProps.onDropClip
+    prevProps.onDropClip === nextProps.onDropClip &&
+    prevProps.onDownload === nextProps.onDownload
   );
 });
