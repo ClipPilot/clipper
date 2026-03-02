@@ -524,9 +524,8 @@ export function SceneCard({
               <span className="text-xs text-text-muted">Camera:</span>
               <CameraAngleSelector
                 value={scene.cameraAngle}
-                customValue={scene.customCameraAngle}
-                onChange={(cameraAngle: CameraAngle, customCameraAngle?: string) =>
-                  onUpdate({ cameraAngle, customCameraAngle })
+                onChange={(cameraAngle: CameraAngle) =>
+                  onUpdate({ cameraAngle })
                 }
               />
             </div>

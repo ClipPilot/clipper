@@ -34,7 +34,7 @@ export function ScriptStructureSelector({
     onCustomPatternChange(newPattern);
   };
 
-  const updateShotType = (index: number, shot: ShotType) => {
+  const updateShotType = (index: number, shot: ShotType | "visual") => {
     const newPattern = [...customPattern];
     newPattern[index].shot = shot;
     onCustomPatternChange(newPattern);
@@ -92,6 +92,7 @@ export function ScriptStructureSelector({
                     <p><span className="text-green-400 font-medium">A-roll</span> — Primary footage of the speaker talking directly to camera. Use for hooks, testimonials, and CTAs.</p>
                     <p><span className="text-blue-400 font-medium">B-roll</span> — Supplementary footage like product shots, demos, or cutaways. Use for demos and visual variety.</p>
                     <p><span className="text-purple-400 font-medium">Mixed</span> — Combines both A-roll and B-roll in a single scene for dynamic transitions.</p>
+                    <p><span className="text-amber-400 font-medium">Visual</span> — Silent scene with no voiceover. Tells the story through visuals only — products, environments, actions.</p>
                   </div>
                 }
                 placement="right"
@@ -142,7 +143,7 @@ export function ScriptStructureSelector({
                   aria-label="Shot type"
                   selectedKeys={[step.shot]}
                   onSelectionChange={(keys) => {
-                    const value = Array.from(keys)[0] as ShotType;
+                    const value = Array.from(keys)[0] as ShotType | "visual";
                     if (value) updateShotType(i, value);
                   }}
                   size="sm"
@@ -151,11 +152,13 @@ export function ScriptStructureSelector({
                     trigger: `min-h-8 h-8 ${
                       step.shot === "a-roll" ? "bg-green-500/10 border-green-500/30" :
                       step.shot === "b-roll" ? "bg-blue-500/10 border-blue-500/30" :
+                      step.shot === "visual" ? "bg-amber-500/10 border-amber-500/30" :
                       "bg-purple-500/10 border-purple-500/30"
                     }`,
                     value: `text-sm ${
                       step.shot === "a-roll" ? "text-green-400" :
                       step.shot === "b-roll" ? "text-blue-400" :
+                      step.shot === "visual" ? "text-amber-400" :
                       "text-purple-400"
                     }`,
                     popoverContent: "bg-surface-elevated border border-border-base",
@@ -177,6 +180,12 @@ export function ScriptStructureSelector({
                     <div className="flex items-center gap-2">
                       <Icon icon="solar:layers-bold" width={14} />
                       <span>Mixed</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem key="visual" textValue="Visual" className="text-amber-400">
+                    <div className="flex items-center gap-2">
+                      <Icon icon="solar:gallery-minimalistic-bold" width={14} />
+                      <span>Visual</span>
                     </div>
                   </SelectItem>
                 </Select>

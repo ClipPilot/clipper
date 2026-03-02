@@ -5,9 +5,13 @@ import {
   generateUGCScriptPrompt,
   generateSceneRegenerationPrompt,
   UGCScriptPromptConfig,
+  SCRIPT_STRUCTURES,
 } from "../../config/ugcPrompts";
 import {
   GenerateUGCScriptResponseSchema,
+  GenerateUGCScriptResponse,
+  UGCScriptSchema,
+  UGCSceneBaseSchema,
   UGCScript,
   UGCScene,
   UGCSceneSchema,
@@ -22,7 +26,76 @@ import { eq } from "drizzle-orm";
 import { openaiClient } from "../openai.service";
 
 const client = openaiClient;
-const MAX_AROLL_MERGE_COUNT = 3;
+const MAX_AROLL_MERGE_COUNT = 2;
+
+const SILENT_TEMPLATE_IDS = new Set([
+  "silent-before-after",
+  "silent-showcase",
+  "silent-montage",
+]);
+
+/**
+ * Builds a dynamic Zod schema that enforces the selected structure at the
+ * output-parsing level — exact scene count, locked shot types for all-silent
+ * or all-a-roll templates, and empty dialogue for visual scenes.
+ */
+function buildDynamicResponseSchema(
+  structureId: string,
+  customPattern?: { type: string; shot: string }[],
+) {
+  let sceneCount: number | null = null;
+  let isSilent = false;
+  let singleShotType: "a-roll" | "b-roll" | null = null;
+
+  if (structureId === "custom" && customPattern?.length) {
+    sceneCount = customPattern.length;
+    isSilent = customPattern.every((s) => s.shot === "visual");
+    // Map "visual" → "b-roll" for shot type analysis
+    const mappedShots = new Set(
+      customPattern.map((s) => (s.shot === "visual" ? "b-roll" : s.shot)),
+    );
+    if (mappedShots.size === 1) {
+      singleShotType = [...mappedShots][0] as "a-roll" | "b-roll";
+    }
+  } else if (SCRIPT_STRUCTURES[structureId]) {
+    const pattern = SCRIPT_STRUCTURES[structureId].pattern;
+    if (pattern.length > 0) {
+      sceneCount = pattern.length;
+      isSilent = SILENT_TEMPLATE_IDS.has(structureId);
+      const shotTypes = new Set(pattern.map((s) => s.shot));
+      if (shotTypes.size === 1) {
+        singleShotType = [...shotTypes][0] as "a-roll" | "b-roll";
+      }
+    }
+  }
+
+  // No pattern info → fall back to generic schema
+  if (sceneCount === null) {
+    return GenerateUGCScriptResponseSchema;
+  }
+
+  // Derive constrained scene schema from base — only override dynamic fields
+  const sceneSchema = isSilent
+    ? UGCSceneBaseSchema.omit({ shotType: true, dialogue: true, ambientSound: true }).extend({
+        shotType: z.literal("b-roll" as const).describe("Must be b-roll — visual-only structure"),
+        dialogue: z.literal("" as const).describe("Must be empty — silent visual scene"),
+        ambientSound: z.null().describe("Must be null — silent visual scene"),
+      })
+    : singleShotType
+      ? UGCSceneBaseSchema.omit({ shotType: true }).extend({
+          shotType: z.literal(singleShotType).describe(`Must be ${singleShotType} for this structure`),
+        })
+      : UGCSceneBaseSchema;
+
+  // Derive script schema — only override scenes array with exact length
+  const scriptSchema = UGCScriptSchema.omit({ scenes: true }).extend({
+    scenes: z.array(sceneSchema).length(sceneCount).describe(`EXACTLY ${sceneCount} scenes required`),
+  });
+
+  return z.object({
+    scripts: z.array(scriptSchema).min(1).max(3).describe("Array of script variations"),
+  });
+}
 
 export function mergeConsecutiveArollScenes(scenes: UGCScene[]): UGCScene[] {
   if (scenes.length === 0) return scenes;
@@ -63,9 +136,7 @@ export function mergeConsecutiveArollScenes(scenes: UGCScene[]): UGCScene[] {
           estimatedDurationSeconds: combinedDuration,
           shotType: "a-roll",
           cameraAngle: current.cameraAngle,
-          customCameraAngle: current.customCameraAngle,
           cinematicPrompt: combinedCinematic,
-          cameraDirection: current.cameraDirection,
           ambientSound: current.ambientSound,
           bRollShots: null,
           mergedSceneTypes: mergedTypes as SceneType[],
@@ -171,6 +242,11 @@ class UGCScriptService {
       detail: "high" as const,
     }));
 
+    const responseSchema = buildDynamicResponseSchema(
+      structureId,
+      customPattern,
+    );
+
     const response = await client.responses.parse({
       model: "gpt-5.2",
       input: [
@@ -181,13 +257,13 @@ class UGCScriptService {
       ],
       text: {
         format: zodTextFormat(
-          GenerateUGCScriptResponseSchema,
+          responseSchema as any,
           "ugc_script_response"
         ),
       },
     });
 
-    const parsed = response.output_parsed;
+    const parsed = response.output_parsed as GenerateUGCScriptResponse | null;
     if (!parsed) {
       throw new Error("Failed to parse script response");
     }
@@ -537,7 +613,7 @@ Return a JSON object with a "shots" array of exactly ${shotCount} shot objects.`
     return {
       ...script,
       scenes: script.scenes.map(
-        ({ cinematicPrompt, cameraDirection, ...scene }) => scene
+        ({ cinematicPrompt, ...scene }) => scene
       ),
     };
   }

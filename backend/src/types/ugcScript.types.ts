@@ -53,7 +53,7 @@ export const BRollShotSchema = z.object({
   shotType: z.enum(B_ROLL_SHOT_TYPES).describe("What this shot features: CHARACTER (person doing an action), PRODUCT (product-only/environment shot), or CHARACTER_AND_PRODUCT (person interacting with the product)."),
 });
 
-export const UGCSceneSchema = z.object({
+export const UGCSceneBaseSchema = z.object({
   id: z.string().describe("Unique identifier for the scene"),
   sceneNumber: z.number().min(1).describe("Scene sequence number"),
   sceneType: z
@@ -75,17 +75,9 @@ export const UGCSceneSchema = z.object({
   cameraAngle: z
     .enum(CAMERA_ANGLES)
     .describe("Camera angle/perspective for the shot"),
-  customCameraAngle: z
-    .string()
-    .nullable()
-    .describe("Custom camera angle description when cameraAngle is 'custom'"),
   cinematicPrompt: z
     .string()
     .describe("Detailed cinematic/video generation prompt. NEVER mention on-screen text, captions, titles, or graphics - only describe visuals and actions."),
-  cameraDirection: z
-    .string()
-    .nullable()
-    .describe("Camera movement suggestions"),
   ambientSound: z
     .string()
     .nullable()
@@ -101,7 +93,9 @@ export const UGCSceneSchema = z.object({
     .nullable()
     .optional()
     .describe("Original scene types that were combined for merged scenes"),
-}).refine(
+});
+
+export const UGCSceneSchema = UGCSceneBaseSchema.refine(
   (scene) => {
     if (scene.shotType === "a-roll") {
       return scene.ambientSound !== null && scene.ambientSound.trim().length > 0;
@@ -175,7 +169,7 @@ export type GenerateUGCScriptResponse = z.infer<
   typeof GenerateUGCScriptResponseSchema
 >;
 
-export type ClientUGCScene = Omit<UGCScene, "cinematicPrompt" | "cameraDirection">;
+export type ClientUGCScene = Omit<UGCScene, "cinematicPrompt">;
 export type ClientUGCScript = Omit<UGCScript, "scenes"> & {
   scenes: ClientUGCScene[];
 };

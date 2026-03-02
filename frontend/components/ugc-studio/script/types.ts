@@ -64,7 +64,6 @@ export interface UGCScene {
   estimatedDurationSeconds: number;
   shotType: ShotType;
   cameraAngle: CameraAngle;
-  customCameraAngle?: string;
   ambientSound?: string;
   bRollShots?: BRollShot[] | null;
   mergedSceneTypes?: SceneType[] | null;
@@ -101,7 +100,7 @@ export interface GenerateScriptRequest {
   targetDuration?: number;
   numberOfVariations?: number;
   structureId?: string;
-  customPattern?: { type: SceneType; shot: ShotType }[];
+  customPattern?: { type: SceneType; shot: ShotType | "visual" }[];
 }
 
 export interface GenerateScriptResponse {
@@ -433,6 +432,33 @@ export const SCRIPT_STRUCTURES: ScriptStructure[] = [
       "ASMR-style",
     ],
     icon: "solar:gallery-minimalistic-bold-duotone",
+  },
+  {
+    id: "silent-showcase",
+    name: "Product Showcase",
+    description:
+      "All-visual product spotlight — no voiceover, just compelling visuals. Pairs well with music and text overlays.",
+    pattern: [
+      { type: "hook", shot: "b-roll", duration: "3-4s" },
+      { type: "demo", shot: "b-roll", duration: "4-5s" },
+      { type: "cta", shot: "b-roll", duration: "3-4s" },
+    ],
+    bestFor: ["Product launches", "Beauty", "E-commerce", "Food"],
+    icon: "solar:bag-smile-bold-duotone",
+  },
+  {
+    id: "silent-montage",
+    name: "Aesthetic Montage",
+    description:
+      "Dreamy visual slideshow — no voiceover, pure aesthetic storytelling. Great with ambient music.",
+    pattern: [
+      { type: "hook", shot: "b-roll", duration: "3s" },
+      { type: "demo", shot: "b-roll", duration: "3-4s" },
+      { type: "demo", shot: "b-roll", duration: "3-4s" },
+      { type: "transformation", shot: "b-roll", duration: "3-4s" },
+    ],
+    bestFor: ["Lifestyle brands", "ASMR", "Fashion", "Satisfying processes"],
+    icon: "solar:gallery-bold-duotone",
   },
   {
     id: "custom",

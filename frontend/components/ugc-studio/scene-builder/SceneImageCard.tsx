@@ -850,9 +850,8 @@ export function SceneImageCard({
             {scene.shotType !== "b-roll" && (
               <CameraAngleSelector
                 value={scene.cameraAngle}
-                customValue={scene.customCameraAngle}
-                onChange={(cameraAngle, customCameraAngle) =>
-                  onSceneUpdate({ ...scene, cameraAngle, customCameraAngle })
+                onChange={(cameraAngle) =>
+                  onSceneUpdate({ ...scene, cameraAngle })
                 }
               />
             )}
