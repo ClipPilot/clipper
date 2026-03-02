@@ -69,15 +69,62 @@ export function buildSpeakerSegments(
 }
 
 /**
- * Map speaker IDs to face regions by spatial order (left-to-right).
- *
- * Speaker 0 → leftmost face, Speaker 1 → next face, etc.
- * If there are more speakers than faces, extra speakers map to the last face.
- *
- * @param speakerIds - Unique speaker IDs from diarization (e.g., [0, 1])
- * @param faces - Face regions detected by Lambda, already sorted left-to-right
- * @returns Map from speaker ID to face region
+ * Minimum duration (seconds) for a sub-segment after splitting.
+ * Sub-segments shorter than this are discarded to prevent FFmpeg issues.
  */
+const MIN_SEGMENT_DURATION = 0.1;
+
+/**
+ * Split speaker segments at scene boundaries so each sub-segment
+ * lies entirely within one scene.
+ *
+ * When a speaker talks across a scene cut (e.g., 8s–14s with a cut at 10s),
+ * this produces two sub-segments: 8s–10s and 10s–14s. Each can then be
+ * correctly mapped to its own scene's face data.
+ *
+ * @param segments - Speaker segments from diarization
+ * @param scenes - Scene data with start/end times
+ * @returns New segments array with cross-scene segments split at boundaries
+ */
+export function splitSegmentsAtSceneBoundaries(
+  segments: ActiveSpeakerSegment[],
+  scenes: SceneFaces[]
+): ActiveSpeakerSegment[] {
+  if (scenes.length === 0) return segments;
+
+  // Collect all unique scene boundary times, sorted
+  const boundarySet = new Set<number>();
+  for (const scene of scenes) {
+    boundarySet.add(scene.start);
+    boundarySet.add(scene.end);
+  }
+  const boundaries = [...boundarySet].sort((a, b) => a - b);
+
+  const result: ActiveSpeakerSegment[] = [];
+
+  for (const seg of segments) {
+    // Find boundaries strictly inside (seg.start, seg.end)
+    const cuts = boundaries.filter((b) => b > seg.start && b < seg.end);
+
+    if (cuts.length === 0) {
+      result.push(seg);
+      continue;
+    }
+
+    // Build split points: [seg.start, ...cuts, seg.end]
+    const points = [seg.start, ...cuts, seg.end];
+    for (let i = 0; i < points.length - 1; i++) {
+      const subStart = points[i];
+      const subEnd = points[i + 1];
+      if (subEnd - subStart >= MIN_SEGMENT_DURATION) {
+        result.push({ speaker: seg.speaker, start: subStart, end: subEnd });
+      }
+    }
+  }
+
+  return result;
+}
+
 /**
  * Resolve per-segment face regions using scene-aware face data.
  *
@@ -92,12 +139,16 @@ export function resolveSegmentFaces(
   segments: ActiveSpeakerSegment[],
   scenes: SceneFaces[]
 ): ActiveSpeakerSegment[] {
+  // Split segments at scene boundaries so each sub-segment
+  // lies entirely within one scene before face mapping
+  const split = splitSegmentsAtSceneBoundaries(segments, scenes);
+
   const findScene = (time: number) =>
     scenes.find((s) => time >= s.start && time <= s.end) ?? null;
 
   // Group segments by their scene to build per-scene speaker lists
   const sceneSegments = new Map<SceneFaces, ActiveSpeakerSegment[]>();
-  for (const seg of segments) {
+  for (const seg of split) {
     const mid = (seg.start + seg.end) / 2;
     const scene = findScene(mid);
     if (!scene || scene.faceCount === 0) continue;
@@ -117,7 +168,7 @@ export function resolveSegmentFaces(
     sceneFaceMaps.set(scene, faceMap);
   }
 
-  return segments.map((seg) => {
+  return split.map((seg) => {
     const scene = findScene((seg.start + seg.end) / 2);
     if (!scene) return seg;
     const faceMap = sceneFaceMaps.get(scene);
