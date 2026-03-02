@@ -10,6 +10,7 @@ export interface Campaign {
   quoted_cpm: string | null;
   budget: string | null;
   video_minimum: number | null;
+  minimum_fund: string | null;
   rejection_reason: string | null;
   admin_notes: string | null;
   google_drive_folder_id: string | null;
@@ -132,7 +133,15 @@ class CampaignAPI {
 
   async createCampaign(
     teamId: number,
-    data: { name: string; intakeFormId?: number; budget?: number }
+    data: {
+      name: string;
+      budget?: number;
+      brand_description?: string;
+      company_website_url?: string;
+      icps?: any;
+      company_socials?: any;
+      competitor_socials?: any;
+    }
   ): Promise<{ campaign: Campaign }> {
     const response = await apiFetch(
       `${API_URL}/campaigns/teams/${teamId}/campaigns`,

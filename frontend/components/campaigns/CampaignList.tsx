@@ -1,25 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
   Button,
   Card,
   CardBody,
   Chip,
-  Input,
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   Spinner,
-  addToast,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { useAtomValue } from "jotai";
-import { selectedTeamAtom } from "@/store/auth";
 import { useCampaigns } from "@/hooks/useCampaigns";
-import { campaignAPI, type Campaign } from "@/api/campaign";
+import { type Campaign } from "@/api/campaign";
+
+// ── Status helpers ───────────────────────────────────────────────────────────
 
 function statusColor(
   status: Campaign["status"]
@@ -64,50 +58,58 @@ function statusLabel(status: Campaign["status"]): string {
   }
 }
 
-interface CampaignListProps {
-  onSelectCampaign: (campaignId: number) => void;
+// ── Filter tab definitions ───────────────────────────────────────────────────
+
+type FilterTab = "all" | "live" | "review" | "done";
+
+const FILTER_TABS: { key: FilterTab; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "live", label: "Live" },
+  { key: "review", label: "Review" },
+  { key: "done", label: "Done" },
+];
+
+const TAB_STATUSES: Record<FilterTab, Campaign["status"][] | null> = {
+  all: null,
+  live: ["started", "paused"],
+  review: ["pending", "appeal"],
+  done: ["completed", "rejected"],
+};
+
+// TODO(human): Implement the filterCampaigns function
+function filterCampaigns(campaigns: Campaign[], tab: FilterTab): Campaign[] {
+  const statuses = TAB_STATUSES[tab];
+  if (!statuses) return campaigns;
+  return campaigns.filter((c) => statuses.includes(c.status));
 }
 
-export function CampaignList({ onSelectCampaign }: CampaignListProps) {
-  const selectedTeam = useAtomValue(selectedTeamAtom);
-  const { campaigns, isLoading, refetch } = useCampaigns();
+// ── Main component ───────────────────────────────────────────────────────────
 
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [isCreating, setIsCreating] = useState(false);
+export function CampaignList() {
+  const router = useRouter();
+  const { campaigns, isLoading } = useCampaigns();
+  const [activeTab, setActiveTab] = useState<FilterTab>("all");
 
-  const handleCreate = async () => {
-    if (!selectedTeam?.id || !newName.trim()) return;
-    setIsCreating(true);
-    try {
-      const { campaign } = await campaignAPI.createCampaign(selectedTeam.id, {
-        name: newName.trim(),
-      });
-      addToast({
-        title: "Campaign created",
-        description: `"${campaign.name}" is ready to set up.`,
-        color: "success",
-      });
-      setNewName("");
-      setIsCreateOpen(false);
-      refetch();
-      onSelectCampaign(campaign.id);
-    } catch (err: any) {
-      addToast({
-        title: "Failed to create campaign",
-        description: err.message || "Something went wrong",
-        color: "danger",
-      });
-    } finally {
-      setIsCreating(false);
+  const filtered = useMemo(
+    () => filterCampaigns(campaigns, activeTab),
+    [campaigns, activeTab]
+  );
+
+  const tabCounts = useMemo(() => {
+    const counts: Record<FilterTab, number> = { all: campaigns.length, live: 0, review: 0, done: 0 };
+    for (const c of campaigns) {
+      if (TAB_STATUSES.live!.includes(c.status)) counts.live++;
+      if (TAB_STATUSES.review!.includes(c.status)) counts.review++;
+      if (TAB_STATUSES.done!.includes(c.status)) counts.done++;
     }
-  };
+    return counts;
+  }, [campaigns]);
 
   return (
     <div className="min-h-screen bg-surface-dark p-4 sm:p-6 lg:p-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-text-primary">
               Campaigns
@@ -118,12 +120,38 @@ export function CampaignList({ onSelectCampaign }: CampaignListProps) {
           </div>
           <Button
             color="primary"
-            onPress={() => setIsCreateOpen(true)}
+            onPress={() => router.push("/dashboard/publish-posts/create")}
             startContent={<Icon icon="solar:add-circle-bold" width={18} />}
           >
             New Campaign
           </Button>
         </div>
+
+        {/* Filter chips */}
+        {campaigns.length > 0 && (
+          <div className="flex gap-2 mb-6">
+            {FILTER_TABS.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  activeTab === tab.key
+                    ? "bg-accent-400/15 text-accent-400"
+                    : "bg-surface-base text-text-secondary hover:bg-surface-elevated"
+                }`}
+              >
+                {tab.label}
+                {tabCounts[tab.key] > 0 && (
+                  <span className={`ml-1.5 text-xs ${
+                    activeTab === tab.key ? "text-accent-400/70" : "text-text-tertiary"
+                  }`}>
+                    {tabCounts[tab.key]}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Campaign grid */}
         {isLoading ? (
@@ -151,91 +179,41 @@ export function CampaignList({ onSelectCampaign }: CampaignListProps) {
               </div>
               <Button
                 color="primary"
-                onPress={() => setIsCreateOpen(true)}
+                onPress={() => router.push("/dashboard/publish-posts/create")}
                 startContent={<Icon icon="solar:add-circle-bold" width={18} />}
               >
                 Create Campaign
               </Button>
             </CardBody>
           </Card>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center text-center py-16 gap-2">
+            <Icon
+              icon="solar:filter-bold-duotone"
+              className="text-text-tertiary"
+              width={32}
+            />
+            <p className="text-sm text-text-secondary">
+              No campaigns match this filter.
+            </p>
+          </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {campaigns.map((campaign) => (
+            {filtered.map((campaign) => (
               <CampaignCard
                 key={campaign.id}
                 campaign={campaign}
-                onClick={() => onSelectCampaign(campaign.id)}
+                onClick={() => router.push(`/dashboard/publish-posts/${campaign.id}`)}
               />
             ))}
           </div>
         )}
       </div>
-
-      {/* Create modal */}
-      <Modal
-        isOpen={isCreateOpen}
-        onClose={() => {
-          setIsCreateOpen(false);
-          setNewName("");
-        }}
-        size="sm"
-        classNames={{ base: "bg-surface-base border border-border-base" }}
-      >
-        <ModalContent>
-          <ModalHeader className="border-b border-border-base">
-            <div className="flex items-center gap-2">
-              <Icon
-                icon="solar:megaphone-bold-duotone"
-                className="text-accent-400"
-                width={22}
-              />
-              <span className="text-text-primary">New Campaign</span>
-            </div>
-          </ModalHeader>
-          <ModalBody className="py-6">
-            <Input
-              label="Campaign name"
-              placeholder="e.g. Q1 Brand Awareness"
-              value={newName}
-              onValueChange={setNewName}
-              variant="bordered"
-              classNames={{
-                inputWrapper: "border-border-base bg-surface-elevated",
-                input: "text-text-primary",
-                label: "text-text-secondary",
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleCreate();
-              }}
-              autoFocus
-            />
-          </ModalBody>
-          <ModalFooter className="border-t border-border-base">
-            <Button
-              variant="flat"
-              className="bg-surface-elevated text-text-secondary"
-              onPress={() => {
-                setIsCreateOpen(false);
-                setNewName("");
-              }}
-              isDisabled={isCreating}
-            >
-              Cancel
-            </Button>
-            <Button
-              color="primary"
-              onPress={handleCreate}
-              isLoading={isCreating}
-              isDisabled={!newName.trim()}
-            >
-              Create
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
     </div>
   );
 }
+
+// ── Campaign card ────────────────────────────────────────────────────────────
 
 function CampaignCard({
   campaign,

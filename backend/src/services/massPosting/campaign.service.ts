@@ -189,6 +189,7 @@ class CampaignService {
           budget: campaigns.budget,
           quoted_cpm: campaigns.quoted_cpm,
           video_minimum: campaigns.video_minimum,
+          minimum_fund: campaigns.minimum_fund,
           videos_ready: campaigns.videos_ready,
           payment_ready: campaigns.payment_ready,
           contract_ready: campaigns.contract_ready,
@@ -232,6 +233,7 @@ class CampaignService {
         budget: campaigns.budget,
         quoted_cpm: campaigns.quoted_cpm,
         video_minimum: campaigns.video_minimum,
+        minimum_fund: campaigns.minimum_fund,
         videos_ready: campaigns.videos_ready,
         payment_ready: campaigns.payment_ready,
         contract_ready: campaigns.contract_ready,
@@ -265,6 +267,7 @@ class CampaignService {
     quotedCpm: string,
     videoMinimum: number,
     adminNotes?: string,
+    minimumFund?: number,
   ) {
     const [campaign] = await db
       .select()
@@ -283,6 +286,7 @@ class CampaignService {
       updated_at: new Date(),
     };
 
+    if (minimumFund != null) updateData.minimum_fund = minimumFund.toString();
     if (adminNotes) updateData.admin_notes = adminNotes;
 
     // Fetch team (needed for folder + email)
@@ -420,7 +424,7 @@ class CampaignService {
 
   async updateCampaign(
     id: number,
-    data: { quotedCpm?: string; videoMinimum?: number; adminNotes?: string },
+    data: { quotedCpm?: string; videoMinimum?: number; adminNotes?: string; minimumFund?: number; budget?: number },
   ) {
     const [campaign] = await db
       .select()
@@ -435,7 +439,9 @@ class CampaignService {
     const updateData: Record<string, any> = { updated_at: new Date() };
     if (data.quotedCpm !== undefined) updateData.quoted_cpm = data.quotedCpm;
     if (data.videoMinimum !== undefined) updateData.video_minimum = data.videoMinimum;
+    if (data.minimumFund !== undefined) updateData.minimum_fund = data.minimumFund.toString();
     if (data.adminNotes !== undefined) updateData.admin_notes = data.adminNotes;
+    if (data.budget !== undefined) updateData.budget = data.budget.toString();
 
     const [updated] = await db
       .update(campaigns)
@@ -518,7 +524,8 @@ class CampaignService {
       .where(eq(campaignContracts.campaign_id, campaignId))
       .limit(1);
 
-    const budgetCents = campaign.budget ? Math.round(parseFloat(campaign.budget) * 100) : 0;
+    const requiredAmount = campaign.minimum_fund ?? campaign.budget;
+    const requiredCents = requiredAmount ? Math.round(parseFloat(requiredAmount) * 100) : 0;
 
     return {
       videos: {
@@ -529,7 +536,7 @@ class CampaignService {
       payment: {
         complete: campaign.payment_ready ?? false,
         balanceCents: wallet?.balance_cents ?? 0,
-        requiredCents: budgetCents,
+        requiredCents,
       },
       contract: {
         complete: campaign.contract_ready ?? false,

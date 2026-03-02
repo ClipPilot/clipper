@@ -14,7 +14,6 @@ import {
 import { IntakeForm } from "@/components/mass-posting/IntakeForm";
 import { PlanUpgradeWall } from "@/components/mass-posting/PlanUpgradeWall";
 import { CampaignList } from "@/components/campaigns/CampaignList";
-import { CampaignDashboard } from "@/components/campaigns/CampaignDashboard";
 
 export default function PublishPostsPage() {
   const selectedTeam = useAtomValue(selectedTeamAtom);
@@ -30,9 +29,6 @@ export default function PublishPostsPage() {
   const [rejectionReason, setRejectionReason] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [isAppeal, setIsAppeal] = useState(false);
-  const [selectedCampaignId, setSelectedCampaignId] = useState<number | null>(
-    null
-  );
 
   useEffect(() => {
     if (isRejected && selectedTeam?.id) {
@@ -89,19 +85,5 @@ export default function PublishPostsPage() {
     );
   }
 
-  // Approved — show campaign management UI
-  if (selectedCampaignId !== null) {
-    return (
-      <CampaignDashboard
-        campaignId={selectedCampaignId}
-        onBack={() => setSelectedCampaignId(null)}
-      />
-    );
-  }
-
-  return (
-    <CampaignList
-      onSelectCampaign={(id) => setSelectedCampaignId(id)}
-    />
-  );
+  return <CampaignList />;
 }

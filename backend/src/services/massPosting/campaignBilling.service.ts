@@ -118,19 +118,20 @@ class CampaignBillingService {
   async checkPaymentGate(campaignId: number): Promise<boolean> {
     const wallet = await this.getWallet(campaignId);
 
-    // Look up campaign budget to compare against
+    // Look up campaign minimum_fund (fallback to budget) to compare against
     const [campaign] = await db
-      .select({ budget: campaigns.budget })
+      .select({ budget: campaigns.budget, minimum_fund: campaigns.minimum_fund })
       .from(campaigns)
       .where(eq(campaigns.id, campaignId))
       .limit(1);
 
-    const budgetCents = campaign?.budget
-      ? Math.round(parseFloat(campaign.budget) * 100)
+    const requiredAmount = campaign?.minimum_fund ?? campaign?.budget;
+    const requiredCents = requiredAmount
+      ? Math.round(parseFloat(requiredAmount) * 100)
       : 0;
 
-    // Gate complete when wallet balance meets or exceeds the budget
-    const ready = !!wallet && wallet.balance_cents >= budgetCents && budgetCents > 0;
+    // Gate complete when wallet balance meets or exceeds the minimum fund
+    const ready = !!wallet && wallet.balance_cents >= requiredCents && requiredCents > 0;
 
     await db
       .update(campaigns)

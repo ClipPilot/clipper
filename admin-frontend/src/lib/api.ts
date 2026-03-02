@@ -207,6 +207,7 @@ export interface Campaign {
   quoted_cpm: string | null;
   budget: string | null;
   video_minimum: number | null;
+  minimum_fund: string | null;
   rejection_reason: string | null;
   admin_notes: string | null;
   google_drive_folder_id: string | null;
@@ -625,6 +626,7 @@ export const adminAPI = {
     quotedCpm: string,
     videoMinimum: number,
     adminNotes?: string,
+    minimumFund?: number,
   ): Promise<{ campaign: Campaign }> {
     const response = await fetch(`${API_URL}/admin/campaigns/${id}/approve`, {
       method: "POST",
@@ -632,7 +634,7 @@ export const adminAPI = {
         "Content-Type": "application/json",
         ...getAuthHeaders(),
       },
-      body: JSON.stringify({ quotedCpm, videoMinimum, adminNotes }),
+      body: JSON.stringify({ quotedCpm, videoMinimum, adminNotes, minimumFund }),
     });
     return handleResponse(response);
   },
@@ -655,7 +657,7 @@ export const adminAPI = {
 
   async updateCampaign(
     id: number,
-    data: { quotedCpm?: string; videoMinimum?: number; adminNotes?: string },
+    data: { quotedCpm?: string; videoMinimum?: number; adminNotes?: string; minimumFund?: number; budget?: number },
   ): Promise<{ campaign: Campaign }> {
     const response = await fetch(`${API_URL}/admin/campaigns/${id}`, {
       method: "PATCH",
