@@ -10,7 +10,7 @@ import * as path from "path";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
 const FRONTEND_URL = process.env.FRONTEND_URL || "https://platform.cuttr.com";
-const DEBOUNCE_HOURS = 0;
+const DEBOUNCE_HOURS = 12;
 
 // Logo loaded once at cold-start for PDF embedding
 let logoBase64: string | null = null;
