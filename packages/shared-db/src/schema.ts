@@ -934,9 +934,9 @@ export const campaignContracts = pgTable(
   "campaign_contracts",
   {
     id: serial("id").primaryKey(),
-    campaign_id: integer("campaign_id")
-      .notNull()
-      .references(() => campaigns.id, { onDelete: "cascade" }),
+    campaign_id: integer("campaign_id").references(() => campaigns.id, {
+      onDelete: "cascade",
+    }),
     team_id: integer("team_id")
       .notNull()
       .references(() => teams.id, { onDelete: "cascade" }),
@@ -944,12 +944,19 @@ export const campaignContracts = pgTable(
       () => users.id,
       { onDelete: "set null" },
     ),
+    is_master: boolean("is_master").notNull().default(false),
     terms: jsonb("terms"),
     unsigned_pdf_key: text("unsigned_pdf_key"),
     signed_pdf_key: text("signed_pdf_key"),
     signature_image_key: text("signature_image_key"),
     signer_legal_name: varchar("signer_legal_name", { length: 255 }),
+    signer_legal_entity_name: varchar("signer_legal_entity_name", {
+      length: 255,
+    }),
+    signer_title: varchar("signer_title", { length: 255 }),
+    signer_email: varchar("signer_email", { length: 255 }),
     signer_ip_address: varchar("signer_ip_address", { length: 45 }),
+    effective_date: timestamp("effective_date"),
     signed_at: timestamp("signed_at"),
     status: campaignContractStatusEnum("status").notNull().default("pending"),
     created_at: timestamp("created_at").notNull().defaultNow(),

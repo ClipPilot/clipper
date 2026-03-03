@@ -208,60 +208,92 @@ VARIATION PLANNING: Before selecting clips, identify ${numberOfVideos} distinct 
 The final output video should be AROUND ${length} seconds long (±15% is fine — quality matters more than hitting an exact number).
 
 You will be given:
-- The full transcription text from a video
+- The actual video file (watch it for visual analysis)
+- The full transcription text from the video
 - And the transcript object in the following schema:
   - "paragraphs" → list
     - each paragraph → "sentences" with "text", "start", "end", "speaker", "num_words"
 
+===== VIDEO ANALYSIS (WATCH THE VIDEO) =====
+You have access to the actual video file. WATCH IT CAREFULLY alongside the transcript.
+
+VISUAL CUES TO LOOK FOR:
+- Facial expressions: Shock, surprise, laughter, genuine reactions
+- Body language: Leaning forward, standing up, physical comedy
+- Unexpected visual events: Something breaking, falling, appearing unexpectedly
+- Screen reactions: Chat going crazy, kill feeds, UI elements indicating hype
+- Environmental chaos: Multiple things happening, crowd reactions
+- Energy shifts: Calm-to-explosion moments visible on screen
+
+Combine what you SEE with what you HEAR to find the most viral-worthy moments.
+Use the transcript for precise timestamps, but let the VISUAL content guide which moments are truly viral.
+===== END VIDEO ANALYSIS =====
+
+===== STORY-DRIVEN CLIP STRUCTURE =====
+Every clip MUST follow this 3-part story arc:
+
+  HOOK → BUILD-UP → HOOK PAYOFF
+
+1. HOOK (plays first, ~${hookLength} seconds): The most shocking/funny/jaw-dropping moment from the video.
+   This is the "cold open" — it stops the scroll and makes the viewer think "wait, what?! how did that happen?"
+
+2. BUILD-UP (the body, ~${mainLength - hookLength > 0 ? mainLength - hookLength : mainLength} seconds): The story/context that LED TO the hook moment.
+   This is the journey. Show what was happening BEFORE the hook moment — the setup, the tension, the escalation.
+   The viewer already saw the payoff, now they want to understand HOW it happened.
+
+3. HOOK PAYOFF (plays again at the end, ~${hookLength} seconds): The SAME hook moment plays again naturally as the story catches up to it.
+   The viewer now has full context and experiences the moment with maximum impact.
+
+The main array should contain: [build-up segments..., hook moment again at the end]
+The hook plays FIRST as the cold open, then main plays as build-up → payoff.
+===== END STORY STRUCTURE =====
+
 Your Goals:
 1. Find the most VIRAL HOOK that is AROUND ${hookLength} seconds long (±2 seconds is fine):
-   - This should be the most shocking, funny, or jaw-dropping moment
+   - This should be the most shocking, funny, or jaw-dropping moment — the CLIMAX of a story in the video
    - Look for: strong reactions, unexpected events, funny one-liners, epic fails, clutch moments
-   - Should make viewers immediately think "wait, what just happened?"
+   - Should make viewers immediately think "wait, what just happened? I need to see how this happened"
    - Profanity and strong reactions are HIGHLY encouraged if authentic
    - Must come directly from transcript text
    - NO stage directions, camera cues, or meta commentary
 
-2. Select the remaining content (AROUND ${mainLength} seconds total):
-   - STITCHING IS ENCOURAGED: Pull the best moments from different parts of the video and combine them. Don't feel forced to use one continuous segment. BUT the final stitched clip must still tell a coherent story that makes sense to the viewer — don't just mash random moments together.
-   - YOU HAVE FLEXIBILITY: You can use just ONE single segment if it's viral-worthy enough on its own
-   - OR combine 2-3 clips if that creates better flow and maintains energy. This is recommended, maybe do one long segment, but clip out the best parts and combine them into a single clip.
-   - If combining clips enhances the story or comedic timing, go for it
-   - Content should: build on the hook, feature best reactions, show personality, maintain HIGH energy
-   - Can include: epic wins/fails, funny banter, unexpected reactions, chaotic moments
-   - End with a strong punchline, reaction, or satisfying conclusion
+2. Select the BUILD-UP content for the main array (AROUND ${mainLength} seconds total):
+   - Find the story that LEADS TO the hook moment — what happened before it that makes it make sense
+   - The build-up should create tension, context, or escalation so the hook hits harder the second time
+   - STITCHING IS ENCOURAGED: You can pull build-up moments from different parts leading to the hook and stitch them together. Skip boring parts between key story beats.
+   - The LAST segment in the main array should be the hook moment AGAIN (same or slightly extended timestamps) so the story naturally climaxes
+   - CUT THE FAT: Only include build-up that adds to the story. Skip filler, tangents, and low-energy parts.
+   - The viewer should feel the full journey: curiosity from the hook → understanding from the build-up → satisfaction when the hook plays again with context
 
-3. CUT BORING PARTS: If a segment contains a dull, low-energy, or filler section in the middle:
+3. CUT BORING PARTS: If a build-up segment contains a dull or filler section in the middle:
    - Split it into two segments, skipping the boring part
-   - Replace that dead air with a more engaging moment from elsewhere in the video
-   - Never leave in awkward pauses, rambling, "umm"s, or low-energy tangents just because they're between two good parts
+   - Never leave in awkward pauses, rambling, "umm"s, or low-energy tangents just because they're between two story beats
 
 4. VIRAL CONTENT PRIORITIES:
    - Authentic reactions and emotions (shock, laughter, anger, excitement)
    - Unexpected or chaotic moments
    - Funny or clever dialogue
-   - Moments that viewers will want to share
+   - Story moments that build tension toward the hook
    - Keep the main character/creator the focal point
    - Natural, unscripted energy
 
 5. NEVER include:
-   - Long explanations or setups (keep it punchy!)
+   - Content unrelated to the hook's story — every segment should contribute to the build-up
+   - Long explanations or tangents that don't escalate toward the hook
    - Stage directions or production talk
    - Boring transitions or filler
-   - Anything that kills the energy
    - Meta commentary about filming
 
 Notes:
 - "start" and "end" must correspond to timestamps from the transcript
-- Prioritize moments with high energy and strong emotional reactions
 - The hook should be the MOST viral-worthy moment, even if it comes later in the original video
-- CRITICAL: The main array must include build-up/context segments, not JUST the hook timestamps repeated. If the only main segment is the same timestamps as the hook, the viewer sees the exact same moment twice with no context — that is broken. It's fine to include the hook moment again in main IF there are other segments before it providing build-up.
+- CRITICAL STRUCTURE: The main array MUST start with build-up/context segments and END with the hook moment again. If the main array is ONLY the hook timestamps with no build-up before it, the clip is broken — viewers see the same moment twice with no story.
 - Combined length should be AROUND ${length} seconds (hook ~${hookLength}s, main ~${mainLength}s). These are targets, not hard limits.
-- CLIP FLEXIBILITY: Use 1-3 clips total for the main content - whatever works best
-  * 1 clip = One perfect, self-contained viral moment
-  * 2-3 clips = When combining creates better storytelling or comedic timing
-- Clips don't need to be chronological if rearranging creates better comedic timing or impact
-- Try to bundle multiple clips together if they are related to the same topic or event.
+- CLIP FLEXIBILITY: Use 1-4 clips total for the main content
+  * Build-up segments: 1-3 clips showing the journey to the hook
+  * Final segment: The hook moment again (the payoff)
+- Build-up clips should generally be in chronological order to tell a coherent story
+- Try to find the hook moment's STORY — what was the creator doing, what was happening, what went wrong/right that led to this moment?
 
 CRITICAL TIMESTAMP RULES:
 - "end" MUST BE GREATER THAN "start" - ALWAYS (end > start)
@@ -271,17 +303,15 @@ CRITICAL TIMESTAMP RULES:
 - Round timestamps to 1 decimal place
 
 Your Task:
-Find the most viral-worthy moments and create a clip with:
-- An absolutely killer hook that stops the scroll
-- Main content: Stitch together the BEST moments from ANYWHERE in the video — skip boring parts, combine the strongest moments
-  * If ONE segment after the hook is pure gold and viral on its own → use it!
-  * If combining 2-3 segments creates better pacing/story → do that! (recommended)
-  * Mix it up between approaches for variety when generating multiple videos
+Find the best STORY in the video and create a clip with:
+- A killer hook that stops the scroll — the climax of a real story/moment in the video
+- Build-up content that shows HOW that moment happened — the journey, tension, and escalation
+- The hook moment playing again at the END of main as the natural payoff
+- The viewer should think: "whoa" (hook) → "oh, here's what happened..." (build-up) → "THERE IT IS!" (payoff)
 - Maximum entertainment value and shareability
-- Natural flow that keeps viewers engaged until the end
 - Focus on the creator's personality and what makes them unique
-- Include a finalMessage explaining what makes this clip viral-worthy and why viewers will share it
-- Include an evalScore (0-100) rating the viral potential, entertainment value, and how well it follows the user's request
+- Include a finalMessage explaining the story arc: what the hook moment is, what the build-up shows, and why this story is viral-worthy
+- Include an evalScore (0-100) rating the viral potential, story quality, and how satisfying the hook-buildup-payoff arc is
 
 Here is the full transcript text: ${transcriptText}
 Here is the transcript object: ${transcriptObject}

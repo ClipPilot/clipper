@@ -4,7 +4,10 @@ import {
   campaignWalletTopUps,
 } from "@clipper/shared-db";
 import { db } from "../../db";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, isNotNull, desc, ne } from "drizzle-orm";
+import { teamService } from "../team.service";
+import { getTeamUsage } from "../../middleware/subscription.middleware";
+import { CAMPAIGN_CENTS_PER_CREDIT } from "../../config/stripe.config";
 
 class CampaignBillingService {
   async getWallet(campaignId: number) {
@@ -83,6 +86,48 @@ class CampaignBillingService {
     return { balanceCents: updated.balance_cents };
   }
 
+  async fundWithCredits(campaignId: number, teamId: number, creditCount: number) {
+    if (creditCount < 1) {
+      throw new Error("Credit count must be at least 1");
+    }
+
+    const usage = await getTeamUsage(teamId);
+    if (!usage || usage.totalRemaining < creditCount) {
+      throw new Error("Insufficient credits");
+    }
+
+    const amountCents = creditCount * CAMPAIGN_CENTS_PER_CREDIT;
+
+    await teamService.incrementTeamUsage(teamId, creditCount);
+    await this.getOrCreateWallet(campaignId, teamId);
+
+    const syntheticId = `credits_${Date.now()}_${campaignId}`;
+    await db.insert(campaignWalletTopUps).values({
+      campaign_id: campaignId,
+      team_id: teamId,
+      amount_cents: amountCents,
+      stripe_payment_intent_id: syntheticId,
+    });
+
+    const [updated] = await db
+      .update(campaignWallets)
+      .set({
+        balance_cents: sql`${campaignWallets.balance_cents} + ${amountCents}`,
+        total_deposited_cents: sql`${campaignWallets.total_deposited_cents} + ${amountCents}`,
+        updated_at: new Date(),
+      })
+      .where(eq(campaignWallets.campaign_id, campaignId))
+      .returning();
+
+    await this.checkPaymentGate(campaignId);
+
+    return {
+      balanceCents: updated.balance_cents,
+      creditsUsed: creditCount,
+      amountCents,
+    };
+  }
+
   async isTopUpCredited(
     campaignId: number,
     stripePaymentIntentId: string,
@@ -102,6 +147,23 @@ class CampaignBillingService {
       .limit(1);
 
     return !!topUp;
+  }
+
+  async getTeamPaymentMethod(teamId: number, excludeCampaignId?: number) {
+    const conditions = [
+      eq(campaignWallets.team_id, teamId),
+      isNotNull(campaignWallets.stripe_payment_method_id),
+    ];
+    if (excludeCampaignId) {
+      conditions.push(ne(campaignWallets.campaign_id, excludeCampaignId));
+    }
+    const [wallet] = await db
+      .select({ stripe_payment_method_id: campaignWallets.stripe_payment_method_id })
+      .from(campaignWallets)
+      .where(and(...conditions))
+      .orderBy(desc(campaignWallets.updated_at))
+      .limit(1);
+    return wallet?.stripe_payment_method_id ?? null;
   }
 
   async savePaymentMethod(campaignId: number, teamId: number, paymentMethodId: string) {

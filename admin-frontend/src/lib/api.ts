@@ -766,6 +766,29 @@ export const adminAPI = {
     return handleResponse(response);
   },
 
+  async getMasterAgreement(
+    teamId: number,
+  ): Promise<{ agreement: any }> {
+    const response = await fetch(
+      `${API_URL}/admin/teams/${teamId}/master-agreement`,
+      { headers: { ...getAuthHeaders() } },
+    );
+    return handleResponse(response);
+  },
+
+  async voidAndRegenerateMasterContract(
+    teamId: number,
+  ): Promise<{ agreement: any }> {
+    const response = await fetch(
+      `${API_URL}/admin/teams/${teamId}/void-and-regenerate-contract`,
+      {
+        method: "POST",
+        headers: { ...getAuthHeaders() },
+      },
+    );
+    return handleResponse(response);
+  },
+
   async postCampaignClip(
     campaignId: number,
     clipId: number,

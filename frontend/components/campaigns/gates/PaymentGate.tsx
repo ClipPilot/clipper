@@ -11,6 +11,7 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
+  Slider,
   Spinner,
   addToast,
 } from "@heroui/react";
@@ -22,6 +23,8 @@ import {
 } from "@stripe/react-stripe-js";
 import { useAtomValue } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
+import { useUsageStats } from "@/hooks/useUsageStats";
+import { useUsageStatsRefresh } from "@/contexts/UsageStatsContext";
 import StripeProvider from "@/components/providers/StripeProvider";
 import {
   campaignAPI,
@@ -453,20 +456,21 @@ export function PaymentGate({
   onPaymentComplete,
 }: PaymentGateProps) {
   const selectedTeam = useAtomValue(selectedTeamAtom);
+  const { usageStats, refetch: refetchUsage } = useUsageStats(selectedTeam?.id);
+  const { triggerRefresh } = useUsageStatsRefresh();
 
-  // Card state (can be updated after setup without full refresh)
   const [card, setCard] = useState<CampaignCard | null>(initialCard);
-  // Keep in sync if parent re-fetches
   React.useEffect(() => {
     setCard(initialCard);
   }, [initialCard]);
 
-  // Step 1: Setup
   const [isSettingUp, setIsSettingUp] = useState(false);
   const [setupSecret, setSetupSecret] = useState<string | null>(null);
   const [isSetupModalOpen, setIsSetupModalOpen] = useState(false);
 
-  // Step 2: Add funds
+  const [creditCount, setCreditCount] = useState(0);
+  const [isFundingWithCredits, setIsFundingWithCredits] = useState(false);
+
   const [amountInput, setAmountInput] = useState("");
   const [isCreatingIntent, setIsCreatingIntent] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -480,10 +484,13 @@ export function PaymentGate({
   const requiredDollars = gate.requiredCents / 100;
   const shortfallDollars = Math.max(0, requiredDollars - balanceDollars);
 
+  const shortfallCents = Math.max(0, gate.requiredCents - gate.balanceCents);
+  const totalCredits = usageStats?.totalRemaining ?? 0;
+  const maxCreditsNeeded = Math.ceil(shortfallCents / 350);
+  const maxCreditsSlider = Math.min(totalCredits, maxCreditsNeeded);
+
   const parsedAmount = parseFloat(amountInput);
   const amountIsValid = !isNaN(parsedAmount) && parsedAmount >= 1;
-
-  // ── Step 1 handlers ──────────────────────────────────────────────────────
 
   const handleAddCard = async () => {
     if (!selectedTeam?.id) return;
@@ -513,9 +520,32 @@ export function PaymentGate({
     onCardSaved(newCard);
   };
 
-  // ── Step 2 handlers ──────────────────────────────────────────────────────
+  const handleFundWithCredits = async () => {
+    if (!selectedTeam?.id || creditCount < 1) return;
+    setIsFundingWithCredits(true);
+    try {
+      const { balanceCents, creditsUsed, amountCents } =
+        await campaignAPI.fundWithCredits(selectedTeam.id, campaignId, creditCount);
+      addToast({
+        title: "Credits applied",
+        description: `${creditsUsed} credit${creditsUsed > 1 ? "s" : ""} converted to ${formatCents(amountCents)} campaign dollars.`,
+        color: "success",
+      });
+      setCreditCount(0);
+      onPaymentComplete(balanceCents);
+      refetchUsage();
+      triggerRefresh();
+    } catch (err: any) {
+      addToast({
+        title: "Failed to apply credits",
+        description: err.message || "Something went wrong",
+        color: "danger",
+      });
+    } finally {
+      setIsFundingWithCredits(false);
+    }
+  };
 
-  // Polling for credit after server-confirmed payment
   const [isPolling, setIsPolling] = useState(false);
 
   const pollForCredit = async (piId: string, amountCents: number) => {
@@ -666,7 +696,6 @@ export function PaymentGate({
         )}
       </div>
 
-      {/* Step 1: Add card (if no card on file) */}
       {!card ? (
         <div className="space-y-3">
           <p className="text-xs font-medium text-text-secondary uppercase tracking-wide">
@@ -722,11 +751,64 @@ export function PaymentGate({
             <SavedPaymentMethodDisplay pm={card} />
           </div>
 
-          {/* Step 2: Add funds (only if card exists and gate not complete) */}
+          {!gate.complete && totalCredits > 0 && (
+            <div className="space-y-3">
+              <p className="text-xs font-medium text-text-secondary uppercase tracking-wide">
+                Fund with Credits
+              </p>
+              <div className="p-4 rounded-lg border border-border-base bg-surface-elevated space-y-4">
+                <div className="flex items-center gap-2 text-xs text-text-tertiary">
+                  <Icon icon="solar:transfer-horizontal-bold" width={14} />
+                  <span>1 credit = $3.50 campaign dollars</span>
+                </div>
+                <Slider
+                  value={creditCount}
+                  onChange={(val) => setCreditCount(val as number)}
+                  minValue={0}
+                  maxValue={maxCreditsSlider}
+                  step={1}
+                  size="sm"
+                  color="secondary"
+                  showTooltip
+                  label={`${creditCount} credit${creditCount !== 1 ? "s" : ""}`}
+                  classNames={{
+                    label: "text-sm text-text-primary font-medium",
+                  }}
+                />
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-text-secondary">
+                    {creditCount} credit{creditCount !== 1 ? "s" : ""} ={" "}
+                    <span className="font-semibold text-text-primary">
+                      ${(creditCount * 3.5).toFixed(2)}
+                    </span>{" "}
+                    campaign dollars
+                  </p>
+                  <p className="text-xs text-text-tertiary">
+                    {totalCredits} credit{totalCredits !== 1 ? "s" : ""} available
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  color="secondary"
+                  onPress={handleFundWithCredits}
+                  isLoading={isFundingWithCredits}
+                  isDisabled={creditCount === 0}
+                  startContent={
+                    !isFundingWithCredits && (
+                      <Icon icon="solar:stars-bold-duotone" width={16} />
+                    )
+                  }
+                >
+                  Apply Credits
+                </Button>
+              </div>
+            </div>
+          )}
+
           {!gate.complete && (
             <div className="space-y-3">
               <p className="text-xs font-medium text-text-secondary uppercase tracking-wide">
-                Step 2 — Add Funds
+                Add Funds
               </p>
 
               {shortfallDollars > 0 && (

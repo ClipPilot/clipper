@@ -57,15 +57,17 @@ export interface CampaignWallet {
   updated_at: string;
 }
 
-export interface CampaignContract {
+export interface MasterAgreement {
   id: number;
-  campaign_id: number;
   team_id: number;
   status: "pending" | "signed" | "voided";
-  terms: Record<string, unknown> | null;
-  legal_name: string | null;
+  signer_name: string | null;
+  signer_legal_entity_name: string | null;
+  signer_title: string | null;
+  signer_email: string | null;
   presigned_pdf_url: string | null;
   signed_at: string | null;
+  effective_date: string | null;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -382,6 +384,29 @@ class CampaignAPI {
     return response.json();
   }
 
+  async fundWithCredits(
+    teamId: number,
+    campaignId: number,
+    creditCount: number
+  ): Promise<{ confirmed: boolean; balanceCents: number; creditsUsed: number; amountCents: number }> {
+    const response = await apiFetch(
+      `${API_URL}/campaigns/teams/${teamId}/campaigns/${campaignId}/wallet/fund-with-credits`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ creditCount }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to fund with credits");
+    }
+
+    return response.json();
+  }
+
   async getTopUpStatus(
     teamId: number,
     campaignId: number,
@@ -404,12 +429,11 @@ class CampaignAPI {
     return response.json();
   }
 
-  async getContract(
+  async getMasterAgreement(
     teamId: number,
-    campaignId: number
-  ): Promise<{ contract: CampaignContract | null }> {
+  ): Promise<{ agreement: MasterAgreement }> {
     const response = await apiFetch(
-      `${API_URL}/campaigns/teams/${teamId}/campaigns/${campaignId}/contract`,
+      `${API_URL}/campaigns/teams/${teamId}/master-agreement`,
       {
         method: "GET",
         headers: { "Content-Type": "application/json" },
@@ -419,31 +443,35 @@ class CampaignAPI {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || "Failed to get contract");
+      throw new Error(error.error || "Failed to get agreement");
     }
 
     return response.json();
   }
 
-  async signContract(
+  async signMasterAgreement(
     teamId: number,
-    campaignId: number,
-    legalName: string,
-    signatureDataUrl: string
-  ): Promise<{ contract: CampaignContract }> {
+    data: {
+      legalEntityName: string;
+      signerName: string;
+      signerTitle: string;
+      signerEmail: string;
+      signatureDataUrl: string;
+    }
+  ): Promise<{ agreement: MasterAgreement }> {
     const response = await apiFetch(
-      `${API_URL}/campaigns/teams/${teamId}/campaigns/${campaignId}/contract/sign`,
+      `${API_URL}/campaigns/teams/${teamId}/master-agreement/sign`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ legalName, signatureDataUrl }),
+        body: JSON.stringify(data),
       }
     );
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || "Failed to sign contract");
+      throw new Error(error.error || "Failed to sign agreement");
     }
 
     return response.json();

@@ -16,8 +16,9 @@ import {
   saveCard,
   createTopUp,
   getTopUpStatus,
-  getContract,
-  signContract,
+  fundWithCredits,
+  getMasterAgreement,
+  signMasterAgreement,
   startCampaign,
   endCampaign,
 } from "../controllers/campaign.controller";
@@ -791,68 +792,12 @@ router.post("/teams/:teamId/campaigns/:campaignId/wallet/top-up", requireAuth, r
  */
 router.get("/teams/:teamId/campaigns/:campaignId/wallet/top-up/:piId/status", requireAuth, requireSeatAccess, getTopUpStatus);
 
-// Contract
-
 /**
  * @openapi
- * /api/campaigns/teams/{teamId}/campaigns/{campaignId}/contract:
- *   get:
- *     summary: Get campaign contract
- *     description: Returns the contract for the campaign with a presigned PDF URL
- *     tags: [Campaigns]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: teamId
- *         required: true
- *         schema:
- *           type: integer
- *       - in: path
- *         name: campaignId
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Contract details with PDF URL
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 contract:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: integer
- *                     campaignId:
- *                       type: integer
- *                     status:
- *                       type: string
- *                       enum: [pending, signed, voided]
- *                     pdfUrl:
- *                       type: string
- *                       nullable: true
- *                     signedAt:
- *                       type: string
- *                       format: date-time
- *                       nullable: true
- *       401:
- *         description: Unauthorized
- *       404:
- *         description: Contract not found
- *       500:
- *         description: Server error
- */
-router.get("/teams/:teamId/campaigns/:campaignId/contract", requireAuth, requireSeatAccess, getContract);
-
-/**
- * @openapi
- * /api/campaigns/teams/{teamId}/campaigns/{campaignId}/contract/sign:
+ * /api/campaigns/teams/{teamId}/campaigns/{campaignId}/wallet/fund-with-credits:
  *   post:
- *     summary: Sign the campaign contract
- *     description: Signs the contract with a legal name and signature image. Stamps the signature onto the PDF and emails a copy.
+ *     summary: Fund campaign wallet with Cuttr credits
+ *     description: Converts Cuttr credits into campaign wallet dollars at the rate of 1 credit = $3.50. Credits are deducted immediately from the team's balance.
  *     tags: [Campaigns]
  *     security:
  *       - bearerAuth: []
@@ -874,37 +819,150 @@ router.get("/teams/:teamId/campaigns/:campaignId/contract", requireAuth, require
  *           schema:
  *             type: object
  *             required:
- *               - legalName
- *               - signatureDataUrl
+ *               - creditCount
  *             properties:
- *               legalName:
- *                 type: string
- *                 description: Full legal name of the signer
- *               signatureDataUrl:
- *                 type: string
- *                 description: Base64 data URL of the signature image (PNG)
+ *               creditCount:
+ *                 type: integer
+ *                 minimum: 1
+ *                 description: Number of credits to convert to campaign dollars
  *     responses:
  *       200:
- *         description: Contract signed
+ *         description: Credits applied to wallet
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 contract:
- *                   type: object
+ *                 confirmed:
+ *                   type: boolean
+ *                 balanceCents:
+ *                   type: integer
+ *                 creditsUsed:
+ *                   type: integer
+ *                 amountCents:
+ *                   type: integer
  *       400:
- *         description: Missing legalName or signatureDataUrl
+ *         description: Invalid credit count or insufficient credits
  *       401:
  *         description: Unauthorized
- *       404:
- *         description: Contract not found
- *       409:
- *         description: Contract already signed
  *       500:
  *         description: Server error
  */
-router.post("/teams/:teamId/campaigns/:campaignId/contract/sign", requireAuth, requireSeatAccess, signContract);
+router.post("/teams/:teamId/campaigns/:campaignId/wallet/fund-with-credits", requireAuth, requireSeatAccess, fundWithCredits);
+
+// Master Agreement
+
+/**
+ * @openapi
+ * /api/campaigns/teams/{teamId}/master-agreement:
+ *   get:
+ *     summary: Get or generate master agreement
+ *     description: Returns the team's master agreement. If none exists, generates an unsigned PDF and returns it.
+ *     tags: [Campaigns]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Master agreement details with PDF URL
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 agreement:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     team_id:
+ *                       type: integer
+ *                     status:
+ *                       type: string
+ *                       enum: [pending, signed, voided]
+ *                     signer_name:
+ *                       type: string
+ *                       nullable: true
+ *                     signer_legal_entity_name:
+ *                       type: string
+ *                       nullable: true
+ *                     presigned_pdf_url:
+ *                       type: string
+ *                       nullable: true
+ *                     signed_at:
+ *                       type: string
+ *                       format: date-time
+ *                       nullable: true
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.get("/teams/:teamId/master-agreement", requireAuth, requireSeatAccess, getMasterAgreement);
+
+/**
+ * @openapi
+ * /api/campaigns/teams/{teamId}/master-agreement/sign:
+ *   post:
+ *     summary: Sign the master agreement
+ *     description: Signs the master agreement with entity info and signature image. Auto-marks contract_ready on all accepted campaigns.
+ *     tags: [Campaigns]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - legalEntityName
+ *               - signerName
+ *               - signerTitle
+ *               - signerEmail
+ *               - signatureDataUrl
+ *             properties:
+ *               legalEntityName:
+ *                 type: string
+ *               signerName:
+ *                 type: string
+ *               signerTitle:
+ *                 type: string
+ *               signerEmail:
+ *                 type: string
+ *               signatureDataUrl:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Agreement signed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 agreement:
+ *                   type: object
+ *       400:
+ *         description: Missing required fields
+ *       401:
+ *         description: Unauthorized
+ *       409:
+ *         description: Agreement already signed
+ *       500:
+ *         description: Server error
+ */
+router.post("/teams/:teamId/master-agreement/sign", requireAuth, requireSeatAccess, signMasterAgreement);
 
 // Start
 
