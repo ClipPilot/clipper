@@ -287,7 +287,7 @@ class ViralityController {
       if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
       if (!(await requirePlanAccess(teamId, res))) return;
 
-      const { percentThreshold, absoluteThreshold, thresholdMode, timeFrameHours, enabledAccountIds } = req.body;
+      const { percentThreshold, absoluteThreshold, thresholdMode, timeFrameHours, enabledAccountIds, additionalEmails } = req.body;
 
       if (!["and", "or"].includes(thresholdMode)) {
         return res.status(400).json({ error: "thresholdMode must be 'and' or 'or'" });
@@ -304,6 +304,20 @@ class ViralityController {
       if (absoluteThreshold != null && (typeof absoluteThreshold !== "number" || absoluteThreshold <= 0)) {
         return res.status(400).json({ error: "absoluteThreshold must be a positive number" });
       }
+      if (additionalEmails !== undefined) {
+        if (!Array.isArray(additionalEmails)) {
+          return res.status(400).json({ error: "additionalEmails must be an array" });
+        }
+        if (additionalEmails.length > 10) {
+          return res.status(400).json({ error: "Maximum 10 additional emails allowed" });
+        }
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        for (const email of additionalEmails) {
+          if (typeof email !== "string" || !emailRegex.test(email)) {
+            return res.status(400).json({ error: `Invalid email: ${email}` });
+          }
+        }
+      }
 
       const settings = await viralityService.saveSettings(teamId, {
         percentThreshold: percentThreshold ?? null,
@@ -311,6 +325,7 @@ class ViralityController {
         thresholdMode,
         timeFrameHours: timeFrameHours ?? 24,
         enabledAccountIds,
+        additionalEmails: additionalEmails ?? [],
       });
 
       return res.json({ settings });

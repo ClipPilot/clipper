@@ -625,7 +625,7 @@ export default function ViralityPage() {
         <ViralSettingsModal
           isOpen={isSettingsOpen}
           onClose={onSettingsClose}
-          accounts={competitors.flatMap((c) => c.accounts)}
+          competitors={competitors}
           settings={viralSettings}
           onSave={handleSaveSettings}
         />
