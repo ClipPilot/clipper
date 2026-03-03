@@ -384,6 +384,29 @@ class CampaignAPI {
     return response.json();
   }
 
+  async fundWithCredits(
+    teamId: number,
+    campaignId: number,
+    creditCount: number
+  ): Promise<{ confirmed: boolean; balanceCents: number; creditsUsed: number; amountCents: number }> {
+    const response = await apiFetch(
+      `${API_URL}/campaigns/teams/${teamId}/campaigns/${campaignId}/wallet/fund-with-credits`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ creditCount }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to fund with credits");
+    }
+
+    return response.json();
+  }
+
   async getTopUpStatus(
     teamId: number,
     campaignId: number,

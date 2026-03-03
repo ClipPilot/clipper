@@ -16,6 +16,7 @@ import {
   saveCard,
   createTopUp,
   getTopUpStatus,
+  fundWithCredits,
   getMasterAgreement,
   signMasterAgreement,
   startCampaign,
@@ -790,6 +791,64 @@ router.post("/teams/:teamId/campaigns/:campaignId/wallet/top-up", requireAuth, r
  *         description: Server error
  */
 router.get("/teams/:teamId/campaigns/:campaignId/wallet/top-up/:piId/status", requireAuth, requireSeatAccess, getTopUpStatus);
+
+/**
+ * @openapi
+ * /api/campaigns/teams/{teamId}/campaigns/{campaignId}/wallet/fund-with-credits:
+ *   post:
+ *     summary: Fund campaign wallet with Cuttr credits
+ *     description: Converts Cuttr credits into campaign wallet dollars at the rate of 1 credit = $3.50. Credits are deducted immediately from the team's balance.
+ *     tags: [Campaigns]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: campaignId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - creditCount
+ *             properties:
+ *               creditCount:
+ *                 type: integer
+ *                 minimum: 1
+ *                 description: Number of credits to convert to campaign dollars
+ *     responses:
+ *       200:
+ *         description: Credits applied to wallet
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 confirmed:
+ *                   type: boolean
+ *                 balanceCents:
+ *                   type: integer
+ *                 creditsUsed:
+ *                   type: integer
+ *                 amountCents:
+ *                   type: integer
+ *       400:
+ *         description: Invalid credit count or insufficient credits
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.post("/teams/:teamId/campaigns/:campaignId/wallet/fund-with-credits", requireAuth, requireSeatAccess, fundWithCredits);
 
 // Master Agreement
 

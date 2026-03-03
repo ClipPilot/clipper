@@ -214,7 +214,16 @@ export async function getWallet(req: AuthRequest, res: Response) {
       return res.status(400).json({ error: "Invalid ID" });
     }
 
-    const wallet = await campaignBillingService.getOrCreateWallet(campaignId, teamId);
+    let wallet = await campaignBillingService.getOrCreateWallet(campaignId, teamId);
+
+    // Auto-populate payment method from a past campaign wallet if this one has none
+    if (!wallet.stripe_payment_method_id) {
+      const existingPmId = await campaignBillingService.getTeamPaymentMethod(teamId, campaignId);
+      if (existingPmId) {
+        await campaignBillingService.savePaymentMethod(campaignId, teamId, existingPmId);
+        wallet = await campaignBillingService.getWallet(campaignId) ?? wallet;
+      }
+    }
 
     let paymentMethod: {
       type: "card" | "us_bank_account";
@@ -410,6 +419,33 @@ export async function getTopUpStatus(req: AuthRequest, res: Response) {
     console.error("Get top-up status error:", error);
     Sentry.captureException(error);
     return res.status(500).json({ error: "Failed to check top-up status" });
+  }
+}
+
+// ── Fund with Credits ────────────────────────────
+
+export async function fundWithCredits(req: AuthRequest, res: Response) {
+  try {
+    const teamId = parseInt(req.params.teamId);
+    const campaignId = parseInt(req.params.campaignId);
+    if (isNaN(teamId) || isNaN(campaignId)) {
+      return res.status(400).json({ error: "Invalid ID" });
+    }
+
+    const creditCount = parseInt(req.body.creditCount);
+    if (isNaN(creditCount) || creditCount < 1) {
+      return res.status(400).json({ error: "creditCount must be at least 1" });
+    }
+
+    const result = await campaignBillingService.fundWithCredits(campaignId, teamId, creditCount);
+    return res.json({ confirmed: true, ...result });
+  } catch (error: any) {
+    console.error("Fund with credits error:", error);
+    if (error.message === "Insufficient credits") {
+      return res.status(400).json({ error: error.message });
+    }
+    Sentry.captureException(error);
+    return res.status(500).json({ error: "Failed to fund with credits" });
   }
 }
 
