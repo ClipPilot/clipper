@@ -10,7 +10,7 @@ import * as path from "path";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
 const FRONTEND_URL = process.env.FRONTEND_URL || "https://platform.cuttr.com";
-const DEBOUNCE_HOURS = 12;
+const DEBOUNCE_HOURS = 0;
 
 // Logo loaded once at cold-start for PDF embedding
 let logoBase64: string | null = null;
@@ -273,7 +273,7 @@ function buildSummaryEmail(groups: ViralCompetitorGroup[], teamName: string, ale
             <td style="padding: 8px 8px 8px 12px; color: #d1d5db; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${p.postUrl ? `<a href="${p.postUrl}" style="color: #93c5fd; text-decoration: underline;" target="_blank">${shortCaption}</a>` : shortCaption}</td>
             <td style="padding: 8px 6px; color: #9ca3af; font-size: 11px; white-space: nowrap;">@${username}<br/><span style="color:#6b7280;font-size:10px;">${platformLabel}</span></td>
             <td style="padding: 8px 6px; text-align: right; color: #ffffff; font-size: 12px; white-space: nowrap;">${formatNumber(p.currentViews)}</td>
-            <td style="padding: 8px 12px 8px 6px; text-align: right; color: #10b981; font-size: 12px; font-weight: 600; white-space: nowrap;">+${p.percentIncrease}%</td>
+            <td style="padding: 8px 12px 8px 6px; text-align: right; color: #10b981; font-size: 12px; font-weight: 600; white-space: nowrap;">${p.previousViews === 0 ? "New" : `+${p.percentIncrease}%`}</td>
           </tr>`;
         })
         .join("");
@@ -477,7 +477,7 @@ function buildPdfReport(groups: ViralCompetitorGroup[], teamName: string, alertS
         `@${username}`,
         platformLabel,
         formatNumber(p.currentViews),
-        `+${p.percentIncrease}%`,
+        p.previousViews === 0 ? "New" : `+${p.percentIncrease}%`,
         `+${formatNumber(p.viewsIncrease)}`,
         formatNumber(p.likeCount),
         p.postUrl ? p.postUrl : "-",
@@ -765,6 +765,52 @@ export async function checkAndSendViralAlertsForTeam(
         team_id: teamId,
         user_id: member.userId,
         email: member.email,
+        subject,
+        email_body: logSummary,
+        viral_post_ids: allViralPostIds,
+        status: "failed",
+        error_message: err.message || "Unknown error",
+        sent_at: new Date(),
+      });
+    }
+  }
+
+  // 9. Send to additional (external) email addresses
+  const additionalEmails = (settings.additional_emails as string[]) ?? [];
+  for (const extraEmail of additionalEmails) {
+    try {
+      await resend.emails.send({
+        from: "Cuttr <no-reply@mail.cuttr.com>",
+        to: extraEmail,
+        subject,
+        html: emailHtml!,
+        attachments: [
+          {
+            filename: `viral-report-${reportDate}.pdf`,
+            content: pdfBuffer!,
+          },
+        ],
+      });
+
+      await db.insert(schema.viralityAlertLogs).values({
+        team_id: teamId,
+        user_id: null,
+        email: extraEmail,
+        subject,
+        email_body: logSummary,
+        viral_post_ids: allViralPostIds,
+        status: "sent",
+        sent_at: new Date(),
+      });
+
+      console.log(`[Alerts] Email sent to additional recipient ${extraEmail} for team=${teamId}`);
+    } catch (err: any) {
+      console.error(`[Alerts] Failed to send email to additional recipient ${extraEmail}:`, err.message);
+
+      await db.insert(schema.viralityAlertLogs).values({
+        team_id: teamId,
+        user_id: null,
+        email: extraEmail,
         subject,
         email_body: logSummary,
         viral_post_ids: allViralPostIds,
