@@ -8,6 +8,14 @@ function getAuthHeaders(): HeadersInit {
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
+    if (response.status === 401 && typeof window !== "undefined") {
+      const hadToken = !!localStorage.getItem("admin_token");
+      if (hadToken) {
+        localStorage.removeItem("admin_token");
+        window.location.href = "/login";
+        throw new Error("Session expired");
+      }
+    }
     const error = await response
       .json()
       .catch(() => ({ error: "Request failed" }));
@@ -237,6 +245,7 @@ export interface CampaignVideo {
   presigned_url: string | null;
   status: string;
   created_at: string;
+  post_count: number;
 }
 
 export interface CampaignsResponse {

@@ -4,6 +4,7 @@ import {
   clips,
   tags,
   clipTags,
+  posts,
 } from "@clipper/shared-db";
 import { db } from "../../db";
 import { eq, and, inArray, sql } from "drizzle-orm";
@@ -265,6 +266,23 @@ class CampaignVideoService {
       .leftJoin(clips, eq(campaignVideos.clip_id, clips.id))
       .where(eq(campaignVideos.campaign_id, campaignId));
 
+    // Get post counts per clip_id for this campaign
+    const clipIds = rows.map((r) => r.clip_id).filter((id): id is number => id != null);
+    const postCountMap = new Map<number, number>();
+    if (clipIds.length > 0) {
+      const postCounts = await db
+        .select({
+          clip_id: posts.clip_id,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(posts)
+        .where(and(eq(posts.campaign_id, campaignId), inArray(posts.clip_id, clipIds)))
+        .groupBy(posts.clip_id);
+      for (const row of postCounts) {
+        if (row.clip_id != null) postCountMap.set(row.clip_id, row.count);
+      }
+    }
+
     // Generate presigned URLs
     const videosWithUrls = await Promise.all(
       rows.map(async (row) => {
@@ -285,6 +303,7 @@ class CampaignVideoService {
           presigned_url: videoUrl,
           status: "ready" as const,
           created_at: row.created_at,
+          post_count: row.clip_id ? (postCountMap.get(row.clip_id) ?? 0) : 0,
         };
       }),
     );
