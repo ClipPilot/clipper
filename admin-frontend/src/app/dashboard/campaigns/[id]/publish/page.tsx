@@ -421,6 +421,7 @@ export default function CampaignPublishPage() {
 
   const [videos, setVideos] = useState<CampaignVideo[]>([]);
   const [videosLoading, setVideosLoading] = useState(false);
+  const [videoFilter, setVideoFilter] = useState<"all" | "unpublished" | "published">("all");
 
   const [publishingVideo, setPublishingVideo] = useState<CampaignVideo | null>(null);
   const [postSuccess, setPostSuccess] = useState<string | null>(null);
@@ -461,6 +462,7 @@ export default function CampaignPublishPage() {
     setPostSuccess(`Queued ${postIds.length} post${postIds.length !== 1 ? "s" : ""} for processing`);
     setPublishingVideo(null);
     setPostsKey((k) => k + 1); // refresh posts table
+    fetchVideos(); // refresh video post counts
   };
 
   if (loading) {
@@ -539,46 +541,82 @@ export default function CampaignPublishPage() {
       {/* Videos list */}
       <div className="bg-surface border border-border rounded-2xl overflow-hidden mb-8">
         <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-text-primary">Campaign Videos</h2>
+          <div className="flex items-center gap-4">
+            <h2 className="text-sm font-semibold text-text-primary">Campaign Videos</h2>
+            <div className="flex items-center gap-1 bg-surface-elevated rounded-lg p-0.5">
+              {(["all", "unpublished", "published"] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setVideoFilter(f)}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition-colors capitalize ${
+                    videoFilter === f
+                      ? "bg-surface text-text-primary shadow-sm"
+                      : "text-text-tertiary hover:text-text-secondary"
+                  }`}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+          </div>
           <button onClick={fetchVideos} disabled={videosLoading} className="text-xs text-text-tertiary hover:text-text-secondary disabled:opacity-50">{videosLoading ? "Refreshing..." : "Refresh"}</button>
         </div>
         {videosLoading && videos.length === 0 ? (
           <div className="p-12 text-center text-text-secondary">Loading videos...</div>
         ) : videos.length === 0 ? (
           <div className="p-12 text-center text-text-tertiary">No videos in this campaign yet.</div>
-        ) : (
-          <div className="divide-y divide-border">
-            {videos.map((video) => (
-              <div key={video.id} className="px-6 py-4 flex items-center gap-4 hover:bg-surface-hover/50 transition-colors">
-                {video.presigned_url ? (
-                  <button
-                    onClick={() => setPlayingVideo({ url: video.presigned_url!, title: video.title ?? video.file_name ?? `Video #${video.id}` })}
-                    className="relative group w-24 h-14 rounded-lg overflow-hidden bg-black flex-shrink-0"
-                  >
-                    <video src={video.presigned_url} className="w-full h-full object-cover" muted preload="metadata" />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                      <svg className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+        ) : (() => {
+          const filtered = videos.filter((v) => {
+            if (videoFilter === "published") return v.post_count > 0;
+            if (videoFilter === "unpublished") return v.post_count === 0;
+            return true;
+          });
+          return filtered.length === 0 ? (
+            <div className="p-12 text-center text-text-tertiary">
+              No {videoFilter} videos.
+            </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {filtered.map((video) => (
+                <div key={video.id} className="px-6 py-4 flex items-center gap-4 hover:bg-surface-hover/50 transition-colors">
+                  {video.presigned_url ? (
+                    <button
+                      onClick={() => setPlayingVideo({ url: video.presigned_url!, title: video.title ?? video.file_name ?? `Video #${video.id}` })}
+                      className="relative group w-24 h-14 rounded-lg overflow-hidden bg-black flex-shrink-0"
+                    >
+                      <video src={video.presigned_url} className="w-full h-full object-cover" muted preload="metadata" />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                        <svg className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                      </div>
+                    </button>
+                  ) : (
+                    <div className="w-24 h-14 rounded-lg bg-surface-elevated flex-shrink-0 flex items-center justify-center text-text-tertiary text-xs">No preview</div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-text-primary truncate">{video.title ?? video.file_name ?? `Video #${video.id}`}</p>
+                      {video.post_count > 0 && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-green-500/10 border border-green-500/20 text-green-400 flex-shrink-0">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                          Published ({video.post_count})
+                        </span>
+                      )}
                     </div>
-                  </button>
-                ) : (
-                  <div className="w-24 h-14 rounded-lg bg-surface-elevated flex-shrink-0 flex items-center justify-center text-text-tertiary text-xs">No preview</div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-text-primary truncate">{video.title ?? video.file_name ?? `Video #${video.id}`}</p>
-                  <div className="flex items-center gap-3 mt-1">
-                    {video.clip_id && <span className="text-xs text-text-tertiary">Clip #{video.clip_id}</span>}
-                    {video.duration_seconds != null && <span className="text-xs text-text-tertiary">{Math.floor(video.duration_seconds / 60)}:{String(Math.floor(video.duration_seconds % 60)).padStart(2, "0")}</span>}
+                    <div className="flex items-center gap-3 mt-1">
+                      {video.clip_id && <span className="text-xs text-text-tertiary">Clip #{video.clip_id}</span>}
+                      {video.duration_seconds != null && <span className="text-xs text-text-tertiary">{Math.floor(video.duration_seconds / 60)}:{String(Math.floor(video.duration_seconds % 60)).padStart(2, "0")}</span>}
+                    </div>
                   </div>
+                  {video.clip_id ? (
+                    <button onClick={() => setPublishingVideo(video)} className="px-4 py-2 rounded-lg bg-emerald/10 border border-emerald/20 text-emerald text-sm font-medium hover:bg-emerald/20 transition-colors flex-shrink-0">Publish</button>
+                  ) : (
+                    <span className="text-xs text-text-tertiary flex-shrink-0">No clip linked</span>
+                  )}
                 </div>
-                {video.clip_id ? (
-                  <button onClick={() => setPublishingVideo(video)} className="px-4 py-2 rounded-lg bg-emerald/10 border border-emerald/20 text-emerald text-sm font-medium hover:bg-emerald/20 transition-colors flex-shrink-0">Publish</button>
-                ) : (
-                  <span className="text-xs text-text-tertiary flex-shrink-0">No clip linked</span>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Posts Table */}

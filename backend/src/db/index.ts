@@ -27,13 +27,15 @@ const initializeDatabase = () => {
       throw new Error("DATABASE_URL is not defined");
     }
 
+    const isWorker = process.argv[1]?.includes("worker");
+
     pool = new Pool({
       connectionString: databaseUrl,
-      max: 20, // Increased for concurrent API + worker usage
-      min: 2, // Keep minimum connections alive
-      idleTimeoutMillis: 60000, // 60s before closing idle connections
-      connectionTimeoutMillis: 30000, // 30s to wait for connection
-      allowExitOnIdle: false, // Don't exit if idle
+      max: isWorker ? 5 : 10, // Keep below Supabase pooler limit (API + worker share it)
+      min: 1,
+      idleTimeoutMillis: 30000, // 30s before closing idle connections
+      connectionTimeoutMillis: 10000, // 10s to wait for connection
+      allowExitOnIdle: false,
     });
 
     // Handle pool errors gracefully
