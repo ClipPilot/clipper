@@ -875,6 +875,7 @@ export default function CreateClipPage() {
           onGenerateShareLink={() => Promise.resolve("")}
           onRemoveShareLink={() => Promise.resolve()}
           onUpdateTitle={() => Promise.resolve()}
+          onEdit={() => { closeViewModal(); router.push(`/dashboard/clips/${selectedClip.id}/edit`); }}
         />
       )}
 

@@ -68,6 +68,7 @@ interface ClipViewModalProps {
   onRemoveShareLink?: (clipId: number) => Promise<void>;
   onUpdateTitle?: (clipId: number, title: string) => Promise<void>;
   onAdPosting?: () => void;
+  onEdit?: () => void;
 }
 
 const PLATFORM_META: Record<string, { name: string; icon: string }> = {
@@ -105,6 +106,7 @@ export default function ClipViewModal({
   onRemoveShareLink,
   onUpdateTitle,
   onAdPosting,
+  onEdit,
 }: ClipViewModalProps) {
   const [isMoving, setIsMoving] = useState(false);
   const [isUpdatingTags, setIsUpdatingTags] = useState(false);
@@ -959,6 +961,15 @@ export default function ClipViewModal({
                   </Button>
                 )}
               </>
+            )}
+            {onEdit && clip.clipUrl && clip.clip_metadata?.type !== "face-swap" && (
+              <Button
+                variant="flat"
+                startContent={<Icon icon="solar:pen-bold" />}
+                onPress={onEdit}
+              >
+                Edit
+              </Button>
             )}
             {onAdPosting && clip.clipUrl && (
               <Button
