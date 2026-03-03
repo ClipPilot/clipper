@@ -358,7 +358,7 @@ export class ClipManagerService {
       .where(
         and(
           eq(clips.team_id, teamId),
-          eq(clips.status, "completed"),
+          or(eq(clips.status, "completed"), eq(clips.status, "pending")),
           eq(clips.saved, true),
           isNull(clips.folder_id)
         )

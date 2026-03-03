@@ -47,6 +47,7 @@ export function useClipsData() {
   const [clipToDelete, setClipToDelete] = useAtom(clipToDeleteAtom);
   const [isDeleting, setIsDeleting] = useAtom(isDeletingClipAtom);
   const triggerRefreshRef = useRef<(() => void) | null>(null);
+  const recentlyDeletedRef = useRef<Set<number>>(new Set());
 
   const loadPendingClips = useCallback(async () => {
     if (!selectedTeam?.id) return;
@@ -149,6 +150,8 @@ export function useClipsData() {
     setIsDeleting(true);
     try {
       await clipsAPI.deleteClip(selectedTeam.id, clipToDelete.id);
+      recentlyDeletedRef.current.add(clipToDelete.id);
+      setTimeout(() => recentlyDeletedRef.current.delete(clipToDelete.id), 10_000);
       setPendingClips((prev) => prev.filter((c) => c.id !== clipToDelete.id));
       setUnsavedClips((prev) => prev.filter((c) => c.id !== clipToDelete.id));
       setSavedClips((prev) => prev.filter((c) => c.id !== clipToDelete.id));
@@ -215,17 +218,14 @@ export function useClipsData() {
       );
 
       setSavedClips((prev) => {
-        const existingMap = new Map(prev.map((c) => [c.id, c]));
-
-        // Update existing clips with fresh data (e.g., status changes)
-        for (const fresh of freshClips) {
-          existingMap.set(fresh.id, fresh);
-        }
+        // Filter out recently deleted clips so they don't get re-added
+        const deleted = recentlyDeletedRef.current;
+        const filtered = freshClips.filter((c) => !deleted.has(c.id));
 
         // Build new array: fresh clips first (preserving server order), then remaining existing
-        const freshIds = new Set(freshClips.map((c) => c.id));
-        const remaining = prev.filter((c) => !freshIds.has(c.id));
-        return [...freshClips, ...remaining];
+        const freshIds = new Set(filtered.map((c) => c.id));
+        const remaining = prev.filter((c) => !freshIds.has(c.id) && !deleted.has(c.id));
+        return [...filtered, ...remaining];
       });
     } catch (error) {
       console.error("Failed to refresh saved clips:", error);

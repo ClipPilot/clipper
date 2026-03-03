@@ -76,6 +76,8 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
     return "text-text-tertiary bg-surface-elevated";
   };
 
+  const isEditing = clip.status === "pending" && clip.saved && !!clip.clipUrl;
+
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData("clipId", clip.id.toString());
     e.dataTransfer.effectAllowed = "move";
@@ -161,10 +163,16 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
           )}
         </div>
 
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 flex items-center gap-2">
           <h3 className="text-sm font-medium text-text-primary truncate">
             {clip.title || `Clip #${clip.id}`}
           </h3>
+          {isEditing && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-warning-500/15 text-warning-500 flex-shrink-0">
+              <Icon icon="svg-spinners:ring-resize" className="text-xs" />
+              Editing
+            </span>
+          )}
         </div>
 
         {clip.clip_score !== undefined && clip.clip_score !== null && (
@@ -338,6 +346,13 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
               </div>
             )}
           </div>
+
+          {isEditing && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-warning-500/15 text-warning-500 w-fit mb-1">
+              <Icon icon="svg-spinners:ring-resize" className="text-xs" />
+              Editing
+            </span>
+          )}
 
           {clip.message && (
             <p className="text-xs text-text-secondary line-clamp-2 mb-2">

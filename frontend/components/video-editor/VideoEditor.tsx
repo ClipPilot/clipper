@@ -76,7 +76,7 @@ export function VideoEditor() {
 
   const handleSuccessModalClose = () => {
     setShowSuccessModal(false);
-    router.push("/dashboard/create-clip");
+    router.push("/dashboard/clips");
   };
 
   if (loading) {
