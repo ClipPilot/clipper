@@ -208,10 +208,26 @@ VARIATION PLANNING: Before selecting clips, identify ${numberOfVideos} distinct 
 The final output video should be AROUND ${length} seconds long (±15% is fine — quality matters more than hitting an exact number).
 
 You will be given:
-- The full transcription text from a video
+- The actual video file (watch it for visual analysis)
+- The full transcription text from the video
 - And the transcript object in the following schema:
   - "paragraphs" → list
     - each paragraph → "sentences" with "text", "start", "end", "speaker", "num_words"
+
+===== VIDEO ANALYSIS (WATCH THE VIDEO) =====
+You have access to the actual video file. WATCH IT CAREFULLY alongside the transcript.
+
+VISUAL CUES TO LOOK FOR:
+- Facial expressions: Shock, surprise, laughter, genuine reactions
+- Body language: Leaning forward, standing up, physical comedy
+- Unexpected visual events: Something breaking, falling, appearing unexpectedly
+- Screen reactions: Chat going crazy, kill feeds, UI elements indicating hype
+- Environmental chaos: Multiple things happening, crowd reactions
+- Energy shifts: Calm-to-explosion moments visible on screen
+
+Combine what you SEE with what you HEAR to find the most viral-worthy moments.
+Use the transcript for precise timestamps, but let the VISUAL content guide which moments are truly viral.
+===== END VIDEO ANALYSIS =====
 
 Your Goals:
 1. Find the most VIRAL HOOK that is AROUND ${hookLength} seconds long (±2 seconds is fine):

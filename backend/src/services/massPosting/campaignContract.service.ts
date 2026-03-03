@@ -6,161 +6,292 @@ import {
   teamMembers,
 } from "@clipper/shared-db";
 import { db } from "../../db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, ne } from "drizzle-orm";
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { s3Service } from "../s3.service";
 import { emailNotiService } from "../emailNoti.service";
-
-export interface ContractClauses {
-  parties?: string;
-  providerObligations?: string;
-  clientObligations?: string;
-  paymentTerms?: string;
-  additionalClauses?: string[];
-}
-
-const DEFAULT_CLAUSES: Required<Omit<ContractClauses, "additionalClauses">> & {
-  additionalClauses: string[];
-} = {
-  parties:
-    'This Agreement is entered into between Cuttr Inc. ("Provider") and {{TEAM_NAME}} ("Client") for the campaign "{{CAMPAIGN_NAME}}".',
-  providerObligations:
-    "Provider agrees to distribute Client's video content across its network of social media accounts to achieve the guaranteed view count specified above.",
-  clientObligations:
-    "Client agrees to provide the minimum number of videos as specified above, deposit the agreed campaign budget, and ensure all content complies with platform guidelines.",
-  paymentTerms:
-    "Campaign budget must be deposited in full before the campaign can start. Funds will be drawn from the campaign wallet as posts are distributed.",
-  additionalClauses: [],
-};
+import {
+  MASTER_AGREEMENT_TITLE,
+  COMPANY_ENTITY,
+  AGREEMENT_SECTIONS,
+  PREAMBLE_PARAGRAPHS,
+  ELECTRONIC_SIGNATURE_TITLE,
+  ELECTRONIC_SIGNATURE_PARAGRAPHS,
+  CLOSING_NOTE,
+} from "../../constants/masterAgreementText";
 
 class CampaignContractService {
-  private buildPdf(
-    campaign: { name: string; quoted_cpm: string | null; budget: string | null; video_minimum: number | null },
-    teamName: string,
-    clauses: ContractClauses,
-  ) {
-    const merged = {
-      parties: (clauses.parties || DEFAULT_CLAUSES.parties)
-        .replace(/\{\{TEAM_NAME\}\}/g, teamName)
-        .replace(/\{\{CAMPAIGN_NAME\}\}/g, campaign.name),
-      providerObligations: clauses.providerObligations || DEFAULT_CLAUSES.providerObligations,
-      clientObligations: clauses.clientObligations || DEFAULT_CLAUSES.clientObligations,
-      paymentTerms: clauses.paymentTerms || DEFAULT_CLAUSES.paymentTerms,
-      additionalClauses: clauses.additionalClauses || DEFAULT_CLAUSES.additionalClauses,
-    };
-    return { merged, campaign, teamName };
-  }
+  // ── Master Agreement Methods ──────────────────────────────────────────────
 
-  async generateContract(campaignId: number, customClauses?: ContractClauses) {
-    const [campaign] = await db
-      .select()
-      .from(campaigns)
-      .where(eq(campaigns.id, campaignId))
-      .limit(1);
-
-    if (!campaign) throw new Error("Campaign not found");
-
-    const [team] = await db
-      .select()
-      .from(teams)
-      .where(eq(teams.id, campaign.team_id))
-      .limit(1);
-
-    if (!team) throw new Error("Team not found");
-
-    const clauses = customClauses || {};
-
-    // Build contract terms (stored in DB)
-    const terms = {
-      cpmRate: campaign.quoted_cpm,
-      budget: campaign.budget,
-      videoMinimum: campaign.video_minimum,
-      teamName: team.name,
-      campaignName: campaign.name,
-      date: new Date().toISOString(),
-      clauses: {
-        parties: clauses.parties || DEFAULT_CLAUSES.parties,
-        providerObligations: clauses.providerObligations || DEFAULT_CLAUSES.providerObligations,
-        clientObligations: clauses.clientObligations || DEFAULT_CLAUSES.clientObligations,
-        paymentTerms: clauses.paymentTerms || DEFAULT_CLAUSES.paymentTerms,
-        additionalClauses: clauses.additionalClauses || DEFAULT_CLAUSES.additionalClauses,
-      },
-    };
-
-    const { merged } = this.buildPdf(campaign, team.name, terms.clauses);
-
-    // Generate PDF
-    const { buffer: pdfBuffer, clientSignatureY } = await this.renderPdf(campaign, merged, team.name);
-
-    // Store signature position in terms for later stamping
-    (terms as any)._clientSignatureY = clientSignatureY;
-
-    // Upload to S3
-    const s3Key = `contracts/${campaign.team_id}/${campaignId}/unsigned_${Date.now()}.pdf`;
-    await s3Service.uploadBuffer(pdfBuffer, s3Key, "application/pdf");
-
-    // Create or update contract row
-    const [existingContract] = await db
-      .select()
-      .from(campaignContracts)
-      .where(eq(campaignContracts.campaign_id, campaignId))
-      .limit(1);
-
-    if (existingContract) {
-      const [updated] = await db
-        .update(campaignContracts)
-        .set({
-          terms,
-          unsigned_pdf_key: s3Key,
-          status: "pending",
-          updated_at: new Date(),
-        })
-        .where(eq(campaignContracts.id, existingContract.id))
-        .returning();
-      return updated;
+  async getOrGenerateMasterAgreement(teamId: number) {
+    // Check for existing master agreement (any status except voided)
+    const existing = await this.getSignedOrPendingMaster(teamId);
+    if (existing) {
+      return this.formatMasterAgreement(existing);
     }
+
+    // Generate a new unsigned master agreement
+    const { buffer: pdfBuffer, clientSignatureY } =
+      await this.renderMasterAgreementPdf();
+
+    const s3Key = `contracts/${teamId}/master/unsigned_${Date.now()}.pdf`;
+    await s3Service.uploadBuffer(pdfBuffer, s3Key, "application/pdf");
 
     const [contract] = await db
       .insert(campaignContracts)
       .values({
-        campaign_id: campaignId,
-        team_id: campaign.team_id,
-        terms,
+        campaign_id: null,
+        team_id: teamId,
+        is_master: true,
+        terms: { _clientSignatureY: clientSignatureY },
         unsigned_pdf_key: s3Key,
+        effective_date: new Date(),
         status: "pending",
       })
       .returning();
 
-    return contract;
+    return this.formatMasterAgreement(contract);
   }
 
-  async updateAndRegenerate(campaignId: number, clauses: ContractClauses) {
-    // Verify contract exists and isn't signed
+  async signMasterAgreement(
+    teamId: number,
+    userId: number,
+    data: {
+      legalEntityName: string;
+      signerName: string;
+      signerTitle: string;
+      signerEmail: string;
+      signatureDataUrl: string;
+    },
+    ipAddress: string,
+  ) {
+    const master = await this.getSignedOrPendingMaster(teamId);
+    if (!master) throw new Error("No master agreement found");
+    if (master.status === "signed") throw new Error("Agreement already signed");
+
+    // Decode signature and upload to S3
+    const signatureBuffer = Buffer.from(
+      data.signatureDataUrl.replace(/^data:image\/\w+;base64,/, ""),
+      "base64",
+    );
+    const signatureKey = `contracts/${teamId}/master/signature_${Date.now()}.png`;
+    await s3Service.uploadBuffer(signatureBuffer, signatureKey, "image/png");
+
+    // Stamp signature onto the unsigned PDF
+    let signedPdfKey: string | null = null;
+    if (master.unsigned_pdf_key) {
+      try {
+        const pdfBuffer = await s3Service.getImageAsBuffer(
+          master.unsigned_pdf_key,
+        );
+        const pdfDoc = await PDFDocument.load(pdfBuffer);
+        const pages = pdfDoc.getPages();
+        const lastPage = pages[pages.length - 1];
+
+        const pageMargin = 64;
+        const pageContentWidth = 612 - pageMargin * 2;
+        const colWidth = (pageContentWidth - 40) / 2;
+        const rightX = pageMargin + colWidth + 40;
+
+        const terms = master.terms as Record<string, any> | null;
+        const sigLineY = terms?._clientSignatureY ?? pageMargin + 80;
+
+        // Embed signature image
+        const sigImage = await pdfDoc.embedPng(signatureBuffer);
+        const maxW = colWidth - 10;
+        const maxH = 30;
+        const scale = Math.min(
+          maxW / sigImage.width,
+          maxH / sigImage.height,
+          0.4,
+        );
+        const sigW = sigImage.width * scale;
+        const sigH = sigImage.height * scale;
+        lastPage.drawImage(sigImage, {
+          x: rightX + 2,
+          y: sigLineY + 4,
+          width: sigW,
+          height: sigH,
+        });
+
+        const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+        const darkColor = rgb(0.1, 0.1, 0.14);
+
+        // Entity name (above entity line at sigLineY - 36)
+        lastPage.drawText(data.legalEntityName, {
+          x: rightX,
+          y: sigLineY - 30,
+          size: 10,
+          font,
+          color: darkColor,
+        });
+
+        // Signer name + title (above name/title line at sigLineY - 72)
+        lastPage.drawText(`${data.signerName}, ${data.signerTitle}`, {
+          x: rightX,
+          y: sigLineY - 66,
+          size: 9,
+          font,
+          color: darkColor,
+        });
+
+        // Date (above date line at sigLineY - 108)
+        lastPage.drawText(
+          new Date().toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          }),
+          {
+            x: rightX,
+            y: sigLineY - 102,
+            size: 10,
+            font,
+            color: darkColor,
+          },
+        );
+
+        const signedBytes = await pdfDoc.save();
+        signedPdfKey = `contracts/${teamId}/master/signed_${Date.now()}.pdf`;
+        await s3Service.uploadBuffer(
+          Buffer.from(signedBytes),
+          signedPdfKey,
+          "application/pdf",
+        );
+      } catch (err) {
+        console.error(
+          "[MasterAgreement] Failed to stamp signature on PDF:",
+          err,
+        );
+      }
+    }
+
+    // Update contract record
+    const [updated] = await db
+      .update(campaignContracts)
+      .set({
+        signed_by_user_id: userId,
+        signer_legal_name: data.signerName,
+        signer_legal_entity_name: data.legalEntityName,
+        signer_title: data.signerTitle,
+        signer_email: data.signerEmail,
+        signer_ip_address: ipAddress,
+        signature_image_key: signatureKey,
+        signed_pdf_key: signedPdfKey,
+        signed_at: new Date(),
+        status: "signed",
+        updated_at: new Date(),
+      })
+      .where(eq(campaignContracts.id, master.id))
+      .returning();
+
+    // Auto-mark contract_ready on all accepted campaigns for this team
+    await db
+      .update(campaigns)
+      .set({ contract_ready: true, updated_at: new Date() })
+      .where(
+        and(
+          eq(campaigns.team_id, teamId),
+          eq(campaigns.status, "accepted"),
+        ),
+      );
+
+    // Send notification emails
+    try {
+      const [team] = await db
+        .select()
+        .from(teams)
+        .where(eq(teams.id, teamId))
+        .limit(1);
+
+      const [owner] = await db
+        .select({ email: users.email, firstName: users.first_name })
+        .from(teamMembers)
+        .innerJoin(users, eq(teamMembers.user_id, users.id))
+        .where(
+          and(
+            eq(teamMembers.team_id, teamId),
+            eq(teamMembers.role, "owner"),
+          ),
+        )
+        .limit(1);
+
+      if (owner?.email) {
+        const recipients = [owner.email, "contact@cuttr.com"];
+        for (const to of recipients) {
+          try {
+            await emailNotiService.sendEmailNotification(
+              to,
+              `Master Agreement Signed — ${team?.name || "Team"}`,
+              `<p>The Cuttr Campaign Services Agreement has been signed by ${data.signerName} (${data.legalEntityName}).</p>`,
+            );
+          } catch {}
+        }
+      }
+    } catch (emailError) {
+      console.error(
+        "Failed to send master agreement signed email:",
+        emailError,
+      );
+    }
+
+    return this.formatMasterAgreement(updated);
+  }
+
+  async getSignedMasterAgreement(teamId: number) {
     const [contract] = await db
       .select()
       .from(campaignContracts)
-      .where(eq(campaignContracts.campaign_id, campaignId))
+      .where(
+        and(
+          eq(campaignContracts.team_id, teamId),
+          eq(campaignContracts.is_master, true),
+          eq(campaignContracts.status, "signed"),
+        ),
+      )
       .limit(1);
 
-    if (!contract) throw new Error("Contract not found");
-    if (contract.status === "signed") throw new Error("Cannot edit a signed contract");
-
-    return this.generateContract(campaignId, clauses);
+    if (!contract) return null;
+    return this.formatMasterAgreement(contract);
   }
 
-  private async renderPdf(
-    campaign: { name: string; quoted_cpm: string | null; budget: string | null; video_minimum: number | null },
-    clauses: {
-      parties: string;
-      providerObligations: string;
-      clientObligations: string;
-      paymentTerms: string;
-      additionalClauses: string[];
-    },
-    teamName: string,
-  ): Promise<{ buffer: Buffer; clientSignatureY: number }> {
+  async hasSignedMasterAgreement(teamId: number): Promise<boolean> {
+    const [contract] = await db
+      .select({ id: campaignContracts.id })
+      .from(campaignContracts)
+      .where(
+        and(
+          eq(campaignContracts.team_id, teamId),
+          eq(campaignContracts.is_master, true),
+          eq(campaignContracts.status, "signed"),
+        ),
+      )
+      .limit(1);
+
+    return !!contract;
+  }
+
+  // ── Contract Gate (updated for master agreement) ──────────────────────────
+
+  async checkContractGate(teamId: number, campaignId: number): Promise<boolean> {
+    const hasMaster = await this.hasSignedMasterAgreement(teamId);
+
+    await db
+      .update(campaigns)
+      .set({ contract_ready: hasMaster, updated_at: new Date() })
+      .where(eq(campaigns.id, campaignId));
+
+    return hasMaster;
+  }
+
+  // ── PDF Rendering ─────────────────────────────────────────────────────────
+
+  async renderMasterAgreementPdf(): Promise<{
+    buffer: Buffer;
+    clientSignatureY: number;
+  }> {
     const pdfDoc = await PDFDocument.create();
     const bodyFont = await pdfDoc.embedFont(StandardFonts.TimesRoman);
     const bodyBoldFont = await pdfDoc.embedFont(StandardFonts.TimesRomanBold);
@@ -170,11 +301,14 @@ class CampaignContractService {
     // Embed Cuttr logo
     let logoImage: Awaited<ReturnType<typeof pdfDoc.embedPng>> | null = null;
     try {
-      const logoPath = join(__dirname, "../../templates/assets/cuttr-logo.png");
+      const logoPath = join(
+        __dirname,
+        "../../templates/assets/cuttr-logo.png",
+      );
       const logoBytes = readFileSync(logoPath);
       logoImage = await pdfDoc.embedPng(logoBytes);
     } catch (err) {
-      console.warn("[CampaignContract] Could not embed logo:", err);
+      console.warn("[MasterAgreement] Could not embed logo:", err);
     }
 
     const pageWidth = 612;
@@ -184,7 +318,7 @@ class CampaignContractService {
     const darkColor = rgb(0.1, 0.1, 0.14);
     const grayColor = rgb(0.42, 0.42, 0.48);
     const lightGray = rgb(0.82, 0.82, 0.85);
-    const accentColor = rgb(0.22, 0.52, 1.0); // Cuttr blue
+    const accentColor = rgb(0.22, 0.52, 1.0);
 
     let page = pdfDoc.addPage([pageWidth, pageHeight]);
     let y = pageHeight - margin;
@@ -199,7 +333,7 @@ class CampaignContractService {
 
     const drawFooter = () => {
       const pageCount = pdfDoc.getPageCount();
-      const footerText = `Cuttr Inc.  |  Campaign Service Agreement  |  Page ${pageCount}`;
+      const footerText = `${COMPANY_ENTITY}  |  ${MASTER_AGREEMENT_TITLE}  |  Page ${pageCount}`;
       const footerWidth = labelFont.widthOfTextAtSize(footerText, 7.5);
       page.drawText(footerText, {
         x: (pageWidth - footerWidth) / 2,
@@ -284,25 +418,6 @@ class CampaignContractService {
       }
     };
 
-    const drawTermRow = (label: string, value: string) => {
-      ensureSpace(20);
-      page.drawText(label, {
-        x: margin + 8,
-        y,
-        size: 9.5,
-        font: labelFont,
-        color: grayColor,
-      });
-      page.drawText(value, {
-        x: margin + 180,
-        y,
-        size: 10,
-        font: bodyBoldFont,
-        color: darkColor,
-      });
-      y -= 18;
-    };
-
     // ── Header with Logo ────────────────────────────────────────
 
     if (logoImage) {
@@ -340,22 +455,12 @@ class CampaignContractService {
     });
     y -= 46;
 
-    // Accent bar
-    page.drawRectangle({
-      x: margin,
-      y: y + 2,
-      width: contentWidth,
-      height: 3,
-      color: accentColor,
-    });
-    y -= 14;
-
     // Title
-    drawHeading("Campaign Service Agreement", 20);
+    drawHeading(MASTER_AGREEMENT_TITLE, 20);
     y -= 2;
 
-    // Campaign name subtitle
-    page.drawText(campaign.name, {
+    // Subtitle
+    page.drawText(COMPANY_ENTITY, {
       x: margin,
       y,
       size: 12,
@@ -366,63 +471,48 @@ class CampaignContractService {
 
     drawRule(0.5);
 
-    // ── Section 1: Parties ──────────────────────────────────────
+    // ── Effective Date + Preamble ───────────────────────────────
 
-    drawSectionTitle(1, "Parties");
-    drawBody(clauses.parties);
-    y -= 6;
-
-    // ── Section 2: Campaign Terms ───────────────────────────────
-
-    drawSectionTitle(2, "Campaign Terms");
-
-    // Terms with left accent border
-    ensureSpace(70);
-    const termsStartY = y;
-    drawTermRow("CPM Rate", `$${campaign.quoted_cpm || "TBD"}`);
-    drawTermRow("Campaign Budget", campaign.budget ? `$${Number(campaign.budget).toLocaleString()}` : "TBD");
-    drawTermRow("Minimum Videos", campaign.video_minimum != null ? String(campaign.video_minimum) : "TBD");
-    // Left accent bar spanning the term rows
-    page.drawRectangle({
+    const effectiveDateLabel = `Effective Date: ${dateStr}`;
+    page.drawText(effectiveDateLabel, {
       x: margin,
       y,
-      width: 3,
-      height: termsStartY - y + 4,
-      color: accentColor,
+      size: 10,
+      font: bodyBoldFont,
+      color: darkColor,
     });
-    y -= 6;
+    y -= 24;
 
-    // ── Section 3: Provider Obligations ─────────────────────────
-
-    drawSectionTitle(3, "Provider Obligations");
-    drawBody(clauses.providerObligations);
-    y -= 6;
-
-    // ── Section 4: Client Obligations ───────────────────────────
-
-    drawSectionTitle(4, "Client Obligations");
-    drawBody(clauses.clientObligations);
-    y -= 6;
-
-    // ── Section 5: Payment Terms ────────────────────────────────
-
-    drawSectionTitle(5, "Payment Terms");
-    drawBody(clauses.paymentTerms);
-    y -= 6;
-
-    // ── Additional Clauses ──────────────────────────────────────
-
-    let sectionNum = 6;
-    for (const clause of clauses.additionalClauses) {
-      drawSectionTitle(sectionNum, "Additional Terms");
-      drawBody(clause);
+    for (const para of PREAMBLE_PARAGRAPHS) {
+      drawBody(para);
       y -= 6;
-      sectionNum++;
+    }
+
+    // ── Render all 9 sections ────────────────────────────────────
+
+    for (const section of AGREEMENT_SECTIONS) {
+      drawSectionTitle(section.number, section.title);
+      for (const para of section.paragraphs) {
+        drawBody(para);
+        y -= 4;
+      }
+      y -= 4;
+    }
+
+    // ── Electronic Signature Section ─────────────────────────────
+
+    ensureSpace(60);
+    y -= 10;
+    drawHeading(ELECTRONIC_SIGNATURE_TITLE.toUpperCase(), 12);
+    y -= 2;
+    for (const para of ELECTRONIC_SIGNATURE_PARAGRAPHS) {
+      drawBody(para);
+      y -= 4;
     }
 
     // ── Signature Block ─────────────────────────────────────────
 
-    const sigBlockHeight = 170;
+    const sigBlockHeight = 230;
     ensureSpace(sigBlockHeight);
     y -= 14;
     drawRule(0.75, accentColor);
@@ -430,14 +520,13 @@ class CampaignContractService {
     drawHeading("Signatures", 14);
     y -= 6;
 
-    // Two-column layout: Provider (left) | Client (right)
-    const colWidth = (contentWidth - 40) / 2; // 40px gap
+    const colWidth = (contentWidth - 40) / 2;
     const leftX = margin;
     const rightX = margin + colWidth + 40;
     const sigTop = y;
 
-    // ── Provider column (left) — auto-signed ──
-    page.drawText("PROVIDER", {
+    // ── Company column (left) — auto-signed ──
+    page.drawText("COMPANY", {
       x: leftX,
       y: sigTop,
       size: 8,
@@ -445,48 +534,69 @@ class CampaignContractService {
       color: grayColor,
     });
 
-    // Auto-signature: "The Cuttr Team" in italic-style
     const sigFont = await pdfDoc.embedFont(StandardFonts.TimesRomanBoldItalic);
-    page.drawText("The Cuttr Team", {
+    page.drawText("Clipper Media Group", {
       x: leftX,
-      y: sigTop - 28,
+      y: sigTop - 22,
       size: 16,
       font: sigFont,
       color: accentColor,
     });
 
-    // Signature line below the auto-signature
+    // Signature line
     page.drawLine({
-      start: { x: leftX, y: sigTop - 36 },
-      end: { x: leftX + colWidth, y: sigTop - 36 },
+      start: { x: leftX, y: sigTop - 30 },
+      end: { x: leftX + colWidth, y: sigTop - 30 },
       thickness: 0.5,
       color: darkColor,
     });
     page.drawText("Signature", {
       x: leftX,
-      y: sigTop - 48,
+      y: sigTop - 42,
       size: 8,
       font: labelFont,
       color: grayColor,
     });
 
-    // Printed name
-    page.drawText("Cuttr Inc.", {
+    // Entity name
+    page.drawText(COMPANY_ENTITY, {
       x: leftX,
-      y: sigTop - 66,
+      y: sigTop - 60,
       size: 10,
       font: bodyFont,
       color: darkColor,
     });
     page.drawLine({
-      start: { x: leftX, y: sigTop - 72 },
-      end: { x: leftX + colWidth, y: sigTop - 72 },
+      start: { x: leftX, y: sigTop - 66 },
+      end: { x: leftX + colWidth, y: sigTop - 66 },
       thickness: 0.5,
       color: darkColor,
     });
-    page.drawText("Printed Name", {
+    page.drawText("Entity Name", {
       x: leftX,
-      y: sigTop - 84,
+      y: sigTop - 78,
+      size: 8,
+      font: labelFont,
+      color: grayColor,
+    });
+
+    // Signatory name / title
+    page.drawText("Authorized Representative", {
+      x: leftX,
+      y: sigTop - 96,
+      size: 9,
+      font: bodyFont,
+      color: darkColor,
+    });
+    page.drawLine({
+      start: { x: leftX, y: sigTop - 102 },
+      end: { x: leftX + colWidth, y: sigTop - 102 },
+      thickness: 0.5,
+      color: darkColor,
+    });
+    page.drawText("Signatory Name / Title", {
+      x: leftX,
+      y: sigTop - 114,
       size: 8,
       font: labelFont,
       color: grayColor,
@@ -495,20 +605,20 @@ class CampaignContractService {
     // Date
     page.drawText(dateStr, {
       x: leftX,
-      y: sigTop - 102,
+      y: sigTop - 132,
       size: 10,
       font: bodyFont,
       color: darkColor,
     });
     page.drawLine({
-      start: { x: leftX, y: sigTop - 108 },
-      end: { x: leftX + colWidth * 0.65, y: sigTop - 108 },
+      start: { x: leftX, y: sigTop - 138 },
+      end: { x: leftX + colWidth * 0.65, y: sigTop - 138 },
       thickness: 0.5,
       color: darkColor,
     });
     page.drawText("Date", {
       x: leftX,
-      y: sigTop - 120,
+      y: sigTop - 150,
       size: 8,
       font: labelFont,
       color: grayColor,
@@ -523,31 +633,46 @@ class CampaignContractService {
       color: grayColor,
     });
 
-    // Signature line (empty — filled when signed)
+    // Signature line
     page.drawLine({
-      start: { x: rightX, y: sigTop - 36 },
-      end: { x: rightX + colWidth, y: sigTop - 36 },
+      start: { x: rightX, y: sigTop - 30 },
+      end: { x: rightX + colWidth, y: sigTop - 30 },
       thickness: 0.5,
       color: darkColor,
     });
     page.drawText("Signature", {
       x: rightX,
-      y: sigTop - 48,
+      y: sigTop - 42,
       size: 8,
       font: labelFont,
       color: grayColor,
     });
 
-    // Name line
+    // Entity name line
     page.drawLine({
-      start: { x: rightX, y: sigTop - 72 },
-      end: { x: rightX + colWidth, y: sigTop - 72 },
+      start: { x: rightX, y: sigTop - 66 },
+      end: { x: rightX + colWidth, y: sigTop - 66 },
       thickness: 0.5,
       color: darkColor,
     });
-    page.drawText("Printed Name", {
+    page.drawText("Legal Entity Name", {
       x: rightX,
-      y: sigTop - 84,
+      y: sigTop - 78,
+      size: 8,
+      font: labelFont,
+      color: grayColor,
+    });
+
+    // Signatory name / title line
+    page.drawLine({
+      start: { x: rightX, y: sigTop - 102 },
+      end: { x: rightX + colWidth, y: sigTop - 102 },
+      thickness: 0.5,
+      color: darkColor,
+    });
+    page.drawText("Signatory Name / Title", {
+      x: rightX,
+      y: sigTop - 114,
       size: 8,
       font: labelFont,
       color: grayColor,
@@ -555,48 +680,82 @@ class CampaignContractService {
 
     // Date line
     page.drawLine({
-      start: { x: rightX, y: sigTop - 108 },
-      end: { x: rightX + colWidth * 0.65, y: sigTop - 108 },
+      start: { x: rightX, y: sigTop - 138 },
+      end: { x: rightX + colWidth * 0.65, y: sigTop - 138 },
       thickness: 0.5,
       color: darkColor,
     });
     page.drawText("Date", {
       x: rightX,
-      y: sigTop - 120,
+      y: sigTop - 150,
       size: 8,
       font: labelFont,
       color: grayColor,
     });
 
-    // Team name hint under client column
-    page.drawText(teamName, {
-      x: rightX,
-      y: sigTop - 136,
-      size: 8,
-      font: labelFont,
-      color: grayColor,
-    });
+    // ── Closing Note ─────────────────────────────────────────────
+    y = sigTop - 170;
+    ensureSpace(30);
+    drawBody(CLOSING_NOTE);
 
-    // Footer on last page
     drawFooter();
 
-    // Client signature line is at sigTop - 36
-    const clientSignatureY = sigTop - 36;
-
+    const clientSignatureY = sigTop - 30;
     const pdfBytes = await pdfDoc.save();
     return { buffer: Buffer.from(pdfBytes), clientSignatureY };
   }
 
-  async getContract(campaignId: number) {
+  // ── Void & Regenerate ────────────────────────────────────────────────────
+
+  async voidAndRegenerateMasterAgreement(teamId: number) {
+    // Void all existing non-voided master agreements for this team
+    await db
+      .update(campaignContracts)
+      .set({ status: "voided", updated_at: new Date() })
+      .where(
+        and(
+          eq(campaignContracts.team_id, teamId),
+          eq(campaignContracts.is_master, true),
+          ne(campaignContracts.status, "voided"),
+        ),
+      );
+
+    // Reset contract_ready on all accepted campaigns for this team
+    await db
+      .update(campaigns)
+      .set({ contract_ready: false, updated_at: new Date() })
+      .where(
+        and(
+          eq(campaigns.team_id, teamId),
+          eq(campaigns.status, "accepted"),
+        ),
+      );
+
+    // Generate a fresh master agreement with updated text
+    return this.getOrGenerateMasterAgreement(teamId);
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
+  private async getSignedOrPendingMaster(teamId: number) {
     const [contract] = await db
       .select()
       .from(campaignContracts)
-      .where(eq(campaignContracts.campaign_id, campaignId))
+      .where(
+        and(
+          eq(campaignContracts.team_id, teamId),
+          eq(campaignContracts.is_master, true),
+          ne(campaignContracts.status, "voided"),
+        ),
+      )
       .limit(1);
 
-    if (!contract) return null;
+    return contract ?? null;
+  }
 
-    // Generate presigned URL for the PDF
+  private async formatMasterAgreement(
+    contract: typeof campaignContracts.$inferSelect,
+  ) {
     const pdfKey =
       contract.status === "signed" && contract.signed_pdf_key
         ? contract.signed_pdf_key
@@ -607,197 +766,27 @@ class CampaignContractService {
       try {
         presigned_pdf_url = await s3Service.getPresignedUrl(pdfKey);
       } catch (err) {
-        console.error("[CampaignContract] Failed to generate presigned URL:", err);
+        console.error(
+          "[MasterAgreement] Failed to generate presigned URL:",
+          err,
+        );
       }
     }
 
     return {
       id: contract.id,
-      campaign_id: contract.campaign_id,
       team_id: contract.team_id,
       status: contract.status,
-      terms: contract.terms,
-      legal_name: contract.signer_legal_name,
+      signer_name: contract.signer_legal_name,
+      signer_legal_entity_name: contract.signer_legal_entity_name,
+      signer_title: contract.signer_title,
+      signer_email: contract.signer_email,
       signed_at: contract.signed_at?.toISOString() ?? null,
+      effective_date: contract.effective_date?.toISOString() ?? null,
       created_at: contract.created_at?.toISOString() ?? null,
       updated_at: contract.updated_at?.toISOString() ?? null,
       presigned_pdf_url,
     };
-  }
-
-  async signContract(
-    contractId: number,
-    userId: number,
-    legalName: string,
-    signatureDataUrl: string,
-    ipAddress: string,
-  ) {
-    const [contract] = await db
-      .select()
-      .from(campaignContracts)
-      .where(eq(campaignContracts.id, contractId))
-      .limit(1);
-
-    if (!contract) throw new Error("Contract not found");
-    if (contract.status === "signed") throw new Error("Contract already signed");
-
-    // Decode signature from data URL and upload to S3
-    const signatureBuffer = Buffer.from(
-      signatureDataUrl.replace(/^data:image\/\w+;base64,/, ""),
-      "base64",
-    );
-    const signatureKey = `contracts/${contract.team_id}/${contract.campaign_id}/signature_${Date.now()}.png`;
-    await s3Service.uploadBuffer(signatureBuffer, signatureKey, "image/png");
-
-    // Stamp signature onto the unsigned PDF (client = right column)
-    let signedPdfKey: string | null = null;
-    if (contract.unsigned_pdf_key) {
-      try {
-        const pdfBuffer = await s3Service.getImageAsBuffer(
-          contract.unsigned_pdf_key,
-        );
-        const pdfDoc = await PDFDocument.load(pdfBuffer);
-        const pages = pdfDoc.getPages();
-        const lastPage = pages[pages.length - 1];
-        // Layout constants matching renderPdf's right column
-        const pageMargin = 64;
-        const pageContentWidth = 612 - pageMargin * 2;
-        const colWidth = (pageContentWidth - 40) / 2;
-        const rightX = pageMargin + colWidth + 40;
-
-        // Read exact signature line Y from stored metadata, fallback to estimate
-        const terms = contract.terms as Record<string, any> | null;
-        const sigLineY = terms?._clientSignatureY ?? (pageMargin + 80);
-
-        // Embed signature image
-        const sigImage = await pdfDoc.embedPng(signatureBuffer);
-        const maxW = colWidth - 10;
-        const maxH = 30;
-        const scale = Math.min(maxW / sigImage.width, maxH / sigImage.height, 0.4);
-        const sigW = sigImage.width * scale;
-        const sigH = sigImage.height * scale;
-        lastPage.drawImage(sigImage, {
-          x: rightX + 2,
-          y: sigLineY + 4,
-          width: sigW,
-          height: sigH,
-        });
-
-        // Add name text (below sig line, on the name line)
-        const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-        lastPage.drawText(legalName, {
-          x: rightX,
-          y: sigLineY - 28,
-          size: 10,
-          font,
-          color: rgb(0.1, 0.1, 0.14),
-        });
-
-        // Add date text (on the date line)
-        lastPage.drawText(new Date().toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        }), {
-          x: rightX,
-          y: sigLineY - 64,
-          size: 10,
-          font,
-          color: rgb(0.1, 0.1, 0.14),
-        });
-
-        const signedBytes = await pdfDoc.save();
-        const signedBuffer = Buffer.from(signedBytes);
-        signedPdfKey = `contracts/${contract.team_id}/${contract.campaign_id}/signed_${Date.now()}.pdf`;
-        await s3Service.uploadBuffer(
-          signedBuffer,
-          signedPdfKey,
-          "application/pdf",
-        );
-      } catch (err) {
-        console.error("[CampaignContract] Failed to stamp signature on PDF:", err);
-      }
-    }
-
-    // Update contract
-    const [updated] = await db
-      .update(campaignContracts)
-      .set({
-        signed_by_user_id: userId,
-        signer_legal_name: legalName,
-        signer_ip_address: ipAddress,
-        signature_image_key: signatureKey,
-        signed_pdf_key: signedPdfKey,
-        signed_at: new Date(),
-        status: "signed",
-        updated_at: new Date(),
-      })
-      .where(eq(campaignContracts.id, contractId))
-      .returning();
-
-    // Update contract gate
-    await this.checkContractGate(contract.campaign_id);
-
-    // Send signed contract email to team owner + contact@cuttr.com
-    try {
-      const [campaign] = await db
-        .select()
-        .from(campaigns)
-        .where(eq(campaigns.id, contract.campaign_id))
-        .limit(1);
-
-      const [team] = await db
-        .select()
-        .from(teams)
-        .where(eq(teams.id, contract.team_id))
-        .limit(1);
-
-      const [owner] = await db
-        .select({ email: users.email, firstName: users.first_name })
-        .from(teamMembers)
-        .innerJoin(users, eq(teamMembers.user_id, users.id))
-        .where(
-          and(
-            eq(teamMembers.team_id, contract.team_id),
-            eq(teamMembers.role, "owner"),
-          ),
-        )
-        .limit(1);
-
-      if (owner?.email) {
-        const recipients = [owner.email, "contact@cuttr.com"];
-        for (const to of recipients) {
-          try {
-            await emailNotiService.sendEmailNotification(
-              to,
-              `Contract Signed: ${campaign?.name || "Campaign"} - ${team?.name}`,
-              `<p>The contract for campaign "${campaign?.name}" has been signed by ${legalName}.</p>`,
-            );
-          } catch {}
-        }
-      }
-    } catch (emailError) {
-      console.error("Failed to send contract signed email:", emailError);
-    }
-
-    return updated;
-  }
-
-  async checkContractGate(campaignId: number): Promise<boolean> {
-    const [contract] = await db
-      .select({ status: campaignContracts.status })
-      .from(campaignContracts)
-      .where(eq(campaignContracts.campaign_id, campaignId))
-      .limit(1);
-
-    const ready = contract?.status === "signed";
-
-    await db
-      .update(campaigns)
-      .set({ contract_ready: ready, updated_at: new Date() })
-      .where(eq(campaigns.id, campaignId));
-
-    return ready;
   }
 }
 

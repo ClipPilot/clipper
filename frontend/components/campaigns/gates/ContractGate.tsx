@@ -12,26 +12,27 @@ import { useAtomValue } from "jotai";
 import { selectedTeamAtom } from "@/store/auth";
 import {
   campaignAPI,
-  type CampaignContract,
+  type MasterAgreement,
   type CampaignGates,
 } from "@/api/campaign";
 
 interface ContractGateProps {
-  campaignId: number;
   gate: CampaignGates["contract"];
-  contract: CampaignContract | null;
-  onContractSigned: (contract: CampaignContract) => void;
+  agreement: MasterAgreement | null;
+  onAgreementSigned: (agreement: MasterAgreement) => void;
 }
 
 export function ContractGate({
-  campaignId,
   gate,
-  contract,
-  onContractSigned,
+  agreement,
+  onAgreementSigned,
 }: ContractGateProps) {
   const selectedTeam = useAtomValue(selectedTeamAtom);
 
-  const [legalName, setLegalName] = useState("");
+  const [legalEntityName, setLegalEntityName] = useState("");
+  const [signerName, setSignerName] = useState("");
+  const [signerTitle, setSignerTitle] = useState("");
+  const [signerEmail, setSignerEmail] = useState("");
   const [isSigning, setIsSigning] = useState(false);
   const [isLoadingPdf, setIsLoadingPdf] = useState(false);
   const [hasDrawn, setHasDrawn] = useState(false);
@@ -60,9 +61,8 @@ export function ContractGate({
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    ctx.fillStyle = "#0f0f1a";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = "#e4e4e7";
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = "#000000";
     ctx.lineWidth = 2;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
@@ -83,7 +83,7 @@ export function ContractGate({
       lastPosRef.current = pos;
       ctx.beginPath();
       ctx.arc(pos.x, pos.y, 1, 0, Math.PI * 2);
-      ctx.fillStyle = "#e4e4e7";
+      ctx.fillStyle = "#000000";
       ctx.fill();
     },
     []
@@ -147,28 +147,27 @@ export function ContractGate({
     setHasDrawn(false);
   };
 
-  // ── Contract actions ────────────────────────────────────────────────────────
+  // ── Agreement actions ─────────────────────────────────────────────────────
 
-  const handleViewContract = async () => {
+  const handleViewAgreement = async () => {
     if (!selectedTeam?.id) return;
     setIsLoadingPdf(true);
     try {
-      const { contract: c } = await campaignAPI.getContract(
-        selectedTeam.id,
-        campaignId
+      const { agreement: a } = await campaignAPI.getMasterAgreement(
+        selectedTeam.id
       );
-      if (c?.presigned_pdf_url) {
-        window.open(c.presigned_pdf_url, "_blank", "noopener,noreferrer");
+      if (a?.presigned_pdf_url) {
+        window.open(a.presigned_pdf_url, "_blank", "noopener,noreferrer");
       } else {
         addToast({
-          title: "Contract not available",
-          description: "No PDF is attached to this contract yet.",
+          title: "Agreement not available",
+          description: "No PDF is attached to this agreement yet.",
           color: "warning",
         });
       }
     } catch (err: any) {
       addToast({
-        title: "Failed to load contract",
+        title: "Failed to load agreement",
         description: err.message || "Something went wrong",
         color: "danger",
       });
@@ -182,10 +181,10 @@ export function ContractGate({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    if (!legalName.trim()) {
+    if (!legalEntityName.trim() || !signerName.trim() || !signerTitle.trim() || !signerEmail.trim()) {
       addToast({
-        title: "Legal name required",
-        description: "Please enter your full legal name before signing.",
+        title: "All fields required",
+        description: "Please fill in all fields before signing.",
         color: "danger",
       });
       return;
@@ -203,21 +202,25 @@ export function ContractGate({
     const signatureDataUrl = canvas.toDataURL("image/png");
     setIsSigning(true);
     try {
-      const { contract: signed } = await campaignAPI.signContract(
+      const { agreement: signed } = await campaignAPI.signMasterAgreement(
         selectedTeam.id,
-        campaignId,
-        legalName.trim(),
-        signatureDataUrl
+        {
+          legalEntityName: legalEntityName.trim(),
+          signerName: signerName.trim(),
+          signerTitle: signerTitle.trim(),
+          signerEmail: signerEmail.trim(),
+          signatureDataUrl,
+        }
       );
       addToast({
-        title: "Contract signed",
-        description: "Your contract has been signed successfully.",
+        title: "Agreement signed",
+        description: "Your agreement has been signed successfully.",
         color: "success",
       });
-      onContractSigned(signed);
+      onAgreementSigned(signed);
     } catch (err: any) {
       addToast({
-        title: "Failed to sign contract",
+        title: "Failed to sign agreement",
         description: err.message || "Something went wrong",
         color: "danger",
       });
@@ -228,8 +231,8 @@ export function ContractGate({
 
   // ── Signed state ────────────────────────────────────────────────────────────
 
-  if (gate.complete && contract) {
-    const signedDate = new Date(contract.signed_at!).toLocaleDateString(
+  if (gate.complete && agreement?.status === "signed") {
+    const signedDate = new Date(agreement.signed_at!).toLocaleDateString(
       "en-US",
       {
         year: "numeric",
@@ -248,26 +251,27 @@ export function ContractGate({
           />
           <div className="flex-1">
             <p className="text-sm font-semibold text-success-500">
-              Signed on {signedDate}
+              Agreement signed on {signedDate}
             </p>
             <p className="text-xs text-text-secondary mt-0.5">
-              Signed as: {contract.legal_name}
+              Signed by: {agreement.signer_name}
+              {agreement.signer_legal_entity_name && ` (${agreement.signer_legal_entity_name})`}
             </p>
           </div>
         </div>
 
-        {contract.presigned_pdf_url && (
+        {agreement.presigned_pdf_url && (
           <Button
             variant="flat"
             size="sm"
             className="bg-surface-elevated text-text-secondary"
             as="a"
-            href={contract.presigned_pdf_url}
+            href={agreement.presigned_pdf_url}
             target="_blank"
             rel="noopener noreferrer"
             startContent={<Icon icon="solar:file-download-bold-duotone" width={16} />}
           >
-            Download Contract PDF
+            Download Agreement PDF
           </Button>
         )}
       </div>
@@ -276,9 +280,16 @@ export function ContractGate({
 
   // ── Unsigned state ──────────────────────────────────────────────────────────
 
+  const isFormValid =
+    legalEntityName.trim() &&
+    signerName.trim() &&
+    signerTitle.trim() &&
+    signerEmail.trim() &&
+    hasDrawn;
+
   return (
     <div className="space-y-4">
-      {/* View contract PDF */}
+      {/* View agreement PDF */}
       <div className="flex items-center justify-between p-3 rounded-lg bg-surface-elevated border border-border-base">
         <div className="flex items-center gap-2">
           <Icon
@@ -286,13 +297,13 @@ export function ContractGate({
             className="text-text-secondary"
             width={20}
           />
-          <span className="text-sm text-text-primary">Campaign Contract</span>
+          <span className="text-sm text-text-primary">Cuttr Campaign Services Agreement</span>
         </div>
         <Button
           size="sm"
           variant="flat"
           className="bg-default-100 text-text-secondary"
-          onPress={handleViewContract}
+          onPress={handleViewAgreement}
           isLoading={isLoadingPdf}
           startContent={
             !isLoadingPdf && (
@@ -304,19 +315,58 @@ export function ContractGate({
         </Button>
       </div>
 
-      {/* Legal name */}
-      <Input
-        label="Full legal name"
-        placeholder="Enter your full legal name"
-        value={legalName}
-        onValueChange={setLegalName}
-        variant="bordered"
-        classNames={{
-          inputWrapper: "border-border-base bg-surface-elevated",
-          input: "text-text-primary",
-          label: "text-text-secondary",
-        }}
-      />
+      {/* Signer info form */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <Input
+          label="Legal entity name"
+          placeholder="Company / LLC name"
+          value={legalEntityName}
+          onValueChange={setLegalEntityName}
+          variant="bordered"
+          classNames={{
+            inputWrapper: "border-border-base bg-surface-elevated",
+            input: "text-text-primary",
+            label: "text-text-secondary",
+          }}
+        />
+        <Input
+          label="Signatory name"
+          placeholder="Your full name"
+          value={signerName}
+          onValueChange={setSignerName}
+          variant="bordered"
+          classNames={{
+            inputWrapper: "border-border-base bg-surface-elevated",
+            input: "text-text-primary",
+            label: "text-text-secondary",
+          }}
+        />
+        <Input
+          label="Title"
+          placeholder="CEO, Managing Member, etc."
+          value={signerTitle}
+          onValueChange={setSignerTitle}
+          variant="bordered"
+          classNames={{
+            inputWrapper: "border-border-base bg-surface-elevated",
+            input: "text-text-primary",
+            label: "text-text-secondary",
+          }}
+        />
+        <Input
+          label="Email"
+          placeholder="signer@company.com"
+          type="email"
+          value={signerEmail}
+          onValueChange={setSignerEmail}
+          variant="bordered"
+          classNames={{
+            inputWrapper: "border-border-base bg-surface-elevated",
+            input: "text-text-primary",
+            label: "text-text-secondary",
+          }}
+        />
+      </div>
 
       {/* Signature canvas */}
       <div className="space-y-2">
@@ -337,7 +387,7 @@ export function ContractGate({
             width={600}
             height={160}
             className="w-full touch-none cursor-crosshair block"
-            style={{ background: "#0f0f1a" }}
+            style={{ background: "#ffffff" }}
             onMouseDown={onMouseDown}
             onMouseMove={onMouseMove}
             onMouseUp={onMouseUp}
@@ -359,13 +409,13 @@ export function ContractGate({
         color="primary"
         onPress={handleSign}
         isLoading={isSigning}
-        isDisabled={!legalName.trim() || !hasDrawn}
+        isDisabled={!isFormValid}
         startContent={
           !isSigning && <Icon icon="solar:pen-bold-duotone" width={16} />
         }
         className="w-full"
       >
-        Sign Contract
+        Sign Agreement
       </Button>
     </div>
   );

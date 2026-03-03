@@ -20,7 +20,7 @@ import {
   type CampaignVideo,
   type CampaignWallet,
   type CampaignCard,
-  type CampaignContract,
+  type MasterAgreement,
   type CampaignGates,
 } from "@/api/campaign";
 import { VideosGate } from "./gates/VideosGate";
@@ -169,7 +169,7 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
   const [videos, setVideos] = useState<CampaignVideo[]>([]);
   const [wallet, setWallet] = useState<CampaignWallet | null>(null);
   const [savedCard, setSavedCard] = useState<CampaignCard | null>(null);
-  const [contract, setContract] = useState<CampaignContract | null>(null);
+  const [agreement, setAgreement] = useState<MasterAgreement | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isStarting, setIsStarting] = useState(false);
@@ -182,12 +182,12 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
         campaignRes,
         videosRes,
         walletRes,
-        contractRes,
+        agreementRes,
       ] = await Promise.allSettled([
         campaignAPI.getCampaign(selectedTeam.id, campaignId),
         campaignAPI.listVideos(selectedTeam.id, campaignId),
         campaignAPI.getWallet(selectedTeam.id, campaignId),
-        campaignAPI.getContract(selectedTeam.id, campaignId),
+        campaignAPI.getMasterAgreement(selectedTeam.id),
       ]);
 
       if (campaignRes.status === "fulfilled") {
@@ -201,8 +201,8 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
         setWallet(walletRes.value.wallet);
         setSavedCard(walletRes.value.card);
       }
-      if (contractRes.status === "fulfilled") {
-        setContract(contractRes.value.contract);
+      if (agreementRes.status === "fulfilled") {
+        setAgreement(agreementRes.value.agreement);
       }
     } catch (err) {
       console.error("Failed to fetch campaign data:", err);
@@ -296,8 +296,8 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
     setCampaign(updated);
   }, []);
 
-  const handleContractSigned = useCallback((updatedContract: CampaignContract) => {
-    setContract(updatedContract);
+  const handleAgreementSigned = useCallback((updatedAgreement: MasterAgreement) => {
+    setAgreement(updatedAgreement);
     setGates((prev) =>
       prev
         ? {
@@ -305,7 +305,7 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
             contract: {
               ...prev.contract,
               complete: true,
-              signedAt: updatedContract.signed_at,
+              signedAt: updatedAgreement.signed_at,
             },
           }
         : prev
@@ -562,19 +562,18 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
           />
         </StepSection>
 
-        {/* Step3: Contract */}
+        {/* Step3: Agreement */}
         <StepSection
           number={3}
-          title="Sign Contract"
-          description="Review and sign the campaign agreement to proceed."
+          title="Sign Agreement"
+          description="Review and sign the Cuttr Campaign Services Agreement to proceed."
           icon="solar:document-text-bold-duotone"
           complete={gates.contract.complete}
         >
           <ContractGate
-            campaignId={campaignId}
             gate={gates.contract}
-            contract={contract}
-            onContractSigned={handleContractSigned}
+            agreement={agreement}
+            onAgreementSigned={handleAgreementSigned}
           />
         </StepSection>
 

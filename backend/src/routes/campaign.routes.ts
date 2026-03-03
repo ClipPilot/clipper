@@ -16,8 +16,8 @@ import {
   saveCard,
   createTopUp,
   getTopUpStatus,
-  getContract,
-  signContract,
+  getMasterAgreement,
+  signMasterAgreement,
   startCampaign,
   endCampaign,
 } from "../controllers/campaign.controller";
@@ -791,79 +791,73 @@ router.post("/teams/:teamId/campaigns/:campaignId/wallet/top-up", requireAuth, r
  */
 router.get("/teams/:teamId/campaigns/:campaignId/wallet/top-up/:piId/status", requireAuth, requireSeatAccess, getTopUpStatus);
 
-// Contract
+// Master Agreement
 
 /**
  * @openapi
- * /api/campaigns/teams/{teamId}/campaigns/{campaignId}/contract:
+ * /api/campaigns/teams/{teamId}/master-agreement:
  *   get:
- *     summary: Get campaign contract
- *     description: Returns the contract for the campaign with a presigned PDF URL
+ *     summary: Get or generate master agreement
+ *     description: Returns the team's master agreement. If none exists, generates an unsigned PDF and returns it.
  *     tags: [Campaigns]
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: teamId
- *         required: true
- *         schema:
- *           type: integer
- *       - in: path
- *         name: campaignId
  *         required: true
  *         schema:
  *           type: integer
  *     responses:
  *       200:
- *         description: Contract details with PDF URL
+ *         description: Master agreement details with PDF URL
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 contract:
+ *                 agreement:
  *                   type: object
  *                   properties:
  *                     id:
  *                       type: integer
- *                     campaignId:
+ *                     team_id:
  *                       type: integer
  *                     status:
  *                       type: string
  *                       enum: [pending, signed, voided]
- *                     pdfUrl:
+ *                     signer_name:
  *                       type: string
  *                       nullable: true
- *                     signedAt:
+ *                     signer_legal_entity_name:
+ *                       type: string
+ *                       nullable: true
+ *                     presigned_pdf_url:
+ *                       type: string
+ *                       nullable: true
+ *                     signed_at:
  *                       type: string
  *                       format: date-time
  *                       nullable: true
  *       401:
  *         description: Unauthorized
- *       404:
- *         description: Contract not found
  *       500:
  *         description: Server error
  */
-router.get("/teams/:teamId/campaigns/:campaignId/contract", requireAuth, requireSeatAccess, getContract);
+router.get("/teams/:teamId/master-agreement", requireAuth, requireSeatAccess, getMasterAgreement);
 
 /**
  * @openapi
- * /api/campaigns/teams/{teamId}/campaigns/{campaignId}/contract/sign:
+ * /api/campaigns/teams/{teamId}/master-agreement/sign:
  *   post:
- *     summary: Sign the campaign contract
- *     description: Signs the contract with a legal name and signature image. Stamps the signature onto the PDF and emails a copy.
+ *     summary: Sign the master agreement
+ *     description: Signs the master agreement with entity info and signature image. Auto-marks contract_ready on all accepted campaigns.
  *     tags: [Campaigns]
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: teamId
- *         required: true
- *         schema:
- *           type: integer
- *       - in: path
- *         name: campaignId
  *         required: true
  *         schema:
  *           type: integer
@@ -874,37 +868,42 @@ router.get("/teams/:teamId/campaigns/:campaignId/contract", requireAuth, require
  *           schema:
  *             type: object
  *             required:
- *               - legalName
+ *               - legalEntityName
+ *               - signerName
+ *               - signerTitle
+ *               - signerEmail
  *               - signatureDataUrl
  *             properties:
- *               legalName:
+ *               legalEntityName:
  *                 type: string
- *                 description: Full legal name of the signer
+ *               signerName:
+ *                 type: string
+ *               signerTitle:
+ *                 type: string
+ *               signerEmail:
+ *                 type: string
  *               signatureDataUrl:
  *                 type: string
- *                 description: Base64 data URL of the signature image (PNG)
  *     responses:
  *       200:
- *         description: Contract signed
+ *         description: Agreement signed
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 contract:
+ *                 agreement:
  *                   type: object
  *       400:
- *         description: Missing legalName or signatureDataUrl
+ *         description: Missing required fields
  *       401:
  *         description: Unauthorized
- *       404:
- *         description: Contract not found
  *       409:
- *         description: Contract already signed
+ *         description: Agreement already signed
  *       500:
  *         description: Server error
  */
-router.post("/teams/:teamId/campaigns/:campaignId/contract/sign", requireAuth, requireSeatAccess, signContract);
+router.post("/teams/:teamId/master-agreement/sign", requireAuth, requireSeatAccess, signMasterAgreement);
 
 // Start
 

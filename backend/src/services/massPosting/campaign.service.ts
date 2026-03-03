@@ -1,6 +1,5 @@
 import {
   campaigns,
-  campaignContracts,
   campaignVideos,
   intakeForms,
   teams,
@@ -316,14 +315,13 @@ class CampaignService {
       .where(eq(campaigns.id, id))
       .returning();
 
-    // Auto-generate contract PDF
-    let contractWarning: string | undefined;
-    try {
-      await campaignContractService.generateContract(id);
-      console.log(`[Campaign] Contract auto-generated for campaign ${id}`);
-    } catch (error: any) {
-      contractWarning = error.message || "Unknown error";
-      console.error("Failed to auto-generate contract on approval:", error);
+    // Auto-mark contract_ready if team has signed master agreement
+    const hasMaster = await campaignContractService.hasSignedMasterAgreement(campaign.team_id);
+    if (hasMaster) {
+      await db
+        .update(campaigns)
+        .set({ contract_ready: true, updated_at: new Date() })
+        .where(eq(campaigns.id, id));
     }
 
     // Send approval email to team owner
@@ -357,7 +355,7 @@ class CampaignService {
       console.error("Failed to send campaign approval email:", emailError);
     }
 
-    return { ...updated, contractWarning };
+    return updated;
   }
 
   async rejectCampaign(id: number, reason: string, adminNotes?: string) {
@@ -517,12 +515,8 @@ class CampaignService {
     // Get wallet balance
     const wallet = await campaignBillingService.getWallet(campaignId);
 
-    // Get contract signed_at
-    const [contract] = await db
-      .select({ status: campaignContracts.status, signed_at: campaignContracts.signed_at })
-      .from(campaignContracts)
-      .where(eq(campaignContracts.campaign_id, campaignId))
-      .limit(1);
+    // Check master agreement (team-level, not per-campaign)
+    const masterAgreement = await campaignContractService.getSignedMasterAgreement(campaign.team_id);
 
     const requiredAmount = campaign.minimum_fund ?? campaign.budget;
     const requiredCents = requiredAmount ? Math.round(parseFloat(requiredAmount) * 100) : 0;
@@ -539,8 +533,8 @@ class CampaignService {
         requiredCents,
       },
       contract: {
-        complete: campaign.contract_ready ?? false,
-        signedAt: contract?.signed_at?.toISOString() ?? null,
+        complete: !!masterAgreement || (campaign.contract_ready ?? false),
+        signedAt: masterAgreement?.signed_at ?? null,
       },
     };
   }

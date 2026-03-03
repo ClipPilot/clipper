@@ -413,59 +413,53 @@ export async function getTopUpStatus(req: AuthRequest, res: Response) {
   }
 }
 
-// ── Contract ─────────────────────────────────────
+// ── Master Agreement ─────────────────────────────
 
-export async function getContract(req: AuthRequest, res: Response) {
+export async function getMasterAgreement(req: AuthRequest, res: Response) {
   try {
-    const campaignId = parseInt(req.params.campaignId);
-    if (isNaN(campaignId)) return res.status(400).json({ error: "Invalid campaign ID" });
+    const teamId = parseInt(req.params.teamId);
+    if (isNaN(teamId)) return res.status(400).json({ error: "Invalid team ID" });
 
-    const contract = await campaignContractService.getContract(campaignId);
-    return res.json({ contract });
+    const agreement = await campaignContractService.getOrGenerateMasterAgreement(teamId);
+    return res.json({ agreement });
   } catch (error) {
-    console.error("Get contract error:", error);
+    console.error("Get master agreement error:", error);
     Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to fetch contract" });
+    return res.status(500).json({ error: "Failed to fetch agreement" });
   }
 }
 
-export async function signContract(req: AuthRequest, res: Response) {
+export async function signMasterAgreement(req: AuthRequest, res: Response) {
   try {
-    const campaignId = parseInt(req.params.campaignId);
-    if (isNaN(campaignId)) return res.status(400).json({ error: "Invalid campaign ID" });
+    const teamId = parseInt(req.params.teamId);
+    if (isNaN(teamId)) return res.status(400).json({ error: "Invalid team ID" });
 
-    const { legalName, signatureDataUrl } = req.body;
-    if (!legalName || !signatureDataUrl) {
-      return res.status(400).json({ error: "legalName and signatureDataUrl are required" });
-    }
-
-    // Get contract for this campaign
-    const contract = await campaignContractService.getContract(campaignId);
-    if (!contract) {
-      return res.status(404).json({ error: "No contract found for this campaign" });
+    const { legalEntityName, signerName, signerTitle, signerEmail, signatureDataUrl } = req.body;
+    if (!legalEntityName || !signerName || !signerTitle || !signerEmail || !signatureDataUrl) {
+      return res.status(400).json({
+        error: "legalEntityName, signerName, signerTitle, signerEmail, and signatureDataUrl are required",
+      });
     }
 
     const ipAddress = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim()
       || req.socket.remoteAddress
       || "unknown";
 
-    await campaignContractService.signContract(
-      contract.id,
+    const agreement = await campaignContractService.signMasterAgreement(
+      teamId,
       req.user!.dbUserId,
-      legalName,
-      signatureDataUrl,
+      { legalEntityName, signerName, signerTitle, signerEmail, signatureDataUrl },
       ipAddress,
     );
 
-    const formatted = await campaignContractService.getContract(campaignId);
-    return res.json({ contract: formatted });
+    return res.json({ agreement });
   } catch (error: any) {
-    console.error("Sign contract error:", error);
-    if (error.message === "Contract already signed") {
+    console.error("Sign master agreement error:", error);
+    if (error.message === "Agreement already signed") {
       return res.status(409).json({ error: error.message });
     }
     Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to sign contract" });
+    return res.status(500).json({ error: "Failed to sign agreement" });
   }
 }
 

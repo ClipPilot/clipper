@@ -54,7 +54,7 @@ function DetailModal({ campaignId, onClose, onAction }: DetailModalProps) {
   const [minimumFundInput, setMinimumFundInput] = useState("");
   const [budgetInput, setBudgetInput] = useState("");
   const [error, setError] = useState("");
-  const [contract, setContract] = useState<CampaignContract | null>(null);
+  const [contract, setContract] = useState<any>(null);
   const [videos, setVideos] = useState<CampaignVideo[]>([]);
   const [videosLoading, setVideosLoading] = useState(false);
   const [contractLoading, setContractLoading] = useState(false);
@@ -82,20 +82,17 @@ function DetailModal({ campaignId, onClose, onAction }: DetailModalProps) {
     fetchDetail();
   }, [campaignId]);
 
-  const fetchContract = useCallback(async () => {
+  const fetchContract = useCallback(async (teamId: number) => {
     setContractLoading(true);
     try {
-      const { contract: c } = await adminAPI.getCampaignContract(campaignId);
-      setContract(c);
-      if (c?.terms?.clauses) {
-        setClauseEdits(c.terms.clauses);
-      }
+      const { agreement } = await adminAPI.getMasterAgreement(teamId);
+      setContract(agreement);
     } catch {
       // Contract may not exist yet — that's fine
     } finally {
       setContractLoading(false);
     }
-  }, [campaignId]);
+  }, []);
 
   const fetchVideos = useCallback(async () => {
     setVideosLoading(true);
@@ -111,26 +108,14 @@ function DetailModal({ campaignId, onClose, onAction }: DetailModalProps) {
 
   useEffect(() => {
     if (detail && detail.status !== "pending" && detail.status !== "rejected") {
-      fetchContract();
+      fetchContract(detail.team_id);
       fetchVideos();
     }
   }, [detail, fetchContract, fetchVideos]);
 
   const handleSaveContract = async () => {
-    setContractSaving(true);
-    setError("");
-    try {
-      const { contract: updated } = await adminAPI.updateCampaignContract(campaignId, clauseEdits);
-      setContract(updated);
-      if (updated.terms?.clauses) {
-        setClauseEdits(updated.terms.clauses);
-      }
-      setShowContractEditor(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update contract");
-    } finally {
-      setContractSaving(false);
-    }
+    // Master agreement doesn't support per-campaign clause editing
+    // Use void & regenerate to update the agreement text
   };
 
   const handleApprove = async () => {
@@ -552,19 +537,7 @@ function DetailModal({ campaignId, onClose, onAction }: DetailModalProps) {
                         No contract generated yet.
                       </p>
                       <button
-                        onClick={async () => {
-                          setContractLoading(true);
-                          setError("");
-                          try {
-                            const { contract: c } = await adminAPI.generateCampaignContract(campaignId);
-                            setContract(c);
-                            if (c?.terms?.clauses) setClauseEdits(c.terms.clauses);
-                          } catch (err) {
-                            setError(err instanceof Error ? err.message : "Failed to generate contract");
-                          } finally {
-                            setContractLoading(false);
-                          }
-                        }}
+                        onClick={() => fetchContract(detail.team_id)}
                         className="px-3 py-1.5 rounded-lg bg-emerald/10 border border-emerald/20 text-emerald hover:bg-emerald/20 transition-colors text-sm font-medium"
                       >
                         Generate Contract
@@ -595,11 +568,31 @@ function DetailModal({ campaignId, onClose, onAction }: DetailModalProps) {
                                 day: "numeric",
                                 year: "numeric",
                               })}
-                              {contract.legal_name && ` by ${contract.legal_name}`}
+                              {(contract.signer_name || contract.legal_name) && ` by ${contract.signer_name || contract.legal_name}`}
                             </span>
                           )}
                         </div>
                       </div>
+
+                      {/* Void & Regenerate */}
+                      <button
+                        onClick={async () => {
+                          if (!confirm("This will void the current master agreement and generate a new one. The client will need to re-sign. Continue?")) return;
+                          setContractLoading(true);
+                          setError("");
+                          try {
+                            await adminAPI.voidAndRegenerateMasterContract(detail.team_id);
+                            await fetchContract(detail.team_id);
+                          } catch (err) {
+                            setError(err instanceof Error ? err.message : "Failed to regenerate contract");
+                          } finally {
+                            setContractLoading(false);
+                          }
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors text-xs font-medium"
+                      >
+                        Void &amp; Regenerate
+                      </button>
 
                       {/* PDF Preview */}
                       {contract.presigned_pdf_url ? (

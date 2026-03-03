@@ -20,12 +20,11 @@ import {
   updateCampaign,
   pauseCampaign,
   endCampaign,
-  getContractAdmin,
-  generateContractAdmin,
-  updateContractAdmin,
   getCampaignVideos,
   getCampaignPosts,
   postCampaignClip,
+  getMasterAgreement,
+  voidAndRegenerateMasterContract,
 } from "../controllers/admin-campaign.controller";
 
 const router = Router();
@@ -797,124 +796,56 @@ router.post("/campaigns/:campaignId/post", requireAdminAuth, postCampaignClip);
 
 /**
  * @openapi
- * /api/admin/campaigns/{campaignId}/contract:
+ * /api/admin/teams/{teamId}/master-agreement:
  *   get:
- *     summary: Get campaign contract with presigned PDF URL
- *     description: Returns the contract for a campaign including a presigned URL to preview the PDF and editable clause text
+ *     summary: Get or generate master agreement for a team
+ *     description: Returns the existing master agreement or generates a new unsigned one if none exists.
  *     tags: [Admin]
  *     security:
  *       - adminAuth: []
  *     parameters:
  *       - in: path
- *         name: campaignId
+ *         name: teamId
  *         required: true
  *         schema:
  *           type: integer
  *     responses:
  *       200:
- *         description: Contract details with PDF URL
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 contract:
- *                   type: object
- *                   nullable: true
+ *         description: Master agreement
+ *       400:
+ *         description: Invalid team ID
  *       401:
  *         description: Unauthorized
  *       500:
  *         description: Server error
  */
-router.get("/campaigns/:campaignId/contract", requireAdminAuth, getContractAdmin);
+router.get("/teams/:teamId/master-agreement", requireAdminAuth, getMasterAgreement);
 
 /**
  * @openapi
- * /api/admin/campaigns/{campaignId}/contract/generate:
+ * /api/admin/teams/{teamId}/void-and-regenerate-contract:
  *   post:
- *     summary: Generate contract PDF
- *     description: Generates (or regenerates) the contract PDF for a campaign. Used when auto-generation on approval failed.
+ *     summary: Void and regenerate master agreement
+ *     description: Voids all existing master agreements for the team and generates a fresh one with updated legal text. Resets contract_ready on accepted campaigns.
  *     tags: [Admin]
  *     security:
  *       - adminAuth: []
  *     parameters:
  *       - in: path
- *         name: campaignId
+ *         name: teamId
  *         required: true
  *         schema:
  *           type: integer
  *     responses:
  *       200:
- *         description: Contract generated
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 contract:
- *                   type: object
+ *         description: New master agreement generated
+ *       400:
+ *         description: Invalid team ID
  *       401:
  *         description: Unauthorized
- *       404:
- *         description: Campaign or team not found
- *       500:
- *         description: Failed to generate contract
- */
-router.post("/campaigns/:campaignId/contract/generate", requireAdminAuth, generateContractAdmin);
-
-/**
- * @openapi
- * /api/admin/campaigns/{campaignId}/contract:
- *   put:
- *     summary: Update contract clauses and regenerate PDF
- *     description: Edits contract clause text and regenerates the unsigned PDF. Cannot edit signed contracts.
- *     tags: [Admin]
- *     security:
- *       - adminAuth: []
- *     parameters:
- *       - in: path
- *         name: campaignId
- *         required: true
- *         schema:
- *           type: integer
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               parties:
- *                 type: string
- *               providerObligations:
- *                 type: string
- *               clientObligations:
- *                 type: string
- *               paymentTerms:
- *                 type: string
- *               additionalClauses:
- *                 type: array
- *                 items:
- *                   type: string
- *     responses:
- *       200:
- *         description: Contract updated and PDF regenerated
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 contract:
- *                   type: object
- *       401:
- *         description: Unauthorized
- *       404:
- *         description: Contract not found
- *       409:
- *         description: Cannot edit a signed contract
  *       500:
  *         description: Server error
  */
-router.put("/campaigns/:campaignId/contract", requireAdminAuth, updateContractAdmin);
+router.post("/teams/:teamId/void-and-regenerate-contract", requireAdminAuth, voidAndRegenerateMasterContract);
 
 export default router;

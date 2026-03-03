@@ -70,7 +70,7 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
       textPrompt: options.textPrompt,
       numberOfVideos: options.numberOfVideos,
       videoPath:
-        options.promptType === "gaming" || options.promptType === "general"
+        options.promptType === "gaming" || options.promptType === "general" || options.promptType === "viral"
           ? localVideoPath
           : undefined,
     };
