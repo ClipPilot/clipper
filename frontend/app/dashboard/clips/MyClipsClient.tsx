@@ -118,6 +118,7 @@ function MyClipsPageContent() {
     saveClip,
     rejectClip,
     moveClipToFolder,
+    refreshSavedClips,
     setUnsavedClips,
   } = useClipsData();
 
@@ -222,13 +223,14 @@ function MyClipsPageContent() {
       loadPendingClips();
       loadUnsavedClips();
       // Refresh clips based on current view - folder-specific or all clips
+      // Use merge-based refresh to preserve scroll position and loaded clips
       if (selectedFolderId !== null) {
         refreshFolderClips(selectedFolderId);
       } else {
-        loadSavedClips(true);
+        refreshSavedClips();
       }
     }, 500);
-  }, [loadPendingClips, loadUnsavedClips, loadSavedClips, isDraggingRef, selectedFolderId, refreshFolderClips]);
+  }, [loadPendingClips, loadUnsavedClips, refreshSavedClips, isDraggingRef, selectedFolderId, refreshFolderClips]);
 
   useSocket(selectedTeam?.id, handleSocketUpdate);
 
@@ -828,6 +830,7 @@ function MyClipsPageContent() {
           onRemoveShareLink={handleRemoveShareLink}
           onUpdateTitle={handleUpdateTitle}
           onAdPosting={canAdPost ? () => { closeViewModal(); setAdPostClip(selectedClip); } : undefined}
+          onEdit={() => { closeViewModal(); handleEditClip(selectedClip); }}
         />
       )}
 

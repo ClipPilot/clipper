@@ -3,7 +3,10 @@ import ffmpeg from "fluent-ffmpeg";
 import fs from "fs";
 import puppeteer from "puppeteer";
 import path from "path";
-import { MOBILE_VIDEO_SETTINGS, COMPRESSION } from "../../config/ffmpegSettings";
+import {
+  MOBILE_VIDEO_SETTINGS,
+  COMPRESSION,
+} from "../../config/ffmpegSettings";
 import type { ConversionMode } from "../../constants/conversionModes";
 import type { ActiveSpeakerSegment } from "./speakerSegments.service";
 
@@ -26,7 +29,7 @@ const getVideoMetadata = (videoPath: string): Promise<VideoMetadata> => {
     ffmpeg.ffprobe(videoPath, (err, metadata) => {
       if (err) return reject(err);
       const videoStream = metadata.streams.find(
-        (s) => s.codec_type === "video"
+        (s) => s.codec_type === "video",
       );
       if (!videoStream || !videoStream.width || !videoStream.height) {
         return reject(new Error("Could not get video dimensions"));
@@ -43,11 +46,15 @@ const getVideoMetadata = (videoPath: string): Promise<VideoMetadata> => {
   });
 };
 
-const { threshold: COMPRESSION_THRESHOLD, targetCrf: TARGET_CRF, maxBitrate: MAX_BITRATE } = COMPRESSION;
+const {
+  threshold: COMPRESSION_THRESHOLD,
+  targetCrf: TARGET_CRF,
+  maxBitrate: MAX_BITRATE,
+} = COMPRESSION;
 
 export const compressVideoForUpload = async (
   inputPath: string,
-  outputPath: string
+  outputPath: string,
 ): Promise<{
   path: string;
   compressed: boolean;
@@ -58,7 +65,7 @@ export const compressVideoForUpload = async (
 
   if (originalSize < COMPRESSION_THRESHOLD) {
     console.log(
-      `[COMPRESS] File ${Math.round(originalSize / 1024 / 1024)}MB below threshold, skipping compression`
+      `[COMPRESS] File ${Math.round(originalSize / 1024 / 1024)}MB below threshold, skipping compression`,
     );
     return {
       path: inputPath,
@@ -69,7 +76,7 @@ export const compressVideoForUpload = async (
   }
 
   console.log(
-    `[COMPRESS] Compressing ${Math.round(originalSize / 1024 / 1024)}MB video with high quality settings...`
+    `[COMPRESS] Compressing ${Math.round(originalSize / 1024 / 1024)}MB video with high quality settings...`,
   );
 
   try {
@@ -79,7 +86,7 @@ export const compressVideoForUpload = async (
     // Skip if already reasonably sized
     if (currentBitrate <= MAX_BITRATE) {
       console.log(
-        `[COMPRESS] Bitrate ${Math.round(currentBitrate)}kbps already good, skipping`
+        `[COMPRESS] Bitrate ${Math.round(currentBitrate)}kbps already good, skipping`,
       );
       return {
         path: inputPath,
@@ -103,13 +110,14 @@ export const compressVideoForUpload = async (
           "-ar 48000",
           "-ac 2",
           "-movflags +faststart",
-          "-map_metadata", "-1",
+          "-map_metadata",
+          "-1",
         ])
         .save(outputPath)
         .on("progress", (progress) => {
           if (progress.percent && Math.round(progress.percent) % 25 === 0) {
             console.log(
-              `[COMPRESS] Progress: ${Math.round(progress.percent)}%`
+              `[COMPRESS] Progress: ${Math.round(progress.percent)}%`,
             );
           }
         })
@@ -120,7 +128,7 @@ export const compressVideoForUpload = async (
     const newSize = fs.statSync(outputPath).size;
     const savings = Math.round(((originalSize - newSize) / originalSize) * 100);
     console.log(
-      `[COMPRESS] Done: ${Math.round(originalSize / 1024 / 1024)}MB -> ${Math.round(newSize / 1024 / 1024)}MB (${savings}% smaller)`
+      `[COMPRESS] Done: ${Math.round(originalSize / 1024 / 1024)}MB -> ${Math.round(newSize / 1024 / 1024)}MB (${savings}% smaller)`,
     );
 
     return { path: outputPath, compressed: true, originalSize, newSize };
@@ -154,7 +162,7 @@ export const getVideoDuration = (videoPath: string): Promise<number> => {
  */
 export const extractFirstFrame = (
   videoPath: string,
-  outputPath: string
+  outputPath: string,
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
     ffmpeg(videoPath)
@@ -167,7 +175,7 @@ export const extractFirstFrame = (
       })
       .on("error", (err) => {
         console.error(
-          `[EXTRACT] Failed to extract first frame: ${err.message}`
+          `[EXTRACT] Failed to extract first frame: ${err.message}`,
         );
         reject(err);
       })
@@ -178,7 +186,7 @@ export const extractFirstFrame = (
 export const extractFrameAtTime = (
   videoPath: string,
   outputPath: string,
-  timeInSeconds: number
+  timeInSeconds: number,
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
     ffmpeg(videoPath)
@@ -186,7 +194,9 @@ export const extractFrameAtTime = (
       .outputOptions(["-vframes", "1", "-q:v", "2"])
       .output(outputPath)
       .on("end", () => {
-        console.log(`[EXTRACT] Frame at ${timeInSeconds.toFixed(2)}s saved to ${outputPath}`);
+        console.log(
+          `[EXTRACT] Frame at ${timeInSeconds.toFixed(2)}s saved to ${outputPath}`,
+        );
         resolve(outputPath);
       })
       .on("error", (err) => {
@@ -204,7 +214,7 @@ export const extractFrameAtTime = (
  */
 export const extractLastFrame = (
   videoPath: string,
-  outputPath: string
+  outputPath: string,
 ): Promise<string> => {
   return new Promise(async (resolve, reject) => {
     try {
@@ -222,7 +232,7 @@ export const extractLastFrame = (
         })
         .on("error", (err) => {
           console.error(
-            `[EXTRACT] Failed to extract last frame: ${err.message}`
+            `[EXTRACT] Failed to extract last frame: ${err.message}`,
           );
           reject(err);
         })
@@ -236,7 +246,7 @@ export const extractLastFrame = (
 export const prependPoseFrame = async (
   videoPath: string,
   imagePath: string,
-  outputPath: string
+  outputPath: string,
 ): Promise<string> => {
   console.log(`[PREPEND-FRAME] Adding pose frame to start of ${videoPath}`);
   const { execSync } = require("child_process");
@@ -264,7 +274,10 @@ export const prependPoseFrame = async (
 
   // Concatenate: pose frame + full original video
   const concatList = path.join(tempDir, `concat_${timestamp}.txt`);
-  fs.writeFileSync(concatList, `file '${oneFrameVideo}'\nfile '${reEncodedVideo}'`);
+  fs.writeFileSync(
+    concatList,
+    `file '${oneFrameVideo}'\nfile '${reEncodedVideo}'`,
+  );
   const concatCmd = `ffmpeg -y -f concat -safe 0 -i "${concatList}" -c copy "${outputPath}"`;
   execSync(concatCmd, { stdio: "pipe" });
 
@@ -280,17 +293,17 @@ export const cutClip = (
   input: string,
   output: string,
   start: number,
-  end: number
+  end: number,
 ) => {
   const duration = end - start;
   console.log(
-    `[CUT] Cutting ${start.toFixed(3)}s-${end.toFixed(3)}s (${duration.toFixed(1)}s) from ${input} -> ${output}`
+    `[CUT] Cutting ${start.toFixed(3)}s-${end.toFixed(3)}s (${duration.toFixed(1)}s) from ${input} -> ${output}`,
   );
 
   // Validate paths before starting
   if (!input || !output) {
     const error = new Error(
-      `[CUT] Invalid paths: input="${input}", output="${output}"`
+      `[CUT] Invalid paths: input="${input}", output="${output}"`,
     );
     console.error(error.message);
     return Promise.reject(error);
@@ -321,24 +334,25 @@ export const cutClip = (
         "-avoid_negative_ts make_zero",
         "-reset_timestamps 1",
         "-movflags +faststart",
-        "-map_metadata", "-1",
+        "-map_metadata",
+        "-1",
       ])
       .on("end", () => {
         if (!fs.existsSync(output)) {
           return reject(
-            new Error(`Cut clip failed: output file not created at ${output}`)
+            new Error(`Cut clip failed: output file not created at ${output}`),
           );
         }
         const stats = fs.statSync(output);
         if (stats.size < 1000) {
           return reject(
             new Error(
-              `Cut clip failed: output file too small (${stats.size} bytes)`
-            )
+              `Cut clip failed: output file too small (${stats.size} bytes)`,
+            ),
           );
         }
         console.log(
-          `[CUT] Success: ${output} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`
+          `[CUT] Success: ${output} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`,
         );
         resolve(output);
       })
@@ -351,7 +365,7 @@ export const cutClip = (
 };
 export const extractAudio = (
   videoPath: string,
-  outputPath: string
+  outputPath: string,
 ): Promise<string> => {
   console.log(`[EXTRACT-AUDIO] Extracting audio from ${videoPath}`);
   return new Promise((resolve, reject) => {
@@ -376,9 +390,11 @@ export const extractAudio = (
 export const replaceAudioInVideo = (
   videoPath: string,
   audioPath: string,
-  outputPath: string
+  outputPath: string,
 ): Promise<string> => {
-  console.log(`[REPLACE-AUDIO] Replacing audio in ${videoPath} with ${audioPath}`);
+  console.log(
+    `[REPLACE-AUDIO] Replacing audio in ${videoPath} with ${audioPath}`,
+  );
   return new Promise((resolve, reject) => {
     ffmpeg()
       .input(videoPath)
@@ -426,7 +442,8 @@ const normalizeClip = (input: string, output: string): Promise<string> => {
         "-reset_timestamps 1",
         "-start_at_zero",
         "-movflags +faststart",
-        "-map_metadata", "-1",
+        "-map_metadata",
+        "-1",
       ])
       .save(output)
       .on("end", () => {
@@ -440,7 +457,10 @@ const normalizeClip = (input: string, output: string): Promise<string> => {
   });
 };
 
-export const mergeClipsFaceSwap = async (clips: string[], outputPath: string) => {
+export const mergeClipsFaceSwap = async (
+  clips: string[],
+  outputPath: string,
+) => {
   console.log(`[MERGE] Merging ${clips.length} clips`);
 
   for (const clip of clips) {
@@ -448,12 +468,16 @@ export const mergeClipsFaceSwap = async (clips: string[], outputPath: string) =>
       throw new Error(`[MERGE] Input clip not found: ${clip}`);
     }
     const stats = fs.statSync(clip);
-    console.log(`[MERGE] Input: ${clip} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`);
+    console.log(
+      `[MERGE] Input: ${clip} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`,
+    );
   }
 
   return new Promise((resolve, reject) => {
     const listPath = outputPath + ".txt";
-    const content = clips.map((c) => `file '${c.replace(/'/g, "'\\''")}'`).join("\n");
+    const content = clips
+      .map((c) => `file '${c.replace(/'/g, "'\\''")}'`)
+      .join("\n");
     fs.writeFileSync(listPath, content);
 
     let stderrLog = "";
@@ -477,25 +501,38 @@ export const mergeClipsFaceSwap = async (clips: string[], outputPath: string) =>
         "-fflags +genpts",
         "-avoid_negative_ts make_zero",
         "-movflags +faststart",
-        "-map_metadata", "-1",
+        "-map_metadata",
+        "-1",
       ])
       .save(outputPath)
-      .on("stderr", (line: string) => { stderrLog += line + "\n"; })
+      .on("stderr", (line: string) => {
+        stderrLog += line + "\n";
+      })
       .on("end", () => {
         if (settled) return;
         settled = true;
-        try { if (fs.existsSync(listPath)) fs.unlinkSync(listPath); } catch {}
+        try {
+          if (fs.existsSync(listPath)) fs.unlinkSync(listPath);
+        } catch {}
         if (!fs.existsSync(outputPath)) {
-          reject(new Error(`[MERGE] FFmpeg reported success but output file missing: ${outputPath}`));
+          reject(
+            new Error(
+              `[MERGE] FFmpeg reported success but output file missing: ${outputPath}`,
+            ),
+          );
           return;
         }
-        console.log(`[MERGE] Success: ${outputPath} (${(fs.statSync(outputPath).size / 1024 / 1024).toFixed(2)}MB)`);
+        console.log(
+          `[MERGE] Success: ${outputPath} (${(fs.statSync(outputPath).size / 1024 / 1024).toFixed(2)}MB)`,
+        );
         resolve(outputPath);
       })
       .on("error", (err) => {
         if (settled) return;
         settled = true;
-        try { if (fs.existsSync(listPath)) fs.unlinkSync(listPath); } catch {}
+        try {
+          if (fs.existsSync(listPath)) fs.unlinkSync(listPath);
+        } catch {}
         reject(err);
       });
   });
@@ -522,7 +559,9 @@ export const convertToVerticalBlur = async (
     return outputPath;
   }
 
-  console.log(`[VERTICAL] Converting horizontal ${width}x${height} to 9:16 with blur background`);
+  console.log(
+    `[VERTICAL] Converting horizontal ${width}x${height} to 9:16 with blur background`,
+  );
 
   return new Promise((resolve, reject) => {
     ffmpeg()
@@ -531,7 +570,11 @@ export const convertToVerticalBlur = async (
         // Blurred background: scale up to fill 1080x1920, crop, blur
         {
           filter: "scale",
-          options: { w: 1080, h: 1920, force_original_aspect_ratio: "increase" },
+          options: {
+            w: 1080,
+            h: 1920,
+            force_original_aspect_ratio: "increase",
+          },
           inputs: "0:v",
           outputs: "bg1",
         },
@@ -563,8 +606,10 @@ export const convertToVerticalBlur = async (
         },
       ])
       .outputOptions([
-        "-map", "[v]",
-        "-map", "0:a?",
+        "-map",
+        "[v]",
+        "-map",
+        "0:a?",
         "-c:v libx264",
         "-preset fast",
         "-crf 23",
@@ -605,7 +650,9 @@ export const convertToGamingVertical = async (
     return outputPath;
   }
 
-  console.log(`[GAMING] Converting ${width}x${height} to gaming layout (facecam: ${JSON.stringify(facecam)})`);
+  console.log(
+    `[GAMING] Converting ${width}x${height} to gaming layout (facecam: ${JSON.stringify(facecam)})`,
+  );
 
   let fcX = Math.max(0, Math.min(facecam.x, width - 1));
   const fcY = Math.max(0, Math.min(facecam.y, height - 1));
@@ -627,7 +674,9 @@ export const convertToGamingVertical = async (
       fcX = width - neededFcW;
     }
     fcW = neededFcW;
-    console.log(`[GAMING] Expanded narrow facecam crop to ${fcW}x${fcH} at x=${fcX} (needed ${neededFcW}px wide to fill 1080)`);
+    console.log(
+      `[GAMING] Expanded narrow facecam crop to ${fcW}x${fcH} at x=${fcX} (needed ${neededFcW}px wide to fill 1080)`,
+    );
   }
   const faceScale = Math.min(1080 / fcW, maxFaceH / fcH);
   let faceOutW = Math.round(fcW * faceScale);
@@ -636,35 +685,52 @@ export const convertToGamingVertical = async (
   faceOutH += faceOutH % 2;
   const gameOutH = 1920 - faceOutH;
 
-  console.log(`[GAMING] Face crop: ${fcW}x${fcH} at (${fcX},${fcY}) → ${faceOutW}x${faceOutH} (scale=${faceScale.toFixed(2)}), gameplay: 1080x${gameOutH}`);
+  console.log(
+    `[GAMING] Face crop: ${fcW}x${fcH} at (${fcX},${fcY}) → ${faceOutW}x${faceOutH} (scale=${faceScale.toFixed(2)}), gameplay: 1080x${gameOutH}`,
+  );
 
   // Determine available gameplay region by excluding the facecam strip
   const fcOnLeft = fcX + fcW / 2 < width / 2;
   const fcOnTop = fcY + fcH / 2 < height / 2;
-  const distToVerticalEdge = fcOnLeft ? (fcX + fcW) : (width - fcX);
-  const distToHorizontalEdge = fcOnTop ? (fcY + fcH) : (height - fcY);
+  const distToVerticalEdge = fcOnLeft ? fcX + fcW : width - fcX;
+  const distToHorizontalEdge = fcOnTop ? fcY + fcH : height - fcY;
 
   // Exclude the thinner strip (removes least gameplay)
-  let availX = 0, availY = 0, availW = width, availH = height;
+  let availX = 0,
+    availY = 0,
+    availW = width,
+    availH = height;
   if (distToVerticalEdge <= distToHorizontalEdge) {
     // Exclude left or right strip
-    if (fcOnLeft) { availX = fcX + fcW; availW = width - availX; }
-    else { availW = fcX; }
+    if (fcOnLeft) {
+      availX = fcX + fcW;
+      availW = width - availX;
+    } else {
+      availW = fcX;
+    }
   } else {
     // Exclude top or bottom strip
-    if (fcOnTop) { availY = fcY + fcH; availH = height - availY; }
-    else { availH = fcY; }
+    if (fcOnTop) {
+      availY = fcY + fcH;
+      availH = height - availY;
+    } else {
+      availH = fcY;
+    }
   }
 
   // Center-crop within the available (facecam-free) region
   const gameplayAR = 1080 / gameOutH;
   let gpW: number, gpH: number, gpX: number, gpY: number;
   if (availW / availH > gameplayAR) {
-    gpH = availH; gpW = Math.round(availH * gameplayAR);
-    gpX = availX + Math.round((availW - gpW) / 2); gpY = availY;
+    gpH = availH;
+    gpW = Math.round(availH * gameplayAR);
+    gpX = availX + Math.round((availW - gpW) / 2);
+    gpY = availY;
   } else {
-    gpW = availW; gpH = Math.round(availW / gameplayAR);
-    gpX = availX; gpY = availY + Math.round((availH - gpH) / 2);
+    gpW = availW;
+    gpH = Math.round(availW / gameplayAR);
+    gpX = availX;
+    gpY = availY + Math.round((availH - gpH) / 2);
   }
 
   // If facecam is narrower than 1080 (height-constrained), pad with black to center it
@@ -682,8 +748,10 @@ export const convertToGamingVertical = async (
         `[cam][game]vstack=inputs=2[v]`,
       ])
       .outputOptions([
-        "-map", "[v]",
-        "-map", "0:a?",
+        "-map",
+        "[v]",
+        "-map",
+        "0:a?",
         "-c:v libx264",
         "-preset fast",
         "-crf 23",
@@ -718,7 +786,9 @@ export const convertToSpeakerZoom = async (
   const { width, height } = metadata;
 
   if (height >= width) {
-    console.log(`[SPEAKER-ZOOM] Already vertical (${width}x${height}), skipping`);
+    console.log(
+      `[SPEAKER-ZOOM] Already vertical (${width}x${height}), skipping`,
+    );
     fs.copyFileSync(inputPath, outputPath);
     return outputPath;
   }
@@ -748,14 +818,26 @@ export const convertToSpeakerZoom = async (
   let cropY = Math.round(faceCenterY - cropH / 2);
   cropY = Math.max(0, Math.min(cropY, height - cropH));
 
-  console.log(`[SPEAKER-ZOOM] Cropping ${cropW}x${cropH} at (${cropX},${cropY}) centered on face, then scaling to 1080x1920`);
+  console.log(
+    `[SPEAKER-ZOOM] Cropping ${cropW}x${cropH} at (${cropX},${cropY}) centered on face, then scaling to 1080x1920`,
+  );
 
   // DEBUG: draw face box + crop window on original video
   try {
     const faceMap = new Map<number, FacecamRegion>([[0, faceRegion]]);
-    await debugActiveSpeakerOverlay(inputPath, faceMap, width, height, cropW, cropH);
+    await debugActiveSpeakerOverlay(
+      inputPath,
+      faceMap,
+      width,
+      height,
+      cropW,
+      cropH,
+    );
   } catch (err) {
-    console.error(`[DEBUG-SPEAKER-ZOOM] Debug overlay failed (non-fatal):`, err);
+    console.error(
+      `[DEBUG-SPEAKER-ZOOM] Debug overlay failed (non-fatal):`,
+      err,
+    );
   }
 
   return new Promise((resolve, reject) => {
@@ -775,8 +857,10 @@ export const convertToSpeakerZoom = async (
         },
       ])
       .outputOptions([
-        "-map", "[v]",
-        "-map", "0:a?",
+        "-map",
+        "[v]",
+        "-map",
+        "0:a?",
         "-c:v libx264",
         "-preset fast",
         "-crf 23",
@@ -810,7 +894,9 @@ export const convertToCenterCrop = async (
   const { width, height } = metadata;
 
   if (height >= width) {
-    console.log(`[CENTER-CROP] Already vertical (${width}x${height}), skipping`);
+    console.log(
+      `[CENTER-CROP] Already vertical (${width}x${height}), skipping`,
+    );
     fs.copyFileSync(inputPath, outputPath);
     return outputPath;
   }
@@ -833,7 +919,10 @@ const debugActiveSpeakerOverlay = async (
 ): Promise<string> => {
   const debugDir = path.join(process.cwd(), "debug_output");
   if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir, { recursive: true });
-  const debugPath = path.join(debugDir, `debug_active_speaker_${Date.now()}.mp4`);
+  const debugPath = path.join(
+    debugDir,
+    `debug_active_speaker_${Date.now()}.mp4`,
+  );
   const colors = ["red", "blue", "green", "yellow", "magenta", "cyan"];
 
   // Build drawbox filters: one for each face bbox + its 9:16 crop window
@@ -844,7 +933,7 @@ const debugActiveSpeakerOverlay = async (
 
     // Face bbox (solid border)
     drawboxFilters.push(
-      `drawbox=x=${face.x}:y=${face.y}:w=${face.w}:h=${face.h}:color=${color}@0.9:t=4`
+      `drawbox=x=${face.x}:y=${face.y}:w=${face.w}:h=${face.h}:color=${color}@0.9:t=4`,
     );
 
     // 9:16 crop window centered on this face (dashed-style via thinner line)
@@ -856,12 +945,12 @@ const debugActiveSpeakerOverlay = async (
     cropY = Math.max(0, Math.min(cropY, height - cropH));
 
     drawboxFilters.push(
-      `drawbox=x=${cropX}:y=${cropY}:w=${cropW}:h=${cropH}:color=${color}@0.5:t=2`
+      `drawbox=x=${cropX}:y=${cropY}:w=${cropW}:h=${cropH}:color=${color}@0.5:t=2`,
     );
 
     // Label with speaker number
     drawboxFilters.push(
-      `drawtext=text='S${speaker} (${face.x}\\,${face.y} ${face.w}x${face.h})':x=${face.x}:y=${Math.max(0, face.y - 25)}:fontsize=20:fontcolor=${color}:borderw=2:bordercolor=black`
+      `drawtext=text='S${speaker} (${face.x}\\,${face.y} ${face.w}x${face.h})':x=${face.x}:y=${Math.max(0, face.y - 25)}:fontsize=20:fontcolor=${color}:borderw=2:bordercolor=black`,
     );
 
     idx++;
@@ -881,7 +970,9 @@ const debugActiveSpeakerOverlay = async (
       ])
       .save(debugPath)
       .on("end", () => {
-        console.log(`[DEBUG-ACTIVE-SPEAKER] Saved debug overlay to: ${debugPath}`);
+        console.log(
+          `[DEBUG-ACTIVE-SPEAKER] Saved debug overlay to: ${debugPath}`,
+        );
         resolve(debugPath);
       })
       .on("error", (err) => {
@@ -907,12 +998,16 @@ export const convertToActiveSpeakerZoom = async (
   const { width, height } = metadata;
 
   if (height >= width) {
-    console.log(`[ACTIVE-SPEAKER] Already vertical (${width}x${height}), skipping`);
+    console.log(
+      `[ACTIVE-SPEAKER] Already vertical (${width}x${height}), skipping`,
+    );
     fs.copyFileSync(inputPath, outputPath);
     return outputPath;
   }
 
-  console.log(`[ACTIVE-SPEAKER] Processing ${segments.length} speaker segments from ${width}x${height}`);
+  console.log(
+    `[ACTIVE-SPEAKER] Processing ${segments.length} speaker segments from ${width}x${height}`,
+  );
 
   // Calculate 9:16 crop dimensions (same logic as speaker-zoom)
   const targetRatio = 9 / 16;
@@ -929,9 +1024,19 @@ export const convertToActiveSpeakerZoom = async (
 
   // DEBUG: draw face boxes + crop windows on original video
   try {
-    await debugActiveSpeakerOverlay(inputPath, speakerFaceMap, width, height, cropW, cropH);
+    await debugActiveSpeakerOverlay(
+      inputPath,
+      speakerFaceMap,
+      width,
+      height,
+      cropW,
+      cropH,
+    );
   } catch (err) {
-    console.error(`[DEBUG-ACTIVE-SPEAKER] Debug overlay failed (non-fatal):`, err);
+    console.error(
+      `[DEBUG-ACTIVE-SPEAKER] Debug overlay failed (non-fatal):`,
+      err,
+    );
   }
 
   const tempDir = path.dirname(outputPath);
@@ -943,7 +1048,9 @@ export const convertToActiveSpeakerZoom = async (
     const face = seg.face ?? speakerFaceMap.get(seg.speaker);
 
     if (!face) {
-      console.warn(`[ACTIVE-SPEAKER] No face for speaker ${seg.speaker}, using center crop`);
+      console.warn(
+        `[ACTIVE-SPEAKER] No face for speaker ${seg.speaker}, using center crop`,
+      );
     }
 
     // Center crop on the speaker's face (or center of frame if no face)
@@ -959,7 +1066,9 @@ export const convertToActiveSpeakerZoom = async (
     const segmentPath = path.join(tempDir, `as_seg_${i}_${timestamp}.mp4`);
     const duration = seg.end - seg.start;
 
-    console.log(`[ACTIVE-SPEAKER] Segment ${i}: speaker=${seg.speaker} ${seg.start.toFixed(2)}s-${seg.end.toFixed(2)}s crop=(${cropX},${cropY}) ${cropW}x${cropH}`);
+    console.log(
+      `[ACTIVE-SPEAKER] Segment ${i}: speaker=${seg.speaker} ${seg.start.toFixed(2)}s-${seg.end.toFixed(2)}s crop=(${cropX},${cropY}) ${cropW}x${cropH}`,
+    );
 
     await new Promise<void>((resolve, reject) => {
       ffmpeg(inputPath)
@@ -980,8 +1089,10 @@ export const convertToActiveSpeakerZoom = async (
           },
         ])
         .outputOptions([
-          "-map", "[v]",
-          "-map", "0:a?",
+          "-map",
+          "[v]",
+          "-map",
+          "0:a?",
           "-c:v libx264",
           "-preset fast",
           "-crf 23",
@@ -1029,13 +1140,17 @@ export const convertToActiveSpeakerZoom = async (
         .on("end", () => {
           try {
             if (fs.existsSync(concatListPath)) fs.unlinkSync(concatListPath);
-          } catch { /* best effort cleanup */ }
+          } catch {
+            /* best effort cleanup */
+          }
           resolve();
         })
         .on("error", (err) => {
           try {
             if (fs.existsSync(concatListPath)) fs.unlinkSync(concatListPath);
-          } catch { /* best effort cleanup */ }
+          } catch {
+            /* best effort cleanup */
+          }
           reject(err);
         });
     });
@@ -1074,30 +1189,39 @@ export const convertToVertical = async (
       if (facecamRegion) {
         return convertToGamingVertical(inputPath, outputPath, facecamRegion);
       }
-      console.warn("[VERTICAL] Gaming mode but no facecam detected — falling back to standard");
+      console.warn(
+        "[VERTICAL] Gaming mode but no facecam detected — falling back to standard",
+      );
       return convertToVerticalBlur(inputPath, outputPath);
 
     case "speaker-zoom":
       if (facecamRegion) {
         return convertToSpeakerZoom(inputPath, outputPath, facecamRegion);
       }
-      console.warn("[VERTICAL] Speaker-zoom mode but no face region — falling back to standard");
+      console.warn(
+        "[VERTICAL] Speaker-zoom mode but no face region — falling back to standard",
+      );
       return convertToVerticalBlur(inputPath, outputPath);
 
     case "active-speaker":
       if (activeSpeakerOptions && activeSpeakerOptions.segments.length > 1) {
         return convertToActiveSpeakerZoom(
-          inputPath, outputPath,
+          inputPath,
+          outputPath,
           activeSpeakerOptions.segments,
           activeSpeakerOptions.speakerFaceMap,
         );
       }
       // Fallback: single speaker with face → static zoom, no face → blurred bg
       if (facecamRegion) {
-        console.warn("[VERTICAL] Active-speaker but single speaker/face — falling back to speaker-zoom");
+        console.warn(
+          "[VERTICAL] Active-speaker but single speaker/face — falling back to speaker-zoom",
+        );
         return convertToSpeakerZoom(inputPath, outputPath, facecamRegion);
       }
-      console.warn("[VERTICAL] Active-speaker but no faces detected — falling back to standard");
+      console.warn(
+        "[VERTICAL] Active-speaker but no faces detected — falling back to standard",
+      );
       return convertToVerticalBlur(inputPath, outputPath);
 
     case "standard":
@@ -1109,9 +1233,11 @@ export const convertToVertical = async (
 export const mergeClipsWithCrossfade = async (
   clips: string[],
   outputPath: string,
-  overlapDuration: number = 0.3
+  overlapDuration: number = 0.3,
 ): Promise<string> => {
-  console.log(`[MERGE-XFADE] Merging ${clips.length} clips with ${overlapDuration}s crossfade`);
+  console.log(
+    `[MERGE-XFADE] Merging ${clips.length} clips with ${overlapDuration}s crossfade`,
+  );
 
   if (clips.length === 0) throw new Error("No clips to merge");
   if (clips.length === 1) {
@@ -1146,7 +1272,10 @@ export const mergeClipsWithCrossfade = async (
     const nextLabel = `[${i + 1}:v]`;
     const outLabel = i === clips.length - 2 ? "[vout]" : `[v${i + 1}]`;
 
-    offset = i === 0 ? durations[0] - overlapDuration : offset + durations[i] - overlapDuration;
+    offset =
+      i === 0
+        ? durations[0] - overlapDuration
+        : offset + durations[i] - overlapDuration;
 
     videoFilter += `${prevLabel}${nextLabel}xfade=transition=fade:duration=${overlapDuration}:offset=${offset.toFixed(3)}${outLabel}`;
     if (i < clips.length - 2) videoFilter += ";";
@@ -1221,7 +1350,7 @@ const FONT_CONFIG: Record<string, FontConfig> = {
 
 const EMOJI_FONT = "'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji'";
 
-const MAC_RENDERER_URL = process.env.MAC_RENDERER_URL || "";
+const MAC_RENDERER_URL = "http://100.100.228.57:3100";
 
 /**
  * Render HTML to PNG via the remote Mac renderer, or fall back to local Puppeteer.
@@ -1230,7 +1359,7 @@ const MAC_RENDERER_URL = process.env.MAC_RENDERER_URL || "";
 async function renderHtmlToPng(
   html: string,
   outputPath: string,
-  opts: { width?: number; height?: number; deviceScaleFactor?: number } = {}
+  opts: { width?: number; height?: number; deviceScaleFactor?: number } = {},
 ): Promise<void> {
   const { width = 1080, height = 400, deviceScaleFactor = 1 } = opts;
 
@@ -1249,23 +1378,35 @@ async function renderHtmlToPng(
         console.log(`[renderHtmlToPng] Rendered via Mac renderer`);
         return;
       }
-      console.warn(`[renderHtmlToPng] Mac renderer returned ${response.status}, falling back to local`);
+      console.warn(
+        `[renderHtmlToPng] Mac renderer returned ${response.status}, falling back to local`,
+      );
     } catch (err: any) {
-      console.warn(`[renderHtmlToPng] Mac renderer unavailable (${err.message}), falling back to local`);
+      console.warn(
+        `[renderHtmlToPng] Mac renderer unavailable — URL: ${MAC_RENDERER_URL}, error: ${err.message}, code: ${err.cause?.code || err.code || "N/A"}`,
+      );
     }
   }
 
   // Fallback: local Puppeteer
   const browser = await puppeteer.launch({
     headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox", "--font-render-hinting=none"],
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--font-render-hinting=none",
+    ],
   });
   try {
     const page = await browser.newPage();
     await page.setViewport({ width, height, deviceScaleFactor });
     await page.setContent(html);
     await page.evaluate("document.fonts.ready");
-    await page.screenshot({ path: outputPath, type: "png", omitBackground: true });
+    await page.screenshot({
+      path: outputPath,
+      type: "png",
+      omitBackground: true,
+    });
   } finally {
     await browser.close();
   }
@@ -1288,7 +1429,7 @@ const generateTextImage = async (
   fillColor: string = "#FFFFFF",
   strokeColor: string = "#000000",
   fontName: string = "Montserrat",
-  style: "stroke" | "instagram" = "stroke"
+  style: "stroke" | "instagram" = "stroke",
 ): Promise<void> => {
   // Get font config or fallback to Montserrat
   const fontConfig = FONT_CONFIG[fontName] || FONT_CONFIG["Montserrat"];
@@ -1352,7 +1493,11 @@ const generateTextImage = async (
     </html>
   `;
 
-  await renderHtmlToPng(htmlContent, outputPath, { width: 1080, height: 400, deviceScaleFactor: 1 });
+  await renderHtmlToPng(htmlContent, outputPath, {
+    width: 1080,
+    height: 400,
+    deviceScaleFactor: 1,
+  });
 
   if (!fs.existsSync(outputPath)) {
     throw new Error(`Failed to create text image at ${outputPath}`);
@@ -1369,11 +1514,11 @@ export const addTextOverlayAtPosition = async (
   fillColor: string = "#FFFFFF",
   strokeColor: string = "#000000",
   fontName: string = "Montserrat",
-  style: "stroke" | "instagram" = "stroke"
+  style: "stroke" | "instagram" = "stroke",
 ): Promise<string> => {
   const textImagePath = path.join(
     path.dirname(outputPath),
-    `text_pos_${Date.now()}.png`
+    `text_pos_${Date.now()}.png`,
   );
 
   // Get font config or fallback to Montserrat
@@ -1429,7 +1574,11 @@ export const addTextOverlayAtPosition = async (
       </html>
     `;
 
-    await renderHtmlToPng(htmlContent, textImagePath, { width: 1080, height: 400, deviceScaleFactor: 1 });
+    await renderHtmlToPng(htmlContent, textImagePath, {
+      width: 1080,
+      height: 400,
+      deviceScaleFactor: 1,
+    });
 
     const xPos = `(W*${xPercent / 100})-(w/2)`;
     const yPos = `(H*${yPercent / 100})-(h/2)`;
@@ -1447,7 +1596,8 @@ export const addTextOverlayAtPosition = async (
           "-b:a 128k",
           "-ar 48000",
           "-movflags +faststart",
-          "-map_metadata", "-1",
+          "-map_metadata",
+          "-1",
         ])
         .save(outputPath)
         .on("end", () => {
@@ -1467,7 +1617,7 @@ export const addTextOverlayAtPosition = async (
 
 export const addPreviewWatermark = async (
   inputPath: string,
-  outputPath: string
+  outputPath: string,
 ): Promise<string> => {
   // Use the Cuttr logo from assets
   const logoPath = path.join(__dirname, "../templates/assets/cuttr-logo.png");
@@ -1511,7 +1661,8 @@ export const addPreviewWatermark = async (
         "-b:a 128k",
         "-ar 48000",
         "-movflags +faststart",
-        "-map_metadata", "-1",
+        "-map_metadata",
+        "-1",
       ])
       .save(outputPath)
       .on("end", () => {
@@ -1531,11 +1682,11 @@ export const addTextOverlay = async (
   fillColor: string = "#FFFFFF",
   strokeColor: string = "#000000",
   fontName: string = "Montserrat",
-  style: "stroke" | "instagram" = "stroke"
+  style: "stroke" | "instagram" = "stroke",
 ): Promise<string> => {
   const textImagePath = path.join(
     path.dirname(outputPath),
-    `text_overlay_${Date.now()}.png`
+    `text_overlay_${Date.now()}.png`,
   );
 
   try {
@@ -1546,7 +1697,7 @@ export const addTextOverlay = async (
       fillColor,
       strokeColor,
       fontName,
-      style
+      style,
     );
     console.log("Text image created at:", textImagePath);
 
@@ -1574,7 +1725,8 @@ export const addTextOverlay = async (
           "-b:a 128k",
           "-ar 48000",
           "-movflags +faststart",
-          "-map_metadata", "-1",
+          "-map_metadata",
+          "-1",
         ])
         .save(outputPath)
         .on("end", () => {
@@ -1613,16 +1765,22 @@ export const addTextOverlay = async (
 export const changeSpeed = (
   inputPath: string,
   outputPath: string,
-  speed: number
+  speed: number,
 ): Promise<string> => {
-  console.log(`[SPEED] Changing speed to ${speed}x: ${inputPath} -> ${outputPath}`);
+  console.log(
+    `[SPEED] Changing speed to ${speed}x: ${inputPath} -> ${outputPath}`,
+  );
 
   if (speed <= 0 || speed > 4) {
-    return Promise.reject(new Error(`Invalid speed: ${speed}. Must be between 0.25 and 4.0`));
+    return Promise.reject(
+      new Error(`Invalid speed: ${speed}. Must be between 0.25 and 4.0`),
+    );
   }
 
   if (!fs.existsSync(inputPath)) {
-    return Promise.reject(new Error(`[SPEED] Input file does not exist: ${inputPath}`));
+    return Promise.reject(
+      new Error(`[SPEED] Input file does not exist: ${inputPath}`),
+    );
   }
 
   // Video: setpts=PTS/speed (inverse because higher speed = lower PTS)
@@ -1637,24 +1795,27 @@ export const changeSpeed = (
     // 0.25x = atempo=0.5,atempo=0.5
     const numFilters = Math.ceil(Math.log(0.5 / speed) / Math.log(2)) + 1;
     const filterValue = Math.pow(speed, 1 / numFilters);
-    audioFilter = Array(numFilters).fill(`atempo=${filterValue.toFixed(4)}`).join(",");
+    audioFilter = Array(numFilters)
+      .fill(`atempo=${filterValue.toFixed(4)}`)
+      .join(",");
   } else {
     // Chain multiple atempo filters for very fast speeds
     // 4x = atempo=2.0,atempo=2.0
     const numFilters = Math.ceil(Math.log(speed / 2.0) / Math.log(2)) + 1;
     const filterValue = Math.pow(speed, 1 / numFilters);
-    audioFilter = Array(numFilters).fill(`atempo=${filterValue.toFixed(4)}`).join(",");
+    audioFilter = Array(numFilters)
+      .fill(`atempo=${filterValue.toFixed(4)}`)
+      .join(",");
   }
 
   return new Promise((resolve, reject) => {
     ffmpeg(inputPath)
-      .complexFilter([
-        `[0:v]${videoPts}[v]`,
-        `[0:a]${audioFilter}[a]`,
-      ])
+      .complexFilter([`[0:v]${videoPts}[v]`, `[0:a]${audioFilter}[a]`])
       .outputOptions([
-        "-map", "[v]",
-        "-map", "[a]",
+        "-map",
+        "[v]",
+        "-map",
+        "[a]",
         "-c:v libx264",
         "-preset fast",
         "-crf 23",
@@ -1663,12 +1824,15 @@ export const changeSpeed = (
         "-b:a 128k",
         "-ar 48000",
         "-movflags +faststart",
-        "-map_metadata", "-1",
+        "-map_metadata",
+        "-1",
       ])
       .save(outputPath)
       .on("end", () => {
         if (!fs.existsSync(outputPath)) {
-          return reject(new Error(`[SPEED] Output file not created: ${outputPath}`));
+          return reject(
+            new Error(`[SPEED] Output file not created: ${outputPath}`),
+          );
         }
         console.log(`[SPEED] Success: ${outputPath}`);
         resolve(outputPath);
@@ -1686,12 +1850,16 @@ export const changeSpeed = (
 export const cropVideo = (
   inputPath: string,
   outputPath: string,
-  crop: { x: number; y: number; width: number; height: number }
+  crop: { x: number; y: number; width: number; height: number },
 ): Promise<string> => {
-  console.log(`[CROP] Cropping to ${crop.width}x${crop.height} at (${crop.x},${crop.y}): ${inputPath} -> ${outputPath}`);
+  console.log(
+    `[CROP] Cropping to ${crop.width}x${crop.height} at (${crop.x},${crop.y}): ${inputPath} -> ${outputPath}`,
+  );
 
   if (!fs.existsSync(inputPath)) {
-    return Promise.reject(new Error(`[CROP] Input file does not exist: ${inputPath}`));
+    return Promise.reject(
+      new Error(`[CROP] Input file does not exist: ${inputPath}`),
+    );
   }
 
   return new Promise((resolve, reject) => {
@@ -1706,12 +1874,15 @@ export const cropVideo = (
         "-b:a 128k",
         "-ar 48000",
         "-movflags +faststart",
-        "-map_metadata", "-1",
+        "-map_metadata",
+        "-1",
       ])
       .save(outputPath)
       .on("end", () => {
         if (!fs.existsSync(outputPath)) {
-          return reject(new Error(`[CROP] Output file not created: ${outputPath}`));
+          return reject(
+            new Error(`[CROP] Output file not created: ${outputPath}`),
+          );
         }
         console.log(`[CROP] Success: ${outputPath}`);
         resolve(outputPath);
@@ -1730,12 +1901,16 @@ export const cropVideo = (
 export const changeAspectRatio = async (
   inputPath: string,
   outputPath: string,
-  aspectRatio: "9:16" | "16:9" | "1:1" | "4:5"
+  aspectRatio: "9:16" | "16:9" | "1:1" | "4:5",
 ): Promise<string> => {
-  console.log(`[ASPECT] Changing to ${aspectRatio}: ${inputPath} -> ${outputPath}`);
+  console.log(
+    `[ASPECT] Changing to ${aspectRatio}: ${inputPath} -> ${outputPath}`,
+  );
 
   if (!fs.existsSync(inputPath)) {
-    return Promise.reject(new Error(`[ASPECT] Input file does not exist: ${inputPath}`));
+    return Promise.reject(
+      new Error(`[ASPECT] Input file does not exist: ${inputPath}`),
+    );
   }
 
   // Get current video dimensions
@@ -1783,12 +1958,16 @@ export const changeAspectRatio = async (
 export const adjustVolume = (
   inputPath: string,
   outputPath: string,
-  volume: number
+  volume: number,
 ): Promise<string> => {
-  console.log(`[VOLUME] Adjusting to ${volume}x: ${inputPath} -> ${outputPath}`);
+  console.log(
+    `[VOLUME] Adjusting to ${volume}x: ${inputPath} -> ${outputPath}`,
+  );
 
   if (!fs.existsSync(inputPath)) {
-    return Promise.reject(new Error(`[VOLUME] Input file does not exist: ${inputPath}`));
+    return Promise.reject(
+      new Error(`[VOLUME] Input file does not exist: ${inputPath}`),
+    );
   }
 
   return new Promise((resolve, reject) => {
@@ -1800,12 +1979,15 @@ export const adjustVolume = (
         "-b:a 192k",
         "-ar 44100",
         "-movflags +faststart",
-        "-map_metadata", "-1",
+        "-map_metadata",
+        "-1",
       ])
       .save(outputPath)
       .on("end", () => {
         if (!fs.existsSync(outputPath)) {
-          return reject(new Error(`[VOLUME] Output file not created: ${outputPath}`));
+          return reject(
+            new Error(`[VOLUME] Output file not created: ${outputPath}`),
+          );
         }
         console.log(`[VOLUME] Success: ${outputPath}`);
         resolve(outputPath);
@@ -1830,16 +2012,24 @@ export const mixBackgroundMusic = (
     musicStartTime: number; // Offset in video timeline where music starts
     musicTrimStart: number; // Where to start in the music file
     musicTrimEnd: number; // Where to end in the music file
-  }
+  },
 ): Promise<string> => {
-  console.log(`[MIX] Mixing music: video=${videoPath}, music=${musicPath} -> ${outputPath}`);
-  console.log(`[MIX] Config: originalVol=${config.originalVolume}, musicVol=${config.musicVolume}, startAt=${config.musicStartTime}s`);
+  console.log(
+    `[MIX] Mixing music: video=${videoPath}, music=${musicPath} -> ${outputPath}`,
+  );
+  console.log(
+    `[MIX] Config: originalVol=${config.originalVolume}, musicVol=${config.musicVolume}, startAt=${config.musicStartTime}s`,
+  );
 
   if (!fs.existsSync(videoPath)) {
-    return Promise.reject(new Error(`[MIX] Video file does not exist: ${videoPath}`));
+    return Promise.reject(
+      new Error(`[MIX] Video file does not exist: ${videoPath}`),
+    );
   }
   if (!fs.existsSync(musicPath)) {
-    return Promise.reject(new Error(`[MIX] Music file does not exist: ${musicPath}`));
+    return Promise.reject(
+      new Error(`[MIX] Music file does not exist: ${musicPath}`),
+    );
   }
 
   // Calculate music duration and delay
@@ -1865,20 +2055,25 @@ export const mixBackgroundMusic = (
       .input(musicPath)
       .complexFilter(filterComplex)
       .outputOptions([
-        "-map", "0:v",
-        "-map", "[mixed]",
+        "-map",
+        "0:v",
+        "-map",
+        "[mixed]",
         "-c:v copy",
         "-c:a aac",
         "-b:a 192k",
         "-ar 44100",
         "-shortest",
         "-movflags +faststart",
-        "-map_metadata", "-1",
+        "-map_metadata",
+        "-1",
       ])
       .save(outputPath)
       .on("end", () => {
         if (!fs.existsSync(outputPath)) {
-          return reject(new Error(`[MIX] Output file not created: ${outputPath}`));
+          return reject(
+            new Error(`[MIX] Output file not created: ${outputPath}`),
+          );
         }
         console.log(`[MIX] Success: ${outputPath}`);
         resolve(outputPath);
@@ -1895,12 +2090,14 @@ export const mixBackgroundMusic = (
  */
 export const muteAudio = (
   inputPath: string,
-  outputPath: string
+  outputPath: string,
 ): Promise<string> => {
   console.log(`[MUTE] Muting audio: ${inputPath} -> ${outputPath}`);
 
   if (!fs.existsSync(inputPath)) {
-    return Promise.reject(new Error(`[MUTE] Input file does not exist: ${inputPath}`));
+    return Promise.reject(
+      new Error(`[MUTE] Input file does not exist: ${inputPath}`),
+    );
   }
 
   return new Promise((resolve, reject) => {
@@ -1911,12 +2108,15 @@ export const muteAudio = (
         "-c:a aac",
         "-b:a 32k", // Low bitrate since it's silent
         "-movflags +faststart",
-        "-map_metadata", "-1",
+        "-map_metadata",
+        "-1",
       ])
       .save(outputPath)
       .on("end", () => {
         if (!fs.existsSync(outputPath)) {
-          return reject(new Error(`[MUTE] Output file not created: ${outputPath}`));
+          return reject(
+            new Error(`[MUTE] Output file not created: ${outputPath}`),
+          );
         }
         console.log(`[MUTE] Success: ${outputPath}`);
         resolve(outputPath);
@@ -1946,12 +2146,14 @@ export interface SegmentConfig {
 export const processSegment = async (
   inputPath: string,
   outputPath: string,
-  segment: SegmentConfig
+  segment: SegmentConfig,
 ): Promise<string> => {
   const { startTime, endTime, speed } = segment;
   const duration = endTime - startTime;
 
-  console.log(`[SEGMENT] Processing segment ${segment.id}: ${startTime.toFixed(2)}s-${endTime.toFixed(2)}s @ ${speed}x`);
+  console.log(
+    `[SEGMENT] Processing segment ${segment.id}: ${startTime.toFixed(2)}s-${endTime.toFixed(2)}s @ ${speed}x`,
+  );
 
   if (!fs.existsSync(inputPath)) {
     throw new Error(`[SEGMENT] Input file does not exist: ${inputPath}`);
@@ -1967,24 +2169,27 @@ export const processSegment = async (
   } else if (speed < 0.5) {
     const numFilters = Math.ceil(Math.log(0.5 / speed) / Math.log(2)) + 1;
     const filterValue = Math.pow(speed, 1 / numFilters);
-    audioFilter = Array(numFilters).fill(`atempo=${filterValue.toFixed(4)}`).join(",");
+    audioFilter = Array(numFilters)
+      .fill(`atempo=${filterValue.toFixed(4)}`)
+      .join(",");
   } else {
     const numFilters = Math.ceil(Math.log(speed / 2.0) / Math.log(2)) + 1;
     const filterValue = Math.pow(speed, 1 / numFilters);
-    audioFilter = Array(numFilters).fill(`atempo=${filterValue.toFixed(4)}`).join(",");
+    audioFilter = Array(numFilters)
+      .fill(`atempo=${filterValue.toFixed(4)}`)
+      .join(",");
   }
 
   return new Promise((resolve, reject) => {
     ffmpeg(inputPath)
       .setStartTime(startTime)
       .setDuration(duration)
-      .complexFilter([
-        `[0:v]${videoPts}[v]`,
-        `[0:a]${audioFilter}[a]`,
-      ])
+      .complexFilter([`[0:v]${videoPts}[v]`, `[0:a]${audioFilter}[a]`])
       .outputOptions([
-        "-map", "[v]",
-        "-map", "[a]",
+        "-map",
+        "[v]",
+        "-map",
+        "[a]",
         "-c:v libx264",
         "-preset fast",
         "-crf 23",
@@ -1995,19 +2200,26 @@ export const processSegment = async (
         "-avoid_negative_ts make_zero",
         "-reset_timestamps 1",
         "-movflags +faststart",
-        "-map_metadata", "-1",
+        "-map_metadata",
+        "-1",
       ])
       .save(outputPath)
       .on("end", () => {
         if (!fs.existsSync(outputPath)) {
-          return reject(new Error(`[SEGMENT] Output file not created: ${outputPath}`));
+          return reject(
+            new Error(`[SEGMENT] Output file not created: ${outputPath}`),
+          );
         }
         const stats = fs.statSync(outputPath);
-        console.log(`[SEGMENT] Processed ${segment.id}: ${(stats.size / 1024 / 1024).toFixed(2)}MB`);
+        console.log(
+          `[SEGMENT] Processed ${segment.id}: ${(stats.size / 1024 / 1024).toFixed(2)}MB`,
+        );
         resolve(outputPath);
       })
       .on("error", (err) => {
-        console.error(`[SEGMENT] Failed processing ${segment.id}: ${err.message}`);
+        console.error(
+          `[SEGMENT] Failed processing ${segment.id}: ${err.message}`,
+        );
         reject(err);
       });
   });
@@ -2019,9 +2231,11 @@ export const processSegment = async (
  */
 export const concatVideos = (
   inputPaths: string[],
-  outputPath: string
+  outputPath: string,
 ): Promise<string> => {
-  console.log(`[CONCAT] Concatenating ${inputPaths.length} videos -> ${outputPath}`);
+  console.log(
+    `[CONCAT] Concatenating ${inputPaths.length} videos -> ${outputPath}`,
+  );
 
   if (inputPaths.length === 0) {
     return Promise.reject(new Error("[CONCAT] No input files provided"));
@@ -2053,7 +2267,8 @@ export const concatVideos = (
         "-b:a 128k",
         "-ar 48000",
         "-movflags +faststart",
-        "-map_metadata", "-1",
+        "-map_metadata",
+        "-1",
       ])
       .save(outputPath)
       .on("end", () => {
@@ -2063,10 +2278,14 @@ export const concatVideos = (
         }
 
         if (!fs.existsSync(outputPath)) {
-          return reject(new Error(`[CONCAT] Output file not created: ${outputPath}`));
+          return reject(
+            new Error(`[CONCAT] Output file not created: ${outputPath}`),
+          );
         }
         const stats = fs.statSync(outputPath);
-        console.log(`[CONCAT] Success: ${outputPath} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`);
+        console.log(
+          `[CONCAT] Success: ${outputPath} (${(stats.size / 1024 / 1024).toFixed(2)}MB)`,
+        );
         resolve(outputPath);
       })
       .on("error", (err) => {
@@ -2088,18 +2307,28 @@ export const generateBlackSegment = (
   outputPath: string,
   duration: number,
   width: number,
-  height: number
+  height: number,
 ): Promise<string> => {
-  console.log(`[BLACK] Generating ${duration.toFixed(2)}s black segment (${width}x${height}) -> ${outputPath}`);
+  console.log(
+    `[BLACK] Generating ${duration.toFixed(2)}s black segment (${width}x${height}) -> ${outputPath}`,
+  );
 
   return new Promise((resolve, reject) => {
     ffmpeg()
-      .input("color=c=black:s=" + width + "x" + height + ":r=30:d=" + duration.toFixed(4))
+      .input(
+        "color=c=black:s=" +
+          width +
+          "x" +
+          height +
+          ":r=30:d=" +
+          duration.toFixed(4),
+      )
       .inputOptions(["-f lavfi"])
       .input("anullsrc=r=48000:cl=stereo")
       .inputOptions(["-f lavfi"])
       .outputOptions([
-        "-t", duration.toFixed(4),
+        "-t",
+        duration.toFixed(4),
         "-c:v libx264",
         "-preset fast",
         "-crf 23",
@@ -2109,12 +2338,15 @@ export const generateBlackSegment = (
         "-ar 48000",
         "-shortest",
         "-movflags +faststart",
-        "-map_metadata", "-1",
+        "-map_metadata",
+        "-1",
       ])
       .save(outputPath)
       .on("end", () => {
         if (!fs.existsSync(outputPath)) {
-          return reject(new Error(`[BLACK] Output file not created: ${outputPath}`));
+          return reject(
+            new Error(`[BLACK] Output file not created: ${outputPath}`),
+          );
         }
         console.log(`[BLACK] Success: ${outputPath}`);
         resolve(outputPath);
@@ -2134,9 +2366,11 @@ export const processSegments = async (
   inputPath: string,
   outputPath: string,
   segments: SegmentConfig[],
-  tempDir: string
+  tempDir: string,
 ): Promise<{ outputPath: string; tempFiles: string[] }> => {
-  console.log(`[SEGMENTS] Processing ${segments.length} segments from ${inputPath}`);
+  console.log(
+    `[SEGMENTS] Processing ${segments.length} segments from ${inputPath}`,
+  );
 
   if (!fs.existsSync(inputPath)) {
     throw new Error(`[SEGMENTS] Input file does not exist: ${inputPath}`);
@@ -2155,7 +2389,9 @@ export const processSegments = async (
   const { width, height } = metadata;
 
   // Sort segments by startTime to detect gaps
-  const sortedSegments = [...segments].sort((a, b) => a.startTime - b.startTime);
+  const sortedSegments = [...segments].sort(
+    (a, b) => a.startTime - b.startTime,
+  );
 
   // Process each segment and detect gaps between them
   for (let i = 0; i < sortedSegments.length; i++) {
@@ -2166,8 +2402,11 @@ export const processSegments = async (
       const prevSegment = sortedSegments[i - 1];
       const gapDuration = segment.startTime - prevSegment.endTime;
 
-      if (gapDuration > 0.05) { // Ignore tiny gaps from floating point
-        console.log(`[SEGMENTS] Gap detected: ${prevSegment.endTime.toFixed(2)}s to ${segment.startTime.toFixed(2)}s (${gapDuration.toFixed(2)}s)`);
+      if (gapDuration > 0.05) {
+        // Ignore tiny gaps from floating point
+        console.log(
+          `[SEGMENTS] Gap detected: ${prevSegment.endTime.toFixed(2)}s to ${segment.startTime.toFixed(2)}s (${gapDuration.toFixed(2)}s)`,
+        );
         const gapPath = path.join(tempDir, `gap_${i}_${timestamp}.mp4`);
         await generateBlackSegment(gapPath, gapDuration, width, height);
         concatParts.push(gapPath);
@@ -2190,7 +2429,9 @@ export const processSegments = async (
     await concatVideos(concatParts, outputPath);
   }
 
-  console.log(`[SEGMENTS] All segments processed and concatenated: ${outputPath}`);
+  console.log(
+    `[SEGMENTS] All segments processed and concatenated: ${outputPath}`,
+  );
 
   return { outputPath, tempFiles };
 };
@@ -2220,9 +2461,11 @@ export interface MediaOverlayItem {
 export const applyMediaOverlays = async (
   inputPath: string,
   outputPath: string,
-  overlays: MediaOverlayItem[]
+  overlays: MediaOverlayItem[],
 ): Promise<string> => {
-  console.log(`[OVERLAY] Applying ${overlays.length} overlay(s): ${inputPath} -> ${outputPath}`);
+  console.log(
+    `[OVERLAY] Applying ${overlays.length} overlay(s): ${inputPath} -> ${outputPath}`,
+  );
 
   if (!fs.existsSync(inputPath)) {
     throw new Error(`[OVERLAY] Input file does not exist: ${inputPath}`);
@@ -2245,7 +2488,9 @@ export const applyMediaOverlays = async (
     const overlay = overlays[i];
 
     if (!fs.existsSync(overlay.localPath)) {
-      console.warn(`[OVERLAY] Overlay file missing, skipping: ${overlay.localPath}`);
+      console.warn(
+        `[OVERLAY] Overlay file missing, skipping: ${overlay.localPath}`,
+      );
       continue;
     }
 
@@ -2262,7 +2507,9 @@ export const applyMediaOverlays = async (
 
     // Position: convert percentage to pixel, center the overlay
     const xPixel = Math.round((overlay.x / 100) * videoWidth - finalWidth / 2);
-    const yPixel = Math.round((overlay.y / 100) * videoHeight - finalHeight / 2);
+    const yPixel = Math.round(
+      (overlay.y / 100) * videoHeight - finalHeight / 2,
+    );
 
     // Input label for this overlay
     const prevLabel = i === 0 ? "[0:v]" : `[v${i}]`;
@@ -2271,12 +2518,12 @@ export const applyMediaOverlays = async (
     // Scale + set opacity for this overlay input
     const overlayLabel = `[ov${i}]`;
     filterParts.push(
-      `[${inputIdx}:v]scale=${finalWidth}:${finalHeight},format=rgba,colorchannelmixer=aa=${overlay.opacity}${overlayLabel}`
+      `[${inputIdx}:v]scale=${finalWidth}:${finalHeight},format=rgba,colorchannelmixer=aa=${overlay.opacity}${overlayLabel}`,
     );
 
     // Apply overlay with time-gating using enable
     filterParts.push(
-      `${prevLabel}${overlayLabel}overlay=${xPixel}:${yPixel}:enable='between(t,${overlay.startTime},${overlay.endTime})'${outLabel}`
+      `${prevLabel}${overlayLabel}overlay=${xPixel}:${yPixel}:enable='between(t,${overlay.startTime},${overlay.endTime})'${outLabel}`,
     );
   }
 
@@ -2326,7 +2573,18 @@ const formatLikesCount = (count: number): string => {
 };
 
 const hashColor = (str: string): string => {
-  const colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E9"];
+  const colors = [
+    "#FF6B6B",
+    "#4ECDC4",
+    "#45B7D1",
+    "#96CEB4",
+    "#FFEAA7",
+    "#DDA0DD",
+    "#98D8C8",
+    "#F7DC6F",
+    "#BB8FCE",
+    "#85C1E9",
+  ];
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     hash = str.charCodeAt(i) + ((hash << 5) - hash);
@@ -2335,7 +2593,11 @@ const hashColor = (str: string): string => {
 };
 
 const escapeHtml = (text: string): string =>
-  text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 
 const VERIFIED_BADGE_SVG = {
   tiktok: `<svg width="14" height="14" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="10" fill="#20D5EC"/><path d="M8.5 13.5L5 10l1.4-1.4 2.1 2.1 4.6-4.6L14.5 7.5l-6 6z" fill="#fff"/></svg>`,
@@ -2349,15 +2611,16 @@ const THUMBS_UP_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="#aa
 
 const getDefaultAvatarDataUri = (_username: string): string => {
   return `data:image/svg+xml,${encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72"><circle cx="36" cy="36" r="36" fill="#C4C4C4"/><path d="M36 36c5.4 0 9.6-4.2 9.6-9.6S41.4 16.8 36 16.8 26.4 21 26.4 26.4 30.6 36 36 36zm0 4.8c-6.4 0-19.2 3.2-19.2 9.6v2.4c0 1.32 1.08 2.4 2.4 2.4h33.6c1.32 0 2.4-1.08 2.4-2.4v-2.4c0-6.4-12.8-9.6-19.2-9.6z" fill="#fff"/></svg>`
+    `<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72"><circle cx="36" cy="36" r="36" fill="#C4C4C4"/><path d="M36 36c5.4 0 9.6-4.2 9.6-9.6S41.4 16.8 36 16.8 26.4 21 26.4 26.4 30.6 36 36 36zm0 4.8c-6.4 0-19.2 3.2-19.2 9.6v2.4c0 1.32 1.08 2.4 2.4 2.4h33.6c1.32 0 2.4-1.08 2.4-2.4v-2.4c0-6.4-12.8-9.6-19.2-9.6z" fill="#fff"/></svg>`,
   )}`;
 };
 
 const getCommentHtml = (
   config: CommentOverlayConfig,
-  profilePicSrc: string
+  profilePicSrc: string,
 ): string => {
-  const { platform, username, commentText, likesCount, isVerified, timeAgo } = config;
+  const { platform, username, commentText, likesCount, isVerified, timeAgo } =
+    config;
   const likes = formatLikesCount(likesCount);
   const badge = isVerified ? VERIFIED_BADGE_SVG[platform] : "";
   const safeUsername = escapeHtml(username);
@@ -2447,16 +2710,23 @@ const getCommentHtml = (
  */
 export const generateCommentImage = async (
   config: CommentOverlayConfig,
-  outputPath: string
+  outputPath: string,
 ): Promise<{ width: number; height: number }> => {
-  console.log(`[COMMENT] Generating ${config.platform} comment image for @${config.username}`);
+  console.log(
+    `[COMMENT] Generating ${config.platform} comment image for @${config.username}`,
+  );
 
   // Build profile picture data URI
   let profilePicSrc = getDefaultAvatarDataUri(config.username);
   if (config.profilePicturePath && fs.existsSync(config.profilePicturePath)) {
     const imageBuffer = fs.readFileSync(config.profilePicturePath);
     const ext = path.extname(config.profilePicturePath).toLowerCase();
-    const mime = ext === ".png" ? "image/png" : ext === ".webp" ? "image/webp" : "image/jpeg";
+    const mime =
+      ext === ".png"
+        ? "image/png"
+        : ext === ".webp"
+          ? "image/webp"
+          : "image/jpeg";
     profilePicSrc = `data:${mime};base64,${imageBuffer.toString("base64")}`;
   }
 
@@ -2484,14 +2754,23 @@ export const generateCommentImage = async (
         fs.writeFileSync(outputPath, buffer);
         const dimensions = {
           width: parseInt(response.headers.get("X-Render-Width") || "800", 10),
-          height: parseInt(response.headers.get("X-Render-Height") || "200", 10),
+          height: parseInt(
+            response.headers.get("X-Render-Height") || "200",
+            10,
+          ),
         };
-        console.log(`[COMMENT] Generated via Mac renderer: ${dimensions.width}x${dimensions.height}px`);
+        console.log(
+          `[COMMENT] Generated via Mac renderer: ${dimensions.width}x${dimensions.height}px`,
+        );
         return dimensions;
       }
-      console.warn(`[COMMENT] Mac renderer returned ${response.status}, falling back to local`);
+      console.warn(
+        `[COMMENT] Mac renderer returned ${response.status}, falling back to local`,
+      );
     } catch (err: any) {
-      console.warn(`[COMMENT] Mac renderer unavailable (${err.message}), falling back to local`);
+      console.warn(
+        `[COMMENT] Mac renderer unavailable — URL: ${MAC_RENDERER_URL}, error: ${err.message}, code: ${err.cause?.code || err.code || "N/A"}`,
+      );
     }
   }
 
@@ -2511,7 +2790,10 @@ export const generateCommentImage = async (
     if (commentEl) {
       const box = await commentEl.boundingBox();
       if (box) {
-        dimensions = { width: Math.ceil(box.width) + 32, height: Math.ceil(box.height) + 32 };
+        dimensions = {
+          width: Math.ceil(box.width) + 32,
+          height: Math.ceil(box.height) + 32,
+        };
       }
     }
 
@@ -2526,7 +2808,9 @@ export const generateCommentImage = async (
       throw new Error(`Failed to create comment image at ${outputPath}`);
     }
 
-    console.log(`[COMMENT] Generated ${config.platform} comment: ${dimensions.width}x${dimensions.height}px -> ${outputPath}`);
+    console.log(
+      `[COMMENT] Generated ${config.platform} comment: ${dimensions.width}x${dimensions.height}px -> ${outputPath}`,
+    );
     return dimensions;
   } finally {
     await browser.close();

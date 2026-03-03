@@ -202,6 +202,36 @@ export function useClipsData() {
     [selectedTeam?.id, setUnsavedClips]
   );
 
+  // Merge-based refresh: fetches the first page and merges new/updated clips
+  // into the existing list without resetting scroll position
+  const refreshSavedClips = useCallback(async () => {
+    if (!selectedTeam?.id) return;
+
+    try {
+      const { clips: freshClips } = await clipsAPI.getSavedClips(
+        selectedTeam.id,
+        CLIPS_PER_PAGE,
+        0
+      );
+
+      setSavedClips((prev) => {
+        const existingMap = new Map(prev.map((c) => [c.id, c]));
+
+        // Update existing clips with fresh data (e.g., status changes)
+        for (const fresh of freshClips) {
+          existingMap.set(fresh.id, fresh);
+        }
+
+        // Build new array: fresh clips first (preserving server order), then remaining existing
+        const freshIds = new Set(freshClips.map((c) => c.id));
+        const remaining = prev.filter((c) => !freshIds.has(c.id));
+        return [...freshClips, ...remaining];
+      });
+    } catch (error) {
+      console.error("Failed to refresh saved clips:", error);
+    }
+  }, [selectedTeam?.id, setSavedClips]);
+
   const moveClipToFolder = useCallback(
     async (clipId: number, folderId: number | null) => {
       if (!selectedTeam?.id) return;
@@ -252,6 +282,7 @@ export function useClipsData() {
     saveClip,
     rejectClip,
     moveClipToFolder,
+    refreshSavedClips,
     setSavedClips,
     setUnsavedClips,
   };
