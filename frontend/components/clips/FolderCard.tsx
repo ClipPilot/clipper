@@ -12,14 +12,16 @@ interface FolderCardProps {
   onDelete?: (folderId: number) => void;
   onDrop?: (folderId: number, clipId: number) => void;
   onClipDelete?: (clipId: number) => void;
+  onDownload?: (folderId: number) => void;
 }
 
-export const FolderCard: React.FC<FolderCardProps> = ({ 
-  folder, 
-  clips, 
-  onDelete, 
+export const FolderCard: React.FC<FolderCardProps> = ({
+  folder,
+  clips,
+  onDelete,
   onDrop,
-  onClipDelete 
+  onClipDelete,
+  onDownload,
 }) => {
   const [isDragOver, setIsDragOver] = useState(false);
 
@@ -72,6 +74,17 @@ export const FolderCard: React.FC<FolderCardProps> = ({
         </div>
         
         <div className="flex items-center gap-2">
+          {onDownload && clips.length > 0 && (
+            <Button
+              isIconOnly
+              size="sm"
+              variant="light"
+              color="primary"
+              onPress={() => onDownload(folder.id)}
+            >
+              <Icon icon="solar:download-minimalistic-outline" className="text-lg" />
+            </Button>
+          )}
           {onDelete && (
             <Button
               isIconOnly

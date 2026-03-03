@@ -139,6 +139,44 @@ export interface CreateAnnouncementData {
   action_url?: string;
 }
 
+// Incidents
+export type IncidentStatus = "investigating" | "identified" | "monitoring" | "resolved";
+
+export interface IncidentUpdate {
+  status: string;
+  message: string;
+  timestamp: string;
+}
+
+export interface Incident {
+  id: number;
+  title: string;
+  status: IncidentStatus;
+  affected_services: string[];
+  updates: IncidentUpdate[];
+  created_by_admin_email: string;
+  resolved_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IncidentsResponse {
+  incidents: Incident[];
+  total: number;
+}
+
+export interface CreateIncidentData {
+  title: string;
+  status?: IncidentStatus;
+  affected_services: string[];
+  message: string;
+}
+
+export interface AddIncidentUpdateData {
+  status: IncidentStatus;
+  message: string;
+}
+
 // Mass Posting Applications
 export interface IntakeForm {
   id: number;
@@ -169,6 +207,7 @@ export interface Campaign {
   quoted_cpm: string | null;
   budget: string | null;
   video_minimum: number | null;
+  minimum_fund: string | null;
   rejection_reason: string | null;
   admin_notes: string | null;
   google_drive_folder_id: string | null;
@@ -481,6 +520,80 @@ export const adminAPI = {
     return handleResponse(response);
   },
 
+  // Incidents
+  async getIncidents(options?: {
+    status?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<IncidentsResponse> {
+    const params = new URLSearchParams();
+    if (options?.status) params.set("status", options.status);
+    if (options?.limit) params.set("limit", options.limit.toString());
+    if (options?.offset) params.set("offset", options.offset.toString());
+
+    const queryString = params.toString();
+    const url = `${API_URL}/incidents/admin${queryString ? `?${queryString}` : ""}`;
+
+    const response = await fetch(url, {
+      headers: { ...getAuthHeaders() },
+    });
+    return handleResponse(response);
+  },
+
+  async createIncident(
+    data: CreateIncidentData,
+  ): Promise<{ incident: Incident }> {
+    const response = await fetch(`${API_URL}/incidents/admin`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response);
+  },
+
+  async updateIncident(
+    id: number,
+    data: { title?: string; affected_services?: string[] },
+  ): Promise<{ incident: Incident }> {
+    const response = await fetch(`${API_URL}/incidents/admin/${id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response);
+  },
+
+  async addIncidentUpdate(
+    id: number,
+    data: AddIncidentUpdateData,
+  ): Promise<{ incident: Incident }> {
+    const response = await fetch(`${API_URL}/incidents/admin/${id}/update`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response);
+  },
+
+  async deleteIncident(
+    id: number,
+  ): Promise<{ success: boolean; message: string }> {
+    const response = await fetch(`${API_URL}/incidents/admin/${id}`, {
+      method: "DELETE",
+      headers: { ...getAuthHeaders() },
+    });
+    return handleResponse(response);
+  },
+
   // Campaign Management
   async getCampaigns(options?: {
     status?: string;
@@ -513,6 +626,7 @@ export const adminAPI = {
     quotedCpm: string,
     videoMinimum: number,
     adminNotes?: string,
+    minimumFund?: number,
   ): Promise<{ campaign: Campaign }> {
     const response = await fetch(`${API_URL}/admin/campaigns/${id}/approve`, {
       method: "POST",
@@ -520,7 +634,7 @@ export const adminAPI = {
         "Content-Type": "application/json",
         ...getAuthHeaders(),
       },
-      body: JSON.stringify({ quotedCpm, videoMinimum, adminNotes }),
+      body: JSON.stringify({ quotedCpm, videoMinimum, adminNotes, minimumFund }),
     });
     return handleResponse(response);
   },
@@ -543,7 +657,7 @@ export const adminAPI = {
 
   async updateCampaign(
     id: number,
-    data: { quotedCpm?: string; videoMinimum?: number; adminNotes?: string },
+    data: { quotedCpm?: string; videoMinimum?: number; adminNotes?: string; minimumFund?: number; budget?: number },
   ): Promise<{ campaign: Campaign }> {
     const response = await fetch(`${API_URL}/admin/campaigns/${id}`, {
       method: "PATCH",
@@ -648,6 +762,29 @@ export const adminAPI = {
     const response = await fetch(
       `${API_URL}/admin/campaigns/${campaignId}/posts${qs ? `?${qs}` : ""}`,
       { headers: { ...getAuthHeaders() } },
+    );
+    return handleResponse(response);
+  },
+
+  async getMasterAgreement(
+    teamId: number,
+  ): Promise<{ agreement: any }> {
+    const response = await fetch(
+      `${API_URL}/admin/teams/${teamId}/master-agreement`,
+      { headers: { ...getAuthHeaders() } },
+    );
+    return handleResponse(response);
+  },
+
+  async voidAndRegenerateMasterContract(
+    teamId: number,
+  ): Promise<{ agreement: any }> {
+    const response = await fetch(
+      `${API_URL}/admin/teams/${teamId}/void-and-regenerate-contract`,
+      {
+        method: "POST",
+        headers: { ...getAuthHeaders() },
+      },
     );
     return handleResponse(response);
   },

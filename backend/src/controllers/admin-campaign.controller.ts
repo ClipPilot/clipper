@@ -2,8 +2,8 @@ import * as Sentry from "@sentry/node";
 import { Response } from "express";
 import { AdminRequest } from "../middleware/admin.middleware";
 import { campaignService } from "../services/massPosting/campaign.service";
-import { campaignContractService } from "../services/massPosting/campaignContract.service";
 import { campaignVideoService } from "../services/massPosting/campaignVideo.service";
+import { campaignContractService } from "../services/massPosting/campaignContract.service";
 import { adPostingService, AdPostingError } from "../services/adPosting.service";
 
 export async function getAllCampaigns(req: AdminRequest, res: Response) {
@@ -46,7 +46,7 @@ export async function approveCampaign(req: AdminRequest, res: Response) {
     const id = parseInt(req.params.campaignId);
     if (isNaN(id)) return res.status(400).json({ error: "Invalid campaign ID" });
 
-    const { quotedCpm, videoMinimum, adminNotes } = req.body;
+    const { quotedCpm, videoMinimum, adminNotes, minimumFund } = req.body;
 
     if (!quotedCpm || videoMinimum == null) {
       return res.status(400).json({ error: "quotedCpm and videoMinimum are required" });
@@ -57,6 +57,7 @@ export async function approveCampaign(req: AdminRequest, res: Response) {
       String(quotedCpm),
       Number(videoMinimum),
       adminNotes,
+      minimumFund != null ? Number(minimumFund) : undefined,
     );
 
     return res.json({ campaign });
@@ -97,11 +98,13 @@ export async function updateCampaign(req: AdminRequest, res: Response) {
     const id = parseInt(req.params.campaignId);
     if (isNaN(id)) return res.status(400).json({ error: "Invalid campaign ID" });
 
-    const { quotedCpm, videoMinimum, adminNotes } = req.body;
+    const { quotedCpm, videoMinimum, adminNotes, minimumFund, budget } = req.body;
 
     const campaign = await campaignService.updateCampaign(id, {
       quotedCpm: quotedCpm != null ? String(quotedCpm) : undefined,
       videoMinimum: videoMinimum != null ? Number(videoMinimum) : undefined,
+      minimumFund: minimumFund != null ? Number(minimumFund) : undefined,
+      budget: budget != null ? Number(budget) : undefined,
       adminNotes,
     });
 
@@ -156,69 +159,6 @@ export async function endCampaign(req: AdminRequest, res: Response) {
   }
 }
 
-export async function getContractAdmin(req: AdminRequest, res: Response) {
-  try {
-    const id = parseInt(req.params.campaignId);
-    if (isNaN(id)) return res.status(400).json({ error: "Invalid campaign ID" });
-
-    const contract = await campaignContractService.getContract(id);
-    return res.json({ contract });
-  } catch (error) {
-    console.error("Get contract error:", error);
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to fetch contract" });
-  }
-}
-
-export async function generateContractAdmin(req: AdminRequest, res: Response) {
-  try {
-    const id = parseInt(req.params.campaignId);
-    if (isNaN(id)) return res.status(400).json({ error: "Invalid campaign ID" });
-
-    await campaignContractService.generateContract(id);
-    const contractWithUrl = await campaignContractService.getContract(id);
-    return res.json({ contract: contractWithUrl });
-  } catch (error: any) {
-    console.error("Generate contract error:", error);
-    if (error.message === "Campaign not found" || error.message === "Team not found") {
-      return res.status(404).json({ error: error.message });
-    }
-    Sentry.captureException(error);
-    return res.status(500).json({ error: error.message || "Failed to generate contract" });
-  }
-}
-
-export async function updateContractAdmin(req: AdminRequest, res: Response) {
-  try {
-    const id = parseInt(req.params.campaignId);
-    if (isNaN(id)) return res.status(400).json({ error: "Invalid campaign ID" });
-
-    const { parties, providerObligations, clientObligations, paymentTerms, additionalClauses } = req.body;
-
-    const contract = await campaignContractService.updateAndRegenerate(id, {
-      parties,
-      providerObligations,
-      clientObligations,
-      paymentTerms,
-      additionalClauses,
-    });
-
-    // Return the contract with presigned URL
-    const contractWithUrl = await campaignContractService.getContract(id);
-    return res.json({ contract: contractWithUrl });
-  } catch (error: any) {
-    console.error("Update contract error:", error);
-    if (error.message === "Contract not found") {
-      return res.status(404).json({ error: error.message });
-    }
-    if (error.message === "Cannot edit a signed contract") {
-      return res.status(409).json({ error: error.message });
-    }
-    Sentry.captureException(error);
-    return res.status(500).json({ error: "Failed to update contract" });
-  }
-}
-
 export async function getCampaignVideos(req: AdminRequest, res: Response) {
   try {
     const campaignId = parseInt(req.params.campaignId);
@@ -264,6 +204,34 @@ export async function getCampaignPosts(req: AdminRequest, res: Response) {
     }
     Sentry.captureException(error);
     return res.status(500).json({ error: "Failed to fetch campaign posts" });
+  }
+}
+
+export async function getMasterAgreement(req: AdminRequest, res: Response) {
+  try {
+    const teamId = parseInt(req.params.teamId);
+    if (isNaN(teamId)) return res.status(400).json({ error: "Invalid team ID" });
+
+    const agreement = await campaignContractService.getOrGenerateMasterAgreement(teamId);
+    return res.json({ agreement });
+  } catch (error) {
+    console.error("Get master agreement error:", error);
+    Sentry.captureException(error);
+    return res.status(500).json({ error: "Failed to get master agreement" });
+  }
+}
+
+export async function voidAndRegenerateMasterContract(req: AdminRequest, res: Response) {
+  try {
+    const teamId = parseInt(req.params.teamId);
+    if (isNaN(teamId)) return res.status(400).json({ error: "Invalid team ID" });
+
+    const agreement = await campaignContractService.voidAndRegenerateMasterAgreement(teamId);
+    return res.json({ agreement });
+  } catch (error) {
+    console.error("Void and regenerate master contract error:", error);
+    Sentry.captureException(error);
+    return res.status(500).json({ error: "Failed to void and regenerate master contract" });
   }
 }
 

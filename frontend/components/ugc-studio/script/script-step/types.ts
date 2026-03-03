@@ -13,7 +13,7 @@ export interface ScriptStepProps {
 
 export interface CustomPatternStep {
   type: SceneType;
-  shot: ShotType;
+  shot: ShotType | "visual";
 }
 
 export interface ScriptGenerationState {

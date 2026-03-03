@@ -837,6 +837,7 @@ export const campaigns = pgTable(
     quoted_cpm: decimal("quoted_cpm", { precision: 10, scale: 2 }),
     budget: decimal("budget", { precision: 12, scale: 2 }),
     video_minimum: integer("video_minimum"),
+    minimum_fund: decimal("minimum_fund", { precision: 12, scale: 2 }),
     rejection_reason: text("rejection_reason"),
     admin_notes: text("admin_notes"),
     google_drive_folder_id: varchar("google_drive_folder_id", { length: 255 }),
@@ -933,9 +934,9 @@ export const campaignContracts = pgTable(
   "campaign_contracts",
   {
     id: serial("id").primaryKey(),
-    campaign_id: integer("campaign_id")
-      .notNull()
-      .references(() => campaigns.id, { onDelete: "cascade" }),
+    campaign_id: integer("campaign_id").references(() => campaigns.id, {
+      onDelete: "cascade",
+    }),
     team_id: integer("team_id")
       .notNull()
       .references(() => teams.id, { onDelete: "cascade" }),
@@ -943,12 +944,19 @@ export const campaignContracts = pgTable(
       () => users.id,
       { onDelete: "set null" },
     ),
+    is_master: boolean("is_master").notNull().default(false),
     terms: jsonb("terms"),
     unsigned_pdf_key: text("unsigned_pdf_key"),
     signed_pdf_key: text("signed_pdf_key"),
     signature_image_key: text("signature_image_key"),
     signer_legal_name: varchar("signer_legal_name", { length: 255 }),
+    signer_legal_entity_name: varchar("signer_legal_entity_name", {
+      length: 255,
+    }),
+    signer_title: varchar("signer_title", { length: 255 }),
+    signer_email: varchar("signer_email", { length: 255 }),
     signer_ip_address: varchar("signer_ip_address", { length: 45 }),
+    effective_date: timestamp("effective_date"),
     signed_at: timestamp("signed_at"),
     status: campaignContractStatusEnum("status").notNull().default("pending"),
     created_at: timestamp("created_at").notNull().defaultNow(),
@@ -1367,3 +1375,32 @@ export const apiUsageLogs = pgTable(
     ),
   }),
 ).enableRLS();
+
+// ── Incidents (status page) ──
+
+export const incidentStatusEnum = pgEnum("incident_status", [
+  "investigating",
+  "identified",
+  "monitoring",
+  "resolved",
+]);
+
+export const incidents = pgTable("incidents", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  status: incidentStatusEnum("status").notNull().default("investigating"),
+  affected_services: jsonb("affected_services")
+    .notNull()
+    .$type<string[]>()
+    .default([]),
+  updates: jsonb("updates")
+    .notNull()
+    .$type<{ status: string; message: string; timestamp: string }[]>()
+    .default([]),
+  created_by_admin_email: varchar("created_by_admin_email", {
+    length: 255,
+  }).notNull(),
+  resolved_at: timestamp("resolved_at"),
+  created_at: timestamp("created_at").notNull().defaultNow(),
+  updated_at: timestamp("updated_at").notNull().defaultNow(),
+}).enableRLS();

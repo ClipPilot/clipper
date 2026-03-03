@@ -166,7 +166,7 @@ export class UGCScriptController {
         customPrompt,
       });
 
-      const { cinematicPrompt, cameraDirection, ...clientScene } = updatedScene;
+      const { cinematicPrompt, ...clientScene } = updatedScene;
 
       return res.status(200).json({
         success: true,

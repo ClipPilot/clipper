@@ -7,6 +7,7 @@ import {
   Campaign,
   CampaignContract,
   CampaignDetail,
+  CampaignVideo,
   ContractClauses,
   IntakeForm,
 } from "@/lib/api";
@@ -50,8 +51,12 @@ function DetailModal({ campaignId, onClose, onAction }: DetailModalProps) {
   const [adminNotes, setAdminNotes] = useState("");
   const [quotedCpmInput, setQuotedCpmInput] = useState("");
   const [videoMinimumInput, setVideoMinimumInput] = useState("");
+  const [minimumFundInput, setMinimumFundInput] = useState("");
+  const [budgetInput, setBudgetInput] = useState("");
   const [error, setError] = useState("");
-  const [contract, setContract] = useState<CampaignContract | null>(null);
+  const [contract, setContract] = useState<any>(null);
+  const [videos, setVideos] = useState<CampaignVideo[]>([]);
+  const [videosLoading, setVideosLoading] = useState(false);
   const [contractLoading, setContractLoading] = useState(false);
   const [contractSaving, setContractSaving] = useState(false);
   const [showContractEditor, setShowContractEditor] = useState(false);
@@ -66,6 +71,8 @@ function DetailModal({ campaignId, onClose, onAction }: DetailModalProps) {
         setDetail(campaign);
         setQuotedCpmInput(campaign.quoted_cpm ?? getTierCpm(campaign.budget));
         setVideoMinimumInput(campaign.video_minimum != null ? String(campaign.video_minimum) : "");
+        setMinimumFundInput(campaign.minimum_fund ?? "");
+        setBudgetInput(campaign.budget ?? "");
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load campaign");
       } finally {
@@ -75,42 +82,40 @@ function DetailModal({ campaignId, onClose, onAction }: DetailModalProps) {
     fetchDetail();
   }, [campaignId]);
 
-  const fetchContract = useCallback(async () => {
+  const fetchContract = useCallback(async (teamId: number) => {
     setContractLoading(true);
     try {
-      const { contract: c } = await adminAPI.getCampaignContract(campaignId);
-      setContract(c);
-      if (c?.terms?.clauses) {
-        setClauseEdits(c.terms.clauses);
-      }
+      const { agreement } = await adminAPI.getMasterAgreement(teamId);
+      setContract(agreement);
     } catch {
       // Contract may not exist yet — that's fine
     } finally {
       setContractLoading(false);
     }
+  }, []);
+
+  const fetchVideos = useCallback(async () => {
+    setVideosLoading(true);
+    try {
+      const { videos: v } = await adminAPI.getCampaignVideos(campaignId);
+      setVideos(v);
+    } catch {
+      // Videos may not exist yet
+    } finally {
+      setVideosLoading(false);
+    }
   }, [campaignId]);
 
   useEffect(() => {
     if (detail && detail.status !== "pending" && detail.status !== "rejected") {
-      fetchContract();
+      fetchContract(detail.team_id);
+      fetchVideos();
     }
-  }, [detail, fetchContract]);
+  }, [detail, fetchContract, fetchVideos]);
 
   const handleSaveContract = async () => {
-    setContractSaving(true);
-    setError("");
-    try {
-      const { contract: updated } = await adminAPI.updateCampaignContract(campaignId, clauseEdits);
-      setContract(updated);
-      if (updated.terms?.clauses) {
-        setClauseEdits(updated.terms.clauses);
-      }
-      setShowContractEditor(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update contract");
-    } finally {
-      setContractSaving(false);
-    }
+    // Master agreement doesn't support per-campaign clause editing
+    // Use void & regenerate to update the agreement text
   };
 
   const handleApprove = async () => {
@@ -126,6 +131,7 @@ function DetailModal({ campaignId, onClose, onAction }: DetailModalProps) {
         quotedCpmInput,
         Number(videoMinimumInput),
         adminNotes || undefined,
+        minimumFundInput ? Number(minimumFundInput) : undefined,
       );
       if ((campaign as any).contractWarning) {
         setError(`Approved, but contract generation failed: ${(campaign as any).contractWarning}`);
@@ -189,17 +195,19 @@ function DetailModal({ campaignId, onClose, onAction }: DetailModalProps) {
   };
 
   const handleSaveCpm = async () => {
-    if (!quotedCpmInput && !videoMinimumInput) return;
+    if (!quotedCpmInput && !videoMinimumInput && !minimumFundInput && !budgetInput) return;
     setActionLoading(true);
     setError("");
     try {
-      const data: { quotedCpm?: string; videoMinimum?: number } = {};
+      const data: { quotedCpm?: string; videoMinimum?: number; minimumFund?: number; budget?: number } = {};
       if (quotedCpmInput) data.quotedCpm = quotedCpmInput;
       if (videoMinimumInput) data.videoMinimum = Number(videoMinimumInput);
+      if (minimumFundInput) data.minimumFund = Number(minimumFundInput);
+      if (budgetInput) data.budget = Number(budgetInput);
       const { campaign } = await adminAPI.updateCampaign(campaignId, data);
       setDetail((d) =>
         d
-          ? { ...d, quoted_cpm: campaign.quoted_cpm, video_minimum: campaign.video_minimum }
+          ? { ...d, quoted_cpm: campaign.quoted_cpm, video_minimum: campaign.video_minimum, minimum_fund: campaign.minimum_fund, budget: campaign.budget }
           : d,
       );
     } catch (err) {
@@ -396,16 +404,23 @@ function DetailModal({ campaignId, onClose, onAction }: DetailModalProps) {
                 Budget & CPM
               </h3>
               <div className="p-4 rounded-xl bg-surface-elevated border border-border space-y-3">
-                {detail.budget && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-text-tertiary uppercase tracking-wider">
-                      Monthly Budget
-                    </span>
-                    <span className="text-sm font-semibold text-text-primary">
-                      ${Number(detail.budget).toLocaleString()}
-                    </span>
+                <div className="flex justify-between items-center gap-4">
+                  <span className="text-xs text-text-tertiary uppercase tracking-wider flex-shrink-0">
+                    Monthly Budget
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-text-tertiary text-sm">$</span>
+                    <input
+                      type="number"
+                      step="1"
+                      min="0"
+                      value={budgetInput}
+                      onChange={(e) => setBudgetInput(e.target.value)}
+                      className="w-28 px-2 py-1 rounded-lg bg-surface border border-border focus:border-emerald outline-none text-text-primary text-sm text-right"
+                      placeholder="0"
+                    />
                   </div>
-                )}
+                </div>
 
                 <div className="flex justify-between items-center gap-4">
                   <span className="text-xs text-text-tertiary uppercase tracking-wider flex-shrink-0">
@@ -438,6 +453,24 @@ function DetailModal({ campaignId, onClose, onAction }: DetailModalProps) {
                       onChange={(e) => setVideoMinimumInput(e.target.value)}
                       className="w-24 px-2 py-1 rounded-lg bg-surface border border-border focus:border-emerald outline-none text-text-primary text-sm text-right"
                       placeholder="0"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center gap-4">
+                  <span className="text-xs text-text-tertiary uppercase tracking-wider flex-shrink-0">
+                    Minimum Fund
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-text-tertiary text-sm">$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={minimumFundInput}
+                      onChange={(e) => setMinimumFundInput(e.target.value)}
+                      className="w-24 px-2 py-1 rounded-lg bg-surface border border-border focus:border-emerald outline-none text-text-primary text-sm text-right"
+                      placeholder={detail.budget ? Number(detail.budget).toFixed(0) : "0"}
                     />
                     <button
                       onClick={handleSaveCpm}
@@ -504,19 +537,7 @@ function DetailModal({ campaignId, onClose, onAction }: DetailModalProps) {
                         No contract generated yet.
                       </p>
                       <button
-                        onClick={async () => {
-                          setContractLoading(true);
-                          setError("");
-                          try {
-                            const { contract: c } = await adminAPI.generateCampaignContract(campaignId);
-                            setContract(c);
-                            if (c?.terms?.clauses) setClauseEdits(c.terms.clauses);
-                          } catch (err) {
-                            setError(err instanceof Error ? err.message : "Failed to generate contract");
-                          } finally {
-                            setContractLoading(false);
-                          }
-                        }}
+                        onClick={() => fetchContract(detail.team_id)}
                         className="px-3 py-1.5 rounded-lg bg-emerald/10 border border-emerald/20 text-emerald hover:bg-emerald/20 transition-colors text-sm font-medium"
                       >
                         Generate Contract
@@ -547,11 +568,31 @@ function DetailModal({ campaignId, onClose, onAction }: DetailModalProps) {
                                 day: "numeric",
                                 year: "numeric",
                               })}
-                              {contract.legal_name && ` by ${contract.legal_name}`}
+                              {(contract.signer_name || contract.legal_name) && ` by ${contract.signer_name || contract.legal_name}`}
                             </span>
                           )}
                         </div>
                       </div>
+
+                      {/* Void & Regenerate */}
+                      <button
+                        onClick={async () => {
+                          if (!confirm("This will void the current master agreement and generate a new one. The client will need to re-sign. Continue?")) return;
+                          setContractLoading(true);
+                          setError("");
+                          try {
+                            await adminAPI.voidAndRegenerateMasterContract(detail.team_id);
+                            await fetchContract(detail.team_id);
+                          } catch (err) {
+                            setError(err instanceof Error ? err.message : "Failed to regenerate contract");
+                          } finally {
+                            setContractLoading(false);
+                          }
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors text-xs font-medium"
+                      >
+                        Void &amp; Regenerate
+                      </button>
 
                       {/* PDF Preview */}
                       {contract.presigned_pdf_url ? (
@@ -685,6 +726,58 @@ function DetailModal({ campaignId, onClose, onAction }: DetailModalProps) {
                         </div>
                       )}
                     </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Videos */}
+            {detail.status !== "pending" && detail.status !== "rejected" && (
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-text-primary mb-3">
+                  Videos
+                </h3>
+                <div className="p-4 rounded-xl bg-surface-elevated border border-border">
+                  {videosLoading ? (
+                    <p className="text-sm text-text-secondary">Loading videos...</p>
+                  ) : videos.length === 0 ? (
+                    <p className="text-sm text-text-tertiary">No videos uploaded yet.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {videos.map((video) => (
+                        <div
+                          key={video.id}
+                          className="flex items-center justify-between gap-3 p-2 rounded-lg bg-surface border border-border"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-sm text-text-primary truncate">
+                              {video.file_name || video.title || `Video #${video.id}`}
+                            </span>
+                            <span
+                              className={`inline-block px-1.5 py-0.5 text-[10px] rounded border capitalize flex-shrink-0 ${
+                                video.status === "ready"
+                                  ? "bg-green-500/10 border-green-500/20 text-green-400"
+                                  : video.status === "failed"
+                                    ? "bg-red-500/10 border-red-500/20 text-red-400"
+                                    : "bg-yellow-500/10 border-yellow-500/20 text-yellow-400"
+                              }`}
+                            >
+                              {video.status}
+                            </span>
+                          </div>
+                          {video.presigned_url && (
+                            <a
+                              href={video.presigned_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-emerald hover:underline flex-shrink-0"
+                            >
+                              View
+                            </a>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               </div>

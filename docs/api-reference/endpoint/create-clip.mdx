@@ -80,7 +80,7 @@ curl -X POST https://api.cuttr.com/api/platform/v1/clip \
 <ParamField body="camera_mode" type="string" default="standard">
   Controls how the video is framed for vertical (9:16) output. One of:
   - `standard` — blurred background with centered video
-  - `gaming` — detects facecam overlay and separates gameplay + facecam
+  - `facecam` — detects facecam overlay and separates gameplay + facecam
   - `speaker-zoom` — zooms into the speaker's face
   - `center-crop` — crops the center of the video
   - `active-speaker` — tracks and zooms into the active speaker (multi-person)
@@ -157,7 +157,7 @@ curl -X POST https://api.cuttr.com/api/platform/v1/clip \
 </ParamField>
 
 <ParamField body="camera_mode" type="string" default="standard">
-  How the video is framed. One of `standard`, `gaming`, `speaker-zoom`, `center-crop`, `active-speaker`.
+  How the video is framed. One of `standard`, `facecam`, `speaker-zoom`, `center-crop`, `active-speaker`.
 </ParamField>
 
 <ParamField body="hook_length" type="string" default="6">

@@ -129,13 +129,36 @@ class IntakeService {
 
   async getApplicationStatus(teamId: number) {
     const form = await this.getIntakeForm(teamId);
-    const latest = await this.getLatestCampaign(teamId);
+
+    // Check ALL campaigns for the team, not just the latest
+    const allCampaigns = await db
+      .select({ status: campaigns.status, google_drive_folder_id: campaigns.google_drive_folder_id })
+      .from(campaigns)
+      .where(eq(campaigns.team_id, teamId))
+      .orderBy(desc(campaigns.created_at));
+
+    // If any campaign has ever been approved, the team is "accepted"
+    const approvedStatuses = ["accepted", "started", "paused", "completed"] as const;
+    const approvedCampaign = allCampaigns.find((c) =>
+      (approvedStatuses as readonly string[]).includes(c.status),
+    );
+
+    let applicationStatus: string | null = null;
+    let googleDriveFolderId: string | null = null;
+
+    if (approvedCampaign) {
+      applicationStatus = "accepted";
+      googleDriveFolderId = approvedCampaign.google_drive_folder_id;
+    } else if (allCampaigns.length > 0) {
+      // No approved campaigns — use latest campaign status
+      applicationStatus = allCampaigns[0].status;
+    }
 
     return {
       hasIntakeForm: !!form,
       intakeFormCompleted: form?.completed ?? false,
-      applicationStatus: latest?.status || null,
-      googleDriveFolderId: latest?.google_drive_folder_id || null,
+      applicationStatus,
+      googleDriveFolderId,
     };
   }
 

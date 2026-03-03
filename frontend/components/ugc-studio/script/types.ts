@@ -51,6 +51,7 @@ export interface BRollShot {
   cinematicPrompt: string;
   durationSeconds: number;
   productImageNeeded: boolean;
+  shotType?: "CHARACTER" | "PRODUCT" | "CHARACTER_AND_PRODUCT";
 }
 
 export interface UGCScene {
@@ -63,7 +64,6 @@ export interface UGCScene {
   estimatedDurationSeconds: number;
   shotType: ShotType;
   cameraAngle: CameraAngle;
-  customCameraAngle?: string;
   ambientSound?: string;
   bRollShots?: BRollShot[] | null;
   mergedSceneTypes?: SceneType[] | null;
@@ -100,7 +100,7 @@ export interface GenerateScriptRequest {
   targetDuration?: number;
   numberOfVariations?: number;
   structureId?: string;
-  customPattern?: { type: SceneType; shot: ShotType }[];
+  customPattern?: { type: SceneType; shot: ShotType | "visual" }[];
 }
 
 export interface GenerateScriptResponse {
@@ -177,7 +177,11 @@ export const EMOTION_CONFIG: Record<
   vulnerable: { emoji: "🥺", color: "bg-rose-500/20", label: "Vulnerable" },
   skeptical: { emoji: "🤨", color: "bg-slate-500/20", label: "Skeptical" },
   amazed: { emoji: "🤯", color: "bg-violet-500/20", label: "Amazed" },
-  conspiratorial: { emoji: "🤫", color: "bg-amber-500/20", label: "Conspiratorial" },
+  conspiratorial: {
+    emoji: "🤫",
+    color: "bg-amber-500/20",
+    label: "Conspiratorial",
+  },
   empathetic: { emoji: "💕", color: "bg-pink-400/20", label: "Empathetic" },
   determined: { emoji: "💪", color: "bg-cyan-500/20", label: "Determined" },
 };
@@ -266,7 +270,7 @@ export const CAMERA_ANGLE_CONFIG: Record<
     label: "Wide Shot",
     description: "Full body with environment",
   },
-  "overhead": {
+  overhead: {
     icon: "solar:arrow-down-bold-duotone",
     label: "Overhead",
     description: "Looking down from above",
@@ -276,7 +280,7 @@ export const CAMERA_ANGLE_CONFIG: Record<
     label: "Low Angle",
     description: "Looking up at subject",
   },
-  "custom": {
+  custom: {
     icon: "solar:pen-bold-duotone",
     label: "Custom",
     description: "Define your own angle",
@@ -406,12 +410,55 @@ export const SCRIPT_STRUCTURES: ScriptStructure[] = [
   {
     id: "long-form",
     name: "Long-Form Speech",
-    description: "Single continuous monologue — testimonials, stories, speeches",
-    pattern: [
-      { type: "testimonial", shot: "a-roll", duration: "30-180s" },
-    ],
+    description:
+      "Single continuous monologue — testimonials, stories, speeches",
+    pattern: [{ type: "testimonial", shot: "a-roll", duration: "30-180s" }],
     bestFor: ["Testimonials", "Personal stories", "Long monologues"],
     icon: "solar:microphone-3-bold-duotone",
+  },
+  {
+    id: "silent-before-after",
+    name: "Before/After",
+    description:
+      "Two B-roll scenes — no voiceover, just visual transformation. Pairs well with music and text overlays.",
+    pattern: [
+      { type: "problem", shot: "b-roll", duration: "5s" },
+      { type: "transformation", shot: "b-roll", duration: "5s" },
+    ],
+    bestFor: [
+      "Skincare results",
+      "Cleaning demos",
+      "Visual transformations",
+      "ASMR-style",
+    ],
+    icon: "solar:gallery-minimalistic-bold-duotone",
+  },
+  {
+    id: "silent-showcase",
+    name: "Product Showcase",
+    description:
+      "All-visual product spotlight — no voiceover, just compelling visuals. Pairs well with music and text overlays.",
+    pattern: [
+      { type: "hook", shot: "b-roll", duration: "3-4s" },
+      { type: "demo", shot: "b-roll", duration: "4-5s" },
+      { type: "cta", shot: "b-roll", duration: "3-4s" },
+    ],
+    bestFor: ["Product launches", "Beauty", "E-commerce", "Food"],
+    icon: "solar:bag-smile-bold-duotone",
+  },
+  {
+    id: "silent-montage",
+    name: "Aesthetic Montage",
+    description:
+      "Dreamy visual slideshow — no voiceover, pure aesthetic storytelling. Great with ambient music.",
+    pattern: [
+      { type: "hook", shot: "b-roll", duration: "3s" },
+      { type: "demo", shot: "b-roll", duration: "3-4s" },
+      { type: "demo", shot: "b-roll", duration: "3-4s" },
+      { type: "transformation", shot: "b-roll", duration: "3-4s" },
+    ],
+    bestFor: ["Lifestyle brands", "ASMR", "Fashion", "Satisfying processes"],
+    icon: "solar:gallery-bold-duotone",
   },
   {
     id: "custom",

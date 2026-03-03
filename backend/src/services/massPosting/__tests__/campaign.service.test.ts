@@ -16,8 +16,9 @@ const { mockCreateCampaignFolder } = vi.hoisted(() => ({
   mockCreateCampaignFolder: vi.fn(),
 }));
 
-const { mockGenerateContract } = vi.hoisted(() => ({
-  mockGenerateContract: vi.fn(),
+const { mockHasSignedMasterAgreement, mockGetSignedMasterAgreement } = vi.hoisted(() => ({
+  mockHasSignedMasterAgreement: vi.fn(),
+  mockGetSignedMasterAgreement: vi.fn(),
 }));
 
 const { mockSendCampaignStarted } = vi.hoisted(() => ({
@@ -37,7 +38,8 @@ vi.mock("../../google/drive.service", () => ({
 
 vi.mock("../campaignContract.service", () => ({
   campaignContractService: {
-    generateContract: mockGenerateContract,
+    hasSignedMasterAgreement: mockHasSignedMasterAgreement,
+    getSignedMasterAgreement: mockGetSignedMasterAgreement,
   },
 }));
 
@@ -309,7 +311,7 @@ describe("CampaignService", () => {
   // ── approveCampaign ────────────────────────────────────────────────────────
 
   describe("approveCampaign", () => {
-    it("updates status, creates Drive folder, and generates contract", async () => {
+    it("updates status, creates Drive folder, and auto-marks contract_ready if master signed", async () => {
       const campaign = makeCampaign({ status: "pending" });
       const updated = makeCampaign({ status: "accepted", quoted_cpm: "3.00", video_minimum: 5 });
       const team = makeTeam();
@@ -321,17 +323,17 @@ describe("CampaignService", () => {
         .mockReturnValueOnce(createDrizzleChain([owner]));   // fetch owner for email
 
       mockCreateCampaignFolder.mockResolvedValueOnce("folder-123");
-      mockDb.update.mockReturnValueOnce(createDrizzleChain([updated]));
-      mockGenerateContract.mockResolvedValueOnce({ id: 1 });
+      mockDb.update.mockReturnValue(createDrizzleChain([updated]));
+      mockHasSignedMasterAgreement.mockResolvedValueOnce(true);
 
       const result = await campaignService.approveCampaign(1, "3.00", 5);
 
-      expect(result).toEqual({ ...updated, contractWarning: undefined });
+      expect(result).toEqual(updated);
       expect(mockCreateCampaignFolder).toHaveBeenCalledWith("Acme Inc", 10, 1, "Acme Campaign");
-      expect(mockGenerateContract).toHaveBeenCalledWith(1);
+      expect(mockHasSignedMasterAgreement).toHaveBeenCalledWith(10);
     });
 
-    it("still returns campaign when contract generation fails", async () => {
+    it("does not mark contract_ready when master agreement not signed", async () => {
       const campaign = makeCampaign({ status: "pending" });
       const updated = makeCampaign({ status: "accepted" });
       const team = makeTeam();
@@ -343,12 +345,14 @@ describe("CampaignService", () => {
         .mockReturnValueOnce(createDrizzleChain([owner]));
 
       mockCreateCampaignFolder.mockResolvedValueOnce("folder-456");
-      mockDb.update.mockReturnValueOnce(createDrizzleChain([updated]));
-      mockGenerateContract.mockRejectedValueOnce(new Error("PDF generation failed"));
+      mockDb.update.mockReturnValue(createDrizzleChain([updated]));
+      mockHasSignedMasterAgreement.mockResolvedValueOnce(false);
 
       const result = await campaignService.approveCampaign(1, "3.00", 5);
 
-      expect(result).toEqual({ ...updated, contractWarning: "PDF generation failed" });
+      expect(result).toEqual(updated);
+      // Only one update call (campaigns table), not two
+      expect(mockDb.update).toHaveBeenCalledTimes(1);
     });
 
     it("throws when campaign not found", async () => {
@@ -393,7 +397,7 @@ describe("CampaignService", () => {
   // ── checkGates ─────────────────────────────────────────────────────────────
 
   describe("checkGates", () => {
-    it("returns all gates ready with metadata when all flags are true", async () => {
+    it("returns all gates ready with metadata when master agreement is signed", async () => {
       const campaign = makeCampaign({
         videos_ready: true,
         payment_ready: true,
@@ -401,15 +405,14 @@ describe("CampaignService", () => {
         budget: "25000",
         video_minimum: 5,
       });
-      // getCampaignById
       mockDb.select
         .mockReturnValueOnce(createDrizzleChain([campaign]))
-        // video count
-        .mockReturnValueOnce(createDrizzleChain([{ count: 7 }]))
-        // contract
-        .mockReturnValueOnce(createDrizzleChain([{ status: "signed", signed_at: new Date("2026-01-01") }]));
+        .mockReturnValueOnce(createDrizzleChain([{ count: 7 }]));
 
       mockGetWallet.mockResolvedValueOnce({ balance_cents: 250000 });
+      mockGetSignedMasterAgreement.mockResolvedValueOnce({
+        signed_at: "2026-01-01T00:00:00.000Z",
+      });
 
       const result = await campaignService.checkGates(1);
 
@@ -422,7 +425,7 @@ describe("CampaignService", () => {
       expect(result.contract.signedAt).toBeTruthy();
     });
 
-    it("returns partial gates when some flags are false", async () => {
+    it("returns partial gates when master agreement is not signed", async () => {
       const campaign = makeCampaign({
         videos_ready: true,
         payment_ready: false,
@@ -431,10 +434,10 @@ describe("CampaignService", () => {
       });
       mockDb.select
         .mockReturnValueOnce(createDrizzleChain([campaign]))
-        .mockReturnValueOnce(createDrizzleChain([{ count: 4 }]))
-        .mockReturnValueOnce(createDrizzleChain([]));
+        .mockReturnValueOnce(createDrizzleChain([{ count: 4 }]));
 
       mockGetWallet.mockResolvedValueOnce(null);
+      mockGetSignedMasterAgreement.mockResolvedValueOnce(null);
 
       const result = await campaignService.checkGates(1);
 

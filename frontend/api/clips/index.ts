@@ -352,6 +352,19 @@ class ClipsAPI {
     }
   }
 
+  async downloadFolder(teamId: number, folderId: number): Promise<Blob> {
+    const response = await apiFetch(
+      `${API_URL}/clip-video/teams/${teamId}/folders/${folderId}/download`,
+    );
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error || "Failed to download folder");
+    }
+
+    return response.blob();
+  }
+
   async updateCaptions(
     teamId: number,
     clipId: number,

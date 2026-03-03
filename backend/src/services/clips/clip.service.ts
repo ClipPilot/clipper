@@ -156,6 +156,31 @@ export const createCombinedClipService = async (
   );
   validateSegment(clipData.hook, "Hook");
 
+  // Guard against the AI returning main with ONLY the hook repeated (no build-up).
+  // The hook→buildup→climax-again structure is fine, but hook→hook-only is broken.
+  const hookStart = clipData.hook.start;
+  const hookEnd = clipData.hook.end;
+  const hasNonHookSegment = clipData.main.some((seg) => {
+    const overlapStart = Math.max(seg.start, hookStart);
+    const overlapEnd = Math.min(seg.end, hookEnd);
+    const overlapDuration = Math.max(0, overlapEnd - overlapStart);
+    const segDuration = seg.end - seg.start;
+    return segDuration <= 0 || overlapDuration / segDuration < 0.5;
+  });
+  if (!hasNonHookSegment && clipData.main.length > 0) {
+    // Every main segment is just the hook repeated — drop the duplicates
+    console.log(
+      `[Clip ${videoIndex}] All main segments overlap with hook — dropping duplicates to prevent double-hook`
+    );
+    clipData.main = clipData.main.filter((seg) => {
+      const overlapStart = Math.max(seg.start, hookStart);
+      const overlapEnd = Math.min(seg.end, hookEnd);
+      const overlapDuration = Math.max(0, overlapEnd - overlapStart);
+      const segDuration = seg.end - seg.start;
+      return segDuration <= 0 || overlapDuration / segDuration < 0.5;
+    });
+  }
+
   for (let i = 0; i < clipData.main.length; i++) {
     const seg = clipData.main[i];
     console.log(
@@ -491,6 +516,32 @@ export const createBatchCombinedClipService = async (
     clipData.hook.end
   );
   tempFiles.push(hookPath);
+
+  // Guard against main with ONLY the hook repeated (same source video)
+  const batchHookStart = clipData.hook.start;
+  const batchHookEnd = clipData.hook.end;
+  const batchHookSource = clipData.hook.sourceVideoIndex;
+  const batchHasNonHookSegment = clipData.main.some((seg) => {
+    if (seg.sourceVideoIndex !== batchHookSource) return true;
+    const overlapStart = Math.max(seg.start, batchHookStart);
+    const overlapEnd = Math.min(seg.end, batchHookEnd);
+    const overlapDuration = Math.max(0, overlapEnd - overlapStart);
+    const segDuration = seg.end - seg.start;
+    return segDuration <= 0 || overlapDuration / segDuration < 0.5;
+  });
+  if (!batchHasNonHookSegment && clipData.main.length > 0) {
+    console.log(
+      `[Batch Clip ${outputIndex}] All main segments overlap with hook — dropping duplicates`
+    );
+    clipData.main = clipData.main.filter((seg) => {
+      if (seg.sourceVideoIndex !== batchHookSource) return true;
+      const overlapStart = Math.max(seg.start, batchHookStart);
+      const overlapEnd = Math.min(seg.end, batchHookEnd);
+      const overlapDuration = Math.max(0, overlapEnd - overlapStart);
+      const segDuration = seg.end - seg.start;
+      return segDuration <= 0 || overlapDuration / segDuration < 0.5;
+    });
+  }
 
   // Cut main segments from their respective source videos
   for (let i = 0; i < clipData.main.length; i++) {

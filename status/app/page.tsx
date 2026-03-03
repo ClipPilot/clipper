@@ -3,8 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import ServiceCard from "@/components/service-card";
 import IncidentList from "@/components/incident-list";
-import { incidents } from "@/lib/incidents";
-import { StatusResponse, ServiceStatus } from "@/lib/types";
+import { StatusResponse, ServiceStatus, Incident } from "@/lib/types";
 
 const REFRESH_INTERVAL = 60000;
 
@@ -42,10 +41,14 @@ function timeAgo(iso: string): string {
   return `${minutes}m ago`;
 }
 
+const INCIDENTS_API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "https://api.cuttr.com";
+
 export default function StatusPage() {
   const [data, setData] = useState<StatusResponse | null>(null);
   const [error, setError] = useState(false);
   const [lastChecked, setLastChecked] = useState("");
+  const [incidents, setIncidents] = useState<Incident[]>([]);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -60,11 +63,35 @@ export default function StatusPage() {
     }
   }, []);
 
+  const fetchIncidents = useCallback(async () => {
+    try {
+      const res = await fetch(`${INCIDENTS_API_URL}/api/incidents/active`);
+      if (!res.ok) return;
+      const json = await res.json();
+      setIncidents(
+        (json.incidents || []).map((inc: any) => ({
+          id: String(inc.id),
+          title: inc.title,
+          date: inc.created_at,
+          status: inc.status,
+          affectedServices: inc.affected_services || [],
+          updates: inc.updates || [],
+        })),
+      );
+    } catch {
+      // Non-critical — keep showing empty incidents
+    }
+  }, []);
+
   useEffect(() => {
     fetchStatus();
-    const interval = setInterval(fetchStatus, REFRESH_INTERVAL);
+    fetchIncidents();
+    const interval = setInterval(() => {
+      fetchStatus();
+      fetchIncidents();
+    }, REFRESH_INTERVAL);
     return () => clearInterval(interval);
-  }, [fetchStatus]);
+  }, [fetchStatus, fetchIncidents]);
 
   useEffect(() => {
     if (!lastChecked) return;

@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useAtom, useAtomValue } from "jotai";
-import { Card, CardBody, Chip, Button, Textarea, Select, SelectItem, Spinner } from "@heroui/react";
+import { Card, CardBody, Chip, Button, Textarea, Select, SelectItem, Spinner, Switch, Slider } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import {
   adCloneScriptsAtom,
@@ -86,23 +86,76 @@ function SceneEditor({ scene, index, totalScenes, defaultEditing, onUpdate, onRe
               </Chip>
             </div>
 
-            <div className="p-3 bg-surface-base rounded-lg">
-              <p className="text-xs text-text-tertiary mb-1">Dialogue</p>
-              {isEditing ? (
-                <Textarea
+            {scene.shotType === "b-roll" && isEditing && (
+              <div className="flex items-center justify-between px-3 py-2 bg-surface-base rounded-lg">
+                <Switch
                   size="sm"
-                  minRows={2}
-                  value={scene.dialogue}
-                  onValueChange={(value) => onUpdate({ dialogue: value })}
-                  classNames={{
-                    inputWrapper: "bg-surface-elevated border-border-base",
-                    input: "text-text-primary text-sm",
+                  isSelected={!scene.dialogue}
+                  onValueChange={(noVoiceover) => {
+                    if (noVoiceover) {
+                      onUpdate({ dialogue: "", estimatedDurationSeconds: scene.estimatedDurationSeconds || 5 });
+                    } else {
+                      onUpdate({ dialogue: "Add voiceover text here..." });
+                    }
                   }}
-                />
-              ) : (
-                <p className="text-sm text-text-primary italic">&ldquo;{scene.dialogue}&rdquo;</p>
-              )}
-            </div>
+                  classNames={{
+                    wrapper: "group-data-[selected=true]:bg-amber-500",
+                  }}
+                >
+                  <span className="text-xs text-text-secondary">No voiceover</span>
+                </Switch>
+                {!scene.dialogue && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-text-muted">Duration:</span>
+                    <Slider
+                      size="sm"
+                      step={1}
+                      minValue={3}
+                      maxValue={10}
+                      value={scene.estimatedDurationSeconds}
+                      onChange={(val) => onUpdate({ estimatedDurationSeconds: val as number })}
+                      className="w-24"
+                      classNames={{
+                        track: "bg-surface-elevated",
+                        filler: "bg-amber-500",
+                        thumb: "bg-amber-500",
+                      }}
+                    />
+                    <span className="text-xs text-amber-400 font-medium w-6 text-right">{scene.estimatedDurationSeconds}s</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {(scene.shotType !== "b-roll" || scene.dialogue) && (
+              <div className="p-3 bg-surface-base rounded-lg">
+                <p className="text-xs text-text-tertiary mb-1">Dialogue</p>
+                {isEditing ? (
+                  <Textarea
+                    size="sm"
+                    minRows={2}
+                    value={scene.dialogue}
+                    onValueChange={(value) => onUpdate({ dialogue: value })}
+                    classNames={{
+                      inputWrapper: "bg-surface-elevated border-border-base",
+                      input: "text-text-primary text-sm",
+                    }}
+                  />
+                ) : (
+                  <p className="text-sm text-text-primary italic">&ldquo;{scene.dialogue}&rdquo;</p>
+                )}
+              </div>
+            )}
+
+            {scene.shotType === "b-roll" && !scene.dialogue && !isEditing && (
+              <div className="p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
+                <div className="flex items-center gap-2">
+                  <Icon icon="solar:volume-cross-bold" width={14} className="text-amber-400" />
+                  <span className="text-xs text-amber-400">Silent B-roll</span>
+                  <span className="text-xs text-text-muted">{scene.estimatedDurationSeconds}s</span>
+                </div>
+              </div>
+            )}
 
             {(scene.action || isEditing) && (
               <div className="p-3 bg-surface-base rounded-lg">

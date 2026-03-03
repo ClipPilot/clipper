@@ -20,7 +20,7 @@ import {
   type CampaignVideo,
   type CampaignWallet,
   type CampaignCard,
-  type CampaignContract,
+  type MasterAgreement,
   type CampaignGates,
 } from "@/api/campaign";
 import { VideosGate } from "./gates/VideosGate";
@@ -169,7 +169,7 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
   const [videos, setVideos] = useState<CampaignVideo[]>([]);
   const [wallet, setWallet] = useState<CampaignWallet | null>(null);
   const [savedCard, setSavedCard] = useState<CampaignCard | null>(null);
-  const [contract, setContract] = useState<CampaignContract | null>(null);
+  const [agreement, setAgreement] = useState<MasterAgreement | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isStarting, setIsStarting] = useState(false);
@@ -182,12 +182,12 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
         campaignRes,
         videosRes,
         walletRes,
-        contractRes,
+        agreementRes,
       ] = await Promise.allSettled([
         campaignAPI.getCampaign(selectedTeam.id, campaignId),
         campaignAPI.listVideos(selectedTeam.id, campaignId),
         campaignAPI.getWallet(selectedTeam.id, campaignId),
-        campaignAPI.getContract(selectedTeam.id, campaignId),
+        campaignAPI.getMasterAgreement(selectedTeam.id),
       ]);
 
       if (campaignRes.status === "fulfilled") {
@@ -201,8 +201,8 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
         setWallet(walletRes.value.wallet);
         setSavedCard(walletRes.value.card);
       }
-      if (contractRes.status === "fulfilled") {
-        setContract(contractRes.value.contract);
+      if (agreementRes.status === "fulfilled") {
+        setAgreement(agreementRes.value.agreement);
       }
     } catch (err) {
       console.error("Failed to fetch campaign data:", err);
@@ -296,8 +296,8 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
     setCampaign(updated);
   }, []);
 
-  const handleContractSigned = useCallback((updatedContract: CampaignContract) => {
-    setContract(updatedContract);
+  const handleAgreementSigned = useCallback((updatedAgreement: MasterAgreement) => {
+    setAgreement(updatedAgreement);
     setGates((prev) =>
       prev
         ? {
@@ -305,7 +305,7 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
             contract: {
               ...prev.contract,
               complete: true,
-              signedAt: updatedContract.signed_at,
+              signedAt: updatedAgreement.signed_at,
             },
           }
         : prev
@@ -358,6 +358,45 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
         <Button variant="flat" onPress={onBack}>
           Back to Campaigns
         </Button>
+      </div>
+    );
+  }
+
+  // ── Pending / Appeal — awaiting admin review ────────────────────────────
+
+  if (campaign.status === "pending" || campaign.status === "appeal") {
+    return (
+      <div className="min-h-screen bg-surface-dark p-4 sm:p-6 lg:p-8">
+        <div className="max-w-3xl mx-auto space-y-6">
+          <Button
+            variant="light"
+            size="sm"
+            className="text-text-secondary -ml-2"
+            onPress={onBack}
+            startContent={<Icon icon="solar:arrow-left-linear" width={16} />}
+          >
+            Back to Campaigns
+          </Button>
+
+          <div className="flex flex-col items-center gap-4 py-16 text-center">
+            <div className="w-16 h-16 rounded-full bg-warning-500/10 flex items-center justify-center">
+              <Icon
+                icon="solar:clock-circle-bold-duotone"
+                className="text-warning-500"
+                width={36}
+              />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-text-primary">{campaign.name}</h1>
+              <Chip color="warning" variant="flat" className="capitalize mt-2">
+                {campaign.status === "appeal" ? "Under Appeal" : "Pending Review"}
+              </Chip>
+            </div>
+            <p className="text-sm text-text-secondary max-w-md">
+              This campaign is under review. You&apos;ll be notified when it&apos;s approved and ready to set up.
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -475,13 +514,7 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
               </div>
             </div>
             <Chip
-              color={
-                campaign.status === "rejected"
-                  ? "danger"
-                  : campaign.status === "pending"
-                    ? "warning"
-                    : "default"
-              }
+              color={campaign.status === "rejected" ? "danger" : "default"}
               variant="flat"
               className="flex-shrink-0 capitalize"
             >
@@ -529,19 +562,18 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
           />
         </StepSection>
 
-        {/* Step3: Contract */}
+        {/* Step3: Agreement */}
         <StepSection
           number={3}
-          title="Sign Contract"
-          description="Review and sign the campaign agreement to proceed."
+          title="Sign Agreement"
+          description="Review and sign the Cuttr Campaign Services Agreement to proceed."
           icon="solar:document-text-bold-duotone"
           complete={gates.contract.complete}
         >
           <ContractGate
-            campaignId={campaignId}
             gate={gates.contract}
-            contract={contract}
-            onContractSigned={handleContractSigned}
+            agreement={agreement}
+            onAgreementSigned={handleAgreementSigned}
           />
         </StepSection>
 

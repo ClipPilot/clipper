@@ -334,12 +334,11 @@ export function ActiveCampaignDashboard({
   const handleViewContract = async () => {
     if (!selectedTeam?.id) return;
     try {
-      const { contract } = await campaignAPI.getContract(
+      const { agreement } = await campaignAPI.getMasterAgreement(
         selectedTeam.id,
-        campaign.id,
       );
-      if (contract?.presigned_pdf_url) {
-        window.open(contract.presigned_pdf_url, "_blank", "noopener,noreferrer");
+      if (agreement?.presigned_pdf_url) {
+        window.open(agreement.presigned_pdf_url, "_blank", "noopener,noreferrer");
       } else {
         addToast({
           title: "Contract not available",

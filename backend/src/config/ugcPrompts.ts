@@ -33,7 +33,7 @@ export interface UGCScriptPromptConfig {
   customPattern?: { type: string; shot: string }[];
 }
 
-const SCRIPT_STRUCTURES: Record<
+export const SCRIPT_STRUCTURES: Record<
   string,
   { name: string; pattern: ScriptStructurePattern[]; description: string }
 > = {
@@ -137,6 +137,35 @@ const SCRIPT_STRUCTURES: Record<
       { type: "testimonial", shot: "a-roll", duration: "30-180s" },
     ],
   },
+  "silent-before-after": {
+    name: "Silent Before/After",
+    description: "Two silent B-roll scenes — no voiceover, just visual transformation",
+    pattern: [
+      { type: "problem", shot: "b-roll", duration: "5s" },
+      { type: "transformation", shot: "b-roll", duration: "5s" },
+    ],
+  },
+  "silent-showcase": {
+    name: "Product Showcase",
+    description:
+      "All-visual product spotlight — no voiceover, just compelling visuals",
+    pattern: [
+      { type: "hook", shot: "b-roll", duration: "3-4s" },
+      { type: "demo", shot: "b-roll", duration: "4-5s" },
+      { type: "cta", shot: "b-roll", duration: "3-4s" },
+    ],
+  },
+  "silent-montage": {
+    name: "Aesthetic Montage",
+    description:
+      "Dreamy visual slideshow — no voiceover, pure aesthetic storytelling",
+    pattern: [
+      { type: "hook", shot: "b-roll", duration: "3s" },
+      { type: "demo", shot: "b-roll", duration: "3-4s" },
+      { type: "demo", shot: "b-roll", duration: "3-4s" },
+      { type: "transformation", shot: "b-roll", duration: "3-4s" },
+    ],
+  },
   custom: {
     name: "Custom (AI Decides)",
     description: "Let AI choose the best structure based on your direction",
@@ -150,53 +179,85 @@ const formatStructure = (
 ): string => {
   if (structureId === "long-form") {
     return `
-===== LONG-FORM SPEECH MODE =====
+LONG-FORM SPEECH MODE — Single continuous a-roll monologue.
 
-Generate EXACTLY 1 scene — a single continuous a-roll monologue.
+Creative guidance:
+- The dialogue is one long, continuous speech — NOT multiple short lines
+- Word limits are LIFTED — scale dialogue to fill the target duration (~150 words per 60 seconds)
+- EVERY sentence MUST start with an emotion tag
+- Use natural pauses ("...") and varied emotions throughout to keep it dynamic
+- The speech should flow like a real person talking to camera — raw, emotional, conversational
+- estimatedDurationSeconds should match the full target duration
+- sceneType should be "testimonial" (or whatever best fits the user direction)
+`;
+  }
 
-STRICT RULES:
-1. ONE scene only — do NOT split into multiple scenes
-2. shotType MUST be "a-roll"
-3. The dialogue is one long, continuous speech — NOT multiple short lines
-4. Word limits are LIFTED — scale dialogue to fill the target duration (~150 words per 60 seconds)
-5. EVERY sentence MUST still start with an emotion tag
-6. Use natural pauses ("...") and varied emotions throughout to keep it dynamic
-7. The speech should flow like a real person talking to camera — raw, emotional, conversational
-8. estimatedDurationSeconds should match the full target duration
-9. sceneType should be "testimonial" (or whatever best fits the user direction)
+  if (structureId === "silent-before-after") {
+    return `
+SILENT BEFORE/AFTER — Two purely visual scenes, no voiceover.
 
-This is for testimonials, personal stories, motivational speeches, and long-form content.
-The user's direction describes the content — execute it as one powerful continuous take.
+1. PROBLEM (5s) — The "before" state. Show the problem visually.
+2. TRANSFORMATION (5s) — The "after" state. Show the result/improvement.
+
+Creative guidance:
+- Each scene needs a strong cinematic prompt describing the visual
+- Action describes what is visually happening (no speaking)
+- Focus on visual storytelling — the transformation should be obvious from imagery alone
+`;
+  }
+
+  if (structureId === "silent-showcase") {
+    return `
+SILENT PRODUCT SHOWCASE — Three purely visual scenes, no voiceover.
+
+1. HOOK (3-4s) — Eye-catching opening shot of the product or its context.
+2. DEMO (4-5s) — Product in action, demonstrating its key feature visually.
+3. CTA (3-4s) — Closing beauty shot, hero angle, clean composition.
+
+Creative guidance:
+- Think premium product photography in motion — clean, satisfying, scroll-stopping
+- Focus on texture, movement, and visual appeal
+`;
+  }
+
+  if (structureId === "silent-montage") {
+    return `
+SILENT AESTHETIC MONTAGE — Four purely visual scenes, no voiceover.
+
+1. HOOK (3s) — Opening establishing shot. Set the mood and aesthetic tone.
+2. DEMO (3-4s) — First detail/action shot, product or experience up close.
+3. DEMO (3-4s) — Second detail/action shot, different angle or context.
+4. TRANSFORMATION (3-4s) — Satisfying payoff shot, final reveal or beauty moment.
+
+Creative guidance:
+- Create a visual rhythm — each shot should flow naturally into the next
+- Think ASMR / satisfying content — textures, movements, transformations
 `;
   }
 
   if (structureId === "custom" && customPattern && customPattern.length > 0) {
+    const hasVisualScenes = customPattern.some((s) => s.shot === "visual");
+    const allVisual = customPattern.every((s) => s.shot === "visual");
+
     const sceneBreakdown = customPattern
-      .map(
-        (s, i) =>
-          `${i + 1}. ${s.type.toUpperCase()} (3-5s) - shotType: "${s.shot}"`,
-      )
+      .map((s, i) => {
+        if (s.shot === "visual") {
+          return `${i + 1}. ${s.type.toUpperCase()} (3-5s) — b-roll, VISUAL (no voiceover)`;
+        }
+        return `${i + 1}. ${s.type.toUpperCase()} (3-5s) — ${s.shot}`;
+      })
       .join("\n");
 
-    return `
-===== MANDATORY STRUCTURE - DO NOT DEVIATE =====
+    const visualGuidance = hasVisualScenes
+      ? `\n${allVisual ? "All scenes are visual (silent) — pure visual storytelling, no voiceover." : "VISUAL scenes are silent — describe what is visually happening, no speaking."}`
+      : "";
 
-You MUST generate EXACTLY ${customPattern.length} scenes with these EXACT shot types:
+    return `
+CUSTOM STRUCTURE — Follow this scene order:
 
 ${sceneBreakdown}
 
-STRICT RULES:
-1. Generate EXACTLY ${customPattern.length} scenes - no more, no less
-2. Each scene's "shotType" field MUST match EXACTLY what is specified above
-3. DO NOT change a-roll to b-roll or vice versa
-4. DO NOT add extra scenes
-5. DO NOT skip any scenes
-
-Shot Type Definitions:
-- "a-roll" = Actor speaking directly to camera (talking head)
-- "b-roll" = Product shots with voiceover
-
-If the user specified all a-roll, generate ALL a-roll scenes. Period.
+Shot types: "a-roll" = actor speaking to camera, "b-roll" = product/visual shots.${visualGuidance}
 `;
   }
 
@@ -204,19 +265,18 @@ If the user specified all a-roll, generate ALL a-roll scenes. Period.
 
   const sceneBreakdown = structure.pattern
     .map(
-      (s, i) => `${i + 1}. ${s.type.toUpperCase()} (${s.duration}) - ${s.shot}`,
+      (s, i) => `${i + 1}. ${s.type.toUpperCase()} (${s.duration}) - shotType: "${s.shot}"`,
     )
     .join("\n");
 
   return `
-REQUIRED STRUCTURE: ${structure.name}
-Follow this EXACT scene order and shot types:
+STRUCTURE: ${structure.name}
+Follow this scene order and shot types:
 
 ${sceneBreakdown}
 
-Shot Types:
-- "a-roll" = Actor speaking directly to camera (talking head)
-- "b-roll" = Product shots with voiceover
+Scene types describe the narrative purpose — match them in order.
+Shot types: "a-roll" = actor speaking to camera, "b-roll" = product/visual shots.
 
 VOICE DIRECTION TAGS (REQUIRED for ALL a-roll scenes — EVERY SINGLE SENTENCE):
 EVERY a-roll sentence MUST start with an emotion tag. No exceptions — if a sentence is missing a tag, the TTS will sound flat and robotic.
@@ -1113,7 +1173,7 @@ For cameraAngle, choose from:
 - wide-shot: Full body with environment
 - overhead: Looking down from above (good for product demos)
 - low-angle: Looking up at subject
-- custom: Only if none of the above fit (provide customCameraAngle description)
+- custom: Only if none of the above fit
 
 CRITICAL - ambientSound field (REQUIRED FOR ALL A-ROLL SCENES):
 - EVERY a-roll scene MUST have an ambientSound value (not null)
@@ -1162,10 +1222,14 @@ For b-roll scenes: set ambientSound to null (voiceover only, no background)
 
 bRollShots field (FOR ALL B-ROLL SCENES):
 - Provide an array of shots (1, 2, 3, 4, etc - as many as the scene needs)
-- Each shot needs: action, cinematicPrompt, durationSeconds (1-4s each), productImageNeeded (boolean)
+- Each shot needs: action, cinematicPrompt, durationSeconds (1-4s each), productImageNeeded (boolean), shotType (string)
 - productImageNeeded depends on SCENE TYPE:
   * PROBLEM/HOOK scenes: usually ALL false (no product yet in the story)
   * SOLUTION/DEMO/CTA scenes: true where product is shown
+- shotType classifies what this shot features:
+  * "CHARACTER" — the character/person doing an action (e.g., "she stands tall", "woman stretching", "person walks in")
+  * "PRODUCT" — product-only or environment shot with NO person (e.g., "serum bottle on marble counter", "supplement jar close-up")
+  * "CHARACTER_AND_PRODUCT" — person interacting with the product (e.g., "she applies the serum", "he holds up the bottle")
 - Total duration of all bRollShots should equal estimatedDurationSeconds
 
 DURATION RULES:
@@ -1298,5 +1362,5 @@ Create a new version that:
 - Includes a SPECIFIC but SIMPLE action - avoid multi-step sequences
 - Includes a DETAILED 3-5 paragraph cinematicPrompt following the structure above
 
-Return the regenerated scene with all fields (id, sceneNumber, sceneType, action, dialogue, emotion, estimatedDurationSeconds, shotType, cameraAngle, customCameraAngle, cinematicPrompt, cameraDirection).`;
+Return the regenerated scene with all fields (id, sceneNumber, sceneType, action, dialogue, emotion, estimatedDurationSeconds, shotType, cameraAngle, cinematicPrompt).`;
 };

@@ -1,6 +1,5 @@
 import {
   campaigns,
-  campaignContracts,
   campaignVideos,
   intakeForms,
   teams,
@@ -189,6 +188,7 @@ class CampaignService {
           budget: campaigns.budget,
           quoted_cpm: campaigns.quoted_cpm,
           video_minimum: campaigns.video_minimum,
+          minimum_fund: campaigns.minimum_fund,
           videos_ready: campaigns.videos_ready,
           payment_ready: campaigns.payment_ready,
           contract_ready: campaigns.contract_ready,
@@ -232,6 +232,7 @@ class CampaignService {
         budget: campaigns.budget,
         quoted_cpm: campaigns.quoted_cpm,
         video_minimum: campaigns.video_minimum,
+        minimum_fund: campaigns.minimum_fund,
         videos_ready: campaigns.videos_ready,
         payment_ready: campaigns.payment_ready,
         contract_ready: campaigns.contract_ready,
@@ -265,6 +266,7 @@ class CampaignService {
     quotedCpm: string,
     videoMinimum: number,
     adminNotes?: string,
+    minimumFund?: number,
   ) {
     const [campaign] = await db
       .select()
@@ -283,6 +285,7 @@ class CampaignService {
       updated_at: new Date(),
     };
 
+    if (minimumFund != null) updateData.minimum_fund = minimumFund.toString();
     if (adminNotes) updateData.admin_notes = adminNotes;
 
     // Fetch team (needed for folder + email)
@@ -312,14 +315,13 @@ class CampaignService {
       .where(eq(campaigns.id, id))
       .returning();
 
-    // Auto-generate contract PDF
-    let contractWarning: string | undefined;
-    try {
-      await campaignContractService.generateContract(id);
-      console.log(`[Campaign] Contract auto-generated for campaign ${id}`);
-    } catch (error: any) {
-      contractWarning = error.message || "Unknown error";
-      console.error("Failed to auto-generate contract on approval:", error);
+    // Auto-mark contract_ready if team has signed master agreement
+    const hasMaster = await campaignContractService.hasSignedMasterAgreement(campaign.team_id);
+    if (hasMaster) {
+      await db
+        .update(campaigns)
+        .set({ contract_ready: true, updated_at: new Date() })
+        .where(eq(campaigns.id, id));
     }
 
     // Send approval email to team owner
@@ -353,7 +355,7 @@ class CampaignService {
       console.error("Failed to send campaign approval email:", emailError);
     }
 
-    return { ...updated, contractWarning };
+    return updated;
   }
 
   async rejectCampaign(id: number, reason: string, adminNotes?: string) {
@@ -420,7 +422,7 @@ class CampaignService {
 
   async updateCampaign(
     id: number,
-    data: { quotedCpm?: string; videoMinimum?: number; adminNotes?: string },
+    data: { quotedCpm?: string; videoMinimum?: number; adminNotes?: string; minimumFund?: number; budget?: number },
   ) {
     const [campaign] = await db
       .select()
@@ -435,7 +437,9 @@ class CampaignService {
     const updateData: Record<string, any> = { updated_at: new Date() };
     if (data.quotedCpm !== undefined) updateData.quoted_cpm = data.quotedCpm;
     if (data.videoMinimum !== undefined) updateData.video_minimum = data.videoMinimum;
+    if (data.minimumFund !== undefined) updateData.minimum_fund = data.minimumFund.toString();
     if (data.adminNotes !== undefined) updateData.admin_notes = data.adminNotes;
+    if (data.budget !== undefined) updateData.budget = data.budget.toString();
 
     const [updated] = await db
       .update(campaigns)
@@ -511,14 +515,11 @@ class CampaignService {
     // Get wallet balance
     const wallet = await campaignBillingService.getWallet(campaignId);
 
-    // Get contract signed_at
-    const [contract] = await db
-      .select({ status: campaignContracts.status, signed_at: campaignContracts.signed_at })
-      .from(campaignContracts)
-      .where(eq(campaignContracts.campaign_id, campaignId))
-      .limit(1);
+    // Check master agreement (team-level, not per-campaign)
+    const masterAgreement = await campaignContractService.getSignedMasterAgreement(campaign.team_id);
 
-    const budgetCents = campaign.budget ? Math.round(parseFloat(campaign.budget) * 100) : 0;
+    const requiredAmount = campaign.minimum_fund ?? campaign.budget;
+    const requiredCents = requiredAmount ? Math.round(parseFloat(requiredAmount) * 100) : 0;
 
     return {
       videos: {
@@ -529,11 +530,11 @@ class CampaignService {
       payment: {
         complete: campaign.payment_ready ?? false,
         balanceCents: wallet?.balance_cents ?? 0,
-        requiredCents: budgetCents,
+        requiredCents,
       },
       contract: {
-        complete: campaign.contract_ready ?? false,
-        signedAt: contract?.signed_at?.toISOString() ?? null,
+        complete: !!masterAgreement || (campaign.contract_ready ?? false),
+        signedAt: masterAgreement?.signed_at ?? null,
       },
     };
   }

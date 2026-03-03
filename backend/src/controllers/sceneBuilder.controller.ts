@@ -122,6 +122,7 @@ interface BRollShotData {
   cinematicPrompt: string;
   durationSeconds: number;
   productImageNeeded: boolean;
+  shotType?: "CHARACTER" | "PRODUCT" | "CHARACTER_AND_PRODUCT";
 }
 
 interface SceneData {
@@ -156,6 +157,7 @@ export class SceneBuilderController {
         customEndImageKey,
         singleBRollShotIndex,
         existingBRollImages,
+        existingSceneImageKey,
       } = req.body;
 
       if (!teamId || !scriptId || !sceneId || sceneNumber === undefined || !characterId) {
@@ -329,6 +331,7 @@ export class SceneBuilderController {
         previousSceneSetting,
         adCloneReferenceVideoKey,
         adCloneSceneTimestamp,
+        existingSceneImageKey: existingSceneImageKey || undefined,
       });
 
       return res.status(202).json({

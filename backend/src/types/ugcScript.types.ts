@@ -43,14 +43,17 @@ export const CAMERA_ANGLES = [
   "custom",
 ] as const;
 
+export const B_ROLL_SHOT_TYPES = ["CHARACTER", "PRODUCT", "CHARACTER_AND_PRODUCT"] as const;
+
 export const BRollShotSchema = z.object({
   action: z.string().describe("Simple, single action for this shot. NEVER mention on-screen text, captions, or graphics."),
   cinematicPrompt: z.string().describe("Cinematic prompt for this specific shot. No text/caption mentions."),
   durationSeconds: z.number().min(1).max(4).describe("Duration of this shot (1-4 seconds)"),
   productImageNeeded: z.boolean().describe("Whether this shot should include/show the product. Set to true for product closeups, unboxing, demos. Set to false for lifestyle, mood, reaction, or 'before' shots where product shouldn't appear."),
+  shotType: z.enum(B_ROLL_SHOT_TYPES).describe("What this shot features: CHARACTER (person doing an action), PRODUCT (product-only/environment shot), or CHARACTER_AND_PRODUCT (person interacting with the product)."),
 });
 
-export const UGCSceneSchema = z.object({
+export const UGCSceneBaseSchema = z.object({
   id: z.string().describe("Unique identifier for the scene"),
   sceneNumber: z.number().min(1).describe("Scene sequence number"),
   sceneType: z
@@ -72,17 +75,9 @@ export const UGCSceneSchema = z.object({
   cameraAngle: z
     .enum(CAMERA_ANGLES)
     .describe("Camera angle/perspective for the shot"),
-  customCameraAngle: z
-    .string()
-    .nullable()
-    .describe("Custom camera angle description when cameraAngle is 'custom'"),
   cinematicPrompt: z
     .string()
     .describe("Detailed cinematic/video generation prompt. NEVER mention on-screen text, captions, titles, or graphics - only describe visuals and actions."),
-  cameraDirection: z
-    .string()
-    .nullable()
-    .describe("Camera movement suggestions"),
   ambientSound: z
     .string()
     .nullable()
@@ -98,7 +93,9 @@ export const UGCSceneSchema = z.object({
     .nullable()
     .optional()
     .describe("Original scene types that were combined for merged scenes"),
-}).refine(
+});
+
+export const UGCSceneSchema = UGCSceneBaseSchema.refine(
   (scene) => {
     if (scene.shotType === "a-roll") {
       return scene.ambientSound !== null && scene.ambientSound.trim().length > 0;
@@ -108,6 +105,17 @@ export const UGCSceneSchema = z.object({
   {
     message: "A-roll scenes MUST have ambientSound (background audio matching the environment)",
     path: ["ambientSound"],
+  }
+).refine(
+  (scene) => {
+    if (scene.shotType === "a-roll") {
+      return scene.dialogue.trim().length > 0;
+    }
+    return true;
+  },
+  {
+    message: "A-roll scenes MUST have non-empty dialogue",
+    path: ["dialogue"],
   }
 );
 
@@ -161,7 +169,7 @@ export type GenerateUGCScriptResponse = z.infer<
   typeof GenerateUGCScriptResponseSchema
 >;
 
-export type ClientUGCScene = Omit<UGCScene, "cinematicPrompt" | "cameraDirection">;
+export type ClientUGCScene = Omit<UGCScene, "cinematicPrompt">;
 export type ClientUGCScript = Omit<UGCScript, "scenes"> & {
   scenes: ClientUGCScene[];
 };

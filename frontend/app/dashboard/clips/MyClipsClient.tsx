@@ -17,7 +17,7 @@ import {
   selectedFolderIdAtom,
   clipsViewModeAtom,
 } from "@/store/clips";
-import { Button, Card, CardBody, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@heroui/react";
+import { Button, Card, CardBody, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Tooltip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { authAPI } from "@/api/auth";
 import { Clip, clipsAPI } from "@/api/clips";
@@ -441,6 +441,36 @@ function MyClipsPageContent() {
 
   const currentSubfolders = getSubfolders(selectedFolderId);
 
+  const [isDownloadingFolder, setIsDownloadingFolder] = useState(false);
+  const [downloadingFolderId, setDownloadingFolderId] = useState<number | null>(null);
+
+  const handleDownloadFolder = useCallback(async (folderId?: number) => {
+    const targetFolderId = folderId ?? selectedFolderId;
+    if (!selectedTeam?.id || targetFolderId === null) return;
+    setIsDownloadingFolder(true);
+    setDownloadingFolderId(targetFolderId);
+    try {
+      const blob = await clipsAPI.downloadFolder(selectedTeam.id, targetFolderId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `folder-${targetFolderId}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      addToast({
+        title: "Download failed",
+        description: error instanceof Error ? error.message : "Could not download folder",
+        color: "danger",
+      });
+    } finally {
+      setIsDownloadingFolder(false);
+      setDownloadingFolderId(null);
+    }
+  }, [selectedTeam?.id, selectedFolderId]);
+
   if (!mounted || !user) {
     return (
       <div className="flex h-screen items-center justify-center bg-surface-dark">
@@ -603,25 +633,40 @@ function MyClipsPageContent() {
                       {isSearchMode ? "Search Results" : selectedFolderId === null ? "All Clips" : folderPath[folderPath.length - 1]?.name || "Clips"}
                     </span>
                   </h2>
-                  <div className="flex items-center gap-1 bg-surface-base border border-border-base rounded-lg p-1 flex-shrink-0">
-                    <Button
-                      isIconOnly
-                      size="sm"
-                      variant={viewMode === "grid" ? "solid" : "light"}
-                      className={viewMode === "grid" ? "bg-accent-400" : ""}
-                      onPress={() => setViewMode("grid")}
-                    >
-                      <Icon icon="solar:widget-bold" className="text-lg" />
-                    </Button>
-                    <Button
-                      isIconOnly
-                      size="sm"
-                      variant={viewMode === "list" ? "solid" : "light"}
-                      className={viewMode === "list" ? "bg-accent-400" : ""}
-                      onPress={() => setViewMode("list")}
-                    >
-                      <Icon icon="solar:list-bold" className="text-lg" />
-                    </Button>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {selectedFolderId !== null && savedClips.length > 0 && (
+                      <Tooltip content="Download folder as ZIP">
+                        <Button
+                          isIconOnly
+                          size="sm"
+                          variant="light"
+                          isLoading={isDownloadingFolder}
+                          onPress={() => handleDownloadFolder()}
+                        >
+                          <Icon icon="solar:download-minimalistic-outline" className="text-lg text-text-secondary" />
+                        </Button>
+                      </Tooltip>
+                    )}
+                    <div className="flex items-center gap-1 bg-surface-base border border-border-base rounded-lg p-1">
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant={viewMode === "grid" ? "solid" : "light"}
+                        className={viewMode === "grid" ? "bg-accent-400" : ""}
+                        onPress={() => setViewMode("grid")}
+                      >
+                        <Icon icon="solar:widget-bold" className="text-lg" />
+                      </Button>
+                      <Button
+                        isIconOnly
+                        size="sm"
+                        variant={viewMode === "list" ? "solid" : "light"}
+                        className={viewMode === "list" ? "bg-accent-400" : ""}
+                        onPress={() => setViewMode("list")}
+                      >
+                        <Icon icon="solar:list-bold" className="text-lg" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
@@ -701,6 +746,7 @@ function MyClipsPageContent() {
                           onOpen={handleSelectFolder}
                           onDelete={selectedTeam?.plan === "scale" || selectedTeam?.plan === "enterprise" ? deleteFolder : undefined}
                           onDropClip={selectedTeam?.plan === "scale" || selectedTeam?.plan === "enterprise" ? moveClipToFolder : undefined}
+                          onDownload={handleDownloadFolder}
                         />
                       ))}
                       {filteredSavedClips.map((clip) => (

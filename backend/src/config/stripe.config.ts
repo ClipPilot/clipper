@@ -35,6 +35,8 @@ export const PLAN_LIMITS = {
   SCALE_ADDON: { clips: 100 },
 } as const;
 
+export const CAMPAIGN_CENTS_PER_CREDIT = 350; // 1 credit = $3.50 campaign dollars
+
 export const getMaxUploadSizeForPlan = (plan: string): number => {
   switch (plan) {
     case "scale":
