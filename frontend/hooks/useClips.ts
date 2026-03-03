@@ -147,27 +147,34 @@ export function useClipsData() {
   const confirmDeleteClip = useCallback(async () => {
     if (!selectedTeam?.id || !clipToDelete) return;
 
-    setIsDeleting(true);
+    const deletingId = clipToDelete.id;
+
+    // Optimistically remove from UI immediately
+    recentlyDeletedRef.current.add(deletingId);
+    setPendingClips((prev) => prev.filter((c) => c.id !== deletingId));
+    setUnsavedClips((prev) => prev.filter((c) => c.id !== deletingId));
+    setSavedClips((prev) => prev.filter((c) => c.id !== deletingId));
+    setIsDeleteModalOpen(false);
+    setClipToDelete(null);
+
+    if (triggerRefreshRef.current) {
+      triggerRefreshRef.current();
+    }
+
     try {
-      await clipsAPI.deleteClip(selectedTeam.id, clipToDelete.id);
-      recentlyDeletedRef.current.add(clipToDelete.id);
-      setTimeout(() => recentlyDeletedRef.current.delete(clipToDelete.id), 10_000);
-      setPendingClips((prev) => prev.filter((c) => c.id !== clipToDelete.id));
-      setUnsavedClips((prev) => prev.filter((c) => c.id !== clipToDelete.id));
-      setSavedClips((prev) => prev.filter((c) => c.id !== clipToDelete.id));
-
-      if (triggerRefreshRef.current) {
-        triggerRefreshRef.current();
-      }
-
-      setIsDeleteModalOpen(false);
-      setClipToDelete(null);
+      await clipsAPI.deleteClip(selectedTeam.id, deletingId);
+      setTimeout(() => recentlyDeletedRef.current.delete(deletingId), 10_000);
     } catch (error) {
       console.error("Failed to delete clip:", error);
-    } finally {
-      setIsDeleting(false);
+      // Remove from tombstone so refresh can restore it
+      recentlyDeletedRef.current.delete(deletingId);
+      addToast({
+        title: "Failed to delete clip",
+        description: "The clip could not be deleted. It will reappear shortly.",
+        color: "danger",
+      });
     }
-  }, [selectedTeam?.id, clipToDelete, setPendingClips, setUnsavedClips, setSavedClips, setIsDeleting, setIsDeleteModalOpen, setClipToDelete]);
+  }, [selectedTeam?.id, clipToDelete, setPendingClips, setUnsavedClips, setSavedClips, setIsDeleteModalOpen, setClipToDelete]);
 
   const cancelDeleteClip = useCallback(() => {
     setIsDeleteModalOpen(false);

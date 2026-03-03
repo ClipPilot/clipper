@@ -6,7 +6,7 @@ import {
   clipTags,
   tags,
 } from "@clipper/shared-db/src/schema";
-import { eq, and, desc, isNull, count, notInArray, or, sql, inArray, gte, lte } from "drizzle-orm";
+import { eq, and, desc, isNull, isNotNull, count, notInArray, or, sql, inArray, gte, lte } from "drizzle-orm";
 import crypto from "crypto";
 
 export class ClipManagerService {
@@ -193,7 +193,7 @@ export class ClipManagerService {
     return await db
       .select()
       .from(clips)
-      .where(and(eq(clips.team_id, teamId), eq(clips.folder_id, folderId)))
+      .where(and(eq(clips.team_id, teamId), eq(clips.folder_id, folderId), isNotNull(clips.clip_path)))
       .orderBy(desc(clips.updated_at));
   }
 
@@ -360,7 +360,8 @@ export class ClipManagerService {
           eq(clips.team_id, teamId),
           or(eq(clips.status, "completed"), eq(clips.status, "pending")),
           eq(clips.saved, true),
-          isNull(clips.folder_id)
+          isNull(clips.folder_id),
+          isNotNull(clips.clip_path)
         )
       )
       .orderBy(desc(clips.created_at))
