@@ -203,6 +203,7 @@ Creative guidance:
 - Each scene needs a strong cinematic prompt describing the visual
 - Action describes what is visually happening (no speaking)
 - Focus on visual storytelling — the transformation should be obvious from imagery alone
+- If user direction specifies number of shots per scene, follow it EXACTLY
 `;
   }
 
@@ -217,6 +218,7 @@ SILENT PRODUCT SHOWCASE — Three purely visual scenes, no voiceover.
 Creative guidance:
 - Think premium product photography in motion — clean, satisfying, scroll-stopping
 - Focus on texture, movement, and visual appeal
+- If user direction specifies number of shots per scene, follow it EXACTLY
 `;
   }
 
@@ -232,6 +234,7 @@ SILENT AESTHETIC MONTAGE — Four purely visual scenes, no voiceover.
 Creative guidance:
 - Create a visual rhythm — each shot should flow naturally into the next
 - Think ASMR / satisfying content — textures, movements, transformations
+- If user direction specifies number of shots per scene, follow it EXACTLY
 `;
   }
 
@@ -891,7 +894,7 @@ Example - Product hero with hype VO:
 }
 
 Rules for bRollShots:
-- Use as many shots as the scene needs (1, 2, 3, 4, etc)
+- Use 1-5 shots per scene (MAXIMUM 5). If the user specifies a shot count in their direction, use EXACTLY that number.
 - Each shot: 1-4 seconds, ONE simple action
 - Total duration of all shots = estimatedDurationSeconds
 - The single voiceover (dialogue field) plays continuously over all shots
@@ -1258,7 +1261,7 @@ Score 95+ means: irresistible hook, perfect pacing, genuine emotion, share-worth
 - a-roll scenes: MUST have ambientSound
 - b-roll scenes: ambientSound should be null
 - No tongue twisters or plosive clusters in dialogue
-- B-ROLL: Use bRollShots array with as many shots as needed
+- B-ROLL: Use bRollShots array (max 5 shots). Respect user's shot count if specified.
 - productImageNeeded based on scene type: PROBLEM/HOOK = false, SOLUTION/DEMO/CTA = true where product shown
 - VERIFY: Every a-roll scene has a non-null ambientSound describing background audio
 - VERIFY: No scene exceeds 50 words (UNLESS monologue mode is activated by user direction)
