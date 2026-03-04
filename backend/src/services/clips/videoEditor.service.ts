@@ -689,58 +689,50 @@ export const convertToGamingVertical = async (
     `[GAMING] Face crop: ${fcW}x${fcH} at (${fcX},${fcY}) → ${faceOutW}x${faceOutH} (scale=${faceScale.toFixed(2)}), gameplay: 1080x${gameOutH}`,
   );
 
-  // Determine available gameplay region by excluding the facecam strip.
-  // Try both exclusion strategies (side vs top/bottom) and pick whichever
-  // gives the largest crop area — i.e. the most zoomed-out gameplay.
+  // Determine available gameplay region by excluding the facecam strip
   const fcOnLeft = fcX + fcW / 2 < width / 2;
   const fcOnTop = fcY + fcH / 2 < height / 2;
-  const gameplayAR = 1080 / gameOutH;
+  const distToVerticalEdge = fcOnLeft ? fcX + fcW : width - fcX;
+  const distToHorizontalEdge = fcOnTop ? fcY + fcH : height - fcY;
 
-  // Helper: compute center-crop area for a given available region
-  const computeCrop = (aX: number, aY: number, aW: number, aH: number) => {
-    let cW: number, cH: number, cX: number, cY: number;
-    if (aW / aH > gameplayAR) {
-      cH = aH;
-      cW = Math.round(aH * gameplayAR);
-      cX = aX + Math.round((aW - cW) / 2);
-      cY = aY;
+  // Exclude the thinner strip (removes least gameplay)
+  let availX = 0,
+    availY = 0,
+    availW = width,
+    availH = height;
+  if (distToVerticalEdge <= distToHorizontalEdge) {
+    if (fcOnLeft) {
+      availX = fcX + fcW;
+      availW = width - availX;
     } else {
-      cW = aW;
-      cH = Math.round(aW / gameplayAR);
-      cX = aX;
-      cY = aY + Math.round((aH - cH) / 2);
+      availW = fcX;
     }
-    return { cW, cH, cX, cY, area: cW * cH };
-  };
-
-  // Option A: exclude the side (left or right) the camera is on — use full height
-  let sideX: number, sideW: number;
-  if (fcOnLeft) {
-    sideX = fcX + fcW;
-    sideW = width - sideX;
   } else {
-    sideX = 0;
-    sideW = fcX;
+    if (fcOnTop) {
+      availY = fcY + fcH;
+      availH = height - availY;
+    } else {
+      availH = fcY;
+    }
   }
-  const sideOption = computeCrop(sideX, 0, sideW, height);
 
-  // Option B: exclude the top or bottom where the camera is — use full width
-  let tbY: number, tbH: number;
-  if (fcOnTop) {
-    tbY = fcY + fcH;
-    tbH = height - tbY;
+  // Center-crop within the available (facecam-free) region
+  const gameplayAR = 1080 / gameOutH;
+  let gpW: number, gpH: number, gpX: number, gpY: number;
+  if (availW / availH > gameplayAR) {
+    gpH = availH;
+    gpW = Math.round(availH * gameplayAR);
+    gpX = availX + Math.round((availW - gpW) / 2);
+    gpY = availY;
   } else {
-    tbY = 0;
-    tbH = fcY;
+    gpW = availW;
+    gpH = Math.round(availW / gameplayAR);
+    gpX = availX;
+    gpY = availY + Math.round((availH - gpH) / 2);
   }
-  const tbOption = computeCrop(0, tbY, width, tbH);
-
-  // Pick the option with the larger crop (more zoomed out)
-  const best = sideOption.area >= tbOption.area ? sideOption : tbOption;
-  const gpW = best.cW, gpH = best.cH, gpX = best.cX, gpY = best.cY;
 
   console.log(
-    `[GAMING] Gameplay exclusion: side=${sideOption.cW}x${sideOption.cH} (area=${sideOption.area}), tb=${tbOption.cW}x${tbOption.cH} (area=${tbOption.area}) → picked ${sideOption.area >= tbOption.area ? "side" : "tb"}: crop ${gpW}x${gpH} at (${gpX},${gpY})`,
+    `[GAMING] Gameplay: avail ${availW}x${availH} at (${availX},${availY}), center-crop ${gpW}x${gpH} at (${gpX},${gpY})`,
   );
 
   // If facecam is narrower than 1080 (height-constrained), pad with black to center it
