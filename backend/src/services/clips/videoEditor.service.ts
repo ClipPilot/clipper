@@ -689,48 +689,58 @@ export const convertToGamingVertical = async (
     `[GAMING] Face crop: ${fcW}x${fcH} at (${fcX},${fcY}) → ${faceOutW}x${faceOutH} (scale=${faceScale.toFixed(2)}), gameplay: 1080x${gameOutH}`,
   );
 
-  // Determine available gameplay region by excluding the facecam strip
+  // Determine available gameplay region by excluding the facecam strip.
+  // Try both exclusion strategies (side vs top/bottom) and pick whichever
+  // gives the largest crop area — i.e. the most zoomed-out gameplay.
   const fcOnLeft = fcX + fcW / 2 < width / 2;
   const fcOnTop = fcY + fcH / 2 < height / 2;
-  const distToVerticalEdge = fcOnLeft ? fcX + fcW : width - fcX;
-  const distToHorizontalEdge = fcOnTop ? fcY + fcH : height - fcY;
+  const gameplayAR = 1080 / gameOutH;
 
-  // Exclude the thinner strip (removes least gameplay)
-  let availX = 0,
-    availY = 0,
-    availW = width,
-    availH = height;
-  if (distToVerticalEdge <= distToHorizontalEdge) {
-    // Exclude left or right strip
-    if (fcOnLeft) {
-      availX = fcX + fcW;
-      availW = width - availX;
+  // Helper: compute center-crop area for a given available region
+  const computeCrop = (aX: number, aY: number, aW: number, aH: number) => {
+    let cW: number, cH: number, cX: number, cY: number;
+    if (aW / aH > gameplayAR) {
+      cH = aH;
+      cW = Math.round(aH * gameplayAR);
+      cX = aX + Math.round((aW - cW) / 2);
+      cY = aY;
     } else {
-      availW = fcX;
+      cW = aW;
+      cH = Math.round(aW / gameplayAR);
+      cX = aX;
+      cY = aY + Math.round((aH - cH) / 2);
     }
+    return { cW, cH, cX, cY, area: cW * cH };
+  };
+
+  // Option A: exclude the side (left or right) the camera is on — use full height
+  let sideX: number, sideW: number;
+  if (fcOnLeft) {
+    sideX = fcX + fcW;
+    sideW = width - sideX;
   } else {
-    // Exclude top or bottom strip
-    if (fcOnTop) {
-      availY = fcY + fcH;
-      availH = height - availY;
-    } else {
-      availH = fcY;
-    }
+    sideX = 0;
+    sideW = fcX;
   }
+  const sideOption = computeCrop(sideX, 0, sideW, height);
 
-  // Fit the full available (facecam-free) region into the gameplay slot.
-  // Instead of center-cropping to exact AR (which zooms in and loses content),
-  // scale the whole region to fit within 1080×gameOutH and pad with black.
-  const fitScale = Math.min(1080 / availW, gameOutH / availH);
-  let gameScaledW = Math.round(availW * fitScale);
-  let gameScaledH = Math.round(availH * fitScale);
-  gameScaledW += gameScaledW % 2;
-  gameScaledH += gameScaledH % 2;
-  const gamePadX = Math.round((1080 - gameScaledW) / 2);
-  const gamePadY = Math.round((gameOutH - gameScaledH) / 2);
+  // Option B: exclude the top or bottom where the camera is — use full width
+  let tbY: number, tbH: number;
+  if (fcOnTop) {
+    tbY = fcY + fcH;
+    tbH = height - tbY;
+  } else {
+    tbY = 0;
+    tbH = fcY;
+  }
+  const tbOption = computeCrop(0, tbY, width, tbH);
+
+  // Pick the option with the larger crop (more zoomed out)
+  const best = sideOption.area >= tbOption.area ? sideOption : tbOption;
+  const gpW = best.cW, gpH = best.cH, gpX = best.cX, gpY = best.cY;
 
   console.log(
-    `[GAMING] Gameplay: using full avail ${availW}x${availH} → scale to ${gameScaledW}x${gameScaledH} (fit=${fitScale.toFixed(2)}), pad to 1080x${gameOutH}`,
+    `[GAMING] Gameplay exclusion: side=${sideOption.cW}x${sideOption.cH} (area=${sideOption.area}), tb=${tbOption.cW}x${tbOption.cH} (area=${tbOption.area}) → picked ${sideOption.area >= tbOption.area ? "side" : "tb"}: crop ${gpW}x${gpH} at (${gpX},${gpY})`,
   );
 
   // If facecam is narrower than 1080 (height-constrained), pad with black to center it
@@ -744,7 +754,7 @@ export const convertToGamingVertical = async (
       .input(inputPath)
       .complexFilter([
         camFilter,
-        `[0:v]crop=${availW}:${availH}:${availX}:${availY},scale=${gameScaledW}:${gameScaledH},pad=1080:${gameOutH}:${gamePadX}:${gamePadY}:black[game]`,
+        `[0:v]crop=${gpW}:${gpH}:${gpX}:${gpY},scale=1080:${gameOutH}[game]`,
         `[cam][game]vstack=inputs=2[v]`,
       ])
       .outputOptions([
