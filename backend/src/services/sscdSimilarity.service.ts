@@ -109,8 +109,8 @@ export async function generateAdversarialVideo(
       output_key: outputKey,
       epsilon,
       steps,
-      max_seconds: 10,
-      fps: 2,
+      max_seconds: 5,
+      fps: 1,
     };
 
     const command = new InvokeCommand({

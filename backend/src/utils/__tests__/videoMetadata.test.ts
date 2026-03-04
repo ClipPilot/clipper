@@ -11,7 +11,7 @@ describe("generateJumbledMetadata", () => {
     result.forEach((item) => expect(typeof item).toBe("string"));
   });
 
-  it("always includes make, model, and creation_time global metadata", () => {
+  it("always includes make, model, creation_time, and location metadata", () => {
     const result = generateJumbledMetadata();
 
     // Flags come in pairs: -metadata:g, value=...
@@ -26,6 +26,8 @@ describe("generateJumbledMetadata", () => {
     expect(keys).toContain("make");
     expect(keys).toContain("model");
     expect(keys).toContain("creation_time");
+    expect(keys).toContain("location");
+    expect(keys).toContain("location-eng");
   });
 
   it("includes stream handler metadata for video and audio", () => {
@@ -80,9 +82,8 @@ describe("generateJumbledMetadata", () => {
     const timePair = globalPairs.find((p) => p.startsWith("creation_time="));
     expect(timePair).toBeDefined();
     const dateStr = timePair!.split("=")[1];
-    // Should be a valid date ending in +00:00
-    expect(dateStr).toMatch(/\+00:00$/);
-    expect(new Date(dateStr).getTime()).not.toBeNaN();
+    // Should be ISO-8601 date with timezone offset (e.g. +09:00, -05:00, +5:30)
+    expect(dateStr).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}[+-]\d{1,2}:\d{2}$/);
   });
 });
 

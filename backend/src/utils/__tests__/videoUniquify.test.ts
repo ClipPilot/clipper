@@ -12,6 +12,8 @@ describe("generateUniquifyParams", () => {
       "cropLeft", "cropRight", "cropTop", "cropBottom",
       "noiseStrength", "hueShift", "saturation", "brightness",
       "speed", "crf", "audioPitch", "trimOffset",
+      "rotation", "gamma", "colorBalanceRS", "colorBalanceGS",
+      "colorBalanceBS", "scaleJitter", "gopSize",
     ];
     for (const key of keys) {
       expect(params[key]).toBeDefined();
@@ -19,54 +21,96 @@ describe("generateUniquifyParams", () => {
     }
   });
 
-  it("generates crop values within 0.03–0.07", () => {
+  it("generates crop values within 0.01–0.03", () => {
     for (let i = 0; i < 50; i++) {
       const p = generateUniquifyParams();
       for (const edge of [p.cropLeft, p.cropRight, p.cropTop, p.cropBottom]) {
-        expect(edge).toBeGreaterThanOrEqual(0.03);
-        expect(edge).toBeLessThan(0.07 + 0.001);
+        expect(edge).toBeGreaterThanOrEqual(0.01);
+        expect(edge).toBeLessThan(0.03 + 0.001);
       }
     }
   });
 
-  it("generates noiseStrength as integer 5–10", () => {
+  it("generates noiseStrength as 0 (disabled)", () => {
     for (let i = 0; i < 50; i++) {
       const p = generateUniquifyParams();
-      expect(Number.isInteger(p.noiseStrength)).toBe(true);
-      expect(p.noiseStrength).toBeGreaterThanOrEqual(5);
-      expect(p.noiseStrength).toBeLessThanOrEqual(10);
+      expect(p.noiseStrength).toBe(0);
     }
   });
 
-  it("generates hueShift within -5 to +5", () => {
+  it("generates hueShift within -3 to +3", () => {
     for (let i = 0; i < 50; i++) {
       const p = generateUniquifyParams();
-      expect(p.hueShift).toBeGreaterThanOrEqual(-5);
-      expect(p.hueShift).toBeLessThanOrEqual(5);
+      expect(p.hueShift).toBeGreaterThanOrEqual(-3);
+      expect(p.hueShift).toBeLessThanOrEqual(3);
     }
   });
 
-  it("generates saturation within 0.95–1.05", () => {
+  it("generates saturation within 0.97–1.03", () => {
     for (let i = 0; i < 50; i++) {
       const p = generateUniquifyParams();
-      expect(p.saturation).toBeGreaterThanOrEqual(0.95);
-      expect(p.saturation).toBeLessThan(1.05 + 0.001);
+      expect(p.saturation).toBeGreaterThanOrEqual(0.97);
+      expect(p.saturation).toBeLessThan(1.03 + 0.001);
     }
   });
 
-  it("generates brightness within -0.03 to +0.03", () => {
+  it("generates brightness within -0.02 to +0.02", () => {
     for (let i = 0; i < 50; i++) {
       const p = generateUniquifyParams();
-      expect(p.brightness).toBeGreaterThanOrEqual(-0.03);
-      expect(p.brightness).toBeLessThanOrEqual(0.03 + 0.001);
+      expect(p.brightness).toBeGreaterThanOrEqual(-0.02);
+      expect(p.brightness).toBeLessThanOrEqual(0.02 + 0.001);
     }
   });
 
-  it("generates speed within 0.97–1.03", () => {
+  it("generates speed within 0.98–1.02", () => {
     for (let i = 0; i < 50; i++) {
       const p = generateUniquifyParams();
-      expect(p.speed).toBeGreaterThanOrEqual(0.97);
-      expect(p.speed).toBeLessThan(1.03 + 0.001);
+      expect(p.speed).toBeGreaterThanOrEqual(0.98);
+      expect(p.speed).toBeLessThan(1.02 + 0.001);
+    }
+  });
+
+  it("generates rotation within 0.5–1.5 degrees (either direction)", () => {
+    for (let i = 0; i < 50; i++) {
+      const p = generateUniquifyParams();
+      const abs = Math.abs(p.rotation);
+      expect(abs).toBeGreaterThanOrEqual(0.5);
+      expect(abs).toBeLessThanOrEqual(1.5);
+    }
+  });
+
+  it("generates gamma within 0.97–1.03", () => {
+    for (let i = 0; i < 50; i++) {
+      const p = generateUniquifyParams();
+      expect(p.gamma).toBeGreaterThanOrEqual(0.97);
+      expect(p.gamma).toBeLessThan(1.03 + 0.001);
+    }
+  });
+
+  it("generates colorBalance values within -0.03 to +0.03", () => {
+    for (let i = 0; i < 50; i++) {
+      const p = generateUniquifyParams();
+      for (const val of [p.colorBalanceRS, p.colorBalanceGS, p.colorBalanceBS]) {
+        expect(val).toBeGreaterThanOrEqual(-0.03);
+        expect(val).toBeLessThanOrEqual(0.03 + 0.001);
+      }
+    }
+  });
+
+  it("generates scaleJitter within 0.97–1.03", () => {
+    for (let i = 0; i < 50; i++) {
+      const p = generateUniquifyParams();
+      expect(p.scaleJitter).toBeGreaterThanOrEqual(0.97);
+      expect(p.scaleJitter).toBeLessThan(1.03 + 0.001);
+    }
+  });
+
+  it("generates gopSize as integer 24–48", () => {
+    for (let i = 0; i < 50; i++) {
+      const p = generateUniquifyParams();
+      expect(Number.isInteger(p.gopSize)).toBe(true);
+      expect(p.gopSize).toBeGreaterThanOrEqual(24);
+      expect(p.gopSize).toBeLessThanOrEqual(48);
     }
   });
 
@@ -79,19 +123,19 @@ describe("generateUniquifyParams", () => {
     }
   });
 
-  it("generates audioPitch within 0.97–1.03", () => {
+  it("generates audioPitch within 0.98–1.02", () => {
     for (let i = 0; i < 50; i++) {
       const p = generateUniquifyParams();
-      expect(p.audioPitch).toBeGreaterThanOrEqual(0.97);
-      expect(p.audioPitch).toBeLessThan(1.03 + 0.001);
+      expect(p.audioPitch).toBeGreaterThanOrEqual(0.98);
+      expect(p.audioPitch).toBeLessThan(1.02 + 0.001);
     }
   });
 
-  it("generates trimOffset within 0–0.5", () => {
+  it("generates trimOffset within 0–0.3", () => {
     for (let i = 0; i < 50; i++) {
       const p = generateUniquifyParams();
       expect(p.trimOffset).toBeGreaterThanOrEqual(0);
-      expect(p.trimOffset).toBeLessThan(0.5 + 0.001);
+      expect(p.trimOffset).toBeLessThan(0.3 + 0.001);
     }
   });
 
@@ -110,18 +154,25 @@ describe("generateUniquifyParams", () => {
 
 describe("generateUniquifyString", () => {
   const fixedParams: UniquifyParams = {
-    cropLeft: 0.05,
-    cropRight: 0.04,
-    cropTop: 0.06,
-    cropBottom: 0.03,
-    noiseStrength: 7,
-    hueShift: 3,
+    cropLeft: 0.02,
+    cropRight: 0.02,
+    cropTop: 0.02,
+    cropBottom: 0.02,
+    noiseStrength: 0,
+    hueShift: 2,
     saturation: 1.02,
     brightness: -0.01,
     speed: 1.01,
     crf: 19,
     audioPitch: 0.98,
     trimOffset: 0.25,
+    rotation: 1.0,
+    gamma: 1.01,
+    colorBalanceRS: 0.02,
+    colorBalanceGS: -0.01,
+    colorBalanceBS: 0.01,
+    scaleJitter: 1.01,
+    gopSize: 30,
   };
 
   it("returns filterComplex, encodingArgs, and fullArgs strings", () => {
@@ -134,10 +185,13 @@ describe("generateUniquifyString", () => {
   it("includes all video filter stages in filterComplex", () => {
     const { filterComplex } = generateUniquifyString(fixedParams);
     expect(filterComplex).toContain("crop=");
+    expect(filterComplex).toContain("rotate=");
+    expect(filterComplex).toContain("scale=");
+    expect(filterComplex).toContain("gblur=");
     expect(filterComplex).toContain("pad=");
-    expect(filterComplex).toContain("noise=");
     expect(filterComplex).toContain("hue=");
     expect(filterComplex).toContain("eq=");
+    expect(filterComplex).toContain("colorbalance=");
     expect(filterComplex).toContain("setpts=");
   });
 

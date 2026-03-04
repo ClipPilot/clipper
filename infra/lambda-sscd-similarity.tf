@@ -97,7 +97,7 @@ resource "aws_lambda_function" "sscd_similarity" {
   package_type  = "Image"
   image_uri     = "${aws_ecr_repository.sscd_similarity_lambda.repository_url}:latest"
   timeout       = 180  # 3 minutes - perturbation mode needs more time for PGD iterations
-  memory_size   = 4096 # 4GB - SSCD model + PyTorch inference needs more memory
+  memory_size   = 10240 # 10GB - PGD autograd stores computation graphs across backward passes
 
   environment {
     variables = {
