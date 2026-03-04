@@ -1,5 +1,5 @@
 import * as Sentry from "@sentry/node";
-import { Response } from "express";
+import { Request, Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { teamService } from "../services/team.service";
 import { userService } from "../services/user.service";
@@ -380,6 +380,29 @@ export const createTeamController = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const getTeamLogoController = async (req: Request, res: Response) => {
+  try {
+    const teamId = parseInt(req.params.teamId);
+    if (isNaN(teamId)) {
+      return res.status(400).json({ error: "Invalid team ID" });
+    }
+
+    const team = await teamService.getTeamWithType(teamId);
+    if (!team?.logo_url) {
+      return res.status(404).json({ error: "No logo found" });
+    }
+
+    const presignedUrl = await s3Service.getPresignedUrl(team.logo_url, 60);
+    res.redirect(302, presignedUrl);
+  } catch (err) {
+    console.error("Error in getTeamLogoController:", err);
+    Sentry.captureException(err);
+    res.status(500).json({
+      error: err instanceof Error ? err.message : "Failed to get logo",
+    });
+  }
+};
+
 export const uploadTeamLogoController = async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user?.id) {
@@ -408,12 +431,10 @@ export const uploadTeamLogoController = async (req: AuthRequest, res: Response) 
       req.file.mimetype
     );
 
-    // Store the S3 key rather than a presigned URL so the stored value stays valid long-term
+    // Store the S3 key — the frontend uses the /teams/:teamId/logo redirect endpoint
     const updatedTeam = await teamService.updateTeamLogo(teamId, logoKey);
 
-    const logoUrl = await s3Service.getPresignedUrl(logoKey, 3600);
-
-    res.json({ team: { ...updatedTeam, logo_url: logoUrl, role: membership.role } });
+    res.json({ team: { ...updatedTeam, logo_url: logoKey, role: membership.role } });
   } catch (err) {
     console.error("Error in uploadTeamLogoController:", err);
     Sentry.captureException(err);

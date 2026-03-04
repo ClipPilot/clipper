@@ -17,11 +17,7 @@ import {
 import { eq, and, inArray } from "drizzle-orm";
 import { s3Service } from "../../services/s3.service";
 import { googleDriveService } from "../../services/google/drive.service";
-import { generateJumbledMetadataString } from "../../utils/videoMetadata";
-import {
-  VIDEO_ENCODE_SETTINGS,
-  AUDIO_ENCODE_SETTINGS,
-} from "../../config/ffmpegSettings";
+import { generateUniquifyString } from "../../utils/videoUniquify";
 import { emailNotiService } from "../../services/emailNoti.service";
 import { notifyAdPostingUpdate } from "../notify";
 
@@ -152,8 +148,8 @@ export async function processAdPostingJob(job: AdPostingJob): Promise<void> {
               console.log(
                 `[AdPosting] Re-encoding for ${displayName} copy ${copyIndex}/${platformTotal}...`
               );
-              const metadataString = generateJumbledMetadataString();
-              const cmd = `ffmpeg -y -i "${inputPath}" -map_metadata -1 ${VIDEO_ENCODE_SETTINGS} ${AUDIO_ENCODE_SETTINGS} -movflags +faststart ${metadataString} "${outputPath}"`;
+              const { fullArgs } = generateUniquifyString();
+              const cmd = `ffmpeg -y -i "${inputPath}" ${fullArgs} "${outputPath}"`;
               await execAsync(cmd, { timeout: 600000 });
             });
 

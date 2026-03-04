@@ -3,7 +3,6 @@ import { db } from "../db";
 import { teams, teamMembers, users, usageStats, subscriptions } from "@clipper/shared-db/src/schema";
 import { eq, and, desc, count } from "drizzle-orm";
 import { PLAN_LIMITS, stripe } from "../config/stripe.config";
-import { s3Service } from "./s3.service";
 
 class TeamService {
   /**
@@ -27,13 +26,7 @@ class TeamService {
       .where(eq(teamMembers.user_id, userId))
       .orderBy(teams.created_at);
 
-    // Generate presigned URLs for logos
-    return Promise.all(
-      userTeams.map(async (team) => ({
-        ...team,
-        logo_url: team.logo_url ? await s3Service.getPresignedUrl(team.logo_url, 3600) : null,
-      }))
-    );
+    return userTeams;
   }
 
   /**
@@ -62,11 +55,7 @@ class TeamService {
       throw new Error("No default team found for user");
     }
 
-    // Generate presigned URL for logo if exists
-    return {
-      ...defaultTeam,
-      logo_url: defaultTeam.logo_url ? await s3Service.getPresignedUrl(defaultTeam.logo_url, 3600) : null,
-    };
+    return defaultTeam;
   }
 
   /**
@@ -79,11 +68,7 @@ class TeamService {
       throw new Error("Team not found");
     }
 
-    // Generate presigned URL for logo if exists
-    return {
-      ...team,
-      logo_url: team.logo_url ? await s3Service.getPresignedUrl(team.logo_url, 3600) : null,
-    };
+    return team;
   }
 
   /**

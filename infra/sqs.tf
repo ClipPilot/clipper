@@ -20,7 +20,7 @@ resource "aws_sqs_queue" "video_processing" {
 
   redrive_policy = jsonencode({
     deadLetterTargetArn = aws_sqs_queue.video_processing_dlq.arn
-    maxReceiveCount     = 1
+    maxReceiveCount     = 3
   })
 
   tags = {

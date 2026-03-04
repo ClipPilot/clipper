@@ -94,5 +94,8 @@ ENV NODE_ENV=production \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable \
     PUPPETEER_SKIP_DOWNLOAD=true
 
+# Ensure ECS sends SIGTERM for graceful shutdown (matches Docker default, documented for clarity)
+STOPSIGNAL SIGTERM
+
 # Run the worker from the monorepo root
 CMD ["node", "backend/dist/worker/index.js"]
