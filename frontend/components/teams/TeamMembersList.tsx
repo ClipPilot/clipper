@@ -59,7 +59,7 @@ export default function TeamMembersList({
 
   const handleChangeRole = async (
     memberId: number,
-    newRole: "owner" | "manager" | "member"
+    newRole: "owner" | "manager" | "member",
   ) => {
     try {
       await teamAPI.updateTeamMemberRole(teamId, memberId, newRole);
@@ -113,8 +113,8 @@ export default function TeamMembersList({
           }
           onPress={() => handleChangeRole(member.id, "owner")}
         >
-          Make Owner
-        </DropdownItem>
+          Make Manager
+        </DropdownItem>,
       );
 
       if (member.role !== "manager") {
@@ -131,7 +131,7 @@ export default function TeamMembersList({
             onPress={() => handleChangeRole(member.id, "manager")}
           >
             Make Manager
-          </DropdownItem>
+          </DropdownItem>,
         );
       }
 
@@ -149,13 +149,14 @@ export default function TeamMembersList({
             onPress={() => handleChangeRole(member.id, "member")}
           >
             Make Member
-          </DropdownItem>
+          </DropdownItem>,
         );
       }
     }
 
     // Only allow removing if: user is owner, OR (user is manager AND member is not owner)
-    const canRemove = isOwner || (userRole === "manager" && member.role !== "owner");
+    const canRemove =
+      isOwner || (userRole === "manager" && member.role !== "owner");
     if (canRemove) {
       items.push(
         <DropdownItem
@@ -167,7 +168,7 @@ export default function TeamMembersList({
           onPress={() => handleRemoveMember(member.id)}
         >
           Remove from Team
-        </DropdownItem>
+        </DropdownItem>,
       );
     }
 
@@ -206,7 +207,9 @@ export default function TeamMembersList({
                     <p className="text-sm font-medium text-text-primary">
                       {member.firstName} {member.lastName}
                       {user?.id && member.userId === parseInt(user.id) && (
-                        <span className="text-xs text-text-tertiary ml-2">(You)</span>
+                        <span className="text-xs text-text-tertiary ml-2">
+                          (You)
+                        </span>
                       )}
                     </p>
                   </div>
@@ -226,28 +229,33 @@ export default function TeamMembersList({
                   </span>
                 </div>
 
-                {canManage && user?.id && member.userId !== parseInt(user.id) && (
-                  <Dropdown>
-                    <DropdownTrigger>
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant="light"
-                        className="text-text-secondary"
+                {canManage &&
+                  user?.id &&
+                  member.userId !== parseInt(user.id) && (
+                    <Dropdown>
+                      <DropdownTrigger>
+                        <Button
+                          isIconOnly
+                          size="sm"
+                          variant="light"
+                          className="text-text-secondary"
+                        >
+                          <Icon
+                            icon="solar:menu-dots-bold-duotone"
+                            width={20}
+                          />
+                        </Button>
+                      </DropdownTrigger>
+                      <DropdownMenu
+                        aria-label="Member actions"
+                        classNames={{
+                          base: "bg-surface-base border border-border-base",
+                        }}
                       >
-                        <Icon icon="solar:menu-dots-bold-duotone" width={20} />
-                      </Button>
-                    </DropdownTrigger>
-                    <DropdownMenu
-                      aria-label="Member actions"
-                      classNames={{
-                        base: "bg-surface-base border border-border-base",
-                      }}
-                    >
-                      {getMenuItems(member)}
-                    </DropdownMenu>
-                  </Dropdown>
-                )}
+                        {getMenuItems(member)}
+                      </DropdownMenu>
+                    </Dropdown>
+                  )}
               </div>
             </div>
           </CardBody>

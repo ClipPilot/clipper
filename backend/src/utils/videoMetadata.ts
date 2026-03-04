@@ -36,14 +36,14 @@ const LOCATIONS = [
   { lat: 47.6062, lng: -122.3321, alt: 56, tz: "America/Los_Angeles" },
   { lat: 37.7749, lng: -122.4194, alt: 16, tz: "America/Los_Angeles" },
   { lat: 36.1699, lng: -115.1398, alt: 610, tz: "America/Los_Angeles" },
-  { lat: 51.5074, lng: -0.1278, alt: 11, tz: "Europe/London" },
-  { lat: 48.8566, lng: 2.3522, alt: 35, tz: "Europe/Paris" },
-  { lat: 35.6762, lng: 139.6503, alt: 40, tz: "Asia/Tokyo" },
-  { lat: 19.4326, lng: -99.1332, alt: 2240, tz: "America/Mexico_City" },
-  { lat: -33.8688, lng: 151.2093, alt: 58, tz: "Australia/Sydney" },
-  { lat: 43.6532, lng: -79.3832, alt: 76, tz: "America/Toronto" },
-  { lat: 55.7558, lng: 37.6173, alt: 156, tz: "Europe/Moscow" },
-  { lat: 1.3521, lng: 103.8198, alt: 15, tz: "Asia/Singapore" },
+  { lat: 33.4484, lng: -112.074, alt: 331, tz: "America/Phoenix" },
+  { lat: 39.7392, lng: -104.9903, alt: 1609, tz: "America/Denver" },
+  { lat: 36.1627, lng: -86.7816, alt: 182, tz: "America/Chicago" },
+  { lat: 42.3601, lng: -71.0589, alt: 6, tz: "America/New_York" },
+  { lat: 45.5152, lng: -122.6784, alt: 15, tz: "America/Los_Angeles" },
+  { lat: 32.7157, lng: -117.1611, alt: 19, tz: "America/Los_Angeles" },
+  { lat: 30.2672, lng: -97.7431, alt: 149, tz: "America/Chicago" },
+  { lat: 44.9778, lng: -93.265, alt: 253, tz: "America/Chicago" },
 ];
 
 function pickRandom<T>(arr: T[]): T {
