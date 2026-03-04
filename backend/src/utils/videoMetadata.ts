@@ -18,7 +18,7 @@ const DEVICES = [
   // { make: "samsung", model: "SM-S926U", software: "" },
   // { make: "samsung", model: "SM-S921U", software: "" },
   // { make: "samsung", model: "SM-S918U", software: "" },
-  { make: "samsung", model: "SM-S938U", software: "S938USQS7BYJ9" },
+  { make: "samsung", model: "Galaxy S25 Ultra", software: "S938USQS7BYJ9" },
   // { make: "Google", model: "Pixel 9 Pro XL", software: "" },
   // { make: "Google", model: "Pixel 9 Pro", software: "" },
   // { make: "Google", model: "Pixel 9", software: "" },
