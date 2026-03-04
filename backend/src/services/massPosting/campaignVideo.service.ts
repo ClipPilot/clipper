@@ -7,7 +7,7 @@ import {
   posts,
 } from "@clipper/shared-db";
 import { db } from "../../db";
-import { eq, and, inArray, sql } from "drizzle-orm";
+import { eq, and, inArray, sql, desc } from "drizzle-orm";
 import { s3Service } from "../s3.service";
 import { sanitizeFileName } from "../../utils/fileUtils";
 
@@ -248,7 +248,21 @@ class CampaignVideoService {
     return { deleted: true };
   }
 
-  async listVideos(campaignId: number) {
+  async listVideos(
+    campaignId: number,
+    options?: { page?: number; pageSize?: number },
+  ) {
+    const page = options?.page ?? 1;
+    const pageSize = options?.pageSize ?? 25;
+
+    // Count total videos for pagination
+    const [{ count: totalVideos }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(campaignVideos)
+      .where(eq(campaignVideos.campaign_id, campaignId));
+
+    const totalPages = Math.ceil(totalVideos / pageSize);
+
     const rows = await db
       .select({
         id: campaignVideos.id,
@@ -264,7 +278,10 @@ class CampaignVideoService {
       })
       .from(campaignVideos)
       .leftJoin(clips, eq(campaignVideos.clip_id, clips.id))
-      .where(eq(campaignVideos.campaign_id, campaignId));
+      .where(eq(campaignVideos.campaign_id, campaignId))
+      .orderBy(desc(campaignVideos.created_at))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize);
 
     // Get post counts per clip_id for this campaign
     const clipIds = rows.map((r) => r.clip_id).filter((id): id is number => id != null);
@@ -308,7 +325,10 @@ class CampaignVideoService {
       }),
     );
 
-    return videosWithUrls;
+    return {
+      videos: videosWithUrls,
+      pagination: { page, pageSize, totalVideos, totalPages },
+    };
   }
 
   async checkVideoGate(campaignId: number): Promise<boolean> {

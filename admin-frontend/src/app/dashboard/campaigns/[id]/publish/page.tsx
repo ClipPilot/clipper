@@ -275,7 +275,7 @@ function PostsTable({ campaignId }: { campaignId: number }) {
       const result = await adminAPI.getCampaignPosts(campaignId, {
         tab,
         page,
-        pageSize: 25,
+        pageSize: 10,
         sortBy: tab === "published" ? "posted_time" : "created_at",
         sortOrder: "desc",
       });
@@ -477,6 +477,9 @@ export default function CampaignPublishPage() {
   const [videos, setVideos] = useState<CampaignVideo[]>([]);
   const [videosLoading, setVideosLoading] = useState(false);
   const [videoFilter, setVideoFilter] = useState<"all" | "unpublished" | "published">("all");
+  const [videoPage, setVideoPage] = useState(1);
+  const [videoTotalPages, setVideoTotalPages] = useState(1);
+  const [videoTotalCount, setVideoTotalCount] = useState(0);
 
   const [publishingVideo, setPublishingVideo] = useState<CampaignVideo | null>(null);
   const [bulkPublishClips, setBulkPublishClips] = useState<{ clipId: number; title: string }[] | null>(null);
@@ -501,15 +504,20 @@ export default function CampaignPublishPage() {
     fetchCampaign();
   }, [campaignId]);
 
-  const fetchVideos = useCallback(async () => {
+  const fetchVideos = useCallback(async (pg?: number) => {
     if (!campaign || campaign.status !== "started") return;
     setVideosLoading(true);
     try {
-      const { videos: v } = await adminAPI.getCampaignVideos(campaignId);
-      setVideos(v);
+      const result = await adminAPI.getCampaignVideos(campaignId, {
+        page: pg ?? videoPage,
+        pageSize: 10,
+      });
+      setVideos(result.videos);
+      setVideoTotalPages(result.pagination.totalPages);
+      setVideoTotalCount(result.pagination.totalVideos);
     } catch { /* silent */ }
     finally { setVideosLoading(false); }
-  }, [campaign, campaignId]);
+  }, [campaign, campaignId, videoPage]);
 
   useEffect(() => { fetchVideos(); }, [fetchVideos]);
 
@@ -594,7 +602,7 @@ export default function CampaignPublishPage() {
         </div>
         <div className="bg-surface border border-border rounded-xl p-4">
           <div className="text-xs text-text-tertiary uppercase tracking-wider mb-1">Videos</div>
-          <div className="text-lg font-bold text-text-primary">{videosLoading ? "..." : videos.length}</div>
+          <div className="text-lg font-bold text-text-primary">{videosLoading ? "..." : videoTotalCount}</div>
         </div>
       </div>
 
@@ -626,12 +634,38 @@ export default function CampaignPublishPage() {
       <div className="bg-surface border border-border rounded-2xl overflow-hidden mb-8">
         <div className="px-6 py-4 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-4">
+            {/* Select all checkbox */}
+            {(() => {
+              const publishable = videos.filter((v) => {
+                if (!v.clip_id) return false;
+                if (videoFilter === "published") return v.post_count > 0;
+                if (videoFilter === "unpublished") return v.post_count === 0;
+                return true;
+              });
+              const allSelected = publishable.length > 0 && publishable.every((v) => selectedClipIds.has(v.clip_id!));
+              const someSelected = publishable.some((v) => selectedClipIds.has(v.clip_id!));
+              return publishable.length > 0 ? (
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected; }}
+                  onChange={() => {
+                    if (allSelected) {
+                      setSelectedClipIds(new Set());
+                    } else {
+                      setSelectedClipIds(new Set(publishable.map((v) => v.clip_id!)));
+                    }
+                  }}
+                  className="w-4 h-4 rounded border-border text-emerald focus:ring-emerald cursor-pointer accent-emerald"
+                />
+              ) : null;
+            })()}
             <h2 className="text-sm font-semibold text-text-primary">Campaign Videos</h2>
             <div className="flex items-center gap-1 bg-surface-elevated rounded-lg p-0.5">
               {(["all", "unpublished", "published"] as const).map((f) => (
                 <button
                   key={f}
-                  onClick={() => setVideoFilter(f)}
+                  onClick={() => { setVideoFilter(f); setVideoPage(1); setSelectedClipIds(new Set()); }}
                   className={`px-3 py-1 rounded-md text-xs font-medium transition-colors capitalize ${
                     videoFilter === f
                       ? "bg-surface text-text-primary shadow-sm"
@@ -643,50 +677,21 @@ export default function CampaignPublishPage() {
               ))}
             </div>
           </div>
-          <button onClick={fetchVideos} disabled={videosLoading} className="text-xs text-text-tertiary hover:text-text-secondary disabled:opacity-50">{videosLoading ? "Refreshing..." : "Refresh"}</button>
-        </div>
-
-        {/* Bulk action toolbar */}
-        {selectedClipIds.size > 0 && (
-          <div className="px-6 py-3 border-b border-emerald/20 bg-emerald/5 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-semibold text-emerald">{selectedClipIds.size} selected</span>
-              <button
-                onClick={() => {
-                  const publishable = videos.filter((v) => {
-                    if (!v.clip_id) return false;
-                    if (videoFilter === "published") return v.post_count > 0;
-                    if (videoFilter === "unpublished") return v.post_count === 0;
-                    return true;
-                  });
-                  const allSelected = publishable.every((v) => selectedClipIds.has(v.clip_id!));
-                  if (allSelected) {
-                    setSelectedClipIds(new Set());
-                  } else {
-                    setSelectedClipIds(new Set(publishable.map((v) => v.clip_id!)));
-                  }
-                }}
-                className="px-3 py-1 rounded-lg text-xs font-medium text-text-secondary hover:text-text-primary bg-surface border border-border hover:bg-surface-hover transition-colors"
-              >
-                {(() => {
-                  const publishable = videos.filter((v) => {
-                    if (!v.clip_id) return false;
-                    if (videoFilter === "published") return v.post_count > 0;
-                    if (videoFilter === "unpublished") return v.post_count === 0;
-                    return true;
-                  });
-                  return publishable.every((v) => selectedClipIds.has(v.clip_id!)) ? "Deselect All" : "Select All";
-                })()}
-              </button>
-            </div>
-            <button
-              onClick={handleBulkPublish}
-              className="px-4 py-2 rounded-lg bg-emerald text-black text-sm font-semibold hover:bg-emerald-light transition-colors"
-            >
-              Publish Selected
-            </button>
+          <div className="flex items-center gap-3">
+            {selectedClipIds.size > 0 && (
+              <>
+                <span className="text-xs font-semibold text-emerald">{selectedClipIds.size} selected</span>
+                <button
+                  onClick={handleBulkPublish}
+                  className="px-3 py-1.5 rounded-lg bg-emerald text-black text-xs font-semibold hover:bg-emerald-light transition-colors"
+                >
+                  Publish Selected
+                </button>
+              </>
+            )}
+            <button onClick={() => fetchVideos()} disabled={videosLoading} className="text-xs text-text-tertiary hover:text-text-secondary disabled:opacity-50">{videosLoading ? "Refreshing..." : "Refresh"}</button>
           </div>
-        )}
+        </div>
 
         {videosLoading && videos.length === 0 ? (
           <div className="p-12 text-center text-text-secondary">Loading videos...</div>
@@ -755,6 +760,17 @@ export default function CampaignPublishPage() {
             </div>
           );
         })()}
+
+        {/* Video Pagination */}
+        {videoTotalPages > 1 && (
+          <div className="px-6 py-3 border-t border-border flex items-center justify-between">
+            <span className="text-xs text-text-tertiary">Page {videoPage} of {videoTotalPages} ({videoTotalCount} videos)</span>
+            <div className="flex gap-2">
+              <button onClick={() => { setVideoPage((p) => Math.max(1, p - 1)); setSelectedClipIds(new Set()); }} disabled={videoPage === 1} className="px-3 py-1 rounded-lg bg-surface-elevated border border-border text-text-secondary text-xs hover:bg-surface-hover disabled:opacity-50">Prev</button>
+              <button onClick={() => { setVideoPage((p) => Math.min(videoTotalPages, p + 1)); setSelectedClipIds(new Set()); }} disabled={videoPage === videoTotalPages} className="px-3 py-1 rounded-lg bg-surface-elevated border border-border text-text-secondary text-xs hover:bg-surface-hover disabled:opacity-50">Next</button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Posts Table */}
