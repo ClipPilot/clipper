@@ -718,20 +718,20 @@ export const convertToGamingVertical = async (
     }
   }
 
-  // Center-crop within the available (facecam-free) region
-  const gameplayAR = 1080 / gameOutH;
-  let gpW: number, gpH: number, gpX: number, gpY: number;
-  if (availW / availH > gameplayAR) {
-    gpH = availH;
-    gpW = Math.round(availH * gameplayAR);
-    gpX = availX + Math.round((availW - gpW) / 2);
-    gpY = availY;
-  } else {
-    gpW = availW;
-    gpH = Math.round(availW / gameplayAR);
-    gpX = availX;
-    gpY = availY + Math.round((availH - gpH) / 2);
-  }
+  // Fit the full available (facecam-free) region into the gameplay slot.
+  // Instead of center-cropping to exact AR (which zooms in and loses content),
+  // scale the whole region to fit within 1080×gameOutH and pad with black.
+  const fitScale = Math.min(1080 / availW, gameOutH / availH);
+  let gameScaledW = Math.round(availW * fitScale);
+  let gameScaledH = Math.round(availH * fitScale);
+  gameScaledW += gameScaledW % 2;
+  gameScaledH += gameScaledH % 2;
+  const gamePadX = Math.round((1080 - gameScaledW) / 2);
+  const gamePadY = Math.round((gameOutH - gameScaledH) / 2);
+
+  console.log(
+    `[GAMING] Gameplay: using full avail ${availW}x${availH} → scale to ${gameScaledW}x${gameScaledH} (fit=${fitScale.toFixed(2)}), pad to 1080x${gameOutH}`,
+  );
 
   // If facecam is narrower than 1080 (height-constrained), pad with black to center it
   const needsPad = faceOutW < 1080;
@@ -744,7 +744,7 @@ export const convertToGamingVertical = async (
       .input(inputPath)
       .complexFilter([
         camFilter,
-        `[0:v]crop=${gpW}:${gpH}:${gpX}:${gpY},scale=1080:${gameOutH}[game]`,
+        `[0:v]crop=${availW}:${availH}:${availX}:${availY},scale=${gameScaledW}:${gameScaledH},pad=1080:${gameOutH}:${gamePadX}:${gamePadY}:black[game]`,
         `[cam][game]vstack=inputs=2[v]`,
       ])
       .outputOptions([
