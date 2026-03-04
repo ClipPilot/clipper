@@ -234,7 +234,8 @@ resource "aws_iam_role_policy" "ecs_worker_lambda_invoke" {
       Resource = [
         "arn:aws:lambda:${var.aws_region}:${data.aws_caller_identity.current.account_id}:function:${var.project_name}-facecam-detect-${var.environment}",
         "arn:aws:lambda:${var.aws_region}:${data.aws_caller_identity.current.account_id}:function:${var.project_name}-face-detect-${var.environment}",
-        "arn:aws:lambda:${var.aws_region}:${data.aws_caller_identity.current.account_id}:function:${var.project_name}-scene-detect-${var.environment}"
+        "arn:aws:lambda:${var.aws_region}:${data.aws_caller_identity.current.account_id}:function:${var.project_name}-scene-detect-${var.environment}",
+        "arn:aws:lambda:${var.aws_region}:${data.aws_caller_identity.current.account_id}:function:${var.project_name}-sscd-similarity-${var.environment}"
       ]
     }]
   })
