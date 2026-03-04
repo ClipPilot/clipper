@@ -97,7 +97,7 @@ export async function checkSscdSimilarity(
 export async function generateAdversarialVideo(
   videoS3Url: string,
   outputKey: string,
-  epsilon: number = 0.03,
+  epsilon: number = 0.15,
   steps: number = 10
 ): Promise<string | null> {
   console.log(`[SSCD] Generating adversarial perturbation for ${videoS3Url}`);

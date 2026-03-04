@@ -108,17 +108,14 @@ def compute_cosine_similarity(embedding_a, embedding_b):
     return float(np.dot(embedding_a, embedding_b))
 
 
-def perturb_frames(frame_paths, model, epsilon=0.03, steps=10, step_size=0.005):
+def compute_perturbation(frame_paths, model, epsilon=0.15, steps=10):
     """
-    Apply PGD adversarial perturbation to frames to maximize SSCD embedding distance.
-    Epsilon controls max pixel change (0.03 = ±8/255, invisible to humans).
-    Returns list of perturbed PIL images.
+    Run PGD on sample frames to compute an adversarial perturbation tensor.
+    Returns the averaged perturbation in normalized ImageNet space.
     """
     tensors = []
-    original_sizes = []
     for path in frame_paths:
         img = Image.open(path).convert("RGB")
-        original_sizes.append(img.size)
         tensors.append(SSCD_TRANSFORM(img))
 
     if not tensors:
@@ -130,6 +127,7 @@ def perturb_frames(frame_paths, model, epsilon=0.03, steps=10, step_size=0.005):
         original_embedding = model(batch)  # [N, 512]
 
     perturbation = torch.zeros_like(batch, requires_grad=True)
+    step_size = 2.5 * epsilon / steps
 
     for step in range(steps):
         perturbed = batch + perturbation
@@ -147,71 +145,76 @@ def perturb_frames(frame_paths, model, epsilon=0.03, steps=10, step_size=0.005):
             perturbation.data = torch.clamp(perturbation.data, -epsilon, epsilon)
             perturbation.grad.zero_()
 
-    print(f"[SSCD] PGD complete after {steps} steps, epsilon={epsilon}")
-
     with torch.no_grad():
         final = batch + perturbation
         final_embedding = model(final)
         sim = torch.nn.functional.cosine_similarity(
             final_embedding, original_embedding, dim=1
         ).mean().item()
-        print(f"[SSCD] Post-perturbation self-similarity: {sim:.4f}")
+        print(f"[SSCD] PGD complete: {steps} steps, epsilon={epsilon}, self-sim={sim:.4f}")
 
-    mean = torch.tensor(IMAGENET_MEAN).view(1, 3, 1, 1)
-    std = torch.tensor(IMAGENET_STD).view(1, 3, 1, 1)
-
-    perturbed_images = []
-    for i in range(final.shape[0]):
-        frame = final[i].detach()
-        frame = frame * std.squeeze(0) + mean.squeeze(0)
-        frame = torch.clamp(frame, 0, 1)
-        frame_np = (frame.permute(1, 2, 0).numpy() * 255).astype(np.uint8)
-        img = Image.fromarray(frame_np).resize(original_sizes[i], Image.LANCZOS)
-        perturbed_images.append(img)
-
-    return perturbed_images
+    return perturbation.detach()
 
 
-def reassemble_video(original_video_path, perturbed_images, output_path, fps):
-    """Replace frames in the original video with perturbed versions."""
-    with tempfile.TemporaryDirectory() as framedir:
-        for i, img in enumerate(perturbed_images):
-            img.save(os.path.join(framedir, f"frame_{i:04d}.png"))
+def apply_perturbation_to_video(original_video_path, perturbation, output_path):
+    """
+    Apply the averaged perturbation as an FFmpeg grainmerge overlay on the full video.
+    Preserves original duration, fps, and audio.
+    """
+    avg_delta = perturbation.mean(dim=0)  # [3, 288, 288]
 
-        frame_pattern = os.path.join(framedir, "frame_%04d.png")
+    std = torch.tensor(IMAGENET_STD).view(3, 1, 1)
+    pixel_delta = avg_delta * std * 255  # convert to [0,255] pixel-space delta
 
-        has_audio = False
-        probe = subprocess.run(
-            ['ffprobe', '-v', 'quiet', '-select_streams', 'a',
-             '-show_entries', 'stream=codec_type', '-of', 'csv=p=0',
-             original_video_path],
-            capture_output=True, text=True
-        )
-        if probe.stdout.strip():
-            has_audio = True
+    # grainmerge: output = A + B - 128, so B = 128 + delta
+    overlay_tensor = (128.0 + pixel_delta).clamp(0, 255)
+    overlay_np = overlay_tensor.permute(1, 2, 0).numpy().astype(np.uint8)
 
-        cmd = [
-            'ffmpeg', '-y',
-            '-framerate', str(fps),
-            '-i', frame_pattern,
-        ]
+    overlay_path = os.path.join(os.path.dirname(output_path), "overlay.png")
+    Image.fromarray(overlay_np).save(overlay_path)
 
-        if has_audio:
-            cmd.extend(['-i', original_video_path, '-map', '0:v', '-map', '1:a', '-shortest'])
-        else:
-            cmd.extend(['-map', '0:v'])
+    probe = subprocess.run(
+        ['ffprobe', '-v', 'quiet', '-select_streams', 'v:0',
+         '-show_entries', 'stream=width,height', '-of', 'csv=p=0',
+         original_video_path],
+        capture_output=True, text=True
+    )
+    width, height = probe.stdout.strip().split(',')
 
-        cmd.extend([
-            '-c:v', 'libx264', '-preset', 'fast', '-crf', '17',
-            '-pix_fmt', 'yuv420p', '-movflags', '+faststart',
-            output_path
-        ])
+    has_audio = False
+    audio_probe = subprocess.run(
+        ['ffprobe', '-v', 'quiet', '-select_streams', 'a',
+         '-show_entries', 'stream=codec_type', '-of', 'csv=p=0',
+         original_video_path],
+        capture_output=True, text=True
+    )
+    if audio_probe.stdout.strip():
+        has_audio = True
 
-        if has_audio:
-            cmd.extend(['-c:a', 'copy'])
+    filter_str = (
+        f'[1:v]scale={width}:{height}:flags=bilinear[noise];'
+        f'[0:v][noise]blend=all_mode=grainmerge:shortest=1[v]'
+    )
 
-        subprocess.run(cmd, check=True, capture_output=True, text=True)
-        print(f"[SSCD] Reassembled perturbed video: {output_path}")
+    cmd = [
+        'ffmpeg', '-y',
+        '-i', original_video_path,
+        '-loop', '1', '-i', overlay_path,
+        '-filter_complex', filter_str,
+        '-map', '[v]',
+    ]
+
+    if has_audio:
+        cmd.extend(['-map', '0:a', '-c:a', 'copy'])
+
+    cmd.extend([
+        '-c:v', 'libx264', '-preset', 'fast', '-crf', '17',
+        '-pix_fmt', 'yuv420p', '-movflags', '+faststart',
+        output_path
+    ])
+
+    subprocess.run(cmd, check=True, capture_output=True, text=True)
+    print(f"[SSCD] Applied perturbation overlay to full video ({width}x{height})")
 
 
 def handle_compare(body):
@@ -295,10 +298,10 @@ def handle_perturb(body):
             'body': json.dumps({'error': 'video_url and output_key are required'})
         }
 
-    epsilon = float(body.get('epsilon', 0.03))
+    epsilon = float(body.get('epsilon', 0.15))
     steps = int(body.get('steps', 10))
-    max_seconds = int(body.get('max_seconds', DEFAULTS['max_seconds']))
-    fps = int(body.get('fps', 2))
+    max_seconds = int(body.get('max_seconds', 5))
+    fps = int(body.get('fps', 1))
 
     bucket, _ = parse_s3_url(video_url)
     model = get_model()
@@ -321,18 +324,18 @@ def handle_perturb(body):
                 })
             }
 
-        perturbed_images = perturb_frames(frame_paths, model, epsilon=epsilon, steps=steps)
+        perturbation = compute_perturbation(frame_paths, model, epsilon=epsilon, steps=steps)
 
-        if perturbed_images is None:
+        if perturbation is None:
             return {
                 'statusCode': 200,
                 'body': json.dumps({
                     'success': False,
-                    'error': 'Perturbation failed',
+                    'error': 'Perturbation computation failed',
                 })
             }
 
-        reassemble_video(video_path, perturbed_images, output_path, fps)
+        apply_perturbation_to_video(video_path, perturbation, output_path)
         upload_to_s3(output_path, bucket, output_key)
 
         return {
@@ -340,7 +343,7 @@ def handle_perturb(body):
             'body': json.dumps({
                 'success': True,
                 'output_key': output_key,
-                'frames_perturbed': len(perturbed_images),
+                'frames_sampled': len(frame_paths),
                 'epsilon': epsilon,
                 'steps': steps,
             })
