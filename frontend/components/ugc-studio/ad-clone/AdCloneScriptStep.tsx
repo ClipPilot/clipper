@@ -65,12 +65,14 @@ function SceneEditor({ scene, index, totalScenes, defaultEditing, onUpdate, onRe
     setIsEditing(false);
   };
 
+  const isArollMissingDialogue = scene.shotType === "a-roll" && !scene.dialogue?.trim();
+
   return (
-    <Card className={`bg-surface-elevated border ${isEditing ? "border-orange-500/50" : "border-border-base"}`}>
+    <Card className={`bg-surface-elevated border ${isArollMissingDialogue ? "border-red-500/60" : isEditing ? "border-orange-500/50" : "border-border-base"}`}>
       <CardBody className="p-4">
         <div className="flex items-start gap-3">
-          <div className="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center shrink-0">
-            <span className="text-sm font-bold text-orange-500">{index + 1}</span>
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isArollMissingDialogue ? "bg-red-500/20" : "bg-orange-500/20"}`}>
+            <span className={`text-sm font-bold ${isArollMissingDialogue ? "text-red-500" : "text-orange-500"}`}>{index + 1}</span>
           </div>
 
           <div className="flex-1 min-w-0 space-y-3">
@@ -111,7 +113,7 @@ function SceneEditor({ scene, index, totalScenes, defaultEditing, onUpdate, onRe
                       size="sm"
                       step={1}
                       minValue={3}
-                      maxValue={10}
+                      maxValue={15}
                       value={scene.estimatedDurationSeconds}
                       onChange={(val) => onUpdate({ estimatedDurationSeconds: val as number })}
                       className="w-24"
@@ -154,6 +156,13 @@ function SceneEditor({ scene, index, totalScenes, defaultEditing, onUpdate, onRe
                   <span className="text-xs text-amber-400">Silent B-roll</span>
                   <span className="text-xs text-text-muted">{scene.estimatedDurationSeconds}s</span>
                 </div>
+              </div>
+            )}
+
+            {isArollMissingDialogue && (
+              <div className="flex items-center gap-2 p-2 bg-red-500/10 rounded-lg border border-red-500/20">
+                <Icon icon="solar:danger-triangle-bold" width={14} className="text-red-400" />
+                <span className="text-xs text-red-400">A-roll scenes require dialogue to proceed</span>
               </div>
             )}
 

@@ -51,6 +51,9 @@ export function SceneBuilderStep({
   ).length;
   const totalScenes = scenes.length;
   const allComplete = completedScenes === totalScenes && totalScenes > 0;
+  const hasArollWithoutDialogue = scenes.some(
+    (scene) => scene.shotType === "a-roll" && !scene.dialogue?.trim()
+  );
   const progressPercent =
     totalScenes > 0 ? (completedScenes / totalScenes) * 100 : 0;
 
@@ -576,7 +579,7 @@ export function SceneBuilderStep({
                 <Button
                   className="bg-accent-400 text-white font-semibold"
                   size="sm"
-                  isDisabled={!allComplete || isSavingBRoll || isRegeneratingScene}
+                  isDisabled={!allComplete || isSavingBRoll || isRegeneratingScene || hasArollWithoutDialogue}
                   onPress={onContinue}
                   endContent={<Icon icon="solar:arrow-right-bold" width={16} />}
                 >
@@ -762,7 +765,7 @@ export function SceneBuilderStep({
         );
       })()}
 
-      {allComplete && onContinue && (
+      {allComplete && !hasArollWithoutDialogue && onContinue && (
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-surface-dark/95 backdrop-blur-sm border-t border-border-base sm:hidden">
           <Button
             className="w-full bg-accent-400 text-white font-semibold"

@@ -133,6 +133,16 @@ export const adCloneAllScenesCompleteAtom = atom((get) => {
   return sceneImages.every((s) => s.status === "completed" && s.imageUrl);
 });
 
+export const adCloneHasArollWithoutDialogueAtom = atom((get) => {
+  const scripts = get(adCloneScriptsAtom);
+  const selectedVariant = get(adCloneSelectedVariantAtom);
+  const script = scripts?.[selectedVariant];
+  if (!script?.scenes) return false;
+  return script.scenes.some(
+    (scene: any) => scene.shotType === "a-roll" && !scene.dialogue?.trim()
+  );
+});
+
 export const adCloneCanGenerateScriptAtom = atom((get) => {
   const analysis = get(adCloneAnalysisAtom);
   const characterId = get(adCloneCharacterIdAtom);

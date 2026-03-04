@@ -590,7 +590,9 @@ export function SceneImageCard({
       className={`bg-surface-elevated border ${
         isCurrentlyGenerating
           ? "border-blue-500 animate-pulse"
-          : "border-accent-400/30"
+          : scene.shotType === "a-roll" && !scene.dialogue?.trim()
+            ? "border-red-500/60"
+            : "border-accent-400/30"
       }`}
     >
       <CardBody className="p-4 space-y-4">
@@ -705,7 +707,7 @@ export function SceneImageCard({
               {onSceneUpdate && (
                 <div className="flex items-center gap-2">
                   <div className="flex items-center gap-1">
-                    {[3, 5, 7, 10].map((d) => (
+                    {[3, 5, 7, 10, 15].map((d) => (
                       <button
                         key={d}
                         onClick={() => onSceneUpdate({ ...scene, estimatedDurationSeconds: d })}
@@ -789,6 +791,13 @@ export function SceneImageCard({
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {scene.shotType === "a-roll" && !scene.dialogue?.trim() && (
+          <div className="flex items-center gap-2 p-2 bg-red-500/10 rounded-lg border border-red-500/20">
+            <Icon icon="solar:danger-triangle-bold" width={14} className="text-red-400" />
+            <span className="text-xs text-red-400">A-roll scenes require dialogue to proceed</span>
           </div>
         )}
 

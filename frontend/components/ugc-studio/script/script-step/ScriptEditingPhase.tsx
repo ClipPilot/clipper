@@ -46,6 +46,11 @@ export function ScriptEditingPhase({
   onGoBack,
   onContinue,
 }: ScriptEditingPhaseProps) {
+  const selectedScript = scripts[selectedVariantIndex];
+  const hasArollWithoutDialogue = selectedScript?.scenes.some(
+    (scene) => scene.shotType === "a-roll" && !scene.dialogue?.trim()
+  );
+
   return (
     <div className="space-y-6">
       {scripts.length > 1 && (
@@ -91,7 +96,7 @@ export function ScriptEditingPhase({
           className="bg-accent-400 text-white font-semibold"
           onPress={onContinue}
           isLoading={isSaving}
-          isDisabled={isSavingBRoll}
+          isDisabled={isSavingBRoll || hasArollWithoutDialogue}
           endContent={!isSaving && <Icon icon="solar:arrow-right-linear" width={16} />}
         >
           {isSaving ? "Saving..." : "Continue to Audio"}

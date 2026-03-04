@@ -158,9 +158,10 @@ export function SceneCard({
   };
 
   const showBRollSection = scene.shotType === "b-roll";
+  const isArollMissingDialogue = scene.shotType === "a-roll" && !scene.dialogue?.trim();
 
   return (
-    <Card className="bg-surface-elevated border border-border-base overflow-visible">
+    <Card className={`bg-surface-elevated border overflow-visible ${isArollMissingDialogue ? "border-red-500/60" : "border-border-base"}`}>
       <CardBody className="p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -352,7 +353,7 @@ export function SceneCard({
                   size="sm"
                   step={1}
                   minValue={3}
-                  maxValue={10}
+                  maxValue={15}
                   value={scene.estimatedDurationSeconds}
                   onChange={(val) => onUpdate({ estimatedDurationSeconds: val as number })}
                   className="w-24"
@@ -407,6 +408,13 @@ export function SceneCard({
               </div>
             </div>
           )
+        )}
+
+        {isArollMissingDialogue && (
+          <div className="flex items-center gap-2 p-2 bg-red-500/10 rounded-lg border border-red-500/20">
+            <Icon icon="solar:danger-triangle-bold" width={14} className="text-red-400" />
+            <span className="text-xs text-red-400">A-roll scenes require dialogue to proceed</span>
+          </div>
         )}
 
         {showBRollSection && (
