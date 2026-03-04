@@ -77,7 +77,9 @@ resource "aws_iam_role_policy" "sscd_similarity_lambda_s3" {
       {
         Effect = "Allow"
         Action = [
-          "s3:GetObject"
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject"
         ]
         Resource = [
           "arn:aws:s3:::${var.project_name}-videos-staging-${data.aws_caller_identity.current.account_id}/*",
@@ -94,7 +96,7 @@ resource "aws_lambda_function" "sscd_similarity" {
   role          = aws_iam_role.sscd_similarity_lambda.arn
   package_type  = "Image"
   image_uri     = "${aws_ecr_repository.sscd_similarity_lambda.repository_url}:latest"
-  timeout       = 120  # 2 minutes - processes only first 5-10s of video
+  timeout       = 180  # 3 minutes - perturbation mode needs more time for PGD iterations
   memory_size   = 4096 # 4GB - SSCD model + PyTorch inference needs more memory
 
   environment {

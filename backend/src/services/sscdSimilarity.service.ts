@@ -88,3 +88,69 @@ export async function checkSscdSimilarity(
     return null;
   }
 }
+
+/**
+ * Generate an adversarially perturbed video that looks identical to humans
+ * but has completely different SSCD embeddings. Returns the S3 key of the
+ * perturbed video, or null on error.
+ */
+export async function generateAdversarialVideo(
+  videoS3Url: string,
+  outputKey: string,
+  epsilon: number = 0.03,
+  steps: number = 10
+): Promise<string | null> {
+  console.log(`[SSCD] Generating adversarial perturbation for ${videoS3Url}`);
+
+  try {
+    const payload = {
+      mode: "perturb",
+      video_url: videoS3Url,
+      output_key: outputKey,
+      epsilon,
+      steps,
+      max_seconds: 10,
+      fps: 2,
+    };
+
+    const command = new InvokeCommand({
+      FunctionName: SSCD_SIMILARITY_LAMBDA,
+      Payload: Buffer.from(JSON.stringify(payload)),
+    });
+
+    const response = await lambdaClient.send(command);
+
+    if (response.FunctionError) {
+      const errorPayload = response.Payload
+        ? JSON.parse(Buffer.from(response.Payload).toString())
+        : { error: "Unknown Lambda error" };
+      console.error(`[SSCD] Perturb Lambda error: ${errorPayload.errorMessage || errorPayload.error}`);
+      Sentry.captureException(new Error(`SSCD perturb error: ${errorPayload.errorMessage || errorPayload.error}`));
+      return null;
+    }
+
+    const result = response.Payload
+      ? JSON.parse(Buffer.from(response.Payload).toString())
+      : null;
+
+    if (!result) {
+      console.error("[SSCD] Empty response from Lambda");
+      return null;
+    }
+
+    const body = typeof result.body === "string" ? JSON.parse(result.body) : result.body || result;
+
+    if (!body.success) {
+      console.error(`[SSCD] Perturbation failed: ${body.error}`);
+      Sentry.captureException(new Error(`SSCD perturbation failed: ${body.error}`));
+      return null;
+    }
+
+    console.log(`[SSCD] Perturbation complete: ${body.frames_perturbed} frames, epsilon=${body.epsilon}`);
+    return body.output_key;
+  } catch (err) {
+    console.error(`[SSCD] Perturb error:`, err);
+    Sentry.captureException(err);
+    return null;
+  }
+}

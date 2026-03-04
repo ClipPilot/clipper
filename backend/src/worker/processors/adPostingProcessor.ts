@@ -17,9 +17,11 @@ import {
 import { eq, and, inArray } from "drizzle-orm";
 import { s3Service } from "../../services/s3.service";
 import { googleDriveService } from "../../services/google/drive.service";
-import { generateUniquifyString } from "../../utils/videoUniquify";
+import { generateUniquifyString, hasAudioStream } from "../../utils/videoUniquify";
 import { emailNotiService } from "../../services/emailNoti.service";
 import { notifyAdPostingUpdate } from "../notify";
+import { checkSscdSimilarity, generateAdversarialVideo } from "../../services/sscdSimilarity.service";
+import { config } from "../../config/env";
 
 const PLATFORM_DISPLAY_NAMES: Record<string, string> = {
   tiktok: "TikTok",
@@ -71,6 +73,19 @@ export async function processAdPostingJob(job: AdPostingJob): Promise<void> {
   try {
     console.log(`[AdPosting] Downloading clip ${clipId} from S3...`);
     await s3Service.downloadFile(clipPath, inputPath);
+
+    const originalS3Url = `s3://${config.aws.s3Bucket}/${clipPath}`;
+    const perturbedKey = `temp-perturbed/${teamId}/${clipId}/${Date.now()}.mp4`;
+    const perturbedResult = await generateAdversarialVideo(originalS3Url, perturbedKey);
+    if (perturbedResult) {
+      console.log(`[AdPosting] Using adversarially perturbed video as input`);
+      await s3Service.downloadFile(perturbedKey, inputPath);
+      s3Service.deleteObject(perturbedKey).catch(() => {});
+    } else {
+      console.warn(`[AdPosting] Perturbation failed, using original video`);
+    }
+
+    const inputHasAudio = hasAudioStream(inputPath);
 
     const estParts = new Intl.DateTimeFormat("en-US", {
       timeZone: "America/New_York",
@@ -148,10 +163,24 @@ export async function processAdPostingJob(job: AdPostingJob): Promise<void> {
               console.log(
                 `[AdPosting] Re-encoding for ${displayName} copy ${copyIndex}/${platformTotal}...`
               );
-              const { fullArgs } = generateUniquifyString();
+              const { fullArgs } = generateUniquifyString(undefined, inputHasAudio);
               const cmd = `ffmpeg -y -i "${inputPath}" ${fullArgs} "${outputPath}"`;
               await execAsync(cmd, { timeout: 600000 });
             });
+
+            try {
+              const tempSscdKey = `temp-sscd/${teamId}/${clipId}/${Date.now()}_${copyIndex}.mp4`;
+              await s3Service.uploadFile(outputPath, tempSscdKey, "video/mp4");
+              const originalUrl = `s3://${config.aws.s3Bucket}/${clipPath}`;
+              const modifiedUrl = `s3://${config.aws.s3Bucket}/${tempSscdKey}`;
+              const result = await checkSscdSimilarity(originalUrl, modifiedUrl);
+              if (result) {
+                console.log(`[AdPosting] SSCD similarity for ${displayName} copy ${copyIndex}: ${result.cosine_similarity} (below ${result.threshold}: ${result.below_threshold})`);
+              }
+              await s3Service.deleteObject(tempSscdKey).catch(() => {});
+            } catch (sscdErr) {
+              console.warn(`[AdPosting] SSCD check failed (non-blocking):`, sscdErr);
+            }
 
             let currentPostId: number;
             if (postId) {
