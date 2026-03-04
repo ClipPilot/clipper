@@ -195,11 +195,10 @@ describe("generateUniquifyString", () => {
     expect(filterComplex).toContain("setpts=");
   });
 
-  it("includes audio filter stages in filterComplex", () => {
-    const { filterComplex } = generateUniquifyString(fixedParams);
-    expect(filterComplex).toContain("atempo=");
-    expect(filterComplex).toContain("asetrate=");
-    expect(filterComplex).toContain("aresample=");
+  it("passes audio through with copy codec when enabled", () => {
+    const { fullArgs } = generateUniquifyString(fixedParams);
+    expect(fullArgs).toContain("-map 0:a");
+    expect(fullArgs).toContain("-c:a copy");
   });
 
   it("uses libx264 encoding, not -c copy", () => {
@@ -236,10 +235,10 @@ describe("generateUniquifyString", () => {
     expect(fullArgs).toContain(`-crf ${fixedParams.crf}`);
   });
 
-  it("maps video and audio filter outputs", () => {
+  it("maps video and audio outputs", () => {
     const { fullArgs } = generateUniquifyString(fixedParams);
     expect(fullArgs).toContain('-map "[v]"');
-    expect(fullArgs).toContain('-map "[a]"');
+    expect(fullArgs).toContain('-map 0:a');
   });
 
   it("produces different output on each call without params", () => {

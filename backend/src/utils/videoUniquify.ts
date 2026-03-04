@@ -101,26 +101,9 @@ export function generateUniquifyString(
     `[v]`,
   ].join(" ");
 
-  let filterComplex: string;
-  let mapArgs: string;
-  let audioEncoding: string;
-
-  if (audioEnabled) {
-    const audioTempo = p.speed;
-    const audioFilters = [
-      `[0:a] atempo=${audioTempo},`,
-      `asetrate=44100*${p.audioPitch},`,
-      `aresample=44100`,
-      `[a]`,
-    ].join(" ");
-    filterComplex = `${videoFilters}; ${audioFilters}`;
-    mapArgs = `-map "[v]" -map "[a]"`;
-    audioEncoding = `-c:a aac -ar 44100 -ac 2 -b:a 192k`;
-  } else {
-    filterComplex = videoFilters;
-    mapArgs = `-map "[v]" -an`;
-    audioEncoding = "";
-  }
+  const filterComplex = videoFilters;
+  const mapArgs = audioEnabled ? `-map "[v]" -map 0:a` : `-map "[v]" -an`;
+  const audioEncoding = audioEnabled ? `-c:a copy` : "";
 
   const encodingArgs = [
     `-c:v libx264 -preset fast -crf ${p.crf}`,
