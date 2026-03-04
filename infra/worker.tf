@@ -205,7 +205,7 @@ resource "aws_ecs_service" "worker" {
     weight            = 4 # Prefer Spot for additional tasks (4:1 ratio)
   }
 
-  deployment_configuration {
+  deployment_config {
     minimum_healthy_percent = 100
     maximum_percent         = 200
 
