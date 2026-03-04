@@ -422,6 +422,7 @@ export interface ViralSettings {
   thresholdMode: "and" | "or";
   timeFrameHours: number;
   enabledAccountIds: number[];
+  additionalEmails: string[];
 }
 
 export const viralityAPI = new ViralityAPI();

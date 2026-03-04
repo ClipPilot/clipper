@@ -218,6 +218,7 @@ class ViralityService extends AccountTrackingService {
       thresholdMode: settings?.threshold_mode ?? "and",
       timeFrameHours: settings?.time_frame_hours ?? 24,
       enabledAccountIds: enabledAccounts.map((a) => a.id),
+      additionalEmails: (settings?.additional_emails as string[]) ?? [],
     };
   }
 
@@ -229,6 +230,7 @@ class ViralityService extends AccountTrackingService {
       thresholdMode: "and" | "or";
       timeFrameHours: number;
       enabledAccountIds: number[];
+      additionalEmails: string[];
     }
   ) {
     const percentThreshold = data.percentThreshold ?? 100;
@@ -249,6 +251,7 @@ class ViralityService extends AccountTrackingService {
           absolute_threshold: absoluteThreshold,
           threshold_mode: data.thresholdMode,
           time_frame_hours: data.timeFrameHours,
+          additional_emails: data.additionalEmails,
           updated_at: new Date(),
         })
         .where(eq(viralitySettings.id, existing.id));
@@ -259,6 +262,7 @@ class ViralityService extends AccountTrackingService {
         absolute_threshold: absoluteThreshold,
         threshold_mode: data.thresholdMode,
         time_frame_hours: data.timeFrameHours,
+        additional_emails: data.additionalEmails,
       });
     }
 

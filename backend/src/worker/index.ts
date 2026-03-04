@@ -73,6 +73,7 @@ const VISIBILITY_TIMEOUT = 900; // 15 minutes
 const HEARTBEAT_INTERVAL = 300000; // 5 minutes - extend visibility before it expires
 const TASK_PROTECTION_MINUTES = 60; // Protect task for up to 60 minutes (safety net)
 const MAX_CONCURRENT_JOBS = 5; // Process up to 5 jobs concurrently
+const GRACEFUL_SHUTDOWN_TIMEOUT_MS = 110_000; // 110s — must be under ECS stopTimeout (120s)
 
 let isShuttingDown = false;
 let activeJobs = 0;
@@ -253,6 +254,27 @@ async function handleMessage(message: { Body: string; ReceiptHandle: string }): 
   }
 }
 
+async function forceExitAfterTimeout(): Promise<void> {
+  const drainJobs = async () => {
+    while (activeJobs > 0) {
+      console.log(`[Worker] Waiting for ${activeJobs} active job(s) to complete...`);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  };
+
+  const forceExit = async () => {
+    await new Promise((resolve) => {
+      const timer = setTimeout(resolve, GRACEFUL_SHUTDOWN_TIMEOUT_MS);
+      timer.unref(); // Don't keep event loop alive if jobs finish first
+    });
+    console.error(`[Worker] Graceful shutdown timed out after ${GRACEFUL_SHUTDOWN_TIMEOUT_MS / 1000}s with ${activeJobs} job(s) still active — forcing exit`);
+    await Sentry.flush(2000);
+    process.exit(1);
+  };
+
+  await Promise.race([drainJobs(), forceExit()]);
+}
+
 async function pollMessages(): Promise<void> {
   while (!isShuttingDown) {
     try {
@@ -292,11 +314,10 @@ async function pollMessages(): Promise<void> {
     }
   }
 
-  // Wait for active jobs to complete before shutting down
-  while (activeJobs > 0) {
-    console.log(`[Worker] Waiting for ${activeJobs} active jobs to complete...`);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-  }
+  // Wait for active jobs to complete before shutting down,
+  // but enforce a hard deadline so ECS sees a clean exit before SIGKILL.
+  // TODO(human): Implement forceExitAfterTimeout() — see Learn by Doing below
+  await forceExitAfterTimeout();
 }
 
 async function main(): Promise<void> {
@@ -311,12 +332,12 @@ async function main(): Promise<void> {
 
   // Graceful shutdown handlers
   process.on("SIGTERM", () => {
-    console.log("Received SIGTERM, shutting down gracefully...");
+    console.log(`[Worker] Received SIGTERM — draining ${activeJobs} active job(s)...`);
     isShuttingDown = true;
   });
 
   process.on("SIGINT", () => {
-    console.log("Received SIGINT, shutting down gracefully...");
+    console.log(`[Worker] Received SIGINT — draining ${activeJobs} active job(s)...`);
     isShuttingDown = true;
   });
 

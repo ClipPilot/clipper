@@ -1214,7 +1214,6 @@ export const viralityAlertLogs = pgTable("virality_alert_logs", {
     .notNull()
     .references(() => teams.id, { onDelete: "cascade" }),
   user_id: integer("user_id")
-    .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   email: varchar("email", { length: 255 }).notNull(),
   subject: varchar("subject", { length: 500 }).notNull(),
@@ -1246,6 +1245,7 @@ export const viralitySettings = pgTable(
       .notNull()
       .default("and"),
     time_frame_hours: integer("time_frame_hours").notNull().default(24),
+    additional_emails: jsonb("additional_emails").notNull().default([]).$type<string[]>(),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },

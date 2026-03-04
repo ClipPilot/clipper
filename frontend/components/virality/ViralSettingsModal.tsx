@@ -14,7 +14,7 @@ import {
   Tab,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import type { ViralityAccount } from "@/api/virality";
+import type { CompetitorWithAccounts } from "@/api/virality";
 
 const PLATFORM_ICONS: Record<string, { icon: string; color: string }> = {
   instagram: { icon: "ri:instagram-fill", color: "text-pink-500" },
@@ -24,6 +24,7 @@ const PLATFORM_ICONS: Record<string, { icon: string; color: string }> = {
 
 type TimeFrame = "12" | "24" | "48";
 type ThresholdMode = "and" | "or";
+type AccountView = "account" | "competitor";
 
 export interface ViralSettingsModalData {
   enabledAccountIds: number[];
@@ -31,12 +32,13 @@ export interface ViralSettingsModalData {
   absoluteThreshold: number | null;
   thresholdMode: ThresholdMode;
   timeFrameHours: number;
+  additionalEmails: string[];
 }
 
 interface ViralSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  accounts: ViralityAccount[];
+  competitors: CompetitorWithAccounts[];
   settings: ViralSettingsModalData;
   onSave: (settings: ViralSettingsModalData) => void;
 }
@@ -47,6 +49,7 @@ const DEFAULT_SETTINGS: ViralSettingsModalData = {
   absoluteThreshold: null,
   thresholdMode: "or",
   timeFrameHours: 24,
+  additionalEmails: [],
 };
 
 export { DEFAULT_SETTINGS as defaultViralSettings };
@@ -54,11 +57,13 @@ export { DEFAULT_SETTINGS as defaultViralSettings };
 export function ViralSettingsModal({
   isOpen,
   onClose,
-  accounts,
+  competitors,
   settings,
   onSave,
 }: ViralSettingsModalProps) {
+  const accounts = competitors.flatMap((c) => c.accounts);
   const [enabledIds, setEnabledIds] = useState<number[]>(settings.enabledAccountIds);
+  const [accountView, setAccountView] = useState<AccountView>("account");
   const [usePercent, setUsePercent] = useState(settings.percentThreshold !== null);
   const [percentValue, setPercentValue] = useState(String(settings.percentThreshold ?? 200));
   const [useAbsolute, setUseAbsolute] = useState(settings.absoluteThreshold !== null);
@@ -69,6 +74,35 @@ export function ViralSettingsModal({
       ? (String(settings.timeFrameHours) as TimeFrame)
       : "24"
   );
+  const [additionalEmails, setAdditionalEmails] = useState<string[]>(settings.additionalEmails ?? []);
+  const [newEmail, setNewEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  const addEmail = () => {
+    const trimmed = newEmail.trim().toLowerCase();
+    if (!trimmed) return;
+    if (!emailRegex.test(trimmed)) {
+      setEmailError("Please enter a valid email address");
+      return;
+    }
+    if (additionalEmails.includes(trimmed)) {
+      setEmailError("This email has already been added");
+      return;
+    }
+    if (additionalEmails.length >= 10) {
+      setEmailError("Maximum 10 additional emails allowed");
+      return;
+    }
+    setAdditionalEmails([...additionalEmails, trimmed]);
+    setNewEmail("");
+    setEmailError("");
+  };
+
+  const removeEmail = (email: string) => {
+    setAdditionalEmails(additionalEmails.filter((e) => e !== email));
+  };
 
   const toggleAccount = (id: number) => {
     setEnabledIds((prev) =>
@@ -84,6 +118,16 @@ export function ViralSettingsModal({
     }
   };
 
+  const toggleCompetitor = (competitor: CompetitorWithAccounts) => {
+    const compAccountIds = competitor.accounts.map((a) => a.id);
+    const allSelected = compAccountIds.every((id) => enabledIds.includes(id));
+    if (allSelected) {
+      setEnabledIds((prev) => prev.filter((id) => !compAccountIds.includes(id)));
+    } else {
+      setEnabledIds((prev) => Array.from(new Set([...prev, ...compAccountIds])));
+    }
+  };
+
   const handleSave = () => {
     onSave({
       enabledAccountIds: enabledIds,
@@ -91,6 +135,7 @@ export function ViralSettingsModal({
       absoluteThreshold: useAbsolute ? Number(absoluteValue) || null : null,
       thresholdMode,
       timeFrameHours: parseInt(timeFrame),
+      additionalEmails,
     });
     onClose();
   };
@@ -107,6 +152,9 @@ export function ViralSettingsModal({
         ? (String(settings.timeFrameHours) as TimeFrame)
         : "24"
     );
+    setAdditionalEmails(settings.additionalEmails ?? []);
+    setNewEmail("");
+    setEmailError("");
     onClose();
   };
 
@@ -135,7 +183,7 @@ export function ViralSettingsModal({
               <div>
                 <h2 className="text-lg font-semibold text-white">Viral Alert Settings</h2>
                 <p className="text-xs text-gray-400 font-normal">
-                  Define what &quot;going viral&quot; means for your accounts
+                  Add the emails you’d like to receive virality alerts to, and adjust the alert settings below
                 </p>
               </div>
             </div>
@@ -171,13 +219,40 @@ export function ViralSettingsModal({
               <p className="text-xs text-gray-500">
                 Choose which accounts should trigger viral alerts
               </p>
-              <div className="max-h-48 overflow-y-auto space-y-1.5 rounded-xl bg-[#0d0f1a] border border-[#2a2d3e] p-2">
+
+              {/* View toggle */}
+              <div className="flex items-center bg-[#0d0f1a] border border-[#2a2d3e] rounded-lg p-0.5 w-fit">
+                <button
+                  type="button"
+                  onClick={() => setAccountView("account")}
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                    accountView === "account"
+                      ? "bg-accent-400 text-white"
+                      : "text-gray-400 hover:text-gray-300"
+                  }`}
+                >
+                  By Account
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAccountView("competitor")}
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                    accountView === "competitor"
+                      ? "bg-accent-400 text-white"
+                      : "text-gray-400 hover:text-gray-300"
+                  }`}
+                >
+                  By Competitor
+                </button>
+              </div>
+
+              <div className="max-h-64 overflow-y-auto space-y-1.5 rounded-xl bg-[#0d0f1a] border border-[#2a2d3e] p-2">
                 {accounts.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-10">
                     <Icon icon="solar:users-group-rounded-linear" width={32} className="text-gray-600 mb-2" />
                     <p className="text-gray-500 text-sm">No accounts added yet</p>
                   </div>
-                ) : (
+                ) : accountView === "account" ? (
                   accounts.map((account) => {
                     const selected = enabledIds.includes(account.id);
                     const platform = PLATFORM_ICONS[account.platform] ?? PLATFORM_ICONS.instagram;
@@ -204,6 +279,53 @@ export function ViralSettingsModal({
                         >
                           {selected && (
                             <Icon icon="solar:check-read-linear" width={12} className="text-white" />
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })
+                ) : (
+                  competitors.map((comp) => {
+                    const compAccountIds = comp.accounts.map((a) => a.id);
+                    const selectedCount = compAccountIds.filter((id) => enabledIds.includes(id)).length;
+                    const allSelected = compAccountIds.length > 0 && selectedCount === compAccountIds.length;
+                    const someSelected = selectedCount > 0 && !allSelected;
+                    return (
+                      <button
+                        key={comp.id}
+                        type="button"
+                        onClick={() => toggleCompetitor(comp)}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all ${
+                          allSelected
+                            ? "bg-accent-400/10"
+                            : someSelected
+                              ? "bg-accent-400/5"
+                              : "hover:bg-[#1a1d2e]"
+                        }`}
+                      >
+                        <Icon icon="solar:users-group-two-rounded-bold" width={18} className="text-accent-400" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-white truncate">{comp.name}</p>
+                          <p className="text-[11px] text-gray-500">
+                            {comp.accounts.length} account{comp.accounts.length !== 1 ? "s" : ""}
+                            {someSelected || allSelected ? ` \u00B7 ${selectedCount} selected` : ""}
+                          </p>
+                        </div>
+                        <div
+                          className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-all ${
+                            allSelected
+                              ? "bg-accent-400"
+                              : someSelected
+                                ? "bg-accent-400/50"
+                                : "border border-[#3a3d4e]"
+                          }`}
+                        >
+                          {(allSelected || someSelected) && (
+                            <Icon
+                              icon={allSelected ? "solar:check-read-linear" : "solar:minus-linear"}
+                              width={12}
+                              className="text-white"
+                            />
                           )}
                         </div>
                       </button>
@@ -391,6 +513,79 @@ export function ViralSettingsModal({
                 <Tab key="24" title="24 hours" />
                 <Tab key="48" title="48 hours" />
               </Tabs>
+            </section>
+
+            {/* ── Divider ── */}
+            <div className="border-t border-[#2a2d3e]" />
+
+            {/* ── Additional Alert Emails ── */}
+            <section className="space-y-3">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Icon icon="solar:letter-bold" width={18} className="text-blue-400" />
+                  <h3 className="text-sm font-semibold text-white">Additional Alert Emails</h3>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Send viral alerts to people outside your team (max 10)
+                </p>
+              </div>
+
+              <div className="flex gap-2">
+                <Input
+                  type="email"
+                  size="sm"
+                  placeholder="email@example.com"
+                  value={newEmail}
+                  onValueChange={(v) => { setNewEmail(v); setEmailError(""); }}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addEmail(); } }}
+                  isInvalid={!!emailError}
+                  errorMessage={emailError}
+                  classNames={{
+                    base: "flex-1",
+                    inputWrapper: "bg-[#0d0f1a] border border-[#2a2d3e] rounded-lg h-9",
+                    input: "text-white text-sm",
+                  }}
+                />
+                <Button
+                  size="sm"
+                  className="bg-accent-400 text-white font-semibold h-9 px-4"
+                  onPress={addEmail}
+                  isDisabled={!newEmail.trim() || additionalEmails.length >= 10}
+                >
+                  Add
+                </Button>
+              </div>
+
+              {additionalEmails.length > 0 && (
+                <div className="space-y-1.5 rounded-xl bg-[#0d0f1a] border border-[#2a2d3e] p-2">
+                  {additionalEmails.map((email) => (
+                    <div
+                      key={email}
+                      className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-[#1a1d2e] transition-all"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Icon icon="solar:letter-linear" width={14} className="text-gray-500" />
+                        <span className="text-sm text-white">{email}</span>
+                      </div>
+                      <Button
+                        isIconOnly
+                        variant="light"
+                        size="sm"
+                        onPress={() => removeEmail(email)}
+                        className="text-gray-500 hover:text-red-400 min-w-6 w-6 h-6"
+                      >
+                        <Icon icon="solar:close-circle-linear" width={16} />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {additionalEmails.length > 0 && (
+                <p className="text-[11px] text-gray-500">
+                  {additionalEmails.length} of 10 additional emails configured
+                </p>
+              )}
             </section>
           </div>
         </ModalBody>

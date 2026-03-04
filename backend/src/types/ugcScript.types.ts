@@ -85,6 +85,7 @@ export const UGCSceneBaseSchema = z.object({
   bRollShots: z
     .array(BRollShotSchema)
     .min(1)
+    .max(5)
     .nullable()
     .optional()
     .describe("For B-roll PRODUCT DEMO scenes only: multi-shot sequences for unboxing, product showcases, demos. Do NOT use for person-focused b-roll scenes. Each shot has productImageNeeded to control whether product reference is used."),

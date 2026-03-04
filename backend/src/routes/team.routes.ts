@@ -11,6 +11,7 @@ import {
   updateTeamNameController,
   deleteTeamController,
   createTeamController,
+  getTeamLogoController,
   uploadTeamLogoController,
   removeTeamLogoController,
 } from "../controllers/team.controller";
@@ -390,6 +391,30 @@ router.patch("/:teamId", requireAuth, updateTeamNameController);
  *         description: Only owners can delete team
  */
 router.delete("/:teamId", requireAuth, deleteTeamController);
+
+/**
+ * @openapi
+ * /teams/{teamId}/logo:
+ *   get:
+ *     summary: Get team logo
+ *     description: Redirects (302) to a fresh presigned S3 URL for the team's logo. Use this URL directly as an img src.
+ *     tags:
+ *       - Teams
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       302:
+ *         description: Redirect to presigned logo URL
+ *       404:
+ *         description: Team has no logo
+ */
+router.get("/:teamId/logo", getTeamLogoController);
 
 /**
  * @openapi

@@ -176,7 +176,8 @@ resource "aws_ecs_task_definition" "worker" {
       }
     }
 
-    essential = true
+    essential    = true
+    stopTimeout  = 120
   }])
 
   tags = {
@@ -202,6 +203,14 @@ resource "aws_ecs_service" "worker" {
   capacity_provider_strategy {
     capacity_provider = "FARGATE_SPOT"
     weight            = 4 # Prefer Spot for additional tasks (4:1 ratio)
+  }
+
+  deployment_minimum_healthy_percent = 100
+  deployment_maximum_percent         = 200
+
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
   }
 
   network_configuration {

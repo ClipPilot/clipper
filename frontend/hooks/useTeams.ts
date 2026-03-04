@@ -26,11 +26,6 @@ export function useTeams() {
       setIsLoading(true);
       setError(null);
 
-      // Clear stale presigned URLs immediately to prevent broken images
-      // The fallback avatar will show until fresh data arrives
-      setTeams(prev => prev.map(t => ({ ...t, logo_url: undefined })));
-      setSelectedTeam(prev => prev ? { ...prev, logo_url: undefined } : null);
-
       const fetchedTeams = await teamAPI.getUserTeams();
       setTeams(fetchedTeams);
 

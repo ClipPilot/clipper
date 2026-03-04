@@ -232,6 +232,28 @@ async function generateDialogueAudio(
   sceneNumber: number,
   speedBoost: number = SPEECH_SPEED_BOOST,
 ): Promise<{ audioPath: string; audioKey: string; duration: number }> {
+  // Skip ElevenLabs when dialogue text is empty — generate a short silent audio instead
+  if (!text || !text.trim()) {
+    console.log(
+      `[UGC Assembly] Scene ${sceneNumber}: No dialogue text, generating silent audio`,
+    );
+    const silentPath = path.join(
+      OUTPUT_DIR,
+      `silence_${sceneNumber}_${Date.now()}.mp3`,
+    );
+    execSync(
+      `ffmpeg -y -f lavfi -i anullsrc=r=${AUDIO_SAMPLE_RATE}:cl=mono -t 1 -b:a ${AUDIO_BITRATE} "${silentPath}"`,
+    );
+    const silentBuffer = fs.readFileSync(silentPath);
+    const audioKey = await s3Service.uploadTTSAudio(
+      silentBuffer,
+      teamId,
+      scriptId,
+      sceneNumber,
+    );
+    return { audioPath: silentPath, audioKey, duration: 1 };
+  }
+
   console.log(
     `[UGC Assembly] Scene ${sceneNumber}: Generating dialogue audio...`,
   );

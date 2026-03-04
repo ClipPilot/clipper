@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import {
   Button,
   Card,
@@ -33,31 +33,6 @@ export default function WorkspaceSelector({
     useTeams();
   const [selectedTeam, setSelectedTeam] = useAtom(selectedTeamAtom);
   const { usageStats } = useUsageStats(selectedTeam?.id);
-
-  // Track which team logos failed to load (stale presigned URLs)
-  const [failedLogos, setFailedLogos] = useState<Set<number>>(new Set());
-  // Track previous logo URLs to detect when they change (fresh presigned URLs)
-  const prevLogoUrlsRef = React.useRef<Record<number, string | undefined>>({});
-
-  // Reset failed state when logo URL changes (fresh data from API)
-  React.useEffect(() => {
-    teams.forEach(team => {
-      const prevUrl = prevLogoUrlsRef.current[team.id];
-      // If the URL changed and we have a new URL, clear the failed state
-      if (team.logo_url && team.logo_url !== prevUrl) {
-        setFailedLogos(prev => {
-          const next = new Set(prev);
-          next.delete(team.id);
-          return next;
-        });
-      }
-      prevLogoUrlsRef.current[team.id] = team.logo_url;
-    });
-  }, [teams]);
-
-  const handleLogoError = (teamId: number) => {
-    setFailedLogos(prev => new Set(prev).add(teamId));
-  };
 
   const getRoleIcon = (role: string) => {
     switch (role) {
@@ -127,7 +102,7 @@ export default function WorkspaceSelector({
                       onClick={() => setSelectedTeam(team)}
                       className="flex items-center gap-3 flex-1"
                     >
-                      {team.logo_url && !failedLogos.has(team.id) ? (
+                      {team.logo_url ? (
                         <div
                           className={cn(
                             "w-10 h-10 rounded-lg overflow-hidden ring-2 ring-offset-2 ring-offset-surface-base transition-all",
@@ -140,7 +115,6 @@ export default function WorkspaceSelector({
                             src={team.logo_url}
                             alt={team.name}
                             className="w-full h-full object-cover"
-                            onError={() => handleLogoError(team.id)}
                           />
                         </div>
                       ) : (

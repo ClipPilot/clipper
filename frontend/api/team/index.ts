@@ -90,6 +90,13 @@ export interface InviteDetails {
 }
 
 class TeamAPI {
+  private toLogoUrl(team: Team): Team {
+    return {
+      ...team,
+      logo_url: team.logo_url ? `${API_URL}/teams/${team.id}/logo` : undefined,
+    };
+  }
+
   async getUserTeams(): Promise<Team[]> {
     const response = await apiFetch(`${API_URL}/teams`, {
       method: "GET",
@@ -103,7 +110,7 @@ class TeamAPI {
     }
 
     const data = await response.json();
-    return data.teams;
+    return (data.teams as Team[]).map((t) => this.toLogoUrl(t));
   }
 
   async getDefaultTeam(): Promise<Team> {
@@ -118,7 +125,7 @@ class TeamAPI {
       throw new Error(error.message || "Failed to get default team");
     }
 
-    return await response.json();
+    return this.toLogoUrl(await response.json());
   }
 
   async getTeamUsageStats(teamId: number): Promise<TeamUsageStats> {
@@ -272,7 +279,7 @@ class TeamAPI {
     }
 
     const data = await response.json();
-    return data.team;
+    return this.toLogoUrl(data.team);
   }
 
   async getTeamInvites(teamId: number): Promise<TeamInvite[]> {
@@ -378,7 +385,7 @@ class TeamAPI {
     }
 
     const data = await response.json();
-    return data.team;
+    return this.toLogoUrl(data.team);
   }
 
   async removeTeamLogo(teamId: number): Promise<Team> {
@@ -394,7 +401,7 @@ class TeamAPI {
     }
 
     const data = await response.json();
-    return data.team;
+    return this.toLogoUrl(data.team);
   }
 }
 
