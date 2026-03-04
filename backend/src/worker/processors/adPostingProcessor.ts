@@ -74,17 +74,6 @@ export async function processAdPostingJob(job: AdPostingJob): Promise<void> {
     console.log(`[AdPosting] Downloading clip ${clipId} from S3...`);
     await s3Service.downloadFile(clipPath, inputPath);
 
-    const originalS3Url = `s3://${config.aws.s3Bucket}/${clipPath}`;
-    const perturbedKey = `temp-perturbed/${teamId}/${clipId}/${Date.now()}.mp4`;
-    const perturbedResult = await generateAdversarialVideo(originalS3Url, perturbedKey);
-    if (perturbedResult) {
-      console.log(`[AdPosting] Using adversarially perturbed video as input`);
-      await s3Service.downloadFile(perturbedKey, inputPath);
-      s3Service.deleteObject(perturbedKey).catch(() => {});
-    } else {
-      console.warn(`[AdPosting] Perturbation failed, using original video`);
-    }
-
     const inputHasAudio = hasAudioStream(inputPath);
 
     const estParts = new Intl.DateTimeFormat("en-US", {
@@ -167,6 +156,25 @@ export async function processAdPostingJob(job: AdPostingJob): Promise<void> {
               const cmd = `ffmpeg -y -i "${inputPath}" ${fullArgs} "${outputPath}"`;
               await execAsync(cmd, { timeout: 600000 });
             });
+
+            // Layer 3: adversarial perturbation AFTER FFmpeg so the pattern survives
+            try {
+              const uniquifiedKey = `temp-perturb/${teamId}/${clipId}/${Date.now()}_${copyIndex}.mp4`;
+              await s3Service.uploadFile(outputPath, uniquifiedKey, "video/mp4");
+              const uniquifiedUrl = `s3://${config.aws.s3Bucket}/${uniquifiedKey}`;
+              const perturbedKey = `temp-perturbed/${teamId}/${clipId}/${Date.now()}_${copyIndex}.mp4`;
+              const perturbedResult = await generateAdversarialVideo(uniquifiedUrl, perturbedKey);
+              if (perturbedResult) {
+                console.log(`[AdPosting] Perturbation applied for ${displayName} copy ${copyIndex}`);
+                await s3Service.downloadFile(perturbedKey, outputPath);
+              } else {
+                console.warn(`[AdPosting] Perturbation failed for ${displayName} copy ${copyIndex}, using uniquified video`);
+              }
+              s3Service.deleteObject(uniquifiedKey).catch(() => {});
+              s3Service.deleteObject(perturbedKey).catch(() => {});
+            } catch (perturbErr) {
+              console.warn(`[AdPosting] Perturbation error (non-blocking):`, perturbErr);
+            }
 
             try {
               const tempSscdKey = `temp-sscd/${teamId}/${clipId}/${Date.now()}_${copyIndex}.mp4`;
