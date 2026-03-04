@@ -20,7 +20,7 @@ const DEVICES = [
   // { make: "samsung", model: "SM-S926U", software: "" },
   // { make: "samsung", model: "SM-S921U", software: "" },
   // { make: "samsung", model: "SM-S918U", software: "" },
-  { make: "samsung", model: "SM-S938U", software: "One UI 7.0" },
+  { make: "Samsung", model: "SM-S938U", software: "One UI 7.0" },
   // { make: "Google", model: "Pixel 9 Pro XL", software: "" },
   // { make: "Google", model: "Pixel 9 Pro", software: "" },
   // { make: "Google", model: "Pixel 9", software: "" },
