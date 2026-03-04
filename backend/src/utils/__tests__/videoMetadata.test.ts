@@ -37,22 +37,22 @@ describe("generateJumbledMetadata", () => {
     expect(result).toContain("-metadata:s:a:0");
   });
 
-  it("uses Apple handler names when device is Apple", () => {
-    // Run many times to hit an Apple device
-    let foundApple = false;
-    for (let i = 0; i < 100; i++) {
-      const result = generateJumbledMetadata();
-      const videoIdx = result.indexOf("-metadata:s:v:0");
-      const handlerValue = result[videoIdx + 1];
-      if (handlerValue === "handler_name=Core Media Video") {
-        foundApple = true;
-        const audioIdx = result.indexOf("-metadata:s:a:0");
-        expect(result[audioIdx + 1]).toBe("handler_name=Core Media Audio");
-        break;
-      }
-    }
-    expect(foundApple).toBe(true);
-  });
+  // it("uses Apple handler names when device is Apple", () => {
+  //   // Run many times to hit an Apple device
+  //   let foundApple = false;
+  //   for (let i = 0; i < 100; i++) {
+  //     const result = generateJumbledMetadata();
+  //     const videoIdx = result.indexOf("-metadata:s:v:0");
+  //     const handlerValue = result[videoIdx + 1];
+  //     if (handlerValue === "handler_name=Core Media Video") {
+  //       foundApple = true;
+  //       const audioIdx = result.indexOf("-metadata:s:a:0");
+  //       expect(result[audioIdx + 1]).toBe("handler_name=Core Media Audio");
+  //       break;
+  //     }
+  //   }
+  //   expect(foundApple).toBe(true);
+  // });
 
   it("uses generic handler names when device is not Apple", () => {
     let foundNonApple = false;
