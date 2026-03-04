@@ -15,6 +15,7 @@ import {
   adCloneProgressMessageAtom,
   adCloneProjectIdAtom,
   adCloneAllScenesCompleteAtom,
+  adCloneHasArollWithoutDialogueAtom,
   AdCloneStep,
 } from "@/store/adClone";
 import { useAdClone } from "@/hooks/useAdClone";
@@ -45,6 +46,7 @@ export function AdCloneWizard({ teamId }: AdCloneWizardProps) {
   const progressMessage = useAtomValue(adCloneProgressMessageAtom);
   const projectId = useAtomValue(adCloneProjectIdAtom);
   const allScenesComplete = useAtomValue(adCloneAllScenesCompleteAtom);
+  const hasArollWithoutDialogue = useAtomValue(adCloneHasArollWithoutDialogueAtom);
 
   const {
     createProject,
@@ -257,7 +259,7 @@ export function AdCloneWizard({ teamId }: AdCloneWizardProps) {
             size="lg"
             isDisabled={
               (step === "character" && (!characterId || !voiceId)) ||
-              (step === "storyboard" && !allScenesComplete)
+              (step === "storyboard" && (!allScenesComplete || hasArollWithoutDialogue))
             }
             onPress={handleContinue}
             className="px-8 bg-orange-500 text-white"
