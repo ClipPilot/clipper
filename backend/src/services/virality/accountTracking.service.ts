@@ -425,31 +425,32 @@ export class AccountTrackingService {
       if (postDate < cutoff) return;
     }
 
+    const canonicalId = (postData.url
+      ? extractPostIdentifier(postData.url, platform)
+      : null) || postData.id;
+
     let existingRows = await db
       .select()
       .from(this.postsTable)
       .where(
         and(
           eq(this.postsTable.account_id, accountId),
-          eq(this.postsTable.platform_post_id, postData.id)
+          eq(this.postsTable.platform_post_id, canonicalId)
         )
       )
       .limit(1) as any[];
 
-    if (existingRows.length === 0 && postData.url) {
-      const urlId = extractPostIdentifier(postData.url, platform);
-      if (urlId && urlId !== postData.id) {
-        existingRows = await db
-          .select()
-          .from(this.postsTable)
-          .where(
-            and(
-              eq(this.postsTable.account_id, accountId),
-              eq(this.postsTable.platform_post_id, urlId)
-            )
+    if (existingRows.length === 0 && canonicalId !== postData.id) {
+      existingRows = await db
+        .select()
+        .from(this.postsTable)
+        .where(
+          and(
+            eq(this.postsTable.account_id, accountId),
+            eq(this.postsTable.platform_post_id, postData.id)
           )
-          .limit(1) as any[];
-      }
+        )
+        .limit(1) as any[];
     }
 
     const existingPost = existingRows[0];
@@ -484,7 +485,7 @@ export class AccountTrackingService {
     } else {
       await db.insert(this.postsTable).values({
         account_id: accountId,
-        platform_post_id: postData.id,
+        platform_post_id: canonicalId,
         post_url: postData.url || (platform === "x"
           ? `https://x.com/i/status/${postData.id}`
           : platform === "tiktok"

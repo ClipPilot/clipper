@@ -484,31 +484,32 @@ async function upsertPost(
     if (postDate < cutoff) return false;
   }
 
+  const canonicalId = (postData.url
+    ? extractPostIdFromUrl(postData.url, platform)
+    : null) || postData.id;
+
   let existingRows = await db
     .select()
     .from(postsTable)
     .where(
       and(
         eq(postsTable.account_id, accountId),
-        eq(postsTable.platform_post_id, postData.id)
+        eq(postsTable.platform_post_id, canonicalId)
       )
     )
     .limit(1);
 
-  if (existingRows.length === 0 && postData.url) {
-    const urlId = extractPostIdFromUrl(postData.url, platform);
-    if (urlId && urlId !== postData.id) {
-      existingRows = await db
-        .select()
-        .from(postsTable)
-        .where(
-          and(
-            eq(postsTable.account_id, accountId),
-            eq(postsTable.platform_post_id, urlId)
-          )
+  if (existingRows.length === 0 && canonicalId !== postData.id) {
+    existingRows = await db
+      .select()
+      .from(postsTable)
+      .where(
+        and(
+          eq(postsTable.account_id, accountId),
+          eq(postsTable.platform_post_id, postData.id)
         )
-        .limit(1);
-    }
+      )
+      .limit(1);
   }
 
   const existingPost = existingRows[0];
@@ -545,7 +546,7 @@ async function upsertPost(
   } else {
     await db.insert(postsTable).values({
       account_id: accountId,
-      platform_post_id: postData.id,
+      platform_post_id: canonicalId,
       post_url: postData.url || (platform === "x"
         ? `https://x.com/i/status/${postData.id}`
         : platform === "tiktok"

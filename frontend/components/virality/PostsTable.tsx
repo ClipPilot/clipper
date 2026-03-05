@@ -312,7 +312,7 @@ export function PostsTable({ posts, accountPlatformMap, comparisonMode, onCompar
           <TableColumn>
             <SortableHeader label="PUBLISHED" sortKey="published" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
           </TableColumn>
-          {onDeletePost && <TableColumn>{""}</TableColumn>}
+          <TableColumn>{""}</TableColumn>
         </TableHeader>
         <TableBody>
           {paginatedPosts.map((post) => (
@@ -418,8 +418,8 @@ export function PostsTable({ posts, accountPlatformMap, comparisonMode, onCompar
                   {post.posted_at ? formatDate(post.posted_at) : "—"}
                 </span>
               </TableCell>
-              {onDeletePost && (
-                <TableCell>
+              <TableCell>
+                {onDeletePost && (
                   <button
                     className="p-1 rounded-md text-text-tertiary hover:text-red-500 hover:bg-red-500/10 transition-colors"
                     onClick={(e) => {
@@ -430,8 +430,8 @@ export function PostsTable({ posts, accountPlatformMap, comparisonMode, onCompar
                   >
                     <Icon icon="solar:trash-bin-minimalistic-linear" width={16} />
                   </button>
-                </TableCell>
-              )}
+                )}
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
