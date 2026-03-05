@@ -60,6 +60,15 @@ export function ScriptStep({
   const [hasMoreScripts, setHasMoreScripts] = useState(false);
   const [isLoadingMoreScripts, setIsLoadingMoreScripts] = useState(false);
 
+  // Auto-structure state
+  const [isGeneratingAutoStructure, setIsGeneratingAutoStructure] = useState(false);
+  const [autoStructureReasoning, setAutoStructureReasoning] = useState<string | undefined>();
+  const [autoStructureName, setAutoStructureName] = useState<string | undefined>();
+  const [isAutoSilent, setIsAutoSilent] = useState(false);
+  const [autoStructureDirection, setAutoStructureDirection] = useState<string>("");
+  const hasAutoStructure = selectedStructureId === "auto" && customPattern.length > 0 && !isGeneratingAutoStructure;
+  const autoDirectionChanged = hasAutoStructure && scriptDirection.trim() !== autoStructureDirection.trim();
+
   // Editing state
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingBRoll, setIsSavingBRoll] = useState(false);
@@ -170,19 +179,75 @@ export function ScriptStep({
     }
   }, [scriptId, setSelectedVariantIndex]);
 
+  const handleGenerateAutoStructure = async () => {
+    if (!scriptDirection.trim()) {
+      setError("Please provide a script direction first");
+      return;
+    }
+
+    setError(null);
+    setIsGeneratingAutoStructure(true);
+    try {
+      const result = await ugcScriptAPI.generateAutoStructure({
+        scriptDirection,
+        productName: productName || undefined,
+        hasProductImages: productImages.length > 0,
+      });
+      setCustomPattern(result.pattern.map((p) => ({ type: p.type, shot: p.shot })));
+      setAutoStructureReasoning(result.reasoning);
+      setAutoStructureName(result.name);
+      setIsAutoSilent(result.isSilent);
+      setAutoStructureDirection(scriptDirection);
+    } catch (err: any) {
+      setError(err.message || "Failed to generate structure");
+    } finally {
+      setIsGeneratingAutoStructure(false);
+    }
+  };
+
+  const handleStructureChange = (structureId: string) => {
+    setSelectedStructureId(structureId);
+    if (structureId !== "auto") {
+      setAutoStructureReasoning(undefined);
+      setAutoStructureName(undefined);
+      setIsAutoSilent(false);
+      setAutoStructureDirection("");
+      if (structureId !== "custom") {
+        setCustomPattern([
+          { type: "hook", shot: "a-roll" },
+          { type: "problem", shot: "a-roll" },
+          { type: "demo", shot: "b-roll" },
+          { type: "cta", shot: "a-roll" },
+        ]);
+      }
+    } else {
+      // Switching back to auto resets pattern so user must regenerate
+      setCustomPattern([]);
+      setAutoStructureReasoning(undefined);
+      setAutoStructureName(undefined);
+      setIsAutoSilent(false);
+      setAutoStructureDirection("");
+    }
+  };
+
   const handleGenerate = async () => {
     if (!scriptDirection.trim()) {
       setError("Please provide a script direction");
       return;
     }
 
+    // Map "auto" to "custom" with the AI-generated pattern
+    const effectiveStructureId = selectedStructureId === "auto" ? "custom" : selectedStructureId;
+    const effectiveCustomPattern =
+      effectiveStructureId === "custom" ? customPattern : undefined;
+
     setPhase("generating");
     const success = await generate({
       productImages,
       productName,
       scriptDirection,
-      selectedStructureId,
-      customPattern: selectedStructureId === "custom" ? customPattern : undefined,
+      selectedStructureId: effectiveStructureId,
+      customPattern: effectiveCustomPattern,
     });
 
     if (!success) {
@@ -447,8 +512,12 @@ export function ScriptStep({
           <ScriptStructureSelector
             selectedStructureId={selectedStructureId}
             customPattern={customPattern}
-            onStructureChange={setSelectedStructureId}
+            onStructureChange={handleStructureChange}
             onCustomPatternChange={setCustomPattern}
+            autoStructureReasoning={autoStructureReasoning}
+            autoStructureName={autoStructureName}
+            isGeneratingAutoStructure={isGeneratingAutoStructure}
+            isAutoSilent={isAutoSilent}
           />
 
           <Card className="bg-surface-elevated border border-border-base">
@@ -475,16 +544,54 @@ export function ScriptStep({
             </CardBody>
           </Card>
 
-          <div className="flex justify-center">
-            <Button
-              size="lg"
-              className="bg-accent-400 text-white font-semibold px-8"
-              isDisabled={!scriptDirection.trim() || isGenerating}
-              onPress={handleGenerate}
-              startContent={<Icon icon="solar:magic-stick-3-bold" width={20} />}
-            >
-              Generate Script
-            </Button>
+          <div className="flex justify-center gap-3">
+            {selectedStructureId === "auto" && !hasAutoStructure && (
+              <Button
+                size="lg"
+                className="bg-accent-400 text-white font-semibold px-8"
+                isDisabled={!scriptDirection.trim() || isGeneratingAutoStructure}
+                isLoading={isGeneratingAutoStructure}
+                onPress={handleGenerateAutoStructure}
+                startContent={!isGeneratingAutoStructure ? <Icon icon="solar:magic-stick-3-bold" width={20} /> : undefined}
+              >
+                Generate Structure
+              </Button>
+            )}
+            {hasAutoStructure && (
+              <>
+                <Button
+                  size="lg"
+                  variant="bordered"
+                  className="border-accent-400 text-accent-400 font-semibold px-6"
+                  isDisabled={!autoDirectionChanged || isGeneratingAutoStructure}
+                  isLoading={isGeneratingAutoStructure}
+                  onPress={handleGenerateAutoStructure}
+                  startContent={!isGeneratingAutoStructure ? <Icon icon="solar:refresh-bold" width={18} /> : undefined}
+                >
+                  Regenerate Structure
+                </Button>
+                <Button
+                  size="lg"
+                  className="bg-accent-400 text-white font-semibold px-8"
+                  isDisabled={!scriptDirection.trim() || isGenerating}
+                  onPress={handleGenerate}
+                  startContent={<Icon icon="solar:magic-stick-3-bold" width={20} />}
+                >
+                  Generate Script
+                </Button>
+              </>
+            )}
+            {selectedStructureId !== "auto" && (
+              <Button
+                size="lg"
+                className="bg-accent-400 text-white font-semibold px-8"
+                isDisabled={!scriptDirection.trim() || isGenerating}
+                onPress={handleGenerate}
+                startContent={<Icon icon="solar:magic-stick-3-bold" width={20} />}
+              >
+                Generate Script
+              </Button>
+            )}
           </div>
         </>
       )}

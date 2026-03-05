@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import {
   generateUGCScriptPrompt,
   generateSceneRegenerationPrompt,
+  generateAutoStructurePrompt,
   UGCScriptPromptConfig,
   SCRIPT_STRUCTURES,
 } from "../../config/ugcPrompts";
@@ -19,6 +20,8 @@ import {
   BRollShot,
   ClientUGCScript,
   SceneType,
+  AutoStructureResponseSchema,
+  AutoStructureResponse,
 } from "../../types/ugcScript.types";
 import { db } from "../../db";
 import { characters, ugcScripts } from "@clipper/shared-db";
@@ -607,6 +610,26 @@ Return a JSON object with a "shots" array of exactly ${shotCount} shot objects.`
       .where(eq(ugcScripts.id, scriptId));
 
     return newShots;
+  }
+
+  async generateAutoStructure(params: {
+    scriptDirection: string;
+    productName?: string;
+    hasProductImages?: boolean;
+  }): Promise<AutoStructureResponse> {
+    const { scriptDirection, productName, hasProductImages } = params;
+
+    const prompt = generateAutoStructurePrompt(scriptDirection, productName, hasProductImages);
+
+    const response = await client.responses.create({
+      model: "gpt-5-mini",
+      input: [{ role: "user", content: prompt }],
+      text: {
+        format: zodTextFormat(AutoStructureResponseSchema, "auto_structure"),
+      },
+    });
+
+    return AutoStructureResponseSchema.parse(JSON.parse(response.output_text));
   }
 
   stripCinematicPrompts(script: UGCScript): ClientUGCScript {

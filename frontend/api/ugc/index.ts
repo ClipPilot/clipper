@@ -10,6 +10,7 @@ import type {
   UGCScript,
   UGCScene,
   ScriptSummary,
+  AutoStructureResponse,
 } from "@/components/ugc-studio/script/types";
 
 class UGCScriptAPI {
@@ -98,6 +99,26 @@ class UGCScriptAPI {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || "Failed to regenerate B-roll shots");
+    }
+
+    return response.json();
+  }
+
+  async generateAutoStructure(data: {
+    scriptDirection: string;
+    productName?: string;
+    hasProductImages?: boolean;
+  }): Promise<{ success: boolean } & AutoStructureResponse> {
+    const response = await apiFetch(`${API_URL}/ugc/auto-structure`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to generate auto structure");
     }
 
     return response.json();

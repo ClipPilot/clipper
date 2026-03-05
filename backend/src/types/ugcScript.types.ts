@@ -170,6 +170,32 @@ export type GenerateUGCScriptResponse = z.infer<
   typeof GenerateUGCScriptResponseSchema
 >;
 
+export const AutoStructureResponseSchema = z.object({
+  pattern: z
+    .array(
+      z.object({
+        type: z.enum(SCENE_TYPES).describe("Scene type for this step"),
+        shot: z
+          .enum(["a-roll", "b-roll", "visual"])
+          .describe("Shot type: a-roll for speaking, b-roll for product visuals, visual for silent"),
+      })
+    )
+    .min(2)
+    .max(8)
+    .describe("Optimal scene pattern for this script direction"),
+  reasoning: z
+    .string()
+    .describe("Brief explanation of why this structure was chosen"),
+  name: z
+    .string()
+    .describe("Short descriptive name for this structure, e.g. 'Emotional Demo Flow'"),
+  isSilent: z
+    .boolean()
+    .describe("True if the user explicitly wants no dialogue/voiceover — all scenes should be visual-only"),
+});
+
+export type AutoStructureResponse = z.infer<typeof AutoStructureResponseSchema>;
+
 export type ClientUGCScene = Omit<UGCScene, "cinematicPrompt">;
 export type ClientUGCScript = Omit<UGCScript, "scenes"> & {
   scenes: ClientUGCScene[];

@@ -1367,3 +1367,202 @@ Create a new version that:
 
 Return the regenerated scene with all fields (id, sceneNumber, sceneType, action, dialogue, emotion, estimatedDurationSeconds, shotType, cameraAngle, cinematicPrompt).`;
 };
+
+export const generateAutoStructurePrompt = (
+  scriptDirection: string,
+  productName?: string,
+  hasProductImages?: boolean,
+): string => {
+  const hasProduct = !!(productName || hasProductImages);
+  // Build the available structures reference for the AI
+  const structureExamples = Object.entries(SCRIPT_STRUCTURES)
+    .filter(([key]) => key !== "custom")
+    .map(([, s]) => {
+      const patternStr = s.pattern.map((p) => `${p.type}(${p.shot})`).join(" → ");
+      return `  - ${s.name}: ${patternStr} — ${s.description}`;
+    })
+    .join("\n");
+
+  return `You are an expert UGC (User Generated Content) video structure architect. Your job is to analyze a user's creative direction and design the OPTIMAL scene structure for their video.
+
+You are NOT writing the script — you are ONLY designing the scene-by-scene blueprint (which scene types in what order, with what shot types). Think of yourself as the director planning the shot list before any dialogue is written.
+
+===== SCENE TYPES (Your Building Blocks) =====
+
+Each scene type serves a specific narrative purpose. Choose the right ones for the user's direction:
+
+- hook: Stop the scroll — pattern interrupt, curiosity gap, or shock value.
+  * Typically the first scene. You have 2-3 seconds to grab attention or lose the viewer forever.
+  * Best as a-roll (direct-to-camera address) for maximum personal impact.
+  * Can be b-roll for product-first reveals or mystery openings.
+  * Not always required — some directions work better diving straight into the content.
+
+- problem: Establish the relatable pain point — "I was struggling with...", "Every single time I tried..."
+  * Makes the viewer feel SEEN. They think "this is literally me."
+  * Usually a-roll (actor sharing their struggle) or b-roll (showing the problem visually).
+  * Pairs naturally BEFORE solution or agitate.
+
+- agitate: Twist the knife — intensify the pain BEFORE offering relief.
+  * "And the worst part?", "Not only that, but...", "I tried EVERYTHING"
+  * Optional but POWERFUL for high-emotion products (health, skincare, productivity).
+  * Almost always a-roll — emotional delivery is key.
+  * Only use when the problem needs amplification. Skip for simple/fun products.
+
+- solution: The turn point — introduce the product/answer.
+  * "Until I found this...", "Then my friend recommended..."
+  * Can be a-roll (actor revealing) OR b-roll (product hero shot with excited VO).
+  * Product hero shot + enthusiastic VO = creates desire without overexplaining.
+
+- demo: Show the product in action — hands-on visual proof.
+  * Hands interacting, applying, opening, using the product.
+  * Almost always b-roll — the product IS the star.
+  * Use when you need to SHOW how something works (not just tell).
+  * Skip for products where visual demo doesn't add value (apps, services).
+
+- social-proof: Build credibility — reviews, popularity, expert endorsement.
+  * "Everyone's been talking about this", "My dermatologist recommended..."
+  * a-roll (actor quoting reviews) or b-roll (showing review screenshots, numbers).
+  * Best for skeptical audiences or competitive markets.
+
+- testimonial: Personal results and experience — "After using it for a week..."
+  * "I literally can't go back", "obsessed doesn't even cover it"
+  * Almost always a-roll — genuine emotion from the actor sells this.
+  * Can be product hero shot (b-roll) with enthusiastic VO for hype moments.
+
+- transformation: Before/after payoff — show the change visually.
+  * The "money shot" — the visual proof that everything worked.
+  * Usually all transformation b-rolls unless product is mentioned — let the visuals speak (before vs after comparison).
+
+- cta: Friendly invitation to act — NOT a hard sell.
+  * "You have to try this", "Link in bio", "Trust me on this one"
+  * Typically the last scene. Usually a-roll (direct personal ask).
+  * Should feel like a friend recommending something, not an ad.
+  * Not always needed — some directions end naturally on a testimonial or transformation.
+
+===== SHOT TYPES =====
+
+- a-roll: Actor speaking directly to camera. Creates personal connection, trust, and emotional impact.
+  * Use for: hooks, testimonials, CTAs, emotional moments, storytelling, persuasion.
+  * The actor's face, expressions, and voice carry the scene.
+
+- b-roll: Product shots, demos, cutaways, visual proof. Adds visual variety and shows evidence.
+  * Use for: demos, product reveals, transformations, social-proof visuals.
+  * Voiceover plays over visuals — actor is NOT lip-syncing on screen.
+
+- visual: Silent scene with NO voiceover at all. Pure visual storytelling.
+  * Use ONLY when the user explicitly wants silent/ASMR/aesthetic content.
+  * Tells the story through visuals, music, and text overlays only.
+  * The entire video has no spoken dialogue when visual shots are used.
+
+===== EXISTING STRUCTURE TEMPLATES (Reference) =====
+
+These are the pre-built structures users can pick manually. Use them as INSPIRATION, but your job is to create the OPTIMAL structure for this specific direction — which may match one of these or be a unique combination:
+
+${structureExamples}
+
+===== STRUCTURE DESIGN RULES =====
+
+1. A "hook" scene is a STRONG default for the first scene, but not mandatory. If the direction works better diving straight into content (e.g., starting with a problem or testimonial), skip the hook.
+2. A "cta" scene is a STRONG default for the last scene, but not mandatory. Some directions end naturally on a transformation, testimonial, or demo without needing an explicit call to action.
+3. Use 3-6 scenes total. Shorter = more impactful. Don't add scenes that don't serve the direction.
+4. Alternate between a-roll and b-roll for pacing variety — 3 consecutive a-roll scenes feel monotonous.
+5. Place the emotional peak (agitate, transformation) in the second half of the structure.
+6. If the product needs visual demonstration, include at least one "demo" scene with b-roll.
+7. Use "problem" before "solution" for maximum contrast and relief.
+8. Don't repeat the same scene type consecutively (two demos back-to-back is lazy structuring).
+9. Match scene count to content density — a simple product with a simple message needs 3-4 scenes, not 6.
+10. Every scene must earn its place — if removing a scene doesn't hurt the narrative, remove it.
+
+===== STRUCTURE SELECTION LOGIC (Decision Tree) =====
+
+Use this to guide your structure choice:
+
+**Does the direction mention a specific problem or pain point?**
+→ YES: Include problem scene. Consider agitate if the pain is deep/emotional.
+→ NO: Skip problem/agitate. Lead with solution or demo directly.
+
+**Does the product need visual demonstration?**
+→ YES (physical product, skincare, gadget, food): Include demo scene (b-roll).
+→ NO (app, service, concept): Skip demo. Use testimonial or social-proof instead.
+
+**Does the direction emphasize results or transformation?**
+→ YES: Include transformation scene (b-roll). Pair with problem for contrast.
+→ NO: Skip transformation. Use testimonial for personal endorsement instead.
+
+**Is the audience likely skeptical?**
+→ YES (expensive product, bold claims, competitive market): Include social-proof.
+→ NO: Skip social-proof. Let the demo/testimonial do the convincing.
+
+**Is the direction emotional or story-driven?**
+→ YES: Use storytelling flow: problem → (agitate) → solution → testimonial.
+→ NO (educational, tutorial, straightforward): demo → demo → testimonial.
+
+**Does the direction mention fun, entertaining, or controversial?**
+→ YES: problem → solution → social-proof (controversy/hot-take pattern).
+
+===== SILENT / NO-DIALOGUE DETECTION =====
+
+CRITICAL: Detect whether the user wants a silent (no voiceover) video.
+
+Set isSilent to TRUE only if the user EXPLICITLY mentions ANY of these:
+- "no dialogue", "no voiceover", "no talking", "no speaking", "no narration"
+- "silent", "mute", "visual only", "visuals only", "music only"
+- "ASMR", "aesthetic only", "no audio", "no voice"
+- "text overlay only", "just visuals", "no words"
+
+When isSilent is TRUE:
+- Use ONLY "visual" as the shot type for EVERY scene
+- The video will have zero spoken dialogue — only visuals, music, and text overlays
+- Structure should focus on visual storytelling, e.g.: hook(visual) → demo(visual) → transformation(visual)
+- Prefer shorter structures (2-4 scenes) since there's no dialogue to fill time
+
+When isSilent is FALSE (the default — user did NOT explicitly request silence):
+- Use a-roll and b-roll normally
+- NEVER use "visual" shot type
+- This is the standard UGC format with actor speaking to camera
+
+===== NO-PRODUCT MODE =====
+${hasProduct
+    ? `The user HAS provided a product (${productName ? `"${productName}"` : "product images attached"}). Use the full range of scene types and shot types — a-roll for speaking scenes, b-roll for product visuals.`
+    : `The user has NOT provided a product name or product images. This means:
+- There is NO product to show on screen — do NOT use a-roll scenes (no one is speaking to camera about a product)
+- Use ONLY b-roll shots — the video is purely visual content
+- Do NOT include hook or cta scenes — there's no product pitch to open or close
+- Focus on visual storytelling scene types: demo, transformation, problem, solution
+- Think of this as a visual content piece (aesthetic, mood, process) rather than a product ad
+- The structure should tell a visual story without any spoken dialogue about a product`}
+
+===== ANALYSIS CHECKLIST =====
+
+Before designing the structure, analyze the script direction for:
+
+1. **Emotional tone**: Is the direction educational, emotional, entertaining, controversial, or aspirational?
+2. **Product type**: Physical product (needs demo)? Digital/service (needs testimonial)? Lifestyle (needs transformation)?
+3. **Audience sophistication**: Skeptical (needs social-proof)? Trusting (skip straight to demo)? Pain-aware (needs problem/agitate)?
+4. **Content density**: How much is the user trying to communicate? Simple message = fewer scenes. Complex pitch = more scenes.
+5. **Visual vs verbal**: Does the direction lean toward showing (b-roll heavy) or telling (a-roll heavy)?
+6. **Silent intent**: Did the user explicitly ask for no dialogue/voiceover? (See silent detection above.)
+${productName ? `7. **Product context**: The product is "${productName}" — factor this into scene type selection.` : ""}
+
+===== YOUR TASK =====
+
+Analyze the following script direction and return:
+1. **pattern**: The optimal scene structure as an array of { type, shot } objects.
+2. **reasoning**: A brief (2-3 sentences) explanation of WHY you chose this structure. Reference the user's direction specifically. This will be shown to the user.
+3. **name**: A short descriptive name for this structure (2-4 words, e.g., "Emotional Demo Flow", "Quick Social Proof", "Silent Showcase").
+4. **isSilent**: Whether the user explicitly requested no dialogue (true/false).
+
+===== SCRIPT DIRECTION =====
+"${scriptDirection}"
+
+===== FINAL CHECKS =====
+- 2-8 scenes total (aim for 3-6 for best pacing)
+- No consecutive duplicate scene types
+- Shot types alternate for visual variety (avoid 3+ consecutive a-roll or b-roll)
+- Every scene earns its place — no filler
+- isSilent is ONLY true if the user explicitly requested silent/no-dialogue content
+- If isSilent is true, ALL shots must be "visual"
+- If isSilent is false, NO shots should be "visual"
+- reasoning references the user's specific direction, not generic advice
+- name is catchy and descriptive (2-4 words)`;
+};
