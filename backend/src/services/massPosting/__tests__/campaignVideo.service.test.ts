@@ -42,6 +42,7 @@ vi.mock("drizzle-orm", () => ({
   eq: vi.fn((...args: any[]) => args),
   and: vi.fn((...args: any[]) => args),
   inArray: vi.fn((...args: any[]) => args),
+  desc: vi.fn((...args: any[]) => args),
   sql: vi.fn(),
 }));
 
@@ -319,9 +320,11 @@ describe("CampaignVideoService", () => {
         makeVideoRow({ id: 2, clip_id: 7, clip_path: "clips/7.mp4" }),
       ];
 
-      // 1. main rows query
+      // 1. count query
+      mockDb.select.mockReturnValueOnce(createDrizzleChain([{ count: 2 }]));
+      // 2. main rows query
       mockDb.select.mockReturnValueOnce(createDrizzleChain(rows));
-      // 2. postCounts query (clip_id: 7 is non-null)
+      // 3. postCounts query (clip_id: 7 is non-null)
       mockDb.select.mockReturnValueOnce(createDrizzleChain([]));
       mockGetPresignedUrl
         .mockResolvedValueOnce("https://cdn.example.com/vid.mp4")
@@ -329,39 +332,45 @@ describe("CampaignVideoService", () => {
 
       const result = await campaignVideoService.listVideos(10);
 
-      expect(result).toHaveLength(2);
-      expect(result[0].presigned_url).toBe("https://cdn.example.com/vid.mp4");
-      expect(result[1].presigned_url).toBe("https://cdn.example.com/clip.mp4");
+      expect(result.videos).toHaveLength(2);
+      expect(result.videos[0].presigned_url).toBe("https://cdn.example.com/vid.mp4");
+      expect(result.videos[1].presigned_url).toBe("https://cdn.example.com/clip.mp4");
     });
 
     it("sets presigned_url to null when S3 presigning fails", async () => {
       const rows = [makeVideoRow({ id: 1, custom_video_key: "bad-key.mp4" })];
 
+      // count query
+      mockDb.select.mockReturnValueOnce(createDrizzleChain([{ count: 1 }]));
       mockDb.select.mockReturnValueOnce(createDrizzleChain(rows));
       mockGetPresignedUrl.mockRejectedValueOnce(new Error("S3 error"));
 
       const result = await campaignVideoService.listVideos(10);
 
-      expect(result[0].presigned_url).toBeNull();
+      expect(result.videos[0].presigned_url).toBeNull();
     });
 
     it("sets presigned_url to null when video has no key or clip path", async () => {
       const rows = [makeVideoRow({ id: 1, custom_video_key: null, clip_path: null })];
 
+      // count query
+      mockDb.select.mockReturnValueOnce(createDrizzleChain([{ count: 1 }]));
       mockDb.select.mockReturnValueOnce(createDrizzleChain(rows));
 
       const result = await campaignVideoService.listVideos(10);
 
-      expect(result[0].presigned_url).toBeNull();
+      expect(result.videos[0].presigned_url).toBeNull();
       expect(mockGetPresignedUrl).not.toHaveBeenCalled();
     });
 
     it("returns empty array when campaign has no videos", async () => {
+      // count query
+      mockDb.select.mockReturnValueOnce(createDrizzleChain([{ count: 0 }]));
       mockDb.select.mockReturnValueOnce(createDrizzleChain([]));
 
       const result = await campaignVideoService.listVideos(10);
 
-      expect(result).toEqual([]);
+      expect(result.videos).toEqual([]);
     });
 
     it("maps response fields correctly", async () => {
@@ -379,15 +388,17 @@ describe("CampaignVideoService", () => {
         }),
       ];
 
-      // 1. main rows query
+      // 1. count query
+      mockDb.select.mockReturnValueOnce(createDrizzleChain([{ count: 1 }]));
+      // 2. main rows query
       mockDb.select.mockReturnValueOnce(createDrizzleChain(rows));
-      // 2. postCounts query (clip_id: 7 is non-null)
+      // 3. postCounts query (clip_id: 7 is non-null)
       mockDb.select.mockReturnValueOnce(createDrizzleChain([{ clip_id: 7, count: 3 }]));
       mockGetPresignedUrl.mockResolvedValueOnce("https://cdn.example.com/clip.mp4");
 
-      const [video] = await campaignVideoService.listVideos(10);
+      const result = await campaignVideoService.listVideos(10);
 
-      expect(video).toMatchObject({
+      expect(result.videos[0]).toMatchObject({
         id: 5,
         campaign_id: 10,
         clip_id: 7,
