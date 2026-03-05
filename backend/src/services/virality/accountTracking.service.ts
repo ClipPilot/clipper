@@ -425,16 +425,33 @@ export class AccountTrackingService {
       if (postDate < cutoff) return;
     }
 
-    const existingRows = await db
+    const canonicalId = (postData.url
+      ? extractPostIdentifier(postData.url, platform)
+      : null) || postData.id;
+
+    let existingRows = await db
       .select()
       .from(this.postsTable)
       .where(
         and(
           eq(this.postsTable.account_id, accountId),
-          eq(this.postsTable.platform_post_id, postData.id)
+          eq(this.postsTable.platform_post_id, canonicalId)
         )
       )
       .limit(1) as any[];
+
+    if (existingRows.length === 0 && canonicalId !== postData.id) {
+      existingRows = await db
+        .select()
+        .from(this.postsTable)
+        .where(
+          and(
+            eq(this.postsTable.account_id, accountId),
+            eq(this.postsTable.platform_post_id, postData.id)
+          )
+        )
+        .limit(1) as any[];
+    }
 
     const existingPost = existingRows[0];
 
@@ -468,7 +485,7 @@ export class AccountTrackingService {
     } else {
       await db.insert(this.postsTable).values({
         account_id: accountId,
-        platform_post_id: postData.id,
+        platform_post_id: canonicalId,
         post_url: postData.url || (platform === "x"
           ? `https://x.com/i/status/${postData.id}`
           : platform === "tiktok"
@@ -531,6 +548,29 @@ export class AccountTrackingService {
       .returning({ id: this.postsTable.id }) as any[];
 
     return inserted[0] ?? null;
+  }
+
+  async deletePost(postId: number, teamId: number) {
+    const rows = await db
+      .select({
+        id: this.postsTable.id,
+        account_id: this.postsTable.account_id,
+      })
+      .from(this.postsTable)
+      .where(eq(this.postsTable.id, postId))
+      .limit(1) as any[];
+
+    const post = rows[0];
+    if (!post) throw new Error("Post not found");
+
+    const account = await this.getAccountById(post.account_id);
+    if (!account || account.team_id !== teamId) {
+      throw new Error("Post not found or access denied");
+    }
+
+    await db
+      .delete(this.postsTable)
+      .where(eq(this.postsTable.id, postId));
   }
 
   async getPostsByAccount(

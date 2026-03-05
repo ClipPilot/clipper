@@ -205,13 +205,16 @@ export function buildPostFrequencyDataFromRange(
   const isHourly = diffDays <= 1;
 
   if (isHourly) {
-    // Group by hour
+    // Group by local hour so chart matches user's timezone
+    const toLocalHourKey = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}T${String(d.getHours()).padStart(2, "0")}:00`;
+
     const byHour = new Map<string, number>();
     for (const post of posts) {
       if (!post.posted_at) continue;
       const d = new Date(post.posted_at);
       if (d < start || d > end) continue;
-      const hourKey = `${d.toISOString().slice(0, 13)}:00`;
+      const hourKey = toLocalHourKey(d);
       byHour.set(hourKey, (byHour.get(hourKey) || 0) + 1);
     }
 
@@ -219,7 +222,7 @@ export function buildPostFrequencyDataFromRange(
     const cursor = new Date(start);
     cursor.setMinutes(0, 0, 0);
     while (cursor <= end) {
-      const key = `${cursor.toISOString().slice(0, 13)}:00`;
+      const key = toLocalHourKey(cursor);
       result.push({
         date: cursor.toLocaleTimeString("en-US", { hour: "numeric", hour12: true }),
         count: byHour.get(key) || 0,
@@ -229,26 +232,32 @@ export function buildPostFrequencyDataFromRange(
     return { data: result, isHourly: true };
   }
 
-  // Group by day
-  const startStr = start.toISOString().slice(0, 10);
+  // Group by day — convert UTC posted_at to local date so chart matches
+  // the user's calendar (e.g., a post at 5 PM PST on Mar 5 stored as
+  // Mar 6 UTC should still show under Mar 5 for PST users).
+  const toLocalDay = (iso: string) => {
+    const d = new Date(iso);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  const startStr = toLocalDay(start.toISOString());
   const byDate = new Map<string, number>();
   for (const post of posts) {
     if (!post.posted_at) continue;
-    const day = post.posted_at.slice(0, 10);
+    const day = toLocalDay(post.posted_at);
     if (day < startStr) continue;
     byDate.set(day, (byDate.get(day) || 0) + 1);
   }
 
   const result: PostFrequencyDay[] = [];
   const cursor = new Date(start);
-  cursor.setDate(cursor.getDate() + 1);
+  cursor.setHours(0, 0, 0, 0);
   const endDay = new Date(end);
   endDay.setHours(23, 59, 59, 999);
 
   while (cursor <= endDay) {
-    const dayStr = cursor.toISOString().slice(0, 10);
+    const dayStr = toLocalDay(cursor.toISOString());
     result.push({
-      date: new Date(dayStr).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      date: cursor.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
       count: byDate.get(dayStr) || 0,
     });
     cursor.setDate(cursor.getDate() + 1);

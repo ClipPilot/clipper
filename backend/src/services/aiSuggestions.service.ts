@@ -82,12 +82,68 @@ export const generateClipSuggestionsService = async (
       contents = prompt;
     }
 
-    let geminiRetryResult: ClipSuggestions[] | null = null;
+    const parseGeminiResponse = (text: string): ClipSuggestions[] => {
+      const jsonResponse = MultipleClipSuggestionsSchema.parse(JSON.parse(text));
 
-    for (let attempt = 1; attempt <= 3; attempt++) {
+      let videos: any[] = [];
+      if (jsonResponse.videos && Array.isArray(jsonResponse.videos)) {
+        videos = jsonResponse.videos;
+      } else if (Array.isArray(jsonResponse)) {
+        videos = jsonResponse;
+      } else {
+        throw new Error("Unexpected Gemini response format");
+      }
+
+      const validVideos = videos.filter((v: any) => {
+        if (!v || typeof v !== "object") {
+          console.error("Invalid video entry (not an object):", v);
+          return false;
+        }
+        if (!v.hook || typeof v.hook.start !== "number" || typeof v.hook.end !== "number") {
+          console.error("Invalid video entry (missing hook with start/end):", v);
+          return false;
+        }
+        if (!Array.isArray(v.main)) {
+          console.error("Invalid video entry (main is not an array):", v);
+          return false;
+        }
+        return true;
+      });
+
+      if (validVideos.length === 0) {
+        throw new Error("No valid videos in Gemini response");
+      }
+      return validVideos;
+    };
+
+    // Try Gemini Pro
+    let geminiResult: ClipSuggestions[] | null = null;
+
+    try {
+      const response = await googleClient.models.generateContent({
+        model: "gemini-3-pro-preview",
+        contents,
+        config: {
+          responseMimeType: "application/json",
+          responseJsonSchema: z.toJSONSchema(MultipleClipSuggestionsSchema),
+          thinkingConfig: {
+            thinkingLevel: ThinkingLevel.HIGH,
+          },
+        },
+      });
+
+      geminiResult = parseGeminiResponse(response.text);
+      console.log("AI Gemini Pro Clip Suggestions Response:", geminiResult);
+    } catch (error) {
+      console.warn("Gemini Pro failed, trying Gemini Flash...", error);
+      Sentry.captureException(error);
+    }
+
+    // Try Gemini Flash if Pro failed
+    if (!geminiResult) {
       try {
         const response = await googleClient.models.generateContent({
-          model: "gemini-3-pro-preview",
+          model: "gemini-3-flash-preview",
           contents,
           config: {
             responseMimeType: "application/json",
@@ -98,67 +154,22 @@ export const generateClipSuggestionsService = async (
           },
         });
 
-        const jsonResponse = MultipleClipSuggestionsSchema.parse(
-          JSON.parse(response.text),
-        );
-        console.log("AI Gemini Clip Suggestions Response:", jsonResponse);
-
-        let videos: any[] = [];
-        if (jsonResponse.videos && Array.isArray(jsonResponse.videos)) {
-          videos = jsonResponse.videos;
-        } else if (Array.isArray(jsonResponse)) {
-          videos = jsonResponse;
-        } else {
-          console.error("Unexpected Gemini response format:", jsonResponse);
-          throw new Error("Unexpected Gemini response format");
-        }
-
-        const validVideos = videos.filter((v: any) => {
-          if (!v || typeof v !== "object") {
-            console.error("Invalid video entry (not an object):", v);
-            return false;
-          }
-          if (
-            !v.hook ||
-            typeof v.hook.start !== "number" ||
-            typeof v.hook.end !== "number"
-          ) {
-            console.error(
-              "Invalid video entry (missing hook with start/end):",
-              v,
-            );
-            return false;
-          }
-          if (!Array.isArray(v.main)) {
-            console.error("Invalid video entry (main is not an array):", v);
-            return false;
-          }
-          return true;
-        });
-
-        if (validVideos.length === 0) {
-          throw new Error("No valid videos in Gemini response");
-        }
-
-        geminiRetryResult = validVideos;
-        break;
+        geminiResult = parseGeminiResponse(response.text);
+        console.log("AI Gemini Flash Clip Suggestions Response:", geminiResult);
       } catch (error) {
-        console.warn(`Gemini attempt ${attempt}/3 failed:`, error);
+        console.warn("Gemini Flash fallback failed:", error);
         Sentry.captureException(error);
-        if (attempt === 3) {
-          console.warn("All Gemini retries failed, falling back to OpenAI");
-        }
       }
     }
 
     await cleanupGeminiResources(reEncodedPath, uploadedFileName);
 
-    if (geminiRetryResult) {
-      return geminiRetryResult;
+    if (geminiResult) {
+      return geminiResult;
     }
 
-    // Fall through to OpenAI path below (for viral fallback or if Gemini failed)
-    console.log("Using OpenAI fallback for clip suggestions");
+    // Fall through to OpenAI path below (transcript-only, no video)
+    console.log("All Gemini models failed, using OpenAI fallback for clip suggestions");
   }
 
   if (numberOfVideos > 1) {

@@ -142,6 +142,22 @@ class UserPerformanceAPI {
     );
   }
 
+  async deletePost(teamId: number, postId: number): Promise<void> {
+    const response = await apiFetch(
+      `${API_URL}/user-performance/${teamId}/posts/${postId}`,
+      {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to delete post");
+    }
+  }
+
   async getDashboardStats(
     teamId: number,
     startDate?: string,

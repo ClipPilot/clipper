@@ -151,6 +151,20 @@ class UserPerformanceController {
     }
   }
 
+  async deletePost(req: AuthRequest, res: Response) {
+    try {
+      const teamId = parseId(req.params.teamId);
+      const postId = parseId(req.params.postId);
+      if (!teamId || !postId) return res.status(400).json({ error: "Invalid team or post ID" });
+      if (!(await requirePlanAccess(teamId, res))) return;
+
+      await userPerformanceService.deletePost(postId, teamId);
+      return res.json({ success: true });
+    } catch (error) {
+      return handleControllerError(res, "Delete user post error", error, "Failed to delete post");
+    }
+  }
+
   async getDashboard(req: AuthRequest, res: Response) {
     try {
       const teamId = parseId(req.params.teamId);

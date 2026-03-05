@@ -665,9 +665,22 @@ router.post("/campaigns/:campaignId/end", requireAdminAuth, endCampaign);
  *         required: true
  *         schema:
  *           type: integer
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number (1-based)
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           default: 25
+ *           maximum: 100
+ *         description: Number of videos per page
  *     responses:
  *       200:
- *         description: Campaign videos
+ *         description: Campaign videos with pagination
  *         content:
  *           application/json:
  *             schema:
@@ -677,6 +690,17 @@ router.post("/campaigns/:campaignId/end", requireAdminAuth, endCampaign);
  *                   type: array
  *                   items:
  *                     type: object
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     page:
+ *                       type: integer
+ *                     pageSize:
+ *                       type: integer
+ *                     totalVideos:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
  *       400:
  *         description: Invalid campaign ID
  *       401:

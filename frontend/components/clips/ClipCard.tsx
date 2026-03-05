@@ -37,12 +37,9 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
+        setIsVisible(entry.isIntersecting);
       },
-      { rootMargin: "100px" }
+      { rootMargin: "300px" }
     );
 
     if (cardRef.current) {
@@ -136,6 +133,7 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
     return (
       <div
         ref={cardRef}
+        style={{ contentVisibility: "auto", containIntrinsicSize: "auto 58px" }}
         className={`flex items-center gap-4 p-3 bg-surface-base border border-border-accent rounded-lg hover:bg-surface-elevated transition-all cursor-pointer ${
           isDragging ? "opacity-50" : ""
         }`}
@@ -305,6 +303,7 @@ const ClipCardComponent: React.FC<ClipCardProps> = ({
   return (
     <Card
       ref={cardRef}
+      style={{ contentVisibility: "auto", containIntrinsicSize: "auto 200px" }}
       className={`bg-surface-base border border-border-accent hover:bg-surface-elevated transition-all cursor-pointer min-h-[180px] relative z-0 overflow-visible ${
         isDragging ? "opacity-50 scale-95" : ""
       }`}

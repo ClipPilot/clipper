@@ -164,8 +164,11 @@ export async function getCampaignVideos(req: AdminRequest, res: Response) {
     const campaignId = parseInt(req.params.campaignId);
     if (isNaN(campaignId)) return res.status(400).json({ error: "Invalid campaign ID" });
 
-    const videos = await campaignVideoService.listVideos(campaignId);
-    return res.json({ videos });
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = Math.min(parseInt(req.query.pageSize as string) || 25, 100);
+
+    const result = await campaignVideoService.listVideos(campaignId, { page, pageSize });
+    return res.json(result);
   } catch (error) {
     console.error("Get campaign videos error:", error);
     Sentry.captureException(error);

@@ -195,8 +195,8 @@ export async function listVideos(req: AuthRequest, res: Response) {
     const campaignId = parseInt(req.params.campaignId);
     if (isNaN(campaignId)) return res.status(400).json({ error: "Invalid campaign ID" });
 
-    const videos = await campaignVideoService.listVideos(campaignId);
-    return res.json({ videos });
+    const result = await campaignVideoService.listVideos(campaignId);
+    return res.json(result);
   } catch (error) {
     console.error("List videos error:", error);
     Sentry.captureException(error);

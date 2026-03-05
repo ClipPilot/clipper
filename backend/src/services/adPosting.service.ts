@@ -526,7 +526,7 @@ class AdPostingService {
     let totalPosts: number;
 
     if (tab === "queued") {
-      // Paginate by unique clip_id (video), then fetch all posts for those clips
+      // Paginate by individual post
       const [countResult] = await db
         .select({
           videos: sql<number>`COUNT(DISTINCT ${posts.clip_id})::int`,
@@ -539,29 +539,14 @@ class AdPostingService {
       totalVideos = countResult.videos;
       totalPosts = countResult.posts;
 
-      // Get the clip_ids for this page
-      const clipPage = await db
-        .select({ clip_id: posts.clip_id })
+      rows = await db
+        .select(selectFields)
         .from(posts)
         .leftJoin(clips, eq(posts.clip_id, clips.id))
         .where(where)
-        .groupBy(posts.clip_id)
-        .orderBy(orderFn(sql`min(${orderCol})`))
+        .orderBy(orderFn(orderCol))
         .limit(pageSize)
         .offset((page - 1) * pageSize);
-
-      const clipIds = clipPage.map((r) => r.clip_id).filter((id): id is number => id != null);
-
-      if (clipIds.length === 0) {
-        rows = [];
-      } else {
-        rows = await db
-          .select(selectFields)
-          .from(posts)
-          .leftJoin(clips, eq(posts.clip_id, clips.id))
-          .where(and(where, inArray(posts.clip_id, clipIds)))
-          .orderBy(orderFn(orderCol));
-      }
     } else {
       // Published tab: paginate by individual post
       const [{ count }] = await db
@@ -604,8 +589,8 @@ class AdPostingService {
       pagination: {
         page,
         pageSize,
-        total: totalVideos,
-        totalPages: Math.ceil(totalVideos / pageSize),
+        total: totalPosts,
+        totalPages: Math.ceil(totalPosts / pageSize),
         totalPosts,
       },
     };

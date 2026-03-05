@@ -701,7 +701,6 @@ export const convertToGamingVertical = async (
     availW = width,
     availH = height;
   if (distToVerticalEdge <= distToHorizontalEdge) {
-    // Exclude left or right strip
     if (fcOnLeft) {
       availX = fcX + fcW;
       availW = width - availX;
@@ -709,7 +708,6 @@ export const convertToGamingVertical = async (
       availW = fcX;
     }
   } else {
-    // Exclude top or bottom strip
     if (fcOnTop) {
       availY = fcY + fcH;
       availH = height - availY;
@@ -732,6 +730,10 @@ export const convertToGamingVertical = async (
     gpX = availX;
     gpY = availY + Math.round((availH - gpH) / 2);
   }
+
+  console.log(
+    `[GAMING] Gameplay: avail ${availW}x${availH} at (${availX},${availY}), center-crop ${gpW}x${gpH} at (${gpX},${gpY})`,
+  );
 
   // If facecam is narrower than 1080 (height-constrained), pad with black to center it
   const needsPad = faceOutW < 1080;

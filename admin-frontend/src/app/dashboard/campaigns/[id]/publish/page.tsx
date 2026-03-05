@@ -108,19 +108,21 @@ function PlatformChip({ platform }: { platform: string }) {
 
 // ── Publish Modal ───────────────────────────────────────────────
 function PublishModal({
-  clipId,
-  clipTitle,
+  clips,
   onClose,
-  onPublish,
+  onPublishClip,
+  onComplete,
 }: {
-  clipId: number;
-  clipTitle: string;
+  clips: { clipId: number; title: string }[];
   onClose: () => void;
-  onPublish: (platformQty: Record<string, number>) => Promise<void>;
+  onPublishClip: (clipId: number, platformQty: Record<string, number>) => Promise<number>;
+  onComplete: (totalQueued: number, failed: number) => void;
 }) {
+  const isBulk = clips.length > 1;
   const [platformQty, setPlatformQty] = useState<Record<string, number>>({});
   const [isPosting, setIsPosting] = useState(false);
   const [error, setError] = useState("");
+  const [progress, setProgress] = useState<{ done: number; total: number; failed: number } | null>(null);
   const totalCopies = Object.values(platformQty).reduce((s, v) => s + v, 0);
 
   const handleSubmit = async () => {
@@ -134,7 +136,27 @@ function PublishModal({
     setIsPosting(true);
     setError("");
     try {
-      await onPublish(active);
+      if (isBulk) {
+        // Bulk: fire all clips in parallel, track progress
+        setProgress({ done: 0, total: clips.length, failed: 0 });
+        let done = 0;
+        let failed = 0;
+        let totalQueued = 0;
+        const results = await Promise.allSettled(
+          clips.map(async (clip) => {
+            const count = await onPublishClip(clip.clipId, active);
+            totalQueued += count;
+            done++;
+            setProgress({ done, total: clips.length, failed });
+            return count;
+          }),
+        );
+        failed = results.filter((r) => r.status === "rejected").length;
+        onComplete(totalQueued, failed);
+      } else {
+        const count = await onPublishClip(clips[0].clipId, active);
+        onComplete(count, 0);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to publish");
       setIsPosting(false);
@@ -147,16 +169,40 @@ function PublishModal({
         <div className="px-6 py-5 border-b border-border">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-bold text-text-primary">Publish to Platforms</h2>
-              <p className="text-sm text-text-secondary mt-0.5">{clipTitle} &middot; Clip #{clipId}</p>
+              <h2 className="text-lg font-bold text-text-primary">
+                {isBulk ? `Publish ${clips.length} Videos` : "Publish to Platforms"}
+              </h2>
+              <p className="text-sm text-text-secondary mt-0.5">
+                {isBulk
+                  ? `${clips.length} videos selected`
+                  : `${clips[0].title} \u00b7 Clip #${clips[0].clipId}`}
+              </p>
             </div>
-            <button onClick={onClose} className="w-8 h-8 rounded-lg bg-surface-elevated hover:bg-surface-hover text-text-secondary hover:text-text-primary transition-colors flex items-center justify-center">
+            <button onClick={onClose} disabled={isPosting} className="w-8 h-8 rounded-lg bg-surface-elevated hover:bg-surface-hover text-text-secondary hover:text-text-primary transition-colors flex items-center justify-center disabled:opacity-50">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
           </div>
         </div>
         <div className="px-6 py-5 space-y-3">
           {error && <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">{error}</div>}
+          {progress && (
+            <div className="p-3 rounded-lg bg-emerald/10 border border-emerald/20">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-emerald font-medium">
+                  Publishing {progress.done}/{progress.total}...
+                </span>
+                {progress.failed > 0 && (
+                  <span className="text-xs text-red-400">{progress.failed} failed</span>
+                )}
+              </div>
+              <div className="w-full bg-surface rounded-full h-1.5">
+                <div
+                  className="bg-emerald h-1.5 rounded-full transition-all duration-300"
+                  style={{ width: `${(progress.done / progress.total) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
           {PLATFORMS.map((p) => {
             const qty = platformQty[p.key] || 0;
             const isActive = qty > 0;
@@ -165,19 +211,28 @@ function PublishModal({
                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${p.color}`}>{p.icon}</div>
                 <div className="flex-1"><span className="text-sm font-semibold text-text-primary">{p.label}</span></div>
                 <div className="flex items-center gap-1.5">
-                  <button onClick={() => setPlatformQty((prev) => ({ ...prev, [p.key]: Math.max(0, (prev[p.key] || 0) - 1) }))} disabled={qty === 0} className="w-8 h-8 rounded-lg bg-surface border border-border text-text-secondary hover:bg-surface-hover disabled:opacity-20 transition-colors flex items-center justify-center font-medium">-</button>
-                  <input type="number" min={0} max={50} value={qty || ""} onChange={(e) => { const val = parseInt(e.target.value) || 0; setPlatformQty((prev) => ({ ...prev, [p.key]: Math.min(50, Math.max(0, val)) })); }} placeholder="0" className="w-12 px-1 py-1.5 rounded-lg bg-surface border border-border text-text-primary text-sm text-center focus:border-emerald outline-none" />
-                  <button onClick={() => setPlatformQty((prev) => ({ ...prev, [p.key]: Math.min(50, (prev[p.key] || 0) + 1) }))} disabled={qty >= 50} className="w-8 h-8 rounded-lg bg-surface border border-border text-text-secondary hover:bg-surface-hover disabled:opacity-20 transition-colors flex items-center justify-center font-medium">+</button>
+                  <button onClick={() => setPlatformQty((prev) => ({ ...prev, [p.key]: Math.max(0, (prev[p.key] || 0) - 1) }))} disabled={qty === 0 || isPosting} className="w-8 h-8 rounded-lg bg-surface border border-border text-text-secondary hover:bg-surface-hover disabled:opacity-20 transition-colors flex items-center justify-center font-medium">-</button>
+                  <input type="number" min={0} max={50} value={qty || ""} disabled={isPosting} onChange={(e) => { const val = parseInt(e.target.value) || 0; setPlatformQty((prev) => ({ ...prev, [p.key]: Math.min(50, Math.max(0, val)) })); }} placeholder="0" className="w-12 px-1 py-1.5 rounded-lg bg-surface border border-border text-text-primary text-sm text-center focus:border-emerald outline-none disabled:opacity-50" />
+                  <button onClick={() => setPlatformQty((prev) => ({ ...prev, [p.key]: Math.min(50, (prev[p.key] || 0) + 1) }))} disabled={qty >= 50 || isPosting} className="w-8 h-8 rounded-lg bg-surface border border-border text-text-secondary hover:bg-surface-hover disabled:opacity-20 transition-colors flex items-center justify-center font-medium">+</button>
                 </div>
               </div>
             );
           })}
         </div>
         <div className="px-6 py-4 border-t border-border flex items-center justify-between bg-surface-elevated/50">
-          <div className="text-sm text-text-secondary">Total: <span className="font-bold text-text-primary text-lg">{totalCopies}</span> {totalCopies === 1 ? "copy" : "copies"}</div>
+          <div className="text-sm text-text-secondary">
+            {isBulk
+              ? <>Total: <span className="font-bold text-text-primary text-lg">{totalCopies * clips.length}</span> posts ({totalCopies} &times; {clips.length} videos)</>
+              : <>Total: <span className="font-bold text-text-primary text-lg">{totalCopies}</span> {totalCopies === 1 ? "copy" : "copies"}</>
+            }
+          </div>
           <div className="flex items-center gap-3">
-            <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors">Cancel</button>
-            <button onClick={handleSubmit} disabled={isPosting || totalCopies === 0} className="px-5 py-2.5 rounded-lg bg-emerald text-black font-semibold text-sm hover:bg-emerald-light transition-colors disabled:opacity-50">{isPosting ? "Publishing..." : `Publish ${totalCopies} Copies`}</button>
+            <button onClick={onClose} disabled={isPosting} className="px-4 py-2 rounded-lg text-sm text-text-secondary hover:text-text-primary hover:bg-surface-hover transition-colors disabled:opacity-50">Cancel</button>
+            <button onClick={handleSubmit} disabled={isPosting || totalCopies === 0} className="px-5 py-2.5 rounded-lg bg-emerald text-black font-semibold text-sm hover:bg-emerald-light transition-colors disabled:opacity-50">
+              {isPosting
+                ? (progress ? `Publishing ${progress.done}/${progress.total}...` : "Publishing...")
+                : isBulk ? `Publish ${clips.length} Videos` : `Publish ${totalCopies} Copies`}
+            </button>
           </div>
         </div>
       </div>
@@ -220,7 +275,7 @@ function PostsTable({ campaignId }: { campaignId: number }) {
       const result = await adminAPI.getCampaignPosts(campaignId, {
         tab,
         page,
-        pageSize: 25,
+        pageSize: 10,
         sortBy: tab === "published" ? "posted_time" : "created_at",
         sortOrder: "desc",
       });
@@ -422,8 +477,13 @@ export default function CampaignPublishPage() {
   const [videos, setVideos] = useState<CampaignVideo[]>([]);
   const [videosLoading, setVideosLoading] = useState(false);
   const [videoFilter, setVideoFilter] = useState<"all" | "unpublished" | "published">("all");
+  const [videoPage, setVideoPage] = useState(1);
+  const [videoTotalPages, setVideoTotalPages] = useState(1);
+  const [videoTotalCount, setVideoTotalCount] = useState(0);
 
   const [publishingVideo, setPublishingVideo] = useState<CampaignVideo | null>(null);
+  const [bulkPublishClips, setBulkPublishClips] = useState<{ clipId: number; title: string }[] | null>(null);
+  const [selectedClipIds, setSelectedClipIds] = useState<Set<number>>(new Set());
   const [postSuccess, setPostSuccess] = useState<string | null>(null);
   const [playingVideo, setPlayingVideo] = useState<{ url: string; title: string } | null>(null);
 
@@ -444,25 +504,57 @@ export default function CampaignPublishPage() {
     fetchCampaign();
   }, [campaignId]);
 
-  const fetchVideos = useCallback(async () => {
+  const fetchVideos = useCallback(async (pg?: number) => {
     if (!campaign || campaign.status !== "started") return;
     setVideosLoading(true);
     try {
-      const { videos: v } = await adminAPI.getCampaignVideos(campaignId);
-      setVideos(v);
+      const result = await adminAPI.getCampaignVideos(campaignId, {
+        page: pg ?? videoPage,
+        pageSize: 10,
+      });
+      setVideos(result.videos);
+      setVideoTotalPages(result.pagination.totalPages);
+      setVideoTotalCount(result.pagination.totalVideos);
     } catch { /* silent */ }
     finally { setVideosLoading(false); }
-  }, [campaign, campaignId]);
+  }, [campaign, campaignId, videoPage]);
 
   useEffect(() => { fetchVideos(); }, [fetchVideos]);
 
-  const handlePublish = async (platformQty: Record<string, number>) => {
-    if (!publishingVideo?.clip_id) return;
-    const { postIds } = await adminAPI.postCampaignClip(campaignId, publishingVideo.clip_id, platformQty);
-    setPostSuccess(`Queued ${postIds.length} post${postIds.length !== 1 ? "s" : ""} for processing`);
+  const toggleClipSelection = (clipId: number) => {
+    setSelectedClipIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(clipId)) next.delete(clipId);
+      else next.add(clipId);
+      return next;
+    });
+  };
+
+  // Shared per-clip publish function — calls API, returns number of posts queued
+  const publishOneClip = async (clipId: number, platformQty: Record<string, number>) => {
+    const { postIds } = await adminAPI.postCampaignClip(campaignId, clipId, platformQty);
+    return postIds.length;
+  };
+
+  // Called when modal finishes (single or bulk) — handles cleanup and toast
+  const handlePublishComplete = (totalQueued: number, failed: number) => {
+    const msg = failed > 0
+      ? `Queued ${totalQueued} posts (${failed} video${failed !== 1 ? "s" : ""} failed)`
+      : `Queued ${totalQueued} post${totalQueued !== 1 ? "s" : ""} for processing`;
+    setPostSuccess(msg);
     setPublishingVideo(null);
-    setPostsKey((k) => k + 1); // refresh posts table
-    fetchVideos(); // refresh video post counts
+    setBulkPublishClips(null);
+    setSelectedClipIds(new Set());
+    setPostsKey((k) => k + 1);
+    fetchVideos();
+  };
+
+  const handleBulkPublish = () => {
+    const clips = videos
+      .filter((v) => v.clip_id && selectedClipIds.has(v.clip_id))
+      .map((v) => ({ clipId: v.clip_id!, title: v.title ?? v.file_name ?? `Video #${v.id}` }));
+    if (clips.length === 0) return;
+    setBulkPublishClips(clips);
   };
 
   if (loading) {
@@ -510,7 +602,7 @@ export default function CampaignPublishPage() {
         </div>
         <div className="bg-surface border border-border rounded-xl p-4">
           <div className="text-xs text-text-tertiary uppercase tracking-wider mb-1">Videos</div>
-          <div className="text-lg font-bold text-text-primary">{videosLoading ? "..." : videos.length}</div>
+          <div className="text-lg font-bold text-text-primary">{videosLoading ? "..." : videoTotalCount}</div>
         </div>
       </div>
 
@@ -542,12 +634,38 @@ export default function CampaignPublishPage() {
       <div className="bg-surface border border-border rounded-2xl overflow-hidden mb-8">
         <div className="px-6 py-4 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-4">
+            {/* Select all checkbox */}
+            {(() => {
+              const publishable = videos.filter((v) => {
+                if (!v.clip_id) return false;
+                if (videoFilter === "published") return v.post_count > 0;
+                if (videoFilter === "unpublished") return v.post_count === 0;
+                return true;
+              });
+              const allSelected = publishable.length > 0 && publishable.every((v) => selectedClipIds.has(v.clip_id!));
+              const someSelected = publishable.some((v) => selectedClipIds.has(v.clip_id!));
+              return publishable.length > 0 ? (
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected; }}
+                  onChange={() => {
+                    if (allSelected) {
+                      setSelectedClipIds(new Set());
+                    } else {
+                      setSelectedClipIds(new Set(publishable.map((v) => v.clip_id!)));
+                    }
+                  }}
+                  className="w-4 h-4 rounded border-border text-emerald focus:ring-emerald cursor-pointer accent-emerald"
+                />
+              ) : null;
+            })()}
             <h2 className="text-sm font-semibold text-text-primary">Campaign Videos</h2>
             <div className="flex items-center gap-1 bg-surface-elevated rounded-lg p-0.5">
               {(["all", "unpublished", "published"] as const).map((f) => (
                 <button
                   key={f}
-                  onClick={() => setVideoFilter(f)}
+                  onClick={() => { setVideoFilter(f); setVideoPage(1); setSelectedClipIds(new Set()); }}
                   className={`px-3 py-1 rounded-md text-xs font-medium transition-colors capitalize ${
                     videoFilter === f
                       ? "bg-surface text-text-primary shadow-sm"
@@ -559,8 +677,22 @@ export default function CampaignPublishPage() {
               ))}
             </div>
           </div>
-          <button onClick={fetchVideos} disabled={videosLoading} className="text-xs text-text-tertiary hover:text-text-secondary disabled:opacity-50">{videosLoading ? "Refreshing..." : "Refresh"}</button>
+          <div className="flex items-center gap-3">
+            {selectedClipIds.size > 0 && (
+              <>
+                <span className="text-xs font-semibold text-emerald">{selectedClipIds.size} selected</span>
+                <button
+                  onClick={handleBulkPublish}
+                  className="px-3 py-1.5 rounded-lg bg-emerald text-black text-xs font-semibold hover:bg-emerald-light transition-colors"
+                >
+                  Publish Selected
+                </button>
+              </>
+            )}
+            <button onClick={() => fetchVideos()} disabled={videosLoading} className="text-xs text-text-tertiary hover:text-text-secondary disabled:opacity-50">{videosLoading ? "Refreshing..." : "Refresh"}</button>
+          </div>
         </div>
+
         {videosLoading && videos.length === 0 ? (
           <div className="p-12 text-center text-text-secondary">Loading videos...</div>
         ) : videos.length === 0 ? (
@@ -578,7 +710,18 @@ export default function CampaignPublishPage() {
           ) : (
             <div className="divide-y divide-border">
               {filtered.map((video) => (
-                <div key={video.id} className="px-6 py-4 flex items-center gap-4 hover:bg-surface-hover/50 transition-colors">
+                <div key={video.id} className={`px-6 py-4 flex items-center gap-4 transition-colors ${video.clip_id && selectedClipIds.has(video.clip_id) ? "bg-emerald/5" : "hover:bg-surface-hover/50"}`}>
+                  {/* Checkbox */}
+                  {video.clip_id ? (
+                    <input
+                      type="checkbox"
+                      checked={selectedClipIds.has(video.clip_id)}
+                      onChange={() => toggleClipSelection(video.clip_id!)}
+                      className="w-4 h-4 rounded border-border text-emerald focus:ring-emerald flex-shrink-0 cursor-pointer accent-emerald"
+                    />
+                  ) : (
+                    <div className="w-4 h-4 flex-shrink-0" />
+                  )}
                   {video.presigned_url ? (
                     <button
                       onClick={() => setPlayingVideo({ url: video.presigned_url!, title: video.title ?? video.file_name ?? `Video #${video.id}` })}
@@ -617,18 +760,39 @@ export default function CampaignPublishPage() {
             </div>
           );
         })()}
+
+        {/* Video Pagination */}
+        {videoTotalPages > 1 && (
+          <div className="px-6 py-3 border-t border-border flex items-center justify-between">
+            <span className="text-xs text-text-tertiary">Page {videoPage} of {videoTotalPages} ({videoTotalCount} videos)</span>
+            <div className="flex gap-2">
+              <button onClick={() => { setVideoPage((p) => Math.max(1, p - 1)); setSelectedClipIds(new Set()); }} disabled={videoPage === 1} className="px-3 py-1 rounded-lg bg-surface-elevated border border-border text-text-secondary text-xs hover:bg-surface-hover disabled:opacity-50">Prev</button>
+              <button onClick={() => { setVideoPage((p) => Math.min(videoTotalPages, p + 1)); setSelectedClipIds(new Set()); }} disabled={videoPage === videoTotalPages} className="px-3 py-1 rounded-lg bg-surface-elevated border border-border text-text-secondary text-xs hover:bg-surface-hover disabled:opacity-50">Next</button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Posts Table */}
       <PostsTable key={postsKey} campaignId={campaignId} />
 
-      {/* Publish Modal */}
+      {/* Single Publish Modal */}
       {publishingVideo && publishingVideo.clip_id && (
         <PublishModal
-          clipId={publishingVideo.clip_id}
-          clipTitle={publishingVideo.title ?? publishingVideo.file_name ?? `Video #${publishingVideo.id}`}
+          clips={[{ clipId: publishingVideo.clip_id, title: publishingVideo.title ?? publishingVideo.file_name ?? `Video #${publishingVideo.id}` }]}
           onClose={() => setPublishingVideo(null)}
-          onPublish={handlePublish}
+          onPublishClip={publishOneClip}
+          onComplete={handlePublishComplete}
+        />
+      )}
+
+      {/* Bulk Publish Modal */}
+      {bulkPublishClips && bulkPublishClips.length > 0 && (
+        <PublishModal
+          clips={bulkPublishClips}
+          onClose={() => setBulkPublishClips(null)}
+          onPublishClip={publishOneClip}
+          onComplete={handlePublishComplete}
         />
       )}
 

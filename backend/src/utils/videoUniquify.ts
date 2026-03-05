@@ -92,7 +92,6 @@ export function generateUniquifyString(
     `rotate=${rotRad}:fillcolor=black:ow=rotw(${rotRad}):oh=roth(${rotRad}),`,
     `crop=iw*0.96:ih*0.96,`,
     `scale=iw*${p.scaleJitter}:ih*${p.scaleJitter},`,
-    `gblur=sigma=0.8,`,
     `pad=ceil(iw/2)*2:ceil(ih/2)*2,`,
     `hue=h=${p.hueShift},`,
     `eq=saturation=${p.saturation}:brightness=${p.brightness}:gamma=${p.gamma},`,

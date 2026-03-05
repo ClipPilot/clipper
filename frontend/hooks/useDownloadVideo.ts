@@ -33,7 +33,7 @@ export function useDownloadVideo() {
         blob = await faceSwapAPI.downloadVideo(url, filename);
       } else {
         // All other videos: fetch as blob directly
-        const response = await fetch(url);
+        const response = await fetch(url, { cache: "no-store" });
         if (!response.ok) {
           throw new Error(`Failed to fetch video: ${response.status}`);
         }

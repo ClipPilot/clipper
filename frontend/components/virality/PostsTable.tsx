@@ -31,6 +31,7 @@ interface PostsTableProps {
   accountSyncMap?: Record<number, string | null>;
   comparisonMode: ComparisonMode;
   onComparisonModeChange: (mode: ComparisonMode) => void;
+  onDeletePost?: (postId: number) => void;
 }
 
 type SortKey = "views" | "likes" | "comments" | "eng_rate" | "published";
@@ -152,7 +153,7 @@ function FilterDropdown<T extends string>({
   );
 }
 
-export function PostsTable({ posts, accountPlatformMap, comparisonMode, onComparisonModeChange }: PostsTableProps) {
+export function PostsTable({ posts, accountPlatformMap, comparisonMode, onComparisonModeChange, onDeletePost }: PostsTableProps) {
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
@@ -311,6 +312,7 @@ export function PostsTable({ posts, accountPlatformMap, comparisonMode, onCompar
           <TableColumn>
             <SortableHeader label="PUBLISHED" sortKey="published" currentSort={sortKey} currentDir={sortDir} onSort={handleSort} />
           </TableColumn>
+          <TableColumn>{""}</TableColumn>
         </TableHeader>
         <TableBody>
           {paginatedPosts.map((post) => (
@@ -415,6 +417,20 @@ export function PostsTable({ posts, accountPlatformMap, comparisonMode, onCompar
                 <span className="text-sm text-text-secondary">
                   {post.posted_at ? formatDate(post.posted_at) : "—"}
                 </span>
+              </TableCell>
+              <TableCell>
+                {onDeletePost && (
+                  <button
+                    className="p-1 rounded-md text-text-tertiary hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeletePost(post.id);
+                    }}
+                    aria-label="Remove post"
+                  >
+                    <Icon icon="solar:trash-bin-minimalistic-linear" width={16} />
+                  </button>
+                )}
               </TableCell>
             </TableRow>
           ))}

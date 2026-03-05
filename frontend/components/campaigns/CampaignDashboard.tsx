@@ -173,27 +173,41 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
 
   const [isLoading, setIsLoading] = useState(true);
   const [isStarting, setIsStarting] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const fetchAll = useCallback(async () => {
     if (!selectedTeam?.id) return;
     setIsLoading(true);
+    setLoadError(null);
     try {
+      // Campaign is critical — if it fails, show an error instead of loading forever
+      let campaignData: { campaign: Campaign; gates: CampaignGates };
+      try {
+        campaignData = await campaignAPI.getCampaign(selectedTeam.id, campaignId);
+      } catch (err: any) {
+        const msg = err.message || "";
+        if (msg.includes("not found") || msg.includes("Campaign not found")) {
+          setLoadError("unauthorized");
+        } else {
+          setLoadError("error");
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      setCampaign(campaignData.campaign);
+      setGates(campaignData.gates);
+
       const [
-        campaignRes,
         videosRes,
         walletRes,
         agreementRes,
       ] = await Promise.allSettled([
-        campaignAPI.getCampaign(selectedTeam.id, campaignId),
         campaignAPI.listVideos(selectedTeam.id, campaignId),
         campaignAPI.getWallet(selectedTeam.id, campaignId),
         campaignAPI.getMasterAgreement(selectedTeam.id),
       ]);
 
-      if (campaignRes.status === "fulfilled") {
-        setCampaign(campaignRes.value.campaign);
-        setGates(campaignRes.value.gates);
-      }
       if (videosRes.status === "fulfilled") {
         setVideos(videosRes.value.videos);
       }
@@ -206,6 +220,7 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
       }
     } catch (err) {
       console.error("Failed to fetch campaign data:", err);
+      setLoadError("error");
     } finally {
       setIsLoading(false);
     }
@@ -342,6 +357,25 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
     return (
       <div className="flex items-center justify-center py-32">
         <Spinner size="lg" color="primary" />
+      </div>
+    );
+  }
+
+  if (loadError === "unauthorized") {
+    return (
+      <div className="flex flex-col items-center gap-4 py-32 text-center">
+        <Icon
+          icon="solar:shield-warning-bold-duotone"
+          className="text-warning-500"
+          width={40}
+        />
+        <p className="text-lg font-semibold text-text-primary">Unauthorized</p>
+        <p className="text-text-secondary text-sm">
+          This campaign doesn&apos;t exist or you don&apos;t have access to it.
+        </p>
+        <Button variant="flat" onPress={onBack}>
+          Back to Campaigns
+        </Button>
       </div>
     );
   }

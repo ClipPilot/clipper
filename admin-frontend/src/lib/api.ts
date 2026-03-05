@@ -740,9 +740,17 @@ export const adminAPI = {
 
   async getCampaignVideos(
     campaignId: number,
-  ): Promise<{ videos: CampaignVideo[] }> {
+    options?: { page?: number; pageSize?: number },
+  ): Promise<{
+    videos: CampaignVideo[];
+    pagination: { page: number; pageSize: number; totalVideos: number; totalPages: number };
+  }> {
+    const params = new URLSearchParams();
+    if (options?.page) params.set("page", options.page.toString());
+    if (options?.pageSize) params.set("pageSize", options.pageSize.toString());
+    const qs = params.toString();
     const response = await fetch(
-      `${API_URL}/admin/campaigns/${campaignId}/videos`,
+      `${API_URL}/admin/campaigns/${campaignId}/videos${qs ? `?${qs}` : ""}`,
       { headers: { ...getAuthHeaders() } },
     );
     return handleResponse(response);
