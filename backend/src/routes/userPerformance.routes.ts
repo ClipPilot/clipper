@@ -256,6 +256,34 @@ router.get("/:teamId/accounts/:accountId/posts", requireAuth, (req, res) => user
 
 /**
  * @openapi
+ * /user-performance/{teamId}/posts/{postId}:
+ *   delete:
+ *     summary: Remove a tracked post
+ *     tags:
+ *       - User Performance
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: postId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Post deleted
+ *       404:
+ *         description: Post not found
+ */
+router.delete("/:teamId/posts/:postId", requireAuth, (req, res) => userPerformanceController.deletePost(req, res));
+
+/**
+ * @openapi
  * /user-performance/{teamId}/dashboard:
  *   get:
  *     summary: Get dashboard statistics for user performance

@@ -122,6 +122,17 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
     }
   };
 
+  const handleDeletePost = useCallback(async (postId: number) => {
+    if (!selectedTeam?.id) return;
+    try {
+      await userPerformanceAPI.deletePost(selectedTeam.id, postId);
+      addToast({ title: "Post removed from tracking", color: "success" });
+      await fetchData(true);
+    } catch (err: any) {
+      addToast({ title: "Failed to delete post", description: err.message, color: "danger" });
+    }
+  }, [selectedTeam?.id, fetchData]);
+
   const handleAddAccount = async (
     platform: "tiktok" | "instagram" | "x",
     profileUrl: string,
@@ -423,6 +434,7 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
             accountSyncMap={derived.accountSyncMap}
             comparisonMode={comparisonMode}
             onComparisonModeChange={setComparisonMode}
+            onDeletePost={handleDeletePost}
           />
         </RecalcOverlay>
       </div>

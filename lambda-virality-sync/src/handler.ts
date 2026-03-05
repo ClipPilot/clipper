@@ -484,11 +484,6 @@ async function upsertPost(
     if (postDate < cutoff) return false;
   }
 
-  // Look up existing post by platform_post_id (scraped numeric ID).
-  // If not found, also try matching by the URL-derived identifier
-  // (shortCode for IG, numeric ID for TikTok/X). Mass-posting stores
-  // shortCode while Apify returns a numeric media ID — the URL
-  // fallback catches that mismatch.
   let existingRows = await db
     .select()
     .from(postsTable)

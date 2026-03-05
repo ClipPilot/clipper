@@ -425,11 +425,6 @@ export class AccountTrackingService {
       if (postDate < cutoff) return;
     }
 
-    // Look up existing post by platform_post_id (scraped numeric ID).
-    // If not found, also try matching by the URL-derived identifier
-    // (extractPostIdentifier returns shortCode for IG, numeric ID for
-    // TikTok/X). Mass-posting stores shortCode while Apify returns
-    // a numeric media ID — the URL fallback catches that mismatch.
     let existingRows = await db
       .select()
       .from(this.postsTable)
@@ -552,6 +547,29 @@ export class AccountTrackingService {
       .returning({ id: this.postsTable.id }) as any[];
 
     return inserted[0] ?? null;
+  }
+
+  async deletePost(postId: number, teamId: number) {
+    const rows = await db
+      .select({
+        id: this.postsTable.id,
+        account_id: this.postsTable.account_id,
+      })
+      .from(this.postsTable)
+      .where(eq(this.postsTable.id, postId))
+      .limit(1) as any[];
+
+    const post = rows[0];
+    if (!post) throw new Error("Post not found");
+
+    const account = await this.getAccountById(post.account_id);
+    if (!account || account.team_id !== teamId) {
+      throw new Error("Post not found or access denied");
+    }
+
+    await db
+      .delete(this.postsTable)
+      .where(eq(this.postsTable.id, postId));
   }
 
   async getPostsByAccount(

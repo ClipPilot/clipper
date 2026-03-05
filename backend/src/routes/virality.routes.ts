@@ -239,6 +239,34 @@ router.get("/:teamId/accounts/:accountId/posts", requireAuth, (req, res) => vira
 
 /**
  * @openapi
+ * /virality/{teamId}/posts/{postId}:
+ *   delete:
+ *     summary: Remove a tracked post
+ *     tags:
+ *       - Virality
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: postId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Post deleted
+ *       404:
+ *         description: Post not found
+ */
+router.delete("/:teamId/posts/:postId", requireAuth, (req, res) => viralityController.deletePost(req, res));
+
+/**
+ * @openapi
  * /virality/{teamId}/dashboard:
  *   get:
  *     summary: Get dashboard statistics

@@ -115,6 +115,17 @@ export default function CompetitorDetailPage() {
     },
   });
 
+  const handleDeletePost = useCallback(async (postId: number) => {
+    if (!selectedTeam?.id) return;
+    try {
+      await viralityAPI.deletePost(selectedTeam.id, postId);
+      addToast({ title: "Post removed from tracking", color: "success" });
+      await fetchData(true);
+    } catch (err: any) {
+      addToast({ title: "Failed to delete post", description: err.message, color: "danger" });
+    }
+  }, [selectedTeam?.id, fetchData]);
+
   const handleSyncAll = async () => {
     if (!selectedTeam?.id || !competitor) return;
     setIsSyncing(true);
@@ -531,6 +542,7 @@ export default function CompetitorDetailPage() {
             accountSyncMap={accountSyncMap}
             comparisonMode={comparisonMode}
             onComparisonModeChange={setComparisonMode}
+            onDeletePost={handleDeletePost}
           />
         </RecalcOverlay>
       </div>
