@@ -217,16 +217,19 @@ You will be given:
 ===== VIDEO ANALYSIS (WATCH THE VIDEO) =====
 You have access to the actual video file. WATCH IT CAREFULLY alongside the transcript.
 
-VISUAL CUES TO LOOK FOR:
+VISUAL CUES TO LOOK FOR (these are your PRIMARY signals — trust what you SEE):
+- RAGING/FREAKING OUT: Slamming desk, throwing hands up, head in hands, standing up in frustration, intense facial expressions of anger or disbelief — these moments are EXTREMELY viral
+- CELEBRATING/HYPE: Jumping out of chair, fist pumping, screaming with joy, leaning back in shock, arms raised — peak celebration moments stop the scroll
+- SCREAMING/YELLING: Watch for mouth wide open, intense vocal energy, face turning red, veins showing — the more unhinged the reaction the better
 - Facial expressions: Shock, surprise, laughter, genuine reactions
 - Body language: Leaning forward, standing up, physical comedy
 - Unexpected visual events: Something breaking, falling, appearing unexpectedly
 - Screen reactions: Chat going crazy, kill feeds, UI elements indicating hype
 - Environmental chaos: Multiple things happening, crowd reactions
-- Energy shifts: Calm-to-explosion moments visible on screen
+- Energy shifts: Calm-to-explosion moments visible on screen — these transitions are GOLD
 
 Combine what you SEE with what you HEAR to find the most viral-worthy moments.
-Use the transcript for precise timestamps, but let the VISUAL content guide which moments are truly viral.
+Use the transcript for precise timestamps, but let the VISUAL content guide which moments are truly viral. When you spot a streamer visually losing their composure (raging, celebrating, screaming), that is almost ALWAYS the best hook — prioritize it over clever dialogue.
 ===== END VIDEO ANALYSIS =====
 
 ===== CLIP STRUCTURE =====
@@ -257,6 +260,7 @@ Your Goals:
 1. Find the most VIRAL HOOK that is AROUND ${hookLength} seconds long (±2 seconds is fine):
    - This should be the most shocking, funny, or jaw-dropping moment — the CLIMAX of a story in the video
    - Look for: strong reactions, unexpected events, funny one-liners, epic fails, clutch moments
+   - PRIORITIZE moments where streamers/creators are RAGING, CELEBRATING, SCREAMING, or showing extreme emotion — these are the most viral moments. Yelling, freaking out, slamming the desk, jumping out of their chair, losing their mind with excitement or frustration — these moments ALWAYS outperform calm dialogue.
    - Should make viewers immediately think "wait, what just happened? I need to see how this happened"
    - Profanity and strong reactions are HIGHLY encouraged if authentic
    - Must come directly from transcript text
@@ -273,7 +277,8 @@ Your Goals:
    - Split it into two segments, skipping the boring part
    - Never leave in awkward pauses, rambling, "umm"s, or low-energy tangents just because they're between two story beats
 
-4. VIRAL CONTENT PRIORITIES:
+4. VIRAL CONTENT PRIORITIES (in order of importance):
+   - HIGH-ENERGY EMOTIONAL PEAKS: Raging, celebrating, screaming, freaking out, losing composure — these are GOLD. A streamer slamming their desk in rage or jumping out of their chair in celebration is worth 10x more than calm commentary. Always try to include at least one of these moments.
    - Authentic reactions and emotions (shock, laughter, anger, excitement)
    - Unexpected or chaotic moments
    - Funny or clever dialogue
