@@ -442,6 +442,31 @@ async function scrapeXAccount(
   return { posts, profile: null };
 }
 
+/** Extract the URL-derived post identifier (shortCode for IG, numeric ID for TikTok/X). */
+function extractPostIdFromUrl(url: string, platform: string): string | null {
+  try {
+    const u = new URL(url);
+    switch (platform) {
+      case "instagram": {
+        const m = u.pathname.match(/\/(?:reel|p)\/([A-Za-z0-9_-]+)/);
+        return m?.[1] ?? null;
+      }
+      case "tiktok": {
+        const m = u.pathname.match(/\/video\/(\d+)/);
+        return m?.[1] ?? null;
+      }
+      case "x": {
+        const m = u.pathname.match(/\/status\/(\d+)/);
+        return m?.[1] ?? null;
+      }
+      default:
+        return null;
+    }
+  } catch {
+    return null;
+  }
+}
+
 async function upsertPost(
   db: ReturnType<typeof drizzle>,
   accountId: number,
@@ -459,7 +484,12 @@ async function upsertPost(
     if (postDate < cutoff) return false;
   }
 
-  const [existingPost] = await db
+  // Look up existing post by platform_post_id (scraped numeric ID).
+  // If not found, also try matching by the URL-derived identifier
+  // (shortCode for IG, numeric ID for TikTok/X). Mass-posting stores
+  // shortCode while Apify returns a numeric media ID — the URL
+  // fallback catches that mismatch.
+  let existingRows = await db
     .select()
     .from(postsTable)
     .where(
@@ -469,6 +499,24 @@ async function upsertPost(
       )
     )
     .limit(1);
+
+  if (existingRows.length === 0 && postData.url) {
+    const urlId = extractPostIdFromUrl(postData.url, platform);
+    if (urlId && urlId !== postData.id) {
+      existingRows = await db
+        .select()
+        .from(postsTable)
+        .where(
+          and(
+            eq(postsTable.account_id, accountId),
+            eq(postsTable.platform_post_id, urlId)
+          )
+        )
+        .limit(1);
+    }
+  }
+
+  const existingPost = existingRows[0];
 
   const newMetric: MetricsEntry = {
     recorded_at: new Date().toISOString(),

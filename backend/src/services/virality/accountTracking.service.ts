@@ -425,7 +425,12 @@ export class AccountTrackingService {
       if (postDate < cutoff) return;
     }
 
-    const existingRows = await db
+    // Look up existing post by platform_post_id (scraped numeric ID).
+    // If not found, also try matching by the URL-derived identifier
+    // (extractPostIdentifier returns shortCode for IG, numeric ID for
+    // TikTok/X). Mass-posting stores shortCode while Apify returns
+    // a numeric media ID — the URL fallback catches that mismatch.
+    let existingRows = await db
       .select()
       .from(this.postsTable)
       .where(
@@ -435,6 +440,22 @@ export class AccountTrackingService {
         )
       )
       .limit(1) as any[];
+
+    if (existingRows.length === 0 && postData.url) {
+      const urlId = extractPostIdentifier(postData.url, platform);
+      if (urlId && urlId !== postData.id) {
+        existingRows = await db
+          .select()
+          .from(this.postsTable)
+          .where(
+            and(
+              eq(this.postsTable.account_id, accountId),
+              eq(this.postsTable.platform_post_id, urlId)
+            )
+          )
+          .limit(1) as any[];
+      }
+    }
 
     const existingPost = existingRows[0];
 

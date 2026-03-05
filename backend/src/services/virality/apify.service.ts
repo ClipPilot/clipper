@@ -56,33 +56,39 @@ class ApifyService {
   private getClient(): ApifyClient {
     if (!this.client) {
       throw new Error(
-        "APIFY_API_TOKEN is not configured. Add it to your .env file."
+        "APIFY_API_TOKEN is not configured. Add it to your .env file.",
       );
     }
     return this.client;
   }
 
-  async downloadYouTubeVideo(url: string): Promise<{ downloadUrl: string; title: string; duration: number; thumbnail: string; uploader: string; fileSize: number }> {
+  async downloadYouTubeVideo(url: string): Promise<{
+    downloadUrl: string;
+    title: string;
+    duration: number;
+    thumbnail: string;
+    uploader: string;
+    fileSize: number;
+  }> {
     const client = this.getClient();
-    const run = await client
-      .actor(APIFY_ACTORS.YOUTUBE_DOWNLOADER)
-      .call({
+    const run = await client.actor(APIFY_ACTORS.YOUTUBE_DOWNLOADER).call(
+      {
         startUrls: [url],
         quality: "480",
         proxy: { useApifyProxy: true },
-      }, { timeout: ACTOR_TIMEOUT_SECS });
+      },
+      { timeout: ACTOR_TIMEOUT_SECS },
+    );
 
-    const { items } = await client
-      .dataset(run.defaultDatasetId)
-      .listItems();
+    const { items } = await client.dataset(run.defaultDatasetId).listItems();
 
     if (items.length === 0) {
-      throw new Error("Failed to download YouTube video via Apify — no results returned");
+      throw new Error("Failed to download YouTube video — no results returned");
     }
 
     const item = items[0] as any;
     if (!item.downloadUrl) {
-      throw new Error("Apify returned no download URL for this YouTube video");
+      throw new Error("Error Downloading Youtube Video");
     }
 
     return {
@@ -97,20 +103,21 @@ class ApifyService {
 
   async scrapeInstagramReel(url: string): Promise<InstagramReelResult> {
     const client = this.getClient();
-    const run = await client
-      .actor(APIFY_ACTORS.INSTAGRAM_SCRAPER)
-      .call({
+    const run = await client.actor(APIFY_ACTORS.INSTAGRAM_SCRAPER).call(
+      {
         directUrls: [url],
         resultsLimit: 1,
         resultsType: "posts",
-      }, { timeout: ACTOR_TIMEOUT_SECS });
+      },
+      { timeout: ACTOR_TIMEOUT_SECS },
+    );
 
-    const { items } = await client
-      .dataset(run.defaultDatasetId)
-      .listItems();
+    const { items } = await client.dataset(run.defaultDatasetId).listItems();
 
     if (items.length === 0) {
-      throw new Error("Failed to fetch Instagram reel via Apify — no results returned");
+      throw new Error(
+        "Failed to fetch Instagram reel via Apify — no results returned",
+      );
     }
 
     const item = items[0] as any;
@@ -133,7 +140,7 @@ class ApifyService {
   }
 
   async scrapeInstagramPosts(
-    username: string
+    username: string,
   ): Promise<{ posts: InstagramPost[]; profile: InstagramProfile | null }> {
     const input = {
       addParentData: false,
@@ -149,13 +156,11 @@ class ApifyService {
       .actor(APIFY_ACTORS.INSTAGRAM_SCRAPER)
       .call(input, { timeout: ACTOR_TIMEOUT_SECS });
 
-    const { items } = await client
-      .dataset(run.defaultDatasetId)
-      .listItems();
+    const { items } = await client.dataset(run.defaultDatasetId).listItems();
 
     if (items.length === 0) {
       throw new Error(
-        `Instagram profile @${username} was not found or may be private`
+        `Instagram profile @${username} was not found or may be private`,
       );
     }
 
@@ -174,7 +179,7 @@ class ApifyService {
   }
 
   async scrapeInstagramProfile(
-    username: string
+    username: string,
   ): Promise<InstagramProfile | null> {
     const input = {
       usernames: [username],
@@ -185,9 +190,7 @@ class ApifyService {
       .actor(APIFY_ACTORS.INSTAGRAM_PROFILE_SCRAPER)
       .call(input, { timeout: ACTOR_TIMEOUT_SECS });
 
-    const { items } = await client
-      .dataset(run.defaultDatasetId)
-      .listItems();
+    const { items } = await client.dataset(run.defaultDatasetId).listItems();
 
     if (items.length > 0) {
       return this.normalizeProfileData(items[0]);
@@ -231,7 +234,7 @@ class ApifyService {
   // ── Instagram Hashtag ──
 
   async scrapeInstagramHashtag(
-    hashtag: string
+    hashtag: string,
   ): Promise<{ posts: InstagramPost[]; profile: null }> {
     const tag = hashtag.replace(/^#/, "").toLowerCase();
     const input = {
@@ -248,9 +251,7 @@ class ApifyService {
       .actor(APIFY_ACTORS.INSTAGRAM_SCRAPER)
       .call(input, { timeout: ACTOR_TIMEOUT_SECS });
 
-    const { items } = await client
-      .dataset(run.defaultDatasetId)
-      .listItems();
+    const { items } = await client.dataset(run.defaultDatasetId).listItems();
 
     const posts: InstagramPost[] = items
       .filter((item: any) => item.type !== "profile" && !item.profilePicUrl)
@@ -262,7 +263,7 @@ class ApifyService {
   // ── TikTok ──
 
   async scrapeTikTokPosts(
-    username: string
+    username: string,
   ): Promise<{ posts: InstagramPost[]; profile: InstagramProfile | null }> {
     const input = {
       profiles: [username],
@@ -279,18 +280,16 @@ class ApifyService {
       .actor(APIFY_ACTORS.TIKTOK_SCRAPER)
       .call(input, { timeout: ACTOR_TIMEOUT_SECS });
 
-    const { items } = await client
-      .dataset(run.defaultDatasetId)
-      .listItems();
+    const { items } = await client.dataset(run.defaultDatasetId).listItems();
 
     if (items.length === 0) {
       throw new Error(
-        `TikTok profile @${username} has not new posts or was not found or may be private`
+        `TikTok profile @${username} has not new posts or was not found or may be private`,
       );
     }
 
     const posts: InstagramPost[] = items.map((item) =>
-      this.normalizeTikTokPostData(item)
+      this.normalizeTikTokPostData(item),
     );
 
     // Build profile from the first post's authorMeta
@@ -315,7 +314,7 @@ class ApifyService {
   // ── TikTok Hashtag ──
 
   async scrapeTikTokHashtag(
-    hashtag: string
+    hashtag: string,
   ): Promise<{ posts: InstagramPost[]; profile: null }> {
     const tag = hashtag.replace(/^#/, "").toLowerCase();
     const input = {
@@ -331,12 +330,10 @@ class ApifyService {
       .actor(APIFY_ACTORS.TIKTOK_SCRAPER)
       .call(input, { timeout: ACTOR_TIMEOUT_SECS });
 
-    const { items } = await client
-      .dataset(run.defaultDatasetId)
-      .listItems();
+    const { items } = await client.dataset(run.defaultDatasetId).listItems();
 
     const posts: InstagramPost[] = items.map((item) =>
-      this.normalizeTikTokPostData(item)
+      this.normalizeTikTokPostData(item),
     );
 
     return { posts, profile: null };
@@ -345,7 +342,7 @@ class ApifyService {
   // ── X (Twitter) ──
 
   async scrapeXPosts(
-    username: string
+    username: string,
   ): Promise<{ posts: InstagramPost[]; profile: InstagramProfile | null }> {
     // Step 1: Fetch tweets
     const end = new Date();
@@ -372,14 +369,12 @@ class ApifyService {
 
     if (tweetItems.length === 0) {
       throw new Error(
-        `X profile @${username} has no recent posts or was not found or may be private`
+        `X profile @${username} has no recent posts or was not found or may be private`,
       );
     }
 
     // Step 2: Fetch view counts for all tweet IDs
-    const tweetIds = tweetItems
-      .map((item: any) => item.id)
-      .filter(Boolean);
+    const tweetIds = tweetItems.map((item: any) => item.id).filter(Boolean);
 
     const viewCountMap = new Map<string, number | null>();
 
@@ -411,7 +406,7 @@ class ApifyService {
 
     // Step 3: Normalize posts with merged view counts
     const posts: InstagramPost[] = tweetItems.map((item: any) =>
-      this.normalizeXPostData(item, viewCountMap.get(String(item.id)) ?? null)
+      this.normalizeXPostData(item, viewCountMap.get(String(item.id)) ?? null),
     );
 
     return { posts, profile: null };
@@ -420,7 +415,7 @@ class ApifyService {
   // ── X Keyword/Hashtag Search ──
 
   async scrapeXKeywordSearch(
-    term: string
+    term: string,
   ): Promise<{ posts: InstagramPost[]; profile: null }> {
     const end = new Date();
     const start = new Date();
@@ -445,9 +440,7 @@ class ApifyService {
       .listItems();
 
     // Fetch view counts
-    const tweetIds = tweetItems
-      .map((item: any) => item.id)
-      .filter(Boolean);
+    const tweetIds = tweetItems.map((item: any) => item.id).filter(Boolean);
 
     const viewCountMap = new Map<string, number | null>();
 
@@ -472,12 +465,15 @@ class ApifyService {
           viewCountMap.set(String(vi.id), vi.view_count ?? null);
         }
       } catch (err) {
-        console.warn(`Failed to fetch X view counts for search "${term}":`, err);
+        console.warn(
+          `Failed to fetch X view counts for search "${term}":`,
+          err,
+        );
       }
     }
 
     const posts: InstagramPost[] = tweetItems.map((item: any) =>
-      this.normalizeXPostData(item, viewCountMap.get(String(item.id)) ?? null)
+      this.normalizeXPostData(item, viewCountMap.get(String(item.id)) ?? null),
     );
 
     return { posts, profile: null };
@@ -485,12 +481,13 @@ class ApifyService {
 
   private normalizeXPostData(
     rawPost: any,
-    viewCount: number | null
+    viewCount: number | null,
   ): InstagramPost {
     // Extract hashtags from tweet text
-    const hashtags = (rawPost.text || "")
-      .match(/#[a-zA-Z0-9_]+/g)
-      ?.map((h: string) => h.substring(1)) || [];
+    const hashtags =
+      (rawPost.text || "")
+        .match(/#[a-zA-Z0-9_]+/g)
+        ?.map((h: string) => h.substring(1)) || [];
 
     return {
       id: rawPost.id,
@@ -519,28 +516,39 @@ class ApifyService {
    * Fetch X follower count from SocialData API.
    * Only returns followersCount — all other profile fields come from Apify scrapers.
    */
-  async fetchXFollowerCount(username: string): Promise<Partial<InstagramProfile> | null> {
+  async fetchXFollowerCount(
+    username: string,
+  ): Promise<Partial<InstagramProfile> | null> {
     const apiKey = config.socialData.apiKey;
     if (!apiKey) {
-      console.warn("SOCIALDATA_API_KEY not configured, skipping X profile fetch");
+      console.warn(
+        "SOCIALDATA_API_KEY not configured, skipping X profile fetch",
+      );
       return null;
     }
 
     try {
-      const res = await fetch(`https://api.socialdata.tools/twitter/user/${encodeURIComponent(username)}`, {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          Accept: "application/json",
+      const res = await fetch(
+        `https://api.socialdata.tools/twitter/user/${encodeURIComponent(username)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            Accept: "application/json",
+          },
         },
-      });
+      );
 
       if (!res.ok) {
-        console.warn(`SocialData API error for @${username}: ${res.status} ${res.statusText}`);
+        console.warn(
+          `SocialData API error for @${username}: ${res.status} ${res.statusText}`,
+        );
         return null;
       }
 
       const data: any = await res.json();
-      console.log(`[SocialData] Fetched X follower count for @${username}: ${data.followers_count}`);
+      console.log(
+        `[SocialData] Fetched X follower count for @${username}: ${data.followers_count}`,
+      );
 
       return {
         followersCount: data.followers_count ?? 0,
@@ -551,7 +559,10 @@ class ApifyService {
     }
   }
 
-  async scrapePostMetrics(postUrl: string, platform: string): Promise<{
+  async scrapePostMetrics(
+    postUrl: string,
+    platform: string,
+  ): Promise<{
     likesCount: number;
     commentsCount: number;
     viewCount: number | null;
@@ -571,15 +582,18 @@ class ApifyService {
       }
 
       if (platform === "tiktok") {
-        const run = await client
-          .actor(APIFY_ACTORS.TIKTOK_SCRAPER)
-          .call({
+        const run = await client.actor(APIFY_ACTORS.TIKTOK_SCRAPER).call(
+          {
             postURLs: [postUrl],
             shouldDownloadCovers: false,
             shouldDownloadVideos: false,
-          }, { timeout: ACTOR_TIMEOUT_SECS });
+          },
+          { timeout: ACTOR_TIMEOUT_SECS },
+        );
 
-        const { items } = await client.dataset(run.defaultDatasetId).listItems();
+        const { items } = await client
+          .dataset(run.defaultDatasetId)
+          .listItems();
         if (items.length === 0) return null;
 
         const item = items[0] as any;
@@ -595,14 +609,17 @@ class ApifyService {
         const tweetId = postUrl.match(/\/status\/(\d+)/)?.[1];
         if (!tweetId) return null;
 
-        const postsRun = await client
-          .actor(APIFY_ACTORS.X_POSTS_SCRAPER)
-          .call({
+        const postsRun = await client.actor(APIFY_ACTORS.X_POSTS_SCRAPER).call(
+          {
             tweetIDs: [tweetId],
             maxItems: 1,
-          }, { timeout: ACTOR_TIMEOUT_SECS });
+          },
+          { timeout: ACTOR_TIMEOUT_SECS },
+        );
 
-        const { items: tweetItems } = await client.dataset(postsRun.defaultDatasetId).listItems();
+        const { items: tweetItems } = await client
+          .dataset(postsRun.defaultDatasetId)
+          .listItems();
         if (tweetItems.length === 0) return null;
 
         const tweet = tweetItems[0] as any;
@@ -611,9 +628,14 @@ class ApifyService {
         try {
           const viewsRun = await client
             .actor(APIFY_ACTORS.X_VIEWS_SCRAPER)
-            .call({ tweets: tweetId, max_results: 1, mode: "Get a Few Tweets" }, { timeout: ACTOR_TIMEOUT_SECS });
+            .call(
+              { tweets: tweetId, max_results: 1, mode: "Get a Few Tweets" },
+              { timeout: ACTOR_TIMEOUT_SECS },
+            );
 
-          const { items: viewItems } = await client.dataset(viewsRun.defaultDatasetId).listItems();
+          const { items: viewItems } = await client
+            .dataset(viewsRun.defaultDatasetId)
+            .listItems();
           if (viewItems.length > 0) {
             viewCount = (viewItems[0] as any).view_count ?? null;
           }

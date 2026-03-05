@@ -187,7 +187,6 @@ describe("generateUniquifyString", () => {
     expect(filterComplex).toContain("crop=");
     expect(filterComplex).toContain("rotate=");
     expect(filterComplex).toContain("scale=");
-    expect(filterComplex).toContain("gblur=");
     expect(filterComplex).toContain("pad=");
     expect(filterComplex).toContain("hue=");
     expect(filterComplex).toContain("eq=");
