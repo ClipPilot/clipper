@@ -19,7 +19,7 @@ import { transcribeVideoService } from "../services/clips/transcription.service"
 import { convertWordsToCaptionEntries, CaptionEntry } from "../services/clips/captions.service";
 import { getTeamUsage } from "../middleware/subscription.middleware";
 import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
-import { ugcScriptService } from "../services/ai-ugc/ugcScript.service";
+import { ugcScriptService, detectSilentMode } from "../services/ai-ugc/ugcScript.service";
 import type { ShotType } from "../types/ugcScript.types";
 
 interface AuthRequest extends Request {
@@ -217,9 +217,9 @@ export class UGCVideoController {
     try {
       const { teamId, scriptId, voiceId } = req.body;
 
-      if (!teamId || !scriptId || !voiceId) {
+      if (!teamId || !scriptId) {
         return res.status(400).json({
-          error: "teamId, scriptId, and voiceId are required",
+          error: "teamId and scriptId are required",
         });
       }
 
@@ -255,6 +255,19 @@ export class UGCVideoController {
       if (!selectedScript?.scenes?.length) {
         return res.status(400).json({
           error: "No scenes found in the selected script variant",
+        });
+      }
+
+      // Detect silent mode from structure or custom pattern
+      const isSilent = detectSilentMode(
+        script.structure_id || "",
+        script.custom_pattern as { type: string; shot: string }[] | null,
+      );
+
+      // voiceId is required unless silent mode
+      if (!isSilent && !voiceId) {
+        return res.status(400).json({
+          error: "voiceId is required for non-silent videos",
         });
       }
 
@@ -372,7 +385,7 @@ export class UGCVideoController {
           team_id: teamId,
           user_id: req.user.dbUserId,
           script_id: scriptId,
-          voice_id: voiceId,
+          voice_id: voiceId || "",
           status: "queued",
           progress: 0,
           progress_message: "Queued for video generation...",
@@ -385,8 +398,9 @@ export class UGCVideoController {
         teamId,
         userId: req.user.dbUserId,
         scriptId,
-        voiceId,
+        voiceId: voiceId || "",
         scenes,
+        isSilent,
       });
 
       return res.status(202).json({

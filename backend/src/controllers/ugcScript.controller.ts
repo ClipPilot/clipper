@@ -26,6 +26,7 @@ export class UGCScriptController {
         numberOfVariations,
         structureId,
         customPattern,
+        isSilent,
       } = req.body;
 
       if (!teamId || !characterId) {
@@ -82,6 +83,7 @@ export class UGCScriptController {
         numberOfVariations: numberOfVariations || 2,
         structureId: structureId || "classic",
         customPattern,
+        isSilent: !!isSilent,
       });
 
       return res.status(202).json({

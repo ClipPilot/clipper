@@ -6,7 +6,7 @@ import { Card, CardBody, Button, Input, Textarea, Tabs, Tab } from "@heroui/reac
 import { Icon } from "@iconify/react";
 import { ProductImageUploader } from "../ProductImageUploader";
 import { ugcScriptAPI } from "@/api/ugc";
-import { scriptIdAtom, scriptsAtom, selectedVariantIndexAtom, productImageKeysAtom, sceneImagesAtom, videoJobIdAtom, videoStatusAtom, freshStartAtom } from "@/store/ugc";
+import { scriptIdAtom, scriptsAtom, selectedVariantIndexAtom, productImageKeysAtom, sceneImagesAtom, videoJobIdAtom, videoStatusAtom, freshStartAtom, isSilentAtom } from "@/store/ugc";
 import type { UGCScript, UGCScene, ProductImage, ScriptSummary } from "../types";
 import type { ScriptStepProps, ScriptPhase, CustomPatternStep } from "./types";
 import { CharacterPreviewCard } from "./CharacterPreviewCard";
@@ -32,6 +32,7 @@ export function ScriptStep({
   const [, setVideoJobId] = useAtom(videoJobIdAtom);
   const [, setVideoStatus] = useAtom(videoStatusAtom);
   const [, setFreshStart] = useAtom(freshStartAtom);
+  const [, setIsSilentGlobal] = useAtom(isSilentAtom);
 
   // Phase state
   const [phase, setPhase] = useState<ScriptPhase>("upload");
@@ -197,6 +198,7 @@ export function ScriptStep({
       setAutoStructureReasoning(result.reasoning);
       setAutoStructureName(result.name);
       setIsAutoSilent(result.isSilent);
+      setIsSilentGlobal(result.isSilent);
       setAutoStructureDirection(scriptDirection);
     } catch (err: any) {
       setError(err.message || "Failed to generate structure");
@@ -205,6 +207,8 @@ export function ScriptStep({
     }
   };
 
+  const SILENT_TEMPLATE_IDS = new Set(["silent-before-after", "silent-showcase", "silent-montage"]);
+
   const handleStructureChange = (structureId: string) => {
     setSelectedStructureId(structureId);
     if (structureId !== "auto") {
@@ -212,6 +216,9 @@ export function ScriptStep({
       setAutoStructureName(undefined);
       setIsAutoSilent(false);
       setAutoStructureDirection("");
+      const silent = SILENT_TEMPLATE_IDS.has(structureId);
+      setIsAutoSilent(silent);
+      setIsSilentGlobal(silent);
       if (structureId !== "custom") {
         setCustomPattern([
           { type: "hook", shot: "a-roll" },
@@ -226,6 +233,7 @@ export function ScriptStep({
       setAutoStructureReasoning(undefined);
       setAutoStructureName(undefined);
       setIsAutoSilent(false);
+      setIsSilentGlobal(false);
       setAutoStructureDirection("");
     }
   };
@@ -248,6 +256,7 @@ export function ScriptStep({
       scriptDirection,
       selectedStructureId: effectiveStructureId,
       customPattern: effectiveCustomPattern,
+      isSilent: isAutoSilent || SILENT_TEMPLATE_IDS.has(selectedStructureId),
     });
 
     if (!success) {
@@ -541,6 +550,29 @@ export function ScriptStep({
                 onChange={(e) => setScriptDirection(e.target.value)}
                 minRows={3}
               />
+              <Button
+                size="sm"
+                variant={isAutoSilent ? "solid" : "bordered"}
+                className={
+                  isAutoSilent
+                    ? "bg-accent-400 text-white font-medium"
+                    : "border-border-base text-text-secondary font-medium"
+                }
+                startContent={<Icon icon={isAutoSilent ? "solar:volume-cross-bold" : "solar:volume-loud-bold"} width={16} />}
+                onPress={() => {
+                  const next = !isAutoSilent;
+                  setIsAutoSilent(next);
+                  setIsSilentGlobal(next);
+                  if (next) {
+                    // Force all pattern scenes to "visual" shot type
+                    setCustomPattern((prev) =>
+                      prev.map((s) => ({ ...s, shot: "visual" as const }))
+                    );
+                  }
+                }}
+              >
+                {isAutoSilent ? "Silent Mode" : "Silent Mode Off"}
+              </Button>
             </CardBody>
           </Card>
 

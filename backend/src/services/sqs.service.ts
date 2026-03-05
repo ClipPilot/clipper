@@ -305,6 +305,7 @@ export interface GenerateScriptJob extends BaseJob {
   numberOfVariations: number;
   structureId: string;
   customPattern?: { type: string; shot: string }[];
+  isSilent?: boolean;
 }
 
 export interface GenerateUGCVideoJob extends BaseJob {
@@ -333,6 +334,7 @@ export interface GenerateUGCVideoJob extends BaseJob {
   }>;
   regenerateSceneId?: string;
   ttsSpeed?: number;
+  isSilent?: boolean;
 }
 
 export interface KlingFaceSwapJob extends BaseJob {
@@ -643,6 +645,7 @@ class SQSService {
     numberOfVariations: number;
     structureId: string;
     customPattern?: { type: string; shot: string }[];
+    isSilent?: boolean;
   }): Promise<string> {
     const job: GenerateScriptJob = {
       type: "generate-script",
@@ -657,6 +660,7 @@ class SQSService {
       numberOfVariations: params.numberOfVariations,
       structureId: params.structureId,
       customPattern: params.customPattern,
+      isSilent: params.isSilent,
       createdAt: new Date().toISOString(),
     };
 
@@ -675,6 +679,7 @@ class SQSService {
     productImageKeys?: string[];
     adCloneProjectId?: string;
     ttsSpeed?: number;
+    isSilent?: boolean;
   }): Promise<string> {
     const job: GenerateUGCVideoJob = {
       type: "generate-ugc-video",
@@ -686,6 +691,7 @@ class SQSService {
       scenes: params.scenes || [],
       regenerateSceneId: params.regenerateSceneId,
       ttsSpeed: params.ttsSpeed,
+      isSilent: params.isSilent,
       createdAt: new Date().toISOString(),
     };
 

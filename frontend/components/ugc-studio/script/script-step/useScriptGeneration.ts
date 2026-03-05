@@ -19,6 +19,7 @@ interface GenerateScriptParams {
   scriptDirection: string;
   selectedStructureId: string;
   customPattern?: CustomPatternStep[];
+  isSilent?: boolean;
 }
 
 const POLL_INTERVAL = 5000; // Poll every 5 seconds as fallback
@@ -104,7 +105,7 @@ export function useScriptGeneration({
   }, [onScriptGenerated, onError, clearPolling]);
 
   const generate = useCallback(async (params: GenerateScriptParams) => {
-    const { productImages, productName, scriptDirection, selectedStructureId, customPattern } = params;
+    const { productImages, productName, scriptDirection, selectedStructureId, customPattern, isSilent } = params;
 
     if (!scriptDirection.trim()) {
       onError("Please provide a script direction");
@@ -133,6 +134,7 @@ export function useScriptGeneration({
         numberOfVariations: 2,
         structureId: selectedStructureId,
         customPattern: selectedStructureId === "custom" ? customPattern : undefined,
+        isSilent: isSilent || undefined,
       });
 
       setState((prev) => ({

@@ -101,6 +101,7 @@ export interface GenerateScriptRequest {
   numberOfVariations?: number;
   structureId?: string;
   customPattern?: { type: SceneType; shot: ShotType | "visual" }[];
+  isSilent?: boolean;
 }
 
 export interface GenerateScriptResponse {

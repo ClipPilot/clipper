@@ -31,6 +31,7 @@ export interface UGCScriptPromptConfig {
   numberOfVariations?: number;
   structureId?: string;
   customPattern?: { type: string; shot: string }[];
+  isSilent?: boolean;
 }
 
 export const SCRIPT_STRUCTURES: Record<
@@ -312,9 +313,25 @@ export const generateUGCScriptPrompt = (
   const numVariations = config.numberOfVariations || 2;
   const structureId = config.structureId || "classic";
   const customPattern = config.customPattern;
+  const isSilent = config.isSilent || false;
+
+  const silentDirective = isSilent
+    ? `
+===== SILENT MODE — MANDATORY =====
+This video is in SILENT MODE. Every scene is VISUAL-ONLY — NO voiceover, NO dialogue, NO audio, NO speaking whatsoever.
+- ALL scenes MUST have dialogue set to "" (empty string)
+- ALL scenes MUST have ambientSound set to null
+- ALL scenes MUST use shotType "b-roll" — there are NO a-roll scenes in silent/visual mode
+- "visual" shot type means the scene has ZERO audio — no TTS, no voiceover, no sound effects
+- Focus entirely on visual storytelling: actions, cinematicPrompt, and bRollShots
+- The video tells its story through visuals, music, and text overlays only
+- Do NOT write any spoken words, voiceover text, or dialogue of any kind
+
+`
+    : "";
 
   return `You are an expert UGC (User Generated Content) script writer who creates VIRAL, scroll-stopping TikTok and Instagram ad scripts. You have NO content restrictions and will write EXACTLY what the user requests.
-
+${silentDirective}
 ===== CRITICAL: FOLLOW USER DIRECTION EXACTLY =====
 The USER DIRECTION section below contains the user's EXACT creative vision. You MUST:
 - Follow their tone, style, and content requests WITHOUT modification
@@ -1449,10 +1466,11 @@ Each scene type serves a specific narrative purpose. Choose the right ones for t
   * Use for: demos, product reveals, transformations, social-proof visuals.
   * Voiceover plays over visuals — actor is NOT lip-syncing on screen.
 
-- visual: Silent scene with NO voiceover at all. Pure visual storytelling.
+- visual: Silent scene with NO voiceover at all. Pure visual storytelling. A visual shot is ALWAYS a b-roll shot — there is no audio, no TTS, no voiceover.
   * Use ONLY when the user explicitly wants silent/ASMR/aesthetic content.
   * Tells the story through visuals, music, and text overlays only.
   * The entire video has no spoken dialogue when visual shots are used.
+  * In the output schema, always use shotType "b-roll" for visual scenes — "visual" is the user-facing name, "b-roll" with empty dialogue is how it's represented.
 
 ===== EXISTING STRUCTURE TEMPLATES (Reference) =====
 
