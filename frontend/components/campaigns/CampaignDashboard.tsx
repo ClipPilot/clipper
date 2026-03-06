@@ -447,7 +447,6 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
         onBack={onBack}
         onVideoAdded={handleVideoAdded}
         onVideosAdded={handleVideosAdded}
-        onVideoRemoved={handleVideoRemoved}
         onCampaignUpdated={handleCampaignUpdated}
       />
     );

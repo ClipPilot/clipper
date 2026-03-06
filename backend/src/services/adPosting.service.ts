@@ -589,7 +589,7 @@ class AdPostingService {
       pagination: {
         page,
         pageSize,
-        total: totalPosts,
+        total: totalVideos,
         totalPages: Math.ceil(totalPosts / pageSize),
         totalPosts,
       },

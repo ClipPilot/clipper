@@ -315,6 +315,13 @@ export const cutClip = (
     return Promise.reject(error);
   }
 
+  if (duration < 0.5) {
+    console.warn(
+      `[CUT] Segment too short (${duration.toFixed(3)}s), extending end by 1s`,
+    );
+    end = start + Math.max(duration, 1);
+  }
+
   return new Promise((resolve, reject) => {
     ffmpeg(input)
       .setStartTime(start)
@@ -1945,11 +1952,37 @@ export const changeAspectRatio = async (
   const cropX = Math.round((srcWidth - targetWidth) / 2);
   const cropY = Math.round((srcHeight - targetHeight) / 2);
 
-  return cropVideo(inputPath, outputPath, {
-    x: cropX,
-    y: cropY,
-    width: targetWidth,
-    height: targetHeight,
+  // Scale to standard output dimensions so overlays (headings, captions) render correctly
+  const outputWidthMap: Record<string, number> = {
+    "9:16": 1080,
+    "16:9": 1920,
+    "1:1": 1080,
+    "4:5": 1080,
+  };
+  const outW = outputWidthMap[aspectRatio];
+  const outH = Math.round(outW / targetRatio);
+
+  return new Promise((resolve, reject) => {
+    ffmpeg(inputPath)
+      .videoFilters([
+        `crop=${targetWidth}:${targetHeight}:${cropX}:${cropY}`,
+        `scale=${outW}:${outH}`,
+      ])
+      .outputOptions([
+        "-c:v libx264",
+        "-preset fast",
+        "-crf 23",
+        ...MOBILE_VIDEO_SETTINGS,
+        "-c:a aac",
+        "-b:a 128k",
+        "-ar 48000",
+        "-movflags +faststart",
+        "-map_metadata",
+        "-1",
+      ])
+      .save(outputPath)
+      .on("end", () => resolve(outputPath))
+      .on("error", (err) => reject(err));
   });
 };
 
