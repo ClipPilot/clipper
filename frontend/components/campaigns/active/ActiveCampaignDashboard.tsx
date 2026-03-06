@@ -553,9 +553,10 @@ export function ActiveCampaignDashboard({
                     <tbody className="divide-y divide-border-base">
                       {pagedGroups.map((group) => {
                         // Determine aggregate status
+                        const noPosts = group.posts.length === 0;
                         const hasProcessing = group.statuses.includes("processing");
                         const allPosted = group.statuses.every((s) => s === "posted");
-                        const aggregateStatus = hasProcessing ? "processing" : allPosted ? "posted" : "scheduled";
+                        const aggregateStatus = noPosts ? "pending" : hasProcessing ? "processing" : allPosted ? "posted" : "scheduled";
                         const statusStyle = getPostStatusStyle(aggregateStatus);
                         return (
                           <tr key={group.clipId ?? group.posts[0]?.id} className="hover:bg-surface-elevated/50 transition-colors">
@@ -582,21 +583,25 @@ export function ActiveCampaignDashboard({
                             </td>
                             {/* Platforms — chip per platform with count */}
                             <td className="px-6 py-3">
-                              <div className="flex flex-wrap gap-1.5">
-                                {Object.entries(group.platforms).map(([platform, count]) => (
-                                  <span
-                                    key={platform}
-                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium ${platformChipClass(platform)}`}
-                                  >
-                                    <Icon icon={platformIcon(platform)} width={12} className={platformIconColor(platform)} />
-                                    {count > 1 ? `${platformDisplayName(platform)} x${count}` : platformDisplayName(platform)}
-                                  </span>
-                                ))}
-                              </div>
+                              {Object.keys(group.platforms).length > 0 ? (
+                                <div className="flex flex-wrap gap-1.5">
+                                  {Object.entries(group.platforms).map(([platform, count]) => (
+                                    <span
+                                      key={platform}
+                                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-medium ${platformChipClass(platform)}`}
+                                    >
+                                      <Icon icon={platformIcon(platform)} width={12} className={platformIconColor(platform)} />
+                                      {count > 1 ? `${platformDisplayName(platform)} x${count}` : platformDisplayName(platform)}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-text-secondary italic">No platforms yet</span>
+                              )}
                             </td>
                             {/* Total posts count */}
                             <td className="px-6 py-3">
-                              <span className="text-sm text-text-secondary">{group.posts.length}</span>
+                              <span className="text-sm text-text-secondary">{group.posts.length || "\u2014"}</span>
                             </td>
                             {/* Aggregate status */}
                             <td className="px-6 py-3">
