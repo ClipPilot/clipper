@@ -3,10 +3,12 @@ import { PromptType } from "../constants/promptTypes";
 export interface PromptConfig {
   length: number;
   hookLength: number;
+  videoDuration?: number;
   transcriptText?: string;
   transcriptObject?: string;
   numberOfVideos?: number;
   userTextPrompt?: string;
+  headingInstructions?: string;
   isBatch?: boolean;
   batchTranscripts?: Array<{
     videoIndex: number;
@@ -14,6 +16,16 @@ export interface PromptConfig {
     transcriptObject: string;
     fileName?: string;
   }>;
+}
+
+export function getHeadingGuidance(headingInstructions?: string): string {
+  if (!headingInstructions) return "";
+  return `\nHEADING INSTRUCTIONS: When generating the "viralHeading" field, follow these directions: ${headingInstructions}\n`;
+}
+
+function getVideoDurationConstraint(videoDuration?: number): string {
+  if (!videoDuration) return "";
+  return `\nVIDEO DURATION: This video is ${videoDuration.toFixed(1)} seconds long. ALL timestamps MUST be between 0 and ${videoDuration.toFixed(1)}. NEVER use a timestamp greater than ${videoDuration.toFixed(1)}.\n`;
 }
 
 // Batch prompt addon template
@@ -25,7 +37,7 @@ SOURCE VIDEOS:
 {{VIDEO_LIST}}
 
 CRITICAL BATCH INSTRUCTIONS:
-1. You can select the HOOK from ANY of the source videos - choose the most engaging moment across all videos
+1. You MUST select a HOOK from ANY of the source videos - choose the most engaging moment across all videos. Only set hook to null if the user explicitly says "no hook".
 2. You can MIX segments from DIFFERENT source videos in the main content
 3. Each segment MUST include a "sourceVideoIndex" field (0, 1, 2, etc.) to identify which video it comes from
 4. Create cohesive clips that combine the BEST moments from all available videos
@@ -74,21 +86,24 @@ export const generateBusinessPrompt = (config: PromptConfig): string => {
   const {
     length,
     hookLength,
+    videoDuration,
     transcriptText = "",
     transcriptObject = "",
     numberOfVideos = 1,
     userTextPrompt,
+    headingInstructions,
   } = config;
   const mainLength = length - hookLength;
 
   return `
-You are an expert short-form video editor. You are given the transcript of a raw long form video. You have to
+You are an expert short-form video editor.
+${getVideoDurationConstraint(videoDuration)} You are given the transcript of a raw long form video. You have to
 identify and put together and convert this video into a couple clips, and put them together into a high retention
 short form video suitable for Tiktok. As you put these clips together, make sure the flow of events from the
 transcript cut to cut makes some sense.
 
 ${userTextPrompt ? `USER SPECIFIC REQUEST: The user wants you to focus on: "${userTextPrompt}". Try to find clips that align with this request while maintaining high engagement and quality.` : ""}
-
+${getHeadingGuidance(headingInstructions)}
 ${numberOfVideos > 1 ? `
 ===== MULTIPLE VARIATIONS (${numberOfVideos} REQUIRED) =====
 You MUST generate ${numberOfVideos} COMPLETELY DIFFERENT clips from this video. Each variation must tell a DIFFERENT story using DIFFERENT parts of the video.
@@ -116,6 +131,8 @@ You will be given:
 
 Your Goals:
 1. Find an emotionally charged or intriguing HOOK that is AROUND ${hookLength} seconds long (±2 seconds is fine).
+   - You MUST include a hook by default. Only set "hook": null if the user explicitly says "no hook" in their instructions.
+   - The hook MUST be at least 3 seconds long (end - start >= 3). NEVER make a hook shorter than 3 seconds.
    - Must instantly grab attention.
    - No filler, no introductions, no stage directions, no "Speaker 0/1", no camera cues.
    - Must come directly from transcript text.
@@ -146,15 +163,16 @@ Notes:
 - The hook should be AROUND ${hookLength} seconds, and the main clips AROUND ${mainLength} seconds total. These are targets, not hard limits.
 
 CRITICAL TIMESTAMP RULES:
+- TIMESTAMPS ARE IN SECONDS (e.g., 145.5 means 2 minutes 25.5 seconds into the video). DO NOT use M:SS or M.SS format — use pure seconds only!
 - "end" MUST BE GREATER THAN "start" - ALWAYS (end > start)
 - MINIMUM SEGMENT LENGTH: Each segment (hook and main) must be AT LEAST 3 seconds long (end - start >= 3). NEVER create segments shorter than 3 seconds.
-- Hook should be around ${hookLength}-${hookLength + 2} seconds long, NEVER shorter than 3 seconds
+- Hook (if included) should be around ${hookLength}-${hookLength + 2} seconds long, NEVER shorter than 3 seconds
 - Each main segment should be at least 3 seconds long
 - Round timestamps to 1 decimal place
 
 Your Task:
 Given the transcript, follow all rules above and return:
-- the strongest possible hook,
+- the strongest possible hook (or null only if user explicitly said "no hook"),
 - the best clips stitched together in the middle — pull from ANYWHERE in the video, skip boring parts, combine the strongest moments
 - Full story flow should be: Engaging Hook - Context/Story to set the scene if necessary - Product Demo/Key Info - Closing. Use 3-5 clips and stitch them together so the final video is engaging throughout.
 - When making the Product demo try to make it one clip (two if necessary), same with context (no clips if not needed, one or two max.)
@@ -176,20 +194,23 @@ export const generateViralPrompt = (config: PromptConfig): string => {
   const {
     length,
     hookLength,
+    videoDuration,
     transcriptText = "",
     transcriptObject = "",
     numberOfVideos = 1,
     userTextPrompt,
+    headingInstructions,
   } = config;
   const mainLength = length - hookLength;
 
   return `
-You are an expert viral short-form video editor specializing in gaming streams, vlogs, and creator content. You are given
+You are an expert viral short-form video editor
+${getVideoDurationConstraint(videoDuration)} specializing in gaming streams, vlogs, and creator content. You are given
 the transcript of a raw long form video. Your goal is to identify the most engaging, funny, or attention-grabbing moments
 and combine them into a viral-worthy clip suitable for TikTok, YouTube Shorts, or Instagram Reels.
 
 ${userTextPrompt ? `USER SPECIFIC REQUEST: The user wants you to focus on: "${userTextPrompt}". Try to find clips that align with this request while maintaining high engagement and viral potential.` : ""}
-
+${getHeadingGuidance(headingInstructions)}
 ${numberOfVideos > 1 ? `
 ===== MULTIPLE VARIATIONS (${numberOfVideos} REQUIRED) =====
 You MUST generate ${numberOfVideos} COMPLETELY DIFFERENT viral clips from this video. Each must showcase a DIFFERENT moment.
@@ -241,6 +262,8 @@ Use the transcript for precise timestamps, but let the VISUAL content guide whic
    The "cold open" that stops the scroll. Must come directly from transcript text.
    Look for: strong reactions, unexpected events, funny one-liners, epic fails, clutch moments.
    Profanity and strong reactions are HIGHLY encouraged if authentic.
+   You MUST include a hook by default. Only set "hook": null if the user explicitly says "no hook" in their instructions.
+   The hook MUST be at least 3 seconds long.
 
 2. BUILD-UP (the body, ~${mainLength} seconds): The story around the hook moment.
    Can show what LED TO the hook, what FOLLOWS it, or context that makes it hit harder.
@@ -295,12 +318,13 @@ Your Goals:
    - Meta commentary about filming
 
 TIMESTAMP RULES:
+- TIMESTAMPS ARE IN SECONDS (e.g., 145.5 means 2 minutes 25.5 seconds into the video). DO NOT use M:SS or M.SS format — use pure seconds only!
 - "start" and "end" must correspond to timestamps from the transcript
 - "end" MUST BE GREATER THAN "start" — ALWAYS (end > start)
-- MINIMUM 3 seconds per segment (end - start >= 3). Hook: ${hookLength}-${hookLength + 2}s, NEVER shorter than 3s
+- MINIMUM 3 seconds per segment (end - start >= 3). Hook (if included): ${hookLength}-${hookLength + 2}s, NEVER shorter than 3s
 - Round timestamps to 1 decimal place
 - Use 2-4 segments in the main array. Build-up clips should generally be in chronological order.
-- Combined length should be AROUND ${length} seconds (hook ~${hookLength}s + main ~${mainLength}s). These are targets, not hard limits.
+- Combined length should be AROUND ${length} seconds. These are targets, not hard limits.
 - The main array MUST have build-up/context — NEVER return main with ONLY the hook timestamps repeated.
 
 Your Task:
@@ -322,17 +346,21 @@ export const generateGamingPrompt = (config: PromptConfig): string => {
   const {
     length,
     hookLength,
+    videoDuration,
     numberOfVideos = 1,
     userTextPrompt,
+    headingInstructions,
   } = config;
   const mainLength = length - hookLength;
 
   return `
-You are an expert gaming clip editor. You are analyzing a GAMEPLAY VIDEO to find the most VISUALLY EXCITING moments.
+You are an expert gaming clip editor.
+${getVideoDurationConstraint(videoDuration)} You are analyzing a GAMEPLAY VIDEO to find the most VISUALLY EXCITING moments.
 
 CRITICAL: WATCH THE VIDEO CAREFULLY. Your job is to find PEAK GAMEPLAY MOMENTS based on what you SEE happening on screen.
 
 ${userTextPrompt ? `GAME/CONTEXT: "${userTextPrompt}"` : ""}
+${getHeadingGuidance(headingInstructions)}
 
 ===== WHAT TO LOOK FOR (WATCH THE ACTUAL GAMEPLAY) =====
 
@@ -381,10 +409,10 @@ Listen for these AUDIO cues that indicate exciting moments:
 ===== OUTPUT STRUCTURE =====
 
 TARGET: AROUND ${length} seconds total (±15% is fine — quality matters more than hitting an exact number)
-- Hook (~${hookLength}s): The PEAK/CLIMAX moment
+- Hook (~${hookLength}s): The PEAK/CLIMAX moment. You MUST include a hook by default. Only set "hook": null if the user explicitly says "no hook" in their instructions.
 - Main (~${mainLength}s): Multiple segments that build up to AND include the climax
 
-CRITICAL STRUCTURE:
+CRITICAL STRUCTURE (when hook is included):
 1. Video STARTS with hook (climax teaser to grab attention)
 2. Main segments play (build-up, context, can be from different parts of video)
 3. Main ENDS with the climax moment again (same timestamps as hook for satisfying payoff) followed by reaction/aftermath
@@ -418,6 +446,7 @@ CRITICAL: Each of the ${numberOfVideos} clips MUST showcase a COMPLETELY DIFFERE
 ` : `Generate 1 clip highlighting the most exciting moment.`}
 
 ===== JSON OUTPUT FORMAT (can have multiple segments in main) =====
+NOTE: "hook" can be null only if the user explicitly requests "no hook".
 {
   "videos": [
     {
@@ -457,16 +486,16 @@ LENGTH CHECK: Hook (5.5s) + Main (15s + 14s + 6s + 11s = 46s) = 51.5s total ✓
 
 YOU MUST FOLLOW THESE RULES FOR EVERY SEGMENT:
 
-1. TIMESTAMPS ARE IN SECONDS (e.g., 1904.5 means 31 minutes 44.5 seconds into the video)
+1. TIMESTAMPS ARE IN SECONDS (e.g., 1904.5 means 31 minutes 44.5 seconds into the video). DO NOT use M:SS or M.SS format — use pure decimal seconds only!
 2. "end" MUST BE GREATER THAN "start" - ALWAYS (end > start)
 3. MINIMUM SEGMENT LENGTH: Each segment must be AT LEAST 3 seconds long (end - start >= 3). NEVER create segments shorter than 3 seconds.
-4. Hook should be ${hookLength}-${hookLength + 2} seconds long, NEVER shorter than 3 seconds
+4. Hook (if included) should be ${hookLength}-${hookLength + 2} seconds long, NEVER shorter than 3 seconds
 5. Each main segment should be 5-20 seconds long
 6. DO NOT use timestamps beyond the video length
 7. Round timestamps to 1 decimal place (e.g., 1904.5, not 1904.523)
 
 VERIFY BEFORE SUBMITTING:
-- Hook: end - start >= ${hookLength} seconds
+- Hook (if included): end - start >= ${hookLength} seconds
 - Each Main segment: end - start >= 3 seconds
 - Total duration (hook + all main segments) ≈ ${length} seconds
 
@@ -497,19 +526,23 @@ export const generateGeneralPrompt = (config: PromptConfig): string => {
   const {
     length,
     hookLength,
+    videoDuration,
     transcriptText = "",
     transcriptObject = "",
     numberOfVideos = 1,
     userTextPrompt,
+    headingInstructions,
   } = config;
   const mainLength = length - hookLength;
 
   return `
-You are an expert short-form video editor. You are analyzing a VIDEO to find the most VISUALLY and EMOTIONALLY engaging moments.
+You are an expert short-form video editor. You are analyzing a VIDEO
+${getVideoDurationConstraint(videoDuration)} to find the most VISUALLY and EMOTIONALLY engaging moments.
 
 CRITICAL: WATCH THE ENTIRE VIDEO FRAME BY FRAME. You must analyze both what you SEE visually and what you HEAR being said. Base your clip selections on the actual video content.
 
 ${userTextPrompt ? `USER SPECIFIC REQUEST: "${userTextPrompt}". Prioritize moments that align with this while watching the video.` : ""}
+${getHeadingGuidance(headingInstructions)}
 
 ${numberOfVideos > 1 ? `
 ===== MULTIPLE VARIATIONS (${numberOfVideos} REQUIRED) =====
@@ -576,6 +609,8 @@ TIER 2 - STRONG CLIPS:
 
 TARGET: AROUND ${length} seconds total (±15% is fine — quality matters more than hitting an exact number)
 - Hook (~${hookLength}s, ±2 seconds): The MOST visually compelling moment. This plays FIRST.
+  You MUST include a hook by default. Only set "hook": null if the user explicitly says "no hook" in their instructions.
+  The hook MUST be at least 3 seconds long.
 - Main (~${mainLength}s): 2-4 segments that build the story with visual interest throughout
 
 HOOK SELECTION (watch the video!):
@@ -599,22 +634,23 @@ CUT BORING PARTS: If a segment contains a dull, low-energy, or filler section in
 
 YOU MUST FOLLOW THESE RULES FOR EVERY SEGMENT:
 
-1. TIMESTAMPS ARE IN SECONDS (e.g., 145.5 means 2 minutes 25.5 seconds into the video)
+1. TIMESTAMPS ARE IN SECONDS (e.g., 145.5 means 2 minutes 25.5 seconds into the video). DO NOT use M:SS or M.SS format — use pure decimal seconds only!
 2. "end" MUST BE GREATER THAN "start" - ALWAYS (end > start)
 3. MINIMUM SEGMENT LENGTH: Each segment must be AT LEAST 3 seconds long (end - start >= 3). NEVER create segments shorter than 3 seconds.
-4. Hook should be around ${hookLength}-${hookLength + 2} seconds long, NEVER shorter than 3 seconds
+4. Hook (if included) should be around ${hookLength}-${hookLength + 2} seconds long, NEVER shorter than 3 seconds
 5. Each main segment should be 5-15 seconds long
 6. DO NOT use timestamps beyond the video length
 7. Round timestamps to 1 decimal place (e.g., 145.5, not 145.523)
 
 VERIFY BEFORE SUBMITTING:
-- Hook: end - start >= ${hookLength} seconds
+- Hook (if included): end - start >= ${hookLength} seconds
 - Each Main segment: end - start >= 3 seconds
 - Total duration (hook + all main segments) ≈ ${length} seconds (approximate — don't force filler to hit an exact number)
 
 ===== OUTPUT FORMAT =====
 
 Generate ${numberOfVideos} clips. Stitch together the BEST moments from ANYWHERE in the video. REMINDER: Each clip MUST use completely different timestamps — no overlapping hooks or segments between variations.
+NOTE: "hook" can be null only if the user explicitly requests "no hook".
 
 {
   "videos": [

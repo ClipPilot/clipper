@@ -810,6 +810,7 @@ export const adminAPI = {
     campaignId: number,
     clipId: number,
     platformQuantities: Record<string, number>,
+    scramblingLevel: "light" | "heavy" = "heavy",
   ): Promise<{ message: string; postIds: Array<{ id: number; platform: string }> }> {
     const response = await fetch(
       `${API_URL}/admin/campaigns/${campaignId}/post`,
@@ -819,7 +820,7 @@ export const adminAPI = {
           "Content-Type": "application/json",
           ...getAuthHeaders(),
         },
-        body: JSON.stringify({ clipId, platformQuantities }),
+        body: JSON.stringify({ clipId, platformQuantities, scramblingLevel }),
       },
     );
     return handleResponse(response);

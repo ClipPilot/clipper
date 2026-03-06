@@ -67,6 +67,7 @@ export async function processBatchClipVideoJob(
       customPrompt: options.customPrompt,
       textPrompt: options.textPrompt,
       numberOfVideos: options.numberOfVideos,
+      headingInstructions: options.headingInstructions,
       batchTranscripts: transcriptions.map((t) => ({
         videoIndex: t.videoIndex,
         transcription: t.transcription,
@@ -192,10 +193,11 @@ export async function processBatchClipVideoJob(
           } else {
             try {
               const clipTranscript = suggestions.combined_script
-                || [suggestions.hook.text, ...suggestions.main.map(m => m.text)].join(" ");
+                || [...(suggestions.hook ? [suggestions.hook.text] : []), ...suggestions.main.map(m => m.text)].join(" ");
               autoHeading = await generateViralHeading({
                 transcription: clipTranscript,
                 title: suggestions.clipTitle || "",
+                headingInstructions: options.headingInstructions,
               });
               console.log(`Batch clip ${i + 1} fallback heading: "${autoHeading}"`);
               perClipOptions.customText = autoHeading;

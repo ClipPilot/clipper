@@ -243,7 +243,7 @@ export async function postCampaignClip(req: AdminRequest, res: Response) {
     const campaignId = parseInt(req.params.campaignId);
     if (isNaN(campaignId)) return res.status(400).json({ error: "Invalid campaign ID" });
 
-    const { clipId, platformQuantities } = req.body;
+    const { clipId, platformQuantities, scramblingLevel } = req.body;
     if (!clipId || !platformQuantities) {
       return res.status(400).json({ error: "clipId and platformQuantities are required" });
     }
@@ -252,6 +252,7 @@ export async function postCampaignClip(req: AdminRequest, res: Response) {
       campaignId,
       Number(clipId),
       platformQuantities,
+      scramblingLevel === "light" ? "light" : "heavy",
     );
 
     return res.status(202).json({ message: "Campaign posting started", ...result });

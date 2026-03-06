@@ -20,6 +20,7 @@ import {
   detectFacecamFromS3Key,
   detectMultipleFacesFromS3Key,
 } from "../../services/facecamDetect.service";
+import { getVideoDuration } from "../../services/clips/videoEditor.service";
 import type { ClipServiceOptions } from "../../services/clips/clip.service";
 import {
   buildSpeakerSegments,
@@ -62,6 +63,10 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
       );
     }
 
+    // Get video duration for prompt context (prevents AI from suggesting out-of-bounds timestamps)
+    const videoDuration = await getVideoDuration(localVideoPath);
+    console.log(`Video duration: ${videoDuration.toFixed(1)}s`);
+
     const clipOptions: ClipGenerationOptions = {
       length: options.length,
       hookLength: options.hookLength,
@@ -69,6 +74,8 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
       customPrompt: options.customPrompt,
       textPrompt: options.textPrompt,
       numberOfVideos: options.numberOfVideos,
+      headingInstructions: options.headingInstructions,
+      videoDuration,
       videoPath:
         options.promptType === "gaming" || options.promptType === "general" || options.promptType === "viral"
           ? localVideoPath
@@ -259,12 +266,13 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
               const clipTranscript =
                 suggestions.combined_script ||
                 [
-                  suggestions.hook.text,
+                  ...(suggestions.hook ? [suggestions.hook.text] : []),
                   ...suggestions.main.map((m) => m.text),
                 ].join(" ");
               autoHeading = await generateViralHeading({
                 transcription: clipTranscript,
                 title: suggestions.clipTitle || "",
+                headingInstructions: options.headingInstructions,
               });
               console.log(`Clip ${i + 1} fallback heading: "${autoHeading}"`);
               perClipOptions.customText = autoHeading;

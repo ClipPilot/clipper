@@ -18,6 +18,7 @@ import { eq, and, inArray } from "drizzle-orm";
 import { s3Service } from "../../services/s3.service";
 import { googleDriveService } from "../../services/google/drive.service";
 import { generateUniquifyString, hasAudioStream } from "../../utils/videoUniquify";
+import { applyJumbledMetadata } from "../../utils/videoMetadata";
 import { emailNotiService } from "../../services/emailNoti.service";
 import { notifyAdPostingUpdate } from "../notify";
 import { checkSscdSimilarity, generateAdversarialVideo } from "../../services/sscdSimilarity.service";
@@ -53,7 +54,7 @@ function createLimiter(concurrency: number) {
 }
 
 export async function processAdPostingJob(job: AdPostingJob): Promise<void> {
-  const { teamId, clipId, platformQuantities, driveFolderId, clipPath, clipTitle, postIds } = job;
+  const { teamId, clipId, platformQuantities, driveFolderId, clipPath, clipTitle, postIds, scramblingLevel = "heavy" } = job;
 
   const tempDir = path.join(os.tmpdir(), `ad-posting-${teamId}-${clipId}-${Date.now()}`);
   fs.mkdirSync(tempDir, { recursive: true });
@@ -148,46 +149,55 @@ export async function processAdPostingJob(job: AdPostingJob): Promise<void> {
           });
 
           try {
-            await ffmpegLimit(async () => {
+            if (scramblingLevel === "light") {
+              // Light: metadata-only scrambling (stream copy, no re-encoding)
               console.log(
-                `[AdPosting] Re-encoding for ${displayName} copy ${copyIndex}/${platformTotal}...`
+                `[AdPosting] Light scramble (metadata only) for ${displayName} copy ${copyIndex}/${platformTotal}...`
               );
-              const { fullArgs } = generateUniquifyString(undefined, inputHasAudio);
-              const cmd = `ffmpeg -y -i "${inputPath}" ${fullArgs} "${outputPath}"`;
-              await execAsync(cmd, { timeout: 600000 });
-            });
+              await applyJumbledMetadata(inputPath, outputPath);
+            } else {
+              // Heavy: full uniquify (visual + audio + metadata) + perturbation
+              await ffmpegLimit(async () => {
+                console.log(
+                  `[AdPosting] Heavy scramble for ${displayName} copy ${copyIndex}/${platformTotal}...`
+                );
+                const { fullArgs } = generateUniquifyString(undefined, inputHasAudio);
+                const cmd = `ffmpeg -y -i "${inputPath}" ${fullArgs} "${outputPath}"`;
+                await execAsync(cmd, { timeout: 600000 });
+              });
 
-            // Layer 3: adversarial perturbation AFTER FFmpeg so the pattern survives
-            try {
-              const uniquifiedKey = `temp-perturb/${teamId}/${clipId}/${Date.now()}_${copyIndex}.mp4`;
-              await s3Service.uploadFile(outputPath, uniquifiedKey, "video/mp4");
-              const uniquifiedUrl = `s3://${config.aws.s3Bucket}/${uniquifiedKey}`;
-              const perturbedKey = `temp-perturbed/${teamId}/${clipId}/${Date.now()}_${copyIndex}.mp4`;
-              const perturbedResult = await generateAdversarialVideo(uniquifiedUrl, perturbedKey);
-              if (perturbedResult) {
-                console.log(`[AdPosting] Perturbation applied for ${displayName} copy ${copyIndex}`);
-                await s3Service.downloadFile(perturbedKey, outputPath);
-              } else {
-                console.warn(`[AdPosting] Perturbation failed for ${displayName} copy ${copyIndex}, using uniquified video`);
+              // Adversarial perturbation AFTER FFmpeg so the pattern survives
+              try {
+                const uniquifiedKey = `temp-perturb/${teamId}/${clipId}/${Date.now()}_${copyIndex}.mp4`;
+                await s3Service.uploadFile(outputPath, uniquifiedKey, "video/mp4");
+                const uniquifiedUrl = `s3://${config.aws.s3Bucket}/${uniquifiedKey}`;
+                const perturbedKey = `temp-perturbed/${teamId}/${clipId}/${Date.now()}_${copyIndex}.mp4`;
+                const perturbedResult = await generateAdversarialVideo(uniquifiedUrl, perturbedKey);
+                if (perturbedResult) {
+                  console.log(`[AdPosting] Perturbation applied for ${displayName} copy ${copyIndex}`);
+                  await s3Service.downloadFile(perturbedKey, outputPath);
+                } else {
+                  console.warn(`[AdPosting] Perturbation failed for ${displayName} copy ${copyIndex}, using uniquified video`);
+                }
+                s3Service.deleteObject(uniquifiedKey).catch(() => {});
+                s3Service.deleteObject(perturbedKey).catch(() => {});
+              } catch (perturbErr) {
+                console.warn(`[AdPosting] Perturbation error (non-blocking):`, perturbErr);
               }
-              s3Service.deleteObject(uniquifiedKey).catch(() => {});
-              s3Service.deleteObject(perturbedKey).catch(() => {});
-            } catch (perturbErr) {
-              console.warn(`[AdPosting] Perturbation error (non-blocking):`, perturbErr);
-            }
 
-            try {
-              const tempSscdKey = `temp-sscd/${teamId}/${clipId}/${Date.now()}_${copyIndex}.mp4`;
-              await s3Service.uploadFile(outputPath, tempSscdKey, "video/mp4");
-              const originalUrl = `s3://${config.aws.s3Bucket}/${clipPath}`;
-              const modifiedUrl = `s3://${config.aws.s3Bucket}/${tempSscdKey}`;
-              const result = await checkSscdSimilarity(originalUrl, modifiedUrl);
-              if (result) {
-                console.log(`[AdPosting] SSCD similarity for ${displayName} copy ${copyIndex}: ${result.cosine_similarity} (below ${result.threshold}: ${result.below_threshold})`);
+              try {
+                const tempSscdKey = `temp-sscd/${teamId}/${clipId}/${Date.now()}_${copyIndex}.mp4`;
+                await s3Service.uploadFile(outputPath, tempSscdKey, "video/mp4");
+                const originalUrl = `s3://${config.aws.s3Bucket}/${clipPath}`;
+                const modifiedUrl = `s3://${config.aws.s3Bucket}/${tempSscdKey}`;
+                const result = await checkSscdSimilarity(originalUrl, modifiedUrl);
+                if (result) {
+                  console.log(`[AdPosting] SSCD similarity for ${displayName} copy ${copyIndex}: ${result.cosine_similarity} (below ${result.threshold}: ${result.below_threshold})`);
+                }
+                await s3Service.deleteObject(tempSscdKey).catch(() => {});
+              } catch (sscdErr) {
+                console.warn(`[AdPosting] SSCD check failed (non-blocking):`, sscdErr);
               }
-              await s3Service.deleteObject(tempSscdKey).catch(() => {});
-            } catch (sscdErr) {
-              console.warn(`[AdPosting] SSCD check failed (non-blocking):`, sscdErr);
             }
 
             let currentPostId: number;

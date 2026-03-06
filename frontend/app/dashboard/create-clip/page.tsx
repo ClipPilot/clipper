@@ -94,6 +94,7 @@ export default function CreateClipPage() {
   const [textFont, setTextFont] = useState("Montserrat");
   const [textStyle, setTextStyle] = useState<"stroke" | "instagram">("stroke");
   const [autoHeading, setAutoHeading] = useState(true);
+  const [headingInstructions, setHeadingInstructions] = useState("");
   const [captions, setCaptions] = useState(false);
   const [captionColor, setCaptionColor] = useState("#FFD600");
   const [captionFont, setCaptionFont] = useState("Luckiest Guy");
@@ -319,7 +320,7 @@ export default function CreateClipPage() {
           customPrompt: customPrompt || undefined,
           textPrompt: customPrompt || undefined,
           numberOfVideos,
-          customText: customText || undefined,
+          customText: !autoHeading ? customText || undefined : undefined,
           textPosition,
           textColor,
           textFont,
@@ -328,7 +329,8 @@ export default function CreateClipPage() {
           captionFont,
           conversionMode,
           textStyle,
-          autoHeading: !customText ? autoHeading : undefined,
+          autoHeading,
+          headingInstructions: autoHeading && headingInstructions ? headingInstructions : undefined,
           backgroundMusicS3Key: musicS3Key || undefined,
         });
 
@@ -349,7 +351,7 @@ export default function CreateClipPage() {
           promptType,
           customPrompt: customPrompt || undefined,
           numberOfVideos,
-          customText: customText || undefined,
+          customText: !autoHeading ? customText || undefined : undefined,
           textPosition,
           textColor,
           textFont,
@@ -358,7 +360,8 @@ export default function CreateClipPage() {
           captionFont,
           conversionMode,
           textStyle,
-          autoHeading: !customText ? autoHeading : undefined,
+          autoHeading,
+          headingInstructions: autoHeading && headingInstructions ? headingInstructions : undefined,
           backgroundMusicS3Key: musicS3Key || undefined,
         });
 
@@ -731,6 +734,8 @@ export default function CreateClipPage() {
                       <TextOverlayPanel
                         customText={customText}
                         setCustomText={setCustomText}
+                        headingInstructions={headingInstructions}
+                        setHeadingInstructions={setHeadingInstructions}
                         textPosition={textPosition}
                         setTextPosition={setTextPosition}
                         textColor={textColor}

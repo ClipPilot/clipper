@@ -7,7 +7,7 @@ export interface ClipSegment {
 }
 
 export interface ClipSuggestions {
-  hook: ClipSegment;
+  hook?: ClipSegment | null;
   main: Array<ClipSegment>;
   combined_script: string;
   finalMessage: string;
@@ -23,9 +23,11 @@ export const ClipSegmentSchema = z.object({
 });
 
 export const ClipSuggestionsSchema = z.object({
-  hook: ClipSegmentSchema.describe(
-    "The attention-grabbing opening segment with start/end timestamps"
-  ),
+  hook: ClipSegmentSchema.nullable()
+    .optional()
+    .describe(
+      "The attention-grabbing opening segment with start/end timestamps. Set to null if no hook is needed."
+    ),
   main: z
     .array(ClipSegmentSchema)
     .describe(
@@ -69,7 +71,7 @@ export interface BatchClipSegment {
 }
 
 export interface BatchClipSuggestions {
-  hook: BatchClipSegment;
+  hook?: BatchClipSegment | null;
   main: Array<BatchClipSegment>;
   combined_script: string;
   finalMessage: string;
@@ -90,9 +92,11 @@ export const BatchClipSegmentSchema = z.object({
 });
 
 export const BatchClipSuggestionsSchema = z.object({
-  hook: BatchClipSegmentSchema.describe(
-    "The attention-grabbing opening segment from any source video"
-  ),
+  hook: BatchClipSegmentSchema.nullable()
+    .optional()
+    .describe(
+      "The attention-grabbing opening segment from any source video. Set to null if no hook is needed."
+    ),
   main: z
     .array(BatchClipSegmentSchema)
     .describe(

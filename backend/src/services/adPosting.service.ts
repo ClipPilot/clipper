@@ -155,6 +155,7 @@ class AdPostingService {
     campaignId: number,
     clipId: number,
     platformQuantities: PlatformQuantities,
+    scramblingLevel: "light" | "heavy" = "heavy",
   ): Promise<{ postIds: Array<{ id: number; platform: string }> }> {
     for (const [platform, qty] of Object.entries(platformQuantities)) {
       if (!VALID_PLATFORMS.has(platform)) {
@@ -228,6 +229,7 @@ class AdPostingService {
       clipPath: clip.clip_path,
       clipTitle: clip.title || `clip-${clipId}`,
       postIds,
+      scramblingLevel,
     });
 
     return { postIds };

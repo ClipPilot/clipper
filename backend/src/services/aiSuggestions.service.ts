@@ -5,6 +5,7 @@ import {
   ClipSuggestionsSchema,
   MultipleClipSuggestionsSchema,
   ClipSuggestions,
+  ClipSegment,
   BatchClipSuggestions,
   MultipleBatchClipSuggestionsSchema,
 } from "../types/ai.types";
@@ -20,6 +21,44 @@ import {
 } from "./ad-clone/gemini.service";
 import { openaiClient as client } from "./openai.service";
 
+/**
+ * Detects if AI returned timestamps in M.SS format (e.g. 1.24 = 1min 24sec)
+ * instead of pure seconds, and converts them.
+ */
+function convertMSStoSeconds(val: number): number {
+  const minutes = Math.floor(val);
+  const fractionalSeconds = Math.round((val - minutes) * 100);
+  return minutes * 60 + fractionalSeconds;
+}
+
+function normalizeClipTimestamps(clips: ClipSuggestions[]): ClipSuggestions[] {
+  for (const clip of clips) {
+    const allSegments: ClipSegment[] = [
+      ...(clip.hook ? [clip.hook] : []),
+      ...clip.main,
+    ];
+    if (allSegments.length === 0) continue;
+
+    // Check if ALL segments have duration < 2s — strong sign of M.SS format
+    const allTooShort = allSegments.every(
+      (s) => s.end - s.start < 2
+    );
+    if (!allTooShort) continue;
+
+    console.log("[ClipNormalize] Detected M.SS timestamp format, converting to seconds");
+    for (const seg of allSegments) {
+      const oldStart = seg.start;
+      const oldEnd = seg.end;
+      seg.start = convertMSStoSeconds(seg.start);
+      seg.end = convertMSStoSeconds(seg.end);
+      console.log(
+        `[ClipNormalize] ${oldStart} → ${seg.start}s, ${oldEnd} → ${seg.end}s (duration: ${(seg.end - seg.start).toFixed(1)}s)`
+      );
+    }
+  }
+  return clips;
+}
+
 export interface ClipGenerationOptions {
   length?: number;
   hookLength?: number;
@@ -28,6 +67,8 @@ export interface ClipGenerationOptions {
   textPrompt?: string;
   numberOfVideos?: number;
   videoPath?: string;
+  headingInstructions?: string;
+  videoDuration?: number;
 }
 
 export const generateClipSuggestionsService = async (
@@ -46,15 +87,26 @@ export const generateClipSuggestionsService = async (
     ? JSON.stringify(transcription.results.channels[0].alternatives[0].paragraphs)
     : "";
 
+  // Compute video duration from transcript (last word end time) or from options
+  let videoDuration = options.videoDuration;
+  if (!videoDuration && transcription) {
+    const words = transcription.results.channels[0].alternatives[0].words;
+    if (words && words.length > 0) {
+      videoDuration = words[words.length - 1].end;
+    }
+  }
+
   const prompt = generatePrompt(
     promptType,
     {
       length,
       hookLength,
+      videoDuration,
       transcriptText,
       transcriptObject,
       numberOfVideos,
       userTextPrompt: options.textPrompt,
+      headingInstructions: options.headingInstructions,
     },
     options.customPrompt,
   );
@@ -99,12 +151,13 @@ export const generateClipSuggestionsService = async (
           console.error("Invalid video entry (not an object):", v);
           return false;
         }
-        if (!v.hook || typeof v.hook.start !== "number" || typeof v.hook.end !== "number") {
-          console.error("Invalid video entry (missing hook with start/end):", v);
+        // Hook is now optional — only validate if present
+        if (v.hook && (typeof v.hook.start !== "number" || typeof v.hook.end !== "number")) {
+          console.error("Invalid video entry (hook has bad start/end):", v);
           return false;
         }
-        if (!Array.isArray(v.main)) {
-          console.error("Invalid video entry (main is not an array):", v);
+        if (!Array.isArray(v.main) || v.main.length === 0) {
+          console.error("Invalid video entry (main is not an array or empty):", v);
           return false;
         }
         return true;
@@ -113,7 +166,7 @@ export const generateClipSuggestionsService = async (
       if (validVideos.length === 0) {
         throw new Error("No valid videos in Gemini response");
       }
-      return validVideos;
+      return normalizeClipTimestamps(validVideos);
     };
 
     // Try Gemini Pro
@@ -193,7 +246,7 @@ export const generateClipSuggestionsService = async (
       "AI Multiple Clip Suggestions Response:",
       response.output_parsed,
     );
-    return response.output_parsed?.videos || [];
+    return normalizeClipTimestamps(response.output_parsed?.videos || []);
   } else {
     const response = await client.responses.parse({
       model: "gpt-5-mini",
@@ -209,7 +262,7 @@ export const generateClipSuggestionsService = async (
       },
     });
     console.log("AI Clip Suggestions Response:", response.output_parsed);
-    return response.output_parsed ? [response.output_parsed] : [];
+    return normalizeClipTimestamps(response.output_parsed ? [response.output_parsed] : []);
   }
 };
 
@@ -256,16 +309,30 @@ export const generateBatchClipSuggestionsService = async (
     })),
   );
 
+  // Compute max video duration across all batch transcripts
+  let videoDuration = options.videoDuration;
+  if (!videoDuration) {
+    for (const bt of options.batchTranscripts) {
+      const words = bt.transcription.results.channels[0].alternatives[0].words;
+      if (words && words.length > 0) {
+        const endTime = words[words.length - 1].end;
+        if (!videoDuration || endTime > videoDuration) videoDuration = endTime;
+      }
+    }
+  }
+
   // Generate batch-aware prompt
   const prompt = generateBatchPrompt(
     promptType,
     {
       length,
       hookLength,
+      videoDuration,
       transcriptText: combinedTranscriptText,
       transcriptObject: combinedTranscriptObject,
       numberOfVideos,
       userTextPrompt: options.textPrompt,
+      headingInstructions: options.headingInstructions,
       isBatch: true,
       batchTranscripts: batchTranscriptData,
     },
@@ -300,5 +367,5 @@ export const generateBatchClipSuggestionsService = async (
   });
 
   console.log("AI Batch Clip Suggestions Response:", response.output_parsed);
-  return response.output_parsed?.videos || [];
+  return normalizeClipTimestamps(response.output_parsed?.videos || []) as BatchClipSuggestions[];
 };
