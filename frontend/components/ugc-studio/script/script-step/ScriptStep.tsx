@@ -197,8 +197,9 @@ export function ScriptStep({
       setCustomPattern(result.pattern.map((p) => ({ type: p.type, shot: p.shot })));
       setAutoStructureReasoning(result.reasoning);
       setAutoStructureName(result.name);
-      setIsAutoSilent(result.isSilent);
-      setIsSilentGlobal(result.isSilent);
+      const silent = result.isSilent || isAutoSilent;
+      setIsAutoSilent(silent);
+      setIsSilentGlobal(silent);
       setAutoStructureDirection(scriptDirection);
     } catch (err: any) {
       setError(err.message || "Failed to generate structure");
