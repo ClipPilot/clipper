@@ -931,7 +931,7 @@ Example - Transformation B-roll (1 shot is enough — don't pad):
 
 Rules for bRollShots:
 - PRODUCT-FOCUSED b-roll: Use multiple shots (1-5, MAXIMUM 5) to showcase the product from different angles, close-ups, demos, etc. This is the ONLY case where multi-shot b-roll is appropriate.
-- NON-PRODUCT b-roll (character actions, emotions, lifestyle, transformations): Default to 1 shot — this usually suffices. Only use 2 or more shots if the user explicitly asks for it or the scene truly demands distinctly different visuals. Multiple actions can happen WITHIN the same shot (e.g., person sits down stressed, rubs face, then looks up). Do NOT split sequential actions into separate shots — let them play out naturally in one continuous shot.
+- NON-PRODUCT b-roll (character actions, emotions, lifestyle, transformations): Default to 1 shot (max 3) — this usually suffices. Only use 2-3 shots if the user explicitly asks for it or the scene truly demands distinctly different visuals. Multiple actions can happen WITHIN the same shot (e.g., person sits down stressed, rubs face, then looks up). Do NOT split sequential actions into separate shots — let them play out naturally in one continuous shot.
 - If the user specifies a shot count in their direction, use EXACTLY that number.
 - Each shot: 1-4 seconds, ONE simple action (for product shots) or a full continuous sequence (for non-product shots)
 - Total duration of all shots = estimatedDurationSeconds
@@ -1081,7 +1081,7 @@ Split product demos into multiple quick shots to highlight different product det
 NON-PRODUCT B-ROLL (character actions, emotions, lifestyle): Default to 1 shot — usually sufficient.
 - Let multiple actions play out naturally within one continuous shot
 - Example: "Person sits at messy desk, rubs temples in frustration, then looks up at camera" (5s, ONE shot)
-- Only use 2 or more shots if the user explicitly asks for it or the scene truly demands distinct visuals
+- Only use 2-3 shots if the user explicitly asks for it or the scene truly demands distinct visuals
 - Do NOT split sequential character actions into separate shots — keep it as one flowing scene.
 
 EXAMPLE DEMO B-ROLL cinematicPrompt:
@@ -1310,7 +1310,7 @@ Score 95+ means: irresistible hook, perfect pacing, genuine emotion, share-worth
 - a-roll scenes: MUST have ambientSound
 - b-roll scenes: ambientSound should be null
 - No tongue twisters or plosive clusters in dialogue
-- B-ROLL: Use bRollShots array. Multiple shots for product-focused b-roll (max 5). Non-product b-roll defaults to 1 shot (2 if truly needed). Respect user's shot count if specified.
+- B-ROLL: Use bRollShots array. Multiple shots for product-focused b-roll (max 5). Non-product b-roll defaults to 1 shot (max 3, only if user asks or truly needed). Respect user's shot count if specified.
 - productImageNeeded based on scene type: PROBLEM/HOOK = false, SOLUTION/DEMO/CTA = true where product shown
 - VERIFY: Every a-roll scene has a non-null ambientSound describing background audio
 - VERIFY: No scene exceeds 50 words (UNLESS monologue mode is activated by user direction)
