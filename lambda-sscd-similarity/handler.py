@@ -23,8 +23,10 @@ s3_client = boto3.client('s3')
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
 IMAGENET_STD = [0.229, 0.224, 0.225]
 
+PERTURB_SIZE = 512
+
 SSCD_TRANSFORM = transforms.Compose([
-    transforms.Resize((288, 288)),
+    transforms.Resize((PERTURB_SIZE, PERTURB_SIZE)),
     transforms.ToTensor(),
     transforms.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD),
 ])
@@ -108,7 +110,7 @@ def compute_cosine_similarity(embedding_a, embedding_b):
     return float(np.dot(embedding_a, embedding_b))
 
 
-def compute_perturbation(frame_paths, model, epsilon=0.15, steps=10):
+def compute_perturbation(frame_paths, model, epsilon=0.08, steps=10):
     """
     Run PGD on sample frames to compute an adversarial perturbation tensor.
     Returns the averaged perturbation in normalized ImageNet space.
@@ -121,7 +123,7 @@ def compute_perturbation(frame_paths, model, epsilon=0.15, steps=10):
     if not tensors:
         return None
 
-    batch = torch.stack(tensors)  # [N, 3, 288, 288]
+    batch = torch.stack(tensors)  # [N, 3, 512, 512]
 
     with torch.no_grad():
         original_embedding = model(batch)  # [N, 512]
@@ -161,7 +163,7 @@ def apply_perturbation_to_video(original_video_path, perturbation, output_path):
     Apply the averaged perturbation as an FFmpeg grainmerge overlay on the full video.
     Preserves original duration, fps, and audio.
     """
-    avg_delta = perturbation.mean(dim=0)  # [3, 288, 288]
+    avg_delta = perturbation.mean(dim=0)  # [3, 512, 512]
 
     std = torch.tensor(IMAGENET_STD).view(3, 1, 1)
     pixel_delta = avg_delta * std * 255  # convert to [0,255] pixel-space delta
@@ -298,7 +300,7 @@ def handle_perturb(body):
             'body': json.dumps({'error': 'video_url and output_key are required'})
         }
 
-    epsilon = float(body.get('epsilon', 0.15))
+    epsilon = float(body.get('epsilon', 0.08))
     steps = int(body.get('steps', 10))
     max_seconds = int(body.get('max_seconds', 5))
     fps = int(body.get('fps', 1))
