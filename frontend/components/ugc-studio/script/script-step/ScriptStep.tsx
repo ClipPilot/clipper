@@ -42,7 +42,7 @@ export function ScriptStep({
   const [productImages, setProductImages] = useState<ProductImage[]>([]);
   const [productName, setProductName] = useState("");
   const [scriptDirection, setScriptDirection] = useState("");
-  const [selectedStructureId, setSelectedStructureId] = useState("classic");
+  const [selectedStructureId, setSelectedStructureId] = useState("auto");
   const [customPattern, setCustomPattern] = useState<CustomPatternStep[]>([
     { type: "hook", shot: "a-roll" },
     { type: "problem", shot: "a-roll" },
@@ -197,8 +197,9 @@ export function ScriptStep({
       setCustomPattern(result.pattern.map((p) => ({ type: p.type, shot: p.shot })));
       setAutoStructureReasoning(result.reasoning);
       setAutoStructureName(result.name);
-      setIsAutoSilent(result.isSilent);
-      setIsSilentGlobal(result.isSilent);
+      const silent = result.isSilent || isAutoSilent;
+      setIsAutoSilent(silent);
+      setIsSilentGlobal(silent);
       setAutoStructureDirection(scriptDirection);
     } catch (err: any) {
       setError(err.message || "Failed to generate structure");
