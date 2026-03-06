@@ -371,6 +371,17 @@ ${config.scriptDirection || "Create an engaging, authentic UGC-style script that
 
 ^^^ THE ABOVE IS THE USER'S EXACT CREATIVE VISION. EXECUTE IT FAITHFULLY. ^^^
 
+===== CRITICAL: RESPECT USER'S SCENE/SHOT BREAKDOWN =====
+If the user's direction above includes their OWN scene breakdown, shot list, or specific scene/shot descriptions (e.g., "Scene 1: ..., Scene 2: ..." or "Shot 1: close-up of X, Shot 2: wide shot of Y"), you MUST:
+- Use EXACTLY the scenes/shots the user described — do NOT add extra scenes or shots beyond what they specified
+- Do NOT split their scenes into multiple scenes or invent additional shots
+- Do NOT reinterpret their breakdown into a different structure
+- Match the number of scenes/shots to what the user listed — no more, no less
+- The structure pattern rules (classic, PAS, etc.) are OVERRIDDEN by the user's explicit breakdown
+- Still apply all other rules (cinematicPrompt quality, emotion tags, duration, etc.) to whatever scenes the user defines
+
+If the user does NOT mention specific scenes, shots, or a breakdown, then follow the structure pattern as normal and create scenes freely.
+
 ===== SCRIPT REQUIREMENTS =====
 
 TARGET DURATION: ${duration} seconds total
@@ -863,13 +874,12 @@ CRITICAL - productImageNeeded field (DEPENDS ON SCENE TYPE):
 
 Think about the STORY: Would the product logically appear in this moment of the narrative?
 
-Example - Problem scene B-roll (NO product needed):
+Example - Problem scene B-roll (NO product — SINGLE shot, multiple actions within):
 {
   "dialogue": "[frustrated] I was so tired of dealing with this every single day...",
   "estimatedDurationSeconds": 4,
   "bRollShots": [
-    { "action": "Tired hands rubbing face", "cinematicPrompt": "...", "durationSeconds": 2, "productImageNeeded": false },
-    { "action": "Messy desk with scattered papers", "cinematicPrompt": "...", "durationSeconds": 2, "productImageNeeded": false }
+    { "action": "Person at messy desk with scattered papers, rubs face in exhaustion then stares blankly at the chaos", "cinematicPrompt": "...", "durationSeconds": 4, "productImageNeeded": false }
   ]
 }
 
@@ -920,8 +930,10 @@ Example - Transformation B-roll (1 shot is enough — don't pad):
 }
 
 Rules for bRollShots:
-- Use 1-5 shots per scene (MAXIMUM 5). If the user specifies a shot count in their direction, use EXACTLY that number.
-- Each shot: 1-4 seconds, ONE simple action
+- PRODUCT-FOCUSED b-roll: Use multiple shots (1-5, MAXIMUM 5) to showcase the product from different angles, close-ups, demos, etc. This is the ONLY case where multi-shot b-roll is appropriate.
+- NON-PRODUCT b-roll (character actions, emotions, lifestyle, transformations): Default to 1 shot — this usually suffices. Only use 2 or more shots if the user explicitly asks for it or the scene truly demands distinctly different visuals. Multiple actions can happen WITHIN the same shot (e.g., person sits down stressed, rubs face, then looks up). Do NOT split sequential actions into separate shots — let them play out naturally in one continuous shot.
+- If the user specifies a shot count in their direction, use EXACTLY that number.
+- Each shot: 1-4 seconds, ONE simple action (for product shots) or a full continuous sequence (for non-product shots)
 - Total duration of all shots = estimatedDurationSeconds
 - The single voiceover (dialogue field) plays continuously over all shots
 - TRANSFORMATION scenes: Default to 1 shot. A single shot can capture the entire transformation — multiple actions can happen within one shot (e.g., person stands still then turns around). Do NOT split into multiple shots unless the user explicitly describes distinct separate visuals. No cinematic zoom — use a static camera like a propped phone.
@@ -1058,14 +1070,19 @@ Camera executes slow 2.5-second push-in from medium shot to close-up, timing the
 Shot on virtual 50mm lens equivalent with f/2.0 for flattering portrait depth. Warmer color grade than problem scene - this is the visual turning point. Subtle lens flare from the golden side light adds cinematic hope. Natural skin texture visible but lighting is more forgiving. NEGATIVE: No over-the-top fake excitement, no theatrical expressions, maintains authentic relief rather than performative joy, no sudden lighting changes, smooth continuous transformation, keeps facial features consistent throughout."
 
 ----- DEMO/B-ROLL SCENES (Product as hero - fast, punchy cuts) -----
-Goals: Quick product showcase, clean visuals, ONE simple action per scene
-Key elements: Clean backgrounds, good lighting, simple motion, 2-4 second duration
+Goals: Quick product showcase, clean visuals, simple motion, 2-4 second duration
 
-CRITICAL B-ROLL RULE: ONE simple action per scene. Keep it fast and punchy.
-- Scene 1: "Hands holding product, slight rotation" (2-3s)
-- Scene 2: "Close-up of label" (2s)
-- Scene 3: "Product being placed on surface" (2s)
-Split complex demos into multiple quick B-roll scenes rather than one long complex scene.
+PRODUCT-FOCUSED B-ROLL: Use multiple shots to showcase the product from different angles.
+- Shot 1: "Hands holding product, slight rotation" (2-3s)
+- Shot 2: "Close-up of label" (2s)
+- Shot 3: "Product being placed on surface" (2s)
+Split product demos into multiple quick shots to highlight different product details.
+
+NON-PRODUCT B-ROLL (character actions, emotions, lifestyle): Default to 1 shot — usually sufficient.
+- Let multiple actions play out naturally within one continuous shot
+- Example: "Person sits at messy desk, rubs temples in frustration, then looks up at camera" (5s, ONE shot)
+- Only use 2 or more shots if the user explicitly asks for it or the scene truly demands distinct visuals
+- Do NOT split sequential character actions into separate shots — keep it as one flowing scene.
 
 EXAMPLE DEMO B-ROLL cinematicPrompt:
 "Close-up of product bottle against clean white surface. Soft key light from camera-left creates gentle highlights on the glossy surface. Label facing camera, text crisp and readable. Shallow depth of field blurs background to creamy gradient.
@@ -1293,7 +1310,7 @@ Score 95+ means: irresistible hook, perfect pacing, genuine emotion, share-worth
 - a-roll scenes: MUST have ambientSound
 - b-roll scenes: ambientSound should be null
 - No tongue twisters or plosive clusters in dialogue
-- B-ROLL: Use bRollShots array (max 5 shots). Respect user's shot count if specified.
+- B-ROLL: Use bRollShots array. Multiple shots for product-focused b-roll (max 5). Non-product b-roll defaults to 1 shot (2 if truly needed). Respect user's shot count if specified.
 - productImageNeeded based on scene type: PROBLEM/HOOK = false, SOLUTION/DEMO/CTA = true where product shown
 - VERIFY: Every a-roll scene has a non-null ambientSound describing background audio
 - VERIFY: No scene exceeds 50 words (UNLESS monologue mode is activated by user direction)

@@ -88,7 +88,7 @@ export const UGCSceneBaseSchema = z.object({
     .max(5)
     .nullable()
     .optional()
-    .describe("For B-roll PRODUCT DEMO scenes only: multi-shot sequences for unboxing, product showcases, demos. Do NOT use for person-focused b-roll scenes. Each shot has productImageNeeded to control whether product reference is used."),
+    .describe("For b-roll scenes. PRODUCT-FOCUSED scenes: use multiple shots (2-5) to showcase product from different angles. NON-PRODUCT scenes (character actions, emotions, lifestyle, transformations): default to 1 single shot — multiple actions can happen within one shot. Only use 2 or more shots if the user explicitly requests it or if the scene truly demands distinct visuals."),
   mergedSceneTypes: z
     .array(z.enum(SCENE_TYPES))
     .nullable()
