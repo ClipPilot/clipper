@@ -91,7 +91,7 @@ export function generateUniquifyString(
     `[0:v] crop=iw*(1-${p.cropLeft}-${p.cropRight}):ih*(1-${p.cropTop}-${p.cropBottom}):iw*${p.cropLeft}:ih*${p.cropTop},`,
     `rotate=${rotRad}:fillcolor=black:ow=rotw(${rotRad}):oh=roth(${rotRad}),`,
     `crop=iw*0.96:ih*0.96,`,
-    `scale=iw*${p.scaleJitter}:ih*${p.scaleJitter},`,
+    `scale=iw*${p.scaleJitter}:ih*${p.scaleJitter}:flags=lanczos,`,
     `pad=ceil(iw/2)*2:ceil(ih/2)*2,`,
     `hue=h=${p.hueShift},`,
     `eq=saturation=${p.saturation}:brightness=${p.brightness}:gamma=${p.gamma},`,

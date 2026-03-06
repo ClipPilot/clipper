@@ -192,7 +192,7 @@ def apply_perturbation_to_video(original_video_path, perturbation, output_path):
         has_audio = True
 
     filter_str = (
-        f'[1:v]scale={width}:{height}:flags=bilinear[noise];'
+        f'[1:v]scale={width}:{height}:flags=lanczos[noise];'
         f'[0:v][noise]blend=all_mode=grainmerge:shortest=1[v]'
     )
 

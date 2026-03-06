@@ -13,6 +13,7 @@ export interface ClipSuggestions {
   finalMessage: string;
   evalScore: number;
   clipTitle?: string;
+  viralHeading?: string;
 }
 
 export const ClipSegmentSchema = z.object({
@@ -42,6 +43,11 @@ export const ClipSuggestionsSchema = z.object({
     .max(100)
     .describe("Score from 0-100 rating viral potential"),
   clipTitle: z.string().describe("A catchy title for the clip"),
+  viralHeading: z
+    .string()
+    .describe(
+      "A 3-6 word ALL CAPS viral heading to overlay on the video. Should create curiosity, urgency, or shock. Include 1-2 relevant emojis. No hashtags or quotes."
+    ),
 });
 
 export const MultipleClipSuggestionsSchema = z.object({
@@ -69,6 +75,7 @@ export interface BatchClipSuggestions {
   finalMessage: string;
   evalScore: number;
   clipTitle?: string;
+  viralHeading?: string;
 }
 
 export const BatchClipSegmentSchema = z.object({
@@ -103,6 +110,11 @@ export const BatchClipSuggestionsSchema = z.object({
     .max(100)
     .describe("Score from 0-100 rating viral potential"),
   clipTitle: z.string().describe("A catchy title for the clip"),
+  viralHeading: z
+    .string()
+    .describe(
+      "A 3-6 word ALL CAPS viral heading to overlay on the video. Should create curiosity, urgency, or shock. Include 1-2 relevant emojis. No hashtags or quotes."
+    ),
 });
 
 export const MultipleBatchClipSuggestionsSchema = z.object({

@@ -247,28 +247,33 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
           `\n=== Creating clip ${i + 1}/${clipSuggestionsArray.length} ===`,
         );
 
-        // Auto-generate a viral heading BEFORE rendering so it gets burned into the video
         let autoHeading: string | undefined;
         const perClipOptions = { ...clipServiceOptions };
         if (options.autoHeading !== false && !options.customText) {
-          try {
-            const clipTranscript =
-              suggestions.combined_script ||
-              [
-                suggestions.hook.text,
-                ...suggestions.main.map((m) => m.text),
-              ].join(" ");
-            autoHeading = await generateViralHeading({
-              transcription: clipTranscript,
-              title: suggestions.clipTitle || "",
-            });
-            console.log(`Clip ${i + 1} auto-heading: "${autoHeading}"`);
+          if (suggestions.viralHeading) {
+            autoHeading = suggestions.viralHeading;
+            console.log(`Clip ${i + 1} using AI-generated heading: "${autoHeading}"`);
             perClipOptions.customText = autoHeading;
-          } catch (headingErr) {
-            console.warn(
-              `Clip ${i + 1} heading generation failed, skipping:`,
-              headingErr,
-            );
+          } else {
+            try {
+              const clipTranscript =
+                suggestions.combined_script ||
+                [
+                  suggestions.hook.text,
+                  ...suggestions.main.map((m) => m.text),
+                ].join(" ");
+              autoHeading = await generateViralHeading({
+                transcription: clipTranscript,
+                title: suggestions.clipTitle || "",
+              });
+              console.log(`Clip ${i + 1} fallback heading: "${autoHeading}"`);
+              perClipOptions.customText = autoHeading;
+            } catch (headingErr) {
+              console.warn(
+                `Clip ${i + 1} heading generation failed, skipping:`,
+                headingErr,
+              );
+            }
           }
         }
 

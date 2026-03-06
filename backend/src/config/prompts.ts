@@ -58,7 +58,8 @@ EXAMPLE OUTPUT FORMAT FOR BATCH:
   "combined_script": "...",
   "finalMessage": "...",
   "evalScore": 85,
-  "clipTitle": "..."
+  "clipTitle": "...",
+  "viralHeading": "WAIT FOR IT 🤯🔥"
 }
 
 Think of yourself as a curator selecting the best moments from a collection of related footage.
@@ -638,7 +639,8 @@ Generate ${numberOfVideos} clips. Stitch together the BEST moments from ANYWHERE
       "combined_script": "Full text of what is said in the final clip",
       "finalMessage": "Explain what VISUAL elements make this clip compelling",
       "evalScore": 85,
-      "clipTitle": "Catchy title for this clip"
+      "clipTitle": "Catchy title for this clip",
+      "viralHeading": "NO WAY THIS HAPPENED 😱"
     }
   ]
 }
