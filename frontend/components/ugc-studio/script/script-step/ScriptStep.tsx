@@ -42,7 +42,7 @@ export function ScriptStep({
   const [productImages, setProductImages] = useState<ProductImage[]>([]);
   const [productName, setProductName] = useState("");
   const [scriptDirection, setScriptDirection] = useState("");
-  const [selectedStructureId, setSelectedStructureId] = useState("auto");
+  const [selectedStructureId, setSelectedStructureId] = useState("classic");
   const [customPattern, setCustomPattern] = useState<CustomPatternStep[]>([
     { type: "hook", shot: "a-roll" },
     { type: "problem", shot: "a-roll" },
