@@ -910,11 +910,21 @@ Example - Product hero with hype VO:
   ]
 }
 
+Example - Transformation B-roll (1 shot is enough — don't pad):
+{
+  "dialogue": "[amazed] Look at the difference. I'm actually shook.",
+  "estimatedDurationSeconds": 5,
+  "bRollShots": [
+    { "action": "Person standing confidently, turns to the side showing physique", "cinematicPrompt": "...", "durationSeconds": 5, "productImageNeeded": false }
+  ]
+}
+
 Rules for bRollShots:
 - Use 1-5 shots per scene (MAXIMUM 5). If the user specifies a shot count in their direction, use EXACTLY that number.
 - Each shot: 1-4 seconds, ONE simple action
 - Total duration of all shots = estimatedDurationSeconds
 - The single voiceover (dialogue field) plays continuously over all shots
+- TRANSFORMATION scenes: Default to 1 shot. A single shot can capture the entire transformation — multiple actions can happen within one shot (e.g., person stands still then turns around). Do NOT split into multiple shots unless the user explicitly describes distinct separate visuals. No cinematic zoom — use a static camera like a propped phone.
 
 ===== CRITICAL: SCREENS, APPS & DIGITAL PRODUCTS =====
 
@@ -1106,8 +1116,13 @@ Key elements: Joy, disbelief, showing results, genuine amazement
 Dialogue approach: Celebrate the change - "Look at the difference", "I can't even believe this is me", "Three weeks later and...", "This is AFTER just one use"
 Visual: Brighter lighting than problem scene, open body language, genuine smile, showing/demonstrating the result
 
+TRANSFORMATION B-ROLL SHOT RULES:
+- Do NOT pad shots. A single well-composed shot can capture the entire transformation — no need for multiple shots unless the user's direction explicitly describes multiple distinct visuals.
+- Multiple actions can happen within ONE shot (e.g., person turns around AND flexes in the same shot). Don't split sequential actions into separate shots.
+- NO cinematic zoom or push-in. Transformation b-roll should feel like a propped phone or a friend recording — still camera with natural micro-drift at most. All movement comes from the subject, not the camera.
+
 EXAMPLE TRANSFORMATION cinematicPrompt:
-"Medium shot with noticeably brighter, warmer lighting than previous scenes. ${config.characterName}'s entire demeanor has shifted - shoulders back, chin up, radiating confidence. Genuine ear-to-ear smile that reaches the eyes. Hands may gesture toward self or product in 'can you believe this' manner. Head shake of happy disbelief. Eyes occasionally look down at [product/result] then back at camera with amazement. The visual payoff to the story - this is what the viewer could have too."
+"Medium shot with noticeably brighter, warmer lighting than previous scenes. Camera is static, like a phone propped on a surface. ${config.characterName}'s entire demeanor has shifted - shoulders back, chin up, radiating confidence. Genuine ear-to-ear smile that reaches the eyes. Hands may gesture toward self or product in 'can you believe this' manner. Head shake of happy disbelief. Eyes occasionally look down at [product/result] then back at camera with amazement. The visual payoff to the story - this is what the viewer could have too."
 
 ----- CTA SCENES (Confident invitation - make them want to take action) -----
 Goals: Confident approachability, direct invitation, energetic positivity, clear call to action energy
@@ -1404,6 +1419,12 @@ export const generateAutoStructurePrompt = (
 
 You are NOT writing the script — you are ONLY designing the scene-by-scene blueprint (which scene types in what order, with what shot types). Think of yourself as the director planning the shot list before any dialogue is written.
 
+===== What are 'Scenes' in this context? =====
+- Scenes are high-level divisions of the video
+- Each scene can have multiple SHOTS so not every different visual element needs to be a new scene
+- Change in scenes is usually marked by a change in setting or narrative focus or purpose
+- If the user describes their video scene by scene (e.g., "first scene..., second scene..."), map each described scene to exactly one scene in the pattern — do NOT add scenes they didn't describe
+
 ===== SCENE TYPES (Your Building Blocks) =====
 
 Each scene type serves a specific narrative purpose. Choose the right ones for the user's direction:
@@ -1447,6 +1468,7 @@ Each scene type serves a specific narrative purpose. Choose the right ones for t
   * Can be product hero shot (b-roll) with enthusiastic VO for hype moments.
 
 - transformation: Before/after payoff — show the change visually.
+  * ALWAYS b-roll — the visuals ARE the transformation proof.
   * The "money shot" — the visual proof that everything worked.
   * Usually all transformation b-rolls unless product is mentioned — let the visuals speak (before vs after comparison).
 
@@ -1482,14 +1504,15 @@ ${structureExamples}
 
 1. A "hook" scene is a STRONG default for the first scene, but not mandatory. If the direction works better diving straight into content (e.g., starting with a problem or testimonial), skip the hook.
 2. A "cta" scene is a STRONG default for the last scene, but not mandatory. Some directions end naturally on a transformation, testimonial, or demo without needing an explicit call to action.
-3. Use 3-6 scenes total. Shorter = more impactful. Don't add scenes that don't serve the direction.
+3. Use 2-6 scenes total. Shorter = more impactful. 2 scenes is perfectly fine. Don't add scenes that don't serve the direction.
 4. Alternate between a-roll and b-roll for pacing variety — 3 consecutive a-roll scenes feel monotonous.
 5. Place the emotional peak (agitate, transformation) in the second half of the structure.
 6. If the product needs visual demonstration, include at least one "demo" scene with b-roll.
 7. Use "problem" before "solution" for maximum contrast and relief.
 8. Don't repeat the same scene type consecutively (two demos back-to-back is lazy structuring).
-9. Match scene count to content density — a simple product with a simple message needs 3-4 scenes, not 6.
+9. Match scene count to content density — a simple product with a simple message needs 2-3 scenes, not 6.
 10. Every scene must earn its place — if removing a scene doesn't hurt the narrative, remove it.
+11. **CRITICAL: If the user describes specific scenes in their direction (e.g., "first scene X, second scene Y"), match their scene count EXACTLY. Do NOT add extra scenes they didn't ask for. The user's explicit scene breakdown overrides all other rules.**
 
 ===== STRUCTURE SELECTION LOGIC (Decision Tree) =====
 
@@ -1543,7 +1566,7 @@ When isSilent is FALSE (the default — user did NOT explicitly request silence)
 ${hasProduct
     ? `The user HAS provided a product (${productName ? `"${productName}"` : "product images attached"}). Use the full range of scene types and shot types — a-roll for speaking scenes, b-roll for product visuals.`
     : `The user has NOT provided a product name or product images. This means:
-- There is NO product to show on screen — do NOT use a-roll scenes (no one is speaking to camera about a product)
+- There is NO product to show on screen — do NOT use a-roll scenes (no one is speaking to camera about a product) or demo scenes
 - Use ONLY b-roll shots — the video is purely visual content
 - Do NOT include hook or cta scenes — there's no product pitch to open or close
 - Focus on visual storytelling scene types: demo, transformation, problem, solution
@@ -1574,7 +1597,8 @@ Analyze the following script direction and return:
 "${scriptDirection}"
 
 ===== FINAL CHECKS =====
-- 2-8 scenes total (aim for 3-6 for best pacing)
+- 2-8 scenes total (2 is perfectly valid — don't pad with unnecessary scenes)
+- If the user described specific scenes (e.g., "first scene... second scene..."), use EXACTLY that many scenes — do NOT add extras
 - No consecutive duplicate scene types
 - Shot types alternate for visual variety (avoid 3+ consecutive a-roll or b-roll)
 - Every scene earns its place — no filler

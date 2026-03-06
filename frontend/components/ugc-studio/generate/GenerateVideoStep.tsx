@@ -82,6 +82,7 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
         teamId,
         scriptId,
         voiceId: selectedVoice?.id,
+        isSilent: isSilent || undefined,
       });
 
       setFreshStart(false);

@@ -571,7 +571,7 @@ export function ScriptStep({
                   }
                 }}
               >
-                {isAutoSilent ? "Silent Mode" : "Silent Mode Off"}
+                {isAutoSilent ? "Silent Mode On" : "Silent Mode Off"}
               </Button>
             </CardBody>
           </Card>

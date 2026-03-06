@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -37,6 +37,7 @@ import {
   getNextSyncCountdown,
 } from "@/app/dashboard/virality/[competitorId]/utils";
 import { canAccessViralityTracker } from "@/lib/plans";
+import { useViralitySyncSocket } from "@/hooks/useViralitySyncSocket";
 
 interface MyPerformanceViewProps {
   showBackButton?: boolean;
@@ -87,6 +88,18 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  // Track accounts doing their initial sync
+  const syncingAccountIds = useMemo(() => {
+    return accounts
+      .filter((a) => !a.last_synced_at && (a.sync_status === "pending" || a.sync_status === "syncing"))
+      .map((a) => a.id);
+  }, [accounts]);
+
+  useViralitySyncSocket({
+    teamId: selectedTeam?.id,
+    accountIds: syncingAccountIds,
+    onSyncComplete: () => { fetchData(true); },
+  });
 
   const handleSyncAll = async () => {
     if (!selectedTeam?.id || accounts.length === 0) return;
@@ -324,6 +337,26 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
           </div>
         )}
 
+        {/* Syncing accounts banner */}
+        {syncingAccountIds.length > 0 && (
+          <div className="flex items-center gap-3 rounded-xl border border-accent-400/30 bg-accent-400/5 px-4 py-3">
+            <Spinner size="sm" color="primary" />
+            <p className="text-sm text-text-secondary">
+              Syncing{" "}
+              {accounts
+                .filter((a) => syncingAccountIds.includes(a.id))
+                .map((a, i, arr) => (
+                  <Fragment key={a.id}>
+                    <span className="font-medium text-text-primary">
+                      {a.account_type === "hashtag" ? "#" : "@"}{a.username}
+                    </span>
+                    {i < arr.length - 1 && ", "}
+                  </Fragment>
+                ))}
+              &hellip; Data will appear once the sync is complete.
+            </p>
+          </div>
+        )}
 
         {/* Stats Cards + Best Performing Accounts */}
         <RecalcOverlay active={isRecalculating}>

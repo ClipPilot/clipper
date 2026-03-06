@@ -5,6 +5,7 @@ export interface GenerateUGCVideoRequest {
   teamId: number;
   scriptId: string;
   voiceId?: string;
+  isSilent?: boolean;
 }
 
 export interface GenerateUGCVideoResponse {

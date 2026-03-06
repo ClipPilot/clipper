@@ -215,7 +215,7 @@ export class UGCVideoController {
    */
   async generateVideo(req: AuthRequest, res: Response) {
     try {
-      const { teamId, scriptId, voiceId } = req.body;
+      const { teamId, scriptId, voiceId, isSilent: requestSilent } = req.body;
 
       if (!teamId || !scriptId) {
         return res.status(400).json({
@@ -258,8 +258,8 @@ export class UGCVideoController {
         });
       }
 
-      // Detect silent mode from structure or custom pattern
-      const isSilent = detectSilentMode(
+      // Detect silent mode from structure/pattern OR explicit frontend flag
+      const isSilent = !!requestSilent || detectSilentMode(
         script.structure_id || "",
         script.custom_pattern as { type: string; shot: string }[] | null,
       );
