@@ -257,9 +257,11 @@ Creative guidance:
       : "";
 
     return `
-CUSTOM STRUCTURE — Follow this scene order:
+CUSTOM STRUCTURE — Follow this scene order EXACTLY:
 
 ${sceneBreakdown}
+
+HARD CONSTRAINT: Generate EXACTLY ${customPattern.length} scenes — no more, no less. The scenes array in your output MUST have exactly ${customPattern.length} entries matching the order above.
 
 Shot types: "a-roll" = actor speaking to camera, "b-roll" = product/visual shots.${visualGuidance}
 `;

@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useAtom } from "jotai";
-import { Card, CardBody, Button, Input, Textarea, Tabs, Tab } from "@heroui/react";
+import { Card, CardBody, Button, Input, Textarea, Tabs, Tab, Tooltip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { ProductImageUploader } from "../ProductImageUploader";
 import { ugcScriptAPI } from "@/api/ugc";
@@ -43,12 +43,7 @@ export function ScriptStep({
   const [productName, setProductName] = useState("");
   const [scriptDirection, setScriptDirection] = useState("");
   const [selectedStructureId, setSelectedStructureId] = useState("auto");
-  const [customPattern, setCustomPattern] = useState<CustomPatternStep[]>([
-    { type: "hook", shot: "a-roll" },
-    { type: "problem", shot: "a-roll" },
-    { type: "demo", shot: "b-roll" },
-    { type: "cta", shot: "a-roll" },
-  ]);
+  const [customPattern, setCustomPattern] = useState<CustomPatternStep[]>([]);
   const [selectedActorImageIndex, setSelectedActorImageIndex] = useState(
     selectedCharacter.primary_image_index || 0
   );
@@ -551,29 +546,40 @@ export function ScriptStep({
                 onChange={(e) => setScriptDirection(e.target.value)}
                 minRows={3}
               />
-              <Button
-                size="sm"
-                variant={isAutoSilent ? "solid" : "bordered"}
-                className={
-                  isAutoSilent
-                    ? "bg-accent-400 text-white font-medium"
-                    : "border-border-base text-text-secondary font-medium"
+              <Tooltip
+                content={
+                  customPattern.some((s) => s.shot === "a-roll")
+                    ? "Silent mode can't be used with A-roll scenes — remove A-roll scenes first"
+                    : "No dialogue is generated — great for edit-style videos with music. Incompatible with A-roll scenes."
                 }
-                startContent={<Icon icon={isAutoSilent ? "solar:volume-cross-bold" : "solar:volume-loud-bold"} width={16} />}
-                onPress={() => {
-                  const next = !isAutoSilent;
-                  setIsAutoSilent(next);
-                  setIsSilentGlobal(next);
-                  if (next) {
-                    // Force all pattern scenes to "visual" shot type
-                    setCustomPattern((prev) =>
-                      prev.map((s) => ({ ...s, shot: "visual" as const }))
-                    );
-                  }
-                }}
+                placement="right"
+                classNames={{ content: "bg-surface-elevated border border-border-base text-text-secondary text-xs max-w-xs" }}
               >
-                {isAutoSilent ? "Silent Mode On" : "Silent Mode Off"}
-              </Button>
+                <Button
+                  size="sm"
+                  variant={isAutoSilent ? "solid" : "bordered"}
+                  isDisabled={!isAutoSilent && customPattern.some((s) => s.shot === "a-roll")}
+                  className={
+                    isAutoSilent
+                      ? "bg-accent-400 text-white font-medium"
+                      : "border-border-base text-text-secondary font-medium"
+                  }
+                  startContent={<Icon icon={isAutoSilent ? "solar:volume-cross-bold" : "solar:volume-loud-bold"} width={16} />}
+                  onPress={() => {
+                    const next = !isAutoSilent;
+                    setIsAutoSilent(next);
+                    setIsSilentGlobal(next);
+                    if (next) {
+                      // Force all pattern scenes to "visual" shot type
+                      setCustomPattern((prev) =>
+                        prev.map((s) => ({ ...s, shot: "visual" as const }))
+                      );
+                    }
+                  }}
+                >
+                  {isAutoSilent ? "Silent Mode On" : "Silent Mode Off"}
+                </Button>
+              </Tooltip>
             </CardBody>
           </Card>
 
