@@ -18,3 +18,4 @@ infra/.terraform.lock.hcl
 *.tfstate.backup
 *.tfvars
 !infra/dev.tfvars
+./backend/output/*

@@ -101,6 +101,7 @@ export interface GenerateScriptRequest {
   numberOfVariations?: number;
   structureId?: string;
   customPattern?: { type: SceneType; shot: ShotType | "visual" }[];
+  isSilent?: boolean;
 }
 
 export interface GenerateScriptResponse {
@@ -296,7 +297,22 @@ export interface ScriptStructure {
   icon: string;
 }
 
+export interface AutoStructureResponse {
+  pattern: { type: SceneType; shot: ShotType | "visual" }[];
+  reasoning: string;
+  name: string;
+  isSilent: boolean;
+}
+
 export const SCRIPT_STRUCTURES: ScriptStructure[] = [
+  {
+    id: "auto",
+    name: "Auto (AI Picks)",
+    description: "AI analyzes your direction and picks the best structure",
+    pattern: [],
+    bestFor: ["Best results", "Not sure what to pick", "Smart defaults"],
+    icon: "solar:magic-stick-3-bold-duotone",
+  },
   {
     id: "classic",
     name: "Classic Hook-Problem-Solution",

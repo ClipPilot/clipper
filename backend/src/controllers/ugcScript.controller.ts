@@ -26,6 +26,7 @@ export class UGCScriptController {
         numberOfVariations,
         structureId,
         customPattern,
+        isSilent,
       } = req.body;
 
       if (!teamId || !characterId) {
@@ -82,6 +83,7 @@ export class UGCScriptController {
         numberOfVariations: numberOfVariations || 2,
         structureId: structureId || "classic",
         customPattern,
+        isSilent: !!isSilent,
       });
 
       return res.status(202).json({
@@ -229,6 +231,34 @@ export class UGCScriptController {
       console.error("[UGC_SCRIPT] Regenerate all B-roll shots error:", error);
       return res.status(500).json({
         error: sanitizeErrorForFrontend(error, "Failed to regenerate B-roll shots"),
+      });
+    }
+  }
+
+  async generateAutoStructure(req: AuthRequest, res: Response) {
+    try {
+      const { scriptDirection, productName, hasProductImages } = req.body;
+
+      if (!scriptDirection || !scriptDirection.trim()) {
+        return res.status(400).json({
+          error: "scriptDirection is required",
+        });
+      }
+
+      const result = await ugcScriptService.generateAutoStructure({
+        scriptDirection,
+        productName,
+        hasProductImages: !!hasProductImages,
+      });
+
+      return res.status(200).json({
+        success: true,
+        ...result,
+      });
+    } catch (error) {
+      console.error("[UGC_SCRIPT] Auto structure error:", error);
+      return res.status(500).json({
+        error: sanitizeErrorForFrontend(error, "Failed to generate auto structure"),
       });
     }
   }

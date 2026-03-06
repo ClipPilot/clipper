@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import {
   generateUGCScriptPrompt,
   generateSceneRegenerationPrompt,
+  generateAutoStructurePrompt,
   UGCScriptPromptConfig,
   SCRIPT_STRUCTURES,
 } from "../../config/ugcPrompts";
@@ -19,6 +20,8 @@ import {
   BRollShot,
   ClientUGCScript,
   SceneType,
+  AutoStructureResponseSchema,
+  AutoStructureResponse,
 } from "../../types/ugcScript.types";
 import { db } from "../../db";
 import { characters, ugcScripts } from "@clipper/shared-db";
@@ -28,28 +31,40 @@ import { openaiClient } from "../openai.service";
 const client = openaiClient;
 const MAX_AROLL_MERGE_COUNT = 2;
 
-const SILENT_TEMPLATE_IDS = new Set([
+export const SILENT_TEMPLATE_IDS = new Set([
   "silent-before-after",
   "silent-showcase",
   "silent-montage",
 ]);
+
+/** Detect whether a script is silent based on structure ID and/or custom pattern */
+export function detectSilentMode(
+  structureId: string,
+  customPattern?: { type: string; shot: string }[] | null,
+): boolean {
+  if (SILENT_TEMPLATE_IDS.has(structureId)) return true;
+  if (structureId === "custom" && customPattern?.length) {
+    return customPattern.every((s) => s.shot === "visual");
+  }
+  return false;
+}
 
 /**
  * Builds a dynamic Zod schema that enforces the selected structure at the
  * output-parsing level — exact scene count, locked shot types for all-silent
  * or all-a-roll templates, and empty dialogue for visual scenes.
  */
-function buildDynamicResponseSchema(
+export function buildDynamicResponseSchema(
   structureId: string,
   customPattern?: { type: string; shot: string }[],
+  forceSilent?: boolean,
 ) {
   let sceneCount: number | null = null;
-  let isSilent = false;
+  const isSilent = forceSilent || detectSilentMode(structureId, customPattern);
   let singleShotType: "a-roll" | "b-roll" | null = null;
 
   if (structureId === "custom" && customPattern?.length) {
     sceneCount = customPattern.length;
-    isSilent = customPattern.every((s) => s.shot === "visual");
     // Map "visual" → "b-roll" for shot type analysis
     const mappedShots = new Set(
       customPattern.map((s) => (s.shot === "visual" ? "b-roll" : s.shot)),
@@ -61,7 +76,6 @@ function buildDynamicResponseSchema(
     const pattern = SCRIPT_STRUCTURES[structureId].pattern;
     if (pattern.length > 0) {
       sceneCount = pattern.length;
-      isSilent = SILENT_TEMPLATE_IDS.has(structureId);
       const shotTypes = new Set(pattern.map((s) => s.shot));
       if (shotTypes.size === 1) {
         singleShotType = [...shotTypes][0] as "a-roll" | "b-roll";
@@ -77,7 +91,7 @@ function buildDynamicResponseSchema(
   // Derive constrained scene schema from base — only override dynamic fields
   const sceneSchema = isSilent
     ? UGCSceneBaseSchema.omit({ shotType: true, dialogue: true, ambientSound: true }).extend({
-        shotType: z.literal("b-roll" as const).describe("Must be b-roll — visual-only structure"),
+        shotType: z.literal("b-roll" as const).describe("Must be b-roll — visual/silent scene, no audio"),
         dialogue: z.literal("" as const).describe("Must be empty — silent visual scene"),
         ambientSound: z.null().describe("Must be null — silent visual scene"),
       })
@@ -172,6 +186,7 @@ export interface GenerateScriptsParams {
   numberOfVariations?: number;
   structureId?: string;
   customPattern?: { type: string; shot: string }[];
+  isSilent?: boolean;
 }
 
 export interface RegenerateSceneParams {
@@ -211,6 +226,7 @@ class UGCScriptService {
       numberOfVariations = 2,
       structureId = "classic",
       customPattern,
+      isSilent: forceSilent,
     } = params;
 
     const imageDescriptions = await this.analyzeProductImages(productImageUrls);
@@ -232,6 +248,7 @@ class UGCScriptService {
       numberOfVariations,
       structureId,
       customPattern,
+      isSilent: forceSilent,
     };
 
     const prompt = generateUGCScriptPrompt(promptConfig);
@@ -245,6 +262,7 @@ class UGCScriptService {
     const responseSchema = buildDynamicResponseSchema(
       structureId,
       customPattern,
+      forceSilent,
     );
 
     const response = await client.responses.parse({
@@ -607,6 +625,26 @@ Return a JSON object with a "shots" array of exactly ${shotCount} shot objects.`
       .where(eq(ugcScripts.id, scriptId));
 
     return newShots;
+  }
+
+  async generateAutoStructure(params: {
+    scriptDirection: string;
+    productName?: string;
+    hasProductImages?: boolean;
+  }): Promise<AutoStructureResponse> {
+    const { scriptDirection, productName, hasProductImages } = params;
+
+    const prompt = generateAutoStructurePrompt(scriptDirection, productName, hasProductImages);
+
+    const response = await client.responses.create({
+      model: "gpt-5-mini",
+      input: [{ role: "user", content: prompt }],
+      text: {
+        format: zodTextFormat(AutoStructureResponseSchema, "auto_structure"),
+      },
+    });
+
+    return AutoStructureResponseSchema.parse(JSON.parse(response.output_text));
   }
 
   stripCinematicPrompts(script: UGCScript): ClientUGCScript {

@@ -1,8 +1,8 @@
 "use client";
 
-import { Button, Select, SelectItem, Tooltip } from "@heroui/react";
+import { Button, Select, SelectItem, Tooltip, Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { SCRIPT_STRUCTURES, SCENE_TYPES, SHOT_TYPES, SceneType, ShotType } from "../types";
+import { SCRIPT_STRUCTURES, SCENE_TYPES, SceneType, ShotType } from "../types";
 import type { CustomPatternStep } from "./types";
 
 interface ScriptStructureSelectorProps {
@@ -10,6 +10,10 @@ interface ScriptStructureSelectorProps {
   customPattern: CustomPatternStep[];
   onStructureChange: (structureId: string) => void;
   onCustomPatternChange: (pattern: CustomPatternStep[]) => void;
+  autoStructureReasoning?: string;
+  autoStructureName?: string;
+  isGeneratingAutoStructure?: boolean;
+  isAutoSilent?: boolean;
 }
 
 export function ScriptStructureSelector({
@@ -17,10 +21,16 @@ export function ScriptStructureSelector({
   customPattern,
   onStructureChange,
   onCustomPatternChange,
+  autoStructureReasoning,
+  autoStructureName,
+  isGeneratingAutoStructure,
+  isAutoSilent,
 }: ScriptStructureSelectorProps) {
+  const showCustomBuilder = selectedStructureId === "custom" || (selectedStructureId === "auto" && customPattern.length > 0 && !isGeneratingAutoStructure);
+
   const addScene = () => {
     if (customPattern.length >= 8) return;
-    onCustomPatternChange([...customPattern, { type: "demo", shot: "b-roll" }]);
+    onCustomPatternChange([...customPattern, { type: "demo", shot: isAutoSilent ? "visual" : "b-roll" }]);
   };
 
   const removeScene = (index: number) => {
@@ -80,7 +90,39 @@ export function ScriptStructureSelector({
         ))}
       </div>
 
-      {selectedStructureId === "custom" ? (
+      {selectedStructureId === "auto" && isGeneratingAutoStructure && (
+        <div className="bg-surface-base rounded-lg p-4 border border-border-base flex items-center justify-center gap-3">
+          <Spinner size="sm" color="secondary" />
+          <p className="text-sm text-text-secondary">Analyzing your direction and picking the best structure...</p>
+        </div>
+      )}
+
+      {selectedStructureId === "auto" && !isGeneratingAutoStructure && customPattern.length === 0 && (
+        <div className="bg-surface-base rounded-lg p-4 border border-border-base text-center space-y-2">
+          <Icon icon="solar:magic-stick-3-bold-duotone" width={24} className="text-accent-400 mx-auto" />
+          <p className="text-sm text-text-secondary">
+            Fill in your script direction below, then click <span className="text-accent-400 font-medium">Generate Structure</span> to let AI pick the optimal structure.
+          </p>
+        </div>
+      )}
+
+      {selectedStructureId === "auto" && autoStructureReasoning && !isGeneratingAutoStructure && customPattern.length > 0 && (
+        <div className="bg-accent-400/5 rounded-lg p-3 border border-accent-400/20">
+          <div className="flex items-center gap-2 mb-1">
+            <Icon icon="solar:magic-stick-3-bold-duotone" width={16} className="text-accent-400" />
+            <span className="text-sm font-medium text-accent-400">{autoStructureName || "AI-Generated Structure"}</span>
+            {isAutoSilent && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-medium flex items-center gap-1">
+                <Icon icon="solar:volume-cross-bold" width={12} />
+                Silent Mode
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-text-secondary">{autoStructureReasoning}</p>
+        </div>
+      )}
+
+      {showCustomBuilder ? (
         <div className="bg-surface-base rounded-lg p-4 border border-border-base space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -142,6 +184,7 @@ export function ScriptStructureSelector({
                 <Select
                   aria-label="Shot type"
                   selectedKeys={[step.shot]}
+                  isDisabled={isAutoSilent}
                   onSelectionChange={(keys) => {
                     const value = Array.from(keys)[0] as ShotType | "visual";
                     if (value) updateShotType(i, value);
@@ -204,7 +247,7 @@ export function ScriptStructureSelector({
           </div>
           <p className="text-[10px] text-text-muted">Min 1 scene, max 8. Start with hook, end with CTA.</p>
         </div>
-      ) : (
+      ) : selectedStructureId !== "auto" ? (
         <div className="bg-surface-base rounded-lg p-3 border border-border-base">
           <p className="text-xs text-text-muted mb-2">Structure breakdown:</p>
           <div className="flex flex-wrap gap-2">
@@ -226,7 +269,7 @@ export function ScriptStructureSelector({
             ))}
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

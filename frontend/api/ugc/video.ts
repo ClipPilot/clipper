@@ -4,7 +4,8 @@ import { apiFetch } from "@/lib/apiClient";
 export interface GenerateUGCVideoRequest {
   teamId: number;
   scriptId: string;
-  voiceId: string;
+  voiceId?: string;
+  isSilent?: boolean;
 }
 
 export interface GenerateUGCVideoResponse {
