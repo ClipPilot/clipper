@@ -292,6 +292,11 @@ class UGCScriptService {
         if (!scene.id) {
           scene.id = randomUUID();
         }
+        // A-roll scenes must never have bRollShots — strip if AI mistakenly added them
+        if (scene.shotType === "a-roll" && scene.bRollShots) {
+          console.warn(`[UGC Script] Stripping bRollShots from a-roll scene ${scene.sceneNumber} (${scene.sceneType})`);
+          scene.bRollShots = null;
+        }
       });
       script.scenes = mergeConsecutiveArollScenes(script.scenes);
     });

@@ -1023,7 +1023,7 @@ MIXED cinematicPrompt example:
 "Over-shoulder shot of actor looking down at product in hands, face visible in profile but NOT addressing camera. Soft smile of satisfaction as fingers trace the product label. Hair falls slightly forward, warm side lighting. Focus pulls from actor's profile to product in hands."
 
 CRITICAL RULE:
-- A-ROLL = face + talking to camera + lip sync required
+- A-ROLL = face + talking to camera + lip sync required. A-ROLL MUST NEVER have bRollShots — set bRollShots to null. A-roll is a single continuous talking-head video, NOT a montage of pictures.
 - B-ROLL = NO face OR face not talking + product focus + voiceover
 - MIXED = face visible but NOT talking to camera + product interaction
 
@@ -1274,8 +1274,9 @@ BAD ambient sounds (AVOID THESE):
 
 For b-roll scenes: set ambientSound to null (voiceover only, no background)
 
-bRollShots field (FOR ALL B-ROLL SCENES):
-- Provide an array of shots (1, 2, 3, 4, etc - as many as the scene needs)
+bRollShots field (FOR B-ROLL AND MIXED SCENES ONLY — NEVER FOR A-ROLL):
+- A-ROLL scenes MUST set bRollShots to null — they are single talking-head videos, NOT picture montages
+- For b-roll/mixed: Provide an array of shots (1, 2, 3, 4, etc - as many as the scene needs)
 - Each shot needs: action, cinematicPrompt, durationSeconds (1-4s each), productImageNeeded (boolean), shotType (string)
 - productImageNeeded depends on SCENE TYPE:
   * PROBLEM/HOOK scenes: usually ALL false (no product yet in the story)
@@ -1312,8 +1313,10 @@ Score 95+ means: irresistible hook, perfect pacing, genuine emotion, share-worth
 - a-roll scenes: MUST have ambientSound
 - b-roll scenes: ambientSound should be null
 - No tongue twisters or plosive clusters in dialogue
+- A-ROLL: bRollShots MUST be null — NEVER generate bRollShots for a-roll scenes. A-roll is a talking-head video, not a picture montage.
 - B-ROLL: Use bRollShots array. Multiple shots for product-focused b-roll (max 5). Non-product b-roll defaults to 1 shot (max 3, only if user asks or truly needed). Respect user's shot count if specified.
 - productImageNeeded based on scene type: PROBLEM/HOOK = false, SOLUTION/DEMO/CTA = true where product shown
+- VERIFY: Every a-roll scene has bRollShots set to null (no montage pictures)
 - VERIFY: Every a-roll scene has a non-null ambientSound describing background audio
 - VERIFY: No scene exceeds 50 words (UNLESS monologue mode is activated by user direction)
 - VERIFY: If bRollShots is used, total duration of shots = estimatedDurationSeconds
