@@ -570,7 +570,6 @@ export function ScriptStep({
                     setIsAutoSilent(next);
                     setIsSilentGlobal(next);
                     if (next) {
-                      // Force all pattern scenes to "visual" shot type
                       setCustomPattern((prev) =>
                         prev.map((s) => ({ ...s, shot: "visual" as const }))
                       );
@@ -602,7 +601,7 @@ export function ScriptStep({
                   size="lg"
                   variant="bordered"
                   className="border-accent-400 text-accent-400 font-semibold px-6"
-                  isDisabled={!autoDirectionChanged || isGeneratingAutoStructure}
+                  isDisabled={isGeneratingAutoStructure}
                   isLoading={isGeneratingAutoStructure}
                   onPress={handleGenerateAutoStructure}
                   startContent={!isGeneratingAutoStructure ? <Icon icon="solar:refresh-bold" width={18} /> : undefined}
