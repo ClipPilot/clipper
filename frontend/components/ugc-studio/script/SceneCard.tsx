@@ -353,7 +353,7 @@ export function SceneCard({
                   size="sm"
                   step={1}
                   minValue={3}
-                  maxValue={15}
+                  maxValue={10}
                   value={scene.estimatedDurationSeconds}
                   onChange={(val) => onUpdate({ estimatedDurationSeconds: val as number })}
                   className="w-24"

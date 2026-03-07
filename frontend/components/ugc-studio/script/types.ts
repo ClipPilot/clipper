@@ -101,6 +101,7 @@ export interface GenerateScriptRequest {
   numberOfVariations?: number;
   structureId?: string;
   customPattern?: { type: SceneType; shot: ShotType | "visual" }[];
+  isSilent?: boolean;
 }
 
 export interface GenerateScriptResponse {
@@ -291,21 +292,36 @@ export interface ScriptStructure {
   id: string;
   name: string;
   description: string;
-  pattern: { type: SceneType; shot: ShotType; duration: string }[];
+  pattern: { type: SceneType; shot: ShotType }[];
   bestFor: string[];
   icon: string;
 }
 
+export interface AutoStructureResponse {
+  pattern: { type: SceneType; shot: ShotType | "visual" }[];
+  reasoning: string;
+  name: string;
+  isSilent: boolean;
+}
+
 export const SCRIPT_STRUCTURES: ScriptStructure[] = [
+  {
+    id: "auto",
+    name: "Auto (AI Picks)",
+    description: "AI analyzes your direction and picks the best structure",
+    pattern: [],
+    bestFor: ["Best results", "Not sure what to pick", "Smart defaults"],
+    icon: "solar:magic-stick-3-bold-duotone",
+  },
   {
     id: "classic",
     name: "Classic Hook-Problem-Solution",
     description: "The proven UGC formula that converts",
     pattern: [
-      { type: "hook", shot: "a-roll", duration: "2-3s" },
-      { type: "problem", shot: "a-roll", duration: "4-6s" },
-      { type: "solution", shot: "b-roll", duration: "4-6s" },
-      { type: "cta", shot: "a-roll", duration: "3-4s" },
+      { type: "hook", shot: "a-roll" },
+      { type: "problem", shot: "a-roll" },
+      { type: "solution", shot: "b-roll" },
+      { type: "cta", shot: "a-roll" },
     ],
     bestFor: ["Most products", "Quick conversions", "First-time creators"],
     icon: "solar:star-bold-duotone",
@@ -315,11 +331,11 @@ export const SCRIPT_STRUCTURES: ScriptStructure[] = [
     name: "PAS (Problem-Agitate-Solution)",
     description: "Dig into the pain before relief - high emotional impact",
     pattern: [
-      { type: "hook", shot: "a-roll", duration: "2-3s" },
-      { type: "problem", shot: "a-roll", duration: "3-5s" },
-      { type: "agitate", shot: "a-roll", duration: "3-5s" },
-      { type: "solution", shot: "b-roll", duration: "4-6s" },
-      { type: "cta", shot: "a-roll", duration: "3-4s" },
+      { type: "hook", shot: "a-roll" },
+      { type: "problem", shot: "a-roll" },
+      { type: "agitate", shot: "a-roll" },
+      { type: "solution", shot: "b-roll" },
+      { type: "cta", shot: "a-roll" },
     ],
     bestFor: ["Pain point products", "Health supplements", "Problem solvers"],
     icon: "solar:fire-bold-duotone",
@@ -329,11 +345,11 @@ export const SCRIPT_STRUCTURES: ScriptStructure[] = [
     name: "Social Proof Heavy",
     description: "Lead with credibility and validation",
     pattern: [
-      { type: "hook", shot: "a-roll", duration: "2-3s" },
-      { type: "social-proof", shot: "a-roll", duration: "4-5s" },
-      { type: "demo", shot: "b-roll", duration: "3-5s" },
-      { type: "testimonial", shot: "a-roll", duration: "4-5s" },
-      { type: "cta", shot: "a-roll", duration: "3-4s" },
+      { type: "hook", shot: "a-roll" },
+      { type: "social-proof", shot: "a-roll" },
+      { type: "demo", shot: "b-roll" },
+      { type: "testimonial", shot: "a-roll" },
+      { type: "cta", shot: "a-roll" },
     ],
     bestFor: ["Skeptical audiences", "Premium products", "Competitive markets"],
     icon: "solar:users-group-rounded-bold-duotone",
@@ -343,11 +359,11 @@ export const SCRIPT_STRUCTURES: ScriptStructure[] = [
     name: "Story Arc",
     description: "Mini-narrative with transformation - emotional connection",
     pattern: [
-      { type: "hook", shot: "a-roll", duration: "2-3s" },
-      { type: "problem", shot: "a-roll", duration: "4-5s" },
-      { type: "transformation", shot: "b-roll", duration: "4-6s" },
-      { type: "testimonial", shot: "a-roll", duration: "4-5s" },
-      { type: "cta", shot: "a-roll", duration: "3-4s" },
+      { type: "hook", shot: "a-roll" },
+      { type: "problem", shot: "a-roll" },
+      { type: "transformation", shot: "b-roll" },
+      { type: "testimonial", shot: "a-roll" },
+      { type: "cta", shot: "a-roll" },
     ],
     bestFor: ["Lifestyle products", "Personal care", "Emotional appeals"],
     icon: "solar:chat-round-like-bold-duotone",
@@ -357,11 +373,11 @@ export const SCRIPT_STRUCTURES: ScriptStructure[] = [
     name: "Before/After Transformation",
     description: "Visual transformation story - powerful for results",
     pattern: [
-      { type: "hook", shot: "a-roll", duration: "2-3s" },
-      { type: "problem", shot: "b-roll", duration: "3-4s" },
-      { type: "solution", shot: "a-roll", duration: "3-5s" },
-      { type: "transformation", shot: "b-roll", duration: "4-5s" },
-      { type: "cta", shot: "a-roll", duration: "3-4s" },
+      { type: "hook", shot: "a-roll" },
+      { type: "problem", shot: "b-roll" },
+      { type: "solution", shot: "a-roll" },
+      { type: "transformation", shot: "b-roll" },
+      { type: "cta", shot: "a-roll" },
     ],
     bestFor: ["Skincare", "Fitness", "Cleaning products", "Makeovers"],
     icon: "solar:refresh-bold-duotone",
@@ -371,10 +387,10 @@ export const SCRIPT_STRUCTURES: ScriptStructure[] = [
     name: "Unboxing Reveal",
     description: "ASMR-style product reveal - builds anticipation",
     pattern: [
-      { type: "hook", shot: "a-roll", duration: "2-3s" },
-      { type: "demo", shot: "b-roll", duration: "4-6s" },
-      { type: "solution", shot: "a-roll", duration: "4-5s" },
-      { type: "cta", shot: "a-roll", duration: "3-4s" },
+      { type: "hook", shot: "a-roll" },
+      { type: "demo", shot: "b-roll" },
+      { type: "solution", shot: "a-roll" },
+      { type: "cta", shot: "a-roll" },
     ],
     bestFor: ["Subscription boxes", "Premium products", "New launches"],
     icon: "solar:box-bold-duotone",
@@ -384,11 +400,11 @@ export const SCRIPT_STRUCTURES: ScriptStructure[] = [
     name: "Quick Tutorial",
     description: "Educational value-first - positions you as expert",
     pattern: [
-      { type: "hook", shot: "a-roll", duration: "2-3s" },
-      { type: "demo", shot: "b-roll", duration: "4-6s" },
-      { type: "demo", shot: "b-roll", duration: "3-5s" },
-      { type: "testimonial", shot: "a-roll", duration: "3-4s" },
-      { type: "cta", shot: "a-roll", duration: "3-4s" },
+      { type: "hook", shot: "a-roll" },
+      { type: "demo", shot: "b-roll" },
+      { type: "demo", shot: "b-roll" },
+      { type: "testimonial", shot: "a-roll" },
+      { type: "cta", shot: "a-roll" },
     ],
     bestFor: ["Beauty products", "Tech gadgets", "DIY products"],
     icon: "solar:document-text-bold-duotone",
@@ -398,11 +414,11 @@ export const SCRIPT_STRUCTURES: ScriptStructure[] = [
     name: "Hot Take / Controversy",
     description: "Bold opinion that challenges beliefs - high engagement",
     pattern: [
-      { type: "hook", shot: "a-roll", duration: "2-3s" },
-      { type: "problem", shot: "a-roll", duration: "4-6s" },
-      { type: "solution", shot: "a-roll", duration: "4-6s" },
-      { type: "social-proof", shot: "b-roll", duration: "3-4s" },
-      { type: "cta", shot: "a-roll", duration: "3-4s" },
+      { type: "hook", shot: "a-roll" },
+      { type: "problem", shot: "a-roll" },
+      { type: "solution", shot: "a-roll" },
+      { type: "social-proof", shot: "b-roll" },
+      { type: "cta", shot: "a-roll" },
     ],
     bestFor: ["Disruptive products", "Bold brands", "Standing out"],
     icon: "solar:chat-square-call-bold-duotone",
@@ -412,7 +428,7 @@ export const SCRIPT_STRUCTURES: ScriptStructure[] = [
     name: "Long-Form Speech",
     description:
       "Single continuous monologue — testimonials, stories, speeches",
-    pattern: [{ type: "testimonial", shot: "a-roll", duration: "30-180s" }],
+    pattern: [{ type: "testimonial", shot: "a-roll" }],
     bestFor: ["Testimonials", "Personal stories", "Long monologues"],
     icon: "solar:microphone-3-bold-duotone",
   },
@@ -422,8 +438,8 @@ export const SCRIPT_STRUCTURES: ScriptStructure[] = [
     description:
       "Two B-roll scenes — no voiceover, just visual transformation. Pairs well with music and text overlays.",
     pattern: [
-      { type: "problem", shot: "b-roll", duration: "5s" },
-      { type: "transformation", shot: "b-roll", duration: "5s" },
+      { type: "problem", shot: "b-roll" },
+      { type: "transformation", shot: "b-roll" },
     ],
     bestFor: [
       "Skincare results",
@@ -439,9 +455,9 @@ export const SCRIPT_STRUCTURES: ScriptStructure[] = [
     description:
       "All-visual product spotlight — no voiceover, just compelling visuals. Pairs well with music and text overlays.",
     pattern: [
-      { type: "hook", shot: "b-roll", duration: "3-4s" },
-      { type: "demo", shot: "b-roll", duration: "4-5s" },
-      { type: "cta", shot: "b-roll", duration: "3-4s" },
+      { type: "hook", shot: "b-roll" },
+      { type: "demo", shot: "b-roll" },
+      { type: "cta", shot: "b-roll" },
     ],
     bestFor: ["Product launches", "Beauty", "E-commerce", "Food"],
     icon: "solar:bag-smile-bold-duotone",
@@ -452,10 +468,10 @@ export const SCRIPT_STRUCTURES: ScriptStructure[] = [
     description:
       "Dreamy visual slideshow — no voiceover, pure aesthetic storytelling. Great with ambient music.",
     pattern: [
-      { type: "hook", shot: "b-roll", duration: "3s" },
-      { type: "demo", shot: "b-roll", duration: "3-4s" },
-      { type: "demo", shot: "b-roll", duration: "3-4s" },
-      { type: "transformation", shot: "b-roll", duration: "3-4s" },
+      { type: "hook", shot: "b-roll" },
+      { type: "demo", shot: "b-roll" },
+      { type: "demo", shot: "b-roll" },
+      { type: "transformation", shot: "b-roll" },
     ],
     bestFor: ["Lifestyle brands", "ASMR", "Fashion", "Satisfying processes"],
     icon: "solar:gallery-bold-duotone",

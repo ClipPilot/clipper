@@ -46,6 +46,9 @@ export const allScenesCompleteAtom = atom((get) => {
   );
 });
 
+// Silent mode — set when auto-structure or silent template is selected
+export const isSilentAtom = atom(false);
+
 // Video Generation state
 export const videoJobIdAtom = atom<string | null>(null);
 export const videoStatusAtom = atom<VideoGenerationStatus | null>(null);

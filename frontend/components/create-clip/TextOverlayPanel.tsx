@@ -15,6 +15,8 @@ import {
 interface TextOverlayPanelProps {
   customText: string;
   setCustomText: (value: string) => void;
+  headingInstructions: string;
+  setHeadingInstructions: (value: string) => void;
   textPosition: TextPosition;
   setTextPosition: (value: TextPosition) => void;
   textColor: string;
@@ -44,6 +46,8 @@ interface TextOverlayPanelProps {
 export const TextOverlayPanel: React.FC<TextOverlayPanelProps> = ({
   customText,
   setCustomText,
+  headingInstructions,
+  setHeadingInstructions,
   textPosition,
   setTextPosition,
   textColor,
@@ -97,8 +101,8 @@ export const TextOverlayPanel: React.FC<TextOverlayPanelProps> = ({
     if (musicInputRef.current) musicInputRef.current.value = "";
   };
 
-  // Show heading style/color/font options when either custom text is entered or auto-heading is on
-  const showHeadingOptions = !!customText || autoHeading;
+  // Show heading style/color/font options when either custom text is entered (manual mode) or auto-heading is on
+  const showHeadingOptions = autoHeading || !!customText;
 
   return (
     <div className="space-y-6">
@@ -163,25 +167,33 @@ export const TextOverlayPanel: React.FC<TextOverlayPanelProps> = ({
       <div className="p-4 rounded-lg bg-surface-elevated border border-border-base">
         <p className="font-medium text-text-primary mb-4">Heading</p>
 
-        {/* Auto-heading toggle — hidden when custom text is entered */}
-        {!customText && (
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="text-sm text-text-primary">Auto-Generate Headings</p>
-              <p className="text-xs text-text-secondary">AI creates a viral heading for each clip</p>
-            </div>
-            <Switch isSelected={autoHeading} onValueChange={setAutoHeading} color="primary" size="sm" />
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <p className="text-sm text-text-primary">Auto-Generate Headings</p>
+            <p className="text-xs text-text-secondary">AI creates a viral heading for each clip</p>
           </div>
-        )}
+          <Switch isSelected={autoHeading} onValueChange={setAutoHeading} color="primary" size="sm" />
+        </div>
 
-        <Input
-          label="Custom Text (Optional)"
-          placeholder="e.g., MUST WATCH, NEW PRODUCT ALERT"
-          value={customText}
-          onValueChange={setCustomText}
-          classNames={{ inputWrapper: "bg-surface-dark" }}
-          description={customText ? "Custom text overrides auto-generated headings" : undefined}
-        />
+        {autoHeading ? (
+          <Input
+            label="Heading Instructions (Optional)"
+            placeholder="e.g., focus on product benefits, use question-style headings"
+            value={headingInstructions}
+            onValueChange={setHeadingInstructions}
+            classNames={{ inputWrapper: "bg-surface-dark" }}
+            description="Guide the AI on what type of headings to generate"
+          />
+        ) : (
+          <Input
+            label="Custom Text"
+            placeholder="e.g., MUST WATCH, NEW PRODUCT ALERT"
+            value={customText}
+            onValueChange={setCustomText}
+            classNames={{ inputWrapper: "bg-surface-dark" }}
+            description="Same heading applied to all clips"
+          />
+        )}
 
         {showHeadingOptions && (
           <>
@@ -204,8 +216,8 @@ export const TextOverlayPanel: React.FC<TextOverlayPanelProps> = ({
               </div>
             </div>
 
-            {/* Text Position — only for custom text */}
-            {customText && (
+            {/* Text Position — only for custom text (manual mode) */}
+            {!autoHeading && customText && (
               <div className="mt-4">
                 <label className="text-sm font-medium text-text-primary mb-3 block">Text Position</label>
                 <div className="grid grid-cols-3 gap-3">

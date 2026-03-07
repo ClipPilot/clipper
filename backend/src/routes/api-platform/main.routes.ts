@@ -358,6 +358,10 @@ router.get("/v1/wallet", validateAPIKey, getWalletV1Controller);
  *                     enum: [top, middle, bottom]
  *                     default: top
  *                     description: Heading vertical position on the video.
+ *                   instructions:
+ *                     type: string
+ *                     maxLength: 500
+ *                     description: Optional instructions to guide AI heading generation (e.g. "focus on product benefits", "use question-style headings"). Only applies when auto_heading is true and no custom text is provided.
  *               music_url:
  *                 type: string
  *                 format: uri
@@ -445,6 +449,10 @@ router.get("/v1/wallet", validateAPIKey, getWalletV1Controller);
  *                 enum: [top, middle, bottom]
  *                 default: top
  *                 description: Heading vertical position.
+ *               heading_instructions:
+ *                 type: string
+ *                 maxLength: 500
+ *                 description: Optional instructions to guide AI heading generation.
  *     responses:
  *       200:
  *         description: Clip job submitted

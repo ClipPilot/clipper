@@ -192,6 +192,11 @@ export const createClipJobController = async (
       typeof headingParam === "object" ? headingParam?.text : req.body.heading_text
     ) || undefined;
 
+    // Heading instructions (guides AI heading generation when auto_heading is on)
+    const headingInstructions: string | undefined = (
+      typeof headingParam === "object" ? headingParam?.instructions : req.body.heading_instructions
+    ) || undefined;
+
     // Heading position (default top)
     const rawHeadingPosition = (
       typeof headingParam === "object" ? headingParam?.position : req.body.heading_position
@@ -288,7 +293,7 @@ export const createClipJobController = async (
     processInBackground({
       teamId, userId, clipIds, numClips, promptType,
       captionsEnabled, captionColor, captionFont, conversionMode,
-      clipLength, prompt, autoHeading, hookLength,
+      clipLength, prompt, autoHeading, headingInstructions, hookLength,
       textStyle, textColor, textFont, textPosition, customText,
       backgroundMusicS3Key,
       originalFileName: uploadedFile?.originalname,
@@ -398,6 +403,7 @@ async function uploadAndDispatch(params: {
   clipLength: number;
   prompt?: string;
   autoHeading: boolean;
+  headingInstructions?: string;
   hookLength?: number;
   textStyle?: "stroke" | "instagram";
   textColor?: string;
@@ -411,7 +417,7 @@ async function uploadAndDispatch(params: {
   const {
     teamId, userId, clipIds, localVideoPath,
     numClips, promptType, captionsEnabled, captionColor, captionFont,
-    conversionMode, clipLength, prompt, autoHeading, hookLength,
+    conversionMode, clipLength, prompt, autoHeading, headingInstructions, hookLength,
     textStyle, textColor, textFont, textPosition, customText, backgroundMusicS3Key,
     originalFileName, fileSize,
   } = params;
@@ -434,6 +440,7 @@ async function uploadAndDispatch(params: {
       captionFont,
       conversionMode,
       autoHeading,
+      headingInstructions,
       textStyle,
       textColor,
       textFont,
@@ -460,6 +467,7 @@ function processInBackground(params: {
   clipLength: number;
   prompt?: string;
   autoHeading: boolean;
+  headingInstructions?: string;
   hookLength?: number;
   textStyle?: "stroke" | "instagram";
   textColor?: string;
@@ -504,6 +512,7 @@ function processInBackground(params: {
         clipLength: params.clipLength,
         prompt: params.prompt,
         autoHeading: params.autoHeading,
+        headingInstructions: params.headingInstructions,
         hookLength: params.hookLength,
         textStyle: params.textStyle,
         textColor: params.textColor,

@@ -10,7 +10,7 @@ import { ScriptStep } from "@/components/ugc-studio/script";
 import { AudioStep } from "@/components/ugc-studio/voice";
 import { SceneBuilderStep } from "@/components/ugc-studio/scene-builder";
 import { GenerateVideoStep } from "@/components/ugc-studio/generate";
-import { selectedVoiceAtom, scriptIdAtom, scriptsAtom, selectedVariantIndexAtom, productImageKeysAtom, allScenesCompleteAtom } from "@/store/ugc";
+import { selectedVoiceAtom, scriptIdAtom, scriptsAtom, selectedVariantIndexAtom, productImageKeysAtom, allScenesCompleteAtom, isSilentAtom } from "@/store/ugc";
 import { useTeams } from "@/hooks/useTeams";
 import { ugcScriptAPI } from "@/api/ugc";
 import { actorsAPI } from "@/api/actors";
@@ -18,7 +18,7 @@ import type { Character } from "@/components/ugc-studio/actors/types";
 
 type WizardStep = "character" | "script" | "shot-plan" | "audio" | "generate";
 
-const STEPS: { id: WizardStep; label: string; icon: string }[] = [
+const ALL_STEPS: { id: WizardStep; label: string; icon: string }[] = [
   { id: "character", label: "Character", icon: "solar:user-circle-bold-duotone" },
   { id: "script", label: "Script", icon: "solar:document-text-bold-duotone" },
   { id: "audio", label: "Audio", icon: "solar:soundwave-bold-duotone" },
@@ -56,6 +56,11 @@ function CreateAdPageContent() {
   const selectedVoice = useAtomValue(selectedVoiceAtom);
   const productImageKeys = useAtomValue(productImageKeysAtom);
   const allScenesComplete = useAtomValue(allScenesCompleteAtom);
+  const isSilent = useAtomValue(isSilentAtom);
+
+  const STEPS = isSilent
+    ? ALL_STEPS.filter((s) => s.id !== "audio")
+    : ALL_STEPS;
 
   const currentScript = scripts[selectedVariantIndex] ?? null;
 
@@ -102,7 +107,7 @@ function CreateAdPageContent() {
       case "script":
         return scriptId !== null && currentScript !== null;
       case "audio":
-        return selectedVoice !== null;
+        return isSilent || selectedVoice !== null;
       case "shot-plan":
         return allScenesComplete;
       default:

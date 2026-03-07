@@ -53,41 +53,47 @@ async function createClipFromCompletedJob(
   teamId: number,
   userId: number,
   scriptId: string,
+  isSilent: boolean,
   finalVideoKey: string,
   totalDuration: number | null,
   sceneCount: number
 ): Promise<number | null> {
   try {
-    // --- Transcribe for captions (best-effort) ---
+    // --- Transcribe for captions (best-effort, skip for silent videos) ---
     let captionsData: CaptionEntry[] = [];
-    const tempDir = path.join(process.cwd(), "output", "temp-transcribe");
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir, { recursive: true });
-    }
-    const tempVideoPath = path.join(tempDir, `worker_${jobId}_${Date.now()}.mp4`);
 
-    try {
-      console.log(`[UGC_VIDEO] Downloading video for transcription...`);
-      await s3Service.downloadToFile(finalVideoKey, tempVideoPath);
-
-      console.log(`[UGC_VIDEO] Transcribing video with Deepgram...`);
-      const transcription = await transcribeVideoService(tempVideoPath);
-      const words =
-        transcription?.results?.channels?.[0]?.alternatives?.[0]?.words || [];
-
-      if (words.length > 0) {
-        console.log(`[UGC_VIDEO] Got ${words.length} words from transcription`);
-        captionsData = convertWordsToCaptionEntries(words, 4);
+    if (!isSilent) {
+      const tempDir = path.join(process.cwd(), "output", "temp-transcribe");
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
       }
-    } catch (transcribeError) {
-      console.error(
-        "[UGC_VIDEO] Transcription failed, proceeding without captions:",
-        transcribeError
-      );
-    } finally {
-      if (fs.existsSync(tempVideoPath)) {
-        fs.unlinkSync(tempVideoPath);
+      const tempVideoPath = path.join(tempDir, `worker_${jobId}_${Date.now()}.mp4`);
+
+      try {
+        console.log(`[UGC_VIDEO] Downloading video for transcription...`);
+        await s3Service.downloadToFile(finalVideoKey, tempVideoPath);
+
+        console.log(`[UGC_VIDEO] Transcribing video with Deepgram...`);
+        const transcription = await transcribeVideoService(tempVideoPath);
+        const words =
+          transcription?.results?.channels?.[0]?.alternatives?.[0]?.words || [];
+
+        if (words.length > 0) {
+          console.log(`[UGC_VIDEO] Got ${words.length} words from transcription`);
+          captionsData = convertWordsToCaptionEntries(words, 4);
+        }
+      } catch (transcribeError) {
+        console.error(
+          "[UGC_VIDEO] Transcription failed, proceeding without captions:",
+          transcribeError
+        );
+      } finally {
+        if (fs.existsSync(tempVideoPath)) {
+          fs.unlinkSync(tempVideoPath);
+        }
       }
+    } else {
+      console.log(`[UGC_VIDEO] Silent video — skipping transcription and captions`);
     }
 
     // --- Determine clip type: check if job belongs to an Ad Clone project ---
@@ -187,7 +193,7 @@ async function createClipFromCompletedJob(
 export async function processUGCVideoJob(
   job: GenerateUGCVideoJob
 ): Promise<void> {
-  const { jobId, teamId, userId, scriptId, voiceId, scenes, ttsSpeed } = job;
+  const { jobId, teamId, userId, scriptId, voiceId, scenes, ttsSpeed, isSilent } = job;
 
   console.log(
     `[UGC_VIDEO] Starting video generation for job ${jobId} (script ${scriptId})`
@@ -242,7 +248,8 @@ export async function processUGCVideoJob(
       scriptId,
       voiceId,
       scenes: sceneVideoData,
-      ttsSpeed, // Pass through TTS speed from voice delivery analysis
+      ttsSpeed,
+      isSilent,
       onProgress: (progress, message) => {
         // Parse scene number from message if possible
         const sceneMatch = message.match(/scene (\d+)/i);
@@ -286,6 +293,7 @@ export async function processUGCVideoJob(
       teamId,
       userId,
       scriptId,
+      !!isSilent,
       result.finalVideoKey,
       result.totalDuration,
       sceneVideosData.length

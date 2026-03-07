@@ -88,7 +88,7 @@ export const UGCSceneBaseSchema = z.object({
     .max(5)
     .nullable()
     .optional()
-    .describe("For B-roll PRODUCT DEMO scenes only: multi-shot sequences for unboxing, product showcases, demos. Do NOT use for person-focused b-roll scenes. Each shot has productImageNeeded to control whether product reference is used."),
+    .describe("For b-roll scenes. PRODUCT-FOCUSED scenes: use multiple shots (2-5) to showcase product from different angles. NON-PRODUCT scenes (character actions, emotions, lifestyle, transformations): default to 1 single shot (max 3) — multiple actions can happen within one shot. Only use 2-3 shots if the user explicitly requests it or if the scene truly demands distinct visuals."),
   mergedSceneTypes: z
     .array(z.enum(SCENE_TYPES))
     .nullable()
@@ -169,6 +169,32 @@ export type UGCScript = z.infer<typeof UGCScriptSchema>;
 export type GenerateUGCScriptResponse = z.infer<
   typeof GenerateUGCScriptResponseSchema
 >;
+
+export const AutoStructureResponseSchema = z.object({
+  pattern: z
+    .array(
+      z.object({
+        type: z.enum(SCENE_TYPES).describe("Scene type for this step"),
+        shot: z
+          .enum(["a-roll", "b-roll", "visual"])
+          .describe("Shot type: a-roll for speaking, b-roll for product visuals, visual for silent"),
+      })
+    )
+    .min(2)
+    .max(8)
+    .describe("Optimal scene pattern for this script direction"),
+  reasoning: z
+    .string()
+    .describe("Brief explanation of why this structure was chosen"),
+  name: z
+    .string()
+    .describe("Short descriptive name for this structure, e.g. 'Emotional Demo Flow'"),
+  isSilent: z
+    .boolean()
+    .describe("True if the user explicitly wants no dialogue/voiceover — all scenes should be visual-only"),
+});
+
+export type AutoStructureResponse = z.infer<typeof AutoStructureResponseSchema>;
 
 export type ClientUGCScene = Omit<UGCScene, "cinematicPrompt">;
 export type ClientUGCScript = Omit<UGCScript, "scenes"> & {

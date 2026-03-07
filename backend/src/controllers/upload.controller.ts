@@ -32,6 +32,7 @@ const clipJobSchema = z.object({
   conversionMode: z.enum(["standard", "gaming", "speaker-zoom", "center-crop", "active-speaker"]).optional(),
   textStyle: z.enum(["stroke", "instagram"]).optional(),
   autoHeading: z.boolean().optional(),
+  headingInstructions: z.string().max(500).optional(),
   backgroundMusicS3Key: z.string().max(500).optional(),
 });
 
@@ -253,6 +254,7 @@ export const submitClipJob = async (req: AuthRequest, res: Response) => {
       conversionMode,
       textStyle,
       autoHeading,
+      headingInstructions,
       backgroundMusicS3Key,
     } = parseResult.data;
 
@@ -313,6 +315,7 @@ export const submitClipJob = async (req: AuthRequest, res: Response) => {
         conversionMode,
         textStyle,
         autoHeading,
+        headingInstructions,
         backgroundMusicS3Key,
       },
       originalFileName,

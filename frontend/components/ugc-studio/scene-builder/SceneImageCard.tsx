@@ -707,7 +707,7 @@ export function SceneImageCard({
               {onSceneUpdate && (
                 <div className="flex items-center gap-2">
                   <div className="flex items-center gap-1">
-                    {[3, 5, 7, 10, 15].map((d) => (
+                    {[3, 5, 7, 10].map((d) => (
                       <button
                         key={d}
                         onClick={() => onSceneUpdate({ ...scene, estimatedDurationSeconds: d })}

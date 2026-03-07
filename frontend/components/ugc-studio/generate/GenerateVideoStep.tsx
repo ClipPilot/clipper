@@ -14,6 +14,7 @@ import {
   selectedVoiceAtom,
   videoStatusAtom,
   freshStartAtom,
+  isSilentAtom,
 } from "@/store/ugc";
 import { ugcVideoAPI } from "@/api/ugc/video";
 import { useUsageStats } from "@/hooks/useUsageStats";
@@ -30,6 +31,7 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
   const scripts = useAtomValue(scriptsAtom);
   const selectedVariantIndex = useAtomValue(selectedVariantIndexAtom);
   const selectedVoice = useAtomValue(selectedVoiceAtom);
+  const isSilent = useAtomValue(isSilentAtom);
   const videoStatus = useAtomValue(videoStatusAtom);
   const [freshStart, setFreshStart] = useAtom(freshStartAtom);
 
@@ -63,7 +65,7 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
   }, [scriptId, isGenerating, freshStart, videoStatus, router]);
 
   const handleGenerateClick = async () => {
-    if (!selectedVoice) {
+    if (!isSilent && !selectedVoice) {
       setError("Please select a voice first");
       return;
     }
@@ -79,7 +81,8 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
       const response = await ugcVideoAPI.generateVideo({
         teamId,
         scriptId,
-        voiceId: selectedVoice.id,
+        voiceId: selectedVoice?.id,
+        isSilent: isSilent || undefined,
       });
 
       setFreshStart(false);
@@ -111,7 +114,7 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
     );
   }
 
-  if (!selectedVoice) {
+  if (!isSilent && !selectedVoice) {
     return (
       <Card className="bg-surface-elevated border border-border-base">
         <CardBody className="py-16 flex flex-col items-center justify-center text-center">
@@ -172,12 +175,12 @@ export function GenerateVideoStep({ teamId, scriptId }: GenerateVideoStepProps) 
 
             <div className="flex items-center gap-3 p-3 bg-surface-base rounded-xl">
               <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
-                <Icon icon="solar:soundwave-bold-duotone" className="text-purple-400" width={20} />
+                <Icon icon={isSilent ? "solar:volume-cross-bold-duotone" : "solar:soundwave-bold-duotone"} className="text-purple-400" width={20} />
               </div>
               <div className="flex-1">
-                <p className="text-sm font-medium text-text-primary">Voice</p>
+                <p className="text-sm font-medium text-text-primary">{isSilent ? "Audio" : "Voice"}</p>
                 <p className="text-xs text-text-secondary">
-                  {selectedVoice.name} • {selectedVoice.gender}
+                  {isSilent ? "Silent mode — no voiceover" : `${selectedVoice!.name} • ${selectedVoice!.gender}`}
                 </p>
               </div>
             </div>

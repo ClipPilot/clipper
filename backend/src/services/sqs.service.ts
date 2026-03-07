@@ -56,6 +56,7 @@ export interface ClipVideoJob extends BaseJob {
     captionFont?: string;
     conversionMode?: ConversionMode;
     autoHeading?: boolean;
+    headingInstructions?: string;
     textStyle?: "stroke" | "instagram";
     backgroundMusicS3Key?: string;
   };
@@ -305,6 +306,7 @@ export interface GenerateScriptJob extends BaseJob {
   numberOfVariations: number;
   structureId: string;
   customPattern?: { type: string; shot: string }[];
+  isSilent?: boolean;
 }
 
 export interface GenerateUGCVideoJob extends BaseJob {
@@ -333,6 +335,7 @@ export interface GenerateUGCVideoJob extends BaseJob {
   }>;
   regenerateSceneId?: string;
   ttsSpeed?: number;
+  isSilent?: boolean;
 }
 
 export interface KlingFaceSwapJob extends BaseJob {
@@ -368,6 +371,8 @@ export interface AdCloneAnalyzeAndScriptJob extends BaseJob {
   projectId: string;
 }
 
+export type ScramblingLevel = "light" | "heavy";
+
 export interface AdPostingJob extends BaseJob {
   type: "ad-posting";
   clipId: number;
@@ -376,6 +381,7 @@ export interface AdPostingJob extends BaseJob {
   clipPath: string;
   clipTitle: string;
   postIds?: Array<{ id: number; platform: string }>;
+  scramblingLevel?: ScramblingLevel;
 }
 
 export type VideoProcessingJob =
@@ -643,6 +649,7 @@ class SQSService {
     numberOfVariations: number;
     structureId: string;
     customPattern?: { type: string; shot: string }[];
+    isSilent?: boolean;
   }): Promise<string> {
     const job: GenerateScriptJob = {
       type: "generate-script",
@@ -657,6 +664,7 @@ class SQSService {
       numberOfVariations: params.numberOfVariations,
       structureId: params.structureId,
       customPattern: params.customPattern,
+      isSilent: params.isSilent,
       createdAt: new Date().toISOString(),
     };
 
@@ -675,6 +683,7 @@ class SQSService {
     productImageKeys?: string[];
     adCloneProjectId?: string;
     ttsSpeed?: number;
+    isSilent?: boolean;
   }): Promise<string> {
     const job: GenerateUGCVideoJob = {
       type: "generate-ugc-video",
@@ -686,6 +695,7 @@ class SQSService {
       scenes: params.scenes || [],
       regenerateSceneId: params.regenerateSceneId,
       ttsSpeed: params.ttsSpeed,
+      isSilent: params.isSilent,
       createdAt: new Date().toISOString(),
     };
 
@@ -802,6 +812,7 @@ class SQSService {
     clipPath: string;
     clipTitle: string;
     postIds?: Array<{ id: number; platform: string }>;
+    scramblingLevel?: ScramblingLevel;
   }): Promise<string> {
     const job: AdPostingJob = {
       type: "ad-posting",
@@ -813,6 +824,7 @@ class SQSService {
       clipPath: params.clipPath,
       clipTitle: params.clipTitle,
       postIds: params.postIds,
+      scramblingLevel: params.scramblingLevel,
       createdAt: new Date().toISOString(),
     };
 

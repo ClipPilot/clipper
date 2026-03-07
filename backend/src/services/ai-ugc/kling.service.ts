@@ -4,7 +4,6 @@ import {
   PRODUCT_NEGATIVE_PROMPT,
   PRODUCT_STABILITY_MODIFIERS,
   GENTLE_MOTION_MODIFIERS,
-  BROLL_MOTION_MODIFIERS,
   SCREEN_STABILITY_MODIFIERS,
   PRO_MOTION_PROMPT,
   AVATAR_PROMPT,
@@ -19,7 +18,6 @@ export {
   PRODUCT_NEGATIVE_PROMPT,
   PRODUCT_STABILITY_MODIFIERS,
   GENTLE_MOTION_MODIFIERS,
-  BROLL_MOTION_MODIFIERS,
   SCREEN_STABILITY_MODIFIERS,
   PRO_MOTION_PROMPT,
   AVATAR_PROMPT,
@@ -364,8 +362,8 @@ export function buildKlingPrompt(
     // A-roll: Focus on natural speaking motion, subtle movements
     basePrompt = `${cinematicPrompt}. ++Person speaks naturally to camera++, subtle lip movements, ${emotion} expression. Gentle head micro-movements, relaxed eye contact with lens. ++Face maintains exact appearance throughout++ - no morphing. ${GENTLE_MOTION_MODIFIERS}`;
   } else {
-    // B-roll: Focus on product motion and camera movement, always include screen stability
-    basePrompt = `${cinematicPrompt}. Smooth camera glide showcasing product. ++Product remains solid and unchanged++ - no warping or morphing. ${SCREEN_STABILITY_MODIFIERS} ${BROLL_MOTION_MODIFIERS}`;
+    // B-roll: Add stability modifiers but let the cinematic prompt drive the motion
+    basePrompt = `${cinematicPrompt}. ++Subject maintains exact appearance throughout++ - no morphing or warping. ${GENTLE_MOTION_MODIFIERS}`;
   }
 
   return basePrompt;

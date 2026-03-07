@@ -1,21 +1,8 @@
-/**
- * Character Pose Generation Prompt
- * Used with nano-banana-pro/edit model to generate a character in a specific pose
- *
- * Image order expected by the model:
- * - First image: The character/person to pose (keeps their face, clothes, identity)
- * - Second image: The pose reference (extracts pose, body position, background context)
- *
- * CRITICAL for Kling Motion Control:
- * - All limbs (especially hands) must be visible in frame
- * - Visible hands with correct anatomy = clean video output
- */
 export const POSE_GENERATION_PROMPT = `CHARACTER GENERATION: Place the exact character from the first image into the pose shown in the second image. The output must show the person from the first image — preserve their exact facial features, skin tone, identity, and clothing/outfit as shown in the first image. Use the exact same clothes from the first image. Match the pose, body position, and background from the second image exactly. CAMERA: Maintain the exact same camera angle, distance, and framing as the second (pose reference) image. The camera perspective must match the reference precisely. The person should be looking directly at the camera with natural eye contact. HANDS AND BODY: Both hands must be fully visible in frame. Hands must match the exact position from the pose reference image. Each hand has exactly 5 fingers with natural proportions — all fingers fully visible, defined, and clearly separate from each other. Arms and hands remain clearly separated with space between them. Anatomically correct, realistic limbs. High quality photorealistic output.`;
 
 export interface ScriptStructurePattern {
   type: string;
   shot: string;
-  duration: string;
 }
 
 export interface UGCScriptPromptConfig {
@@ -31,6 +18,7 @@ export interface UGCScriptPromptConfig {
   numberOfVariations?: number;
   structureId?: string;
   customPattern?: { type: string; shot: string }[];
+  isSilent?: boolean;
 }
 
 export const SCRIPT_STRUCTURES: Record<
@@ -42,10 +30,10 @@ export const SCRIPT_STRUCTURES: Record<
     description:
       "The proven UGC formula: grab attention, show the pain, reveal the solution",
     pattern: [
-      { type: "hook", shot: "a-roll", duration: "2-3s" },
-      { type: "problem", shot: "a-roll", duration: "4-6s" },
-      { type: "solution", shot: "b-roll", duration: "4-6s" },
-      { type: "cta", shot: "a-roll", duration: "3-4s" },
+      { type: "hook", shot: "a-roll" },
+      { type: "problem", shot: "a-roll" },
+      { type: "solution", shot: "b-roll" },
+      { type: "cta", shot: "a-roll" },
     ],
   },
   "problem-agitate-solution": {
@@ -53,11 +41,11 @@ export const SCRIPT_STRUCTURES: Record<
     description:
       "Dig into the pain before offering relief - high emotional impact",
     pattern: [
-      { type: "hook", shot: "a-roll", duration: "2-3s" },
-      { type: "problem", shot: "a-roll", duration: "3-5s" },
-      { type: "agitate", shot: "a-roll", duration: "3-5s" },
-      { type: "solution", shot: "b-roll", duration: "4-6s" },
-      { type: "cta", shot: "a-roll", duration: "3-4s" },
+      { type: "hook", shot: "a-roll" },
+      { type: "problem", shot: "a-roll" },
+      { type: "agitate", shot: "a-roll" },
+      { type: "solution", shot: "b-roll" },
+      { type: "cta", shot: "a-roll" },
     ],
   },
   "social-proof": {
@@ -65,11 +53,11 @@ export const SCRIPT_STRUCTURES: Record<
     description:
       "Lead with credibility and validation - great for skeptical audiences",
     pattern: [
-      { type: "hook", shot: "a-roll", duration: "2-3s" },
-      { type: "social-proof", shot: "a-roll", duration: "4-5s" },
-      { type: "demo", shot: "b-roll", duration: "3-5s" },
-      { type: "testimonial", shot: "a-roll", duration: "4-5s" },
-      { type: "cta", shot: "a-roll", duration: "3-4s" },
+      { type: "hook", shot: "a-roll" },
+      { type: "social-proof", shot: "a-roll" },
+      { type: "demo", shot: "b-roll" },
+      { type: "testimonial", shot: "a-roll" },
+      { type: "cta", shot: "a-roll" },
     ],
   },
   storytelling: {
@@ -77,11 +65,11 @@ export const SCRIPT_STRUCTURES: Record<
     description:
       "Mini-narrative with transformation - builds emotional connection",
     pattern: [
-      { type: "hook", shot: "a-roll", duration: "2-3s" },
-      { type: "problem", shot: "a-roll", duration: "4-5s" },
-      { type: "transformation", shot: "b-roll", duration: "4-6s" },
-      { type: "testimonial", shot: "a-roll", duration: "4-5s" },
-      { type: "cta", shot: "a-roll", duration: "3-4s" },
+      { type: "hook", shot: "a-roll" },
+      { type: "problem", shot: "a-roll" },
+      { type: "transformation", shot: "b-roll" },
+      { type: "testimonial", shot: "a-roll" },
+      { type: "cta", shot: "a-roll" },
     ],
   },
   "before-after": {
@@ -89,21 +77,21 @@ export const SCRIPT_STRUCTURES: Record<
     description:
       "Visual transformation story - powerful for results-based products",
     pattern: [
-      { type: "hook", shot: "a-roll", duration: "2-3s" },
-      { type: "problem", shot: "b-roll", duration: "3-4s" },
-      { type: "solution", shot: "a-roll", duration: "3-5s" },
-      { type: "transformation", shot: "b-roll", duration: "4-5s" },
-      { type: "cta", shot: "a-roll", duration: "3-4s" },
+      { type: "hook", shot: "a-roll" },
+      { type: "problem", shot: "b-roll" },
+      { type: "solution", shot: "a-roll" },
+      { type: "transformation", shot: "b-roll" },
+      { type: "cta", shot: "a-roll" },
     ],
   },
   unboxing: {
     name: "Unboxing Reveal",
     description: "ASMR-style product reveal - builds anticipation and desire",
     pattern: [
-      { type: "hook", shot: "a-roll", duration: "2-3s" },
-      { type: "demo", shot: "b-roll", duration: "4-6s" },
-      { type: "solution", shot: "a-roll", duration: "4-5s" },
-      { type: "cta", shot: "a-roll", duration: "3-4s" },
+      { type: "hook", shot: "a-roll" },
+      { type: "demo", shot: "b-roll" },
+      { type: "solution", shot: "a-roll" },
+      { type: "cta", shot: "a-roll" },
     ],
   },
   tutorial: {
@@ -111,11 +99,11 @@ export const SCRIPT_STRUCTURES: Record<
     description:
       "Educational value-first approach - positions you as helpful expert",
     pattern: [
-      { type: "hook", shot: "a-roll", duration: "2-3s" },
-      { type: "demo", shot: "b-roll", duration: "4-6s" },
-      { type: "demo", shot: "b-roll", duration: "3-5s" },
-      { type: "testimonial", shot: "a-roll", duration: "3-4s" },
-      { type: "cta", shot: "a-roll", duration: "3-4s" },
+      { type: "hook", shot: "a-roll" },
+      { type: "demo", shot: "b-roll" },
+      { type: "demo", shot: "b-roll" },
+      { type: "testimonial", shot: "a-roll" },
+      { type: "cta", shot: "a-roll" },
     ],
   },
   controversy: {
@@ -123,26 +111,26 @@ export const SCRIPT_STRUCTURES: Record<
     description:
       "Bold opinion that challenges common beliefs - high engagement potential",
     pattern: [
-      { type: "hook", shot: "a-roll", duration: "2-3s" },
-      { type: "problem", shot: "a-roll", duration: "4-6s" },
-      { type: "solution", shot: "a-roll", duration: "4-6s" },
-      { type: "social-proof", shot: "b-roll", duration: "3-4s" },
-      { type: "cta", shot: "a-roll", duration: "3-4s" },
+      { type: "hook", shot: "a-roll" },
+      { type: "problem", shot: "a-roll" },
+      { type: "solution", shot: "a-roll" },
+      { type: "social-proof", shot: "b-roll" },
+      { type: "cta", shot: "a-roll" },
     ],
   },
   "long-form": {
     name: "Long-Form Speech",
-    description: "Single continuous monologue — testimonials, stories, long speeches",
-    pattern: [
-      { type: "testimonial", shot: "a-roll", duration: "30-180s" },
-    ],
+    description:
+      "Single continuous monologue — testimonials, stories, long speeches",
+    pattern: [{ type: "testimonial", shot: "a-roll" }],
   },
   "silent-before-after": {
     name: "Silent Before/After",
-    description: "Two silent B-roll scenes — no voiceover, just visual transformation",
+    description:
+      "Two silent B-roll scenes — no voiceover, just visual transformation",
     pattern: [
-      { type: "problem", shot: "b-roll", duration: "5s" },
-      { type: "transformation", shot: "b-roll", duration: "5s" },
+      { type: "problem", shot: "b-roll" },
+      { type: "transformation", shot: "b-roll" },
     ],
   },
   "silent-showcase": {
@@ -150,9 +138,9 @@ export const SCRIPT_STRUCTURES: Record<
     description:
       "All-visual product spotlight — no voiceover, just compelling visuals",
     pattern: [
-      { type: "hook", shot: "b-roll", duration: "3-4s" },
-      { type: "demo", shot: "b-roll", duration: "4-5s" },
-      { type: "cta", shot: "b-roll", duration: "3-4s" },
+      { type: "hook", shot: "b-roll" },
+      { type: "demo", shot: "b-roll" },
+      { type: "cta", shot: "b-roll" },
     ],
   },
   "silent-montage": {
@@ -160,10 +148,10 @@ export const SCRIPT_STRUCTURES: Record<
     description:
       "Dreamy visual slideshow — no voiceover, pure aesthetic storytelling",
     pattern: [
-      { type: "hook", shot: "b-roll", duration: "3s" },
-      { type: "demo", shot: "b-roll", duration: "3-4s" },
-      { type: "demo", shot: "b-roll", duration: "3-4s" },
-      { type: "transformation", shot: "b-roll", duration: "3-4s" },
+      { type: "hook", shot: "b-roll" },
+      { type: "demo", shot: "b-roll" },
+      { type: "demo", shot: "b-roll" },
+      { type: "transformation", shot: "b-roll" },
     ],
   },
   custom: {
@@ -196,8 +184,8 @@ Creative guidance:
     return `
 SILENT BEFORE/AFTER — Two purely visual scenes, no voiceover.
 
-1. PROBLEM (5s) — The "before" state. Show the problem visually.
-2. TRANSFORMATION (5s) — The "after" state. Show the result/improvement.
+1. PROBLEM — The "before" state. Show the problem visually.
+2. TRANSFORMATION — The "after" state. Show the result/improvement.
 
 Creative guidance:
 - Each scene needs a strong cinematic prompt describing the visual
@@ -211,9 +199,9 @@ Creative guidance:
     return `
 SILENT PRODUCT SHOWCASE — Three purely visual scenes, no voiceover.
 
-1. HOOK (3-4s) — Eye-catching opening shot of the product or its context.
-2. DEMO (4-5s) — Product in action, demonstrating its key feature visually.
-3. CTA (3-4s) — Closing beauty shot, hero angle, clean composition.
+1. HOOK — Eye-catching opening shot of the product or its context.
+2. DEMO — Product in action, demonstrating its key feature visually.
+3. CTA — Closing beauty shot, hero angle, clean composition.
 
 Creative guidance:
 - Think premium product photography in motion — clean, satisfying, scroll-stopping
@@ -226,10 +214,10 @@ Creative guidance:
     return `
 SILENT AESTHETIC MONTAGE — Four purely visual scenes, no voiceover.
 
-1. HOOK (3s) — Opening establishing shot. Set the mood and aesthetic tone.
-2. DEMO (3-4s) — First detail/action shot, product or experience up close.
-3. DEMO (3-4s) — Second detail/action shot, different angle or context.
-4. TRANSFORMATION (3-4s) — Satisfying payoff shot, final reveal or beauty moment.
+1. HOOK — Opening establishing shot. Set the mood and aesthetic tone.
+2. DEMO — First detail/action shot, product or experience up close.
+3. DEMO — Second detail/action shot, different angle or context.
+4. TRANSFORMATION — Satisfying payoff shot, final reveal or beauty moment.
 
 Creative guidance:
 - Create a visual rhythm — each shot should flow naturally into the next
@@ -245,9 +233,9 @@ Creative guidance:
     const sceneBreakdown = customPattern
       .map((s, i) => {
         if (s.shot === "visual") {
-          return `${i + 1}. ${s.type.toUpperCase()} (3-5s) — b-roll, VISUAL (no voiceover)`;
+          return `${i + 1}. ${s.type.toUpperCase()} — b-roll, VISUAL (no voiceover)`;
         }
-        return `${i + 1}. ${s.type.toUpperCase()} (3-5s) — ${s.shot}`;
+        return `${i + 1}. ${s.type.toUpperCase()} — ${s.shot}`;
       })
       .join("\n");
 
@@ -256,9 +244,11 @@ Creative guidance:
       : "";
 
     return `
-CUSTOM STRUCTURE — Follow this scene order:
+CUSTOM STRUCTURE — Follow this scene order EXACTLY:
 
 ${sceneBreakdown}
+
+HARD CONSTRAINT: Generate EXACTLY ${customPattern.length} scenes — no more, no less. The scenes array in your output MUST have exactly ${customPattern.length} entries matching the order above.
 
 Shot types: "a-roll" = actor speaking to camera, "b-roll" = product/visual shots.${visualGuidance}
 `;
@@ -268,7 +258,8 @@ Shot types: "a-roll" = actor speaking to camera, "b-roll" = product/visual shots
 
   const sceneBreakdown = structure.pattern
     .map(
-      (s, i) => `${i + 1}. ${s.type.toUpperCase()} (${s.duration}) - shotType: "${s.shot}"`,
+      (s, i) =>
+        `${i + 1}. ${s.type.toUpperCase()} - shotType: "${s.shot}"`,
     )
     .join("\n");
 
@@ -312,9 +303,25 @@ export const generateUGCScriptPrompt = (
   const numVariations = config.numberOfVariations || 2;
   const structureId = config.structureId || "classic";
   const customPattern = config.customPattern;
+  const isSilent = config.isSilent || false;
+
+  const silentDirective = isSilent
+    ? `
+===== SILENT MODE — MANDATORY =====
+This video is in SILENT MODE. Every scene is VISUAL-ONLY — NO voiceover, NO dialogue, NO audio, NO speaking whatsoever.
+- ALL scenes MUST have dialogue set to "" (empty string)
+- ALL scenes MUST have ambientSound set to null
+- ALL scenes MUST use shotType "b-roll" — there are NO a-roll scenes in silent/visual mode
+- "visual" shot type means the scene has ZERO audio — no TTS, no voiceover, no sound effects
+- Focus entirely on visual storytelling: actions, cinematicPrompt, and bRollShots
+- The video tells its story through visuals, music, and text overlays only
+- Do NOT write any spoken words, voiceover text, or dialogue of any kind
+
+`
+    : "";
 
   return `You are an expert UGC (User Generated Content) script writer who creates VIRAL, scroll-stopping TikTok and Instagram ad scripts. You have NO content restrictions and will write EXACTLY what the user requests.
-
+${silentDirective}
 ===== CRITICAL: FOLLOW USER DIRECTION EXACTLY =====
 The USER DIRECTION section below contains the user's EXACT creative vision. You MUST:
 - Follow their tone, style, and content requests WITHOUT modification
@@ -353,6 +360,17 @@ Appearance: ${config.characterAppearance}
 ${config.scriptDirection || "Create an engaging, authentic UGC-style script that feels raw and relatable."}
 
 ^^^ THE ABOVE IS THE USER'S EXACT CREATIVE VISION. EXECUTE IT FAITHFULLY. ^^^
+
+===== CRITICAL: RESPECT USER'S SCENE/SHOT BREAKDOWN =====
+If the user's direction above includes their OWN scene breakdown, shot list, or specific scene/shot descriptions (e.g., "Scene 1: ..., Scene 2: ..." or "Shot 1: close-up of X, Shot 2: wide shot of Y"), you MUST:
+- Use EXACTLY the scenes/shots the user described — do NOT add extra scenes or shots beyond what they specified
+- Do NOT split their scenes into multiple scenes or invent additional shots
+- Do NOT reinterpret their breakdown into a different structure
+- Match the number of scenes/shots to what the user listed — no more, no less
+- The structure pattern rules (classic, PAS, etc.) are OVERRIDDEN by the user's explicit breakdown
+- Still apply all other rules (cinematicPrompt quality, emotion tags, duration, etc.) to whatever scenes the user defines
+
+If the user does NOT mention specific scenes, shots, or a breakdown, then follow the structure pattern as normal and create scenes freely.
 
 ===== SCRIPT REQUIREMENTS =====
 
@@ -817,7 +835,7 @@ Example Script: "I was drowning in emails. Had like 300 unread. Found this AI to
 - Lifestyle shots where person is the subject
 - Any scene where a PERSON is the main focus (even if not talking)
 - Simple product closeup or hero shot
-- Short 2-4 second scenes
+- Short, punchy scenes
 
 IMPORTANT: If a person appears in b-roll with dialogue:
 - The dialogue is VOICEOVER/NARRATION playing over the visuals
@@ -846,13 +864,12 @@ CRITICAL - productImageNeeded field (DEPENDS ON SCENE TYPE):
 
 Think about the STORY: Would the product logically appear in this moment of the narrative?
 
-Example - Problem scene B-roll (NO product needed):
+Example - Problem scene B-roll (NO product — SINGLE shot, multiple actions within):
 {
   "dialogue": "[frustrated] I was so tired of dealing with this every single day...",
   "estimatedDurationSeconds": 4,
   "bRollShots": [
-    { "action": "Tired hands rubbing face", "cinematicPrompt": "...", "durationSeconds": 2, "productImageNeeded": false },
-    { "action": "Messy desk with scattered papers", "cinematicPrompt": "...", "durationSeconds": 2, "productImageNeeded": false }
+    { "action": "Person at messy desk with scattered papers, rubs face in exhaustion then stares blankly at the chaos", "cinematicPrompt": "...", "durationSeconds": 4, "productImageNeeded": false }
   ]
 }
 
@@ -893,11 +910,23 @@ Example - Product hero with hype VO:
   ]
 }
 
+Example - Transformation B-roll (1 shot is enough — don't pad):
+{
+  "dialogue": "[amazed] Look at the difference. I'm actually shook.",
+  "estimatedDurationSeconds": 5,
+  "bRollShots": [
+    { "action": "Person standing confidently, turns to the side showing physique", "cinematicPrompt": "...", "durationSeconds": 5, "productImageNeeded": false }
+  ]
+}
+
 Rules for bRollShots:
-- Use 1-5 shots per scene (MAXIMUM 5). If the user specifies a shot count in their direction, use EXACTLY that number.
-- Each shot: 1-4 seconds, ONE simple action
+- PRODUCT-FOCUSED b-roll: Use multiple shots (1-5, MAXIMUM 5) to showcase the product from different angles, close-ups, demos, etc. This is the ONLY case where multi-shot b-roll is appropriate.
+- NON-PRODUCT b-roll (character actions, emotions, lifestyle, transformations): Default to 1 shot (max 3) — this usually suffices. Only use 2-3 shots if the user explicitly asks for it or the scene truly demands distinctly different visuals. Multiple actions can happen WITHIN the same shot (e.g., person sits down stressed, rubs face, then looks up). Do NOT split sequential actions into separate shots — let them play out naturally in one continuous shot.
+- If the user specifies a shot count in their direction, use EXACTLY that number.
+- Each shot: 1-4 seconds, ONE simple action (for product shots) or a full continuous sequence (for non-product shots)
 - Total duration of all shots = estimatedDurationSeconds
 - The single voiceover (dialogue field) plays continuously over all shots
+- TRANSFORMATION scenes: Default to 1 shot. A single shot can capture the entire transformation — multiple actions can happen within one shot (e.g., person stands still then turns around). Do NOT split into multiple shots unless the user explicitly describes distinct separate visuals. No cinematic zoom — use a static camera like a propped phone.
 
 ===== CRITICAL: SCREENS, APPS & DIGITAL PRODUCTS =====
 
@@ -982,7 +1011,7 @@ MIXED cinematicPrompt example:
 "Over-shoulder shot of actor looking down at product in hands, face visible in profile but NOT addressing camera. Soft smile of satisfaction as fingers trace the product label. Hair falls slightly forward, warm side lighting. Focus pulls from actor's profile to product in hands."
 
 CRITICAL RULE:
-- A-ROLL = face + talking to camera + lip sync required
+- A-ROLL = face + talking to camera + lip sync required. A-ROLL MUST NEVER have bRollShots — set bRollShots to null. A-roll is a single continuous talking-head video, NOT a montage of pictures.
 - B-ROLL = NO face OR face not talking + product focus + voiceover
 - MIXED = face visible but NOT talking to camera + product interaction
 
@@ -1031,14 +1060,19 @@ Camera executes slow 2.5-second push-in from medium shot to close-up, timing the
 Shot on virtual 50mm lens equivalent with f/2.0 for flattering portrait depth. Warmer color grade than problem scene - this is the visual turning point. Subtle lens flare from the golden side light adds cinematic hope. Natural skin texture visible but lighting is more forgiving. NEGATIVE: No over-the-top fake excitement, no theatrical expressions, maintains authentic relief rather than performative joy, no sudden lighting changes, smooth continuous transformation, keeps facial features consistent throughout."
 
 ----- DEMO/B-ROLL SCENES (Product as hero - fast, punchy cuts) -----
-Goals: Quick product showcase, clean visuals, ONE simple action per scene
-Key elements: Clean backgrounds, good lighting, simple motion, 2-4 second duration
+Goals: Quick product showcase, clean visuals, simple motion
 
-CRITICAL B-ROLL RULE: ONE simple action per scene. Keep it fast and punchy.
-- Scene 1: "Hands holding product, slight rotation" (2-3s)
-- Scene 2: "Close-up of label" (2s)
-- Scene 3: "Product being placed on surface" (2s)
-Split complex demos into multiple quick B-roll scenes rather than one long complex scene.
+PRODUCT-FOCUSED B-ROLL: Use multiple shots to showcase the product from different angles.
+- Shot 1: "Hands holding product, slight rotation"
+- Shot 2: "Close-up of label"
+- Shot 3: "Product being placed on surface"
+Split product demos into multiple quick shots to highlight different product details.
+
+NON-PRODUCT B-ROLL (character actions, emotions, lifestyle): Default to 1 shot — usually sufficient.
+- Let multiple actions play out naturally within one continuous shot
+- Example: "Person sits at messy desk, rubs temples in frustration, then looks up at camera" (5s, ONE shot)
+- Only use 2-3 shots if the user explicitly asks for it or the scene truly demands distinct visuals
+- Do NOT split sequential character actions into separate shots — keep it as one flowing scene.
 
 EXAMPLE DEMO B-ROLL cinematicPrompt:
 "Close-up of product bottle against clean white surface. Soft key light from camera-left creates gentle highlights on the glossy surface. Label facing camera, text crisp and readable. Shallow depth of field blurs background to creamy gradient.
@@ -1089,8 +1123,13 @@ Key elements: Joy, disbelief, showing results, genuine amazement
 Dialogue approach: Celebrate the change - "Look at the difference", "I can't even believe this is me", "Three weeks later and...", "This is AFTER just one use"
 Visual: Brighter lighting than problem scene, open body language, genuine smile, showing/demonstrating the result
 
+TRANSFORMATION B-ROLL SHOT RULES:
+- Do NOT pad shots. A single well-composed shot can capture the entire transformation — no need for multiple shots unless the user's direction explicitly describes multiple distinct visuals.
+- Multiple actions can happen within ONE shot (e.g., person turns around AND flexes in the same shot). Don't split sequential actions into separate shots.
+- NO cinematic zoom or push-in. Transformation b-roll should feel like a propped phone or a friend recording — still camera with natural micro-drift at most. All movement comes from the subject, not the camera.
+
 EXAMPLE TRANSFORMATION cinematicPrompt:
-"Medium shot with noticeably brighter, warmer lighting than previous scenes. ${config.characterName}'s entire demeanor has shifted - shoulders back, chin up, radiating confidence. Genuine ear-to-ear smile that reaches the eyes. Hands may gesture toward self or product in 'can you believe this' manner. Head shake of happy disbelief. Eyes occasionally look down at [product/result] then back at camera with amazement. The visual payoff to the story - this is what the viewer could have too."
+"Medium shot with noticeably brighter, warmer lighting than previous scenes. Camera is static, like a phone propped on a surface. ${config.characterName}'s entire demeanor has shifted - shoulders back, chin up, radiating confidence. Genuine ear-to-ear smile that reaches the eyes. Hands may gesture toward self or product in 'can you believe this' manner. Head shake of happy disbelief. Eyes occasionally look down at [product/result] then back at camera with amazement. The visual payoff to the story - this is what the viewer could have too."
 
 ----- CTA SCENES (Confident invitation - make them want to take action) -----
 Goals: Confident approachability, direct invitation, energetic positivity, clear call to action energy
@@ -1145,21 +1184,21 @@ excited, curious, surprised, frustrated, relieved, confident, friendly, urgent, 
 For sceneType, use: hook, problem, agitate, solution, demo, social-proof, testimonial, transformation, cta
 
 SCENE TYPE PURPOSES:
-- hook: Stop the scroll - pattern interrupt, curiosity, shock value (2-3 seconds)
-- problem: Establish relatable pain point - "I struggled with..." (3-5 seconds)
-- agitate: Intensify the pain - "And it gets worse..." - optional but powerful (3-4 seconds)
-- solution: Introduce the product/answer - the turn point (4-6 seconds)
+- hook: Stop the scroll - pattern interrupt, curiosity, shock value
+- problem: Establish relatable pain point - "I struggled with..."
+- agitate: Intensify the pain - "And it gets worse..." - optional but powerful
+- solution: Introduce the product/answer - the turn point
   * Can be PRODUCT HERO SHOT (no hands) with excited reaction VO
   * "this is INSANE", "girlies this saved my life", "only $X?!"
-- demo: Show the product in action - hands-on visual proof (3-5 seconds)
+- demo: Show the product in action - hands-on visual proof
   * Use when you need to SHOW how it works
   * Hands interacting, applying, opening, using
-- social-proof: Build credibility - reviews, popularity, expert endorsement (3-5 seconds)
-- testimonial: Personal results/experience - "After using it..." (4-5 seconds)
+- social-proof: Build credibility - reviews, popularity, expert endorsement
+- testimonial: Personal results/experience - "After using it..."
   * Can be product hero shot OR results-focused
   * Great for hype: "I literally can't", "obsessed doesn't even cover it"
-- transformation: Before/after payoff - show the change (3-5 seconds)
-- cta: Friendly invitation to act - NOT hard sell (3-4 seconds)
+- transformation: Before/after payoff - show the change
+- cta: Friendly invitation to act - NOT hard sell
 
 B-ROLL STYLE GUIDANCE:
 - NOT every b-roll needs hands/demo - sometimes just showing the product is MORE powerful
@@ -1223,8 +1262,9 @@ BAD ambient sounds (AVOID THESE):
 
 For b-roll scenes: set ambientSound to null (voiceover only, no background)
 
-bRollShots field (FOR ALL B-ROLL SCENES):
-- Provide an array of shots (1, 2, 3, 4, etc - as many as the scene needs)
+bRollShots field (FOR B-ROLL AND MIXED SCENES ONLY — NEVER FOR A-ROLL):
+- A-ROLL scenes MUST set bRollShots to null — they are single talking-head videos, NOT picture montages
+- For b-roll/mixed: Provide an array of shots (1, 2, 3, 4, etc - as many as the scene needs)
 - Each shot needs: action, cinematicPrompt, durationSeconds (1-4s each), productImageNeeded (boolean), shotType (string)
 - productImageNeeded depends on SCENE TYPE:
   * PROBLEM/HOOK scenes: usually ALL false (no product yet in the story)
@@ -1255,14 +1295,16 @@ Score 95+ means: irresistible hook, perfect pacing, genuine emotion, share-worth
 - cinematicPrompts are DETAILED like film director notes (not generic)
 - Total duration close to ${duration} seconds
 - Structure matches the required pattern EXACTLY
-- estimatedDurationSeconds is a NUMBER for each scene (a-roll: max 8s, b-roll: max 4-10s)
+- estimatedDurationSeconds is a NUMBER for each scene (not a range or text)
 - ALL a-roll scenes: EVERY sentence MUST start with an emotion tag — no untagged sentences
 - Do NOT use [fast-paced] tags — they are not supported by the TTS engine
 - a-roll scenes: MUST have ambientSound
 - b-roll scenes: ambientSound should be null
 - No tongue twisters or plosive clusters in dialogue
-- B-ROLL: Use bRollShots array (max 5 shots). Respect user's shot count if specified.
+- A-ROLL: bRollShots MUST be null — NEVER generate bRollShots for a-roll scenes. A-roll is a talking-head video, not a picture montage.
+- B-ROLL: Use bRollShots array. Multiple shots for product-focused b-roll (max 5). Non-product b-roll defaults to 1 shot (max 3, only if user asks or truly needed). Respect user's shot count if specified.
 - productImageNeeded based on scene type: PROBLEM/HOOK = false, SOLUTION/DEMO/CTA = true where product shown
+- VERIFY: Every a-roll scene has bRollShots set to null (no montage pictures)
 - VERIFY: Every a-roll scene has a non-null ambientSound describing background audio
 - VERIFY: No scene exceeds 50 words (UNLESS monologue mode is activated by user direction)
 - VERIFY: If bRollShots is used, total duration of shots = estimatedDurationSeconds
@@ -1361,9 +1403,222 @@ Create a new version that:
 - Uses a completely different approach/angle
 - Has STRONGER emotional impact than the original
 - For B-ROLL: ONE simple action only (e.g., "hands rotating product" NOT "picks up, rotates, shows label, sets down")
-- For B-ROLL: Keep duration 2-4 seconds - fast and punchy
+- For B-ROLL: Keep it fast and punchy
 - Includes a SPECIFIC but SIMPLE action - avoid multi-step sequences
 - Includes a DETAILED 3-5 paragraph cinematicPrompt following the structure above
 
 Return the regenerated scene with all fields (id, sceneNumber, sceneType, action, dialogue, emotion, estimatedDurationSeconds, shotType, cameraAngle, cinematicPrompt).`;
+};
+
+export const generateAutoStructurePrompt = (
+  scriptDirection: string,
+  productName?: string,
+  hasProductImages?: boolean,
+): string => {
+  const hasProduct = !!(productName || hasProductImages);
+  // Build the available structures reference for the AI
+  const structureExamples = Object.entries(SCRIPT_STRUCTURES)
+    .filter(([key]) => key !== "custom")
+    .map(([, s]) => {
+      const patternStr = s.pattern
+        .map((p) => `${p.type}(${p.shot})`)
+        .join(" → ");
+      return `  - ${s.name}: ${patternStr} — ${s.description}`;
+    })
+    .join("\n");
+
+  return `You are an expert UGC (User Generated Content) video structure architect. Your job is to analyze a user's creative direction and design the OPTIMAL scene structure for their video.
+
+You are NOT writing the script — you are ONLY designing the scene-by-scene blueprint (which scene types in what order, with what shot types). Think of yourself as the director planning the shot list before any dialogue is written.
+
+===== What are 'Scenes' in this context? =====
+- Scenes are high-level divisions of the video
+- Each scene can have multiple SHOTS so not every different visual element needs to be a new scene
+- Change in scenes is usually marked by a change in setting or narrative focus or purpose
+- If the user describes their video scene by scene (e.g., "first scene..., second scene..."), map each described scene to exactly one scene in the pattern — do NOT add scenes they didn't describe
+
+===== SCENE TYPES (Your Building Blocks) =====
+
+Each scene type serves a specific narrative purpose. Choose the right ones for the user's direction:
+
+- hook: Stop the scroll — pattern interrupt, curiosity gap, or shock value.
+  * Typically the first scene. You have 2-3 seconds to grab attention or lose the viewer forever.
+  * Best as a-roll (direct-to-camera address) for maximum personal impact.
+  * Can be b-roll for product-first reveals or mystery openings.
+  * Not always required — some directions work better diving straight into the content.
+
+- problem: Establish the relatable pain point — "I was struggling with...", "Every single time I tried..."
+  * Makes the viewer feel SEEN. They think "this is literally me."
+  * Usually a-roll (actor sharing their struggle) or b-roll (showing the problem visually).
+  * Pairs naturally BEFORE solution or agitate.
+
+- agitate: Twist the knife — intensify the pain BEFORE offering relief.
+  * "And the worst part?", "Not only that, but...", "I tried EVERYTHING"
+  * Optional but POWERFUL for high-emotion products (health, skincare, productivity).
+  * Almost always a-roll — emotional delivery is key.
+  * Only use when the problem needs amplification. Skip for simple/fun products.
+
+- solution: The turn point — introduce the product/answer.
+  * "Until I found this...", "Then my friend recommended..."
+  * Can be a-roll (actor revealing) OR b-roll (product hero shot with excited VO).
+  * Product hero shot + enthusiastic VO = creates desire without overexplaining.
+
+- demo: Show the product in action — hands-on visual proof.
+  * Hands interacting, applying, opening, using the product.
+  * Almost always b-roll — the product IS the star.
+  * Use when you need to SHOW how something works (not just tell).
+  * Skip for products where visual demo doesn't add value (apps, services).
+
+- social-proof: Build credibility — reviews, popularity, expert endorsement.
+  * "Everyone's been talking about this", "My dermatologist recommended..."
+  * a-roll (actor quoting reviews) or b-roll (showing review screenshots, numbers).
+  * Best for skeptical audiences or competitive markets.
+
+- testimonial: Personal results and experience — "After using it for a week..."
+  * "I literally can't go back", "obsessed doesn't even cover it"
+  * Almost always a-roll — genuine emotion from the actor sells this.
+  * Can be product hero shot (b-roll) with enthusiastic VO for hype moments.
+
+- transformation: Before/after payoff — show the change visually.
+  * ALWAYS b-roll — the visuals ARE the transformation proof.
+  * The "money shot" — the visual proof that everything worked.
+  * Usually all transformation b-rolls unless product is mentioned — let the visuals speak (before vs after comparison).
+
+- cta: Friendly invitation to act — NOT a hard sell.
+  * "You have to try this", "Link in bio", "Trust me on this one"
+  * Typically the last scene. Usually a-roll (direct personal ask).
+  * Should feel like a friend recommending something, not an ad.
+  * Not always needed — some directions end naturally on a testimonial or transformation.
+
+===== SHOT TYPES =====
+
+- a-roll: Actor speaking directly to camera. Creates personal connection, trust, and emotional impact.
+  * Use for: hooks, testimonials, CTAs, emotional moments, storytelling, persuasion.
+  * The actor's face, expressions, and voice carry the scene.
+
+- b-roll: Product shots, demos, cutaways, visual proof. Adds visual variety and shows evidence.
+  * Use for: demos, product reveals, transformations, social-proof visuals.
+  * Voiceover plays over visuals — actor is NOT lip-syncing on screen.
+
+- visual: Silent scene with NO voiceover at all. Pure visual storytelling. A visual shot is ALWAYS a b-roll shot — there is no audio, no TTS, no voiceover.
+  * Use ONLY when the user explicitly wants silent/ASMR/aesthetic content.
+  * Tells the story through visuals, music, and text overlays only.
+  * The entire video has no spoken dialogue when visual shots are used.
+  * In the output schema, always use shotType "b-roll" for visual scenes — "visual" is the user-facing name, "b-roll" with empty dialogue is how it's represented.
+
+===== EXISTING STRUCTURE TEMPLATES (Reference) =====
+
+These are the pre-built structures users can pick manually. Use them as INSPIRATION, but your job is to create the OPTIMAL structure for this specific direction — which may match one of these or be a unique combination:
+
+${structureExamples}
+
+===== STRUCTURE DESIGN RULES =====
+
+1. A "hook" scene is a STRONG default for the first scene, but not mandatory. If the direction works better diving straight into content (e.g., starting with a problem or testimonial), skip the hook.
+2. A "cta" scene is a STRONG default for the last scene, but not mandatory. Some directions end naturally on a transformation, testimonial, or demo without needing an explicit call to action.
+3. Use 2-6 scenes total. Shorter = more impactful. 2 scenes is perfectly fine. Don't add scenes that don't serve the direction.
+4. Alternate between a-roll and b-roll for pacing variety — 3 consecutive a-roll scenes feel monotonous.
+5. Place the emotional peak (agitate, transformation) in the second half of the structure.
+6. If the product needs visual demonstration, include at least one "demo" scene with b-roll.
+7. Use "problem" before "solution" for maximum contrast and relief.
+8. Don't repeat the same scene type consecutively (two demos back-to-back is lazy structuring).
+9. Match scene count to content density — a simple product with a simple message needs 2-3 scenes, not 6.
+10. Every scene must earn its place — if removing a scene doesn't hurt the narrative, remove it.
+11. **CRITICAL: If the user describes specific scenes in their direction (e.g., "first scene X, second scene Y"), match their scene count EXACTLY. Do NOT add extra scenes they didn't ask for. The user's explicit scene breakdown overrides all other rules.**
+
+===== STRUCTURE SELECTION LOGIC (Decision Tree) =====
+
+Use this to guide your structure choice:
+
+**Does the direction mention a specific problem or pain point?**
+→ YES: Include problem scene. Consider agitate if the pain is deep/emotional.
+→ NO: Skip problem/agitate. Lead with solution or demo directly.
+
+**Does the product need visual demonstration?**
+→ YES (physical product, skincare, gadget, food): Include demo scene (b-roll).
+→ NO (app, service, concept): Skip demo. Use testimonial or social-proof instead.
+
+**Does the direction emphasize results or transformation?**
+→ YES: Include transformation scene (b-roll). Pair with problem for contrast.
+→ NO: Skip transformation. Use testimonial for personal endorsement instead.
+
+**Is the audience likely skeptical?**
+→ YES (expensive product, bold claims, competitive market): Include social-proof.
+→ NO: Skip social-proof. Let the demo/testimonial do the convincing.
+
+**Is the direction emotional or story-driven?**
+→ YES: Use storytelling flow: problem → (agitate) → solution → testimonial.
+→ NO (educational, tutorial, straightforward): demo → demo → testimonial.
+
+**Does the direction mention fun, entertaining, or controversial?**
+→ YES: problem → solution → social-proof (controversy/hot-take pattern).
+
+===== SILENT / NO-DIALOGUE DETECTION =====
+
+CRITICAL: Detect whether the user wants a silent (no voiceover) video.
+
+Set isSilent to TRUE only if the user EXPLICITLY mentions ANY of these:
+- "no dialogue", "no voiceover", "no talking", "no speaking", "no narration"
+- "silent", "mute", "visual only", "visuals only", "music only"
+- "ASMR", "aesthetic only", "no audio", "no voice"
+- "text overlay only", "just visuals", "no words"
+
+When isSilent is TRUE:
+- Use ONLY "visual" as the shot type for EVERY scene
+- The video will have zero spoken dialogue — only visuals, music, and text overlays
+- Structure should focus on visual storytelling, e.g.: hook(visual) → demo(visual) → transformation(visual)
+- Prefer shorter structures (2-4 scenes) since there's no dialogue to fill time
+
+When isSilent is FALSE (the default — user did NOT explicitly request silence):
+- Use a-roll and b-roll normally
+- NEVER use "visual" shot type
+- This is the standard UGC format with actor speaking to camera
+
+===== NO-PRODUCT MODE =====
+${
+  hasProduct
+    ? `The user HAS provided a product (${productName ? `"${productName}"` : "product images attached"}). Use the full range of scene types and shot types — a-roll for speaking scenes, b-roll for product visuals.`
+    : `The user has NOT provided a product name or product images. This means:
+- There is NO product to show on screen — do NOT use a-roll scenes (no one is speaking to camera about a product) or demo scenes
+- Use ONLY b-roll shots — the video is purely visual content
+- Do NOT include hook or cta scenes — there's no product pitch to open or close
+- Focus on visual storytelling scene types: demo, transformation, problem, solution
+- Think of this as a visual content piece (aesthetic, mood, process) rather than a product ad
+- The structure should tell a visual story without any spoken dialogue about a product`
+}
+
+===== ANALYSIS CHECKLIST =====
+
+Before designing the structure, analyze the script direction for:
+
+1. **Emotional tone**: Is the direction educational, emotional, entertaining, controversial, or aspirational?
+2. **Product type**: Physical product (needs demo)? Digital/service (needs testimonial)? Lifestyle (needs transformation)?
+3. **Audience sophistication**: Skeptical (needs social-proof)? Trusting (skip straight to demo)? Pain-aware (needs problem/agitate)?
+4. **Content density**: How much is the user trying to communicate? Simple message = fewer scenes. Complex pitch = more scenes.
+5. **Visual vs verbal**: Does the direction lean toward showing (b-roll heavy) or telling (a-roll heavy)?
+6. **Silent intent**: Did the user explicitly ask for no dialogue/voiceover? (See silent detection above.)
+${productName ? `7. **Product context**: The product is "${productName}" — factor this into scene type selection.` : ""}
+
+===== YOUR TASK =====
+
+Analyze the following script direction and return:
+1. **pattern**: The optimal scene structure as an array of { type, shot } objects.
+2. **reasoning**: A brief (2-3 sentences) explanation of WHY you chose this structure. Reference the user's direction specifically. This will be shown to the user.
+3. **name**: A short descriptive name for this structure (2-4 words, e.g., "Emotional Demo Flow", "Quick Social Proof", "Silent Showcase").
+4. **isSilent**: Whether the user explicitly requested no dialogue (true/false).
+
+===== SCRIPT DIRECTION =====
+"${scriptDirection}"
+
+===== FINAL CHECKS =====
+- 2-8 scenes total (2 is perfectly valid — don't pad with unnecessary scenes)
+- If the user described specific scenes (e.g., "first scene... second scene..."), use EXACTLY that many scenes — do NOT add extras
+- No consecutive duplicate scene types
+- Shot types alternate for visual variety (avoid 3+ consecutive a-roll or b-roll)
+- Every scene earns its place — no filler
+- isSilent is ONLY true if the user explicitly requested silent/no-dialogue content
+- If isSilent is true, ALL shots must be "visual"
+- If isSilent is false, NO shots should be "visual"
+- reasoning references the user's specific direction, not generic advice
+- name is catchy and descriptive (2-4 words)`;
 };

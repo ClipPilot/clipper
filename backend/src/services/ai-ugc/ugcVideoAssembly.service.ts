@@ -174,6 +174,8 @@ export interface AssemblyOptions {
   onProgress?: (progress: number, message: string) => void;
   /** Recommended TTS speed multiplier from voice delivery analysis (0.7-1.5, default 1.0) */
   ttsSpeed?: number;
+  /** When true, skip all TTS/ElevenLabs calls — video is visual-only with no dialogue */
+  isSilent?: boolean;
 }
 
 export interface AssemblyResult {
@@ -1153,7 +1155,13 @@ async function processScene(
   voiceId: string,
   onProgress?: (message: string) => void,
   speedBoost: number = SPEECH_SPEED_BOOST,
+  isSilent: boolean = false,
 ): Promise<ProcessedScene> {
+  // Silent mode: skip all TTS, route everything through silent b-roll pipeline
+  if (isSilent || !scene.dialogue || scene.dialogue.trim() === "") {
+    return processSilentBrollScene(scene, teamId, scriptId, onProgress);
+  }
+
   if (scene.shotType === "a-roll") {
     return processArollScene(
       scene,
@@ -1163,11 +1171,6 @@ async function processScene(
       onProgress,
       speedBoost,
     );
-  }
-
-  // Silent b-roll: no dialogue means skip TTS entirely
-  if (!scene.dialogue || scene.dialogue.trim() === "") {
-    return processSilentBrollScene(scene, teamId, scriptId, onProgress);
   }
 
   return processBrollScene(
@@ -1187,10 +1190,11 @@ async function processScenesBatch(
   voiceId: string,
   onProgress?: (message: string) => void,
   speedBoost: number = SPEECH_SPEED_BOOST,
+  isSilent: boolean = false,
 ): Promise<ProcessedScene[]> {
   return Promise.all(
     scenes.map((scene) =>
-      processScene(scene, teamId, scriptId, voiceId, onProgress, speedBoost),
+      processScene(scene, teamId, scriptId, voiceId, onProgress, speedBoost, isSilent),
     ),
   );
 }
@@ -1275,11 +1279,15 @@ async function prepareConsecutiveArollAmbientAudio(
 export async function assembleUGCVideo(
   options: AssemblyOptions,
 ): Promise<AssemblyResult> {
-  const { teamId, scriptId, voiceId, scenes, onProgress, ttsSpeed } = options;
+  const { teamId, scriptId, voiceId, scenes, onProgress, ttsSpeed, isSilent } = options;
 
   // Use provided ttsSpeed or fall back to default SPEECH_SPEED_BOOST
   const effectiveSpeedBoost = ttsSpeed ?? SPEECH_SPEED_BOOST;
-  console.log(`[UGC Assembly] Using TTS speed boost: ${effectiveSpeedBoost}x`);
+  if (isSilent) {
+    console.log(`[UGC Assembly] Silent mode — skipping all TTS/ElevenLabs calls`);
+  } else {
+    console.log(`[UGC Assembly] Using TTS speed boost: ${effectiveSpeedBoost}x`);
+  }
 
   const totalScenes = scenes.length;
   const processedScenes: ProcessedScene[] = [];
@@ -1289,13 +1297,16 @@ export async function assembleUGCVideo(
     (a, b) => a.sceneNumber - b.sceneNumber,
   );
 
-  // Pre-generate shared ambient audio for consecutive A-roll sequences
-  const sharedAmbientPaths =
-    await prepareConsecutiveArollAmbientAudio(sortedScenes);
-  for (const scene of sortedScenes) {
-    const sharedPath = sharedAmbientPaths.get(scene.sceneNumber);
-    if (sharedPath) {
-      scene.sharedAmbientAudioPath = sharedPath;
+  // Pre-generate shared ambient audio for consecutive A-roll sequences (skip for silent videos)
+  const sharedAmbientPaths = isSilent
+    ? new Map<number, string>()
+    : await prepareConsecutiveArollAmbientAudio(sortedScenes);
+  if (!isSilent) {
+    for (const scene of sortedScenes) {
+      const sharedPath = sharedAmbientPaths.get(scene.sceneNumber);
+      if (sharedPath) {
+        scene.sharedAmbientAudioPath = sharedPath;
+      }
     }
   }
 
@@ -1317,6 +1328,7 @@ export async function assembleUGCVideo(
       voiceId,
       (msg) => onProgress?.(baseProgress, msg),
       effectiveSpeedBoost,
+      !!isSilent,
     );
     processedScenes.push(...batchResults);
   }

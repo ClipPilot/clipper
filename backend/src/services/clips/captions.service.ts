@@ -184,7 +184,7 @@ Format: Layer,Start,End,Style,Text
 
   let offset = 0;
 
-  const allSegments = [clipData.hook, ...clipData.main];
+  const allSegments = [...(clipData.hook ? [clipData.hook] : []), ...clipData.main];
 
   for (const segment of allSegments) {
     const segmentWords = words.filter(

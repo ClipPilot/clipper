@@ -3,6 +3,7 @@ import { openaiClient } from "../openai.service";
 interface GenerateHeadingInput {
   transcription: string;
   title: string;
+  headingInstructions?: string;
 }
 
 /**
@@ -10,7 +11,7 @@ interface GenerateHeadingInput {
  * Returns 3–6 words optimized for visual impact on short-form content.
  */
 export async function generateViralHeading(input: GenerateHeadingInput): Promise<string> {
-  const { transcription, title } = input;
+  const { transcription, title, headingInstructions } = input;
 
   const context = [
     title && `Title: ${title}`,
@@ -23,6 +24,10 @@ export async function generateViralHeading(input: GenerateHeadingInput): Promise
     return "Watch This";
   }
 
+  const userDirectionRule = headingInstructions
+    ? `\n- IMPORTANT: Follow these specific directions for the heading style/content: ${headingInstructions}`
+    : "";
+
   const response = await openaiClient.responses.create({
     model: "gpt-5-mini",
     instructions:
@@ -33,7 +38,8 @@ export async function generateViralHeading(input: GenerateHeadingInput): Promise
       "- Create curiosity, urgency, or shock value\n" +
       "- Add 1-2 relevant emojis that match the content (e.g. 🔥 💀 😱 🤯 💰 🚀)\n" +
       "- No hashtags, no quotes, no punctuation except !, ?, or emojis\n" +
-      "- Return ONLY the heading text, nothing else",
+      "- Return ONLY the heading text, nothing else" +
+      userDirectionRule,
     input: `Generate a viral heading for this clip:\n${context}`,
   });
 

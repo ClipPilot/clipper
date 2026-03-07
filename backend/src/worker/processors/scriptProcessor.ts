@@ -14,7 +14,7 @@ import {
 } from "../../types/ugcScript.types";
 import { notifyScriptJobUpdate } from "../notify";
 import { openaiClient as client } from "../../services/openai.service";
-import { mergeConsecutiveArollScenes } from "../../services/ai-ugc/ugcScript.service";
+import { mergeConsecutiveArollScenes, buildDynamicResponseSchema } from "../../services/ai-ugc/ugcScript.service";
 import { sanitizeErrorForFrontend } from "../../utils/errorSanitizer";
 
 async function updateJobProgress(
@@ -102,6 +102,7 @@ export async function processScriptJob(job: GenerateScriptJob): Promise<void> {
     numberOfVariations,
     structureId,
     customPattern,
+    isSilent,
   } = job;
 
   console.log(`[SCRIPT] Starting generation for job ${jobId}`);
@@ -158,6 +159,7 @@ export async function processScriptJob(job: GenerateScriptJob): Promise<void> {
       numberOfVariations,
       structureId,
       customPattern,
+      isSilent,
     };
 
     const prompt = generateUGCScriptPrompt(promptConfig);
@@ -169,6 +171,8 @@ export async function processScriptJob(job: GenerateScriptJob): Promise<void> {
     }));
 
     await updateJobProgress(jobId, teamId, 60, "AI is writing your scripts...");
+
+    const responseSchema = buildDynamicResponseSchema(structureId, customPattern, isSilent);
 
     const response = await client.responses.parse({
       model: "gpt-5.2",
@@ -182,7 +186,7 @@ export async function processScriptJob(job: GenerateScriptJob): Promise<void> {
         },
       ],
       text: {
-        format: zodTextFormat(GenerateUGCScriptResponseSchema, "ugc_script_response"),
+        format: zodTextFormat(responseSchema as any, "ugc_script_response"),
       },
     });
 
