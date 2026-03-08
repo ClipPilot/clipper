@@ -724,19 +724,19 @@ export const convertToGamingVertical = async (
     }
   }
 
-  // Center-crop within the available (facecam-free) region
+  // Center-crop relative to the full video frame (gameplay is typically centered)
   const gameplayAR = 1080 / gameOutH;
   let gpW: number, gpH: number, gpX: number, gpY: number;
-  if (availW / availH > gameplayAR) {
-    gpH = availH;
-    gpW = Math.round(availH * gameplayAR);
-    gpX = availX + Math.round((availW - gpW) / 2);
-    gpY = availY;
+  if (width / height > gameplayAR) {
+    gpH = height;
+    gpW = Math.round(height * gameplayAR);
+    gpX = Math.round((width - gpW) / 2);
+    gpY = 0;
   } else {
-    gpW = availW;
-    gpH = Math.round(availW / gameplayAR);
-    gpX = availX;
-    gpY = availY + Math.round((availH - gpH) / 2);
+    gpW = width;
+    gpH = Math.round(width / gameplayAR);
+    gpX = 0;
+    gpY = Math.round((height - gpH) / 2);
   }
 
   console.log(
