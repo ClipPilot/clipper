@@ -17,7 +17,7 @@ FACECAM_CONFIG = {
     'max_face_size_percent': 0.25,    # Reject detections > 25% of frame
     'num_sample_frames': 16,
     'skip_percent': 0.05,             # Skip first/last 5% of video
-    'min_consistent_detections': 3,   # Need 3+ consistent detections
+    'min_consistent_detections': 1,   # Single detection is sufficient
     'outlier_threshold_px': 50,       # Detections >50px from median are outliers
     'edge_snap_px': 30,               # Snap to edge if within 30px
 }
