@@ -119,7 +119,22 @@ class AdminService {
   }) {
     const { search, limit = 50, offset = 0 } = options || {};
 
-    let query = db
+    // Search filter applied at SQL level BEFORE pagination
+    const whereCondition = search
+      ? sql`(
+          ${teams.name} ILIKE ${"%" + search + "%"}
+          OR ${teams.plan} ILIKE ${"%" + search + "%"}
+          OR EXISTS (
+            SELECT 1 FROM team_members tm
+            INNER JOIN users u ON tm.user_id = u.id
+            WHERE tm.team_id = ${teams.id}
+            AND tm.role = 'owner'
+            AND u.email ILIKE ${"%" + search + "%"}
+          )
+        )`
+      : sql`TRUE`;
+
+    const allTeams = await db
       .select({
         id: teams.id,
         name: teams.name,
@@ -131,14 +146,16 @@ class AdminService {
         createdAt: teams.created_at,
       })
       .from(teams)
+      .where(whereCondition)
       .orderBy(teams.created_at)
       .limit(limit)
       .offset(offset);
 
-    // Get total count for pagination
-    const [{ total }] = await db.select({ total: count() }).from(teams);
-
-    const allTeams = await query;
+    // Get total count with same search filter for accurate pagination
+    const [{ total }] = await db
+      .select({ total: count() })
+      .from(teams)
+      .where(whereCondition);
 
     const teamsWithDetails = await Promise.all(
       allTeams.map(async (team) => {
@@ -185,20 +202,8 @@ class AdminService {
       })
     );
 
-    // Filter by search if provided (done after fetching for simplicity)
-    let filteredTeams = teamsWithDetails;
-    if (search) {
-      const searchLower = search.toLowerCase();
-      filteredTeams = teamsWithDetails.filter(
-        (team) =>
-          team.name.toLowerCase().includes(searchLower) ||
-          team.ownerEmail?.toLowerCase().includes(searchLower) ||
-          team.plan.toLowerCase().includes(searchLower)
-      );
-    }
-
     return {
-      teams: filteredTeams,
+      teams: teamsWithDetails,
       pagination: {
         total: Number(total),
         limit,
