@@ -15,20 +15,22 @@ RUN curl -L https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpe
     chmod +x /usr/local/bin/ffmpeg /usr/local/bin/ffprobe && \
     rm -rf /tmp/ffmpeg*
 
+# Install CPU-only PyTorch first (avoids pulling ~2GB CUDA build)
+RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
+
 # Copy requirements and install Python dependencies
 COPY requirements.txt ${LAMBDA_TASK_ROOT}/
 RUN pip install --no-cache-dir -r ${LAMBDA_TASK_ROOT}/requirements.txt
 
-# Download face detection models at build time (faster cold starts)
+# Download SSD face detection model at build time (used by multi-face mode)
 RUN mkdir -p ${LAMBDA_TASK_ROOT}/models && \
     curl -L "https://raw.githubusercontent.com/opencv/opencv/master/samples/dnn/face_detector/deploy.prototxt" \
         -o ${LAMBDA_TASK_ROOT}/models/deploy.prototxt && \
     curl -L "https://raw.githubusercontent.com/opencv/opencv_3rdparty/dnn_samples_face_detector_20170830/res10_300x300_ssd_iter_140000.caffemodel" \
-        -o ${LAMBDA_TASK_ROOT}/models/res10_300x300_ssd_iter_140000.caffemodel && \
-    curl -L "https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx" \
-        -o ${LAMBDA_TASK_ROOT}/models/face_detection_yunet_2023mar.onnx
+        -o ${LAMBDA_TASK_ROOT}/models/res10_300x300_ssd_iter_140000.caffemodel
 
-# Copy function code
+# Copy YOLO facecam weights and function code
+COPY best.pt ${LAMBDA_TASK_ROOT}/
 COPY handler.py shared.py facecam.py multi_face.py ${LAMBDA_TASK_ROOT}/
 
 # Set the CMD to handler
