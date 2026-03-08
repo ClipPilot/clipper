@@ -26,7 +26,7 @@ curl -X POST https://api.cuttr.com/api/platform/v1/clip \
     "prompt": "focus on the product demo moments",
     "camera_mode": "speaker-zoom",
     "auto_heading": true,
-    "heading": { "style": "instagram", "color": "yellow", "font": "Luckiest Guy" },
+    "heading": { "style": "instagram", "bg_color": "black", "font": "Anton" },
     "captions": { "enabled": true, "color": "yellow", "font": "Luckiest Guy" }
   }'
 ```
@@ -43,7 +43,8 @@ curl -X POST https://api.cuttr.com/api/platform/v1/clip \
   -F "camera_mode=speaker-zoom" \
   -F "auto_heading=true" \
   -F "heading_style=instagram" \
-  -F "heading_color=yellow" \
+  -F "heading_bg_color=black" \
+  -F "heading_font=Anton" \
   -F "captions_enabled=true" \
   -F "captions_color=yellow" \
   -F "captions_font=Luckiest Guy"
@@ -111,6 +112,12 @@ curl -X POST https://api.cuttr.com/api/platform/v1/clip \
     </ParamField>
     <ParamField body="heading.position" type="string" default="top">
       Heading vertical position. One of `top`, `middle`, `bottom`.
+    </ParamField>
+    <ParamField body="heading.bg_color" type="string" default="black">
+      Background color for the `instagram` style. One of `black`, `white`. Text color auto-adjusts (black bg = white text, white bg = black text). Only applies to `instagram` style.
+    </ParamField>
+    <ParamField body="heading.instructions" type="string">
+      Optional instructions to guide AI heading generation (e.g. "focus on product benefits", "use question-style headings"). Only applies when `auto_heading` is true and no custom `text` is provided. Max 500 characters.
     </ParamField>
   </Expandable>
 </ParamField>
@@ -190,6 +197,14 @@ curl -X POST https://api.cuttr.com/api/platform/v1/clip \
 
 <ParamField body="heading_position" type="string" default="top">
   Heading vertical position. One of `top`, `middle`, `bottom`.
+</ParamField>
+
+<ParamField body="heading_bg_color" type="string" default="black">
+  Background color for `instagram` style. One of `black`, `white`. Text color auto-adjusts.
+</ParamField>
+
+<ParamField body="heading_instructions" type="string">
+  Instructions to guide AI heading generation. Max 500 characters.
 </ParamField>
 
 <ParamField body="captions_enabled" type="string" default="false">

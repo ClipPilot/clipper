@@ -13,7 +13,7 @@
 variable "mac_renderer_url" {
   description = "URL for the Mac rendering service (Tailscale IP, e.g. http://100.x.y.z:3100)"
   type        = string
-  default     = "100.100.228.57"
+  default     = "http://100.100.228.57:3100"
 }
 
 variable "mac_renderer_port" {

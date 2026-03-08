@@ -1359,7 +1359,7 @@ const FONT_CONFIG: Record<string, FontConfig> = {
 
 const EMOJI_FONT = "'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji'";
 
-const MAC_RENDERER_URL = "http://100.100.228.57:3100";
+const MAC_RENDERER_URL = process.env.MAC_RENDERER_URL || "";
 
 /**
  * Render HTML to PNG via the remote Mac renderer, or fall back to local Puppeteer.
@@ -1439,6 +1439,7 @@ const generateTextImage = async (
   strokeColor: string = "#000000",
   fontName: string = "Montserrat",
   style: "stroke" | "instagram" = "stroke",
+  headingBgColor: string = "#000000",
 ): Promise<void> => {
   // Get font config or fallback to Montserrat
   const fontConfig = FONT_CONFIG[fontName] || FONT_CONFIG["Montserrat"];
@@ -1451,11 +1452,12 @@ const generateTextImage = async (
 
   const isInstagram = style === "instagram";
 
+  const instagramTextColor = headingBgColor === "#FFFFFF" ? "#000000" : "#FFFFFF";
   const textStyle = isInstagram
-    ? `color: #FFFFFF;
-       background: rgba(0, 0, 0, 0.85);
+    ? `color: ${instagramTextColor};
+       background: ${headingBgColor}d9;
        padding: 12px 28px;
-       border-radius: 8px;
+       border-radius: 4px;
        display: inline-block;`
     : `color: ${fillColor};
        -webkit-text-stroke: 6px ${strokeColor};
@@ -1524,6 +1526,7 @@ export const addTextOverlayAtPosition = async (
   strokeColor: string = "#000000",
   fontName: string = "Montserrat",
   style: "stroke" | "instagram" = "stroke",
+  headingBgColor: string = "#000000",
 ): Promise<string> => {
   const textImagePath = path.join(
     path.dirname(outputPath),
@@ -1539,11 +1542,12 @@ export const addTextOverlayAtPosition = async (
   const isInstagram = style === "instagram";
 
   try {
+    const instagramTextColor = headingBgColor === "#FFFFFF" ? "#000000" : "#FFFFFF";
     const textStyle = isInstagram
-      ? `color: #FFFFFF;
-         background: rgba(0, 0, 0, 0.85);
+      ? `color: ${instagramTextColor};
+         background: ${headingBgColor}d9;
          padding: 10px 24px;
-         border-radius: 8px;
+         border-radius: 4px;
          display: inline-block;`
       : `color: ${fillColor};
          -webkit-text-stroke: 4px ${strokeColor};
@@ -1692,6 +1696,7 @@ export const addTextOverlay = async (
   strokeColor: string = "#000000",
   fontName: string = "Montserrat",
   style: "stroke" | "instagram" = "stroke",
+  headingBgColor: string = "#000000",
 ): Promise<string> => {
   const textImagePath = path.join(
     path.dirname(outputPath),
@@ -1707,6 +1712,7 @@ export const addTextOverlay = async (
       strokeColor,
       fontName,
       style,
+      headingBgColor,
     );
     console.log("Text image created at:", textImagePath);
 

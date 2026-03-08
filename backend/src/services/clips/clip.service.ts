@@ -439,6 +439,7 @@ export interface TextOverlayOptions {
   y: number;
   fontSize: number;
   style?: "stroke" | "instagram";
+  headingBgColor?: string;
 }
 
 export const regenerateClipWithTextOverlay = async (
@@ -459,7 +460,8 @@ export const regenerateClipWithTextOverlay = async (
     overlay.color,
     "#000000",
     overlay.font,
-    overlay.style || "stroke"
+    overlay.style || "stroke",
+    overlay.headingBgColor,
   );
 
   return outputPath;

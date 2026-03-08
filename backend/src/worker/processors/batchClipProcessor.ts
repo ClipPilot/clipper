@@ -164,6 +164,7 @@ export async function processBatchClipVideoJob(
       textColor: options.textColor,
       textFont: options.textFont,
       textStyle: options.textStyle,
+      textBgColor: options.textBgColor,
       captions: options.captions,
       captionColor: options.captionColor,
       captionFont: options.captionFont,
@@ -254,6 +255,7 @@ export async function processBatchClipVideoJob(
                   y: 10,
                   fontSize: 48,
                   style: options.textStyle || "stroke",
+                  headingBgColor: options.textBgColor || "#000000",
                 },
                 ...(options.backgroundMusicS3Key ? {
                   audio: {

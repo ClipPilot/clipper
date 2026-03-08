@@ -187,6 +187,20 @@ export const createClipJobController = async (
       textFont = resolveCaptionFont(rawHeadingFont);
     }
 
+    // Heading background color (only applies to instagram style)
+    const rawHeadingBgColor = (
+      typeof headingParam === "object" ? headingParam?.bg_color : req.body.heading_bg_color
+    ) as string | undefined;
+    let textBgColor: string | undefined;
+    if (rawHeadingBgColor) {
+      if (!["black", "white"].includes(rawHeadingBgColor.toLowerCase())) {
+        return res.status(400).json({
+          error: `Invalid heading bg color "${rawHeadingBgColor}". Must be one of: black, white`,
+        });
+      }
+      textBgColor = rawHeadingBgColor.toLowerCase() === "white" ? "#FFFFFF" : "#000000";
+    }
+
     // Custom heading text (takes priority over auto_heading)
     const customText: string | undefined = (
       typeof headingParam === "object" ? headingParam?.text : req.body.heading_text
@@ -294,7 +308,7 @@ export const createClipJobController = async (
       teamId, userId, clipIds, numClips, promptType,
       captionsEnabled, captionColor, captionFont, conversionMode,
       clipLength, prompt, autoHeading, headingInstructions, hookLength,
-      textStyle, textColor, textFont, textPosition, customText,
+      textStyle, textColor, textFont, textPosition, textBgColor, customText,
       backgroundMusicS3Key,
       originalFileName: uploadedFile?.originalname,
       fileSize: uploadedFile?.size,
@@ -409,6 +423,7 @@ async function uploadAndDispatch(params: {
   textColor?: string;
   textFont?: string;
   textPosition?: "top" | "bottom" | "middle";
+  textBgColor?: string;
   customText?: string;
   backgroundMusicS3Key?: string;
   originalFileName?: string;
@@ -418,7 +433,7 @@ async function uploadAndDispatch(params: {
     teamId, userId, clipIds, localVideoPath,
     numClips, promptType, captionsEnabled, captionColor, captionFont,
     conversionMode, clipLength, prompt, autoHeading, headingInstructions, hookLength,
-    textStyle, textColor, textFont, textPosition, customText, backgroundMusicS3Key,
+    textStyle, textColor, textFont, textPosition, textBgColor, customText, backgroundMusicS3Key,
     originalFileName, fileSize,
   } = params;
 
@@ -445,6 +460,7 @@ async function uploadAndDispatch(params: {
       textColor,
       textFont,
       textPosition,
+      textBgColor,
       customText,
       backgroundMusicS3Key,
     },
@@ -473,6 +489,7 @@ function processInBackground(params: {
   textColor?: string;
   textFont?: string;
   textPosition?: "top" | "bottom" | "middle";
+  textBgColor?: string;
   customText?: string;
   backgroundMusicS3Key?: string;
   originalFileName?: string;
@@ -518,6 +535,7 @@ function processInBackground(params: {
         textColor: params.textColor,
         textFont: params.textFont,
         textPosition: params.textPosition,
+        textBgColor: params.textBgColor,
         customText: params.customText,
         backgroundMusicS3Key: params.backgroundMusicS3Key,
         originalFileName: params.originalFileName,

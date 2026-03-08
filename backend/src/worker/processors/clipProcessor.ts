@@ -231,6 +231,7 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
       textColor: options.textColor,
       textFont: options.textFont,
       textStyle: options.textStyle,
+      textBgColor: options.textBgColor,
       captions: options.captions,
       captionColor: options.captionColor,
       captionFont: options.captionFont,
@@ -332,6 +333,7 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
                       y: 10,
                       fontSize: 48,
                       style: options.textStyle || "stroke",
+                      headingBgColor: options.textBgColor || "#000000",
                     },
                     ...(options.backgroundMusicS3Key
                       ? {
