@@ -697,34 +697,6 @@ export const convertToGamingVertical = async (
     `[GAMING] Face crop: ${fcW}x${fcH} at (${fcX},${fcY}) → ${faceOutW}x${faceOutH} (scale=${faceScale.toFixed(2)}), gameplay: 1080x${gameOutH}`,
   );
 
-  // Determine available gameplay region by excluding the facecam strip
-  const fcOnLeft = fcX + fcW / 2 < width / 2;
-  const fcOnTop = fcY + fcH / 2 < height / 2;
-  const distToVerticalEdge = fcOnLeft ? fcX + fcW : width - fcX;
-  const distToHorizontalEdge = fcOnTop ? fcY + fcH : height - fcY;
-
-  // Exclude the thinner strip (removes least gameplay)
-  let availX = 0,
-    availY = 0,
-    availW = width,
-    availH = height;
-  if (distToVerticalEdge <= distToHorizontalEdge) {
-    if (fcOnLeft) {
-      availX = fcX + fcW;
-      availW = width - availX;
-    } else {
-      availW = fcX;
-    }
-  } else {
-    if (fcOnTop) {
-      availY = fcY + fcH;
-      availH = height - availY;
-    } else {
-      availH = fcY;
-    }
-  }
-
-  // Center-crop relative to the full video frame (gameplay is typically centered)
   const gameplayAR = 1080 / gameOutH;
   let gpW: number, gpH: number, gpX: number, gpY: number;
   if (width / height > gameplayAR) {
@@ -739,8 +711,27 @@ export const convertToGamingVertical = async (
     gpY = Math.round((height - gpH) / 2);
   }
 
+  const overlapsX = gpX < fcX + fcW && gpX + gpW > fcX;
+  const overlapsY = gpY < fcY + fcH && gpY + gpH > fcY;
+
+  if (overlapsX && overlapsY) {
+    const fcOnLeft = fcX + fcW / 2 < width / 2;
+    const fcOnTop = fcY + fcH / 2 < height / 2;
+    const shiftX = fcOnLeft ? (fcX + fcW) - gpX : (gpX + gpW) - fcX;
+    const shiftY = fcOnTop ? (fcY + fcH) - gpY : (gpY + gpH) - fcY;
+
+    if (shiftX <= shiftY) {
+      gpX = fcOnLeft ? fcX + fcW : fcX - gpW;
+    } else {
+      gpY = fcOnTop ? fcY + fcH : fcY - gpH;
+    }
+
+    gpX = Math.max(0, Math.min(gpX, width - gpW));
+    gpY = Math.max(0, Math.min(gpY, height - gpH));
+  }
+
   console.log(
-    `[GAMING] Gameplay: avail ${availW}x${availH} at (${availX},${availY}), center-crop ${gpW}x${gpH} at (${gpX},${gpY})`,
+    `[GAMING] Gameplay: center-crop ${gpW}x${gpH} at (${gpX},${gpY}), facecam overlap shift: ${overlapsX && overlapsY}`,
   );
 
   // If facecam is narrower than 1080 (height-constrained), pad with black to center it
