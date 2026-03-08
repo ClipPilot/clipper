@@ -25,6 +25,8 @@ interface TextOverlayPanelProps {
   setTextFont: (value: string) => void;
   textStyle: "stroke" | "instagram";
   setTextStyle: (value: "stroke" | "instagram") => void;
+  textBgColor: string;
+  setTextBgColor: (value: string) => void;
   autoHeading: boolean;
   setAutoHeading: (value: boolean) => void;
   captions: boolean;
@@ -56,6 +58,8 @@ export const TextOverlayPanel: React.FC<TextOverlayPanelProps> = ({
   setTextFont,
   textStyle,
   setTextStyle,
+  textBgColor,
+  setTextBgColor,
   autoHeading,
   setAutoHeading,
   captions,
@@ -206,7 +210,10 @@ export const TextOverlayPanel: React.FC<TextOverlayPanelProps> = ({
                     key={s.key}
                     variant={textStyle === s.key ? "solid" : "bordered"}
                     color={textStyle === s.key ? "primary" : "default"}
-                    onPress={() => setTextStyle(s.key)}
+                    onPress={() => {
+                      setTextStyle(s.key);
+                      if (s.key === "instagram") setTextFont("Proxima Nova");
+                    }}
                     startContent={<Icon icon={s.icon} />}
                     size="sm"
                   >
@@ -233,6 +240,33 @@ export const TextOverlayPanel: React.FC<TextOverlayPanelProps> = ({
                       {pos.label}
                     </Button>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Background Color — only for instagram style */}
+            {textStyle === "instagram" && (
+              <div className="mt-4">
+                <label className="text-sm font-medium text-text-primary mb-3 block">Background Color</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    variant={textBgColor === "#000000" ? "solid" : "bordered"}
+                    color={textBgColor === "#000000" ? "primary" : "default"}
+                    onPress={() => setTextBgColor("#000000")}
+                    size="sm"
+                    className={textBgColor === "#000000" ? "bg-black text-white border-accent-400" : ""}
+                  >
+                    Black
+                  </Button>
+                  <Button
+                    variant={textBgColor === "#FFFFFF" ? "solid" : "bordered"}
+                    color={textBgColor === "#FFFFFF" ? "primary" : "default"}
+                    onPress={() => setTextBgColor("#FFFFFF")}
+                    size="sm"
+                    className={textBgColor === "#FFFFFF" ? "bg-white text-black border-accent-400" : ""}
+                  >
+                    White
+                  </Button>
                 </div>
               </div>
             )}

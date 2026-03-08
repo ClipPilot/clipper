@@ -128,7 +128,7 @@ export function HeadingTool() {
                   onClick={() =>
                     updateHeading({
                       style: s.key as HeadingStyle,
-                      font: s.key === "instagram" ? "Anton" : heading.font,
+                      font: s.key === "instagram" ? "Proxima Nova" : heading.font,
                     })
                   }
                   className={`flex-1 h-10 rounded-lg border transition-all flex items-center justify-center gap-2 text-sm ${

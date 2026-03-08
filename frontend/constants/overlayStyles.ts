@@ -42,7 +42,8 @@ export const HEADING_COLOR_PRESETS: ColorOption[] = [
   { color: "#9B59B6", name: "Purple" },
 ];
 
-export const CAPTION_FONTS: FontOption[] = [
+export const OVERLAY_FONTS: FontOption[] = [
+  { id: "proxima-nova", name: "Proxima Nova" },
   { id: "luckiest-guy", name: "Luckiest Guy" },
   { id: "montserrat", name: "Montserrat" },
   { id: "everlasting", name: "Everlasting" },
@@ -52,15 +53,8 @@ export const CAPTION_FONTS: FontOption[] = [
   { id: "anton", name: "Anton" },
 ];
 
-export const HEADING_FONTS: FontOption[] = [
-  { id: "luckiest-guy", name: "Luckiest Guy" },
-  { id: "montserrat", name: "Montserrat" },
-  { id: "everlasting", name: "Everlasting" },
-  { id: "komika", name: "Komika" },
-  { id: "burbank", name: "Burbank" },
-  { id: "bebas-neue", name: "Bebas Neue" },
-  { id: "anton", name: "Anton" },
-];
+export const CAPTION_FONTS = OVERLAY_FONTS;
+export const HEADING_FONTS = OVERLAY_FONTS;
 
 export const HEADING_STYLES = [
   { key: "stroke" as const, label: "Outlined", icon: "solar:text-bold" },

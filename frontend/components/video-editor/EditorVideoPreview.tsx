@@ -529,7 +529,7 @@ export function EditorVideoPreview({
                     style={{
                       fontFamily: `var(--font-${getFontId(headingState.font, HEADING_FONTS)}), sans-serif`,
                       fontSize: `${Math.round(headingState.fontSize * scale)}px`,
-                      fontWeight: 900,
+                      fontWeight: isInstagram ? 600 : 900,
                       lineHeight: 1.2,
                       position: "relative",
                       ...(isInstagram
@@ -537,7 +537,7 @@ export function EditorVideoPreview({
                             color: headingState.headingBgColor === "#FFFFFF" ? "#000000" : "#FFFFFF",
                             background: `${headingState.headingBgColor || "#000000"}d9`,
                             padding: `${Math.round(10 * scale)}px ${Math.round(24 * scale)}px`,
-                            borderRadius: `${Math.round(4 * scale)}px`,
+                            borderRadius: `${Math.round(20 * scale)}px`,
                           }
                         : {
                             color: headingState.color,

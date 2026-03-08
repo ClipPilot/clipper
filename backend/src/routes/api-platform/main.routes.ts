@@ -309,7 +309,7 @@ router.get("/v1/wallet", validateAPIKey, getWalletV1Controller);
  *                     default: white
  *                   font:
  *                     type: string
- *                     enum: [Montserrat, Luckiest Guy, Everlasting, Komika, Burbank, Bebas Neue, Anton]
+ *                     enum: [Proxima Nova, Montserrat, Luckiest Guy, Everlasting, Komika, Burbank, Bebas Neue, Anton]
  *                     default: Montserrat
  *               camera_mode:
  *                 type: string
@@ -351,7 +351,7 @@ router.get("/v1/wallet", validateAPIKey, getWalletV1Controller);
  *                     description: Text color (only applies to stroke style).
  *                   font:
  *                     type: string
- *                     enum: [Montserrat, Luckiest Guy, Everlasting, Komika, Burbank, Bebas Neue, Anton]
+ *                     enum: [Proxima Nova, Montserrat, Luckiest Guy, Everlasting, Komika, Burbank, Bebas Neue, Anton]
  *                     default: Montserrat
  *                   position:
  *                     type: string
@@ -406,7 +406,7 @@ router.get("/v1/wallet", validateAPIKey, getWalletV1Controller);
  *                     default: white
  *                   font:
  *                     type: string
- *                     enum: [Montserrat, Luckiest Guy, Everlasting, Komika, Burbank, Bebas Neue, Anton]
+ *                     enum: [Proxima Nova, Montserrat, Luckiest Guy, Everlasting, Komika, Burbank, Bebas Neue, Anton]
  *                     default: Montserrat
  *               camera_mode:
  *                 type: string

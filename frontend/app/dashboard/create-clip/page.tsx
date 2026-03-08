@@ -93,6 +93,7 @@ export default function CreateClipPage() {
   const [textColor, setTextColor] = useState("#FFFFFF");
   const [textFont, setTextFont] = useState("Montserrat");
   const [textStyle, setTextStyle] = useState<"stroke" | "instagram">("stroke");
+  const [textBgColor, setTextBgColor] = useState("#000000");
   const [autoHeading, setAutoHeading] = useState(true);
   const [headingInstructions, setHeadingInstructions] = useState("");
   const [captions, setCaptions] = useState(false);
@@ -329,6 +330,7 @@ export default function CreateClipPage() {
           captionFont,
           conversionMode,
           textStyle,
+          textBgColor: textStyle === "instagram" ? textBgColor : undefined,
           autoHeading,
           headingInstructions: autoHeading && headingInstructions ? headingInstructions : undefined,
           backgroundMusicS3Key: musicS3Key || undefined,
@@ -360,6 +362,7 @@ export default function CreateClipPage() {
           captionFont,
           conversionMode,
           textStyle,
+          textBgColor: textStyle === "instagram" ? textBgColor : undefined,
           autoHeading,
           headingInstructions: autoHeading && headingInstructions ? headingInstructions : undefined,
           backgroundMusicS3Key: musicS3Key || undefined,
@@ -744,6 +747,8 @@ export default function CreateClipPage() {
                         setTextFont={setTextFont}
                         textStyle={textStyle}
                         setTextStyle={setTextStyle}
+                        textBgColor={textBgColor}
+                        setTextBgColor={setTextBgColor}
                         autoHeading={autoHeading}
                         setAutoHeading={setAutoHeading}
                         captions={captions}

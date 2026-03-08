@@ -1355,6 +1355,10 @@ const FONT_CONFIG: Record<string, FontConfig> = {
     family: "'Burbank', sans-serif",
     localFile: "Burbank.otf",
   },
+  "Proxima Nova": {
+    family: "'Proxima Nova', sans-serif",
+    localFile: "ProximaNova-Semibold.ttf",
+  },
 };
 
 const EMOJI_FONT = "'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji'";
@@ -1457,7 +1461,7 @@ const generateTextImage = async (
     ? `color: ${instagramTextColor};
        background: ${headingBgColor}d9;
        padding: 12px 28px;
-       border-radius: 4px;
+       border-radius: 20px;
        display: inline-block;`
     : `color: ${fillColor};
        -webkit-text-stroke: 6px ${strokeColor};
@@ -1486,7 +1490,7 @@ const generateTextImage = async (
           }
           .text {
             font-size: 52px;
-            font-weight: 900;
+            font-weight: ${isInstagram ? 600 : 900};
             font-family: ${fontConfig.family}, ${EMOJI_FONT}, sans-serif;
             text-align: center;
             line-height: 1.25;
@@ -1547,7 +1551,7 @@ export const addTextOverlayAtPosition = async (
       ? `color: ${instagramTextColor};
          background: ${headingBgColor}d9;
          padding: 10px 24px;
-         border-radius: 4px;
+         border-radius: 20px;
          display: inline-block;`
       : `color: ${fillColor};
          -webkit-text-stroke: 4px ${strokeColor};
@@ -1572,7 +1576,7 @@ export const addTextOverlayAtPosition = async (
             }
             .text {
               font-size: ${fontSize}px;
-              font-weight: 900;
+              font-weight: ${isInstagram ? 600 : 900};
               font-family: ${fontConfig.family}, ${EMOJI_FONT}, sans-serif;
               text-align: center;
               line-height: 1.2;

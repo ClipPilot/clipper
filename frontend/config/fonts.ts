@@ -46,6 +46,11 @@ export const fontAnton = Anton({
   weight: ["400"],
 });
 
+export const fontProximaNova = localFont({
+  src: '../public/fonts/ProximaNova-Semibold.ttf',
+  variable: '--font-proxima-nova',
+});
+
 export const fontMono = Space_Mono({
   subsets: ["latin"],
   variable: "--font-mono",

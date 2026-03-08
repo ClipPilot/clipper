@@ -35,6 +35,7 @@ export interface ClipServiceOptions {
   textColor?: string;
   textFont?: string;
   textStyle?: "stroke" | "instagram";
+  textBgColor?: string;
   captions?: boolean;
   captionColor?: string;
   captionFont?: string;
@@ -289,6 +290,7 @@ export const createCombinedClipService = async (
     const strokeColor = "#000000";
     const fontName = options.textFont || "Montserrat";
     const textStyle = options.textStyle || "stroke";
+    const bgColor = options.textBgColor || "#000000";
     await addTextOverlay(
       currentVideoPath,
       headingPath,
@@ -298,6 +300,7 @@ export const createCombinedClipService = async (
       strokeColor,
       fontName,
       textStyle,
+      bgColor,
     );
     currentVideoPath = headingPath;
     tempFiles.push(headingPath);
@@ -656,6 +659,7 @@ export const createBatchCombinedClipService = async (
     const strokeColor = "#000000";
     const fontName = options.textFont || "Montserrat";
     const textStyle = options.textStyle || "stroke";
+    const bgColor = options.textBgColor || "#000000";
     await addTextOverlay(
       currentVideoPath,
       headingPath,
@@ -665,6 +669,7 @@ export const createBatchCombinedClipService = async (
       strokeColor,
       fontName,
       textStyle,
+      bgColor,
     );
     currentVideoPath = headingPath;
     tempFiles.push(headingPath);

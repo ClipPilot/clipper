@@ -31,7 +31,7 @@ const CAPTION_COLORS: Record<string, string> = {
 };
 
 const CAPTION_FONTS = [
-  "Montserrat", "Luckiest Guy", "Everlasting", "Komika",
+  "Proxima Nova", "Montserrat", "Luckiest Guy", "Everlasting", "Komika",
   "Burbank", "Bebas Neue", "Anton",
 ] as const;
 

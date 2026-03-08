@@ -44,6 +44,7 @@ export interface SubmitClipParams {
   captionFont?: string;
   conversionMode?: ConversionMode;
   textStyle?: "stroke" | "instagram";
+  textBgColor?: string;
   autoHeading?: boolean;
   headingInstructions?: string;
   backgroundMusicS3Key?: string;
@@ -88,6 +89,7 @@ export interface SubmitBatchClipParams {
   captionFont?: string;
   conversionMode?: ConversionMode;
   textStyle?: "stroke" | "instagram";
+  textBgColor?: string;
   autoHeading?: boolean;
   headingInstructions?: string;
   backgroundMusicS3Key?: string;
