@@ -33,7 +33,7 @@ const clipJobSchema = z.object({
   textStyle: z.enum(["stroke", "instagram"]).optional(),
   textBgColor: z.string().regex(hexColorRegex, "Invalid hex color").optional(),
   autoHeading: z.boolean().optional(),
-  headingInstructions: z.string().max(500).optional(),
+  headingInstructions: z.string().max(1500).optional(),
   backgroundMusicS3Key: z.string().max(500).optional(),
 });
 

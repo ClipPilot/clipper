@@ -26,7 +26,7 @@ curl -X POST https://api.cuttr.com/api/platform/v1/clip \
     "prompt": "focus on the product demo moments",
     "camera_mode": "speaker-zoom",
     "auto_heading": true,
-    "heading": { "style": "instagram", "bg_color": "black", "font": "Anton" },
+    "heading": { "style": "instagram", "bg_color": "black", "font": "Proxima Nova" },
     "captions": { "enabled": true, "color": "yellow", "font": "Luckiest Guy" }
   }'
 ```
@@ -44,7 +44,7 @@ curl -X POST https://api.cuttr.com/api/platform/v1/clip \
   -F "auto_heading=true" \
   -F "heading_style=instagram" \
   -F "heading_bg_color=black" \
-  -F "heading_font=Anton" \
+  -F "heading_font=Proxima Nova" \
   -F "captions_enabled=true" \
   -F "captions_color=yellow" \
   -F "captions_font=Luckiest Guy"
@@ -102,22 +102,24 @@ curl -X POST https://api.cuttr.com/api/platform/v1/clip \
       Custom heading text. When provided, overrides `auto_heading`.
     </ParamField>
     <ParamField body="heading.style" type="string" default="stroke">
-      Heading style. `stroke` = outlined text, `instagram` = white text on dark background.
+      Heading visual style. Determines which color options are available:
+      - `stroke` — bold outlined text with no background. Use `heading.color` to set the text color. `heading.bg_color` is ignored.
+      - `instagram` — text on a rounded pill-shaped background. Use `heading.bg_color` to set the pill color (`black` or `white`). Text color is automatically set to contrast (black bg → white text, white bg → black text). `heading.color` is ignored.
     </ParamField>
     <ParamField body="heading.color" type="string" default="white">
-      Text color. One of `white`, `black`, `red`, `orange`, `yellow`, `green`, `teal`, `blue`, `purple`, `pink`. Only applies to `stroke` style.
+      Text color. One of `white`, `black`, `red`, `orange`, `yellow`, `green`, `teal`, `blue`, `purple`, `pink`. **Only used with `stroke` style** — ignored when style is `instagram`.
     </ParamField>
     <ParamField body="heading.font" type="string" default="Montserrat">
-      Heading font. One of `Proxima Nova`, `Montserrat`, `Luckiest Guy`, `Everlasting`, `Komika`, `Burbank`, `Bebas Neue`, `Anton`.
+      Heading font. One of `Proxima Nova`, `Montserrat`, `Luckiest Guy`, `Everlasting`, `Komika`, `Burbank`, `Bebas Neue`, `Anton`. Tip: `Proxima Nova` works well with the `instagram` style.
     </ParamField>
     <ParamField body="heading.position" type="string" default="top">
       Heading vertical position. One of `top`, `middle`, `bottom`.
     </ParamField>
     <ParamField body="heading.bg_color" type="string" default="black">
-      Background color for the `instagram` style. One of `black`, `white`. Text color auto-adjusts (black bg = white text, white bg = black text). Only applies to `instagram` style.
+      Background pill color. One of `black`, `white`. Text color auto-adjusts for contrast. **Only used with `instagram` style** — ignored when style is `stroke`.
     </ParamField>
     <ParamField body="heading.instructions" type="string">
-      Optional instructions to guide AI heading generation (e.g. "focus on product benefits", "use question-style headings"). Only applies when `auto_heading` is true and no custom `text` is provided. Max 500 characters.
+      Optional instructions to guide AI heading generation (e.g. "focus on product benefits", "use question-style headings"). Only applies when `auto_heading` is true and no custom `text` is provided. Max 1500 characters.
     </ParamField>
   </Expandable>
 </ParamField>
@@ -184,11 +186,11 @@ curl -X POST https://api.cuttr.com/api/platform/v1/clip \
 </ParamField>
 
 <ParamField body="heading_style" type="string" default="stroke">
-  `stroke` (outlined) or `instagram` (white text on dark background).
+  `stroke` (bold outlined text, no background) or `instagram` (text on rounded pill background). Determines which color fields apply — see `heading_color` and `heading_bg_color`.
 </ParamField>
 
 <ParamField body="heading_color" type="string" default="white">
-  Heading text color. One of `white`, `black`, `red`, `orange`, `yellow`, `green`, `teal`, `blue`, `purple`, `pink`.
+  Heading text color. One of `white`, `black`, `red`, `orange`, `yellow`, `green`, `teal`, `blue`, `purple`, `pink`. **Only used with `stroke` style** — ignored when style is `instagram`.
 </ParamField>
 
 <ParamField body="heading_font" type="string" default="Montserrat">
@@ -200,11 +202,11 @@ curl -X POST https://api.cuttr.com/api/platform/v1/clip \
 </ParamField>
 
 <ParamField body="heading_bg_color" type="string" default="black">
-  Background color for `instagram` style. One of `black`, `white`. Text color auto-adjusts.
+  Background pill color. One of `black`, `white`. Text color auto-adjusts for contrast. **Only used with `instagram` style** — ignored when style is `stroke`.
 </ParamField>
 
 <ParamField body="heading_instructions" type="string">
-  Instructions to guide AI heading generation. Max 500 characters.
+  Instructions to guide AI heading generation. Max 1500 characters.
 </ParamField>
 
 <ParamField body="captions_enabled" type="string" default="false">
