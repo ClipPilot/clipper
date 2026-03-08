@@ -42,7 +42,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 net = get_face_detector()
                 return handle_multi_face(net, video_path, frame_w, frame_h, context)
 
-            # Facecam detection (3-layer: variance map → YuNet → motion)
             return handle_facecam(video_path, frame_w, frame_h, context)
         finally:
             if os.path.exists(video_path):

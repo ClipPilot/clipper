@@ -12,16 +12,14 @@ s3_client = boto3.client('s3')
 
 # Facecam-specific config: tuned for small webcam overlays in gaming streams
 FACECAM_CONFIG = {
-    'min_confidence': 0.45,
+    'min_confidence': 0.45,           # SSD confidence threshold (used by multi-face defaults)
     'min_face_size_percent': 0.003,   # Facecams are small — min 0.3% of frame
-    'max_face_size_percent': 0.25,    # Reject large faces (talking-head, not a facecam)
+    'max_face_size_percent': 0.25,    # Reject detections > 25% of frame
     'num_sample_frames': 16,
     'skip_percent': 0.05,             # Skip first/last 5% of video
-    'min_consistent_detections': 3,   # Need 3+ consistent face positions
-    'outlier_threshold_px': 50,       # Faces >50px from median are outliers
-    'expand_factor': 3.0,             # Expand face bbox by 3x to get webcam region
+    'min_consistent_detections': 3,   # Need 3+ consistent detections
+    'outlier_threshold_px': 50,       # Detections >50px from median are outliers
     'edge_snap_px': 30,               # Snap to edge if within 30px
-    'region_padding_factor': 1.15,    # Pad variance-detected region by 15%
 }
 
 # Multi-face config: tuned for podcast/interview content with 2+ visible speakers
@@ -42,7 +40,6 @@ CACHE_MODEL_DIR = "/tmp/face_models"
 
 PROTOTXT_URL = "https://raw.githubusercontent.com/opencv/opencv/master/samples/dnn/face_detector/deploy.prototxt"
 CAFFEMODEL_URL = "https://raw.githubusercontent.com/opencv/opencv_3rdparty/dnn_samples_face_detector_20170830/res10_300x300_ssd_iter_140000.caffemodel"
-YUNET_MODEL_URL = "https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx"
 
 
 def get_model_paths() -> Tuple[str, str]:
@@ -77,21 +74,6 @@ def get_face_detector():
     net = cv2.dnn.readNetFromCaffe(prototxt_path, caffemodel_path)
     return net
 
-
-def get_yunet_model_path() -> str:
-    """Get path to YuNet ONNX model (baked in or downloaded on first use)."""
-    baked = os.path.join(BAKED_MODEL_DIR, "face_detection_yunet_2023mar.onnx")
-    if os.path.exists(baked):
-        print("[FACECAM-DETECT] Using baked-in YuNet model")
-        return baked
-
-    os.makedirs(CACHE_MODEL_DIR, exist_ok=True)
-    cached = os.path.join(CACHE_MODEL_DIR, "face_detection_yunet_2023mar.onnx")
-    if not os.path.exists(cached):
-        import urllib.request
-        print("[FACECAM-DETECT] Downloading YuNet model...")
-        urllib.request.urlretrieve(YUNET_MODEL_URL, cached)
-    return cached
 
 
 def download_from_s3(s3_url: str, local_path: str) -> None:
@@ -156,41 +138,6 @@ def extract_sample_frames(video_path: str, num_frames: int = 12, skip_percent: f
 
     return frame_paths
 
-
-def expand_face_to_webcam_region(face_bbox: Dict, frame_w: int, frame_h: int) -> Dict[str, int]:
-    """Expand face bounding box ~2.5x to estimate the full webcam overlay region.
-
-    Snaps to nearest edge if within 30px (facecams are flush with corners).
-    """
-    factor = FACECAM_CONFIG['expand_factor']
-    snap = FACECAM_CONFIG['edge_snap_px']
-
-    face_cx = face_bbox['x'] + face_bbox['w'] / 2
-    face_cy = face_bbox['y'] + face_bbox['h'] / 2
-
-    face_size = max(face_bbox['w'], face_bbox['h'])
-    region_size = int(face_size * factor)
-
-    rx = int(face_cx - region_size / 2)
-    ry = int(face_cy - region_size / 2)
-    rw = region_size
-    rh = region_size
-
-    if rx < snap:
-        rx = 0
-    if ry < snap:
-        ry = 0
-    if (rx + rw) > (frame_w - snap):
-        rw = frame_w - rx
-    if (ry + rh) > (frame_h - snap):
-        rh = frame_h - ry
-
-    rx = max(0, rx)
-    ry = max(0, ry)
-    rw = min(rw, frame_w - rx)
-    rh = min(rh, frame_h - ry)
-
-    return {'x': rx, 'y': ry, 'w': rw, 'h': rh}
 
 
 def detect_corner(region: Dict[str, int], frame_w: int, frame_h: int) -> str:
