@@ -120,8 +120,7 @@ jobs:
           status_cron_secret  = "${{ secrets.STATUS_CRON_SECRET }}"
           status_domain       = "status.cuttr.com"
 
-          # Tailscale Relay + Mac Rendering
-          tailscale_auth_key = "${{ secrets.TAILSCALE_AUTH_KEY }}"
+          # Mac Rendering (Tailscale Funnel)
           mac_renderer_url   = "${{ secrets.MAC_RENDERER_URL }}"
           EOF
 
@@ -265,8 +264,7 @@ jobs:
           status_cron_secret  = "${{ secrets.STATUS_CRON_SECRET }}"
           status_domain       = "status.cuttr.com"
 
-          # Tailscale Relay + Mac Rendering
-          tailscale_auth_key = "${{ secrets.TAILSCALE_AUTH_KEY }}"
+          # Mac Rendering (Tailscale Funnel)
           mac_renderer_url   = "${{ secrets.MAC_RENDERER_URL }}"
           EOF
 
