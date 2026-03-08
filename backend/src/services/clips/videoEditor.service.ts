@@ -666,9 +666,10 @@ export const convertToGamingVertical = async (
   let fcW = Math.min(facecam.w, width - fcX);
   const fcH = Math.min(facecam.h, height - fcY);
 
-  // Scale facecam proportionally — fit within 1080 wide, max 960 tall (half screen)
-  // Uses the tighter constraint so aspect ratio is always preserved (no distortion)
-  const maxFaceH = 960;
+  // Scale facecam proportionally to its original size in the frame, capped at 50% of output
+  // A facecam that was 20% of the original height gets ~20% of the 1920px output
+  const facecamHeightRatio = fcH / height;
+  const maxFaceH = Math.min(Math.round(facecamHeightRatio * 1920), 960);
 
   // If the facecam region is too narrow (height-constrained scaling would produce
   // black padding), expand the crop on the x-axis to grab real video content instead
