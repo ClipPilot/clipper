@@ -56,7 +56,7 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
   const [isRecalculating, setIsRecalculating] = useState(false);
   const initialLoadDone = useRef(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [selectedAccountIds, setSelectedAccountIds] = useState<number[]>([]);
+  const [selectedAccountIds, setSelectedAccountIds] = useState<number[] | null>(null);
   const [comparisonMode, setComparisonMode] = useState<ComparisonMode>({ type: "last-sync" });
 
   const fetchData = useCallback(async (silent = false) => {
@@ -87,6 +87,12 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
   }, [selectedTeam?.id, dateRange]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  useEffect(() => {
+    if (selectedAccountIds === null && accounts.length > 0) {
+      setSelectedAccountIds(accounts.slice(0, 10).map((a) => a.id));
+    }
+  }, [accounts, selectedAccountIds]);
 
   // Track accounts doing their initial sync
   const syncingAccountIds = useMemo(() => {
@@ -157,7 +163,7 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
   // ─── Derived data ────────────────────────────────────────────────────────────
 
   const derived = useMemo(() => {
-    const activeAccounts = selectedAccountIds.length === 0
+    const activeAccounts = !selectedAccountIds || selectedAccountIds.length === 0
       ? accounts
       : accounts.filter((a) => selectedAccountIds.includes(a.id));
 
@@ -338,7 +344,7 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
         {accounts.length > 0 ? (
           <AccountFilterPopover
             accounts={accounts}
-            selectedAccountIds={selectedAccountIds}
+            selectedAccountIds={selectedAccountIds ?? []}
             onChange={setSelectedAccountIds}
           />
         ) : (
@@ -428,7 +434,7 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
         {/* Top Performing Content Table (full width) */}
         <RecalcOverlay active={isRecalculating}>
           <PostsTable
-            key={selectedAccountIds.join(",") + (dateRange.startDate || "") + (dateRange.endDate || "")}
+            key={(selectedAccountIds ?? []).join(",") + (dateRange.startDate || "") + (dateRange.endDate || "")}
             posts={derived.activePosts}
             accountPlatformMap={derived.accountPlatformMap}
             accountSyncMap={derived.accountSyncMap}

@@ -62,9 +62,9 @@ export default function CompetitorDetailPage() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState("");
-  const [selectedAccountIds, setSelectedAccountIds] = useState<number[]>(() => {
+  const [selectedAccountIds, setSelectedAccountIds] = useState<number[] | null>(() => {
     const accountId = searchParams.get("accountId");
-    return accountId ? [Number(accountId)] : [];
+    return accountId ? [Number(accountId)] : null;
   });
   const [comparisonMode, setComparisonMode] = useState<ComparisonMode>({ type: "last-sync" });
 
@@ -96,6 +96,12 @@ export default function CompetitorDetailPage() {
   }, [selectedTeam?.id, competitorId, dateRange]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  useEffect(() => {
+    if (selectedAccountIds === null && competitor?.accounts.length) {
+      setSelectedAccountIds(competitor.accounts.slice(0, 10).map((a) => a.id));
+    }
+  }, [competitor, selectedAccountIds]);
 
   // Track accounts doing their initial sync (never synced before + pending/syncing).
   // Background lambda syncs (account already has data) are silent.
@@ -163,7 +169,7 @@ export default function CompetitorDetailPage() {
 
   const activeAccounts = useMemo(() => {
     if (!competitor) return [];
-    if (selectedAccountIds.length === 0) return competitor.accounts;
+    if (!selectedAccountIds || selectedAccountIds.length === 0) return competitor.accounts;
     return competitor.accounts.filter((a) => selectedAccountIds.includes(a.id));
   }, [competitor, selectedAccountIds]);
 
@@ -449,7 +455,7 @@ export default function CompetitorDetailPage() {
         {competitor.accounts.length > 0 ? (
           <AccountFilterPopover
             accounts={competitor.accounts}
-            selectedAccountIds={selectedAccountIds}
+            selectedAccountIds={selectedAccountIds ?? []}
             onChange={setSelectedAccountIds}
           />
         ) : (
@@ -510,7 +516,7 @@ export default function CompetitorDetailPage() {
 
         {/* Post Frequency + Best Performing Accounts */}
         <RecalcOverlay active={isRecalculating}>
-          {selectedAccountIds.length === 0 || selectedAccountIds.length > 1 ? (
+          {!selectedAccountIds || selectedAccountIds.length === 0 || selectedAccountIds.length > 1 ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <PostFrequencyChart
                 posts={activePosts}
@@ -536,7 +542,7 @@ export default function CompetitorDetailPage() {
         {/* Top Performing Content Table */}
         <RecalcOverlay active={isRecalculating}>
           <PostsTable
-            key={selectedAccountIds.join(",") + (dateRange.startDate || "") + (dateRange.endDate || "")}
+            key={(selectedAccountIds ?? []).join(",") + (dateRange.startDate || "") + (dateRange.endDate || "")}
             posts={activePosts}
             accountPlatformMap={accountPlatformMap}
             accountSyncMap={accountSyncMap}

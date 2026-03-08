@@ -232,10 +232,11 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
         </div>
 
         {hasData ? (
-          <div className="flex-1 min-h-[300px]">
+          <div className="flex-1 min-h-[300px] overflow-x-auto">
+            <div style={{ minWidth: Math.max(chartData.length * 12, 500) }}>
             <ResponsiveContainer
               className="[&_.recharts-surface]:outline-hidden"
-              height="100%"
+              height={300}
               width="100%"
             >
               <AreaChart
@@ -348,6 +349,7 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
                 })}
               </AreaChart>
             </ResponsiveContainer>
+            </div>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-16 gap-2">
