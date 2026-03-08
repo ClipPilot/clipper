@@ -34,7 +34,7 @@ export async function generateViralHeading(input: GenerateHeadingInput): Promise
       "You generate short, catchy, viral headings for short-form video clips (TikTok, Reels, Shorts). " +
       "Rules:\n" +
       "- 3 to 6 words max\n" +
-      "- ALL CAPS\n" +
+      "- Only CAPITALIZE key emphasis words (shocking, emotional, or action words). Keep the rest lowercase.\n" +
       "- Create curiosity, urgency, or shock value\n" +
       "- Add 1-2 relevant emojis that match the content (e.g. 🔥 💀 😱 🤯 💰 🚀)\n" +
       "- No hashtags, no quotes, no punctuation except !, ?, or emojis\n" +
@@ -45,7 +45,7 @@ export async function generateViralHeading(input: GenerateHeadingInput): Promise
 
   const heading = response.output_text?.trim();
   if (!heading) {
-    return "WATCH THIS";
+    return "watch THIS";
   }
 
   return heading;
