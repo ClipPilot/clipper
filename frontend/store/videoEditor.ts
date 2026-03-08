@@ -57,6 +57,7 @@ export interface HeadingState {
   y: number;
   fontSize: number;
   style: HeadingStyle;
+  headingBgColor?: string;
 }
 
 // Comment overlay types

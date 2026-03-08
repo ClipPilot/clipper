@@ -534,10 +534,10 @@ export function EditorVideoPreview({
                       position: "relative",
                       ...(isInstagram
                         ? {
-                            color: "#FFFFFF",
-                            background: "rgba(0, 0, 0, 0.85)",
+                            color: headingState.headingBgColor === "#FFFFFF" ? "#000000" : "#FFFFFF",
+                            background: `${headingState.headingBgColor || "#000000"}d9`,
                             padding: `${Math.round(10 * scale)}px ${Math.round(24 * scale)}px`,
-                            borderRadius: `${Math.round(8 * scale)}px`,
+                            borderRadius: `${Math.round(4 * scale)}px`,
                           }
                         : {
                             color: headingState.color,

@@ -440,6 +440,11 @@ router.get("/v1/wallet", validateAPIKey, getWalletV1Controller);
  *                 enum: [white, black, red, orange, yellow, green, teal, blue, purple, pink]
  *                 default: white
  *                 description: Heading text color.
+ *               heading_bg_color:
+ *                 type: string
+ *                 enum: [black, white]
+ *                 default: black
+ *                 description: Heading background color (only applies to instagram style). Text color auto-adjusts (white bg = black text, black bg = white text).
  *               heading_font:
  *                 type: string
  *                 enum: [Montserrat, Luckiest Guy, Everlasting, Komika, Burbank, Bebas Neue, Anton]

@@ -58,6 +58,7 @@ export interface ClipVideoJob extends BaseJob {
     autoHeading?: boolean;
     headingInstructions?: string;
     textStyle?: "stroke" | "instagram";
+    textBgColor?: string;
     backgroundMusicS3Key?: string;
   };
   originalFileName?: string;
@@ -129,6 +130,7 @@ export interface UpdateOverlaysJob extends BaseJob {
     y: number;
     fontSize: number;
     style?: "stroke" | "instagram";
+    headingBgColor?: string;
   };
 }
 
@@ -197,6 +199,7 @@ export interface VideoEditJob extends BaseJob {
       y: number;
       fontSize: number;
       style?: "stroke" | "instagram";
+      headingBgColor?: string;
     };
     // Media overlays (images/videos/comments composited on top)
     overlays?: Array<{

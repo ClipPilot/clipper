@@ -26,6 +26,7 @@ const DEFAULT_HEADING: HeadingState = {
   y: 10,
   fontSize: 48,
   style: "stroke",
+  headingBgColor: "#000000",
 };
 
 export function HeadingTool() {
@@ -125,7 +126,10 @@ export function HeadingTool() {
                 <button
                   key={s.key}
                   onClick={() =>
-                    updateHeading({ style: s.key as HeadingStyle })
+                    updateHeading({
+                      style: s.key as HeadingStyle,
+                      font: s.key === "instagram" ? "Anton" : heading.font,
+                    })
                   }
                   className={`flex-1 h-10 rounded-lg border transition-all flex items-center justify-center gap-2 text-sm ${
                     heading.style === s.key
@@ -140,8 +144,8 @@ export function HeadingTool() {
             </div>
           </div>
 
-          {/* Color Selection — only show for stroke style */}
-          {heading.style !== "instagram" && (
+          {/* Color Selection — text color for stroke, bg color for instagram */}
+          {heading.style !== "instagram" ? (
             <div>
               <label className="text-sm text-text-secondary mb-2 block">
                 Text Color
@@ -177,6 +181,38 @@ export function HeadingTool() {
                     />
                   </div>
                 </div>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <label className="text-sm text-text-secondary mb-2 block">
+                Background Color
+              </label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() =>
+                    updateHeading({ headingBgColor: "#000000" })
+                  }
+                  className={`flex-1 h-10 rounded-lg border transition-all flex items-center justify-center gap-2 text-sm ${
+                    (heading.headingBgColor || "#000000") === "#000000"
+                      ? "bg-black text-white border-accent-400"
+                      : "bg-black/60 text-white/60 border-border-base hover:border-accent-400/50"
+                  }`}
+                >
+                  Black
+                </button>
+                <button
+                  onClick={() =>
+                    updateHeading({ headingBgColor: "#FFFFFF" })
+                  }
+                  className={`flex-1 h-10 rounded-lg border transition-all flex items-center justify-center gap-2 text-sm ${
+                    heading.headingBgColor === "#FFFFFF"
+                      ? "bg-white text-black border-accent-400"
+                      : "bg-white/60 text-black/60 border-border-base hover:border-accent-400/50"
+                  }`}
+                >
+                  White
+                </button>
               </div>
             </div>
           )}
