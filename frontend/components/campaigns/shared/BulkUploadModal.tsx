@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import {
   Button,
   Modal,
@@ -9,6 +9,7 @@ import {
   ModalBody,
   ModalFooter,
   Progress,
+  Spinner,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import type { UploadFileEntry } from "@/hooks/useBulkVideoUpload";
@@ -62,22 +63,27 @@ export function BulkUploadModal({
 }: BulkUploadModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
+  const [pendingFileCount, setPendingFileCount] = useState(0);
 
   const entries = Array.from(files.entries());
   const overallProgress = totalFiles > 0 ? Math.round((completedFiles / totalFiles) * 100) : 0;
-  const isDone = !isActive && totalFiles > 0;
+  const isDone = !isActive && totalFiles > 0 && pendingFileCount === 0;
   const inProgressCount = entries.filter(([, f]) => f.status === "uploading" || f.status === "completing").length;
+  const showProgress = totalFiles > 0 || pendingFileCount > 0;
 
   const handleFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileList = e.target.files;
     if (!fileList || fileList.length === 0) return;
     e.target.value = "";
+    setPendingFileCount(fileList.length);
     onStartUpload(fileList);
+    requestAnimationFrame(() => setPendingFileCount(0));
   };
 
   const handleClose = () => {
     if (!isActive) {
       onReset();
+      setPendingFileCount(0);
       onClose();
     }
   };
@@ -103,15 +109,11 @@ export function BulkUploadModal({
           </ModalHeader>
 
           <ModalBody className="py-4 gap-4">
-            {totalFiles === 0 ? (
+            {!showProgress ? (
               <div className="flex flex-col items-center gap-4 py-8">
                 <Icon icon="solar:cloud-upload-bold-duotone" className="text-text-tertiary" width={48} />
                 <p className="text-sm text-text-secondary text-center">
-                  Select video files or an entire folder to bulk upload.
-                  <br />
-                  <span className="text-text-tertiary text-xs">
-                    Folders are scanned recursively for all video files.
-                  </span>
+                  Select video files or an entire folder to upload.
                 </p>
                 <div className="flex gap-3">
                   <Button
@@ -130,6 +132,13 @@ export function BulkUploadModal({
                     Select Folder
                   </Button>
                 </div>
+              </div>
+            ) : totalFiles === 0 && pendingFileCount > 0 ? (
+              <div className="flex flex-col items-center gap-3 py-8">
+                <Spinner size="lg" color="primary" />
+                <p className="text-sm text-text-secondary">
+                  Preparing {pendingFileCount} file{pendingFileCount !== 1 ? "s" : ""}...
+                </p>
               </div>
             ) : (
               <>
@@ -187,10 +196,6 @@ export function BulkUploadModal({
               <span className="text-xs text-text-tertiary">
                 Do not close this tab while uploading
               </span>
-            ) : totalFiles > 0 ? (
-              <Button variant="flat" className="bg-surface-elevated text-text-secondary" onPress={handleClose}>
-                Cancel
-              </Button>
             ) : (
               <Button variant="flat" className="bg-surface-elevated text-text-secondary" onPress={handleClose}>
                 Cancel
