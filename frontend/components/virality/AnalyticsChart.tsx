@@ -119,15 +119,24 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
     });
   }, [fullChartData, accounts]);
 
-  // Y-axis domain from total (always the highest value)
+  const showTotal = accounts.length === 0;
+
+  // Y-axis domain: from total when showing all, from overlay accounts when filtered
   const yDomain = useMemo(() => {
     let max = 0;
     for (const point of chartData) {
-      const total = (point.total as number) || 0;
-      if (total > max) max = total;
+      if (showTotal) {
+        const total = (point.total as number) || 0;
+        if (total > max) max = total;
+      } else {
+        for (const account of accounts) {
+          const val = (point[`account_${account.id}`] as number) || 0;
+          if (val > max) max = val;
+        }
+      }
     }
     return [0, max > 0 ? max : "auto"] as [number, number | "auto"];
-  }, [chartData]);
+  }, [chartData, showTotal, accounts]);
 
   const hasData = fullChartData.length > 0;
 
@@ -141,14 +150,23 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
       const posts = axisPostsByAccount[account.id] || [];
       for (const post of posts) {
         if (!post.metrics_history?.length) continue;
+        // Per post: take the max snapshot at each hour (cumulative metrics)
+        const postHourMax = new Map<string, { views: number; likes: number; comments: number }>();
         for (const entry of post.metrics_history) {
           const hour = entry.recorded_at.slice(0, 13);
           if (startStr && hour < startStr) continue;
           if (endStr && hour > endStr) continue;
+          const views = entry.views ?? 0;
+          const existing = postHourMax.get(hour);
+          if (!existing || views > existing.views) {
+            postHourMax.set(hour, { views, likes: entry.likes, comments: entry.comments });
+          }
+        }
+        for (const [hour, vals] of postHourMax) {
           if (!map[hour]) map[hour] = { views: 0, likes: 0, comments: 0 };
-          map[hour].views += entry.views ?? 0;
-          map[hour].likes += entry.likes;
-          map[hour].comments += entry.comments;
+          map[hour].views += vals.views;
+          map[hour].likes += vals.likes;
+          map[hour].comments += vals.comments;
         }
       }
     }
@@ -204,13 +222,15 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
                 </HTooltip>
               </dt>
               <div className="flex items-center gap-3 flex-wrap">
-                <div className="flex items-center gap-1.5">
-                  <div
-                    className="w-3 h-[3px] rounded-full"
-                    style={{ backgroundColor: TOTAL_COLOR }}
-                  />
-                  <span className="text-xs text-text-tertiary">All Accounts</span>
-                </div>
+                {accounts.length === 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <div
+                      className="w-3 h-[3px] rounded-full"
+                      style={{ backgroundColor: TOTAL_COLOR }}
+                    />
+                    <span className="text-xs text-text-tertiary">All Accounts</span>
+                  </div>
+                )}
                 {accounts.map((account, i) => (
                   <div key={account.id} className="flex items-center gap-1.5">
                     <div
@@ -281,16 +301,18 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
                 margin={{ left: 0, right: 0 }}
               >
                 <defs>
-                  <linearGradient
-                    id="gradient-total"
-                    x1="0"
-                    x2="0"
-                    y1="0"
-                    y2="1"
-                  >
-                    <stop offset="10%" stopColor={TOTAL_COLOR} stopOpacity={0.2} />
-                    <stop offset="100%" stopColor={TOTAL_COLOR} stopOpacity={0.02} />
-                  </linearGradient>
+                  {accounts.length === 0 && (
+                    <linearGradient
+                      id="gradient-total"
+                      x1="0"
+                      x2="0"
+                      y1="0"
+                      y2="1"
+                    >
+                      <stop offset="10%" stopColor={TOTAL_COLOR} stopOpacity={0.2} />
+                      <stop offset="100%" stopColor={TOTAL_COLOR} stopOpacity={0.02} />
+                    </linearGradient>
+                  )}
                   {accounts.map((account, i) => {
                     const color = getColor(account, i);
                     return (
@@ -338,30 +360,32 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
                     return (
                     <div className="rounded-medium bg-foreground text-tiny shadow-small min-w-[180px] p-2.5">
                       <div className="flex w-full flex-col gap-y-1.5">
-                        {/* All Accounts summary */}
-                        <div>
-                          <div className="flex items-center gap-1.5 mb-1">
-                            <span
-                              className="inline-block w-2 h-2 rounded-full"
-                              style={{ backgroundColor: TOTAL_COLOR }}
-                            />
-                            <span className="text-small text-background font-medium">
-                              All Accounts
-                            </span>
-                            <span className="text-foreground-500 text-tiny">
-                              ({axisAccounts.length})
-                            </span>
-                          </div>
-                          {tipData && (
-                            <div className="flex items-center gap-2 ml-3.5 text-tiny">
-                              <span className="text-foreground-400">{formatChartValue(tipData.views)} views</span>
-                              <span className="text-foreground-500">·</span>
-                              <span className="text-foreground-400">{formatChartValue(tipData.likes)} likes</span>
-                              <span className="text-foreground-500">·</span>
-                              <span className="text-foreground-400">{formatChartValue(tipData.comments)} comments</span>
+                        {/* All Accounts summary — only when no individual accounts selected */}
+                        {accounts.length === 0 && (
+                          <div>
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <span
+                                className="inline-block w-2 h-2 rounded-full"
+                                style={{ backgroundColor: TOTAL_COLOR }}
+                              />
+                              <span className="text-small text-background font-medium">
+                                All Accounts
+                              </span>
+                              <span className="text-foreground-500 text-tiny">
+                                ({axisAccounts.length})
+                              </span>
                             </div>
-                          )}
-                        </div>
+                            {tipData && (
+                              <div className="flex items-center gap-2 ml-3.5 text-tiny">
+                                <span className="text-foreground-400">{formatChartValue(tipData.views)} views</span>
+                                <span className="text-foreground-500">·</span>
+                                <span className="text-foreground-400">{formatChartValue(tipData.likes)} likes</span>
+                                <span className="text-foreground-500">·</span>
+                                <span className="text-foreground-400">{formatChartValue(tipData.comments)} comments</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
                         {/* Overlay accounts */}
                         {overlayEntries.map((p, index) => {
                           const account = accounts.find(
@@ -420,23 +444,25 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
                     />
                   );
                 })}
-                {/* Total aggregated line — rendered last so it stays on top */}
-                <Area
-                  key="total"
-                  activeDot={{
-                    stroke: TOTAL_COLOR,
-                    strokeWidth: 2,
-                    fill: "hsl(var(--heroui-background))",
-                    r: 4,
-                  }}
-                  animationDuration={800}
-                  animationEasing="ease-in-out"
-                  dataKey="total"
-                  fill="url(#gradient-total)"
-                  stroke={TOTAL_COLOR}
-                  strokeWidth={2.5}
-                  type="monotone"
-                />
+                {/* Total aggregated line — only when no individual accounts selected */}
+                {accounts.length === 0 && (
+                  <Area
+                    key="total"
+                    activeDot={{
+                      stroke: TOTAL_COLOR,
+                      strokeWidth: 2,
+                      fill: "hsl(var(--heroui-background))",
+                      r: 4,
+                    }}
+                    animationDuration={800}
+                    animationEasing="ease-in-out"
+                    dataKey="total"
+                    fill="url(#gradient-total)"
+                    stroke={TOTAL_COLOR}
+                    strokeWidth={2.5}
+                    type="monotone"
+                  />
+                )}
               </AreaChart>
             </ResponsiveContainer>
             </div>

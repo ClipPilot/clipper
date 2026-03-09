@@ -15,6 +15,8 @@ env:
   ECR_REPOSITORY: clipster-virality-sync-lambda
   LAMBDA_ORCHESTRATOR: clipster-virality-sync-orchestrator-prod
   LAMBDA_WORKER: clipster-virality-sync-worker-prod
+  LAMBDA_EXTRACTOR: clipster-virality-sync-extractor-prod
+  LAMBDA_REPORTER: clipster-virality-sync-reporter-prod
 
 jobs:
   deploy:
@@ -57,6 +59,12 @@ jobs:
           aws lambda update-function-code \
             --function-name ${{ env.LAMBDA_WORKER }} \
             --image-uri ${{ steps.build-image.outputs.image }} &
+          aws lambda update-function-code \
+            --function-name ${{ env.LAMBDA_EXTRACTOR }} \
+            --image-uri ${{ steps.build-image.outputs.image }} &
+          aws lambda update-function-code \
+            --function-name ${{ env.LAMBDA_REPORTER }} \
+            --image-uri ${{ steps.build-image.outputs.image }} &
           wait
 
       - name: Wait for Lambda updates
@@ -65,6 +73,10 @@ jobs:
             --function-name ${{ env.LAMBDA_ORCHESTRATOR }} &
           aws lambda wait function-updated \
             --function-name ${{ env.LAMBDA_WORKER }} &
+          aws lambda wait function-updated \
+            --function-name ${{ env.LAMBDA_EXTRACTOR }} &
+          aws lambda wait function-updated \
+            --function-name ${{ env.LAMBDA_REPORTER }} &
           wait
 
       - name: Verify deployment
@@ -72,4 +84,6 @@ jobs:
           echo "Virality Sync Lambda (Production) deployment completed!"
           echo "Orchestrator: ${{ env.LAMBDA_ORCHESTRATOR }}"
           echo "Worker: ${{ env.LAMBDA_WORKER }}"
+          echo "Extractor: ${{ env.LAMBDA_EXTRACTOR }}"
+          echo "Reporter: ${{ env.LAMBDA_REPORTER }}"
           echo "Image: ${{ steps.build-image.outputs.image }}"
