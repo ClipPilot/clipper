@@ -1,6 +1,7 @@
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { userPerformanceService } from "../services/virality/userPerformance.service";
+import { syncMassPostAnalytics } from "../services/virality/massPostSync.service";
 import { parseId, parseDateQuery, handleControllerError, requirePlanAccess as requirePlanAccessBase } from "../utils/controllerHelpers";
 
 async function requirePlanAccess(teamId: number, res: Response): Promise<boolean> {

@@ -13,7 +13,18 @@ interface MetricsEntry {
   views: number | null;
 }
 
-export async function syncMassPostAnalytics(): Promise<{ synced: number; skipped: number }> {
+export async function syncMassPostAnalytics(
+  teamId?: number,
+  decrementSyncs = true
+): Promise<{ synced: number; skipped: number }> {
+  const conditions = [
+    isNotNull(userPosts.mass_post_id),
+    gt(userPosts.syncs_remaining, 0),
+  ];
+  if (teamId) {
+    conditions.push(eq(userAccounts.team_id, teamId));
+  }
+
   const postsToSync = await db
     .select({
       id: userPosts.id,
@@ -24,12 +35,7 @@ export async function syncMassPostAnalytics(): Promise<{ synced: number; skipped
     })
     .from(userPosts)
     .innerJoin(userAccounts, eq(userPosts.account_id, userAccounts.id))
-    .where(
-      and(
-        isNotNull(userPosts.mass_post_id),
-        gt(userPosts.syncs_remaining, 0)
-      )
-    );
+    .where(and(...conditions));
 
   let synced = 0;
   let skipped = 0;
@@ -61,17 +67,21 @@ export async function syncMassPostAnalytics(): Promise<{ synced: number; skipped
             ? history.slice(-MAX_METRICS_HISTORY)
             : history;
 
-          await db
-            .update(userPosts)
-            .set({
+          const updateData: Record<string, any> = {
               like_count: metrics.likesCount,
               comment_count: metrics.commentsCount,
               video_play_count: metrics.viewCount,
               thumbnail_url: metrics.thumbnailUrl,
               metrics_history: trimmed,
-              syncs_remaining: sql`${userPosts.syncs_remaining} - 1`,
               updated_at: new Date(),
-            })
+            };
+          if (decrementSyncs) {
+              updateData.syncs_remaining = sql`${userPosts.syncs_remaining} - 1`;
+            }
+
+          await db
+            .update(userPosts)
+            .set(updateData)
             .where(eq(userPosts.id, post.id));
 
           synced++;

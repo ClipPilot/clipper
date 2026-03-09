@@ -10,6 +10,9 @@ importers:
 
   agent-service:
     dependencies:
+      '@clipper/shared-db':
+        specifier: workspace:*
+        version: link:../packages/shared-db
       '@mastra/core':
         specifier: ^1.10.0
         version: 1.10.0(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@4.2.1))(zod@4.2.1))(@standard-community/standard-openapi@0.2.9(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@4.2.1))(zod@4.2.1))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(zod@4.2.1))(@types/json-schema@7.0.15)(openapi-types@12.1.3)(zod@4.2.1)
@@ -31,6 +34,13 @@ importers:
       zod:
         specifier: ^4
         version: 4.2.1
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.3
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
 
   backend:
     dependencies:
@@ -66,7 +76,7 @@ importers:
         version: 1.8.3
       '@google/genai':
         specifier: ^1.34.0
-        version: 1.34.0
+        version: 1.34.0(@modelcontextprotocol/sdk@1.27.1(zod@4.2.1))
       '@sentry/node':
         specifier: ^10.32.1
         version: 10.32.1
@@ -90,7 +100,7 @@ importers:
         version: 2.8.5
       drizzle-orm:
         specifier: ^0.44.7
-        version: 0.44.7(@opentelemetry/api@1.9.0)(@types/pg@8.16.0)(pg@8.16.3)
+        version: 0.44.7(@libsql/client@0.15.15)(@opentelemetry/api@1.9.0)(@types/pg@8.16.0)(pg@8.16.3)
       express-rate-limit:
         specifier: ^8.2.1
         version: 8.2.1(express@5.2.1)
@@ -199,7 +209,7 @@ importers:
         version: 8.18.1
       '@vitest/coverage-v8':
         specifier: ^4.0.18
-        version: 4.0.18(vitest@4.0.18(@opentelemetry/api@1.9.0)(@types/node@24.10.4)(jiti@2.6.1)(jsdom@27.4.0(@noble/hashes@1.8.0))(lightningcss@1.30.1))
+        version: 4.0.18(vitest@4.0.18(@opentelemetry/api@1.9.0)(@types/node@24.10.4)(jiti@2.6.1)(jsdom@27.4.0(@noble/hashes@1.8.0))(lightningcss@1.30.1)(yaml@2.8.2))
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
@@ -235,7 +245,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.0.18
-        version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@24.10.4)(jiti@2.6.1)(jsdom@27.4.0(@noble/hashes@1.8.0))(lightningcss@1.30.1)
+        version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@24.10.4)(jiti@2.6.1)(jsdom@27.4.0(@noble/hashes@1.8.0))(lightningcss@1.30.1)(yaml@2.8.2)
 
   lambda-expire-clips:
     dependencies:
@@ -247,7 +257,7 @@ importers:
         version: link:../packages/shared-db
       drizzle-orm:
         specifier: ^0.44.7
-        version: 0.44.7(@opentelemetry/api@1.9.0)(@types/pg@8.16.0)(pg@8.16.3)
+        version: 0.44.7(@libsql/client@0.15.15)(@opentelemetry/api@1.9.0)(@types/pg@8.16.0)(pg@8.16.3)
       pg:
         specifier: ^8.16.3
         version: 8.16.3
@@ -275,7 +285,7 @@ importers:
         version: 2.22.0
       drizzle-orm:
         specifier: ^0.44.7
-        version: 0.44.7(@opentelemetry/api@1.9.0)(@types/pg@8.16.0)(pg@8.16.3)
+        version: 0.44.7(@libsql/client@0.15.15)(@opentelemetry/api@1.9.0)(@types/pg@8.16.0)(pg@8.16.3)
       emoji-regex:
         specifier: ^10.6.0
         version: 10.6.0
@@ -312,7 +322,7 @@ importers:
         version: 16.6.1
       drizzle-orm:
         specifier: ^0.44.7
-        version: 0.44.7(@opentelemetry/api@1.9.0)(@types/pg@8.16.0)(pg@8.16.3)
+        version: 0.44.7(@libsql/client@0.15.15)(@opentelemetry/api@1.9.0)(@types/pg@8.16.0)(pg@8.16.3)
       pg:
         specifier: ^8.16.3
         version: 8.16.3
@@ -5990,6 +6000,7 @@ packages:
 
   libsql@0.5.22:
     resolution: {integrity: sha512-NscWthMQt7fpU8lqd7LXMvT9pi+KhhmTHAJWUB/Lj6MWa0MKFv0F2V4C6WKKpjCVZl0VwcDz4nOI3CyaT1DDiA==}
+    cpu: [x64, arm64, wasm32, arm]
     os: [darwin, linux, win32]
 
   lightningcss-darwin-arm64@1.30.1:
@@ -9143,7 +9154,7 @@ snapshots:
       '@babel/types': 7.29.0
       '@jridgewell/remapping': 2.3.5
       convert-source-map: 2.0.0
-      debug: 4.4.3
+      debug: 4.4.3(supports-color@5.5.0)
       gensync: 1.0.0-beta.2
       json5: 2.2.3
       semver: 6.3.1
@@ -9301,7 +9312,7 @@ snapshots:
       '@babel/parser': 7.29.0
       '@babel/template': 7.28.6
       '@babel/types': 7.29.0
-      debug: 4.4.3
+      debug: 4.4.3(supports-color@5.5.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -9715,10 +9726,12 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
-  '@google/genai@1.34.0':
+  '@google/genai@1.34.0(@modelcontextprotocol/sdk@1.27.1(zod@4.2.1))':
     dependencies:
       google-auth-library: 10.5.0
       ws: 8.18.3
+    optionalDependencies:
+      '@modelcontextprotocol/sdk': 1.27.1(zod@4.2.1)
     transitivePeerDependencies:
       - bufferutil
       - supports-color
@@ -13446,7 +13459,7 @@ snapshots:
       '@types/node': 24.10.4
     optional: true
 
-  '@vitest/coverage-v8@4.0.18(vitest@4.0.18(@opentelemetry/api@1.9.0)(@types/node@24.10.4)(jiti@2.6.1)(jsdom@27.4.0(@noble/hashes@1.8.0))(lightningcss@1.30.1))':
+  '@vitest/coverage-v8@4.0.18(vitest@4.0.18(@opentelemetry/api@1.9.0)(@types/node@24.10.4)(jiti@2.6.1)(jsdom@27.4.0(@noble/hashes@1.8.0))(lightningcss@1.30.1)(yaml@2.8.2))':
     dependencies:
       '@bcoe/v8-coverage': 1.0.2
       '@vitest/utils': 4.0.18
@@ -13458,7 +13471,7 @@ snapshots:
       obug: 2.1.1
       std-env: 3.10.0
       tinyrainbow: 3.0.3
-      vitest: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@24.10.4)(jiti@2.6.1)(jsdom@27.4.0(@noble/hashes@1.8.0))(lightningcss@1.30.1)
+      vitest: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@24.10.4)(jiti@2.6.1)(jsdom@27.4.0(@noble/hashes@1.8.0))(lightningcss@1.30.1)(yaml@2.8.2)
 
   '@vitest/expect@4.0.18':
     dependencies:
@@ -13469,13 +13482,13 @@ snapshots:
       chai: 6.2.2
       tinyrainbow: 3.0.3
 
-  '@vitest/mocker@4.0.18(vite@7.3.1(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.1))':
+  '@vitest/mocker@4.0.18(vite@7.3.1(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.1)(yaml@2.8.2))':
     dependencies:
       '@vitest/spy': 4.0.18
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
-      vite: 7.3.1(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.1)
+      vite: 7.3.1(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.1)(yaml@2.8.2)
 
   '@vitest/pretty-format@4.0.18':
     dependencies:
@@ -13754,7 +13767,7 @@ snapshots:
     dependencies:
       bytes: 3.1.2
       content-type: 1.0.5
-      debug: 4.4.3
+      debug: 4.4.3(supports-color@5.5.0)
       http-errors: 2.0.1
       iconv-lite: 0.7.1
       on-finished: 2.4.1
@@ -14091,10 +14104,6 @@ snapshots:
     dependencies:
       ms: 2.1.3
 
-  debug@4.4.3:
-    dependencies:
-      ms: 2.1.3
-
   debug@4.4.3(supports-color@5.5.0):
     dependencies:
       ms: 2.1.3
@@ -14161,8 +14170,9 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  drizzle-orm@0.44.7(@opentelemetry/api@1.9.0)(@types/pg@8.16.0)(pg@8.16.3):
+  drizzle-orm@0.44.7(@libsql/client@0.15.15)(@opentelemetry/api@1.9.0)(@types/pg@8.16.0)(pg@8.16.3):
     optionalDependencies:
+      '@libsql/client': 0.15.15
       '@opentelemetry/api': 1.9.0
       '@types/pg': 8.16.0
       pg: 8.16.3
@@ -14539,7 +14549,7 @@ snapshots:
       content-type: 1.0.5
       cookie: 0.7.2
       cookie-signature: 1.2.2
-      debug: 4.4.3
+      debug: 4.4.3(supports-color@5.5.0)
       depd: 2.0.0
       encodeurl: 2.0.0
       escape-html: 1.0.3
@@ -14670,7 +14680,7 @@ snapshots:
 
   finalhandler@2.1.1:
     dependencies:
-      debug: 4.4.3
+      debug: 4.4.3(supports-color@5.5.0)
       encodeurl: 2.0.0
       escape-html: 1.0.3
       on-finished: 2.4.1
@@ -16137,7 +16147,7 @@ snapshots:
 
   rollup-plugin-esbuild@6.2.1(esbuild@0.25.12)(rollup@4.55.3):
     dependencies:
-      debug: 4.4.3
+      debug: 4.4.3(supports-color@5.5.0)
       es-module-lexer: 1.7.0
       esbuild: 0.25.12
       get-tsconfig: 4.13.0
@@ -16210,7 +16220,7 @@ snapshots:
 
   router@2.2.0:
     dependencies:
-      debug: 4.4.3
+      debug: 4.4.3(supports-color@5.5.0)
       depd: 2.0.0
       is-promise: 4.0.0
       parseurl: 1.3.3
@@ -16277,7 +16287,7 @@ snapshots:
 
   send@1.2.0:
     dependencies:
-      debug: 4.4.3
+      debug: 4.4.3(supports-color@5.5.0)
       encodeurl: 2.0.0
       escape-html: 1.0.3
       etag: 1.8.1
@@ -16879,7 +16889,7 @@ snapshots:
 
   vary@1.1.2: {}
 
-  vite@7.3.1(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.1):
+  vite@7.3.1(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.1)(yaml@2.8.2):
     dependencies:
       esbuild: 0.27.3
       fdir: 6.5.0(picomatch@4.0.3)
@@ -16892,11 +16902,12 @@ snapshots:
       fsevents: 2.3.3
       jiti: 2.6.1
       lightningcss: 1.30.1
+      yaml: 2.8.2
 
-  vitest@4.0.18(@opentelemetry/api@1.9.0)(@types/node@24.10.4)(jiti@2.6.1)(jsdom@27.4.0(@noble/hashes@1.8.0))(lightningcss@1.30.1):
+  vitest@4.0.18(@opentelemetry/api@1.9.0)(@types/node@24.10.4)(jiti@2.6.1)(jsdom@27.4.0(@noble/hashes@1.8.0))(lightningcss@1.30.1)(yaml@2.8.2):
     dependencies:
       '@vitest/expect': 4.0.18
-      '@vitest/mocker': 4.0.18(vite@7.3.1(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.1))
+      '@vitest/mocker': 4.0.18(vite@7.3.1(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.1)(yaml@2.8.2))
       '@vitest/pretty-format': 4.0.18
       '@vitest/runner': 4.0.18
       '@vitest/snapshot': 4.0.18
@@ -16913,7 +16924,7 @@ snapshots:
       tinyexec: 1.0.2
       tinyglobby: 0.2.15
       tinyrainbow: 3.0.3
-      vite: 7.3.1(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.1)
+      vite: 7.3.1(@types/node@24.10.4)(jiti@2.6.1)(lightningcss@1.30.1)(yaml@2.8.2)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@opentelemetry/api': 1.9.0

@@ -157,6 +157,10 @@ Your Goals:
    - meta commentary
    - anything not spoken in the transcript
 
+HOOK REPETITION BAN: The first line of the clip body MUST NOT repeat or closely paraphrase the hook. If the hook says "Did you know X?", the clip must NOT start with "Did you know..." or a similar restatement. The hook grabs attention; the body immediately delivers new information or continues the narrative.
+
+ENDING QUALITY: Never cut a clip off abruptly before a payoff, punchline, or key revelation. The clip should feel complete — either deliver on the promise set up by the hook, or end on a deliberate cliffhanger that feels intentional (not accidental). If the speaker is building toward a point, include the conclusion. Clips that feel "cut short" perform poorly.
+
 Notes:
 - "start" and "end" must correspond to timestamps from the transcript.
 - No clips should have off-camera cues such as "cut", "scene", meta-filming talk, etc.
@@ -316,6 +320,10 @@ Your Goals:
    - Stage directions or production talk
    - Boring transitions or filler
    - Meta commentary about filming
+
+HOOK REPETITION BAN: The first line of the clip body MUST NOT repeat or closely paraphrase the hook. If the hook says "Did you know X?", the clip must NOT start with "Did you know..." or a similar restatement. The hook grabs attention; the body immediately delivers new information or continues the narrative.
+
+ENDING QUALITY: Never cut a clip off abruptly before a payoff, punchline, or key revelation. The clip should feel complete — either deliver on the promise set up by the hook, or end on a deliberate cliffhanger that feels intentional (not accidental). If the speaker is building toward a point, include the conclusion. Clips that feel "cut short" perform poorly.
 
 TIMESTAMP RULES:
 - TIMESTAMPS ARE IN SECONDS (e.g., 145.5 means 2 minutes 25.5 seconds into the video). DO NOT use M:SS or M.SS format — use pure seconds only!
@@ -505,6 +513,10 @@ If a segment contains a dull, low-energy, or filler section in the middle:
 - Replace that dead air with a more exciting gameplay moment from elsewhere in the video
 - Never leave in slow walking, menu browsing, or dead time just because it's between two exciting parts
 
+HOOK REPETITION BAN: The first line of the clip body MUST NOT repeat or closely paraphrase the hook. If the hook says "Did you know X?", the clip must NOT start with "Did you know..." or a similar restatement. The hook grabs attention; the body immediately delivers new information or continues the narrative.
+
+ENDING QUALITY: Never cut a clip off abruptly before a payoff, punchline, or key revelation. The clip should feel complete — either deliver on the promise set up by the hook, or end on a deliberate cliffhanger that feels intentional (not accidental). If the speaker is building toward a point, include the conclusion. Clips that feel "cut short" perform poorly.
+
 ===== FINAL RULES =====
 - The "text" fields should describe VISUAL ACTION not dialogue
 - MAIN MUST have 2-3 segments minimum including build-up BEFORE the climax. NEVER return main with ONLY the hook timestamps repeated — that creates a broken clip with the same moment twice and no context
@@ -629,6 +641,10 @@ CUT BORING PARTS: If a segment contains a dull, low-energy, or filler section in
 - Split it into two segments, skipping the boring part
 - Replace that dead air with a more engaging moment from elsewhere in the video
 - Never leave in awkward pauses, rambling, "umm"s, or low-energy tangents just because they're between two good parts
+
+HOOK REPETITION BAN: The first line of the clip body MUST NOT repeat or closely paraphrase the hook. If the hook says "Did you know X?", the clip must NOT start with "Did you know..." or a similar restatement. The hook grabs attention; the body immediately delivers new information or continues the narrative.
+
+ENDING QUALITY: Never cut a clip off abruptly before a payoff, punchline, or key revelation. The clip should feel complete — either deliver on the promise set up by the hook, or end on a deliberate cliffhanger that feels intentional (not accidental). If the speaker is building toward a point, include the conclusion. Clips that feel "cut short" perform poorly.
 
 ===== CRITICAL TIMESTAMP RULES =====
 

@@ -162,7 +162,7 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
             postHourMax.set(hour, { views, likes: entry.likes, comments: entry.comments });
           }
         }
-        for (const [hour, vals] of postHourMax) {
+        for (const [hour, vals] of Array.from(postHourMax)) {
           if (!map[hour]) map[hour] = { views: 0, likes: 0, comments: 0 };
           map[hour].views += vals.views;
           map[hour].likes += vals.likes;

@@ -166,7 +166,7 @@ export function buildChartDataByAccount(
         const prev = postHourMax.get(hour);
         if (prev === undefined || val > prev) postHourMax.set(hour, val);
       }
-      for (const [hour, val] of postHourMax) {
+      for (const [hour, val] of Array.from(postHourMax)) {
         hourMap.set(hour, (hourMap.get(hour) || 0) + val);
       }
     }

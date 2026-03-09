@@ -4,6 +4,7 @@ packages:
   - lambda-expire-clips
   - lambda-virality-sync
   - va-tools
+  - agent-service
 
 ignoredBuiltDependencies:
   - puppeteer

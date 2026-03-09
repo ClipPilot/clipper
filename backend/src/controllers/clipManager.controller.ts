@@ -342,7 +342,8 @@ export class ClipManagerController {
       const user = await verifyTeamAccessOrFail(req, teamId, res);
       if (!user) return;
 
-      const clips = await clipManagerService.getClipsByFolder(teamId, folderId);
+      const sort = req.query.sort === "oldest" ? "oldest" : "newest";
+      const clips = await clipManagerService.getClipsByFolder(teamId, folderId, sort);
       const clipsWithUrls = await enrichClipsWithSignedUrls(clips);
 
       const clipIds = clips.map((clip) => clip.id);
@@ -854,6 +855,7 @@ export class ClipManagerController {
       const offset = req.query.offset
         ? parseInt(req.query.offset as string)
         : 0;
+      const sort = req.query.sort === "oldest" ? "oldest" : "newest";
 
       if (limit > 100) {
         return res.status(400).json({ error: "Limit cannot exceed 100" });
@@ -862,7 +864,8 @@ export class ClipManagerController {
       const clips = await clipManagerService.getSavedUnorganizedClips(
         teamId,
         limit,
-        offset
+        offset,
+        sort
       );
 
       const clipsWithUrls = await enrichClipsWithSignedUrls(clips);
