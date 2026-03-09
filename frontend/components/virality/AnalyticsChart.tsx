@@ -131,6 +131,30 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
 
   const hasData = fullChartData.length > 0;
 
+  // Tooltip summary: all 3 metrics per hour so tooltip can show views/likes/comments regardless of active metric
+  const tooltipByHour = useMemo(() => {
+    const map: Record<string, { views: number; likes: number; comments: number }> = {};
+    const startStr = startDate ? new Date(startDate).toISOString().slice(0, 13) : undefined;
+    const endStr = endDate ? new Date(endDate).toISOString().slice(0, 13) : undefined;
+
+    for (const account of axisAccounts) {
+      const posts = axisPostsByAccount[account.id] || [];
+      for (const post of posts) {
+        if (!post.metrics_history?.length) continue;
+        for (const entry of post.metrics_history) {
+          const hour = entry.recorded_at.slice(0, 13);
+          if (startStr && hour < startStr) continue;
+          if (endStr && hour > endStr) continue;
+          if (!map[hour]) map[hour] = { views: 0, likes: 0, comments: 0 };
+          map[hour].views += entry.views ?? 0;
+          map[hour].likes += entry.likes;
+          map[hour].comments += entry.comments;
+        }
+      }
+    }
+    return map;
+  }, [axisAccounts, axisPostsByAccount, startDate, endDate]);
+
   // Metric card totals — always from ALL accounts
   const totals = useMemo(() => {
     let likes = 0,
@@ -308,24 +332,37 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
                 <Tooltip
                   content={({ payload }) => {
                     const hourKey = payload?.[0]?.payload?.hourKey;
-                    const totalVal = payload?.[0]?.payload?.total;
                     const label = hourKey ? formatHourKey(hourKey) : null;
+                    const tipData = hourKey ? tooltipByHour[hourKey] : null;
                     const overlayEntries = payload?.filter((p) => p.dataKey !== "total") ?? [];
                     return (
-                    <div className="rounded-medium bg-foreground text-tiny shadow-small min-w-[160px] p-2.5">
-                      <div className="flex w-full flex-col gap-y-1">
-                        <div className="text-small text-background flex w-full items-center justify-between gap-x-2">
-                          <div className="flex items-center gap-1.5">
+                    <div className="rounded-medium bg-foreground text-tiny shadow-small min-w-[180px] p-2.5">
+                      <div className="flex w-full flex-col gap-y-1.5">
+                        {/* All Accounts summary */}
+                        <div>
+                          <div className="flex items-center gap-1.5 mb-1">
                             <span
                               className="inline-block w-2 h-2 rounded-full"
                               style={{ backgroundColor: TOTAL_COLOR }}
                             />
-                            <span className="text-foreground-400">All Accounts</span>
+                            <span className="text-small text-background font-medium">
+                              All Accounts
+                            </span>
+                            <span className="text-foreground-500 text-tiny">
+                              ({axisAccounts.length})
+                            </span>
                           </div>
-                          <span className="font-medium">
-                            {formatChartValue(totalVal as number)}
-                          </span>
+                          {tipData && (
+                            <div className="flex items-center gap-2 ml-3.5 text-tiny">
+                              <span className="text-foreground-400">{formatChartValue(tipData.views)} views</span>
+                              <span className="text-foreground-500">·</span>
+                              <span className="text-foreground-400">{formatChartValue(tipData.likes)} likes</span>
+                              <span className="text-foreground-500">·</span>
+                              <span className="text-foreground-400">{formatChartValue(tipData.comments)} comments</span>
+                            </div>
+                          )}
                         </div>
+                        {/* Overlay accounts */}
                         {overlayEntries.map((p, index) => {
                           const account = accounts.find(
                             (a) => `account_${a.id}` === p.dataKey
@@ -361,24 +398,7 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
                   }}
                   cursor={{ strokeWidth: 0 }}
                 />
-                {/* Total aggregated line — always visible */}
-                <Area
-                  key="total"
-                  activeDot={{
-                    stroke: TOTAL_COLOR,
-                    strokeWidth: 2,
-                    fill: "hsl(var(--heroui-background))",
-                    r: 4,
-                  }}
-                  animationDuration={800}
-                  animationEasing="ease-in-out"
-                  dataKey="total"
-                  fill="url(#gradient-total)"
-                  stroke={TOTAL_COLOR}
-                  strokeWidth={2.5}
-                  type="monotone"
-                />
-                {/* Individual overlay account lines */}
+                {/* Individual overlay account lines (rendered first = below) */}
                 {accounts.map((account, i) => {
                   const color = getColor(account, i);
                   return (
@@ -400,6 +420,23 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
                     />
                   );
                 })}
+                {/* Total aggregated line — rendered last so it stays on top */}
+                <Area
+                  key="total"
+                  activeDot={{
+                    stroke: TOTAL_COLOR,
+                    strokeWidth: 2,
+                    fill: "hsl(var(--heroui-background))",
+                    r: 4,
+                  }}
+                  animationDuration={800}
+                  animationEasing="ease-in-out"
+                  dataKey="total"
+                  fill="url(#gradient-total)"
+                  stroke={TOTAL_COLOR}
+                  strokeWidth={2.5}
+                  type="monotone"
+                />
               </AreaChart>
             </ResponsiveContainer>
             </div>

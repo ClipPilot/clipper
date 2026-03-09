@@ -40,11 +40,13 @@ function CustomTooltip({ active, payload, total }: CustomTooltipProps) {
           className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
           style={{ backgroundColor: entry.fill }}
         />
-        <Icon
-          icon={platformIcon(entry.platform)}
-          width={14}
-          className={platformIconColor(entry.platform)}
-        />
+        {entry.platform !== "other" && (
+          <Icon
+            icon={platformIcon(entry.platform)}
+            width={14}
+            className={platformIconColor(entry.platform)}
+          />
+        )}
         <span className="text-small text-background font-medium">
           {entry.name}
         </span>
@@ -85,7 +87,26 @@ export function AccountBreakdownChart({
       sum += views;
     });
 
-    return { data: entries.filter((e) => e.value > 0).sort((a, b) => b.value - a.value), total: sum };
+    const sorted = entries.filter((e) => e.value > 0).sort((a, b) => b.value - a.value);
+
+    // Cap at top 8, group rest as "Others"
+    const MAX_DISPLAY = 8;
+    if (sorted.length > MAX_DISPLAY) {
+      const top = sorted.slice(0, MAX_DISPLAY);
+      const othersValue = sorted.slice(MAX_DISPLAY).reduce((s, e) => s + e.value, 0);
+      const othersCount = sorted.length - MAX_DISPLAY;
+      if (othersValue > 0) {
+        top.push({
+          name: `+${othersCount} others`,
+          platform: "other",
+          value: othersValue,
+          fill: "#6b7280",
+        });
+      }
+      return { data: top, total: sum };
+    }
+
+    return { data: sorted, total: sum };
   }, [accounts, postsByAccount]);
 
   if (data.length === 0) {
@@ -181,11 +202,13 @@ export function AccountBreakdownChart({
                   className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
                   style={{ backgroundColor: entry.fill }}
                 />
-                <Icon
-                  icon={platformIcon(entry.platform)}
-                  width={14}
-                  className={platformIconColor(entry.platform)}
-                />
+                {entry.platform !== "other" && (
+                  <Icon
+                    icon={platformIcon(entry.platform)}
+                    width={14}
+                    className={platformIconColor(entry.platform)}
+                  />
+                )}
                 <span className="text-text-primary truncate flex-1">
                   {entry.name}
                 </span>
