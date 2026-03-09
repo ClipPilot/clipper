@@ -106,6 +106,26 @@ class UserPerformanceAPI {
     return response.json();
   }
 
+  async syncAll(
+    teamId: number
+  ): Promise<{ accounts: { synced: number; failed: number }; massPosts: { synced: number; skipped: number } }> {
+    const response = await apiFetch(
+      `${API_URL}/user-performance/${teamId}/sync-all`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to sync all");
+    }
+
+    return response.json();
+  }
+
   async getAccountPosts(
     teamId: number,
     accountId: number,

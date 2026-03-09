@@ -13,7 +13,15 @@ interface MetricsEntry {
   views: number | null;
 }
 
-export async function syncMassPostAnalytics(): Promise<{ synced: number; skipped: number }> {
+export async function syncMassPostAnalytics(teamId?: number): Promise<{ synced: number; skipped: number }> {
+  const conditions = [
+    isNotNull(userPosts.mass_post_id),
+    gt(userPosts.syncs_remaining, 0),
+  ];
+  if (teamId) {
+    conditions.push(eq(userAccounts.team_id, teamId));
+  }
+
   const postsToSync = await db
     .select({
       id: userPosts.id,
@@ -24,12 +32,7 @@ export async function syncMassPostAnalytics(): Promise<{ synced: number; skipped
     })
     .from(userPosts)
     .innerJoin(userAccounts, eq(userPosts.account_id, userAccounts.id))
-    .where(
-      and(
-        isNotNull(userPosts.mass_post_id),
-        gt(userPosts.syncs_remaining, 0)
-      )
-    );
+    .where(and(...conditions));
 
   let synced = 0;
   let skipped = 0;
