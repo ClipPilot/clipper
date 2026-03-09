@@ -342,8 +342,8 @@ export class ClipManagerController {
       const user = await verifyTeamAccessOrFail(req, teamId, res);
       if (!user) return;
 
-      const sort = req.query.sort === "oldest" ? "oldest" : "newest";
-      const clips = await clipManagerService.getClipsByFolder(teamId, folderId, sort);
+      const campaignUploads = (req.query.campaignUploads as string) || "all";
+      const clips = await clipManagerService.getClipsByFolder(teamId, folderId, campaignUploads as "all" | "only" | "hide");
       const clipsWithUrls = await enrichClipsWithSignedUrls(clips);
 
       const clipIds = clips.map((clip) => clip.id);
@@ -855,16 +855,19 @@ export class ClipManagerController {
       const offset = req.query.offset
         ? parseInt(req.query.offset as string)
         : 0;
-      const sort = req.query.sort === "oldest" ? "oldest" as const : "newest" as const;
 
       if (limit > 100) {
         return res.status(400).json({ error: "Limit cannot exceed 100" });
       }
+
+      const sort = req.query.sort === "oldest" ? "oldest" as const : "newest" as const;
+      const campaignUploads = (req.query.campaignUploads as string) || "all";
       const clips = await clipManagerService.getSavedUnorganizedClips(
         teamId,
         limit,
         offset,
-        sort
+        sort,
+        campaignUploads as "all" | "only" | "hide"
       );
 
       const clipsWithUrls = await enrichClipsWithSignedUrls(clips);
@@ -1075,6 +1078,7 @@ export class ClipManagerController {
       const folderIdParam = req.query.folderId as string | undefined;
       const dateFromParam = req.query.from as string | undefined;
       const dateToParam = req.query.to as string | undefined;
+      const campaignUploadsParam = (req.query.campaignUploads as string) || "all";
       const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
       const offset = parseInt(req.query.offset as string) || 0;
 
@@ -1132,6 +1136,7 @@ export class ClipManagerController {
         folderId,
         dateFrom,
         dateTo,
+        campaignUploads: campaignUploadsParam as "all" | "only" | "hide",
         limit,
         offset,
       });

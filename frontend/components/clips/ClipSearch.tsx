@@ -4,6 +4,8 @@ import React, { useState, useCallback, useRef, useEffect, forwardRef, useImperat
 import { Button, Input, Chip, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { Clip, Tag, clipsAPI } from "@/api/clips";
+import { useAtomValue } from "jotai";
+import { campaignUploadFilterAtom } from "@/store/clips";
 
 interface ClipSearchProps {
   teamId: number;
@@ -24,6 +26,7 @@ const ClipSearch = forwardRef<ClipSearchHandle, ClipSearchProps>(function ClipSe
   onSearchResults,
   onSearchModeChange,
 }, ref) {
+  const campaignUploads = useAtomValue(campaignUploadFilterAtom);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
   const [searchResults, setSearchResults] = useState<Clip[]>([]);
@@ -51,6 +54,7 @@ const ClipSearch = forwardRef<ClipSearchHandle, ClipSearchProps>(function ClipSe
         q: query.trim() || undefined,
         tags: tagIds.length > 0 ? tagIds : undefined,
         status: "completed",
+        campaignUploads: campaignUploads !== "all" ? campaignUploads : undefined,
         limit: 20,
         offset: reset ? 0 : searchResults.length,
       });

@@ -195,7 +195,18 @@ export async function listVideos(req: AuthRequest, res: Response) {
     const campaignId = parseInt(req.params.campaignId);
     if (isNaN(campaignId)) return res.status(400).json({ error: "Invalid campaign ID" });
 
-    const result = await campaignVideoService.listVideos(campaignId);
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = Math.min(parseInt(req.query.pageSize as string) || 500, 500);
+    const sortBy = req.query.sortBy as string | undefined;
+    const sortOrder = req.query.sortOrder as string | undefined;
+    const validSortBy = ["created_at", "title", "publish_status", "post_count"].includes(sortBy ?? "")
+      ? (sortBy as "created_at" | "title" | "publish_status" | "post_count")
+      : undefined;
+    const validSortOrder = sortOrder === "asc" || sortOrder === "desc" ? sortOrder : undefined;
+
+    const result = await campaignVideoService.listVideos(campaignId, {
+      page, pageSize, sortBy: validSortBy, sortOrder: validSortOrder,
+    });
     return res.json(result);
   } catch (error) {
     console.error("List videos error:", error);

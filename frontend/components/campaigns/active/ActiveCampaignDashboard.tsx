@@ -1,12 +1,9 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import {
   Button,
-  Card,
-  CardBody,
   Chip,
-  Progress,
   Tabs,
   Tab,
   Modal,
@@ -31,7 +28,9 @@ import type { TeamPost } from "@/types/massPosting";
 import { CampaignInfoBar } from "./CampaignInfoBar";
 import { VideoPreviewModal } from "../shared/VideoPreviewModal";
 import { ClipPickerModal } from "../shared/ClipPickerModal";
+import { BulkUploadModal } from "../shared/BulkUploadModal";
 import { SetupModal } from "../gates/PaymentGate";
+import { useBulkVideoUpload } from "@/hooks/useBulkVideoUpload";
 import { AccountsTab } from "@/components/mass-posting/dashboard/AccountsTab";
 import {
   platformIcon,
@@ -51,19 +50,24 @@ interface ActiveCampaignDashboardProps {
   onVideoAdded: (video: CampaignVideo) => void;
   onVideosAdded: (videos: CampaignVideo[]) => void;
   onCampaignUpdated: (campaign: Campaign) => void;
+  onRefetchVideos: (sortBy?: string, sortOrder?: string) => Promise<void>;
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 function getPostStatusStyle(status: string) {
   const styles: Record<string, { className: string; label: string }> = {
+    waiting_assignment: { className: "bg-default-500/10 border-default-500/20 text-default-500", label: "Waiting Assignment" },
+    in_drive: { className: "bg-primary-500/10 border-primary-500/20 text-primary-500", label: "In Drive" },
+    published: { className: "bg-success-500/10 border-success-500/20 text-success-500", label: "Published" },
+    // Legacy post-level statuses (used by published tab)
     pending: { className: "bg-default-500/10 border-default-500/20 text-default-500", label: "Awaiting Platforms" },
     processing: { className: "bg-warning-500/10 border-warning-500/20 text-warning-500", label: "Processing" },
     scheduled: { className: "bg-primary-500/10 border-primary-500/20 text-primary-500", label: "In Drive" },
     posted: { className: "bg-success-500/10 border-success-500/20 text-success-500", label: "Published" },
     failed: { className: "bg-danger-500/10 border-danger-500/20 text-danger-500", label: "Failed" },
   };
-  return styles[status] || styles.processing;
+  return styles[status] || styles.waiting_assignment;
 }
 
 export function ActiveCampaignDashboard({
@@ -75,12 +79,17 @@ export function ActiveCampaignDashboard({
   onVideoAdded,
   onVideosAdded,
   onCampaignUpdated,
+  onRefetchVideos,
 }: ActiveCampaignDashboardProps) {
   const selectedTeam = useAtomValue(selectedTeamAtom);
 
   // Tab state
   const [activeTab, setActiveTab] = useState<"queued" | "accounts" | "published">("queued");
   const [dateRange, setDateRange] = useState("mtd");
+
+  // Sort state
+  const [sortBy, setSortBy] = useState<"created_at" | "title" | "publish_status" | "post_count">("created_at");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   // Posts table state (single fetch, tab drives queued vs published)
   const [posts, setPosts] = useState<TeamPost[]>([]);
@@ -92,10 +101,9 @@ export function ActiveCampaignDashboard({
   // Video management state
   const [previewVideo, setPreviewVideo] = useState<CampaignVideo | null>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
 
-  // Upload state
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadingFiles, setUploadingFiles] = useState<Map<string, { name: string; progress: number; status: "uploading" | "completing" | "done" | "error" }>>(new Map());
+  const bulk = useBulkVideoUpload(selectedTeam?.id, campaign.id, onVideoAdded);
 
   // End campaign state
   const [isEndModalOpen, setIsEndModalOpen] = useState(false);
@@ -113,6 +121,13 @@ export function ActiveCampaignDashboard({
 
   // Derive the API tab from the active UI tab
   const postsTab = activeTab === "published" ? "published" : "queued";
+
+  const handleSort = useCallback((column: "created_at" | "title" | "publish_status" | "post_count") => {
+    const newOrder = sortBy === column && sortOrder === "desc" ? "asc" : "desc";
+    setSortBy(column);
+    setSortOrder(newOrder);
+    onRefetchVideos(column, newOrder);
+  }, [sortBy, sortOrder, onRefetchVideos]);
 
   // Fetch ALL posts for this campaign+tab (no pagination on API, we paginate grouped videos client-side)
   const fetchPosts = useCallback(async () => {
@@ -151,8 +166,41 @@ export function ActiveCampaignDashboard({
   }
 
   const videoGroups = useMemo(() => {
-    // Filter out failed posts — don't show them at all
+    // Filter out failed posts
     const filtered = posts.filter((p) => p.status !== "failed");
+
+    if (postsTab === "queued") {
+      // Queued tab: campaign videos are the primary data source
+      // Backend provides publish_status derived from posts + user_posts chain
+      const postsByClipId = new Map<number, TeamPost[]>();
+      for (const post of filtered) {
+        if (post.clip_id == null) continue;
+        const arr = postsByClipId.get(post.clip_id) || [];
+        arr.push(post);
+        postsByClipId.set(post.clip_id, arr);
+      }
+
+      return videos.map((video) => {
+        const videoPosts = video.clip_id ? (postsByClipId.get(video.clip_id) || []) : [];
+        const platforms: Record<string, number> = {};
+        for (const p of videoPosts) {
+          platforms[p.platform] = (platforms[p.platform] || 0) + 1;
+        }
+
+        return {
+          clipId: video.clip_id,
+          clipTitle: video.title || video.file_name || `Video #${video.id}`,
+          clipUrl: video.presigned_url,
+          posts: videoPosts,
+          platforms,
+          earliestDate: video.created_at,
+          // Use backend-computed publish_status
+          statuses: [video.publish_status],
+        } as VideoGroup;
+      });
+    }
+
+    // Published tab: posts are the primary data source (grouped by clip)
     const map = new Map<string, VideoGroup>();
     for (const post of filtered) {
       const key = String(post.clip_id ?? `no-clip-${post.id}`);
@@ -174,29 +222,6 @@ export function ActiveCampaignDashboard({
       group.statuses.push(post.status);
     }
 
-    // For the queued tab, also include campaign videos that have no posts yet
-    if (postsTab === "queued") {
-      const clipIdsWithPosts = new Set(
-        filtered.map((p) => p.clip_id).filter(Boolean),
-      );
-      for (const video of videos) {
-        // Skip videos that already have posts in the map
-        const hasPostsByClipId = video.clip_id && clipIdsWithPosts.has(video.clip_id);
-        const hasPostsByVideoId = map.has(`video-${video.id}`);
-        if (hasPostsByClipId || hasPostsByVideoId) continue;
-
-        map.set(video.clip_id ? String(video.clip_id) : `video-${video.id}`, {
-          clipId: video.clip_id,
-          clipTitle: video.title || video.file_name || `Video #${video.id}`,
-          clipUrl: video.presigned_url,
-          posts: [],
-          platforms: {},
-          earliestDate: video.created_at,
-          statuses: ["pending"],
-        });
-      }
-    }
-
     return Array.from(map.values());
   }, [posts, postsTab, videos]);
 
@@ -209,62 +234,6 @@ export function ActiveCampaignDashboard({
   const existingClipIds = new Set(
     videos.filter((v) => v.clip_id != null).map((v) => v.clip_id as number),
   );
-
-  // Upload logic
-  const uploadSingleFile = useCallback(
-    async (file: File, key: string) => {
-      if (!selectedTeam?.id) return;
-      try {
-        const { video, uploadUrl } = await campaignAPI.uploadVideo(
-          selectedTeam.id, campaign.id, file.name, file.type || "video/mp4",
-        );
-        await new Promise<void>((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          xhr.open("PUT", uploadUrl);
-          xhr.setRequestHeader("Content-Type", file.type || "video/mp4");
-          xhr.upload.onprogress = (event) => {
-            if (event.lengthComputable) {
-              const pct = Math.round((event.loaded / event.total) * 100);
-              setUploadingFiles((prev) => new Map(prev).set(key, { name: file.name, progress: pct, status: "uploading" }));
-            }
-          };
-          xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`Upload failed: ${xhr.status}`)));
-          xhr.onerror = () => reject(new Error("Network error during upload"));
-          xhr.send(file);
-        });
-        setUploadingFiles((prev) => new Map(prev).set(key, { name: file.name, progress: 100, status: "completing" }));
-        const { video: completedVideo } = await campaignAPI.completeUpload(selectedTeam.id, campaign.id, video.id);
-        onVideoAdded(completedVideo);
-        setUploadingFiles((prev) => new Map(prev).set(key, { name: file.name, progress: 100, status: "done" }));
-        setTimeout(() => {
-          setUploadingFiles((prev) => { const next = new Map(prev); next.delete(key); return next; });
-        }, 1500);
-      } catch (err: any) {
-        setUploadingFiles((prev) => new Map(prev).set(key, { name: file.name, progress: 0, status: "error" }));
-        addToast({ title: "Upload failed", description: `${file.name}: ${err.message || "Something went wrong"}`, color: "danger" });
-      }
-    },
-    [selectedTeam?.id, campaign.id, onVideoAdded],
-  );
-
-  const handleFileChange = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (!selectedTeam?.id) return;
-      const files = Array.from(e.target.files ?? []);
-      if (files.length === 0) return;
-      e.target.value = "";
-      const entries: [string, File][] = files.map((file, i) => [`${file.name}-${Date.now()}-${i}`, file]);
-      setUploadingFiles((prev) => {
-        const next = new Map(prev);
-        for (const [key, file] of entries) next.set(key, { name: file.name, progress: 0, status: "uploading" });
-        return next;
-      });
-      await Promise.allSettled(entries.map(([key, file]) => uploadSingleFile(file, key)));
-    },
-    [selectedTeam?.id, uploadSingleFile],
-  );
-
-  const uploadingEntries = Array.from(uploadingFiles.entries());
 
   const handleEndCampaign = async () => {
     if (!selectedTeam?.id) return;
@@ -451,69 +420,28 @@ export function ActiveCampaignDashboard({
             <div className="space-y-4">
               {/* Add videos bar (queued tab only) */}
               {activeTab === "queued" && (
-                <>
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-text-secondary">
-                      {videos.length} video{videos.length !== 1 ? "s" : ""} in campaign
-                    </p>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="flat"
-                        className="bg-surface-elevated border border-border-base text-text-secondary h-9"
-                        onPress={() => setIsPickerOpen(true)}
-                        startContent={<Icon icon="solar:library-bold-duotone" width={14} />}
-                      >
-                        Add from Library
-                      </Button>
-                      <Button
-                        size="sm"
-                        color="primary"
-                        className="h-9"
-                        onPress={() => fileInputRef.current?.click()}
-                        startContent={<Icon icon="solar:upload-bold-duotone" width={14} />}
-                      >
-                        Upload Videos
-                      </Button>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="video/*"
-                        multiple
-                        className="hidden"
-                        onChange={handleFileChange}
-                      />
-                    </div>
+                <div className="flex items-center justify-end">
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="flat"
+                      className="bg-surface-elevated border border-border-base text-text-secondary h-9"
+                      onPress={() => setIsPickerOpen(true)}
+                      startContent={<Icon icon="solar:library-bold-duotone" width={14} />}
+                    >
+                      Add from Library
+                    </Button>
+                    <Button
+                      size="sm"
+                      color="primary"
+                      className="h-9"
+                      onPress={() => setIsUploadOpen(true)}
+                      startContent={<Icon icon="solar:upload-bold-duotone" width={14} />}
+                    >
+                      Upload Videos
+                    </Button>
                   </div>
-
-                  {/* Upload progress */}
-                  {uploadingEntries.length > 0 && (
-                    <div className="space-y-2">
-                      {uploadingEntries.map(([key, item]) => (
-                        <Card key={key} className="bg-surface-elevated border border-border-base">
-                          <CardBody className="p-3 gap-2">
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <Icon
-                                  icon={item.status === "error" ? "solar:close-circle-bold" : item.status === "done" ? "solar:check-circle-bold" : "solar:upload-bold-duotone"}
-                                  className={item.status === "error" ? "text-danger-500 flex-shrink-0" : item.status === "done" ? "text-success-500 flex-shrink-0" : "text-accent-400 flex-shrink-0"}
-                                  width={16}
-                                />
-                                <span className="text-xs text-text-primary truncate">{item.name}</span>
-                              </div>
-                              <span className="text-xs text-text-secondary flex-shrink-0">
-                                {item.status === "completing" ? "Processing..." : item.status === "done" ? "Done" : item.status === "error" ? "Error" : `${item.progress}%`}
-                              </span>
-                            </div>
-                            {item.status === "uploading" && (
-                              <Progress value={item.progress} size="sm" color="primary" classNames={{ base: "w-full" }} />
-                            )}
-                          </CardBody>
-                        </Card>
-                      ))}
-                    </div>
-                  )}
-                </>
+                </div>
               )}
 
               {/* Posts table — grouped by unique video */}
@@ -521,42 +449,74 @@ export function ActiveCampaignDashboard({
                 {/* Header */}
                 <div className="px-6 py-3 border-b border-border-base flex items-center justify-between">
                   <span className="text-sm font-medium text-text-primary">
-                    {postsTab === "queued" ? "Queued Posts" : "Published Posts"}
+                    {postsTab === "queued" ? "Campaign Videos" : "Published Posts"}
                   </span>
                   <span className="text-xs text-text-secondary">
-                    {videoGroups.length} video{videoGroups.length !== 1 ? "s" : ""} &middot; {totalPosts} post{totalPosts !== 1 ? "s" : ""}
+                    {videoGroups.length} video{videoGroups.length !== 1 ? "s" : ""}{postsTab === "published" ? ` \u00B7 ${totalPosts} post${totalPosts !== 1 ? "s" : ""}` : ""}
                   </span>
                 </div>
 
                 {/* Table */}
                 {postsLoading ? (
-                  <div className="p-12 text-center text-text-secondary">Loading posts...</div>
+                  <div className="p-12 text-center text-text-secondary">Loading...</div>
                 ) : videoGroups.length === 0 ? (
                   <div className="p-12 text-center text-text-secondary">
                     {postsTab === "queued"
-                      ? "No queued posts yet. Add videos and publish to see posts here."
+                      ? "No videos in this campaign yet. Add videos to get started."
                       : "No published posts yet."}
                   </div>
                 ) : (
                   <table className="w-full">
                     <thead className="bg-surface-elevated border-b border-border-base">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Video</th>
+                        <th
+                          className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:text-text-primary select-none"
+                          onClick={() => handleSort("title")}
+                        >
+                          <span className="inline-flex items-center gap-1">
+                            Video
+                            {sortBy === "title" && <Icon icon={sortOrder === "asc" ? "solar:alt-arrow-up-linear" : "solar:alt-arrow-down-linear"} width={12} />}
+                          </span>
+                        </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Platforms</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Posts</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Status</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
-                          {postsTab === "queued" ? "Created" : "Published"}
+                        <th
+                          className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:text-text-primary select-none"
+                          onClick={() => handleSort("post_count")}
+                        >
+                          <span className="inline-flex items-center gap-1">
+                            Posts
+                            {sortBy === "post_count" && <Icon icon={sortOrder === "asc" ? "solar:alt-arrow-up-linear" : "solar:alt-arrow-down-linear"} width={12} />}
+                          </span>
+                        </th>
+                        <th
+                          className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:text-text-primary select-none"
+                          onClick={() => handleSort("publish_status")}
+                        >
+                          <span className="inline-flex items-center gap-1">
+                            Status
+                            {sortBy === "publish_status" && <Icon icon={sortOrder === "asc" ? "solar:alt-arrow-up-linear" : "solar:alt-arrow-down-linear"} width={12} />}
+                          </span>
+                        </th>
+                        <th
+                          className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:text-text-primary select-none"
+                          onClick={() => handleSort("created_at")}
+                        >
+                          <span className="inline-flex items-center gap-1">
+                            {postsTab === "queued" ? "Created" : "Published"}
+                            {sortBy === "created_at" && <Icon icon={sortOrder === "asc" ? "solar:alt-arrow-up-linear" : "solar:alt-arrow-down-linear"} width={12} />}
+                          </span>
                         </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border-base">
                       {pagedGroups.map((group) => {
-                        // Determine aggregate status
-                        const noPosts = group.posts.length === 0;
-                        const hasProcessing = group.statuses.includes("processing");
-                        const allPosted = group.statuses.every((s) => s === "posted");
-                        const aggregateStatus = noPosts ? "pending" : hasProcessing ? "processing" : allPosted ? "posted" : "scheduled";
+                        // For queued tab: publish_status from backend (waiting_assignment / in_drive / published)
+                        // For published tab: aggregate from post-level statuses
+                        const aggregateStatus = postsTab === "queued"
+                          ? (group.statuses[0] || "waiting_assignment")
+                          : group.statuses.includes("processing") ? "processing"
+                            : group.statuses.every((s) => s === "posted") ? "posted"
+                            : "scheduled";
                         const statusStyle = getPostStatusStyle(aggregateStatus);
                         return (
                           <tr key={group.clipId ?? group.posts[0]?.id} className="hover:bg-surface-elevated/50 transition-colors">
@@ -685,6 +645,19 @@ export function ActiveCampaignDashboard({
           )}
         </div>
       </div>
+
+      {/* Bulk upload modal */}
+      <BulkUploadModal
+        isOpen={isUploadOpen}
+        onClose={() => setIsUploadOpen(false)}
+        files={bulk.files}
+        isActive={bulk.isActive}
+        totalFiles={bulk.totalFiles}
+        completedFiles={bulk.completedFiles}
+        failedFiles={bulk.failedFiles}
+        onStartUpload={bulk.startUpload}
+        onReset={bulk.reset}
+      />
 
       {/* Clip picker modal */}
       {selectedTeam?.id && (

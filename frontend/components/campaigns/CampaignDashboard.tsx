@@ -284,6 +284,16 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
     );
   }, []);
 
+  const handleRefetchVideos = useCallback(async (sortBy?: string, sortOrder?: string) => {
+    if (!selectedTeam?.id) return;
+    try {
+      const result = await campaignAPI.listVideos(selectedTeam.id, campaignId, { sortBy, sortOrder });
+      setVideos(result.videos);
+    } catch (err) {
+      console.error("Failed to refetch videos:", err);
+    }
+  }, [selectedTeam?.id, campaignId]);
+
   // ── Targeted payment state updates ─────────────────────────────────────────
 
   const handleCardSaved = useCallback((card: CampaignCard) => {
@@ -448,6 +458,7 @@ export function CampaignDashboard({ campaignId, onBack }: CampaignDashboardProps
         onVideoAdded={handleVideoAdded}
         onVideosAdded={handleVideosAdded}
         onCampaignUpdated={handleCampaignUpdated}
+        onRefetchVideos={handleRefetchVideos}
       />
     );
   }

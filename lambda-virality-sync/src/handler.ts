@@ -3,7 +3,7 @@ import { ApifyClient } from "apify-client";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import * as schema from "@clipper/shared-db";
-import { eq, and, or, lte, inArray, sql, isNull, not } from "drizzle-orm";
+import { eq, and, or, lte, inArray, sql, isNull, not, gt, isNotNull } from "drizzle-orm";
 import { checkAndSendViralAlertsForTeam } from "./viralAlerts";
 
 const DATABASE_URL = process.env.DATABASE_URL!;
@@ -448,7 +448,7 @@ function extractPostIdFromUrl(url: string, platform: string): string | null {
     const u = new URL(url);
     switch (platform) {
       case "instagram": {
-        const m = u.pathname.match(/\/(?:reel|p)\/([A-Za-z0-9_-]+)/);
+        const m = u.pathname.match(/\/(?:reels?|p)\/([A-Za-z0-9_-]+)/);
         return m?.[1] ?? null;
       }
       case "tiktok": {
@@ -533,9 +533,9 @@ async function upsertPost(
     await db
       .update(postsTable)
       .set({
-        like_count: postData.likesCount || 0,
-        comment_count: postData.commentsCount || 0,
-        video_play_count: postData.videoPlayCount,
+        like_count: postData.likesCount || existingPost.like_count || 0,
+        comment_count: postData.commentsCount || existingPost.comment_count || 0,
+        video_play_count: postData.videoPlayCount ?? existingPost.video_play_count ?? null,
         thumbnail_url: postData.displayUrl || existingPost.thumbnail_url,
         metrics_history: trimmed,
         updated_at: new Date(),
@@ -699,11 +699,112 @@ async function consumeOneCredit(
   return addonUpdated.length > 0;
 }
 
+// ── URL normalization ──
+
+/** Normalize Instagram URLs: /reels/ → /reel/ (Apify requires /reel/) */
+function normalizeInstagramUrl(url: string): string {
+  return url.replace(/instagram\.com\/reels\//, "instagram.com/reel/");
+}
+
+// ── Single-post metrics scraping (for mass posts) ──
+
+interface PostMetrics {
+  likesCount: number;
+  commentsCount: number;
+  viewCount: number | null;
+  thumbnailUrl: string | null;
+}
+
+async function scrapePostMetrics(
+  client: ApifyClient,
+  postUrl: string,
+  platform: string
+): Promise<PostMetrics | null> {
+  if (platform === "instagram") {
+    const url = normalizeInstagramUrl(postUrl);
+    const run = await client.actor(INSTAGRAM_SCRAPER_ACTOR).call({
+      directUrls: [url],
+      resultsLimit: 1,
+      resultsType: "posts",
+    });
+    const { items } = await client.dataset(run.defaultDatasetId).listItems();
+    if (items.length === 0) return null;
+
+    const item = items[0] as any;
+    return {
+      likesCount: item.likesCount || 0,
+      commentsCount: item.commentsCount || 0,
+      viewCount: item.videoPlayCount || item.videoViewCount || null,
+      thumbnailUrl: item.displayUrl || item.thumbnailUrl || null,
+    };
+  }
+
+  if (platform === "tiktok") {
+    const run = await client.actor(TIKTOK_SCRAPER_ACTOR).call({
+      postURLs: [postUrl],
+      shouldDownloadCovers: false,
+      shouldDownloadVideos: false,
+    });
+    const { items } = await client.dataset(run.defaultDatasetId).listItems();
+    if (items.length === 0) return null;
+
+    const item = items[0] as any;
+    return {
+      likesCount: item.diggCount || 0,
+      commentsCount: item.commentCount || 0,
+      viewCount: item.playCount ?? null,
+      thumbnailUrl: item.videoMeta?.coverUrl || null,
+    };
+  }
+
+  if (platform === "x") {
+    const tweetId = postUrl.match(/\/status\/(\d+)/)?.[1];
+    if (!tweetId) return null;
+
+    const postsRun = await client.actor(X_POSTS_SCRAPER_ACTOR).call({
+      tweetIDs: [tweetId],
+      maxItems: 1,
+    });
+    const { items: tweetItems } = await client.dataset(postsRun.defaultDatasetId).listItems();
+    if (tweetItems.length === 0) return null;
+
+    const tweet = tweetItems[0] as any;
+    let viewCount: number | null = null;
+
+    try {
+      const viewsRun = await client.actor(X_VIEWS_SCRAPER_ACTOR).call({
+        tweets: tweetId,
+        max_results: 1,
+        mode: "Get a Few Tweets",
+      });
+      const { items: viewItems } = await client.dataset(viewsRun.defaultDatasetId).listItems();
+      if (viewItems.length > 0) {
+        viewCount = (viewItems[0] as any).view_count ?? null;
+      }
+    } catch {
+      // view scraper failed, continue without views
+    }
+
+    return {
+      likesCount: tweet.likeCount || 0,
+      commentsCount: tweet.replyCount || 0,
+      viewCount,
+      thumbnailUrl: null,
+    };
+  }
+
+  return null;
+}
+
 // ── Orchestrator handler (Step Functions) ──
 
 export const orchestratorHandler: Handler = async (event: any, context: Context) => {
+  const teamId: number | undefined = event?.Payload?.teamId ?? event?.teamId;
+  const massPostsOnly: boolean = event?.Payload?.massPostsOnly ?? event?.massPostsOnly ?? false;
+
   console.log(`\n========================================`);
   console.log(`  VIRALITY SYNC ORCHESTRATOR - ${new Date().toISOString()}`);
+  console.log(`  teamId=${teamId ?? "all"} massPostsOnly=${massPostsOnly}`);
   console.log(`========================================\n`);
 
   if (!DATABASE_URL) {
@@ -714,103 +815,144 @@ export const orchestratorHandler: Handler = async (event: any, context: Context)
   const db = drizzle(localPool, { schema });
 
   try {
-    const cutoff = new Date(Date.now() - STALE_SYNC_MINUTES * 60 * 1000);
+    let viralityAccounts: any[] = [];
+    let userAcctList: any[] = [];
 
-    // Clean up stale viralityAccounts syncs
-    const staleVirality = await db
-      .update(schema.viralityAccounts)
-      .set({
-        sync_status: "failed",
-        sync_error: `Sync timed out (stuck for more than ${STALE_SYNC_MINUTES} minutes)`,
-        updated_at: new Date(),
-      })
-      .where(
-        and(
-          or(
-            eq(schema.viralityAccounts.sync_status, "pending"),
-            eq(schema.viralityAccounts.sync_status, "syncing")
-          ),
-          lte(schema.viralityAccounts.updated_at, cutoff)
-        )
-      )
-      .returning({ id: schema.viralityAccounts.id, username: schema.viralityAccounts.username });
+    // Skip account queries + stale cleanup when only syncing mass posts for a specific team
+    if (!massPostsOnly) {
+      const cutoff = new Date(Date.now() - STALE_SYNC_MINUTES * 60 * 1000);
 
-    if (staleVirality.length > 0) {
-      console.log(`[Cleanup] Reset ${staleVirality.length} stale virality syncs: ${staleVirality.map((s) => `@${s.username}`).join(", ")}`);
-    }
-
-    // Clean up stale userAccounts syncs
-    const staleUser = await db
-      .update(schema.userAccounts)
-      .set({
-        sync_status: "failed",
-        sync_error: `Sync timed out (stuck for more than ${STALE_SYNC_MINUTES} minutes)`,
-        updated_at: new Date(),
-      })
-      .where(
-        and(
-          or(
-            eq(schema.userAccounts.sync_status, "pending"),
-            eq(schema.userAccounts.sync_status, "syncing")
-          ),
-          lte(schema.userAccounts.updated_at, cutoff)
-        )
-      )
-      .returning({ id: schema.userAccounts.id, username: schema.userAccounts.username });
-
-    if (staleUser.length > 0) {
-      console.log(`[Cleanup] Reset ${staleUser.length} stale user syncs: ${staleUser.map((s) => `@${s.username}`).join(", ")}`);
-    }
-
-    // Query active virality accounts
-    const viralityAccounts = await db
-      .select({
-        id: schema.viralityAccounts.id,
-        username: schema.viralityAccounts.username,
-        platform: schema.viralityAccounts.platform,
-        team_id: schema.viralityAccounts.team_id,
-        syncs_remaining: schema.viralityAccounts.syncs_remaining,
-        account_type: schema.viralityAccounts.account_type,
-      })
-      .from(schema.viralityAccounts)
-      .where(
-        and(
-          inArray(schema.viralityAccounts.platform, ["instagram", "tiktok", "x"]),
-          eq(schema.viralityAccounts.is_active, true)
-        )
-      );
-
-    // Query active user accounts (skip mass_posting source — those are synced per-post)
-    const userAcctList = await db
-      .select({
-        id: schema.userAccounts.id,
-        username: schema.userAccounts.username,
-        platform: schema.userAccounts.platform,
-        team_id: schema.userAccounts.team_id,
-        syncs_remaining: schema.userAccounts.syncs_remaining,
-        account_type: schema.userAccounts.account_type,
-      })
-      .from(schema.userAccounts)
-      .where(
-        and(
-          inArray(schema.userAccounts.platform, ["instagram", "tiktok", "x"]),
-          eq(schema.userAccounts.is_active, true),
-          or(
-            isNull(schema.userAccounts.source),
-            not(eq(schema.userAccounts.source, "mass_posting"))
+      // Clean up stale viralityAccounts syncs
+      const staleVirality = await db
+        .update(schema.viralityAccounts)
+        .set({
+          sync_status: "failed",
+          sync_error: `Sync timed out (stuck for more than ${STALE_SYNC_MINUTES} minutes)`,
+          updated_at: new Date(),
+        })
+        .where(
+          and(
+            or(
+              eq(schema.viralityAccounts.sync_status, "pending"),
+              eq(schema.viralityAccounts.sync_status, "syncing")
+            ),
+            lte(schema.viralityAccounts.updated_at, cutoff)
           )
         )
-      );
+        .returning({ id: schema.viralityAccounts.id, username: schema.viralityAccounts.username });
 
-    // Merge both lists with a source field
-    const accounts = [
-      ...viralityAccounts.map((a) => ({ ...a, source: "virality" as const })),
-      ...userAcctList.map((a) => ({ ...a, source: "user" as const })),
+      if (staleVirality.length > 0) {
+        console.log(`[Cleanup] Reset ${staleVirality.length} stale virality syncs: ${staleVirality.map((s) => `@${s.username}`).join(", ")}`);
+      }
+
+      // Clean up stale userAccounts syncs
+      const staleUser = await db
+        .update(schema.userAccounts)
+        .set({
+          sync_status: "failed",
+          sync_error: `Sync timed out (stuck for more than ${STALE_SYNC_MINUTES} minutes)`,
+          updated_at: new Date(),
+        })
+        .where(
+          and(
+            or(
+              eq(schema.userAccounts.sync_status, "pending"),
+              eq(schema.userAccounts.sync_status, "syncing")
+            ),
+            lte(schema.userAccounts.updated_at, cutoff)
+          )
+        )
+        .returning({ id: schema.userAccounts.id, username: schema.userAccounts.username });
+
+      if (staleUser.length > 0) {
+        console.log(`[Cleanup] Reset ${staleUser.length} stale user syncs: ${staleUser.map((s) => `@${s.username}`).join(", ")}`);
+      }
+
+      // Query active virality accounts
+      viralityAccounts = await db
+        .select({
+          id: schema.viralityAccounts.id,
+          username: schema.viralityAccounts.username,
+          platform: schema.viralityAccounts.platform,
+          team_id: schema.viralityAccounts.team_id,
+          syncs_remaining: schema.viralityAccounts.syncs_remaining,
+          account_type: schema.viralityAccounts.account_type,
+        })
+        .from(schema.viralityAccounts)
+        .where(
+          and(
+            inArray(schema.viralityAccounts.platform, ["instagram", "tiktok", "x"]),
+            eq(schema.viralityAccounts.is_active, true)
+          )
+        );
+
+      // Query active user accounts (skip mass_posting source — those are synced per-post)
+      userAcctList = await db
+        .select({
+          id: schema.userAccounts.id,
+          username: schema.userAccounts.username,
+          platform: schema.userAccounts.platform,
+          team_id: schema.userAccounts.team_id,
+          syncs_remaining: schema.userAccounts.syncs_remaining,
+          account_type: schema.userAccounts.account_type,
+        })
+        .from(schema.userAccounts)
+        .where(
+          and(
+            inArray(schema.userAccounts.platform, ["instagram", "tiktok", "x"]),
+            eq(schema.userAccounts.is_active, true),
+            or(
+              isNull(schema.userAccounts.source),
+              not(eq(schema.userAccounts.source, "mass_posting"))
+            )
+          )
+        );
+    }
+
+    // Query mass posts (userPosts with mass_post_id, syncs > 0)
+    const massPostConditions = [
+      isNotNull(schema.userPosts.mass_post_id),
+      gt(schema.userPosts.syncs_remaining, 0),
+    ];
+    if (teamId) {
+      massPostConditions.push(eq(schema.userAccounts.team_id, teamId));
+    }
+
+    const massPosts = await db
+      .select({
+        id: schema.userPosts.id,
+        post_url: schema.userPosts.post_url,
+        syncs_remaining: schema.userPosts.syncs_remaining,
+        platform: schema.userAccounts.platform,
+        account_id: schema.userPosts.account_id,
+        team_id: schema.userAccounts.team_id,
+      })
+      .from(schema.userPosts)
+      .innerJoin(schema.userAccounts, eq(schema.userPosts.account_id, schema.userAccounts.id))
+      .where(and(...massPostConditions));
+
+    // Merge all lists with a source field
+    const accounts: any[] = [
+      ...viralityAccounts.map((a: any) => ({ ...a, source: "virality" as const })),
+      ...userAcctList.map((a: any) => ({ ...a, source: "user" as const })),
+      ...massPosts.map((p) => ({
+        id: p.id,
+        source: "mass_post" as const,
+        post_url: p.post_url,
+        platform: p.platform,
+        account_id: p.account_id,
+        team_id: p.team_id,
+        syncs_remaining: p.syncs_remaining,
+      })),
     ];
 
-    console.log(`[DB] Found ${viralityAccounts.length} virality + ${userAcctList.length} user = ${accounts.length} total accounts to sync`);
+    console.log(`[DB] Found ${viralityAccounts.length} virality + ${userAcctList.length} user + ${massPosts.length} mass posts = ${accounts.length} total items to sync`);
     for (const a of accounts) {
-      console.log(`  - [${a.source}] id=${a.id} @${a.username} (team=${a.team_id})`);
+      if (a.source === "mass_post") {
+        console.log(`  - [mass_post] id=${a.id} url=${a.post_url} (team=${a.team_id})`);
+      } else {
+        console.log(`  - [${a.source}] id=${a.id} @${a.username} (team=${a.team_id})`);
+      }
     }
 
     return { accounts };
@@ -822,7 +964,113 @@ export const orchestratorHandler: Handler = async (event: any, context: Context)
 // ── Worker handler (Step Functions Map iterator) ──
 
 export const workerHandler: Handler = async (event: any, context: Context) => {
-  const { id: accountId, username, source } = event;
+  const { id: itemId, source } = event;
+
+  // ── Mass post: single-post metrics scrape ──
+  if (source === "mass_post") {
+    const { post_url, platform, account_id, team_id } = event;
+
+    console.log(`\n========================================`);
+    console.log(`  MASS POST SYNC - postId=${itemId} [${platform}]`);
+    console.log(`  ${new Date().toISOString()}`);
+    console.log(`========================================\n`);
+
+    if (!DATABASE_URL) throw new Error("DATABASE_URL not configured");
+    if (!APIFY_API_TOKEN) throw new Error("APIFY_API_TOKEN not configured");
+
+    const localPool = new Pool({ connectionString: DATABASE_URL });
+    const db = drizzle(localPool, { schema });
+    const apifyClient = new ApifyClient({ token: APIFY_API_TOKEN });
+
+    try {
+      // Atomic decrement: only succeeds if syncs_remaining > 0
+      const decremented = await db
+        .update(schema.userPosts)
+        .set({
+          syncs_remaining: sql`${schema.userPosts.syncs_remaining} - 1`,
+          updated_at: new Date(),
+        })
+        .where(
+          and(
+            eq(schema.userPosts.id, itemId),
+            sql`${schema.userPosts.syncs_remaining} > 0`
+          )
+        )
+        .returning({ id: schema.userPosts.id });
+
+      if (decremented.length === 0) {
+        console.log(`[Skip] Post id=${itemId} has no syncs remaining`);
+        return { id: itemId, source: "mass_post", status: "skipped", reason: "no_syncs" };
+      }
+
+      const metrics = await scrapePostMetrics(apifyClient, post_url, platform);
+      if (!metrics) {
+        console.log(`[Skip] Post id=${itemId} — Apify returned no metrics`);
+        return { id: itemId, source: "mass_post", status: "skipped", reason: "no_metrics" };
+      }
+
+      // Fetch existing post data to preserve values when Apify returns null
+      const [existing] = await db
+        .select({
+          metrics_history: schema.userPosts.metrics_history,
+          like_count: schema.userPosts.like_count,
+          comment_count: schema.userPosts.comment_count,
+          video_play_count: schema.userPosts.video_play_count,
+          thumbnail_url: schema.userPosts.thumbnail_url,
+        })
+        .from(schema.userPosts)
+        .where(eq(schema.userPosts.id, itemId))
+        .limit(1);
+
+      const history: MetricsEntry[] = Array.isArray(existing?.metrics_history)
+        ? [...(existing.metrics_history as MetricsEntry[])]
+        : [];
+
+      history.push({
+        recorded_at: new Date().toISOString(),
+        likes: metrics.likesCount,
+        comments: metrics.commentsCount,
+        views: metrics.viewCount,
+      });
+
+      const trimmed = history.length > MAX_METRICS_HISTORY
+        ? history.slice(-MAX_METRICS_HISTORY)
+        : history;
+
+      // Only overwrite fields when Apify returns real values — never null over existing data
+      await db
+        .update(schema.userPosts)
+        .set({
+          like_count: metrics.likesCount || existing?.like_count || 0,
+          comment_count: metrics.commentsCount || existing?.comment_count || 0,
+          video_play_count: metrics.viewCount ?? existing?.video_play_count ?? null,
+          thumbnail_url: metrics.thumbnailUrl || existing?.thumbnail_url || null,
+          metrics_history: trimmed,
+          updated_at: new Date(),
+        })
+        .where(eq(schema.userPosts.id, itemId));
+
+      await db
+        .update(schema.userAccounts)
+        .set({
+          last_synced_at: sql`GREATEST(${schema.userAccounts.last_synced_at}, NOW())`,
+          updated_at: new Date(),
+        })
+        .where(eq(schema.userAccounts.id, account_id));
+
+      console.log(`[OK] Mass post id=${itemId} synced: likes=${metrics.likesCount} comments=${metrics.commentsCount} views=${metrics.viewCount ?? "N/A"}`);
+      return { id: itemId, source: "mass_post", status: "completed", teamId: team_id };
+    } catch (error: any) {
+      console.error(`[FAIL] Mass post id=${itemId}: ${error.message}`);
+      throw error;
+    } finally {
+      await localPool.end();
+    }
+  }
+
+  // ── Account sync (virality / user) ──
+  const { username } = event;
+  const accountId = itemId;
   const isUserAccount = source === "user";
   const accountsTable = isUserAccount ? schema.userAccounts : schema.viralityAccounts;
   const postsTable = isUserAccount ? schema.userPosts : schema.viralityPosts;

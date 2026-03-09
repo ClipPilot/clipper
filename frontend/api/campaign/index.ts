@@ -32,6 +32,9 @@ export interface CampaignVideo {
   title: string | null;
   status: "pending" | "uploaded" | "processing" | "ready" | "failed";
   presigned_url: string | null;
+  post_count: number;
+  user_post_count: number;
+  publish_status: "waiting_assignment" | "in_drive" | "published";
   created_at: string;
   updated_at: string;
 }
@@ -277,10 +280,15 @@ class CampaignAPI {
 
   async listVideos(
     teamId: number,
-    campaignId: number
+    campaignId: number,
+    options?: { sortBy?: string; sortOrder?: string },
   ): Promise<{ videos: CampaignVideo[] }> {
+    const params = new URLSearchParams();
+    if (options?.sortBy) params.set("sortBy", options.sortBy);
+    if (options?.sortOrder) params.set("sortOrder", options.sortOrder);
+    const qs = params.toString();
     const response = await apiFetch(
-      `${API_URL}/campaigns/teams/${teamId}/campaigns/${campaignId}/videos`,
+      `${API_URL}/campaigns/teams/${teamId}/campaigns/${campaignId}/videos${qs ? `?${qs}` : ""}`,
       {
         method: "GET",
         headers: { "Content-Type": "application/json" },

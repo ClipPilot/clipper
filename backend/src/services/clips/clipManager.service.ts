@@ -189,12 +189,18 @@ export class ClipManagerService {
   }
 
   // Get clips by folder
-  async getClipsByFolder(teamId: number, folderId: number, sort: "newest" | "oldest" = "newest") {
+  async getClipsByFolder(teamId: number, folderId: number, campaignUploads?: "all" | "only" | "hide") {
+    const conditions = [eq(clips.team_id, teamId), eq(clips.folder_id, folderId), isNotNull(clips.clip_path)];
+    if (campaignUploads === "only") {
+      conditions.push(sql`${clips.input_metadata}->>'source' = 'campaign_upload'`);
+    } else if (campaignUploads === "hide") {
+      conditions.push(sql`(${clips.input_metadata}->>'source' IS DISTINCT FROM 'campaign_upload')`);
+    }
     return await db
       .select()
       .from(clips)
-      .where(and(eq(clips.team_id, teamId), eq(clips.folder_id, folderId), isNotNull(clips.clip_path)))
-      .orderBy(sort === "oldest" ? asc(clips.updated_at) : desc(clips.updated_at));
+      .where(and(...conditions))
+      .orderBy(desc(clips.updated_at));
   }
 
   // Get unorganized clips (no folder)
@@ -351,20 +357,25 @@ export class ClipManagerService {
     teamId: number,
     limit: number = 20,
     offset: number = 0,
-    sort: "newest" | "oldest" = "newest"
+    sort: "newest" | "oldest" = "newest",
+    campaignUploads?: "all" | "only" | "hide"
   ) {
+    const conditions = [
+      eq(clips.team_id, teamId),
+      or(eq(clips.status, "completed"), eq(clips.status, "pending")),
+      eq(clips.saved, true),
+      isNull(clips.folder_id),
+      isNotNull(clips.clip_path),
+    ];
+    if (campaignUploads === "only") {
+      conditions.push(sql`${clips.input_metadata}->>'source' = 'campaign_upload'`);
+    } else if (campaignUploads === "hide") {
+      conditions.push(sql`(${clips.input_metadata}->>'source' IS DISTINCT FROM 'campaign_upload')`);
+    }
     return await db
       .select()
       .from(clips)
-      .where(
-        and(
-          eq(clips.team_id, teamId),
-          or(eq(clips.status, "completed"), eq(clips.status, "pending")),
-          eq(clips.saved, true),
-          isNull(clips.folder_id),
-          isNotNull(clips.clip_path)
-        )
-      )
+      .where(and(...conditions))
       .orderBy(sort === "oldest" ? asc(clips.created_at) : desc(clips.created_at))
       .limit(limit)
       .offset(offset);
@@ -478,6 +489,7 @@ export class ClipManagerService {
     folderId?: number | null;
     dateFrom?: Date;
     dateTo?: Date;
+    campaignUploads?: "all" | "only" | "hide";
     limit?: number;
     offset?: number;
   }) {
@@ -489,6 +501,7 @@ export class ClipManagerService {
       folderId,
       dateFrom,
       dateTo,
+      campaignUploads,
       limit = 20,
       offset = 0,
     } = params;
@@ -517,13 +530,21 @@ export class ClipManagerService {
       conditions.push(lte(clips.created_at, dateTo));
     }
 
+    // Campaign uploads filter
+    if (campaignUploads === "only") {
+      conditions.push(sql`${clips.input_metadata}->>'source' = 'campaign_upload'`);
+    } else if (campaignUploads === "hide") {
+      conditions.push(sql`(${clips.input_metadata}->>'source' IS DISTINCT FROM 'campaign_upload')`);
+    }
+
     // Tag filter - clips must have ALL specified tags (AND logic)
     if (tagIds && tagIds.length > 0) {
+      const tagIdList = sql.join(tagIds.map(id => sql`${id}`), sql`, `);
       const tagSubquery = sql`(
         SELECT COUNT(DISTINCT ct.tag_id)::int
         FROM clip_tags ct
         WHERE ct.clip_id = ${clips.id}
-        AND ct.tag_id = ANY(${tagIds})
+        AND ct.tag_id IN (${tagIdList})
       ) = ${tagIds.length}`;
       conditions.push(tagSubquery);
     }

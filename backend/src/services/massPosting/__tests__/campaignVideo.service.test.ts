@@ -53,6 +53,7 @@ vi.mock("@clipper/shared-db", () => ({
   tags: "tags",
   clipTags: "clipTags",
   posts: "posts",
+  userPosts: { id: "userPosts.id", mass_post_id: "userPosts.mass_post_id", post_url: "userPosts.post_url" },
 }));
 
 // ── Import service after all mocks ───────────────────────────────────────────
@@ -326,6 +327,8 @@ describe("CampaignVideoService", () => {
       mockDb.select.mockReturnValueOnce(createDrizzleChain(rows));
       // 3. postCounts query (clip_id: 7 is non-null)
       mockDb.select.mockReturnValueOnce(createDrizzleChain([]));
+      // 4. userPostCounts query (clip_id: 7 is non-null)
+      mockDb.select.mockReturnValueOnce(createDrizzleChain([]));
       mockGetPresignedUrl
         .mockResolvedValueOnce("https://cdn.example.com/vid.mp4")
         .mockResolvedValueOnce("https://cdn.example.com/clip.mp4");
@@ -394,6 +397,8 @@ describe("CampaignVideoService", () => {
       mockDb.select.mockReturnValueOnce(createDrizzleChain(rows));
       // 3. postCounts query (clip_id: 7 is non-null)
       mockDb.select.mockReturnValueOnce(createDrizzleChain([{ clip_id: 7, count: 3 }]));
+      // 4. userPostCounts query (clip_id: 7 is non-null)
+      mockDb.select.mockReturnValueOnce(createDrizzleChain([{ clip_id: 7, count: 1 }]));
       mockGetPresignedUrl.mockResolvedValueOnce("https://cdn.example.com/clip.mp4");
 
       const result = await campaignVideoService.listVideos(10);
@@ -409,6 +414,8 @@ describe("CampaignVideoService", () => {
         status: "ready",
         created_at: createdAt,
         post_count: 3,
+        user_post_count: 1,
+        publish_status: "published",
       });
     });
   });
