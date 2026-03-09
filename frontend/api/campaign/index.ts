@@ -32,6 +32,7 @@ export interface CampaignVideo {
   title: string | null;
   status: "pending" | "uploaded" | "processing" | "ready" | "failed";
   presigned_url: string | null;
+  post_count: number;
   created_at: string;
   updated_at: string;
 }

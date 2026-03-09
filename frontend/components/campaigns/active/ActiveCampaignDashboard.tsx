@@ -56,6 +56,7 @@ interface ActiveCampaignDashboardProps {
 
 function getPostStatusStyle(status: string) {
   const styles: Record<string, { className: string; label: string }> = {
+    waiting_assignment: { className: "bg-default-500/10 border-default-500/20 text-default-500", label: "Waiting Assignment" },
     pending: { className: "bg-default-500/10 border-default-500/20 text-default-500", label: "Awaiting Platforms" },
     processing: { className: "bg-warning-500/10 border-warning-500/20 text-warning-500", label: "Processing" },
     scheduled: { className: "bg-primary-500/10 border-primary-500/20 text-primary-500", label: "In Drive" },
@@ -149,8 +150,47 @@ export function ActiveCampaignDashboard({
   }
 
   const videoGroups = useMemo(() => {
-    // Filter out failed posts — don't show them at all
+    // Filter out failed posts
     const filtered = posts.filter((p) => p.status !== "failed");
+
+    if (postsTab === "queued") {
+      // Queued tab: campaign videos are the primary data source
+      // Build a map of clip_id → posts for enrichment
+      const postsByClipId = new Map<number, TeamPost[]>();
+      for (const post of filtered) {
+        if (post.clip_id == null) continue;
+        const arr = postsByClipId.get(post.clip_id) || [];
+        arr.push(post);
+        postsByClipId.set(post.clip_id, arr);
+      }
+
+      return videos.map((video) => {
+        const videoPosts = video.clip_id ? (postsByClipId.get(video.clip_id) || []) : [];
+        const platforms: Record<string, number> = {};
+        const statuses: string[] = [];
+        for (const p of videoPosts) {
+          platforms[p.platform] = (platforms[p.platform] || 0) + 1;
+          statuses.push(p.status);
+        }
+
+        // If no posts at all, video is waiting to be assigned to platforms
+        if (videoPosts.length === 0) {
+          statuses.push("waiting_assignment");
+        }
+
+        return {
+          clipId: video.clip_id,
+          clipTitle: video.title || video.file_name || `Video #${video.id}`,
+          clipUrl: video.presigned_url,
+          posts: videoPosts,
+          platforms,
+          earliestDate: video.created_at,
+          statuses,
+        } as VideoGroup;
+      });
+    }
+
+    // Published tab: posts are the primary data source (grouped by clip)
     const map = new Map<string, VideoGroup>();
     for (const post of filtered) {
       const key = String(post.clip_id ?? `no-clip-${post.id}`);
@@ -170,29 +210,6 @@ export function ActiveCampaignDashboard({
       group.posts.push(post);
       group.platforms[post.platform] = (group.platforms[post.platform] || 0) + 1;
       group.statuses.push(post.status);
-    }
-
-    // For the queued tab, also include campaign videos that have no posts yet
-    if (postsTab === "queued") {
-      const clipIdsWithPosts = new Set(
-        filtered.map((p) => p.clip_id).filter(Boolean),
-      );
-      for (const video of videos) {
-        // Skip videos that already have posts in the map
-        const hasPostsByClipId = video.clip_id && clipIdsWithPosts.has(video.clip_id);
-        const hasPostsByVideoId = map.has(`video-${video.id}`);
-        if (hasPostsByClipId || hasPostsByVideoId) continue;
-
-        map.set(video.clip_id ? String(video.clip_id) : `video-${video.id}`, {
-          clipId: video.clip_id,
-          clipTitle: video.title || video.file_name || `Video #${video.id}`,
-          clipUrl: video.presigned_url,
-          posts: [],
-          platforms: {},
-          earliestDate: video.created_at,
-          statuses: ["pending"],
-        });
-      }
     }
 
     return Array.from(map.values());
@@ -393,33 +410,28 @@ export function ActiveCampaignDashboard({
             <div className="space-y-4">
               {/* Add videos bar (queued tab only) */}
               {activeTab === "queued" && (
-                <>
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-text-secondary">
-                      {videos.length} video{videos.length !== 1 ? "s" : ""} in campaign
-                    </p>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="flat"
-                        className="bg-surface-elevated border border-border-base text-text-secondary h-9"
-                        onPress={() => setIsPickerOpen(true)}
-                        startContent={<Icon icon="solar:library-bold-duotone" width={14} />}
-                      >
-                        Add from Library
-                      </Button>
-                      <Button
-                        size="sm"
-                        color="primary"
-                        className="h-9"
-                        onPress={() => setIsUploadOpen(true)}
-                        startContent={<Icon icon="solar:upload-bold-duotone" width={14} />}
-                      >
-                        Upload Videos
-                      </Button>
-                    </div>
+                <div className="flex items-center justify-end">
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="flat"
+                      className="bg-surface-elevated border border-border-base text-text-secondary h-9"
+                      onPress={() => setIsPickerOpen(true)}
+                      startContent={<Icon icon="solar:library-bold-duotone" width={14} />}
+                    >
+                      Add from Library
+                    </Button>
+                    <Button
+                      size="sm"
+                      color="primary"
+                      className="h-9"
+                      onPress={() => setIsUploadOpen(true)}
+                      startContent={<Icon icon="solar:upload-bold-duotone" width={14} />}
+                    >
+                      Upload Videos
+                    </Button>
                   </div>
-                </>
+                </div>
               )}
 
               {/* Posts table — grouped by unique video */}
@@ -427,20 +439,20 @@ export function ActiveCampaignDashboard({
                 {/* Header */}
                 <div className="px-6 py-3 border-b border-border-base flex items-center justify-between">
                   <span className="text-sm font-medium text-text-primary">
-                    {postsTab === "queued" ? "Queued Posts" : "Published Posts"}
+                    {postsTab === "queued" ? "Campaign Videos" : "Published Posts"}
                   </span>
                   <span className="text-xs text-text-secondary">
-                    {videoGroups.length} video{videoGroups.length !== 1 ? "s" : ""} &middot; {totalPosts} post{totalPosts !== 1 ? "s" : ""}
+                    {videoGroups.length} video{videoGroups.length !== 1 ? "s" : ""}{postsTab === "published" ? ` \u00B7 ${totalPosts} post${totalPosts !== 1 ? "s" : ""}` : ""}
                   </span>
                 </div>
 
                 {/* Table */}
                 {postsLoading ? (
-                  <div className="p-12 text-center text-text-secondary">Loading posts...</div>
+                  <div className="p-12 text-center text-text-secondary">Loading...</div>
                 ) : videoGroups.length === 0 ? (
                   <div className="p-12 text-center text-text-secondary">
                     {postsTab === "queued"
-                      ? "No queued posts yet. Add videos and publish to see posts here."
+                      ? "No videos in this campaign yet. Add videos to get started."
                       : "No published posts yet."}
                   </div>
                 ) : (
@@ -460,9 +472,10 @@ export function ActiveCampaignDashboard({
                       {pagedGroups.map((group) => {
                         // Determine aggregate status
                         const noPosts = group.posts.length === 0;
+                        const hasWaiting = group.statuses.includes("waiting_assignment");
                         const hasProcessing = group.statuses.includes("processing");
                         const allPosted = group.statuses.every((s) => s === "posted");
-                        const aggregateStatus = noPosts ? "pending" : hasProcessing ? "processing" : allPosted ? "posted" : "scheduled";
+                        const aggregateStatus = hasWaiting ? "waiting_assignment" : noPosts ? "pending" : hasProcessing ? "processing" : allPosted ? "posted" : "scheduled";
                         const statusStyle = getPostStatusStyle(aggregateStatus);
                         return (
                           <tr key={group.clipId ?? group.posts[0]?.id} className="hover:bg-surface-elevated/50 transition-colors">
