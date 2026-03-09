@@ -1050,6 +1050,16 @@ export const workerHandler: Handler = async (event: any, context: Context) => {
         })
         .where(eq(schema.userPosts.id, itemId));
 
+      // Touch parent account's last_synced_at so the frontend shows current sync time
+      // Use GREATEST to ensure concurrent workers never overwrite a newer timestamp
+      await db
+        .update(schema.userAccounts)
+        .set({
+          last_synced_at: sql`GREATEST(${schema.userAccounts.last_synced_at}, NOW())`,
+          updated_at: new Date(),
+        })
+        .where(eq(schema.userAccounts.id, account_id));
+
       console.log(`[OK] Mass post id=${itemId} synced: likes=${metrics.likesCount} comments=${metrics.commentsCount} views=${metrics.viewCount ?? "N/A"}`);
       return { id: itemId, source: "mass_post", status: "completed", teamId: team_id };
     } catch (error: any) {
