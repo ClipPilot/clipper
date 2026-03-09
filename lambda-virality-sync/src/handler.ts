@@ -448,7 +448,7 @@ function extractPostIdFromUrl(url: string, platform: string): string | null {
     const u = new URL(url);
     switch (platform) {
       case "instagram": {
-        const m = u.pathname.match(/\/(?:reel|p)\/([A-Za-z0-9_-]+)/);
+        const m = u.pathname.match(/\/(?:reels?|p)\/([A-Za-z0-9_-]+)/);
         return m?.[1] ?? null;
       }
       case "tiktok": {
@@ -533,9 +533,9 @@ async function upsertPost(
     await db
       .update(postsTable)
       .set({
-        like_count: postData.likesCount || 0,
-        comment_count: postData.commentsCount || 0,
-        video_play_count: postData.videoPlayCount,
+        like_count: postData.likesCount || existingPost.like_count || 0,
+        comment_count: postData.commentsCount || existingPost.comment_count || 0,
+        video_play_count: postData.videoPlayCount ?? existingPost.video_play_count ?? null,
         thumbnail_url: postData.displayUrl || existingPost.thumbnail_url,
         metrics_history: trimmed,
         updated_at: new Date(),
@@ -701,9 +701,9 @@ async function consumeOneCredit(
 
 // ── URL normalization ──
 
-/** Normalize Instagram URLs: /reel/ → /reels/ (Apify requires /reels/) */
+/** Normalize Instagram URLs: /reels/ → /reel/ (Apify requires /reel/) */
 function normalizeInstagramUrl(url: string): string {
-  return url.replace(/instagram\.com\/reel\//, "instagram.com/reels/");
+  return url.replace(/instagram\.com\/reels\//, "instagram.com/reel/");
 }
 
 // ── Single-post metrics scraping (for mass posts) ──
@@ -1009,9 +1009,15 @@ export const workerHandler: Handler = async (event: any, context: Context) => {
         return { id: itemId, source: "mass_post", status: "skipped", reason: "no_metrics" };
       }
 
-      // Fetch existing metrics_history
+      // Fetch existing post data to preserve values when Apify returns null
       const [existing] = await db
-        .select({ metrics_history: schema.userPosts.metrics_history })
+        .select({
+          metrics_history: schema.userPosts.metrics_history,
+          like_count: schema.userPosts.like_count,
+          comment_count: schema.userPosts.comment_count,
+          video_play_count: schema.userPosts.video_play_count,
+          thumbnail_url: schema.userPosts.thumbnail_url,
+        })
         .from(schema.userPosts)
         .where(eq(schema.userPosts.id, itemId))
         .limit(1);
@@ -1031,13 +1037,14 @@ export const workerHandler: Handler = async (event: any, context: Context) => {
         ? history.slice(-MAX_METRICS_HISTORY)
         : history;
 
+      // Only overwrite fields when Apify returns real values — never null over existing data
       await db
         .update(schema.userPosts)
         .set({
-          like_count: metrics.likesCount,
-          comment_count: metrics.commentsCount,
-          video_play_count: metrics.viewCount,
-          thumbnail_url: metrics.thumbnailUrl,
+          like_count: metrics.likesCount || existing?.like_count || 0,
+          comment_count: metrics.commentsCount || existing?.comment_count || 0,
+          video_play_count: metrics.viewCount ?? existing?.video_play_count ?? null,
+          thumbnail_url: metrics.thumbnailUrl || existing?.thumbnail_url || null,
           metrics_history: trimmed,
           updated_at: new Date(),
         })

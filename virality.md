@@ -259,7 +259,7 @@ or(
 );
 ```
 
-Mass posting posts are synced separately — either via the "Sync All" button or through the `syncMassPostAnalytics()` service.
+Mass posting posts are synced separately — either via the "Sync All" button (which triggers a Step Functions execution for that team) or via the scheduled 12h Lambda sync.
 
 ### Account-Level Sync Flow
 
@@ -316,7 +316,7 @@ This is the lightweight per-post scrape for mass posting content.
    └─ Decrement syncs_remaining (only on scheduled runs, NOT on "Sync All")
 ```
 
-**Key difference**: "Sync All" calls `syncMassPostAnalytics(teamId, false)` — the `false` means syncs are NOT decremented. This preserves the 28-sync budget for scheduled runs, ensuring mass posting posts get a full month of tracking for CPM analysis.
+**Key difference**: "Sync All" triggers a Step Functions execution with `{ teamId, massPostsOnly: true }`. The Lambda worker handles each post with an atomic `syncs_remaining` decrement (guarded by `WHERE syncs_remaining > 0` to prevent going negative).
 
 ### Credit Economics
 
@@ -470,9 +470,9 @@ POST /api/user-performance/{teamId}/sync-all
 1. **Fetch all accounts** for the team
 2. **Split by source**:
    - `source != "mass_posting"` → regular accounts → full Apify profile scrape (`syncAccount`)
-   - `source = "mass_posting"` → mass posting accounts → per-post metrics scrape (`syncMassPostAnalytics`)
-3. **Mass posting posts are synced WITHOUT decrementing `syncs_remaining`** — this preserves the 28-sync budget for scheduled runs, ensuring a full month of tracking for CPM analysis
-4. **Return summary**: `{ accounts: { synced, failed }, massPosts: { synced, skipped } }`
+   - `source = "mass_posting"` → mass posting posts → triggers Step Functions execution (`{ teamId, massPostsOnly: true }`)
+3. **Mass posting posts are synced via Lambda** — the Step Functions worker handles each post with atomic `syncs_remaining` decrement
+4. **Return summary**: `{ accounts: { synced, failed }, massPosts: { triggered: true } }`
 
 ### Frontend Toast
 
@@ -607,7 +607,6 @@ Posts' `metrics_history` arrays are aggregated into hourly chart points:
 | `backend/src/services/virality/accountTracking.service.ts` | Base class for account syncing (shared by both systems)       |
 | `backend/src/services/virality/userPerformance.service.ts` | Instance of AccountTrackingService for userAccounts/userPosts |
 | `backend/src/services/virality/apify.service.ts`           | All Apify scraper integrations                                |
-| `backend/src/services/virality/massPostSync.service.ts`    | Per-post sync for mass posting content                        |
 | `backend/src/controllers/userPerformance.controller.ts`    | User performance endpoints including syncAll                  |
 | `backend/src/controllers/virality.controller.ts`           | Competitor tracking endpoints                                 |
 | `backend/src/routes/userPerformance.routes.ts`             | User performance route definitions                            |

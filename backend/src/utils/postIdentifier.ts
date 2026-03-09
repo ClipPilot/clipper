@@ -3,7 +3,7 @@ export function extractPostIdentifier(url: string, platform: string): string | n
     const u = new URL(url);
     switch (platform) {
       case "instagram": {
-        const match = u.pathname.match(/\/(?:reel|p)\/([A-Za-z0-9_-]+)/);
+        const match = u.pathname.match(/\/(?:reels?|p)\/([A-Za-z0-9_-]+)/);
         return match?.[1] ?? null;
       }
       case "tiktok": {
