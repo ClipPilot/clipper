@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import { addToast } from "@heroui/react";
 import { campaignAPI, type CampaignVideo } from "@/api/campaign";
 
 export type UploadFileStatus = "queued" | "uploading" | "completing" | "done" | "error";
@@ -107,8 +108,17 @@ export function useBulkVideoUpload(
 
   const startUpload = useCallback(
     (inputFiles: FileList | File[]) => {
-      const allFiles = Array.from(inputFiles).filter(isVideoFile);
-      if (allFiles.length === 0 || !teamId) return;
+      if (!teamId) return;
+      const raw = Array.from(inputFiles);
+      const allFiles = raw.filter(isVideoFile);
+      if (allFiles.length === 0) {
+        addToast({
+          title: "No video files found",
+          description: `${raw.length} file${raw.length !== 1 ? "s" : ""} selected but none are supported video formats.`,
+          color: "warning",
+        });
+        return;
+      }
 
       abortRef.current = false;
       setIsActive(true);

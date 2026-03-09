@@ -74,9 +74,10 @@ export function BulkUploadModal({
   const handleFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileList = e.target.files;
     if (!fileList || fileList.length === 0) return;
+    const cloned = Array.from(fileList);
     e.target.value = "";
-    setPendingFileCount(fileList.length);
-    onStartUpload(fileList);
+    setPendingFileCount(cloned.length);
+    onStartUpload(cloned);
     requestAnimationFrame(() => setPendingFileCount(0));
   };
 
