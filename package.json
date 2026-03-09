@@ -12,6 +12,9 @@
     "build:backend": "pnpm build:shared && cd backend && pnpm build",
     "build:frontend": "cd frontend && pnpm build",
     "dev:backend": "cd backend && pnpm dev",
+    "dev:worker": "cd backend && pnpm dev:worker",
+    "dev:agent": "cd agent-service && pnpm dev",
+    "dev:all": "pnpm dev:backend & pnpm dev:worker & pnpm dev:agent & wait",
     "install:all": "pnpm install"
   },
   "packageManager": "pnpm@10.12.2"

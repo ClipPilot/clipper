@@ -47,6 +47,25 @@ variable "backend_desired_count" {
   default     = 2
 }
 
+# Agent Service Configuration
+variable "agent_service_cpu" {
+  description = "CPU units for agent service container (1024 = 1 vCPU)"
+  type        = number
+  default     = 512 # 0.5 vCPU - lightweight HTTP server
+}
+
+variable "agent_service_memory" {
+  description = "Memory for agent service container in MB"
+  type        = number
+  default     = 1024 # 1 GB
+}
+
+variable "agent_service_desired_count" {
+  description = "Desired number of agent service tasks"
+  type        = number
+  default     = 3
+}
+
 # Environment Variables
 variable "openai_api_key" {
   description = "OpenAI API Key"
