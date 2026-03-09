@@ -17,6 +17,7 @@ import {
   selectedFolderIdAtom,
   clipsViewModeAtom,
   clipsSortAtom,
+  campaignUploadFilterAtom,
 } from "@/store/clips";
 import { Button, Card, CardBody, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Tooltip } from "@heroui/react";
 import { Icon } from "@iconify/react";
@@ -25,6 +26,7 @@ import { Clip, clipsAPI } from "@/api/clips";
 import { ClipCard } from "@/components/clips/ClipCard";
 import { SubfolderCard } from "@/components/clips/SubfolderCard";
 import { CreateFolderModal } from "@/components/clips/CreateFolderModal";
+import { EditFolderModal } from "@/components/clips/EditFolderModal";
 import { DeleteConfirmModal } from "@/components/clips/DeleteConfirmModal";
 import { FolderTree } from "@/components/clips/FolderTree";
 import { FolderBreadcrumb } from "@/components/clips/FolderBreadcrumb";
@@ -91,6 +93,7 @@ function MyClipsPageContent() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useAtom(isSidebarCollapsedAtom);
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useAtom(isCreateFolderOpenAtom);
   const [createFolderParentId, setCreateFolderParentId] = useAtom(createFolderParentIdAtom);
+  const [editingFolder, setEditingFolder] = useState<import("@/api/clips").Folder | null>(null);
 
   const newClips = useAtomValue(newClipsAtom);
   const processingCount = useAtomValue(processingCountAtom);
@@ -101,6 +104,7 @@ function MyClipsPageContent() {
   const [viewMode, setViewMode] = useAtom(clipsViewModeAtom);
   const [clipsSort, setClipsSort] = useAtom(clipsSortAtom);
   const [clipTypeFilter, setClipTypeFilter] = useState<string>("all");
+  const [campaignUploadFilter, setCampaignUploadFilter] = useAtom(campaignUploadFilterAtom);
 
   const {
     pendingClips,
@@ -131,6 +135,7 @@ function MyClipsPageContent() {
     loadFolders,
     selectFolder,
     createFolder,
+    updateFolder,
     moveFolder,
     deleteFolder,
     getParentFolderName,
@@ -154,7 +159,6 @@ function MyClipsPageContent() {
 
     return clips.filter(clip => {
       const clipType = clip.clip_metadata?.type;
-
       switch (clipTypeFilter) {
         case "clips":
           return !clipType || clipType === "clip";
@@ -354,12 +358,18 @@ function MyClipsPageContent() {
     }
   }, [selectedTeam?.id]);
 
-  // Reload clips when sort order changes
+  // Reload clips when sort order or campaign upload filter changes
   const sortMountedRef = useRef(false);
   useEffect(() => {
     if (!sortMountedRef.current) { sortMountedRef.current = true; return; }
-    if (selectedTeam?.id) loadSavedClips(true);
-  }, [clipsSort]);
+    if (selectedTeam?.id) {
+      if (selectedFolderId !== null) {
+        selectFolder(selectedFolderId, loadSavedClips);
+      } else {
+        loadSavedClips(true);
+      }
+    }
+  }, [clipsSort, campaignUploadFilter]);
 
   const handleSelectFolder = useCallback(
     async (folderId: number | null) => {
@@ -527,6 +537,31 @@ function MyClipsPageContent() {
                 <DropdownItem key="ai-video">AI Video Creator</DropdownItem>
                 <DropdownItem key="face-swap">Face Swap</DropdownItem>
                 <DropdownItem key="ad-clone">Ad Clone</DropdownItem>
+              </DropdownMenu>
+            </Dropdown>
+            <Dropdown>
+              <DropdownTrigger>
+                <Button
+                  variant="flat"
+                  className={`bg-surface-base border border-border-base ${campaignUploadFilter !== "all" ? "border-accent-400" : ""}`}
+                  startContent={<Icon icon="solar:video-library-bold-duotone" className="text-accent-400" width={18} />}
+                  endContent={<Icon icon="solar:alt-arrow-down-linear" width={16} />}
+                >
+                  {campaignUploadFilter === "all" ? "Uploads" : campaignUploadFilter === "only" ? "Only Uploads" : "No Uploads"}
+                </Button>
+              </DropdownTrigger>
+              <DropdownMenu
+                aria-label="Campaign uploads filter"
+                selectedKeys={[campaignUploadFilter]}
+                selectionMode="single"
+                onSelectionChange={(keys) => setCampaignUploadFilter(Array.from(keys)[0] as "all" | "only" | "hide")}
+                classNames={{
+                  base: "bg-surface-base border border-border-base",
+                }}
+              >
+                <DropdownItem key="all">Show All</DropdownItem>
+                <DropdownItem key="only">Only Campaign Uploads</DropdownItem>
+                <DropdownItem key="hide">Hide Campaign Uploads</DropdownItem>
               </DropdownMenu>
             </Dropdown>
             <Dropdown>
@@ -786,6 +821,8 @@ function MyClipsPageContent() {
                           onDelete={selectedTeam?.plan === "scale" || selectedTeam?.plan === "enterprise" ? deleteFolder : undefined}
                           onDropClip={selectedTeam?.plan === "scale" || selectedTeam?.plan === "enterprise" ? moveClipToFolder : undefined}
                           onDownload={handleDownloadFolder}
+                          onEdit={selectedTeam?.plan === "scale" || selectedTeam?.plan === "enterprise" ? setEditingFolder : undefined}
+                          downloadingFolderId={downloadingFolderId}
                         />
                       ))}
                       {filteredSavedClips.map((clip) => (
@@ -850,6 +887,13 @@ function MyClipsPageContent() {
         onCreate={handleCreateFolder}
         parentFolderId={createFolderParentId}
         parentFolderName={getParentFolderName(createFolderParentId)}
+      />
+
+      <EditFolderModal
+        isOpen={editingFolder !== null}
+        onClose={() => setEditingFolder(null)}
+        folder={editingFolder}
+        onUpdate={updateFolder}
       />
 
       {selectedClip && (

@@ -144,9 +144,10 @@ class ClipsAPI {
     return data.clip;
   }
 
-  async getClipsByFolder(teamId: number, folderId: number): Promise<Clip[]> {
+  async getClipsByFolder(teamId: number, folderId: number, campaignUploads: "all" | "only" | "hide" = "all"): Promise<Clip[]> {
+    const params = campaignUploads !== "all" ? `?campaignUploads=${campaignUploads}` : "";
     const response = await apiFetch(
-      `${API_URL}/clip-video/teams/${teamId}/folders/${folderId}/clips`,
+      `${API_URL}/clip-video/teams/${teamId}/folders/${folderId}/clips${params}`,
       {
         headers: { "Content-Type": "application/json" },
       }
@@ -523,10 +524,13 @@ class ClipsAPI {
     teamId: number,
     limit: number = 20,
     offset: number = 0,
-    sort: "newest" | "oldest" = "newest"
+    sort: "newest" | "oldest" = "newest",
+    campaignUploads: "all" | "only" | "hide" = "all"
   ): Promise<{ clips: Clip[]; hasMore: boolean }> {
+    const params = new URLSearchParams({ limit: limit.toString(), offset: offset.toString(), sort });
+    if (campaignUploads !== "all") params.set("campaignUploads", campaignUploads);
     const response = await apiFetch(
-      `${API_URL}/clip-video/teams/${teamId}/clips/saved?limit=${limit}&offset=${offset}&sort=${sort}`,
+      `${API_URL}/clip-video/teams/${teamId}/clips/saved?${params.toString()}`,
       {
         headers: { "Content-Type": "application/json" },
       }
@@ -763,6 +767,7 @@ class ClipsAPI {
       folderId?: number | null;
       from?: string;
       to?: string;
+      campaignUploads?: "all" | "only" | "hide";
       limit?: number;
       offset?: number;
     }
@@ -783,6 +788,7 @@ class ClipsAPI {
     }
     if (params.from) searchParams.set("from", params.from);
     if (params.to) searchParams.set("to", params.to);
+    if (params.campaignUploads && params.campaignUploads !== "all") searchParams.set("campaignUploads", params.campaignUploads);
     if (params.limit) searchParams.set("limit", params.limit.toString());
     if (params.offset) searchParams.set("offset", params.offset.toString());
 
