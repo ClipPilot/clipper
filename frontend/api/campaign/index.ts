@@ -280,10 +280,15 @@ class CampaignAPI {
 
   async listVideos(
     teamId: number,
-    campaignId: number
+    campaignId: number,
+    options?: { sortBy?: string; sortOrder?: string },
   ): Promise<{ videos: CampaignVideo[] }> {
+    const params = new URLSearchParams();
+    if (options?.sortBy) params.set("sortBy", options.sortBy);
+    if (options?.sortOrder) params.set("sortOrder", options.sortOrder);
+    const qs = params.toString();
     const response = await apiFetch(
-      `${API_URL}/campaigns/teams/${teamId}/campaigns/${campaignId}/videos`,
+      `${API_URL}/campaigns/teams/${teamId}/campaigns/${campaignId}/videos${qs ? `?${qs}` : ""}`,
       {
         method: "GET",
         headers: { "Content-Type": "application/json" },

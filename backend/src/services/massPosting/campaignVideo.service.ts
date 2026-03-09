@@ -8,7 +8,7 @@ import {
   userPosts,
 } from "@clipper/shared-db";
 import { db } from "../../db";
-import { eq, and, inArray, sql, desc } from "drizzle-orm";
+import { eq, and, inArray, sql, desc, asc } from "drizzle-orm";
 import { s3Service } from "../s3.service";
 import { sanitizeFileName } from "../../utils/fileUtils";
 
@@ -251,11 +251,19 @@ class CampaignVideoService {
 
   async listVideos(
     campaignId: number,
-    options?: { page?: number; pageSize?: number; filter?: "published" | "unpublished" },
+    options?: {
+      page?: number;
+      pageSize?: number;
+      filter?: "published" | "unpublished";
+      sortBy?: "created_at" | "title" | "publish_status" | "post_count";
+      sortOrder?: "asc" | "desc";
+    },
   ) {
     const page = options?.page ?? 1;
     const pageSize = options?.pageSize ?? 25;
     const filter = options?.filter;
+    const sortBy = options?.sortBy ?? "created_at";
+    const sortOrder = options?.sortOrder ?? "desc";
 
     // Build a subquery that checks whether a campaign video has posts
     const hasPostsSubquery = sql`EXISTS (
@@ -281,6 +289,40 @@ class CampaignVideoService {
 
     const totalPages = Math.ceil(totalVideos / pageSize);
 
+    // Build ORDER BY clause
+    const dirFn = sortOrder === "asc" ? asc : desc;
+    const publishStatusExpr = sql`CASE
+      WHEN NOT ${hasPostsSubquery} THEN 0
+      WHEN NOT EXISTS (
+        SELECT 1 FROM ${userPosts}
+        JOIN ${posts} p2 ON ${userPosts.mass_post_id} = p2.id
+        WHERE p2.campaign_id = ${campaignId}
+        AND p2.clip_id = ${campaignVideos.clip_id}
+        AND ${userPosts.post_url} IS NOT NULL
+      ) THEN 1
+      ELSE 2
+    END`;
+    const postCountExpr = sql`(
+      SELECT count(*)::int FROM ${posts}
+      WHERE ${posts.campaign_id} = ${campaignId}
+      AND ${posts.clip_id} = ${campaignVideos.clip_id}
+    )`;
+
+    let orderExpr;
+    switch (sortBy) {
+      case "title":
+        orderExpr = dirFn(sql`COALESCE(${clips.title}, ${campaignVideos.custom_video_name}, '')`);
+        break;
+      case "publish_status":
+        orderExpr = dirFn(publishStatusExpr);
+        break;
+      case "post_count":
+        orderExpr = dirFn(postCountExpr);
+        break;
+      default:
+        orderExpr = dirFn(campaignVideos.created_at);
+    }
+
     const rows = await db
       .select({
         id: campaignVideos.id,
@@ -297,7 +339,7 @@ class CampaignVideoService {
       .from(campaignVideos)
       .leftJoin(clips, eq(campaignVideos.clip_id, clips.id))
       .where(whereClause)
-      .orderBy(desc(campaignVideos.created_at))
+      .orderBy(orderExpr)
       .limit(pageSize)
       .offset((page - 1) * pageSize);
 

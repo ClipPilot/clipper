@@ -50,6 +50,7 @@ interface ActiveCampaignDashboardProps {
   onVideoAdded: (video: CampaignVideo) => void;
   onVideosAdded: (videos: CampaignVideo[]) => void;
   onCampaignUpdated: (campaign: Campaign) => void;
+  onRefetchVideos: (sortBy?: string, sortOrder?: string) => Promise<void>;
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -78,12 +79,17 @@ export function ActiveCampaignDashboard({
   onVideoAdded,
   onVideosAdded,
   onCampaignUpdated,
+  onRefetchVideos,
 }: ActiveCampaignDashboardProps) {
   const selectedTeam = useAtomValue(selectedTeamAtom);
 
   // Tab state
   const [activeTab, setActiveTab] = useState<"queued" | "accounts" | "published">("queued");
   const [dateRange, setDateRange] = useState("mtd");
+
+  // Sort state
+  const [sortBy, setSortBy] = useState<"created_at" | "title" | "publish_status" | "post_count">("created_at");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   // Posts table state (single fetch, tab drives queued vs published)
   const [posts, setPosts] = useState<TeamPost[]>([]);
@@ -115,6 +121,13 @@ export function ActiveCampaignDashboard({
 
   // Derive the API tab from the active UI tab
   const postsTab = activeTab === "published" ? "published" : "queued";
+
+  const handleSort = useCallback((column: "created_at" | "title" | "publish_status" | "post_count") => {
+    const newOrder = sortBy === column && sortOrder === "desc" ? "asc" : "desc";
+    setSortBy(column);
+    setSortOrder(newOrder);
+    onRefetchVideos(column, newOrder);
+  }, [sortBy, sortOrder, onRefetchVideos]);
 
   // Fetch ALL posts for this campaign+tab (no pagination on API, we paginate grouped videos client-side)
   const fetchPosts = useCallback(async () => {
@@ -456,12 +469,42 @@ export function ActiveCampaignDashboard({
                   <table className="w-full">
                     <thead className="bg-surface-elevated border-b border-border-base">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Video</th>
+                        <th
+                          className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:text-text-primary select-none"
+                          onClick={() => handleSort("title")}
+                        >
+                          <span className="inline-flex items-center gap-1">
+                            Video
+                            {sortBy === "title" && <Icon icon={sortOrder === "asc" ? "solar:alt-arrow-up-linear" : "solar:alt-arrow-down-linear"} width={12} />}
+                          </span>
+                        </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Platforms</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Posts</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Status</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
-                          {postsTab === "queued" ? "Created" : "Published"}
+                        <th
+                          className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:text-text-primary select-none"
+                          onClick={() => handleSort("post_count")}
+                        >
+                          <span className="inline-flex items-center gap-1">
+                            Posts
+                            {sortBy === "post_count" && <Icon icon={sortOrder === "asc" ? "solar:alt-arrow-up-linear" : "solar:alt-arrow-down-linear"} width={12} />}
+                          </span>
+                        </th>
+                        <th
+                          className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:text-text-primary select-none"
+                          onClick={() => handleSort("publish_status")}
+                        >
+                          <span className="inline-flex items-center gap-1">
+                            Status
+                            {sortBy === "publish_status" && <Icon icon={sortOrder === "asc" ? "solar:alt-arrow-up-linear" : "solar:alt-arrow-down-linear"} width={12} />}
+                          </span>
+                        </th>
+                        <th
+                          className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:text-text-primary select-none"
+                          onClick={() => handleSort("created_at")}
+                        >
+                          <span className="inline-flex items-center gap-1">
+                            {postsTab === "queued" ? "Created" : "Published"}
+                            {sortBy === "created_at" && <Icon icon={sortOrder === "asc" ? "solar:alt-arrow-up-linear" : "solar:alt-arrow-down-linear"} width={12} />}
+                          </span>
                         </th>
                       </tr>
                     </thead>
