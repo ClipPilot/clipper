@@ -1,9 +1,12 @@
 import { Response } from "express";
 import { SFNClient, StartExecutionCommand } from "@aws-sdk/client-sfn";
+import { eq, and, isNotNull, gt } from "drizzle-orm";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { userPerformanceService } from "../services/virality/userPerformance.service";
 import { config } from "../config/env";
 import { parseId, parseDateQuery, handleControllerError, requirePlanAccess as requirePlanAccessBase } from "../utils/controllerHelpers";
+import { db } from "../db";
+import { userAccounts, userPosts } from "@clipper/shared-db/src/schema";
 
 const sfnClient = new SFNClient({ region: config.aws.region });
 
@@ -184,17 +187,49 @@ class UserPerformanceController {
       );
       const accountsFailed = accountResults.filter((r) => r.status === "rejected").length;
 
+      // Count mass posts that will be synced and stamp last_synced_at immediately
+      const massPostingAccounts = accounts.filter((a: any) => a.source === "mass_posting");
+      let massPostsSynced = 0;
+
+      if (massPostingAccounts.length > 0) {
+        // Count eligible mass posts
+        for (const acct of massPostingAccounts) {
+          const posts = await db
+            .select({ id: userPosts.id })
+            .from(userPosts)
+            .where(
+              and(
+                eq(userPosts.account_id, acct.id),
+                isNotNull(userPosts.mass_post_id),
+                gt(userPosts.syncs_remaining, 0)
+              )
+            );
+          massPostsSynced += posts.length;
+        }
+
+        // Stamp last_synced_at now so the frontend sees it immediately
+        if (massPostsSynced > 0) {
+          await db
+            .update(userAccounts)
+            .set({ last_synced_at: new Date(), updated_at: new Date() })
+            .where(
+              and(
+                eq(userAccounts.team_id, teamId),
+                eq(userAccounts.source, "mass_posting")
+              )
+            );
+        }
+      }
+
       // Trigger mass post sync via Step Functions (async, isolated in Lambda)
-      let massPostsTriggered = false;
-      if (config.aws.viralitySyncSfnArn) {
+      if (config.aws.viralitySyncSfnArn && massPostsSynced > 0) {
         try {
           await sfnClient.send(new StartExecutionCommand({
             stateMachineArn: config.aws.viralitySyncSfnArn,
             name: `mass-posts-team-${teamId}-${Date.now()}`,
             input: JSON.stringify({ teamId, massPostsOnly: true }),
           }));
-          massPostsTriggered = true;
-          console.log(`[SyncAll] Started Step Functions execution for team ${teamId} mass posts`);
+          console.log(`[SyncAll] Started Step Functions execution for team ${teamId} mass posts (${massPostsSynced} posts)`);
         } catch (err) {
           console.error(`[SyncAll] Failed to start mass post sync SF execution:`, err);
         }
@@ -202,7 +237,7 @@ class UserPerformanceController {
 
       return res.json({
         accounts: { synced: regularAccounts.length - accountsFailed, failed: accountsFailed },
-        massPosts: { triggered: massPostsTriggered },
+        massPosts: { synced: massPostsSynced },
       });
     } catch (error) {
       return handleControllerError(res, "Sync all error", error, "Failed to sync all");
