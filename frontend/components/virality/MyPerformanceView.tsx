@@ -56,7 +56,7 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
   const [isRecalculating, setIsRecalculating] = useState(false);
   const initialLoadDone = useRef(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [selectedAccountIds, setSelectedAccountIds] = useState<number[] | null>(null);
+  const [selectedAccountIds, setSelectedAccountIds] = useState<number[]>([]);
   const [comparisonMode, setComparisonMode] = useState<ComparisonMode>({ type: "last-sync" });
 
   const fetchData = useCallback(async (silent = false) => {
@@ -88,11 +88,8 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  useEffect(() => {
-    if (selectedAccountIds === null && accounts.length > 0) {
-      setSelectedAccountIds(accounts.slice(0, 10).map((a) => a.id));
-    }
-  }, [accounts, selectedAccountIds]);
+  // No auto-select: chart shows aggregated total by default.
+  // User can toggle individual accounts via the filter popover.
 
   // Track accounts doing their initial sync
   const syncingAccountIds = useMemo(() => {
@@ -163,7 +160,7 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
   // ─── Derived data ────────────────────────────────────────────────────────────
 
   const derived = useMemo(() => {
-    const activeAccounts = !selectedAccountIds || selectedAccountIds.length === 0
+    const activeAccounts = selectedAccountIds.length === 0
       ? accounts
       : accounts.filter((a) => selectedAccountIds.includes(a.id));
 
@@ -195,8 +192,18 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
       }
     });
 
+    // Chart overlay: individual accounts to show alongside the total line
+    const chartOverlayAccounts = selectedAccountIds.length === 0
+      ? []
+      : accounts.filter((a) => selectedAccountIds.includes(a.id));
+    const chartOverlayPostsByAccount: Record<number, ViralityPost[]> = {};
+    for (const a of chartOverlayAccounts) {
+      chartOverlayPostsByAccount[a.id] = postsByAccount[a.id] || [];
+    }
+
     return {
       activeAccounts, activePosts, activePostsByAccount, allFilteredPostsByAccount,
+      chartOverlayAccounts, chartOverlayPostsByAccount,
       accountPlatformMap, accountSyncMap, accountColorMap, accountMap, lastSyncedAt,
       postsPerWeek: computePostsPerWeek(activePosts),
     };
@@ -344,7 +351,7 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
         {accounts.length > 0 ? (
           <AccountFilterPopover
             accounts={accounts}
-            selectedAccountIds={selectedAccountIds ?? []}
+            selectedAccountIds={selectedAccountIds}
             onChange={setSelectedAccountIds}
           />
         ) : (
@@ -392,8 +399,8 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
             <div className="lg:col-span-2">
               <AnalyticsChart
-                accounts={derived.activeAccounts}
-                postsByAccount={derived.activePostsByAccount}
+                accounts={derived.chartOverlayAccounts}
+                postsByAccount={derived.chartOverlayPostsByAccount}
                 allAccounts={accounts}
                 allPostsByAccount={derived.allFilteredPostsByAccount}
                 colorMap={derived.accountColorMap}
@@ -434,7 +441,7 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
         {/* Top Performing Content Table (full width) */}
         <RecalcOverlay active={isRecalculating}>
           <PostsTable
-            key={(selectedAccountIds ?? []).join(",") + (dateRange.startDate || "") + (dateRange.endDate || "")}
+            key={selectedAccountIds.join(",") + (dateRange.startDate || "") + (dateRange.endDate || "")}
             posts={derived.activePosts}
             accountPlatformMap={derived.accountPlatformMap}
             accountSyncMap={derived.accountSyncMap}

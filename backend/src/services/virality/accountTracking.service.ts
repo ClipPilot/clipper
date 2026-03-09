@@ -542,7 +542,7 @@ export class AccountTrackingService {
         like_count: 0,
         comment_count: 0,
         mass_post_id: postId,
-        syncs_remaining: 28,
+        syncs_remaining: 62,
         metrics_history: [],
       })
       .returning({ id: this.postsTable.id }) as any[];

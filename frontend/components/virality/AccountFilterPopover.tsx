@@ -61,6 +61,10 @@ export function AccountFilterPopover({
     setPending([]);
   };
 
+  const handleSelectAll = () => {
+    setPending(accounts.map((a) => a.id));
+  };
+
   return (
     <Popover isOpen={isOpen} onOpenChange={handleOpen} placement="bottom-start">
       <PopoverTrigger>
@@ -126,20 +130,30 @@ export function AccountFilterPopover({
           </div>
 
           <div className="flex items-center justify-between pt-2 border-t border-border-base">
-            <Button
-              size="sm"
-              variant="light"
-              className="text-text-secondary"
-              onPress={handleClearAll}
-            >
-              Clear All
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                size="sm"
+                variant="light"
+                className="text-text-secondary"
+                onPress={handleSelectAll}
+              >
+                All
+              </Button>
+              <Button
+                size="sm"
+                variant="light"
+                className="text-text-secondary"
+                onPress={handleClearAll}
+              >
+                None
+              </Button>
+            </div>
             <Button
               size="sm"
               className="bg-accent-400 text-white"
               onPress={handleApply}
             >
-              Apply Filters
+              Apply
             </Button>
           </div>
         </div>

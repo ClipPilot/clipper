@@ -24,6 +24,7 @@ import { buildChartDataByAccount } from "@/app/dashboard/virality/[competitorId]
 type ChartMetricKey = "likes" | "comments" | "views";
 
 const TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
+const TOTAL_COLOR = "#8b5cf6";
 
 function formatHourKey(hourKey: string) {
   const d = new Date(hourKey + ":00:00Z");
@@ -68,11 +69,12 @@ function SyncTick({ x, y, payload, index, chartData }: any) {
 }
 
 interface AnalyticsChartProps {
+  /** Overlay accounts to show as individual lines alongside the total */
   accounts: ViralityAccount[];
   postsByAccount: Record<number, ViralityPost[]>;
-  /** All accounts (for stable axis domains across tab switches) */
+  /** All accounts (used for total line and stable axis domains) */
   allAccounts?: ViralityAccount[];
-  /** All accounts' posts (for stable axis domains across tab switches) */
+  /** All accounts' posts (used for total line and stable axis domains) */
   allPostsByAccount?: Record<number, ViralityPost[]>;
   /** Stable color map keyed by account ID. When provided, colors stay consistent across tab switches. */
   colorMap?: Record<number, string>;
@@ -86,7 +88,7 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
   const getColor = (account: ViralityAccount, index: number) =>
     colorMap?.[account.id] ?? CHART_COLORS[index % CHART_COLORS.length];
 
-  // Build chart data from ALL accounts so X-axis (time points) stays stable
+  // Build chart data from ALL accounts so X-axis stays stable and we can compute total
   const axisAccounts = allAccounts ?? accounts;
   const axisPostsByAccount = allPostsByAccount ?? postsByAccount;
 
@@ -102,38 +104,40 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
     [axisPostsByAccount, axisAccounts, activeMetric, startDate, endDate]
   );
 
-  // The visible chart data includes all time points but only active accounts' values
+  // Chart data: aggregated total line + individual overlay account lines
   const chartData = useMemo(() => {
     return fullChartData.map((point) => {
-      const filtered: Record<string, string | number> = { hourKey: point.hourKey };
-      for (const account of accounts) {
-        filtered[`account_${account.id}`] = point[`account_${account.id}`] ?? 0;
+      let total = 0;
+      for (const key of Object.keys(point)) {
+        if (key.startsWith("account_")) total += (point[key] as number) || 0;
       }
-      return filtered;
+      const merged: Record<string, string | number> = { hourKey: point.hourKey, total };
+      for (const account of accounts) {
+        merged[`account_${account.id}`] = point[`account_${account.id}`] ?? 0;
+      }
+      return merged;
     });
   }, [fullChartData, accounts]);
 
-  // Y-axis domain from full data (all accounts aggregated per time point)
+  // Y-axis domain from total (always the highest value)
   const yDomain = useMemo(() => {
     let max = 0;
-    for (const point of fullChartData) {
-      let sum = 0;
-      for (const key of Object.keys(point)) {
-        if (key.startsWith("account_")) sum += (point[key] as number) || 0;
-      }
-      if (sum > max) max = sum;
+    for (const point of chartData) {
+      const total = (point.total as number) || 0;
+      if (total > max) max = total;
     }
     return [0, max > 0 ? max : "auto"] as [number, number | "auto"];
-  }, [fullChartData]);
+  }, [chartData]);
 
   const hasData = fullChartData.length > 0;
 
+  // Metric card totals — always from ALL accounts
   const totals = useMemo(() => {
     let likes = 0,
       comments = 0,
       views = 0;
-    for (const account of accounts) {
-      const posts = postsByAccount[account.id] || [];
+    for (const account of axisAccounts) {
+      const posts = axisPostsByAccount[account.id] || [];
       for (const post of posts) {
         likes += post.like_count || 0;
         comments += post.comment_count || 0;
@@ -141,7 +145,7 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
       }
     }
     return { likes, comments, views };
-  }, [accounts, postsByAccount]);
+  }, [axisAccounts, axisPostsByAccount]);
 
   const metrics: {
     key: ChartMetricKey;
@@ -176,6 +180,13 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
                 </HTooltip>
               </dt>
               <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-1.5">
+                  <div
+                    className="w-3 h-[3px] rounded-full"
+                    style={{ backgroundColor: TOTAL_COLOR }}
+                  />
+                  <span className="text-xs text-text-tertiary">All Accounts</span>
+                </div>
                 {accounts.map((account, i) => (
                   <div key={account.id} className="flex items-center gap-1.5">
                     <div
@@ -246,6 +257,16 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
                 margin={{ left: 0, right: 0 }}
               >
                 <defs>
+                  <linearGradient
+                    id="gradient-total"
+                    x1="0"
+                    x2="0"
+                    y1="0"
+                    y2="1"
+                  >
+                    <stop offset="10%" stopColor={TOTAL_COLOR} stopOpacity={0.2} />
+                    <stop offset="100%" stopColor={TOTAL_COLOR} stopOpacity={0.02} />
+                  </linearGradient>
                   {accounts.map((account, i) => {
                     const color = getColor(account, i);
                     return (
@@ -257,7 +278,7 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
                         y1="0"
                         y2="1"
                       >
-                        <stop offset="10%" stopColor={color} stopOpacity={0.2} />
+                        <stop offset="10%" stopColor={color} stopOpacity={0.1} />
                         <stop offset="100%" stopColor={color} stopOpacity={0.02} />
                       </linearGradient>
                     );
@@ -287,11 +308,25 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
                 <Tooltip
                   content={({ payload }) => {
                     const hourKey = payload?.[0]?.payload?.hourKey;
+                    const totalVal = payload?.[0]?.payload?.total;
                     const label = hourKey ? formatHourKey(hourKey) : null;
+                    const overlayEntries = payload?.filter((p) => p.dataKey !== "total") ?? [];
                     return (
                     <div className="rounded-medium bg-foreground text-tiny shadow-small min-w-[160px] p-2.5">
                       <div className="flex w-full flex-col gap-y-1">
-                        {payload?.map((p, index) => {
+                        <div className="text-small text-background flex w-full items-center justify-between gap-x-2">
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className="inline-block w-2 h-2 rounded-full"
+                              style={{ backgroundColor: TOTAL_COLOR }}
+                            />
+                            <span className="text-foreground-400">All Accounts</span>
+                          </div>
+                          <span className="font-medium">
+                            {formatChartValue(totalVal as number)}
+                          </span>
+                        </div>
+                        {overlayEntries.map((p, index) => {
                           const account = accounts.find(
                             (a) => `account_${a.id}` === p.dataKey
                           );
@@ -326,6 +361,24 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
                   }}
                   cursor={{ strokeWidth: 0 }}
                 />
+                {/* Total aggregated line — always visible */}
+                <Area
+                  key="total"
+                  activeDot={{
+                    stroke: TOTAL_COLOR,
+                    strokeWidth: 2,
+                    fill: "hsl(var(--heroui-background))",
+                    r: 4,
+                  }}
+                  animationDuration={800}
+                  animationEasing="ease-in-out"
+                  dataKey="total"
+                  fill="url(#gradient-total)"
+                  stroke={TOTAL_COLOR}
+                  strokeWidth={2.5}
+                  type="monotone"
+                />
+                {/* Individual overlay account lines */}
                 {accounts.map((account, i) => {
                   const color = getColor(account, i);
                   return (
@@ -342,7 +395,7 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
                       dataKey={`account_${account.id}`}
                       fill={`url(#gradient-${account.id})`}
                       stroke={color}
-                      strokeWidth={2.5}
+                      strokeWidth={2}
                       type="monotone"
                     />
                   );
