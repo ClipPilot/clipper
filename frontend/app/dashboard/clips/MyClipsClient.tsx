@@ -501,59 +501,61 @@ function MyClipsPageContent() {
       <div className="max-w-7xl mx-auto">
         <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <h1 className="text-2xl sm:text-3xl font-bold text-text-primary">Library</h1>
-          <Dropdown>
-            <DropdownTrigger>
-              <Button
-                variant="flat"
-                className="bg-surface-base border border-border-base"
-                startContent={<Icon icon="solar:filter-bold-duotone" className="text-accent-400" width={18} />}
-                endContent={<Icon icon="solar:alt-arrow-down-linear" width={16} />}
+          <div className="flex items-center gap-2">
+            <Dropdown>
+              <DropdownTrigger>
+                <Button
+                  variant="flat"
+                  className="bg-surface-base border border-border-base"
+                  startContent={<Icon icon="solar:filter-bold-duotone" className="text-accent-400" width={18} />}
+                  endContent={<Icon icon="solar:alt-arrow-down-linear" width={16} />}
+                >
+                  {clipTypeFilter === "all" ? "All" : clipTypeFilter === "clips" ? "Clips" : clipTypeFilter === "ai-video" ? "AI Video Creator" : clipTypeFilter === "face-swap" ? "Face Swap" : "Ad Clone"}
+                </Button>
+              </DropdownTrigger>
+              <DropdownMenu
+                aria-label="Clip type filter"
+                selectedKeys={[clipTypeFilter]}
+                selectionMode="single"
+                onSelectionChange={(keys) => setClipTypeFilter(Array.from(keys)[0] as string)}
+                classNames={{
+                  base: "bg-surface-base border border-border-base",
+                }}
               >
-                {clipTypeFilter === "all" ? "All" : clipTypeFilter === "clips" ? "Clips" : clipTypeFilter === "ai-video" ? "AI Video Creator" : clipTypeFilter === "face-swap" ? "Face Swap" : "Ad Clone"}
-              </Button>
-            </DropdownTrigger>
-            <DropdownMenu
-              aria-label="Clip type filter"
-              selectedKeys={[clipTypeFilter]}
-              selectionMode="single"
-              onSelectionChange={(keys) => setClipTypeFilter(Array.from(keys)[0] as string)}
-              classNames={{
-                base: "bg-surface-base border border-border-base",
-              }}
-            >
-              <DropdownItem key="all">All</DropdownItem>
-              <DropdownItem key="clips">Clips</DropdownItem>
-              <DropdownItem key="ai-video">AI Video Creator</DropdownItem>
-              <DropdownItem key="face-swap">Face Swap</DropdownItem>
-              <DropdownItem key="ad-clone">Ad Clone</DropdownItem>
-            </DropdownMenu>
-          </Dropdown>
-          <Dropdown>
-            <DropdownTrigger>
-              <Button
-                variant="flat"
-                className="bg-surface-base border border-border-base"
-                startContent={<Icon icon="solar:sort-from-top-to-bottom-bold-duotone" className="text-accent-400" width={18} />}
-                endContent={<Icon icon="solar:alt-arrow-down-linear" width={16} />}
+                <DropdownItem key="all">All</DropdownItem>
+                <DropdownItem key="clips">Clips</DropdownItem>
+                <DropdownItem key="ai-video">AI Video Creator</DropdownItem>
+                <DropdownItem key="face-swap">Face Swap</DropdownItem>
+                <DropdownItem key="ad-clone">Ad Clone</DropdownItem>
+              </DropdownMenu>
+            </Dropdown>
+            <Dropdown>
+              <DropdownTrigger>
+                <Button
+                  variant="flat"
+                  className="bg-surface-base border border-border-base"
+                  startContent={<Icon icon="solar:sort-from-top-to-bottom-bold-duotone" className="text-accent-400" width={18} />}
+                  endContent={<Icon icon="solar:alt-arrow-down-linear" width={16} />}
+                >
+                  {clipsSort === "newest" ? "Newest" : "Oldest"}
+                </Button>
+              </DropdownTrigger>
+              <DropdownMenu
+                aria-label="Sort order"
+                selectedKeys={[clipsSort]}
+                selectionMode="single"
+                onSelectionChange={(keys) => {
+                  setClipsSort(Array.from(keys)[0] as "newest" | "oldest");
+                }}
+                classNames={{
+                  base: "bg-surface-base border border-border-base",
+                }}
               >
-                {clipsSort === "newest" ? "Newest" : "Oldest"}
-              </Button>
-            </DropdownTrigger>
-            <DropdownMenu
-              aria-label="Sort order"
-              selectedKeys={[clipsSort]}
-              selectionMode="single"
-              onSelectionChange={(keys) => {
-                setClipsSort(Array.from(keys)[0] as "newest" | "oldest");
-              }}
-              classNames={{
-                base: "bg-surface-base border border-border-base",
-              }}
-            >
-              <DropdownItem key="newest">Newest</DropdownItem>
-              <DropdownItem key="oldest">Oldest</DropdownItem>
-            </DropdownMenu>
-          </Dropdown>
+                <DropdownItem key="newest">Newest</DropdownItem>
+                <DropdownItem key="oldest">Oldest</DropdownItem>
+              </DropdownMenu>
+            </Dropdown>
+          </div>
         </div>
 
         {/* Library Content - Processing tab moved to AI Clipping page */}
