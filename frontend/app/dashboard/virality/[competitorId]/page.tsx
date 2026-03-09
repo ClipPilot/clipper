@@ -97,6 +97,9 @@ export default function CompetitorDetailPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  // No auto-select: chart shows aggregated total by default.
+  // User can toggle individual accounts via the filter popover.
+
   // Track accounts doing their initial sync (never synced before + pending/syncing).
   // Background lambda syncs (account already has data) are silent.
   const syncingAccountIds = useMemo(() => {
@@ -166,6 +169,20 @@ export default function CompetitorDetailPage() {
     if (selectedAccountIds.length === 0) return competitor.accounts;
     return competitor.accounts.filter((a) => selectedAccountIds.includes(a.id));
   }, [competitor, selectedAccountIds]);
+
+  /** Accounts to overlay as individual lines on the chart (empty = total only) */
+  const chartOverlayAccounts = useMemo(() => {
+    if (!competitor || selectedAccountIds.length === 0) return [];
+    return competitor.accounts.filter((a) => selectedAccountIds.includes(a.id));
+  }, [competitor, selectedAccountIds]);
+
+  const chartOverlayPostsByAccount = useMemo(() => {
+    const map: Record<number, ViralityPost[]> = {};
+    for (const a of chartOverlayAccounts) {
+      map[a.id] = postsByAccount[a.id] || [];
+    }
+    return map;
+  }, [chartOverlayAccounts, postsByAccount]);
 
   const activePosts = useMemo(() => {
     const posts: ViralityPost[] = [];
@@ -490,8 +507,8 @@ export default function CompetitorDetailPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
             <div className="lg:col-span-2">
               <AnalyticsChart
-                accounts={activeAccounts}
-                postsByAccount={activePostsByAccount}
+                accounts={chartOverlayAccounts}
+                postsByAccount={chartOverlayPostsByAccount}
                 allAccounts={competitor.accounts}
                 allPostsByAccount={allFilteredPostsByAccount}
                 colorMap={accountColorMap}
@@ -510,7 +527,7 @@ export default function CompetitorDetailPage() {
 
         {/* Post Frequency + Best Performing Accounts */}
         <RecalcOverlay active={isRecalculating}>
-          {selectedAccountIds.length === 0 || selectedAccountIds.length > 1 ? (
+          {!selectedAccountIds || selectedAccountIds.length === 0 || selectedAccountIds.length > 1 ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <PostFrequencyChart
                 posts={activePosts}

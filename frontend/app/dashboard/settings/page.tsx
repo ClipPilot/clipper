@@ -24,7 +24,7 @@ export default function SettingsPage() {
   const [firstName, setFirstName] = useState(user?.firstName || "");
   const [lastName, setLastName] = useState(user?.lastName || "");
   const [email] = useState(user?.email || "");
-  const [emailNotifications, setEmailNotifications] = useState(true);
+  const [emailNotifications, setEmailNotifications] = useState(user?.emailNotificationsEnabled !== false);
   const [marketingEmails, setMarketingEmails] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -45,7 +45,7 @@ export default function SettingsPage() {
   const handleSaveProfile = async () => {
     setIsSaving(true);
     try {
-      const updatedUser = await authAPI.updateProfile({ firstName, lastName });
+      const updatedUser = await authAPI.updateProfile({ firstName, lastName, emailNotificationsEnabled: emailNotifications });
       setUser(updatedUser);
       addToast({
         title: "Profile updated",

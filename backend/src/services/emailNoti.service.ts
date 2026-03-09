@@ -1,4 +1,7 @@
 import { Resend } from "resend";
+import { db } from "../db";
+import { users } from "@clipper/shared-db/src/schema";
+import { eq } from "drizzle-orm";
 import {
   teamInviteEmail,
   TeamInviteEmailData,
@@ -100,7 +103,21 @@ export class EmailNotiService {
     );
   }
 
+  async isNotificationEnabled(email: string): Promise<boolean> {
+    try {
+      const [user] = await db
+        .select({ enabled: users.email_notifications_enabled })
+        .from(users)
+        .where(eq(users.email, email))
+        .limit(1);
+      return user?.enabled !== false;
+    } catch {
+      return true;
+    }
+  }
+
   async sendClipsReady(to: string, data: ClipsReadyEmailData) {
+    if (!(await this.isNotificationEnabled(to))) return;
     const html = clipsReadyEmail(data);
     const subject = data.clipCount > 1
       ? `Your ${data.clipCount} clips are ready!`
@@ -134,6 +151,7 @@ export class EmailNotiService {
   }
 
   async sendUgcReady(to: string, data: UgcReadyEmailData) {
+    if (!(await this.isNotificationEnabled(to))) return;
     const html = ugcReadyEmail(data);
     return this.sendEmailNotification(to, "Your UGC video is ready! 🎉", html);
   }
@@ -149,6 +167,7 @@ export class EmailNotiService {
   }
 
   async sendAdPostingReady(to: string, data: AdPostingReadyEmailData) {
+    if (!(await this.isNotificationEnabled(to))) return;
     const html = adPostingReadyEmail(data);
     return this.sendEmailNotification(to, "Your clip is prepared and will be posted momentarily!", html);
   }

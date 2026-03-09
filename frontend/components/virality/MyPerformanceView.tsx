@@ -88,6 +88,9 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  // No auto-select: chart shows aggregated total by default.
+  // User can toggle individual accounts via the filter popover.
+
   // Track accounts doing their initial sync
   const syncingAccountIds = useMemo(() => {
     return accounts
@@ -189,8 +192,18 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
       }
     });
 
+    // Chart overlay: individual accounts to show alongside the total line
+    const chartOverlayAccounts = selectedAccountIds.length === 0
+      ? []
+      : accounts.filter((a) => selectedAccountIds.includes(a.id));
+    const chartOverlayPostsByAccount: Record<number, ViralityPost[]> = {};
+    for (const a of chartOverlayAccounts) {
+      chartOverlayPostsByAccount[a.id] = postsByAccount[a.id] || [];
+    }
+
     return {
       activeAccounts, activePosts, activePostsByAccount, allFilteredPostsByAccount,
+      chartOverlayAccounts, chartOverlayPostsByAccount,
       accountPlatformMap, accountSyncMap, accountColorMap, accountMap, lastSyncedAt,
       postsPerWeek: computePostsPerWeek(activePosts),
     };
@@ -386,8 +399,8 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
             <div className="lg:col-span-2">
               <AnalyticsChart
-                accounts={derived.activeAccounts}
-                postsByAccount={derived.activePostsByAccount}
+                accounts={derived.chartOverlayAccounts}
+                postsByAccount={derived.chartOverlayPostsByAccount}
                 allAccounts={accounts}
                 allPostsByAccount={derived.allFilteredPostsByAccount}
                 colorMap={derived.accountColorMap}

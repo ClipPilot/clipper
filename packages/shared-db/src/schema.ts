@@ -73,6 +73,7 @@ export const users = pgTable("users", {
   last_name: varchar("last_name", { length: 100 }).notNull(),
   role: userRoleEnum("role").notNull().default("user"),
   is_affiliate: boolean("is_affiliate").notNull().default(false),
+  email_notifications_enabled: boolean("email_notifications_enabled").notNull().default(true),
   created_at: timestamp("created_at").notNull().defaultNow(),
   updated_at: timestamp("updated_at").notNull().defaultNow(),
 }).enableRLS();

@@ -45,7 +45,7 @@ class UserService {
     return user;
   }
 
-  async updateUser(userId: number, data: { firstName?: string; lastName?: string }) {
+  async updateUser(userId: number, data: { firstName?: string; lastName?: string; emailNotificationsEnabled?: boolean }) {
     const updateData: Record<string, unknown> = { updated_at: new Date() };
 
     if (data.firstName !== undefined) {
@@ -53,6 +53,9 @@ class UserService {
     }
     if (data.lastName !== undefined) {
       updateData.last_name = data.lastName;
+    }
+    if (data.emailNotificationsEnabled !== undefined) {
+      updateData.email_notifications_enabled = data.emailNotificationsEnabled;
     }
 
     const [updated] = await db
