@@ -859,10 +859,12 @@ export class ClipManagerController {
         return res.status(400).json({ error: "Limit cannot exceed 100" });
       }
 
+      const sort = req.query.sort === "oldest" ? "oldest" as const : "newest" as const;
       const clips = await clipManagerService.getSavedUnorganizedClips(
         teamId,
         limit,
-        offset
+        offset,
+        sort
       );
 
       const clipsWithUrls = await enrichClipsWithSignedUrls(clips);

@@ -6,7 +6,7 @@ import {
   clipTags,
   tags,
 } from "@clipper/shared-db/src/schema";
-import { eq, and, desc, isNull, isNotNull, count, notInArray, or, sql, inArray, gte, lte } from "drizzle-orm";
+import { eq, and, asc, desc, isNull, isNotNull, count, notInArray, or, sql, inArray, gte, lte } from "drizzle-orm";
 import crypto from "crypto";
 
 export class ClipManagerService {
@@ -350,7 +350,8 @@ export class ClipManagerService {
   async getSavedUnorganizedClips(
     teamId: number,
     limit: number = 20,
-    offset: number = 0
+    offset: number = 0,
+    sort: "newest" | "oldest" = "newest"
   ) {
     return await db
       .select()
@@ -364,7 +365,7 @@ export class ClipManagerService {
           isNotNull(clips.clip_path)
         )
       )
-      .orderBy(desc(clips.created_at))
+      .orderBy(sort === "oldest" ? asc(clips.created_at) : desc(clips.created_at))
       .limit(limit)
       .offset(offset);
   }

@@ -522,10 +522,11 @@ class ClipsAPI {
   async getSavedClips(
     teamId: number,
     limit: number = 20,
-    offset: number = 0
+    offset: number = 0,
+    sort: "newest" | "oldest" = "newest"
   ): Promise<{ clips: Clip[]; hasMore: boolean }> {
     const response = await apiFetch(
-      `${API_URL}/clip-video/teams/${teamId}/clips/saved?limit=${limit}&offset=${offset}`,
+      `${API_URL}/clip-video/teams/${teamId}/clips/saved?limit=${limit}&offset=${offset}&sort=${sort}`,
       {
         headers: { "Content-Type": "application/json" },
       }
