@@ -1,12 +1,9 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import {
   Button,
-  Card,
-  CardBody,
   Chip,
-  Progress,
   Tabs,
   Tab,
   Modal,
@@ -31,7 +28,9 @@ import type { TeamPost } from "@/types/massPosting";
 import { CampaignInfoBar } from "./CampaignInfoBar";
 import { VideoPreviewModal } from "../shared/VideoPreviewModal";
 import { ClipPickerModal } from "../shared/ClipPickerModal";
+import { BulkUploadModal } from "../shared/BulkUploadModal";
 import { SetupModal } from "../gates/PaymentGate";
+import { useBulkVideoUpload } from "@/hooks/useBulkVideoUpload";
 import { AccountsTab } from "@/components/mass-posting/dashboard/AccountsTab";
 import {
   platformIcon,
@@ -92,10 +91,9 @@ export function ActiveCampaignDashboard({
   // Video management state
   const [previewVideo, setPreviewVideo] = useState<CampaignVideo | null>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
 
-  // Upload state
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadingFiles, setUploadingFiles] = useState<Map<string, { name: string; progress: number; status: "uploading" | "completing" | "done" | "error" }>>(new Map());
+  const bulk = useBulkVideoUpload(selectedTeam?.id, campaign.id, onVideoAdded);
 
   // End campaign state
   const [isEndModalOpen, setIsEndModalOpen] = useState(false);
@@ -209,62 +207,6 @@ export function ActiveCampaignDashboard({
   const existingClipIds = new Set(
     videos.filter((v) => v.clip_id != null).map((v) => v.clip_id as number),
   );
-
-  // Upload logic
-  const uploadSingleFile = useCallback(
-    async (file: File, key: string) => {
-      if (!selectedTeam?.id) return;
-      try {
-        const { video, uploadUrl } = await campaignAPI.uploadVideo(
-          selectedTeam.id, campaign.id, file.name, file.type || "video/mp4",
-        );
-        await new Promise<void>((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          xhr.open("PUT", uploadUrl);
-          xhr.setRequestHeader("Content-Type", file.type || "video/mp4");
-          xhr.upload.onprogress = (event) => {
-            if (event.lengthComputable) {
-              const pct = Math.round((event.loaded / event.total) * 100);
-              setUploadingFiles((prev) => new Map(prev).set(key, { name: file.name, progress: pct, status: "uploading" }));
-            }
-          };
-          xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`Upload failed: ${xhr.status}`)));
-          xhr.onerror = () => reject(new Error("Network error during upload"));
-          xhr.send(file);
-        });
-        setUploadingFiles((prev) => new Map(prev).set(key, { name: file.name, progress: 100, status: "completing" }));
-        const { video: completedVideo } = await campaignAPI.completeUpload(selectedTeam.id, campaign.id, video.id);
-        onVideoAdded(completedVideo);
-        setUploadingFiles((prev) => new Map(prev).set(key, { name: file.name, progress: 100, status: "done" }));
-        setTimeout(() => {
-          setUploadingFiles((prev) => { const next = new Map(prev); next.delete(key); return next; });
-        }, 1500);
-      } catch (err: any) {
-        setUploadingFiles((prev) => new Map(prev).set(key, { name: file.name, progress: 0, status: "error" }));
-        addToast({ title: "Upload failed", description: `${file.name}: ${err.message || "Something went wrong"}`, color: "danger" });
-      }
-    },
-    [selectedTeam?.id, campaign.id, onVideoAdded],
-  );
-
-  const handleFileChange = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (!selectedTeam?.id) return;
-      const files = Array.from(e.target.files ?? []);
-      if (files.length === 0) return;
-      e.target.value = "";
-      const entries: [string, File][] = files.map((file, i) => [`${file.name}-${Date.now()}-${i}`, file]);
-      setUploadingFiles((prev) => {
-        const next = new Map(prev);
-        for (const [key, file] of entries) next.set(key, { name: file.name, progress: 0, status: "uploading" });
-        return next;
-      });
-      await Promise.allSettled(entries.map(([key, file]) => uploadSingleFile(file, key)));
-    },
-    [selectedTeam?.id, uploadSingleFile],
-  );
-
-  const uploadingEntries = Array.from(uploadingFiles.entries());
 
   const handleEndCampaign = async () => {
     if (!selectedTeam?.id) return;
@@ -470,49 +412,13 @@ export function ActiveCampaignDashboard({
                         size="sm"
                         color="primary"
                         className="h-9"
-                        onPress={() => fileInputRef.current?.click()}
+                        onPress={() => setIsUploadOpen(true)}
                         startContent={<Icon icon="solar:upload-bold-duotone" width={14} />}
                       >
                         Upload Videos
                       </Button>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="video/*"
-                        multiple
-                        className="hidden"
-                        onChange={handleFileChange}
-                      />
                     </div>
                   </div>
-
-                  {/* Upload progress */}
-                  {uploadingEntries.length > 0 && (
-                    <div className="space-y-2">
-                      {uploadingEntries.map(([key, item]) => (
-                        <Card key={key} className="bg-surface-elevated border border-border-base">
-                          <CardBody className="p-3 gap-2">
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <Icon
-                                  icon={item.status === "error" ? "solar:close-circle-bold" : item.status === "done" ? "solar:check-circle-bold" : "solar:upload-bold-duotone"}
-                                  className={item.status === "error" ? "text-danger-500 flex-shrink-0" : item.status === "done" ? "text-success-500 flex-shrink-0" : "text-accent-400 flex-shrink-0"}
-                                  width={16}
-                                />
-                                <span className="text-xs text-text-primary truncate">{item.name}</span>
-                              </div>
-                              <span className="text-xs text-text-secondary flex-shrink-0">
-                                {item.status === "completing" ? "Processing..." : item.status === "done" ? "Done" : item.status === "error" ? "Error" : `${item.progress}%`}
-                              </span>
-                            </div>
-                            {item.status === "uploading" && (
-                              <Progress value={item.progress} size="sm" color="primary" classNames={{ base: "w-full" }} />
-                            )}
-                          </CardBody>
-                        </Card>
-                      ))}
-                    </div>
-                  )}
                 </>
               )}
 
@@ -685,6 +591,19 @@ export function ActiveCampaignDashboard({
           )}
         </div>
       </div>
+
+      {/* Bulk upload modal */}
+      <BulkUploadModal
+        isOpen={isUploadOpen}
+        onClose={() => setIsUploadOpen(false)}
+        files={bulk.files}
+        isActive={bulk.isActive}
+        totalFiles={bulk.totalFiles}
+        completedFiles={bulk.completedFiles}
+        failedFiles={bulk.failedFiles}
+        onStartUpload={bulk.startUpload}
+        onReset={bulk.reset}
+      />
 
       {/* Clip picker modal */}
       {selectedTeam?.id && (
