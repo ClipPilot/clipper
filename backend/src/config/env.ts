@@ -28,6 +28,7 @@ export const config = {
     region: getEnv("AWS_REGION", "us-west-2"),
     s3Bucket: "clipster-videos-prod-850317988005",
     sqsQueueUrl: getEnv("SQS_QUEUE_URL", ""),
+    viralitySyncSfnArn: getEnv("VIRALITY_SYNC_SFN_ARN", ""),
   },
   gemini: {
     apiKey: getEnv("GEMINI_API_KEY"),

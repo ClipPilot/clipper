@@ -102,10 +102,12 @@ class ApifyService {
   }
 
   async scrapeInstagramReel(url: string): Promise<InstagramReelResult> {
+    // Normalize /reel/ → /reels/ (Apify requires /reels/)
+    const normalizedUrl = url.replace(/instagram\.com\/reel\//, "instagram.com/reels/");
     const client = this.getClient();
     const run = await client.actor(APIFY_ACTORS.INSTAGRAM_SCRAPER).call(
       {
-        directUrls: [url],
+        directUrls: [normalizedUrl],
         resultsLimit: 1,
         resultsType: "posts",
       },

@@ -474,3 +474,18 @@ resource "aws_cloudwatch_event_target" "virality_sync_target" {
   arn       = aws_sfn_state_machine.virality_sync.arn
   role_arn  = aws_iam_role.virality_sync_eventbridge.arn
 }
+
+# Allow ECS backend to start Step Functions executions (for Sync All mass posts)
+resource "aws_iam_role_policy" "ecs_task_start_virality_sync_sfn" {
+  name = "${var.project_name}-ecs-task-start-virality-sync-sfn-${var.environment}"
+  role = aws_iam_role.ecs_task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = "states:StartExecution"
+      Resource = aws_sfn_state_machine.virality_sync.arn
+    }]
+  })
+}

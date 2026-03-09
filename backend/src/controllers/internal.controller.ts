@@ -13,7 +13,7 @@ import {
   emitAdPostingUpdate,
   AdPostingUpdate,
 } from "../services/socket.service";
-import { syncMassPostAnalytics } from "../services/virality/massPostSync.service";
+
 
 export function notifyClipsRefresh(req: Request, res: Response) {
   const { teamId } = req.body;
@@ -106,12 +106,3 @@ export function notifyAdPostingUpdate(req: Request, res: Response) {
   return res.status(200).json({ success: true });
 }
 
-export async function triggerMassPostSync(_req: Request, res: Response) {
-  try {
-    const result = await syncMassPostAnalytics();
-    return res.json({ success: true, ...result });
-  } catch (err: any) {
-    console.error("[Internal] Mass post analytics sync failed:", err);
-    return res.status(500).json({ error: err.message });
-  }
-}

@@ -1,8 +1,11 @@
 import { Response } from "express";
+import { SFNClient, StartExecutionCommand } from "@aws-sdk/client-sfn";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { userPerformanceService } from "../services/virality/userPerformance.service";
-import { syncMassPostAnalytics } from "../services/virality/massPostSync.service";
+import { config } from "../config/env";
 import { parseId, parseDateQuery, handleControllerError, requirePlanAccess as requirePlanAccessBase } from "../utils/controllerHelpers";
+
+const sfnClient = new SFNClient({ region: config.aws.region });
 
 async function requirePlanAccess(teamId: number, res: Response): Promise<boolean> {
   return requirePlanAccessBase(teamId, res, (id) => userPerformanceService.checkTeamPlanAccess(id), "Performance tracking requires a Studio plan or higher");
@@ -181,12 +184,28 @@ class UserPerformanceController {
       );
       const accountsFailed = accountResults.filter((r) => r.status === "rejected").length;
 
-      // Sync mass posting posts (per-post metrics, no decrement — preserve syncs for scheduled runs)
-      const massPostResult = await syncMassPostAnalytics(teamId, false);
+      // Trigger mass post sync via Step Functions (async, isolated in Lambda)
+      let massPosts: any = { triggered: false };
+      if (config.aws.viralitySyncSfnArn) {
+        try {
+          await sfnClient.send(new StartExecutionCommand({
+            stateMachineArn: config.aws.viralitySyncSfnArn,
+            name: `mass-posts-team-${teamId}-${Date.now()}`,
+            input: JSON.stringify({ teamId, massPostsOnly: true }),
+          }));
+          massPosts = { triggered: true };
+          console.log(`[SyncAll] Started Step Functions execution for team ${teamId} mass posts`);
+        } catch (err) {
+          console.error(`[SyncAll] Failed to start mass post sync SF execution:`, err);
+        }
+      } else {
+        // Fallback: sync in-process (local dev, no SFN configured)
+        massPosts = await userPerformanceService.syncMassPosts(teamId);
+      }
 
       return res.json({
         accounts: { synced: regularAccounts.length - accountsFailed, failed: accountsFailed },
-        massPosts: massPostResult,
+        massPosts,
       });
     } catch (error) {
       return handleControllerError(res, "Sync all error", error, "Failed to sync all");

@@ -127,6 +127,10 @@ resource "aws_ecs_task_definition" "backend" {
       {
         name  = "GOOGLE_DRIVE_PARENT_FOLDER_ID"
         value = var.google_drive_parent_folder_id
+      },
+      {
+        name  = "VIRALITY_SYNC_SFN_ARN"
+        value = aws_sfn_state_machine.virality_sync.arn
       }
     ]
 
