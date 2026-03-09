@@ -30,6 +30,7 @@ export class AuthController {
           email: result.dbUser.email,
           firstName: result.dbUser.first_name,
           lastName: result.dbUser.last_name,
+          emailNotificationsEnabled: result.dbUser.email_notifications_enabled,
         },
         session: result.session,
       });
@@ -61,6 +62,7 @@ export class AuthController {
           email: result.dbUser.email,
           firstName: result.dbUser.first_name,
           lastName: result.dbUser.last_name,
+          emailNotificationsEnabled: result.dbUser.email_notifications_enabled,
         },
         session: result.session,
         rememberMe: result.rememberMe,
@@ -96,6 +98,7 @@ export class AuthController {
           email: result.dbUser.email,
           firstName: result.dbUser.first_name,
           lastName: result.dbUser.last_name,
+          emailNotificationsEnabled: result.dbUser.email_notifications_enabled,
         },
         session: result.session,
       });
@@ -155,6 +158,7 @@ export class AuthController {
           email: result.dbUser.email,
           firstName: result.dbUser.first_name,
           lastName: result.dbUser.last_name,
+          emailNotificationsEnabled: result.dbUser.email_notifications_enabled,
         },
       });
     } catch (error) {
@@ -244,6 +248,7 @@ export class AuthController {
           email: result.dbUser.email,
           firstName: result.dbUser.first_name,
           lastName: result.dbUser.last_name,
+          emailNotificationsEnabled: result.dbUser.email_notifications_enabled,
         },
       });
     } catch (error) {
@@ -261,12 +266,13 @@ export class AuthController {
         return res.status(401).json({ error: "Unauthorized" });
       }
 
-      const { firstName, lastName } = req.body;
+      const { firstName, lastName, emailNotificationsEnabled } = req.body;
 
       const dbUser = await userService.getUserBySupabaseUid(req.user.id);
       const updated = await userService.updateUser(dbUser.id, {
         firstName,
         lastName,
+        emailNotificationsEnabled,
       });
 
       return res.status(200).json({
@@ -276,6 +282,7 @@ export class AuthController {
           email: updated.email,
           firstName: updated.first_name,
           lastName: updated.last_name,
+          emailNotificationsEnabled: updated.email_notifications_enabled,
         },
       });
     } catch (error) {

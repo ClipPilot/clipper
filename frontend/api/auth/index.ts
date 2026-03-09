@@ -25,6 +25,7 @@ export interface User {
   email: string;
   firstName?: string;
   lastName?: string;
+  emailNotificationsEnabled?: boolean;
 }
 
 export interface AuthResponse {
@@ -213,6 +214,7 @@ class AuthAPI {
   async updateProfile(data: {
     firstName?: string;
     lastName?: string;
+    emailNotificationsEnabled?: boolean;
   }): Promise<User> {
     const response = await apiFetch(`${API_URL}/auth/profile`, {
       method: "PATCH",
