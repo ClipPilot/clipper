@@ -740,7 +740,7 @@ export const adminAPI = {
 
   async getCampaignVideos(
     campaignId: number,
-    options?: { page?: number; pageSize?: number },
+    options?: { page?: number; pageSize?: number; filter?: "all" | "published" | "unpublished" },
   ): Promise<{
     videos: CampaignVideo[];
     pagination: { page: number; pageSize: number; totalVideos: number; totalPages: number };
@@ -748,6 +748,7 @@ export const adminAPI = {
     const params = new URLSearchParams();
     if (options?.page) params.set("page", options.page.toString());
     if (options?.pageSize) params.set("pageSize", options.pageSize.toString());
+    if (options?.filter && options.filter !== "all") params.set("filter", options.filter);
     const qs = params.toString();
     const response = await fetch(
       `${API_URL}/admin/campaigns/${campaignId}/videos${qs ? `?${qs}` : ""}`,

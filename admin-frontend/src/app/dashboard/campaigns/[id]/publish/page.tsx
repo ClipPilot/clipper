@@ -832,6 +832,7 @@ export default function CampaignPublishPage() {
         const result = await adminAPI.getCampaignVideos(campaignId, {
           page: pg ?? videoPage,
           pageSize: 10,
+          filter: videoFilter,
         });
         setVideos(result.videos);
         setVideoTotalPages(result.pagination.totalPages);
@@ -842,7 +843,7 @@ export default function CampaignPublishPage() {
         setVideosLoading(false);
       }
     },
-    [campaign, campaignId, videoPage],
+    [campaign, campaignId, videoPage, videoFilter],
   );
 
   useEffect(() => {
@@ -1081,12 +1082,7 @@ export default function CampaignPublishPage() {
           <div className="flex items-center gap-4">
             {/* Select all checkbox */}
             {(() => {
-              const publishable = videos.filter((v) => {
-                if (!v.clip_id) return false;
-                if (videoFilter === "published") return v.post_count > 0;
-                if (videoFilter === "unpublished") return v.post_count === 0;
-                return true;
-              });
+              const publishable = videos.filter((v) => v.clip_id != null);
               const allSelected =
                 publishable.length > 0 &&
                 publishable.every((v) => selectedClipIds.has(v.clip_id!));
@@ -1170,18 +1166,13 @@ export default function CampaignPublishPage() {
           </div>
         ) : (
           (() => {
-            const filtered = videos.filter((v) => {
-              if (videoFilter === "published") return v.post_count > 0;
-              if (videoFilter === "unpublished") return v.post_count === 0;
-              return true;
-            });
-            return filtered.length === 0 ? (
+            return videos.length === 0 ? (
               <div className="p-12 text-center text-text-tertiary">
                 No {videoFilter} videos.
               </div>
             ) : (
               <div className="divide-y divide-border">
-                {filtered.map((video) => (
+                {videos.map((video) => (
                   <div
                     key={video.id}
                     className={`px-6 py-4 flex items-center gap-4 transition-colors ${video.clip_id && selectedClipIds.has(video.clip_id) ? "bg-emerald/5" : "hover:bg-surface-hover/50"}`}

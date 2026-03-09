@@ -250,16 +250,33 @@ class CampaignVideoService {
 
   async listVideos(
     campaignId: number,
-    options?: { page?: number; pageSize?: number },
+    options?: { page?: number; pageSize?: number; filter?: "published" | "unpublished" },
   ) {
     const page = options?.page ?? 1;
     const pageSize = options?.pageSize ?? 25;
+    const filter = options?.filter;
+
+    // Build a subquery that checks whether a campaign video has posts
+    const hasPostsSubquery = sql`EXISTS (
+      SELECT 1 FROM ${posts}
+      WHERE ${posts.campaign_id} = ${campaignId}
+      AND ${posts.clip_id} = ${campaignVideos.clip_id}
+    )`;
+
+    // Build WHERE conditions
+    const conditions = [eq(campaignVideos.campaign_id, campaignId)];
+    if (filter === "published") {
+      conditions.push(hasPostsSubquery);
+    } else if (filter === "unpublished") {
+      conditions.push(sql`NOT ${hasPostsSubquery}`);
+    }
+    const whereClause = and(...conditions)!;
 
     // Count total videos for pagination
     const [{ count: totalVideos }] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(campaignVideos)
-      .where(eq(campaignVideos.campaign_id, campaignId));
+      .where(whereClause);
 
     const totalPages = Math.ceil(totalVideos / pageSize);
 
@@ -278,7 +295,7 @@ class CampaignVideoService {
       })
       .from(campaignVideos)
       .leftJoin(clips, eq(campaignVideos.clip_id, clips.id))
-      .where(eq(campaignVideos.campaign_id, campaignId))
+      .where(whereClause)
       .orderBy(desc(campaignVideos.created_at))
       .limit(pageSize)
       .offset((page - 1) * pageSize);

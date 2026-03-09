@@ -166,8 +166,10 @@ export async function getCampaignVideos(req: AdminRequest, res: Response) {
 
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = Math.min(parseInt(req.query.pageSize as string) || 25, 100);
+    const filter = req.query.filter as string | undefined;
+    const validFilter = filter === "published" || filter === "unpublished" ? filter : undefined;
 
-    const result = await campaignVideoService.listVideos(campaignId, { page, pageSize });
+    const result = await campaignVideoService.listVideos(campaignId, { page, pageSize, filter: validFilter });
     return res.json(result);
   } catch (error) {
     console.error("Get campaign videos error:", error);
