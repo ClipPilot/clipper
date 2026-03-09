@@ -1,7 +1,7 @@
 import * as Sentry from "@sentry/node";
 import { db } from "../../db";
 import { teams, posts, campaigns } from "@clipper/shared-db/src/schema";
-import { eq, and, or, desc, count, gte, lte, inArray, sql, isNotNull, gt } from "drizzle-orm";
+import { eq, and, or, desc, count, gte, lte, inArray, sql } from "drizzle-orm";
 import { getApifyService, InstagramPost, InstagramProfile } from "./apify.service";
 import { parseInstagramUsername, parseTikTokUsername, parseXUsername } from "../../utils/parseUsername";
 import {
@@ -749,76 +749,6 @@ export class AccountTrackingService {
       accountPostStats,
       accounts,
     };
-  }
-
-  async syncMassPosts(teamId: number): Promise<{ synced: number; skipped: number }> {
-    const postsToSync = await db
-      .select({
-        id: this.postsTable.id,
-        post_url: this.postsTable.post_url,
-        metrics_history: this.postsTable.metrics_history,
-        platform: this.accountsTable.platform,
-      })
-      .from(this.postsTable)
-      .innerJoin(this.accountsTable, eq(this.postsTable.account_id, this.accountsTable.id))
-      .where(
-        and(
-          eq(this.accountsTable.team_id, teamId),
-          isNotNull(this.postsTable.mass_post_id),
-          gt(this.postsTable.syncs_remaining, 0)
-        )
-      ) as any[];
-
-    let synced = 0;
-    let skipped = 0;
-    const CONCURRENCY = 5;
-    const apify = getApifyService();
-
-    for (let i = 0; i < postsToSync.length; i += CONCURRENCY) {
-      const batch = postsToSync.slice(i, i + CONCURRENCY);
-      await Promise.allSettled(
-        batch.map(async (post: any) => {
-          try {
-            const metrics = await apify.scrapePostMetrics(post.post_url, post.platform);
-            if (!metrics) { skipped++; return; }
-
-            const history: MetricsEntry[] = Array.isArray(post.metrics_history)
-              ? [...(post.metrics_history as MetricsEntry[])]
-              : [];
-
-            history.push({
-              recorded_at: new Date().toISOString(),
-              likes: metrics.likesCount,
-              comments: metrics.commentsCount,
-              views: metrics.viewCount,
-            });
-
-            const trimmed = history.length > MAX_METRICS_HISTORY
-              ? history.slice(-MAX_METRICS_HISTORY)
-              : history;
-
-            await db
-              .update(this.postsTable)
-              .set({
-                like_count: metrics.likesCount,
-                comment_count: metrics.commentsCount,
-                video_play_count: metrics.viewCount,
-                thumbnail_url: metrics.thumbnailUrl,
-                metrics_history: trimmed,
-                updated_at: new Date(),
-              })
-              .where(eq(this.postsTable.id, post.id));
-
-            synced++;
-          } catch (err) {
-            console.error(`[SyncMassPosts] Failed to sync post ${post.id}:`, err);
-            skipped++;
-          }
-        })
-      );
-    }
-
-    return { synced, skipped };
   }
 
   async checkTeamPlanAccess(teamId: number): Promise<boolean> {

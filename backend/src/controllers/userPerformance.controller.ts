@@ -185,7 +185,7 @@ class UserPerformanceController {
       const accountsFailed = accountResults.filter((r) => r.status === "rejected").length;
 
       // Trigger mass post sync via Step Functions (async, isolated in Lambda)
-      let massPosts: any = { triggered: false };
+      let massPostsTriggered = false;
       if (config.aws.viralitySyncSfnArn) {
         try {
           await sfnClient.send(new StartExecutionCommand({
@@ -193,19 +193,16 @@ class UserPerformanceController {
             name: `mass-posts-team-${teamId}-${Date.now()}`,
             input: JSON.stringify({ teamId, massPostsOnly: true }),
           }));
-          massPosts = { triggered: true };
+          massPostsTriggered = true;
           console.log(`[SyncAll] Started Step Functions execution for team ${teamId} mass posts`);
         } catch (err) {
           console.error(`[SyncAll] Failed to start mass post sync SF execution:`, err);
         }
-      } else {
-        // Fallback: sync in-process (local dev, no SFN configured)
-        massPosts = await userPerformanceService.syncMassPosts(teamId);
       }
 
       return res.json({
         accounts: { synced: regularAccounts.length - accountsFailed, failed: accountsFailed },
-        massPosts,
+        massPosts: { triggered: massPostsTriggered },
       });
     } catch (error) {
       return handleControllerError(res, "Sync all error", error, "Failed to sync all");
