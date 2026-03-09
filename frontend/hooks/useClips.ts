@@ -28,6 +28,7 @@ import {
   clipToDeleteAtom,
   isDeletingClipAtom,
   clipsSortAtom,
+  campaignUploadFilterAtom,
 } from "@/store/clips";
 import { clipsAPI, FolderTreeNode } from "@/api/clips";
 
@@ -44,6 +45,7 @@ export function useClipsData() {
   const [offset, setOffset] = useAtom(clipsOffsetAtom);
   const selectedFolderId = useAtomValue(selectedFolderIdAtom);
   const sort = useAtomValue(clipsSortAtom);
+  const campaignUploads = useAtomValue(campaignUploadFilterAtom);
   const isDraggingRef = useRef(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useAtom(isDeleteModalOpenAtom);
   const [clipToDelete, setClipToDelete] = useAtom(clipToDeleteAtom);
@@ -87,7 +89,8 @@ export function useClipsData() {
           selectedTeam.id,
           CLIPS_PER_PAGE,
           currentOffset,
-          sort
+          sort,
+          campaignUploads
         );
 
         if (reset || currentOffset === 0) {
@@ -107,7 +110,7 @@ export function useClipsData() {
         setIsLoadingClips(false);
       }
     },
-    [selectedTeam?.id, offset, sort, setIsLoadingClips, setOffset, setSavedClips, setHasMore]
+    [selectedTeam?.id, offset, sort, campaignUploads, setIsLoadingClips, setOffset, setSavedClips, setHasMore]
   );
 
   const loadMoreClips = useCallback(async () => {
@@ -121,7 +124,8 @@ export function useClipsData() {
         selectedTeam.id,
         CLIPS_PER_PAGE,
         newOffset,
-        sort
+        sort,
+        campaignUploads
       );
 
       setSavedClips((prev) => {
@@ -137,7 +141,7 @@ export function useClipsData() {
     } finally {
       setIsLoadingMore(false);
     }
-  }, [selectedTeam?.id, isLoadingMore, hasMore, offset, sort, setIsLoadingMore, setSavedClips, setOffset, setHasMore]);
+  }, [selectedTeam?.id, isLoadingMore, hasMore, offset, sort, campaignUploads, setIsLoadingMore, setSavedClips, setOffset, setHasMore]);
 
   const requestDeleteClip = useCallback(
     (clipId: number, clipName: string | undefined, triggerRefresh: () => void) => {
@@ -225,7 +229,9 @@ export function useClipsData() {
       const { clips: freshClips } = await clipsAPI.getSavedClips(
         selectedTeam.id,
         CLIPS_PER_PAGE,
-        0
+        0,
+        sort,
+        campaignUploads
       );
 
       setSavedClips((prev) => {
@@ -309,6 +315,7 @@ export function useFolders() {
   const setSavedClips = useSetAtom(savedClipsAtom);
   const setIsLoadingClips = useSetAtom(isLoadingClipsAtom);
   const setHasMore = useSetAtom(hasMoreClipsAtom);
+  const campaignUploads = useAtomValue(campaignUploadFilterAtom);
 
   const loadFolders = useCallback(async () => {
     if (!selectedTeam?.id) return;
@@ -355,7 +362,7 @@ export function useFolders() {
 
       if (folderId !== null && selectedTeam?.id) {
         try {
-          const clips = await clipsAPI.getClipsByFolder(selectedTeam.id, folderId);
+          const clips = await clipsAPI.getClipsByFolder(selectedTeam.id, folderId, campaignUploads);
           setSavedClips(clips);
           setHasMore(false);
         } catch (error) {
@@ -404,6 +411,29 @@ export function useFolders() {
         await loadFolders();
       } catch (error) {
         console.error("Failed to move folder:", error);
+      }
+    },
+    [selectedTeam?.id, loadFolders]
+  );
+
+  const updateFolder = useCallback(
+    async (folderId: number, updates: { name?: string; color?: string; message?: string }) => {
+      if (!selectedTeam?.id) return;
+
+      try {
+        await clipsAPI.updateFolder(selectedTeam.id, folderId, updates);
+        await loadFolders();
+        addToast({
+          title: "Folder updated",
+          color: "success",
+        });
+      } catch (error: any) {
+        addToast({
+          title: "Failed to update folder",
+          description: error?.message || "Something went wrong",
+          color: "danger",
+        });
+        throw error;
       }
     },
     [selectedTeam?.id, loadFolders]
@@ -467,6 +497,7 @@ export function useFolders() {
     loadFolderPath,
     selectFolder,
     createFolder,
+    updateFolder,
     moveFolder,
     deleteFolder,
     getParentFolderName,

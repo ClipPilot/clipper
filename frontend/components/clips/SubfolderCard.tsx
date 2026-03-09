@@ -12,6 +12,8 @@ interface SubfolderCardProps {
   onDelete?: (folderId: number) => void;
   onDropClip?: (clipId: number, folderId: number) => void;
   onDownload?: (folderId: number) => void;
+  onEdit?: (folder: Folder) => void;
+  downloadingFolderId?: number | null;
 }
 
 const SubfolderCardComponent: React.FC<SubfolderCardProps> = ({
@@ -21,7 +23,10 @@ const SubfolderCardComponent: React.FC<SubfolderCardProps> = ({
   onDelete,
   onDropClip,
   onDownload,
+  onEdit,
+  downloadingFolderId,
 }) => {
+  const isDownloading = downloadingFolderId === folder.id;
   const [isDragging, setIsDragging] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
 
@@ -145,10 +150,18 @@ const SubfolderCardComponent: React.FC<SubfolderCardProps> = ({
             </Button>
           </Tooltip>
 
+          {onEdit && (
+            <Tooltip content="Edit">
+              <Button isIconOnly size="sm" variant="light" className="w-8 h-8 min-w-8" onPress={() => onEdit(folder)}>
+                <Icon icon="solar:pen-bold" className="text-lg text-text-secondary" />
+              </Button>
+            </Tooltip>
+          )}
+
           {onDownload && (
             <Tooltip content="Download as ZIP">
-              <Button isIconOnly size="sm" variant="light" className="w-8 h-8 min-w-8" onPress={() => onDownload(folder.id)}>
-                <Icon icon="solar:download-minimalistic-outline" className="text-lg text-text-secondary" />
+              <Button isIconOnly size="sm" variant="light" className="w-8 h-8 min-w-8" isLoading={isDownloading} onPress={() => onDownload(folder.id)}>
+                {!isDownloading && <Icon icon="solar:download-minimalistic-outline" className="text-lg text-text-secondary" />}
               </Button>
             </Tooltip>
           )}
@@ -211,10 +224,18 @@ const SubfolderCardComponent: React.FC<SubfolderCardProps> = ({
             </Button>
           </Tooltip>
 
+          {onEdit && (
+            <Tooltip content="Edit">
+              <Button isIconOnly size="sm" variant="light" className="w-8 h-8 min-w-8" onPress={() => onEdit(folder)}>
+                <Icon icon="solar:pen-bold" className="text-lg text-text-secondary" />
+              </Button>
+            </Tooltip>
+          )}
+
           {onDownload && (
             <Tooltip content="Download as ZIP">
-              <Button isIconOnly size="sm" variant="light" className="w-8 h-8 min-w-8" onPress={() => onDownload(folder.id)}>
-                <Icon icon="solar:download-minimalistic-outline" className="text-lg text-text-secondary" />
+              <Button isIconOnly size="sm" variant="light" className="w-8 h-8 min-w-8" isLoading={isDownloading} onPress={() => onDownload(folder.id)}>
+                {!isDownloading && <Icon icon="solar:download-minimalistic-outline" className="text-lg text-text-secondary" />}
               </Button>
             </Tooltip>
           )}
@@ -238,6 +259,8 @@ export const SubfolderCard = memo(SubfolderCardComponent, (prevProps, nextProps)
     prevProps.folder.updated_at === nextProps.folder.updated_at &&
     prevProps.viewMode === nextProps.viewMode &&
     prevProps.onDropClip === nextProps.onDropClip &&
-    prevProps.onDownload === nextProps.onDownload
+    prevProps.onDownload === nextProps.onDownload &&
+    prevProps.onEdit === nextProps.onEdit &&
+    prevProps.downloadingFolderId === nextProps.downloadingFolderId
   );
 });
