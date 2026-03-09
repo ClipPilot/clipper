@@ -1050,8 +1050,6 @@ export const workerHandler: Handler = async (event: any, context: Context) => {
         })
         .where(eq(schema.userPosts.id, itemId));
 
-      // Touch parent account's last_synced_at so the frontend shows current sync time
-      // Use GREATEST to ensure concurrent workers never overwrite a newer timestamp
       await db
         .update(schema.userAccounts)
         .set({

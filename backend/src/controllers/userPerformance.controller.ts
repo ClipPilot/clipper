@@ -192,7 +192,6 @@ class UserPerformanceController {
       let massPostsSynced = 0;
 
       if (massPostingAccounts.length > 0) {
-        // Count eligible mass posts
         for (const acct of massPostingAccounts) {
           const posts = await db
             .select({ id: userPosts.id })
@@ -207,7 +206,6 @@ class UserPerformanceController {
           massPostsSynced += posts.length;
         }
 
-        // Stamp last_synced_at now so the frontend sees it immediately
         if (massPostsSynced > 0) {
           await db
             .update(userAccounts)

@@ -190,6 +190,12 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
         const d = new Date(a.last_synced_at);
         if (!lastSyncedAt || d > lastSyncedAt) lastSyncedAt = d;
       }
+      for (const p of postsByAccount[a.id] || []) {
+        if (p.mass_post_id && p.updated_at) {
+          const d = new Date(p.updated_at);
+          if (!lastSyncedAt || d > lastSyncedAt) lastSyncedAt = d;
+        }
+      }
     });
 
     // Chart overlay: individual accounts to show alongside the total line
