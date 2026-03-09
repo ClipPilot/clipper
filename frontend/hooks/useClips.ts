@@ -27,6 +27,7 @@ import {
   isDeleteModalOpenAtom,
   clipToDeleteAtom,
   isDeletingClipAtom,
+  clipsSortAtom,
 } from "@/store/clips";
 import { clipsAPI, FolderTreeNode } from "@/api/clips";
 
@@ -42,6 +43,7 @@ export function useClipsData() {
   const [hasMore, setHasMore] = useAtom(hasMoreClipsAtom);
   const [offset, setOffset] = useAtom(clipsOffsetAtom);
   const selectedFolderId = useAtomValue(selectedFolderIdAtom);
+  const sort = useAtomValue(clipsSortAtom);
   const isDraggingRef = useRef(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useAtom(isDeleteModalOpenAtom);
   const [clipToDelete, setClipToDelete] = useAtom(clipToDeleteAtom);
@@ -84,7 +86,8 @@ export function useClipsData() {
         const { clips, hasMore: moreAvailable } = await clipsAPI.getSavedClips(
           selectedTeam.id,
           CLIPS_PER_PAGE,
-          currentOffset
+          currentOffset,
+          sort
         );
 
         if (reset || currentOffset === 0) {
@@ -104,7 +107,7 @@ export function useClipsData() {
         setIsLoadingClips(false);
       }
     },
-    [selectedTeam?.id, offset, setIsLoadingClips, setOffset, setSavedClips, setHasMore]
+    [selectedTeam?.id, offset, sort, setIsLoadingClips, setOffset, setSavedClips, setHasMore]
   );
 
   const loadMoreClips = useCallback(async () => {
@@ -117,7 +120,8 @@ export function useClipsData() {
       const { clips, hasMore: moreAvailable } = await clipsAPI.getSavedClips(
         selectedTeam.id,
         CLIPS_PER_PAGE,
-        newOffset
+        newOffset,
+        sort
       );
 
       setSavedClips((prev) => {
@@ -133,7 +137,7 @@ export function useClipsData() {
     } finally {
       setIsLoadingMore(false);
     }
-  }, [selectedTeam?.id, isLoadingMore, hasMore, offset, setIsLoadingMore, setSavedClips, setOffset, setHasMore]);
+  }, [selectedTeam?.id, isLoadingMore, hasMore, offset, sort, setIsLoadingMore, setSavedClips, setOffset, setHasMore]);
 
   const requestDeleteClip = useCallback(
     (clipId: number, clipName: string | undefined, triggerRefresh: () => void) => {

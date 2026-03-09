@@ -205,6 +205,30 @@ router.post("/:teamId/accounts/:accountId/sync", requireAuth, (req, res) => user
 
 /**
  * @openapi
+ * /user-performance/{teamId}/sync-all:
+ *   post:
+ *     summary: Sync all accounts and mass posting posts for a team
+ *     description: Syncs regular accounts via full profile scrape and mass posting posts via per-post metrics
+ *     tags:
+ *       - User Performance
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Sync results
+ *       403:
+ *         description: Plan upgrade required
+ */
+router.post("/:teamId/sync-all", requireAuth, (req, res) => userPerformanceController.syncAll(req, res));
+
+/**
+ * @openapi
  * /user-performance/{teamId}/accounts/{accountId}/posts:
  *   get:
  *     summary: Get posts for a user performance account

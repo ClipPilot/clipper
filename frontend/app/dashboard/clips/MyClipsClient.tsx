@@ -16,6 +16,7 @@ import {
   hasMoreClipsAtom,
   selectedFolderIdAtom,
   clipsViewModeAtom,
+  clipsSortAtom,
 } from "@/store/clips";
 import { Button, Card, CardBody, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Tooltip } from "@heroui/react";
 import { Icon } from "@iconify/react";
@@ -98,6 +99,7 @@ function MyClipsPageContent() {
   const hasMore = useAtomValue(hasMoreClipsAtom);
   const selectedFolderId = useAtomValue(selectedFolderIdAtom);
   const [viewMode, setViewMode] = useAtom(clipsViewModeAtom);
+  const [clipsSort, setClipsSort] = useAtom(clipsSortAtom);
   const [clipTypeFilter, setClipTypeFilter] = useState<string>("all");
 
   const {
@@ -352,6 +354,13 @@ function MyClipsPageContent() {
     }
   }, [selectedTeam?.id]);
 
+  // Reload clips when sort order changes
+  const sortMountedRef = useRef(false);
+  useEffect(() => {
+    if (!sortMountedRef.current) { sortMountedRef.current = true; return; }
+    if (selectedTeam?.id) loadSavedClips(true);
+  }, [clipsSort]);
+
   const handleSelectFolder = useCallback(
     async (folderId: number | null) => {
       await selectFolder(folderId, loadSavedClips);
@@ -517,6 +526,32 @@ function MyClipsPageContent() {
               <DropdownItem key="ai-video">AI Video Creator</DropdownItem>
               <DropdownItem key="face-swap">Face Swap</DropdownItem>
               <DropdownItem key="ad-clone">Ad Clone</DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
+          <Dropdown>
+            <DropdownTrigger>
+              <Button
+                variant="flat"
+                className="bg-surface-base border border-border-base"
+                startContent={<Icon icon="solar:sort-from-top-to-bottom-bold-duotone" className="text-accent-400" width={18} />}
+                endContent={<Icon icon="solar:alt-arrow-down-linear" width={16} />}
+              >
+                {clipsSort === "newest" ? "Newest" : "Oldest"}
+              </Button>
+            </DropdownTrigger>
+            <DropdownMenu
+              aria-label="Sort order"
+              selectedKeys={[clipsSort]}
+              selectionMode="single"
+              onSelectionChange={(keys) => {
+                setClipsSort(Array.from(keys)[0] as "newest" | "oldest");
+              }}
+              classNames={{
+                base: "bg-surface-base border border-border-base",
+              }}
+            >
+              <DropdownItem key="newest">Newest</DropdownItem>
+              <DropdownItem key="oldest">Oldest</DropdownItem>
             </DropdownMenu>
           </Dropdown>
         </div>

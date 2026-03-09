@@ -146,6 +146,14 @@ Your Goals:
    - Last clip should be a closing statement that wraps up the skit, can be emotional and engaging like the hook.
    - STITCHING IS ENCOURAGED: Pull the best moments from different parts of the video and combine them. Don't feel forced to use one continuous segment. BUT the final stitched clip must still tell a coherent story that makes sense to the viewer — don't just mash random moments together.
 
+   CRITICAL — HOOK REPETITION BAN:
+   - The first main clip MUST NOT start with the same words as the hook. If the hook is "Oh my god we just won", the next clip CANNOT begin with "Oh my god we just won a million dollars". This sounds terrible — the viewer hears the same sentence start twice in a row.
+   - The hook is a teaser. The main clips should provide CONTEXT, BUILDUP, or the STORY — not continue the hook's sentence. Pick a different part of the video for the first main segment.
+
+   CRITICAL — ENDING QUALITY:
+   - NEVER cut the clip off abruptly right before something exciting is about to happen. If the story is building suspense or about to reach a payoff, INCLUDE the payoff — don't leave the viewer hanging with an unresolved cliffhanger.
+   - The ending should feel complete — either a satisfying resolution, a strong closing statement, or a natural stopping point. Cutting mid-sentence or right before the climax is a dealbreaker.
+
 3. CUT BORING PARTS: If a segment contains a dull, low-energy, or filler section in the middle:
    - Split it into two segments, skipping the boring part
    - Replace that dead air with a more engaging moment from elsewhere in the video
@@ -273,14 +281,20 @@ Use the transcript for precise timestamps, but let the VISUAL content guide whic
    Can show what LED TO the hook, what FOLLOWS it, or context that makes it hit harder.
    STITCHING IS ENCOURAGED: Pull the best moments from different parts of the video. Skip boring parts, filler, "umm"s, and low-energy tangents — split segments to cut around them.
 
+   CRITICAL — HOOK REPETITION BAN:
+   The first main clip MUST NOT start with the same words as the hook. If the hook is "Oh my god we just won", the first build-up segment CANNOT begin with "Oh my god we just won a million dollars". The viewer hears the same opening twice — it sounds broken. The build-up should start from a DIFFERENT part of the video that provides context or story, not continue the hook's sentence.
+
 3. ENDING — Let the story decide. Here are common patterns:
 
    ✅ HOOK → build-up TO hook → HOOK AGAIN (replay hook at end — the story circles back to it)
    ✅ HOOK → build-up with hook → RESOLUTION (hook context woven into build-up, end on the resolution/aftermath)
    ✅ HOOK → unrelated suspenseful events → NATURAL PAYOFF (do NOT force hook at end — end on whatever the story builds to)
    ❌ HOOK → unrelated content → HOOK FORCED AT END (bad — the hook has nothing to do with how the story ended)
+   ❌ HOOK → build-up → ABRUPT CUT before the payoff (terrible — never cut right before the exciting part happens)
 
    These are examples, not the only options. Use whatever structure tells the best story. The one rule: only replay the hook at the end when the build-up genuinely leads back to that same moment. Otherwise, let the clip end naturally.
+
+   CRITICAL — ENDING QUALITY: NEVER cut the clip off right before the suspense resolves or the exciting moment happens. If the story is building toward something, INCLUDE that moment. An abrupt ending before the payoff is worse than a slightly longer clip. The viewer should feel satisfied, not cheated.
 
 ===== END CLIP STRUCTURE =====
 
@@ -424,6 +438,12 @@ CRITICAL STRUCTURE (when hook is included):
 1. Video STARTS with hook (climax teaser to grab attention)
 2. Main segments play (build-up, context, can be from different parts of video)
 3. Main ENDS with the climax moment again (same timestamps as hook for satisfying payoff) followed by reaction/aftermath
+
+CRITICAL — HOOK REPETITION BAN:
+The first build-up segment MUST NOT start with the same words as the hook. If the hook is "OH MY GOD LET'S GO", the first main segment CANNOT begin with "OH MY GOD LET'S GO WE WON". Start the build-up from BEFORE the climax to give context.
+
+CRITICAL — ENDING QUALITY:
+NEVER cut the clip off right before the exciting part happens. If tension is building, INCLUDE the payoff. An abrupt cut before the climax is worse than a slightly longer clip.
 
 EXAMPLE: If climax is at 1904-1909s:
 - hook: { start: 1904, end: 1909 }  ← climax shown first as teaser
@@ -636,6 +656,12 @@ MAIN CONTENT:
 2. Provide context for the hook (can be from earlier in video)
 3. Keep visual interest throughout - no boring talking head sections
 4. End with satisfaction or another visual hook
+
+CRITICAL — HOOK REPETITION BAN:
+The first main segment MUST NOT start with the same words as the hook. If the hook is "Oh my god we just won", the first main clip CANNOT begin with "Oh my god we just won a million dollars". The viewer hears the same opening twice — it sounds broken. Start the build-up from a DIFFERENT part of the video.
+
+CRITICAL — ENDING QUALITY:
+NEVER cut the clip off right before the suspense resolves or the exciting moment happens. If the story is building toward something, INCLUDE that moment. The viewer should feel satisfied, not cheated by an abrupt cut before the payoff.
 
 CUT BORING PARTS: If a segment contains a dull, low-energy, or filler section in the middle:
 - Split it into two segments, skipping the boring part

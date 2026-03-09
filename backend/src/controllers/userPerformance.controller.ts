@@ -166,6 +166,33 @@ class UserPerformanceController {
     }
   }
 
+  async syncAll(req: AuthRequest, res: Response) {
+    try {
+      const teamId = parseId(req.params.teamId);
+      if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
+      if (!(await requirePlanAccess(teamId, res))) return;
+
+      const accounts = await userPerformanceService.getAccountsByTeam(teamId) as any[];
+      const regularAccounts = accounts.filter((a: any) => a.source !== "mass_posting");
+
+      // Sync regular accounts (full profile scrape)
+      const accountResults = await Promise.allSettled(
+        regularAccounts.map((a: any) => userPerformanceService.syncAccount(a.id, teamId))
+      );
+      const accountsFailed = accountResults.filter((r) => r.status === "rejected").length;
+
+      // Sync mass posting posts (per-post metrics, no decrement — preserve syncs for scheduled runs)
+      const massPostResult = await syncMassPostAnalytics(teamId, false);
+
+      return res.json({
+        accounts: { synced: regularAccounts.length - accountsFailed, failed: accountsFailed },
+        massPosts: massPostResult,
+      });
+    } catch (error) {
+      return handleControllerError(res, "Sync all error", error, "Failed to sync all");
+    }
+  }
+
   async getDashboard(req: AuthRequest, res: Response) {
     try {
       const teamId = parseId(req.params.teamId);

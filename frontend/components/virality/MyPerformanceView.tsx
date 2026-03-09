@@ -108,14 +108,14 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
     if (!selectedTeam?.id || accounts.length === 0) return;
     setIsSyncing(true);
     try {
-      const results = await Promise.allSettled(
-        accounts.map((account) => userPerformanceAPI.syncAccount(selectedTeam.id, account.id))
-      );
-      const failed = results.filter((r) => r.status === "rejected");
-      if (failed.length > 0) {
-        addToast({ title: `${failed.length} account(s) failed to sync`, color: "warning" });
+      const result = await userPerformanceAPI.syncAll(selectedTeam.id);
+      const parts: string[] = [];
+      if (result.accounts.synced > 0) parts.push(`${result.accounts.synced} account(s)`);
+      if (result.massPosts.synced > 0) parts.push(`${result.massPosts.synced} post(s)`);
+      if (result.accounts.failed > 0) {
+        addToast({ title: `Synced ${parts.join(" + ")} — ${result.accounts.failed} account(s) failed`, color: "warning" });
       } else {
-        addToast({ title: "Sync complete", color: "success" });
+        addToast({ title: parts.length > 0 ? `Synced ${parts.join(" + ")}` : "Nothing to sync", color: "success" });
       }
       await fetchData();
     } catch (err: any) {
