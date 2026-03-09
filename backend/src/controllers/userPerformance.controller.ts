@@ -181,8 +181,8 @@ class UserPerformanceController {
       );
       const accountsFailed = accountResults.filter((r) => r.status === "rejected").length;
 
-      // Sync mass posting posts (per-post metrics)
-      const massPostResult = await syncMassPostAnalytics(teamId);
+      // Sync mass posting posts (per-post metrics, no decrement — preserve syncs for scheduled runs)
+      const massPostResult = await syncMassPostAnalytics(teamId, false);
 
       return res.json({
         accounts: { synced: regularAccounts.length - accountsFailed, failed: accountsFailed },
