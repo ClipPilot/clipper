@@ -5,6 +5,7 @@ import {
   tags,
   clipTags,
   posts,
+  userPosts,
 } from "@clipper/shared-db";
 import { db } from "../../db";
 import { eq, and, inArray, sql, desc } from "drizzle-orm";
@@ -300,10 +301,12 @@ class CampaignVideoService {
       .limit(pageSize)
       .offset((page - 1) * pageSize);
 
-    // Get post counts per clip_id for this campaign
+    // Get post counts and user_post counts per clip_id for this campaign
     const clipIds = rows.map((r) => r.clip_id).filter((id): id is number => id != null);
     const postCountMap = new Map<number, number>();
+    const userPostCountMap = new Map<number, number>();
     if (clipIds.length > 0) {
+      // Post counts (in drive / allocated)
       const postCounts = await db
         .select({
           clip_id: posts.clip_id,
@@ -314,6 +317,26 @@ class CampaignVideoService {
         .groupBy(posts.clip_id);
       for (const row of postCounts) {
         if (row.clip_id != null) postCountMap.set(row.clip_id, row.count);
+      }
+
+      // User post counts (actually published on social media)
+      const userPostCounts = await db
+        .select({
+          clip_id: posts.clip_id,
+          count: sql<number>`count(distinct ${userPosts.id})::int`,
+        })
+        .from(posts)
+        .innerJoin(userPosts, eq(userPosts.mass_post_id, posts.id))
+        .where(
+          and(
+            eq(posts.campaign_id, campaignId),
+            inArray(posts.clip_id, clipIds),
+            sql`${userPosts.post_url} IS NOT NULL`,
+          ),
+        )
+        .groupBy(posts.clip_id);
+      for (const row of userPostCounts) {
+        if (row.clip_id != null) userPostCountMap.set(row.clip_id, row.count);
       }
     }
 
@@ -327,6 +350,11 @@ class CampaignVideoService {
             videoUrl = await s3Service.getPresignedUrl(key);
           } catch {}
         }
+        const postCount = row.clip_id ? (postCountMap.get(row.clip_id) ?? 0) : 0;
+        const userPostCount = row.clip_id ? (userPostCountMap.get(row.clip_id) ?? 0) : 0;
+        // Derive publish status from the data chain
+        const publishStatus: "waiting_assignment" | "in_drive" | "published" =
+          postCount === 0 ? "waiting_assignment" : userPostCount > 0 ? "published" : "in_drive";
         return {
           id: row.id,
           campaign_id: row.campaign_id,
@@ -337,7 +365,9 @@ class CampaignVideoService {
           presigned_url: videoUrl,
           status: "ready" as const,
           created_at: row.created_at,
-          post_count: row.clip_id ? (postCountMap.get(row.clip_id) ?? 0) : 0,
+          post_count: postCount,
+          user_post_count: userPostCount,
+          publish_status: publishStatus,
         };
       }),
     );

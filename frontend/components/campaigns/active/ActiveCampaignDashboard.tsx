@@ -57,13 +57,16 @@ interface ActiveCampaignDashboardProps {
 function getPostStatusStyle(status: string) {
   const styles: Record<string, { className: string; label: string }> = {
     waiting_assignment: { className: "bg-default-500/10 border-default-500/20 text-default-500", label: "Waiting Assignment" },
+    in_drive: { className: "bg-primary-500/10 border-primary-500/20 text-primary-500", label: "In Drive" },
+    published: { className: "bg-success-500/10 border-success-500/20 text-success-500", label: "Published" },
+    // Legacy post-level statuses (used by published tab)
     pending: { className: "bg-default-500/10 border-default-500/20 text-default-500", label: "Awaiting Platforms" },
     processing: { className: "bg-warning-500/10 border-warning-500/20 text-warning-500", label: "Processing" },
     scheduled: { className: "bg-primary-500/10 border-primary-500/20 text-primary-500", label: "In Drive" },
     posted: { className: "bg-success-500/10 border-success-500/20 text-success-500", label: "Published" },
     failed: { className: "bg-danger-500/10 border-danger-500/20 text-danger-500", label: "Failed" },
   };
-  return styles[status] || styles.processing;
+  return styles[status] || styles.waiting_assignment;
 }
 
 export function ActiveCampaignDashboard({
@@ -155,7 +158,7 @@ export function ActiveCampaignDashboard({
 
     if (postsTab === "queued") {
       // Queued tab: campaign videos are the primary data source
-      // Build a map of clip_id → posts for enrichment
+      // Backend provides publish_status derived from posts + user_posts chain
       const postsByClipId = new Map<number, TeamPost[]>();
       for (const post of filtered) {
         if (post.clip_id == null) continue;
@@ -167,15 +170,8 @@ export function ActiveCampaignDashboard({
       return videos.map((video) => {
         const videoPosts = video.clip_id ? (postsByClipId.get(video.clip_id) || []) : [];
         const platforms: Record<string, number> = {};
-        const statuses: string[] = [];
         for (const p of videoPosts) {
           platforms[p.platform] = (platforms[p.platform] || 0) + 1;
-          statuses.push(p.status);
-        }
-
-        // If no posts at all, video is waiting to be assigned to platforms
-        if (videoPosts.length === 0) {
-          statuses.push("waiting_assignment");
         }
 
         return {
@@ -185,7 +181,8 @@ export function ActiveCampaignDashboard({
           posts: videoPosts,
           platforms,
           earliestDate: video.created_at,
-          statuses,
+          // Use backend-computed publish_status
+          statuses: [video.publish_status],
         } as VideoGroup;
       });
     }
@@ -470,12 +467,13 @@ export function ActiveCampaignDashboard({
                     </thead>
                     <tbody className="divide-y divide-border-base">
                       {pagedGroups.map((group) => {
-                        // Determine aggregate status
-                        const noPosts = group.posts.length === 0;
-                        const hasWaiting = group.statuses.includes("waiting_assignment");
-                        const hasProcessing = group.statuses.includes("processing");
-                        const allPosted = group.statuses.every((s) => s === "posted");
-                        const aggregateStatus = hasWaiting ? "waiting_assignment" : noPosts ? "pending" : hasProcessing ? "processing" : allPosted ? "posted" : "scheduled";
+                        // For queued tab: publish_status from backend (waiting_assignment / in_drive / published)
+                        // For published tab: aggregate from post-level statuses
+                        const aggregateStatus = postsTab === "queued"
+                          ? (group.statuses[0] || "waiting_assignment")
+                          : group.statuses.includes("processing") ? "processing"
+                            : group.statuses.every((s) => s === "posted") ? "posted"
+                            : "scheduled";
                         const statusStyle = getPostStatusStyle(aggregateStatus);
                         return (
                           <tr key={group.clipId ?? group.posts[0]?.id} className="hover:bg-surface-elevated/50 transition-colors">

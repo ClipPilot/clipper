@@ -246,6 +246,8 @@ export interface CampaignVideo {
   status: string;
   created_at: string;
   post_count: number;
+  user_post_count: number;
+  publish_status: "waiting_assignment" | "in_drive" | "published";
 }
 
 export interface CampaignsResponse {
