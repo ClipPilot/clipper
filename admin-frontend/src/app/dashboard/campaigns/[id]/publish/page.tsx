@@ -488,7 +488,7 @@ function PostsTable({ campaignId }: { campaignId: number }) {
         const result = await adminAPI.getCampaignPosts(campaignId, {
           tab,
           page,
-          pageSize: 10,
+          pageSize: 100,
           sortBy: tab === "published" ? "posted_time" : "created_at",
           sortOrder: "desc",
         });
@@ -831,7 +831,7 @@ export default function CampaignPublishPage() {
       try {
         const result = await adminAPI.getCampaignVideos(campaignId, {
           page: pg ?? videoPage,
-          pageSize: 10,
+          pageSize: 100,
           filter: videoFilter,
         });
         setVideos(result.videos);
