@@ -272,6 +272,7 @@ resource "aws_iam_role_policy" "virality_sync_sfn_invoke_lambda" {
         aws_lambda_function.virality_sync_worker.arn,
         aws_lambda_function.virality_sync_extractor.arn,
         aws_lambda_function.virality_sync_reporter.arn,
+        aws_lambda_function.cpm_billing.arn,
       ]
     }]
   })
@@ -424,7 +425,29 @@ resource "aws_sfn_state_machine" "virality_sync" {
           }
         }
         ResultPath = "$.reporterResults"
-        Next       = "Done"
+        Next       = "RunCpmBilling"
+      }
+      RunCpmBilling = {
+        Type     = "Task"
+        Resource = "arn:aws:states:::lambda:invoke"
+        Parameters = {
+          FunctionName = aws_lambda_function.cpm_billing.arn
+          Payload      = { source = "step-functions" }
+        }
+        ResultSelector = { "result.$" = "$.Payload" }
+        ResultPath     = "$.cpmBillingResult"
+        Retry = [{
+          ErrorEquals     = ["States.TaskFailed", "Lambda.ServiceException"]
+          IntervalSeconds = 30
+          MaxAttempts     = 1
+          BackoffRate     = 2
+        }]
+        Catch = [{
+          ErrorEquals = ["States.ALL"]
+          ResultPath  = "$.cpmBillingError"
+          Next        = "Done"
+        }]
+        Next = "Done"
       }
       Done = { Type = "Succeed" }
     }

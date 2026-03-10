@@ -8,7 +8,7 @@
     "backend"
   ],
   "scripts": {
-    "build:shared": "cd packages/shared-db && pnpm build",
+    "build:shared": "pnpm --filter @clipper/shared-db build && pnpm --filter @clipper/shared-email build",
     "build:backend": "pnpm build:shared && cd backend && pnpm build",
     "build:frontend": "cd frontend && pnpm build",
     "dev:backend": "cd backend && pnpm dev",

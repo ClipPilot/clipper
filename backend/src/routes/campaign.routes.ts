@@ -21,6 +21,7 @@ import {
   signMasterAgreement,
   startCampaign,
   endCampaign,
+  getCpmBillingBreakdown,
 } from "../controllers/campaign.controller";
 
 const router = Router();
@@ -1053,5 +1054,61 @@ router.post("/teams/:teamId/campaigns/:campaignId/start", requireAuth, requireSe
  *         description: Server error
  */
 router.post("/teams/:teamId/campaigns/:campaignId/end", requireAuth, requireSeatAccess, endCampaign);
+
+// CPM Billing
+
+/**
+ * @openapi
+ * /api/campaigns/teams/{teamId}/campaigns/{campaignId}/billing:
+ *   get:
+ *     summary: Get CPM billing breakdown
+ *     description: Returns daily CPM charges with per-post view breakdowns, wallet spend, and card charges for the campaign
+ *     tags: [Campaigns]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: campaignId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Billing breakdown
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 summary:
+ *                   type: object
+ *                   properties:
+ *                     totalChargedCents:
+ *                       type: integer
+ *                     totalViews:
+ *                       type: integer
+ *                     walletSpentCents:
+ *                       type: integer
+ *                     cardChargedCents:
+ *                       type: integer
+ *                     cpmRate:
+ *                       type: string
+ *                     daysTracked:
+ *                       type: integer
+ *                 dailyCharges:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.get("/teams/:teamId/campaigns/:campaignId/billing", requireAuth, requireSeatAccess, getCpmBillingBreakdown);
 
 export default router;

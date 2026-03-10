@@ -335,6 +335,129 @@ resource "aws_s3_bucket_lifecycle_configuration" "videos" {
       storage_class = "ONEZONE_IA"
     }
   }
+
+  # ============================================
+  # FACE-SWAP PROCESSING - Temporary assets
+  # ============================================
+
+  # Face-swap intermediate assets (frames, poses, chunks) → Delete after 7 days
+  rule {
+    id     = "expire-face-swap-assets"
+    status = "Enabled"
+
+    filter {
+      prefix = "face-swap-assets/"
+    }
+
+    expiration {
+      days = 7
+    }
+  }
+
+  # ============================================
+  # AD CLONE CONTENT
+  # ============================================
+
+  # Ad clone assets (reference videos, product images, final videos) → One Zone-IA after 30 days
+  rule {
+    id     = "transition-ad-clone"
+    status = "Enabled"
+
+    filter {
+      prefix = "ad-clone/"
+    }
+
+    transition {
+      days          = 30
+      storage_class = "ONEZONE_IA"
+    }
+  }
+
+  # Ad clone cached frames → Delete after 7 days
+  rule {
+    id     = "expire-ad-clone-frames"
+    status = "Enabled"
+
+    filter {
+      prefix = "ad-clone-frames/"
+    }
+
+    expiration {
+      days = 7
+    }
+  }
+
+  # ============================================
+  # VOICE CLONING
+  # ============================================
+
+  # Voice clone samples → One Zone-IA after 30 days, NO EXPIRATION
+  rule {
+    id     = "transition-voice-clones"
+    status = "Enabled"
+
+    filter {
+      prefix = "voice-clones/"
+    }
+
+    transition {
+      days          = 30
+      storage_class = "ONEZONE_IA"
+    }
+  }
+
+  # ============================================
+  # CONTRACTS
+  # ============================================
+
+  # Contract PDFs and signatures → One Zone-IA after 30 days, NO EXPIRATION
+  rule {
+    id     = "transition-contracts"
+    status = "Enabled"
+
+    filter {
+      prefix = "contracts/"
+    }
+
+    transition {
+      days          = 30
+      storage_class = "ONEZONE_IA"
+    }
+  }
+
+  # ============================================
+  # CAMPAIGN & CUSTOM UPLOADS
+  # ============================================
+
+  # Campaign video uploads → One Zone-IA after 30 days, NO EXPIRATION
+  rule {
+    id     = "transition-campaign-videos"
+    status = "Enabled"
+
+    filter {
+      prefix = "campaign-videos/"
+    }
+
+    transition {
+      days          = 30
+      storage_class = "ONEZONE_IA"
+    }
+  }
+
+  # Custom video uploads (ad posting) → One Zone-IA after 30 days, NO EXPIRATION
+  rule {
+    id     = "transition-custom-uploads"
+    status = "Enabled"
+
+    filter {
+      prefix = "custom-uploads/"
+    }
+
+    transition {
+      days          = 30
+      storage_class = "ONEZONE_IA"
+    }
+  }
 }
 
 # CORS Configuration for S3

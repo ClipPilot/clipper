@@ -474,6 +474,7 @@ function PostsTable({ campaignId }: { campaignId: number }) {
   const [totalPosts, setTotalPosts] = useState(0);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [postsPageSize, setPostsPageSize] = useState(100);
   const [playingVideo, setPlayingVideo] = useState<{
     url: string;
     title: string;
@@ -488,7 +489,7 @@ function PostsTable({ campaignId }: { campaignId: number }) {
         const result = await adminAPI.getCampaignPosts(campaignId, {
           tab,
           page,
-          pageSize: 10,
+          pageSize: postsPageSize,
           sortBy: tab === "published" ? "posted_time" : "created_at",
           sortOrder: "desc",
         });
@@ -506,7 +507,7 @@ function PostsTable({ campaignId }: { campaignId: number }) {
         setLoading(false);
       }
     },
-    [campaignId, tab, page],
+    [campaignId, tab, page, postsPageSize],
   );
 
   // Initial fetch + refetch on tab/page change
@@ -548,13 +549,26 @@ function PostsTable({ campaignId }: { campaignId: number }) {
           </button>
         ))}
         <div className="flex-1" />
-        <span className="text-xs text-text-tertiary pb-2">
-          {totalPosts} post{totalPosts !== 1 ? "s" : ""}
-          <span className="ml-2 inline-flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald animate-pulse" />
-            Live
+        <div className="flex items-center gap-3 pb-2">
+          <select
+            value={postsPageSize}
+            onChange={(e) => {
+              setPostsPageSize(Number(e.target.value));
+              setPage(1);
+            }}
+            className="px-2 py-1 rounded-lg bg-surface-elevated border border-border text-xs text-text-secondary cursor-pointer"
+          >
+            <option value={10}>10 / page</option>
+            <option value={100}>100 / page</option>
+          </select>
+          <span className="text-xs text-text-tertiary">
+            {totalPosts} post{totalPosts !== 1 ? "s" : ""}
+            <span className="ml-2 inline-flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald animate-pulse" />
+              Live
+            </span>
           </span>
-        </span>
+        </div>
       </div>
 
       {/* Table */}
@@ -789,6 +803,7 @@ export default function CampaignPublishPage() {
   const [videoPage, setVideoPage] = useState(1);
   const [videoTotalPages, setVideoTotalPages] = useState(1);
   const [videoTotalCount, setVideoTotalCount] = useState(0);
+  const [videoPageSize, setVideoPageSize] = useState(100);
 
   const [publishingVideo, setPublishingVideo] = useState<CampaignVideo | null>(
     null,
@@ -831,7 +846,7 @@ export default function CampaignPublishPage() {
       try {
         const result = await adminAPI.getCampaignVideos(campaignId, {
           page: pg ?? videoPage,
-          pageSize: 10,
+          pageSize: videoPageSize,
           filter: videoFilter,
         });
         setVideos(result.videos);
@@ -843,7 +858,7 @@ export default function CampaignPublishPage() {
         setVideosLoading(false);
       }
     },
-    [campaign, campaignId, videoPage, videoFilter],
+    [campaign, campaignId, videoPage, videoFilter, videoPageSize],
   );
 
   useEffect(() => {
@@ -1146,6 +1161,21 @@ export default function CampaignPublishPage() {
                 </button>
               </>
             )}
+            <select
+              value={videoPageSize}
+              onChange={(e) => {
+                setVideoPageSize(Number(e.target.value));
+                setVideoPage(1);
+                setSelectedClipIds(new Set());
+              }}
+              className="px-2 py-1 rounded-lg bg-surface-elevated border border-border text-xs text-text-secondary cursor-pointer"
+            >
+              <option value={10}>10 / page</option>
+              <option value={100}>100 / page</option>
+            </select>
+            <span className="text-xs text-text-tertiary">
+              {videoTotalCount} video{videoTotalCount !== 1 ? "s" : ""}
+            </span>
             <button
               onClick={() => fetchVideos()}
               disabled={videosLoading}

@@ -247,7 +247,7 @@ export function useClipsData() {
     } catch (error) {
       console.error("Failed to refresh saved clips:", error);
     }
-  }, [selectedTeam?.id, setSavedClips]);
+  }, [selectedTeam?.id, sort, campaignUploads, setSavedClips]);
 
   const moveClipToFolder = useCallback(
     async (clipId: number, folderId: number | null) => {
@@ -480,12 +480,12 @@ export function useFolders() {
   const refreshFolderClips = useCallback(async (folderId: number) => {
     if (!selectedTeam?.id) return;
     try {
-      const clips = await clipsAPI.getClipsByFolder(selectedTeam.id, folderId);
+      const clips = await clipsAPI.getClipsByFolder(selectedTeam.id, folderId, campaignUploads);
       setSavedClips(clips);
     } catch (error) {
       console.error("Failed to refresh folder clips:", error);
     }
-  }, [selectedTeam?.id, setSavedClips]);
+  }, [selectedTeam?.id, campaignUploads, setSavedClips]);
 
   return {
     folders,

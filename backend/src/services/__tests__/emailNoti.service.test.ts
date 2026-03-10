@@ -10,6 +10,12 @@ vi.mock("resend", () => ({
   },
 }));
 
+vi.mock("../../db", () => {
+  const mockThen = (resolve: any) => resolve([{ enabled: true }]);
+  const chain = () => ({ from: chain, where: chain, limit: chain, select: chain, then: mockThen });
+  return { db: { select: chain } };
+});
+
 vi.mock("../../templates/emailTemplates", () => ({
   teamInviteEmail: vi.fn(() => "<html>invite</html>"),
   subscriptionWelcomeEmail: vi.fn(() => "<html>welcome</html>"),

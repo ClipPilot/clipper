@@ -5,6 +5,7 @@ import { config } from "../../config/env";
 class GoogleDriveService {
   private static instance: GoogleDriveService;
   private driveClient: drive_v3.Drive | null = null;
+  private folderLocks: Map<string, Promise<string>> = new Map();
 
   private constructor() {}
 
@@ -92,6 +93,18 @@ class GoogleDriveService {
   }
 
   async ensurePlatformFolder(parentFolderId: string, platformName: string): Promise<string> {
+    const lockKey = `${parentFolderId}:${platformName}`;
+    const inflight = this.folderLocks.get(lockKey);
+    if (inflight) return inflight;
+
+    const promise = this._ensurePlatformFolderImpl(parentFolderId, platformName).finally(() => {
+      this.folderLocks.delete(lockKey);
+    });
+    this.folderLocks.set(lockKey, promise);
+    return promise;
+  }
+
+  private async _ensurePlatformFolderImpl(parentFolderId: string, platformName: string): Promise<string> {
     const existing = await this.listChildFolders(parentFolderId);
     const existingId = existing.get(platformName);
     if (existingId) return existingId;

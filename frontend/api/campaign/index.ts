@@ -75,6 +75,38 @@ export interface MasterAgreement {
   updated_at: string | null;
 }
 
+export interface CpmDailyCharge {
+  id: number;
+  chargeDate: string;
+  totalViewsDelta: number;
+  cpmRate: string;
+  chargeCents: number;
+  source: "wallet" | "card" | null;
+  status: "charged" | "failed" | "waived";
+  failureReason: string | null;
+  postBreakdown: {
+    user_post_id: number;
+    previous_views: number;
+    current_views: number;
+    delta_views: number;
+    charge_cents: number;
+    post_url: string | null;
+  }[];
+  createdAt: string;
+}
+
+export interface CpmBillingBreakdown {
+  summary: {
+    totalChargedCents: number;
+    totalViews: number;
+    walletSpentCents: number;
+    cardChargedCents: number;
+    cpmRate: string | null;
+    daysTracked: number;
+  };
+  dailyCharges: CpmDailyCharge[];
+}
+
 export interface CampaignGates {
   videos: {
     complete: boolean;
@@ -281,11 +313,13 @@ class CampaignAPI {
   async listVideos(
     teamId: number,
     campaignId: number,
-    options?: { sortBy?: string; sortOrder?: string },
-  ): Promise<{ videos: CampaignVideo[] }> {
+    options?: { sortBy?: string; sortOrder?: string; page?: number; pageSize?: number },
+  ): Promise<{ videos: CampaignVideo[]; pagination: { page: number; pageSize: number; totalVideos: number; totalPages: number } }> {
     const params = new URLSearchParams();
     if (options?.sortBy) params.set("sortBy", options.sortBy);
     if (options?.sortOrder) params.set("sortOrder", options.sortOrder);
+    if (options?.page) params.set("page", options.page.toString());
+    if (options?.pageSize) params.set("pageSize", options.pageSize.toString());
     const qs = params.toString();
     const response = await apiFetch(
       `${API_URL}/campaigns/teams/${teamId}/campaigns/${campaignId}/videos${qs ? `?${qs}` : ""}`,
@@ -522,6 +556,27 @@ class CampaignAPI {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || "Failed to fetch campaign clip IDs");
+    }
+
+    return response.json();
+  }
+
+  async getBillingBreakdown(
+    teamId: number,
+    campaignId: number
+  ): Promise<CpmBillingBreakdown> {
+    const response = await apiFetch(
+      `${API_URL}/campaigns/teams/${teamId}/campaigns/${campaignId}/billing`,
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to fetch billing breakdown");
     }
 
     return response.json();
