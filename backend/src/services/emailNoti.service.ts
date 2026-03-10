@@ -110,7 +110,8 @@ export class EmailNotiService {
         .from(users)
         .where(eq(users.email, email))
         .limit(1);
-      return user?.enabled !== false;
+      if (!user) return true;
+      return user.enabled === true;
     } catch {
       return true;
     }
