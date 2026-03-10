@@ -32,6 +32,7 @@ import { BulkUploadModal } from "../shared/BulkUploadModal";
 import { SetupModal } from "../gates/PaymentGate";
 import { useBulkVideoUpload } from "@/hooks/useBulkVideoUpload";
 import { AccountsTab } from "@/components/mass-posting/dashboard/AccountsTab";
+import { BillingTab } from "./BillingTab";
 import {
   platformIcon,
   platformIconColor,
@@ -84,7 +85,7 @@ export function ActiveCampaignDashboard({
   const selectedTeam = useAtomValue(selectedTeamAtom);
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<"queued" | "accounts" | "published">("queued");
+  const [activeTab, setActiveTab] = useState<"queued" | "accounts" | "published" | "billing">("queued");
   const [dateRange, setDateRange] = useState("mtd");
 
   // Sort state
@@ -382,7 +383,7 @@ export function ActiveCampaignDashboard({
         <Tabs
           selectedKey={activeTab}
           onSelectionChange={(key) => {
-            setActiveTab(key as "queued" | "accounts" | "published");
+            setActiveTab(key as "queued" | "accounts" | "published" | "billing");
             setPostsPage(1);
             setVideoPage(1);
           }}
@@ -419,6 +420,14 @@ export function ActiveCampaignDashboard({
           />
           <Tab key="accounts" title="Accounts" />
           <Tab
+            key="billing"
+            title={
+              <div className="flex items-center gap-2">
+                <span>Billing</span>
+              </div>
+            }
+          />
+          <Tab
             key="published"
             title={
               <div className="flex items-center gap-2">
@@ -447,6 +456,10 @@ export function ActiveCampaignDashboard({
               dateRange={dateRange}
               onDateRangeChange={setDateRange}
             />
+          )}
+
+          {activeTab === "billing" && (
+            <BillingTab campaign={campaign} />
           )}
 
           {(activeTab === "queued" || activeTab === "published") && (

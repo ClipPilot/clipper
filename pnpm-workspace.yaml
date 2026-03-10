@@ -3,6 +3,7 @@ packages:
   - backend
   - lambda-expire-clips
   - lambda-virality-sync
+  - lambda-cpm-billing
   - va-tools
 
 ignoredBuiltDependencies:
