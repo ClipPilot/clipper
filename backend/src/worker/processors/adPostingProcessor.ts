@@ -11,15 +11,12 @@ import { AdPostingJob } from "../../services/sqs.service";
 import { db } from "../../db";
 import {
   posts,
-  teamMembers,
-  users,
 } from "@clipper/shared-db/src/schema";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { s3Service } from "../../services/s3.service";
 import { googleDriveService } from "../../services/google/drive.service";
 import { generateUniquifyString, hasAudioStream } from "../../utils/videoUniquify";
 import { applyJumbledMetadata } from "../../utils/videoMetadata";
-import { emailNotiService } from "../../services/emailNoti.service";
 import { notifyAdPostingUpdate } from "../notify";
 import { checkSscdSimilarity, generateAdversarialVideo } from "../../services/sscdSimilarity.service";
 import { config } from "../../config/env";
@@ -307,14 +304,6 @@ export async function processAdPostingJob(job: AdPostingJob): Promise<void> {
       completedItems,
     });
 
-    await sendCompletionEmail(
-      teamId,
-      clipTitle,
-      platformQuantities,
-      successCount,
-      failedCount,
-      totalItems
-    );
   } catch (outerErr) {
     // If S3 download or Drive folder setup fails, mark all pre-created rows as "failed"
     // so they don't stay stuck in "processing" forever
@@ -341,41 +330,3 @@ export async function processAdPostingJob(job: AdPostingJob): Promise<void> {
   }
 }
 
-async function sendCompletionEmail(
-  teamId: number,
-  clipTitle: string,
-  platformQuantities: Record<string, number>,
-  successCount: number,
-  failedCount: number,
-  totalCopies: number
-) {
-  try {
-    const [owner] = await db
-      .select({ email: users.email, firstName: users.first_name })
-      .from(teamMembers)
-      .innerJoin(users, eq(teamMembers.user_id, users.id))
-      .where(and(eq(teamMembers.team_id, teamId), eq(teamMembers.role, "owner")))
-      .limit(1);
-
-    if (owner?.email) {
-      const platformNames = Object.keys(platformQuantities)
-        .map((p) => {
-          const qty = platformQuantities[p];
-          const name = PLATFORM_DISPLAY_NAMES[p];
-          return qty > 1 ? `${name} (x${qty})` : name;
-        })
-        .join(", ");
-
-      const failedText = failedCount > 0 ? ` (${failedCount} failed)` : "";
-
-      await emailNotiService.sendAdPostingReady(owner.email, {
-        userName: owner.firstName || "there",
-        clipTitle,
-        platforms: `${successCount} of ${totalCopies} copies uploaded for: ${platformNames}${failedText}`,
-        dashboardUrl: `${process.env.FRONTEND_URL || "https://platform.cuttr.com"}/dashboard/clips`,
-      });
-    }
-  } catch (emailErr) {
-    console.error("[AdPosting] Failed to send completion email:", emailErr);
-  }
-}
