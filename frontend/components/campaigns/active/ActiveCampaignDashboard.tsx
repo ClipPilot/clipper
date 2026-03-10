@@ -91,9 +91,10 @@ export function ActiveCampaignDashboard({
   const [sortBy, setSortBy] = useState<"created_at" | "title" | "publish_status" | "post_count">("created_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
-  // Posts table state (single fetch, tab drives queued vs published)
+  // Posts table state
   const [posts, setPosts] = useState<TeamPost[]>([]);
   const [totalPosts, setTotalPosts] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [postsPage, setPostsPage] = useState(1);
   const [postsLoading, setPostsLoading] = useState(true);
   const [playingVideo, setPlayingVideo] = useState<{ url: string; title: string } | null>(null);
@@ -129,20 +130,24 @@ export function ActiveCampaignDashboard({
     onRefetchVideos(column, newOrder);
   }, [sortBy, sortOrder, onRefetchVideos]);
 
-  // Fetch ALL posts for this campaign+tab (no pagination on API, we paginate grouped videos client-side)
-  const fetchPosts = useCallback(async () => {
+  const POSTS_PAGE_SIZE = 20;
+
+  const fetchPosts = useCallback(async (page = 1) => {
     if (!selectedTeam?.id || activeTab === "accounts") return;
     setPostsLoading(true);
     try {
+      const isPublished = postsTab === "published";
       const result = await adPostingAPI.getTeamPosts(selectedTeam.id, {
         tab: postsTab,
-        pageSize: 500,
-        sortBy: postsTab === "published" ? "posted_time" : "created_at",
+        page: isPublished ? page : 1,
+        pageSize: isPublished ? POSTS_PAGE_SIZE : 0,
+        sortBy: isPublished ? "posted_time" : "created_at",
         sortOrder: "desc",
         campaignId: campaign.id,
       });
       setPosts(result.posts);
       setTotalPosts(result.pagination.totalPosts);
+      setTotalPages(result.pagination.totalPages);
     } catch (err) {
       console.error("Failed to fetch posts:", err);
     } finally {
@@ -151,7 +156,8 @@ export function ActiveCampaignDashboard({
   }, [selectedTeam?.id, activeTab, postsTab, campaign.id]);
 
   useEffect(() => {
-    fetchPosts();
+    setPostsPage(1);
+    fetchPosts(1);
   }, [fetchPosts]);
 
   // Group posts by clip_id (unique video)
@@ -225,10 +231,7 @@ export function ActiveCampaignDashboard({
     return Array.from(map.values());
   }, [posts, postsTab, videos]);
 
-  // Client-side pagination on grouped videos
-  const PAGE_SIZE = 10;
-  const totalVideoPages = Math.max(1, Math.ceil(videoGroups.length / PAGE_SIZE));
-  const pagedGroups = videoGroups.slice((postsPage - 1) * PAGE_SIZE, postsPage * PAGE_SIZE);
+  const pagedGroups = videoGroups;
 
   // Existing clip IDs for the picker filter
   const existingClipIds = new Set(
@@ -404,7 +407,26 @@ export function ActiveCampaignDashboard({
             }
           />
           <Tab key="accounts" title="Accounts" />
-          <Tab key="published" title="Published Posts" />
+          <Tab
+            key="published"
+            title={
+              <div className="flex items-center gap-2">
+                <span>Published Posts</span>
+                {activeTab === "published" && videoGroups.length > 0 && (
+                  <Chip
+                    size="sm"
+                    variant="flat"
+                    classNames={{
+                      base: "bg-success-500/10 text-success-500 h-5 min-w-5",
+                      content: "text-xs font-semibold px-1",
+                    }}
+                  >
+                    {totalPosts}
+                  </Chip>
+                )}
+              </div>
+            }
+          />
         </Tabs>
 
         {/* Tab content */}
@@ -591,16 +613,20 @@ export function ActiveCampaignDashboard({
                 )}
 
                 {/* Pagination */}
-                {totalVideoPages > 1 && (
+                {totalPages > 1 && (
                   <div className="px-6 py-3 border-t border-border-base flex items-center justify-between">
-                    <span className="text-xs text-text-secondary">Page {postsPage} of {totalVideoPages}</span>
+                    <span className="text-xs text-text-secondary">Page {postsPage} of {totalPages}</span>
                     <div className="flex gap-2">
                       <Button
                         size="sm"
                         variant="flat"
                         className="bg-surface-elevated border border-border-base text-text-secondary h-7 text-xs"
                         isDisabled={postsPage === 1}
-                        onPress={() => setPostsPage((p) => Math.max(1, p - 1))}
+                        onPress={() => {
+                          const p = Math.max(1, postsPage - 1);
+                          setPostsPage(p);
+                          fetchPosts(p);
+                        }}
                       >
                         Prev
                       </Button>
@@ -608,8 +634,12 @@ export function ActiveCampaignDashboard({
                         size="sm"
                         variant="flat"
                         className="bg-surface-elevated border border-border-base text-text-secondary h-7 text-xs"
-                        isDisabled={postsPage === totalVideoPages}
-                        onPress={() => setPostsPage((p) => Math.min(totalVideoPages, p + 1))}
+                        isDisabled={postsPage === totalPages}
+                        onPress={() => {
+                          const p = Math.min(totalPages, postsPage + 1);
+                          setPostsPage(p);
+                          fetchPosts(p);
+                        }}
                       >
                         Next
                       </Button>
