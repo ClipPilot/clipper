@@ -180,7 +180,7 @@ export function ActiveCampaignDashboard({
         postsByClipId.set(post.clip_id, arr);
       }
 
-      return videos.map((video) => {
+      return videos.filter((video) => video.publish_status !== "published").map((video) => {
         const videoPosts = video.clip_id ? (postsByClipId.get(video.clip_id) || []) : [];
         const platforms: Record<string, number> = {};
         for (const p of videoPosts) {
