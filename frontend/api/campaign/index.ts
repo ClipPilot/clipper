@@ -90,6 +90,7 @@ export interface CpmDailyCharge {
     current_views: number;
     delta_views: number;
     charge_cents: number;
+    post_url: string | null;
   }[];
   createdAt: string;
 }

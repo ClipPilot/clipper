@@ -170,13 +170,18 @@ export function BillingTab({ campaign }: BillingTabProps) {
               tickFormatter={(v) => `$${v}`}
             />
             <Tooltip
+              cursor={{ fill: "hsl(var(--heroui-default-100))" }}
               contentStyle={{
                 backgroundColor: "hsl(var(--heroui-content1))",
                 border: "1px solid hsl(var(--heroui-default-200))",
                 borderRadius: "8px",
                 fontSize: "12px",
+                padding: "8px 12px",
               }}
-              formatter={(value) => [`$${Number(value).toFixed(2)}`, "Charge"]}
+              formatter={(value: number, _name: string, props: any) => [
+                `$${Number(value).toFixed(2)}`,
+                `${props.payload.views.toLocaleString()} views`,
+              ]}
               labelFormatter={(label) => label}
             />
             <Bar
@@ -322,8 +327,20 @@ function DailyChargeRow({ charge }: { charge: CpmDailyCharge }) {
                 <tbody className="divide-y divide-border-base">
                   {charge.postBreakdown.map((post) => (
                     <tr key={post.user_post_id}>
-                      <td className="px-4 py-1.5 text-xs text-text-secondary">
-                        #{post.user_post_id}
+                      <td className="px-4 py-1.5 text-xs">
+                        {post.post_url ? (
+                          <a
+                            href={post.post_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-accent-400 hover:underline"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            #{post.user_post_id}
+                          </a>
+                        ) : (
+                          <span className="text-text-secondary">#{post.user_post_id}</span>
+                        )}
                       </td>
                       <td className="px-4 py-1.5 text-xs text-text-secondary">
                         {post.previous_views.toLocaleString()}

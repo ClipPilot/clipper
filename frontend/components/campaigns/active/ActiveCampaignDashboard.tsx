@@ -420,14 +420,6 @@ export function ActiveCampaignDashboard({
           />
           <Tab key="accounts" title="Accounts" />
           <Tab
-            key="billing"
-            title={
-              <div className="flex items-center gap-2">
-                <span>Billing</span>
-              </div>
-            }
-          />
-          <Tab
             key="published"
             title={
               <div className="flex items-center gap-2">
@@ -444,6 +436,14 @@ export function ActiveCampaignDashboard({
                     {totalPosts}
                   </Chip>
                 )}
+              </div>
+            }
+          />
+          <Tab
+            key="billing"
+            title={
+              <div className="flex items-center gap-2">
+                <span>Billing</span>
               </div>
             }
           />

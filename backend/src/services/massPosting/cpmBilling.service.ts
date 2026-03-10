@@ -1,9 +1,10 @@
 import {
   campaigns,
   campaignDailyCharges,
+  userPosts,
 } from "@clipper/shared-db";
 import { db } from "../../db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 
 class CpmBillingService {
   async getBillingBreakdown(campaignId: number, teamId: number) {
@@ -51,6 +52,29 @@ class CpmBillingService {
       }
     }
 
+    // Collect all user_post_ids from breakdowns to fetch post URLs
+    const allPostIds = new Set<number>();
+    for (const charge of dailyCharges) {
+      const breakdown = charge.post_breakdown as any[];
+      if (breakdown) {
+        for (const entry of breakdown) {
+          allPostIds.add(entry.user_post_id);
+        }
+      }
+    }
+
+    // Fetch post URLs in one query
+    const postUrlMap = new Map<number, string | null>();
+    if (allPostIds.size > 0) {
+      const posts = await db
+        .select({ id: userPosts.id, post_url: userPosts.post_url })
+        .from(userPosts)
+        .where(inArray(userPosts.id, [...allPostIds]));
+      for (const p of posts) {
+        postUrlMap.set(p.id, p.post_url);
+      }
+    }
+
     return {
       summary: {
         totalChargedCents,
@@ -69,7 +93,10 @@ class CpmBillingService {
         source: c.source,
         status: c.status,
         failureReason: c.failure_reason,
-        postBreakdown: c.post_breakdown,
+        postBreakdown: ((c.post_breakdown as any[]) || []).map((entry) => ({
+          ...entry,
+          post_url: postUrlMap.get(entry.user_post_id) ?? null,
+        })),
         createdAt: c.created_at,
       })),
     };
