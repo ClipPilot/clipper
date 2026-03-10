@@ -45,7 +45,8 @@ describe("CpmBillingService.getBillingBreakdown", () => {
 
     mockDb.select
       .mockReturnValueOnce(createDrizzleChain([campaign]))
-      .mockReturnValueOnce(createDrizzleChain(charges));
+      .mockReturnValueOnce(createDrizzleChain(charges))
+      .mockReturnValueOnce(createDrizzleChain([{ id: 1, post_url: "https://tiktok.com/post1" }]));
 
     const result = await cpmBillingService.getBillingBreakdown(10, 5);
 
@@ -76,7 +77,8 @@ describe("CpmBillingService.getBillingBreakdown", () => {
 
     mockDb.select
       .mockReturnValueOnce(createDrizzleChain([campaign]))
-      .mockReturnValueOnce(createDrizzleChain(charges));
+      .mockReturnValueOnce(createDrizzleChain(charges))
+      .mockReturnValueOnce(createDrizzleChain([{ id: 1, post_url: null }]));
 
     const result = await cpmBillingService.getBillingBreakdown(10, 5);
 
@@ -112,7 +114,8 @@ describe("CpmBillingService.getBillingBreakdown", () => {
 
     mockDb.select
       .mockReturnValueOnce(createDrizzleChain([campaign]))
-      .mockReturnValueOnce(createDrizzleChain([charge]));
+      .mockReturnValueOnce(createDrizzleChain([charge]))
+      .mockReturnValueOnce(createDrizzleChain([{ id: 1, post_url: "https://tiktok.com/post1" }]));
 
     const result = await cpmBillingService.getBillingBreakdown(10, 5);
     const mapped = result.dailyCharges[0];
@@ -123,6 +126,8 @@ describe("CpmBillingService.getBillingBreakdown", () => {
     expect(mapped.chargeCents).toBe(1000);
     expect(mapped.source).toBe("card");
     expect(mapped.status).toBe("charged");
-    expect(mapped.postBreakdown).toEqual(charge.post_breakdown);
+    expect(mapped.postBreakdown).toEqual(
+      (charge.post_breakdown as any[]).map((e) => ({ ...e, post_url: "https://tiktok.com/post1" }))
+    );
   });
 });
