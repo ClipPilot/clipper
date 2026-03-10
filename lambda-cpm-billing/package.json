@@ -1,0 +1,27 @@
+{
+  "name": "lambda-cpm-billing",
+  "version": "1.0.0",
+  "description": "Lambda function to bill campaigns daily based on CPM and incremental post views",
+  "main": "dist/handler.js",
+  "scripts": {
+    "build": "tsc",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@clipper/shared-db": "workspace:*",
+    "@clipper/shared-email": "workspace:*",
+    "drizzle-orm": "^0.44.7",
+    "pg": "^8.16.3",
+    "resend": "^4.5.1",
+    "stripe": "^17.7.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.145",
+    "@types/node": "^24.10.2",
+    "@types/pg": "^8.15.6",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

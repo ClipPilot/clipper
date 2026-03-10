@@ -4,6 +4,7 @@ import { AuthRequest } from "../middleware/auth.middleware";
 import { campaignService } from "../services/massPosting/campaign.service";
 import { campaignVideoService } from "../services/massPosting/campaignVideo.service";
 import { campaignBillingService } from "../services/massPosting/campaignBilling.service";
+import { cpmBillingService } from "../services/massPosting/cpmBilling.service";
 import { campaignContractService } from "../services/massPosting/campaignContract.service";
 import { stripe } from "../config/stripe.config";
 import { stripeService } from "../services/stripe.service";
@@ -548,6 +549,30 @@ export async function endCampaign(req: AuthRequest, res: Response) {
     }
     Sentry.captureException(error);
     return res.status(500).json({ error: "Failed to end campaign" });
+  }
+}
+
+// ── CPM Billing Breakdown ────────────────────────
+
+export async function getCpmBillingBreakdown(req: AuthRequest, res: Response) {
+  try {
+    const teamId = parseInt(req.params.teamId);
+    const campaignId = parseInt(req.params.campaignId);
+    if (isNaN(teamId) || isNaN(campaignId)) {
+      return res.status(400).json({ error: "Invalid ID" });
+    }
+
+    const breakdown = await cpmBillingService.getBillingBreakdown(
+      campaignId,
+      teamId,
+    );
+    return res.json(breakdown);
+  } catch (error: any) {
+    console.error("CPM billing breakdown error:", error);
+    Sentry.captureException(error);
+    return res
+      .status(500)
+      .json({ error: "Failed to fetch billing breakdown" });
   }
 }
 

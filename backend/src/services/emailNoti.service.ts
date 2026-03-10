@@ -37,6 +37,8 @@ import {
   CampaignStartedEmailData,
   contractSignedEmail,
   ContractSignedEmailData,
+  campaignPausedEmail,
+  CampaignPausedEmailData,
 } from "../templates/emailTemplates";
 
 export class EmailNotiService {
@@ -182,6 +184,11 @@ export class EmailNotiService {
   async sendContractSigned(to: string, data: ContractSignedEmailData) {
     const html = contractSignedEmail(data);
     return this.sendEmailNotification(to, `Contract signed for ${data.campaignName}`, html);
+  }
+
+  async sendCampaignPaused(to: string, data: CampaignPausedEmailData) {
+    const html = campaignPausedEmail(data);
+    return this.sendEmailNotification(to, `Campaign "${data.campaignName}" has been paused — payment failed`, html);
   }
 }
 

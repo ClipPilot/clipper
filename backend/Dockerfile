@@ -11,13 +11,18 @@ WORKDIR /app
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY backend/package.json ./backend/
 COPY packages/shared-db/package.json ./packages/shared-db/
+COPY packages/shared-email/package.json ./packages/shared-email/
 
 RUN pnpm install --frozen-lockfile
 
 COPY backend ./backend
 COPY packages/shared-db ./packages/shared-db
+COPY packages/shared-email ./packages/shared-email
 
 WORKDIR /app/packages/shared-db
+RUN pnpm run build
+
+WORKDIR /app/packages/shared-email
 RUN pnpm run build
 
 WORKDIR /app/backend

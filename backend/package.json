@@ -33,6 +33,7 @@
     "@aws-sdk/lib-storage": "^3.948.0",
     "@aws-sdk/s3-request-presigner": "^3.709.0",
     "@clipper/shared-db": "workspace:*",
+    "@clipper/shared-email": "workspace:^",
     "@deepgram/sdk": "^4.11.2",
     "@elevenlabs/elevenlabs-js": "^2.30.0",
     "@fal-ai/client": "^1.8.3",

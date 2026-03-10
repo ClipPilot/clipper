@@ -75,6 +75,37 @@ export interface MasterAgreement {
   updated_at: string | null;
 }
 
+export interface CpmDailyCharge {
+  id: number;
+  chargeDate: string;
+  totalViewsDelta: number;
+  cpmRate: string;
+  chargeCents: number;
+  source: "wallet" | "card" | null;
+  status: "charged" | "failed" | "waived";
+  failureReason: string | null;
+  postBreakdown: {
+    user_post_id: number;
+    previous_views: number;
+    current_views: number;
+    delta_views: number;
+    charge_cents: number;
+  }[];
+  createdAt: string;
+}
+
+export interface CpmBillingBreakdown {
+  summary: {
+    totalChargedCents: number;
+    totalViews: number;
+    walletSpentCents: number;
+    cardChargedCents: number;
+    cpmRate: string | null;
+    daysTracked: number;
+  };
+  dailyCharges: CpmDailyCharge[];
+}
+
 export interface CampaignGates {
   videos: {
     complete: boolean;
@@ -524,6 +555,27 @@ class CampaignAPI {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || "Failed to fetch campaign clip IDs");
+    }
+
+    return response.json();
+  }
+
+  async getBillingBreakdown(
+    teamId: number,
+    campaignId: number
+  ): Promise<CpmBillingBreakdown> {
+    const response = await apiFetch(
+      `${API_URL}/campaigns/teams/${teamId}/campaigns/${campaignId}/billing`,
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to fetch billing breakdown");
     }
 
     return response.json();
