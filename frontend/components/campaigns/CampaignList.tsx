@@ -8,6 +8,8 @@ import {
   CardBody,
   Chip,
   Spinner,
+  Accordion,
+  AccordionItem,
 } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useCampaigns } from "@/hooks/useCampaigns";
@@ -76,7 +78,6 @@ const TAB_STATUSES: Record<FilterTab, Campaign["status"][] | null> = {
   done: ["completed", "rejected"],
 };
 
-// TODO(human): Implement the filterCampaigns function
 function filterCampaigns(campaigns: Campaign[], tab: FilterTab): Campaign[] {
   const statuses = TAB_STATUSES[tab];
   if (!statuses) return campaigns;
@@ -126,6 +127,9 @@ export function CampaignList() {
             New Campaign
           </Button>
         </div>
+
+        {/* How it works */}
+        <HowItWorks />
 
         {/* Filter chips */}
         {campaigns.length > 0 && (
@@ -209,6 +213,79 @@ export function CampaignList() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ── How it works ─────────────────────────────────────────────────────────────
+
+const HOW_IT_WORKS_ITEMS = [
+  {
+    key: "lifecycle",
+    icon: "solar:restart-bold-duotone",
+    title: "Campaign lifecycle",
+    content:
+      "After submitting your campaign for review, our team approves it and sets your CPM rate. Once approved, complete 3 setup steps — upload videos, fund your wallet, and sign the agreement — then start your campaign. We distribute your videos to creators who post them on their social accounts. You can pause or resume at any time.",
+  },
+  {
+    key: "billing",
+    icon: "solar:dollar-bold-duotone",
+    title: "How billing works",
+    content:
+      "You're charged daily based on actual views your posts receive, using a CPM (cost per 1,000 views) model. Each day, we calculate the new views since the last billing cycle and charge your campaign wallet first. If the wallet balance isn't enough, the remainder is charged to your card on file. You'll never be charged for views that haven't happened yet.",
+  },
+  {
+    key: "wallet",
+    icon: "solar:wallet-bold-duotone",
+    title: "Wallet & payments",
+    content:
+      "Your campaign wallet is pre-funded during setup. Daily charges draw from the wallet first, then your card covers any remainder. You can top up your wallet at any time. If both the wallet and card payment fail, the campaign is automatically paused and you'll receive an email notification. Just add funds or update your card to resume.",
+  },
+  {
+    key: "tracking",
+    icon: "solar:chart-bold-duotone",
+    title: "View tracking",
+    content:
+      "Post metrics (views, plays) are synced every 12 hours from social platforms. Each post is tracked for 31 days after publishing. Only posts that have been successfully published are tracked and billed. You can see a full breakdown of views and charges per post in the Billing tab of each campaign.",
+  },
+];
+
+function HowItWorks() {
+  return (
+    <div className="mb-6">
+      <Accordion
+        variant="shadow"
+        className="bg-surface-base border border-border-base rounded-xl px-0"
+        itemClasses={{
+          base: "py-0",
+          title: "text-sm font-medium text-text-primary",
+          trigger: "px-4 py-3",
+          content: "px-4 pb-4 pt-0",
+        }}
+      >
+        <AccordionItem
+          key="how-it-works"
+          aria-label="How campaigns work"
+          title={
+            <div className="flex items-center gap-2">
+              <Icon icon="solar:info-circle-bold-duotone" width={16} className="text-accent-400" />
+              <span>How campaigns work</span>
+            </div>
+          }
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {HOW_IT_WORKS_ITEMS.map((item) => (
+              <div key={item.key} className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <Icon icon={item.icon} width={14} className="text-accent-400 flex-shrink-0" />
+                  <span className="text-xs font-semibold text-text-primary">{item.title}</span>
+                </div>
+                <p className="text-xs text-text-secondary leading-relaxed">{item.content}</p>
+              </div>
+            ))}
+          </div>
+        </AccordionItem>
+      </Accordion>
     </div>
   );
 }

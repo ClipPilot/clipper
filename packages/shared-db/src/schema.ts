@@ -1191,6 +1191,7 @@ export const userPosts = pgTable(
     metrics_history: jsonb("metrics_history").default([]),
     mass_post_id: integer("mass_post_id").references(() => posts.id, { onDelete: "set null" }),
     syncs_remaining: integer("syncs_remaining").notNull().default(28),
+    last_billed_views: integer("last_billed_views").notNull().default(0),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },
@@ -1373,6 +1374,64 @@ export const apiUsageLogs = pgTable(
     createdAtIdx: index("api_usage_logs_created_at_idx").on(table.created_at),
     productSlugIdx: index("api_usage_logs_product_slug_idx").on(
       table.product_slug,
+    ),
+  }),
+).enableRLS();
+
+// ── CPM Billing ──
+
+export const cpmChargeStatusEnum = pgEnum("cpm_charge_status", [
+  "charged",
+  "failed",
+  "waived",
+]);
+
+export const cpmChargeSourceEnum = pgEnum("cpm_charge_source", [
+  "wallet",
+  "card",
+]);
+
+export const campaignDailyCharges = pgTable(
+  "campaign_daily_charges",
+  {
+    id: serial("id").primaryKey(),
+    campaign_id: integer("campaign_id")
+      .notNull()
+      .references(() => campaigns.id, { onDelete: "cascade" }),
+    team_id: integer("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    charge_date: timestamp("charge_date").notNull(),
+    total_views_delta: integer("total_views_delta").notNull().default(0),
+    cpm_rate: decimal("cpm_rate", { precision: 10, scale: 2 }).notNull(),
+    charge_cents: integer("charge_cents").notNull().default(0),
+    source: cpmChargeSourceEnum("source"),
+    status: cpmChargeStatusEnum("status").notNull().default("charged"),
+    stripe_payment_intent_id: varchar("stripe_payment_intent_id", {
+      length: 255,
+    }),
+    failure_reason: text("failure_reason"),
+    post_breakdown: jsonb("post_breakdown")
+      .notNull()
+      .$type<
+        {
+          user_post_id: number;
+          previous_views: number;
+          current_views: number;
+          delta_views: number;
+          charge_cents: number;
+        }[]
+      >()
+      .default([]),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    campaignIdx: index("cdc_campaign_id_idx").on(table.campaign_id),
+    teamIdx: index("cdc_team_id_idx").on(table.team_id),
+    dateIdx: index("cdc_charge_date_idx").on(table.charge_date),
+    campaignDateIdx: index("cdc_campaign_date_idx").on(
+      table.campaign_id,
+      table.charge_date,
     ),
   }),
 ).enableRLS();

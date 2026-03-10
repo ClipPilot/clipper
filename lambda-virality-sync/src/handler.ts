@@ -909,10 +909,11 @@ export const orchestratorHandler: Handler = async (event: any, context: Context)
         );
     }
 
-    // Query mass posts (userPosts with mass_post_id, syncs > 0)
+    // Query mass posts (userPosts with mass_post_id, syncs > 0, campaign active)
     const massPostConditions = [
       isNotNull(schema.userPosts.mass_post_id),
       gt(schema.userPosts.syncs_remaining, 0),
+      eq(schema.campaigns.status, "started"),
     ];
     if (teamId) {
       massPostConditions.push(eq(schema.userAccounts.team_id, teamId));
@@ -929,6 +930,8 @@ export const orchestratorHandler: Handler = async (event: any, context: Context)
       })
       .from(schema.userPosts)
       .innerJoin(schema.userAccounts, eq(schema.userPosts.account_id, schema.userAccounts.id))
+      .innerJoin(schema.posts, eq(schema.userPosts.mass_post_id, schema.posts.id))
+      .innerJoin(schema.campaigns, eq(schema.posts.campaign_id, schema.campaigns.id))
       .where(and(...massPostConditions));
 
     // Merge all lists with a source field
