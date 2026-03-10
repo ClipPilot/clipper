@@ -541,16 +541,14 @@ class AdPostingService {
       totalVideos = countResult.videos;
       totalPosts = countResult.posts;
 
-      const query = db
+      rows = await db
         .select(selectFields)
         .from(posts)
         .leftJoin(clips, eq(posts.clip_id, clips.id))
         .where(where)
-        .orderBy(orderFn(orderCol));
-
-      rows = pageSize > 0
-        ? await query.limit(pageSize).offset((page - 1) * pageSize)
-        : await query;
+        .orderBy(orderFn(orderCol))
+        .limit(pageSize)
+        .offset((page - 1) * pageSize);
     } else {
       // Published tab: paginate by individual post
       const [{ count }] = await db
@@ -562,16 +560,14 @@ class AdPostingService {
       totalVideos = count;
       totalPosts = count;
 
-      const query = db
+      rows = await db
         .select(selectFields)
         .from(posts)
         .leftJoin(clips, eq(posts.clip_id, clips.id))
         .where(where)
-        .orderBy(orderFn(orderCol));
-
-      rows = pageSize > 0
-        ? await query.limit(pageSize).offset((page - 1) * pageSize)
-        : await query;
+        .orderBy(orderFn(orderCol))
+        .limit(pageSize)
+        .offset((page - 1) * pageSize);
     }
 
     // Generate presigned URLs for clip thumbnails
@@ -596,7 +592,7 @@ class AdPostingService {
         page,
         pageSize,
         total: totalVideos,
-        totalPages: pageSize > 0 ? Math.ceil(totalPosts / pageSize) : 1,
+        totalPages: Math.ceil(totalPosts / pageSize),
         totalPosts,
       },
     };

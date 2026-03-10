@@ -196,7 +196,7 @@ export async function listVideos(req: AuthRequest, res: Response) {
     if (isNaN(campaignId)) return res.status(400).json({ error: "Invalid campaign ID" });
 
     const page = parseInt(req.query.page as string) || 1;
-    const pageSize = Math.min(parseInt(req.query.pageSize as string) || 500, 500);
+    const pageSize = parseInt(req.query.pageSize as string) || 20;
     const sortBy = req.query.sortBy as string | undefined;
     const sortOrder = req.query.sortOrder as string | undefined;
     const validSortBy = ["created_at", "title", "publish_status", "post_count"].includes(sortBy ?? "")

@@ -91,7 +91,14 @@ export function ActiveCampaignDashboard({
   const [sortBy, setSortBy] = useState<"created_at" | "title" | "publish_status" | "post_count">("created_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
-  // Posts table state
+  // Video pagination state (queued tab)
+  const [paginatedVideos, setPaginatedVideos] = useState<CampaignVideo[]>([]);
+  const [videoPage, setVideoPage] = useState(1);
+  const [videoTotalPages, setVideoTotalPages] = useState(1);
+  const [videoTotalCount, setVideoTotalCount] = useState(0);
+  const [videosLoading, setVideosLoading] = useState(true);
+
+  // Posts table state (published tab)
   const [posts, setPosts] = useState<TeamPost[]>([]);
   const [totalPosts, setTotalPosts] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -123,25 +130,50 @@ export function ActiveCampaignDashboard({
   // Derive the API tab from the active UI tab
   const postsTab = activeTab === "published" ? "published" : "queued";
 
+  const PAGE_SIZE = 20;
+
+  const fetchVideos = useCallback(async (page = 1) => {
+    if (!selectedTeam?.id) return;
+    setVideosLoading(true);
+    try {
+      const result = await campaignAPI.listVideos(selectedTeam.id, campaign.id, {
+        page,
+        pageSize: PAGE_SIZE,
+        sortBy,
+        sortOrder,
+      });
+      setPaginatedVideos(result.videos);
+      setVideoTotalPages(result.pagination.totalPages);
+      setVideoTotalCount(result.pagination.totalVideos);
+    } catch (err) {
+      console.error("Failed to fetch videos:", err);
+    } finally {
+      setVideosLoading(false);
+    }
+  }, [selectedTeam?.id, campaign.id, sortBy, sortOrder]);
+
+  useEffect(() => {
+    if (activeTab === "queued") {
+      fetchVideos(videoPage);
+    }
+  }, [fetchVideos, activeTab, videoPage]);
+
   const handleSort = useCallback((column: "created_at" | "title" | "publish_status" | "post_count") => {
     const newOrder = sortBy === column && sortOrder === "desc" ? "asc" : "desc";
     setSortBy(column);
     setSortOrder(newOrder);
-    onRefetchVideos(column, newOrder);
-  }, [sortBy, sortOrder, onRefetchVideos]);
-
-  const POSTS_PAGE_SIZE = 20;
+    setVideoPage(1);
+  }, [sortBy, sortOrder]);
 
   const fetchPosts = useCallback(async (page = 1) => {
-    if (!selectedTeam?.id || activeTab === "accounts") return;
+    if (!selectedTeam?.id || activeTab !== "published") return;
     setPostsLoading(true);
     try {
-      const isPublished = postsTab === "published";
       const result = await adPostingAPI.getTeamPosts(selectedTeam.id, {
-        tab: postsTab,
-        page: isPublished ? page : 1,
-        pageSize: isPublished ? POSTS_PAGE_SIZE : 0,
-        sortBy: isPublished ? "posted_time" : "created_at",
+        tab: "published",
+        page,
+        pageSize: PAGE_SIZE,
+        sortBy: "posted_time",
         sortOrder: "desc",
         campaignId: campaign.id,
       });
@@ -153,12 +185,14 @@ export function ActiveCampaignDashboard({
     } finally {
       setPostsLoading(false);
     }
-  }, [selectedTeam?.id, activeTab, postsTab, campaign.id]);
+  }, [selectedTeam?.id, activeTab, campaign.id]);
 
   useEffect(() => {
-    setPostsPage(1);
-    fetchPosts(1);
-  }, [fetchPosts]);
+    if (activeTab === "published") {
+      setPostsPage(1);
+      fetchPosts(1);
+    }
+  }, [fetchPosts, activeTab]);
 
   // Group posts by clip_id (unique video)
   interface VideoGroup {
@@ -172,41 +206,19 @@ export function ActiveCampaignDashboard({
   }
 
   const videoGroups = useMemo(() => {
-    // Filter out failed posts
-    const filtered = posts.filter((p) => p.status !== "failed");
-
-    if (postsTab === "queued") {
-      // Queued tab: campaign videos are the primary data source
-      // Backend provides publish_status derived from posts + user_posts chain
-      const postsByClipId = new Map<number, TeamPost[]>();
-      for (const post of filtered) {
-        if (post.clip_id == null) continue;
-        const arr = postsByClipId.get(post.clip_id) || [];
-        arr.push(post);
-        postsByClipId.set(post.clip_id, arr);
-      }
-
-      return videos.filter((video) => video.publish_status !== "published").map((video) => {
-        const videoPosts = video.clip_id ? (postsByClipId.get(video.clip_id) || []) : [];
-        const platforms: Record<string, number> = {};
-        for (const p of videoPosts) {
-          platforms[p.platform] = (platforms[p.platform] || 0) + 1;
-        }
-
-        return {
-          clipId: video.clip_id,
-          clipTitle: video.title || video.file_name || `Video #${video.id}`,
-          clipUrl: video.presigned_url,
-          posts: videoPosts,
-          platforms,
-          earliestDate: video.created_at,
-          // Use backend-computed publish_status
-          statuses: [video.publish_status],
-        } as VideoGroup;
-      });
+    if (activeTab === "queued") {
+      return paginatedVideos.filter((video) => video.publish_status !== "published").map((video) => ({
+        clipId: video.clip_id,
+        clipTitle: video.title || video.file_name || `Video #${video.id}`,
+        clipUrl: video.presigned_url,
+        posts: [] as TeamPost[],
+        platforms: {} as Record<string, number>,
+        earliestDate: video.created_at,
+        statuses: [video.publish_status],
+      } as VideoGroup));
     }
 
-    // Published tab: posts are the primary data source (grouped by clip)
+    const filtered = posts.filter((p) => p.status !== "failed");
     const map = new Map<string, VideoGroup>();
     for (const post of filtered) {
       const key = String(post.clip_id ?? `no-clip-${post.id}`);
@@ -229,9 +241,7 @@ export function ActiveCampaignDashboard({
     }
 
     return Array.from(map.values());
-  }, [posts, postsTab, videos]);
-
-  const pagedGroups = videoGroups;
+  }, [posts, activeTab, paginatedVideos]);
 
   // Existing clip IDs for the picker filter
   const existingClipIds = new Set(
@@ -374,6 +384,7 @@ export function ActiveCampaignDashboard({
           onSelectionChange={(key) => {
             setActiveTab(key as "queued" | "accounts" | "published");
             setPostsPage(1);
+            setVideoPage(1);
           }}
           variant="underlined"
           classNames={{
@@ -391,7 +402,7 @@ export function ActiveCampaignDashboard({
             title={
               <div className="flex items-center gap-2">
                 <span>Queued Posts</span>
-                {activeTab === "queued" && videoGroups.length > 0 && (
+                {activeTab === "queued" && videoTotalCount > 0 && (
                   <Chip
                     size="sm"
                     variant="flat"
@@ -400,7 +411,7 @@ export function ActiveCampaignDashboard({
                       content: "text-xs font-semibold px-1",
                     }}
                   >
-                    {videoGroups.length}
+                    {videoTotalCount}
                   </Chip>
                 )}
               </div>
@@ -474,12 +485,12 @@ export function ActiveCampaignDashboard({
                     {postsTab === "queued" ? "Campaign Videos" : "Published Posts"}
                   </span>
                   <span className="text-xs text-text-secondary">
-                    {videoGroups.length} video{videoGroups.length !== 1 ? "s" : ""}{postsTab === "published" ? ` \u00B7 ${totalPosts} post${totalPosts !== 1 ? "s" : ""}` : ""}
+                    {activeTab === "queued" ? videoTotalCount : videoGroups.length} video{(activeTab === "queued" ? videoTotalCount : videoGroups.length) !== 1 ? "s" : ""}{postsTab === "published" ? ` \u00B7 ${totalPosts} post${totalPosts !== 1 ? "s" : ""}` : ""}
                   </span>
                 </div>
 
                 {/* Table */}
-                {postsLoading ? (
+                {(activeTab === "queued" ? videosLoading : postsLoading) ? (
                   <div className="p-12 text-center text-text-secondary">Loading...</div>
                 ) : videoGroups.length === 0 ? (
                   <div className="p-12 text-center text-text-secondary">
@@ -531,7 +542,7 @@ export function ActiveCampaignDashboard({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border-base">
-                      {pagedGroups.map((group) => {
+                      {videoGroups.map((group) => {
                         // For queued tab: publish_status from backend (waiting_assignment / in_drive / published)
                         // For published tab: aggregate from post-level statuses
                         const aggregateStatus = postsTab === "queued"
@@ -613,19 +624,27 @@ export function ActiveCampaignDashboard({
                 )}
 
                 {/* Pagination */}
-                {totalPages > 1 && (
+                {(() => {
+                  const currentPage = activeTab === "queued" ? videoPage : postsPage;
+                  const currentTotalPages = activeTab === "queued" ? videoTotalPages : totalPages;
+                  if (currentTotalPages <= 1) return null;
+                  return (
                   <div className="px-6 py-3 border-t border-border-base flex items-center justify-between">
-                    <span className="text-xs text-text-secondary">Page {postsPage} of {totalPages}</span>
+                    <span className="text-xs text-text-secondary">Page {currentPage} of {currentTotalPages}</span>
                     <div className="flex gap-2">
                       <Button
                         size="sm"
                         variant="flat"
                         className="bg-surface-elevated border border-border-base text-text-secondary h-7 text-xs"
-                        isDisabled={postsPage === 1}
+                        isDisabled={currentPage === 1}
                         onPress={() => {
-                          const p = Math.max(1, postsPage - 1);
-                          setPostsPage(p);
-                          fetchPosts(p);
+                          const p = Math.max(1, currentPage - 1);
+                          if (activeTab === "queued") {
+                            setVideoPage(p);
+                          } else {
+                            setPostsPage(p);
+                            fetchPosts(p);
+                          }
                         }}
                       >
                         Prev
@@ -634,18 +653,23 @@ export function ActiveCampaignDashboard({
                         size="sm"
                         variant="flat"
                         className="bg-surface-elevated border border-border-base text-text-secondary h-7 text-xs"
-                        isDisabled={postsPage === totalPages}
+                        isDisabled={currentPage === currentTotalPages}
                         onPress={() => {
-                          const p = Math.min(totalPages, postsPage + 1);
-                          setPostsPage(p);
-                          fetchPosts(p);
+                          const p = Math.min(currentTotalPages, currentPage + 1);
+                          if (activeTab === "queued") {
+                            setVideoPage(p);
+                          } else {
+                            setPostsPage(p);
+                            fetchPosts(p);
+                          }
                         }}
                       >
                         Next
                       </Button>
                     </div>
                   </div>
-                )}
+                  );
+                })()}
               </div>
 
               {/* Video player modal */}

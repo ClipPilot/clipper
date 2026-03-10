@@ -323,7 +323,7 @@ class CampaignVideoService {
         orderExpr = dirFn(campaignVideos.created_at);
     }
 
-    const rows = await db
+    const query = db
       .select({
         id: campaignVideos.id,
         campaign_id: campaignVideos.campaign_id,
@@ -332,16 +332,15 @@ class CampaignVideoService {
         custom_video_name: campaignVideos.custom_video_name,
         duration_seconds: campaignVideos.duration_seconds,
         created_at: campaignVideos.created_at,
-        // Join clip data when available
         clip_path: clips.clip_path,
         clip_title: clips.title,
       })
       .from(campaignVideos)
       .leftJoin(clips, eq(campaignVideos.clip_id, clips.id))
       .where(whereClause)
-      .orderBy(orderExpr)
-      .limit(pageSize)
-      .offset((page - 1) * pageSize);
+      .orderBy(orderExpr);
+
+    const rows = await query.limit(pageSize).offset((page - 1) * pageSize);
 
     // Get post counts and user_post counts per clip_id for this campaign
     const clipIds = rows.map((r) => r.clip_id).filter((id): id is number => id != null);
