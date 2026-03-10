@@ -45,7 +45,7 @@ export default function SettingsPage() {
   const handleSaveProfile = async () => {
     setIsSaving(true);
     try {
-      const updatedUser = await authAPI.updateProfile({ firstName, lastName, emailNotificationsEnabled: emailNotifications });
+      const updatedUser = await authAPI.updateProfile({ firstName, lastName });
       setUser(updatedUser);
       addToast({
         title: "Profile updated",
@@ -60,6 +60,21 @@ export default function SettingsPage() {
       });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleToggleEmailNotifications = async (enabled: boolean) => {
+    setEmailNotifications(enabled);
+    try {
+      const updatedUser = await authAPI.updateProfile({ emailNotificationsEnabled: enabled });
+      setUser(updatedUser);
+    } catch (error) {
+      setEmailNotifications(!enabled);
+      addToast({
+        title: "Error",
+        description: "Failed to update notification preferences",
+        color: "danger",
+      });
     }
   };
 
@@ -219,7 +234,7 @@ export default function SettingsPage() {
               </div>
               <Switch
                 isSelected={emailNotifications}
-                onValueChange={setEmailNotifications}
+                onValueChange={handleToggleEmailNotifications}
                 classNames={{
                   wrapper: "group-data-[selected=true]:bg-accent-400",
                 }}
