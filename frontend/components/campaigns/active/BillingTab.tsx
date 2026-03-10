@@ -178,9 +178,9 @@ export function BillingTab({ campaign }: BillingTabProps) {
                 fontSize: "12px",
                 padding: "8px 12px",
               }}
-              formatter={(value: number, _name: string, props: any) => [
+              formatter={(value, _name, props) => [
                 `$${Number(value).toFixed(2)}`,
-                `${props.payload.views.toLocaleString()} views`,
+                `${(props as any).payload.views.toLocaleString()} views`,
               ]}
               labelFormatter={(label) => label}
             />
