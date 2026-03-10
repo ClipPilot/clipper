@@ -13,6 +13,7 @@ WORKDIR /app
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY lambda-cpm-billing/package.json ./lambda-cpm-billing/
 COPY packages/shared-db/package.json ./packages/shared-db/
+COPY packages/shared-email/package.json ./packages/shared-email/
 
 # Install ALL dependencies (including dev dependencies for build)
 RUN pnpm install
@@ -20,9 +21,13 @@ RUN pnpm install
 # Copy source code
 COPY lambda-cpm-billing ./lambda-cpm-billing
 COPY packages/shared-db ./packages/shared-db
+COPY packages/shared-email ./packages/shared-email
 
-# Build shared-db first
+# Build shared packages first
 WORKDIR /app/packages/shared-db
+RUN pnpm run build
+
+WORKDIR /app/packages/shared-email
 RUN pnpm run build
 
 # Build lambda
@@ -41,6 +46,7 @@ WORKDIR ${LAMBDA_TASK_ROOT}
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY lambda-cpm-billing/package.json ./lambda-cpm-billing/
 COPY packages/shared-db/package.json ./packages/shared-db/
+COPY packages/shared-email/package.json ./packages/shared-email/
 
 # Install production dependencies only
 RUN pnpm install --prod
@@ -48,5 +54,6 @@ RUN pnpm install --prod
 # Copy built files
 COPY --from=builder /app/lambda-cpm-billing/dist ./lambda-cpm-billing/dist
 COPY --from=builder /app/packages/shared-db/dist ./packages/shared-db/dist
+COPY --from=builder /app/packages/shared-email/dist ./packages/shared-email/dist
 
 CMD [ "lambda-cpm-billing/dist/handler.handler" ]

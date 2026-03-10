@@ -7,6 +7,7 @@ on:
     paths:
       - "lambda-cpm-billing/**"
       - "packages/shared-db/**"
+      - "packages/shared-email/**"
       - ".github/workflows/deploy-cpm-billing-lambda-staging.yml"
   workflow_dispatch:
 
