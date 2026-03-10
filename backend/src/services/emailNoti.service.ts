@@ -110,10 +110,11 @@ export class EmailNotiService {
         .from(users)
         .where(eq(users.email, email))
         .limit(1);
-      if (!user) return true;
+      if (!user) return false;
       return user.enabled === true;
-    } catch {
-      return true;
+    } catch (err) {
+      console.error(`[EmailNoti] Failed to check notification preference for ${email}:`, err);
+      return false;
     }
   }
 

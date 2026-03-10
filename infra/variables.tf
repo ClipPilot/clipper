@@ -117,7 +117,7 @@ variable "worker_min_capacity" {
 variable "worker_max_capacity" {
   description = "Maximum number of worker tasks"
   type        = number
-  default     = 15
+  default     = 25
 }
 
 variable "worker_messages_per_task" {
