@@ -191,7 +191,7 @@ async function runBilling(db: ReturnType<typeof getDb>, now: Date) {
 
           const postIds = breakdown.map((e) => e.user_post_id);
           const caseChunks = breakdown.map(
-            (e) => sql`WHEN ${e.user_post_id} THEN ${e.current_views}`,
+            (e) => sql`WHEN ${e.user_post_id} THEN ${e.current_views}::integer`,
           );
 
           await tx
