@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // ── Hoisted mocks ──
 
-const { mockDb, mockStripeCreate, mockResendSend } = vi.hoisted(() => {
+const { mockDb, mockTx, mockStripeCreate, mockResendSend } = vi.hoisted(() => {
   const createChain = (result: any[] = []) => {
     const chain: Record<string, any> = {};
     for (const m of ["from", "where", "limit", "orderBy", "innerJoin", "set", "values", "returning"]) {
@@ -12,13 +12,22 @@ const { mockDb, mockStripeCreate, mockResendSend } = vi.hoisted(() => {
     return chain;
   };
 
+  const mockTx = {
+    select: vi.fn(() => createChain([])),
+    insert: vi.fn(() => createChain([])),
+    update: vi.fn(() => createChain([])),
+  };
+
   return {
     mockDb: {
       select: vi.fn(() => createChain([])),
       insert: vi.fn(() => createChain([])),
       update: vi.fn(() => createChain([])),
+      execute: vi.fn().mockResolvedValue([{ acquired: true }]),
+      transaction: vi.fn(async (fn: Function) => fn(mockTx)),
       createChain,
     },
+    mockTx,
     mockStripeCreate: vi.fn(),
     mockResendSend: vi.fn().mockResolvedValue({ data: { id: "msg-1" }, error: null }),
   };
@@ -117,10 +126,9 @@ describe("CPM Billing Lambda", () => {
     );
     // wallet update (atomic debit success)
     mockDb.update.mockReturnValueOnce(mockDb.createChain([{ id: 1 }]));
-    // insert wallet charge record
-    mockDb.insert.mockReturnValueOnce(mockDb.createChain([]));
-    // batch update last_billed_views
-    mockDb.update.mockReturnValueOnce(mockDb.createChain([]));
+    // transaction: insert charge record + batch update (uses mockTx)
+    mockTx.insert.mockReturnValueOnce(mockDb.createChain([]));
+    mockTx.update.mockReturnValueOnce(mockDb.createChain([]));
 
     const result = await handler({}, {} as any, () => {});
     const body = JSON.parse(result.body);
@@ -128,7 +136,7 @@ describe("CPM Billing Lambda", () => {
     expect(body.campaignsProcessed).toBe(1);
     expect(body.totalChargedCents).toBe(1000);
     expect(body.failures).toBe(0);
-    expect(mockDb.insert).toHaveBeenCalledTimes(1);
+    expect(mockTx.insert).toHaveBeenCalledTimes(1);
     expect(mockStripeCreate).not.toHaveBeenCalled();
   });
 
@@ -168,20 +176,18 @@ describe("CPM Billing Lambda", () => {
     mockStripeCreate.mockResolvedValueOnce({ status: "succeeded", id: "pi_split" });
     // wallet drain
     mockDb.update.mockReturnValueOnce(mockDb.createChain([]));
-    // insert wallet charge record
-    mockDb.insert.mockReturnValueOnce(mockDb.createChain([]));
-    // insert card charge record
-    mockDb.insert.mockReturnValueOnce(mockDb.createChain([]));
-    // batch update last_billed_views
-    mockDb.update.mockReturnValueOnce(mockDb.createChain([]));
+    // transaction: insert wallet + card charge records + batch update (uses mockTx)
+    mockTx.insert.mockReturnValueOnce(mockDb.createChain([]));
+    mockTx.insert.mockReturnValueOnce(mockDb.createChain([]));
+    mockTx.update.mockReturnValueOnce(mockDb.createChain([]));
 
     const result = await handler({}, {} as any, () => {});
     const body = JSON.parse(result.body);
 
     expect(body.totalChargedCents).toBe(2000);
     expect(body.failures).toBe(0);
-    // Two charge records: wallet + card
-    expect(mockDb.insert).toHaveBeenCalledTimes(2);
+    // Two charge records: wallet + card (inside transaction)
+    expect(mockTx.insert).toHaveBeenCalledTimes(2);
     // Stripe charged for remainder ($15 = 1500 cents)
     expect(mockStripeCreate).toHaveBeenCalledWith(
       expect.objectContaining({ amount: 1500 })

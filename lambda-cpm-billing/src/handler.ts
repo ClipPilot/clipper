@@ -44,12 +44,31 @@ interface PaymentResult {
   failureReason?: string;
 }
 
+// Advisory lock key for preventing concurrent billing runs
+const CPM_BILLING_LOCK_KEY = 8675309;
+
 export const handler: Handler = async () => {
   const db = getDb();
   const now = new Date();
 
   console.log(`[CPM Billing] Starting billing run at ${now.toISOString()}`);
 
+  // Acquire advisory lock to prevent concurrent Lambda executions from double-billing
+  const lockResult = await db.execute(sql`SELECT pg_try_advisory_lock(${CPM_BILLING_LOCK_KEY}) AS acquired`);
+  const lockAcquired = (lockResult as any).rows?.[0]?.acquired ?? (lockResult as any)[0]?.acquired;
+  if (!lockAcquired) {
+    console.log("[CPM Billing] Another instance is already running, skipping");
+    return { statusCode: 200, body: JSON.stringify({ skipped: true, reason: "lock" }) };
+  }
+
+  try {
+    return await runBilling(db, now);
+  } finally {
+    await db.execute(sql`SELECT pg_advisory_unlock(${CPM_BILLING_LOCK_KEY})`);
+  }
+};
+
+async function runBilling(db: ReturnType<typeof getDb>, now: Date) {
   const twentyHoursAgo = new Date(now.getTime() - 20 * 60 * 60 * 1000);
   const [recentCharge] = await db
     .select({ id: schema.campaignDailyCharges.id })
@@ -150,23 +169,45 @@ export const handler: Handler = async () => {
         totalChargeCents,
       );
 
-      for (const charge of result.charges) {
-        await db.insert(schema.campaignDailyCharges).values({
-          campaign_id: campaign.id,
-          team_id: campaign.team_id,
-          charge_date: now,
-          total_views_delta: totalDeltaViews,
-          cpm_rate: cpmRate.toString(),
-          charge_cents: charge.chargeCents,
-          source: charge.source,
-          status: "charged",
-          stripe_payment_intent_id: charge.stripePaymentIntentId ?? null,
-          failure_reason: null,
-          post_breakdown: breakdown,
-        });
-      }
+      if (result.success) {
+        // Transaction: charge records + last_billed_views must be atomic
+        // If Lambda crashes between these, we'd either double-charge or lose records
+        await db.transaction(async (tx) => {
+          for (const charge of result.charges) {
+            await tx.insert(schema.campaignDailyCharges).values({
+              campaign_id: campaign.id,
+              team_id: campaign.team_id,
+              charge_date: now,
+              total_views_delta: totalDeltaViews,
+              cpm_rate: cpmRate.toString(),
+              charge_cents: charge.chargeCents,
+              source: charge.source,
+              status: "charged",
+              stripe_payment_intent_id: charge.stripePaymentIntentId ?? null,
+              failure_reason: null,
+              post_breakdown: breakdown,
+            });
+          }
 
-      if (!result.success) {
+          const postIds = breakdown.map((e) => e.user_post_id);
+          const caseChunks = breakdown.map(
+            (e) => sql`WHEN ${e.user_post_id} THEN ${e.current_views}`,
+          );
+
+          await tx
+            .update(schema.userPosts)
+            .set({
+              last_billed_views: sql`CASE ${schema.userPosts.id} ${sql.join(caseChunks, sql` `)} END`,
+              updated_at: now,
+            })
+            .where(inArray(schema.userPosts.id, postIds));
+        });
+
+        totalCharged += totalChargeCents;
+        console.log(
+          `[CPM Billing] Campaign ${campaign.id}: $${(totalChargeCents / 100).toFixed(2)} (${totalDeltaViews} views @ $${cpmRate} CPM) — ${result.charges.map((c) => `${c.source}: $${(c.chargeCents / 100).toFixed(2)}`).join(", ")}`,
+        );
+      } else {
         await db.insert(schema.campaignDailyCharges).values({
           campaign_id: campaign.id,
           team_id: campaign.team_id,
@@ -180,27 +221,7 @@ export const handler: Handler = async () => {
           failure_reason: result.failureReason ?? null,
           post_breakdown: breakdown,
         });
-      }
 
-      if (result.success) {
-        const postIds = breakdown.map((e) => e.user_post_id);
-        const caseChunks = breakdown.map(
-          (e) => sql`WHEN ${e.user_post_id} THEN ${e.current_views}`,
-        );
-
-        await db
-          .update(schema.userPosts)
-          .set({
-            last_billed_views: sql`CASE ${schema.userPosts.id} ${sql.join(caseChunks, sql` `)} END`,
-            updated_at: now,
-          })
-          .where(inArray(schema.userPosts.id, postIds));
-
-        totalCharged += totalChargeCents;
-        console.log(
-          `[CPM Billing] Campaign ${campaign.id}: $${(totalChargeCents / 100).toFixed(2)} (${totalDeltaViews} views @ $${cpmRate} CPM) — ${result.charges.map((c) => `${c.source}: $${(c.chargeCents / 100).toFixed(2)}`).join(", ")}`,
-        );
-      } else {
         totalFailed++;
         console.error(
           `[CPM Billing] Campaign ${campaign.id}: payment failed — ${result.failureReason}`,
