@@ -647,14 +647,14 @@ export const convertToGamingVertical = async (
   inputPath: string,
   outputPath: string,
   facecam: FacecamRegion,
-): Promise<string> => {
+): Promise<{ outputPath: string; facecamHeight: number }> => {
   const metadata = await getVideoMetadata(inputPath);
   const { width, height } = metadata;
 
   if (height >= width) {
     console.log(`[GAMING] Already vertical (${width}x${height}), skipping`);
     fs.copyFileSync(inputPath, outputPath);
-    return outputPath;
+    return { outputPath, facecamHeight: 0 };
   }
 
   console.log(
@@ -764,8 +764,8 @@ export const convertToGamingVertical = async (
       ])
       .save(outputPath)
       .on("end", () => {
-        console.log(`[GAMING] Converted to gaming layout: ${outputPath}`);
-        resolve(outputPath);
+        console.log(`[GAMING] Converted to gaming layout: ${outputPath} (facecamHeight=${faceOutH})`);
+        resolve({ outputPath, facecamHeight: faceOutH });
       })
       .on("error", (err) => {
         console.error(`[GAMING] Conversion failed: ${err.message}`);
@@ -1179,12 +1179,12 @@ export const convertToVertical = async (
     segments: ActiveSpeakerSegment[];
     speakerFaceMap: Map<number, FacecamRegion>;
   } | null,
-): Promise<string> => {
+): Promise<{ outputPath: string; facecamHeight?: number }> => {
   const effectiveMode = mode || "standard";
 
   switch (effectiveMode) {
     case "center-crop":
-      return convertToCenterCrop(inputPath, outputPath);
+      return { outputPath: await convertToCenterCrop(inputPath, outputPath) };
 
     case "gaming":
       if (facecamRegion) {
@@ -1193,41 +1193,43 @@ export const convertToVertical = async (
       console.warn(
         "[VERTICAL] Gaming mode but no facecam detected — falling back to standard",
       );
-      return convertToVerticalBlur(inputPath, outputPath);
+      return { outputPath: await convertToVerticalBlur(inputPath, outputPath) };
 
     case "speaker-zoom":
       if (facecamRegion) {
-        return convertToSpeakerZoom(inputPath, outputPath, facecamRegion);
+        return { outputPath: await convertToSpeakerZoom(inputPath, outputPath, facecamRegion) };
       }
       console.warn(
         "[VERTICAL] Speaker-zoom mode but no face region — falling back to standard",
       );
-      return convertToVerticalBlur(inputPath, outputPath);
+      return { outputPath: await convertToVerticalBlur(inputPath, outputPath) };
 
     case "active-speaker":
       if (activeSpeakerOptions && activeSpeakerOptions.segments.length > 1) {
-        return convertToActiveSpeakerZoom(
-          inputPath,
-          outputPath,
-          activeSpeakerOptions.segments,
-          activeSpeakerOptions.speakerFaceMap,
-        );
+        return {
+          outputPath: await convertToActiveSpeakerZoom(
+            inputPath,
+            outputPath,
+            activeSpeakerOptions.segments,
+            activeSpeakerOptions.speakerFaceMap,
+          ),
+        };
       }
       // Fallback: single speaker with face → static zoom, no face → blurred bg
       if (facecamRegion) {
         console.warn(
           "[VERTICAL] Active-speaker but single speaker/face — falling back to speaker-zoom",
         );
-        return convertToSpeakerZoom(inputPath, outputPath, facecamRegion);
+        return { outputPath: await convertToSpeakerZoom(inputPath, outputPath, facecamRegion) };
       }
       console.warn(
         "[VERTICAL] Active-speaker but no faces detected — falling back to standard",
       );
-      return convertToVerticalBlur(inputPath, outputPath);
+      return { outputPath: await convertToVerticalBlur(inputPath, outputPath) };
 
     case "standard":
     default:
-      return convertToVerticalBlur(inputPath, outputPath);
+      return { outputPath: await convertToVerticalBlur(inputPath, outputPath) };
   }
 };
 
@@ -1693,6 +1695,7 @@ export const addTextOverlay = async (
   fontName: string = "Montserrat",
   style: "stroke" | "instagram" = "stroke",
   headingBgColor: string = "#000000",
+  facecamHeight?: number,
 ): Promise<string> => {
   const textImagePath = path.join(
     path.dirname(outputPath),
@@ -1716,11 +1719,15 @@ export const addTextOverlay = async (
       throw new Error(`Text image was not created at ${textImagePath}`);
     }
 
+    // In gaming/facecam mode with center position, place heading just below the facecam
+    // instead of dead center where it would cover gameplay
     const yPosition =
       position === "top"
         ? "H*0.05"
         : position === "center"
-          ? "(H-h)/2-H*0.05"
+          ? facecamHeight
+            ? `${facecamHeight}+H*0.02`
+            : "(H-h)/2-H*0.05"
           : "H-h-H*0.1";
 
     return new Promise<string>((resolve, reject) => {

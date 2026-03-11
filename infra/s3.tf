@@ -429,7 +429,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "videos" {
   # CAMPAIGN & CUSTOM UPLOADS
   # ============================================
 
-  # Campaign video uploads → One Zone-IA after 30 days, then Glacier IR after 90 days
+  # Campaign video uploads → Glacier Instant Retrieval after 7 days
   rule {
     id     = "transition-campaign-videos"
     status = "Enabled"
@@ -439,12 +439,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "videos" {
     }
 
     transition {
-      days          = 30
-      storage_class = "ONEZONE_IA"
-    }
-
-    transition {
-      days          = 90
+      days          = 7
       storage_class = "GLACIER_IR"
     }
   }

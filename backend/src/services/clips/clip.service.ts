@@ -59,6 +59,7 @@ export interface ClipResult {
   watermarkedPath: string;
   captionsData: CaptionEntry[];
   srtContent: string;
+  facecamHeight?: number;
 }
 
 const formatSrtTime = (seconds: number): string => {
@@ -264,7 +265,7 @@ export const createCombinedClipService = async (
   const activeSpeakerOpts = (options.activeSpeakerSegments && options.speakerFaceMap)
     ? { segments: options.activeSpeakerSegments, speakerFaceMap: options.speakerFaceMap }
     : null;
-  await convertToVertical(mergedRawPath, mergedPath, options.conversionMode, options.facecamRegion, activeSpeakerOpts);
+  const { facecamHeight } = await convertToVertical(mergedRawPath, mergedPath, options.conversionMode, options.facecamRegion, activeSpeakerOpts);
   if (fs.existsSync(mergedRawPath) && mergedRawPath !== mergedPath) {
     fs.unlinkSync(mergedRawPath);
   }
@@ -301,6 +302,7 @@ export const createCombinedClipService = async (
       fontName,
       textStyle,
       bgColor,
+      facecamHeight,
     );
     currentVideoPath = headingPath;
     tempFiles.push(headingPath);
@@ -358,7 +360,7 @@ export const createCombinedClipService = async (
     }
   });
 
-  return { finalPath, blankPath, watermarkedPath, captionsData, srtContent };
+  return { finalPath, blankPath, watermarkedPath, captionsData, srtContent, facecamHeight };
 };
 
 const processWithConcurrency = async <T, R>(
@@ -630,7 +632,7 @@ export const createBatchCombinedClipService = async (
   const batchActiveSpeakerOpts = (options.activeSpeakerSegments && options.speakerFaceMap)
     ? { segments: options.activeSpeakerSegments, speakerFaceMap: options.speakerFaceMap }
     : null;
-  await convertToVertical(mergedRawPath, mergedPath, options.conversionMode, options.facecamRegion, batchActiveSpeakerOpts);
+  const { facecamHeight } = await convertToVertical(mergedRawPath, mergedPath, options.conversionMode, options.facecamRegion, batchActiveSpeakerOpts);
   if (fs.existsSync(mergedRawPath) && mergedRawPath !== mergedPath) {
     fs.unlinkSync(mergedRawPath);
   }
@@ -670,6 +672,7 @@ export const createBatchCombinedClipService = async (
       fontName,
       textStyle,
       bgColor,
+      facecamHeight,
     );
     currentVideoPath = headingPath;
     tempFiles.push(headingPath);
@@ -733,7 +736,7 @@ export const createBatchCombinedClipService = async (
     }
   });
 
-  return { finalPath, blankPath, watermarkedPath, captionsData, srtContent };
+  return { finalPath, blankPath, watermarkedPath, captionsData, srtContent, facecamHeight };
 };
 
 /**

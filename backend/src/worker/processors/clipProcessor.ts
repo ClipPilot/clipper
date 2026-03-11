@@ -382,6 +382,7 @@ export async function processClipVideoJob(job: ClipVideoJob): Promise<void> {
               captionColor: options.captionColor,
               captionFont: options.captionFont,
               conversionMode: options.conversionMode,
+              facecamHeight: result.facecamHeight,
             },
           },
           inputMetadata: {
