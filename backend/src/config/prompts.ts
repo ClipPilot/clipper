@@ -150,11 +150,17 @@ Your Goals:
    - The first main clip MUST NOT start with the same words as the hook. If the hook is "Oh my god we just won", the next clip CANNOT begin with "Oh my god we just won a million dollars". This sounds terrible — the viewer hears the same sentence start twice in a row.
    - The hook is a teaser. The main clips should provide CONTEXT, BUILDUP, or the STORY — not continue the hook's sentence. Pick a different part of the video for the first main segment.
 
-   CRITICAL — CLIMAX INCLUSION (MOST IMPORTANT RULE):
-   - IDENTIFY THE CLIMAX FIRST. Before selecting any segments, scan the entire transcript and find the most exciting, emotional, or impactful moment — the peak of the story. This is non-negotiable: your clip MUST include this climax moment.
-   - BUILD BACKWARDS FROM THE CLIMAX. Once you've found the peak moment, select segments that lead up to it and include the payoff. The climax should appear in your main segments — the clip should build toward it and INCLUDE it.
-   - NEVER cut the clip off right before the exciting part happens. If tension is building toward a reveal, result, punchline, or emotional payoff — you MUST extend the segment to include it, even if it makes the clip slightly longer than the target. A clip that cuts off before the payoff is WORTHLESS.
-   - The ending should feel complete — the viewer must feel satisfied, not cheated. Either end on the climax itself, the reaction to it, or a natural resolution after it.
+   CRITICAL — CLIMAX-FIRST APPROACH (MOST IMPORTANT RULE):
+   - STEP 1: FIND THE CLIMAX. Before selecting any segments, scan the entire transcript and find the most exciting, emotional, or impactful moment — the peak of the story.
+   - STEP 2: USE THE CLIMAX AS YOUR HOOK. The hook is typically the climax itself (or a teaser of it) — the moment that stops the scroll.
+   - STEP 3: BUILD THE MAIN. Choose the best structure for the story:
+     ✅ HOOK(climax) → build-up → CLIMAX REPLAY → reaction (great when story circles back naturally)
+     ✅ HOOK(climax) → build-up → secondary exciting moment/resolution (great when the story has a satisfying secondary payoff)
+     ✅ HOOK(climax) → build-up → context → resolution (great for product/business stories)
+     ❌ HOOK(climax) → CLIMAX IMMEDIATELY AGAIN → build-up (terrible — viewer sees the exact same thing twice back-to-back)
+     ❌ HOOK(climax) → build-up → cut off before any payoff (terrible — no satisfaction)
+   - The climax does NOT have to repeat in the main if the build-up leads to a strong secondary moment or natural resolution. But the clip MUST contain at least one genuinely exciting peak — never just calm context.
+   - NEVER cut the clip off right before something exciting happens. If tension is building toward a reveal, result, or punchline — INCLUDE it, even if the clip runs slightly longer than target. A clip that cuts before the payoff is WORTHLESS.
 
 3. CUT BORING PARTS: If a segment contains a dull, low-energy, or filler section in the middle:
    - Split it into two segments, skipping the boring part
@@ -182,10 +188,10 @@ CRITICAL TIMESTAMP RULES:
 - Round timestamps to 1 decimal place
 
 Your Task:
-STEP 1 — FIND THE CLIMAX: Scan the ENTIRE transcript. Identify the single most exciting, impactful, or emotionally charged moment. This is your climax — your clip MUST include it.
-STEP 2 — SELECT THE HOOK: Pick the most attention-grabbing moment (often the climax itself or a teaser of it).
-STEP 3 — BUILD THE STORY: Select segments that lead to and include the climax. Pull from ANYWHERE in the video, skip boring parts, combine the strongest moments.
-- Full story flow should be: Engaging Hook - Context/Story to set the scene if necessary - Product Demo/Key Info - Climax/Payoff - Closing. Use 3-5 clips and stitch them together so the final video is engaging throughout.
+STEP 1 — FIND THE CLIMAX: Scan the ENTIRE transcript. Identify the single most exciting, impactful, or emotionally charged moment.
+STEP 2 — HOOK IT: Use the climax (or a teaser of it) as the hook to stop the scroll.
+STEP 3 — BUILD THE STORY: Select segments that build toward the climax or a strong secondary payoff. Pull from ANYWHERE in the video, skip boring parts, combine the strongest moments. The climax can replay at the end if the story circles back to it, or the main can end on a different satisfying moment — choose whichever structure tells the best story.
+- Full story flow should be: Engaging Hook - Context/Story - Build-up - Payoff/Resolution. Use 3-5 clips and stitch them together so the final video is engaging throughout.
 - When making the Product demo try to make it one clip (two if necessary), same with context (no clips if not needed, one or two max.)
 - The clips do not need to be in order. The hook for example can be later in the video if it makes sense, but the hook needs to be the most
 engaging and eye catching part.
@@ -293,11 +299,17 @@ Use the transcript for precise timestamps, but let the VISUAL content guide whic
 
    These are examples, not the only options. Use whatever structure tells the best story. The one rule: only replay the hook at the end when the build-up genuinely leads back to that same moment. Otherwise, let the clip end naturally.
 
-   CRITICAL — CLIMAX INCLUSION (MOST IMPORTANT RULE):
-   - IDENTIFY THE CLIMAX FIRST. Before selecting ANY segments, watch/scan the entire video and find the absolute PEAK moment — the funniest, most shocking, most hype moment. Your clip MUST include this moment. Everything else is built around it.
-   - BUILD BACKWARDS FROM THE CLIMAX. The climax is your anchor. Select build-up segments that lead into it, and include the reaction/aftermath after it.
-   - NEVER cut the clip off right before the suspense resolves or the exciting moment happens. If tension is building, INCLUDE the payoff — even if the clip runs slightly longer than the target. A clip that cuts before the climax is WORTHLESS and will get zero engagement.
-   - The viewer must feel the full emotional arc: build-up → CLIMAX → reaction/resolution. Missing any of these (especially the climax) makes the clip feel broken.
+   CRITICAL — CLIMAX-FIRST APPROACH (MOST IMPORTANT RULE):
+   - STEP 1: FIND THE CLIMAX. Watch/scan the entire video and find the absolute PEAK moment — the funniest, most shocking, most hype moment. This is your anchor.
+   - STEP 2: USE THE CLIMAX AS YOUR HOOK. The hook should be the climax itself (or a teaser of it) — the moment that stops the scroll.
+   - STEP 3: BUILD THE MAIN. Choose the best structure for the story:
+     ✅ HOOK(climax) → build-up → CLIMAX REPLAY → reaction (great when the story circles back)
+     ✅ HOOK(climax) → build-up → secondary hype moment (great when there's another payoff)
+     ✅ HOOK(climax) → build-up context → natural resolution (great for story-driven content)
+     ❌ HOOK(climax) → CLIMAX IMMEDIATELY AGAIN → build-up (terrible — same thing twice back-to-back)
+     ❌ HOOK(climax) → build-up → cut off before any payoff (terrible — no satisfaction)
+   - The climax does NOT have to repeat in main if the build-up leads to a strong secondary moment. But the clip MUST contain at least one genuine peak — never just flat build-up.
+   - NEVER cut before the payoff. If tension is building, INCLUDE the exciting moment — even if the clip runs slightly longer. A clip that cuts before the climax is WORTHLESS.
 
 ===== END CLIP STRUCTURE =====
 
@@ -350,9 +362,10 @@ TIMESTAMP RULES:
 - The main array MUST have build-up/context — NEVER return main with ONLY the hook timestamps repeated.
 
 Your Task:
-STEP 1 — FIND THE CLIMAX: Watch/scan the ENTIRE video. Identify the single most viral, shocking, or emotionally explosive moment. This is your climax — your clip MUST include it.
-STEP 2 — BUILD THE STORY: Create a clip with a killer hook and compelling build-up that leads to the climax. The climax MUST appear in the main segments.
-- End the clip naturally — replay the hook only if the story circles back to it, otherwise let it land on the climax payoff and reaction
+STEP 1 — FIND THE CLIMAX: Watch/scan the ENTIRE video. Identify the single most viral, shocking, or emotionally explosive moment.
+STEP 2 — HOOK IT: Use the climax (or a teaser of it) as the hook.
+STEP 3 — BUILD THE STORY: Create compelling build-up. The climax can replay at the end if the story circles back to it, or the main can end on a strong secondary moment/resolution — choose whichever structure is most satisfying.
+- End the clip naturally — the viewer must feel a complete arc, not cut off before the payoff
 - Include a finalMessage explaining the story arc and why it's viral-worthy
 - Include an evalScore (0-100) rating viral potential and story quality
 
@@ -443,11 +456,16 @@ CRITICAL STRUCTURE (when hook is included):
 CRITICAL — HOOK REPETITION BAN:
 The first build-up segment MUST NOT start with the same words as the hook. If the hook is "OH MY GOD LET'S GO", the first main segment CANNOT begin with "OH MY GOD LET'S GO WE WON". Start the build-up from BEFORE the climax to give context.
 
-CRITICAL — CLIMAX INCLUSION (MOST IMPORTANT RULE):
-- IDENTIFY THE CLIMAX FIRST. Before selecting ANY segments, watch the entire video and find the absolute PEAK gameplay moment — the clutch play, the insane kill, the victory moment. This is your anchor. Your clip MUST include this moment.
-- BUILD BACKWARDS FROM THE CLIMAX. Once you've found the peak, select build-up segments that lead into it and include the reaction/aftermath.
-- NEVER cut the clip off right before the exciting part happens. If an intense fight is building, INCLUDE the kill/victory/outcome — even if the clip runs slightly longer than target. A clip that cuts before the climax is WORTHLESS.
-- The viewer must see: build-up → CLIMAX → reaction. If the climax is missing, the clip has zero value regardless of how good the build-up is.
+CRITICAL — CLIMAX-FIRST APPROACH (MOST IMPORTANT RULE):
+- STEP 1: FIND THE CLIMAX. Watch the entire video and find the absolute PEAK gameplay moment — the clutch play, the insane kill, the victory. This is your anchor.
+- STEP 2: USE THE CLIMAX AS YOUR HOOK. The hook should be the climax itself — the moment that stops the scroll.
+- STEP 3: BUILD THE MAIN. Choose the best structure:
+  ✅ HOOK(climax) → build-up → CLIMAX REPLAY → reaction (great when the story circles back)
+  ✅ HOOK(climax) → build-up → secondary epic moment (great when there's another peak play)
+  ❌ HOOK(climax) → CLIMAX IMMEDIATELY AGAIN → build-up (terrible — same play twice back-to-back)
+  ❌ HOOK(climax) → build-up → cut off before the kill/win happens (terrible — no payoff)
+- The climax does NOT have to repeat in main if the build-up leads to a strong secondary gameplay moment. But the clip MUST contain at least one genuine peak — never just calm gameplay.
+- NEVER cut before the payoff. If a fight is building, INCLUDE the kill/victory/outcome — even if slightly longer than target.
 
 EXAMPLE: If climax is at 1904-1909s:
 - hook: { start: 1904, end: 1909 }  ← climax shown first as teaser
@@ -661,11 +679,17 @@ MAIN CONTENT:
 CRITICAL — HOOK REPETITION BAN:
 The first main segment MUST NOT start with the same words as the hook. If the hook is "Oh my god we just won", the first main clip CANNOT begin with "Oh my god we just won a million dollars". The viewer hears the same opening twice — it sounds broken. Start the build-up from a DIFFERENT part of the video.
 
-CRITICAL — CLIMAX INCLUSION (MOST IMPORTANT RULE):
-- IDENTIFY THE CLIMAX FIRST. Before selecting ANY segments, watch the entire video and find the absolute PEAK moment — the most visually/emotionally compelling part. This is your anchor. Your clip MUST include this moment.
-- BUILD BACKWARDS FROM THE CLIMAX. Select segments that provide context and lead into the peak moment, then include the payoff and reaction after it.
-- NEVER cut the clip off right before the suspense resolves or the exciting moment happens. If the story is building toward a reveal, result, or emotional payoff — INCLUDE it, even if the clip runs slightly longer than target. A clip that cuts before the payoff is WORTHLESS.
-- The viewer must see the full arc: context → build-up → CLIMAX → resolution. Missing the climax makes the clip feel broken and unsatisfying.
+CRITICAL — CLIMAX-FIRST APPROACH (MOST IMPORTANT RULE):
+- STEP 1: FIND THE CLIMAX. Watch the entire video and find the absolute PEAK moment — the most visually/emotionally compelling part. This is your anchor.
+- STEP 2: USE THE CLIMAX AS YOUR HOOK. The hook should be the climax itself (or a teaser of it) — the moment that stops the scroll.
+- STEP 3: BUILD THE MAIN. Choose the best structure:
+  ✅ HOOK(climax) → build-up → CLIMAX REPLAY → reaction (great when story circles back)
+  ✅ HOOK(climax) → build-up → secondary compelling moment (great when there's another payoff)
+  ✅ HOOK(climax) → context → build-up → resolution (great for educational/product content)
+  ❌ HOOK(climax) → CLIMAX IMMEDIATELY AGAIN → build-up (terrible — same thing twice back-to-back)
+  ❌ HOOK(climax) → build-up → cut off before any payoff (terrible — no satisfaction)
+- The climax does NOT have to repeat in main if the build-up leads to a strong secondary moment or natural resolution. But the clip MUST contain at least one genuine peak — never just flat talking.
+- NEVER cut before the payoff. If the story is building toward a reveal or emotional moment — INCLUDE it, even if slightly longer than target.
 
 CUT BORING PARTS: If a segment contains a dull, low-energy, or filler section in the middle:
 - Split it into two segments, skipping the boring part

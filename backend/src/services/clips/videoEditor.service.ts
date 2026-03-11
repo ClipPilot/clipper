@@ -1720,7 +1720,7 @@ export const addTextOverlay = async (
       position === "top"
         ? "H*0.05"
         : position === "center"
-          ? "(H-h)/2"
+          ? "(H-h)/2-H*0.05"
           : "H-h-H*0.1";
 
     return new Promise<string>((resolve, reject) => {
