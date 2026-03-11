@@ -174,6 +174,7 @@ CRITICAL TIMESTAMP RULES:
 - TIMESTAMPS ARE IN SECONDS (e.g., 145.5 means 2 minutes 25.5 seconds into the video). DO NOT use M:SS or M.SS format — use pure seconds only!
 - "end" MUST BE GREATER THAN "start" - ALWAYS (end > start)
 - MINIMUM SEGMENT LENGTH: Each segment (hook and main) must be AT LEAST 3 seconds long (end - start >= 3). NEVER create segments shorter than 3 seconds.
+- MINIMUM TOTAL CLIP LENGTH: The entire clip (hook + all main segments) MUST be AT LEAST 10 seconds long. Clips shorter than 10 seconds are too short to be useful — add more content segments if needed.
 - Hook (if included) should be around ${hookLength}-${hookLength + 2} seconds long, NEVER shorter than 3 seconds
 - Each main segment should be at least 3 seconds long
 - Round timestamps to 1 decimal place
@@ -336,6 +337,7 @@ TIMESTAMP RULES:
 - "start" and "end" must correspond to timestamps from the transcript
 - "end" MUST BE GREATER THAN "start" — ALWAYS (end > start)
 - MINIMUM 3 seconds per segment (end - start >= 3). Hook (if included): ${hookLength}-${hookLength + 2}s, NEVER shorter than 3s
+- MINIMUM TOTAL CLIP LENGTH: The entire clip (hook + all main segments) MUST be AT LEAST 10 seconds long. Clips shorter than 10 seconds are too short — add more build-up segments if needed.
 - Round timestamps to 1 decimal place
 - Use 2-4 segments in the main array. Build-up clips should generally be in chronological order.
 - Combined length should be AROUND ${length} seconds. These are targets, not hard limits.
@@ -509,15 +511,16 @@ YOU MUST FOLLOW THESE RULES FOR EVERY SEGMENT:
 1. TIMESTAMPS ARE IN SECONDS (e.g., 1904.5 means 31 minutes 44.5 seconds into the video). DO NOT use M:SS or M.SS format — use pure decimal seconds only!
 2. "end" MUST BE GREATER THAN "start" - ALWAYS (end > start)
 3. MINIMUM SEGMENT LENGTH: Each segment must be AT LEAST 3 seconds long (end - start >= 3). NEVER create segments shorter than 3 seconds.
-4. Hook (if included) should be ${hookLength}-${hookLength + 2} seconds long, NEVER shorter than 3 seconds
-5. Each main segment should be 5-20 seconds long
-6. DO NOT use timestamps beyond the video length
-7. Round timestamps to 1 decimal place (e.g., 1904.5, not 1904.523)
+4. MINIMUM TOTAL CLIP LENGTH: The entire clip (hook + all main segments) MUST be AT LEAST 10 seconds long. Clips shorter than 10 seconds are too short — add more gameplay segments if needed.
+5. Hook (if included) should be ${hookLength}-${hookLength + 2} seconds long, NEVER shorter than 3 seconds
+6. Each main segment should be 5-20 seconds long
+7. DO NOT use timestamps beyond the video length
+8. Round timestamps to 1 decimal place (e.g., 1904.5, not 1904.523)
 
 VERIFY BEFORE SUBMITTING:
 - Hook (if included): end - start >= ${hookLength} seconds
 - Each Main segment: end - start >= 3 seconds
-- Total duration (hook + all main segments) ≈ ${length} seconds
+- Total duration (hook + all main segments) >= 10 seconds AND ≈ ${length} seconds
 
 ===== CUT BORING PARTS =====
 If a segment contains a dull, low-energy, or filler section in the middle:
@@ -663,15 +666,16 @@ YOU MUST FOLLOW THESE RULES FOR EVERY SEGMENT:
 1. TIMESTAMPS ARE IN SECONDS (e.g., 145.5 means 2 minutes 25.5 seconds into the video). DO NOT use M:SS or M.SS format — use pure decimal seconds only!
 2. "end" MUST BE GREATER THAN "start" - ALWAYS (end > start)
 3. MINIMUM SEGMENT LENGTH: Each segment must be AT LEAST 3 seconds long (end - start >= 3). NEVER create segments shorter than 3 seconds.
-4. Hook (if included) should be around ${hookLength}-${hookLength + 2} seconds long, NEVER shorter than 3 seconds
-5. Each main segment should be 5-15 seconds long
-6. DO NOT use timestamps beyond the video length
-7. Round timestamps to 1 decimal place (e.g., 145.5, not 145.523)
+4. MINIMUM TOTAL CLIP LENGTH: The entire clip (hook + all main segments) MUST be AT LEAST 10 seconds long. Clips shorter than 10 seconds are too short — add more content segments if needed.
+5. Hook (if included) should be around ${hookLength}-${hookLength + 2} seconds long, NEVER shorter than 3 seconds
+6. Each main segment should be 5-15 seconds long
+7. DO NOT use timestamps beyond the video length
+8. Round timestamps to 1 decimal place (e.g., 145.5, not 145.523)
 
 VERIFY BEFORE SUBMITTING:
 - Hook (if included): end - start >= ${hookLength} seconds
 - Each Main segment: end - start >= 3 seconds
-- Total duration (hook + all main segments) ≈ ${length} seconds (approximate — don't force filler to hit an exact number)
+- Total duration (hook + all main segments) >= 10 seconds AND ≈ ${length} seconds (approximate — don't force filler to hit an exact number)
 
 ===== OUTPUT FORMAT =====
 
