@@ -27,6 +27,8 @@ import { db } from "../../db";
 import { characters, ugcScripts } from "@clipper/shared-db";
 import { eq } from "drizzle-orm";
 import { openaiClient } from "../openai.service";
+import { s3Service } from "../s3.service";
+import { config } from "../../config/env";
 
 const client = openaiClient;
 const MAX_AROLL_MERGE_COUNT = 2;
@@ -109,6 +111,45 @@ export function buildDynamicResponseSchema(
   return z.object({
     scripts: z.array(scriptSchema).min(1).max(3).describe("Array of script variations"),
   });
+}
+
+/**
+ * Merges consecutive a-roll scenes in the lightweight init structure format.
+ * When 2 a-roll scenes are back-to-back, they become one smooth a-roll scene —
+ * the actor delivers both beats in a single take for better flow.
+ */
+export function mergeConsecutiveArollStructure(
+  structure: Array<{ sceneType: string; slug: string; description: string }>,
+): Array<{ sceneType: string; slug: string; description: string }> {
+  if (structure.length === 0) return structure;
+
+  const merged: Array<{ sceneType: string; slug: string; description: string }> = [];
+  let i = 0;
+
+  while (i < structure.length) {
+    const current = structure[i];
+
+    if (current.sceneType === "a-roll" && i + 1 < structure.length && structure[i + 1].sceneType === "a-roll") {
+      const group = [current];
+      let j = i + 1;
+      while (j < structure.length && structure[j].sceneType === "a-roll" && group.length < MAX_AROLL_MERGE_COUNT) {
+        group.push(structure[j]);
+        j++;
+      }
+
+      merged.push({
+        sceneType: "a-roll",
+        slug: group.map((s) => s.slug).join(" + "),
+        description: group[0].description,
+      });
+      i = j;
+    } else {
+      merged.push(current);
+      i++;
+    }
+  }
+
+  return merged;
 }
 
 export function mergeConsecutiveArollScenes(scenes: UGCScene[]): UGCScene[] {
@@ -650,6 +691,58 @@ Return a JSON object with a "shots" array of exactly ${shotCount} shot objects.`
     });
 
     return AutoStructureResponseSchema.parse(JSON.parse(response.output_text));
+  }
+
+  async initStructure(params: {
+    message: string;
+    productImageKeys?: string[];
+  }) {
+    const { message, productImageKeys } = params;
+
+    // Build multimodal message content parts
+    const content: Array<{ type: string; text?: string; image?: string; mediaType?: string }> = [
+      { type: "text", text: message },
+    ];
+
+    if (productImageKeys?.length) {
+      const presignedUrls = await Promise.all(
+        productImageKeys.map((key) => s3Service.getPresignedUrl(key)),
+      );
+      for (const url of presignedUrls) {
+        content.push({ type: "image", image: url, mediaType: "image/jpeg" });
+      }
+    }
+
+    const agentServiceUrl = config.agentService.url;
+    const response = await fetch(
+      `${agentServiceUrl}/api/agents/script-init-agent/generate`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [{ role: "user", content }],
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error("[UGC_SCRIPT] Agent service error:", errorBody);
+      throw new Error("Failed to generate init structure from agent service");
+    }
+
+    const result = (await response.json()) as Record<string, unknown>;
+    const agentResult = (result.object ?? result) as {
+      isSilent: boolean;
+      character: boolean;
+      videoType: string;
+      structure: Array<{ sceneType: string; slug: string; description: string }>;
+    };
+
+    // Merge consecutive a-roll scenes — 2 back-to-back a-rolls become one smooth take
+    agentResult.structure = mergeConsecutiveArollStructure(agentResult.structure);
+
+    return agentResult;
   }
 
   stripCinematicPrompts(script: UGCScript): ClientUGCScript {

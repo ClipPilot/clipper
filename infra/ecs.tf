@@ -131,6 +131,10 @@ resource "aws_ecs_task_definition" "backend" {
       {
         name  = "VIRALITY_SYNC_SFN_ARN"
         value = aws_sfn_state_machine.virality_sync.arn
+      },
+      {
+        name  = "AGENT_SERVICE_URL"
+        value = "http://agent-service.${var.project_name}-${var.environment}.local:4111"
       }
     ]
 

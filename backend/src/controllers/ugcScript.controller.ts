@@ -263,6 +263,35 @@ export class UGCScriptController {
     }
   }
 
+  async initStructure(req: AuthRequest, res: Response) {
+    try {
+      const { message, productImageKeys } = req.body;
+
+      if (!message || !message.trim()) {
+        return res.status(400).json({ error: "message is required" });
+      }
+
+      if (productImageKeys && productImageKeys.length > 5) {
+        return res.status(400).json({ error: "Maximum 5 product images allowed" });
+      }
+
+      const result = await ugcScriptService.initStructure({
+        message,
+        productImageKeys,
+      });
+
+      return res.status(200).json({
+        success: true,
+        ...result,
+      });
+    } catch (error) {
+      console.error("[UGC_SCRIPT] Init structure error:", error);
+      return res.status(500).json({
+        error: sanitizeErrorForFrontend(error, "Failed to generate init structure"),
+      });
+    }
+  }
+
   async getUploadUrl(req: AuthRequest, res: Response) {
     try {
       const { teamId, fileName, contentType } = req.body;

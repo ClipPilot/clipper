@@ -104,6 +104,31 @@ class UGCScriptAPI {
     return response.json();
   }
 
+  async initStructure(data: {
+    message: string;
+    productImageKeys?: string[];
+  }): Promise<{
+    success: boolean;
+    videoType: string;
+    isSilent: boolean;
+    character: boolean;
+    structure: Array<{ sceneType: string; slug: string; description: string }>;
+  }> {
+    const response = await apiFetch(`${API_URL}/ugc/init-structure`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to generate init structure");
+    }
+
+    return response.json();
+  }
+
   async generateAutoStructure(data: {
     scriptDirection: string;
     productName?: string;

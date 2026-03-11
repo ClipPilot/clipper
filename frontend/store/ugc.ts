@@ -49,6 +49,11 @@ export const allScenesCompleteAtom = atom((get) => {
 // Silent mode — set when auto-structure or silent template is selected
 export const isSilentAtom = atom(false);
 
+// Agentic UGC v2 — chat-derived state
+export const videoTypeAtom = atom<string>("ugc");
+export const hasCharacterAtom = atom(true);
+export const customPatternAtom = atom<{ type: string; shot: string }[] | null>(null);
+
 // Video Generation state
 export const videoJobIdAtom = atom<string | null>(null);
 export const videoStatusAtom = atom<VideoGenerationStatus | null>(null);

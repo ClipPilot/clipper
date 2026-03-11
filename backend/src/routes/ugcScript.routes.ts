@@ -174,6 +174,67 @@ router.post(
 
 /**
  * @openapi
+ * /ugc/init-structure:
+ *   post:
+ *     summary: Generate an AI video structure from a chat message
+ *     description: Uses the script init agent to analyze a message (with optional product images) and return an optimal video structure, type, and flags
+ *     tags:
+ *       - UGC Script
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - message
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 description: User's description of the desired video
+ *               productImageKeys:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: S3 keys of uploaded product images
+ *     responses:
+ *       200:
+ *         description: Agent-generated structure
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 videoType:
+ *                   type: string
+ *                 isSilent:
+ *                   type: boolean
+ *                 character:
+ *                   type: boolean
+ *                 structure:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       sceneType:
+ *                         type: string
+ *                       slug:
+ *                         type: string
+ *                       description:
+ *                         type: string
+ */
+router.post(
+  "/init-structure",
+  requireAuth,
+  ugcScriptController.initStructure.bind(ugcScriptController)
+);
+
+/**
+ * @openapi
  * /ugc/auto-structure:
  *   post:
  *     summary: Generate an AI-recommended script structure
