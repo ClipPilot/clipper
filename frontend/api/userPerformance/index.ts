@@ -88,7 +88,7 @@ class UserPerformanceAPI {
   async syncAccount(
     teamId: number,
     accountId: number
-  ): Promise<{ success: boolean; postsProcessed: number }> {
+  ): Promise<{ accepted: boolean; accountId: number }> {
     const response = await apiFetch(
       `${API_URL}/user-performance/${teamId}/accounts/${accountId}/sync`,
       {
@@ -108,7 +108,7 @@ class UserPerformanceAPI {
 
   async syncAll(
     teamId: number
-  ): Promise<{ accounts: { synced: number; failed: number }; massPosts: { synced: number; skipped: number } }> {
+  ): Promise<{ accepted: boolean; accountIds: number[]; massPostsSynced: number }> {
     const response = await apiFetch(
       `${API_URL}/user-performance/${teamId}/sync-all`,
       {

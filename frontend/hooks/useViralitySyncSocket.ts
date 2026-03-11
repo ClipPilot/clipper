@@ -1,52 +1,50 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useCallback } from "react";
+import { useAtom, useAtomValue } from "jotai";
 import { connectSocket } from "@/lib/socket";
+import {
+  syncingAccountsAtom,
+  activeSyncingIdsAtom,
+  type SyncAccountStatus,
+} from "@/store/viralitySync";
 
 interface ViralitySyncUpdate {
   accountId: number;
-  syncStatus: "completed" | "failed";
+  syncStatus: SyncAccountStatus;
   syncError?: string;
 }
 
-interface UseViralitySyncSocketOptions {
-  teamId: number | undefined;
-  accountIds: number[];
-  onSyncComplete: (update?: ViralitySyncUpdate) => void;
-}
-
-const POLL_INTERVAL_MS = 5_000;
-
 /**
- * Listens for virality-sync-update socket events for specific account IDs.
- * Calls onSyncComplete when a tracked account finishes syncing.
- * Also polls as a fallback in case the socket event is missed (race condition
- * when sync completes before the listener is attached).
+ * Global socket listener that writes sync updates into the Jotai atom.
+ * Mount this once near the app root (or in a layout) so it stays alive
+ * across page navigations.
  */
-export function useViralitySyncSocket({
-  teamId,
-  accountIds,
-  onSyncComplete,
-}: UseViralitySyncSocketOptions) {
-  const onSyncCompleteRef = useRef(onSyncComplete);
-  const accountIdsRef = useRef(accountIds);
+export function useViralitySyncSocketGlobal(teamId: number | undefined) {
+  const [, setSyncingAccounts] = useAtom(syncingAccountsAtom);
 
   useEffect(() => {
-    onSyncCompleteRef.current = onSyncComplete;
-  }, [onSyncComplete]);
-
-  useEffect(() => {
-    accountIdsRef.current = accountIds;
-  }, [accountIds]);
-
-  // Socket listener — fast path
-  useEffect(() => {
-    if (!teamId || accountIds.length === 0) return;
+    if (!teamId) return;
 
     const socket = connectSocket();
 
     const handler = (update: ViralitySyncUpdate) => {
-      if (accountIdsRef.current.includes(update.accountId)) {
-        onSyncCompleteRef.current(update);
-      }
+      setSyncingAccounts((prev) => {
+        // Only update if we're tracking this account or it's a new "syncing" event
+        if (update.syncStatus === "syncing" || prev[update.accountId]) {
+          const next = { ...prev };
+          if (update.syncStatus === "completed" || update.syncStatus === "failed") {
+            // Remove from map — sync is done
+            delete next[update.accountId];
+          } else {
+            next[update.accountId] = {
+              accountId: update.accountId,
+              status: update.syncStatus,
+              error: update.syncError,
+            };
+          }
+          return next;
+        }
+        return prev;
+      });
     };
 
     socket.on("virality-sync-update", handler);
@@ -54,20 +52,54 @@ export function useViralitySyncSocket({
     return () => {
       socket.off("virality-sync-update", handler);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teamId, accountIds.length]);
+  }, [teamId, setSyncingAccounts]);
+}
 
-  // Polling fallback — catches missed socket events by re-fetching data
-  useEffect(() => {
-    if (!teamId || accountIds.length === 0) return;
+/**
+ * Hook for pages that trigger syncs. Returns helpers to:
+ * - Start tracking account IDs as syncing
+ * - Read which accounts are actively syncing
+ * - Check if a specific set of accounts has any active syncs
+ */
+export function useViralitySync() {
+  const [syncingAccounts, setSyncingAccounts] = useAtom(syncingAccountsAtom);
+  const activeSyncingIds = useAtomValue(activeSyncingIdsAtom);
 
-    const interval = setInterval(() => {
-      if (accountIdsRef.current.length > 0) {
-        onSyncCompleteRef.current();
-      }
-    }, POLL_INTERVAL_MS);
+  /** Mark accounts as syncing (call after firing the HTTP request) */
+  const startSync = useCallback(
+    (accountIds: number[]) => {
+      setSyncingAccounts((prev) => {
+        const next = { ...prev };
+        for (const id of accountIds) {
+          next[id] = { accountId: id, status: "syncing" };
+        }
+        return next;
+      });
+    },
+    [setSyncingAccounts]
+  );
 
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teamId, accountIds.length]);
+  /** Check if any of the given account IDs are currently syncing */
+  const isAnySyncing = useCallback(
+    (accountIds: number[]) => {
+      return accountIds.some((id) => syncingAccounts[id]?.status === "syncing");
+    },
+    [syncingAccounts]
+  );
+
+  /** Get the syncing account IDs from a given set */
+  const getSyncingIds = useCallback(
+    (accountIds: number[]) => {
+      return accountIds.filter((id) => syncingAccounts[id]?.status === "syncing");
+    },
+    [syncingAccounts]
+  );
+
+  return {
+    syncingAccounts,
+    activeSyncingIds,
+    startSync,
+    isAnySyncing,
+    getSyncingIds,
+  };
 }

@@ -42,7 +42,7 @@ import {
   getNextSyncCountdown,
 } from "./utils";
 import { canAccessViralityTracker } from "@/lib/plans";
-import { useViralitySyncSocket } from "@/hooks/useViralitySyncSocket";
+import { useViralitySync } from "@/hooks/useViralitySyncSocket";
 
 // ─── Page Component ──────────────────────────────────────────────────────────
 
@@ -59,7 +59,6 @@ export default function CompetitorDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRecalculating, setIsRecalculating] = useState(false);
   const initialLoadDone = useRef(false);
-  const [isSyncing, setIsSyncing] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState("");
   const [selectedAccountIds, setSelectedAccountIds] = useState<number[]>(() => {
@@ -100,23 +99,28 @@ export default function CompetitorDetailPage() {
   // No auto-select: chart shows aggregated total by default.
   // User can toggle individual accounts via the filter popover.
 
-  // Track accounts doing their initial sync (never synced before + pending/syncing).
-  // Background lambda syncs (account already has data) are silent.
-  const syncingAccountIds = useMemo(() => {
+  // Global sync state — persists across page navigation
+  const { startSync, isAnySyncing, getSyncingIds } = useViralitySync();
+
+  const allAccountIds = useMemo(() => {
     if (!competitor) return [];
-    return competitor.accounts
-      .filter((a) => !a.last_synced_at && (a.sync_status === "pending" || a.sync_status === "syncing"))
-      .map((a) => a.id);
+    return competitor.accounts.map((a) => a.id);
   }, [competitor]);
 
-  // Listen for sync completion via WebSocket and refetch data
-  useViralitySyncSocket({
-    teamId: selectedTeam?.id,
-    accountIds: syncingAccountIds,
-    onSyncComplete: () => {
+  const isSyncing = isAnySyncing(allAccountIds);
+  const syncingAccountIds = getSyncingIds(allAccountIds);
+
+  // Refetch data when syncs complete (active syncing IDs change)
+  const prevSyncingRef = useRef<number[]>([]);
+  useEffect(() => {
+    const prev = prevSyncingRef.current;
+    const current = syncingAccountIds;
+    const justFinished = prev.filter((id) => !current.includes(id));
+    if (justFinished.length > 0) {
       fetchData(true);
-    },
-  });
+    }
+    prevSyncingRef.current = current;
+  }, [syncingAccountIds, fetchData]);
 
   const handleDeletePost = useCallback(async (postId: number) => {
     if (!selectedTeam?.id) return;
@@ -131,22 +135,19 @@ export default function CompetitorDetailPage() {
 
   const handleSyncAll = async () => {
     if (!selectedTeam?.id || !competitor) return;
-    setIsSyncing(true);
+    const accountIds = competitor.accounts.map((a) => a.id);
+
+    // Mark as syncing in global state immediately
+    startSync(accountIds);
+
     try {
-      const results = await Promise.allSettled(
-        competitor.accounts.map((account) => viralityAPI.syncAccount(selectedTeam.id, account.id))
+      // Fire-and-forget: all POST requests return 202 instantly
+      await Promise.all(
+        accountIds.map((id) => viralityAPI.syncAccount(selectedTeam.id, id))
       );
-      const failed = results.filter((r) => r.status === "rejected");
-      if (failed.length > 0) {
-        addToast({ title: `${failed.length} account(s) failed to sync`, color: "warning" });
-      } else {
-        addToast({ title: "Sync complete", color: "success" });
-      }
-      await fetchData();
+      addToast({ title: "Sync started for all accounts", color: "primary" });
     } catch (err: any) {
-      addToast({ title: "Sync failed", description: err.message, color: "danger" });
-    } finally {
-      setIsSyncing(false);
+      addToast({ title: "Failed to start sync", description: err.message, color: "danger" });
     }
   };
 

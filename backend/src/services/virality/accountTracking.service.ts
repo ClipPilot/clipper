@@ -271,6 +271,8 @@ export class AccountTrackingService {
       })
       .where(eq(this.accountsTable.id, accountId));
 
+    emitViralitySyncUpdate(teamId, { accountId, syncStatus: "syncing" });
+
     try {
       // Scrape posts using Apify SDK — branch on account_type
       const apify = getApifyService();
@@ -455,17 +457,27 @@ export class AccountTrackingService {
 
     const existingPost = existingRows[0];
 
-    const newMetric: MetricsEntry = {
-      recorded_at: new Date().toISOString(),
-      likes: postData.likesCount || 0,
-      comments: postData.commentsCount || 0,
-      views: postData.videoPlayCount ?? null,
-    };
-
     if (existingPost) {
       const history: MetricsEntry[] = Array.isArray(existingPost.metrics_history)
         ? [...(existingPost.metrics_history as MetricsEntry[])]
         : [];
+      const lastMetric = history.length > 0 ? history[history.length - 1] : null;
+
+      // If Apify returns zero but we have previous data, use the previous value (flaky scrape)
+      const newLikes = (!postData.likesCount && lastMetric) ? lastMetric.likes : (postData.likesCount || 0);
+      const newComments = (!postData.commentsCount && lastMetric) ? lastMetric.comments : (postData.commentsCount || 0);
+      // Views are strictly monotonic — never decrease
+      const rawViews = postData.videoPlayCount ?? null;
+      const newViews = (rawViews != null && lastMetric?.views != null)
+        ? Math.max(rawViews, lastMetric.views)
+        : rawViews ?? lastMetric?.views ?? null;
+
+      const newMetric: MetricsEntry = {
+        recorded_at: new Date().toISOString(),
+        likes: newLikes,
+        comments: newComments,
+        views: newViews,
+      };
       history.push(newMetric);
       const trimmed = history.length > MAX_METRICS_HISTORY
         ? history.slice(-MAX_METRICS_HISTORY)
@@ -474,15 +486,21 @@ export class AccountTrackingService {
       await db
         .update(this.postsTable)
         .set({
-          like_count: postData.likesCount || 0,
-          comment_count: postData.commentsCount || 0,
-          video_play_count: postData.videoPlayCount,
+          like_count: newLikes,
+          comment_count: newComments,
+          video_play_count: newViews,
           thumbnail_url: postData.displayUrl || existingPost.thumbnail_url,
           metrics_history: trimmed,
           updated_at: new Date(),
         })
         .where(eq(this.postsTable.id, existingPost.id));
     } else {
+      const newMetric: MetricsEntry = {
+        recorded_at: new Date().toISOString(),
+        likes: postData.likesCount || 0,
+        comments: postData.commentsCount || 0,
+        views: postData.videoPlayCount ?? null,
+      };
       await db.insert(this.postsTable).values({
         account_id: accountId,
         platform_post_id: canonicalId,

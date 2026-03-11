@@ -125,8 +125,13 @@ class UserPerformanceController {
       if (!teamId || !accountId) return res.status(400).json({ error: "Invalid team or account ID" });
       if (!(await requirePlanAccess(teamId, res))) return;
 
-      const result = await userPerformanceService.syncAccount(accountId, teamId);
-      return res.json(result);
+      // Fire-and-forget: respond immediately, sync runs in background.
+      // Progress is pushed to the client via Socket.IO "virality-sync-update" events.
+      userPerformanceService.syncAccount(accountId, teamId).catch((err) => {
+        console.error(`Background sync failed for user account ${accountId}:`, err);
+      });
+
+      return res.status(202).json({ accepted: true, accountId });
     } catch (error: any) {
       return handleControllerError(res, "Sync user account error", error, "Sync failed: " + error.message);
     }
@@ -180,17 +185,20 @@ class UserPerformanceController {
 
       const accounts = await userPerformanceService.getAccountsByTeam(teamId) as any[];
       const regularAccounts = accounts.filter((a: any) => a.source !== "mass_posting");
-
-      // Sync regular accounts (full profile scrape)
-      const accountResults = await Promise.allSettled(
-        regularAccounts.map((a: any) => userPerformanceService.syncAccount(a.id, teamId))
-      );
-      const accountsFailed = accountResults.filter((r) => r.status === "rejected").length;
-
-      // Count mass posts that will be synced and stamp last_synced_at immediately
       const massPostingAccounts = accounts.filter((a: any) => a.source === "mass_posting");
-      let massPostsSynced = 0;
 
+      const accountIds = regularAccounts.map((a: any) => a.id);
+
+      // Fire-and-forget: kick off all syncs in background.
+      // Each sync emits its own Socket.IO events (syncing → completed/failed).
+      for (const a of regularAccounts) {
+        userPerformanceService.syncAccount(a.id, teamId).catch((err) => {
+          console.error(`Background sync failed for user account ${a.id}:`, err);
+        });
+      }
+
+      // Handle mass posting accounts — count + trigger Step Functions
+      let massPostsSynced = 0;
       if (massPostingAccounts.length > 0) {
         for (const acct of massPostingAccounts) {
           const posts = await db
@@ -219,7 +227,6 @@ class UserPerformanceController {
         }
       }
 
-      // Trigger mass post sync via Step Functions (async, isolated in Lambda)
       if (config.aws.viralitySyncSfnArn && massPostsSynced > 0) {
         try {
           await sfnClient.send(new StartExecutionCommand({
@@ -233,9 +240,10 @@ class UserPerformanceController {
         }
       }
 
-      return res.json({
-        accounts: { synced: regularAccounts.length - accountsFailed, failed: accountsFailed },
-        massPosts: { synced: massPostsSynced },
+      return res.status(202).json({
+        accepted: true,
+        accountIds,
+        massPostsSynced,
       });
     } catch (error) {
       return handleControllerError(res, "Sync all error", error, "Failed to sync all");
