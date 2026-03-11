@@ -150,9 +150,11 @@ Your Goals:
    - The first main clip MUST NOT start with the same words as the hook. If the hook is "Oh my god we just won", the next clip CANNOT begin with "Oh my god we just won a million dollars". This sounds terrible — the viewer hears the same sentence start twice in a row.
    - The hook is a teaser. The main clips should provide CONTEXT, BUILDUP, or the STORY — not continue the hook's sentence. Pick a different part of the video for the first main segment.
 
-   CRITICAL — ENDING QUALITY:
-   - NEVER cut the clip off abruptly right before something exciting is about to happen. If the story is building suspense or about to reach a payoff, INCLUDE the payoff — don't leave the viewer hanging with an unresolved cliffhanger.
-   - The ending should feel complete — either a satisfying resolution, a strong closing statement, or a natural stopping point. Cutting mid-sentence or right before the climax is a dealbreaker.
+   CRITICAL — CLIMAX INCLUSION (MOST IMPORTANT RULE):
+   - IDENTIFY THE CLIMAX FIRST. Before selecting any segments, scan the entire transcript and find the most exciting, emotional, or impactful moment — the peak of the story. This is non-negotiable: your clip MUST include this climax moment.
+   - BUILD BACKWARDS FROM THE CLIMAX. Once you've found the peak moment, select segments that lead up to it and include the payoff. The climax should appear in your main segments — the clip should build toward it and INCLUDE it.
+   - NEVER cut the clip off right before the exciting part happens. If tension is building toward a reveal, result, punchline, or emotional payoff — you MUST extend the segment to include it, even if it makes the clip slightly longer than the target. A clip that cuts off before the payoff is WORTHLESS.
+   - The ending should feel complete — the viewer must feel satisfied, not cheated. Either end on the climax itself, the reaction to it, or a natural resolution after it.
 
 3. CUT BORING PARTS: If a segment contains a dull, low-energy, or filler section in the middle:
    - Split it into two segments, skipping the boring part
@@ -180,10 +182,10 @@ CRITICAL TIMESTAMP RULES:
 - Round timestamps to 1 decimal place
 
 Your Task:
-Given the transcript, follow all rules above and return:
-- the strongest possible hook (or null only if user explicitly said "no hook"),
-- the best clips stitched together in the middle — pull from ANYWHERE in the video, skip boring parts, combine the strongest moments
-- Full story flow should be: Engaging Hook - Context/Story to set the scene if necessary - Product Demo/Key Info - Closing. Use 3-5 clips and stitch them together so the final video is engaging throughout.
+STEP 1 — FIND THE CLIMAX: Scan the ENTIRE transcript. Identify the single most exciting, impactful, or emotionally charged moment. This is your climax — your clip MUST include it.
+STEP 2 — SELECT THE HOOK: Pick the most attention-grabbing moment (often the climax itself or a teaser of it).
+STEP 3 — BUILD THE STORY: Select segments that lead to and include the climax. Pull from ANYWHERE in the video, skip boring parts, combine the strongest moments.
+- Full story flow should be: Engaging Hook - Context/Story to set the scene if necessary - Product Demo/Key Info - Climax/Payoff - Closing. Use 3-5 clips and stitch them together so the final video is engaging throughout.
 - When making the Product demo try to make it one clip (two if necessary), same with context (no clips if not needed, one or two max.)
 - The clips do not need to be in order. The hook for example can be later in the video if it makes sense, but the hook needs to be the most
 engaging and eye catching part.
@@ -291,7 +293,11 @@ Use the transcript for precise timestamps, but let the VISUAL content guide whic
 
    These are examples, not the only options. Use whatever structure tells the best story. The one rule: only replay the hook at the end when the build-up genuinely leads back to that same moment. Otherwise, let the clip end naturally.
 
-   CRITICAL — ENDING QUALITY: NEVER cut the clip off right before the suspense resolves or the exciting moment happens. If the story is building toward something, INCLUDE that moment. An abrupt ending before the payoff is worse than a slightly longer clip. The viewer should feel satisfied, not cheated.
+   CRITICAL — CLIMAX INCLUSION (MOST IMPORTANT RULE):
+   - IDENTIFY THE CLIMAX FIRST. Before selecting ANY segments, watch/scan the entire video and find the absolute PEAK moment — the funniest, most shocking, most hype moment. Your clip MUST include this moment. Everything else is built around it.
+   - BUILD BACKWARDS FROM THE CLIMAX. The climax is your anchor. Select build-up segments that lead into it, and include the reaction/aftermath after it.
+   - NEVER cut the clip off right before the suspense resolves or the exciting moment happens. If tension is building, INCLUDE the payoff — even if the clip runs slightly longer than the target. A clip that cuts before the climax is WORTHLESS and will get zero engagement.
+   - The viewer must feel the full emotional arc: build-up → CLIMAX → reaction/resolution. Missing any of these (especially the climax) makes the clip feel broken.
 
 ===== END CLIP STRUCTURE =====
 
@@ -344,8 +350,9 @@ TIMESTAMP RULES:
 - The main array MUST have build-up/context — NEVER return main with ONLY the hook timestamps repeated.
 
 Your Task:
-- Find the best story in the video and create a clip with a killer hook and compelling build-up
-- End the clip naturally — replay the hook only if the story circles back to it, otherwise let it land on its own payoff
+STEP 1 — FIND THE CLIMAX: Watch/scan the ENTIRE video. Identify the single most viral, shocking, or emotionally explosive moment. This is your climax — your clip MUST include it.
+STEP 2 — BUILD THE STORY: Create a clip with a killer hook and compelling build-up that leads to the climax. The climax MUST appear in the main segments.
+- End the clip naturally — replay the hook only if the story circles back to it, otherwise let it land on the climax payoff and reaction
 - Include a finalMessage explaining the story arc and why it's viral-worthy
 - Include an evalScore (0-100) rating viral potential and story quality
 
@@ -436,8 +443,11 @@ CRITICAL STRUCTURE (when hook is included):
 CRITICAL — HOOK REPETITION BAN:
 The first build-up segment MUST NOT start with the same words as the hook. If the hook is "OH MY GOD LET'S GO", the first main segment CANNOT begin with "OH MY GOD LET'S GO WE WON". Start the build-up from BEFORE the climax to give context.
 
-CRITICAL — ENDING QUALITY:
-NEVER cut the clip off right before the exciting part happens. If tension is building, INCLUDE the payoff. An abrupt cut before the climax is worse than a slightly longer clip.
+CRITICAL — CLIMAX INCLUSION (MOST IMPORTANT RULE):
+- IDENTIFY THE CLIMAX FIRST. Before selecting ANY segments, watch the entire video and find the absolute PEAK gameplay moment — the clutch play, the insane kill, the victory moment. This is your anchor. Your clip MUST include this moment.
+- BUILD BACKWARDS FROM THE CLIMAX. Once you've found the peak, select build-up segments that lead into it and include the reaction/aftermath.
+- NEVER cut the clip off right before the exciting part happens. If an intense fight is building, INCLUDE the kill/victory/outcome — even if the clip runs slightly longer than target. A clip that cuts before the climax is WORTHLESS.
+- The viewer must see: build-up → CLIMAX → reaction. If the climax is missing, the clip has zero value regardless of how good the build-up is.
 
 EXAMPLE: If climax is at 1904-1909s:
 - hook: { start: 1904, end: 1909 }  ← climax shown first as teaser
@@ -533,10 +543,10 @@ If a segment contains a dull, low-energy, or filler section in the middle:
 - MAIN MUST have 2-3 segments minimum including build-up BEFORE the climax. NEVER return main with ONLY the hook timestamps repeated — that creates a broken clip with the same moment twice and no context
 - STITCHING IS ENCOURAGED: Main segments can be from DIFFERENT parts of the video (montage style) — pull the best moments from anywhere. BUT the final stitched clip must still tell a coherent story that makes sense to the viewer — don't just mash random moments together.
 - evalScore: 90+ = insane clip, 80-89 = great clip, 70-79 = good clip
-- Each video should be AROUND ${length} seconds total - ADD MORE SEGMENTS if too short!
+- Each video should be AROUND ${length} seconds total (MINIMUM 10 seconds) - ADD MORE SEGMENTS if too short!
 - If you can't find ${numberOfVideos} genuinely exciting moments, return fewer but better clips
 
-DOUBLE-CHECK: For EACH segment, verify end > start and duration >= 3 seconds!
+DOUBLE-CHECK: For EACH segment, verify end > start and duration >= 3 seconds! Total clip MUST be >= 10 seconds!
 `;
 };
 
@@ -651,8 +661,11 @@ MAIN CONTENT:
 CRITICAL — HOOK REPETITION BAN:
 The first main segment MUST NOT start with the same words as the hook. If the hook is "Oh my god we just won", the first main clip CANNOT begin with "Oh my god we just won a million dollars". The viewer hears the same opening twice — it sounds broken. Start the build-up from a DIFFERENT part of the video.
 
-CRITICAL — ENDING QUALITY:
-NEVER cut the clip off right before the suspense resolves or the exciting moment happens. If the story is building toward something, INCLUDE that moment. The viewer should feel satisfied, not cheated by an abrupt cut before the payoff.
+CRITICAL — CLIMAX INCLUSION (MOST IMPORTANT RULE):
+- IDENTIFY THE CLIMAX FIRST. Before selecting ANY segments, watch the entire video and find the absolute PEAK moment — the most visually/emotionally compelling part. This is your anchor. Your clip MUST include this moment.
+- BUILD BACKWARDS FROM THE CLIMAX. Select segments that provide context and lead into the peak moment, then include the payoff and reaction after it.
+- NEVER cut the clip off right before the suspense resolves or the exciting moment happens. If the story is building toward a reveal, result, or emotional payoff — INCLUDE it, even if the clip runs slightly longer than target. A clip that cuts before the payoff is WORTHLESS.
+- The viewer must see the full arc: context → build-up → CLIMAX → resolution. Missing the climax makes the clip feel broken and unsatisfying.
 
 CUT BORING PARTS: If a segment contains a dull, low-energy, or filler section in the middle:
 - Split it into two segments, skipping the boring part
@@ -711,7 +724,7 @@ NOTE: "hook" can be null only if the user explicitly requests "no hook".
   ]
 }
 
-DOUBLE-CHECK: For EACH segment, verify end > start and duration >= 3 seconds!
+DOUBLE-CHECK: For EACH segment, verify end > start and duration >= 3 seconds! Total clip MUST be >= 10 seconds!
 
 ===== EVALUATION CRITERIA =====
 - evalScore 90+: Visually stunning, impossible to scroll past
