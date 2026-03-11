@@ -338,6 +338,7 @@ class AdPostingService {
 
     const [post] = await db
       .select({
+        status: posts.status,
         drive_file_id: posts.drive_file_id,
         team_id: posts.team_id,
         platform: posts.platform,
@@ -348,18 +349,22 @@ class AdPostingService {
       .where(eq(posts.id, postId))
       .limit(1);
 
-    let accountHandle: string | null = null;
-    if (postUrl) {
-      try {
-        const account = await resolveAccountFromUrl(postUrl);
-        accountHandle = account.username;
-      } catch (err) {
-        console.warn(`[AdPosting] Could not resolve account from ${postUrl}:`, err);
-      }
-    }
+    if (!post) return;
 
     const postedTime = new Date();
 
+    // Already posted — just update the URL if a new one was provided
+    if (post.status === "posted") {
+      if (postUrl) {
+        await db
+          .update(posts)
+          .set({ post_url: postUrl, updated_at: new Date() })
+          .where(eq(posts.id, postId));
+      }
+      return;
+    }
+
+    // ── CRITICAL: update post status + URL in DB ──
     await db
       .update(posts)
       .set({
@@ -367,38 +372,71 @@ class AdPostingService {
         post_url: postUrl || null,
         posted_time: postedTime,
         updated_at: new Date(),
-        ...(accountHandle && { accountHandle }),
       })
       .where(eq(posts.id, postId));
 
-    if (post?.drive_file_id) {
-      try {
-        await googleDriveService.deleteFile(post.drive_file_id);
-      } catch (err) {
-        console.error(`[AdPosting] Drive delete failed for file ${post.drive_file_id}:`, err);
-      }
-    }
+    // ── NON-CRITICAL below — fire-and-forget ──
 
-    // Bridge to performance tracking for trackable platforms
-    const platform = post?.platform;
-    if (
-      postUrl &&
-      accountHandle &&
-      platform &&
-      AdPostingService.TRACKABLE_PLATFORMS.has(platform)
-    ) {
-      this.bridgeToPerformanceTracking(
-        post.team_id,
-        platform as "instagram" | "tiktok" | "x",
-        accountHandle,
-        postId,
-        postUrl,
-        post.content,
-        postedTime
-      ).catch((err) => {
-        console.error(`[AdPosting] Performance bridge failed for post ${postId}:`, err);
+    // Drive cleanup
+    if (post.drive_file_id) {
+      googleDriveService.deleteFile(post.drive_file_id).catch((err) => {
+        console.error(`[AdPosting] Drive delete failed for file ${post.drive_file_id}:`, err);
       });
     }
+
+    // Account resolution + performance bridge
+    const platform = post.platform;
+    if (postUrl && platform && AdPostingService.TRACKABLE_PLATFORMS.has(platform)) {
+      this.resolveAndBridge(
+        postId,
+        postUrl,
+        platform as "instagram" | "tiktok" | "x",
+        post.team_id,
+        post.content,
+        postedTime,
+      ).catch((err) => {
+        console.error(`[AdPosting] Account resolve/bridge failed for post ${postId}:`, err);
+      });
+    }
+  }
+
+  /**
+   * Fire-and-forget: resolve account from URL, update accountHandle on post,
+   * then bridge to performance tracking. Failures are logged but do not
+   * affect the posted status.
+   */
+  private async resolveAndBridge(
+    postId: number,
+    postUrl: string,
+    platform: "instagram" | "tiktok" | "x",
+    teamId: number,
+    caption: string | null,
+    postedTime: Date,
+  ) {
+    let accountHandle: string | null = null;
+    try {
+      const account = await resolveAccountFromUrl(postUrl);
+      accountHandle = account.username;
+    } catch (err) {
+      console.warn(`[AdPosting] Could not resolve account from ${postUrl}:`, err);
+      return;
+    }
+
+    // Write accountHandle back to the post row
+    await db
+      .update(posts)
+      .set({ accountHandle, updated_at: new Date() })
+      .where(eq(posts.id, postId));
+
+    await this.bridgeToPerformanceTracking(
+      teamId,
+      platform,
+      accountHandle,
+      postId,
+      postUrl,
+      caption,
+      postedTime,
+    );
   }
 
   private async bridgeToPerformanceTracking(
