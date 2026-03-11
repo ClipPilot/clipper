@@ -671,21 +671,6 @@ export const convertToGamingVertical = async (
   const facecamHeightRatio = fcH / height;
   const maxFaceH = Math.min(Math.round(facecamHeightRatio * 1920), 960);
 
-  // If the facecam region is too narrow (height-constrained scaling would produce
-  // black padding), expand the crop on the x-axis to grab real video content instead
-  const neededFcW = Math.ceil((1080 * fcH) / maxFaceH);
-  if (fcW < neededFcW && neededFcW <= width) {
-    const expand = neededFcW - fcW;
-    const halfExpand = Math.floor(expand / 2);
-    fcX = Math.max(0, fcX - halfExpand);
-    if (fcX + neededFcW > width) {
-      fcX = width - neededFcW;
-    }
-    fcW = neededFcW;
-    console.log(
-      `[GAMING] Expanded narrow facecam crop to ${fcW}x${fcH} at x=${fcX} (needed ${neededFcW}px wide to fill 1080)`,
-    );
-  }
   const faceScale = Math.min(1080 / fcW, maxFaceH / fcH);
   let faceOutW = Math.round(fcW * faceScale);
   let faceOutH = Math.round(fcH * faceScale);
@@ -734,17 +719,24 @@ export const convertToGamingVertical = async (
     `[GAMING] Gameplay: center-crop ${gpW}x${gpH} at (${gpX},${gpY}), facecam overlap shift: ${overlapsX && overlapsY}`,
   );
 
-  // If facecam is narrower than 1080 (height-constrained), pad with black to center it
-  const needsPad = faceOutW < 1080;
-  const camFilter = needsPad
-    ? `[0:v]crop=${fcW}:${fcH}:${fcX}:${fcY},scale=${faceOutW}:${faceOutH},pad=1080:${faceOutH}:(1080-${faceOutW})/2:0:black[cam]`
-    : `[0:v]crop=${fcW}:${fcH}:${fcX}:${fcY},scale=1080:${faceOutH}[cam]`;
+  // If facecam is narrower than 1080 (height-constrained), use blurred background instead of black bars
+  const needsBlur = faceOutW < 1080;
+  const camFilters = needsBlur
+    ? [
+        // Blurred background: scale facecam crop to fill 1080 width, crop to exact size, blur
+        `[0:v]crop=${fcW}:${fcH}:${fcX}:${fcY},scale=1080:${faceOutH}:force_original_aspect_ratio=increase,crop=1080:${faceOutH},gblur=sigma=15[cambg]`,
+        // Sharp foreground: facecam crop at its natural scaled size
+        `[0:v]crop=${fcW}:${fcH}:${fcX}:${fcY},scale=${faceOutW}:${faceOutH}[camfg]`,
+        // Center sharp facecam over blurred background
+        `[cambg][camfg]overlay=(W-w)/2:0[cam]`,
+      ]
+    : [`[0:v]crop=${fcW}:${fcH}:${fcX}:${fcY},scale=1080:${faceOutH}[cam]`];
 
   return new Promise((resolve, reject) => {
     ffmpeg()
       .input(inputPath)
       .complexFilter([
-        camFilter,
+        ...camFilters,
         `[0:v]crop=${gpW}:${gpH}:${gpX}:${gpY},scale=1080:${gameOutH}[game]`,
         `[cam][game]vstack=inputs=2[v]`,
       ])
