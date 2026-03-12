@@ -661,6 +661,69 @@ export class AccountTrackingService {
     return rows;
   }
 
+  /**
+   * Batch-fetch all posts for a team's accounts in a single query.
+   * Returns posts grouped by account_id.
+   */
+  async getPostsForTeam(
+    teamId: number,
+    startDate?: Date,
+    endDate?: Date
+  ): Promise<Record<number, any[]>> {
+    const accounts = await this.getAccountsByTeam(teamId) as any[];
+    const accountIds = accounts.map((a: any) => a.id);
+    if (accountIds.length === 0) return {};
+
+    const conditions = [inArray(this.postsTable.account_id, accountIds)];
+    if (startDate) conditions.push(gte(this.postsTable.posted_at, startDate));
+    if (endDate) conditions.push(lte(this.postsTable.posted_at, endDate));
+
+    const selectFields: Record<string, any> = {
+      id: this.postsTable.id,
+      account_id: this.postsTable.account_id,
+      platform_post_id: this.postsTable.platform_post_id,
+      post_url: this.postsTable.post_url,
+      thumbnail_url: this.postsTable.thumbnail_url,
+      caption: this.postsTable.caption,
+      hashtags: this.postsTable.hashtags,
+      post_type: this.postsTable.post_type,
+      posted_at: this.postsTable.posted_at,
+      like_count: this.postsTable.like_count,
+      comment_count: this.postsTable.comment_count,
+      video_view_count: this.postsTable.video_view_count,
+      video_play_count: this.postsTable.video_play_count,
+      metrics_history: this.postsTable.metrics_history,
+      created_at: this.postsTable.created_at,
+      updated_at: this.postsTable.updated_at,
+    };
+
+    const hasMassPostId = !!this.postsTable.mass_post_id;
+    if (hasMassPostId) {
+      selectFields.mass_post_id = this.postsTable.mass_post_id;
+      selectFields.campaign_name = campaigns.name;
+    }
+
+    let query = db.select(selectFields).from(this.postsTable);
+
+    if (hasMassPostId) {
+      query = query
+        .leftJoin(posts, eq(this.postsTable.mass_post_id, posts.id))
+        .leftJoin(campaigns, eq(posts.campaign_id, campaigns.id)) as any;
+    }
+
+    const rows = await query
+      .where(and(...conditions))
+      .orderBy(desc(this.postsTable.posted_at));
+
+    const grouped: Record<number, any[]> = {};
+    for (const row of rows as any[]) {
+      const aid = row.account_id;
+      if (!grouped[aid]) grouped[aid] = [];
+      grouped[aid].push(row);
+    }
+    return grouped;
+  }
+
   async getPostsStatsByAccounts(
     accountIds: number[],
     startDate?: Date,

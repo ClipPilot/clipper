@@ -224,6 +224,22 @@ class UserPerformanceController {
       return handleControllerError(res, "Get user performance dashboard error", error, "Failed to get dashboard stats");
     }
   }
+
+  async getAllPosts(req: AuthRequest, res: Response) {
+    try {
+      const teamId = parseId(req.params.teamId);
+      if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
+      if (!(await requirePlanAccess(teamId, res))) return;
+
+      const startDate = parseDateQuery(req.query.startDate);
+      const endDate = parseDateQuery(req.query.endDate);
+
+      const postsByAccount = await userPerformanceService.getPostsForTeam(teamId, startDate, endDate);
+      return res.json({ postsByAccount });
+    } catch (error) {
+      return handleControllerError(res, "Get all posts error", error, "Failed to get posts");
+    }
+  }
 }
 
 export const userPerformanceController = new UserPerformanceController();

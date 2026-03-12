@@ -308,6 +308,37 @@ router.delete("/:teamId/posts/:postId", requireAuth, (req, res) => userPerforman
 
 /**
  * @openapi
+ * /user-performance/{teamId}/posts:
+ *   get:
+ *     summary: Get all posts for all accounts in a team (batch)
+ *     tags:
+ *       - User Performance
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teamId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *     responses:
+ *       200:
+ *         description: Posts grouped by account ID
+ */
+router.get("/:teamId/posts", requireAuth, (req, res) => userPerformanceController.getAllPosts(req, res));
+
+/**
+ * @openapi
  * /user-performance/{teamId}/dashboard:
  *   get:
  *     summary: Get dashboard statistics for user performance

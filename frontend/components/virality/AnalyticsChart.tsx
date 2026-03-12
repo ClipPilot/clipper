@@ -140,14 +140,19 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
 
   const hasData = fullChartData.length > 0;
 
+  // When accounts are selected, use those for totals/tooltip; otherwise use all accounts
+  const hasSelection = accounts.length > 0;
+  const totalsAccounts = hasSelection ? accounts : axisAccounts;
+  const totalsPostsByAccount = hasSelection ? postsByAccount : axisPostsByAccount;
+
   // Tooltip summary: all 3 metrics per hour so tooltip can show views/likes/comments regardless of active metric
   const tooltipByHour = useMemo(() => {
     const map: Record<string, { views: number; likes: number; comments: number }> = {};
     const startStr = startDate ? new Date(startDate).toISOString().slice(0, 13) : undefined;
     const endStr = endDate ? new Date(endDate).toISOString().slice(0, 13) : undefined;
 
-    for (const account of axisAccounts) {
-      const posts = axisPostsByAccount[account.id] || [];
+    for (const account of totalsAccounts) {
+      const posts = totalsPostsByAccount[account.id] || [];
       for (const post of posts) {
         if (!post.metrics_history?.length) continue;
         const postHourMax = new Map<string, { views: number; likes: number; comments: number }>();
@@ -179,15 +184,15 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
       }
     }
     return map;
-  }, [axisAccounts, axisPostsByAccount, startDate, endDate]);
+  }, [totalsAccounts, totalsPostsByAccount, startDate, endDate]);
 
-  // Metric card totals — always from ALL accounts
+  // Metric card totals — filtered to selected accounts when applicable
   const totals = useMemo(() => {
     let likes = 0,
       comments = 0,
       views = 0;
-    for (const account of axisAccounts) {
-      const posts = axisPostsByAccount[account.id] || [];
+    for (const account of totalsAccounts) {
+      const posts = totalsPostsByAccount[account.id] || [];
       for (const post of posts) {
         likes += post.like_count || 0;
         comments += post.comment_count || 0;
@@ -195,7 +200,7 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
       }
     }
     return { likes, comments, views };
-  }, [axisAccounts, axisPostsByAccount]);
+  }, [totalsAccounts, totalsPostsByAccount]);
 
   const dailyChange = useMemo(() => {
     const dayTotals = new Map<string, { views: number; likes: number; comments: number }>();

@@ -62,20 +62,13 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
     if (!selectedTeam?.id || !canAccessViralityTracker(selectedTeam.plan)) return;
     if (initialLoadDone.current && !silent) setIsRecalculating(true);
     try {
-      const accts = await userPerformanceAPI.getAccounts(selectedTeam.id);
+      const { startDate, endDate } = dateRange;
+      const [accts, postsMap] = await Promise.all([
+        userPerformanceAPI.getAccounts(selectedTeam.id),
+        userPerformanceAPI.getAllPosts(selectedTeam.id, startDate, endDate),
+      ]);
       setAccounts(accts);
       reconcileSync(accts);
-
-      const { startDate, endDate } = dateRange;
-      const postsMap: Record<number, ViralityPost[]> = {};
-      await Promise.all(
-        accts.map(async (a) => {
-          const posts = await userPerformanceAPI.getAccountPosts(
-            selectedTeam.id, a.id, 100, 0, startDate, endDate
-          );
-          postsMap[a.id] = posts;
-        })
-      );
       setPostsByAccount(postsMap);
     } catch (err: any) {
       addToast({ title: "Failed to load data", description: err.message, color: "danger" });
