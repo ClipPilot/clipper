@@ -119,12 +119,12 @@ export function YourAccountsList({
               <span className="text-xs text-text-primary truncate flex-1 min-w-0">
                 @{account.username}
               </span>
-              <span className="text-[10px] text-text-tertiary flex-shrink-0 flex items-center gap-1.5">
-                <span>{formatNumber(totalViews)} views</span>
+              <span className="text-[10px] text-text-tertiary flex-shrink-0 flex items-center gap-1 sm:gap-1.5">
+                <span>{formatNumber(totalViews)} <span className="hidden sm:inline">views</span><span className="sm:hidden">v</span></span>
                 <span>·</span>
-                <span>{formatNumber(totalLikes)} likes</span>
-                <span>·</span>
-                <span>{totalPosts} posts</span>
+                <span>{formatNumber(totalLikes)} <span className="hidden sm:inline">likes</span><span className="sm:hidden">l</span></span>
+                <span className="hidden sm:inline">·</span>
+                <span className="hidden sm:inline">{totalPosts} posts</span>
               </span>
               <Button
                 size="sm"

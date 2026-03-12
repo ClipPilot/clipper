@@ -304,25 +304,25 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="min-h-screen bg-surface-dark p-6 lg:p-8"
+      className="min-h-screen bg-surface-dark p-3 sm:p-6 lg:p-8"
     >
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3 min-w-0">
             {showBackButton && (
               <Button
                 isIconOnly
                 variant="light"
-                className="text-text-secondary"
+                className="text-text-secondary flex-shrink-0"
                 onPress={() => router.push(backHref)}
               >
                 <Icon icon="solar:arrow-left-linear" width={20} />
               </Button>
             )}
-            <div>
-              <h1 className="text-2xl font-bold text-text-primary">Your Performance</h1>
-              <p className="text-text-secondary text-sm mt-1">
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold text-text-primary truncate">Your Performance</h1>
+              <p className="text-text-secondary text-xs sm:text-sm mt-1 hidden sm:block">
                 Real-time performance metrics for your own accounts
               </p>
               {derived.lastSyncedAt !== null && (
@@ -333,19 +333,22 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
               )}
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 overflow-x-auto">
             <DateRangeFilter value={dateRange} onChange={setDateRange} />
             <Button
-              className="bg-accent-400 text-white"
-              startContent={<Icon icon="solar:add-circle-bold" width={18} />}
+              size="sm"
+              className="bg-accent-400 text-white flex-shrink-0"
+              startContent={<Icon icon="solar:add-circle-bold" width={16} />}
               onPress={onOpen}
             >
-              Add Account
+              <span className="hidden sm:inline">Add Account</span>
+              <span className="sm:hidden">Add</span>
             </Button>
             <Button
-              className="bg-surface-base text-text-primary border border-border-base"
+              size="sm"
+              className="bg-surface-base text-text-primary border border-border-base flex-shrink-0"
               startContent={
-                isSyncing ? <Spinner size="sm" /> : <Icon icon="solar:refresh-bold" width={18} />
+                isSyncing ? <Spinner size="sm" /> : <Icon icon="solar:refresh-bold" width={16} />
               }
               isDisabled={isSyncing || accounts.length === 0}
               onPress={handleSyncAll}
@@ -371,7 +374,7 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
 
         {/* Syncing accounts banner */}
         {syncingAccountIds.length > 0 && (
-          <div className="flex items-center gap-3 rounded-xl border border-accent-400/30 bg-accent-400/5 px-4 py-3">
+          <div className="flex items-center gap-2 sm:gap-3 rounded-xl border border-accent-400/30 bg-accent-400/5 px-3 sm:px-4 py-2.5 sm:py-3">
             <Spinner size="sm" color="primary" />
             <p className="text-sm text-text-secondary">
               Syncing{" "}
@@ -392,8 +395,8 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
 
         {/* Stats Cards + Best Performing Accounts */}
         <RecalcOverlay active={isRecalculating}>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
-            <StatCards items={statCards} gridClassName="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 items-stretch">
+            <StatCards items={statCards} gridClassName="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4" />
             <YourAccountsList
               accounts={derived.activeAccounts}
               postsByAccount={derived.activePostsByAccount}
@@ -404,7 +407,7 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
 
         {/* Performance Over Time + Best Performing Content */}
         <RecalcOverlay active={isRecalculating}>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 items-stretch">
             <div className="lg:col-span-2">
               <AnalyticsChart
                 accounts={derived.chartOverlayAccounts}
@@ -429,7 +432,7 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
 
         {/* Post Frequency + Account Breakdown */}
         <RecalcOverlay active={isRecalculating}>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 items-stretch">
             <div className="lg:col-span-2">
               <PostFrequencyChart
                 posts={derived.activePosts}

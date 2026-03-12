@@ -267,7 +267,7 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
   return (
     <Card className="bg-surface-base border border-border-base h-full">
       <section className="flex flex-col flex-nowrap h-full">
-        <div className="flex flex-col justify-between gap-y-2 p-6">
+        <div className="flex flex-col justify-between gap-y-2 p-3 sm:p-6">
           <div className="flex flex-col gap-y-2">
             <div className="flex items-center justify-between">
               <dt className="text-medium text-text-primary font-medium inline-flex items-center gap-1.5">
@@ -334,7 +334,7 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
                       )}
                     </span>
                     <div className="flex items-center gap-x-3">
-                      <span className="text-foreground text-3xl font-bold">
+                      <span className="text-foreground text-xl sm:text-3xl font-bold">
                         {formatChartValue(value)}
                       </span>
                       {change !== null && (
