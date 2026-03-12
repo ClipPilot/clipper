@@ -1,7 +1,7 @@
 import * as Sentry from "@sentry/node";
 import { db } from "../../db";
 import { teams, posts, campaigns } from "@clipper/shared-db/src/schema";
-import { eq, and, or, desc, count, gte, lte, inArray, sql } from "drizzle-orm";
+import { eq, and, or, desc, count, gte, lte, inArray, sql, isNotNull, gt } from "drizzle-orm";
 import { getApifyService, InstagramPost, InstagramProfile } from "./apify.service";
 import { parseInstagramUsername, parseTikTokUsername, parseXUsername } from "../../utils/parseUsername";
 import {
@@ -767,6 +767,150 @@ export class AccountTrackingService {
       accountPostStats,
       accounts,
     };
+  }
+
+  /**
+   * Sync mass posting posts for a given account in a single batch Apify call.
+   * Emits socket events so the frontend can track progress.
+   */
+  async syncMassPostBatch(accountId: number, teamId: number) {
+    // Get eligible posts (have mass_post_id and syncs_remaining > 0)
+    const eligiblePosts = await db
+      .select({
+        id: this.postsTable.id,
+        post_url: this.postsTable.post_url,
+        metrics_history: this.postsTable.metrics_history,
+        like_count: this.postsTable.like_count,
+        comment_count: this.postsTable.comment_count,
+        video_play_count: this.postsTable.video_play_count,
+        thumbnail_url: this.postsTable.thumbnail_url,
+      })
+      .from(this.postsTable)
+      .where(
+        and(
+          eq(this.postsTable.account_id, accountId),
+          isNotNull(this.postsTable.mass_post_id),
+          gt(this.postsTable.syncs_remaining, 0)
+        )
+      );
+
+    if (eligiblePosts.length === 0) return { syncedCount: 0, skippedCount: 0 };
+
+    // Get the account's platform
+    const account = await this.getAccountById(accountId);
+    if (!account) throw new Error("Account not found");
+
+    emitViralitySyncUpdate(teamId, { accountId, syncStatus: "syncing" });
+
+    try {
+      // Decrement syncs_remaining for all eligible posts
+      const decremented: { id: number; post_url: string }[] = [];
+      for (const p of eligiblePosts) {
+        const result = await db
+          .update(this.postsTable)
+          .set({
+            syncs_remaining: sql`${this.postsTable.syncs_remaining} - 1`,
+            updated_at: new Date(),
+          })
+          .where(
+            and(
+              eq(this.postsTable.id, p.id),
+              sql`${this.postsTable.syncs_remaining} > 0`
+            )
+          )
+          .returning({ id: this.postsTable.id }) as any[];
+
+        if (result.length > 0) {
+          decremented.push({ id: p.id, post_url: p.post_url });
+        }
+      }
+
+      if (decremented.length === 0) {
+        emitViralitySyncUpdate(teamId, { accountId, syncStatus: "completed" });
+        return { syncedCount: 0, skippedCount: eligiblePosts.length };
+      }
+
+      // Single batch Apify call for all post URLs
+      const apify = getApifyService();
+      const postUrls = decremented.map((p) => p.post_url);
+      const metricsMap = await apify.scrapeBatchPostMetrics(postUrls, account.platform);
+
+      let syncedCount = 0;
+      let skippedCount = 0;
+
+      for (const p of decremented) {
+        const postIdentifier = apify.extractPostIdFromUrl(p.post_url, account.platform);
+        const metrics = postIdentifier ? metricsMap.get(postIdentifier) : null;
+
+        if (!metrics) {
+          skippedCount++;
+          continue;
+        }
+
+        // Get current post data for metrics history
+        const [existing] = await db
+          .select({
+            metrics_history: this.postsTable.metrics_history,
+            like_count: this.postsTable.like_count,
+            comment_count: this.postsTable.comment_count,
+            video_play_count: this.postsTable.video_play_count,
+            thumbnail_url: this.postsTable.thumbnail_url,
+          })
+          .from(this.postsTable)
+          .where(eq(this.postsTable.id, p.id))
+          .limit(1) as any[];
+
+        const history: MetricsEntry[] = Array.isArray(existing?.metrics_history)
+          ? [...(existing.metrics_history as MetricsEntry[])]
+          : [];
+        const lastMetric = history.length > 0 ? history[history.length - 1] : null;
+
+        const newLikes = (!metrics.likesCount && lastMetric) ? lastMetric.likes : (metrics.likesCount || 0);
+        const newComments = (!metrics.commentsCount && lastMetric) ? lastMetric.comments : (metrics.commentsCount || 0);
+        const rawViews = metrics.viewCount ?? null;
+        const newViews = (rawViews != null && lastMetric?.views != null)
+          ? Math.max(rawViews, lastMetric.views)
+          : rawViews ?? lastMetric?.views ?? null;
+
+        history.push({
+          recorded_at: new Date().toISOString(),
+          likes: newLikes,
+          comments: newComments,
+          views: newViews,
+        });
+        const trimmed = history.length > MAX_METRICS_HISTORY
+          ? history.slice(-MAX_METRICS_HISTORY)
+          : history;
+
+        await db
+          .update(this.postsTable)
+          .set({
+            like_count: newLikes,
+            comment_count: newComments,
+            video_play_count: newViews,
+            thumbnail_url: metrics.thumbnailUrl || existing?.thumbnail_url || null,
+            metrics_history: trimmed,
+            updated_at: new Date(),
+          })
+          .where(eq(this.postsTable.id, p.id));
+
+        syncedCount++;
+      }
+
+      // Update account last_synced_at
+      await db
+        .update(this.accountsTable)
+        .set({ last_synced_at: new Date(), updated_at: new Date() })
+        .where(eq(this.accountsTable.id, accountId));
+
+      emitViralitySyncUpdate(teamId, { accountId, syncStatus: "completed" });
+      return { syncedCount, skippedCount };
+    } catch (error: any) {
+      console.error(`Mass post batch sync failed for account ${accountId}:`, error);
+      Sentry.captureException(error);
+      emitViralitySyncUpdate(teamId, { accountId, syncStatus: "failed", syncError: error.message });
+      throw error;
+    }
   }
 
   async checkTeamPlanAccess(teamId: number): Promise<boolean> {

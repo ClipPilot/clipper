@@ -64,6 +64,7 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
     try {
       const accts = await userPerformanceAPI.getAccounts(selectedTeam.id);
       setAccounts(accts);
+      reconcileSync(accts);
 
       const { startDate, endDate } = dateRange;
       const postsMap: Record<number, ViralityPost[]> = {};
@@ -91,7 +92,7 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
   // User can toggle individual accounts via the filter popover.
 
   // Global sync state — persists across page navigation
-  const { startSync, isAnySyncing, getSyncingIds } = useViralitySync();
+  const { startSync, isAnySyncing, getSyncingIds, reconcileSync } = useViralitySync();
 
   const allAccountIds = useMemo(() => accounts.map((a) => a.id), [accounts]);
   const isSyncing = isAnySyncing(allAccountIds);

@@ -108,7 +108,7 @@ class UserPerformanceAPI {
 
   async syncAll(
     teamId: number
-  ): Promise<{ accepted: boolean; accountIds: number[]; massPostsSynced: number }> {
+  ): Promise<{ accepted: boolean; accountIds: number[] }> {
     const response = await apiFetch(
       `${API_URL}/user-performance/${teamId}/sync-all`,
       {

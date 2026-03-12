@@ -1,6 +1,6 @@
 import { useEffect, useCallback } from "react";
 import { useAtom, useAtomValue } from "jotai";
-import { connectSocket } from "@/lib/socket";
+import { connectSocket, joinTeam, leaveTeam } from "@/lib/socket";
 import {
   syncingAccountsAtom,
   activeSyncingIdsAtom,
@@ -25,6 +25,7 @@ export function useViralitySyncSocketGlobal(teamId: number | undefined) {
     if (!teamId) return;
 
     const socket = connectSocket();
+    joinTeam(teamId);
 
     const handler = (update: ViralitySyncUpdate) => {
       setSyncingAccounts((prev) => {
@@ -39,6 +40,7 @@ export function useViralitySyncSocketGlobal(teamId: number | undefined) {
               accountId: update.accountId,
               status: update.syncStatus,
               error: update.syncError,
+              startedAt: prev[update.accountId]?.startedAt ?? Date.now(),
             };
           }
           return next;
@@ -51,6 +53,7 @@ export function useViralitySyncSocketGlobal(teamId: number | undefined) {
 
     return () => {
       socket.off("virality-sync-update", handler);
+      leaveTeam(teamId);
     };
   }, [teamId, setSyncingAccounts]);
 }
@@ -71,7 +74,7 @@ export function useViralitySync() {
       setSyncingAccounts((prev) => {
         const next = { ...prev };
         for (const id of accountIds) {
-          next[id] = { accountId: id, status: "syncing" };
+          next[id] = { accountId: id, status: "syncing", startedAt: Date.now() };
         }
         return next;
       });
@@ -95,11 +98,35 @@ export function useViralitySync() {
     [syncingAccounts]
   );
 
+  /** Reconcile atom with actual backend sync_status (call after fetching accounts) */
+  const reconcileSync = useCallback(
+    (accounts: { id: number; sync_status: string }[]) => {
+      setSyncingAccounts((prev) => {
+        let changed = false;
+        const next = { ...prev };
+        for (const acct of accounts) {
+          if (next[acct.id] && acct.sync_status !== "syncing") {
+            // Backend says done but atom still says syncing — clear it
+            delete next[acct.id];
+            changed = true;
+          } else if (!next[acct.id] && acct.sync_status === "syncing") {
+            // Backend says syncing but atom doesn't know (e.g. page reload) — restore it
+            next[acct.id] = { accountId: acct.id, status: "syncing", startedAt: Date.now() };
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+    },
+    [setSyncingAccounts]
+  );
+
   return {
     syncingAccounts,
     activeSyncingIds,
     startSync,
     isAnySyncing,
     getSyncingIds,
+    reconcileSync,
   };
 }

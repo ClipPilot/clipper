@@ -3,7 +3,7 @@ import { config } from "../../config/env";
 import { APIFY_ACTORS, SCRAPE_WINDOW_DAYS } from "../../config/virality";
 import { parseXUsername } from "../../utils/parseUsername";
 
-const ACTOR_TIMEOUT_SECS = 600; // 10 minutes
+const ACTOR_TIMEOUT_SECS = 900; // 15 minutes
 
 interface InstagramPost {
   id: string;
@@ -656,6 +656,127 @@ class ApifyService {
       return null;
     } catch (err) {
       console.warn(`[Apify] scrapePostMetrics failed for ${postUrl}:`, err);
+      return null;
+    }
+  }
+
+  /**
+   * Batch-scrape metrics for multiple post URLs in a single Apify call per platform.
+   * Returns a map keyed by post identifier (shortcode for IG, video ID for TikTok, tweet ID for X).
+   */
+  async scrapeBatchPostMetrics(
+    postUrls: string[],
+    platform: string,
+  ): Promise<Map<string, { likesCount: number; commentsCount: number; viewCount: number | null; thumbnailUrl: string | null }>> {
+    const results = new Map<string, { likesCount: number; commentsCount: number; viewCount: number | null; thumbnailUrl: string | null }>();
+    if (postUrls.length === 0) return results;
+
+    const client = this.getClient();
+
+    if (platform === "instagram") {
+      const urls = postUrls.map((u) => u.replace(/instagram\.com\/reels\//, "instagram.com/reel/"));
+      const run = await client.actor(APIFY_ACTORS.INSTAGRAM_SCRAPER).call(
+        { directUrls: urls, resultsType: "posts" },
+        { timeout: ACTOR_TIMEOUT_SECS },
+      );
+      const { items } = await client.dataset(run.defaultDatasetId).listItems();
+      for (const item of items) {
+        const raw = item as any;
+        const postId = this.extractPostIdFromUrl(raw.url || "", "instagram") || raw.shortCode;
+        if (!postId) continue;
+        results.set(postId, {
+          likesCount: raw.likesCount || 0,
+          commentsCount: raw.commentsCount || 0,
+          viewCount: raw.videoPlayCount || raw.videoViewCount || null,
+          thumbnailUrl: raw.displayUrl || raw.thumbnailUrl || null,
+        });
+      }
+    } else if (platform === "tiktok") {
+      const run = await client.actor(APIFY_ACTORS.TIKTOK_SCRAPER).call(
+        { postURLs: postUrls, shouldDownloadCovers: false, shouldDownloadVideos: false },
+        { timeout: ACTOR_TIMEOUT_SECS },
+      );
+      const { items } = await client.dataset(run.defaultDatasetId).listItems();
+      for (const item of items) {
+        const raw = item as any;
+        const postId = this.extractPostIdFromUrl(raw.webVideoUrl || "", "tiktok") || raw.id;
+        if (!postId) continue;
+        results.set(postId, {
+          likesCount: raw.diggCount || 0,
+          commentsCount: raw.commentCount || 0,
+          viewCount: raw.playCount ?? null,
+          thumbnailUrl: raw.videoMeta?.coverUrl || null,
+        });
+      }
+    } else if (platform === "x") {
+      const tweetIds = postUrls
+        .map((url) => url.match(/\/status\/(\d+)/)?.[1])
+        .filter((id): id is string => !!id);
+      if (tweetIds.length === 0) return results;
+
+      const postsRun = await client.actor(APIFY_ACTORS.X_POSTS_SCRAPER).call(
+        { tweetIDs: tweetIds, maxItems: tweetIds.length },
+        { timeout: ACTOR_TIMEOUT_SECS },
+      );
+      const { items: tweetItems } = await client.dataset(postsRun.defaultDatasetId).listItems();
+      const tweetMap = new Map<string, any>();
+      for (const item of tweetItems) {
+        const raw = item as any;
+        const id = raw.id || raw.id_str;
+        if (id) tweetMap.set(String(id), raw);
+      }
+
+      const viewsMap = new Map<string, number>();
+      try {
+        const viewsRun = await client.actor(APIFY_ACTORS.X_VIEWS_SCRAPER).call(
+          { tweets: tweetIds.join(","), max_results: tweetIds.length, mode: "Get a Few Tweets" },
+          { timeout: ACTOR_TIMEOUT_SECS },
+        );
+        const { items: viewItems } = await client.dataset(viewsRun.defaultDatasetId).listItems();
+        for (const vi of viewItems) {
+          const raw = vi as any;
+          const id = raw.id || raw.id_str;
+          if (id && raw.view_count != null) viewsMap.set(String(id), raw.view_count);
+        }
+      } catch {
+        // view scraper failed, continue without views
+      }
+
+      for (const tweetId of tweetIds) {
+        const tweet = tweetMap.get(tweetId);
+        if (!tweet) continue;
+        results.set(tweetId, {
+          likesCount: tweet.likeCount || 0,
+          commentsCount: tweet.replyCount || 0,
+          viewCount: viewsMap.get(tweetId) ?? null,
+          thumbnailUrl: null,
+        });
+      }
+    }
+
+    return results;
+  }
+
+  extractPostIdFromUrl(url: string, platform: string): string | null {
+    try {
+      const u = new URL(url);
+      switch (platform) {
+        case "instagram": {
+          const m = u.pathname.match(/\/(?:reels?|p)\/([A-Za-z0-9_-]+)/);
+          return m?.[1] ?? null;
+        }
+        case "tiktok": {
+          const m = u.pathname.match(/\/video\/(\d+)/);
+          return m?.[1] ?? null;
+        }
+        case "x": {
+          const m = u.pathname.match(/\/status\/(\d+)/);
+          return m?.[1] ?? null;
+        }
+        default:
+          return null;
+      }
+    } catch {
       return null;
     }
   }

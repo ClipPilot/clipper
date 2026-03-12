@@ -73,6 +73,7 @@ export default function CompetitorDetailPage() {
     try {
       const comp = await viralityAPI.getCompetitor(selectedTeam.id, competitorId);
       setCompetitor(comp);
+      reconcileSync(comp.accounts);
 
       const { startDate, endDate } = dateRange;
       const postsMap: Record<number, ViralityPost[]> = {};
@@ -100,7 +101,7 @@ export default function CompetitorDetailPage() {
   // User can toggle individual accounts via the filter popover.
 
   // Global sync state — persists across page navigation
-  const { startSync, isAnySyncing, getSyncingIds } = useViralitySync();
+  const { startSync, isAnySyncing, getSyncingIds, reconcileSync } = useViralitySync();
 
   const allAccountIds = useMemo(() => {
     if (!competitor) return [];
