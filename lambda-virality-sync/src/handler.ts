@@ -86,6 +86,27 @@ function normalizeProfileData(rawProfile: any): InstagramProfile {
 
 // ── Sync logic ──
 
+/**
+ * Apply flaky-data protection and strict views monotonicity to scraped metrics.
+ *
+ * Likes/comments: if Apify returns 0 but we have previous data, use the previous
+ * value (flaky scrape). A real non-zero decrease is accepted.
+ *
+ * Views: strictly monotonic — never decrease. Uses Math.max against previous.
+ */
+function resolveMetrics(
+  incoming: { likes: number; comments: number; views: number | null },
+  lastMetric: MetricsEntry | null,
+): { likes: number; comments: number; views: number | null } {
+  const likes = (!incoming.likes && lastMetric) ? lastMetric.likes : (incoming.likes || 0);
+  const comments = (!incoming.comments && lastMetric) ? lastMetric.comments : (incoming.comments || 0);
+  const rawViews = incoming.views;
+  const views = (rawViews != null && lastMetric?.views != null)
+    ? Math.max(rawViews, lastMetric.views)
+    : rawViews ?? lastMetric?.views ?? null;
+  return { likes, comments, views };
+}
+
 interface MetricsEntry {
   recorded_at: string;
   likes: number;
@@ -514,18 +535,17 @@ async function upsertPost(
 
   const existingPost = existingRows[0];
 
-  const newMetric: MetricsEntry = {
-    recorded_at: new Date().toISOString(),
-    likes: postData.likesCount || 0,
-    comments: postData.commentsCount || 0,
-    views: postData.videoPlayCount ?? null,
-  };
-
   if (existingPost) {
     const history: MetricsEntry[] = Array.isArray(existingPost.metrics_history)
       ? [...(existingPost.metrics_history as MetricsEntry[])]
       : [];
-    history.push(newMetric);
+    const lastMetric = history.length > 0 ? history[history.length - 1] : null;
+    const { likes: newLikes, comments: newComments, views: newViews } = resolveMetrics(
+      { likes: postData.likesCount || 0, comments: postData.commentsCount || 0, views: postData.videoPlayCount ?? null },
+      lastMetric,
+    );
+
+    history.push({ recorded_at: new Date().toISOString(), likes: newLikes, comments: newComments, views: newViews });
     const trimmed = history.length > MAX_METRICS_HISTORY
       ? history.slice(-MAX_METRICS_HISTORY)
       : history;
@@ -533,17 +553,23 @@ async function upsertPost(
     await db
       .update(postsTable)
       .set({
-        like_count: postData.likesCount || existingPost.like_count || 0,
-        comment_count: postData.commentsCount || existingPost.comment_count || 0,
-        video_play_count: postData.videoPlayCount ?? existingPost.video_play_count ?? null,
+        like_count: newLikes,
+        comment_count: newComments,
+        video_play_count: newViews,
         thumbnail_url: postData.displayUrl || existingPost.thumbnail_url,
         metrics_history: trimmed,
         updated_at: new Date(),
       })
       .where(eq(postsTable.id, existingPost.id));
 
-    console.log(`[DB] Updated post ${postData.id} (${postData.shortCode}) | likes=${postData.likesCount} comments=${postData.commentsCount} views=${postData.videoPlayCount ?? "N/A"} | metrics_history: ${trimmed.length} entries`);
+    console.log(`[DB] Updated post ${postData.id} (${postData.shortCode}) | likes=${newLikes} comments=${newComments} views=${newViews ?? "N/A"} | metrics_history: ${trimmed.length} entries`);
   } else {
+    const newMetric: MetricsEntry = {
+      recorded_at: new Date().toISOString(),
+      likes: postData.likesCount || 0,
+      comments: postData.commentsCount || 0,
+      views: postData.videoPlayCount ?? null,
+    };
     await db.insert(postsTable).values({
       account_id: accountId,
       platform_post_id: canonicalId,
@@ -715,85 +741,101 @@ interface PostMetrics {
   thumbnailUrl: string | null;
 }
 
-async function scrapePostMetrics(
+async function scrapeBatchPostMetrics(
   client: ApifyClient,
-  postUrl: string,
+  postUrls: string[],
   platform: string
-): Promise<PostMetrics | null> {
+): Promise<Map<string, PostMetrics>> {
+  const results = new Map<string, PostMetrics>();
+  if (postUrls.length === 0) return results;
+
   if (platform === "instagram") {
-    const url = normalizeInstagramUrl(postUrl);
+    const urls = postUrls.map(normalizeInstagramUrl);
     const run = await client.actor(INSTAGRAM_SCRAPER_ACTOR).call({
-      directUrls: [url],
-      resultsLimit: 1,
+      directUrls: urls,
       resultsType: "posts",
     });
     const { items } = await client.dataset(run.defaultDatasetId).listItems();
-    if (items.length === 0) return null;
 
-    const item = items[0] as any;
-    return {
-      likesCount: item.likesCount || 0,
-      commentsCount: item.commentsCount || 0,
-      viewCount: item.videoPlayCount || item.videoViewCount || null,
-      thumbnailUrl: item.displayUrl || item.thumbnailUrl || null,
-    };
-  }
-
-  if (platform === "tiktok") {
+    for (const item of items) {
+      const raw = item as any;
+      const postId = extractPostIdFromUrl(raw.url || "", "instagram") || raw.shortCode;
+      if (!postId) continue;
+      results.set(postId, {
+        likesCount: raw.likesCount || 0,
+        commentsCount: raw.commentsCount || 0,
+        viewCount: raw.videoPlayCount ?? raw.videoViewCount ?? null,
+        thumbnailUrl: raw.displayUrl || raw.thumbnailUrl || null,
+      });
+    }
+  } else if (platform === "tiktok") {
     const run = await client.actor(TIKTOK_SCRAPER_ACTOR).call({
-      postURLs: [postUrl],
+      postURLs: postUrls,
       shouldDownloadCovers: false,
       shouldDownloadVideos: false,
     });
     const { items } = await client.dataset(run.defaultDatasetId).listItems();
-    if (items.length === 0) return null;
 
-    const item = items[0] as any;
-    return {
-      likesCount: item.diggCount || 0,
-      commentsCount: item.commentCount || 0,
-      viewCount: item.playCount ?? null,
-      thumbnailUrl: item.videoMeta?.coverUrl || null,
-    };
-  }
-
-  if (platform === "x") {
-    const tweetId = postUrl.match(/\/status\/(\d+)/)?.[1];
-    if (!tweetId) return null;
+    for (const item of items) {
+      const raw = item as any;
+      const postId = extractPostIdFromUrl(raw.webVideoUrl || "", "tiktok") || raw.id;
+      if (!postId) continue;
+      results.set(postId, {
+        likesCount: raw.diggCount || 0,
+        commentsCount: raw.commentCount || 0,
+        viewCount: raw.playCount ?? null,
+        thumbnailUrl: raw.videoMeta?.coverUrl || null,
+      });
+    }
+  } else if (platform === "x") {
+    const tweetIds = postUrls
+      .map((url) => url.match(/\/status\/(\d+)/)?.[1])
+      .filter((id): id is string => !!id);
+    if (tweetIds.length === 0) return results;
 
     const postsRun = await client.actor(X_POSTS_SCRAPER_ACTOR).call({
-      tweetIDs: [tweetId],
-      maxItems: 1,
+      tweetIDs: tweetIds,
+      maxItems: tweetIds.length,
     });
     const { items: tweetItems } = await client.dataset(postsRun.defaultDatasetId).listItems();
-    if (tweetItems.length === 0) return null;
 
-    const tweet = tweetItems[0] as any;
-    let viewCount: number | null = null;
+    const tweetMap = new Map<string, any>();
+    for (const item of tweetItems) {
+      const raw = item as any;
+      const id = raw.id || raw.id_str;
+      if (id) tweetMap.set(String(id), raw);
+    }
 
+    const viewsMap = new Map<string, number>();
     try {
       const viewsRun = await client.actor(X_VIEWS_SCRAPER_ACTOR).call({
-        tweets: tweetId,
-        max_results: 1,
+        tweets: tweetIds.join(","),
+        max_results: tweetIds.length,
         mode: "Get a Few Tweets",
       });
       const { items: viewItems } = await client.dataset(viewsRun.defaultDatasetId).listItems();
-      if (viewItems.length > 0) {
-        viewCount = (viewItems[0] as any).view_count ?? null;
+      for (const vi of viewItems) {
+        const raw = vi as any;
+        const id = raw.id || raw.id_str;
+        if (id && raw.view_count != null) viewsMap.set(String(id), raw.view_count);
       }
     } catch {
       // view scraper failed, continue without views
     }
 
-    return {
-      likesCount: tweet.likeCount || 0,
-      commentsCount: tweet.replyCount || 0,
-      viewCount,
-      thumbnailUrl: null,
-    };
+    for (const tweetId of tweetIds) {
+      const tweet = tweetMap.get(tweetId);
+      if (!tweet) continue;
+      results.set(tweetId, {
+        likesCount: tweet.likeCount || 0,
+        commentsCount: tweet.replyCount || 0,
+        viewCount: viewsMap.get(tweetId) ?? null,
+        thumbnailUrl: null,
+      });
+    }
   }
 
-  return null;
+  return results;
 }
 
 // ── Orchestrator handler (Step Functions) ──
@@ -934,25 +976,45 @@ export const orchestratorHandler: Handler = async (event: any, context: Context)
       .innerJoin(schema.campaigns, eq(schema.posts.campaign_id, schema.campaigns.id))
       .where(and(...massPostConditions));
 
+    // Group mass posts into batches by account
+    const massPostBatchMap = new Map<number, {
+      account_id: number;
+      platform: string;
+      team_id: number;
+      posts: Array<{ id: number; post_url: string; syncs_remaining: number }>;
+    }>();
+    for (const p of massPosts) {
+      let batch = massPostBatchMap.get(p.account_id);
+      if (!batch) {
+        batch = {
+          account_id: p.account_id,
+          platform: p.platform,
+          team_id: p.team_id,
+          posts: [],
+        };
+        massPostBatchMap.set(p.account_id, batch);
+      }
+      batch.posts.push({ id: p.id, post_url: p.post_url, syncs_remaining: p.syncs_remaining });
+    }
+
     // Merge all lists with a source field
     const accounts: any[] = [
       ...viralityAccounts.map((a: any) => ({ ...a, source: "virality" as const })),
       ...userAcctList.map((a: any) => ({ ...a, source: "user" as const })),
-      ...massPosts.map((p) => ({
-        id: p.id,
-        source: "mass_post" as const,
-        post_url: p.post_url,
-        platform: p.platform,
-        account_id: p.account_id,
-        team_id: p.team_id,
-        syncs_remaining: p.syncs_remaining,
+      ...Array.from(massPostBatchMap.values()).map((batch) => ({
+        id: batch.account_id,
+        source: "mass_post_batch" as const,
+        platform: batch.platform,
+        account_id: batch.account_id,
+        team_id: batch.team_id,
+        posts: batch.posts,
       })),
     ];
 
-    console.log(`[DB] Found ${viralityAccounts.length} virality + ${userAcctList.length} user + ${massPosts.length} mass posts = ${accounts.length} total items to sync`);
+    console.log(`[DB] Found ${viralityAccounts.length} virality + ${userAcctList.length} user + ${massPosts.length} mass posts (${massPostBatchMap.size} batches) = ${accounts.length} total items to sync`);
     for (const a of accounts) {
-      if (a.source === "mass_post") {
-        console.log(`  - [mass_post] id=${a.id} url=${a.post_url} (team=${a.team_id})`);
+      if (a.source === "mass_post_batch") {
+        console.log(`  - [mass_post_batch] account=${a.account_id} ${a.platform} ${a.posts.length} posts (team=${a.team_id})`);
       } else {
         console.log(`  - [${a.source}] id=${a.id} @${a.username} (team=${a.team_id})`);
       }
@@ -969,12 +1031,12 @@ export const orchestratorHandler: Handler = async (event: any, context: Context)
 export const workerHandler: Handler = async (event: any, context: Context) => {
   const { id: itemId, source } = event;
 
-  // ── Mass post: single-post metrics scrape ──
-  if (source === "mass_post") {
-    const { post_url, platform, account_id, team_id } = event;
+  // ── Mass post batch: scrape all posts for one account in a single Apify run ──
+  if (source === "mass_post_batch") {
+    const { platform, account_id, team_id, posts: batchPosts } = event;
 
     console.log(`\n========================================`);
-    console.log(`  MASS POST SYNC - postId=${itemId} [${platform}]`);
+    console.log(`  MASS POST BATCH SYNC - account=${account_id} [${platform}] ${batchPosts.length} posts`);
     console.log(`  ${new Date().toISOString()}`);
     console.log(`========================================\n`);
 
@@ -985,36 +1047,51 @@ export const workerHandler: Handler = async (event: any, context: Context) => {
     const db = drizzle(localPool, { schema });
     const apifyClient = new ApifyClient({ token: APIFY_API_TOKEN });
 
+    let syncedCount = 0;
+    let skippedCount = 0;
+
     try {
-      // Atomic decrement: only succeeds if syncs_remaining > 0
-      const decremented = await db
-        .update(schema.userPosts)
-        .set({
-          syncs_remaining: sql`${schema.userPosts.syncs_remaining} - 1`,
-          updated_at: new Date(),
-        })
-        .where(
-          and(
-            eq(schema.userPosts.id, itemId),
-            sql`${schema.userPosts.syncs_remaining} > 0`
+      // Decrement syncs_remaining for all posts in batch atomically
+      const eligiblePosts: Array<{ id: number; post_url: string }> = [];
+      for (const p of batchPosts) {
+        const decremented = await db
+          .update(schema.userPosts)
+          .set({
+            syncs_remaining: sql`${schema.userPosts.syncs_remaining} - 1`,
+            updated_at: new Date(),
+          })
+          .where(
+            and(
+              eq(schema.userPosts.id, p.id),
+              sql`${schema.userPosts.syncs_remaining} > 0`
+            )
           )
-        )
-        .returning({ id: schema.userPosts.id });
+          .returning({ id: schema.userPosts.id });
 
-      if (decremented.length === 0) {
-        console.log(`[Skip] Post id=${itemId} has no syncs remaining`);
-        return { id: itemId, source: "mass_post", status: "skipped", reason: "no_syncs" };
+        if (decremented.length > 0) {
+          eligiblePosts.push({ id: p.id, post_url: p.post_url });
+        } else {
+          skippedCount++;
+          console.log(`[Skip] Post id=${p.id} has no syncs remaining`);
+        }
       }
 
-      const metrics = await scrapePostMetrics(apifyClient, post_url, platform);
-      if (!metrics) {
-        console.log(`[Skip] Post id=${itemId} — Apify returned no metrics`);
-        return { id: itemId, source: "mass_post", status: "skipped", reason: "no_metrics" };
+      if (eligiblePosts.length === 0) {
+        console.log(`[Skip] All ${batchPosts.length} posts skipped (no syncs remaining)`);
+        return { id: account_id, source: "mass_post_batch", status: "skipped", reason: "no_syncs" };
       }
 
-      // Fetch existing post data to preserve values when Apify returns null
-      const [existing] = await db
+      // Single Apify call for all post URLs
+      const postUrls = eligiblePosts.map((p) => p.post_url);
+      console.log(`[Apify] Batch scraping ${postUrls.length} ${platform} posts...`);
+      const metricsMap = await scrapeBatchPostMetrics(apifyClient, postUrls, platform);
+      console.log(`[Apify] Got metrics for ${metricsMap.size}/${postUrls.length} posts`);
+
+      // Bulk-fetch current post data for metrics history (single query instead of N)
+      const eligibleIds = eligiblePosts.map((p) => p.id);
+      const existingPostRows = await db
         .select({
+          id: schema.userPosts.id,
           metrics_history: schema.userPosts.metrics_history,
           like_count: schema.userPosts.like_count,
           comment_count: schema.userPosts.comment_count,
@@ -1022,37 +1099,53 @@ export const workerHandler: Handler = async (event: any, context: Context) => {
           thumbnail_url: schema.userPosts.thumbnail_url,
         })
         .from(schema.userPosts)
-        .where(eq(schema.userPosts.id, itemId))
-        .limit(1);
+        .where(inArray(schema.userPosts.id, eligibleIds));
+      const existingPostMap = new Map(existingPostRows.map((r) => [r.id, r]));
 
-      const history: MetricsEntry[] = Array.isArray(existing?.metrics_history)
-        ? [...(existing.metrics_history as MetricsEntry[])]
-        : [];
+      // Update each post with its metrics
+      for (const p of eligiblePosts) {
+        const postIdentifier = extractPostIdFromUrl(p.post_url, platform);
+        const metrics = postIdentifier ? metricsMap.get(postIdentifier) : null;
 
-      history.push({
-        recorded_at: new Date().toISOString(),
-        likes: metrics.likesCount,
-        comments: metrics.commentsCount,
-        views: metrics.viewCount,
-      });
+        if (!metrics) {
+          skippedCount++;
+          console.log(`[Skip] Post id=${p.id} — no metrics returned from batch`);
+          continue;
+        }
 
-      const trimmed = history.length > MAX_METRICS_HISTORY
-        ? history.slice(-MAX_METRICS_HISTORY)
-        : history;
+        const existing = existingPostMap.get(p.id);
 
-      // Only overwrite fields when Apify returns real values — never null over existing data
-      await db
-        .update(schema.userPosts)
-        .set({
-          like_count: metrics.likesCount || existing?.like_count || 0,
-          comment_count: metrics.commentsCount || existing?.comment_count || 0,
-          video_play_count: metrics.viewCount ?? existing?.video_play_count ?? null,
-          thumbnail_url: metrics.thumbnailUrl || existing?.thumbnail_url || null,
-          metrics_history: trimmed,
-          updated_at: new Date(),
-        })
-        .where(eq(schema.userPosts.id, itemId));
+        const history: MetricsEntry[] = Array.isArray(existing?.metrics_history)
+          ? [...(existing.metrics_history as MetricsEntry[])]
+          : [];
+        const lastMetric = history.length > 0 ? history[history.length - 1] : null;
+        const { likes: newLikes, comments: newComments, views: newViews } = resolveMetrics(
+          { likes: metrics.likesCount || 0, comments: metrics.commentsCount || 0, views: metrics.viewCount ?? null },
+          lastMetric,
+        );
 
+        history.push({ recorded_at: new Date().toISOString(), likes: newLikes, comments: newComments, views: newViews });
+        const trimmed = history.length > MAX_METRICS_HISTORY
+          ? history.slice(-MAX_METRICS_HISTORY)
+          : history;
+
+        await db
+          .update(schema.userPosts)
+          .set({
+            like_count: newLikes,
+            comment_count: newComments,
+            video_play_count: newViews,
+            thumbnail_url: metrics.thumbnailUrl || existing?.thumbnail_url || null,
+            metrics_history: trimmed,
+            updated_at: new Date(),
+          })
+          .where(eq(schema.userPosts.id, p.id));
+
+        syncedCount++;
+        console.log(`[OK] Post id=${p.id} synced: likes=${newLikes} comments=${newComments} views=${newViews ?? "N/A"}`);
+      }
+
+      // Update account last_synced_at once for the whole batch
       await db
         .update(schema.userAccounts)
         .set({
@@ -1061,14 +1154,20 @@ export const workerHandler: Handler = async (event: any, context: Context) => {
         })
         .where(eq(schema.userAccounts.id, account_id));
 
-      console.log(`[OK] Mass post id=${itemId} synced: likes=${metrics.likesCount} comments=${metrics.commentsCount} views=${metrics.viewCount ?? "N/A"}`);
-      return { id: itemId, source: "mass_post", status: "completed", teamId: team_id };
+      console.log(`[OK] Batch complete: ${syncedCount} synced, ${skippedCount} skipped`);
+      return { id: account_id, source: "mass_post_batch", status: "completed", syncedCount, skippedCount, teamId: team_id };
     } catch (error: any) {
-      console.error(`[FAIL] Mass post id=${itemId}: ${error.message}`);
+      console.error(`[FAIL] Mass post batch account=${account_id}: ${error.message}`);
       throw error;
     } finally {
       await localPool.end();
     }
+  }
+
+  // ── Legacy mass_post events from in-flight Step Functions executions ──
+  if (source === "mass_post") {
+    console.warn(`[Skip] Legacy mass_post event (id=${itemId}) — use mass_post_batch instead`);
+    return { id: itemId, source: "mass_post", status: "skipped", reason: "legacy_format" };
   }
 
   // ── Account sync (virality / user) ──

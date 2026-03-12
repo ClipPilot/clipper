@@ -37,7 +37,7 @@ import {
   getNextSyncCountdown,
 } from "@/app/dashboard/virality/[competitorId]/utils";
 import { canAccessViralityTracker } from "@/lib/plans";
-import { useViralitySyncSocket } from "@/hooks/useViralitySyncSocket";
+import { useViralitySync } from "@/hooks/useViralitySyncSocket";
 
 interface MyPerformanceViewProps {
   showBackButton?: boolean;
@@ -55,7 +55,6 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
   const [isLoading, setIsLoading] = useState(true);
   const [isRecalculating, setIsRecalculating] = useState(false);
   const initialLoadDone = useRef(false);
-  const [isSyncing, setIsSyncing] = useState(false);
   const [selectedAccountIds, setSelectedAccountIds] = useState<number[]>([]);
   const [comparisonMode, setComparisonMode] = useState<ComparisonMode>({ type: "last-sync" });
 
@@ -65,6 +64,7 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
     try {
       const accts = await userPerformanceAPI.getAccounts(selectedTeam.id);
       setAccounts(accts);
+      reconcileSync(accts);
 
       const { startDate, endDate } = dateRange;
       const postsMap: Record<number, ViralityPost[]> = {};
@@ -91,37 +91,46 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
   // No auto-select: chart shows aggregated total by default.
   // User can toggle individual accounts via the filter popover.
 
-  // Track accounts doing their initial sync
-  const syncingAccountIds = useMemo(() => {
-    return accounts
-      .filter((a) => !a.last_synced_at && (a.sync_status === "pending" || a.sync_status === "syncing"))
-      .map((a) => a.id);
-  }, [accounts]);
+  // Global sync state — persists across page navigation
+  const { startSync, isAnySyncing, getSyncingIds, reconcileSync } = useViralitySync();
 
-  useViralitySyncSocket({
-    teamId: selectedTeam?.id,
-    accountIds: syncingAccountIds,
-    onSyncComplete: () => { fetchData(true); },
-  });
+  const allAccountIds = useMemo(() => accounts.map((a) => a.id), [accounts]);
+  const isSyncing = isAnySyncing(allAccountIds);
+  const syncingAccountIds = getSyncingIds(allAccountIds);
+
+  // Refetch data when syncs complete
+  const prevSyncingRef = useRef<number[]>([]);
+  useEffect(() => {
+    const prev = prevSyncingRef.current;
+    const current = syncingAccountIds;
+    const justFinished = prev.filter((id) => !current.includes(id));
+    if (justFinished.length > 0) {
+      fetchData(true);
+    }
+    prevSyncingRef.current = current;
+  }, [syncingAccountIds, fetchData]);
+
+  // Safety net: re-fetch once after 10 min to catch missed socket events
+  const hasSyncing = syncingAccountIds.length > 0;
+  useEffect(() => {
+    if (!hasSyncing) return;
+    const timeout = setTimeout(() => fetchData(true), 10 * 60 * 1000);
+    return () => clearTimeout(timeout);
+  }, [hasSyncing, fetchData]);
 
   const handleSyncAll = async () => {
     if (!selectedTeam?.id || accounts.length === 0) return;
-    setIsSyncing(true);
+    const accountIds = accounts.map((a) => a.id);
+
+    // Mark as syncing in global state immediately
+    startSync(accountIds);
+
     try {
-      const result = await userPerformanceAPI.syncAll(selectedTeam.id);
-      const parts: string[] = [];
-      if (result.accounts.synced > 0) parts.push(`${result.accounts.synced} account(s)`);
-      if (result.massPosts.synced > 0) parts.push(`${result.massPosts.synced} post(s)`);
-      if (result.accounts.failed > 0) {
-        addToast({ title: `Synced ${parts.join(" + ")} — ${result.accounts.failed} account(s) failed`, color: "warning" });
-      } else {
-        addToast({ title: parts.length > 0 ? `Synced ${parts.join(" + ")}` : "Nothing to sync", color: "success" });
-      }
-      await fetchData();
+      // Fire-and-forget: returns 202 instantly, kicks off background sync + Step Functions
+      await userPerformanceAPI.syncAll(selectedTeam.id);
+      addToast({ title: "Sync started for all accounts", color: "primary" });
     } catch (err: any) {
-      addToast({ title: "Sync failed", description: err.message, color: "danger" });
-    } finally {
-      setIsSyncing(false);
+      addToast({ title: "Failed to start sync", description: err.message, color: "danger" });
     }
   };
 

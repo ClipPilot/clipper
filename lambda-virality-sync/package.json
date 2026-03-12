@@ -5,7 +5,9 @@
   "main": "dist/handler.js",
   "scripts": {
     "build": "tsc",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@clipper/shared-db": "workspace:*",
@@ -21,6 +23,7 @@
     "@types/aws-lambda": "^8.10.145",
     "@types/node": "^24.10.2",
     "@types/pg": "^8.15.6",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
   }
 }

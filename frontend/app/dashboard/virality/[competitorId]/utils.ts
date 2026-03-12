@@ -176,10 +176,23 @@ export function buildChartDataByAccount(
 
   const sorted = Array.from(allHours).sort();
 
+  // Forward-fill: for each account, carry the last known value into hours
+  // where no snapshot exists. Without this, posts missing a data point at a
+  // given hour contribute 0, causing artificial dips in the total line even
+  // though their views/likes/comments never actually decreased.
+  const lastKnown = new Map<number, number>();
   return sorted.map((hour) => {
     const point: AccountChartDay = { hourKey: hour };
     for (const accountId of accountIds) {
-      point[`account_${accountId}`] = byAccountHour.get(accountId)?.get(hour) || 0;
+      const hourMap = byAccountHour.get(accountId);
+      const val = hourMap?.get(hour);
+      if (val !== undefined) {
+        point[`account_${accountId}`] = val;
+      } else {
+        // No data this hour — carry forward last known value
+        point[`account_${accountId}`] = (lastKnown.get(accountId) ?? 0);
+      }
+      lastKnown.set(accountId, point[`account_${accountId}`] as number);
     }
     return point;
   });
