@@ -86,6 +86,27 @@ function normalizeProfileData(rawProfile: any): InstagramProfile {
 
 // ── Sync logic ──
 
+/**
+ * Apply flaky-data protection and strict views monotonicity to scraped metrics.
+ *
+ * Likes/comments: if Apify returns 0 but we have previous data, use the previous
+ * value (flaky scrape). A real non-zero decrease is accepted.
+ *
+ * Views: strictly monotonic — never decrease. Uses Math.max against previous.
+ */
+function resolveMetrics(
+  incoming: { likes: number; comments: number; views: number | null },
+  lastMetric: MetricsEntry | null,
+): { likes: number; comments: number; views: number | null } {
+  const likes = (!incoming.likes && lastMetric) ? lastMetric.likes : (incoming.likes || 0);
+  const comments = (!incoming.comments && lastMetric) ? lastMetric.comments : (incoming.comments || 0);
+  const rawViews = incoming.views;
+  const views = (rawViews != null && lastMetric?.views != null)
+    ? Math.max(rawViews, lastMetric.views)
+    : rawViews ?? lastMetric?.views ?? null;
+  return { likes, comments, views };
+}
+
 interface MetricsEntry {
   recorded_at: string;
   likes: number;
@@ -754,7 +775,7 @@ async function scrapeBatchPostMetrics(
       results.set(postId, {
         likesCount: raw.likesCount || 0,
         commentsCount: raw.commentsCount || 0,
-        viewCount: raw.videoPlayCount || raw.videoViewCount || null,
+        viewCount: raw.videoPlayCount ?? raw.videoViewCount ?? null,
         thumbnailUrl: raw.displayUrl || raw.thumbnailUrl || null,
       });
     }
@@ -1077,6 +1098,21 @@ export const workerHandler: Handler = async (event: any, context: Context) => {
       const metricsMap = await scrapeBatchPostMetrics(apifyClient, postUrls, platform);
       console.log(`[Apify] Got metrics for ${metricsMap.size}/${postUrls.length} posts`);
 
+      // Bulk-fetch current post data for metrics history (single query instead of N)
+      const eligibleIds = eligiblePosts.map((p) => p.id);
+      const existingPostRows = await db
+        .select({
+          id: schema.userPosts.id,
+          metrics_history: schema.userPosts.metrics_history,
+          like_count: schema.userPosts.like_count,
+          comment_count: schema.userPosts.comment_count,
+          video_play_count: schema.userPosts.video_play_count,
+          thumbnail_url: schema.userPosts.thumbnail_url,
+        })
+        .from(schema.userPosts)
+        .where(inArray(schema.userPosts.id, eligibleIds));
+      const existingPostMap = new Map(existingPostRows.map((r) => [r.id, r]));
+
       // Update each post with its metrics
       for (const p of eligiblePosts) {
         const postIdentifier = extractPostIdFromUrl(p.post_url, platform);
@@ -1088,17 +1124,7 @@ export const workerHandler: Handler = async (event: any, context: Context) => {
           continue;
         }
 
-        const [existing] = await db
-          .select({
-            metrics_history: schema.userPosts.metrics_history,
-            like_count: schema.userPosts.like_count,
-            comment_count: schema.userPosts.comment_count,
-            video_play_count: schema.userPosts.video_play_count,
-            thumbnail_url: schema.userPosts.thumbnail_url,
-          })
-          .from(schema.userPosts)
-          .where(eq(schema.userPosts.id, p.id))
-          .limit(1);
+        const existing = existingPostMap.get(p.id);
 
         const history: MetricsEntry[] = Array.isArray(existing?.metrics_history)
           ? [...(existing.metrics_history as MetricsEntry[])]
@@ -1158,6 +1184,12 @@ export const workerHandler: Handler = async (event: any, context: Context) => {
     } finally {
       await localPool.end();
     }
+  }
+
+  // ── Legacy mass_post events from in-flight Step Functions executions ──
+  if (source === "mass_post") {
+    console.warn(`[Skip] Legacy mass_post event (id=${itemId}) — use mass_post_batch instead`);
+    return { id: itemId, source: "mass_post", status: "skipped", reason: "legacy_format" };
   }
 
   // ── Account sync (virality / user) ──

@@ -110,6 +110,14 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
     prevSyncingRef.current = current;
   }, [syncingAccountIds, fetchData]);
 
+  // Safety net: re-fetch once after 10 min to catch missed socket events
+  const hasSyncing = syncingAccountIds.length > 0;
+  useEffect(() => {
+    if (!hasSyncing) return;
+    const timeout = setTimeout(() => fetchData(true), 10 * 60 * 1000);
+    return () => clearTimeout(timeout);
+  }, [hasSyncing, fetchData]);
+
   const handleSyncAll = async () => {
     if (!selectedTeam?.id || accounts.length === 0) return;
     const accountIds = accounts.map((a) => a.id);

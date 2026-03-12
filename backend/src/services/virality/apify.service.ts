@@ -2,6 +2,7 @@ import { ApifyClient } from "apify-client";
 import { config } from "../../config/env";
 import { APIFY_ACTORS, SCRAPE_WINDOW_DAYS } from "../../config/virality";
 import { parseXUsername } from "../../utils/parseUsername";
+import { extractPostIdentifier } from "../../utils/postIdentifier";
 
 const ACTOR_TIMEOUT_SECS = 900; // 15 minutes
 
@@ -682,12 +683,12 @@ class ApifyService {
       const { items } = await client.dataset(run.defaultDatasetId).listItems();
       for (const item of items) {
         const raw = item as any;
-        const postId = this.extractPostIdFromUrl(raw.url || "", "instagram") || raw.shortCode;
+        const postId = extractPostIdentifier(raw.url || "", "instagram") || raw.shortCode;
         if (!postId) continue;
         results.set(postId, {
           likesCount: raw.likesCount || 0,
           commentsCount: raw.commentsCount || 0,
-          viewCount: raw.videoPlayCount || raw.videoViewCount || null,
+          viewCount: raw.videoPlayCount ?? raw.videoViewCount ?? null,
           thumbnailUrl: raw.displayUrl || raw.thumbnailUrl || null,
         });
       }
@@ -699,7 +700,7 @@ class ApifyService {
       const { items } = await client.dataset(run.defaultDatasetId).listItems();
       for (const item of items) {
         const raw = item as any;
-        const postId = this.extractPostIdFromUrl(raw.webVideoUrl || "", "tiktok") || raw.id;
+        const postId = extractPostIdentifier(raw.webVideoUrl || "", "tiktok") || raw.id;
         if (!postId) continue;
         results.set(postId, {
           likesCount: raw.diggCount || 0,
@@ -758,27 +759,7 @@ class ApifyService {
   }
 
   extractPostIdFromUrl(url: string, platform: string): string | null {
-    try {
-      const u = new URL(url);
-      switch (platform) {
-        case "instagram": {
-          const m = u.pathname.match(/\/(?:reels?|p)\/([A-Za-z0-9_-]+)/);
-          return m?.[1] ?? null;
-        }
-        case "tiktok": {
-          const m = u.pathname.match(/\/video\/(\d+)/);
-          return m?.[1] ?? null;
-        }
-        case "x": {
-          const m = u.pathname.match(/\/status\/(\d+)/);
-          return m?.[1] ?? null;
-        }
-        default:
-          return null;
-      }
-    } catch {
-      return null;
-    }
+    return extractPostIdentifier(url, platform);
   }
 
   private normalizeTikTokPostData(rawPost: any): InstagramPost {

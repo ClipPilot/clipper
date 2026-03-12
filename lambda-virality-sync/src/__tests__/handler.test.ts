@@ -143,14 +143,15 @@ describe("mass_post_batch worker", () => {
         return chain;
       });
 
-      // Mock: existing post data fetch
+      // Mock: existing post data fetch (bulk query returns all 3 posts)
+      let selectCount = 0;
       mockDb.select.mockImplementation(() => {
-        return mockDb.createChain([makeExistingPost({
-          metrics_history: [{ recorded_at: "2026-03-09T00:00:00Z", likes: 10, comments: 2, views: 500 }],
-          like_count: 10,
-          comment_count: 2,
-          video_play_count: 500,
-        })]);
+        selectCount++;
+        return mockDb.createChain([
+          makeExistingPost({ id: 1, metrics_history: [{ recorded_at: "2026-03-09T00:00:00Z", likes: 10, comments: 2, views: 500 }], like_count: 10, comment_count: 2, video_play_count: 500 }),
+          makeExistingPost({ id: 2, metrics_history: [{ recorded_at: "2026-03-09T00:00:00Z", likes: 10, comments: 2, views: 500 }], like_count: 10, comment_count: 2, video_play_count: 500 }),
+          makeExistingPost({ id: 3, metrics_history: [{ recorded_at: "2026-03-09T00:00:00Z", likes: 10, comments: 2, views: 500 }], like_count: 10, comment_count: 2, video_play_count: 500 }),
+        ]);
       });
 
       // Mock: Apify returns data for all 3 posts
@@ -190,10 +191,10 @@ describe("mass_post_batch worker", () => {
 
       mockDb.update.mockImplementation(() => mockDb.createChain([{ id: 1 }]));
       mockDb.select.mockImplementation(() =>
-        mockDb.createChain([makeExistingPost({
-          metrics_history: [{ recorded_at: "2026-03-09T00:00:00Z", likes: 5, comments: 1, views: 200 }],
-          like_count: 5, comment_count: 1, video_play_count: 200,
-        })])
+        mockDb.createChain([
+          makeExistingPost({ id: 10, metrics_history: [{ recorded_at: "2026-03-09T00:00:00Z", likes: 5, comments: 1, views: 200 }], like_count: 5, comment_count: 1, video_play_count: 200 }),
+          makeExistingPost({ id: 11, metrics_history: [{ recorded_at: "2026-03-09T00:00:00Z", likes: 5, comments: 1, views: 200 }], like_count: 5, comment_count: 1, video_play_count: 200 }),
+        ])
       );
 
       mockApifyListItems.mockResolvedValueOnce({
@@ -221,10 +222,10 @@ describe("mass_post_batch worker", () => {
 
       mockDb.update.mockImplementation(() => mockDb.createChain([{ id: 1 }]));
       mockDb.select.mockImplementation(() =>
-        mockDb.createChain([makeExistingPost({
-          metrics_history: [{ recorded_at: "2026-03-09T00:00:00Z", likes: 3, comments: 1, views: 100 }],
-          like_count: 3, comment_count: 1, video_play_count: 100,
-        })])
+        mockDb.createChain([
+          makeExistingPost({ id: 20, metrics_history: [{ recorded_at: "2026-03-09T00:00:00Z", likes: 3, comments: 1, views: 100 }], like_count: 3, comment_count: 1, video_play_count: 100 }),
+          makeExistingPost({ id: 21, metrics_history: [{ recorded_at: "2026-03-09T00:00:00Z", likes: 3, comments: 1, views: 100 }], like_count: 3, comment_count: 1, video_play_count: 100 }),
+        ])
       );
 
       // First call: posts scraper
@@ -265,6 +266,7 @@ describe("mass_post_batch worker", () => {
 
       mockDb.select.mockImplementation(() =>
         mockDb.createChain([makeExistingPost({
+          id: 40,
           metrics_history: [{ recorded_at: "2026-03-09T00:00:00Z", likes: 5, comments: 1, views: 200 }],
         })])
       );
@@ -310,9 +312,10 @@ describe("mass_post_batch worker", () => {
     it("should skip posts that Apify returns no metrics for", async () => {
       mockDb.update.mockImplementation(() => mockDb.createChain([{ id: 1 }]));
       mockDb.select.mockImplementation(() =>
-        mockDb.createChain([makeExistingPost({
-          metrics_history: [{ recorded_at: "2026-03-09T00:00:00Z", likes: 5, comments: 1, views: 200 }],
-        })])
+        mockDb.createChain([
+          makeExistingPost({ id: 60, metrics_history: [{ recorded_at: "2026-03-09T00:00:00Z", likes: 5, comments: 1, views: 200 }] }),
+          makeExistingPost({ id: 61, metrics_history: [{ recorded_at: "2026-03-09T00:00:00Z", likes: 5, comments: 1, views: 200 }] }),
+        ])
       );
 
       // Apify only returns data for 1 of 2 posts
@@ -346,16 +349,15 @@ describe("mass_post_batch worker", () => {
 
       mockDb.update.mockImplementation(() => mockDb.createChain([{ id: 1 }]));
 
-      let selectCallCount = 0;
-      mockDb.select.mockImplementation(() => {
-        selectCallCount++;
-        return mockDb.createChain([makeExistingPost({
+      mockDb.select.mockImplementation(() =>
+        mockDb.createChain([makeExistingPost({
+          id: 70,
           metrics_history: previousHistory,
           like_count: 50,
           comment_count: 10,
           video_play_count: 2000,
-        })]);
-      });
+        })])
+      );
 
       // Apify returns 0 likes, 0 comments (flaky), but real views
       mockApifyListItems.mockResolvedValueOnce({
@@ -365,7 +367,6 @@ describe("mass_post_batch worker", () => {
       });
 
       const updateCalls: any[] = [];
-      const originalUpdate = mockDb.update;
       mockDb.update.mockImplementation((...args: any[]) => {
         const chain = mockDb.createChain([{ id: 1 }]);
         const originalSet = chain.set;
@@ -400,6 +401,7 @@ describe("mass_post_batch worker", () => {
       mockDb.update.mockImplementation(() => mockDb.createChain([{ id: 1 }]));
       mockDb.select.mockImplementation(() =>
         mockDb.createChain([makeExistingPost({
+          id: 80,
           metrics_history: previousHistory,
           like_count: 50,
           comment_count: 10,
@@ -449,6 +451,7 @@ describe("mass_post_batch worker", () => {
       mockDb.update.mockImplementation(() => mockDb.createChain([{ id: 1 }]));
       mockDb.select.mockImplementation(() =>
         mockDb.createChain([makeExistingPost({
+          id: 90,
           metrics_history: previousHistory,
           like_count: 50, comment_count: 10, video_play_count: 5000,
         })])
@@ -491,6 +494,7 @@ describe("mass_post_batch worker", () => {
       mockDb.update.mockImplementation(() => mockDb.createChain([{ id: 1 }]));
       mockDb.select.mockImplementation(() =>
         mockDb.createChain([makeExistingPost({
+          id: 100,
           metrics_history: previousHistory,
           like_count: 50, comment_count: 10, video_play_count: 3000,
         })])
@@ -530,13 +534,14 @@ describe("mass_post_batch worker", () => {
       mockDb.update.mockImplementation(() => mockDb.createChain([{ id: 1 }]));
       mockDb.select.mockImplementation(() =>
         mockDb.createChain([makeExistingPost({
+          id: 110,
           metrics_history: [], // empty — first sync
           like_count: 0, comment_count: 0, video_play_count: null,
         })])
       );
 
       // Apify returns all zeros (legitimate for brand new post)
-      // Note: scrapeBatchPostMetrics uses `|| null` for views, so videoPlayCount: 0 becomes null
+      // scrapeBatchPostMetrics uses `?? null` for views, so videoPlayCount: 0 stays as 0
       // and likesCount: 0 stays as 0 (|| 0 fallback in normalizer)
       mockApifyListItems.mockResolvedValueOnce({
         items: [
@@ -571,22 +576,21 @@ describe("mass_post_batch worker", () => {
     it("should handle multiple posts with mixed flaky and real data", async () => {
       // Post A: has history, will get flaky data
       // Post B: has history, will get real data
-      let selectCallCount = 0;
-      mockDb.select.mockImplementation(() => {
-        selectCallCount++;
-        if (selectCallCount === 1) {
-          // Post A existing data
-          return mockDb.createChain([makeExistingPost({
+      // Bulk select returns both posts in a single query
+      mockDb.select.mockImplementation(() =>
+        mockDb.createChain([
+          makeExistingPost({
+            id: 120,
             metrics_history: [{ recorded_at: "2026-03-08T00:00:00Z", likes: 100, comments: 20, views: 10000 }],
             like_count: 100, comment_count: 20, video_play_count: 10000,
-          })]);
-        }
-        // Post B existing data
-        return mockDb.createChain([makeExistingPost({
-          metrics_history: [{ recorded_at: "2026-03-08T00:00:00Z", likes: 200, comments: 30, views: 20000 }],
-          like_count: 200, comment_count: 30, video_play_count: 20000,
-        })]);
-      });
+          }),
+          makeExistingPost({
+            id: 121,
+            metrics_history: [{ recorded_at: "2026-03-08T00:00:00Z", likes: 200, comments: 30, views: 20000 }],
+            like_count: 200, comment_count: 30, video_play_count: 20000,
+          }),
+        ])
+      );
 
       mockDb.update.mockImplementation(() => mockDb.createChain([{ id: 1 }]));
 
@@ -644,6 +648,7 @@ describe("mass_post_batch worker", () => {
       mockDb.update.mockImplementation(() => mockDb.createChain([{ id: 1 }]));
       mockDb.select.mockImplementation(() =>
         mockDb.createChain([makeExistingPost({
+          id: 130,
           metrics_history: previousHistory,
           like_count: 50, comment_count: 10, video_play_count: 5000,
         })])
@@ -692,6 +697,7 @@ describe("mass_post_batch worker", () => {
       mockDb.update.mockImplementation(() => mockDb.createChain([{ id: 1 }]));
       mockDb.select.mockImplementation(() =>
         mockDb.createChain([makeExistingPost({
+          id: 140,
           metrics_history: previousHistory,
           like_count: 100, comment_count: 20, video_play_count: 8000,
         })])

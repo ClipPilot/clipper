@@ -835,11 +835,14 @@ export class AccountTrackingService {
       const postUrls = decremented.map((p) => p.post_url);
       const metricsMap = await apify.scrapeBatchPostMetrics(postUrls, account.platform);
 
+      // Build lookup from the already-fetched eligiblePosts data
+      const eligibleMap = new Map(eligiblePosts.map((ep: any) => [ep.id, ep]));
+
       let syncedCount = 0;
       let skippedCount = 0;
 
       for (const p of decremented) {
-        const postIdentifier = apify.extractPostIdFromUrl(p.post_url, account.platform);
+        const postIdentifier = extractPostIdentifier(p.post_url, account.platform);
         const metrics = postIdentifier ? metricsMap.get(postIdentifier) : null;
 
         if (!metrics) {
@@ -847,18 +850,7 @@ export class AccountTrackingService {
           continue;
         }
 
-        // Get current post data for metrics history
-        const [existing] = await db
-          .select({
-            metrics_history: this.postsTable.metrics_history,
-            like_count: this.postsTable.like_count,
-            comment_count: this.postsTable.comment_count,
-            video_play_count: this.postsTable.video_play_count,
-            thumbnail_url: this.postsTable.thumbnail_url,
-          })
-          .from(this.postsTable)
-          .where(eq(this.postsTable.id, p.id))
-          .limit(1) as any[];
+        const existing = eligibleMap.get(p.id) as any;
 
         const history: MetricsEntry[] = Array.isArray(existing?.metrics_history)
           ? [...(existing.metrics_history as MetricsEntry[])]

@@ -554,19 +554,7 @@ describe("AccountTrackingService.syncMassPostBatch", () => {
     const decrementChain = createDrizzleChain([{ id: 201 }]);
     mockDb.update.mockReturnValueOnce(decrementChain);
 
-    // 4. select existing post data for metrics
-    const existingPostData = {
-      metrics_history: [
-        { recorded_at: "2026-03-10T00:00:00.000Z", likes: 300, comments: 30, views: 8000 },
-      ],
-      like_count: 300,
-      comment_count: 30,
-      video_play_count: 8000,
-      thumbnail_url: "thumb1.jpg",
-    };
-    mockDb.select.mockReturnValueOnce(createDrizzleChain([existingPostData]));
-
-    // 5. update post with new metrics
+    // 4. update post with new metrics (uses eligibleMap from initial select, no re-read needed)
     const postUpdateChain = createDrizzleChain([]);
     mockDb.update.mockReturnValueOnce(postUpdateChain);
 
