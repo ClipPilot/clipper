@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { Context } from "aws-lambda";
 
 // ── Hoisted mocks ──
 
