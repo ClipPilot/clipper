@@ -1,7 +1,7 @@
 "use client";
 
 import { atom } from "jotai";
-import { atomWithStorage } from "jotai/utils";
+import { atomWithStorage, createJSONStorage } from "jotai/utils";
 
 export type SyncAccountStatus = "syncing" | "completed" | "failed";
 
@@ -18,10 +18,14 @@ const SYNC_TTL_MS = 10 * 60 * 1000; // 10 minutes
  * Raw persisted map keyed by accountId.
  * Uses sessionStorage so it survives reloads but not new tabs.
  */
+const sessionJSONStorage = createJSONStorage<Record<number, SyncAccountState>>(
+  () => sessionStorage,
+);
+
 const rawSyncingAccountsAtom = atomWithStorage<Record<number, SyncAccountState>>(
   "virality-syncing-accounts",
   {},
-  typeof window !== "undefined" ? sessionStorage : undefined,
+  sessionJSONStorage,
 );
 
 /**
