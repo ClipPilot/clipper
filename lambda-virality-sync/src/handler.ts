@@ -540,23 +540,12 @@ async function upsertPost(
       ? [...(existingPost.metrics_history as MetricsEntry[])]
       : [];
     const lastMetric = history.length > 0 ? history[history.length - 1] : null;
+    const { likes: newLikes, comments: newComments, views: newViews } = resolveMetrics(
+      { likes: postData.likesCount || 0, comments: postData.commentsCount || 0, views: postData.videoPlayCount ?? null },
+      lastMetric,
+    );
 
-    // If Apify returns zero but we have previous data, use the previous value (flaky scrape)
-    const newLikes = (!postData.likesCount && lastMetric) ? lastMetric.likes : (postData.likesCount || 0);
-    const newComments = (!postData.commentsCount && lastMetric) ? lastMetric.comments : (postData.commentsCount || 0);
-    // Views are strictly monotonic — never decrease
-    const rawViews = postData.videoPlayCount ?? null;
-    const newViews = (rawViews != null && lastMetric?.views != null)
-      ? Math.max(rawViews, lastMetric.views)
-      : rawViews ?? lastMetric?.views ?? null;
-
-    const newMetric: MetricsEntry = {
-      recorded_at: new Date().toISOString(),
-      likes: newLikes,
-      comments: newComments,
-      views: newViews,
-    };
-    history.push(newMetric);
+    history.push({ recorded_at: new Date().toISOString(), likes: newLikes, comments: newComments, views: newViews });
     const trimmed = history.length > MAX_METRICS_HISTORY
       ? history.slice(-MAX_METRICS_HISTORY)
       : history;
@@ -1130,23 +1119,12 @@ export const workerHandler: Handler = async (event: any, context: Context) => {
           ? [...(existing.metrics_history as MetricsEntry[])]
           : [];
         const lastMetric = history.length > 0 ? history[history.length - 1] : null;
+        const { likes: newLikes, comments: newComments, views: newViews } = resolveMetrics(
+          { likes: metrics.likesCount || 0, comments: metrics.commentsCount || 0, views: metrics.viewCount ?? null },
+          lastMetric,
+        );
 
-        // If Apify returns zero but we have previous data, use the previous value (flaky scrape)
-        const newLikes = (!metrics.likesCount && lastMetric) ? lastMetric.likes : (metrics.likesCount || 0);
-        const newComments = (!metrics.commentsCount && lastMetric) ? lastMetric.comments : (metrics.commentsCount || 0);
-        // Views are strictly monotonic — never decrease
-        const rawViews = metrics.viewCount ?? null;
-        const newViews = (rawViews != null && lastMetric?.views != null)
-          ? Math.max(rawViews, lastMetric.views)
-          : rawViews ?? lastMetric?.views ?? null;
-
-        history.push({
-          recorded_at: new Date().toISOString(),
-          likes: newLikes,
-          comments: newComments,
-          views: newViews,
-        });
-
+        history.push({ recorded_at: new Date().toISOString(), likes: newLikes, comments: newComments, views: newViews });
         const trimmed = history.length > MAX_METRICS_HISTORY
           ? history.slice(-MAX_METRICS_HISTORY)
           : history;

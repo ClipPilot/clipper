@@ -688,7 +688,7 @@ class ApifyService {
         results.set(postId, {
           likesCount: raw.likesCount || 0,
           commentsCount: raw.commentsCount || 0,
-          viewCount: raw.videoPlayCount ?? raw.videoViewCount ?? null,
+          viewCount: raw.videoPlayCount ?? raw.videoViewCount ?? null, // image posts don't have views so we resort to null, we handle the null case for metric_history
           thumbnailUrl: raw.displayUrl || raw.thumbnailUrl || null,
         });
       }

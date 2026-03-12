@@ -25,6 +25,27 @@ interface MetricsEntry {
   views: number | null;
 }
 
+/**
+ * Apply flaky-data protection and strict views monotonicity to scraped metrics.
+ *
+ * Likes/comments: if Apify returns 0 but we have previous data, use the previous
+ * value (flaky scrape). A real non-zero decrease is accepted.
+ *
+ * Views: strictly monotonic — never decrease. Uses Math.max against previous.
+ */
+function resolveMetrics(
+  incoming: { likes: number; comments: number; views: number | null },
+  lastMetric: MetricsEntry | null,
+): { likes: number; comments: number; views: number | null } {
+  const likes = (!incoming.likes && lastMetric) ? lastMetric.likes : (incoming.likes || 0);
+  const comments = (!incoming.comments && lastMetric) ? lastMetric.comments : (incoming.comments || 0);
+  const rawViews = incoming.views;
+  const views = (rawViews != null && lastMetric?.views != null)
+    ? Math.max(rawViews, lastMetric.views)
+    : rawViews ?? lastMetric?.views ?? null;
+  return { likes, comments, views };
+}
+
 interface FollowerEntry {
   recorded_at: string;
   followers: number;
@@ -462,23 +483,12 @@ export class AccountTrackingService {
         ? [...(existingPost.metrics_history as MetricsEntry[])]
         : [];
       const lastMetric = history.length > 0 ? history[history.length - 1] : null;
+      const { likes: newLikes, comments: newComments, views: newViews } = resolveMetrics(
+        { likes: postData.likesCount || 0, comments: postData.commentsCount || 0, views: postData.videoPlayCount ?? null },
+        lastMetric,
+      );
 
-      // If Apify returns zero but we have previous data, use the previous value (flaky scrape)
-      const newLikes = (!postData.likesCount && lastMetric) ? lastMetric.likes : (postData.likesCount || 0);
-      const newComments = (!postData.commentsCount && lastMetric) ? lastMetric.comments : (postData.commentsCount || 0);
-      // Views are strictly monotonic — never decrease
-      const rawViews = postData.videoPlayCount ?? null;
-      const newViews = (rawViews != null && lastMetric?.views != null)
-        ? Math.max(rawViews, lastMetric.views)
-        : rawViews ?? lastMetric?.views ?? null;
-
-      const newMetric: MetricsEntry = {
-        recorded_at: new Date().toISOString(),
-        likes: newLikes,
-        comments: newComments,
-        views: newViews,
-      };
-      history.push(newMetric);
+      history.push({ recorded_at: new Date().toISOString(), likes: newLikes, comments: newComments, views: newViews });
       const trimmed = history.length > MAX_METRICS_HISTORY
         ? history.slice(-MAX_METRICS_HISTORY)
         : history;
@@ -856,20 +866,12 @@ export class AccountTrackingService {
           ? [...(existing.metrics_history as MetricsEntry[])]
           : [];
         const lastMetric = history.length > 0 ? history[history.length - 1] : null;
+        const { likes: newLikes, comments: newComments, views: newViews } = resolveMetrics(
+          { likes: metrics.likesCount || 0, comments: metrics.commentsCount || 0, views: metrics.viewCount ?? null },
+          lastMetric,
+        );
 
-        const newLikes = (!metrics.likesCount && lastMetric) ? lastMetric.likes : (metrics.likesCount || 0);
-        const newComments = (!metrics.commentsCount && lastMetric) ? lastMetric.comments : (metrics.commentsCount || 0);
-        const rawViews = metrics.viewCount ?? null;
-        const newViews = (rawViews != null && lastMetric?.views != null)
-          ? Math.max(rawViews, lastMetric.views)
-          : rawViews ?? lastMetric?.views ?? null;
-
-        history.push({
-          recorded_at: new Date().toISOString(),
-          likes: newLikes,
-          comments: newComments,
-          views: newViews,
-        });
+        history.push({ recorded_at: new Date().toISOString(), likes: newLikes, comments: newComments, views: newViews });
         const trimmed = history.length > MAX_METRICS_HISTORY
           ? history.slice(-MAX_METRICS_HISTORY)
           : history;
