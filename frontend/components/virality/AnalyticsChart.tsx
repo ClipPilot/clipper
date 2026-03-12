@@ -150,23 +150,31 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
       const posts = axisPostsByAccount[account.id] || [];
       for (const post of posts) {
         if (!post.metrics_history?.length) continue;
-        // Per post: take the max snapshot at each hour (cumulative metrics)
         const postHourMax = new Map<string, { views: number; likes: number; comments: number }>();
         for (const entry of post.metrics_history) {
           const hour = entry.recorded_at.slice(0, 13);
-          if (startStr && hour < startStr) continue;
-          if (endStr && hour > endStr) continue;
           const views = entry.views ?? 0;
           const existing = postHourMax.get(hour);
           if (!existing || views > existing.views) {
             postHourMax.set(hour, { views, likes: entry.likes, comments: entry.comments });
           }
         }
-        for (const [hour, vals] of Array.from(postHourMax)) {
+        const sortedHours = Array.from(postHourMax.keys()).sort();
+        let prev = { views: 0, likes: 0, comments: 0 };
+        for (const hour of sortedHours) {
+          const vals = postHourMax.get(hour)!;
+          const delta = {
+            views: Math.max(vals.views - prev.views, 0),
+            likes: Math.max(vals.likes - prev.likes, 0),
+            comments: Math.max(vals.comments - prev.comments, 0),
+          };
+          prev = vals;
+          if (startStr && hour < startStr) continue;
+          if (endStr && hour > endStr) continue;
           if (!map[hour]) map[hour] = { views: 0, likes: 0, comments: 0 };
-          map[hour].views += vals.views;
-          map[hour].likes += vals.likes;
-          map[hour].comments += vals.comments;
+          map[hour].views += delta.views;
+          map[hour].likes += delta.likes;
+          map[hour].comments += delta.comments;
         }
       }
     }
@@ -189,20 +197,44 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
     return { likes, comments, views };
   }, [axisAccounts, axisPostsByAccount]);
 
+  const dailyChange = useMemo(() => {
+    const dayTotals = new Map<string, { views: number; likes: number; comments: number }>();
+    for (const [hour, vals] of Object.entries(tooltipByHour)) {
+      const day = hour.slice(0, 10);
+      const existing = dayTotals.get(day) || { views: 0, likes: 0, comments: 0 };
+      existing.views += vals.views;
+      existing.likes += vals.likes;
+      existing.comments += vals.comments;
+      dayTotals.set(day, existing);
+    }
+    const days = Array.from(dayTotals.keys()).sort();
+    if (days.length < 2) return { views: null, likes: null, comments: null };
+    const today = dayTotals.get(days[days.length - 1])!;
+    const yesterday = dayTotals.get(days[days.length - 2])!;
+    const pct = (cur: number, prev: number) => prev > 0 ? ((cur - prev) / prev) * 100 : null;
+    return {
+      views: pct(today.views, yesterday.views),
+      likes: pct(today.likes, yesterday.likes),
+      comments: pct(today.comments, yesterday.comments),
+    };
+  }, [tooltipByHour]);
+
   const metrics: {
     key: ChartMetricKey;
     title: string;
     value: number;
+    change: number | null;
     tooltip?: string;
   }[] = [
     {
       key: "views",
       title: "Total Views",
       value: totals.views,
+      change: dailyChange.views,
       tooltip: "Only counts views on video posts (Reels)",
     },
-    { key: "likes", title: "Total Likes", value: totals.likes },
-    { key: "comments", title: "Total Comments", value: totals.comments },
+    { key: "likes", title: "Total Likes", value: totals.likes, change: dailyChange.likes },
+    { key: "comments", title: "Total Comments", value: totals.comments, change: dailyChange.comments },
   ];
 
   return (
@@ -248,7 +280,7 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
             </div>
             <div className="mt-2 flex w-full items-center">
               <div className="-my-3 flex w-full items-center gap-x-3 overflow-x-auto py-3">
-                {metrics.map(({ key, title, value, tooltip }) => (
+                {metrics.map(({ key, title, value, change, tooltip }) => (
                   <button
                     key={key}
                     className={cn(
@@ -278,6 +310,18 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
                       <span className="text-foreground text-3xl font-bold">
                         {formatChartValue(value)}
                       </span>
+                      {change !== null && (
+                        <span className={cn(
+                          "text-xs font-medium inline-flex items-center gap-0.5",
+                          change >= 0 ? "text-green-500" : "text-red-500"
+                        )}>
+                          <Icon
+                            icon={change >= 0 ? "solar:arrow-up-linear" : "solar:arrow-down-linear"}
+                            width={12}
+                          />
+                          {Math.abs(change).toFixed(1)}%
+                        </span>
+                      )}
                     </div>
                   </button>
                 ))}

@@ -154,20 +154,23 @@ export function buildChartDataByAccount(
 
     for (const post of posts) {
       if (!post.metrics_history?.length) continue;
-      // Per post: take the max value at each hour (metrics are cumulative,
-      // so duplicate snapshots in the same hour must not be summed)
       const postHourMax = new Map<string, number>();
       for (const entry of post.metrics_history) {
         const hour = entry.recorded_at.slice(0, 13);
-        if (startStr && hour < startStr) continue;
-        if (endStr && hour > endStr) continue;
-        allHours.add(hour);
         const val = metric === "views" ? (entry.views ?? 0) : entry[metric];
         const prev = postHourMax.get(hour);
         if (prev === undefined || val > prev) postHourMax.set(hour, val);
       }
-      for (const [hour, val] of Array.from(postHourMax)) {
-        hourMap.set(hour, (hourMap.get(hour) || 0) + val);
+      const sortedHours = Array.from(postHourMax.keys()).sort();
+      let prevVal = 0;
+      for (const hour of sortedHours) {
+        const val = postHourMax.get(hour)!;
+        const delta = Math.max(val - prevVal, 0);
+        prevVal = val;
+        if (startStr && hour < startStr) continue;
+        if (endStr && hour > endStr) continue;
+        allHours.add(hour);
+        hourMap.set(hour, (hourMap.get(hour) || 0) + delta);
       }
     }
 
