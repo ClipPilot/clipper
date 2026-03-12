@@ -29,17 +29,17 @@ export const VIDEO_TYPES = {
   },
   montage: {
     name: "Montage",
-    isSilent: false,
+    isSilent: true,
     character: true,
     description:
-      "Music-driven montage with character — actor appears but emphasis on visual flow. Before/after videos or showing the character in many b-roll shots.",
+      "Music-driven montage with character — actor appears but NO dialogue/voiceover. All scenes are visual. Before/after videos or showing the character in many visual shots.",
   },
   nocharacter_montage: {
     name: "No Character Montage",
-    isSilent: false,
+    isSilent: true,
     character: false,
     description:
-      "Pure visual montage — no actor, all b-roll. Product-only aesthetic videos, focusing on the product or service through various clips and scenes.",
+      "Pure visual montage — no actor, no dialogue. All scenes are visual. Product-only aesthetic videos, focusing on the product or service through various clips and scenes.",
   },
 } as const;
 
@@ -52,7 +52,7 @@ export const videoTypeEnum = z.enum(
 
 export const structureSchema = z.array(
   z.object({
-    sceneType: z.enum(["a-roll", "b-roll"]),
+    sceneType: z.enum(["a-roll", "b-roll", "visual"]),
     slug: z.string(),
     description: z.union([storyBeatEnum, z.string()]),
     shots: z
@@ -62,16 +62,19 @@ export const structureSchema = z.array(
           shotType: z.enum(["CHARACTER", "PRODUCT", "CHARACTER_AND_PRODUCT"]).describe("What appears in the shot"),
         }),
       )
-      .min(1)
-      .max(5)
-      .optional()
-      .describe("Only for b-roll scenes. Product-focused scenes (demo, transformation): 2-5 shots. Other b-roll: 1-2 shots. Omit for a-roll."),
+      .describe("Shot breakdown. For b-roll/visual scenes: 1-5 shots. For a-roll scenes: set to empty array []."),
   }),
 );
 
 export const initAgentSchema = z.object({
-  isSilent: z.boolean().default(false),
-  character: z.boolean().default(true),
-  structure: structureSchema,
-  videoType: videoTypeEnum,
+  responseType: z.enum(["conversation", "structure"]).describe(
+    "Default to 'structure' — generate a structure for ANY video-related request, even vague ones. Only use 'conversation' for completely unrelated messages or explicit non-video questions.",
+  ),
+  message: z.string().describe(
+    "Your conversational reply to the user. Always include a message — for 'structure' responses this accompanies the structure, for 'conversation' responses this IS the response.",
+  ),
+  isSilent: z.boolean().describe("Whether the video is silent. Set to false for conversation responses."),
+  character: z.boolean().describe("Whether the video has a character. Set to true for conversation responses."),
+  structure: structureSchema.describe("The scene structure array. Set to an empty array [] for conversation responses."),
+  videoType: videoTypeEnum.describe("The video type. Set to 'ugc' for conversation responses."),
 });

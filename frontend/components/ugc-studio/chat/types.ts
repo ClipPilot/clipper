@@ -2,6 +2,7 @@ export interface ChatAttachment {
   key: string;
   url: string;
   file?: File;
+  uploading?: boolean;
 }
 
 export interface BRollShot {

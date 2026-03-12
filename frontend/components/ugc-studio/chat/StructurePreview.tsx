@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Button, Chip } from "@heroui/react";
+import { Button, Chip, Tooltip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { SCENE_TYPE_CONFIG, type SceneType } from "@/components/ugc-studio/script/types";
 import type { InitAgentResult } from "./types";
@@ -11,6 +11,12 @@ const VIDEO_TYPE_LABELS: Record<string, string> = {
   reaction: "Reaction",
   montage: "Montage",
   nocharacter_montage: "No-Character Montage",
+};
+
+const SHOT_TYPE_TOOLTIPS: Record<string, string> = {
+  "a-roll": "Actor speaking directly to camera",
+  "b-roll": "Product shots with voiceover narration",
+  "visual": "Silent b-roll — no audio, music only",
 };
 
 interface StructurePreviewProps {
@@ -23,63 +29,74 @@ interface StructurePreviewProps {
 export function StructurePreview({ result, isAccepted, onAccept, onRetry }: StructurePreviewProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
+      initial={{ opacity: 0, scale: 0.97, y: 6 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={{ duration: 0.3, delay: 0.1 }}
-      className="bg-surface-dark border border-border-base rounded-xl p-4 space-y-4 w-full"
+      className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-4 space-y-4 w-full backdrop-blur-sm"
     >
       {/* Badges */}
-      <div className="flex flex-wrap gap-2">
-        <Chip size="sm" variant="flat" color="primary">
+      <div className="flex flex-wrap gap-1.5">
+        <Chip size="sm" variant="flat" color="primary" className="text-[11px]">
           {VIDEO_TYPE_LABELS[result.videoType] ?? result.videoType}
         </Chip>
         {result.isSilent && (
-          <Chip size="sm" variant="flat" color="warning" startContent={<Icon icon="solar:volume-cross-bold" width={14} />}>
-            Silent
+          <Chip size="sm" variant="flat" color="warning" className="text-[11px]" startContent={<Icon icon="solar:volume-cross-bold" width={12} />}>
+            No Dialogue
           </Chip>
         )}
         {result.character ? (
-          <Chip size="sm" variant="flat" color="secondary" startContent={<Icon icon="solar:user-bold" width={14} />}>
-            With Character
+          <Chip size="sm" variant="flat" color="secondary" className="text-[11px]" startContent={<Icon icon="solar:user-bold" width={12} />}>
+            Character
           </Chip>
         ) : (
-          <Chip size="sm" variant="flat" color="default" startContent={<Icon icon="solar:video-frame-bold" width={14} />}>
+          <Chip size="sm" variant="flat" color="default" className="text-[11px]" startContent={<Icon icon="solar:video-frame-bold" width={12} />}>
             No Character
           </Chip>
         )}
       </div>
 
       {/* Scene flow */}
-      <div className="space-y-1">
+      <div className="space-y-0.5">
         {result.structure.map((scene, index) => {
           const config = SCENE_TYPE_CONFIG[scene.description as SceneType];
           const isLast = index === result.structure.length - 1;
-          const hasBRollShots = scene.sceneType === "b-roll" && scene.shots && scene.shots.length > 0;
+          const hasBRollShots = (scene.sceneType === "b-roll" || scene.sceneType === "visual") && scene.shots && scene.shots.length > 0;
 
           return (
             <div key={index}>
-              <div className="flex items-start gap-3 py-2">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${config?.color ?? "bg-default-500/20 text-default-400"}`}>
-                  <Icon icon={config?.icon ?? "solar:widget-bold-duotone"} width={16} />
+              <div className="flex items-start gap-2.5 py-1.5">
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${config?.color ?? "bg-default-500/10 text-default-400"}`}>
+                  <Icon icon={config?.icon ?? "solar:widget-bold-duotone"} width={14} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-text-primary">{scene.slug}</span>
-                    <Chip size="sm" variant="flat" className="h-5 text-[10px]">
-                      {scene.sceneType}
-                    </Chip>
+                    <span className="text-[13px] font-medium text-text-primary">{scene.slug}</span>
+                    <Tooltip
+                      content={SHOT_TYPE_TOOLTIPS[scene.sceneType] ?? scene.sceneType}
+                      placement="top"
+                      size="sm"
+                      delay={200}
+                      classNames={{ content: "text-[11px] px-2 py-1" }}
+                    >
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium cursor-help ${
+                        scene.sceneType === "a-roll"
+                          ? "bg-blue-500/10 text-blue-400"
+                          : scene.sceneType === "visual"
+                            ? "bg-amber-500/10 text-amber-400"
+                            : "bg-emerald-500/10 text-emerald-400"
+                      }`}>
+                        {scene.sceneType}
+                      </span>
+                    </Tooltip>
                   </div>
-                  <p className="text-xs text-text-secondary truncate">
-                    {config?.description ?? scene.description}
-                  </p>
 
-                  {/* B-roll shots breakdown */}
+                  {/* B-roll/visual shots breakdown */}
                   {hasBRollShots && (
-                    <div className="mt-2 flex flex-col gap-1">
+                    <div className="mt-1.5 flex flex-col gap-0.5">
                       {scene.shots!.map((shot, shotIdx) => (
                         <div
                           key={shotIdx}
-                          className="flex items-center gap-2 text-[11px] text-text-muted"
+                          className="flex items-center gap-1.5 text-[10px] text-text-muted/50"
                         >
                           <Icon
                             icon={
@@ -89,8 +106,8 @@ export function StructurePreview({ result, isAccepted, onAccept, onRetry }: Stru
                                   ? "solar:user-bold-duotone"
                                   : "solar:hand-stars-bold-duotone"
                             }
-                            width={12}
-                            className="shrink-0 text-text-muted/60"
+                            width={10}
+                            className="shrink-0"
                           />
                           <span>{shot.label}</span>
                         </div>
@@ -100,8 +117,8 @@ export function StructurePreview({ result, isAccepted, onAccept, onRetry }: Stru
                 </div>
               </div>
               {!isLast && (
-                <div className="flex items-center ml-[15px]">
-                  <div className="w-px h-3 bg-border-base" />
+                <div className="flex items-center ml-[13px]">
+                  <div className="w-px h-2 bg-white/[0.06]" />
                 </div>
               )}
             </div>
@@ -110,26 +127,28 @@ export function StructurePreview({ result, isAccepted, onAccept, onRetry }: Stru
       </div>
 
       {/* Actions */}
-      <div className="pt-2 border-t border-border-base">
+      <div className="pt-3 border-t border-white/[0.06]">
         {isAccepted ? (
-          <div className="flex items-center gap-2 py-1.5">
-            <Icon icon="solar:check-circle-bold" width={18} className="text-green-400" />
-            <span className="text-sm font-medium text-green-400">Structure accepted</span>
+          <div className="flex items-center gap-2 py-1">
+            <Icon icon="solar:check-circle-bold" width={16} className="text-green-400" />
+            <span className="text-[13px] font-medium text-green-400">Structure accepted</span>
           </div>
         ) : (
           <div className="flex gap-2">
             <Button
-              className="bg-accent-400 text-white font-semibold flex-1"
+              size="sm"
+              className="bg-accent-400 text-white font-semibold flex-1 h-9"
               onPress={onAccept}
-              startContent={<Icon icon="solar:check-circle-bold" width={18} />}
+              startContent={<Icon icon="solar:check-circle-bold" width={16} />}
             >
               Accept
             </Button>
             <Button
+              size="sm"
               variant="bordered"
-              className="border-border-base text-text-secondary"
+              className="border-white/[0.08] text-text-secondary h-9"
               onPress={onRetry}
-              startContent={<Icon icon="solar:refresh-bold" width={18} />}
+              startContent={<Icon icon="solar:refresh-bold" width={16} />}
             >
               Try Again
             </Button>

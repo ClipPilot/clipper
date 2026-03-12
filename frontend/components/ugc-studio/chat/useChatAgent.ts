@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useSetAtom } from "jotai";
 import {
   isSilentAtom,
@@ -20,15 +20,40 @@ function nextId() {
 const INITIAL_MESSAGE: ChatMessage = {
   id: "initial",
   role: "assistant",
-  content: "What video do you want to make today? Describe your idea and attach any product images.",
+  content: "Hey! Describe the video you'd like to create and drop in any product images. I'll design the perfect structure for it.",
   timestamp: new Date(),
 };
+
+/**
+ * Serialize chat messages into the format the Mastra agent expects.
+ * Includes assistant structured results as text so the agent can reference them.
+ */
+function buildConversationHistory(
+  messages: ChatMessage[],
+): Array<{ role: "user" | "assistant"; content: string }> {
+  return messages
+    .filter((m) => m.id !== "initial") // skip the greeting
+    .map((m) => {
+      if (m.role === "assistant" && m.structureResult) {
+        // Serialize the structured result so the agent can see what it previously generated
+        const structureSummary = m.structureResult.structure
+          .map((s, i) => `  ${i + 1}. ${s.slug} (${s.sceneType}) — ${s.description}`)
+          .join("\n");
+        return {
+          role: "assistant" as const,
+          content: `I suggested the following structure (videoType: ${m.structureResult.videoType}, isSilent: ${m.structureResult.isSilent}, character: ${m.structureResult.character}):\n${structureSummary}`,
+        };
+      }
+      return { role: m.role, content: m.content };
+    });
+}
 
 export function useChatAgent() {
   const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_MESSAGE]);
   const [isThinking, setIsThinking] = useState(false);
   const [acceptedResult, setAcceptedResult] = useState<InitAgentResult | null>(null);
   const [currentArtifact, setCurrentArtifact] = useState<ArtifactType | null>(null);
+  const threadIdRef = useRef(`thread-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
 
   const setIsSilent = useSetAtom(isSilentAtom);
   const setProductImageKeys = useSetAtom(productImageKeysAtom);
@@ -46,25 +71,36 @@ export function useChatAgent() {
         timestamp: new Date(),
       };
 
-      setMessages((prev) => [...prev, userMessage]);
+      // Capture current messages before adding the new one
+      const currentMessages = [...messages, userMessage];
+      setMessages(currentMessages);
       setIsThinking(true);
 
       try {
+        // Build conversation history from all previous messages
+        const conversationHistory = buildConversationHistory(currentMessages);
+
         const result = await ugcScriptAPI.initStructure({
           message: text,
           productImageKeys: attachments.map((a) => a.key).filter(Boolean),
+          threadId: threadIdRef.current,
+          conversationHistory,
         });
 
         const assistantMessage: ChatMessage = {
           id: nextId(),
           role: "assistant",
-          content: "Here's the structure I'd suggest for your video:",
-          structureResult: {
-            videoType: result.videoType,
-            isSilent: result.isSilent,
-            character: result.character,
-            structure: result.structure,
-          },
+          content: result.message,
+          // Only attach structure if the agent generated one (non-empty)
+          structureResult:
+            result.responseType === "structure" && result.structure?.length
+              ? {
+                  videoType: result.videoType!,
+                  isSilent: result.isSilent!,
+                  character: result.character!,
+                  structure: result.structure,
+                }
+              : undefined,
           timestamp: new Date(),
         };
 
@@ -84,13 +120,13 @@ export function useChatAgent() {
         setIsThinking(false);
       }
     },
-    [],
+    [messages],
   );
 
   const acceptStructure = useCallback(
     (result: InitAgentResult, imageKeys: string[]) => {
       // Map agent structure → customPattern format for downstream generateScript
-      // Agent: { sceneType: "a-roll"|"b-roll", slug, description: "hook"|"demo"|... }
+      // Agent: { sceneType: "a-roll"|"b-roll"|"visual", slug, description: "hook"|"demo"|... }
       // Downstream: { type: "hook", shot: "a-roll" }
       const customPattern = result.structure.map((scene) => ({
         type: scene.description,

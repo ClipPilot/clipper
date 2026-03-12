@@ -696,10 +696,12 @@ Return a JSON object with a "shots" array of exactly ${shotCount} shot objects.`
   async initStructure(params: {
     message: string;
     productImageKeys?: string[];
+    threadId?: string;
+    conversationHistory?: Array<{ role: string; content: string }>;
   }) {
-    const { message, productImageKeys } = params;
+    const { message, productImageKeys, threadId, conversationHistory } = params;
 
-    // Build multimodal message content parts
+    // Build multimodal message content parts for the current message
     const content: Array<{ type: string; text?: string; image?: string; mediaType?: string }> = [
       { type: "text", text: message },
     ];
@@ -713,15 +715,34 @@ Return a JSON object with a "shots" array of exactly ${shotCount} shot objects.`
       }
     }
 
+    // Build full messages array: conversation history + current message
+    const messages: Array<{ role: string; content: unknown }> = [];
+    if (conversationHistory?.length) {
+      // Add all previous messages (text-only) for context
+      for (const msg of conversationHistory.slice(0, -1)) {
+        messages.push({ role: msg.role, content: msg.content });
+      }
+    }
+    // Current message with multimodal content (images)
+    messages.push({ role: "user", content });
+
     const agentServiceUrl = config.agentService.url;
+    const requestBody: Record<string, unknown> = { messages };
+
+    // Pass threadId for Mastra memory persistence
+    if (threadId) {
+      requestBody.memory = {
+        thread: threadId,
+        resource: "ugc-chat",
+      };
+    }
+
     const response = await fetch(
       `${agentServiceUrl}/api/agents/script-init-agent/generate`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [{ role: "user", content }],
-        }),
+        body: JSON.stringify(requestBody),
       },
     );
 
@@ -733,14 +754,18 @@ Return a JSON object with a "shots" array of exactly ${shotCount} shot objects.`
 
     const result = (await response.json()) as Record<string, unknown>;
     const agentResult = (result.object ?? result) as {
+      responseType: "conversation" | "structure";
+      message: string;
       isSilent: boolean;
       character: boolean;
       videoType: string;
       structure: Array<{ sceneType: string; slug: string; description: string }>;
     };
 
-    // Merge consecutive a-roll scenes — 2 back-to-back a-rolls become one smooth take
-    agentResult.structure = mergeConsecutiveArollStructure(agentResult.structure);
+    // If it's a structure response with scenes, merge consecutive a-roll scenes
+    if (agentResult.responseType === "structure" && agentResult.structure?.length) {
+      agentResult.structure = mergeConsecutiveArollStructure(agentResult.structure);
+    }
 
     return agentResult;
   }

@@ -265,7 +265,7 @@ export class UGCScriptController {
 
   async initStructure(req: AuthRequest, res: Response) {
     try {
-      const { message, productImageKeys } = req.body;
+      const { message, productImageKeys, threadId, conversationHistory } = req.body;
 
       if (!message || !message.trim()) {
         return res.status(400).json({ error: "message is required" });
@@ -278,6 +278,8 @@ export class UGCScriptController {
       const result = await ugcScriptService.initStructure({
         message,
         productImageKeys,
+        threadId,
+        conversationHistory,
       });
 
       return res.status(200).json({

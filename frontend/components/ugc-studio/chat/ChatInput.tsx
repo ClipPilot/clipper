@@ -42,20 +42,36 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
         const fileArray = Array.from(files).slice(0, 5 - attachments.length);
         if (fileArray.length === 0) return;
 
+        // Immediately add placeholders with local preview URLs
+        const placeholders: ChatAttachment[] = fileArray.map((file) => ({
+          key: `pending-${Date.now()}-${file.name}`,
+          url: URL.createObjectURL(file),
+          file,
+          uploading: true,
+        }));
+        setAttachments((prev) => [...prev, ...placeholders].slice(0, 5));
         setIsUploading(true);
-        try {
-          const uploaded = await Promise.all(
-            fileArray.map(async (file) => {
-              const result = await ugcScriptAPI.uploadImage(teamId, file);
-              return { key: result.key, url: result.url, file };
-            }),
-          );
-          setAttachments((prev) => [...prev, ...uploaded].slice(0, 5));
-        } catch (err) {
-          console.error("Upload failed:", err);
-        } finally {
-          setIsUploading(false);
-        }
+
+        // Upload each file and replace the placeholder in-place
+        await Promise.all(
+          placeholders.map(async (placeholder) => {
+            try {
+              const result = await ugcScriptAPI.uploadImage(teamId, placeholder.file!);
+              setAttachments((prev) =>
+                prev.map((att) =>
+                  att.key === placeholder.key
+                    ? { key: result.key, url: result.url, file: placeholder.file, uploading: false }
+                    : att,
+                ),
+              );
+            } catch (err) {
+              console.error("Upload failed:", err);
+              // Remove the failed placeholder
+              setAttachments((prev) => prev.filter((att) => att.key !== placeholder.key));
+            }
+          }),
+        );
+        setIsUploading(false);
       },
       [selectedTeam, attachments.length],
     );
@@ -72,7 +88,9 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
     const handleSubmit = () => {
       const trimmed = text.trim();
       if (!trimmed) return;
-      onSend(trimmed, attachments);
+      // Only send fully uploaded attachments
+      const ready = attachments.filter((a) => !a.uploading);
+      onSend(trimmed, ready);
       setText("");
       setAttachments([]);
     };
@@ -110,14 +128,21 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
                         <img
                           src={att.url}
                           alt={`Upload ${i + 1}`}
-                          className="w-14 h-14 rounded-xl object-cover ring-1 ring-white/10"
+                          className={`w-14 h-14 rounded-xl object-cover ring-1 ring-white/10 transition-opacity ${att.uploading ? "opacity-40" : "opacity-100"}`}
                         />
-                        <button
-                          onClick={() => removeAttachment(i)}
-                          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500/90 backdrop-blur-sm text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-150 scale-75 group-hover:scale-100 shadow-lg shadow-red-500/20"
-                        >
-                          <Icon icon="solar:close-circle-bold" width={14} />
-                        </button>
+                        {att.uploading && (
+                          <div className="absolute inset-0 flex items-center justify-center rounded-xl">
+                            <Icon icon="solar:loading-circle-bold" width={20} className="animate-spin text-white" />
+                          </div>
+                        )}
+                        {!att.uploading && (
+                          <button
+                            onClick={() => removeAttachment(i)}
+                            className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500/90 backdrop-blur-sm text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-150 scale-75 group-hover:scale-100 shadow-lg shadow-red-500/20"
+                          >
+                            <Icon icon="solar:close-circle-bold" width={14} />
+                          </button>
+                        )}
                       </motion.div>
                     ))}
                   </div>

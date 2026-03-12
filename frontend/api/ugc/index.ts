@@ -107,8 +107,12 @@ class UGCScriptAPI {
   async initStructure(data: {
     message: string;
     productImageKeys?: string[];
+    threadId?: string;
+    conversationHistory?: Array<{ role: string; content: string }>;
   }): Promise<{
     success: boolean;
+    responseType: "conversation" | "structure";
+    message: string;
     videoType: string;
     isSilent: boolean;
     character: boolean;

@@ -18,27 +18,27 @@ export function MessageCard({ message, isAccepted, onAccept, onRetry }: MessageC
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
+      transition={{ duration: 0.25, ease: "easeOut" }}
       className={`flex gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}
     >
       {/* Avatar */}
       {!isUser && (
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent-400/30 to-purple-500/30 flex items-center justify-center shrink-0 mt-1 ring-1 ring-accent-400/20 overflow-hidden">
+        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-accent-400/20 to-purple-500/20 flex items-center justify-center shrink-0 mt-1 ring-1 ring-accent-400/10 overflow-hidden backdrop-blur-sm">
           <NextImage
             src="/branding/cuttr logo svg.svg"
             alt="Cuttr"
-            width={22}
-            height={22}
+            width={18}
+            height={18}
             className="object-contain"
           />
         </div>
       )}
 
-      <div className={`max-w-[80%] flex flex-col ${isUser ? "items-end" : "items-start"} gap-2`}>
+      <div className={`max-w-[80%] flex flex-col ${isUser ? "items-end" : "items-start"} gap-1.5`}>
         {/* Sender label */}
-        <span className={`text-[11px] font-medium ${isUser ? "text-text-muted" : "text-accent-400"}`}>
+        <span className={`text-[11px] font-medium ${isUser ? "text-text-muted/60" : "text-accent-400/80"}`}>
           {isUser ? "You" : "Cuttr AI"}
         </span>
 
@@ -50,7 +50,7 @@ export function MessageCard({ message, isAccepted, onAccept, onRetry }: MessageC
                 key={i}
                 src={att.url}
                 alt={`Attachment ${i + 1}`}
-                className="w-16 h-16 rounded-lg object-cover"
+                className="w-16 h-16 rounded-xl object-cover ring-1 ring-white/5"
               />
             ))}
           </div>
@@ -58,10 +58,10 @@ export function MessageCard({ message, isAccepted, onAccept, onRetry }: MessageC
 
         {/* Message bubble */}
         <div
-          className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+          className={`rounded-2xl px-4 py-2.5 text-[13px] leading-relaxed ${
             isUser
-              ? "bg-accent-400 text-white rounded-br-sm"
-              : "bg-surface-elevated text-text-primary rounded-bl-sm border border-border-base"
+              ? "bg-accent-400 text-white rounded-br-sm shadow-lg shadow-accent-400/10"
+              : "bg-white/[0.03] text-text-primary/90 rounded-bl-sm border border-white/[0.06] backdrop-blur-sm"
           }`}
         >
           {message.content}
