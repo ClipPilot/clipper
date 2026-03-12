@@ -414,9 +414,13 @@ class AdPostingService {
     postedTime: Date,
   ) {
     let accountHandle: string | null = null;
+    let resolvedPlatform: "instagram" | "tiktok" | "x" = platform;
     try {
       const account = await resolveAccountFromUrl(postUrl);
       accountHandle = account.username;
+      if (AdPostingService.TRACKABLE_PLATFORMS.has(account.platform)) {
+        resolvedPlatform = account.platform as "instagram" | "tiktok" | "x";
+      }
     } catch (err) {
       console.warn(`[AdPosting] Could not resolve account from ${postUrl}:`, err);
       return;
@@ -430,7 +434,7 @@ class AdPostingService {
 
     await this.bridgeToPerformanceTracking(
       teamId,
-      platform,
+      resolvedPlatform,
       accountHandle,
       postId,
       postUrl,

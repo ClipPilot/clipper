@@ -1,14 +1,7 @@
 import { Response } from "express";
-import { SFNClient, StartExecutionCommand } from "@aws-sdk/client-sfn";
-import { eq, and, isNotNull, gt } from "drizzle-orm";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { userPerformanceService } from "../services/virality/userPerformance.service";
-import { config } from "../config/env";
 import { parseId, parseDateQuery, handleControllerError, requirePlanAccess as requirePlanAccessBase } from "../utils/controllerHelpers";
-import { db } from "../db";
-import { userAccounts, userPosts } from "@clipper/shared-db/src/schema";
-
-const sfnClient = new SFNClient({ region: config.aws.region });
 
 async function requirePlanAccess(teamId: number, res: Response): Promise<boolean> {
   return requirePlanAccessBase(teamId, res, (id) => userPerformanceService.checkTeamPlanAccess(id), "Performance tracking requires a Studio plan or higher");
@@ -125,8 +118,13 @@ class UserPerformanceController {
       if (!teamId || !accountId) return res.status(400).json({ error: "Invalid team or account ID" });
       if (!(await requirePlanAccess(teamId, res))) return;
 
-      const result = await userPerformanceService.syncAccount(accountId, teamId);
-      return res.json(result);
+      // Fire-and-forget: respond immediately, sync runs in background.
+      // Progress is pushed to the client via Socket.IO "virality-sync-update" events.
+      userPerformanceService.syncAccount(accountId, teamId).catch((err) => {
+        console.error(`Background sync failed for user account ${accountId}:`, err);
+      });
+
+      return res.status(202).json({ accepted: true, accountId });
     } catch (error: any) {
       return handleControllerError(res, "Sync user account error", error, "Sync failed: " + error.message);
     }
@@ -180,62 +178,31 @@ class UserPerformanceController {
 
       const accounts = await userPerformanceService.getAccountsByTeam(teamId) as any[];
       const regularAccounts = accounts.filter((a: any) => a.source !== "mass_posting");
-
-      // Sync regular accounts (full profile scrape)
-      const accountResults = await Promise.allSettled(
-        regularAccounts.map((a: any) => userPerformanceService.syncAccount(a.id, teamId))
-      );
-      const accountsFailed = accountResults.filter((r) => r.status === "rejected").length;
-
-      // Count mass posts that will be synced and stamp last_synced_at immediately
       const massPostingAccounts = accounts.filter((a: any) => a.source === "mass_posting");
-      let massPostsSynced = 0;
 
-      if (massPostingAccounts.length > 0) {
-        for (const acct of massPostingAccounts) {
-          const posts = await db
-            .select({ id: userPosts.id })
-            .from(userPosts)
-            .where(
-              and(
-                eq(userPosts.account_id, acct.id),
-                isNotNull(userPosts.mass_post_id),
-                gt(userPosts.syncs_remaining, 0)
-              )
-            );
-          massPostsSynced += posts.length;
-        }
+      const allAccountIds = [
+        ...regularAccounts.map((a: any) => a.id),
+        ...massPostingAccounts.map((a: any) => a.id),
+      ];
 
-        if (massPostsSynced > 0) {
-          await db
-            .update(userAccounts)
-            .set({ last_synced_at: new Date(), updated_at: new Date() })
-            .where(
-              and(
-                eq(userAccounts.team_id, teamId),
-                eq(userAccounts.source, "mass_posting")
-              )
-            );
-        }
+      // Fire-and-forget: kick off all syncs in background.
+      // Each sync emits its own Socket.IO events (syncing → completed/failed).
+      for (const a of regularAccounts) {
+        userPerformanceService.syncAccount(a.id, teamId).catch((err) => {
+          console.error(`Background sync failed for user account ${a.id}:`, err);
+        });
       }
 
-      // Trigger mass post sync via Step Functions (async, isolated in Lambda)
-      if (config.aws.viralitySyncSfnArn && massPostsSynced > 0) {
-        try {
-          await sfnClient.send(new StartExecutionCommand({
-            stateMachineArn: config.aws.viralitySyncSfnArn,
-            name: `mass-posts-team-${teamId}-${Date.now()}`,
-            input: JSON.stringify({ teamId, massPostsOnly: true }),
-          }));
-          console.log(`[SyncAll] Started Step Functions execution for team ${teamId} mass posts (${massPostsSynced} posts)`);
-        } catch (err) {
-          console.error(`[SyncAll] Failed to start mass post sync SF execution:`, err);
-        }
+      // Fire-and-forget: mass posting accounts — batch scrape in-process
+      for (const a of massPostingAccounts) {
+        userPerformanceService.syncMassPostBatch(a.id, teamId).catch((err) => {
+          console.error(`Background mass post sync failed for account ${a.id}:`, err);
+        });
       }
 
-      return res.json({
-        accounts: { synced: regularAccounts.length - accountsFailed, failed: accountsFailed },
-        massPosts: { synced: massPostsSynced },
+      return res.status(202).json({
+        accepted: true,
+        accountIds: allAccountIds,
       });
     } catch (error) {
       return handleControllerError(res, "Sync all error", error, "Failed to sync all");
@@ -255,6 +222,22 @@ class UserPerformanceController {
       return res.json(stats);
     } catch (error) {
       return handleControllerError(res, "Get user performance dashboard error", error, "Failed to get dashboard stats");
+    }
+  }
+
+  async getAllPosts(req: AuthRequest, res: Response) {
+    try {
+      const teamId = parseId(req.params.teamId);
+      if (!teamId) return res.status(400).json({ error: "Invalid team ID" });
+      if (!(await requirePlanAccess(teamId, res))) return;
+
+      const startDate = parseDateQuery(req.query.startDate);
+      const endDate = parseDateQuery(req.query.endDate);
+
+      const postsByAccount = await userPerformanceService.getPostsForTeam(teamId, startDate, endDate);
+      return res.json({ postsByAccount });
+    } catch (error) {
+      return handleControllerError(res, "Get all posts error", error, "Failed to get posts");
     }
   }
 }

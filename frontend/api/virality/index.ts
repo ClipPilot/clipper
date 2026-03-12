@@ -170,7 +170,7 @@ class ViralityAPI {
   async syncAccount(
     teamId: number,
     accountId: number
-  ): Promise<{ success: boolean; postsProcessed: number }> {
+  ): Promise<{ accepted: boolean; accountId: number }> {
     const response = await apiFetch(
       `${API_URL}/virality/${teamId}/accounts/${accountId}/sync`,
       {

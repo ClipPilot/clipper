@@ -1,7 +1,7 @@
 import * as Sentry from "@sentry/node";
 import { db } from "../../db";
 import { teams, posts, campaigns } from "@clipper/shared-db/src/schema";
-import { eq, and, or, desc, count, gte, lte, inArray, sql } from "drizzle-orm";
+import { eq, and, or, desc, count, gte, lte, inArray, sql, isNotNull, gt } from "drizzle-orm";
 import { getApifyService, InstagramPost, InstagramProfile } from "./apify.service";
 import { parseInstagramUsername, parseTikTokUsername, parseXUsername } from "../../utils/parseUsername";
 import {
@@ -23,6 +23,27 @@ interface MetricsEntry {
   likes: number;
   comments: number;
   views: number | null;
+}
+
+/**
+ * Apply flaky-data protection and strict views monotonicity to scraped metrics.
+ *
+ * Likes/comments: if Apify returns 0 but we have previous data, use the previous
+ * value (flaky scrape). A real non-zero decrease is accepted.
+ *
+ * Views: strictly monotonic — never decrease. Uses Math.max against previous.
+ */
+function resolveMetrics(
+  incoming: { likes: number; comments: number; views: number | null },
+  lastMetric: MetricsEntry | null,
+): { likes: number; comments: number; views: number | null } {
+  const likes = (!incoming.likes && lastMetric) ? lastMetric.likes : (incoming.likes || 0);
+  const comments = (!incoming.comments && lastMetric) ? lastMetric.comments : (incoming.comments || 0);
+  const rawViews = incoming.views;
+  const views = (rawViews != null && lastMetric?.views != null)
+    ? Math.max(rawViews, lastMetric.views)
+    : rawViews ?? lastMetric?.views ?? null;
+  return { likes, comments, views };
 }
 
 interface FollowerEntry {
@@ -271,6 +292,8 @@ export class AccountTrackingService {
       })
       .where(eq(this.accountsTable.id, accountId));
 
+    emitViralitySyncUpdate(teamId, { accountId, syncStatus: "syncing" });
+
     try {
       // Scrape posts using Apify SDK — branch on account_type
       const apify = getApifyService();
@@ -455,18 +478,17 @@ export class AccountTrackingService {
 
     const existingPost = existingRows[0];
 
-    const newMetric: MetricsEntry = {
-      recorded_at: new Date().toISOString(),
-      likes: postData.likesCount || 0,
-      comments: postData.commentsCount || 0,
-      views: postData.videoPlayCount ?? null,
-    };
-
     if (existingPost) {
       const history: MetricsEntry[] = Array.isArray(existingPost.metrics_history)
         ? [...(existingPost.metrics_history as MetricsEntry[])]
         : [];
-      history.push(newMetric);
+      const lastMetric = history.length > 0 ? history[history.length - 1] : null;
+      const { likes: newLikes, comments: newComments, views: newViews } = resolveMetrics(
+        { likes: postData.likesCount || 0, comments: postData.commentsCount || 0, views: postData.videoPlayCount ?? null },
+        lastMetric,
+      );
+
+      history.push({ recorded_at: new Date().toISOString(), likes: newLikes, comments: newComments, views: newViews });
       const trimmed = history.length > MAX_METRICS_HISTORY
         ? history.slice(-MAX_METRICS_HISTORY)
         : history;
@@ -474,15 +496,21 @@ export class AccountTrackingService {
       await db
         .update(this.postsTable)
         .set({
-          like_count: postData.likesCount || 0,
-          comment_count: postData.commentsCount || 0,
-          video_play_count: postData.videoPlayCount,
+          like_count: newLikes,
+          comment_count: newComments,
+          video_play_count: newViews,
           thumbnail_url: postData.displayUrl || existingPost.thumbnail_url,
           metrics_history: trimmed,
           updated_at: new Date(),
         })
         .where(eq(this.postsTable.id, existingPost.id));
     } else {
+      const newMetric: MetricsEntry = {
+        recorded_at: new Date().toISOString(),
+        likes: postData.likesCount || 0,
+        comments: postData.commentsCount || 0,
+        views: postData.videoPlayCount ?? null,
+      };
       await db.insert(this.postsTable).values({
         account_id: accountId,
         platform_post_id: canonicalId,
@@ -633,6 +661,69 @@ export class AccountTrackingService {
     return rows;
   }
 
+  /**
+   * Batch-fetch all posts for a team's accounts in a single query.
+   * Returns posts grouped by account_id.
+   */
+  async getPostsForTeam(
+    teamId: number,
+    startDate?: Date,
+    endDate?: Date
+  ): Promise<Record<number, any[]>> {
+    const accounts = await this.getAccountsByTeam(teamId) as any[];
+    const accountIds = accounts.map((a: any) => a.id);
+    if (accountIds.length === 0) return {};
+
+    const conditions = [inArray(this.postsTable.account_id, accountIds)];
+    if (startDate) conditions.push(gte(this.postsTable.posted_at, startDate));
+    if (endDate) conditions.push(lte(this.postsTable.posted_at, endDate));
+
+    const selectFields: Record<string, any> = {
+      id: this.postsTable.id,
+      account_id: this.postsTable.account_id,
+      platform_post_id: this.postsTable.platform_post_id,
+      post_url: this.postsTable.post_url,
+      thumbnail_url: this.postsTable.thumbnail_url,
+      caption: this.postsTable.caption,
+      hashtags: this.postsTable.hashtags,
+      post_type: this.postsTable.post_type,
+      posted_at: this.postsTable.posted_at,
+      like_count: this.postsTable.like_count,
+      comment_count: this.postsTable.comment_count,
+      video_view_count: this.postsTable.video_view_count,
+      video_play_count: this.postsTable.video_play_count,
+      metrics_history: this.postsTable.metrics_history,
+      created_at: this.postsTable.created_at,
+      updated_at: this.postsTable.updated_at,
+    };
+
+    const hasMassPostId = !!this.postsTable.mass_post_id;
+    if (hasMassPostId) {
+      selectFields.mass_post_id = this.postsTable.mass_post_id;
+      selectFields.campaign_name = campaigns.name;
+    }
+
+    let query = db.select(selectFields).from(this.postsTable);
+
+    if (hasMassPostId) {
+      query = query
+        .leftJoin(posts, eq(this.postsTable.mass_post_id, posts.id))
+        .leftJoin(campaigns, eq(posts.campaign_id, campaigns.id)) as any;
+    }
+
+    const rows = await query
+      .where(and(...conditions))
+      .orderBy(desc(this.postsTable.posted_at));
+
+    const grouped: Record<number, any[]> = {};
+    for (const row of rows as any[]) {
+      const aid = row.account_id;
+      if (!grouped[aid]) grouped[aid] = [];
+      grouped[aid].push(row);
+    }
+    return grouped;
+  }
+
   async getPostsStatsByAccounts(
     accountIds: number[],
     startDate?: Date,
@@ -749,6 +840,134 @@ export class AccountTrackingService {
       accountPostStats,
       accounts,
     };
+  }
+
+  /**
+   * Sync mass posting posts for a given account in a single batch Apify call.
+   * Emits socket events so the frontend can track progress.
+   */
+  async syncMassPostBatch(accountId: number, teamId: number) {
+    // Get eligible posts (have mass_post_id and syncs_remaining > 0)
+    const eligiblePosts = await db
+      .select({
+        id: this.postsTable.id,
+        post_url: this.postsTable.post_url,
+        metrics_history: this.postsTable.metrics_history,
+        like_count: this.postsTable.like_count,
+        comment_count: this.postsTable.comment_count,
+        video_play_count: this.postsTable.video_play_count,
+        thumbnail_url: this.postsTable.thumbnail_url,
+      })
+      .from(this.postsTable)
+      .where(
+        and(
+          eq(this.postsTable.account_id, accountId),
+          isNotNull(this.postsTable.mass_post_id),
+          gt(this.postsTable.syncs_remaining, 0)
+        )
+      );
+
+    if (eligiblePosts.length === 0) return { syncedCount: 0, skippedCount: 0 };
+
+    // Get the account's platform
+    const account = await this.getAccountById(accountId);
+    if (!account) throw new Error("Account not found");
+
+    emitViralitySyncUpdate(teamId, { accountId, syncStatus: "syncing" });
+
+    try {
+      // Decrement syncs_remaining for all eligible posts
+      const decremented: { id: number; post_url: string }[] = [];
+      for (const p of eligiblePosts) {
+        const result = await db
+          .update(this.postsTable)
+          .set({
+            syncs_remaining: sql`${this.postsTable.syncs_remaining} - 1`,
+            updated_at: new Date(),
+          })
+          .where(
+            and(
+              eq(this.postsTable.id, p.id),
+              sql`${this.postsTable.syncs_remaining} > 0`
+            )
+          )
+          .returning({ id: this.postsTable.id }) as any[];
+
+        if (result.length > 0) {
+          decremented.push({ id: p.id, post_url: p.post_url });
+        }
+      }
+
+      if (decremented.length === 0) {
+        emitViralitySyncUpdate(teamId, { accountId, syncStatus: "completed" });
+        return { syncedCount: 0, skippedCount: eligiblePosts.length };
+      }
+
+      // Single batch Apify call for all post URLs
+      const apify = getApifyService();
+      const postUrls = decremented.map((p) => p.post_url);
+      const metricsMap = await apify.scrapeBatchPostMetrics(postUrls, account.platform);
+
+      // Build lookup from the already-fetched eligiblePosts data
+      const eligibleMap = new Map(eligiblePosts.map((ep: any) => [ep.id, ep]));
+
+      let syncedCount = 0;
+      let skippedCount = 0;
+
+      for (const p of decremented) {
+        const postIdentifier = extractPostIdentifier(p.post_url, account.platform);
+        const metrics = postIdentifier ? metricsMap.get(postIdentifier) : null;
+
+        if (!metrics) {
+          skippedCount++;
+          continue;
+        }
+
+        const existing = eligibleMap.get(p.id) as any;
+
+        const history: MetricsEntry[] = Array.isArray(existing?.metrics_history)
+          ? [...(existing.metrics_history as MetricsEntry[])]
+          : [];
+        const lastMetric = history.length > 0 ? history[history.length - 1] : null;
+        const { likes: newLikes, comments: newComments, views: newViews } = resolveMetrics(
+          { likes: metrics.likesCount || 0, comments: metrics.commentsCount || 0, views: metrics.viewCount ?? null },
+          lastMetric,
+        );
+
+        history.push({ recorded_at: new Date().toISOString(), likes: newLikes, comments: newComments, views: newViews });
+        const trimmed = history.length > MAX_METRICS_HISTORY
+          ? history.slice(-MAX_METRICS_HISTORY)
+          : history;
+
+        await db
+          .update(this.postsTable)
+          .set({
+            like_count: newLikes,
+            comment_count: newComments,
+            video_play_count: newViews,
+            thumbnail_url: metrics.thumbnailUrl || existing?.thumbnail_url || null,
+            metrics_history: trimmed,
+            updated_at: new Date(),
+          })
+          .where(eq(this.postsTable.id, p.id));
+
+        syncedCount++;
+      }
+
+      // Update account last_synced_at
+      await db
+        .update(this.accountsTable)
+        .set({ last_synced_at: new Date(), updated_at: new Date() })
+        .where(eq(this.accountsTable.id, accountId));
+
+      emitViralitySyncUpdate(teamId, { accountId, syncStatus: "completed" });
+      return { syncedCount, skippedCount };
+    } catch (error: any) {
+      console.error(`Mass post batch sync failed for account ${accountId}:`, error);
+      Sentry.captureException(error);
+      emitViralitySyncUpdate(teamId, { accountId, syncStatus: "failed", syncError: error.message });
+      throw error;
+    }
   }
 
   async checkTeamPlanAccess(teamId: number): Promise<boolean> {

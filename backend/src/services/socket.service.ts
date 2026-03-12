@@ -186,7 +186,7 @@ export const emitAdPostingUpdate = (teamId: number, update: AdPostingUpdate) => 
 
 export interface ViralitySyncUpdate {
   accountId: number;
-  syncStatus: "completed" | "failed";
+  syncStatus: "syncing" | "completed" | "failed";
   syncError?: string;
 }
 

@@ -119,8 +119,13 @@ class ViralityController {
       if (!teamId || !accountId) return res.status(400).json({ error: "Invalid team or account ID" });
       if (!(await requirePlanAccess(teamId, res))) return;
 
-      const result = await viralityService.syncAccount(accountId, teamId);
-      return res.json(result);
+      // Fire-and-forget: respond immediately, sync runs in background.
+      // Progress is pushed to the client via Socket.IO "virality-sync-update" events.
+      viralityService.syncAccount(accountId, teamId).catch((err) => {
+        console.error(`Background sync failed for account ${accountId}:`, err);
+      });
+
+      return res.status(202).json({ accepted: true, accountId });
     } catch (error: any) {
       return handleError(res, "Sync virality account error", error, "Sync failed: " + error.message);
     }

@@ -88,7 +88,7 @@ class UserPerformanceAPI {
   async syncAccount(
     teamId: number,
     accountId: number
-  ): Promise<{ success: boolean; postsProcessed: number }> {
+  ): Promise<{ accepted: boolean; accountId: number }> {
     const response = await apiFetch(
       `${API_URL}/user-performance/${teamId}/accounts/${accountId}/sync`,
       {
@@ -108,7 +108,7 @@ class UserPerformanceAPI {
 
   async syncAll(
     teamId: number
-  ): Promise<{ accounts: { synced: number; failed: number }; massPosts: { synced: number; skipped: number } }> {
+  ): Promise<{ accepted: boolean; accountIds: number[] }> {
     const response = await apiFetch(
       `${API_URL}/user-performance/${teamId}/sync-all`,
       {
@@ -160,6 +160,41 @@ class UserPerformanceAPI {
     return (data.posts as ViralityPost[]).filter(
       (p) => !p.post_type || !EXCLUDED_TYPES.has(p.post_type.toLowerCase())
     );
+  }
+
+  async getAllPosts(
+    teamId: number,
+    startDate?: string,
+    endDate?: string
+  ): Promise<Record<number, ViralityPost[]>> {
+    const params = new URLSearchParams();
+    if (startDate) params.set("startDate", startDate);
+    if (endDate) params.set("endDate", endDate);
+    const qs = params.toString();
+
+    const response = await apiFetch(
+      `${API_URL}/user-performance/${teamId}/posts${qs ? `?${qs}` : ""}`,
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to fetch posts");
+    }
+
+    const data = await response.json();
+    const EXCLUDED_TYPES = new Set(["sidecar", "retweet", "quote", "image"]);
+    const result: Record<number, ViralityPost[]> = {};
+    for (const [accountId, posts] of Object.entries(data.postsByAccount)) {
+      result[Number(accountId)] = (posts as ViralityPost[]).filter(
+        (p) => !p.post_type || !EXCLUDED_TYPES.has(p.post_type.toLowerCase())
+      );
+    }
+    return result;
   }
 
   async deletePost(teamId: number, postId: number): Promise<void> {
