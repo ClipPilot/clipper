@@ -14,12 +14,45 @@ export interface InitAgentResult {
   videoType: string;
   isSilent: boolean;
   character: boolean;
+  targetAudience: string;
   structure: Array<{
     sceneType: string;
     slug: string;
     description: string;
     shots?: BRollShot[];
   }>;
+}
+
+export interface ScriptAgentShot {
+  label: string;
+  shotType: "CHARACTER" | "PRODUCT" | "CHARACTER_AND_PRODUCT";
+  action: string;
+  imageGenPrompt: string;
+  cinematicPrompt: string;
+  durationSeconds: number;
+  productImageNeeded: boolean;
+}
+
+export interface ScriptAgentScene {
+  sceneNumber: number;
+  slug: string;
+  sceneType: "a-roll" | "b-roll" | "visual";
+  storyBeat: string;
+  dialogue: string;
+  isSilent: boolean;
+  duration: number;
+  action: string;
+  imageGenPrompt: string;
+  cinematicPrompt: string;
+  ambientSound: string | null;
+  shots: ScriptAgentShot[];
+}
+
+export interface ScriptAgentResult {
+  title: string;
+  targetAudience: string;
+  totalDuration: number;
+  scenes: ScriptAgentScene[];
 }
 
 export interface ChatMessage {
@@ -31,4 +64,4 @@ export interface ChatMessage {
   timestamp: Date;
 }
 
-export type ArtifactType = "character" | "voice" | "under-construction";
+export type ArtifactType = "character" | "voice" | "script";

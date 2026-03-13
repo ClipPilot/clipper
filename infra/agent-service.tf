@@ -103,6 +103,10 @@ resource "aws_ecs_task_definition" "agent_service" {
       {
         name      = "GEMINI_API_KEY"
         valueFrom = aws_secretsmanager_secret.gemini_api_key.arn
+      },
+      {
+        name      = "GOOGLE_GENERATIVE_AI_API_KEY"
+        valueFrom = aws_secretsmanager_secret.gemini_api_key.arn
       }
     ]
 

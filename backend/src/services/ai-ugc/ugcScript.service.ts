@@ -477,6 +477,7 @@ Return a JSON object with a "descriptions" array of strings, one description per
     return { scripts, selectedVariantIndex: newSelectedIndex };
   }
 
+
   async regenerateScene(params: RegenerateSceneParams): Promise<UGCScene> {
     const { scriptId, sceneId, currentDialogue, currentEmotion } = params;
 
@@ -531,24 +532,6 @@ Return a JSON object with a "descriptions" array of strings, one description per
       .where(eq(ugcScripts.id, scriptId));
 
     return newScene;
-  }
-
-  async regenerateCinematicPrompt(action: string): Promise<string> {
-    const prompt = `Generate a detailed cinematicPrompt for a video scene with this action: "${action}"
-
-The cinematicPrompt should be 2-3 paragraphs describing:
-1. Visual composition, lighting, and framing
-2. Camera movement and timing
-3. Technical style and what to avoid
-
-Keep it professional and suitable for AI video generation. Return ONLY the cinematicPrompt text, no JSON or extra formatting.`;
-
-    const response = await client.responses.create({
-      model: "gpt-5-mini",
-      input: [{ role: "user", content: prompt }],
-    });
-
-    return response.output_text?.trim() || action;
   }
 
   async regenerateBRollPrompt(params: RegenerateBRollPromptParams): Promise<string> {
@@ -658,10 +641,8 @@ Return a JSON object with a "shots" array of exactly ${shotCount} shot objects.`
     const parsed = JSON.parse(response.output_text);
     const newShots: BRollShot[] = ShotsResponseSchema.parse(parsed).shots;
 
-    // Update scene in-memory
     scene.bRollShots = newShots;
 
-    // Persist to database
     await db
       .update(ugcScripts)
       .set({
@@ -692,6 +673,25 @@ Return a JSON object with a "shots" array of exactly ${shotCount} shot objects.`
 
     return AutoStructureResponseSchema.parse(JSON.parse(response.output_text));
   }
+
+  async regenerateCinematicPrompt(action: string): Promise<string> {
+    const prompt = `Generate a detailed cinematicPrompt for a video scene with this action: "${action}"
+
+The cinematicPrompt should be 2-3 paragraphs describing:
+1. Visual composition, lighting, and framing
+2. Camera movement and timing
+3. Technical style and what to avoid
+
+Keep it professional and suitable for AI video generation. Return ONLY the cinematicPrompt text, no JSON or extra formatting.`;
+
+    const response = await client.responses.create({
+      model: "gpt-5-mini",
+      input: [{ role: "user", content: prompt }],
+    });
+
+    return response.output_text?.trim() || action;
+  }
+
 
   async initStructure(params: {
     message: string;
@@ -768,6 +768,127 @@ Return a JSON object with a "shots" array of exactly ${shotCount} shot objects.`
     }
 
     return agentResult;
+  }
+
+  async generateScriptViaAgent(params: {
+    teamId: number;
+    characterId?: number;
+    structure: Array<{ sceneType: string; slug: string; description: string; shots?: Array<{ label: string; shotType: string }> }>;
+    character?: { name: string; gender: string | null; age_range: string | null; appearance_config: any } | null;
+    voice?: { name: string; style?: string } | null;
+    targetAudience: string;
+    productImageKeys?: string[];
+    userDirection?: string;
+    isSilent: boolean;
+    videoType: string;
+  }): Promise<{ scriptId: string; script: any }> {
+    const {
+      teamId,
+      characterId,
+      structure,
+      character,
+      voice,
+      targetAudience,
+      productImageKeys,
+      userDirection,
+      isSilent,
+      videoType,
+    } = params;
+
+    // Build multimodal content parts for product images
+    const content: Array<{ type: string; text?: string; image?: string; mediaType?: string }> = [];
+
+    if (productImageKeys?.length) {
+      const presignedUrls = await Promise.all(
+        productImageKeys.map((key) => s3Service.getPresignedUrl(key)),
+      );
+      for (const url of presignedUrls) {
+        content.push({ type: "image", image: url, mediaType: "image/jpeg" });
+      }
+    }
+
+    // Build structured text summary for the agent
+    const structureSummary = structure
+      .map((s, i) => {
+        const shots = s.shots?.length
+          ? ` | Shots: ${s.shots.map((sh) => `${sh.label} (${sh.shotType})`).join(", ")}`
+          : "";
+        return `  ${i + 1}. ${s.slug} (${s.sceneType}) — ${s.description}${shots}`;
+      })
+      .join("\n");
+
+    const characterSummary = character
+      ? `Character: ${character.name}, ${character.gender || "unspecified"}, ${character.age_range || "25-35"}, ${this.formatAppearanceConfig(character.appearance_config)}`
+      : "No character (product-only video)";
+
+    const voiceSummary = voice
+      ? `Voice: ${voice.name}${voice.style ? ` (${voice.style})` : ""}`
+      : "No voice (silent video)";
+
+    const messageText = [
+      `=== VIDEO SCRIPT GENERATION ===`,
+      `Video Type: ${videoType}`,
+      `Silent: ${isSilent}`,
+      `Target Audience: ${targetAudience}`,
+      ``,
+      `${characterSummary}`,
+      `${voiceSummary}`,
+      ``,
+      `Structure Blueprint:`,
+      structureSummary,
+      ``,
+      userDirection ? `User Direction: ${userDirection}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    content.push({ type: "text", text: messageText });
+
+    const messages = [{ role: "user", content }];
+
+    const agentServiceUrl = config.agentService.url;
+    const response = await fetch(
+      `${agentServiceUrl}/api/agents/script-agent/generate`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages }),
+      },
+    );
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error("[UGC_SCRIPT] Script agent error:", errorBody);
+      throw new Error("Failed to generate script from agent service");
+    }
+
+    const result = (await response.json()) as Record<string, unknown>;
+    const agentResult = (result.object ?? result) as any;
+
+    // Persist to DB as a completed script
+    const scriptsData = [agentResult]; // Wrap single result in array for consistency with existing format
+    const insertValues: Record<string, unknown> = {
+      team_id: teamId,
+      product_image_keys: productImageKeys || [],
+      script_direction: userDirection || null,
+      scripts_data: scriptsData,
+      selected_variant_index: 0,
+      status: "completed",
+    };
+    // character_id is NOT NULL in schema — only include if we have one
+    if (characterId) {
+      insertValues.character_id = characterId;
+    }
+    const [inserted] = await db
+      .insert(ugcScripts)
+      .values(insertValues as any)
+      .returning({ id: ugcScripts.id });
+
+    console.log(
+      `[UGC_SCRIPT] Agent script stored for team ${teamId}, scriptId: ${inserted.id}`,
+    );
+
+    return { scriptId: inserted.id, script: agentResult };
   }
 
   stripCinematicPrompts(script: UGCScript): ClientUGCScript {

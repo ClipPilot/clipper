@@ -77,4 +77,7 @@ export const initAgentSchema = z.object({
   character: z.boolean().describe("Whether the video has a character. Set to true for conversation responses."),
   structure: structureSchema.describe("The scene structure array. Set to an empty array [] for conversation responses."),
   videoType: videoTypeEnum.describe("The video type. Set to 'ugc' for conversation responses."),
+  targetAudience: z.string().describe(
+    "1-2 sentence description of the ideal viewer/target audience based on the video idea, product, and style. Set to empty string for conversation responses.",
+  ),
 });

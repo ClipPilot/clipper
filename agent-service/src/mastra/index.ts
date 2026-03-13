@@ -10,16 +10,19 @@ import {
 import { weatherWorkflow } from "./workflows/weather-workflow.js";
 import { weatherAgent } from "./agents/weather-agent.js";
 import { scriptInitAgent } from "./agents/scriptInit-agent.js";
+import { scriptAgent } from "./agents/script-agent.js";
 
 export const mastra = new Mastra({
   server: {
     port: parseInt(process.env.PORT || "4111"),
     host: "0.0.0.0",
   },
-  agents: { scriptInitAgent },
+  agents: { scriptInitAgent, scriptAgent },
   storage: new PostgresStore({
     id: "postgres-store",
     connectionString: process.env.DATABASE_URL!,
+    max: 5,
+    idleTimeoutMillis: 10000,
   }),
   logger: new PinoLogger({
     name: "Mastra",

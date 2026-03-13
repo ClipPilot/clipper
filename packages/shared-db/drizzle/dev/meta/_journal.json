@@ -351,6 +351,13 @@
       "when": 1773165613768,
       "tag": "0049_productive_stark_industries",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1773383178153,
+      "tag": "0050_nifty_boomerang",
+      "breakpoints": true
     }
   ]
 }

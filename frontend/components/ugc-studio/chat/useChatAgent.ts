@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import { useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import {
   isSilentAtom,
   productImageKeysAtom,
@@ -9,8 +9,15 @@ import {
   hasCharacterAtom,
   customPatternAtom,
 } from "@/store/ugc";
+import { selectedVoiceAtom } from "@/store/ugc";
 import { ugcScriptAPI } from "@/api/ugc";
-import type { ChatMessage, ChatAttachment, InitAgentResult, ArtifactType } from "./types";
+import type {
+  ChatMessage,
+  ChatAttachment,
+  InitAgentResult,
+  ArtifactType,
+  ScriptAgentResult,
+} from "./types";
 
 let messageIdCounter = 0;
 function nextId() {
@@ -53,6 +60,9 @@ export function useChatAgent() {
   const [isThinking, setIsThinking] = useState(false);
   const [acceptedResult, setAcceptedResult] = useState<InitAgentResult | null>(null);
   const [currentArtifact, setCurrentArtifact] = useState<ArtifactType | null>(null);
+  const [generatedScript, setGeneratedScript] = useState<ScriptAgentResult | null>(null);
+  const [isGeneratingScript, setIsGeneratingScript] = useState(false);
+  const [scriptId, setScriptId] = useState<string | null>(null);
   const threadIdRef = useRef(`thread-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
 
   const setIsSilent = useSetAtom(isSilentAtom);
@@ -60,6 +70,11 @@ export function useChatAgent() {
   const setVideoType = useSetAtom(videoTypeAtom);
   const setHasCharacter = useSetAtom(hasCharacterAtom);
   const setCustomPattern = useSetAtom(customPatternAtom);
+  const selectedVoice = useAtomValue(selectedVoiceAtom);
+
+  // Store character/teamId refs for script generation
+  const selectedCharacterRef = useRef<any>(null);
+  const teamIdRef = useRef<number | null>(null);
 
   const sendMessage = useCallback(
     async (text: string, attachments: ChatAttachment[] = []) => {
@@ -98,6 +113,7 @@ export function useChatAgent() {
                   videoType: result.videoType!,
                   isSilent: result.isSilent!,
                   character: result.character!,
+                  targetAudience: (result as any).targetAudience || "",
                   structure: result.structure,
                 }
               : undefined,
@@ -123,11 +139,54 @@ export function useChatAgent() {
     [messages],
   );
 
+  const generateScript = useCallback(async () => {
+    if (!acceptedResult || !teamIdRef.current) return;
+
+    setIsGeneratingScript(true);
+    try {
+      const character = selectedCharacterRef.current;
+      const allImageKeys = messages
+        .filter((m) => m.role === "user" && m.attachments)
+        .flatMap((m) => m.attachments!.map((a) => a.key));
+
+      // Reconstruct the user's original direction from their first message
+      const userDirection = messages.find((m) => m.role === "user")?.content || "";
+
+      const result = await ugcScriptAPI.generateScriptAgent({
+        teamId: teamIdRef.current,
+        structure: acceptedResult.structure,
+        characterId: character?.id,
+        character: character
+          ? {
+              name: character.name,
+              gender: character.gender,
+              age_range: character.age_range,
+              appearance_config: character.appearance_config,
+            }
+          : null,
+        voice: selectedVoice
+          ? { name: selectedVoice.name }
+          : null,
+        targetAudience: acceptedResult.targetAudience || "",
+        productImageKeys: allImageKeys,
+        userDirection,
+        isSilent: acceptedResult.isSilent,
+        videoType: acceptedResult.videoType,
+      });
+
+      setGeneratedScript(result.script);
+      setScriptId(result.scriptId);
+    } catch (error) {
+      console.error("[useChatAgent] Script generation failed:", error);
+      setGeneratedScript(null);
+    } finally {
+      setIsGeneratingScript(false);
+    }
+  }, [acceptedResult, messages, selectedVoice]);
+
   const acceptStructure = useCallback(
     (result: InitAgentResult, imageKeys: string[]) => {
       // Map agent structure → customPattern format for downstream generateScript
-      // Agent: { sceneType: "a-roll"|"b-roll"|"visual", slug, description: "hook"|"demo"|... }
-      // Downstream: { type: "hook", shot: "a-roll" }
       const customPattern = result.structure.map((scene) => ({
         type: scene.description,
         shot: scene.sceneType,
@@ -142,10 +201,15 @@ export function useChatAgent() {
 
       setAcceptedResult(result);
 
-      // If no character needed, skip CharacterStep → go straight to voice (or under-construction if silent)
-      if (!result.character) {
-        setCurrentArtifact(result.isSilent ? "under-construction" : "voice");
+      // Determine first artifact step based on character/silent flags
+      if (!result.character && result.isSilent) {
+        // No character + silent → skip both → straight to script
+        setCurrentArtifact("script");
+      } else if (!result.character) {
+        // No character + has voice → skip character → voice → script
+        setCurrentArtifact("voice");
       } else {
+        // Has character → character → voice/script
         setCurrentArtifact("character");
       }
     },
@@ -155,9 +219,9 @@ export function useChatAgent() {
   const advanceArtifact = useCallback(() => {
     setCurrentArtifact((prev) => {
       if (prev === "character") {
-        return acceptedResult?.isSilent ? "under-construction" : "voice";
+        return acceptedResult?.isSilent ? "script" : "voice";
       }
-      if (prev === "voice") return "under-construction";
+      if (prev === "voice") return "script";
       return prev;
     });
   }, [acceptedResult]);
@@ -174,9 +238,15 @@ export function useChatAgent() {
     isThinking,
     acceptedResult,
     currentArtifact,
+    generatedScript,
+    isGeneratingScript,
+    scriptId,
     sendMessage,
     acceptStructure,
     advanceArtifact,
     retryStructure,
+    generateScript,
+    selectedCharacterRef,
+    teamIdRef,
   };
 }

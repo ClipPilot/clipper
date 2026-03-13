@@ -213,6 +213,8 @@ Analyze the user's message (and any attached product images) and return:
    - description: The story beat type (hook, problem, agitate, solution, demo, social-proof, testimonial, transformation, cta) or a custom description string
    - shots: Array of { label, shotType } describing each shot. For b-roll/visual scenes: 1-5 shots. For a-roll scenes: empty array [].
 
-For conversation responses, set structure to [], videoType to "ugc", isSilent to false, character to true.
+5. **targetAudience**: A 1-2 sentence description of the ideal viewer based on the video idea, product, and style. Consider demographics, interests, pain points, and platform behavior. Example: "Health-conscious women 25-40 who follow skincare routines on TikTok and are skeptical of new products without social proof."
+
+For conversation responses, set structure to [], videoType to "ugc", isSilent to false, character to true, targetAudience to "".
 `,
 });

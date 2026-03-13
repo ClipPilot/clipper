@@ -500,8 +500,7 @@ export const ugcScripts = pgTable(
       .notNull()
       .references(() => teams.id, { onDelete: "cascade" }),
     character_id: integer("character_id")
-      .notNull()
-      .references(() => characters.id, { onDelete: "cascade" }),
+      .references(() => characters.id, { onDelete: "set null" }),
     product_image_keys: jsonb("product_image_keys").notNull(),
     product_name: varchar("product_name", { length: 255 }),
     script_direction: text("script_direction"),

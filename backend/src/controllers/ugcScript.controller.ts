@@ -263,6 +263,60 @@ export class UGCScriptController {
     }
   }
 
+  async generateScriptAgent(req: AuthRequest, res: Response) {
+    try {
+      const {
+        teamId,
+        characterId,
+        structure,
+        character,
+        voice,
+        targetAudience,
+        productImageKeys,
+        userDirection,
+        isSilent,
+        videoType,
+      } = req.body;
+
+      if (!teamId || !structure) {
+        return res.status(400).json({ error: "teamId and structure are required" });
+      }
+
+      if (!req.user?.dbUserId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const team = await teamService.getTeamById(teamId);
+      if (!team || !canAccessUGCStudio(team.plan)) {
+        return res.status(403).json({ error: "UGC Studio access required" });
+      }
+
+      const result = await ugcScriptService.generateScriptViaAgent({
+        teamId,
+        characterId,
+        structure,
+        character,
+        voice,
+        targetAudience: targetAudience || "",
+        productImageKeys,
+        userDirection,
+        isSilent: !!isSilent,
+        videoType: videoType || "ugc",
+      });
+
+      return res.status(200).json({
+        success: true,
+        scriptId: result.scriptId,
+        script: result.script,
+      });
+    } catch (error) {
+      console.error("[UGC_SCRIPT] Generate script agent error:", error);
+      return res.status(500).json({
+        error: sanitizeErrorForFrontend(error, "Failed to generate script via agent"),
+      });
+    }
+  }
+
   async initStructure(req: AuthRequest, res: Response) {
     try {
       const { message, productImageKeys, threadId, conversationHistory } = req.body;

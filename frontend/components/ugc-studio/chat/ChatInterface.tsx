@@ -27,15 +27,24 @@ export function ChatInterface() {
     isThinking,
     acceptedResult,
     currentArtifact,
+    generatedScript,
+    isGeneratingScript,
     sendMessage,
     acceptStructure,
     advanceArtifact,
     retryStructure,
+    generateScript,
+    selectedCharacterRef,
+    teamIdRef,
   } = useChatAgent();
 
   const chatInputRef = useRef<ChatInputHandle>(null);
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
   const [showExistingScripts, setShowExistingScripts] = useState(false);
+
+  // Sync refs so useChatAgent can access character/teamId during script generation
+  selectedCharacterRef.current = selectedCharacter;
+  teamIdRef.current = teamId;
 
   const setScriptId = useSetAtom(scriptIdAtom);
   const setScripts = useSetAtom(scriptsAtom);
@@ -147,6 +156,9 @@ export function ChatInterface() {
               onCharacterSelect={setSelectedCharacter}
               onContinue={advanceArtifact}
               teamId={teamId ?? undefined}
+              generatedScript={generatedScript}
+              isGeneratingScript={isGeneratingScript}
+              onGenerateScript={generateScript}
             />
           </motion.div>
         )}

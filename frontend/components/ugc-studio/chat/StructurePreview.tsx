@@ -55,6 +55,14 @@ export function StructurePreview({ result, isAccepted, onAccept, onRetry }: Stru
         )}
       </div>
 
+      {/* Target audience */}
+      {result.targetAudience && (
+        <div className="flex items-start gap-2 px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.04]">
+          <Icon icon="solar:users-group-rounded-bold-duotone" width={14} className="text-accent-400/70 shrink-0 mt-0.5" />
+          <span className="text-[11px] leading-relaxed text-text-secondary">{result.targetAudience}</span>
+        </div>
+      )}
+
       {/* Scene flow */}
       <div className="space-y-0.5">
         {result.structure.map((scene, index) => {
@@ -92,11 +100,11 @@ export function StructurePreview({ result, isAccepted, onAccept, onRetry }: Stru
 
                   {/* B-roll/visual shots breakdown */}
                   {hasBRollShots && (
-                    <div className="mt-1.5 flex flex-col gap-0.5">
+                    <div className="mt-1.5 flex flex-col gap-1">
                       {scene.shots!.map((shot, shotIdx) => (
                         <div
                           key={shotIdx}
-                          className="flex items-center gap-1.5 text-[10px] text-text-muted/50"
+                          className="flex items-center gap-1.5 text-[11px] text-text-muted/70"
                         >
                           <Icon
                             icon={
@@ -106,7 +114,7 @@ export function StructurePreview({ result, isAccepted, onAccept, onRetry }: Stru
                                   ? "solar:user-bold-duotone"
                                   : "solar:hand-stars-bold-duotone"
                             }
-                            width={10}
+                            width={12}
                             className="shrink-0"
                           />
                           <span>{shot.label}</span>

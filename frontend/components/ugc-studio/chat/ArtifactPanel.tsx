@@ -1,11 +1,12 @@
 "use client";
 
+import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Button } from "@heroui/react";
-import { Icon } from "@iconify/react";
 import { CharacterStep } from "@/components/ugc-studio/actors/CharacterStep";
 import { AudioStep } from "@/components/ugc-studio/voice";
-import type { ArtifactType } from "./types";
+import { ScriptPreview } from "./ScriptPreview";
+import { ScriptLoadingState } from "./ScriptLoadingState";
+import type { ArtifactType, ScriptAgentResult } from "./types";
 import type { Character } from "@/components/ugc-studio/actors/types";
 
 interface ArtifactPanelProps {
@@ -14,6 +15,9 @@ interface ArtifactPanelProps {
   onCharacterSelect: (character: Character | null) => void;
   onContinue: () => void;
   teamId?: number;
+  generatedScript: ScriptAgentResult | null;
+  isGeneratingScript: boolean;
+  onGenerateScript: () => void;
 }
 
 export function ArtifactPanel({
@@ -22,7 +26,17 @@ export function ArtifactPanel({
   onCharacterSelect,
   onContinue,
   teamId,
+  generatedScript,
+  isGeneratingScript,
+  onGenerateScript,
 }: ArtifactPanelProps) {
+  // Trigger script generation when the artifact becomes "script"
+  useEffect(() => {
+    if (currentArtifact === "script" && !generatedScript && !isGeneratingScript) {
+      onGenerateScript();
+    }
+  }, [currentArtifact, generatedScript, isGeneratingScript, onGenerateScript]);
+
   return (
     <motion.div
       initial={{ x: "100%", opacity: 0 }}
@@ -61,23 +75,20 @@ export function ArtifactPanel({
           </motion.div>
         )}
 
-        {currentArtifact === "under-construction" && (
+        {currentArtifact === "script" && (
           <motion.div
-            key="under-construction"
+            key="script"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.2 }}
-            className="flex-1 flex flex-col items-center justify-center gap-4 p-8 text-center"
+            className="flex-1 p-4 overflow-y-auto"
           >
-            <div className="w-20 h-20 rounded-2xl bg-warning-500/10 flex items-center justify-center">
-              <Icon icon="solar:buildings-bold-duotone" className="text-warning-500" width={40} />
-            </div>
-            <h3 className="text-xl font-bold text-text-primary">Under Construction</h3>
-            <p className="text-text-secondary text-sm max-w-sm">
-              Storyboard and video generation steps are coming soon.
-              The remaining wizard flow will be integrated here.
-            </p>
+            {isGeneratingScript ? (
+              <ScriptLoadingState />
+            ) : generatedScript ? (
+              <ScriptPreview script={generatedScript} />
+            ) : null}
           </motion.div>
         )}
       </AnimatePresence>

@@ -43,6 +43,7 @@ router.post(
   ugcScriptController.generateScript.bind(ugcScriptController)
 );
 
+
 /**
  * @openapi
  * /ugc/regenerate-scene:
@@ -174,6 +175,126 @@ router.post(
 
 /**
  * @openapi
+ * /ugc/auto-structure:
+ *   post:
+ *     summary: Generate an AI-recommended script structure
+ *     description: Analyzes script direction and returns an optimal scene pattern with reasoning
+ *     tags:
+ *       - UGC Script
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - scriptDirection
+ *             properties:
+ *               scriptDirection:
+ *                 type: string
+ *                 description: Description of the desired script
+ *               productName:
+ *                 type: string
+ *                 description: Optional product name for context
+ *     responses:
+ *       200:
+ *         description: Auto-generated structure
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 pattern:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       type:
+ *                         type: string
+ *                       shot:
+ *                         type: string
+ *                 reasoning:
+ *                   type: string
+ *                 name:
+ *                   type: string
+ */
+router.post(
+  "/auto-structure",
+  requireAuth,
+  ugcScriptController.generateAutoStructure.bind(ugcScriptController)
+);
+
+/**
+ * @openapi
+ * /ugc/generate-script-agent:
+ *   post:
+ *     summary: Generate a script using the AI script agent
+ *     description: Uses the Mastra script agent to generate a full video script from structure, character, voice, and audience context
+ *     tags:
+ *       - UGC Script
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - teamId
+ *               - structure
+ *             properties:
+ *               teamId:
+ *                 type: number
+ *               structure:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *               characterId:
+ *                 type: number
+ *               character:
+ *                 type: object
+ *               voice:
+ *                 type: object
+ *               targetAudience:
+ *                 type: string
+ *               productImageKeys:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               userDirection:
+ *                 type: string
+ *               isSilent:
+ *                 type: boolean
+ *               videoType:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Generated script
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 scriptId:
+ *                   type: string
+ *                 script:
+ *                   type: object
+ */
+router.post(
+  "/generate-script-agent",
+  requireAuth,
+  ugcScriptController.generateScriptAgent.bind(ugcScriptController)
+);
+
+/**
+ * @openapi
  * /ugc/init-structure:
  *   post:
  *     summary: Generate an AI video structure from a chat message
@@ -233,60 +354,6 @@ router.post(
   ugcScriptController.initStructure.bind(ugcScriptController)
 );
 
-/**
- * @openapi
- * /ugc/auto-structure:
- *   post:
- *     summary: Generate an AI-recommended script structure
- *     description: Analyzes script direction and returns an optimal scene pattern with reasoning
- *     tags:
- *       - UGC Script
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - scriptDirection
- *             properties:
- *               scriptDirection:
- *                 type: string
- *                 description: Description of the desired script
- *               productName:
- *                 type: string
- *                 description: Optional product name for context
- *     responses:
- *       200:
- *         description: Auto-generated structure
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 pattern:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       type:
- *                         type: string
- *                       shot:
- *                         type: string
- *                 reasoning:
- *                   type: string
- *                 name:
- *                   type: string
- */
-router.post(
-  "/auto-structure",
-  requireAuth,
-  ugcScriptController.generateAutoStructure.bind(ugcScriptController)
-);
 
 /**
  * @openapi

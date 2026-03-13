@@ -45,6 +45,7 @@ class UGCScriptAPI {
     return response.json();
   }
 
+
   async regenerateScene(data: RegenerateSceneRequest): Promise<RegenerateSceneResponse> {
     const response = await apiFetch(`${API_URL}/ugc/regenerate-scene`, {
       method: "POST",
@@ -104,6 +105,53 @@ class UGCScriptAPI {
     return response.json();
   }
 
+  async generateAutoStructure(data: {
+    scriptDirection: string;
+    productName?: string;
+    hasProductImages?: boolean;
+  }): Promise<{ success: boolean } & AutoStructureResponse> {
+    const response = await apiFetch(`${API_URL}/ugc/auto-structure`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to generate auto structure");
+    }
+
+    return response.json();
+  }
+
+  async generateScriptAgent(data: {
+    teamId: number;
+    structure: Array<{ sceneType: string; slug: string; description: string; shots?: Array<{ label: string; shotType: string }> }>;
+    characterId?: number;
+    character?: { name: string; gender: string | null; age_range: string | null; appearance_config: any } | null;
+    voice?: { name: string; style?: string } | null;
+    targetAudience: string;
+    productImageKeys?: string[];
+    userDirection?: string;
+    isSilent: boolean;
+    videoType: string;
+  }): Promise<{ success: boolean; scriptId: string; script: any }> {
+    const response = await apiFetch(`${API_URL}/ugc/generate-script-agent`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to generate script via agent");
+    }
+
+    return response.json();
+  }
+
   async initStructure(data: {
     message: string;
     productImageKeys?: string[];
@@ -133,25 +181,6 @@ class UGCScriptAPI {
     return response.json();
   }
 
-  async generateAutoStructure(data: {
-    scriptDirection: string;
-    productName?: string;
-    hasProductImages?: boolean;
-  }): Promise<{ success: boolean } & AutoStructureResponse> {
-    const response = await apiFetch(`${API_URL}/ugc/auto-structure`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Failed to generate auto structure");
-    }
-
-    return response.json();
-  }
 
   async getUploadUrl(
     teamId: number,
