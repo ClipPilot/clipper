@@ -292,8 +292,7 @@ router.get("/v1/wallet", validateAPIKey, getWalletV1Controller);
  *                 type: integer
  *                 minimum: 10
  *                 maximum: 180
- *                 default: 40
- *                 description: Target clip duration in seconds.
+ *                 description: Target clip duration in seconds. Omit to let the AI decide.
  *               prompt:
  *                 type: string
  *                 description: Custom AI instructions for clip selection (e.g. "focus on product demos" or "find the funniest moments").
@@ -326,8 +325,7 @@ router.get("/v1/wallet", validateAPIKey, getWalletV1Controller);
  *                 type: integer
  *                 minimum: 2
  *                 maximum: 15
- *                 default: 6
- *                 description: Hook duration in seconds. The hook is the attention-grabbing opening of each clip.
+ *                 description: Hook duration in seconds. The hook is the attention-grabbing opening of each clip. Omit to let the AI decide.
  *               auto_heading:
  *                 type: boolean
  *                 default: true
@@ -389,8 +387,7 @@ router.get("/v1/wallet", validateAPIKey, getWalletV1Controller);
  *                 type: integer
  *                 minimum: 10
  *                 maximum: 180
- *                 default: 40
- *                 description: Target clip duration in seconds.
+ *                 description: Target clip duration in seconds. Omit to let the AI decide.
  *               prompt:
  *                 type: string
  *                 description: Custom AI instructions for clip selection.
@@ -417,8 +414,7 @@ router.get("/v1/wallet", validateAPIKey, getWalletV1Controller);
  *                 type: integer
  *                 minimum: 2
  *                 maximum: 15
- *                 default: 6
- *                 description: Hook duration in seconds.
+ *                 description: Hook duration in seconds. Omit to let the AI decide.
  *               auto_heading:
  *                 type: boolean
  *                 default: true
