@@ -1711,14 +1711,14 @@ export const addTextOverlay = async (
       throw new Error(`Text image was not created at ${textImagePath}`);
     }
 
-    // In gaming/facecam mode with center position, place heading just below the facecam
-    // instead of dead center where it would cover gameplay
+    // In gaming/facecam mode with center position, place heading right at the
+    // merge line between facecam and gameplay (centered on the boundary)
     const yPosition =
       position === "top"
         ? "H*0.05"
         : position === "center"
           ? facecamHeight
-            ? `${facecamHeight}+H*0.02`
+            ? `${facecamHeight}-h/2`
             : "(H-h)/2-H*0.05"
           : "H-h-H*0.1";
 
