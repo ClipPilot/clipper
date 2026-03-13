@@ -322,11 +322,11 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
             )}
             <div className="min-w-0">
               <h1 className="text-xl sm:text-2xl font-bold text-text-primary truncate">Your Performance</h1>
-              <p className="text-text-secondary text-xs sm:text-sm mt-1 hidden sm:block">
+              <p className="text-text-secondary text-[11px] sm:text-sm mt-0.5 sm:mt-1 hidden sm:block">
                 Real-time performance metrics for your own accounts
               </p>
               {derived.lastSyncedAt !== null && (
-                <p className="text-text-tertiary text-xs mt-0.5">
+                <p className="text-text-tertiary text-[10px] sm:text-xs mt-0.5 truncate">
                   Last synced {timeAgo((derived.lastSyncedAt as Date).toISOString())} · Next sync in{" "}
                   {getNextSyncCountdown()}
                 </p>

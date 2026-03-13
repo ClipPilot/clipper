@@ -80,9 +80,11 @@ interface AnalyticsChartProps {
   colorMap?: Record<number, string>;
   startDate?: string;
   endDate?: string;
+  /** Optional change % overrides for the metric cards (views, likes, comments). When provided, these are used instead of the internally computed daily change. */
+  changeOverrides?: { views?: number | null; likes?: number | null; comments?: number | null };
 }
 
-export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPostsByAccount, colorMap, startDate, endDate }: AnalyticsChartProps) {
+export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPostsByAccount, colorMap, startDate, endDate, changeOverrides }: AnalyticsChartProps) {
   const [activeMetric, setActiveMetric] = useState<ChartMetricKey>("views");
 
   const getColor = (account: ViralityAccount, index: number) =>
@@ -257,11 +259,11 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
       key: "views",
       title: "Total Views",
       value: totals.views,
-      change: dailyChange.views,
+      change: changeOverrides?.views !== undefined ? changeOverrides.views : dailyChange.views,
       tooltip: "Only counts views on video posts (Reels)",
     },
-    { key: "likes", title: "Total Likes", value: totals.likes, change: dailyChange.likes },
-    { key: "comments", title: "Total Comments", value: totals.comments, change: dailyChange.comments },
+    { key: "likes", title: "Total Likes", value: totals.likes, change: changeOverrides?.likes !== undefined ? changeOverrides.likes : dailyChange.likes },
+    { key: "comments", title: "Total Comments", value: totals.comments, change: changeOverrides?.comments !== undefined ? changeOverrides.comments : dailyChange.comments },
   ];
 
   return (
@@ -359,7 +361,7 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
 
         {hasData ? (
           <div className="flex-1 min-h-[300px] overflow-x-auto">
-            <div style={{ minWidth: Math.max(chartData.length * 12, 500) }}>
+            <div style={{ minWidth: Math.min(Math.max(chartData.length * 10, 500), 1200) }}>
             <ResponsiveContainer
               className="[&_.recharts-surface]:outline-hidden"
               height={300}
