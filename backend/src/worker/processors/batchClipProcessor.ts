@@ -299,6 +299,7 @@ export async function processBatchClipVideoJob(
               captionColor: options.captionColor,
               captionFont: options.captionFont,
               conversionMode: options.conversionMode,
+              facecamHeight: result.facecamHeight,
             },
             batchInfo: {
               isBatch: true,

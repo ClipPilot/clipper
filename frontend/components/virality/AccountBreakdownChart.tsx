@@ -112,8 +112,8 @@ export function AccountBreakdownChart({
   if (data.length === 0) {
     return (
       <Card className="bg-surface-base border border-border-base h-full">
-        <CardBody className="p-5 h-full flex flex-col">
-          <p className="text-xs text-text-tertiary font-medium tracking-wide mb-4">
+        <CardBody className="p-3 sm:p-5 h-full flex flex-col">
+          <p className="text-xs text-text-tertiary font-medium tracking-wide mb-3 sm:mb-4">
             ACCOUNT BREAKDOWN
           </p>
           <div className="flex flex-col items-center justify-center flex-1 gap-3">

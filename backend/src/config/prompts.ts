@@ -25,10 +25,71 @@ export function getHeadingGuidance(headingInstructions?: string): string {
 
 function getVideoDurationConstraint(videoDuration?: number): string {
   if (!videoDuration) return "";
-  return `\nVIDEO DURATION: This video is ${videoDuration.toFixed(1)} seconds long. ALL timestamps MUST be between 0 and ${videoDuration.toFixed(1)}. NEVER use a timestamp greater than ${videoDuration.toFixed(1)}.\n`;
+  return `\nVIDEO DURATION: This video is ${videoDuration.toFixed(1)} seconds long. ALL timestamps MUST be between 0 and ${videoDuration.toFixed(1)}.\n`;
 }
 
-// Batch prompt addon template
+const NARRATIVE_STRUCTURES = `
+===== NARRATIVE STRUCTURES =====
+
+Pick the structure that best fits the content. These are common formats — you can also create your own if the content demands it.
+
+CONTENT-DRIVEN STRUCTURES:
+- Climax → Explanation → Reinforce: Lead with the peak moment, explain how it happened, reinforce the impact.
+- Problem → Pain → Solution: Show the struggle, amplify it, deliver the resolution.
+- Build-Up → Huge Win: Tension escalates through events leading to a satisfying payoff.
+- Near Loss → Miracle Win: Things go wrong, then an unexpected turnaround saves it.
+- Story → Turning Point → Lesson: Narrative arc with a clear shift and takeaway.
+- Before → Strategy → After: Show the starting state, the approach, then the result.
+
+OPINION/INSIGHT STRUCTURES:
+- Contrarian Take → Reason → Insight: Bold statement, supporting argument, deeper implication.
+- Myth → Reality: Common belief challenged, then the truth revealed.
+- Question → Breakdown → Answer: Pose an intriguing question, explore it, deliver the answer.
+- Mistake → Why It Fails → Fix: Identify a common error, explain the mechanics, show the solution.
+- Secret → Explanation → Implication: Reveal something unknown, explain it, show why it matters.
+
+HIGH-ENERGY STRUCTURES:
+- Big Win → Context → Reaction: Show the win, explain what led to it, capture the aftermath.
+- Rapid Insights (List): Quick-fire valuable points, each hitting hard.
+
+RULES:
+1. ALWAYS start with the most scroll-stopping moment as the hook — this is usually the climax, the win, the reveal, or the most emotional peak.
+2. The hook is a TEASER — the main segments provide context, build-up, or the full story.
+3. The first main segment MUST NOT repeat the hook's words. Start from a different part of the video.
+4. NEVER cut before the payoff. If tension is building toward a reveal/result — INCLUDE it.
+5. The clip MUST feel complete — a full arc with a satisfying ending, not cut off mid-story.
+`;
+
+function getVariationRules(numberOfVideos: number): string {
+  if (numberOfVideos <= 1) return "";
+  return `
+===== MULTIPLE VARIATIONS (${numberOfVideos} REQUIRED) =====
+Generate ${numberOfVideos} COMPLETELY DIFFERENT clips. Each must:
+- Use a DIFFERENT hook from a DIFFERENT part of the video
+- Use DIFFERENT main segments with NO overlapping timestamps
+- Center on a different moment, storyline, or angle
+- PLAN FIRST: Identify ${numberOfVideos} distinct compelling moments, then build each variation around a different one.
+`;
+}
+
+function getTimestampRules(hookLength: number, length: number): string {
+  return `
+===== TIMESTAMP RULES =====
+- Timestamps in SECONDS (e.g., 145.5 = 2m25.5s). Pure decimal only, NO M:SS format.
+- end MUST be > start. Always.
+- MINIMUM 3 seconds per segment. Hook: ${hookLength}-${hookLength + 2}s, never < 3s.
+- MINIMUM 10 seconds total clip length. Target ~${length}s (±15%).
+- Round to 1 decimal place.
+- 2-5 segments in main array.
+`;
+}
+
+function getCutBoringParts(): string {
+  return `
+CUT BORING PARTS: If a segment has a dull section in the middle, split it into two and skip the boring part. Never leave in filler, "umm"s, or low-energy tangents.
+`;
+}
+
 export const BATCH_ADDON_TEMPLATE = `
 ===== BATCH VIDEO MODE =====
 You have access to MULTIPLE SOURCE VIDEOS. Each video has been transcribed separately.
@@ -37,717 +98,221 @@ SOURCE VIDEOS:
 {{VIDEO_LIST}}
 
 CRITICAL BATCH INSTRUCTIONS:
-1. You MUST select a HOOK from ANY of the source videos - choose the most engaging moment across all videos. Only set hook to null if the user explicitly says "no hook".
-2. You can MIX segments from DIFFERENT source videos in the main content
-3. Each segment MUST include a "sourceVideoIndex" field (0, 1, 2, etc.) to identify which video it comes from
-4. Create cohesive clips that combine the BEST moments from all available videos
-5. The narrative should flow naturally even when combining multiple sources
-6. Label your selections clearly so we know which video each segment originates from
-7. MINIMUM SEGMENT LENGTH: Each segment must be AT LEAST 3 seconds long - NEVER suggest shorter segments
+1. Select a HOOK from ANY source video — choose the most engaging moment across all videos. Only set hook to null if the user explicitly says "no hook".
+2. You can MIX segments from DIFFERENT source videos in the main content.
+3. Each segment MUST include a "sourceVideoIndex" field (0, 1, 2, etc.).
+4. MINIMUM 3 seconds per segment.
 
-EXAMPLE OUTPUT FORMAT FOR BATCH:
+EXAMPLE:
 {
-  "hook": {
-    "text": "This is the hook text",
-    "start": 45.5,
-    "end": 51.2,
-    "sourceVideoIndex": 0
-  },
+  "hook": { "text": "Hook text", "start": 45.5, "end": 51.2, "sourceVideoIndex": 0 },
   "main": [
-    {
-      "text": "First main segment",
-      "start": 12.0,
-      "end": 25.5,
-      "sourceVideoIndex": 1
-    },
-    {
-      "text": "Second main segment",
-      "start": 88.3,
-      "end": 102.1,
-      "sourceVideoIndex": 0
-    }
+    { "text": "First segment", "start": 12.0, "end": 25.5, "sourceVideoIndex": 1 },
+    { "text": "Second segment", "start": 88.3, "end": 102.1, "sourceVideoIndex": 0 }
   ],
-  "combined_script": "...",
-  "finalMessage": "...",
-  "evalScore": 85,
-  "clipTitle": "...",
-  "viralHeading": "WAIT FOR IT 🤯🔥"
+  "combined_script": "...", "finalMessage": "...", "evalScore": 85,
+  "clipTitle": "...", "viralHeading": "WAIT FOR IT 🤯🔥"
 }
-
-Think of yourself as a curator selecting the best moments from a collection of related footage.
 ===== END BATCH MODE =====
 `;
 
-/**
- * Business/Product Demo Prompt
- * Focuses on clear product explanation with engaging hook and closing
- */
 export const generateBusinessPrompt = (config: PromptConfig): string => {
   const {
-    length,
-    hookLength,
-    videoDuration,
-    transcriptText = "",
-    transcriptObject = "",
-    numberOfVideos = 1,
-    userTextPrompt,
-    headingInstructions,
+    length, hookLength, videoDuration,
+    transcriptText = "", transcriptObject = "",
+    numberOfVideos = 1, userTextPrompt, headingInstructions,
   } = config;
   const mainLength = length - hookLength;
 
   return `
-You are an expert short-form video editor.
-${getVideoDurationConstraint(videoDuration)} You are given the transcript of a raw long form video. You have to
-identify and put together and convert this video into a couple clips, and put them together into a high retention
-short form video suitable for Tiktok. As you put these clips together, make sure the flow of events from the
-transcript cut to cut makes some sense.
+You are an expert short-form video editor for business and product content.
+${getVideoDurationConstraint(videoDuration)}
+You're given a transcript of a long-form video. Extract and stitch the best moments into a high-retention clip for TikTok/Reels/Shorts.
 
-${userTextPrompt ? `USER SPECIFIC REQUEST: The user wants you to focus on: "${userTextPrompt}". Try to find clips that align with this request while maintaining high engagement and quality.` : ""}
+${userTextPrompt ? `USER REQUEST: "${userTextPrompt}". Prioritize moments that align with this.` : ""}
 ${getHeadingGuidance(headingInstructions)}
-${numberOfVideos > 1 ? `
-===== MULTIPLE VARIATIONS (${numberOfVideos} REQUIRED) =====
-You MUST generate ${numberOfVideos} COMPLETELY DIFFERENT clips from this video. Each variation must tell a DIFFERENT story using DIFFERENT parts of the video.
+${getVariationRules(numberOfVideos)}
 
-CRITICAL RULES FOR VARIATIONS:
-- Each variation MUST use a DIFFERENT hook from a DIFFERENT part of the video. NO two variations can share the same hook timestamp range.
-- Each variation MUST use DIFFERENT main segments. NO timestamp ranges should overlap between variations.
-- Think of each variation as a SEPARATE editor making their own independent clip from the same raw footage.
-- Each variation should follow a different narrative angle, storyline, or theme found in the video.
-- If the video covers multiple topics, each variation should focus on a different topic.
-- If the video has one main topic, each variation should highlight a different aspect, argument, or moment.
-- NEVER reuse the same clip across variations unless the user explicitly asks for it.
+Target: ~${length}s total. Hook ~${hookLength}s, main ~${mainLength}s.
 
-VARIATION PLANNING: Before selecting clips, identify ${numberOfVideos} distinct compelling storylines or moments in the transcript, then build each variation around a different one.
-===== END VARIATION RULES =====
-` : ""}
+${NARRATIVE_STRUCTURES}
 
-The final output video should be AROUND ${length} seconds long (±15% is fine — quality matters more than hitting an exact number).
+BUSINESS-SPECIFIC GUIDANCE:
+- For product demos: show the product in action, not just talking about it.
+- Context before demo is fine (1-2 clips max) but get to the value fast.
+- End with a strong closing statement or clear result/benefit.
+- STITCHING ENCOURAGED: Pull best moments from anywhere in the video. Flow must make sense.
 
-You will be given:
-- The full transcription text from a video
-- And the transcript object in the following schema:
-  - "paragraphs" → list
-    - each paragraph → "sentences" with "text", "start", "end", "speaker", "num_words"
+YOUR TASK:
+1. Find the CLIMAX — the most compelling moment (result reveal, demo payoff, emotional peak).
+2. Use it as the HOOK to stop the scroll.
+3. Build the MAIN using the best narrative structure for this content.
+4. Include finalMessage, evalScore (0-100), clipTitle, viralHeading.
 
-Your Goals:
-1. Find an emotionally charged or intriguing HOOK that is AROUND ${hookLength} seconds long (±2 seconds is fine).
-   - You MUST include a hook by default. Only set "hook": null if the user explicitly says "no hook" in their instructions.
-   - The hook MUST be at least 3 seconds long (end - start >= 3). NEVER make a hook shorter than 3 seconds.
-   - Must instantly grab attention.
-   - No filler, no introductions, no stage directions, no "Speaker 0/1", no camera cues.
-   - Must come directly from transcript text.
-   - Profanity is allowed if it enhances emotional impact and is recommended.
+${getTimestampRules(hookLength, length)}
+${getCutBoringParts()}
 
-2. Select the remaining clips (STITCH MULTIPLE segments together) that total AROUND ${mainLength} seconds:
-   - Explains the story or product clearly
-   - Removes interruptions, off-camera commentary, and irrelevant tangents
-   - Maintains narrative tension or informational clarity
-   - If relevant, before the product demo, include a brief setup to explain the story or context
-   - Last clip should be a closing statement that wraps up the skit, can be emotional and engaging like the hook.
-   - STITCHING IS ENCOURAGED: Pull the best moments from different parts of the video and combine them. Don't feel forced to use one continuous segment. BUT the final stitched clip must still tell a coherent story that makes sense to the viewer — don't just mash random moments together.
+NEVER include: stage directions, production talk, meta commentary, anything not spoken.
+Hook must be included by default. Only null if user explicitly says "no hook".
 
-   CRITICAL — HOOK REPETITION BAN:
-   - The first main clip MUST NOT start with the same words as the hook. If the hook is "Oh my god we just won", the next clip CANNOT begin with "Oh my god we just won a million dollars". This sounds terrible — the viewer hears the same sentence start twice in a row.
-   - The hook is a teaser. The main clips should provide CONTEXT, BUILDUP, or the STORY — not continue the hook's sentence. Pick a different part of the video for the first main segment.
-
-   CRITICAL — ENDING QUALITY:
-   - NEVER cut the clip off abruptly right before something exciting is about to happen. If the story is building suspense or about to reach a payoff, INCLUDE the payoff — don't leave the viewer hanging with an unresolved cliffhanger.
-   - The ending should feel complete — either a satisfying resolution, a strong closing statement, or a natural stopping point. Cutting mid-sentence or right before the climax is a dealbreaker.
-
-3. CUT BORING PARTS: If a segment contains a dull, low-energy, or filler section in the middle:
-   - Split it into two segments, skipping the boring part
-   - Replace that dead air with a more engaging moment from elsewhere in the video
-   - Never leave in awkward pauses, rambling, "umm"s, or low-energy tangents just because they're between two good parts
-
-4. NEVER include:
-   - stage directions
-   - descriptions of filming or production
-   - meta commentary
-   - anything not spoken in the transcript
-
-HOOK REPETITION BAN: The first line of the clip body MUST NOT repeat or closely paraphrase the hook. If the hook says "Did you know X?", the clip must NOT start with "Did you know..." or a similar restatement. The hook grabs attention; the body immediately delivers new information or continues the narrative.
-
-ENDING QUALITY: Never cut a clip off abruptly before a payoff, punchline, or key revelation. The clip should feel complete — either deliver on the promise set up by the hook, or end on a deliberate cliffhanger that feels intentional (not accidental). If the speaker is building toward a point, include the conclusion. Clips that feel "cut short" perform poorly.
-
-Notes:
-- "start" and "end" must correspond to timestamps from the transcript.
-- No clips should have off-camera cues such as "cut", "scene", meta-filming talk, etc.
-- The hook should be AROUND ${hookLength} seconds, and the main clips AROUND ${mainLength} seconds total. These are targets, not hard limits.
-
-CRITICAL TIMESTAMP RULES:
-- TIMESTAMPS ARE IN SECONDS (e.g., 145.5 means 2 minutes 25.5 seconds into the video). DO NOT use M:SS or M.SS format — use pure seconds only!
-- "end" MUST BE GREATER THAN "start" - ALWAYS (end > start)
-- MINIMUM SEGMENT LENGTH: Each segment (hook and main) must be AT LEAST 3 seconds long (end - start >= 3). NEVER create segments shorter than 3 seconds.
-- Hook (if included) should be around ${hookLength}-${hookLength + 2} seconds long, NEVER shorter than 3 seconds
-- Each main segment should be at least 3 seconds long
-- Round timestamps to 1 decimal place
-
-Your Task:
-Given the transcript, follow all rules above and return:
-- the strongest possible hook (or null only if user explicitly said "no hook"),
-- the best clips stitched together in the middle — pull from ANYWHERE in the video, skip boring parts, combine the strongest moments
-- Full story flow should be: Engaging Hook - Context/Story to set the scene if necessary - Product Demo/Key Info - Closing. Use 3-5 clips and stitch them together so the final video is engaging throughout.
-- When making the Product demo try to make it one clip (two if necessary), same with context (no clips if not needed, one or two max.)
-- The clips do not need to be in order. The hook for example can be later in the video if it makes sense, but the hook needs to be the most
-engaging and eye catching part.
-- Include a finalMessage explaining what makes this clip selection compelling and why viewers will watch it
-- Include an evalScore (0-100) rating the overall viral potential, engagement quality, and how well it follows the user's request
-
-Here is the full transcript text: ${transcriptText}
-Here is the transcript object: ${transcriptObject}
+Transcript text: ${transcriptText}
+Transcript object: ${transcriptObject}
 `;
 };
 
-/**
- * Viral/Stream Clip Prompt
- * Focuses on funny moments, reactions, and engaging content from streams or creator videos
- */
 export const generateViralPrompt = (config: PromptConfig): string => {
   const {
-    length,
-    hookLength,
-    videoDuration,
-    transcriptText = "",
-    transcriptObject = "",
-    numberOfVideos = 1,
-    userTextPrompt,
-    headingInstructions,
+    length, hookLength, videoDuration,
+    transcriptText = "", transcriptObject = "",
+    numberOfVideos = 1, userTextPrompt, headingInstructions,
   } = config;
   const mainLength = length - hookLength;
 
   return `
-You are an expert viral short-form video editor
-${getVideoDurationConstraint(videoDuration)} specializing in gaming streams, vlogs, and creator content. You are given
-the transcript of a raw long form video. Your goal is to identify the most engaging, funny, or attention-grabbing moments
-and combine them into a viral-worthy clip suitable for TikTok, YouTube Shorts, or Instagram Reels.
+You are an expert viral short-form video editor for streams, vlogs, and creator content.
+${getVideoDurationConstraint(videoDuration)}
 
-${userTextPrompt ? `USER SPECIFIC REQUEST: The user wants you to focus on: "${userTextPrompt}". Try to find clips that align with this request while maintaining high engagement and viral potential.` : ""}
+${userTextPrompt ? `USER REQUEST: "${userTextPrompt}". Prioritize moments that align with this.` : ""}
 ${getHeadingGuidance(headingInstructions)}
-${numberOfVideos > 1 ? `
-===== MULTIPLE VARIATIONS (${numberOfVideos} REQUIRED) =====
-You MUST generate ${numberOfVideos} COMPLETELY DIFFERENT viral clips from this video. Each must showcase a DIFFERENT moment.
+${getVariationRules(numberOfVideos)}
 
-CRITICAL RULES FOR VARIATIONS:
-- Each variation MUST use a DIFFERENT hook from a DIFFERENT part of the video. NO two variations can share the same hook timestamp range.
-- Each variation MUST use DIFFERENT main segments. NO timestamp ranges should overlap between variations.
-- Think of each variation as a SEPARATE editor picking their own favorite viral moment from the same raw footage.
-- Each variation should center around a different funny/shocking/engaging moment in the video.
-- NEVER reuse the same clip across variations unless the user explicitly asks for it.
-- If the video has 5 great moments, pick a different one for each variation — don't pick the "best" one 5 times.
+Target: ~${length}s total. Hook ~${hookLength}s, main ~${mainLength}s.
 
-VARIATION PLANNING: Before selecting clips, identify ${numberOfVideos} distinct viral-worthy moments across the full transcript, then build each variation around a different one.
-===== END VARIATION RULES =====
-` : ""}
+===== VIDEO ANALYSIS =====
+WATCH THE VIDEO. Your primary signals are VISUAL:
+- RAGING/FREAKING OUT: Slamming desk, head in hands, intense frustration
+- CELEBRATING: Jumping out of chair, fist pumping, screaming with joy
+- SCREAMING/YELLING: Mouth wide open, intense vocal energy, unhinged reactions
+- Energy shifts: Calm-to-explosion moments are GOLD
+- Genuine reactions: Shock, laughter, disbelief
 
-The final output video should be AROUND ${length} seconds long (±15% is fine — quality matters more than hitting an exact number).
+Combine what you SEE with what you HEAR. When you spot a streamer losing composure (raging, celebrating, screaming), that's almost ALWAYS the best hook.
 
-You will be given:
-- The actual video file (watch it for visual analysis)
-- The full transcription text from the video
-- And the transcript object in the following schema:
-  - "paragraphs" → list
-    - each paragraph → "sentences" with "text", "start", "end", "speaker", "num_words"
+${NARRATIVE_STRUCTURES}
 
-===== VIDEO ANALYSIS (WATCH THE VIDEO) =====
-You have access to the actual video file. WATCH IT CAREFULLY alongside the transcript.
+VIRAL-SPECIFIC PRIORITIES (in order):
+1. HIGH-ENERGY EMOTIONAL PEAKS: Raging, celebrating, screaming, freaking out — always try to include one.
+2. Authentic reactions and emotions (shock, laughter, anger, excitement).
+3. Unexpected or chaotic moments.
+4. Funny or clever dialogue.
+5. Moments that build tension.
 
-VISUAL CUES TO LOOK FOR (these are your PRIMARY signals — trust what you SEE):
-- RAGING/FREAKING OUT: Slamming desk, throwing hands up, head in hands, standing up in frustration, intense facial expressions of anger or disbelief — these moments are EXTREMELY viral
-- CELEBRATING/HYPE: Jumping out of chair, fist pumping, screaming with joy, leaning back in shock, arms raised — peak celebration moments stop the scroll
-- SCREAMING/YELLING: Watch for mouth wide open, intense vocal energy, face turning red, veins showing — the more unhinged the reaction the better
-- Facial expressions: Shock, surprise, laughter, genuine reactions
-- Body language: Leaning forward, standing up, physical comedy
-- Unexpected visual events: Something breaking, falling, appearing unexpectedly
-- Screen reactions: Chat going crazy, kill feeds, UI elements indicating hype
-- Environmental chaos: Multiple things happening, crowd reactions
-- Energy shifts: Calm-to-explosion moments visible on screen — these transitions are GOLD
+YOUR TASK:
+1. Find the CLIMAX — the most shocking, funny, or jaw-dropping moment.
+2. Use it as the HOOK.
+3. Build the story using the best narrative structure for this content.
+4. Include finalMessage, evalScore (0-100), clipTitle, viralHeading.
 
-Combine what you SEE with what you HEAR to find the most viral-worthy moments.
-Use the transcript for precise timestamps, but let the VISUAL content guide which moments are truly viral. When you spot a streamer visually losing their composure (raging, celebrating, screaming), that is almost ALWAYS the best hook — prioritize it over clever dialogue.
-===== END VIDEO ANALYSIS =====
+${getTimestampRules(hookLength, length)}
+${getCutBoringParts()}
 
-===== CLIP STRUCTURE =====
+NEVER include: stage directions, production talk, filler, tangents that kill momentum.
+Hook must be included by default. Only null if user explicitly says "no hook".
+Profanity and strong reactions are ENCOURAGED if authentic.
 
-  HOOK → BUILD-UP → STRONG ENDING
-
-1. HOOK (plays first, ~${hookLength} seconds): The most shocking/funny/jaw-dropping moment.
-   The "cold open" that stops the scroll. Must come directly from transcript text.
-   Look for: strong reactions, unexpected events, funny one-liners, epic fails, clutch moments.
-   Profanity and strong reactions are HIGHLY encouraged if authentic.
-   You MUST include a hook by default. Only set "hook": null if the user explicitly says "no hook" in their instructions.
-   The hook MUST be at least 3 seconds long.
-
-2. BUILD-UP (the body, ~${mainLength} seconds): The story around the hook moment.
-   Can show what LED TO the hook, what FOLLOWS it, or context that makes it hit harder.
-   STITCHING IS ENCOURAGED: Pull the best moments from different parts of the video. Skip boring parts, filler, "umm"s, and low-energy tangents — split segments to cut around them.
-
-   CRITICAL — HOOK REPETITION BAN:
-   The first main clip MUST NOT start with the same words as the hook. If the hook is "Oh my god we just won", the first build-up segment CANNOT begin with "Oh my god we just won a million dollars". The viewer hears the same opening twice — it sounds broken. The build-up should start from a DIFFERENT part of the video that provides context or story, not continue the hook's sentence.
-
-3. ENDING — Let the story decide. Here are common patterns:
-
-   ✅ HOOK → build-up TO hook → HOOK AGAIN (replay hook at end — the story circles back to it)
-   ✅ HOOK → build-up with hook → RESOLUTION (hook context woven into build-up, end on the resolution/aftermath)
-   ✅ HOOK → unrelated suspenseful events → NATURAL PAYOFF (do NOT force hook at end — end on whatever the story builds to)
-   ❌ HOOK → unrelated content → HOOK FORCED AT END (bad — the hook has nothing to do with how the story ended)
-   ❌ HOOK → build-up → ABRUPT CUT before the payoff (terrible — never cut right before the exciting part happens)
-
-   These are examples, not the only options. Use whatever structure tells the best story. The one rule: only replay the hook at the end when the build-up genuinely leads back to that same moment. Otherwise, let the clip end naturally.
-
-   CRITICAL — ENDING QUALITY: NEVER cut the clip off right before the suspense resolves or the exciting moment happens. If the story is building toward something, INCLUDE that moment. An abrupt ending before the payoff is worse than a slightly longer clip. The viewer should feel satisfied, not cheated.
-
-===== END CLIP STRUCTURE =====
-
-Your Goals:
-1. Find the most VIRAL HOOK that is AROUND ${hookLength} seconds long (±2 seconds is fine):
-   - This should be the most shocking, funny, or jaw-dropping moment — the CLIMAX of a story in the video
-   - Look for: strong reactions, unexpected events, funny one-liners, epic fails, clutch moments
-   - PRIORITIZE moments where streamers/creators are RAGING, CELEBRATING, SCREAMING, or showing extreme emotion — these are the most viral moments. Yelling, freaking out, slamming the desk, jumping out of their chair, losing their mind with excitement or frustration — these moments ALWAYS outperform calm dialogue.
-   - Should make viewers immediately think "wait, what just happened? I need to see how this happened"
-   - Profanity and strong reactions are HIGHLY encouraged if authentic
-   - Must come directly from transcript text
-   - NO stage directions, camera cues, or meta commentary
-
-2. Select the BUILD-UP content for the main array (AROUND ${mainLength} seconds total):
-   - Find the story around the hook moment — what happened before, during, or after that makes it compelling
-   - The build-up should create tension, context, or escalation
-   - STITCHING IS ENCOURAGED: You can pull moments from different parts of the video and stitch them together. Skip boring parts between key story beats.
-   - CUT THE FAT: Only include content that adds to the story. Skip filler, tangents, and low-energy parts.
-   - The viewer should feel a complete journey with a satisfying ending
-
-3. CUT BORING PARTS: If a build-up segment contains a dull or filler section in the middle:
-   - Split it into two segments, skipping the boring part
-   - Never leave in awkward pauses, rambling, "umm"s, or low-energy tangents just because they're between two story beats
-
-4. VIRAL CONTENT PRIORITIES (in order of importance):
-   - HIGH-ENERGY EMOTIONAL PEAKS: Raging, celebrating, screaming, freaking out, losing composure — these are GOLD. A streamer slamming their desk in rage or jumping out of their chair in celebration is worth 10x more than calm commentary. Always try to include at least one of these moments.
-   - Authentic reactions and emotions (shock, laughter, anger, excitement)
-   - Unexpected or chaotic moments
-   - Funny or clever dialogue
-   - Story moments that build tension
-   - Keep the main character/creator the focal point
-   - Natural, unscripted energy
-
-5. NEVER include:
-   - Content unrelated to the story — every segment should contribute to the narrative
-   - Long explanations or tangents that kill momentum
-   - Stage directions or production talk
-   - Boring transitions or filler
-   - Meta commentary about filming
-
-HOOK REPETITION BAN: The first line of the clip body MUST NOT repeat or closely paraphrase the hook. If the hook says "Did you know X?", the clip must NOT start with "Did you know..." or a similar restatement. The hook grabs attention; the body immediately delivers new information or continues the narrative.
-
-ENDING QUALITY: Never cut a clip off abruptly before a payoff, punchline, or key revelation. The clip should feel complete — either deliver on the promise set up by the hook, or end on a deliberate cliffhanger that feels intentional (not accidental). If the speaker is building toward a point, include the conclusion. Clips that feel "cut short" perform poorly.
-
-TIMESTAMP RULES:
-- TIMESTAMPS ARE IN SECONDS (e.g., 145.5 means 2 minutes 25.5 seconds into the video). DO NOT use M:SS or M.SS format — use pure seconds only!
-- "start" and "end" must correspond to timestamps from the transcript
-- "end" MUST BE GREATER THAN "start" — ALWAYS (end > start)
-- MINIMUM 3 seconds per segment (end - start >= 3). Hook (if included): ${hookLength}-${hookLength + 2}s, NEVER shorter than 3s
-- Round timestamps to 1 decimal place
-- Use 2-4 segments in the main array. Build-up clips should generally be in chronological order.
-- Combined length should be AROUND ${length} seconds. These are targets, not hard limits.
-- The main array MUST have build-up/context — NEVER return main with ONLY the hook timestamps repeated.
-
-Your Task:
-- Find the best story in the video and create a clip with a killer hook and compelling build-up
-- End the clip naturally — replay the hook only if the story circles back to it, otherwise let it land on its own payoff
-- Include a finalMessage explaining the story arc and why it's viral-worthy
-- Include an evalScore (0-100) rating viral potential and story quality
-
-Here is the full transcript text: ${transcriptText}
-Here is the transcript object: ${transcriptObject}
+Transcript text: ${transcriptText}
+Transcript object: ${transcriptObject}
 `;
 };
 
-/**
- * Gaming Content Prompt
- * Focuses on visual moments and epic gameplay rather than just transcript
- */
 export const generateGamingPrompt = (config: PromptConfig): string => {
   const {
-    length,
-    hookLength,
-    videoDuration,
-    numberOfVideos = 1,
-    userTextPrompt,
-    headingInstructions,
+    length, hookLength, videoDuration,
+    numberOfVideos = 1, userTextPrompt, headingInstructions,
   } = config;
   const mainLength = length - hookLength;
 
   return `
-You are an expert gaming clip editor.
-${getVideoDurationConstraint(videoDuration)} You are analyzing a GAMEPLAY VIDEO to find the most VISUALLY EXCITING moments.
-
-CRITICAL: WATCH THE VIDEO CAREFULLY. Your job is to find PEAK GAMEPLAY MOMENTS based on what you SEE happening on screen.
+You are an expert gaming clip editor. You're analyzing GAMEPLAY VIDEO to find peak moments.
+${getVideoDurationConstraint(videoDuration)}
+WATCH THE VIDEO CAREFULLY. Find PEAK GAMEPLAY MOMENTS based on what you SEE.
 
 ${userTextPrompt ? `GAME/CONTEXT: "${userTextPrompt}"` : ""}
 ${getHeadingGuidance(headingInstructions)}
+${getVariationRules(numberOfVideos)}
 
-===== WHAT TO LOOK FOR (WATCH THE ACTUAL GAMEPLAY) =====
+Target: ~${length}s total. Hook ~${hookLength}s, main ~${mainLength}s.
 
-TIER 1 - ALWAYS CLIP THESE (highest priority):
-- Clutch plays (1v3, 1v4, 1v5, last-second wins)
-- Insane kills/multikills (ace, team wipe, collateral)
-- Close calls where player nearly dies but survives
-- Victory moments (winning the game, tournament, rank-up)
-- Epic fails that are funny or shocking
-- Unexpected plays that even surprise the player
+===== WHAT TO CLIP =====
+TIER 1 (highest priority): Clutch plays, insane kills/multikills, close calls, victory moments, epic fails, unexpected plays.
+TIER 2: Skillful outplays, funny glitches, rage/tilt moments, jump scares, satisfying combos.
 
-TIER 2 - GREAT CLIPS:
-- Skillful outplays or predictions
-- Funny glitches or bugs
-- Rage/tilt moments with genuine emotion
-- Jump scares or scary moments
-- Satisfying combos or sequences
-- Teammates making amazing/terrible plays
+NEVER CLIP: Intros, talking to camera without gameplay, loading screens, menus, slow moments, "subscribe" segments, walking with nothing happening.
 
-===== WHAT TO NEVER CLIP =====
-HARD REJECT these even if the dialogue sounds interesting:
-- Intro segments where player explains what video is about
-- Player talking to camera without exciting gameplay
-- Loading screens, menus, or queuing
-- Slow moments with no action
-- Long explanations or tutorials
-- "Subscribe" or promotional segments
-- Walking/running with nothing happening
+VISUAL CUES: Kill feed activity, health bar going critical, score changes, fast camera movement, player celebration, screen effects, chat reactions.
+AUDIO CUES: Screaming/yelling, "OH MY GOD", "LET'S GO", genuine laughter, teammates going crazy.
 
-===== HOW TO IDENTIFY GOOD MOMENTS =====
-Watch for these VISUAL cues:
-- Kill feed activity (multiple kills appearing)
-- Health bar going critical then surviving
-- Score/objective changes (capturing point, getting goal)
-- Fast camera movement indicating intense action
-- Player celebration/reaction after big play
-- Screen effects (damage indicators, ability effects)
-- Chat/teammate reactions to plays
+${NARRATIVE_STRUCTURES}
 
-Listen for these AUDIO cues that indicate exciting moments:
-- Player screaming/yelling in excitement
-- "OH MY GOD", "LET'S GO", "NO WAY", "WHAT"
-- Genuine laughter or disbelief
-- Teammates going crazy in voice chat
+GAMING-SPECIFIC GUIDANCE:
+- "text" fields should describe VISUAL ACTION, not just dialogue.
+- Main segments can be montage-style from different parts of the video.
+- STITCHING ENCOURAGED but must tell a coherent story.
 
-===== OUTPUT STRUCTURE =====
+YOUR TASK:
+1. Find the CLIMAX — the peak gameplay moment (clutch play, insane kill, victory).
+2. Use it as the HOOK.
+3. Build the story using the best narrative structure. Include build-up BEFORE the climax.
+4. Include finalMessage, evalScore (90+=insane, 80-89=great, 70-79=good), clipTitle, viralHeading.
 
-TARGET: AROUND ${length} seconds total (±15% is fine — quality matters more than hitting an exact number)
-- Hook (~${hookLength}s): The PEAK/CLIMAX moment. You MUST include a hook by default. Only set "hook": null if the user explicitly says "no hook" in their instructions.
-- Main (~${mainLength}s): Multiple segments that build up to AND include the climax
+${getTimestampRules(hookLength, length)}
+${getCutBoringParts()}
 
-CRITICAL STRUCTURE (when hook is included):
-1. Video STARTS with hook (climax teaser to grab attention)
-2. Main segments play (build-up, context, can be from different parts of video)
-3. Main ENDS with the climax moment again (same timestamps as hook for satisfying payoff) followed by reaction/aftermath
-
-CRITICAL — HOOK REPETITION BAN:
-The first build-up segment MUST NOT start with the same words as the hook. If the hook is "OH MY GOD LET'S GO", the first main segment CANNOT begin with "OH MY GOD LET'S GO WE WON". Start the build-up from BEFORE the climax to give context.
-
-CRITICAL — ENDING QUALITY:
-NEVER cut the clip off right before the exciting part happens. If tension is building, INCLUDE the payoff. An abrupt cut before the climax is worse than a slightly longer clip.
-
-EXAMPLE: If climax is at 1904-1909s:
-- hook: { start: 1904, end: 1909 }  ← climax shown first as teaser
-- main: [
-    { start: 1850, end: 1865 },    ← earlier context/setup
-    { start: 1890, end: 1904 },    ← build-up right before climax
-    { start: 1904, end: 1910 }     ← climax AGAIN as the payoff ending
-    { start: 1909, end: 1916 }     ← reaction/aftermath
-  ]
-
-This way viewers see: CLIMAX TEASER → "wait what?" → build-up → CLIMAX AGAIN → reaction → satisfied!
-
-CRITICAL: The main array MUST ALWAYS include build-up/context segments BEFORE the climax. NEVER return a main array where the ONLY segment is the hook repeated. If main has just one segment with the same timestamps as the hook, the viewer sees the exact same 5 seconds twice with no context — that is broken. The hook repetition only works when it comes AFTER build-up segments that give it meaning.
-
-MAIN CAN BE A MONTAGE: You can pull clips from DIFFERENT parts of the video to tell a story or show multiple related moments leading to the climax. Be creative!
-
-${numberOfVideos > 1 ? `
-===== MULTIPLE VARIATIONS (${numberOfVideos} REQUIRED) =====
-CRITICAL: Each of the ${numberOfVideos} clips MUST showcase a COMPLETELY DIFFERENT gameplay moment.
-
-- Each variation MUST use a DIFFERENT hook from a DIFFERENT part of the video. NO two variations can share the same hook or climax.
-- Each variation MUST use DIFFERENT main segments. NO timestamp ranges should overlap between variations.
-- Think of each variation as highlighting a different play, fight, round, or epic moment.
-- If the video has a clutch play at 5:00 and a funny fail at 12:00 — those are TWO separate variations, not one clip used twice.
-- NEVER reuse the same gameplay moment across variations unless the user explicitly asks for it.
-- PLAN FIRST: Scan the entire video and list ${numberOfVideos} distinct peak moments, THEN build each variation around a different one.
-===== END VARIATION RULES =====
-` : `Generate 1 clip highlighting the most exciting moment.`}
-
-===== JSON OUTPUT FORMAT (can have multiple segments in main) =====
-NOTE: "hook" can be null only if the user explicitly requests "no hook".
-{
-  "videos": [
-    {
-      "hook": {
-        "text": "Evo Cannon snipes the Archers to secure the win",
-        "start": 1904,
-        "end": 1909.5
-      },
-      "main": [
-        {
-          "text": "Earlier in match - setting up the push with Drill placement",
-          "start": 1850,
-          "end": 1865
-        },
-        {
-          "text": "Final seconds - frantically spamming troops to break defense",
-          "start": 1890,
-          "end": 1904
-        },
-        {
-          "text": "The Evo Cannon snipe connects and tower falls",
-          "start": 1904,
-          "end": 1910
-        },
-        {
-          "text": "Celebration and reaction after the clutch win",
-          "start": 1909,
-          "end": 1920
-        }
-      ],
-  ]
-}
-
-LENGTH CHECK: Hook (5.5s) + Main (15s + 14s + 6s + 11s = 46s) = 51.5s total ✓
-
-===== CRITICAL TIMESTAMP RULES =====
-
-YOU MUST FOLLOW THESE RULES FOR EVERY SEGMENT:
-
-1. TIMESTAMPS ARE IN SECONDS (e.g., 1904.5 means 31 minutes 44.5 seconds into the video). DO NOT use M:SS or M.SS format — use pure decimal seconds only!
-2. "end" MUST BE GREATER THAN "start" - ALWAYS (end > start)
-3. MINIMUM SEGMENT LENGTH: Each segment must be AT LEAST 3 seconds long (end - start >= 3). NEVER create segments shorter than 3 seconds.
-4. Hook (if included) should be ${hookLength}-${hookLength + 2} seconds long, NEVER shorter than 3 seconds
-5. Each main segment should be 5-20 seconds long
-6. DO NOT use timestamps beyond the video length
-7. Round timestamps to 1 decimal place (e.g., 1904.5, not 1904.523)
-
-VERIFY BEFORE SUBMITTING:
-- Hook (if included): end - start >= ${hookLength} seconds
-- Each Main segment: end - start >= 3 seconds
-- Total duration (hook + all main segments) ≈ ${length} seconds
-
-===== CUT BORING PARTS =====
-If a segment contains a dull, low-energy, or filler section in the middle:
-- Split it into two segments, skipping the boring part
-- Replace that dead air with a more exciting gameplay moment from elsewhere in the video
-- Never leave in slow walking, menu browsing, or dead time just because it's between two exciting parts
-
-HOOK REPETITION BAN: The first line of the clip body MUST NOT repeat or closely paraphrase the hook. If the hook says "Did you know X?", the clip must NOT start with "Did you know..." or a similar restatement. The hook grabs attention; the body immediately delivers new information or continues the narrative.
-
-ENDING QUALITY: Never cut a clip off abruptly before a payoff, punchline, or key revelation. The clip should feel complete — either deliver on the promise set up by the hook, or end on a deliberate cliffhanger that feels intentional (not accidental). If the speaker is building toward a point, include the conclusion. Clips that feel "cut short" perform poorly.
-
-===== FINAL RULES =====
-- The "text" fields should describe VISUAL ACTION not dialogue
-- MAIN MUST have 2-3 segments minimum including build-up BEFORE the climax. NEVER return main with ONLY the hook timestamps repeated — that creates a broken clip with the same moment twice and no context
-- STITCHING IS ENCOURAGED: Main segments can be from DIFFERENT parts of the video (montage style) — pull the best moments from anywhere. BUT the final stitched clip must still tell a coherent story that makes sense to the viewer — don't just mash random moments together.
-- evalScore: 90+ = insane clip, 80-89 = great clip, 70-79 = good clip
-- Each video should be AROUND ${length} seconds total - ADD MORE SEGMENTS if too short!
-- If you can't find ${numberOfVideos} genuinely exciting moments, return fewer but better clips
-
-DOUBLE-CHECK: For EACH segment, verify end > start and duration >= 3 seconds!
+Hook must be included by default. Only null if user explicitly says "no hook".
+Main MUST have 2+ segments including build-up BEFORE the climax.
+If you can't find ${numberOfVideos} genuinely exciting moments, return fewer but better clips.
 `;
 };
 
-/**
- * General Long-Form Content Prompt
- * Focuses on finding the most engaging hooks and viral-worthy moments from any video
- * Uses Gemini with video upload for visual + audio analysis
- */
 export const generateGeneralPrompt = (config: PromptConfig): string => {
   const {
-    length,
-    hookLength,
-    videoDuration,
-    transcriptText = "",
-    transcriptObject = "",
-    numberOfVideos = 1,
-    userTextPrompt,
-    headingInstructions,
+    length, hookLength, videoDuration,
+    transcriptText = "", transcriptObject = "",
+    numberOfVideos = 1, userTextPrompt, headingInstructions,
   } = config;
   const mainLength = length - hookLength;
 
   return `
-You are an expert short-form video editor. You are analyzing a VIDEO
-${getVideoDurationConstraint(videoDuration)} to find the most VISUALLY and EMOTIONALLY engaging moments.
+You are an expert short-form video editor analyzing a video for the most engaging moments.
+${getVideoDurationConstraint(videoDuration)}
+WATCH THE ENTIRE VIDEO. Analyze both what you SEE visually and what you HEAR.
 
-CRITICAL: WATCH THE ENTIRE VIDEO FRAME BY FRAME. You must analyze both what you SEE visually and what you HEAR being said. Base your clip selections on the actual video content.
-
-${userTextPrompt ? `USER SPECIFIC REQUEST: "${userTextPrompt}". Prioritize moments that align with this while watching the video.` : ""}
+${userTextPrompt ? `USER REQUEST: "${userTextPrompt}". Prioritize moments that align with this.` : ""}
 ${getHeadingGuidance(headingInstructions)}
+${getVariationRules(numberOfVideos)}
 
-${numberOfVideos > 1 ? `
-===== MULTIPLE VARIATIONS (${numberOfVideos} REQUIRED) =====
-You MUST generate ${numberOfVideos} COMPLETELY DIFFERENT clips from this video. Each must center on a DIFFERENT visual/emotional moment.
+Target: ~${length}s total. Hook ~${hookLength}s, main ~${mainLength}s.
 
-CRITICAL RULES FOR VARIATIONS:
-- Each variation MUST use a DIFFERENT hook from a DIFFERENT part of the video. NO two variations can share the same hook timestamp range.
-- Each variation MUST use DIFFERENT main segments. NO timestamp ranges should overlap between variations.
-- Think of each variation as a SEPARATE editor making their own independent clip from the same raw footage.
-- Each variation should follow a different narrative angle, storyline, or key moment found in the video.
-- NEVER reuse the same clip across variations unless the user explicitly asks for it.
-- PLAN FIRST: Scan the entire video and identify ${numberOfVideos} distinct compelling visual moments, THEN build each variation around a different one.
-===== END VARIATION RULES =====
-` : ""}
+===== VISUAL & AUDIO CUES =====
+VISUAL: Facial expressions (shock, surprise, laughter), body language (leaning in, standing up), eye contact, reveals/transformations, demonstrations, environmental changes.
+AUDIO: Voice tone changes, genuine laughter, dramatic pauses, exclamations.
 
-===== HOW TO WATCH THE VIDEO =====
+TIER 1 (always clip): Genuine shock/excitement on face, reveals/transformations, unexpected visuals, intense eye contact during key statement, impressive demonstrations.
+TIER 2: Confident delivery with strong body language, multiple people reacting, before/after comparisons.
 
-VISUAL CUES TO LOOK FOR:
-- Facial expressions: Shock, surprise, laughter, excitement, emotional reactions
-- Body language: Leaning in, gesturing emphatically, standing up, physical reactions
-- Eye contact: Moments of intense connection with camera or another person
-- Movement: Quick actions, demonstrations, reveals, transformations
-- Scene changes: Before/after, product reveals, unexpected cuts
-- Props/objects: Items being shown, demonstrations, physical evidence
-- Environment: Interesting locations, setups, visual backdrops
-- On-screen graphics: Text, charts, images that add impact
-- Multiple people: Reactions between people, tension, agreement, conflict
+NEVER CLIP: Static talking head with no energy, looking away from camera, poor lighting, reading from notes, intros/outros, sponsor segments.
 
-AUDIO/ENERGY CUES:
-- Voice tone changes: Excitement, emphasis, passion, whispers, shouts
-- Laughter: Genuine laughs, audience reactions
-- Pauses: Dramatic pauses before reveals
-- Music/sound: Background changes that signal important moments
-- Reactions: "Oh my god", "Wait what", gasps, exclamations
+${NARRATIVE_STRUCTURES}
 
-===== WHAT MAKES A VIRAL HOOK (VISUAL-FIRST) =====
+YOUR TASK:
+1. Find the CLIMAX — the most visually/emotionally compelling moment.
+2. Use it as the HOOK.
+3. Build the story using the best narrative structure for this content.
+4. Include finalMessage (explain VISUAL elements that make it compelling), evalScore (0-100), clipTitle, viralHeading.
 
-TIER 1 - ALWAYS CLIP THESE:
-- VISUAL: Person's face showing genuine shock/excitement/emotion
-- VISUAL: A reveal or transformation happening on screen
-- VISUAL: Something unexpected or unusual being shown
-- VISUAL: Intense eye contact with camera during key statement
-- VISUAL: Physical demonstration of something impressive
-- VISUAL + AUDIO: Emotional peak with visible reaction
+${getTimestampRules(hookLength, length)}
+${getCutBoringParts()}
 
-TIER 2 - STRONG CLIPS:
-- VISUAL: Confident delivery with strong body language
-- VISUAL: Multiple people reacting together
-- VISUAL: Before/after comparison shown visually
-- VISUAL: Product or object being demonstrated
-- VISUAL: Person in an interesting/unusual setting
+Hook must be included by default. Only null if user explicitly says "no hook".
+STITCHING ENCOURAGED: Pull best moments from anywhere. Must tell a coherent story.
 
-===== WHAT TO NEVER CLIP =====
-- Static talking head with no energy or movement
-- Looking away from camera during key points
-- Poor lighting or visually uninteresting frames
-- Reading from notes or teleprompter obviously
-- Intros: "Hey guys welcome back"
-- Outros: "Like and subscribe"
-- Sponsors or promotional segments
-- Long pauses with no visual interest
+evalScore: 90+=visually stunning, 80-89=strong visual interest, 70-79=decent, <70=mostly talking head.
 
-===== STRUCTURE =====
-
-TARGET: AROUND ${length} seconds total (±15% is fine — quality matters more than hitting an exact number)
-- Hook (~${hookLength}s, ±2 seconds): The MOST visually compelling moment. This plays FIRST.
-  You MUST include a hook by default. Only set "hook": null if the user explicitly says "no hook" in their instructions.
-  The hook MUST be at least 3 seconds long.
-- Main (~${mainLength}s): 2-4 segments that build the story with visual interest throughout
-
-HOOK SELECTION (watch the video!):
-1. Scan the ENTIRE video visually for peak moments
-2. Find where the speaker is MOST animated/expressive
-3. Find where something VISUALLY interesting happens
-4. The hook should make viewers think "I need to see more"
-
-MAIN CONTENT:
-1. STITCHING IS ENCOURAGED: Pull the best moments from different parts of the video and combine them. Don't feel forced to use one continuous segment. BUT the final stitched clip must still tell a coherent story that makes sense to the viewer — don't just mash random moments together.
-2. Provide context for the hook (can be from earlier in video)
-3. Keep visual interest throughout - no boring talking head sections
-4. End with satisfaction or another visual hook
-
-CRITICAL — HOOK REPETITION BAN:
-The first main segment MUST NOT start with the same words as the hook. If the hook is "Oh my god we just won", the first main clip CANNOT begin with "Oh my god we just won a million dollars". The viewer hears the same opening twice — it sounds broken. Start the build-up from a DIFFERENT part of the video.
-
-CRITICAL — ENDING QUALITY:
-NEVER cut the clip off right before the suspense resolves or the exciting moment happens. If the story is building toward something, INCLUDE that moment. The viewer should feel satisfied, not cheated by an abrupt cut before the payoff.
-
-CUT BORING PARTS: If a segment contains a dull, low-energy, or filler section in the middle:
-- Split it into two segments, skipping the boring part
-- Replace that dead air with a more engaging moment from elsewhere in the video
-- Never leave in awkward pauses, rambling, "umm"s, or low-energy tangents just because they're between two good parts
-
-HOOK REPETITION BAN: The first line of the clip body MUST NOT repeat or closely paraphrase the hook. If the hook says "Did you know X?", the clip must NOT start with "Did you know..." or a similar restatement. The hook grabs attention; the body immediately delivers new information or continues the narrative.
-
-ENDING QUALITY: Never cut a clip off abruptly before a payoff, punchline, or key revelation. The clip should feel complete — either deliver on the promise set up by the hook, or end on a deliberate cliffhanger that feels intentional (not accidental). If the speaker is building toward a point, include the conclusion. Clips that feel "cut short" perform poorly.
-
-===== CRITICAL TIMESTAMP RULES =====
-
-YOU MUST FOLLOW THESE RULES FOR EVERY SEGMENT:
-
-1. TIMESTAMPS ARE IN SECONDS (e.g., 145.5 means 2 minutes 25.5 seconds into the video). DO NOT use M:SS or M.SS format — use pure decimal seconds only!
-2. "end" MUST BE GREATER THAN "start" - ALWAYS (end > start)
-3. MINIMUM SEGMENT LENGTH: Each segment must be AT LEAST 3 seconds long (end - start >= 3). NEVER create segments shorter than 3 seconds.
-4. Hook (if included) should be around ${hookLength}-${hookLength + 2} seconds long, NEVER shorter than 3 seconds
-5. Each main segment should be 5-15 seconds long
-6. DO NOT use timestamps beyond the video length
-7. Round timestamps to 1 decimal place (e.g., 145.5, not 145.523)
-
-VERIFY BEFORE SUBMITTING:
-- Hook (if included): end - start >= ${hookLength} seconds
-- Each Main segment: end - start >= 3 seconds
-- Total duration (hook + all main segments) ≈ ${length} seconds (approximate — don't force filler to hit an exact number)
-
-===== OUTPUT FORMAT =====
-
-Generate ${numberOfVideos} clips. Stitch together the BEST moments from ANYWHERE in the video. REMINDER: Each clip MUST use completely different timestamps — no overlapping hooks or segments between variations.
-NOTE: "hook" can be null only if the user explicitly requests "no hook".
-
-{
-  "videos": [
-    {
-      "hook": {
-        "text": "Describe what you SEE happening visually in this moment",
-        "start": 145.5,
-        "end": 151.5
-      },
-      "main": [
-        {
-          "text": "Describe the visual action/context in this segment",
-          "start": 120.0,
-          "end": 140.0
-        },
-        {
-          "text": "Describe what happens visually here",
-          "start": 155.0,
-          "end": 170.0
-        }
-      ],
-      "combined_script": "Full text of what is said in the final clip",
-      "finalMessage": "Explain what VISUAL elements make this clip compelling",
-      "evalScore": 85,
-      "clipTitle": "Catchy title for this clip",
-      "viralHeading": "NO WAY THIS HAPPENED 😱"
-    }
-  ]
-}
-
-DOUBLE-CHECK: For EACH segment, verify end > start and duration >= 3 seconds!
-
-===== EVALUATION CRITERIA =====
-- evalScore 90+: Visually stunning, impossible to scroll past
-- evalScore 80-89: Strong visual interest, viewers will watch to end
-- evalScore 70-79: Decent visuals but could be stronger
-- Below 70: Mostly talking head, limited visual appeal
-
-WATCH THE ENTIRE VIDEO. Find the most compelling visual and audio moments. Create clips people will share.
-
-===== TRANSCRIPT REFERENCE =====
-Use this transcript to help identify timestamps and understand what is being said. Cross-reference with what you SEE in the video.
-
-Transcript object schema:
-- "paragraphs" → list
-  - each paragraph → "sentences" with "text", "start", "end", "speaker", "num_words"
-
-Here is the full transcript text: ${transcriptText}
-Here is the transcript object: ${transcriptObject}
+Transcript text: ${transcriptText}
+Transcript object: ${transcriptObject}
 `;
 };
 
-/**
- * Generate prompt based on type with optional custom instructions
- */
 export const generatePrompt = (
   type: PromptType,
   config: PromptConfig,
@@ -773,9 +338,6 @@ export const generatePrompt = (
   return basePrompt;
 };
 
-/**
- * Generate batch-aware prompt that instructs AI to select from multiple source videos
- */
 export const generateBatchPrompt = (
   type: PromptType,
   config: PromptConfig,
@@ -797,22 +359,13 @@ export const generateBatchPrompt = (
         return `
 ---
 VIDEO ${bt.videoIndex + 1}${fileName} (sourceVideoIndex: ${bt.videoIndex}):
-
-Transcript Text:
-${bt.transcriptText}
-
-Full Transcript Object:
-${bt.transcriptObject}
+Transcript: ${bt.transcriptText}
+Transcript Object: ${bt.transcriptObject}
 ---`;
       })
       .join("\n");
 
-    // Replace placeholder and append batch addon
-    const batchAddon = BATCH_ADDON_TEMPLATE.replace(
-      "{{VIDEO_LIST}}",
-      videoList,
-    );
-    basePrompt = basePrompt + "\n\n" + batchAddon;
+    basePrompt += "\n" + BATCH_ADDON_TEMPLATE.replace("{{VIDEO_LIST}}", videoList);
   }
 
   return basePrompt;

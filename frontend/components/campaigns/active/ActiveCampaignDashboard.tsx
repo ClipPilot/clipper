@@ -133,9 +133,9 @@ export function ActiveCampaignDashboard({
 
   const PAGE_SIZE = 20;
 
-  const fetchVideos = useCallback(async (page = 1) => {
+  const fetchVideos = useCallback(async (page = 1, { silent = false } = {}) => {
     if (!selectedTeam?.id) return;
-    setVideosLoading(true);
+    if (!silent) setVideosLoading(true);
     try {
       const result = await campaignAPI.listVideos(selectedTeam.id, campaign.id, {
         page,
@@ -149,7 +149,7 @@ export function ActiveCampaignDashboard({
     } catch (err) {
       console.error("Failed to fetch videos:", err);
     } finally {
-      setVideosLoading(false);
+      if (!silent) setVideosLoading(false);
     }
   }, [selectedTeam?.id, campaign.id, sortBy, sortOrder]);
 
@@ -716,7 +716,10 @@ export function ActiveCampaignDashboard({
       {/* Bulk upload modal */}
       <BulkUploadModal
         isOpen={isUploadOpen}
-        onClose={() => setIsUploadOpen(false)}
+        onClose={() => {
+          setIsUploadOpen(false);
+          fetchVideos(videoPage, { silent: true });
+        }}
         files={bulk.files}
         isActive={bulk.isActive}
         totalFiles={bulk.totalFiles}
@@ -730,7 +733,10 @@ export function ActiveCampaignDashboard({
       {selectedTeam?.id && (
         <ClipPickerModal
           isOpen={isPickerOpen}
-          onClose={() => setIsPickerOpen(false)}
+          onClose={() => {
+            setIsPickerOpen(false);
+            fetchVideos(videoPage, { silent: true });
+          }}
           teamId={selectedTeam.id}
           campaignId={campaign.id}
           existingClipIds={existingClipIds}

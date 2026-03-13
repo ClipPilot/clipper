@@ -154,20 +154,23 @@ export function buildChartDataByAccount(
 
     for (const post of posts) {
       if (!post.metrics_history?.length) continue;
-      // Per post: take the max value at each hour (metrics are cumulative,
-      // so duplicate snapshots in the same hour must not be summed)
       const postHourMax = new Map<string, number>();
       for (const entry of post.metrics_history) {
         const hour = entry.recorded_at.slice(0, 13);
-        if (startStr && hour < startStr) continue;
-        if (endStr && hour > endStr) continue;
-        allHours.add(hour);
         const val = metric === "views" ? (entry.views ?? 0) : entry[metric];
         const prev = postHourMax.get(hour);
         if (prev === undefined || val > prev) postHourMax.set(hour, val);
       }
-      for (const [hour, val] of Array.from(postHourMax)) {
-        hourMap.set(hour, (hourMap.get(hour) || 0) + val);
+      const sortedHours = Array.from(postHourMax.keys()).sort();
+      let prevVal = 0;
+      for (const hour of sortedHours) {
+        const val = postHourMax.get(hour)!;
+        const delta = Math.max(val - prevVal, 0);
+        prevVal = val;
+        if (startStr && hour < startStr) continue;
+        if (endStr && hour > endStr) continue;
+        allHours.add(hour);
+        hourMap.set(hour, (hourMap.get(hour) || 0) + delta);
       }
     }
 
@@ -176,10 +179,23 @@ export function buildChartDataByAccount(
 
   const sorted = Array.from(allHours).sort();
 
+  // Forward-fill: for each account, carry the last known value into hours
+  // where no snapshot exists. Without this, posts missing a data point at a
+  // given hour contribute 0, causing artificial dips in the total line even
+  // though their views/likes/comments never actually decreased.
+  const lastKnown = new Map<number, number>();
   return sorted.map((hour) => {
     const point: AccountChartDay = { hourKey: hour };
     for (const accountId of accountIds) {
-      point[`account_${accountId}`] = byAccountHour.get(accountId)?.get(hour) || 0;
+      const hourMap = byAccountHour.get(accountId);
+      const val = hourMap?.get(hour);
+      if (val !== undefined) {
+        point[`account_${accountId}`] = val;
+      } else {
+        // No data this hour — carry forward last known value
+        point[`account_${accountId}`] = (lastKnown.get(accountId) ?? 0);
+      }
+      lastKnown.set(accountId, point[`account_${accountId}`] as number);
     }
     return point;
   });

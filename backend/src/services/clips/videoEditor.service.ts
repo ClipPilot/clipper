@@ -647,14 +647,14 @@ export const convertToGamingVertical = async (
   inputPath: string,
   outputPath: string,
   facecam: FacecamRegion,
-): Promise<string> => {
+): Promise<{ outputPath: string; facecamHeight: number }> => {
   const metadata = await getVideoMetadata(inputPath);
   const { width, height } = metadata;
 
   if (height >= width) {
     console.log(`[GAMING] Already vertical (${width}x${height}), skipping`);
     fs.copyFileSync(inputPath, outputPath);
-    return outputPath;
+    return { outputPath, facecamHeight: 0 };
   }
 
   console.log(
@@ -671,21 +671,6 @@ export const convertToGamingVertical = async (
   const facecamHeightRatio = fcH / height;
   const maxFaceH = Math.min(Math.round(facecamHeightRatio * 1920), 960);
 
-  // If the facecam region is too narrow (height-constrained scaling would produce
-  // black padding), expand the crop on the x-axis to grab real video content instead
-  const neededFcW = Math.ceil((1080 * fcH) / maxFaceH);
-  if (fcW < neededFcW && neededFcW <= width) {
-    const expand = neededFcW - fcW;
-    const halfExpand = Math.floor(expand / 2);
-    fcX = Math.max(0, fcX - halfExpand);
-    if (fcX + neededFcW > width) {
-      fcX = width - neededFcW;
-    }
-    fcW = neededFcW;
-    console.log(
-      `[GAMING] Expanded narrow facecam crop to ${fcW}x${fcH} at x=${fcX} (needed ${neededFcW}px wide to fill 1080)`,
-    );
-  }
   const faceScale = Math.min(1080 / fcW, maxFaceH / fcH);
   let faceOutW = Math.round(fcW * faceScale);
   let faceOutH = Math.round(fcH * faceScale);
@@ -734,17 +719,24 @@ export const convertToGamingVertical = async (
     `[GAMING] Gameplay: center-crop ${gpW}x${gpH} at (${gpX},${gpY}), facecam overlap shift: ${overlapsX && overlapsY}`,
   );
 
-  // If facecam is narrower than 1080 (height-constrained), pad with black to center it
-  const needsPad = faceOutW < 1080;
-  const camFilter = needsPad
-    ? `[0:v]crop=${fcW}:${fcH}:${fcX}:${fcY},scale=${faceOutW}:${faceOutH},pad=1080:${faceOutH}:(1080-${faceOutW})/2:0:black[cam]`
-    : `[0:v]crop=${fcW}:${fcH}:${fcX}:${fcY},scale=1080:${faceOutH}[cam]`;
+  // If facecam is narrower than 1080 (height-constrained), use blurred background instead of black bars
+  const needsBlur = faceOutW < 1080;
+  const camFilters = needsBlur
+    ? [
+        // Blurred background: scale facecam crop to fill 1080 width, crop to exact size, blur
+        `[0:v]crop=${fcW}:${fcH}:${fcX}:${fcY},scale=1080:${faceOutH}:force_original_aspect_ratio=increase,crop=1080:${faceOutH},gblur=sigma=15[cambg]`,
+        // Sharp foreground: facecam crop at its natural scaled size
+        `[0:v]crop=${fcW}:${fcH}:${fcX}:${fcY},scale=${faceOutW}:${faceOutH}[camfg]`,
+        // Center sharp facecam over blurred background
+        `[cambg][camfg]overlay=(W-w)/2:0[cam]`,
+      ]
+    : [`[0:v]crop=${fcW}:${fcH}:${fcX}:${fcY},scale=1080:${faceOutH}[cam]`];
 
   return new Promise((resolve, reject) => {
     ffmpeg()
       .input(inputPath)
       .complexFilter([
-        camFilter,
+        ...camFilters,
         `[0:v]crop=${gpW}:${gpH}:${gpX}:${gpY},scale=1080:${gameOutH}[game]`,
         `[cam][game]vstack=inputs=2[v]`,
       ])
@@ -764,8 +756,8 @@ export const convertToGamingVertical = async (
       ])
       .save(outputPath)
       .on("end", () => {
-        console.log(`[GAMING] Converted to gaming layout: ${outputPath}`);
-        resolve(outputPath);
+        console.log(`[GAMING] Converted to gaming layout: ${outputPath} (facecamHeight=${faceOutH})`);
+        resolve({ outputPath, facecamHeight: faceOutH });
       })
       .on("error", (err) => {
         console.error(`[GAMING] Conversion failed: ${err.message}`);
@@ -1179,12 +1171,12 @@ export const convertToVertical = async (
     segments: ActiveSpeakerSegment[];
     speakerFaceMap: Map<number, FacecamRegion>;
   } | null,
-): Promise<string> => {
+): Promise<{ outputPath: string; facecamHeight?: number }> => {
   const effectiveMode = mode || "standard";
 
   switch (effectiveMode) {
     case "center-crop":
-      return convertToCenterCrop(inputPath, outputPath);
+      return { outputPath: await convertToCenterCrop(inputPath, outputPath) };
 
     case "gaming":
       if (facecamRegion) {
@@ -1193,41 +1185,43 @@ export const convertToVertical = async (
       console.warn(
         "[VERTICAL] Gaming mode but no facecam detected — falling back to standard",
       );
-      return convertToVerticalBlur(inputPath, outputPath);
+      return { outputPath: await convertToVerticalBlur(inputPath, outputPath) };
 
     case "speaker-zoom":
       if (facecamRegion) {
-        return convertToSpeakerZoom(inputPath, outputPath, facecamRegion);
+        return { outputPath: await convertToSpeakerZoom(inputPath, outputPath, facecamRegion) };
       }
       console.warn(
         "[VERTICAL] Speaker-zoom mode but no face region — falling back to standard",
       );
-      return convertToVerticalBlur(inputPath, outputPath);
+      return { outputPath: await convertToVerticalBlur(inputPath, outputPath) };
 
     case "active-speaker":
       if (activeSpeakerOptions && activeSpeakerOptions.segments.length > 1) {
-        return convertToActiveSpeakerZoom(
-          inputPath,
-          outputPath,
-          activeSpeakerOptions.segments,
-          activeSpeakerOptions.speakerFaceMap,
-        );
+        return {
+          outputPath: await convertToActiveSpeakerZoom(
+            inputPath,
+            outputPath,
+            activeSpeakerOptions.segments,
+            activeSpeakerOptions.speakerFaceMap,
+          ),
+        };
       }
       // Fallback: single speaker with face → static zoom, no face → blurred bg
       if (facecamRegion) {
         console.warn(
           "[VERTICAL] Active-speaker but single speaker/face — falling back to speaker-zoom",
         );
-        return convertToSpeakerZoom(inputPath, outputPath, facecamRegion);
+        return { outputPath: await convertToSpeakerZoom(inputPath, outputPath, facecamRegion) };
       }
       console.warn(
         "[VERTICAL] Active-speaker but no faces detected — falling back to standard",
       );
-      return convertToVerticalBlur(inputPath, outputPath);
+      return { outputPath: await convertToVerticalBlur(inputPath, outputPath) };
 
     case "standard":
     default:
-      return convertToVerticalBlur(inputPath, outputPath);
+      return { outputPath: await convertToVerticalBlur(inputPath, outputPath) };
   }
 };
 
@@ -1693,6 +1687,7 @@ export const addTextOverlay = async (
   fontName: string = "Montserrat",
   style: "stroke" | "instagram" = "stroke",
   headingBgColor: string = "#000000",
+  facecamHeight?: number,
 ): Promise<string> => {
   const textImagePath = path.join(
     path.dirname(outputPath),
@@ -1716,11 +1711,15 @@ export const addTextOverlay = async (
       throw new Error(`Text image was not created at ${textImagePath}`);
     }
 
+    // In gaming/facecam mode with center position, place heading just below the facecam
+    // instead of dead center where it would cover gameplay
     const yPosition =
       position === "top"
         ? "H*0.05"
         : position === "center"
-          ? "(H-h)/2"
+          ? facecamHeight
+            ? `${facecamHeight}+H*0.02`
+            : "(H-h)/2-H*0.05"
           : "H-h-H*0.1";
 
     return new Promise<string>((resolve, reject) => {

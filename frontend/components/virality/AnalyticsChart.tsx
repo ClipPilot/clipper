@@ -80,9 +80,11 @@ interface AnalyticsChartProps {
   colorMap?: Record<number, string>;
   startDate?: string;
   endDate?: string;
+  /** Optional change % overrides for the metric cards (views, likes, comments). When provided, these are used instead of the internally computed daily change. */
+  changeOverrides?: { views?: number | null; likes?: number | null; comments?: number | null };
 }
 
-export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPostsByAccount, colorMap, startDate, endDate }: AnalyticsChartProps) {
+export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPostsByAccount, colorMap, startDate, endDate, changeOverrides }: AnalyticsChartProps) {
   const [activeMetric, setActiveMetric] = useState<ChartMetricKey>("views");
 
   const getColor = (account: ViralityAccount, index: number) =>
@@ -140,46 +142,59 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
 
   const hasData = fullChartData.length > 0;
 
+  // When accounts are selected, use those for totals/tooltip; otherwise use all accounts
+  const hasSelection = accounts.length > 0;
+  const totalsAccounts = hasSelection ? accounts : axisAccounts;
+  const totalsPostsByAccount = hasSelection ? postsByAccount : axisPostsByAccount;
+
   // Tooltip summary: all 3 metrics per hour so tooltip can show views/likes/comments regardless of active metric
   const tooltipByHour = useMemo(() => {
     const map: Record<string, { views: number; likes: number; comments: number }> = {};
     const startStr = startDate ? new Date(startDate).toISOString().slice(0, 13) : undefined;
     const endStr = endDate ? new Date(endDate).toISOString().slice(0, 13) : undefined;
 
-    for (const account of axisAccounts) {
-      const posts = axisPostsByAccount[account.id] || [];
+    for (const account of totalsAccounts) {
+      const posts = totalsPostsByAccount[account.id] || [];
       for (const post of posts) {
         if (!post.metrics_history?.length) continue;
-        // Per post: take the max snapshot at each hour (cumulative metrics)
         const postHourMax = new Map<string, { views: number; likes: number; comments: number }>();
         for (const entry of post.metrics_history) {
           const hour = entry.recorded_at.slice(0, 13);
-          if (startStr && hour < startStr) continue;
-          if (endStr && hour > endStr) continue;
           const views = entry.views ?? 0;
           const existing = postHourMax.get(hour);
           if (!existing || views > existing.views) {
             postHourMax.set(hour, { views, likes: entry.likes, comments: entry.comments });
           }
         }
-        for (const [hour, vals] of Array.from(postHourMax)) {
+        const sortedHours = Array.from(postHourMax.keys()).sort();
+        let prev = { views: 0, likes: 0, comments: 0 };
+        for (const hour of sortedHours) {
+          const vals = postHourMax.get(hour)!;
+          const delta = {
+            views: Math.max(vals.views - prev.views, 0),
+            likes: Math.max(vals.likes - prev.likes, 0),
+            comments: Math.max(vals.comments - prev.comments, 0),
+          };
+          prev = vals;
+          if (startStr && hour < startStr) continue;
+          if (endStr && hour > endStr) continue;
           if (!map[hour]) map[hour] = { views: 0, likes: 0, comments: 0 };
-          map[hour].views += vals.views;
-          map[hour].likes += vals.likes;
-          map[hour].comments += vals.comments;
+          map[hour].views += delta.views;
+          map[hour].likes += delta.likes;
+          map[hour].comments += delta.comments;
         }
       }
     }
     return map;
-  }, [axisAccounts, axisPostsByAccount, startDate, endDate]);
+  }, [totalsAccounts, totalsPostsByAccount, startDate, endDate]);
 
-  // Metric card totals — always from ALL accounts
+  // Metric card totals — filtered to selected accounts when applicable
   const totals = useMemo(() => {
     let likes = 0,
       comments = 0,
       views = 0;
-    for (const account of axisAccounts) {
-      const posts = axisPostsByAccount[account.id] || [];
+    for (const account of totalsAccounts) {
+      const posts = totalsPostsByAccount[account.id] || [];
       for (const post of posts) {
         likes += post.like_count || 0;
         comments += post.comment_count || 0;
@@ -187,28 +202,74 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
       }
     }
     return { likes, comments, views };
-  }, [axisAccounts, axisPostsByAccount]);
+  }, [totalsAccounts, totalsPostsByAccount]);
+
+  const dailyChange = useMemo(() => {
+    const dayTotals = new Map<string, { views: number; likes: number; comments: number }>();
+    for (const [hour, vals] of Object.entries(tooltipByHour)) {
+      const day = hour.slice(0, 10);
+      const existing = dayTotals.get(day) || { views: 0, likes: 0, comments: 0 };
+      existing.views += vals.views;
+      existing.likes += vals.likes;
+      existing.comments += vals.comments;
+      dayTotals.set(day, existing);
+    }
+    const days = Array.from(dayTotals.keys()).sort();
+    if (days.length < 2) return { views: null, likes: null, comments: null };
+    const today = dayTotals.get(days[days.length - 1])!;
+    const yesterday = dayTotals.get(days[days.length - 2])!;
+    const pct = (cur: number, prev: number) => prev > 0 ? ((cur - prev) / prev) * 100 : null;
+    return {
+      views: pct(today.views, yesterday.views),
+      likes: pct(today.likes, yesterday.likes),
+      comments: pct(today.comments, yesterday.comments),
+    };
+  }, [tooltipByHour]);
+
+  // Precompute % change between consecutive hours for tooltip
+  const tooltipChangeByHour = useMemo(() => {
+    const sorted = Object.keys(tooltipByHour).sort();
+    const changeMap: Record<string, { views: number | null; likes: number | null; comments: number | null }> = {};
+    const pct = (cur: number, prev: number) => prev > 0 ? ((cur - prev) / prev) * 100 : cur > 0 ? 100 : null;
+    for (let i = 0; i < sorted.length; i++) {
+      const hour = sorted[i];
+      if (i === 0) {
+        changeMap[hour] = { views: null, likes: null, comments: null };
+      } else {
+        const prev = tooltipByHour[sorted[i - 1]];
+        const cur = tooltipByHour[hour];
+        changeMap[hour] = {
+          views: pct(cur.views, prev.views),
+          likes: pct(cur.likes, prev.likes),
+          comments: pct(cur.comments, prev.comments),
+        };
+      }
+    }
+    return changeMap;
+  }, [tooltipByHour]);
 
   const metrics: {
     key: ChartMetricKey;
     title: string;
     value: number;
+    change: number | null;
     tooltip?: string;
   }[] = [
     {
       key: "views",
       title: "Total Views",
       value: totals.views,
+      change: changeOverrides?.views !== undefined ? changeOverrides.views : dailyChange.views,
       tooltip: "Only counts views on video posts (Reels)",
     },
-    { key: "likes", title: "Total Likes", value: totals.likes },
-    { key: "comments", title: "Total Comments", value: totals.comments },
+    { key: "likes", title: "Total Likes", value: totals.likes, change: changeOverrides?.likes !== undefined ? changeOverrides.likes : dailyChange.likes },
+    { key: "comments", title: "Total Comments", value: totals.comments, change: changeOverrides?.comments !== undefined ? changeOverrides.comments : dailyChange.comments },
   ];
 
   return (
     <Card className="bg-surface-base border border-border-base h-full">
       <section className="flex flex-col flex-nowrap h-full">
-        <div className="flex flex-col justify-between gap-y-2 p-6">
+        <div className="flex flex-col justify-between gap-y-2 p-3 sm:p-6">
           <div className="flex flex-col gap-y-2">
             <div className="flex items-center justify-between">
               <dt className="text-medium text-text-primary font-medium inline-flex items-center gap-1.5">
@@ -248,7 +309,7 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
             </div>
             <div className="mt-2 flex w-full items-center">
               <div className="-my-3 flex w-full items-center gap-x-3 overflow-x-auto py-3">
-                {metrics.map(({ key, title, value, tooltip }) => (
+                {metrics.map(({ key, title, value, change, tooltip }) => (
                   <button
                     key={key}
                     className={cn(
@@ -275,9 +336,21 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
                       )}
                     </span>
                     <div className="flex items-center gap-x-3">
-                      <span className="text-foreground text-3xl font-bold">
+                      <span className="text-foreground text-xl sm:text-3xl font-bold">
                         {formatChartValue(value)}
                       </span>
+                      {change !== null && (
+                        <span className={cn(
+                          "text-xs font-medium inline-flex items-center gap-0.5",
+                          change >= 0 ? "text-green-500" : "text-red-500"
+                        )}>
+                          <Icon
+                            icon={change >= 0 ? "solar:arrow-up-linear" : "solar:arrow-down-linear"}
+                            width={12}
+                          />
+                          {Math.abs(change).toFixed(1)}%
+                        </span>
+                      )}
                     </div>
                   </button>
                 ))}
@@ -288,7 +361,7 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
 
         {hasData ? (
           <div className="flex-1 min-h-[300px] overflow-x-auto">
-            <div style={{ minWidth: Math.max(chartData.length * 12, 500) }}>
+            <div style={{ minWidth: Math.min(Math.max(chartData.length * 10, 500), 1200) }}>
             <ResponsiveContainer
               className="[&_.recharts-surface]:outline-hidden"
               height={300}
@@ -354,73 +427,107 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
                 <Tooltip
                   content={({ payload }) => {
                     const hourKey = payload?.[0]?.payload?.hourKey;
-                    const label = hourKey ? formatHourKey(hourKey) : null;
-                    const tipData = hourKey ? tooltipByHour[hourKey] : null;
+                    if (!hourKey) return null;
+                    const label = formatHourKey(hourKey);
+                    const tipData = tooltipByHour[hourKey];
+                    const tipChange = tooltipChangeByHour[hourKey];
                     const overlayEntries = payload?.filter((p) => p.dataKey !== "total") ?? [];
+
+                    const renderChange = (change: number | null | undefined) => {
+                      if (change == null) return null;
+                      const isUp = change >= 0;
+                      return (
+                        <span className={cn(
+                          "text-[10px] font-semibold inline-flex items-center gap-0.5 px-1 py-px rounded",
+                          isUp ? "text-green-400 bg-green-400/10" : "text-red-400 bg-red-400/10"
+                        )}>
+                          <Icon icon={isUp ? "solar:arrow-up-linear" : "solar:arrow-down-linear"} width={8} />
+                          {Math.abs(change).toFixed(0)}%
+                        </span>
+                      );
+                    };
+
+                    const metricRows = tipData ? [
+                      { label: "Views", value: tipData.views, change: tipChange?.views, icon: "solar:eye-bold" },
+                      { label: "Likes", value: tipData.likes, change: tipChange?.likes, icon: "solar:heart-bold" },
+                      { label: "Comments", value: tipData.comments, change: tipChange?.comments, icon: "solar:chat-round-dots-bold" },
+                    ] : [];
+
                     return (
-                    <div className="rounded-medium bg-foreground text-tiny shadow-small min-w-[180px] p-2.5">
-                      <div className="flex w-full flex-col gap-y-1.5">
-                        {/* All Accounts summary — only when no individual accounts selected */}
-                        {accounts.length === 0 && (
-                          <div>
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <span
-                                className="inline-block w-2 h-2 rounded-full"
-                                style={{ backgroundColor: TOTAL_COLOR }}
-                              />
-                              <span className="text-small text-background font-medium">
-                                All Accounts
-                              </span>
-                              <span className="text-foreground-500 text-tiny">
-                                ({axisAccounts.length})
-                              </span>
-                            </div>
-                            {tipData && (
-                              <div className="flex items-center gap-2 ml-3.5 text-tiny">
-                                <span className="text-foreground-400">{formatChartValue(tipData.views)} views</span>
-                                <span className="text-foreground-500">·</span>
-                                <span className="text-foreground-400">{formatChartValue(tipData.likes)} likes</span>
-                                <span className="text-foreground-500">·</span>
-                                <span className="text-foreground-400">{formatChartValue(tipData.comments)} comments</span>
+                      <div className="rounded-xl bg-foreground shadow-lg min-w-[200px] overflow-hidden">
+                        {/* Header */}
+                        <div className="px-3 py-2 border-b border-foreground-200/10">
+                          <span className="text-tiny text-foreground-500 font-medium">
+                            {label.date} &middot; {label.time}
+                          </span>
+                        </div>
+
+                        <div className="px-3 py-2 flex flex-col gap-y-2">
+                          {/* Metric rows */}
+                          {metricRows.map((m) => (
+                            <div key={m.label} className="flex items-center justify-between gap-x-4">
+                              <div className="flex items-center gap-1.5">
+                                <Icon icon={m.icon} width={12} className="text-foreground-500" />
+                                <span className="text-tiny text-foreground-400">{m.label}</span>
                               </div>
-                            )}
-                          </div>
-                        )}
-                        {/* Overlay accounts */}
-                        {overlayEntries.map((p, index) => {
-                          const account = accounts.find(
-                            (a) => `account_${a.id}` === p.dataKey
-                          );
-                          return (
-                            <div
-                              key={index}
-                              className="text-small text-background flex w-full items-center justify-between gap-x-2"
-                            >
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-small text-background font-semibold">
+                                  {formatChartValue(m.value)}
+                                </span>
+                                {renderChange(m.change)}
+                              </div>
+                            </div>
+                          ))}
+
+                          {/* Account breakdown */}
+                          {overlayEntries.length > 0 && (
+                            <div className="border-t border-foreground-200/10 pt-2 mt-0.5 flex flex-col gap-y-1.5">
+                              {overlayEntries.map((p, index) => {
+                                const account = accounts.find(
+                                  (a) => `account_${a.id}` === p.dataKey
+                                );
+                                return (
+                                  <div
+                                    key={index}
+                                    className="flex items-center justify-between gap-x-3"
+                                  >
+                                    <div className="flex items-center gap-1.5">
+                                      <span
+                                        className="inline-block w-2 h-2 rounded-full flex-shrink-0"
+                                        style={{ backgroundColor: p.color }}
+                                      />
+                                      <span className="text-tiny text-foreground-400 truncate max-w-[120px]">
+                                        @{account?.username || "Unknown"}
+                                      </span>
+                                    </div>
+                                    <span className="text-tiny text-background font-semibold">
+                                      {formatChartValue(p.value as number)}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {/* All accounts label when no selection */}
+                          {accounts.length === 0 && (
+                            <div className="border-t border-foreground-200/10 pt-1.5 mt-0.5">
                               <div className="flex items-center gap-1.5">
                                 <span
                                   className="inline-block w-2 h-2 rounded-full"
-                                  style={{ backgroundColor: p.color }}
+                                  style={{ backgroundColor: TOTAL_COLOR }}
                                 />
-                                <span className="text-foreground-400">
-                                  @{account?.username || "Unknown"}
+                                <span className="text-tiny text-foreground-500">
+                                  All Accounts ({axisAccounts.length})
                                 </span>
                               </div>
-                              <span className="font-medium">
-                                {formatChartValue(p.value as number)}
-                              </span>
                             </div>
-                          );
-                        })}
-                        {label && (
-                          <span className="text-small text-foreground-400 font-medium mt-0.5">
-                            {label.date} {label.time}
-                          </span>
-                        )}
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
+                    );
                   }}
-                  cursor={{ strokeWidth: 0 }}
+                  cursor={{ stroke: "hsl(var(--heroui-default-300))", strokeWidth: 1, strokeDasharray: "4 4" }}
                 />
                 {/* Individual overlay account lines (rendered first = below) */}
                 {accounts.map((account, i) => {

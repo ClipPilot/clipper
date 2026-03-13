@@ -37,7 +37,7 @@ import {
   getNextSyncCountdown,
 } from "@/app/dashboard/virality/[competitorId]/utils";
 import { canAccessViralityTracker } from "@/lib/plans";
-import { useViralitySyncSocket } from "@/hooks/useViralitySyncSocket";
+import { useViralitySync } from "@/hooks/useViralitySyncSocket";
 
 interface MyPerformanceViewProps {
   showBackButton?: boolean;
@@ -55,7 +55,6 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
   const [isLoading, setIsLoading] = useState(true);
   const [isRecalculating, setIsRecalculating] = useState(false);
   const initialLoadDone = useRef(false);
-  const [isSyncing, setIsSyncing] = useState(false);
   const [selectedAccountIds, setSelectedAccountIds] = useState<number[]>([]);
   const [comparisonMode, setComparisonMode] = useState<ComparisonMode>({ type: "last-sync" });
 
@@ -63,19 +62,13 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
     if (!selectedTeam?.id || !canAccessViralityTracker(selectedTeam.plan)) return;
     if (initialLoadDone.current && !silent) setIsRecalculating(true);
     try {
-      const accts = await userPerformanceAPI.getAccounts(selectedTeam.id);
-      setAccounts(accts);
-
       const { startDate, endDate } = dateRange;
-      const postsMap: Record<number, ViralityPost[]> = {};
-      await Promise.all(
-        accts.map(async (a) => {
-          const posts = await userPerformanceAPI.getAccountPosts(
-            selectedTeam.id, a.id, 100, 0, startDate, endDate
-          );
-          postsMap[a.id] = posts;
-        })
-      );
+      const [accts, postsMap] = await Promise.all([
+        userPerformanceAPI.getAccounts(selectedTeam.id),
+        userPerformanceAPI.getAllPosts(selectedTeam.id, startDate, endDate),
+      ]);
+      setAccounts(accts);
+      reconcileSync(accts);
       setPostsByAccount(postsMap);
     } catch (err: any) {
       addToast({ title: "Failed to load data", description: err.message, color: "danger" });
@@ -91,37 +84,46 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
   // No auto-select: chart shows aggregated total by default.
   // User can toggle individual accounts via the filter popover.
 
-  // Track accounts doing their initial sync
-  const syncingAccountIds = useMemo(() => {
-    return accounts
-      .filter((a) => !a.last_synced_at && (a.sync_status === "pending" || a.sync_status === "syncing"))
-      .map((a) => a.id);
-  }, [accounts]);
+  // Global sync state — persists across page navigation
+  const { startSync, isAnySyncing, getSyncingIds, reconcileSync } = useViralitySync();
 
-  useViralitySyncSocket({
-    teamId: selectedTeam?.id,
-    accountIds: syncingAccountIds,
-    onSyncComplete: () => { fetchData(true); },
-  });
+  const allAccountIds = useMemo(() => accounts.map((a) => a.id), [accounts]);
+  const isSyncing = isAnySyncing(allAccountIds);
+  const syncingAccountIds = getSyncingIds(allAccountIds);
+
+  // Refetch data when syncs complete
+  const prevSyncingRef = useRef<number[]>([]);
+  useEffect(() => {
+    const prev = prevSyncingRef.current;
+    const current = syncingAccountIds;
+    const justFinished = prev.filter((id) => !current.includes(id));
+    if (justFinished.length > 0) {
+      fetchData(true);
+    }
+    prevSyncingRef.current = current;
+  }, [syncingAccountIds, fetchData]);
+
+  // Safety net: re-fetch once after 10 min to catch missed socket events
+  const hasSyncing = syncingAccountIds.length > 0;
+  useEffect(() => {
+    if (!hasSyncing) return;
+    const timeout = setTimeout(() => fetchData(true), 10 * 60 * 1000);
+    return () => clearTimeout(timeout);
+  }, [hasSyncing, fetchData]);
 
   const handleSyncAll = async () => {
     if (!selectedTeam?.id || accounts.length === 0) return;
-    setIsSyncing(true);
+    const accountIds = accounts.map((a) => a.id);
+
+    // Mark as syncing in global state immediately
+    startSync(accountIds);
+
     try {
-      const result = await userPerformanceAPI.syncAll(selectedTeam.id);
-      const parts: string[] = [];
-      if (result.accounts.synced > 0) parts.push(`${result.accounts.synced} account(s)`);
-      if (result.massPosts.synced > 0) parts.push(`${result.massPosts.synced} post(s)`);
-      if (result.accounts.failed > 0) {
-        addToast({ title: `Synced ${parts.join(" + ")} — ${result.accounts.failed} account(s) failed`, color: "warning" });
-      } else {
-        addToast({ title: parts.length > 0 ? `Synced ${parts.join(" + ")}` : "Nothing to sync", color: "success" });
-      }
-      await fetchData();
+      // Fire-and-forget: returns 202 instantly, kicks off background sync + Step Functions
+      await userPerformanceAPI.syncAll(selectedTeam.id);
+      addToast({ title: "Sync started for all accounts", color: "primary" });
     } catch (err: any) {
-      addToast({ title: "Sync failed", description: err.message, color: "danger" });
-    } finally {
-      setIsSyncing(false);
+      addToast({ title: "Failed to start sync", description: err.message, color: "danger" });
     }
   };
 
@@ -302,48 +304,51 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="min-h-screen bg-surface-dark p-6 lg:p-8"
+      className="min-h-screen bg-surface-dark p-3 sm:p-6 lg:p-8"
     >
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3 min-w-0">
             {showBackButton && (
               <Button
                 isIconOnly
                 variant="light"
-                className="text-text-secondary"
+                className="text-text-secondary flex-shrink-0"
                 onPress={() => router.push(backHref)}
               >
                 <Icon icon="solar:arrow-left-linear" width={20} />
               </Button>
             )}
-            <div>
-              <h1 className="text-2xl font-bold text-text-primary">Your Performance</h1>
-              <p className="text-text-secondary text-sm mt-1">
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold text-text-primary truncate">Your Performance</h1>
+              <p className="text-text-secondary text-[11px] sm:text-sm mt-0.5 sm:mt-1 hidden sm:block">
                 Real-time performance metrics for your own accounts
               </p>
               {derived.lastSyncedAt !== null && (
-                <p className="text-text-tertiary text-xs mt-0.5">
+                <p className="text-text-tertiary text-[10px] sm:text-xs mt-0.5 truncate">
                   Last synced {timeAgo((derived.lastSyncedAt as Date).toISOString())} · Next sync in{" "}
                   {getNextSyncCountdown()}
                 </p>
               )}
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 overflow-x-auto">
             <DateRangeFilter value={dateRange} onChange={setDateRange} />
             <Button
-              className="bg-accent-400 text-white"
-              startContent={<Icon icon="solar:add-circle-bold" width={18} />}
+              size="sm"
+              className="bg-accent-400 text-white flex-shrink-0"
+              startContent={<Icon icon="solar:add-circle-bold" width={16} />}
               onPress={onOpen}
             >
-              Add Account
+              <span className="hidden sm:inline">Add Account</span>
+              <span className="sm:hidden">Add</span>
             </Button>
             <Button
-              className="bg-surface-base text-text-primary border border-border-base"
+              size="sm"
+              className="bg-surface-base text-text-primary border border-border-base flex-shrink-0"
               startContent={
-                isSyncing ? <Spinner size="sm" /> : <Icon icon="solar:refresh-bold" width={18} />
+                isSyncing ? <Spinner size="sm" /> : <Icon icon="solar:refresh-bold" width={16} />
               }
               isDisabled={isSyncing || accounts.length === 0}
               onPress={handleSyncAll}
@@ -369,7 +374,7 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
 
         {/* Syncing accounts banner */}
         {syncingAccountIds.length > 0 && (
-          <div className="flex items-center gap-3 rounded-xl border border-accent-400/30 bg-accent-400/5 px-4 py-3">
+          <div className="flex items-center gap-2 sm:gap-3 rounded-xl border border-accent-400/30 bg-accent-400/5 px-3 sm:px-4 py-2.5 sm:py-3">
             <Spinner size="sm" color="primary" />
             <p className="text-sm text-text-secondary">
               Syncing{" "}
@@ -390,8 +395,8 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
 
         {/* Stats Cards + Best Performing Accounts */}
         <RecalcOverlay active={isRecalculating}>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
-            <StatCards items={statCards} gridClassName="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 items-stretch">
+            <StatCards items={statCards} gridClassName="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4" />
             <YourAccountsList
               accounts={derived.activeAccounts}
               postsByAccount={derived.activePostsByAccount}
@@ -402,7 +407,7 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
 
         {/* Performance Over Time + Best Performing Content */}
         <RecalcOverlay active={isRecalculating}>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 items-stretch">
             <div className="lg:col-span-2">
               <AnalyticsChart
                 accounts={derived.chartOverlayAccounts}
@@ -427,7 +432,7 @@ export function MyPerformanceView({ showBackButton = false, backHref = "/dashboa
 
         {/* Post Frequency + Account Breakdown */}
         <RecalcOverlay active={isRecalculating}>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 items-stretch">
             <div className="lg:col-span-2">
               <PostFrequencyChart
                 posts={derived.activePosts}
