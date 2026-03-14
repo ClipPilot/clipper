@@ -29,11 +29,13 @@ export function ChatInterface() {
     currentArtifact,
     generatedScript,
     isGeneratingScript,
+    isExistingScript,
     sendMessage,
     acceptStructure,
     advanceArtifact,
     retryStructure,
     generateScript,
+    loadExistingScript,
     selectedCharacterRef,
     teamIdRef,
   } = useChatAgent();
@@ -42,7 +44,6 @@ export function ChatInterface() {
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
   const [showExistingScripts, setShowExistingScripts] = useState(false);
 
-  // Sync refs so useChatAgent can access character/teamId during script generation
   selectedCharacterRef.current = selectedCharacter;
   teamIdRef.current = teamId;
 
@@ -52,7 +53,6 @@ export function ChatInterface() {
 
   const isPanelMode = currentArtifact !== null;
 
-  // Collect all product image keys from user messages for passing to acceptStructure
   const allImageKeys = messages
     .filter((m) => m.role === "user" && m.attachments)
     .flatMap((m) => m.attachments!.map((a) => a.key));
@@ -81,20 +81,22 @@ export function ChatInterface() {
           setScripts(response.scripts);
           setSelectedVariantIndex(response.selectedVariantIndex);
           setScriptId(existingScriptId);
-          router.push(
-            `/dashboard/ugc-studio/ai-video-creator/create?scriptId=${existingScriptId}&step=shot-plan`,
-          );
+          loadExistingScript({
+            isSilent: response.isSilent,
+            hasCharacter: response.hasCharacter,
+            videoType: response.videoType,
+          });
+          setShowExistingScripts(false);
         }
       } catch (err) {
         console.error("Failed to load existing script:", err);
       }
     },
-    [setScripts, setSelectedVariantIndex, setScriptId, router],
+    [setScripts, setSelectedVariantIndex, setScriptId, loadExistingScript],
   );
 
   return (
     <div className="h-[calc(100vh-64px)] flex flex-col">
-      {/* Top bar */}
       <div className="flex items-center justify-between px-4 h-14 border-b border-border-base shrink-0">
         <div className="flex items-center gap-3">
           <button
@@ -116,9 +118,7 @@ export function ChatInterface() {
         </Button>
       </div>
 
-      {/* Main content area */}
       <div className="flex-1 flex min-h-0">
-        {/* Chat panel */}
         <motion.div
           layout
           className="flex flex-col min-h-0"
@@ -141,7 +141,6 @@ export function ChatInterface() {
           />
         </motion.div>
 
-        {/* Artifact panel */}
         {isPanelMode && currentArtifact && (
           <motion.div
             layout
@@ -158,13 +157,13 @@ export function ChatInterface() {
               teamId={teamId ?? undefined}
               generatedScript={generatedScript}
               isGeneratingScript={isGeneratingScript}
+              isExistingScript={isExistingScript}
               onGenerateScript={generateScript}
             />
           </motion.div>
         )}
       </div>
 
-      {/* Existing scripts drawer */}
       {teamId && (
         <ExistingScriptsDrawer
           isOpen={showExistingScripts}

@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import { s3Service } from "../services/s3.service";
-import { sqsService } from "../services/sqs.service";
 import { ugcScriptService } from "../services/ai-ugc/ugcScript.service";
 import { teamService } from "../services/team.service";
 import { canAccessUGCStudio } from "../utils/plans";
@@ -14,92 +13,6 @@ interface AuthRequest extends Request {
 }
 
 export class UGCScriptController {
-  async generateScript(req: AuthRequest, res: Response) {
-    try {
-      const {
-        teamId,
-        characterId,
-        productImageKeys,
-        productName,
-        scriptDirection,
-        targetDuration,
-        numberOfVariations,
-        structureId,
-        customPattern,
-        isSilent,
-      } = req.body;
-
-      if (!teamId || !characterId) {
-        return res.status(400).json({
-          error: "teamId and characterId are required",
-        });
-      }
-
-      if (productImageKeys && productImageKeys.length > 5) {
-        return res.status(400).json({ error: "Maximum 5 product images allowed" });
-      }
-
-      if (!req.user?.dbUserId) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
-      const team = await teamService.getTeamById(teamId);
-      if (!team || !canAccessUGCStudio(team.plan)) {
-        return res.status(403).json({ error: "UGC Studio access required" });
-      }
-
-      const character = await ugcScriptService.getCharacterById(characterId);
-      if (!character) {
-        return res.status(404).json({ error: "Character not found" });
-      }
-
-      const [job] = await db
-        .insert(ugcScripts)
-        .values({
-          team_id: teamId,
-          character_id: characterId,
-          product_image_keys: productImageKeys || [],
-          product_name: productName || null,
-          script_direction: scriptDirection || null,
-          structure_id: structureId || "classic",
-          custom_pattern: customPattern || null,
-          target_duration: targetDuration || 30,
-          number_of_variations: numberOfVariations || 2,
-          status: "queued",
-          progress: 0,
-          progress_message: "Queued for generation...",
-        })
-        .returning();
-
-      await sqsService.sendGenerateScriptJob({
-        jobId: job.id,
-        teamId,
-        userId: req.user.dbUserId,
-        characterId,
-        productImageKeys: productImageKeys || [],
-        productName,
-        scriptDirection,
-        targetDuration: targetDuration || 30,
-        numberOfVariations: numberOfVariations || 2,
-        structureId: structureId || "classic",
-        customPattern,
-        isSilent: !!isSilent,
-      });
-
-      return res.status(202).json({
-        success: true,
-        scriptId: job.id,
-        status: "queued",
-        message: "Script generation started. Poll for status.",
-      });
-    } catch (error) {
-      console.error("[UGC_SCRIPT] Generate script error:", error);
-      return res.status(500).json({
-        error: sanitizeErrorForFrontend(error, "Failed to queue script generation"),
-      });
-    }
-  }
-
   async getScriptStatus(req: AuthRequest, res: Response) {
     try {
       const { scriptId } = req.params;
@@ -426,6 +339,9 @@ export class UGCScriptController {
         scripts: fullScript.scripts,
         selectedVariantIndex: fullScript.selectedVariantIndex,
         characterId: fullScript.characterId,
+        isSilent: fullScript.isSilent,
+        hasCharacter: fullScript.hasCharacter,
+        videoType: fullScript.videoType,
       });
     } catch (error) {
       console.error("[UGC_SCRIPT] Get full script error:", error);

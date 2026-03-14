@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect } from "react";
+import { useAtomValue } from "jotai";
 import { motion, AnimatePresence } from "framer-motion";
 import { CharacterStep } from "@/components/ugc-studio/actors/CharacterStep";
 import { AudioStep } from "@/components/ugc-studio/voice";
 import { ScriptPreview } from "./ScriptPreview";
+import { ExistingScriptPreview } from "./ExistingScriptPreview";
 import { ScriptLoadingState } from "./ScriptLoadingState";
+import { scriptsAtom, selectedVariantIndexAtom } from "@/store/ugc";
 import type { ArtifactType, ScriptAgentResult } from "./types";
 import type { Character } from "@/components/ugc-studio/actors/types";
 
@@ -17,6 +20,7 @@ interface ArtifactPanelProps {
   teamId?: number;
   generatedScript: ScriptAgentResult | null;
   isGeneratingScript: boolean;
+  isExistingScript?: boolean;
   onGenerateScript: () => void;
 }
 
@@ -28,14 +32,19 @@ export function ArtifactPanel({
   teamId,
   generatedScript,
   isGeneratingScript,
+  isExistingScript,
   onGenerateScript,
 }: ArtifactPanelProps) {
-  // Trigger script generation when the artifact becomes "script"
+  const scripts = useAtomValue(scriptsAtom);
+  const selectedVariantIndex = useAtomValue(selectedVariantIndexAtom);
+
   useEffect(() => {
-    if (currentArtifact === "script" && !generatedScript && !isGeneratingScript) {
+    if (currentArtifact === "script" && !isExistingScript && !generatedScript && !isGeneratingScript) {
       onGenerateScript();
     }
-  }, [currentArtifact, generatedScript, isGeneratingScript, onGenerateScript]);
+  }, [currentArtifact, isExistingScript, generatedScript, isGeneratingScript, onGenerateScript]);
+
+  const existingScript = scripts[selectedVariantIndex];
 
   return (
     <motion.div
@@ -84,7 +93,9 @@ export function ArtifactPanel({
             transition={{ duration: 0.2 }}
             className="flex-1 p-4 overflow-y-auto"
           >
-            {isGeneratingScript ? (
+            {isExistingScript && existingScript ? (
+              <ExistingScriptPreview script={existingScript} />
+            ) : isGeneratingScript ? (
               <ScriptLoadingState />
             ) : generatedScript ? (
               <ScriptPreview script={generatedScript} />
