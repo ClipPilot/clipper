@@ -1,3 +1,8 @@
 .agents
 .mastra
 .env
+
+.env*
+.flaskenv*
+!.env.project
+!.env.vault
