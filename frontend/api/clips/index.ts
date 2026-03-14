@@ -366,6 +366,22 @@ class ClipsAPI {
     return response.blob();
   }
 
+  async downloadFolderUrls(
+    teamId: number,
+    folderId: number,
+  ): Promise<{ urls: { url: string; filename: string }[]; folderName: string }> {
+    const response = await apiFetch(
+      `${API_URL}/clip-video/teams/${teamId}/folders/${folderId}/download-urls`,
+    );
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error || "Failed to get download URLs");
+    }
+
+    return response.json();
+  }
+
   async updateCaptions(
     teamId: number,
     clipId: number,
