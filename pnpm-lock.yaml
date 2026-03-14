@@ -133,6 +133,9 @@ importers:
       swagger-ui-express:
         specifier: ^5.0.1
         version: 5.0.1(express@5.2.1)
+      wavespeed:
+        specifier: ^0.2.3
+        version: 0.2.3
       ws:
         specifier: ^8.18.3
         version: 8.18.3
@@ -6723,6 +6726,9 @@ packages:
   w3c-xmlserializer@5.0.0:
     resolution: {integrity: sha512-o8qghlI8NZHU1lLPrpi2+Uq7abh4GGPpYANlalzWxyWteJOCsr/P+oPBA49TOLu5FTZO4d3F9MnWJfiMo4BkmA==}
     engines: {node: '>=18'}
+
+  wavespeed@0.2.3:
+    resolution: {integrity: sha512-rj+9Qvklx4KzovSGQ17oF6MznmZqujdoXi1ralSIRvKrWLKyicArL9rkFFZl1F5uEHgQCFOCSUF7cPG2pJEnnA==}
 
   web-streams-polyfill@3.3.3:
     resolution: {integrity: sha512-d2JWLCivmZYTSIoge9MsgFCZrt571BikcWGYkjC1khllbTeDlGqZ2D8vD8E/lJa8WGWbb7Plm8/XJYV7IJHZZw==}
@@ -15310,6 +15316,8 @@ snapshots:
   w3c-xmlserializer@5.0.0:
     dependencies:
       xml-name-validator: 5.0.0
+
+  wavespeed@0.2.3: {}
 
   web-streams-polyfill@3.3.3: {}
 

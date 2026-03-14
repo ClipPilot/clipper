@@ -7,7 +7,6 @@ import { sqsService } from "../services/sqs.service";
 import {
   cutClip,
   getVideoDuration,
-  extractAudio,
 } from "../services/clips/videoEditor.service";
 import { createSceneAwareChunks } from "../services/ai-ugc/sceneChunker.service";
 import { detectFaceSegmentsWithPadding } from "../services/face-swap/faceDetection.service";
@@ -24,8 +23,6 @@ import fs from "fs";
 import "multer";
 import { TEMP_DIR } from "../utils/tempCleanup";
 import { sanitizeErrorForFrontend } from "../utils/errorSanitizer";
-import { faceSwapService } from "../services/ai-ugc/faceSwap.service";
-import { syncService } from "../services/sync.service";
 
 const UGC_CREDIT_COST = 5;
 const MIN_SEGMENT_DURATION = 3;
@@ -830,7 +827,7 @@ export class ComfyController {
       let segments: SegmentInput[] = [];
       let sortedSegments: SegmentInput[] = [];
 
-      if (swapType !== "face" && !autoDetect) {
+      if (!autoDetect) {
         if (segmentsRaw) {
           segments =
             typeof segmentsRaw === "string"
@@ -1024,233 +1021,6 @@ export class ComfyController {
         `[comfy] Starting background upload for ${jobIds.length} jobs (swapType=${swapType}, autoDetect=${autoDetect})`,
       );
 
-      if (swapType === "face") {
-        const videoS3Key = `ugc-inputs/${teamId}/${crypto.randomUUID()}_video.mp4`;
-        const videoBuffer = fs.readFileSync(videoPath);
-        await s3Service.uploadBuffer(videoBuffer, videoS3Key, "video/mp4");
-        const targetVideoUrl = await s3Service.getPresignedUrl(
-          videoS3Key,
-          3600,
-        );
-        console.log(`[comfy] Face swap: uploaded video to S3`);
-
-        for (let i = 0; i < imageSources.length; i++) {
-          const jobId = jobIds[i];
-          const imageSource = imageSources[i];
-
-          try {
-            let imageS3Key: string;
-            if (imageSource.type === "s3key") {
-              imageS3Key = imageSource.value;
-            } else {
-              const imageBuffer = fs.readFileSync(imageSource.value);
-              const imageExt = path.extname(imageSource.value) || ".jpg";
-              imageS3Key = `ugc-inputs/${teamId}/${crypto.randomUUID()}${imageExt}`;
-              await s3Service.uploadBuffer(
-                imageBuffer,
-                imageS3Key,
-                "image/jpeg",
-              );
-            }
-            const sourceFaceUrl = await s3Service.getPresignedUrl(
-              imageS3Key,
-              3600,
-            );
-
-            await db
-              .update(comfyJobs)
-              .set({
-                status: "running",
-                imageFile: imageS3Key,
-                videoFile: videoS3Key,
-                progress: 10,
-                progressMessage: "Swapping face ",
-              })
-              .where(eq(comfyJobs.id, jobId));
-
-            emitComfyJobUpdate(teamId, {
-              id: jobId,
-              status: "running",
-              progress: 10,
-              progressMessage: "Swapping face",
-              outputUrl: null,
-              errorMessage: null,
-              createdAt: new Date().toISOString(),
-              finishedAt: null,
-            });
-
-            const jobResult = await faceSwapService.faceSwapVideoWithRetry({
-              sourceFaceUrl,
-              targetVideoUrl,
-            });
-            if (!jobResult?.videoUrl) {
-              throw new Error("Face swap service did not return a video URL");
-            }
-            console.log(
-              `[comfy] Face swap complete for job ${jobId} (${jobResult.processingTimeMs}ms)`,
-            );
-
-            const videoResponse = await fetch(jobResult.videoUrl);
-            if (!videoResponse.ok) {
-              throw new Error(
-                `Failed to download result video: ${videoResponse.status}`,
-              );
-            }
-            let finalBuffer = Buffer.from(await videoResponse.arrayBuffer());
-
-            if (syncService.isConfigured()) {
-              const lipsyncTempDir = path.join(TEMP_DIR, `lipsync-${jobId}`);
-              try {
-                fs.mkdirSync(lipsyncTempDir, { recursive: true });
-
-                await db
-                  .update(comfyJobs)
-                  .set({ progress: 60, progressMessage: "Processing" })
-                  .where(eq(comfyJobs.id, jobId));
-                emitComfyJobUpdate(teamId, {
-                  id: jobId,
-                  status: "running",
-                  progress: 60,
-                  progressMessage: "Processing",
-                  outputUrl: null,
-                  errorMessage: null,
-                  createdAt: new Date().toISOString(),
-                  finishedAt: null,
-                });
-
-                const tempVideoPath = path.join(lipsyncTempDir, "faceswap.mp4");
-                const tempAudioPath = path.join(lipsyncTempDir, "audio.wav");
-                fs.writeFileSync(tempVideoPath, finalBuffer);
-                await extractAudio(tempVideoPath, tempAudioPath);
-
-                const lsVideoKey = `comfy-outputs/${teamId}/${jobId}/faceswap_pre_lipsync.mp4`;
-                const lsAudioKey = `comfy-outputs/${teamId}/${jobId}/audio_for_lipsync.wav`;
-                const audioBuffer = fs.readFileSync(tempAudioPath);
-                await Promise.all([
-                  s3Service.uploadBuffer(finalBuffer, lsVideoKey, "video/mp4"),
-                  s3Service.uploadBuffer(audioBuffer, lsAudioKey, "audio/wav"),
-                ]);
-                const [videoPresignedUrl, audioPresignedUrl] =
-                  await Promise.all([
-                    s3Service.getPresignedUrl(lsVideoKey, 3600),
-                    s3Service.getPresignedUrl(lsAudioKey, 3600),
-                  ]);
-
-                const lipsyncOutputUrl = await syncService.applyLipSync(
-                  videoPresignedUrl,
-                  audioPresignedUrl,
-                );
-
-                const lipsyncResponse = await fetch(lipsyncOutputUrl);
-                if (lipsyncResponse.ok) {
-                  finalBuffer = Buffer.from(
-                    await lipsyncResponse.arrayBuffer(),
-                  );
-                  console.log(`[comfy] Lip sync applied for job ${jobId}`);
-                }
-
-                s3Service.deleteObject(lsVideoKey).catch(() => {});
-                s3Service.deleteObject(lsAudioKey).catch(() => {});
-              } catch (lipsyncError) {
-                console.error(
-                  `[comfy] Lip sync failed for job ${jobId}, using face-swapped video:`,
-                  (lipsyncError as Error).message,
-                );
-              } finally {
-                if (fs.existsSync(lipsyncTempDir)) {
-                  fs.rmSync(lipsyncTempDir, { recursive: true, force: true });
-                }
-              }
-            }
-
-            const outputS3Key = `comfy-outputs/${teamId}/${jobId}/final.mp4`;
-            await s3Service.uploadBuffer(finalBuffer, outputS3Key, "video/mp4");
-
-            const [clip] = await db
-              .insert(clips)
-              .values({
-                team_id: teamId,
-                generated_by_user_id: userId,
-                folder_id: folderId || null,
-                clip_path: outputS3Key,
-                blank_video_path: outputS3Key,
-                source_video_path: videoS3Key,
-                status: "completed",
-                saved: true,
-                clip_metadata: { type: "face-swap", comfyJobId: jobId },
-                title: "Face Swap",
-              })
-              .returning();
-            console.log(`[comfy] Created clip ${clip.id} for job ${jobId}`);
-
-            const outputUrl = await s3Service.getPresignedUrl(
-              outputS3Key,
-              3600,
-            );
-
-            await db
-              .update(comfyJobs)
-              .set({
-                status: "completed",
-                outputFile: outputS3Key,
-                progress: 100,
-                progressMessage: "Complete",
-                finishedAt: new Date(),
-              })
-              .where(eq(comfyJobs.id, jobId));
-
-            emitComfyJobUpdate(teamId, {
-              id: jobId,
-              status: "completed",
-              progress: 100,
-              progressMessage: "Complete",
-              outputUrl,
-              errorMessage: null,
-              createdAt: new Date().toISOString(),
-              finishedAt: new Date().toISOString(),
-            });
-          } catch (jobError) {
-            console.error(`[comfy] Face swap job ${jobId} failed:`, jobError);
-
-            await db
-              .update(comfyJobs)
-              .set({
-                status: "failed",
-                errorMessage:
-                  jobError instanceof Error
-                    ? jobError.message
-                    : "Face swap failed",
-                finishedAt: new Date(),
-              })
-              .where(eq(comfyJobs.id, jobId));
-
-            emitComfyJobUpdate(teamId, {
-              id: jobId,
-              status: "failed",
-              progress: 0,
-              progressMessage: null,
-              outputUrl: null,
-              errorMessage:
-                jobError instanceof Error
-                  ? jobError.message
-                  : "Face swap failed",
-              createdAt: new Date().toISOString(),
-              finishedAt: new Date().toISOString(),
-            });
-
-            await teamService.decrementTeamUsage(teamId, UGC_CREDIT_COST);
-            console.log(
-              `[comfy] Refunded ${UGC_CREDIT_COST} credits for failed face swap job ${jobId}`,
-            );
-          }
-        }
-
-        console.log(
-          `[comfy] Face swap background processing completed for team ${teamId}`,
-        );
-        return;
-      }
-
       if (autoDetect) {
         for (const jobId of jobIds) {
           emitComfyJobUpdate(teamId, {
@@ -1374,18 +1144,15 @@ export class ComfyController {
 
       const isSpliceMode =
         (segments.length >= 2 || spliceWithOriginal) && videoDuration > 0;
-      let originalVideoS3Key: string | undefined;
 
-      if (isSpliceMode) {
-        originalVideoS3Key = `ugc-inputs/${teamId}/${crypto.randomUUID()}_original.mp4`;
-        const originalBuffer = fs.readFileSync(videoPath);
-        await s3Service.uploadBuffer(
-          originalBuffer,
-          originalVideoS3Key,
-          "video/mp4",
-        );
-        console.log(`[comfy] Uploaded original video for splice mode`);
-      }
+      const originalVideoS3Key = `ugc-inputs/${teamId}/${crypto.randomUUID()}_original.mp4`;
+      const originalBuffer = fs.readFileSync(videoPath);
+      await s3Service.uploadBuffer(
+        originalBuffer,
+        originalVideoS3Key,
+        "video/mp4",
+      );
+      console.log(`[comfy] Uploaded original video`);
 
       let spliceMetadata: {
         videoDuration: number;
@@ -1450,8 +1217,9 @@ export class ComfyController {
             spliceMetadata: spliceMetadata || undefined,
             folderId,
             voiceId: voiceIds?.[i] || undefined,
+            swapType,
           });
-          console.log(`[comfy] Job ${jobId} sent to Kling worker queue`);
+          console.log(`[comfy] Job ${jobId} sent to worker queue (${swapType})`);
 
           emitComfyJobUpdate(teamId, {
             id: jobId,

@@ -103,6 +103,7 @@ jobs:
           # Video Gen Keys
           elevenlabs_api_key = "${{ secrets.ELEVENLABS_API_KEY }}"
           fal_key            = "${{ secrets.FAL_KEY }}"
+          wavespeed_key      = "${{ secrets.WAVESPEED_KEY }}"
 
           # Google Drive (Mass Posting)
           google_service_account_email       = "${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}"
@@ -257,6 +258,7 @@ jobs:
           # Video Gen Keys
           elevenlabs_api_key = "${{ secrets.ELEVENLABS_API_KEY }}"
           fal_key            = "${{ secrets.FAL_KEY }}"
+          wavespeed_key      = "${{ secrets.WAVESPEED_KEY }}"
 
           # Google Drive (Mass Posting)
           google_service_account_email       = "${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}"

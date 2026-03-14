@@ -103,6 +103,7 @@ jobs:
           #Video Gen Keys
           elevenlabs_api_key = "${{ secrets.ELEVENLABS_API_KEY }}"
           fal_key            = "${{ secrets.FAL_KEY }}"
+          wavespeed_key      = "${{ secrets.WAVESPEED_KEY }}"
           apify_api_token    = "${{ secrets.APIFY_API_TOKEN }}"
           socialdata_api_key = "${{ secrets.SOCIALDATA_API_KEY }}"
 
@@ -247,6 +248,7 @@ jobs:
           # Video Gen Keys
           elevenlabs_api_key = "${{ secrets.ELEVENLABS_API_KEY }}"
           fal_key            = "${{ secrets.FAL_KEY }}"
+          wavespeed_key      = "${{ secrets.WAVESPEED_KEY }}"
           apify_api_token    = "${{ secrets.APIFY_API_TOKEN }}"
           socialdata_api_key = "${{ secrets.SOCIALDATA_API_KEY }}"
 

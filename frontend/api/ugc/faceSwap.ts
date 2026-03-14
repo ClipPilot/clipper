@@ -185,8 +185,9 @@ class FaceSwapAPI {
     spliceWithOriginal?: boolean;
     folderId?: number | null;
     voiceIds?: (string | null)[];
+    swapType?: "face" | "fullbody";
   }): Promise<{ jobIds: string[] }> {
-    const { video, images, teamId, videoDuration, spliceWithOriginal, folderId, voiceIds } = data;
+    const { video, images, teamId, videoDuration, spliceWithOriginal, folderId, voiceIds, swapType } = data;
 
     if (images.length === 0) {
       throw new Error("At least one image is required");
@@ -213,6 +214,9 @@ class FaceSwapAPI {
     formData.append("spliceWithOriginal", String(spliceWithOriginal ?? true));
     formData.append("autoDetect", "true");
     formData.append("idempotencyKey", idempotencyKey);
+    if (swapType) {
+      formData.append("swapType", swapType);
+    }
     if (folderId != null) {
       formData.append("folderId", folderId.toString());
     }
