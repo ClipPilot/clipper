@@ -1478,15 +1478,24 @@ export class ClipManagerController {
 
       archive.pipe(res);
 
-      for (const clip of completedClips) {
-        const s3Response = await s3Service.getObject(clip.clip_path!);
-        const filename = `${clip.title || `clip_${clip.id}`}.mp4`.replace(
-          /[^a-zA-Z0-9._-]/g,
-          "_",
+      const BATCH_SIZE = 10;
+      for (let i = 0; i < completedClips.length; i += BATCH_SIZE) {
+        const batch = completedClips.slice(i, i + BATCH_SIZE);
+        const results = await Promise.allSettled(
+          batch.map(async (clip) => {
+            const s3Response = await s3Service.getObject(clip.clip_path!);
+            const filename = `${clip.title || `clip_${clip.id}`}.mp4`.replace(
+              /[^a-zA-Z0-9._-]/g,
+              "_",
+            );
+            return { stream: s3Response.Body as unknown as Readable, filename };
+          }),
         );
-        archive.append(s3Response.Body as unknown as Readable, {
-          name: filename,
-        });
+        for (const result of results) {
+          if (result.status === "fulfilled") {
+            archive.append(result.value.stream, { name: result.value.filename });
+          }
+        }
       }
 
       await archive.finalize();
