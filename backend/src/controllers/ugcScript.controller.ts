@@ -431,7 +431,7 @@ export class UGCScriptController {
   }
   async storyboardChat(req: AuthRequest, res: Response) {
     try {
-      const { scriptId, message, threadId } = req.body;
+      const { scriptId, message, threadId, teamId, characterId } = req.body;
 
       if (!scriptId || !message?.trim()) {
         return res
@@ -443,6 +443,8 @@ export class UGCScriptController {
         scriptId,
         message,
         threadId,
+        teamId,
+        characterId,
       });
 
       return res.status(200).json({

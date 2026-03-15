@@ -151,7 +151,20 @@ class UGCScriptAPI {
     scriptId: string;
     message: string;
     threadId?: string;
-  }): Promise<{ success: boolean; message: string; updatedScript: UGCScript }> {
+    teamId?: number;
+    characterId?: number;
+  }): Promise<{
+    success: boolean;
+    message: string;
+    updatedScript: UGCScript;
+    regeneratingJobs?: Array<{
+      jobId: string;
+      sceneId: string;
+      sceneNumber: number;
+      status: string;
+      singleBRollShotIndex?: number;
+    }>;
+  }> {
     const response = await apiFetch(`${API_URL}/ugc/storyboard-chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

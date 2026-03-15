@@ -2,11 +2,12 @@
 
 import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { motion } from "framer-motion";
 import { Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
-import { scriptIdAtom, scriptsAtom, selectedVariantIndexAtom } from "@/store/ugc";
+import { scriptsAtom, selectedVariantIndexAtom, sceneImagesAtom } from "@/store/ugc";
+import { currentStepAtom, videoStateAtom } from "@/store/videoState";
 import { ugcScriptAPI } from "@/api/ugc";
 import { useTeams } from "@/hooks/useTeams";
 import { useChatAgent } from "./useChatAgent";
@@ -29,33 +30,47 @@ export function ChatInterface() {
   const {
     messages,
     isThinking,
-    acceptedResult,
-    currentArtifact,
-    generatedScript,
-    isGeneratingScript,
-    isExistingScript,
+    videoState,
     sendMessage,
     acceptStructure,
-    advanceArtifact,
     retryStructure,
     generateScript,
+    updateScene,
     loadExistingScript,
+    confirmCharacter,
     selectedCharacterRef,
     teamIdRef,
   } = useChatAgent();
 
+  const step = useAtomValue(currentStepAtom);
+  const setVideoState = useSetAtom(videoStateAtom);
+  const sceneImages = useAtomValue(sceneImagesAtom);
+
+  // Check if any scene images are currently generating
+  const isImagesGenerating = Object.values(sceneImages).some(
+    (img) => img.status === "generating" || img.status === "regenerating",
+  );
+  const isChatDisabled = isThinking || isImagesGenerating;
+
   const chatInputRef = useRef<ChatInputHandle>(null);
-  const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
+  const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(
+    null,
+  );
   const [showExistingScripts, setShowExistingScripts] = useState(false);
 
+  // Resizable split state (percentage for chat panel)
+  const [chatWidthPct, setChatWidthPct] = useState(40);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+
+  // Sync refs so useChatAgent can access character/teamId during script generation
   selectedCharacterRef.current = selectedCharacter;
   teamIdRef.current = teamId;
 
-  const setScriptId = useSetAtom(scriptIdAtom);
   const setScripts = useSetAtom(scriptsAtom);
   const setSelectedVariantIndex = useSetAtom(selectedVariantIndexAtom);
 
-  const isPanelMode = currentArtifact !== null;
+  const isPanelMode = step !== null;
 
   const allImageKeys = messages
     .filter((m) => m.role === "user" && m.attachments)
@@ -70,12 +85,13 @@ export function ChatInterface() {
     [messages, allImageKeys, acceptStructure],
   );
 
-  const handleDropFiles = useCallback(
-    (files: File[]) => {
-      chatInputRef.current?.addFiles(files);
-    },
-    [],
-  );
+  const handleCharacterConfirm = useCallback(() => {
+    confirmCharacter();
+  }, [confirmCharacter]);
+
+  const handleDropFiles = useCallback((files: File[]) => {
+    chatInputRef.current?.addFiles(files);
+  }, []);
 
   const handleSelectExistingScript = useCallback(
     async (existingScriptId: string) => {
@@ -84,7 +100,10 @@ export function ChatInterface() {
         if (response.success) {
           setScripts(response.scripts);
           setSelectedVariantIndex(response.selectedVariantIndex);
-          setScriptId(existingScriptId);
+          setVideoState((prev) => ({
+            ...prev,
+            scriptId: existingScriptId,
+          }));
           loadExistingScript({
             isSilent: response.isSilent,
             hasCharacter: response.hasCharacter,
@@ -96,44 +115,88 @@ export function ChatInterface() {
         console.error("Failed to load existing script:", err);
       }
     },
-    [setScripts, setSelectedVariantIndex, setScriptId, loadExistingScript],
+    [
+      setScripts,
+      setSelectedVariantIndex,
+      setVideoState,
+      loadExistingScript,
+    ],
   );
+
+  /* -- Drag-to-resize handlers ---------------------------------------- */
+  const handleDragStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDragging.current = true;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+
+    const onMove = (ev: MouseEvent) => {
+      if (!isDragging.current || !containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const pct = ((ev.clientX - rect.left) / rect.width) * 100;
+      setChatWidthPct(Math.min(MAX_CHAT_PCT, Math.max(MIN_CHAT_PCT, pct)));
+    };
+
+    const onUp = () => {
+      isDragging.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }, []);
 
   return (
     <div className="h-[calc(100vh-64px)] flex flex-col">
+      {/* Top bar */}
       <div className="flex items-center justify-between px-4 h-14 border-b border-border-base shrink-0">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => router.push("/dashboard/ugc-studio/ai-video-creator")}
+            onClick={() =>
+              router.push("/dashboard/ugc-studio/ai-video-creator")
+            }
             className="p-2 rounded-lg hover:bg-surface-elevated transition-colors"
           >
-            <Icon icon="solar:arrow-left-linear" className="text-text-secondary" width={20} />
+            <Icon
+              icon="solar:arrow-left-linear"
+              className="text-text-secondary"
+              width={20}
+            />
           </button>
-          <h1 className="text-lg font-semibold text-text-primary">Create Video</h1>
+          <h1 className="text-lg font-semibold text-text-primary">
+            Create Video
+          </h1>
         </div>
         <Button
           variant="bordered"
           size="sm"
           className="border-border-base text-text-secondary"
-          startContent={<Icon icon="solar:document-text-bold" width={16} />}
+          startContent={
+            <Icon icon="solar:document-text-bold" width={16} />
+          }
           onPress={() => setShowExistingScripts(true)}
         >
           Use Existing Script
         </Button>
       </div>
 
-      <div className="flex-1 flex min-h-0">
+      {/* Main content area */}
+      <div ref={containerRef} className="flex-1 flex min-h-0">
+        {/* Chat panel */}
         <motion.div
           layout
           className="flex flex-col min-h-0"
           animate={{ width: isPanelMode ? `${chatWidthPct}%` : "100%" }}
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
         >
-          <ImageDropZone onDrop={handleDropFiles} isDisabled={isThinking}>
+          <ImageDropZone onDrop={handleDropFiles} isDisabled={isChatDisabled}>
             <MessageList
               messages={messages}
               isThinking={isThinking}
-              acceptedResult={acceptedResult}
+              acceptedResult={videoState.structureBlueprint}
               onAccept={handleAccept}
               onRetry={retryStructure}
             />
@@ -141,11 +204,34 @@ export function ChatInterface() {
           <ChatInput
             ref={chatInputRef}
             onSend={sendMessage}
-            isDisabled={isThinking}
+            isDisabled={isChatDisabled}
+            placeholder={isImagesGenerating ? "Scene images are generating... editing is available once complete." : undefined}
           />
         </motion.div>
 
-        {isPanelMode && currentArtifact && (
+        {/* Resize handle */}
+        {isPanelMode && (
+          <div
+            onMouseDown={handleDragStart}
+            className="w-1 shrink-0 cursor-col-resize group relative z-10 flex items-center justify-center"
+          >
+            {/* Visible track */}
+            <div className="absolute inset-y-0 w-px bg-border-base group-hover:bg-accent-400/50 transition-colors" />
+            {/* Wider hit area */}
+            <div className="absolute inset-y-0 -left-1.5 -right-1.5" />
+            {/* Grab indicator */}
+            <div className="relative z-10 w-3 h-8 rounded-full bg-surface-elevated border border-border-base group-hover:border-accent-400/50 flex items-center justify-center transition-colors">
+              <Icon
+                icon="solar:menu-dots-bold"
+                width={8}
+                className="text-text-muted rotate-90"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Artifact panel */}
+        {isPanelMode && step && (
           <motion.div
             layout
             className="min-h-0 h-full overflow-hidden"
@@ -154,14 +240,10 @@ export function ChatInterface() {
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
           >
             <ArtifactPanel
-              currentArtifact={currentArtifact}
               selectedCharacter={selectedCharacter}
               onCharacterSelect={setSelectedCharacter}
-              onContinue={advanceArtifact}
+              onCharacterConfirm={handleCharacterConfirm}
               teamId={teamId ?? undefined}
-              generatedScript={generatedScript}
-              isGeneratingScript={isGeneratingScript}
-              isExistingScript={isExistingScript}
               onGenerateScript={generateScript}
               onSceneUpdate={updateScene}
             />
@@ -169,6 +251,7 @@ export function ChatInterface() {
         )}
       </div>
 
+      {/* Existing scripts drawer */}
       {teamId && (
         <ExistingScriptsDrawer
           isOpen={showExistingScripts}

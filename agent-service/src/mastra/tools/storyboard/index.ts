@@ -6,3 +6,4 @@ export { changeShotTypeTool } from "./change-shot-type.js";
 export { changeDialogueTool } from "./change-dialogue.js";
 export { changeSceneDirectionTool } from "./change-scene-direction.js";
 export { changeShotDirectionTool } from "./change-shot-direction.js";
+export { regenerateThumbnailTool } from "./regenerate-thumbnail.js";

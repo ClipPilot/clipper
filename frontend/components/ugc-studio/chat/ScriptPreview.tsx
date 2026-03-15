@@ -18,7 +18,6 @@ import {
 
 /* -- helpers -------------------------------------------------------- */
 
-const DURATION_OPTIONS = [3, 5, 7, 10] as const;
 
 const EMOTION_EMOJIS: Record<string, string> = {
   excited: "🤩", curious: "🤔", surprised: "😮", frustrated: "😤",
@@ -154,7 +153,7 @@ function SceneThumbnail({
           <img src={imageUrl} alt={`Scene ${scene.sceneNumber}`} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full bg-surface-elevated flex items-center justify-center">
-            {imageStatus === "generating" ? (
+            {imageStatus === "generating" || imageStatus === "regenerating" ? (
               <Spinner size="sm" color="primary" />
             ) : (
               <Icon
@@ -282,42 +281,23 @@ function SceneDetailPanel({
         </span>
       </div>
 
-      {/* Duration bar */}
+      {/* Shot type + duration info */}
       <div className="bg-surface-elevated rounded-lg p-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Icon
-              icon={isSilent ? "solar:camera-bold-duotone" : "solar:microphone-bold-duotone"}
-              width={16}
-              className="text-accent-400"
-            />
-            <span className="text-xs font-medium text-text-secondary">
-              {isSilent ? "Silent" : ""} {scene.shotType === "b-roll" ? "B-roll" : "A-roll"}
-            </span>
-            <span className="text-xs text-text-muted">{scene.estimatedDurationSeconds}s</span>
-          </div>
-
-          <div className="flex items-center gap-1">
-            {DURATION_OPTIONS.map((d) => (
-              <div
-                key={d}
-                className={`
-                  px-2 py-0.5 rounded text-[11px] font-medium transition-colors
-                  ${d === scene.estimatedDurationSeconds
-                    ? "bg-accent-400 text-white"
-                    : "bg-white/[0.05] text-text-muted"
-                  }
-                `}
-              >
-                {d}s
-              </div>
-            ))}
-            <Icon
-              icon={isSilent ? "solar:volume-cross-bold" : "solar:volume-loud-bold"}
-              width={14}
-              className="text-text-muted ml-1"
-            />
-          </div>
+        <div className="flex items-center gap-2">
+          <Icon
+            icon={isSilent ? "solar:camera-bold-duotone" : "solar:microphone-bold-duotone"}
+            width={16}
+            className="text-accent-400"
+          />
+          <span className="text-xs font-medium text-text-secondary">
+            {isSilent ? "Silent" : ""} {scene.shotType === "b-roll" ? "B-roll" : "A-roll"}
+          </span>
+          <span className="text-xs text-text-muted">{scene.estimatedDurationSeconds}s</span>
+          <Icon
+            icon={isSilent ? "solar:volume-cross-bold" : "solar:volume-loud-bold"}
+            width={14}
+            className="text-text-muted ml-auto"
+          />
         </div>
       </div>
 
@@ -375,7 +355,11 @@ function SceneDetailPanel({
               const shotImage =
                 imageState?.customBRollImages?.[idx] ||
                 imageState?.generatedImages?.find((img) => img.index === idx);
-              const shotGenerating = imageState?.status === "generating";
+              const isSceneGenerating = imageState?.status === "generating" || imageState?.status === "regenerating";
+              // Show spinner only for the specific shot being regenerated, or all shots if full scene regen
+              const shotGenerating = isSceneGenerating && (
+                imageState?.regeneratingShotIndex === undefined || imageState?.regeneratingShotIndex === idx
+              );
 
               return (
               <div
@@ -383,9 +367,16 @@ function SceneDetailPanel({
                 className="flex items-start gap-3 bg-surface-elevated rounded-lg p-3"
               >
                 {/* Shot thumbnail */}
-                <div className="w-14 h-14 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center shrink-0 overflow-hidden">
+                <div className="w-14 h-14 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center shrink-0 overflow-hidden relative">
                   {shotImage?.url ? (
-                    <img src={shotImage.url} alt={`Shot ${idx + 1}`} className="w-full h-full object-cover" />
+                    <>
+                      <img src={shotImage.url} alt={`Shot ${idx + 1}`} className="w-full h-full object-cover" />
+                      {shotGenerating && (
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                          <Spinner size="sm" color="primary" />
+                        </div>
+                      )}
+                    </>
                   ) : shotGenerating ? (
                     <Spinner size="sm" color="primary" />
                   ) : (
@@ -449,7 +440,7 @@ export function ScriptPreview({ script, onSceneUpdate }: ScriptPreviewProps) {
   ).length;
   const allComplete = completedCount === totalScenes;
   const anyGenerating = script.scenes.some(
-    (s) => sceneImages[s.id]?.status === "generating",
+    (s) => sceneImages[s.id]?.status === "generating" || sceneImages[s.id]?.status === "regenerating",
   );
 
   return (

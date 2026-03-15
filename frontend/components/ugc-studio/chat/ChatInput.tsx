@@ -18,6 +18,7 @@ import type { ChatAttachment } from "./types";
 interface ChatInputProps {
   onSend: (text: string, attachments: ChatAttachment[]) => void;
   isDisabled?: boolean;
+  placeholder?: string;
 }
 
 export interface ChatInputHandle {
@@ -25,7 +26,7 @@ export interface ChatInputHandle {
 }
 
 export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
-  function ChatInput({ onSend, isDisabled }, ref) {
+  function ChatInput({ onSend, isDisabled, placeholder: customPlaceholder }, ref) {
     const [text, setText] = useState("");
     const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
     const [isUploading, setIsUploading] = useState(false);
@@ -173,7 +174,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
                 value={text}
                 onValueChange={setText}
                 onKeyDown={handleKeyDown}
-                placeholder={hasAttachments ? "Describe what video to make with these images..." : "Describe the video you want to make..."}
+                placeholder={customPlaceholder || (hasAttachments ? "Describe what video to make with these images..." : "Describe the video you want to make...")}
                 minRows={1}
                 maxRows={4}
                 isDisabled={isDisabled}

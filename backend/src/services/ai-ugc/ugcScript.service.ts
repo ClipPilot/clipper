@@ -24,8 +24,8 @@ import {
   AutoStructureResponse,
 } from "../../types/ugcScript.types";
 import { db } from "../../db";
-import { characters, ugcScripts } from "@clipper/shared-db";
-import { eq } from "drizzle-orm";
+import { characters, ugcScripts, sceneImageGenerationJobs } from "@clipper/shared-db";
+import { eq, and, sql } from "drizzle-orm";
 import { openaiClient } from "../openai.service";
 import { s3Service } from "../s3.service";
 import { config } from "../../config/env";
@@ -381,6 +381,12 @@ Return a JSON object with a "descriptions" array of strings, one description per
     } catch {
       return imageUrls.map(() => "Product image");
     }
+  }
+
+  private extractEmotionFromDialogue(dialogue: string | undefined): string | null {
+    if (!dialogue) return null;
+    const match = dialogue.match(/\[([a-z]+)\]/i);
+    return match ? match[1].toLowerCase() : null;
   }
 
   private formatAppearanceConfig(config: any): string {
@@ -843,7 +849,46 @@ Keep it professional and suitable for AI video generation. Return ONLY the cinem
     const result = (await response.json()) as Record<string, unknown>;
     const agentResult = (result.object ?? result) as any;
 
-    const scriptsData = [agentResult];
+    // Normalize agent output to the backend UGCScript schema.
+    // The agent returns fields like: slug, storyBeat, duration, shots[], sceneType (a-roll/b-roll/visual)
+    // The backend expects:         id, sceneType (story beat), estimatedDurationSeconds, bRollShots[], shotType (a-roll/b-roll)
+    const normalizedScript = {
+      title: agentResult.title,
+      hook: agentResult.scenes?.[0]?.dialogue || "",
+      targetAudience: agentResult.targetAudience,
+      totalEstimatedDuration: agentResult.totalDuration,
+      scenes: (agentResult.scenes || []).map((scene: any) => ({
+        id: scene.id || scene.slug || `scene-${scene.sceneNumber}`,
+        sceneNumber: scene.sceneNumber,
+        // Agent's storyBeat → backend's sceneType (hook, problem, demo, etc.)
+        sceneType: scene.storyBeat || scene.sceneType || "demo",
+        action: scene.action,
+        dialogue: scene.dialogue || "",
+        emotion: this.extractEmotionFromDialogue(scene.dialogue) || "confident",
+        // Agent's duration → backend's estimatedDurationSeconds
+        estimatedDurationSeconds: scene.duration || scene.estimatedDurationSeconds || 5,
+        // Agent's sceneType (a-roll/b-roll/visual) → backend's shotType (a-roll/b-roll)
+        shotType: scene.sceneType === "a-roll" ? "a-roll" : "b-roll",
+        cameraAngle: scene.cameraAngle || "medium-shot",
+        cinematicPrompt: scene.cinematicPrompt || "",
+        ambientSound: scene.ambientSound || null,
+        // Agent's shots[] → backend's bRollShots[]
+        bRollShots: scene.shots && scene.shots.length > 0
+          ? scene.shots.map((shot: any) => ({
+              action: shot.action,
+              cinematicPrompt: shot.cinematicPrompt,
+              durationSeconds: shot.durationSeconds,
+              productImageNeeded: shot.productImageNeeded ?? false,
+              shotType: shot.shotType || "PRODUCT",
+            }))
+          : null,
+      })),
+      viralScore: 0,
+      viralReasoning: "",
+      productMentions: [],
+    };
+
+    const scriptsData = [normalizedScript];
     const insertValues: Record<string, unknown> = {
       team_id: teamId,
       product_image_keys: productImageKeys || [],
@@ -867,15 +912,27 @@ Keep it professional and suitable for AI video generation. Return ONLY the cinem
       `[UGC_SCRIPT] Agent script stored for team ${teamId}, scriptId: ${inserted.id}`,
     );
 
-    return { scriptId: inserted.id, script: agentResult };
+    return { scriptId: inserted.id, script: normalizedScript };
   }
 
   async storyboardChat(params: {
     scriptId: string;
     message: string;
     threadId?: string;
-  }): Promise<{ message: string; updatedScript: any }> {
-    const { scriptId, message, threadId } = params;
+    teamId?: number;
+    characterId?: number;
+  }): Promise<{
+    message: string;
+    updatedScript: any;
+    regeneratingJobs: Array<{
+      jobId: string;
+      sceneId: string;
+      sceneNumber: number;
+      status: string;
+      singleBRollShotIndex?: number;
+    }>;
+  }> {
+    const { scriptId, message, threadId, teamId, characterId } = params;
 
     // Load current script to inject as context
     const existing = await this.getFullScript(scriptId);
@@ -912,6 +969,8 @@ Keep it professional and suitable for AI video generation. Return ONLY the cinem
     const contextMessage = `=== CURRENT SCRIPT CONTEXT ===
 scriptId: ${scriptId}
 variantIndex: ${selectedVariantIndex}
+teamId: ${teamId || "unknown"}
+characterId: ${characterId || existing.characterId || "unknown"}
 Title: ${currentScript.title}
 Target Audience: ${currentScript.targetAudience}
 Total Duration: ${currentScript.totalEstimatedDuration}s
@@ -965,9 +1024,49 @@ ${message}`;
       ? updated.scripts[updated.selectedVariantIndex]
       : currentScript;
 
+    // Check for any image generation jobs queued during this agent call
+    // (created in the last 30 seconds for this script)
+    const recentJobs = await db
+      .select({
+        id: sceneImageGenerationJobs.id,
+        scene_id: sceneImageGenerationJobs.scene_id,
+        scene_number: sceneImageGenerationJobs.scene_number,
+        status: sceneImageGenerationJobs.status,
+        progress_message: sceneImageGenerationJobs.progress_message,
+      })
+      .from(sceneImageGenerationJobs)
+      .where(
+        and(
+          eq(sceneImageGenerationJobs.script_id, scriptId),
+          sql`${sceneImageGenerationJobs.created_at} > NOW() - INTERVAL '30 seconds'`,
+        ),
+      );
+
+    const regeneratingJobs = recentJobs.map((job) => {
+      // Parse shot index from progress message (e.g., "Regenerating shot 2. Poll for status.")
+      const shotMatch = job.progress_message?.match(/shot (\d+)/i);
+      const shotIndex = shotMatch ? parseInt(shotMatch[1], 10) - 1 : undefined;
+      return {
+        jobId: job.id,
+        sceneId: job.scene_id,
+        sceneNumber: job.scene_number,
+        status: job.status,
+        singleBRollShotIndex: shotIndex,
+      };
+    });
+
+    // Clean the agent message — remove job IDs and technical details
+    const cleanMessage = agentMessage
+      .replace(/\bjob\s*[Ii][Dd]:?\s*[a-f0-9-]{36}/g, "")
+      .replace(/\b[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\b/g, "")
+      .replace(/\(index \d+\)/g, "")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+
     return {
-      message: agentMessage,
+      message: cleanMessage,
       updatedScript,
+      regeneratingJobs,
     };
   }
 

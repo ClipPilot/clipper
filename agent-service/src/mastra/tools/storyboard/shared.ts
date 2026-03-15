@@ -3,7 +3,7 @@ import { Pool } from "pg";
 // Lazy-init DB connection for agent-service tools (raw pg, no Drizzle)
 let pool: Pool | null = null;
 
-function getPool(): Pool {
+export function getPool(): Pool {
   if (!pool) {
     const connectionString = process.env.DATABASE_URL;
     if (!connectionString) {
@@ -81,7 +81,40 @@ export async function loadScript(
     );
   }
 
-  return { script: allScripts[variantIndex], allScripts };
+  // Normalize scenes: agent format uses `shots` and `duration`,
+  // backend format uses `bRollShots` and `estimatedDurationSeconds`.
+  // Ensure we always work with backend format.
+  const script = allScripts[variantIndex];
+  if (script.scenes) {
+    for (const scene of script.scenes) {
+      const s = scene as any;
+      // Normalize shots[] → bRollShots[]
+      if (!s.bRollShots && s.shots && s.shots.length > 0) {
+        s.bRollShots = s.shots.map((shot: any) => ({
+          action: shot.action,
+          cinematicPrompt: shot.cinematicPrompt,
+          durationSeconds: shot.durationSeconds,
+          productImageNeeded: shot.productImageNeeded ?? false,
+          shotType: shot.shotType || "PRODUCT",
+        }));
+      }
+      // Normalize duration → estimatedDurationSeconds
+      if (!s.estimatedDurationSeconds && s.duration) {
+        s.estimatedDurationSeconds = s.duration;
+      }
+      // Normalize storyBeat → sceneType (if sceneType looks like a-roll/b-roll)
+      if (s.storyBeat && (s.sceneType === "a-roll" || s.sceneType === "b-roll" || s.sceneType === "visual")) {
+        s.shotType = s.sceneType === "a-roll" ? "a-roll" : "b-roll";
+        s.sceneType = s.storyBeat;
+      }
+      // Ensure id exists
+      if (!s.id && s.slug) {
+        s.id = s.slug;
+      }
+    }
+  }
+
+  return { script, allScripts };
 }
 
 export async function saveScript(

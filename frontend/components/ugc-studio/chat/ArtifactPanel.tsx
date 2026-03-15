@@ -9,44 +9,70 @@ import { ScriptPreview } from "./ScriptPreview";
 import { ExistingScriptPreview } from "./ExistingScriptPreview";
 import { ScriptLoadingState } from "./ScriptLoadingState";
 import { scriptsAtom, selectedVariantIndexAtom } from "@/store/ugc";
-import type { ArtifactType, ScriptAgentResult } from "./types";
+import { currentStepAtom, videoStateAtom } from "@/store/videoState";
+import type { UGCScene } from "@/components/ugc-studio/script/types";
 import type { Character } from "@/components/ugc-studio/actors/types";
 
 interface ArtifactPanelProps {
-  currentArtifact: ArtifactType;
   selectedCharacter: Character | null;
   onCharacterSelect: (character: Character | null) => void;
-  onContinue: () => void;
+  onCharacterConfirm: () => void;
   teamId?: number;
-  generatedScript: UGCScript | null;
-  isGeneratingScript: boolean;
-  isExistingScript?: boolean;
   onGenerateScript: () => void;
   onSceneUpdate: (sceneId: string, patch: Partial<UGCScene>) => void;
 }
 
 export function ArtifactPanel({
-  currentArtifact,
   selectedCharacter,
   onCharacterSelect,
-  onContinue,
+  onCharacterConfirm,
   teamId,
-  generatedScript,
-  isGeneratingScript,
-  isExistingScript,
   onGenerateScript,
   onSceneUpdate,
 }: ArtifactPanelProps) {
+  const step = useAtomValue(currentStepAtom);
+  const videoState = useAtomValue(videoStateAtom);
   const scripts = useAtomValue(scriptsAtom);
   const selectedVariantIndex = useAtomValue(selectedVariantIndexAtom);
 
+  // Derive states from VideoState
+  const isExistingScript = !!videoState.scriptId && !videoState.structureBlueprint && videoState.scenes.length === 0;
+  const hasGeneratedScript = videoState.scenes.length > 0;
+
+  // Auto-trigger script generation when we reach the script step
   useEffect(() => {
-    if (currentArtifact === "script" && !isExistingScript && !generatedScript && !isGeneratingScript) {
+    if (
+      step === "script" &&
+      !isExistingScript &&
+      !hasGeneratedScript &&
+      !videoState.isGeneratingScript &&
+      videoState.structureBlueprint
+    ) {
       onGenerateScript();
     }
-  }, [currentArtifact, isExistingScript, generatedScript, isGeneratingScript, onGenerateScript]);
+  }, [step, isExistingScript, hasGeneratedScript, videoState.isGeneratingScript, videoState.structureBlueprint, onGenerateScript]);
 
   const existingScript = scripts[selectedVariantIndex];
+
+  // Build a UGCScript from VideoState scenes for ScriptPreview
+  const generatedScript =
+    hasGeneratedScript
+      ? {
+          title: videoState.targetAudience
+            ? `Script for ${videoState.targetAudience}`
+            : "Generated Script",
+          hook: videoState.scenes[0]?.dialogue || "",
+          targetAudience: videoState.targetAudience,
+          totalEstimatedDuration: videoState.scenes.reduce(
+            (sum, s) => sum + s.estimatedDurationSeconds,
+            0,
+          ),
+          scenes: videoState.scenes,
+          viralScore: 0,
+          viralReasoning: "",
+          productMentions: [],
+        }
+      : null;
 
   return (
     <motion.div
@@ -56,7 +82,7 @@ export function ArtifactPanel({
       className="h-full flex flex-col border-l border-border-base bg-surface-dark overflow-hidden"
     >
       <AnimatePresence mode="wait">
-        {currentArtifact === "character" && (
+        {step === "character" && (
           <motion.div
             key="character"
             initial={{ opacity: 0, y: 20 }}
@@ -68,12 +94,12 @@ export function ArtifactPanel({
             <CharacterStep
               selectedCharacter={selectedCharacter}
               onCharacterSelect={onCharacterSelect}
-              onContinue={onContinue}
+              onContinue={onCharacterConfirm}
             />
           </motion.div>
         )}
 
-        {currentArtifact === "voice" && (
+        {step === "voice" && (
           <motion.div
             key="voice"
             initial={{ opacity: 0, y: 20 }}
@@ -82,11 +108,11 @@ export function ArtifactPanel({
             transition={{ duration: 0.2 }}
             className="flex-1 p-4 overflow-y-auto"
           >
-            <AudioStep onContinue={onContinue} teamId={teamId} />
+            <AudioStep teamId={teamId} />
           </motion.div>
         )}
 
-        {currentArtifact === "script" && (
+        {step === "script" && (
           <motion.div
             key="script"
             initial={{ opacity: 0, y: 20 }}
@@ -97,10 +123,13 @@ export function ArtifactPanel({
           >
             {isExistingScript && existingScript ? (
               <ExistingScriptPreview script={existingScript} />
-            ) : isGeneratingScript ? (
+            ) : videoState.isGeneratingScript ? (
               <ScriptLoadingState />
             ) : generatedScript ? (
-              <ScriptPreview script={generatedScript} onSceneUpdate={onSceneUpdate} />
+              <ScriptPreview
+                script={generatedScript}
+                onSceneUpdate={onSceneUpdate}
+              />
             ) : null}
           </motion.div>
         )}
