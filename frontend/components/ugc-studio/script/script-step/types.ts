@@ -1,7 +1,7 @@
 "use client";
 
 import type { Character } from "../../actors/types";
-import type { UGCScript, UGCScene, ProductImage, SceneType, ShotType, ScriptSummary } from "../types";
+import type { UGCScript, UGCScene, ProductImage, SceneType, ShotType } from "../types";
 
 export type ScriptPhase = "upload" | "generating" | "editing";
 
@@ -31,12 +31,4 @@ export interface ScriptFormState {
   selectedStructureId: string;
   customPattern: CustomPatternStep[];
   selectedActorImageIndex: number;
-}
-
-export interface ExistingScriptsState {
-  scripts: ScriptSummary[];
-  isLoading: boolean;
-  isLoadingScript: boolean;
-  hasMore: boolean;
-  isLoadingMore: boolean;
 }

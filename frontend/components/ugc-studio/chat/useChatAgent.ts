@@ -8,8 +8,7 @@ import {
   videoTypeAtom,
   hasCharacterAtom,
   customPatternAtom,
-  sceneImagesAtom,
-  type SceneImageState,
+  freshStartAtom,
 } from "@/store/ugc";
 import { selectedVoiceAtom } from "@/store/ugc";
 import { ugcScriptAPI } from "@/api/ugc";
@@ -35,67 +34,13 @@ const INITIAL_MESSAGE: ChatMessage = {
   timestamp: new Date(),
 };
 
-/**
- * Convert ScriptAgentResult (from script-agent) to UGCScript (DB/storyboard shape).
- * Field mapping:
- *   storyBeat → sceneType, sceneType → shotType, duration → estimatedDurationSeconds,
- *   shots → bRollShots, totalDuration → totalEstimatedDuration, slug → id
- */
-function mapScriptAgentResultToUGCScript(raw: ScriptAgentResult): UGCScript {
-  const scenes: UGCScene[] = raw.scenes.map((s) => ({
-    id: s.slug,
-    sceneNumber: s.sceneNumber,
-    sceneType: s.storyBeat as UGCScene["sceneType"],
-    action: s.action,
-    dialogue: s.dialogue || "",
-    emotion: (extractEmotion(s.dialogue) || "confident") as UGCScene["emotion"],
-    estimatedDurationSeconds: s.duration,
-    shotType: s.sceneType as UGCScene["shotType"],
-    cameraAngle: "medium-shot" as UGCScene["cameraAngle"],
-    ambientSound: s.ambientSound || undefined,
-    bRollShots:
-      s.shots && s.shots.length > 0
-        ? s.shots.map((shot) => ({
-            action: shot.action,
-            cinematicPrompt: shot.cinematicPrompt,
-            durationSeconds: shot.durationSeconds,
-            productImageNeeded: shot.productImageNeeded,
-            shotType: shot.shotType,
-          }))
-        : null,
-  }));
-
-  return {
-    title: raw.title,
-    hook: scenes[0]?.dialogue || "",
-    targetAudience: raw.targetAudience,
-    totalEstimatedDuration: raw.totalDuration,
-    scenes,
-    viralScore: 0,
-    viralReasoning: "",
-    productMentions: [],
-  };
-}
-
-/** Extract the first [emotion] tag from dialogue text */
-function extractEmotion(dialogue: string | undefined): string | null {
-  if (!dialogue) return null;
-  const match = dialogue.match(/\[([a-z]+)\]/i);
-  return match ? match[1].toLowerCase() : null;
-}
-
-/**
- * Serialize chat messages into the format the Mastra agent expects.
- * Includes assistant structured results as text so the agent can reference them.
- */
 function buildConversationHistory(
   messages: ChatMessage[],
 ): Array<{ role: "user" | "assistant"; content: string }> {
   return messages
-    .filter((m) => m.id !== "initial") // skip the greeting
+    .filter((m) => m.id !== "initial")
     .map((m) => {
       if (m.role === "assistant" && m.structureResult) {
-        // Serialize the structured result so the agent can see what it previously generated
         const structureSummary = m.structureResult.structure
           .map((s, i) => `  ${i + 1}. ${s.slug} (${s.sceneType}) — ${s.description}`)
           .join("\n");
@@ -108,6 +53,12 @@ function buildConversationHistory(
     });
 }
 
+export interface ExistingScriptMeta {
+  isSilent: boolean;
+  hasCharacter: boolean;
+  videoType: string;
+}
+
 export function useChatAgent() {
   const [messages, setMessages] = useState<ChatMessage[]>([INITIAL_MESSAGE]);
   const [isThinking, setIsThinking] = useState(false);
@@ -115,6 +66,8 @@ export function useChatAgent() {
   const [currentArtifact, setCurrentArtifact] = useState<ArtifactType | null>(null);
   const [generatedScript, setGeneratedScript] = useState<UGCScript | null>(null);
   const [isGeneratingScript, setIsGeneratingScript] = useState(false);
+  const [isExistingScript, setIsExistingScript] = useState(false);
+  const [existingScriptSilent, setExistingScriptSilent] = useState(false);
   const [scriptId, setScriptId] = useState<string | null>(null);
   const threadIdRef = useRef(`thread-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
 
@@ -123,10 +76,9 @@ export function useChatAgent() {
   const setVideoType = useSetAtom(videoTypeAtom);
   const setHasCharacter = useSetAtom(hasCharacterAtom);
   const setCustomPattern = useSetAtom(customPatternAtom);
-  const setSceneImages = useSetAtom(sceneImagesAtom);
+  const setFreshStart = useSetAtom(freshStartAtom);
   const selectedVoice = useAtomValue(selectedVoiceAtom);
 
-  // Store character/teamId refs for script generation
   const selectedCharacterRef = useRef<any>(null);
   const teamIdRef = useRef<number | null>(null);
 
@@ -267,32 +219,12 @@ export function useChatAgent() {
         timestamp: new Date(),
       };
 
-      // Capture current messages before adding the new one
       const currentMessages = [...messages, userMessage];
       setMessages(currentMessages);
       setIsThinking(true);
 
       try {
-        // If we have a scriptId and generatedScript, route to storyboard agent
-        if (scriptId && generatedScript) {
-          const result = await ugcScriptAPI.storyboardChat({
-            scriptId,
-            message: text,
-            threadId: threadIdRef.current,
-          });
-
-          setGeneratedScript(result.updatedScript);
-
-          const assistantMessage: ChatMessage = {
-            id: nextId(),
-            role: "assistant",
-            content: result.message,
-            timestamp: new Date(),
-          };
-          setMessages((prev) => [...prev, assistantMessage]);
-        } else {
-          // Pre-script phase: route to initStructure
-          const conversationHistory = buildConversationHistory(currentMessages);
+        const conversationHistory = buildConversationHistory(currentMessages);
 
           const result = await ugcScriptAPI.initStructure({
             message: text,
@@ -301,22 +233,22 @@ export function useChatAgent() {
             conversationHistory,
           });
 
-          const assistantMessage: ChatMessage = {
-            id: nextId(),
-            role: "assistant",
-            content: result.message,
-            structureResult:
-              result.responseType === "structure" && result.structure?.length
-                ? {
-                    videoType: result.videoType!,
-                    isSilent: result.isSilent!,
-                    character: result.character!,
-                    targetAudience: (result as any).targetAudience || "",
-                    structure: result.structure,
-                  }
-                : undefined,
-            timestamp: new Date(),
-          };
+        const assistantMessage: ChatMessage = {
+          id: nextId(),
+          role: "assistant",
+          content: result.message,
+          structureResult:
+            result.responseType === "structure" && result.structure?.length
+              ? {
+                  videoType: result.videoType!,
+                  isSilent: result.isSilent!,
+                  character: result.character!,
+                  targetAudience: (result as any).targetAudience || "",
+                  structure: result.structure,
+                }
+              : undefined,
+          timestamp: new Date(),
+        };
 
           setMessages((prev) => [...prev, assistantMessage]);
         }
@@ -348,7 +280,6 @@ export function useChatAgent() {
         .filter((m) => m.role === "user" && m.attachments)
         .flatMap((m) => m.attachments!.map((a) => a.key));
 
-      // Reconstruct the user's original direction from their first message
       const userDirection = messages.find((m) => m.role === "user")?.content || "";
 
       const result = await ugcScriptAPI.generateScriptAgent({
@@ -386,34 +317,49 @@ export function useChatAgent() {
     } finally {
       setIsGeneratingScript(false);
     }
-  }, [acceptedResult, messages, selectedVoice, triggerImageGeneration]);
+  }, [acceptedResult, messages, selectedVoice]);
+
+  const loadExistingScript = useCallback(
+    (meta: ExistingScriptMeta) => {
+      setIsExistingScript(true);
+      setFreshStart(true);
+      setExistingScriptSilent(meta.isSilent);
+
+      setIsSilent(meta.isSilent);
+      setVideoType(meta.videoType);
+      setHasCharacter(meta.hasCharacter);
+      setProductImageKeys([]);
+
+      if (meta.hasCharacter) {
+        setCurrentArtifact("character");
+      } else if (!meta.isSilent) {
+        setCurrentArtifact("voice");
+      } else {
+        setCurrentArtifact("script");
+      }
+    },
+    [setIsSilent, setVideoType, setHasCharacter, setProductImageKeys, setFreshStart],
+  );
 
   const acceptStructure = useCallback(
     (result: InitAgentResult, imageKeys: string[]) => {
-      // Map agent structure → customPattern format for downstream generateScript
       const customPattern = result.structure.map((scene) => ({
         type: scene.description,
         shot: scene.sceneType,
       }));
 
-      // Set all atoms so downstream steps (ScriptStep, AudioStep, etc.) have what they need
       setIsSilent(result.isSilent);
       setProductImageKeys(imageKeys);
       setVideoType(result.videoType);
       setHasCharacter(result.character);
       setCustomPattern(customPattern);
-
       setAcceptedResult(result);
 
-      // Determine first artifact step based on character/silent flags
       if (!result.character && result.isSilent) {
-        // No character + silent → skip both → straight to script
         setCurrentArtifact("script");
       } else if (!result.character) {
-        // No character + has voice → skip character → voice → script
         setCurrentArtifact("voice");
       } else {
-        // Has character → character → voice/script
         setCurrentArtifact("character");
       }
     },
@@ -423,12 +369,13 @@ export function useChatAgent() {
   const advanceArtifact = useCallback(() => {
     setCurrentArtifact((prev) => {
       if (prev === "character") {
-        return acceptedResult?.isSilent ? "script" : "voice";
+        const silent = acceptedResult?.isSilent ?? existingScriptSilent;
+        return silent ? "script" : "voice";
       }
       if (prev === "voice") return "script";
       return prev;
     });
-  }, [acceptedResult]);
+  }, [acceptedResult, existingScriptSilent]);
 
   const retryStructure = useCallback(() => {
     const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
@@ -472,13 +419,14 @@ export function useChatAgent() {
     currentArtifact,
     generatedScript,
     isGeneratingScript,
+    isExistingScript,
     scriptId,
     sendMessage,
     acceptStructure,
     advanceArtifact,
     retryStructure,
     generateScript,
-    updateScene,
+    loadExistingScript,
     selectedCharacterRef,
     teamIdRef,
   };

@@ -6,46 +6,6 @@ const router = Router();
 
 /**
  * @openapi
- * /ugc/generate-script:
- *   post:
- *     summary: Generate a UGC script
- *     tags:
- *       - UGC Script
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - teamId
- *               - productName
- *             properties:
- *               teamId:
- *                 type: number
- *               productName:
- *                 type: string
- *               productDescription:
- *                 type: string
- *               productImageKeys:
- *                 type: array
- *                 items:
- *                   type: string
- *     responses:
- *       200:
- *         description: Script generation started
- */
-router.post(
-  "/generate-script",
-  requireAuth,
-  ugcScriptController.generateScript.bind(ugcScriptController)
-);
-
-
-/**
- * @openapi
  * /ugc/regenerate-scene:
  *   post:
  *     summary: Regenerate a single scene in a script

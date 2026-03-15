@@ -399,38 +399,13 @@ Return a JSON object with a "descriptions" array of strings, one description per
       : "No specific appearance details";
   }
 
-  async storeFullScripts(
-    teamId: number,
-    characterId: number,
-    productImageKeys: string[],
-    productName: string | undefined,
-    scriptDirection: string | undefined,
-    scripts: UGCScript[]
-  ): Promise<string> {
-    const [inserted] = await db
-      .insert(ugcScripts)
-      .values({
-        team_id: teamId,
-        character_id: characterId,
-        product_image_keys: productImageKeys,
-        product_name: productName || null,
-        script_direction: scriptDirection || null,
-        scripts_data: scripts,
-        selected_variant_index: 0,
-        status: "completed",
-      })
-      .returning({ id: ugcScripts.id });
-
-    console.log(
-      `[UGC_SCRIPT] Stored scripts for team ${teamId}, scriptId: ${inserted.id}`
-    );
-    return inserted.id;
-  }
-
   async getFullScript(scriptId: string): Promise<{
     scripts: UGCScript[];
     selectedVariantIndex: number;
     characterId: number | null;
+    isSilent: boolean;
+    hasCharacter: boolean;
+    videoType: string;
   } | null> {
     const [script] = await db
       .select()
@@ -444,6 +419,9 @@ Return a JSON object with a "descriptions" array of strings, one description per
       scripts: script.scripts_data as UGCScript[],
       selectedVariantIndex: script.selected_variant_index || 0,
       characterId: script.character_id,
+      isSilent: script.is_silent,
+      hasCharacter: script.has_character,
+      videoType: script.video_type,
     };
   }
 
@@ -865,8 +843,7 @@ Keep it professional and suitable for AI video generation. Return ONLY the cinem
     const result = (await response.json()) as Record<string, unknown>;
     const agentResult = (result.object ?? result) as any;
 
-    // Persist to DB as a completed script
-    const scriptsData = [agentResult]; // Wrap single result in array for consistency with existing format
+    const scriptsData = [agentResult];
     const insertValues: Record<string, unknown> = {
       team_id: teamId,
       product_image_keys: productImageKeys || [],
@@ -874,8 +851,10 @@ Keep it professional and suitable for AI video generation. Return ONLY the cinem
       scripts_data: scriptsData,
       selected_variant_index: 0,
       status: "completed",
+      is_silent: isSilent,
+      has_character: !!characterId,
+      video_type: videoType || "ugc",
     };
-    // character_id is NOT NULL in schema — only include if we have one
     if (characterId) {
       insertValues.character_id = characterId;
     }

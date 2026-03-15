@@ -1,9 +1,6 @@
 import API_URL from "@/config/constants";
 import { apiFetch } from "@/lib/apiClient";
 import type {
-  GenerateScriptRequest,
-  GenerateScriptResponse,
-  ScriptStatusResponse,
   RegenerateSceneRequest,
   RegenerateSceneResponse,
   UploadUrlResponse,
@@ -14,38 +11,6 @@ import type {
 } from "@/components/ugc-studio/script/types";
 
 class UGCScriptAPI {
-  async generateScript(data: GenerateScriptRequest): Promise<GenerateScriptResponse> {
-    const response = await apiFetch(`${API_URL}/ugc/generate-script`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Failed to generate script");
-    }
-
-    return response.json();
-  }
-
-  async getScriptStatus(scriptId: string): Promise<ScriptStatusResponse> {
-    const response = await apiFetch(`${API_URL}/ugc/script/${scriptId}/status`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Failed to get script status");
-    }
-
-    return response.json();
-  }
-
-
   async regenerateScene(data: RegenerateSceneRequest): Promise<RegenerateSceneResponse> {
     const response = await apiFetch(`${API_URL}/ugc/regenerate-scene`, {
       method: "POST",
@@ -269,7 +234,15 @@ class UGCScriptAPI {
 
   async getFullScript(
     scriptId: string
-  ): Promise<{ success: boolean; scripts: UGCScript[]; selectedVariantIndex: number; characterId?: number }> {
+  ): Promise<{
+    success: boolean;
+    scripts: UGCScript[];
+    selectedVariantIndex: number;
+    characterId?: number;
+    isSilent: boolean;
+    hasCharacter: boolean;
+    videoType: string;
+  }> {
     const response = await apiFetch(`${API_URL}/ugc/script/${scriptId}/full`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
