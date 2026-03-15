@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { Image } from "@heroui/react";
 import NextImage from "next/image";
+import Markdown from "react-markdown";
 import type { ChatMessage } from "./types";
 import { StructurePreview } from "./StructurePreview";
 
@@ -64,7 +65,18 @@ export function MessageCard({ message, isAccepted, onAccept, onRetry }: MessageC
               : "bg-white/[0.03] text-text-primary/90 rounded-bl-sm border border-white/[0.06] backdrop-blur-sm"
           }`}
         >
-          {message.content}
+          <Markdown
+            components={{
+              p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
+              strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+              em: ({ children }) => <em>{children}</em>,
+              ul: ({ children }) => <ul className="list-disc pl-4 mb-1">{children}</ul>,
+              ol: ({ children }) => <ol className="list-decimal pl-4 mb-1">{children}</ol>,
+              li: ({ children }) => <li className="mb-0.5">{children}</li>,
+            }}
+          >
+            {message.content}
+          </Markdown>
         </div>
 
         {/* Structure result */}

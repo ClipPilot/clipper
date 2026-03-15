@@ -907,17 +907,26 @@ Keep it professional and suitable for AI video generation. Return ONLY the cinem
     const { scripts, selectedVariantIndex } = existing;
     const currentScript = scripts[selectedVariantIndex];
 
-    // Build condensed script summary for the agent
+    // Build detailed script summary for the agent (includes b-roll shot details)
     const sceneSummary = currentScript.scenes
       .map((s) => {
         const dialoguePreview = s.dialogue
-          ? ` — "${s.dialogue.slice(0, 60)}${s.dialogue.length > 60 ? "..." : ""}"`
+          ? `\n    Dialogue: "${s.dialogue.slice(0, 120)}${s.dialogue.length > 120 ? "..." : ""}"`
           : "";
-        const shotInfo =
-          s.shotType === "b-roll" && s.bRollShots?.length
-            ? ` [${s.bRollShots.length} shots]`
-            : "";
-        return `  ${s.sceneNumber}. ${s.sceneType} (${s.shotType})${shotInfo}${dialoguePreview}`;
+        const actionPreview = s.action
+          ? `\n    Action: ${s.action.slice(0, 120)}${s.action.length > 120 ? "..." : ""}`
+          : "";
+        let shotDetails = "";
+        if (s.bRollShots?.length) {
+          shotDetails = `\n    B-Roll Shots (${s.bRollShots.length}):` +
+            s.bRollShots
+              .map(
+                (shot, i) =>
+                  `\n      Shot ${i + 1}: ${shot.action.slice(0, 80)}${shot.action.length > 80 ? "..." : ""} (${shot.durationSeconds}s)`,
+              )
+              .join("");
+        }
+        return `  ${s.sceneNumber}. [id:${s.id}] ${s.sceneType} (${s.shotType}, ${s.estimatedDurationSeconds}s, emotion: ${s.emotion})${actionPreview}${dialoguePreview}${shotDetails}`;
       })
       .join("\n");
 

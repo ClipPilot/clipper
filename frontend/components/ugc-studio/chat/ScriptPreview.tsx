@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Button, Chip, Progress, Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
@@ -13,6 +13,7 @@ import {
   type Emotion,
   type UGCScript,
   type UGCScene,
+  type BRollShot,
 } from "@/components/ugc-studio/script/types";
 
 /* -- helpers -------------------------------------------------------- */
@@ -32,6 +33,87 @@ const SHOT_TYPE_ICONS: Record<string, string> = {
   PRODUCT: "solar:box-minimalistic-bold-duotone",
   CHARACTER_AND_PRODUCT: "solar:hand-stars-bold-duotone",
 };
+
+/* -- EditableText --------------------------------------------------- */
+
+function EditableText({
+  value,
+  onChange,
+  className,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  className?: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Sync draft when value changes externally (e.g. storyboard agent update)
+  useEffect(() => {
+    if (!editing) setDraft(value);
+  }, [value, editing]);
+
+  // Auto-resize + focus on edit start
+  useEffect(() => {
+    if (editing && textareaRef.current) {
+      const ta = textareaRef.current;
+      ta.focus();
+      ta.selectionStart = ta.selectionEnd = ta.value.length;
+      ta.style.height = "auto";
+      ta.style.height = `${ta.scrollHeight}px`;
+    }
+  }, [editing]);
+
+  const commit = useCallback(() => {
+    setEditing(false);
+    const trimmed = draft.trim();
+    if (trimmed && trimmed !== value) {
+      onChange(trimmed);
+    } else {
+      setDraft(value);
+    }
+  }, [draft, value, onChange]);
+
+  if (!editing) {
+    return (
+      <div
+        className="group/edit flex items-start gap-2 cursor-pointer"
+        onClick={() => setEditing(true)}
+      >
+        <p className={`flex-1 ${className ?? ""}`}>{value}</p>
+        <button className="text-text-muted opacity-0 group-hover/edit:opacity-100 hover:text-text-secondary shrink-0 transition-opacity">
+          <Icon icon="solar:pen-bold" width={14} />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <textarea
+      ref={textareaRef}
+      value={draft}
+      onChange={(e) => {
+        setDraft(e.target.value);
+        e.target.style.height = "auto";
+        e.target.style.height = `${e.target.scrollHeight}px`;
+      }}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          commit();
+        }
+        if (e.key === "Escape") {
+          setDraft(value);
+          setEditing(false);
+        }
+      }}
+      className={`w-full bg-white/[0.04] border border-accent-400/40 rounded-lg px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-accent-400 ${className ?? ""}`}
+      rows={1}
+    />
+  );
+}
 
 /* -- sub-components ------------------------------------------------- */
 
@@ -129,9 +211,11 @@ function SceneThumbnail({
 function SceneDetailPanel({
   scene,
   imageState,
+  onSceneUpdate,
 }: {
   scene: UGCScene;
   imageState?: SceneImageState;
+  onSceneUpdate: (sceneId: string, patch: Partial<UGCScene>) => void;
 }) {
   const config = SCENE_TYPE_CONFIG[scene.sceneType as SceneType];
   const emotion = scene.emotion;
@@ -139,6 +223,17 @@ function SceneDetailPanel({
   const emotionEmoji = EMOTION_EMOJIS[emotion];
   const hasShots = scene.bRollShots && scene.bRollShots.length > 0;
   const isSilent = !scene.dialogue;
+
+  const handleBRollShotActionChange = useCallback(
+    (shotIdx: number, newAction: string) => {
+      if (!scene.bRollShots) return;
+      const updatedShots: BRollShot[] = scene.bRollShots.map((s, i) =>
+        i === shotIdx ? { ...s, action: newAction } : s,
+      );
+      onSceneUpdate(scene.id, { bRollShots: updatedShots });
+    },
+    [scene.id, scene.bRollShots, onSceneUpdate],
+  );
 
   return (
     <motion.div
@@ -226,13 +321,14 @@ function SceneDetailPanel({
         </div>
       </div>
 
-      {/* Action / direction text */}
+      {/* Action / direction text (editable) */}
       <div className="flex items-start gap-2">
         <Icon icon="solar:pen-new-square-bold-duotone" width={14} className="text-text-muted mt-0.5 shrink-0" />
-        <p className="text-xs text-text-secondary leading-relaxed flex-1">{scene.action}</p>
-        <button className="text-text-muted hover:text-text-secondary shrink-0">
-          <Icon icon="solar:pen-bold" width={14} />
-        </button>
+        <EditableText
+          value={scene.action}
+          onChange={(v) => onSceneUpdate(scene.id, { action: v })}
+          className="text-xs text-text-secondary leading-relaxed"
+        />
       </div>
 
       {/* Emotion badge */}
@@ -247,14 +343,18 @@ function SceneDetailPanel({
         </div>
       )}
 
-      {/* Dialogue (for a-roll with voice) */}
+      {/* Dialogue (editable) */}
       {scene.dialogue && !isSilent && (
         <div className="bg-white/[0.02] rounded-lg p-3 border border-white/[0.04]">
           <div className="flex items-center gap-1.5 mb-2">
             <Icon icon="solar:chat-round-bold-duotone" width={12} className="text-text-muted" />
             <span className="text-[10px] text-text-muted uppercase tracking-wider font-medium">Dialogue</span>
           </div>
-          <p className="text-xs text-text-secondary leading-relaxed">{scene.dialogue}</p>
+          <EditableText
+            value={scene.dialogue}
+            onChange={(v) => onSceneUpdate(scene.id, { dialogue: v })}
+            className="text-xs text-text-secondary leading-relaxed"
+          />
         </div>
       )}
 
@@ -268,7 +368,6 @@ function SceneDetailPanel({
                 B-Roll Shots ({scene.bRollShots!.length})
               </span>
             </div>
-            <span className="text-[11px] text-text-muted">Click to select</span>
           </div>
 
           <div className="space-y-2">
@@ -298,7 +397,7 @@ function SceneDetailPanel({
                   )}
                 </div>
 
-                {/* Shot details */}
+                {/* Shot details (action is editable) */}
                 <div className="flex-1 min-w-0 space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold text-text-primary">
@@ -308,15 +407,12 @@ function SceneDetailPanel({
                       {shot.durationSeconds}s
                     </span>
                   </div>
-                  <p className="text-[11px] text-text-secondary leading-relaxed">
-                    {shot.action}
-                  </p>
+                  <EditableText
+                    value={shot.action}
+                    onChange={(v) => handleBRollShotActionChange(idx, v)}
+                    className="text-[11px] text-text-secondary leading-relaxed"
+                  />
                 </div>
-
-                {/* Edit icon */}
-                <button className="text-text-muted hover:text-text-secondary shrink-0 mt-1">
-                  <Icon icon="solar:pen-bold" width={13} />
-                </button>
               </div>
               );
             })}
@@ -339,9 +435,10 @@ function SceneDetailPanel({
 
 interface ScriptPreviewProps {
   script: UGCScript;
+  onSceneUpdate: (sceneId: string, patch: Partial<UGCScene>) => void;
 }
 
-export function ScriptPreview({ script }: ScriptPreviewProps) {
+export function ScriptPreview({ script, onSceneUpdate }: ScriptPreviewProps) {
   const [selectedSceneIndex, setSelectedSceneIndex] = useState(0);
   const selectedScene = script.scenes[selectedSceneIndex];
   const totalScenes = script.scenes.length;
@@ -440,6 +537,7 @@ export function ScriptPreview({ script }: ScriptPreviewProps) {
         <SceneDetailPanel
           scene={selectedScene}
           imageState={sceneImages[selectedScene.id]}
+          onSceneUpdate={onSceneUpdate}
         />
       )}
     </motion.div>
