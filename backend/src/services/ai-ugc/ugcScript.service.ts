@@ -891,6 +891,98 @@ Keep it professional and suitable for AI video generation. Return ONLY the cinem
     return { scriptId: inserted.id, script: agentResult };
   }
 
+  async storyboardChat(params: {
+    scriptId: string;
+    message: string;
+    threadId?: string;
+  }): Promise<{ message: string; updatedScript: any }> {
+    const { scriptId, message, threadId } = params;
+
+    // Load current script to inject as context
+    const existing = await this.getFullScript(scriptId);
+    if (!existing) {
+      throw new Error("Script not found");
+    }
+
+    const { scripts, selectedVariantIndex } = existing;
+    const currentScript = scripts[selectedVariantIndex];
+
+    // Build condensed script summary for the agent
+    const sceneSummary = currentScript.scenes
+      .map((s) => {
+        const dialoguePreview = s.dialogue
+          ? ` — "${s.dialogue.slice(0, 60)}${s.dialogue.length > 60 ? "..." : ""}"`
+          : "";
+        const shotInfo =
+          s.shotType === "b-roll" && s.bRollShots?.length
+            ? ` [${s.bRollShots.length} shots]`
+            : "";
+        return `  ${s.sceneNumber}. ${s.sceneType} (${s.shotType})${shotInfo}${dialoguePreview}`;
+      })
+      .join("\n");
+
+    const contextMessage = `=== CURRENT SCRIPT CONTEXT ===
+scriptId: ${scriptId}
+variantIndex: ${selectedVariantIndex}
+Title: ${currentScript.title}
+Target Audience: ${currentScript.targetAudience}
+Total Duration: ${currentScript.totalEstimatedDuration}s
+Scenes (${currentScript.scenes.length}):
+${sceneSummary}
+
+=== USER REQUEST ===
+${message}`;
+
+    const messages = [{ role: "user", content: contextMessage }];
+
+    const agentServiceUrl = config.agentService.url;
+    const requestBody: Record<string, unknown> = { messages };
+
+    // Use a storyboard-scoped thread ID to avoid collision with init-agent threads.
+    // Prefix the provided threadId (or scriptId) so Mastra creates a separate thread.
+    const storyboardThreadId = threadId
+      ? `storyboard-${threadId}`
+      : `storyboard-${scriptId}`;
+    requestBody.memory = {
+      thread: storyboardThreadId,
+      resource: "storyboard-chat",
+    };
+
+    const response = await fetch(
+      `${agentServiceUrl}/api/agents/storyboard-agent/generate`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      },
+    );
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error("[UGC_SCRIPT] Storyboard agent error:", errorBody);
+      throw new Error("Failed to process storyboard edit");
+    }
+
+    const result = (await response.json()) as Record<string, unknown>;
+    const agentMessage =
+      typeof result.text === "string"
+        ? result.text
+        : typeof result.message === "string"
+          ? result.message
+          : "Changes applied.";
+
+    // Re-read script from DB (tools already saved mutations)
+    const updated = await this.getFullScript(scriptId);
+    const updatedScript = updated
+      ? updated.scripts[updated.selectedVariantIndex]
+      : currentScript;
+
+    return {
+      message: agentMessage,
+      updatedScript,
+    };
+  }
+
   stripCinematicPrompts(script: UGCScript): ClientUGCScript {
     return {
       ...script,

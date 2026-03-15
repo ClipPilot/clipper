@@ -17,6 +17,10 @@ import { ArtifactPanel } from "./ArtifactPanel";
 import { ExistingScriptsDrawer } from "./ExistingScriptsDrawer";
 import type { Character } from "@/components/ugc-studio/actors/types";
 
+/** Minimum width percentage for each panel */
+const MIN_CHAT_PCT = 25;
+const MAX_CHAT_PCT = 75;
+
 export function ChatInterface() {
   const router = useRouter();
   const { selectedTeam } = useTeams();
@@ -34,6 +38,7 @@ export function ChatInterface() {
     advanceArtifact,
     retryStructure,
     generateScript,
+    updateScene,
     selectedCharacterRef,
     teamIdRef,
   } = useChatAgent();
@@ -41,6 +46,11 @@ export function ChatInterface() {
   const chatInputRef = useRef<ChatInputHandle>(null);
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
   const [showExistingScripts, setShowExistingScripts] = useState(false);
+
+  // Resizable split state (percentage for chat panel)
+  const [chatWidthPct, setChatWidthPct] = useState(40);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
 
   // Sync refs so useChatAgent can access character/teamId during script generation
   selectedCharacterRef.current = selectedCharacter;
@@ -92,6 +102,32 @@ export function ChatInterface() {
     [setScripts, setSelectedVariantIndex, setScriptId, router],
   );
 
+  /* ── Drag-to-resize handlers ────────────────────────────── */
+  const handleDragStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDragging.current = true;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+
+    const onMove = (ev: MouseEvent) => {
+      if (!isDragging.current || !containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const pct = ((ev.clientX - rect.left) / rect.width) * 100;
+      setChatWidthPct(Math.min(MAX_CHAT_PCT, Math.max(MIN_CHAT_PCT, pct)));
+    };
+
+    const onUp = () => {
+      isDragging.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }, []);
+
   return (
     <div className="h-[calc(100vh-64px)] flex flex-col">
       {/* Top bar */}
@@ -117,12 +153,12 @@ export function ChatInterface() {
       </div>
 
       {/* Main content area */}
-      <div className="flex-1 flex min-h-0">
+      <div ref={containerRef} className="flex-1 flex min-h-0">
         {/* Chat panel */}
         <motion.div
           layout
           className="flex flex-col min-h-0"
-          animate={{ width: isPanelMode ? "40%" : "100%" }}
+          animate={{ width: isPanelMode ? `${chatWidthPct}%` : "100%" }}
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
         >
           <ImageDropZone onDrop={handleDropFiles} isDisabled={isThinking}>
@@ -141,13 +177,30 @@ export function ChatInterface() {
           />
         </motion.div>
 
+        {/* Resize handle */}
+        {isPanelMode && (
+          <div
+            onMouseDown={handleDragStart}
+            className="w-1 shrink-0 cursor-col-resize group relative z-10 flex items-center justify-center"
+          >
+            {/* Visible track */}
+            <div className="absolute inset-y-0 w-px bg-border-base group-hover:bg-accent-400/50 transition-colors" />
+            {/* Wider hit area */}
+            <div className="absolute inset-y-0 -left-1.5 -right-1.5" />
+            {/* Grab indicator */}
+            <div className="relative z-10 w-3 h-8 rounded-full bg-surface-elevated border border-border-base group-hover:border-accent-400/50 flex items-center justify-center transition-colors">
+              <Icon icon="solar:menu-dots-bold" width={8} className="text-text-muted rotate-90" />
+            </div>
+          </div>
+        )}
+
         {/* Artifact panel */}
         {isPanelMode && currentArtifact && (
           <motion.div
             layout
-            className="min-h-0"
+            className="min-h-0 h-full overflow-hidden"
             initial={{ width: 0 }}
-            animate={{ width: "60%" }}
+            animate={{ width: `${100 - chatWidthPct}%` }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
           >
             <ArtifactPanel
@@ -159,6 +212,7 @@ export function ChatInterface() {
               generatedScript={generatedScript}
               isGeneratingScript={isGeneratingScript}
               onGenerateScript={generateScript}
+              onSceneUpdate={updateScene}
             />
           </motion.div>
         )}

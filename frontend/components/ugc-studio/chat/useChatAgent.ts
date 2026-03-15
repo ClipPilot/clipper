@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import {
   isSilentAtom,
@@ -8,9 +8,13 @@ import {
   videoTypeAtom,
   hasCharacterAtom,
   customPatternAtom,
+  sceneImagesAtom,
+  type SceneImageState,
 } from "@/store/ugc";
 import { selectedVoiceAtom } from "@/store/ugc";
 import { ugcScriptAPI } from "@/api/ugc";
+import { sceneBuilderAPI } from "@/api/sceneBuilder";
+import type { UGCScript, UGCScene } from "@/components/ugc-studio/script/types";
 import type {
   ChatMessage,
   ChatAttachment,
@@ -30,6 +34,55 @@ const INITIAL_MESSAGE: ChatMessage = {
   content: "Hey! Describe the video you'd like to create and drop in any product images. I'll design the perfect structure for it.",
   timestamp: new Date(),
 };
+
+/**
+ * Convert ScriptAgentResult (from script-agent) to UGCScript (DB/storyboard shape).
+ * Field mapping:
+ *   storyBeat → sceneType, sceneType → shotType, duration → estimatedDurationSeconds,
+ *   shots → bRollShots, totalDuration → totalEstimatedDuration, slug → id
+ */
+function mapScriptAgentResultToUGCScript(raw: ScriptAgentResult): UGCScript {
+  const scenes: UGCScene[] = raw.scenes.map((s) => ({
+    id: s.slug,
+    sceneNumber: s.sceneNumber,
+    sceneType: s.storyBeat as UGCScene["sceneType"],
+    action: s.action,
+    dialogue: s.dialogue || "",
+    emotion: (extractEmotion(s.dialogue) || "confident") as UGCScene["emotion"],
+    estimatedDurationSeconds: s.duration,
+    shotType: s.sceneType as UGCScene["shotType"],
+    cameraAngle: "medium-shot" as UGCScene["cameraAngle"],
+    ambientSound: s.ambientSound || undefined,
+    bRollShots:
+      s.shots && s.shots.length > 0
+        ? s.shots.map((shot) => ({
+            action: shot.action,
+            cinematicPrompt: shot.cinematicPrompt,
+            durationSeconds: shot.durationSeconds,
+            productImageNeeded: shot.productImageNeeded,
+            shotType: shot.shotType,
+          }))
+        : null,
+  }));
+
+  return {
+    title: raw.title,
+    hook: scenes[0]?.dialogue || "",
+    targetAudience: raw.targetAudience,
+    totalEstimatedDuration: raw.totalDuration,
+    scenes,
+    viralScore: 0,
+    viralReasoning: "",
+    productMentions: [],
+  };
+}
+
+/** Extract the first [emotion] tag from dialogue text */
+function extractEmotion(dialogue: string | undefined): string | null {
+  if (!dialogue) return null;
+  const match = dialogue.match(/\[([a-z]+)\]/i);
+  return match ? match[1].toLowerCase() : null;
+}
 
 /**
  * Serialize chat messages into the format the Mastra agent expects.
@@ -60,7 +113,7 @@ export function useChatAgent() {
   const [isThinking, setIsThinking] = useState(false);
   const [acceptedResult, setAcceptedResult] = useState<InitAgentResult | null>(null);
   const [currentArtifact, setCurrentArtifact] = useState<ArtifactType | null>(null);
-  const [generatedScript, setGeneratedScript] = useState<ScriptAgentResult | null>(null);
+  const [generatedScript, setGeneratedScript] = useState<UGCScript | null>(null);
   const [isGeneratingScript, setIsGeneratingScript] = useState(false);
   const [scriptId, setScriptId] = useState<string | null>(null);
   const threadIdRef = useRef(`thread-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
@@ -70,11 +123,139 @@ export function useChatAgent() {
   const setVideoType = useSetAtom(videoTypeAtom);
   const setHasCharacter = useSetAtom(hasCharacterAtom);
   const setCustomPattern = useSetAtom(customPatternAtom);
+  const setSceneImages = useSetAtom(sceneImagesAtom);
   const selectedVoice = useAtomValue(selectedVoiceAtom);
 
   // Store character/teamId refs for script generation
   const selectedCharacterRef = useRef<any>(null);
   const teamIdRef = useRef<number | null>(null);
+
+  // Track active polling intervals for cleanup
+  const pollingIntervalsRef = useRef<ReturnType<typeof setInterval>[]>([]);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      pollingIntervalsRef.current.forEach(clearInterval);
+    };
+  }, []);
+
+  /**
+   * Trigger image generation for all scenes and poll for completion.
+   */
+  const triggerImageGeneration = useCallback(
+    async (script: UGCScript, generatedScriptId: string) => {
+      const teamId = teamIdRef.current;
+      const characterId = selectedCharacterRef.current?.id;
+      if (!teamId || !characterId) return;
+
+      // Build scenes payload
+      const scenesPayload = script.scenes.map((scene) => ({
+        sceneId: scene.id,
+        sceneNumber: scene.sceneNumber,
+        sceneType: scene.sceneType,
+        dialogue: scene.dialogue,
+        action: scene.action,
+        emotion: scene.emotion,
+        shotType: scene.shotType,
+        cameraAngle: scene.cameraAngle,
+        bRollShots: scene.bRollShots,
+      }));
+
+      // Set all scenes to "generating" state
+      const initialImageState: Record<string, SceneImageState> = {};
+      for (const scene of script.scenes) {
+        initialImageState[scene.id] = { status: "generating" };
+      }
+      setSceneImages(initialImageState);
+
+      try {
+        const result = await sceneBuilderAPI.generateAllSceneImages({
+          teamId,
+          scriptId: generatedScriptId,
+          characterId,
+          scenes: scenesPayload,
+        });
+
+        if (!result.success || !result.jobIds?.length) return;
+
+        // Map jobIds to scene IDs (they come back in the same order as scenes)
+        const jobScenePairs: Array<{ jobId: string; sceneId: string }> = [];
+        result.jobIds.forEach((jobId, idx) => {
+          if (scenesPayload[idx]) {
+            jobScenePairs.push({ jobId, sceneId: scenesPayload[idx].sceneId });
+          }
+        });
+
+        // Update state with job IDs
+        setSceneImages((prev) => {
+          const next = { ...prev };
+          for (const { jobId, sceneId } of jobScenePairs) {
+            next[sceneId] = { ...next[sceneId], status: "generating", jobId };
+          }
+          return next;
+        });
+
+        // Poll each job
+        const completedJobs = new Set<string>();
+        const interval = setInterval(async () => {
+          for (const { jobId, sceneId } of jobScenePairs) {
+            if (completedJobs.has(jobId)) continue;
+
+            try {
+              const status = await sceneBuilderAPI.getGenerationStatus(jobId);
+
+              if (status.status === "completed" && status.images?.length) {
+                completedJobs.add(jobId);
+                const firstImage = status.images[0];
+                setSceneImages((prev) => ({
+                  ...prev,
+                  [sceneId]: {
+                    ...prev[sceneId],
+                    status: "completed",
+                    jobId,
+                    generatedImages: status.images,
+                    imageKey: firstImage.key,
+                    imageUrl: firstImage.url,
+                  },
+                }));
+
+                // Auto-select the first image
+                sceneBuilderAPI.selectSceneImage({
+                  scriptId: generatedScriptId,
+                  sceneId,
+                  sceneNumber: status.sceneNumber,
+                  imageKey: firstImage.key,
+                  generationJobId: jobId,
+                }).catch(() => {});
+              } else if (status.status === "failed") {
+                completedJobs.add(jobId);
+                setSceneImages((prev) => ({
+                  ...prev,
+                  [sceneId]: {
+                    ...prev[sceneId],
+                    status: "failed",
+                    jobId,
+                  },
+                }));
+              }
+            } catch {
+              // Ignore individual poll errors
+            }
+          }
+
+          if (completedJobs.size >= jobScenePairs.length) {
+            clearInterval(interval);
+          }
+        }, 2000);
+
+        pollingIntervalsRef.current.push(interval);
+      } catch (error) {
+        console.error("[useChatAgent] Image generation failed:", error);
+      }
+    },
+    [setSceneImages],
+  );
 
   const sendMessage = useCallback(
     async (text: string, attachments: ChatAttachment[] = []) => {
@@ -92,35 +273,53 @@ export function useChatAgent() {
       setIsThinking(true);
 
       try {
-        // Build conversation history from all previous messages
-        const conversationHistory = buildConversationHistory(currentMessages);
+        // If we have a scriptId and generatedScript, route to storyboard agent
+        if (scriptId && generatedScript) {
+          const result = await ugcScriptAPI.storyboardChat({
+            scriptId,
+            message: text,
+            threadId: threadIdRef.current,
+          });
 
-        const result = await ugcScriptAPI.initStructure({
-          message: text,
-          productImageKeys: attachments.map((a) => a.key).filter(Boolean),
-          threadId: threadIdRef.current,
-          conversationHistory,
-        });
+          setGeneratedScript(result.updatedScript);
 
-        const assistantMessage: ChatMessage = {
-          id: nextId(),
-          role: "assistant",
-          content: result.message,
-          // Only attach structure if the agent generated one (non-empty)
-          structureResult:
-            result.responseType === "structure" && result.structure?.length
-              ? {
-                  videoType: result.videoType!,
-                  isSilent: result.isSilent!,
-                  character: result.character!,
-                  targetAudience: (result as any).targetAudience || "",
-                  structure: result.structure,
-                }
-              : undefined,
-          timestamp: new Date(),
-        };
+          const assistantMessage: ChatMessage = {
+            id: nextId(),
+            role: "assistant",
+            content: result.message,
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, assistantMessage]);
+        } else {
+          // Pre-script phase: route to initStructure
+          const conversationHistory = buildConversationHistory(currentMessages);
 
-        setMessages((prev) => [...prev, assistantMessage]);
+          const result = await ugcScriptAPI.initStructure({
+            message: text,
+            productImageKeys: attachments.map((a) => a.key).filter(Boolean),
+            threadId: threadIdRef.current,
+            conversationHistory,
+          });
+
+          const assistantMessage: ChatMessage = {
+            id: nextId(),
+            role: "assistant",
+            content: result.message,
+            structureResult:
+              result.responseType === "structure" && result.structure?.length
+                ? {
+                    videoType: result.videoType!,
+                    isSilent: result.isSilent!,
+                    character: result.character!,
+                    targetAudience: (result as any).targetAudience || "",
+                    structure: result.structure,
+                  }
+                : undefined,
+            timestamp: new Date(),
+          };
+
+          setMessages((prev) => [...prev, assistantMessage]);
+        }
       } catch (error) {
         const errorMessage: ChatMessage = {
           id: nextId(),
@@ -136,7 +335,7 @@ export function useChatAgent() {
         setIsThinking(false);
       }
     },
-    [messages],
+    [messages, scriptId, generatedScript],
   );
 
   const generateScript = useCallback(async () => {
@@ -174,15 +373,20 @@ export function useChatAgent() {
         videoType: acceptedResult.videoType,
       });
 
-      setGeneratedScript(result.script);
+      // Normalize to UGCScript format
+      const ugcScript = mapScriptAgentResultToUGCScript(result.script);
+      setGeneratedScript(ugcScript);
       setScriptId(result.scriptId);
+
+      // Auto-trigger image generation in background
+      triggerImageGeneration(ugcScript, result.scriptId);
     } catch (error) {
       console.error("[useChatAgent] Script generation failed:", error);
       setGeneratedScript(null);
     } finally {
       setIsGeneratingScript(false);
     }
-  }, [acceptedResult, messages, selectedVoice]);
+  }, [acceptedResult, messages, selectedVoice, triggerImageGeneration]);
 
   const acceptStructure = useCallback(
     (result: InitAgentResult, imageKeys: string[]) => {
@@ -233,6 +437,34 @@ export function useChatAgent() {
     }
   }, [messages, sendMessage]);
 
+  // Debounce ref for backend save
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const updateScene = useCallback(
+    (sceneId: string, patch: Partial<UGCScene>) => {
+      setGeneratedScript((prev) => {
+        if (!prev) return prev;
+        const updatedScenes = prev.scenes.map((s) =>
+          s.id === sceneId ? { ...s, ...patch } : s,
+        );
+        const next = { ...prev, scenes: updatedScenes };
+
+        // Debounce backend save (500ms)
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        if (scriptId) {
+          saveTimerRef.current = setTimeout(() => {
+            ugcScriptAPI.updateScript(scriptId, { scenes: updatedScenes }).catch((err) => {
+              console.error("[useChatAgent] Failed to save scene edit:", err);
+            });
+          }, 500);
+        }
+
+        return next;
+      });
+    },
+    [scriptId],
+  );
+
   return {
     messages,
     isThinking,
@@ -246,6 +478,7 @@ export function useChatAgent() {
     advanceArtifact,
     retryStructure,
     generateScript,
+    updateScene,
     selectedCharacterRef,
     teamIdRef,
   };

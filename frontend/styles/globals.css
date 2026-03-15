@@ -250,7 +250,41 @@ body {
   border-left-color: var(--border-base) !important;
 }
 
-/* Scrollbar styling */
+/* ── Global themed scrollbars ─────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-base);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-base) transparent;
+}
+
+/* Hide scrollbar utility */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Scrollbar styling (timeline editor override) */
 .timeline-editor ::-webkit-scrollbar {
   width: 8px;
   height: 8px;

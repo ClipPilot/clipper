@@ -513,6 +513,36 @@ export class UGCScriptController {
       });
     }
   }
+  async storyboardChat(req: AuthRequest, res: Response) {
+    try {
+      const { scriptId, message, threadId } = req.body;
+
+      if (!scriptId || !message?.trim()) {
+        return res
+          .status(400)
+          .json({ error: "scriptId and message are required" });
+      }
+
+      const result = await ugcScriptService.storyboardChat({
+        scriptId,
+        message,
+        threadId,
+      });
+
+      return res.status(200).json({
+        success: true,
+        ...result,
+      });
+    } catch (error) {
+      console.error("[UGC_SCRIPT] Storyboard chat error:", error);
+      return res.status(500).json({
+        error: sanitizeErrorForFrontend(
+          error,
+          "Failed to process storyboard edit",
+        ),
+      });
+    }
+  }
 }
 
 export const ugcScriptController = new UGCScriptController();

@@ -6,7 +6,8 @@ import { CharacterStep } from "@/components/ugc-studio/actors/CharacterStep";
 import { AudioStep } from "@/components/ugc-studio/voice";
 import { ScriptPreview } from "./ScriptPreview";
 import { ScriptLoadingState } from "./ScriptLoadingState";
-import type { ArtifactType, ScriptAgentResult } from "./types";
+import type { ArtifactType } from "./types";
+import type { UGCScript, UGCScene } from "@/components/ugc-studio/script/types";
 import type { Character } from "@/components/ugc-studio/actors/types";
 
 interface ArtifactPanelProps {
@@ -15,9 +16,10 @@ interface ArtifactPanelProps {
   onCharacterSelect: (character: Character | null) => void;
   onContinue: () => void;
   teamId?: number;
-  generatedScript: ScriptAgentResult | null;
+  generatedScript: UGCScript | null;
   isGeneratingScript: boolean;
   onGenerateScript: () => void;
+  onSceneUpdate: (sceneId: string, patch: Partial<UGCScene>) => void;
 }
 
 export function ArtifactPanel({
@@ -29,6 +31,7 @@ export function ArtifactPanel({
   generatedScript,
   isGeneratingScript,
   onGenerateScript,
+  onSceneUpdate,
 }: ArtifactPanelProps) {
   // Trigger script generation when the artifact becomes "script"
   useEffect(() => {
@@ -42,7 +45,7 @@ export function ArtifactPanel({
       initial={{ x: "100%", opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className="h-full flex flex-col border-l border-border-base bg-surface-dark overflow-y-auto"
+      className="h-full flex flex-col border-l border-border-base bg-surface-dark overflow-hidden"
     >
       <AnimatePresence mode="wait">
         {currentArtifact === "character" && (
@@ -82,12 +85,12 @@ export function ArtifactPanel({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.2 }}
-            className="flex-1 p-4 overflow-y-auto"
+            className="flex-1 p-5 overflow-y-auto min-h-0"
           >
             {isGeneratingScript ? (
               <ScriptLoadingState />
             ) : generatedScript ? (
-              <ScriptPreview script={generatedScript} />
+              <ScriptPreview script={generatedScript} onSceneUpdate={onSceneUpdate} />
             ) : null}
           </motion.div>
         )}

@@ -357,6 +357,56 @@ router.post(
 
 /**
  * @openapi
+ * /ugc/storyboard-chat:
+ *   post:
+ *     summary: Chat with the storyboard agent to edit a script
+ *     description: Send a natural language message to modify scenes, shots, dialogue, or direction in a storyboard
+ *     tags:
+ *       - UGC Script
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - scriptId
+ *               - message
+ *             properties:
+ *               scriptId:
+ *                 type: string
+ *                 description: UUID of the script to edit
+ *               message:
+ *                 type: string
+ *                 description: Natural language editing instruction
+ *               threadId:
+ *                 type: string
+ *                 description: Optional thread ID for conversational memory
+ *     responses:
+ *       200:
+ *         description: Storyboard edit applied
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 updatedScript:
+ *                   type: object
+ */
+router.post(
+  "/storyboard-chat",
+  requireAuth,
+  ugcScriptController.storyboardChat.bind(ugcScriptController)
+);
+
+/**
+ * @openapi
  * /ugc/upload-product-image:
  *   post:
  *     summary: Get a presigned upload URL for a product image

@@ -182,6 +182,26 @@ class UGCScriptAPI {
   }
 
 
+  async storyboardChat(data: {
+    scriptId: string;
+    message: string;
+    threadId?: string;
+  }): Promise<{ success: boolean; message: string; updatedScript: UGCScript }> {
+    const response = await apiFetch(`${API_URL}/ugc/storyboard-chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to process storyboard edit");
+    }
+
+    return response.json();
+  }
+
   async getUploadUrl(
     teamId: number,
     fileName: string,

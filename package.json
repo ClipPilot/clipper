@@ -17,5 +17,10 @@
     "dev:all": "pnpm dev:backend & pnpm dev:worker & pnpm dev:agent & wait",
     "install:all": "pnpm install"
   },
-  "packageManager": "pnpm@10.12.2"
+  "packageManager": "pnpm@10.12.2",
+  "pnpm": {
+    "overrides": {
+      "@types/express-serve-static-core": "^5.1.0"
+    }
+  }
 }
