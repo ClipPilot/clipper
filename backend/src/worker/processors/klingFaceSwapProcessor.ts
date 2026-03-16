@@ -38,6 +38,7 @@ import {
 } from "../../services/clips/captions.service";
 import { falImageService } from "../../services/ai-ugc/falImage.service";
 import { POSE_GENERATION_PROMPT } from "../../config/ugcPrompts";
+import { sanitizeErrorForFrontend } from "../../utils/errorSanitizer";
 
 const API_INTERNAL_URL =
   process.env.API_INTERNAL_URL || "http://localhost:3001";
@@ -134,13 +135,20 @@ async function updateProgress(
   progress: number,
   message?: string,
 ): Promise<void> {
-  await db
-    .update(comfyJobs)
-    .set({
-      progress,
-      progressMessage: message || null,
-    })
-    .where(eq(comfyJobs.id, jobId));
+  try {
+    await db
+      .update(comfyJobs)
+      .set({
+        progress,
+        progressMessage: message || null,
+      })
+      .where(eq(comfyJobs.id, jobId));
+  } catch (err) {
+    console.error(
+      `[kling-face-swap] Non-fatal: failed to update progress for job ${jobId}:`,
+      (err as Error).message,
+    );
+  }
 
   emitJobUpdate(teamId, {
     id: jobId,
@@ -746,7 +754,7 @@ export async function processKlingFaceSwapJob(
       false,
       undefined,
       undefined,
-      (err as Error).message,
+      sanitizeErrorForFrontend(err, "Face swap processing failed"),
     );
 
     try {
