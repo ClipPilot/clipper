@@ -1,6 +1,7 @@
 node_modules
 dist
 .env
+.env.me
 .DS_Store
 backend/.DS_Store
 backend/.DS_Store
@@ -11,6 +12,7 @@ backend/.DS_Store
 .claude/agents
 infra/.terraform/
 infra/.terraform.lock.hcl
+.mastra
 
 # Terraform
 .terraform/
@@ -19,3 +21,7 @@ infra/.terraform.lock.hcl
 *.tfvars
 !infra/dev.tfvars
 ./backend/output/*
+.env*
+.flaskenv*
+!.env.project
+!.env.vault
