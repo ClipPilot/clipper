@@ -80,9 +80,11 @@ interface AnalyticsChartProps {
   colorMap?: Record<number, string>;
   startDate?: string;
   endDate?: string;
+  /** Optional change % overrides for the metric cards (views, likes, comments). When provided, these are used instead of the internally computed daily change. */
+  changeOverrides?: { views?: number | null; likes?: number | null; comments?: number | null };
 }
 
-export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPostsByAccount, colorMap, startDate, endDate }: AnalyticsChartProps) {
+export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPostsByAccount, colorMap, startDate, endDate, changeOverrides }: AnalyticsChartProps) {
   const [activeMetric, setActiveMetric] = useState<ChartMetricKey>("views");
 
   const getColor = (account: ViralityAccount, index: number) =>
@@ -224,6 +226,28 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
     };
   }, [tooltipByHour]);
 
+  // Precompute % change between consecutive hours for tooltip
+  const tooltipChangeByHour = useMemo(() => {
+    const sorted = Object.keys(tooltipByHour).sort();
+    const changeMap: Record<string, { views: number | null; likes: number | null; comments: number | null }> = {};
+    const pct = (cur: number, prev: number) => prev > 0 ? ((cur - prev) / prev) * 100 : cur > 0 ? 100 : null;
+    for (let i = 0; i < sorted.length; i++) {
+      const hour = sorted[i];
+      if (i === 0) {
+        changeMap[hour] = { views: null, likes: null, comments: null };
+      } else {
+        const prev = tooltipByHour[sorted[i - 1]];
+        const cur = tooltipByHour[hour];
+        changeMap[hour] = {
+          views: pct(cur.views, prev.views),
+          likes: pct(cur.likes, prev.likes),
+          comments: pct(cur.comments, prev.comments),
+        };
+      }
+    }
+    return changeMap;
+  }, [tooltipByHour]);
+
   const metrics: {
     key: ChartMetricKey;
     title: string;
@@ -235,17 +259,17 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
       key: "views",
       title: "Total Views",
       value: totals.views,
-      change: dailyChange.views,
+      change: changeOverrides?.views !== undefined ? changeOverrides.views : dailyChange.views,
       tooltip: "Only counts views on video posts (Reels)",
     },
-    { key: "likes", title: "Total Likes", value: totals.likes, change: dailyChange.likes },
-    { key: "comments", title: "Total Comments", value: totals.comments, change: dailyChange.comments },
+    { key: "likes", title: "Total Likes", value: totals.likes, change: changeOverrides?.likes !== undefined ? changeOverrides.likes : dailyChange.likes },
+    { key: "comments", title: "Total Comments", value: totals.comments, change: changeOverrides?.comments !== undefined ? changeOverrides.comments : dailyChange.comments },
   ];
 
   return (
     <Card className="bg-surface-base border border-border-base h-full">
       <section className="flex flex-col flex-nowrap h-full">
-        <div className="flex flex-col justify-between gap-y-2 p-6">
+        <div className="flex flex-col justify-between gap-y-2 p-3 sm:p-6">
           <div className="flex flex-col gap-y-2">
             <div className="flex items-center justify-between">
               <dt className="text-medium text-text-primary font-medium inline-flex items-center gap-1.5">
@@ -312,7 +336,7 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
                       )}
                     </span>
                     <div className="flex items-center gap-x-3">
-                      <span className="text-foreground text-3xl font-bold">
+                      <span className="text-foreground text-xl sm:text-3xl font-bold">
                         {formatChartValue(value)}
                       </span>
                       {change !== null && (
@@ -337,7 +361,7 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
 
         {hasData ? (
           <div className="flex-1 min-h-[300px] overflow-x-auto">
-            <div style={{ minWidth: Math.max(chartData.length * 12, 500) }}>
+            <div style={{ minWidth: Math.min(Math.max(chartData.length * 10, 500), 1200) }}>
             <ResponsiveContainer
               className="[&_.recharts-surface]:outline-hidden"
               height={300}
@@ -403,73 +427,107 @@ export function AnalyticsChart({ accounts, postsByAccount, allAccounts, allPosts
                 <Tooltip
                   content={({ payload }) => {
                     const hourKey = payload?.[0]?.payload?.hourKey;
-                    const label = hourKey ? formatHourKey(hourKey) : null;
-                    const tipData = hourKey ? tooltipByHour[hourKey] : null;
+                    if (!hourKey) return null;
+                    const label = formatHourKey(hourKey);
+                    const tipData = tooltipByHour[hourKey];
+                    const tipChange = tooltipChangeByHour[hourKey];
                     const overlayEntries = payload?.filter((p) => p.dataKey !== "total") ?? [];
+
+                    const renderChange = (change: number | null | undefined) => {
+                      if (change == null) return null;
+                      const isUp = change >= 0;
+                      return (
+                        <span className={cn(
+                          "text-[10px] font-semibold inline-flex items-center gap-0.5 px-1 py-px rounded",
+                          isUp ? "text-green-400 bg-green-400/10" : "text-red-400 bg-red-400/10"
+                        )}>
+                          <Icon icon={isUp ? "solar:arrow-up-linear" : "solar:arrow-down-linear"} width={8} />
+                          {Math.abs(change).toFixed(0)}%
+                        </span>
+                      );
+                    };
+
+                    const metricRows = tipData ? [
+                      { label: "Views", value: tipData.views, change: tipChange?.views, icon: "solar:eye-bold" },
+                      { label: "Likes", value: tipData.likes, change: tipChange?.likes, icon: "solar:heart-bold" },
+                      { label: "Comments", value: tipData.comments, change: tipChange?.comments, icon: "solar:chat-round-dots-bold" },
+                    ] : [];
+
                     return (
-                    <div className="rounded-medium bg-foreground text-tiny shadow-small min-w-[180px] p-2.5">
-                      <div className="flex w-full flex-col gap-y-1.5">
-                        {/* All Accounts summary — only when no individual accounts selected */}
-                        {accounts.length === 0 && (
-                          <div>
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <span
-                                className="inline-block w-2 h-2 rounded-full"
-                                style={{ backgroundColor: TOTAL_COLOR }}
-                              />
-                              <span className="text-small text-background font-medium">
-                                All Accounts
-                              </span>
-                              <span className="text-foreground-500 text-tiny">
-                                ({axisAccounts.length})
-                              </span>
-                            </div>
-                            {tipData && (
-                              <div className="flex items-center gap-2 ml-3.5 text-tiny">
-                                <span className="text-foreground-400">{formatChartValue(tipData.views)} views</span>
-                                <span className="text-foreground-500">·</span>
-                                <span className="text-foreground-400">{formatChartValue(tipData.likes)} likes</span>
-                                <span className="text-foreground-500">·</span>
-                                <span className="text-foreground-400">{formatChartValue(tipData.comments)} comments</span>
+                      <div className="rounded-xl bg-foreground shadow-lg min-w-[200px] overflow-hidden">
+                        {/* Header */}
+                        <div className="px-3 py-2 border-b border-foreground-200/10">
+                          <span className="text-tiny text-foreground-500 font-medium">
+                            {label.date} &middot; {label.time}
+                          </span>
+                        </div>
+
+                        <div className="px-3 py-2 flex flex-col gap-y-2">
+                          {/* Metric rows */}
+                          {metricRows.map((m) => (
+                            <div key={m.label} className="flex items-center justify-between gap-x-4">
+                              <div className="flex items-center gap-1.5">
+                                <Icon icon={m.icon} width={12} className="text-foreground-500" />
+                                <span className="text-tiny text-foreground-400">{m.label}</span>
                               </div>
-                            )}
-                          </div>
-                        )}
-                        {/* Overlay accounts */}
-                        {overlayEntries.map((p, index) => {
-                          const account = accounts.find(
-                            (a) => `account_${a.id}` === p.dataKey
-                          );
-                          return (
-                            <div
-                              key={index}
-                              className="text-small text-background flex w-full items-center justify-between gap-x-2"
-                            >
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-small text-background font-semibold">
+                                  {formatChartValue(m.value)}
+                                </span>
+                                {renderChange(m.change)}
+                              </div>
+                            </div>
+                          ))}
+
+                          {/* Account breakdown */}
+                          {overlayEntries.length > 0 && (
+                            <div className="border-t border-foreground-200/10 pt-2 mt-0.5 flex flex-col gap-y-1.5">
+                              {overlayEntries.map((p, index) => {
+                                const account = accounts.find(
+                                  (a) => `account_${a.id}` === p.dataKey
+                                );
+                                return (
+                                  <div
+                                    key={index}
+                                    className="flex items-center justify-between gap-x-3"
+                                  >
+                                    <div className="flex items-center gap-1.5">
+                                      <span
+                                        className="inline-block w-2 h-2 rounded-full flex-shrink-0"
+                                        style={{ backgroundColor: p.color }}
+                                      />
+                                      <span className="text-tiny text-foreground-400 truncate max-w-[120px]">
+                                        @{account?.username || "Unknown"}
+                                      </span>
+                                    </div>
+                                    <span className="text-tiny text-background font-semibold">
+                                      {formatChartValue(p.value as number)}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {/* All accounts label when no selection */}
+                          {accounts.length === 0 && (
+                            <div className="border-t border-foreground-200/10 pt-1.5 mt-0.5">
                               <div className="flex items-center gap-1.5">
                                 <span
                                   className="inline-block w-2 h-2 rounded-full"
-                                  style={{ backgroundColor: p.color }}
+                                  style={{ backgroundColor: TOTAL_COLOR }}
                                 />
-                                <span className="text-foreground-400">
-                                  @{account?.username || "Unknown"}
+                                <span className="text-tiny text-foreground-500">
+                                  All Accounts ({axisAccounts.length})
                                 </span>
                               </div>
-                              <span className="font-medium">
-                                {formatChartValue(p.value as number)}
-                              </span>
                             </div>
-                          );
-                        })}
-                        {label && (
-                          <span className="text-small text-foreground-400 font-medium mt-0.5">
-                            {label.date} {label.time}
-                          </span>
-                        )}
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
+                    );
                   }}
-                  cursor={{ strokeWidth: 0 }}
+                  cursor={{ stroke: "hsl(var(--heroui-default-300))", strokeWidth: 1, strokeDasharray: "4 4" }}
                 />
                 {/* Individual overlay account lines (rendered first = below) */}
                 {accounts.map((account, i) => {

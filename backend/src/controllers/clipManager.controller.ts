@@ -1478,7 +1478,7 @@ export class ClipManagerController {
 
       archive.pipe(res);
 
-      const BATCH_SIZE = 10;
+      const BATCH_SIZE = 20;
       for (let i = 0; i < completedClips.length; i += BATCH_SIZE) {
         const batch = completedClips.slice(i, i + BATCH_SIZE);
         const results = await Promise.allSettled(
@@ -1507,6 +1507,52 @@ export class ClipManagerController {
           error: sanitizeErrorForFrontend(error, "Failed to download folder"),
         });
       }
+    }
+  }
+
+  async downloadFolderUrls(req: AuthRequest, res: Response) {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      const folderId = parseInt(req.params.folderId);
+
+      if (isNaN(teamId) || isNaN(folderId)) {
+        return res.status(400).json({ error: "Invalid team ID or folder ID" });
+      }
+
+      const user = await verifyTeamAccessOrFail(req, teamId, res);
+      if (!user) return;
+
+      const clips = await clipManagerService.getClipsByFolder(teamId, folderId);
+      const completedClips = clips.filter(
+        (clip) => clip.status === "completed" && clip.clip_path,
+      );
+
+      if (completedClips.length === 0) {
+        return res.status(404).json({ error: "No completed clips in this folder" });
+      }
+
+      const urls = await Promise.all(
+        completedClips.map(async (clip) => {
+          const filename = `${clip.title || `clip_${clip.id}`}.mp4`.replace(
+            /[^a-zA-Z0-9._-]/g,
+            "_",
+          );
+          const url = await s3Service.getPresignedDownloadUrl(
+            clip.clip_path!,
+            filename,
+            3600,
+          );
+          return { url, filename };
+        }),
+      );
+
+      res.json({ urls, folderName: `clips-folder-${folderId}` });
+    } catch (error) {
+      console.error("Download folder URLs error:", error);
+      Sentry.captureException(error);
+      return res.status(500).json({
+        error: sanitizeErrorForFrontend(error, "Failed to get download URLs"),
+      });
     }
   }
 }

@@ -33,7 +33,7 @@ export function GeneratePanel({
   onFaceSwapGenerate,
   showEditor = false,
   onToggleEditor,
-  swapType = "face",
+  swapType = "fullbody",
   onSwapTypeChange,
   teamId,
   selectedFolderId,

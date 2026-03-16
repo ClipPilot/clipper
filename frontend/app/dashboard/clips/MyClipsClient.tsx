@@ -471,11 +471,39 @@ function MyClipsPageContent() {
     setIsDownloadingFolder(true);
     setDownloadingFolderId(targetFolderId);
     try {
-      const blob = await clipsAPI.downloadFolder(selectedTeam.id, targetFolderId);
+      const { urls, folderName } = await clipsAPI.downloadFolderUrls(
+        selectedTeam.id,
+        targetFolderId,
+      );
+
+      // Fetch all clips directly from S3 in parallel (browser manages 6 concurrent connections)
+      const fileResults = await Promise.allSettled(
+        urls.map(async ({ url, filename }) => {
+          const response = await fetch(url);
+          if (!response.ok) throw new Error(`Failed to download ${filename}`);
+          return { name: filename, input: response };
+        }),
+      );
+
+      const files = fileResults
+        .filter(
+          (r): r is PromiseFulfilledResult<{ name: string; input: Response }> =>
+            r.status === "fulfilled",
+        )
+        .map((r) => r.value);
+
+      if (files.length === 0) {
+        throw new Error("No clips could be downloaded");
+      }
+
+      // Create zip client-side (dynamic import to avoid SSR issues)
+      const { downloadZip } = await import("client-zip");
+      const blob = await downloadZip(files).blob();
+
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `folder-${targetFolderId}.zip`;
+      a.download = `${folderName}.zip`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

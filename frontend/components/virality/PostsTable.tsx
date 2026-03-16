@@ -248,12 +248,12 @@ export function PostsTable({ posts, accountPlatformMap, comparisonMode, onCompar
   return (
     <div className="bg-surface-base border border-border-base rounded-xl overflow-hidden">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border-base">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-3 sm:px-4 py-3 border-b border-border-base">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-text-tertiary">Calculate % change:</span>
+          <span className="text-xs text-text-tertiary whitespace-nowrap">Calculate % change:</span>
           <ComparisonModeSelector selected={comparisonMode} onChange={onComparisonModeChange} />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <FilterDropdown
             options={VIEW_FILTER_OPTIONS}
             selected={viewsFilter}
@@ -438,13 +438,13 @@ export function PostsTable({ posts, accountPlatformMap, comparisonMode, onCompar
       </Table>
       </div>
 
-      <div className="flex items-center justify-between px-4 py-4 border-t border-border-base">
-        <p className="text-sm text-text-tertiary">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-3 sm:px-4 py-3 sm:py-4 border-t border-border-base">
+        <p className="text-xs sm:text-sm text-text-tertiary">
           Showing {paginatedPosts.length} of {filteredAndSortedPosts.length} posts
           {activeFilterCount > 0 && ` (filtered from ${posts.length})`}
         </p>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className="hidden sm:flex items-center gap-2">
             <span className="text-sm text-text-tertiary">Show:</span>
             {[25, 50, 100].map((size) => (
               <Button

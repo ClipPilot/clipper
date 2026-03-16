@@ -26,7 +26,20 @@ export {
 export const KLING_MAX_PROMPT_LENGTH = 2500;
 
 export type { ShotType };
-export type KlingV3Duration = 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15;
+export type KlingV3Duration =
+  | 3
+  | 4
+  | 5
+  | 6
+  | 7
+  | 8
+  | 9
+  | 10
+  | 11
+  | 12
+  | 13
+  | 14
+  | 15;
 export type CharacterOrientation = "image" | "video";
 
 export interface ImageToVideoResult {
@@ -408,7 +421,9 @@ export async function generateVideoV3(
     console.log(`[Kling v3] Using end frame image for interpolation`);
   }
   if (elements?.length) {
-    console.log(`[Kling v3] Using ${elements.length} element(s) for consistency`);
+    console.log(
+      `[Kling v3] Using ${elements.length} element(s) for consistency`,
+    );
   }
 
   try {
@@ -442,7 +457,9 @@ export async function generateVideoV3(
         }
         return {
           ...(el.frontalImageUrl && { frontal_image_url: el.frontalImageUrl }),
-          ...(el.referenceImageUrls && { reference_image_urls: el.referenceImageUrls }),
+          ...(el.referenceImageUrls && {
+            reference_image_urls: el.referenceImageUrls,
+          }),
         };
       });
     }
@@ -454,7 +471,9 @@ export async function generateVideoV3(
         logs: true,
         onQueueUpdate: (update) => {
           if (update.status === "IN_PROGRESS" && update.logs) {
-            update.logs.forEach((log) => console.log(`[Kling v3] ${log.message}`));
+            update.logs.forEach((log) =>
+              console.log(`[Kling v3] ${log.message}`),
+            );
           }
         },
       },
@@ -724,7 +743,7 @@ export async function klingProMotion(
 
   // Step 1: Submit the request to the queue
   const { request_id } = await fal.queue.submit(
-    "fal-ai/kling-video/v2.6/pro/motion-control",
+    "fal-ai/kling-video/v3/pro/motion-control",
     { input },
   );
 
@@ -741,7 +760,7 @@ export async function klingProMotion(
       );
     }
     const status = await fal.queue.status(
-      "fal-ai/kling-video/v2.6/pro/motion-control",
+      "fal-ai/kling-video/v3/pro/motion-control",
       { requestId: request_id, logs: true },
     );
 
@@ -761,7 +780,7 @@ export async function klingProMotion(
 
   // Step 3: Get the result
   const result = await fal.queue.result(
-    "fal-ai/kling-video/v2.6/pro/motion-control",
+    "fal-ai/kling-video/v3/pro/motion-control",
     { requestId: request_id },
   );
 

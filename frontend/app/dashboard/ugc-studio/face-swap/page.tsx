@@ -75,7 +75,7 @@ function FaceSwapContent({
   const [segments, setSegments] = useState<VideoSegment[]>([]);
   const [showEditor, setShowEditor] = useState(false);
   const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
-  const [swapType, setSwapType] = useState<"face" | "fullbody">("face");
+  const [swapType, setSwapType] = useState<"face" | "fullbody">("fullbody");
   const [isTourOpen, setIsTourOpen] = useState(false);
   const faceSwapsSectionRef = useRef<MyFaceSwapsSectionRef>(null);
 
@@ -270,12 +270,12 @@ function FaceSwapContent({
     setSegments([]);
 
     try {
-      const result = await faceSwapAPI.createMultipleJobs({
+      const result = await faceSwapAPI.createMultipleJobsAutoDetect({
         video: videoFile,
         images: characterImages,
         teamId,
         videoDuration: duration,
-        spliceWithOriginal: false,
+        spliceWithOriginal: true,
         folderId: selectedFolderId,
         swapType: "face",
       });

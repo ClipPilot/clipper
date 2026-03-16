@@ -184,6 +184,10 @@ resource "aws_ecs_task_definition" "backend" {
         valueFrom = aws_secretsmanager_secret.fal_key.arn
       },
       {
+        name      = "WAVESPEED_KEY"
+        valueFrom = aws_secretsmanager_secret.wavespeed_key.arn
+      },
+      {
         name      = "GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY"
         valueFrom = aws_secretsmanager_secret.google_service_account_private_key.arn
       },
