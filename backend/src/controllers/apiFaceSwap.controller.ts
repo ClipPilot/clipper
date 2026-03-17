@@ -440,7 +440,7 @@ async function processFullbodyMode(params: {
   }
 
   // 3-second minimum only applies to fullbody (Kling/fal), not face swap (WaveSpeed)
-  if (mode !== "face") {
+  if (swapType !== "face") {
     const shortSegments = selectedSegments.filter(
       (seg) => seg.end - seg.start < MIN_SEGMENT_DURATION,
     );
