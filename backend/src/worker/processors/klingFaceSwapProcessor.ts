@@ -52,7 +52,7 @@ const MIN_CHUNK_DURATION = 3;
  * Calculate chunk durations ensuring each chunk is between MIN and MAX duration.
  * For a 32s segment: returns [10, 10, 9, 3] instead of [10, 10, 10, 2]
  */
-function calculateChunkDurations(totalDuration: number, maxChunkDuration: number = KLING_MAX_CHUNK_DURATION): number[] {
+function calculateChunkDurations(totalDuration: number, maxChunkDuration: number = KLING_MAX_CHUNK_DURATION, enforceMinDuration: boolean = true): number[] {
   // If segment fits in one chunk, return as-is
   if (totalDuration <= maxChunkDuration) {
     return [totalDuration];
@@ -66,8 +66,8 @@ function calculateChunkDurations(totalDuration: number, maxChunkDuration: number
     return Array(numFullChunks).fill(maxChunkDuration);
   }
 
-  // Remainder is large enough to be its own chunk (>= 3s)
-  if (remainder >= MIN_CHUNK_DURATION) {
+  // Skip minimum chunk enforcement for face swap (WaveSpeed handles short chunks fine)
+  if (!enforceMinDuration || remainder >= MIN_CHUNK_DURATION) {
     return [...Array(numFullChunks).fill(maxChunkDuration), remainder];
   }
 
@@ -328,7 +328,7 @@ export async function processKlingFaceSwapJob(
 
       const sourceDuration = await getVideoDuration(sourceVideoPath);
       const maxChunk = isFaceMode ? WAVESPEED_MAX_CHUNK_DURATION : KLING_MAX_CHUNK_DURATION;
-      const chunkDurations = calculateChunkDurations(sourceDuration, maxChunk);
+      const chunkDurations = calculateChunkDurations(sourceDuration, maxChunk, !isFaceMode);
 
       const chunkPaths: string[] = [];
       let currentTime = 0;

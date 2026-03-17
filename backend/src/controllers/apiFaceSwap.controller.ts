@@ -439,11 +439,14 @@ async function processFullbodyMode(params: {
     throw new Error("No usable face segments found");
   }
 
-  const shortSegments = selectedSegments.filter(
-    (seg) => seg.end - seg.start < MIN_SEGMENT_DURATION,
-  );
-  if (shortSegments.length > 0) {
-    throw new Error(`Detected segments are too short. All face segments must be at least ${MIN_SEGMENT_DURATION} seconds long.`);
+  // 3-second minimum only applies to fullbody (Kling/fal), not face swap (WaveSpeed)
+  if (mode !== "face") {
+    const shortSegments = selectedSegments.filter(
+      (seg) => seg.end - seg.start < MIN_SEGMENT_DURATION,
+    );
+    if (shortSegments.length > 0) {
+      throw new Error(`Detected segments are too short. All face segments must be at least ${MIN_SEGMENT_DURATION} seconds long.`);
+    }
   }
 
   const segments = selectedSegments.sort((a, b) => a.start - b.start);

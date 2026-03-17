@@ -258,6 +258,7 @@ function FaceSwapContent({
     const videoToRevoke = video.preview;
     const characterCount = characterImages.length;
     const totalCredits = characterCount * 5;
+    const voiceIds = selectedCharacters.map((c) => c.voiceId || null);
     const tempIds = characterImages.map((_, i) => `temp-${Date.now()}-${i}`);
 
     tempIds.forEach((tempId) => {
@@ -277,6 +278,7 @@ function FaceSwapContent({
         videoDuration: duration,
         spliceWithOriginal: true,
         folderId: selectedFolderId,
+        voiceIds,
         swapType: "face",
       });
 
