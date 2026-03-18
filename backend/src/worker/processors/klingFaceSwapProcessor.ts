@@ -284,41 +284,42 @@ export async function processKlingFaceSwapJob(
       let sourceVideoPath: string;
       let referenceUrl: string;
 
+      // Generate pose reference image for each segment (both modes)
+      const frameOutputPath = path.join(outDir, `frame_seg${segIdx}_${timestamp}.jpg`);
+      await extractFrameAtTime(segmentPath, frameOutputPath, 0.1);
+
+      const frameS3Key = `face-swap-assets/${teamId}/${jobId}/frame_seg${segIdx}_${timestamp}.jpg`;
+      await s3Service.uploadFile(frameOutputPath, frameS3Key, "image/jpeg");
+      const frameUrl = await s3Service.getPresignedUrl(frameS3Key, 3600);
+
+      const referenceImageUrl = segIdx === 0 ? faceImageUrl : firstPoseUrl!;
+
+      const poseResult = await falImageService.generateImageWithReferences({
+        prompt: POSE_GENERATION_PROMPT,
+        imageUrls: [referenceImageUrl, frameUrl],
+        aspectRatio: "auto",
+        numImages: 1,
+      });
+
+      const poseImagePath = path.join(outDir, `pose_seg${segIdx}_${timestamp}.png`);
+      const poseResponse = await fetch(poseResult.imageUrl);
+      const poseBuffer = Buffer.from(await poseResponse.arrayBuffer());
+      fs.writeFileSync(poseImagePath, poseBuffer);
+
+      const poseS3Key = `face-swap-assets/${teamId}/${jobId}/pose_seg${segIdx}_${timestamp}.png`;
+      await s3Service.uploadBuffer(poseBuffer, poseS3Key, "image/png");
+      const poseUrl = await s3Service.getPresignedUrl(poseS3Key, 3600);
+
+      if (segIdx === 0) {
+        firstPoseUrl = poseUrl;
+      }
+
       if (isFaceMode) {
-        // Face mode (WaveSpeed): use face image directly, no pose generation
+        // Face mode (WaveSpeed): use pose reference but no prepended frame
         sourceVideoPath = segmentPath;
-        referenceUrl = faceImageUrl;
+        referenceUrl = poseUrl;
       } else {
-        // Fullbody mode (Kling): generate pose image and prepend frame
-        const frameOutputPath = path.join(outDir, `frame_seg${segIdx}_${timestamp}.jpg`);
-        await extractFrameAtTime(segmentPath, frameOutputPath, 0.1);
-
-        const frameS3Key = `face-swap-assets/${teamId}/${jobId}/frame_seg${segIdx}_${timestamp}.jpg`;
-        await s3Service.uploadFile(frameOutputPath, frameS3Key, "image/jpeg");
-        const frameUrl = await s3Service.getPresignedUrl(frameS3Key, 3600);
-
-        const referenceImageUrl = segIdx === 0 ? faceImageUrl : firstPoseUrl!;
-
-        const poseResult = await falImageService.generateImageWithReferences({
-          prompt: POSE_GENERATION_PROMPT,
-          imageUrls: [referenceImageUrl, frameUrl],
-          aspectRatio: "auto",
-          numImages: 1,
-        });
-
-        const poseImagePath = path.join(outDir, `pose_seg${segIdx}_${timestamp}.png`);
-        const poseResponse = await fetch(poseResult.imageUrl);
-        const poseBuffer = Buffer.from(await poseResponse.arrayBuffer());
-        fs.writeFileSync(poseImagePath, poseBuffer);
-
-        const poseS3Key = `face-swap-assets/${teamId}/${jobId}/pose_seg${segIdx}_${timestamp}.png`;
-        await s3Service.uploadBuffer(poseBuffer, poseS3Key, "image/png");
-        const poseUrl = await s3Service.getPresignedUrl(poseS3Key, 3600);
-
-        if (segIdx === 0) {
-          firstPoseUrl = poseUrl;
-        }
-
+        // Fullbody mode (Kling): also prepend pose frame to video
         const prependedSegmentPath = path.join(outDir, `prepended_seg${segIdx}_${timestamp}.mp4`);
         await prependPoseFrame(segmentPath, poseImagePath, prependedSegmentPath);
 
