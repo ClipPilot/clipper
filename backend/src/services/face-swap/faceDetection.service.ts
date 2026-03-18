@@ -21,7 +21,8 @@ const FACE_DETECT_LAMBDA = `clipster-face-detect-${process.env.NODE_ENV === "pro
  */
 export async function detectFaceSegmentsFromS3Key(
   s3Key: string,
-  videoDuration: number
+  videoDuration: number,
+  swapType?: "face" | "fullbody"
 ): Promise<FaceSegment[]> {
   console.log(`[FACE-DETECT] Starting Lambda-based detection for S3 key: ${s3Key}`);
 
@@ -29,10 +30,13 @@ export async function detectFaceSegmentsFromS3Key(
     const s3Url = `s3://${config.aws.s3Bucket}/${s3Key}`;
     console.log(`[FACE-DETECT] Invoking Lambda with S3 URL: ${s3Url}`);
 
-    const payload = {
+    const payload: Record<string, unknown> = {
       video_url: s3Url,
       video_duration: videoDuration,
     };
+    if (swapType) {
+      payload.swap_type = swapType;
+    }
 
     const command = new InvokeCommand({
       FunctionName: FACE_DETECT_LAMBDA,
@@ -85,7 +89,8 @@ export async function detectFaceSegmentsFromS3Key(
  */
 export async function detectFaceSegmentsWithPadding(
   videoPath: string,
-  videoDuration: number
+  videoDuration: number,
+  swapType?: "face" | "fullbody"
 ): Promise<FaceSegment[]> {
   console.log(`[FACE-DETECT] Starting Lambda-based detection for ${videoPath}`);
 
@@ -96,7 +101,7 @@ export async function detectFaceSegmentsWithPadding(
     await s3Service.uploadFile(videoPath, s3Key, "video/mp4");
 
     // Use the S3 key-based detection (includes cleanup)
-    return await detectFaceSegmentsFromS3Key(s3Key, videoDuration);
+    return await detectFaceSegmentsFromS3Key(s3Key, videoDuration, swapType);
   } catch (err) {
     console.error(`[FACE-DETECT] Error:`, err);
     throw err;

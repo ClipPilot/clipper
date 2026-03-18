@@ -1041,6 +1041,7 @@ export class ComfyController {
         const detectedSegments = await detectFaceSegmentsWithPadding(
           videoPath,
           videoDuration,
+          swapType,
         );
         console.log(
           `[comfy] Detected ${detectedSegments.length} face segments`,
